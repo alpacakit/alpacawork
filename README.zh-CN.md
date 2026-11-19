@@ -41,7 +41,7 @@ alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 C
 
 ```text
 请下载下面的指南，完整阅读后，按其中的步骤在这台电脑上安装 alpacawork。
-https://unpkg.com/alpacawork/skills/alpacawork/references/setup.md
+https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
 想用命令安装的话，在终端中依次执行以下两行。
