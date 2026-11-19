@@ -221,7 +221,7 @@ export function useClosedCounts() {
 export type ListPlace = "loading" | "search" | "lookup" | "no-projects" | "welcome" | "list";
 /**
  * The one rule for what the list's place shows, read by the page (Workbench), the list (TimeTree) and the conversation,
- * which points to the list's examples only while they are on screen (WarmStart). Until the first index arrives nothing
+ * which offers the welcome's examples while it is the list's place (WarmStart). Until the first index arrives nothing
  * is known: no index is not "no project" and not empty. How work starts shows while the project in view (or every
  * project) holds no Task at all, as the index counts them, and nothing else takes the place.
  */
