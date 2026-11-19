@@ -18,7 +18,7 @@ import { StateIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
 import { Icon } from "@/components/ui/icon";
 import { NativeSelect } from "@/components/ui/native-select";
-import { TONE, useRowLook } from "@/components/ui/tone";
+import { TONE, useTaskLook } from "@/components/ui/tone";
 import { SentArc } from "./SentArc";
 import { useClosedCounts, useListPlace, useHomeList, usePeople, usePeopleFor, useReadIdsFor, useReadState, useTaskIndex, useWorkspaceInfo } from "@/data/queries";
 import { resources } from "@/data/resources";
@@ -627,7 +627,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const endId = useId();
   const rowElement = useRef<HTMLLIElement>(null);
   const enter = useRef<(() => void) | null>(null);
-  const look = useRowLook(task);
+  const look = useTaskLook(task);
   const stateWord = look.word;
   // The title column and strip have the same height; a wide row is always WIDE_ROW.
   const h = narrow ? 22 : WIDE_ROW;

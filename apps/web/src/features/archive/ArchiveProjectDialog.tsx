@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { ConsequenceNote } from "@/components/ui/consequence-note";
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeading } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field";
-import { StateLabel } from "@/components/ui/state-label";
+import { TaskLabel } from "@/components/ui/state-label";
+import { useEveryTaskIndex } from "@/data/queries";
+import { namedLook } from "@/domain/tasks";
 import { problemText } from "@/features/forms/problem-text";
 import type { ArchiveRefusal } from "./archive-types";
 
@@ -18,6 +20,7 @@ export function ArchiveProjectDialog({ title, onOpenChange, onArchive, pending, 
   pending: boolean; checking: boolean; failure: unknown; refusal: ArchiveRefusal | null;
 }) {
   const { t } = useTranslation("panels");
+  const index = useEveryTaskIndex();
   return <Dialog open onOpenChange={onOpenChange}>
     <DialogContent data-archive-confirm={refusal ? "refused" : "ask"}>
       {refusal ? <>
@@ -25,7 +28,7 @@ export function ArchiveProjectDialog({ title, onOpenChange, onArchive, pending, 
         <DialogBody>
           <ul className="m-0 flex list-none flex-col gap-2 p-0 text-base">
             {refusal.tasks.map((task) => <li key={task.id} className="flex min-w-0 items-center gap-2">
-              {task.state && <StateLabel state={task.state} />}
+              {task.state && <TaskLabel task={namedLook(task.id, task.state, index)} />}
               <span className="flex-none text-sm text-muted tabular-nums">{task.id}</span>
               {task.title && <span className="min-w-0 truncate">{task.title}</span>}
             </li>)}

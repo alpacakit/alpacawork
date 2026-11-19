@@ -59,7 +59,8 @@ test("a desktop reference shows its actionable task card on hover, whose Open fo
     act(() => vi.advanceTimersByTime(600));
     const card = screen.getByRole("dialog", { name: "T2" });
     expect(card.textContent).toContain("Destination");
-    expect(card.textContent).toContain(i18n.t(`ui:state.${workspace.tasks.find(task => task.id === "T2")!.state}`));
+    // Its word is the list's: no Run of it works, so it is said as waiting.
+    expect(card.textContent).toContain(i18n.t("tree:home.awaited"));
     expect(card.textContent).not.toContain("Latest report");
     expect(card.textContent).not.toContain("Old report");
     expect(card.textContent).not.toContain("tokens");
@@ -106,7 +107,7 @@ test("a reference to a task with a question uses the same compact actionable car
     act(() => vi.advanceTimersByTime(600));
     const card = screen.getByRole("dialog", { name: "T2" });
     expect(card.textContent).toContain("Destination");
-    expect(card.textContent).toContain(i18n.t(`ui:state.${workspace.tasks.find(task => task.id === "T2")!.state}`));
+    expect(card.textContent).toContain(i18n.t("ui:turn.question"));
     expect(card.textContent).not.toContain("Please decide");
     expect(card.textContent).not.toContain("Latest report");
     expect(card.querySelector("[data-task-card-open]")).not.toBeNull();

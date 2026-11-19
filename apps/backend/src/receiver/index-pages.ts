@@ -12,7 +12,7 @@ import { current, lanesAbove as lanesAboveFor, pageRow, recordEvents, recordedEv
   type ChildCounts, type Kept, type TimelineStamp } from './task-reads.js';
 import { controlTaskView } from '../control/task-dto.js';
 import type { PublishedFrame } from './projection-contract.js';
-import { projectRowFacts } from './row-facts.js';
+import { aggregateRowFacts } from './row-facts.js';
 
 /** The common inputs of search and time rendering; a published reader supplies only its scope's records. */
 type PageReadState = {
@@ -229,11 +229,9 @@ export function timeline(state: PageReadState, input: { scope: string; visible: 
 function projectedRow(frame: PublishedFrame, id: string): TaskRowDTO {
   const derived = frame.derived(id);
   if (!derived) throw new Error(`Published Task has no derived row: ${id}`);
-  const children = frame.aggregate.children(id);
   return { ...derived.row,
     movedAt: frame.aggregate.movedAt(id), usageBelow: frame.aggregate.usageBelow(id), runsBelow: frame.aggregate.runsBelow(id).map(([run, at]) => [run, at]),
-    rowFacts: projectRowFacts(derived.row, derived.placements, derived.runs, children?.runningBelow ?? 0,
-      frame.aggregate.workingBelow(id), frame.aggregate.runningRuns(id)) };
+    rowFacts: aggregateRowFacts(derived, frame.aggregate) };
 }
 function projectedPageRow(frame: PublishedFrame, id: string): TaskPageRowDTO {
   const children = frame.aggregate.children(id);

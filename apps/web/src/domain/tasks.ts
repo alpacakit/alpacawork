@@ -1,7 +1,7 @@
 import { currentTransition } from "@alpacawork/contract/control";
 import { byTaskNumber } from "@alpacawork/contract/moved";
 import { parseTaskId } from "@alpacawork/contract";
-import type { Task } from "@/data/types";
+import type { Task, TaskState } from "@/data/types";
 import type { TimelineLog } from "./history";
 import type { ProjectedIndexDTO } from "@alpacawork/contract/control";
 
@@ -43,6 +43,14 @@ export function indexTasks(tasks: Task[], childCounts?: TaskIndex["childCounts"]
 }
 
 /** A URL names a Task by its ID (`T14`), as a text does (`resolveReference`); an address of any other form names none. */
+/**
+ * A Task another read names with its state (a start order, a refusal), as its look reads it: the list's row while that
+ * says the same state, else the bare state.
+ */
+export function namedLook(id: string, state: TaskState, index: Pick<TaskIndex, "byId">): Pick<Task, "state" | "ball"> & { rowFacts: Task["rowFacts"] | null } {
+  const live = index.byId.get(id);
+  return live?.state === state ? { state, ball: live.ball, rowFacts: live.rowFacts } : { state, ball: null, rowFacts: null };
+}
 export const taskAtAddress = (address: string, index: TaskIndex): Task | undefined => index.byId.get(address);
 
 type ProjectIndex = { byId: ReadonlyMap<string, Pick<Task, "projectId">>; projects: readonly Pick<ProjectedIndexDTO["projects"][number], "id" | "parentId">[] };

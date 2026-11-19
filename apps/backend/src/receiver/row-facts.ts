@@ -3,14 +3,15 @@ import { TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
  * The index projects them for every row, including closed pages; the screen only words and clocks them. */
 import { userTurn } from '@alpacawork/contract';
 import { currentTransition, type ControlRunDTO, type PlacementDTO, type RowFacts, type TaskRowDTO } from '@alpacawork/contract/control';
+import type { ScreenAggregate, TaskDerived } from './projection-contract.js';
 
 type RowTask = Pick<TaskRowDTO, 'id' | 'state' | 'stateLog' | 'ball' | 'question'>;
 type StateEntry = RowTask['stateLog'][number] | null;
 
 const earliest = (times: (string | null)[]) => times.filter((at): at is string => !!at).map(Date.parse).sort((a, b) => a - b)[0] ?? null;
 
-function statusOf(task: RowTask, own: readonly PlacementDTO[], runs: readonly ControlRunDTO[], warning: RowFacts['warning'], kind: RowFacts['kind'], error: StateEntry, runningBelow: number, workingBelow: number): Omit<RowFacts, 'kind' | 'runningRuns'> {
-  const facts = (status: RowFacts['status']): Omit<RowFacts, 'kind' | 'runningRuns'> =>
+function statusOf(task: RowTask, own: readonly PlacementDTO[], runs: readonly ControlRunDTO[], warning: RowFacts['warning'], kind: RowFacts['kind'], error: StateEntry, runningBelow: number, workingBelow: number): Omit<RowFacts, 'kind' | 'runningRuns' | 'position'> {
+  const facts = (status: RowFacts['status']): Omit<RowFacts, 'kind' | 'runningRuns' | 'position'> =>
     ({ status, childrenRunning: runningBelow, warning });
   // Runtime's attention can coexist with a running Run; its counts retain that fact.
   const running = own.some(placement => placement.runtime.runningCount > 0);
@@ -56,8 +57,13 @@ function kindOf(task: RowTask, runs: readonly ControlRunDTO[], error: StateEntry
 export const errorRunReason = (run: ControlRunDTO | undefined): string =>
   run?.state === 'succeeded' ? 'no_report' : run?.state === 'cancelled' ? 'stopped' : run?.reason ?? 'unknown';
 
+/** A row's facts as the index sends them: its own (projectRowFacts) with what the aggregate decides, its descendants' work and its position. */
+export const aggregateRowFacts = ({ id, row, placements, runs }: TaskDerived, aggregate: ScreenAggregate): RowFacts =>
+  ({ ...projectRowFacts(row, placements, runs, aggregate.children(id)?.runningBelow ?? 0, aggregate.workingBelow(id), aggregate.runningRuns(id)),
+    position: aggregate.position(id) });
+
 /** The one projection of a row's operational facts; no work prose determines its status. */
-export function projectRowFacts(task: RowTask, placements: readonly PlacementDTO[], runs: readonly ControlRunDTO[], runningBelow: number, workingBelow: number, runningRuns: number): RowFacts {
+export function projectRowFacts(task: RowTask, placements: readonly PlacementDTO[], runs: readonly ControlRunDTO[], runningBelow: number, workingBelow: number, runningRuns: number): Omit<RowFacts, 'position'> {
   const own = placements.filter(placement => placement.taskId === task.id && placement.active);
   const reviewing = runs.find(run => run.state === 'needs_review' && own.some(placement => placement.id === run.placementId));
   const result = evaluate(TASK_POLICY.rowWarning, { unknown: own.some(placement => placement.runtime.displayState === 'unknown'),

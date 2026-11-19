@@ -3,7 +3,7 @@ import { isFinished } from "@alpacawork/contract/branch";
 import type { Task } from "@/data/types";
 import { Icon } from "@/components/ui/icon";
 import { CapStrut } from "@/components/ui/text-mark";
-import { TONE, useRowLook } from "@/components/ui/tone";
+import { TONE, useTaskLook } from "@/components/ui/tone";
 import type { PeopleIndex } from "@/domain/people";
 import { ReportTime, RowKindWord, RunningRuns, StatusNotes, StatusTime, WaitedNote } from "./RowStatus";
 import { RowProjectTile } from "./RowProjectTile";
@@ -27,7 +27,7 @@ export function RowLines({ task, people, lifted, counts, title, unread }: {
   /** The unread dot, drawn in its own place at the line with the id. */
   unread: ReactNode;
 }) {
-  const look = useRowLook(task);
+  const look = useTaskLook(task);
   // One grid for the row. Its marks (the unread dot, the state icon) share the id's line: they sit on its baseline, centred on
   // its capitals whatever font draws it; the press lays out the marks, the line and the title on the row's columns (subgrid).
   // Its two lines (the id's, the title's) take their steps' heights and fill the phone's 48px row with 2px over and under.

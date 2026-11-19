@@ -316,7 +316,6 @@
     "held": "On hold",
     "stopped": "Stopped",
     "todo": "Not started",
-    "waiting": "Waiting",
     "waitingReview": "Awaiting review"
   },
   "turn": {

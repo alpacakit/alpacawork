@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TASK_BASE_STATES, type TaskBaseState } from '@alpacawork/raw';
-import { projectHome, homeRowSchema, type Ball, type HomeSection } from '@alpacawork/contract';
+import { placeHome, projectHome, homeRowSchema, type Ball, type HomeSection } from '@alpacawork/contract';
 
 type Task = Parameters<typeof projectHome>[0][number];
 type Reason = Extract<Ball, { holder: 'user' }>['reason'];
@@ -37,6 +37,21 @@ test('all 336 top/child, state, hold, turn and work combinations match the indep
         cells++;
       }
   assert.equal(cells, 336);
+});
+
+test('every Task, a child too, has the position its row would have at the top: what every screen says it by', () => {
+  for (const top of [true, false]) for (const baseState of TASK_BASE_STATES) for (const hold of [false, true])
+    for (const turn of [null, 'review', 'question', 'failed', 'limit', 'unconfirmed', 'blocked'] as const)
+      for (const working of [false, true]) {
+        const input = task('T2', { parentId: top ? 'P1' : 'T1', baseState, hold });
+        const placed = placeHome(top ? [input] : [task(), input], turn === null ? {} : { T2: ball(turn) }, new Set(working ? ['T2'] : []));
+        assert.equal(placed.find(each => each.taskId === 'T2')?.position, oracle(true, baseState, hold, turn, working),
+          JSON.stringify({ top, baseState, hold, turn, working }));
+      }
+  // A working child under a working parent has no row of its own, yet is said as working; an idle one as waiting.
+  const family = [task(), task('T2', { parentId: 'T1' }), task('T3', { parentId: 'T1' })];
+  assert.deepEqual(placeHome(family, {}, new Set(['T2'])).map(each => [each.taskId, each.row?.section ?? null, each.position]),
+    [['T1', 'doing', 'doing'], ['T2', null, 'doing'], ['T3', null, 'awaited']]);
 });
 
 test('work propagates from a grandchild through a held child, regardless of input order', () => {

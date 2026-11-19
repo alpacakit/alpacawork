@@ -709,7 +709,7 @@ test('closed pages and search carry the same row facts from the current projecti
   const feed = snapshotReads();
   feed.update(h.screen({ ...tree, tasks: [...tree.tasks, task] }));
   const expected = { status: { kind: 'since', at: Date.parse('2026-10-07T10:00:00.000Z') },
-    childrenRunning: 0, runningRuns: 0, warning: null, kind: null };
+    childrenRunning: 0, runningRuns: 0, warning: null, kind: null, position: 'done' };
   assert.deepEqual(feed.finished(null, h.projectId).rows.find(row => row.id === task.id)?.rowFacts, expected);
   assert.deepEqual(feed.search('Closed facts', h.projectId).rows[0]?.rowFacts, expected);
 });

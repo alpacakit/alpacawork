@@ -30,18 +30,17 @@ const TURN_SECTION: Readonly<Record<Extract<Ball, { holder: 'user' }>['reason'],
 };
 type HomeTask = { id: string; parentId: string | null; kind: string; lifecycle: string;
   baseState: TaskBaseState; hold: boolean; summary: { done: number; total: number } };
+/** What a Task's position reads: its own hold, stage and turn, and whether work runs on it or below it. */
+type PositionFacts = { hold: boolean; baseState: TaskBaseState;
+  turn: Extract<Ball, { holder: 'user' }>['reason'] | null; working: boolean };
 /** `shown`: a row above it, the nearest doing row among its ancestors, already lists its work in the doing section. */
-type HomeFacts = { top: boolean; hold: boolean; baseState: TaskBaseState;
-  turn: Extract<Ball, { holder: 'user' }>['reason'] | null; working: boolean; shown: boolean };
+type HomeFacts = PositionFacts & { top: boolean; shown: boolean };
 /**
- * First matching rule wins. These rules select rows, never Task state or whose turn it is. Work running anywhere is
- * listed in the doing section exactly once: on the highest Task no doing row above already lists it (L00), so a
- * subtask works on its own row while its parent awaits review, is held or failed, and on its parent's while that works.
+ * A Task's position: where the home list would put it as a top row, from its own facts alone. Every screen says a Task
+ * by its position (Waiting is a pause, Error the error), so the same Task looks the same wherever it is drawn.
+ * First matching rule wins.
  */
-const HOME_RULES: readonly { id: string; when: (f: HomeFacts) => boolean; section: (f: HomeFacts) => HomeSection | null }[] = [
-  { id: 'L00', when: f => !f.top && f.turn === null && f.working && !f.shown, section: () => 'doing' },
-  { id: 'L01', when: f => !f.top && f.turn === null, section: () => null },
-  { id: 'L02', when: f => !f.top, section: f => TURN_SECTION[f.turn!] },
+const POSITION_RULES: readonly { id: string; when: (f: PositionFacts) => boolean; section: (f: PositionFacts) => HomeSection }[] = [
   { id: 'L03', when: f => f.hold, section: () => 'held' },
   { id: 'L04', when: f => f.turn !== null, section: f => TURN_SECTION[f.turn!] },
   { id: 'L05', when: f => f.baseState === 'error', section: () => 'error' },
@@ -51,6 +50,19 @@ const HOME_RULES: readonly { id: string; when: (f: HomeFacts) => boolean; sectio
   { id: 'L09', when: f => f.working, section: () => 'doing' },
   { id: 'L10', when: () => true, section: () => 'awaited' },
 ];
+export const taskPosition = (facts: PositionFacts): HomeSection => POSITION_RULES.find(rule => rule.when(facts))!.section(facts);
+/**
+ * First matching rule wins. These rules select rows, never Task state or whose turn it is. Work running anywhere is
+ * listed in the doing section exactly once: on the highest Task no doing row above already lists it (L00), so a
+ * subtask works on its own row while its parent awaits review, is held or failed, and on its parent's while that works.
+ * A top row is listed by its position.
+ */
+const HOME_RULES: readonly { id: string; when: (f: HomeFacts) => boolean; section: (f: HomeFacts) => HomeSection | null }[] = [
+  { id: 'L00', when: f => !f.top && f.turn === null && f.working && !f.shown, section: () => 'doing' },
+  { id: 'L01', when: f => !f.top && f.turn === null, section: () => null },
+  { id: 'L02', when: f => !f.top, section: f => TURN_SECTION[f.turn!] },
+  { id: 'position', when: () => true, section: taskPosition },
+];
 
 /** One pass through the tree propagates work through every active depth, including held children.
  * Projects and inactive branches stop propagation. Rows retain the input order; cycles are a fault. */
@@ -59,11 +71,11 @@ export function projectHome(tasks: readonly HomeTask[], balls: Readonly<Record<s
   return placeHome(tasks, balls, working).flatMap(({ row }) => row ? [row] : []);
 }
 /**
- * projectHome with, for each active Task, whether a doing row (its own or one above) lists the work on and below it:
- * the fact the Tasks below it read, so only a change to it reaches them.
+ * projectHome with, for each active Task, its position and whether a doing row (its own or one above) lists the work on
+ * and below it: the fact the Tasks below it read, so only a change to it reaches them.
  */
 export function placeHome(tasks: readonly HomeTask[], balls: Readonly<Record<string, Ball>>, working: ReadonlySet<string>):
-  { taskId: string; row: z.infer<typeof homeRowSchema> | null; listsWork: boolean }[] {
+  { taskId: string; row: z.infer<typeof homeRowSchema> | null; position: HomeSection; listsWork: boolean }[] {
   const byId = new Map(tasks.map(task => [task.id, task]));
   const children = new Map<string | null, HomeTask[]>();
   for (const task of tasks) {
@@ -85,8 +97,8 @@ export function placeHome(tasks: readonly HomeTask[], balls: Readonly<Record<str
   }
   if (visited.size !== tasks.length) throw new Error('Cyclic home tree');
   // Each active Task's section and whether its work is listed, from the top down (a row's section reads the rows above).
-  const placed = new Map<string, { section: HomeSection | null; listsWork: boolean }>();
-  const place = (task: HomeTask): { section: HomeSection | null; listsWork: boolean } => {
+  const placed = new Map<string, { section: HomeSection | null; position: HomeSection; listsWork: boolean }>();
+  const place = (task: HomeTask): { section: HomeSection | null; position: HomeSection; listsWork: boolean } => {
     const known = placed.get(task.id);
     if (known) return known;
     const parent = task.parentId === null ? undefined : byId.get(task.parentId);
@@ -95,14 +107,14 @@ export function placeHome(tasks: readonly HomeTask[], balls: Readonly<Record<str
     const facts: HomeFacts = { top, baseState: task.baseState, hold: task.hold,
       turn: userTurn(balls[task.id] ?? null)?.reason ?? null, working: work.has(task.id), shown };
     const section = HOME_RULES.find(rule => rule.when(facts))!.section(facts);
-    const result = { section, listsWork: shown || section === 'doing' };
+    const result = { section, position: taskPosition(facts), listsWork: shown || section === 'doing' };
     placed.set(task.id, result);
     return result;
   };
   return tasks.flatMap(task => {
     if (task.kind !== 'task' || task.lifecycle !== 'active') return [];
-    const { section, listsWork } = place(task);
-    return [{ taskId: task.id, row: section === null ? null : { taskId: task.id, section, summary: { ...task.summary } }, listsWork }];
+    const { section, position, listsWork } = place(task);
+    return [{ taskId: task.id, row: section === null ? null : { taskId: task.id, section, summary: { ...task.summary } }, position, listsWork }];
   });
 }
 

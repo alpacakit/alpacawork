@@ -1,13 +1,12 @@
-import type { Ball } from "@alpacawork/contract";
-import type { Task, TaskState } from "@/data/types";
-import type { TaskIndex } from "@/domain/tasks";
+import type { Task } from "@/data/types";
+import { namedLook, type TaskIndex } from "@/domain/tasks";
 
 /**
  * A task's start order as the screen says it. The server owns which tasks a task starts after and whether it still
  * waits (dependencies.ts, on the row's `startOrder`); this file only orders what the person reads first: what waits on
  * them, then what has stopped and will not finish by itself, then what is still at work.
  */
-type LinkedTask = { id: string; title: string; state: TaskState; ball: Ball | null };
+type LinkedTask = Pick<Task, "id" | "title" | "state" | "ball"> & { rowFacts: Task["rowFacts"] | null };
 /** A prerequisite has the server's same-read completion verdict; a follower only supplies display facts. */
 export type WaiterItem = LinkedTask & { kind: "waiter" };
 export type OrderItem = LinkedTask & { kind: "prerequisite"; finished: boolean;
@@ -23,13 +22,13 @@ function item(id: string, read: { title: string; state: string; finished: boolea
   // The state and whether it has finished are the server's, from the same read as the row that names them; the live row
   // of the same index gives only whose move it is, and only while it says the same state.
   const live = index.byId.get(id);
-  const state = read.state as TaskState, ball = live?.state === state ? live.ball : null;
+  const look = namedLook(id, read.state as Task["state"], index), { state, ball } = look;
   const finished = read.finished;
   // A failed or held task waits on the reader too, but it says first that it will not finish by itself. Only the
   // server's ball says the reader's move: a task waiting for an answer from an agent above it is on its way.
   const urge = finished ? null : state === "error" || state === "held" ? "stuck"
     : ball?.holder === "user" ? "turn" : "moving";
-  return { kind: "prerequisite", id, title: live?.title ?? read.title, state, ball, finished, urge };
+  return { kind: "prerequisite", id, title: live?.title ?? read.title, ...look, finished, urge };
 }
 
 export type StartOrder = {

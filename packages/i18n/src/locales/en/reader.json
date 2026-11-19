@@ -402,15 +402,6 @@
     "toShare": "Back to a sheet",
     "toWhole": "Open full screen"
   },
-  "summaryTab": {
-    "childCount": {
-      "doing": "$t(ui:state.doing) {{n}}",
-      "done": "$t(ui:state.done) {{done}}/{{total}}",
-      "stopped": "$t(ui:state.stopped) {{n}}",
-      "todo": "$t(ui:state.todo) {{n}}",
-      "waiting": "$t(ui:state.waiting) {{n}}"
-    }
-  },
   "swipe": {
     "choose": "Choose an option to send",
     "hold": "Hold",

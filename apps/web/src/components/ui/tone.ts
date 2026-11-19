@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { userTurn, type Ball, type HOME_SECTIONS } from "@alpacawork/contract";
-import { rowSection } from "@/domain/row-status";
 import type { Task, TaskState } from "@/data/types";
 import type { IconName } from "./icon";
 
@@ -42,9 +41,10 @@ const visibleTurn = (state: TaskState, ball: Ball | null) => state === "held" ||
 const asksUser = (turn: ReturnType<typeof visibleTurn>) => turn?.reason === "question";
 
 /**
- * A state's meaning and icon. A failure keeps its error colour and icon; other user turns take the turn colour. A wait is for a review, said by
- * its icon, and a question asked of you by its own. A held turn is still yours but set aside, so it is said in grey (and
- * under `data-held`, its turn colour is grey too).
+ * A state's meaning and icon: what a choice of state or a time band's end says, and what a Task's look builds on
+ * (taskLook; a Task is drawn by that, never by its state alone). A failure keeps its error colour and icon; other user
+ * turns take the turn colour. A wait is for a review, said by its icon, and a question asked of you by its own. A held
+ * turn is still yours but set aside, so it is said in grey (and under `data-held`, its turn colour is grey too).
  */
 export function stateLook(state: TaskState, ball: Ball | null = null): { tone: Tone; icon: IconName } {
   const turn = visibleTurn(state, ball);
@@ -56,12 +56,6 @@ export function useStateLook(state: TaskState, ball: Ball | null = null) {
   const { t } = useTranslation("ui");
   const look = stateLook(state, ball);
   return { ...look, word: asksUser(visibleTurn(state, ball)) ? t("turn.question") : stateWord(state, t), turn: look.tone === "turn" };
-}
-
-/** A state's word; a wait is for a review, so it is said as one (Awaiting review). */
-export function useStateWords() {
-  const { t } = useTranslation("ui");
-  return (state: TaskState): string => stateWord(state, t);
 }
 
 export function stateWord(state: TaskState, t: TFunction<"ui">): string {
@@ -77,19 +71,44 @@ export function stateWord(state: TaskState, t: TFunction<"ui">): string {
 }
 
 /**
- * What a home row's section says over its Task's own look: Waiting is a pause, and Error says the error even on a Task whose
- * state is still Working (a child stopped where its parent cannot mend it). The other sections, and a row drawn outside the
- * list, keep the Task's state look.
+ * What a Task's position (the server's taskPosition, the home list's section for it as a top row) says over its state:
+ * Waiting is a pause, and Error says the error even on a Task whose state is still Working. The other positions keep the
+ * Task's state look.
  */
-const SECTION_LOOK: Record<(typeof HOME_SECTIONS)[number], "state" | "error" | "pause"> =
+const POSITION_LOOK: Record<(typeof HOME_SECTIONS)[number], "state" | "error" | "pause"> =
   { doing: "state", error: "error", review: "state", awaited: "pause", held: "state", todo: "state", done: "state" };
 
-/** A list row's meaning, icon and word: its Task's state look, or what its section says over it (SECTION_LOOK). */
-export function useRowLook(task: Pick<Task, "state" | "ball" | "homeRow" | "rowFacts">) {
-  const section = rowSection(task);
-  const look = section ? SECTION_LOOK[section] : "state";
-  const state = task.state !== "held" && task.rowFacts.kind?.kind === "question" ? "waiting" : task.state;
-  const own = useStateLook(look === "error" ? "error" : state, look === "error" ? null : task.ball);
+/** What a Task's look reads: its state, its ball and its row facts (null where the screen holds no row for it). */
+export type LookTask = Pick<Task, "state" | "ball"> & { rowFacts: Pick<Task["rowFacts"], "position" | "kind"> | null };
+
+/**
+ * What a Task is said as, the one rule every screen that draws a Task follows (list, tree, search, labels, start order):
+ * a pause, or a state with the ball it shows. A question asked of the user is said as one over the state it came in.
+ */
+function saidAs(task: LookTask): { pause: true } | { pause: false; state: TaskState; ball: Ball | null } {
+  const look = task.rowFacts?.position ? POSITION_LOOK[task.rowFacts.position] : "state";
+  if (look === "pause") return { pause: true };
+  if (look === "error") return { pause: false, state: "error", ball: null };
+  const state = task.state !== "held" && task.rowFacts?.kind?.kind === "question" ? "waiting" : task.state;
+  return { pause: false, state, ball: task.ball };
+}
+
+const PAUSE = { tone: "quiet", icon: "pause" } as const;
+
+/** A Task's meaning and icon (saidAs). */
+export function taskLook(task: LookTask): { tone: Tone; icon: IconName } {
+  const said = saidAs(task);
+  return said.pause ? PAUSE : stateLook(said.state, said.ball);
+}
+
+/**
+ * A Task's meaning, icon and word (saidAs); `turn` marks what waits on the reader, and `stated` that its word is its own
+ * state's (not a pause, an error over its state, or a question), so words made from that state agree with it.
+ */
+export function useTaskLook(task: LookTask) {
+  const said = saidAs(task);
+  const own = useStateLook(said.pause ? "doing" : said.state, said.pause ? null : said.ball);
   const { t } = useTranslation("tree");
-  return look === "pause" ? { ...own, tone: "quiet" as const, icon: "pause" as const, word: t("home.awaited") } : own;
+  const stated = !said.pause && said.state === task.state && !asksUser(visibleTurn(said.state, said.ball));
+  return said.pause ? { ...own, ...PAUSE, word: t("home.awaited"), turn: false, stated } : { ...own, stated };
 }

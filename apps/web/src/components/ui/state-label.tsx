@@ -1,27 +1,29 @@
 import type { SVGProps } from "react";
-import type { Ball } from "@alpacawork/contract";
 import type { TaskState } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
-import { stateLook, TONE, useStateLook } from "./tone";
+import { stateLook, taskLook, TONE, useTaskLook, type LookTask } from "./tone";
 
-/** The same state icon and colour in cards, search, choices, and the reader (components/ui/tone). */
-export function StateIcon({ state, ball = null, className, ...props }: {
-  state: TaskState; ball?: Ball | null;
-} & Omit<SVGProps<SVGSVGElement>, "children" | "name">) {
-  const { tone, icon } = stateLook(state, ball);
+type IconProps = Omit<SVGProps<SVGSVGElement>, "children" | "name">;
+
+/** A state's own icon and colour, where the state itself is said (a choice of state, a time band's end). */
+export function StateIcon({ state, className, ...props }: { state: TaskState } & IconProps) {
+  const { tone, icon } = stateLook(state);
   return <Icon name={icon} className={cn(TONE[tone], className)} {...props} />;
 }
 
-/** A task's state as icon and word; only your turn is said in its colour. */
-export function StateLabel({ state, className, ball = null }: { state: TaskState; className?: string; ball?: Ball | null }) {
-  const { word, turn } = useStateLook(state, ball);
+/** A Task's icon and colour, the same wherever it is drawn (components/ui/tone's taskLook). */
+export function TaskIcon({ task, className, ...props }: { task: LookTask } & IconProps) {
+  const { tone, icon } = taskLook(task);
+  return <Icon name={icon} className={cn(TONE[tone], className)} {...props} />;
+}
+
+/** A Task as icon and word; only your turn is said in its colour. */
+export function TaskLabel({ task, className }: { task: LookTask; className?: string }) {
+  const { word, turn } = useTaskLook(task);
   return (
-    <span
-      data-state={state}
-      className={cn("inline-flex flex-none items-center gap-1 text-xs whitespace-nowrap", turn ? TONE.turn : TONE.quiet, className)}
-    >
-      <StateIcon state={state} ball={ball} className="size-3" />
+    <span className={cn("inline-flex flex-none items-center gap-1 text-xs whitespace-nowrap", turn ? TONE.turn : TONE.quiet, className)}>
+      <TaskIcon task={task} className="size-3" />
       {word}
     </span>
   );

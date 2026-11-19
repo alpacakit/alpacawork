@@ -806,7 +806,7 @@ export function writtenFloors(client: QueryClient, root: string): Map<string, nu
 }
 /** The list's numbers a view does not carry, for a Task the list does not hold (a closed one opened directly). */
 export const unlistedAggregates = { movedAt: 0, usageBelow: null, runsBelow: [],
-  rowFacts: { status: null, childrenRunning: 0, runningRuns: 0, warning: null, kind: null } } satisfies Partial<TaskRowDTO>;
+  rowFacts: { status: null, childrenRunning: 0, runningRuns: 0, warning: null, kind: null, position: null } } satisfies Partial<TaskRowDTO>;
 const viewRows = new WeakMap<object, { listed: TaskRowDTO | undefined; row: TaskRowDTO }>(), viewMade = new WeakSet<TaskRowDTO>();
 /**
  * A view's own fields over the list's numbers: what descendants decide is the list's alone. The same row while the

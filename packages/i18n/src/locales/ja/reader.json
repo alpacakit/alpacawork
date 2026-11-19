@@ -384,15 +384,6 @@
     "toShare": "シートに戻す",
     "toWhole": "全画面で開く"
   },
-  "summaryTab": {
-    "childCount": {
-      "doing": "$t(ui:state.doing) {{n}}",
-      "done": "$t(ui:state.done) {{done}}/{{total}}",
-      "stopped": "$t(ui:state.stopped) {{n}}",
-      "todo": "$t(ui:state.todo) {{n}}",
-      "waiting": "$t(ui:state.waiting) {{n}}"
-    }
-  },
   "swipe": {
     "choose": "案を選ぶと送れます",
     "hold": "$t(ui:state.held)",

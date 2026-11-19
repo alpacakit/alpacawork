@@ -3,11 +3,15 @@ import { useCanHover } from '@/lib/input-capabilities';
 import { useHoverCardInteraction, useHoverCardTarget } from '@/components/ui/hover-card';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/ui/icon';
-import { stateLook, TONE } from '@/components/ui/tone';
+import { TaskIcon } from '@/components/ui/state-label';
+import { useTaskLook, type LookTask } from '@/components/ui/tone';
 import { useReferenceTask } from '@/data/queries';
 import { ReadFailure, PendingRegion } from '@/components/ui/loadable';
 import { cn } from '@/lib/utils';
 import { LabelCard } from './LabelPopover';
+
+/** A task's word, as every screen says it (useTaskLook). */
+function TaskWord({ task }: { task: LookTask }) { return <>{useTaskLook(task).word}</>; }
 
 /**
  * What a task's card says, wherever it opens: from a task label in the input or from a task named in a text.
@@ -17,10 +21,9 @@ export function useTaskCard(id: string, open: () => void, written?: string) {
   const { t } = useTranslation('ui');
   const read = useReferenceTask(id);
   const { task } = read;
-  const look = task && stateLook(task.state, task.ball);
   return {
-    task, look,
-    header: <>{look && <Icon name={look.icon} className={cn('size-3.5', TONE[look.tone])} />}{id} {task && t(`state.${task.state}`)}</>,
+    task, mark: (className: string) => task && <TaskIcon task={task} className={className} />,
+    header: <>{task && <TaskIcon task={task} className="size-3.5" />}{id} {task && <TaskWord task={task} />}</>,
     body: read.error ? <ReadFailure error={read.error} retry={read.retry} />
       : <><strong className="mt-1 block">{task?.title ?? written}</strong><PendingRegion pending={read.pending} shape="title" /></>,
     openButton: (close: () => void) => task && <button type="button" data-task-card-open className="rounded-sm border border-line px-2 py-1"

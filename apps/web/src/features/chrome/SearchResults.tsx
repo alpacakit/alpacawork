@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Message } from "@/components/ui/message";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { StateIcon } from "@/components/ui/state-label";
-import { TONE, useStateLook } from "@/components/ui/tone";
+import { TaskIcon } from "@/components/ui/state-label";
+import { TONE, useTaskLook } from "@/components/ui/tone";
 import { useFinishWords } from "@/features/people/labels";
 import { cn } from "@/lib/utils";
 import { usePeopleFor, useReadIds, useReadIdsFor, useTaskIndex, useWorkspaceInfo } from "@/data/queries";
@@ -116,12 +116,14 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   const prefetch = usePrefetch(task.id);
   const people = usePeopleFor(task.id);
   const unread = !useReadIdsFor(task.id).has(task.id);
-  const finish = useFinishWords(task.id);
-  const { word, tone } = useStateLook(task.state, task.ball);
+  const { word, tone, stated } = useTaskLook(task);
+  // End words are made from its state and records, so they stand in its word's place only while it is said by its
+  // state's word; a Task said as waiting, as an error over its state or as a question is said as everywhere else.
+  const known = useFinishWords(task.id), finish = stated ? known : null;
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>
-    <StateIcon state={task.state} ball={task.ball} className="mt-0.5 size-3.5 flex-none" />
+    <TaskIcon task={task} className="mt-0.5 size-3.5 flex-none" />
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
       <span className="flex min-w-0 items-center gap-2 text-xs tabular-nums text-muted">
         <span className={cn("min-w-0 truncate text-sm", TONE[finish?.tone ?? tone])}>{finish?.short ?? word}</span>

@@ -13,7 +13,7 @@
  * delta, and never subtract from a possibly wrong cached total; corrupt parent edges or contributions are the records'
  * and the derivation's to repair first.
  */
-import { HOME_SECTIONS, placeHome, type UsageTotal } from '@alpacawork/contract';
+import { HOME_SECTIONS, placeHome, type HomeSection, type UsageTotal } from '@alpacawork/contract';
 import { isFinished } from '@alpacawork/contract/branch';
 import { closedPageScope, type ControlIndexDTO } from '@alpacawork/contract/control';
 import { byTaskNumber } from '@alpacawork/contract/moved';
@@ -123,7 +123,7 @@ function sameParentValue(a: ParentValue, b: ParentValue): boolean {
 function sameRuns(a: Node['runs'], b: Node['runs']): boolean {
   let same = true; a.changes(b, () => { same = false; }); return same;
 }
-interface Membership { readonly home?: Home; readonly order?: Order; readonly pages: readonly string[]; readonly pageOrder: Order; readonly scopes: readonly string[];
+interface Membership { readonly home?: Home; readonly position: HomeSection | null; readonly order?: Order; readonly pages: readonly string[]; readonly pageOrder: Order; readonly scopes: readonly string[];
   readonly task: boolean; readonly running: boolean; readonly fresh: boolean; readonly closed: 'finished' | 'shelved' | null;
   /** Whether a doing row (its own or one above) lists its work: what the working Tasks below it read; not a shown value. */
   readonly listsWork: boolean }
@@ -168,6 +168,7 @@ class Frame implements AggregateSnapshot {
   runningRuns(task: string): number { return this.nodes.get(task)?.runs.size ?? 0; }
   workingBelow(task: string): number { return this.nodes.get(task)?.belowWorking ?? 0; }
   live(task: string): boolean { const n = this.nodes.get(task); return !!n?.own && n.live > 0; }
+  position(task: string): HomeSection | null { return this.members.get(task)?.position ?? null; }
   home(task: string): Home | undefined { const row = this.members.get(task)?.home; return row && { ...row, summary: { ...row.summary } }; }
   homeAfter(task: string): string | null | undefined {
     const key = this.members.get(task)?.order;
@@ -206,14 +207,14 @@ export function homeRowOf(own: HomeOwn, ancestors: readonly HomeAncestor[], work
   summary: Home['summary'] = { done: 0, total: 0 }): Home | undefined {
   return homePlaceOf(own, ancestors, working, summary).row;
 }
-/** homeRowOf with whether a doing row (its own or one above) lists the Task's work, which the Tasks below it read. */
+/** homeRowOf with the Task's position and whether a doing row (its own or one above) lists its work, which the Tasks below it read. */
 function homePlaceOf(own: HomeOwn, ancestors: readonly HomeAncestor[], working: boolean,
-  summary: Home['summary']): { row: Home | undefined; listsWork: boolean } {
+  summary: Home['summary']): { row: Home | undefined; position: HomeSection | null; listsWork: boolean } {
   const chain = ancestors.map((ancestor, at) => ({ ...ancestor, parentId: ancestors[at + 1]?.id ?? null, summary: { done: 0, total: 0 } }));
   const balls = Object.fromEntries([own, ...chain].flatMap(task => task.ball ? [[task.id, task.ball]] : []));
   const work = new Set([...(working ? [own.id] : []), ...chain.filter(ancestor => ancestor.working).map(ancestor => ancestor.id)]);
   const placed = placeHome([...chain, { ...own, summary }], balls, work).find(each => each.taskId === own.id);
-  return { row: placed?.row ?? undefined, listsWork: placed?.listsWork ?? false };
+  return { row: placed?.row ?? undefined, position: placed?.position ?? null, listsWork: placed?.listsWork ?? false };
 }
 /** A Task's ancestors as homeRowOf reads them, from the aggregate's nodes. */
 function ancestorsOf(nodes: Frame['nodes'], own: AggregateContribution): HomeAncestor[] {
@@ -243,7 +244,7 @@ export function closedPagesOf(own: Pick<AggregateContribution, 'lifecycle' | 'st
 function membership(frame: Frame, id: string): Membership | undefined {
   const node = frame.nodes.get(id), own = node?.own; if (!own) return undefined;
   // A node already holds the result of propagating work through its children.
-  const { row: home, listsWork } = homePlaceOf(own, ancestorsOf(frame.nodes, own), node.homeWork,
+  const { row: home, position, listsWork } = homePlaceOf(own, ancestorsOf(frame.nodes, own), node.homeWork,
     { done: node.direct.states.done, total: node.direct.live + node.direct.states.done });
   const facts = frame.facts.get(id);
   // Explicit scopes are authoritative (including shelves and unlisted project boundaries).
@@ -251,7 +252,7 @@ function membership(frame: Frame, id: string): Membership | undefined {
   const closed = own.lifecycle !== 'active' ? 'shelved' : isFinished(own.state) ? 'finished' : null;
   const pages = closedPagesOf(own, home?.section, scopes);
   const ordered = home && home.section !== 'done' && (facts?.listed ?? true);
-  return { home, order: ordered ? { id, at: node.moved, section: HOME_SECTIONS.indexOf(home.section) } : undefined,
+  return { home, position, order: ordered ? { id, at: node.moved, section: HOME_SECTIONS.indexOf(home.section) } : undefined,
     pages, pageOrder: moveKey(id, node.moved), scopes, task: own.kind === 'task', running: facts?.menuRunning ?? own.openRuns.length > 0,
     fresh: facts?.freshFinished ?? false, closed, listsWork };
 }
