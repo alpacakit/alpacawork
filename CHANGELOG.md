@@ -26,6 +26,20 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.2.0
+
+alpacawork is now available in Simplified Chinese, Spanish and Brazilian Portuguese. First-time setup makes each step clearer, and task status looks the same wherever you open a task.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.2.0`. The database schema and Run execution format are unchanged from 0.1.0.
+
+### Highlights
+- **Three more languages.** Choose Simplified Chinese, Spanish or Brazilian Portuguese in Settings or during setup. On first use, alpacawork follows the browser or terminal language when supported. The interface, guides, notifications and terminal confirmations are available in all three languages. ([#2](https://github.com/alpacakit/alpacawork/pull/2))
+- **Clearer first-time setup.** See where you are in the three steps, which agents are on, and where the AI will work. The first examples are easier to follow, and the snake game example also works with a single enabled agent. ([#4](https://github.com/alpacakit/alpacawork/pull/4))
+- **Consistent task status.** A task uses the same icon, color and label in the list, task tree, search and other task views. A working task with nothing running on it or below it shows a gray pause icon and “Waiting.” ([#1](https://github.com/alpacakit/alpacawork/pull/1))
+
+### Setup
+- In all five languages, the README puts installation near the top and links to the guides in the same language. A new FAQ explains how to ask the coordinator to add a new model or change settings. ([#3](https://github.com/alpacakit/alpacawork/pull/3), [#5](https://github.com/alpacakit/alpacawork/pull/5), [#6](https://github.com/alpacakit/alpacawork/pull/6), [#7](https://github.com/alpacakit/alpacawork/pull/7), [#8](https://github.com/alpacakit/alpacawork/pull/8))
+
 ## 0.1.0
 
 This is the first release without the beta label. The welcome screen of a new project now leads with an example in which three models build a snake game for you to choose from, agent settings omitted from `config.yaml` follow each version's defaults, and a task's History stays smooth while agents work.

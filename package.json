@@ -1,6 +1,6 @@
 {
   "name": "alpacawork",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Run a team of AI agents from your phone. Hand off work, see what every agent is doing, and review the results from anywhere. Open-source task management for Claude Code, Codex and other coding agents, running on your own PC.",
   "keywords": [
     "ai-agents", "ai", "claude-code", "codex", "claude", "coding-agents", "ai-coding",
