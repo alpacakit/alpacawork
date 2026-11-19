@@ -7,7 +7,7 @@
   "coordinatorCard": {
     "appHint": {
       "close": "Fechar esta dica",
-      "detail": "Instale no computador ou abra pelo celular",
+      "detail": "Instale no PC ou abra pelo celular",
       "open": "Usar no celular ou como app"
     },
     "attached": "Somente anexos",

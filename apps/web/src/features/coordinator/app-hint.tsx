@@ -38,11 +38,11 @@ function AppHintPicture() {
 }
 
 /**
- * Under the greeting of a first conversation, a picture of a computer's window and a phone with one line beside it:
- * it opens the settings' guide to using alpacawork from a phone or as an installed app, which nothing else on the
- * first screen points to. The picture is what makes it seen among the examples' words; it has no frame or fill of its
- * own, so it does not read as one more example. Not drawn where that guide is not (a touch screen) or not needed
- * (already the installed app).
+ * Under the first screen's examples (the empty project's welcome, or a first conversation's opening), a picture of a
+ * computer's window and a phone with a title and one line of detail beside it: it opens the settings' guide to using
+ * alpacawork from a phone or as an installed app, which nothing else on the first screen points to. The picture is
+ * what makes it seen among the examples' words; it has no frame or fill until hovered, so it does not read as one more
+ * example. Not drawn where that guide is not (a touch screen) or not needed (already the installed app).
  */
 export function AppHint() {
   const { t } = useTranslation("ui");

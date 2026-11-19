@@ -7,7 +7,7 @@
   "coordinatorCard": {
     "appHint": {
       "close": "Cerrar esta sugerencia",
-      "detail": "Instálala en tu computadora o ábrela desde el teléfono",
+      "detail": "Instálala en tu PC o ábrela desde el teléfono",
       "open": "Usar en el teléfono o como app"
     },
     "attached": "Solo archivos adjuntos",
