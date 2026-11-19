@@ -74,7 +74,7 @@ alpacawork setup
 ## Perguntas frequentes
 
 **Quando uma empresa de IA lança um modelo novo, posso adicioná-lo eu mesmo?**
-Sim. Peça no campo de mensagem, por exemplo "Adicione o Gemini 4 aos modelos do Antigravity", e a IA o adiciona às configurações. Você também pode editar os modelos em Configurações → Servidor.
+Sim. Peça no campo de mensagem, por exemplo “Adicione o Gemini 4 aos modelos do Antigravity”, e a IA o adiciona às configurações. Você também pode editar os modelos por conta própria em Configurações → Servidor.
 
 Se tiver dúvida sobre qualquer configuração do app, pergunte também à IA no campo de mensagem. Ela consegue mudar a maioria das configurações por você. Algumas etapas, como o login em um agente de IA e a inclusão de chaves de API, ficam com você.
 
