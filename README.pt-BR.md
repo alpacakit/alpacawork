@@ -67,6 +67,13 @@ alpacawork setup
 - **O alpacawork inicia os agentes de IA com permissões totais, então eles não param para pedir confirmação.** Você pode escrever na [política do projeto](docs/pt-BR/getting-started.md#4-escrever-as-regras-básicas-para-a-ia) o que a IA não deve fazer, ou o que deve perguntar a você antes.
 - **Tarefas, conversas e arquivos de resultado ficam no seu PC.** O alpacawork não os envia a nenhum servidor externo mantido pelos desenvolvedores. Suas instruções para a IA e o conteúdo que ela lê são enviados ao provedor da IA, como acontece quando você usa cada agente de IA diretamente ([mais sobre o tratamento dos dados](docs/pt-BR/getting-started.md#o-que-é-armazenado-e-o-que-é-enviado-para-fora)).
 
+## Perguntas frequentes
+
+**Quando uma empresa de IA lança um modelo novo, posso adicioná-lo eu mesmo?**
+Sim. Peça no campo de mensagem, por exemplo "Adicione o Gemini 4 aos modelos do Antigravity", e a IA o adiciona às configurações. Você também pode editar os modelos em Configurações → Servidor.
+
+Se tiver dúvida sobre qualquer configuração do app, pergunte também à IA no campo de mensagem. Ela consegue mudar a maioria das configurações por você. Só o login em um agente de IA e a inclusão de chaves de API ficam com você.
+
 ## Documentação
 
 - [Primeiros passos](docs/pt-BR/getting-started.md): da instalação à primeira solicitação, o uso pelo celular, a atualização e a desinstalação

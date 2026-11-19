@@ -92,6 +92,13 @@ alpacawork setup
 - **It runs AI agents with full permissions, so they don't stop to ask for approval.** You can write what the AI should not do, or should ask you about first, in the [project policy](docs/getting-started.md#4-write-the-ground-rules-for-the-ai).
 - **Tasks, conversations and result files are kept on your PC.** alpacawork does not send them to any outside server run by its developers. Your instructions to the AI, and what the AI reads, are sent to the AI's provider, just as when you use each AI agent directly ([more on how data is handled](docs/getting-started.md#what-is-stored-and-what-is-sent-out)).
 
+## FAQ
+
+**When an AI company releases a new model, can I add it myself?**
+Yes. Ask in the chat box, for example "Add Gemini 4 to the Antigravity models," and the AI adds it to the settings. You can also edit the models yourself under Settings → Server.
+
+If you are unsure about any of the app's settings, ask the AI in the chat box as well. It can change most settings for you. Only signing in to an AI agent and entering API keys are left to you.
+
 ## Documentation
 
 - [Getting started](docs/getting-started.md): from installing to your first request, using it from your phone, updating and uninstalling
