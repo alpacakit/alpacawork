@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "Let AI manage your AI. Open-source task management for Claude Code, Codex and other coding agents: an AI assigns your requests to agents on your own PC and tracks their progress. Works from your phone too.",
   "keywords": [
-    "ai-agents", "ai", "claude-code", "codex", "claude", "coding-agents", "ai-coding",
-    "agent-orchestration", "multi-agent", "task-management", "task-manager", "project-management",
-    "human-in-the-loop", "mobile-first", "agent-harness", "pwa", "self-hosted", "agent-skills",
+    "ai-agents", "ai", "claude-code", "codex", "coding-agents", "ai-coding", "agentic-coding",
+    "agent-orchestration", "orchestration", "parallel-agents", "multi-agent", "task-management",
+    "task-manager", "human-in-the-loop", "agent-harness", "vibe-coding", "mobile-first", "self-hosted",
     "developer-tools", "cli"
   ],
   "license": "MIT",
