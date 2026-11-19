@@ -8,8 +8,7 @@ import type { Runtime } from "./server.ts";
 /**
  * A section is drawn while it holds something, its heading included; a list holding nothing has no section and no
  * clock, and its place says how work starts. An example only goes into the input, after the project in view's label;
- * the person sends it. While it shows, the conversation, which opens over it, offers the same first examples. The first
- * Task takes the welcome away and brings the conversation's own examples back.
+ * the person sends it. The conversation, which opens over it, offers its own examples whatever the list shows.
  */
 test.use({ isolated: true });
 
@@ -84,29 +83,14 @@ for (const [width, height] of [[1440, 900]] as const) {
     await expect(field(page)).toContainText("3 times in parallel, each with a different model");
     // Nothing is sent: the project stays empty until the person sends it.
     await expect(welcome).toBeVisible();
-    // The conversation opens over the list, so it offers the welcome's examples itself; a press there fills the input too.
+    // The conversation opens over the list, so it offers its own examples there too, as it does whatever the list shows.
     await openCoordinator(page);
     const warm = page.locator("[data-coordinator-warm]");
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(3);
-    await field(page).click();
-    await page.keyboard.press("ControlOrMeta+A");
-    await page.keyboard.press("Backspace");
-    await warm.locator('[data-warm-example="settings"]').click();
-    await expect(labelLayer(field(page)).locator("[data-label=task][data-label-project]")).toHaveText("Empty one");
-    await expect(field(page)).toContainText("add this rule to this project's policy");
-    // Only while the welcome is the list's place: searching the empty project takes it away, and the conversation
-    // offers its own examples again.
-    await page.getByRole("searchbox").fill("café");
-    await expect(welcome).toHaveCount(0);
     await expect(warm.locator("[data-warm-example]")).toHaveCount(4);
-    await page.getByRole("searchbox").fill("");
-    await expect(welcome).toBeVisible();
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(3);
 
     // A Task an agent made is a Task too: no welcome, and as a top Task it is a row like the user's.
     await post(page, runtime, "task/new", { parent: project.id, title: "Agent's own", userRequested: false });
     await expect(welcome).toHaveCount(0);
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(4);
     await expect.poll(() => sections(page)).toEqual(["todo"]);
     await expect(page.locator("[data-time-corner]")).toHaveCount(1);
     await post(page, runtime, "task/new", { parent: project.id, title: "First one" });
