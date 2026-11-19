@@ -1,0 +1,200 @@
+{
+  "confirmation": {
+    "notTerminal": "Ejecuta esto desde una terminal.",
+    "prompt": "Enter para empezar / Ctrl-C para cancelar",
+    "stopped": "Detenido. No se cambió nada."
+  },
+  "deploy": {
+    "accepted": "Despliegue aceptado: {{opId}}",
+    "overwrite": {
+      "noRestore": "Una vez que empieza la sobrescritura de las skills, las copias de seguridad no pueden restaurar la aplicación anterior.",
+      "switch": "Si la base de datos y el FORMAT de ejecución coinciden, el cambio se hace mientras las ejecuciones continúan. Si no, vuelve a intentarlo cuando terminen todas las ejecuciones."
+    },
+    "preview": "Destino: {{workspace}}\n{{current}} → {{target}}\nConfirmación: {{confirmation}}"
+  },
+  "hostAlert": {
+    "body": "{{parts}}. {{heaviest}}",
+    "coordinator": "Coordinador",
+    "cpu": "CPU al {{percent}}% durante {{minutes}} min",
+    "disk": "{{gigabytes}} GB libres en disco",
+    "heaviest_one": "Mayor carga: {{tasks}} ({{count}} ejecución)",
+    "heaviest_many": "Mayor carga: {{tasks}} ({{count}} ejecuciones)",
+    "heaviest_other": "Mayor carga: {{tasks}} ({{count}} ejecuciones)",
+    "memory": "{{percent}}% de memoria libre durante {{minutes}} min",
+    "noRuns": "No hay ejecuciones en curso",
+    "partSeparator": "; ",
+    "taskSeparator": ", ",
+    "title": "Este equipo tiene mucha carga"
+  },
+  "push": {
+    "groupTitle": "{{updateCount}} novedades",
+    "reason": {
+      "blocked": {
+        "body": "No se pudo reactivar el agente. Comprueba el motivo",
+        "short": "No se reactivó"
+      },
+      "done": {
+        "body": "Completada",
+        "short": "Completada"
+      },
+      "failed": {
+        "body": "Se detuvo por un error. Decide si reintentar",
+        "short": "Error"
+      },
+      "limit": {
+        "body": "Se detuvo al llegar al límite de reactivaciones. Decide si continuar",
+        "short": "En el límite"
+      },
+      "question": {
+        "body": "Necesita tu respuesta",
+        "short": "Pregunta"
+      },
+      "review": {
+        "body": "Necesita tu revisión",
+        "short": "Por revisar"
+      },
+      "stopped": {
+        "body": "Detenida",
+        "short": "Detenida"
+      },
+      "unconfirmed": {
+        "body": "Puede que una solicitud no haya llegado. Compruébalo",
+        "short": "Sin confirmar"
+      }
+    },
+    "withReport": "{{label}}: {{reportTitle}}"
+  },
+  "setup": {
+    "agents": {
+      "enabled": "Activados: {{names}}",
+      "none": "No se encontró ninguno",
+      "ready": "Agentes listos: {{names}}",
+      "signIn": "{{name}} no tiene la sesión iniciada. Para usarlo, ejecuta: {{action}}"
+    },
+    "browserOpened": "Se abrió en tu navegador.",
+    "change": {
+      "none": "ninguno"
+    },
+    "changed": "✔ Se reconfiguró alpacawork {{version}}",
+    "changePrompt": "¿Aplicar estos cambios? [Y/n]",
+    "completed": "✔ Se instaló alpacawork {{version}}",
+    "data": {
+      "existing": "existente",
+      "new": "nuevo"
+    },
+    "fact": {
+      "node": "Node.js",
+      "path": "PATH",
+      "port": "Puerto",
+      "publicHost": "Host público"
+    },
+    "listSeparator": ", ",
+    "open": "Abrir: {{url}}",
+    "overwriteSkill": "Sobrescribir la skill distribuida {{path}}, incluidos los cambios locales. No se guarda ninguna copia de seguridad.",
+    "portWayBack": "Para volver al puerto anterior: alpacawork setup --port {{port}}",
+    "prompt": "¿Continuar? [Y/n]",
+    "ready": "Listo en el puerto {{port}}. Abre {{url}}",
+    "readyChanged": "La instalación cambió. Listo en el puerto {{port}}. Abre {{url}}",
+    "row": {
+      "agents": "Agentes",
+      "data": "Datos",
+      "overwrite": "Sobrescritura",
+      "releases": "Versiones",
+      "resume": "Reanudación",
+      "service": "Servicio",
+      "skill": "Skills",
+      "warning": "Advertencia"
+    },
+    "service": {
+      "publicHost": ", host público {{host}}",
+      "summary": "{{name}} ({{manager}}), puerto {{port}}, se inicia al iniciar sesión"
+    },
+    "skillAction": {
+      "keep": "existente",
+      "replace": "sobrescribir"
+    },
+    "skills": {
+      "baseMissing": "No se encontró la skill alpacawork. Ejecuta alpacawork setup con el mismo HOME que este servidor y vuelve a intentarlo."
+    },
+    "skillWriteFailed": "No se pudo sobrescribir la skill. Corrige la causa que aparece en el log y vuelve a ejecutar alpacawork setup.",
+    "startFailure": {
+      "keep": "Conserva el registro de instalación y los datos.",
+      "reason": "Motivo: {{reason}}"
+    },
+    "startup": {
+      "check": "El servicio no pudo iniciarse. Comprueba su estado y sus logs con:",
+      "launchdLogs": "Esta definición de launchd no configura archivos de log para stdout/stderr. El comando log muestra los eventos de launchd.",
+      "rerun": "Después de corregir el problema, vuelve a ejecutar el mismo alpacawork setup. Continúa con el puerto y la definición guardados.",
+      "startSaved": "Si otro proceso está usando el puerto, libéralo primero. Después inicia el servicio guardado con:\n{{command}}\nLuego ejecuta el mismo alpacawork setup para comprobarlo."
+    },
+    "title": {
+      "change": "Se reconfigurará alpacawork {{version}}",
+      "configure": "Se configurará alpacawork {{version}}",
+      "install": "Se instalará alpacawork {{version}}",
+      "update": "alpacawork se actualizará de {{current}} a {{version}}"
+    },
+    "updated": "✔ alpacawork se actualizó a {{version}}",
+    "value": {
+      "data": "{{path}} ({{state}})",
+      "link": "enlazado desde {{path}}",
+      "linkConflict": "{{path}} está en uso; no se creará ningún enlace y se conserva el contenido existente.",
+      "linkExisting": "enlace existente desde {{path}}",
+      "resume": "Continuar la configuración interrumpida.",
+      "skill": "{{path}} ({{action}})"
+    },
+    "wslFilesystem": {
+      "refused": "WSL2 necesita que los datos, las versiones y la configuración estén en el sistema de archivos de Linux. No se admiten carpetas de Windows como /mnt/c.",
+      "retry": "Abre tu terminal de WSL en tu carpeta personal de Linux (/home/<user>). Usa carpetas de Linux para HOME, XDG_CONFIG_HOME, --workspace y --releases. Para usar las carpetas predeterminadas, omite --workspace y --releases y ejecuta:\ncd ~\nalpacawork setup",
+      "unknown": "No se pudo determinar el sistema de archivos de Linux de esta instalación de WSL2."
+    }
+  },
+  "skillLinks": {
+    "conflict": "{{path}}: no se creó el enlace; se conserva el contenido existente"
+  },
+  "uninstall": {
+    "alreadyGone": "si un comando indica que el servicio o el archivo ya no existe, no queda nada por hacer",
+    "busy": "Hay una actualización u otra operación de versiones en curso. Vuelve a ejecutar alpacawork uninstall cuando termine.",
+    "done": "alpacawork se quitó de este PC. Tus tareas, tu historial y tus archivos se conservaron.",
+    "note": "Lo que se quita no se puede restaurar. No se guarda ninguna copia de seguridad.",
+    "nothingLeft": "No queda nada por quitar.",
+    "notInstalled": "No se encontró ninguna instalación de alpacawork en este PC. No hay nada que quitar.",
+    "refused": {
+      "agent": "Solo una persona en este PC puede ejecutar alpacawork uninstall, no un agente.",
+      "notTerminal": "Ejecuta esto en una terminal, o añade --yes para continuar sin preguntar.",
+      "sudo": "Ejecútalo con tu propio usuario, sin sudo.",
+      "workspaceOption": "--workspace no se acepta: el registro de instalación decide qué se quita, y la carpeta de datos nunca se quita."
+    },
+    "remaining": "Paso restante (quita el comando en sí): npm uninstall -g alpacawork",
+    "removed": "Quitado: {{subject}}",
+    "row": {
+      "config": "Quitar     Configuración y registro  {{subject}}",
+      "data": "Conservar  Datos                     {{subject}} (tus tareas y tu historial; elimina esta carpeta a mano cuando ya no la necesites)",
+      "holdsData": "Conservar  Contiene los datos        {{subject}} (no se quita: es la carpeta de datos o la contiene)",
+      "link": "Quitar     Enlace de skill           {{subject}}",
+      "notOurs": "Conservar  Carpeta de versiones      {{subject}} (no se quita: contiene elementos que alpacawork no puso ahí)",
+      "receipt": "Quitar     Registro de skills        {{subject}}",
+      "record": "Conservar  Registro                  {{subject}} (no se quita: indica la carpeta de datos, así una ejecución posterior la protege igual)",
+      "releases": "Quitar     Versiones                 {{subject}} (lo que alpacawork puso ahí; la carpeta en sí, solo si no contiene nada más)",
+      "service": "Quitar     Inicio automático         {{subject}} (se detiene y luego se anula el registro)",
+      "setting": "Quitar     Configuración             {{subject}}",
+      "skill": "Quitar     Skill gestionada          {{subject}} (incluidos los cambios locales)",
+      "skillsUnknown": "Conservar  Skills                    {{subject}} (no se quitan: el registro de skills no se puede leer, así que alpacawork no sabe cuáles son suyas)",
+      "stage": "Quitar     Preparación de skills     {{subject}}",
+      "state": "Quitar     Estado                    {{subject}}"
+    },
+    "running_one": "Aún hay agentes trabajando o una actualización en curso ({{count}} proceso iniciado desde {{releases}}: pid {{pids}}). Si desinstalas ahora, seguirían en ejecución sin nada que los supervise. Detenlos en la pantalla (o con alpacawork run stop --run <Run ID>), o espera a que terminen, y vuelve a ejecutar alpacawork uninstall.",
+    "running_many": "Aún hay agentes trabajando o una actualización en curso ({{count}} procesos iniciados desde {{releases}}: pid {{pids}}). Si desinstalas ahora, seguirían en ejecución sin nada que los supervise. Detenlos en la pantalla (o con alpacawork run stop --run <Run ID>), o espera a que terminen, y vuelve a ejecutar alpacawork uninstall.",
+    "running_other": "Aún hay agentes trabajando o una actualización en curso ({{count}} procesos iniciados desde {{releases}}: pid {{pids}}). Si desinstalas ahora, seguirían en ejecución sin nada que los supervise. Detenlos en la pantalla (o con alpacawork run stop --run <Run ID>), o espera a que terminen, y vuelve a ejecutar alpacawork uninstall.",
+    "service": {
+      "blocked": "{{why}} No se cambió nada.\nPara quitar el registro a mano, ejecuta estos comandos ({{alreadyGone}}):\n{{commands}}\nLuego vuelve a ejecutar alpacawork uninstall.",
+      "conflict": "El registro de inicio automático {{name}} difiere del que registró alpacawork, así que la desinstalación no lo tocará.",
+      "left": "El registro de inicio automático {{name}} no se quitó por completo{{fault}}. Puede que el servidor esté detenido ahora, pero sigue registrado para iniciarse al iniciar sesión.\nNo se quitó nada más. Para volver a tener un alpacawork que funcione, ejecuta alpacawork setup. Para terminar de quitarlo, vuelve a ejecutar alpacawork uninstall.\nSi la desinstalación vuelve a detenerse aquí, quita el registro a mano con estos comandos ({{alreadyGone}}):\n{{commands}}",
+      "unavailable": "No se puede acceder al gestor de servicios del usuario, así que la desinstalación no puede saber si el registro de inicio automático {{name}} sigue ahí, ni quitarlo. No se cambió nada.\nEjecuta alpacawork uninstall desde una sesión de usuario normal (en WSL2, con systemd activado).",
+      "uninspectable": "El registro de inicio automático {{name}} no se puede inspeccionar: {{failure}}.",
+      "unrecorded": "Existe un registro de inicio automático llamado {{name}}, pero ningún registro de instalación lo describe."
+    },
+    "stoppedAt": "La desinstalación se detuvo en {{subject}}: {{failure}}\nLo que ya se quitó sigue quitado. Corrige la causa y vuelve a ejecutar alpacawork uninstall; quitará lo que queda.",
+    "title": "Quitar alpacawork de este PC",
+    "unreadableRecord": "El registro de instalación {{path}} existe, pero esta versión de alpacawork no puede leerlo: lo escribió otra versión, está dañado o es de otro usuario. Solo este registro indica la carpeta de datos, la carpeta de versiones y el registro de inicio automático, así que la desinstalación no intentará adivinarlos. No se cambió nada.\nEjecuta alpacawork uninstall con la versión de alpacawork que lo escribió (npm install -g alpacawork@<esa versión>), con el usuario al que pertenece.\nSi prefieres quitar alpacawork a mano, quita primero el registro de inicio automático (el registro de instalación lo indica; para el nombre predeterminado los comandos son estos, y {{alreadyGone}}):\n{{commands}}\nLuego, después de comprobar en el registro que tu carpeta de datos no está dentro de ninguna de ellas, elimina: la carpeta de versiones {{releases}} (o la que indique el registro), {{state}}, las skills que figuran en {{receipt}} y, por último, {{config}}."
+  }
+}

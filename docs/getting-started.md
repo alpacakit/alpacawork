@@ -85,7 +85,7 @@ At first, alpacawork uses the default agent you chose in setup. To change it, pr
 
 ### Choose the folder to work in
 
-You choose the folder the AI works in during setup, under "Code location" in the third step. To change it later, press the project name at the top of the screen, open its settings, and enter the folder's location in "Code location" (for example `/Users/yourname/shop-site`). If you leave it empty, the AI works in the data folder (`~/alpacawork`).
+You choose the folder the AI works in during setup, under "Working folder" in the third step. To change it later, press the project name at the top of the screen, open its settings, and enter the folder's location in "Working folder" (for example `/Users/yourname/shop-site`). If you leave it empty, the AI works in the data folder (`~/alpacawork`).
 
 The AI also reads the `AGENTS.md` and `CLAUDE.md` in that folder (instruction files for that folder, which an AI reads every time). To keep separate pieces of work apart, add projects with "New project" in the same menu.
 

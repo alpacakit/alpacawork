@@ -154,3 +154,13 @@ test('technical causes cannot replace the established Japanese wording of an app
   expect(problemReasonText({ kind: 'run_store_unavailable', cause: { kind: 'database_migration_required' } }))
     .toContain('データベース');
 });
+
+test('a condition that opens with a full-width bracket follows its seat without a space', async () => {
+  const { problemReasonText } = await import('../src/data/client');
+  await i18n.changeLanguage('zh-CN');
+  const text = problemReasonText({ kind: 'authorization_required', action: 'task report', grants: [['own', 'held']] });
+  expect(text).toContain(`${i18n.t('problem.authorization.seat.own')}${i18n.t('problem.authorization.condition.held')}`);
+  await i18n.changeLanguage('en');
+  expect(problemReasonText({ kind: 'authorization_required', action: 'task report', grants: [['own', 'held']] }))
+    .toContain(`${i18n.t('problem.authorization.seat.own')} ${i18n.t('problem.authorization.condition.held')}`);
+});

@@ -160,7 +160,11 @@ function AgentRow({ row, on, name, onChange, onRecheck, checking }: {
           : t(row.status === "ready" ? "agents.ready" : row.status === "found" ? "agents.found" : row.status === "checking" ? "agents.checking" : "agents.signedOut")}</span></span>
     </span>
     {/* On a phone the way to sign in goes under its state, which keeps the row's width to say it whole. */}
-    {ready ? <Switch checked={on} onCheckedChange={onChange} aria-label={name} />
+    {/* The switch says in words which way it is, and the word switches it too. */}
+    {/* A phone puts the word under the switch, which leaves the row's width to the state beside it. */}
+    {ready ? <label className="inline-flex min-h-8 cursor-pointer items-center gap-2.5 text-sm narrow:flex-col-reverse narrow:gap-1">
+      <span aria-hidden data-setup-agent-switch-state className={cn("min-w-[3em] text-right narrow:min-w-0 narrow:text-xs", on ? "font-semibold text-ink" : "text-soft")}>{t(on ? "agents.on" : "agents.off")}</span>
+      <Switch checked={on} onCheckedChange={onChange} aria-label={name} /></label>
       : row.status === "signedOut" && <Button variant="outline" className="min-h-10 px-4 text-base pointer-coarse:min-h-11 narrow:col-[2/-1] narrow:justify-self-start" aria-expanded={how} onClick={() => setHow(open => !open)}>{t("agents.enable")}</Button>}
     {!ready && how && <div className="col-[2/-1] -mt-2 rounded-md bg-bg px-4 py-3 text-sm text-muted">
       {t("agents.how")}

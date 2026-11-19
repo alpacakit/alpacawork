@@ -123,8 +123,8 @@ export function finishOf(id: string, { index, factsOf, now }: {
   return own?.kind === "pending" ? own : null;
 }
 
-export function finishWords(facts: FinishFacts, now: number, t: T): FinishWords {
-  const clock = (at: number) => dayClock(at, now, t);
+export function finishWords(facts: FinishFacts, now: number, t: T, locale: string): FinishWords {
+  const clock = (at: number) => dayClock(at, now, t, locale);
   const bare = (at: number) => formatClock(new Date(at).toISOString());
   const said = (short: string, tone: FinishTone = "quiet", at: number | null = null, long = short, ends = false,
     brief = at === null ? short : bare(at), briefDays = at === null ? 0 : calendarDayOffset(at, now)) =>

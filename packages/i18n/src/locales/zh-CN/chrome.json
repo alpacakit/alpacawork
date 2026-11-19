@@ -1,0 +1,86 @@
+{
+  "appBar": {
+    "settings": "设置",
+    "settingsUpdate": {
+      "attention": "设置 — 更新需要处理",
+      "available": "设置 — 可更新到 {{version}}",
+      "busy": "设置 — 正在更新",
+      "done": "设置 — 重新加载即可使用新版本",
+      "failed": "设置 — 更新失败"
+    }
+  },
+  "documentTitle": {
+    "separator": " · ",
+    "waiting_other": "$t(tree:home.turn)：{{count}}",
+    "withCounts": "({{counts}}) {{page}}"
+  },
+  "gathered": {
+    "markAllRead": "全部标为已读"
+  },
+  "notice": {
+    "back": "已恢复实时更新",
+    "diagnostics": "查看状态",
+    "hostCpu": "CPU {{value}}",
+    "hostDisk": "磁盘可用 {{value}}",
+    "hostMemory": "内存可用 {{value}}",
+    "hostMinutes_other": "{{count}} 分钟",
+    "hostOpen": "查看",
+    "hostTight": "这台主机处于高负载",
+    "previousBoth": "正在使用之前的设置和状态。",
+    "previousReads": "正在显示之前的状态。",
+    "previousSettings": "正在使用之前的设置。",
+    "readOnly": "无法写入",
+    "reconnect": "重新连接",
+    "reloadBoth": "无法重新加载个人设置和已读状态。",
+    "reloadReads": "无法重新加载已读状态。",
+    "reloadSettings": "无法重新加载个人设置。",
+    "shownFromBefore": "之前的内容",
+    "unreadableMany_other": "无法读取 {{count}} 个文件",
+    "unreadableOne": "无法读取 {{path}}"
+  },
+  "presence": {
+    "ariaAway": "通知：离开时立即发送",
+    "ariaMuted": "通知已暂停{{until}}",
+    "ariaPresent": "通知：在场时不发送",
+    "away": "离开",
+    "menuLabel": "通知状态",
+    "mutedUntil": "至今天 {{time}}",
+    "mutedUntilTomorrow": "至明天 {{time}}",
+    "notSent": "不通知",
+    "pausedUntil": "通知已暂停{{until}}",
+    "pauseHour": "暂停 1 小时",
+    "pauseMorning": "暂停到明天 {{time}}",
+    "pauseMorningToday": "暂停到今天 {{time}}",
+    "pauseTwoHours": "暂停 2 小时",
+    "present": "在场",
+    "resume": "恢复",
+    "saveFailed": "无法保存更改。",
+    "sentImmediately": "立即通知",
+    "settings": "通知设置…"
+  },
+  "projects": {
+    "all": "所有项目",
+    "menu": "项目",
+    "new": "新建项目",
+    "settings": "{{name}} 的设置…",
+    "settingsAll": "项目设置…",
+    "settingsOf": " 的设置…"
+  },
+  "search": {
+    "clear": "全部清除",
+    "count_other": "{{count}} 个任务",
+    "empty": "没有匹配的任务。",
+    "emptyHint": "请更改条件，或全部清除。",
+    "failedFirst": "无法搜索。",
+    "failedWhat": "无法读取更多搜索结果。",
+    "loading": "正在搜索…",
+    "more": "显示更多",
+    "queryCondition": "“{{query}}”",
+    "removeCondition": "移除此条件",
+    "removeNamedCondition": "移除条件：{{name}}"
+  },
+  "toolbar": {
+    "searchLabel": "搜索任务",
+    "searchPlaceholder": "搜索标题、正文或 ID"
+  }
+}

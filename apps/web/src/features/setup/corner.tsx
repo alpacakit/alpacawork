@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { activateLocale, type Locale } from "@alpacawork/i18n";
-import { personalSettings, type SettingDefinition } from "@alpacawork/contract";
+import { activateLocale } from "@alpacawork/i18n";
+import { isUiLocale, uiLocaleOrDefault } from "@alpacawork/core/ui-language";
+import { personalSettings, uiLanguageOptions, type SettingDefinition } from "@alpacawork/contract";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
@@ -47,16 +48,28 @@ export function ThemeSwitch() {
   </label>;
 }
 
-/** The display language: applied at once, and put back in step with the setting if the save does not stay. */
+/**
+ * The display language: applied at once, and put back in step with the setting if the save does not stay. A select is
+ * as wide as its longest choice; on a phone the corner shows the chosen language's own name instead, with the select
+ * laid over it unseen (the box and the globe say it is a choice, as the theme's disc does), so the corner keeps to one line
+ * whichever languages are offered.
+ */
 export function LanguageSwitch() {
   const { t, i18n } = useTranslation("setup");
   const { locked, choose } = useCornerSetting("language");
-  const current = i18n.resolvedLanguage === "ja" ? "ja" : "en";
-  return <label className={cn("inline-flex h-9 items-center gap-2 rounded-sm border-hairline border-lit-line bg-lit px-3 text-sm", locked && "opacity-60")}>
+  const current = uiLocaleOrDefault(i18n.language);
+  const name = (code: string) => t(uiLanguageOptions.find(option => option.value === code)?.labelKey ?? code, { ns: "panels" });
+  return <label className={cn("relative inline-flex h-9 items-center gap-2 rounded-sm border-hairline border-lit-line bg-lit px-3 text-sm narrow:has-[select:focus-visible]:outline narrow:has-[select:focus-visible]:outline-1 narrow:has-[select:focus-visible]:outline-ink", locked && "opacity-60")}>
     <Icon name="globe" className="size-4 text-muted" />
-    <select aria-label={t("language")} value={current} disabled={locked} className="cursor-pointer border-0 bg-transparent text-ink disabled:cursor-default"
-      onChange={event => { const next = event.target.value as Locale; activateLocale(next); void choose(next, value => activateLocale(value === "ja" || value === "en" ? value : current)); }}>
-      <option value="ja">日本語</option><option value="en">English</option>
+    <span aria-hidden="true" className="hidden whitespace-nowrap text-ink narrow:inline">{name(current)}</span>
+    <select aria-label={t("language")} value={current} disabled={locked} className="cursor-pointer border-0 bg-transparent text-ink disabled:cursor-default narrow:absolute narrow:inset-0 narrow:opacity-0"
+      onChange={event => {
+        const next = event.target.value;
+        if (!isUiLocale(next)) return;
+        activateLocale(next);
+        void choose(next, value => activateLocale(isUiLocale(value) ? value : current));
+      }}>
+      {uiLanguageOptions.map(({ value }) => <option key={value} value={value}>{name(value)}</option>)}
     </select>
   </label>;
 }

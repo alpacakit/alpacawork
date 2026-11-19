@@ -36,9 +36,9 @@ export function TaskAbout({ task, onFollow }: { task: TaskDetail; onFollow: (id:
  */
 function TaskDates({ task }: { task: Task }) {
   const { t } = useTranslation("reader");
-  const { t: people } = useTranslation("people");
+  const { t: people, i18n } = useTranslation("people");
   const now = useNow();
-  const when = (at: string | null | undefined) => at ? dayClock(Date.parse(at), now, people) : "";
+  const when = (at: string | null | undefined) => at ? dayClock(Date.parse(at), now, people, i18n.language) : "";
   const created = when(task.createdAt);
   const updated = when(task.updatedAt);
   const moved = updated && updated !== created;

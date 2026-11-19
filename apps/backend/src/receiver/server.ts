@@ -1,3 +1,4 @@
+import { uiLocaleOrDefault } from '@alpacawork/core/ui-language';
 import { resumeKnownUpdates } from '../release/update-controller.js';
 import { TelemetryService } from '../telemetry/service.js';
 import { monitorTelemetry } from '../telemetry/monitor.js';
@@ -365,7 +366,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   context.noticeState = noticeState;
   const firstRun = createFirstRunState(root);
   context.firstRun = firstRun;
-  const firstRunSkills = new FirstRunSkills({ locale: () => personSettings.values().language === 'ja' ? 'ja' : 'en' });
+  const firstRunSkills = new FirstRunSkills({ locale: () => uiLocaleOrDefault(personSettings.values().language) });
   context.skills = firstRunSkills;
   /** The screens subscribed to the index. */
   const streams = new Set<Subscriber>();
@@ -527,7 +528,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     noticeChanged: notice => { hostNotice = notice; republish(); },
     episodeStarted: (episode, sample) => {
       if (settingsReadable && latestSettings['push.host'] === true)
-        void push.record(hostPushEvent(episode, sample, latestSettings.language === 'ja' ? 'ja' : 'en')).catch(error => console.error('Host Push event could not be saved', error));
+        void push.record(hostPushEvent(episode, sample, uiLocaleOrDefault(latestSettings.language))).catch(error => console.error('Host Push event could not be saved', error));
     },
     episodeHeld: start => push.holdHost(start === null ? null : hostPushKey(start)),
     log: line => console.error(line) });
@@ -1067,7 +1068,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
         void lifecycle.run(async () => {
           const { state } = await noticeState.get();
           pushNoticesError = false;
-          await push.tick(now, currentPresence, state, latestSettings.language === 'ja' ? 'ja' : 'en');
+          await push.tick(now, currentPresence, state, uiLocaleOrDefault(latestSettings.language));
         }).catch(error => {
           if (!pushNoticesError) console.error('Push notice state could not be read', error);
           pushNoticesError = true;

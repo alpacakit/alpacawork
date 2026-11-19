@@ -1,10 +1,11 @@
 import { defineConfig } from "i18next-cli";
+import { defaultUiLocale, uiLocales } from "../core/src/ui-language.ts";
 
 // Keys are names (`screen.role`, e.g. `diagnostics.description`) and `en` is the
-// language people write first; `ja` is its translation. A key with no text in
+// language people write first. A key with no text in
 // the running language falls back to `en`. See packages/i18n/README.md.
 export default defineConfig({
-  locales: ["en", "ja"],
+  locales: [...uiLocales],
   plugins: [{
     name: "people-translator-arguments",
     // These pure helpers receive useTranslation("people").t from their callers.
@@ -18,9 +19,9 @@ export default defineConfig({
     // The screen, and the server's texts for people (namespace `server`, read through `@alpacawork/i18n/server`).
     input: ["apps/web/src/**/*.{ts,tsx}", "apps/backend/src/**/*.ts"],
     output: "packages/i18n/src/locales/{{language}}/{{namespace}}.json",
-    primaryLanguage: "en",
+    primaryLanguage: defaultUiLocale,
     // A new key is written empty in every language; `pnpm i18n:check` fails
-    // until a person has filled both `en` and `ja`.
+    // until every catalog has been filled.
     defaultValue: "",
     // Registries, structured History words and computed keys are read at runtime.
     preservePatterns: [

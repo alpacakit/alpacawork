@@ -1,0 +1,125 @@
+{
+  "home": {
+    "awaited": "等待中",
+    "error": "需要处理",
+    "finished": "已完成",
+    "fresh_one": "新完成 {{count}} 个",
+    "fresh_other": "新完成 {{count}} 个",
+    "held": "已搁置",
+    "less": "收起",
+    "more_other": "再显示 {{count}} 个",
+    "running": "进行中",
+    "todo": "未开始",
+    "turn": "待验收"
+  },
+  "row": {
+    "review": "验收"
+  },
+  "sent": {
+    "pending": "指示已发送"
+  },
+  "shelved": {
+    "archived": "已归档",
+    "count_other": "已归档或删除：{{count}}",
+    "deleted": "已删除",
+    "restore": "恢复"
+  },
+  "status": {
+    "children": "子任务 {{progress}}",
+    "failure": {
+      "conversationBusy": "对话被占用",
+      "exit": "提前结束",
+      "launch": "未能启动",
+      "managerLost": "运行状态不明",
+      "noReport": "未报告就结束",
+      "output": "输出无法读取",
+      "stopped": "已中断",
+      "timeout": "已超时",
+      "unknown": "原因不明"
+    },
+    "length": {
+      "days_other": "{{count}}天",
+      "hours_other": "{{count}}小时",
+      "minutes_other": "{{count}}分钟"
+    },
+    "long": {
+      "reason": "出现此情况已 {{length}}",
+      "since": "处于此状态已 {{length}}"
+    },
+    "queued": "排队中",
+    "report": {
+      "after": "{{time}}+",
+      "over": "已过 {{time}}",
+      "pending": {
+        "long": "收到了新的指示。正在等待负责人给出新的预计报告时间。",
+        "short": "?"
+      }
+    },
+    "running": "运行中",
+    "runningRuns_one": "{{count}} 个智能体运行中（含下级任务）",
+    "runningRuns_other": "{{count}} 个智能体运行中（含下级任务）",
+    "tip": {
+      "elapsed": "已用时间",
+      "report": "预计报告时间"
+    },
+    "turn": {
+      "children": "委托数上限",
+      "depth": "层级上限",
+      "failed": "失败",
+      "limit": "已达上限",
+      "noProfile": "无启动配置",
+      "notResumable": "无法继续",
+      "refused": "被拒绝",
+      "responsibleUnavailable": "无法启动",
+      "unconfirmed": "送达未确认"
+    },
+    "unclear": "状态不明",
+    "work": {
+      "heading": "智能体工作总时长",
+      "hours": "{{hours}}小时{{minutes}}分",
+      "minutes_other": "{{count}} 分钟",
+      "own": "仅此任务",
+      "separator": "，",
+      "subtree": "含下级任务"
+    }
+  },
+  "timeView": {
+    "axisAbsent": "此设备上没有保存时间视图。连接恢复后会加载。",
+    "edge": {
+      "done": "{{time}} 完成",
+      "go": "{{note}}。前往此行所在的时间",
+      "since": "自 {{time}} 起",
+      "stopped": "{{time}} 停止",
+      "todo": "未开始 · 自 {{time}} 起",
+      "turn": "{{kind}} · 自 {{time}} 起"
+    },
+    "help": "左右滚动可在时间上移动。用 ctrl（⌘）+ 滚轮、双指捏合或双指滑动来缩放。双击时间刻度可查看全部。指向一条线（手机上轻点）可查看详情。按键：+ − 0 N；在标题上按 → 可依次读出它的各条线。",
+    "now": "现在 {{clock}}",
+    "scaleAll": "全部",
+    "scaleLabel": "时间范围",
+    "time": "时间线",
+    "toNow": "现在",
+    "yourTurn": "轮到你"
+  },
+  "welcome": {
+    "examples": {
+      "decide": {
+        "label": "选一个小游戏的点子，再让 AI 做出来",
+        "shows": "AI 会比较几个点子并向你提问。你一回答，就开始制作。",
+        "words": "我想做一个能在浏览器里玩的小游戏。请把它建成任务：列出 3 个点子，并在提问里附上对比表和你的推荐，问我做哪一个。我回答之后，不要再问别的，用 5 分钟左右把我选的那个做出来，然后向我报告。这只是教程，请用较低的推理强度：以速度为先，不用多想，轻松完成就好。请全部用中文书写。"
+      },
+      "models": {
+        "label": "让 3 个模型各做一个贪吃蛇，再选一个",
+        "shows": "不同的模型并行制作，再由你选出要留下的那个。",
+        "words": "我想做一个贪吃蛇游戏。能用不同的模型并行做 3 个试试吗？做好之后，请问我选哪一个。这只是教程，请用较低的推理强度，5 分钟左右完成。请全部用中文书写。"
+      },
+      "triage": {
+        "label": "把咖啡馆的开业筹备拆成 5 个任务",
+        "shows": "结果会排好等你验收，由你选择把哪些标记为已完成。",
+        "words": "请把一家虚构咖啡馆的开业筹备拆成 5 个独立的任务：“订购咖啡豆”“安排招牌”“印制菜单”“招聘店员”和“寄送邀请函”，并分别交给一个智能体。让每个任务在报告里写一行虚构的结果，然后等我验收。5 个都到齐后，由我选择把哪些标记为已完成。不需要调研，也不需要文件，请全部用中文书写。"
+      }
+    },
+    "lead": "选一个示例来试试。",
+    "title": "欢迎使用 alpacawork"
+  }
+}

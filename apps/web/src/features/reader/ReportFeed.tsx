@@ -135,7 +135,7 @@ export const ReportFeed = memo(function ReportFeed(props: FeedProps) {
  * The feed's words, read once by the feed for every row under it: a row's own `useTranslation` made a copy of the i18n
  * instance each time a row was first drawn, hundreds for a page of History.
  */
-type FeedWordsValue = { reader: TFunction<"reader">; ui: TFunction<"ui">; people: TFunction<"people"> };
+type FeedWordsValue = { reader: TFunction<"reader">; ui: TFunction<"ui">; people: TFunction<"people">; locale: string };
 const FeedWords = createContext<FeedWordsValue | null>(null);
 function useFeedWords(): FeedWordsValue {
   const words = useContext(FeedWords);
@@ -144,8 +144,8 @@ function useFeedWords(): FeedWordsValue {
 }
 const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps) {
   const { t } = useTranslation("reader");
-  const { t: ui } = useTranslation("ui"), { t: peopleWords } = useTranslation("people");
-  const words = useMemo(() => ({ reader: t, ui, people: peopleWords }), [t, ui, peopleWords]);
+  const { t: ui } = useTranslation("ui"), { t: peopleWords, i18n } = useTranslation("people");
+  const words = useMemo(() => ({ reader: t, ui, people: peopleWords, locale: i18n.language }), [t, ui, peopleWords, i18n.language]);
   const root = useWorkspaceInfo(info => info.root);
   const historyOptions = resources.history(root, task.id);
   const history = useTaskHistory(root, task.id);
@@ -1177,11 +1177,11 @@ const DayBase = createContext<number | null>(null);
 
 /** A time in the timeline, said as every timeline says one: the clock alone on the day it stands under, else with its day. */
 function useFeedClock(alone = false) {
-  const { people: t } = useFeedWords();
+  const { people: t, locale } = useFeedWords();
   const today = useContext(Today);
   const base = useContext(DayBase);
   // Alone in a row it is a label ("Yesterday 16:51"); inside a sentence its day word stays lowercase.
-  return (at: string) => (alone ? dayClockLabel : dayClock)(Date.parse(at), today, t, base ?? today);
+  return (at: string) => (alone ? dayClockLabel : dayClock)(Date.parse(at), today, t, locale, base ?? today);
 }
 
 /** The rows by the reader's calendar day, newest first: a row (a group of reports, by its newest) stands under the day it was written. */

@@ -206,7 +206,7 @@ describe('serve', () => {
     }
   }
 
-  test('non-Japanese settings fall back to English and an empty report title adds no separator; task titles still clip at 80', () => {
+  test('unset or unsupported languages fall back to English and an empty report title adds no separator; task titles still clip at 80', () => {
     const fixture = noticeFixture('review', 'T2', '2026-10-14T00:00:00Z', '');
     fixture.task.title = '長'.repeat(100);
     for (const language of ['en', 'fr', null]) {

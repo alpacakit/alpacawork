@@ -1,4 +1,5 @@
 /** One screen installation job, using the same root-scoped lock as deploy and skills update. */
+import { defaultUiLocale } from '@alpacawork/core/ui-language';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -81,7 +82,7 @@ export class FirstRunSkills {
           if (!this.installed(name)) {
             if (name === 'alpacawork-betterquality' && (!session.current?.receipt.skills.some(skill => skill.name === 'alpacawork') ||
               !statSync(join(this.root, 'alpacawork/SKILL.md'), { throwIfNoEntry: false })?.isFile())) {
-              const t = serverText(this.input.locale?.() ?? 'en');
+              const t = serverText(this.input.locale?.() ?? defaultUiLocale);
               job.items[at] = { name, state: 'failed', reason: 'other', detail: t('server:setup.skills.baseMissing') }; continue;
             }
             if (name === 'alpacawork-betterquality') await new ManagedSkillsWriter({ root: this.root }).install({ version: 2,

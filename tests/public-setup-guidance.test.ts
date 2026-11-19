@@ -206,15 +206,16 @@ test('setup locale and overwrite confirmation use the request environment before
 
 test('startup diagnostics use the recorded service name and do not invent launchd stdout log files', async () => {
   const requireSwitch = await import(pathToFileURL(join(s.library, 'release/switch.js')).href);
-  for (const ja of [false, true]) {
-    const linux = s.owner.serviceStartupAdvice('selected.service', ja, 'linux'); assert(linux.includes('systemctl --user status selected.service')); assert(linux.includes('journalctl --user -u selected.service'));
+  for (const language of ['en', 'ja'] as const) {
+    const ja = language === 'ja';
+    const linux = s.owner.serviceStartupAdvice('selected.service', language, 'linux'); assert(linux.includes('systemctl --user status selected.service')); assert(linux.includes('journalctl --user -u selected.service'));
     assert.match(linux, ja ? /同じ alpacawork setup を実行し直して/ : /run the same alpacawork setup again/);
     assert.match(linux, ja ? /保存済みのポートと設定で再開/ : /saved port and definition/);
-    const stoppedLinux = s.owner.serviceStartupAdvice('selected.service', ja, 'linux', new (requireSwitch.ServiceStartRequired)('selected.service'));
+    const stoppedLinux = s.owner.serviceStartupAdvice('selected.service', language, 'linux', new (requireSwitch.ServiceStartRequired)('selected.service'));
     assert(stoppedLinux.split('\n').includes('systemctl --user start selected.service'));
     assert(!stoppedLinux.includes('systemctl --user restart'));
     assert.match(stoppedLinux, ja ? /起動後、同じ alpacawork setup を実行して確認/ : /Then run the same alpacawork setup to check/);
-    const mac = s.owner.serviceStartupAdvice('selected.service', ja, 'darwin'); assert(mac.includes(`launchctl print gui/${process.getuid!()}/selected.service`)); assert(mac.includes('log show --last 10m')); assert.match(mac, ja ? /ログファイルが設定されていません/ : /does not configure stdout\/stderr log files/);
-    assert(!mac.includes('backend.log')); const stopped = new (requireSwitch.ServiceStartRequired)('selected.service'); const stoppedMac = s.owner.serviceStartupAdvice('selected.service', ja, 'darwin', stopped); assert(stoppedMac.split('\n').includes(`launchctl kickstart gui/${process.getuid!()}/selected.service`)); assert(stoppedMac.split('\n').includes(`launchctl print gui/${process.getuid!()}/selected.service`)); assert(stoppedMac.split('\n').some(line => line.startsWith('log show --last 10m --style compact --predicate ')));  assert(!stoppedMac.includes('kickstart -k')); assert(!mac.includes('kickstart')); assert(!linux.includes('systemctl --user start '));
+    const mac = s.owner.serviceStartupAdvice('selected.service', language, 'darwin'); assert(mac.includes(`launchctl print gui/${process.getuid!()}/selected.service`)); assert(mac.includes('log show --last 10m')); assert.match(mac, ja ? /ログファイルが設定されていません/ : /does not configure stdout\/stderr log files/);
+    assert(!mac.includes('backend.log')); const stopped = new (requireSwitch.ServiceStartRequired)('selected.service'); const stoppedMac = s.owner.serviceStartupAdvice('selected.service', language, 'darwin', stopped); assert(stoppedMac.split('\n').includes(`launchctl kickstart gui/${process.getuid!()}/selected.service`)); assert(stoppedMac.split('\n').includes(`launchctl print gui/${process.getuid!()}/selected.service`)); assert(stoppedMac.split('\n').some(line => line.startsWith('log show --last 10m --style compact --predicate ')));  assert(!stoppedMac.includes('kickstart -k')); assert(!mac.includes('kickstart')); assert(!linux.includes('systemctl --user start '));
   }
 });

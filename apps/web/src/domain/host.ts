@@ -4,26 +4,27 @@ import type { HostEpisode } from "@alpacawork/contract";
 const GB = 1024 ** 3;
 
 /** A share of the whole machine: a busy Run on many cores is a few percent, so small values keep one decimal. */
-export function formatPercent(value: number | null): string {
+export function formatPercent(value: number | null, locale: string): string {
   if (value === null) return "—";
-  if (value < 0.05) return "0%";
-  return value < 10 ? `${value.toFixed(1)}%` : `${Math.round(value)}%`;
+  const digits = value >= 0.05 && value < 10 ? 1 : 0;
+  return new Intl.NumberFormat(locale, { style: "percent", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value / 100);
 }
 
-export function formatGigabytes(bytes: number | null): string {
+export function formatGigabytes(bytes: number | null, locale: string): string {
   if (bytes === null) return "—";
   const gb = bytes / GB;
-  return gb >= 100 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
+  const digits = gb < 100 ? 1 : 0;
+  return new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", useGrouping: false, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(gb);
 }
 
 /** Whole minutes, at least one, for a stretch shown as "12m". */
 export const spanMinutes = (from: number, to: number) => Math.max(1, Math.round((to - from) / 60_000));
 
 /** What was tight and how far, in the order the measures were recorded. */
-export function episodeReasons(episode: HostEpisode): { kind: HostEpisode["kinds"][number]; value: string }[] {
+export function episodeReasons(episode: HostEpisode, locale: string): { kind: HostEpisode["kinds"][number]; value: string }[] {
   return episode.kinds.map((kind) => ({ kind,
-    value: kind === "cpu" ? formatPercent(episode.peak.cpu) : kind === "memory" ? formatPercent(episode.peak.memoryFreePercent)
-      : formatGigabytes(episode.peak.diskFreeBytes) }));
+    value: kind === "cpu" ? formatPercent(episode.peak.cpu, locale) : kind === "memory" ? formatPercent(episode.peak.memoryFreePercent, locale)
+      : formatGigabytes(episode.peak.diskFreeBytes, locale) }));
 }
 
 export type SparkPoint = { at: number; value: number | null };

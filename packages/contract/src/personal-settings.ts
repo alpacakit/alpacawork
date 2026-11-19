@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TASK_STATE } from '@alpacawork/raw/task-enums';
+import { defaultUiLocale, uiLocales } from '@alpacawork/core/ui-language';
 import { bodyMarkSchema, taskIdSchema } from './fields.js';
 
 /** Stored person values include choices and server-owned notification state. */
@@ -26,10 +27,10 @@ export const quietTimes = Array.from({ length: 48 }, (_, index) =>
 const quietOptions = quietTimes.map(value => ({ value }));
 /** When the morning starts: where quiet hours end unless a person chose otherwise, and when "until morning" ends. */
 export const MORNING_TIME = '08:00';
+export const uiLanguageOptions = uiLocales.map(value => ({ value, labelKey: `settings.personal.option.${value}` }));
 export const personalSettings = [
-  { key: 'language', group: 'display', owner: 'person', kind: 'select', defaultValue: 'en', labelKey: 'settings.personal.language', options: [
-    { value: 'ja', labelKey: 'settings.personal.option.ja' }, { value: 'en', labelKey: 'settings.personal.option.en' },
-  ] },
+  { key: 'language', group: 'display', owner: 'person', kind: 'select', defaultValue: defaultUiLocale,
+    labelKey: 'settings.personal.language', options: uiLanguageOptions },
   /**
    * The language the AI talks with the user in, apart from the screen's `language`. The coordinator decides it from the
    * user's own words and saves it with `alpacawork settings set`; the screen does not offer it.

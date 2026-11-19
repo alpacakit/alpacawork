@@ -1,0 +1,142 @@
+{
+  "agentPicker": {
+    "brief": {
+      "gone": "Escolha outro agente a quem pedir",
+      "new_conversation": "Recomece com “{{action}}”",
+      "select_value": "Escolha de novo: {{row}}"
+    },
+    "next": {
+      "anew": "É preciso uma nova conversa",
+      "clear": "Recomece com “{{action}}”"
+    },
+    "none": "Nenhum",
+    "notOffered": "Não oferecido para este modelo",
+    "pickerLabel": "{{agent}}. Selecione para mudar",
+    "pickerTitle": "A quem pedir",
+    "problem": {
+      "gone": "{{agent}} não está disponível com as configurações atuais. Escolha outro agente a quem pedir",
+      "invalid_value": "O valor anterior de {{row}}, {{previous}}, não é mais oferecido. Escolha de novo",
+      "null_required": "{{row}} não pode mais ficar como Nenhum. Escolha um valor",
+      "removed": "{{row}} (antes {{previous}}) saiu das configurações, por isso esta conversa não pode continuar. {{next}}",
+      "unused": "{{row}} (antes {{previous}}) não é mais usado pelas opções de inicialização, por isso esta conversa não pode continuar. {{next}}"
+    }
+  },
+  "draft": {
+    "checking": "Verificando…",
+    "closeKeep": "Fechar · manter rascunho",
+    "discard": "Descartar rascunho",
+    "discardConfirm": "Descartar este rascunho? Essa ação não pode ser desfeita.",
+    "reviewLatest": "Ver a versão mais recente e continuar editando",
+    "saving": "Salvando…",
+    "storageUnavailable": "O armazenamento de rascunhos está indisponível. O envio está pausado para evitar duplicatas. Mantenha esta página aberta e copie seu rascunho."
+  },
+  "folderInput": {
+    "cancel": "Cancelar nova pasta",
+    "choose": "Escolher",
+    "close": "Fechar",
+    "create": "Criar",
+    "creating": "Criando…",
+    "empty": "Nenhuma pasta aqui dentro.",
+    "example": "ex.: {{path}}",
+    "inside": "Pastas aqui dentro",
+    "made": "Esta é uma pasta recém-criada.",
+    "make": "Criar uma nova pasta",
+    "name": "Nome da nova pasta",
+    "offered": "Pastas sugeridas",
+    "openExisting": "Abrir essa pasta",
+    "path": "Onde você está",
+    "placeholder": "Nome da pasta",
+    "problem": {
+      "dots": "O nome não pode ser \".\" nem \"..\".",
+      "long": "O nome é longo demais (máximo de 255 bytes).",
+      "slash": "O nome não pode conter /.",
+      "taken": "Já existe uma pasta com este nome."
+    },
+    "reading": "Carregando…",
+    "truncated": "Somente as primeiras {{limit}} são exibidas. Feche a lista e digite um nome no campo para filtrar.",
+    "up": "Subir",
+    "use": "Usar esta pasta",
+    "where": "Criar dentro de {{path}}"
+  },
+  "formDialog": {
+    "cancel": "Cancelar"
+  },
+  "inlineForm": {
+    "cancel": "Cancelar"
+  },
+  "moveForm": {
+    "adopt": "Usar a versão mais recente e escolher de novo",
+    "changedElsewhere": "A tarefa pai mudou em outro lugar depois que este formulário foi aberto (antes: {{opened}}, agora: {{current}}). Mover agora seria recusado.",
+    "note": "A tarefa mantém o ID, a pasta e as execuções; o trabalho em execução não é parado, e os relatórios dela passam a ir para a nova tarefa pai",
+    "parent": "Nova tarefa pai",
+    "refused": "Não movida: a tarefa mudou em outro lugar (tarefa pai antes: {{opened}}, agora: {{current}}). Sua escolha foi mantida.",
+    "submit": "Mover",
+    "top": "Nível superior (sem tarefa pai)"
+  },
+  "projectColor": {
+    "code": "Código da cor",
+    "more": "Outras cores…",
+    "swatch": {
+      "brown": "Marrom",
+      "grape": "Uva",
+      "green": "Verde",
+      "indigo": "Índigo",
+      "lime": "Lima",
+      "navy": "Azul-marinho",
+      "teal": "Azul-petróleo",
+      "violet": "Violeta"
+    }
+  },
+  "reportForm": {
+    "approveDescription": "Resultado revisado.",
+    "approveTitle": "Concluída",
+    "chooseAgain": "A tarefa mudou. Escolha o status de novo",
+    "heading": "Mudar o status de {{id}}",
+    "holdDescription": "Cuidar disso depois.",
+    "holdTitle": "Adiada",
+    "reportDescription": "Descrição no Histórico",
+    "reportDescriptionHint": "Detalhes e imagens em Markdown",
+    "reportTitle": "Título no Histórico",
+    "reportTitleHint": "O ponto principal do relatório, em uma linha",
+    "restoreDescription": "Volta ao status de antes do adiamento.",
+    "restoreTitle": "Retomada",
+    "statePick": "Mudar status",
+    "statePickHint": "Mudar o status de {{id}}",
+    "stopDescription": "Esta tarefa e as tarefas abaixo dela vão parar.",
+    "stopTitle": "Parada",
+    "submit": "Atualizar",
+    "words": "Relatório no Histórico"
+  },
+  "responsibleForm": {
+    "change": "Trocar",
+    "choiceUnavailable": "O agente ou o perfil de inicialização selecionado não está mais disponível. Este formulário foi fechado.",
+    "decide": "Atribuir",
+    "effort": "Esforço",
+    "legend": "Responsável por esta tarefa",
+    "model": "Modelo",
+    "newPerson": "Novo agente",
+    "noProfiles": "Nenhum agente está ativado. Instale uma IA e faça login nela; depois, ative-a em Configurações → Servidor",
+    "promote": "{{name}} assume a tarefa",
+    "replaceNote": "{{name}} deixa de ser responsável e fica no Histórico, sem virar membro",
+    "taskUnavailable": "Esta tarefa não está mais disponível. Este formulário foi fechado.",
+    "type": "Perfil de inicialização"
+  },
+  "runForm": {
+    "closed": "Encerrada",
+    "closeDescription": "Encerrar {{run}}.",
+    "closeSubmit": "Encerrar execução",
+    "closeTitle": "Encerrar execução",
+    "noLongerAvailable": "Esta execução não pode mais ser encerrada. Este formulário foi fechado."
+  },
+  "writeFailure": {
+    "checkWhich": "Não foi possível confirmar o resultado de “{{subject}}”",
+    "conflict": "Nada foi salvo. Veja o conteúdo mais recente antes de continuar.",
+    "operationUnconfirmed": "Não foi possível confirmar o resultado. O reenvio usa o mesmo ID: se a operação ainda não chegou, ela é executada agora; uma operação já recebida não é executada duas vezes.",
+    "readLatest": "Ler a versão mais recente",
+    "unconfirmed": "Não foi possível confirmar se foi enviado. O reenvio está pausado para evitar duplicatas. Feche mantendo o que você digitou e depois verifique o conteúdo mais recente ou os registros de execução.",
+    "unproven": "Enviar de novo poderia executar a operação duas vezes, por isso ela não será enviada. Copie o que precisar e continue em uma nova aba."
+  },
+  "writeResult": {
+    "confirmed": "{{subject}}: confirmamos que a operação foi concluída."
+  }
+}

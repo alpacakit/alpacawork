@@ -18,7 +18,9 @@ test('a reply language is saved as one canonical BCP 47 tag or none; the command
   assert.equal(save('push.done', 'true').data?.value, true);
   assert.equal(save('push.done', false).data?.value, false);
   // The screen's language stays a choice of the screen's own translations.
-  assert.equal(save('language', 'ja').success, true);
-  assert.equal(save('language', 'fr').success, false);
+  for (const language of ['en', 'ja', 'zh-CN', 'es', 'pt-BR'])
+    assert.equal(save('language', language).data?.value, language);
+  for (const language of ['fr', 'es-MX', 'zh-Hant', 'pt-br'])
+    assert.equal(save('language', language).success, false, language);
   assert.equal(save('push.mutedUntil', 'null').success, false, 'the server keeps its own values');
 });

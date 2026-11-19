@@ -1,0 +1,103 @@
+{
+  "agentLabel": {
+    "unknown": "desconhecido",
+    "unstarted": "não iniciado"
+  },
+  "attach": {
+    "add": "Anexar",
+    "addHint": "Anexar arquivos (ou colar ou soltar imagens)",
+    "checking": "Verificando o resultado do anexo",
+    "notReceived": "Não pôde ser recebido",
+    "pastedImage": "imagem-colada",
+    "pastedText": "texto-colado",
+    "receiptMismatch": "O anexo salvo não corresponde ao arquivo que você selecionou",
+    "remove": "Remover {{name}}",
+    "reselect": "Não encontrado. Selecione o arquivo de novo",
+    "restored": "Os dados foram recuperados nesse meio-tempo, por isso o resultado não pode ser confirmado e o anexo não será reenviado. Remova-o com o × no cartão do anexo",
+    "storageUnavailable": "Não foi possível salvar o rascunho",
+    "tooLarge": "Maior que {{size}}",
+    "tooMany": "Até {{limit}} anexos por vez",
+    "unconfirmed": "Não foi possível confirmar o resultado. Recarregue para verificar",
+    "unnamed": "arquivo",
+    "uploading": "Enviando {{name}}"
+  },
+  "clock": {
+    "base": "{{clock}}",
+    "date": "{{date}} {{clock}}",
+    "today": "hoje {{clock}}",
+    "tomorrow": "amanhã {{clock}}",
+    "yesterday": "ontem {{clock}}"
+  },
+  "day": {
+    "date": "{{weekday}}, {{date}}",
+    "tomorrow": "Amanhã",
+    "yesterday": "Ontem"
+  },
+  "dot": {
+    "attention": "Erro"
+  },
+  "duration": {
+    "days_one": "{{count}} dia",
+    "days_many": "{{count}} dias",
+    "days_other": "{{count}} dias",
+    "hours": "{{hours}}h {{minutes}}min",
+    "minutes_one": "{{count}} min",
+    "minutes_many": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "underMinute": "<1 min"
+  },
+  "finish": {
+    "after": "Após {{time}}",
+    "bandOver": "{{length}} de atraso",
+    "done": "Concluída {{time}}",
+    "end": "Relatório previsto {{time}}",
+    "long": {
+      "after_one": "Sem contar {{count}} tarefa sem previsão, o último relatório está previsto para {{time}}. Nem todos os relatórios chegarão antes disso",
+      "after_many": "Sem contar {{count}} tarefas sem previsão, o último relatório está previsto para {{time}}. Nem todos os relatórios chegarão antes disso",
+      "after_other": "Sem contar {{count}} tarefas sem previsão, o último relatório está previsto para {{time}}. Nem todos os relatórios chegarão antes disso",
+      "end": "{{used}} de {{total}} min trabalhados. Relatório previsto {{time}}",
+      "over": "{{used}} de {{total}} min trabalhados. Passou {{length}} da previsão de {{time}}",
+      "subtree_one": "Com base em {{count}} previsão. Relatório previsto {{time}}",
+      "subtree_many": "A mais tardia de {{count}} previsões. Relatório previsto {{time}}",
+      "subtree_other": "A mais tardia de {{count}} previsões. Relatório previsto {{time}}",
+      "subtreeOver": "Uma tarefa abaixo dela passou {{length}} da previsão de {{time}}"
+    },
+    "over": "{{length}} após {{time}}",
+    "overBy": {
+      "days_one": "~{{count}} dia",
+      "days_many": "~{{count}} dias",
+      "days_other": "~{{count}} dias",
+      "hours_one": "~{{count}} hora",
+      "hours_many": "~{{count}} horas",
+      "hours_other": "~{{count}} horas",
+      "minutes_one": "~{{count}} min",
+      "minutes_many": "~{{count}} min",
+      "minutes_other": "~{{count}} min"
+    },
+    "pending": "Aguardando nova previsão",
+    "reported": "$t(ui:state.waitingReview), relatório enviado {{time}}",
+    "review": "$t(ui:state.waitingReview)",
+    "stopped": "$t(people:dot.attention)",
+    "unknown": "$t(ui:state.doing)"
+  },
+  "line": {
+    "children": "Subtarefas {{done}}/{{total}}"
+  },
+  "now": {
+    "event": "{{kind}}",
+    "kind": {
+      "error": "Erro",
+      "message": "Mensagem",
+      "output": "Saída",
+      "result": "Resultado",
+      "tool_end": "Resultado de ferramenta",
+      "tool_start": "Uso de ferramenta"
+    },
+    "output": "{{event}} há {{ago}}",
+    "stale": "A última saída é antiga: {{event}} (há {{ago}})",
+    "toolEvent": "{{tool}}: {{kind}}"
+  },
+  "records": {
+    "close": "Encerrar execução…"
+  }
+}

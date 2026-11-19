@@ -11,6 +11,7 @@ import { runMaintenance } from '../release/maintenance-process.js';
 import { backendEntry, appRoot } from '../app-paths.js';
 import { hasCode, platform, Problem, PROBLEM_CODE, redactSecrets, type ServiceDefinition } from '@alpacawork/core';
 import { readPackageVersion } from '@alpacawork/core/package-version';
+import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { serverText, type ServerLocale, type ServerText } from '@alpacawork/i18n/server';
 import { inspectWorkspace, selectWorkspace, validateSetupLocations, userHome, workspaceArgument, type WorkspaceRequest } from '../workspace.js';
 import { holdReleases, releasePath, linkTarget } from '../release/layout.js';
@@ -21,7 +22,7 @@ import { parseTargets } from '../release/package-closure.js';
 import { absolutePath, assertProductDirectory } from './files.js';
 import { InstallationStore, installationPath } from './store.js';
 import { initializeInstallation, registerInstallation, validateNewWorkspace, inspectInstallationService, recordInstallationService, readInstallationService, installationSkillsRoot, probeServicePort, serviceDefinition, servicePort, servicePublicHost, defaultReleases } from './setup.js';
-import { skillLinkConflicts, confirmInstallation, displayInstallationPath, installationLanguage, type InstallationChange, type InstallationConfirmationRequest, type InstallationTerminal } from './confirmation.js';
+import { skillLinkConflicts, confirmInstallation, displayInstallationPath, type InstallationChange, type InstallationConfirmationRequest, type InstallationTerminal } from './confirmation.js';
 import { ManagedSkillsWriter, SkillWriteFailure, equal, type SkillWriteRequest } from './skills.js';
 import { completeSetup, finishSetupSkills, newSetupSkills, readSetupSkills, saveSetupSkills } from './setup-skills.js';
 import { detectSetupAgents, inspectSetupAgents } from './setup-ai.js';
@@ -93,7 +94,7 @@ async function servicePreview(plan: SetupPlan, request: SetupRequest) {
   const definition = plan.installation?.service ? requestedInstallationService(plan, request).definition
     : await inspectInstallationService(plan.releases, plan.workspace, request.env, request.service, {port:request.port,publicHost:request.publicHost});
   observeService(definition);
-  return { definition, description: serviceDescription(definition, serverText(installationLanguage(request.env))) };
+  return { definition, description: serviceDescription(definition, serverText(uiLocaleFromEnvironment(request.env))) };
 }
 /** What must finish before setup may change the service, read from the saved state alone: between two controllers
  * of one update no process is alive, and the journal still says the switch is under way. */
@@ -142,7 +143,7 @@ async function reapproveService(plan: SetupPlan, request: SetupRequest, say: (li
     await probeServicePort(port).catch(cause => { throw new Problem(PROBLEM_CODE.conflict, `Port ${port} cannot be used (${hasCode(cause, 'EADDRINUSE') ? 'another process is using it' : cause instanceof Error ? cause.message : String(cause)}); choose another --port. Nothing was changed`, undefined, { cause }); });
   };
   await assertPortMoves(null);
-  const language = installationLanguage(request.env), t = serverText(language);
+  const language = uiLocaleFromEnvironment(request.env), t = serverText(language);
   const approval = await confirmInstallation({ workspace: plan.workspace, releases: plan.releases, showReleases: request.releases !== undefined, existing: true, agents: [], skills: [],
     application: { current: readPackageVersion(release).version, target: readPackageVersion(release).version },
     changes: replaces && recorded.environment.PATH !== approved.environment.PATH ? [...facts, { fact: 'path', from: recorded.environment.PATH ?? null, to: approved.environment.PATH! }] : facts,
@@ -169,7 +170,7 @@ async function reapproveService(plan: SetupPlan, request: SetupRequest, say: (li
 function startFailure(cause: unknown, releases: string, service: string, language: ServerLocale, say: (line: string) => void, wayBack = ''): never {
   const reason = redactSecrets(cause instanceof Error ? cause.message : String(cause)), t = serverText(language);
   const advice = redactSecrets(setupFailureAdvice(cause, releases));
-  say(`${t('server:setup.startFailure.keep')}\n${t('server:setup.startFailure.reason', { reason: reason.replace(/\s*[\r\n]+\s*/g, ' ') })}${advice === reason ? '' : `\n${advice}`}\n${serviceStartupAdvice(service, language === 'ja', process.platform, cause)}${wayBack}`);
+  say(`${t('server:setup.startFailure.keep')}\n${t('server:setup.startFailure.reason', { reason: reason.replace(/\s*[\r\n]+\s*/g, ' ') })}${advice === reason ? '' : `\n${advice}`}\n${serviceStartupAdvice(service, language, process.platform, cause)}${wayBack}`);
   throw new Error('Setup did not complete', { cause });
 }
 function overwriteLines(request: SkillWriteRequest, root: string, t: ServerText): string[] {
@@ -188,7 +189,7 @@ export async function runSetup(request: SetupRequest, say: (line: string) => voi
   try { plan = inspectSetup(request); }
   catch (cause) {
     // Translate only the human setup boundary; the CLI still receives the original structured refusal.
-    const t = serverText(installationLanguage(request.env));
+    const t = serverText(uiLocaleFromEnvironment(request.env));
     const kind = cause instanceof Problem ? cause.reason?.kind : undefined;
     const reason = kind === 'installation_wsl_filesystem_refused' ? t('server:setup.wslFilesystem.refused')
       : kind === 'installation_wsl_filesystem_unknown' ? t('server:setup.wslFilesystem.unknown') : null;
@@ -226,7 +227,7 @@ async function performSetup(plan: SetupPlan, request: SetupRequest, say: (line: 
   const writeRequest: SkillWriteRequest = prior?.request ?? { version: 2, operationId: randomUUID(), release: target, intent };
   const receipt = statSync(root, { throwIfNoEntry: false }) ? new InstalledSkillsStore(root).read()?.receipt : null;
   const alreadyComplete = receipt?.state === 'complete' && receipt.operationId === writeRequest.operationId;
-  const language = installationLanguage(request.env), t = serverText(language);
+  const language = uiLocaleFromEnvironment(request.env), t = serverText(language);
   const approval = await confirmSetup(plan, { service: service.description, agents: agents.map(setupAgentName), links: inspectAgentSkillLinks(root, writeRequest.intent.place, agents),
     skills: [
       { name: 'alpacawork', destination: join(root, 'alpacawork'), action: alreadyComplete ? 'keep' : statSync(join(root, 'alpacawork'), { throwIfNoEntry: false }) ? 'replace' : 'install' },
@@ -278,13 +279,13 @@ async function performSetup(plan: SetupPlan, request: SetupRequest, say: (line: 
   } finally { prepared.unlock(); }
 }
 /** Commands follow the real adapters: systemd journals; launchd has no stdout/stderr file configured. */
-export function serviceStartupAdvice(name: string, ja: boolean, host: string = process.platform, failure?: unknown): string {
+export function serviceStartupAdvice(name: string, language: ServerLocale, host: string = process.platform, failure?: unknown): string {
   const commands = host === 'darwin'
     ? `launchctl print gui/${process.getuid!()}/${name}\nlog show --last 10m --style compact --predicate 'process == "launchd" AND eventMessage CONTAINS "${name}"'`
     : `systemctl --user status ${name}\njournalctl --user -u ${name} -n 50 --no-pager`;
   const stoppedService = failure instanceof ServiceStartRequired ? failure.service : undefined;
   const start = stoppedService ? host === 'darwin' ? `launchctl kickstart gui/${process.getuid!()}/${stoppedService}` : `systemctl --user start ${stoppedService}` : null;
-  const t = serverText(ja ? 'ja' : 'en');
+  const t = serverText(language);
   return `${t('server:setup.startup.check')}\n${commands}\n${host === 'darwin' ? t('server:setup.startup.launchdLogs') + '\n' : ''}` +
     (start ? t('server:setup.startup.startSaved', { command: start }) : t('server:setup.startup.rerun'));
 }

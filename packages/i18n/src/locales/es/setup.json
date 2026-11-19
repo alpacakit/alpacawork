@@ -1,0 +1,116 @@
+{
+  "agents": {
+    "checking": "Comprobando…",
+    "continueWithout": "Continuar sin agente",
+    "copy": "Copiar",
+    "enable": "Cómo iniciar sesión",
+    "failed": {
+      "check": "No se pudieron comprobar los agentes de este PC.",
+      "save": "No se pudo guardar la configuración de los agentes."
+    },
+    "first": "Agente predeterminado",
+    "found": "Instalado. Funciona si tiene la sesión iniciada o una clave de API configurada",
+    "how": "Ejecuta este comando en una terminal y sigue las indicaciones para iniciar sesión.",
+    "later": "Más adelante puedes cambiar en Configuración qué agentes están activados.",
+    "lead": "Estos son los agentes de IA que alpacawork puede usar. Activa aquellos a los que quieras encargar tareas.",
+    "missing": "No se encontró el comando {{command}}. Instálalo para usar este agente",
+    "noneOn": "Activa al menos un agente.",
+    "noneOnTitle": "No hay ningún agente activado",
+    "noneReady": "Instala un agente o inicia sesión en uno y luego elige “Comprobar de nuevo”.",
+    "noneReadyTitle": "Aún no hay ningún agente listo",
+    "ready": "Sesión iniciada",
+    "recheck": "Comprobar de nuevo",
+    "signedOut": "Requiere iniciar sesión",
+    "stillSignedOut": "{{name}} aún no tiene la sesión iniciada. Inicia sesión desde una terminal y vuelve a comprobar.",
+    "title": "Agentes para tus tareas"
+  },
+  "back": "Atrás",
+  "changedElsewhere": "Cambió en otra vista. Se muestra la configuración actual.",
+  "consent": {
+    "body": "Los datos de uso incluyen la versión, el sistema operativo y cuántas veces se usan las funciones. Nunca se envían las conversaciones, el contenido de las tareas, los nombres de archivo ni el nombre del PC. No se envía nada hasta que pases al siguiente paso, y alpacawork funciona igual con esto desactivado. Puedes cambiarlo cuando quieras en Configuración.",
+    "close": "Cerrar",
+    "detail": "Qué se envía",
+    "failed": "No se pudo guardar tu elección sobre los datos de uso. Vuelve a intentarlo.",
+    "label": "Enviar datos de uso a los desarrolladores",
+    "rows": {
+      "id": "Un ID aleatorio por cada PC (no se deriva de tu PC ni de tus datos de usuario)",
+      "idKey": "Identificador",
+      "interval": "Una vez al día",
+      "intervalKey": "Frecuencia",
+      "notSent": "Las conversaciones, los títulos y el contenido de las tareas, los archivos y sus nombres, el nombre del PC y los nombres de usuario",
+      "notSentKey": "Nunca se envían",
+      "sent": "La versión de alpacawork, el sistema operativo y el tipo de dispositivo, cuántas veces se usan las funciones, los tiempos de carga de las pantallas, los tipos de error, los tipos de agentes usados y el número aproximado de tareas",
+      "sentKey": "Se envían",
+      "stop": "En Configuración → Servidor → Datos de uso puedes dejar de enviar y eliminar los datos ya enviados",
+      "stopKey": "Dejar de enviar y eliminar"
+    }
+  },
+  "language": "Idioma de la interfaz",
+  "next": "Siguiente",
+  "project": {
+    "failed": "No se pudo finalizar la configuración. Vuelve a intentarlo.",
+    "finish": "Finalizar configuración",
+    "gone": "El proyecto creado durante la configuración ya no existe. Finaliza la configuración y luego crea un proyecto desde el menú de proyectos.",
+    "lead": "Las tareas se encargan proyecto por proyecto. Ponle nombre al primero y elige la carpeta en la que trabajan los agentes (\"Ubicación del código\").",
+    "policyLead": "La política del proyecto que viene escrita es solo un ejemplo. Reescríbela para que se ajuste a tu trabajo. Todo esto lo puedes cambiar más adelante en Configuración.",
+    "policyNote": "Lo que escribas aquí se entrega tal cual a todos los agentes que trabajan en este proyecto.",
+    "policySkillLine": "- {{skill}}: úsala {{when}}.",
+    "policySkills": "## Skills que usar",
+    "policyStart": "## Propósito del proyecto\n- Que el usuario aprenda a usar alpacawork probándolo.\n\n## Preguntar primero al usuario\n- Si un cambio afecta al aspecto o a la experiencia de uso, muestra un ejemplo y pregunta antes de crearlo.\n- Pregunta antes de empezar un trabajo que cambie el rumbo o que vaya a llevar mucho tiempo.\n- Pide aprobación antes de publicar, enviar algo a servicios o personas externos, reemplazar un servicio en funcionamiento, hacer algo que cueste dinero o eliminar algo que no se pueda restaurar.\n\n## Decidir sin preguntar\n- Para todo lo que no figure arriba, decide sin preguntar, sigue adelante e informa del resultado.\n\n## Cómo trabajar\n- Salvo en arreglos pequeños, cuando el trabajo esté terminado, haz que lo revise una IA distinta de la que lo hizo, corrige lo que encuentre y después pide al usuario que lo revise.\n- Para un cambio en el diseño de una pantalla, haz que una IA distinta cree cada propuesta, hasta tres en total. El responsable se las muestra juntas al usuario y le pregunta cuál prefiere. Al preguntar, el responsable también dice cuál recomienda y por qué.\n\n## No permitido\n- No escribas secretos, como claves de API o contraseñas, en los registros ni en los entregables.",
+    "reread": "Cargar lo más reciente",
+    "title": "Primer proyecto"
+  },
+  "skills": {
+    "done_one": "Se instaló {{count}} skill",
+    "done_many": "Se instalaron {{count}} skills",
+    "done_other": "Se instalaron {{count}} skills",
+    "failed": "No se pudo instalar. {{reason}}",
+    "failedRequest": "No se pudo iniciar la instalación.",
+    "install_one": "Instalar {{count}} skill",
+    "install_many": "Instalar {{count}} skills",
+    "install_other": "Instalar {{count}} skills",
+    "installed": "Instalada",
+    "installing": "Instalando…",
+    "items": {
+      "alpacawork-betterquality": {
+        "cost": "Los resultados mejoran, pero las comprobaciones suman tiempo y uso de tokens. El número de comprobaciones depende del peso del trabajo; en trabajos ligeros, el agente comprueba su propio resultado.",
+        "what": "Los agentes fijan los criterios de aprobación antes de empezar, y otra IA comprueba el resultado antes de pedirte que lo revises.",
+        "when": "al planificar, al pedir una revisión y al recibir observaciones"
+      },
+      "askmeclearly": {
+        "what": "Los agentes hacen preguntas e informes breves y marcan dónde mirar en las imágenes o los videos, para que puedas decidir y comprobar rápido.",
+        "when": "al pedir al usuario que decida y al escribir un informe"
+      },
+      "doyourjob": {
+        "what": "Los agentes averiguan lo que pueden y deciden lo que les corresponde, así que solo te preguntan lo que únicamente tú puedes decidir.",
+        "when": "antes de preguntar al usuario y antes de tomar una decisión con grandes consecuencias"
+      }
+    },
+    "lead": "Usadas con alpacawork, estas skills hacen más fácil encargar tareas. Los agentes preguntan solo lo que necesita tu decisión, escriben informes fáciles de comprobar y entregan mejores resultados.",
+    "reason": {
+      "link_conflict": "Ya hay otro elemento con el mismo nombre en la carpeta de skills de Claude Code (~/.claude/skills). No se modificó.",
+      "npm": "El instalador falló. Comprueba que npm funciona y que se puede acceder a GitHub, y vuelve a intentarlo.",
+      "other": "Vuelve a intentarlo o continúa sin ella.",
+      "timeout": "La instalación superó el tiempo de espera. Vuelve a intentarlo.",
+      "unreachable": "No se pudo acceder al origen de la descarga. Comprueba tu conexión de red y vuelve a intentarlo."
+    },
+    "recommended": "Recomendada",
+    "skip": "Omitir",
+    "source": "alpacawork-betterquality viene incluida con alpacawork. Las demás se descargan de GitHub (alpacakit/pocket-skills).",
+    "title": "Skills para instalar",
+    "where": "Las skills se instalan en {{place}} y se enlazan para que Claude Code pueda usarlas. Puedes quitarlas más adelante."
+  },
+  "steps": {
+    "agents": "Agentes",
+    "label": "Pasos de la configuración",
+    "project": "Proyecto",
+    "skills": "Skills"
+  },
+  "theme": "Tema",
+  "themeOption": {
+    "dark": "Oscuro",
+    "light": "Claro",
+    "system": "Sistema"
+  },
+  "title": "Configuración inicial"
+}

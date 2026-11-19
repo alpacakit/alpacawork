@@ -229,7 +229,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     <div className="relative flex gap-2">
       <Input {...props} value={value} dir="ltr" autoComplete="off" spellCheck={false} autoCapitalize="off" autoCorrect="off"
         ref={(node) => { input.current = node; if (typeof ref === "function") ref(node); else if (ref) ref.current = node; }}
-        placeholder={placeholder ?? (start.data ? t("folderInput.example", { path: fromHome(inside(start.data.path, "my-app"), start.data.home) }) : undefined)}
+        placeholder={placeholder ?? (start.data ? t("folderInput.example", { path: fromHome(inside(start.data.path, "my-work"), start.data.home) }) : undefined)}
         role="combobox" aria-autocomplete="list" aria-expanded={offering} aria-controls={offering ? `${id}-offered` : undefined}
         aria-activedescendant={offering && active >= 0 ? `${id}-offered-${active}` : undefined}
         className="min-w-0 flex-1 font-mono"

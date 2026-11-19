@@ -428,14 +428,14 @@ type Card = { id: string; name: string; size?: number; src: string | null; progr
 export function AttachmentCards({ cards, remove, removeDisabled, className }: {
   cards: readonly Card[]; remove?: (id: string) => void; removeDisabled?: boolean; className?: string;
 }) {
-  const { t } = useTranslation("people");
+  const { t, i18n } = useTranslation("people");
   if (!cards.length) return null;
   // The shared toast says what failed; the card keeps its failure mark.
   return <><ul data-attachments className={cn("m-0 flex list-none gap-1.5 overflow-x-auto p-0", className)}>
     {cards.map(card => {
       const image = !!card.src && isImage(card.name);
       const video = !!card.src && isVideo(card.name);
-      const size = card.size !== undefined ? sizeText(card.size) : undefined;
+      const size = card.size !== undefined ? sizeText(card.size, i18n.language) : undefined;
       const busy = card.progress !== undefined && !card.error;
       const ring = busy && <UploadRing progress={card.progress!} label={t("attach.uploading", { name: card.name })} />;
       const face = video

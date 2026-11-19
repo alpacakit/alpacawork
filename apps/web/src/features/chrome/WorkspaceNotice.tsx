@@ -24,12 +24,12 @@ import { problemText } from "@/features/forms/problem-text";
  * line says serve is out of reach, and the reads are made again once it is back.
  */
 export function WorkspaceNotice() {
-  const { t } = useTranslation("chrome");
+  const { t, i18n } = useTranslation("chrome");
   /** What is tight and for how long: "CPU 98% · 12m". */
   const hostDetail = (host: NonNullable<WorkspaceInfo["host"]>) => [
-    ...host.kinds.map((kind) => kind === "cpu" ? t("notice.hostCpu", { value: formatPercent(host.cpu) })
-      : kind === "memory" ? t("notice.hostMemory", { value: formatPercent(host.memoryFreePercent) })
-      : t("notice.hostDisk", { value: formatGigabytes(host.diskFreeBytes) })),
+    ...host.kinds.map((kind) => kind === "cpu" ? t("notice.hostCpu", { value: formatPercent(host.cpu, i18n.language) })
+      : kind === "memory" ? t("notice.hostMemory", { value: formatPercent(host.memoryFreePercent, i18n.language) })
+      : t("notice.hostDisk", { value: formatGigabytes(host.diskFreeBytes, i18n.language) })),
     t("notice.hostMinutes", { count: Math.max(1, minutesSince(host.since, Date.now()) ?? 1) }),
   ].join(" · ");
   const info = useWorkspaceInfo();

@@ -57,23 +57,23 @@ for (const [width, height] of [[1440, 900]] as const) {
     expect(surface.round).toBeGreaterThan(0);
 
     // A row names the example and what the person will see; the input gets the words to send, not the row's title again.
-    await expect(example).toHaveText(/^Have 3 models build a snake game, then pick one\s*Different models build in parallel/);
+    await expect(example).toHaveText(/^Have 3 models build a snake game, then compare\s*Different models build in parallel/);
     await example.click();
     await expect(labelLayer(field(page)).locator("[data-label=task][data-label-project]")).toHaveText("Empty one");
-    await expect(field(page)).toContainText("try building 3 in parallel");
-    await expect(field(page)).not.toContainText("Have 3 models build a snake game, then pick one");
+    await expect(field(page)).toContainText("3 times in parallel, each with a different model");
+    await expect(field(page)).not.toContainText("Have 3 models build a snake game, then compare");
     // Trying another example takes the untouched one's place, so reading them mixes nothing.
     await welcome.locator('[data-welcome-example="decide"]').click();
     await expect(field(page)).toContainText("one mini game I can play in the browser");
-    await expect(field(page)).not.toContainText("try building 3 in parallel");
+    await expect(field(page)).not.toContainText("3 times in parallel, each with a different model");
     // Emptied by hand it holds nothing of theirs either: no blank line stays before the next one.
     await field(page).click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
-    await welcome.locator('[data-welcome-example="triage"]').click();
-    await expect(field(page).locator("p, div").first()).toContainText("split a fictional café");
+    await welcome.locator('[data-welcome-example="settings"]').click();
+    await expect(field(page).locator("p, div").first()).toContainText("add this rule to this project's policy");
     await welcome.locator('[data-welcome-example="decide"]').click();
-    await expect(field(page)).not.toContainText("split a fictional café");
+    await expect(field(page)).not.toContainText("add this rule to this project's policy");
     // Once the person has written in it, what is there is theirs: an example goes after it, discarding nothing.
     await field(page).click();
     await page.keyboard.press("End");
@@ -81,7 +81,7 @@ for (const [width, height] of [[1440, 900]] as const) {
     await welcome.locator('[data-welcome-example="models"]').click();
     await expect(field(page)).toContainText("one mini game I can play in the browser");
     await expect(field(page)).toContainText(" mine");
-    await expect(field(page)).toContainText("try building 3 in parallel");
+    await expect(field(page)).toContainText("3 times in parallel, each with a different model");
     // Nothing is sent: the project stays empty until the person sends it.
     await expect(welcome).toBeVisible();
     // The conversation leaves the examples to the list and points there.

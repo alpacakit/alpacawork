@@ -163,7 +163,7 @@ const useRowTime = () => {
 
 /** The list with its time strips. */
 export function TimeTree() {
-  const { t } = useTranslation("tree");
+  const { t, i18n } = useTranslation("tree");
   const { t: pt } = useTranslation("people");
   const index = useTaskIndex();
   const drawing = useWorkspaceSelector(data => data.drawing);
@@ -392,7 +392,7 @@ export function TimeTree() {
   // Hidden strips need only the clock-width minimum, not each row's end prediction.
   const futureLabels: FutureWords[] = [];
   if (strips) rowNodes.forEach((node) => {
-    const label = futureWords(stripFinish(node, finishWordsFor(node.task.id, index, people, now, pt)), now);
+    const label = futureWords(stripFinish(node, finishWordsFor(node.task.id, index, people, now, pt, i18n.language)), now);
     if (label) futureLabels.push(label);
   });
   const futureWidth = futureBandWidth(futureLabels);
@@ -745,7 +745,7 @@ const WIDE_STRIP_LEVEL: Readonly<Level> = { base: WIDE_ROW / 2, unit: 6, rise: 9
 const Strip = memo(function Strip({ node, narrow, height, title, enter, history, scale, pieces, now, seen, show }: { node: Node; narrow: boolean; height: number;
   title: RefObject<HTMLButtonElement | null>; enter: RefObject<(() => void) | null>; history: TaskHistory | null } & Omit<RowTime, "histories">) {
   const { t } = useTranslation("tree");
-  const { t: pt } = useTranslation("people");
+  const { t: pt, i18n } = useTranslation("people");
   const { task } = node;
   const finish = stripFinish(node, useFinishWords(task.id));
   const strip = useRef<SVGSVGElement>(null);
@@ -760,7 +760,7 @@ const Strip = memo(function Strip({ node, narrow, height, title, enter, history,
     return () => { enter.current = null; };
   }, [enter, history, probe.enter]);
   const level = narrow ? NARROW_STRIP_LEVEL : WIDE_STRIP_LEVEL;
-  const clock = (at: number) => dayClock(at, now, pt);
+  const clock = (at: number) => dayClock(at, now, pt, i18n.language);
   const turn = useMemo(() => rowTurn(task), [task]);
   const edge = history && seen ? edgeOf(task, history, line.hands, marks, seen, now, scale, turn) : null;
   // The turn's note keeps clear of now's rule: on a strip too narrow for "From …" it writes the time alone, or only its

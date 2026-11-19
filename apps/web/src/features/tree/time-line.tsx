@@ -1009,7 +1009,8 @@ export const clockHeight = (k = textScale()) => 30 * k;
 /** `seen`: the stretch on screen; labels under the frozen column or past the screen's end are hidden. */
 export function TimeClock({ place, pieces, width, now, onShowAll, seen, inset = 0, insetStart = 0 }: { place: string; pieces: Piece[]; width: number; now: number;
   onShowAll: () => void; seen?: { from: number; to: number } | null; inset?: number; insetStart?: number }) {
-  const { t } = useTranslation("tree");
+  const { t, i18n } = useTranslation("tree");
+  const locale = i18n.language;
   const probe = useProbe((state) => state.probe?.place === place ? state.probe.at : null);
   const probeRuns = useProbe((state) => state.probe?.place === place ? state.probe.runs ?? 0 : 0);
   const nowX = xOf(pieces, now);
@@ -1022,9 +1023,9 @@ export function TimeClock({ place, pieces, width, now, onShowAll, seen, inset = 
   const viewFrom = (seen ? xOf(pieces, seen.from) : 0) + insetStart, viewTo = (seen ? xOf(pieces, seen.to) : width) - inset;
   // Now's label, like the times, is not written half under the frozen column.
   const nowCut = [viewFrom, viewTo].some((edge) => nowKeep[0] < edge && nowKeep[1] > edge);
-  const labels = useMemo(() => clockLabels(pieces, width, now, nowKeep, [viewFrom, viewTo], k), [pieces, width, now, nowKeep[0], nowKeep[1], viewFrom, viewTo, k]);
+  const labels = useMemo(() => clockLabels(pieces, width, now, nowKeep, locale, [viewFrom, viewTo], k), [pieces, width, now, nowKeep[0], nowKeep[1], viewFrom, viewTo, k, locale]);
   const probeX = probe === null ? null : xOf(pieces, probe);
-  const probeText = probe === null ? "" : `${clockText(probe, now)}${probeRuns ? ` ■${probeRuns}` : ""}`;
+  const probeText = probe === null ? "" : `${clockText(probe, now, locale)}${probeRuns ? ` ■${probeRuns}` : ""}`;
   const probeW = (probeText.length * CHAR_W + 10) * k;
   const probeLeft = probeX === null ? null : Math.max(viewFrom, Math.min(viewTo - probeW, probeX - probeW / 2));
   // Under the pointed time the clock writes nothing else.
@@ -1067,9 +1068,9 @@ function Cut({ piece, k }: { piece: Piece; k: number }) {
 }
 
 /** A clock time as the clock says it: "14:12" on the day of `today`, "10/3 14:12" on another. */
-function clockText(at: number, today: number) {
+function clockText(at: number, today: number, locale: string) {
   const clock = formatClock(new Date(at).toISOString());
-  return sameCalendarDay(at, today) ? clock : `${formatCalendarDate(at, today)} ${clock}`;
+  return sameCalendarDay(at, today) ? clock : `${formatCalendarDate(at, today, locale)} ${clock}`;
 }
 
 /**
@@ -1256,7 +1257,7 @@ function labelExtent(label: Pick<ClockLabel, "x" | "anchor" | "text">, k: number
  * than the label before it carry the date ("10/3 22:00"); `keep` is where now is written; `view` is the stretch on screen
  * (a label under the frozen column or past the screen's end is not written, so the first one seen has the date).
  */
-export function clockLabels(pieces: Piece[], width: number, now: number, keep: [number, number], view: [number, number] = [0, width], k = 1): ClockLabel[] {
+export function clockLabels(pieces: Piece[], width: number, now: number, keep: [number, number], locale: string, view: [number, number] = [0, width], k = 1): ClockLabel[] {
   const bounds: [number, number] = [view[0] + 2, view[1] - 2];
   const midnight = (at: number) => { const date = new Date(at); return date.getHours() === 0 && date.getMinutes() === 0; };
   const candidates: ClockLabel[] = [];
@@ -1265,7 +1266,7 @@ export function clockLabels(pieces: Piece[], width: number, now: number, keep: [
     // With nonnegative text width, every label contains its anchor; fits cannot keep an offscreen one.
     if (!(k >= 0) || (x >= bounds[0] && x <= bounds[1])) {
       const day = midnight(at);
-      candidates.push({ at, x, anchor, text: day ? formatCalendarDate(at, now) : formatClock(new Date(at).toISOString()), day });
+      candidates.push({ at, x, anchor, text: day ? formatCalendarDate(at, now, locale) : formatClock(new Date(at).toISOString()), day });
     }
   };
   // A fold's cut is drawn at its middle; no label runs over one (a fold's time sits beside its own cut, and could reach the next).
@@ -1307,7 +1308,7 @@ export function clockLabels(pieces: Piece[], width: number, now: number, keep: [
     // Candidates belong to this call; only the previous label's time is read while rewriting their text.
     placed.forEach((label, i) => {
       const changes = !sameCalendarDay(label.at, i === 0 ? now : placed[i - 1]!.at);
-      label.text = label.day ? label.text : changes ? `${formatCalendarDate(label.at, now)} ${formatClock(new Date(label.at).toISOString())}` : formatClock(new Date(label.at).toISOString());
+      label.text = label.day ? label.text : changes ? `${formatCalendarDate(label.at, now, locale)} ${formatClock(new Date(label.at).toISOString())}` : formatClock(new Date(label.at).toISOString());
     });
     const kept: ClockLabel[] = [];
     for (const label of [...placed].sort((a, b) => Number(a.anchor === "middle") - Number(b.anchor === "middle"))) if (fits(kept, label)) kept.push(label);

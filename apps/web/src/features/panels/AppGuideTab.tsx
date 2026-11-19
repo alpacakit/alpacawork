@@ -35,13 +35,17 @@ export function AppGuideTab() {
 }
 
 /** Chrome's address bar as it looks in the reader's language; its own light and dark follow the screen's. */
-const INSTALL_CAPTURE = { en: { light: installEnLight, dark: installEnDark }, ja: { light: installJaLight, dark: installJaDark } };
+const defaultInstallCapture = { light: installEnLight, dark: installEnDark };
+const installCaptures = new Map([
+  ["en", defaultInstallCapture],
+  ["ja", { light: installJaLight, dark: installJaDark }],
+]);
 
 /** The browser's own Install is the way in, so the page only shows where it is; an installed window has no address bar to point at. */
 function DesktopApp() {
   const { t, i18n } = useTranslation("panels");
   const installed = useInstalledApp();
-  const capture = INSTALL_CAPTURE[i18n.language.startsWith("ja") ? "ja" : "en"];
+  const capture = installCaptures.get(i18n.language) ?? defaultInstallCapture;
   return <Part id="app-guide-desktop" title={t("settings.apps.desktopTitle")}>
     {installed ? <p>{t("settings.apps.desktopInstalled")}</p> : <>
       <p><Trans t={t} i18nKey="settings.apps.desktopBody" components={{ ui: <UiName /> }} /></p>

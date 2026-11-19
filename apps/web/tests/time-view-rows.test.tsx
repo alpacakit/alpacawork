@@ -260,7 +260,7 @@ test("the future band fits the longest visible row, with a clock-only minimum sh
 
 test("the future band says a time's width, never the state the row's icon says; its title keeps the full words", () => {
   const t = i18n.getFixedT("en", "people");
-  const band = (facts: Parameters<typeof finishWords>[0]) => { const words = finishWords(facts, now, t); return [futureWords(words, now)?.text ?? null, words.long]; };
+  const band = (facts: Parameters<typeof finishWords>[0]) => { const words = finishWords(facts, now, t, i18n.language); return [futureWords(words, now)?.text ?? null, words.long]; };
   const ahead = now + 30 * minute, clock = formatClock(iso(ahead)), past = formatClock(iso(now - 10 * minute));
   // A report or an end a moment ahead of the screen's clock: the time alone, as wide as an expected report.
   expect(band({ kind: "reported", at: ahead, turn: false })).toEqual([clock, `Awaiting review, reported ${clock}`]);
@@ -282,10 +282,10 @@ test("a time on another day says no day word in the band, only a small day mark"
   const t = i18n.getFixedT("en", "people");
   const nextDay = new Date(now); nextDay.setDate(nextDay.getDate() + 1); nextDay.setHours(0, 55, 0, 0);
   const at = nextDay.getTime(), clock = formatClock(iso(at));
-  const words = finishWords({ kind: "subtree", at, count: 1, open: 0 }, now, t);
+  const words = finishWords({ kind: "subtree", at, count: 1, open: 0 }, now, t, i18n.language);
   expect(words.long).toContain("tomorrow");
   expect(futureWords(words, now)).toEqual({ text: clock, days: 1 });
-  expect(futureWords(finishWords({ kind: "subtree", at, count: 1, open: 1 }, now, t), now)).toEqual({ text: `After ${clock}`, days: 1 });
+  expect(futureWords(finishWords({ kind: "subtree", at, count: 1, open: 1 }, now, t, i18n.language), now)).toEqual({ text: `After ${clock}`, days: 1 });
 });
 
 test("a mark keeps its event time even beside the now line", () => {
