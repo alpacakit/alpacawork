@@ -39,6 +39,8 @@ alpacawork is now available in Simplified Chinese, Spanish and Brazilian Portugu
 
 ### Setup
 - In all five languages, the README puts installation near the top and links to the guides in the same language. A new FAQ explains how to ask the coordinator to add a new model or change settings. ([#3](https://github.com/alpacakit/alpacawork/pull/3), [#5](https://github.com/alpacakit/alpacawork/pull/5), [#6](https://github.com/alpacakit/alpacawork/pull/6), [#7](https://github.com/alpacakit/alpacawork/pull/7), [#8](https://github.com/alpacakit/alpacawork/pull/8))
+- The README's copyable install instructions link directly to the setup guide on GitHub in all five languages. ([#11](https://github.com/alpacakit/alpacawork/pull/11))
+- The npm package description and keywords now match how the README and GitHub introduce alpacawork. ([#10](https://github.com/alpacakit/alpacawork/pull/10))
 
 ### Screens
 - In project settings, **Working folder** is the new name for **Code location**. ([#4](https://github.com/alpacakit/alpacawork/pull/4))
