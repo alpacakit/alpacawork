@@ -1,0 +1,114 @@
+{
+  "agents": {
+    "checking": "Checking…",
+    "continueWithout": "Continue without an agent",
+    "copy": "Copy",
+    "enable": "How to sign in",
+    "failed": {
+      "check": "Couldn't check the agents on this PC.",
+      "save": "Couldn't save the agent settings."
+    },
+    "first": "Default agent",
+    "found": "Installed. Works if it is signed in or has an API key set up",
+    "how": "Run this command in a terminal and follow the prompts to sign in.",
+    "later": "You can change which agents are enabled later in Settings.",
+    "lead": "These are the AI agents alpacawork can use. Enable the ones you want to hand tasks to.",
+    "missing": "The {{command}} command was not found. Install it to use this agent",
+    "noneOn": "Enable at least one agent.",
+    "noneOnTitle": "No agent is enabled",
+    "noneReady": "Install an agent or sign in to one, then choose “Check again”.",
+    "noneReadyTitle": "No agent is ready yet",
+    "ready": "Signed in",
+    "recheck": "Check again",
+    "signedOut": "Sign-in required",
+    "stillSignedOut": "{{name}} is still not signed in. Sign in from a terminal, then check again.",
+    "title": "Agents for your tasks"
+  },
+  "back": "Back",
+  "changedElsewhere": "Changed in another view. Showing the current setting.",
+  "consent": {
+    "body": "Usage data includes the version, OS, and feature usage counts. Conversations, task contents, file names, and the PC name are never sent. Nothing is sent until you go to the next step, and alpacawork works the same with this off. You can change this anytime in Settings.",
+    "close": "Close",
+    "detail": "What is sent",
+    "failed": "Couldn't save your usage data choice. Try again.",
+    "label": "Send usage data to the developers",
+    "rows": {
+      "id": "A random ID for each PC (not derived from your PC or user information)",
+      "idKey": "Identifier",
+      "interval": "Once a day",
+      "intervalKey": "Frequency",
+      "notSent": "Conversations, task titles and bodies, files and file names, the PC name, and user names",
+      "notSentKey": "Never sent",
+      "sent": "The alpacawork version, OS and device type, feature usage counts, screen load times, error types, the kinds of agents used, and approximate task counts",
+      "sentKey": "Sent",
+      "stop": "In Settings → Server → Usage data, you can stop sending and delete the data already sent",
+      "stopKey": "Stop and delete"
+    }
+  },
+  "language": "Display language",
+  "next": "Next",
+  "project": {
+    "failed": "Couldn't finish setup. Try again.",
+    "finish": "Finish setup",
+    "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
+    "lead": "Tasks are handed off project by project. Name your first one and choose the folder agents work in (\"Code location\").",
+    "policyLead": "The project policy that is filled in is only an example. Rewrite it to fit your own work. You can change all of this later in Settings.",
+    "policyNote": "What you write here is given as written to every agent working in this project.",
+    "policySkillLine": "- {{skill}}: use {{when}}.",
+    "policySkills": "## Skills to use",
+    "policyStart": "## Project purpose\n- Let the user learn how to use alpacawork by trying it out.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
+    "reread": "Load the latest",
+    "title": "First project"
+  },
+  "skills": {
+    "done_one": "Installed {{count}} skill",
+    "done_other": "Installed {{count}} skills",
+    "failed": "Couldn't install. {{reason}}",
+    "failedRequest": "Couldn't start the installation.",
+    "install_one": "Install {{count}} skill",
+    "install_other": "Install {{count}} skills",
+    "installed": "Installed",
+    "installing": "Installing…",
+    "items": {
+      "alpacawork-betterquality": {
+        "cost": "Results get better, but the checks add time and token usage. The number of checks depends on how heavy the work is; for light work, the agent checks its own result.",
+        "what": "Agents set the pass criteria before work starts, and another AI checks the result before you are asked to review it.",
+        "when": "when planning, when asking for a review, and when receiving findings"
+      },
+      "askmeclearly": {
+        "what": "Agents keep questions and reports short and mark where to look in images or video, so you can decide and check quickly.",
+        "when": "when asking the user to decide, and when writing a report"
+      },
+      "doyourjob": {
+        "what": "Agents look up what they can and decide what they may, so they ask you only what you alone can decide.",
+        "when": "before asking the user, and before making a choice with large consequences"
+      }
+    },
+    "lead": "Used with alpacawork, these skills make tasks easier to hand off. Agents ask only what needs your decision, write reports that are easy to check, and deliver better results.",
+    "reason": {
+      "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
+      "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",
+      "other": "Try again, or continue without it.",
+      "timeout": "The installation timed out. Try again.",
+      "unreachable": "Couldn't reach the download source. Check your network connection, then try again."
+    },
+    "recommended": "Recommended",
+    "skip": "Skip",
+    "source": "alpacawork-betterquality is bundled with alpacawork. The others are downloaded from GitHub (alpacakit/pocket-skills).",
+    "title": "Skills to install",
+    "where": "Skills are installed to {{place}} and linked so that Claude Code can use them. You can remove them later."
+  },
+  "steps": {
+    "agents": "Agents",
+    "label": "Setup steps",
+    "project": "Project",
+    "skills": "Skills"
+  },
+  "theme": "Theme",
+  "themeOption": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
+  "title": "Setup"
+}

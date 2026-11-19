@@ -1,0 +1,86 @@
+{
+  "appBar": {
+    "settings": "設定",
+    "settingsUpdate": {
+      "attention": "設定 — アップデートで対応が必要です",
+      "available": "設定 — {{version}} があります",
+      "busy": "設定 — アップデート中",
+      "done": "設定 — 再読み込みすると新しい版になります",
+      "failed": "設定 — アップデートに失敗しました"
+    }
+  },
+  "documentTitle": {
+    "separator": "・",
+    "waiting_other": "$t(tree:home.turn) {{count}}件",
+    "withCounts": "({{counts}}) {{page}}"
+  },
+  "gathered": {
+    "markAllRead": "すべて既読に"
+  },
+  "notice": {
+    "back": "更新が戻りました",
+    "diagnostics": "状況を見る",
+    "hostCpu": "CPU {{value}}",
+    "hostDisk": "ディスクの空き {{value}}",
+    "hostMemory": "メモリの空き {{value}}",
+    "hostMinutes_other": "{{count}}分",
+    "hostOpen": "見る",
+    "hostTight": "端末の負荷が厳しい",
+    "previousBoth": "前回の設定と状態を使っています。",
+    "previousReads": "前回の状態で表示しています。",
+    "previousSettings": "前回の設定を使っています。",
+    "readOnly": "書き込めません",
+    "reconnect": "再接続",
+    "reloadBoth": "個人設定と既読の状態を再読み込みできませんでした。",
+    "reloadReads": "既読の状態を再読み込みできませんでした。",
+    "reloadSettings": "個人設定を再読み込みできませんでした。",
+    "shownFromBefore": "前回の内容",
+    "unreadableMany_other": "{{count}}件のファイルを読み取れません",
+    "unreadableOne": "{{path}} を読み取れません"
+  },
+  "presence": {
+    "ariaAway": "通知: 離席中はすぐ送ります",
+    "ariaMuted": "通知: {{until}}止めています",
+    "ariaPresent": "通知: 在席中は送りません",
+    "away": "離席",
+    "menuLabel": "通知の状態",
+    "mutedUntil": "今日 {{time}} まで",
+    "mutedUntilTomorrow": "明日 {{time}} まで",
+    "notSent": "通知は送らない",
+    "pausedUntil": "{{until}}通知を止めています",
+    "pauseHour": "1時間止める",
+    "pauseMorning": "明日 {{time}} まで止める",
+    "pauseMorningToday": "今日 {{time}} まで止める",
+    "pauseTwoHours": "2時間止める",
+    "present": "在席",
+    "resume": "再開する",
+    "saveFailed": "変更を保存できませんでした。",
+    "sentImmediately": "すぐ送る",
+    "settings": "通知の設定…"
+  },
+  "projects": {
+    "all": "すべてのプロジェクト",
+    "menu": "プロジェクト",
+    "new": "プロジェクトを作る",
+    "settings": "{{name}} の設定…",
+    "settingsAll": "プロジェクトの設定…",
+    "settingsOf": " の設定…"
+  },
+  "search": {
+    "clear": "すべて外す",
+    "count_other": "{{count}}件のタスク",
+    "empty": "一致するタスクはありません。",
+    "emptyHint": "条件を変えるか、すべて外してください。",
+    "failedFirst": "検索できませんでした。",
+    "failedWhat": "検索の続きを読めませんでした。",
+    "loading": "検索中…",
+    "more": "続きを表示",
+    "queryCondition": "「{{query}}」",
+    "removeCondition": "この条件を外す",
+    "removeNamedCondition": "{{name}}: この条件を外す"
+  },
+  "toolbar": {
+    "searchLabel": "タスクを検索",
+    "searchPlaceholder": "タイトル・本文・ID を検索"
+  }
+}

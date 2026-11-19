@@ -1,0 +1,4 @@
+import type { DiagramPalette, DiagramTheme } from "../src/lib/mermaid-protocol";
+const light: DiagramPalette = { theme: "light", fontFamily: "sans-serif", card: "#fcfeff", node: "#e9ebef", note: "#e9ebef", cluster: "#f4f6f9", ink: "#17181b", muted: "#585b5f", nodeBorder: "#727579", noteBorder: "#727579", clusterBorder: "#727579", seriesBorder: "#585b5f", series: ["#9fc3d4", "#a4c7b9", "#dbb799", "#c0b6e4", "#cbb9c3", "#bcc0c7"] };
+const dark: DiagramPalette = { ...light, theme: "dark", card: "#26282b", node: "#383b3e", note: "#2d2f33", cluster: "#1e2124", ink: "#eceff2", muted: "#bbbec2", nodeBorder: "#a1a3a7", noteBorder: "#a1a3a7", clusterBorder: "#a1a3a7", seriesBorder: "#bbbec2", series: ["#466b7b", "#4a6f5d", "#7f623c", "#615d84", "#745e6a", "#61666d"] };
+export const palette = (theme: DiagramTheme = "light") => theme === "dark" ? dark : light;

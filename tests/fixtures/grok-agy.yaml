@@ -1,0 +1,37 @@
+# Generated from defaultAgentSetting in @alpacawork/contract; explicit test settings.
+agents:
+  grok:
+    params:
+      model:
+        - grok-4.7
+      effort:
+        - high
+        - low
+        - medium
+        - xhigh
+    env:
+      - XAI_API_KEY
+  agy:
+    params:
+      model:
+        - gemini-3.8-flash
+        - claude-sonnet-4-6
+        - claude-opus-4-6-thinking
+        - gpt-oss-120b-medium
+      effort:
+        - high
+        - low
+        - medium
+    env:
+      - GEMINI_API_KEY
+      - AGY_ADC_AUTH
+      - GOOGLE_CLOUD_QUOTA_PROJECT
+      - GOOGLE_CLOUD_LOCATION
+      - GOOGLE_APPLICATION_CREDENTIALS
+    without:
+      claude-sonnet-4-6:
+        - effort
+      claude-opus-4-6-thinking:
+        - effort
+      gpt-oss-120b-medium:
+        - effort

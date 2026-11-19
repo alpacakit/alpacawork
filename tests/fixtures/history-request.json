@@ -1,0 +1,48 @@
+{
+  "provenance": "Entirely fictional seeded review Request. Numeric IDs, UTC timestamps, actors and prose are fixed synthetic values; no captured conversation is used.",
+  "taskTitle": "架空の図鑑に見本の説明を追加する",
+  "request": {
+    "id": "synthetic-catalog-review-01",
+    "taskId": "T9001",
+    "placementId": "P00000000-0000-4000-8000-000000000002",
+    "runId": "R9002",
+    "origin": "review",
+    "author": {
+      "kind": "main",
+      "provider": "codex",
+      "conversationId": "00000000-0000-4000-8000-000000000003",
+      "quote": {
+        "source": "utterance",
+        "turnId": "00000000-0000-4000-8000-000000000004",
+        "text": "見本を読み直して"
+      }
+    },
+    "recipientRole": "owner",
+    "mode": "continue",
+    "submittedAt": "2001-02-03T10:00:00.000Z",
+    "deliveryState": "queued",
+    "headline": "架空の図鑑の見本を読み直してください。",
+    "bodyBytes": 1978
+  },
+  "log": {
+    "id": "synthetic-catalog-review-01",
+    "kind": "review_sent_back",
+    "at": "2001-02-03T10:00:00.005000+00:00",
+    "title": null,
+    "description": null,
+    "actor": {
+      "kind": "main",
+      "provider": "codex",
+      "conversationId": "00000000-0000-4000-8000-000000000003",
+      "quote": {
+        "source": "utterance",
+        "turnId": "00000000-0000-4000-8000-000000000004",
+        "text": "見本を読み直して"
+      }
+    },
+    "fromState": "waiting",
+    "toState": null,
+    "runId": "R9001"
+  },
+  "body": "架空の図鑑の見本を読み直してください。\n利用者の指示:「見本を読み直して」\nこれは履歴表示のために作った合成の依頼です。見本の植物、説明文、作業記録はすべて架空です。\n\n- 見本 1: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 2: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 3: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 4: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 5: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 6: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 7: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 見本 8: 架空の植物の説明を読み、葉の色と花の形が図と合うか確認してください。気づいた箇所を見本番号とともに記録してください。\n- 検査の途中でも、別の見本の説明とこの依頼の本文を混ぜず、読んでいた位置から続けてください。\n- 最後に確認できた内容と、まだ読めていない見本をまとめてください。\n"
+}

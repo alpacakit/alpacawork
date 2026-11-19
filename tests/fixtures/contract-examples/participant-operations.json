@@ -1,0 +1,49 @@
+{
+  "placeMember": {
+    "input": {
+      "taskId": "T1",
+      "profileKey": "claude",
+      "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedResponsibleRevision": 1
+    },
+    "receipt": {
+      "agent": {
+        "id": "A4",
+        "createdAt": "2026-09-29T00:10:00.000Z"
+      },
+      "placement": {
+        "id": "P4",
+        "taskId": "T1",
+        "agentId": "A4",
+        "profileKey": "claude",
+        "responsible": false,
+        "active": true,
+        "revision": 1,
+        "startedAt": "2026-09-29T00:10:00.000Z",
+        "endedAt": null
+      }
+    }
+  },
+  "releaseMember": {
+    "input": {
+      "taskId": "T1",
+      "placementId": "P4",
+      "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedResponsibleRevision": 1,
+      "expectedPlacementRevision": 1
+    },
+    "receipt": {
+      "placement": {
+        "id": "P4",
+        "taskId": "T1",
+        "agentId": "A4",
+        "profileKey": "claude",
+        "responsible": false,
+        "active": false,
+        "revision": 2,
+        "startedAt": "2026-09-29T00:10:00.000Z",
+        "endedAt": "2026-09-29T00:11:00.000Z"
+      }
+    }
+  }
+}

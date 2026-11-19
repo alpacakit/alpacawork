@@ -1,0 +1,389 @@
+{
+  "allRead": {
+    "done": "すべて既読にしました",
+    "failed": "既読にできませんでした。再読み込みして確認してください。",
+    "undo": "元に戻す"
+  },
+  "coordinatorCard": {
+    "attached": "添付だけ",
+    "clear": "会話を消す",
+    "clearConfirm": "もう一度で消去",
+    "clearFailed": "会話を削除できませんでした。",
+    "clearing": "削除中…",
+    "clearingHint": "会話を削除中",
+    "clearUnknown": "会話を削除できたか分かりません。",
+    "complete": "このタスクを完了にする",
+    "completeHint": "{{id}}を完了にします",
+    "conflict": "同じIDで別の内容が届いています",
+    "conversationChanged": "会話が切り替わりました",
+    "copyAnswer": "返事をコピー",
+    "deliveryRefused": "エージェントが受け取れなかったため、列で待っています。",
+    "done": "完了",
+    "draft": "書きかけ",
+    "earlierCount_other": "以前のメッセージ {{count}}件",
+    "error": {
+      "attachment": "添付を読めませんでした",
+      "attachmentSave": "返答の添付を保存できませんでした",
+      "config": "エージェントの設定を読めませんでした",
+      "conversationBusy": "会話が使用中です",
+      "exit": "エージェントが途中で終了しました",
+      "internal": "処理中に問題が起きました",
+      "interrupted": "途中で停止しました",
+      "launch": "エージェントを起動できませんでした",
+      "output": "返答を読み取れませんでした",
+      "server": "サーバーへの接続を読めませんでした",
+      "timeout": "時間切れで停止しました",
+      "tooLarge": "返答が大きすぎます",
+      "unreadable": "返答が壊れています"
+    },
+    "exchangeFold": "たたむ",
+    "exchangeOpen": "開く",
+    "expand": "会話を開く",
+    "failed": "返事を受け取れませんでした：{{reason}}",
+    "filesCount_other": "添付 {{count}}",
+    "fold": "会話を閉じる",
+    "foldExchange": "{{time}} のやり取りを畳む",
+    "foldHint": "会話を閉じる（Esc）",
+    "goToReply": "元の返答へ",
+    "height": "カードの高さ",
+    "heightHint": "上下に動かして高さを変える（すばやく上で全画面、下で閉じる）",
+    "interrupted": "送る前に中断されました",
+    "joinedCount_other": "あと {{count}} 件",
+    "launchChoiceChanged": "送ったときのモデルなどの選択は、今は送れません。選び直して送ってください",
+    "launchChoiceUnresendable": "送ったときのモデルなどの選択は今は送り直せません。届いたかどうかは確認が取れしだい表示します",
+    "loadFailed": "会話を読み込めませんでした",
+    "loading": "会話を読み込んでいます…",
+    "loadingWanted": "読み込みが終わると開きます…",
+    "maximize": "会話を最大化する",
+    "minutes_other": "{{count}}分",
+    "moreMedia_other": "ほかの {{count}}件を見る",
+    "move": "コーディネーターを動かす",
+    "moveHint": "ドラッグで動かす・ダブルクリックで右下に戻す（矢印キーで動かす、Alt＋矢印キーで大きさ、Home で戻す）",
+    "newAnswer": "新しい回答",
+    "notCarriedOut": "実行されませんでした",
+    "notReached": "確認の通信ができませんでした",
+    "open": "コーディネーターと話す",
+    "openExchange": "{{time}} のやり取りを開く",
+    "popIn": "画面に戻す",
+    "popOut": "別窓に出す",
+    "popOutFailed": "別窓を開けませんでした",
+    "popOutHint": "別窓に出す（ほかのアプリの上にも出たまま）",
+    "posting": "送信中…",
+    "queuedLocally": "順番待ち",
+    "queueEmpty": "待っているメッセージはありません",
+    "readerConfirmed": "「{{tasks}}」に送りました。",
+    "readerTargetSeparator": "、",
+    "readerUnconfirmed": "「{{tasks}}」への送信が届いたか分かりません。確かめてください。",
+    "reattachFiles_other": "添付{{count}}件は付け直してください。",
+    "reattachNamedFiles": "{{names}} は付け直してください。",
+    "refused": "送れませんでした（{{reason}}）",
+    "refusedKept": "送れませんでした（{{reason}}）。チャット欄に残しています。",
+    "refusedRestored": "送れませんでした（{{reason}}）。入力欄に戻しました。",
+    "removeContext": "{{id}} を外す",
+    "removeTask": "{{id}} を外す",
+    "replyAnswer": "返事に返信",
+    "replyLabel": "{{time}} の返答",
+    "replySource": "コーディネーターの返答",
+    "replyUnavailable": "返信先を取得できません",
+    "resend": "送り直す",
+    "resizeBoth": "ドラッグで幅と高さを変える",
+    "resizeHeight": "ドラッグで会話の高さを変える",
+    "resizeWidth": "ドラッグで幅を変える",
+    "restore": "会話を元の大きさに戻す",
+    "retry": "送り直す",
+    "returnFromReply": "{{time}} の発言へ戻る",
+    "seconds_other": "{{count}}秒",
+    "send": "送る",
+    "sendFailed": "送れませんでした。もう一度お試しください。",
+    "sendNow": "今すぐ送る",
+    "sendNowFailed": "送信できませんでした。列で待っています。",
+    "sendNowHint": "作業の区切りで読んでもらう（作業は止めない）",
+    "sendNowUnknown": "送信できたか分かりません。",
+    "sendTo": "コーディネーターに送る",
+    "sentDuringWork": "作業中に送りました",
+    "serverRefused": "受け付けられませんでした",
+    "sheetHint": "ドラッグで高さを変更\n上にスワイプで全画面・下で閉じる",
+    "soon": "まもなく送信",
+    "speak": "話してコーディネーターに頼む",
+    "speakHint": "押して話す",
+    "takeBack": "入力に戻す",
+    "takeBackHint": "入力欄を空にすると戻せます",
+    "takeBackParked": "入力に戻す · {{task}}",
+    "thinking": "対応中です…",
+    "title": "コーディネーター",
+    "unconfirmed": "届いたか分かりません。",
+    "unconfirmedToast": "届いたか分かりません。会話で送り直すか取り消してください。",
+    "unknown": "原因不明",
+    "viewImage": "{{name}} を大きく見る",
+    "waitingCount_other": "待ち {{count}}",
+    "waitingMessages": "送る順番を待っているメッセージ",
+    "warm": {
+      "examples": {
+        "policy": {
+          "label": "いつもの決まりを方針に加える",
+          "words": "プロジェクトの方針に追記してください。「報告は結論から3行で書く」"
+        },
+        "research": {
+          "label": "調べて、案を比べてもらう",
+          "words": "（調べたいこと）について調べ、案を3つ比べて、決める前に私に聞いてください。"
+        },
+        "steer": {
+          "label": "進行中の作業に指示を足す",
+          "words": "作業中のタスクに、17時までに終わる範囲に絞るよう伝えてください。"
+        },
+        "turn": {
+          "label": "今、私の番になっているものを聞く",
+          "words": "今、私の回答や確認を待っているものを教えてください。"
+        }
+      },
+      "failed": "コーディネーターの起動に失敗しました。",
+      "preparing": "コーディネーターを起動中です",
+      "ready": "こんにちは。何をお手伝いしますか？",
+      "start": "タスク一覧の例を選ぶか、頼みたいことをそのまま書いてください。"
+    },
+    "window": "コーディネーター — alpacawork",
+    "withdraw": "取り消す",
+    "withdrawFailed": "取り消せませんでした。",
+    "withdrawing": "取り消し中…",
+    "withdrawKeptUnknown": "入力はここから戻せます。前の実行結果は確認できません。",
+    "withdrawn": "取り消しました。",
+    "withdrawRecoveredUnknown": "入力を戻しました。前の実行結果は確認できません。",
+    "withdrawRestored": "取り消しました。入力欄に戻しました。",
+    "withdrawRestoredUnknown": "入力欄に戻しました。前の実行結果は確認できません。",
+    "withdrawStarted": "もう始まっていたので、取り消せませんでした。",
+    "withdrawUnknown": "取り消せたか分かりません。",
+    "working": "{{words}} {{seconds}}s",
+    "you": "あなた"
+  },
+  "copied": "コピーしました",
+  "copyFailed": "コピーできません。表示された本文を選択してコピーしてください。",
+  "defaultField": {
+    "artifact": {
+      "hint": "成果物ごとに: `[名前](場所) — 何か・版`。場所は Task フォルダの中なら相対パス、コードは絶対パス、ほかは URL か枝とコミット。中身の説明はリンク先へ。利用者が文言そのものを読んで決めるときだけ差分を `![差分](changes.patch)` で添える。",
+      "title": "成果物"
+    },
+    "conclusion": {
+      "hint": "親や一覧が知れば足りること: 分かったこと・決めたこと・おすすめ・答え待ちかを3文で。画面の細部や数値は本文・成果物へ。質問と同じ中身は書かない。",
+      "title": "結論"
+    },
+    "conditions": {
+      "hint": "条件ごとに: `<条件> — 充足|未充足|未確認（根拠の場所）`。根拠の詳細や試験の件数はリンク先へ。",
+      "title": "完了条件"
+    },
+    "decide": {
+      "hint": "決めてほしいときだけ書く。1問ずつ、決めること・選択肢（名前と説明）・補足を書く。番号は並び順で付く。選択肢の名前の最初の空白までが回答札と回答の語になり、同じ問いの中で重ねない。アプリが使う `stop` と `other` で名前を始めない。答えは `<番号>-<名前の最初の語>` と添えた言葉で届く。`<番号>-other` はどの選択肢でもないという答えで、代わりにどうするかが続く。回答を受けたら null で消す。",
+      "title": "質問"
+    },
+    "decide_choice": {
+      "title": "名前"
+    },
+    "decide_choice_detail": {
+      "hint": "選ぶと何が変わり、何が弱いかを3行で。画像は `![対象や動作](Task内の相対パス)` を1行1枚で。点検の経緯と選んだあとの段取りは本文へ。",
+      "title": "説明"
+    },
+    "decide_choice_recommended": {
+      "hint": "おすすめの選択肢1つにだけ、理由を1文で。画面はその選択肢におすすめの印を付ける。",
+      "title": "おすすめ"
+    },
+    "decide_choices": {
+      "title": "選択肢"
+    },
+    "decide_note": {
+      "hint": "共通の前提と見本のリンク・止まる時刻を書く。選択肢の説明や点検の記録は繰り返さない。",
+      "title": "補足"
+    },
+    "decide_question": {
+      "hint": "選んでほしいことを1文。背景は補足へ。",
+      "title": "決めること"
+    },
+    "decide_stop": {
+      "hint": "タスクを中止することも選べるときだけ、ここで中止するとどうなるかを3行で。独立した選択肢（`<番号>-stop`）として示され、選んだ側は答えを送る代わりにタスクを中止する。選択肢の1つとしては書かない。",
+      "title": "中止"
+    },
+    "forbidden": {
+      "hint": "このタスクだけでしないこと。プロジェクト方針にある禁止は書かない。無ければ書かない。",
+      "title": "禁止事項"
+    },
+    "goal": {
+      "hint": "何がそろえば終わりか、完了の決め手を1つ。手段は方針へ、しないことは禁止事項へ。",
+      "title": "ゴール"
+    },
+    "left_running": {
+      "hint": "今動いているものごとに: 何が・どこで・止まる時刻・止める1コマンド。無ければ `なし`。立て直しと片付けの手順は Task フォルダのファイルへ。",
+      "title": "実行中のプロセス"
+    },
+    "notes": {
+      "hint": "次にエージェントが続けるのに要ること: 今有効な判断と理由、判断を変えた経緯の1行（退けた案と理由）、判断を変える未確認、次の一手と場所。コマンド・試験の件数・作業の手順は Task フォルダのファイルに書き、成果物からリンクする。",
+      "title": "本文"
+    },
+    "policy": {
+      "hint": "このタスク固有の進め方の要点。経緯と理由は本文へ。プロジェクト方針は写さない。",
+      "title": "方針"
+    },
+    "pr": {
+      "hint": "PR（MR）を作ったときだけ、PR ごとに URL を1件。",
+      "title": "PR（MR）"
+    },
+    "project_policy": {
+      "hint": "ここに書いた内容は、このプロジェクトのすべての作業の指示にそのまま入ります。例: 目的（何のためのプロジェクトか）、進め方の好み（任せてよいこと・相談してほしいこと）、してはいけないこと。",
+      "title": "プロジェクト方針"
+    },
+    "remaining": {
+      "hint": "残る作業ごとに: `<何を> — <誰が・何待ち>`（再開の条件）。手順とコマンドは Task フォルダのファイルへ。済んだものは消す。",
+      "title": "残件"
+    },
+    "size": {
+      "list_other": "{{count}}件まで。",
+      "text_other": "{{count}}字ほど。",
+      "textList_other": "1件{{chars}}字ほど・{{count}}件まで。"
+    },
+    "user_instructions": {
+      "hint": "一番上のタスクに、利用者の今有効な発言と決定を `<日付 時:分> 「原文」`（利用者の地域の時刻・24時間制。例 `2026-11-11 09:06 「…」`）で。同じ論点は最新の1件に畳み、経緯は「（3案→B→案1 を経て）」のように添える。長い発言は要の部分を「」で。置き換わった発言・途中の案・コマンド・添付の説明は書かない（原文は History に残る）。子孫の起動文に入る。",
+      "title": "ユーザーの指示文"
+    }
+  },
+  "field": {
+    "optional": "任意"
+  },
+  "input": {
+    "cancelVoice": "録音をやめる",
+    "copyProject": "{{id}} をコピー",
+    "enterHint": "Enterで送信 · Shift+Enterで改行（⌘/Ctrl+Enterでも送信）",
+    "expand": "欄を高くする",
+    "noMatches": "当たる候補がありません",
+    "openProject": "一覧で見る",
+    "openTask": "開く",
+    "placeholder": "タスクの管理も作業の依頼も、すべてここで",
+    "placeholderFolded": "依頼はすべてここから",
+    "placeholderProject": "このプロジェクトに指示を送る",
+    "placeholderTask": "{{id}}に指示を送る",
+    "placeholderTasks": "{{id}}ほかに指示を送る",
+    "project": "プロジェクト",
+    "projects": "プロジェクト",
+    "questionsChanged": "問いが変わりました。選び直してください",
+    "recording": "録音中",
+    "remove": "外す",
+    "shrink": "欄を低くする",
+    "skillReasons": {
+      "launch": "この起動設定のスキル一覧には対応していません",
+      "limit": "スキル一覧の読み取り上限を超えました",
+      "managed": "組織のスキル設定を確かめられません",
+      "plugins": "有効なプラグインのスキルを確かめられません",
+      "settings": "このスキル設定を正しく読み取れません",
+      "system": "Codexの標準スキルを確認できません",
+      "unreadable": "スキルの場所を読み取れません"
+    },
+    "skills": "スキルを使う",
+    "skillsChanged": "この相手で使えるスキルを選び直してください",
+    "skillsUnavailable": "使えるスキルを確認できません",
+    "skipAnswer": "この問いには答えない",
+    "storageUnavailable": "下書きを保存できません。二重に送らないよう送信を止めています。閉じる前に内容を写してください。",
+    "tasks": "タスクかプロジェクトを入れる",
+    "touchEnterHint": "Enterで改行 · ボタンで送信（⌘/Ctrl+Enterでも送信）",
+    "transcribing": "文字にしています…",
+    "viewing": "表示中"
+  },
+  "loading": "読み込み中",
+  "role": {
+    "coordinator": "コーディネーター",
+    "coordinatorDescription": "あなたの代わりにエージェントを束ねる役"
+  },
+  "run": {
+    "cause": {
+      "modelCapacity": "モデルが混み合っていて（容量不足）、実行が失敗しました。時間をおくか別のモデルでやり直すか、止めるかを選んでください",
+      "weeklyLimit": "エージェントが週の利用上限に達し、実行が失敗しました。上限が戻ってからやり直すか、止めるかを選んでください"
+    },
+    "causeReason": {
+      "modelCapacity": "モデルが混み合っています（容量不足）",
+      "weeklyLimit": "週の利用上限に達しました"
+    }
+  },
+  "state": {
+    "doing": "作業中",
+    "done": "完了",
+    "error": "エラー",
+    "held": "保留",
+    "stopped": "中止",
+    "todo": "未着手",
+    "waiting": "待ち",
+    "waitingReview": "レビュー待ち"
+  },
+  "turn": {
+    "continue": "続ける",
+    "question": "質問",
+    "reason": {
+      "children": "この実行の依頼数が上限に達しました。作業を確認し、必要なら別の指示を送ってください",
+      "depth": "依頼が深さの上限に達しました。結果を確認し、必要なら新しい指示を送ってください",
+      "failed": "エージェントの実行が失敗したか、報告せずに終わりました。やり直すか止めるかを選んでください",
+      "limit_other": "自動のやり取りが上限で止まりました（{{count}} 件）",
+      "noProfile": "エージェントの起動設定がありません。設定を確認して指示を送ってください",
+      "notResumable": "エージェントの前の会話は続けられません。新しい会話への指示を送ってください",
+      "refused": "続きの依頼が受け付けられませんでした。理由を確認して新しい指示を送ってください",
+      "responsibleUnavailable": "責任者への依頼を始められません。責任者の有無と起動設定を確かめて、指示を送り直してください",
+      "unconfirmed": "エージェントに返事が届いたか確認できません。結果を確かめ、必要なら指示を送ってください"
+    },
+    "retry": "やり直す",
+    "stop": "止める"
+  },
+  "undo": {
+    "offer": {
+      "approve": "{{task}} を完了にしました",
+      "approveUndone": "完了を取り消しました",
+      "archive": "{{task}} をアーカイブしました",
+      "archiveUndone": "アーカイブを取り消しました",
+      "cancelled": "取り消しました",
+      "delete": "{{task}} を削除しました",
+      "deleteUndone": "削除を取り消しました",
+      "hold": "{{task}} を保留にしました",
+      "holdUndone": "保留を取り消しました",
+      "message": "送信しました",
+      "messageUndone": "送信を取り消しました",
+      "move": "{{task}} を移動しました",
+      "moveUndone": "移動を取り消しました",
+      "projectCreate": "プロジェクトを作成しました",
+      "projectCreateUndone": "プロジェクトの作成を取り消しました",
+      "responsible": "{{task}} の責任者を替えました",
+      "responsibleUndone": "責任者の交代を取り消しました",
+      "restore": "{{task}} を復元しました",
+      "restoreUndone": "復元を取り消しました",
+      "unhold": "{{task}} の保留を外しました",
+      "unholdUndone": "保留の解除を取り消しました"
+    }
+  },
+  "work": {
+    "agentAssign": "エージェントを置いています…",
+    "agentHandover": "責任者を交代しています…",
+    "agentRelease": "エージェントを外しています…",
+    "fieldRead": "項目の設定を確認中です…",
+    "runRead": "Runの結果を確認中です…",
+    "runStop": "Runを停止中です…",
+    "taskComment": "タスクに記録を追加中です…",
+    "taskMove": "タスクを移動中です…",
+    "taskNew": "タスクを作成中です…",
+    "taskRead": "タスクを確認中です…",
+    "taskReport": "タスクの状態・報告を更新中です…",
+    "taskRequest": "エージェントに依頼を送っています…",
+    "taskUpdate": "タスクを変更中です…"
+  },
+  "workName": {
+    "agentAssign": "エージェントの配置",
+    "agentHandover": "責任者の交代",
+    "agentRelease": "エージェントの解除",
+    "command": "コマンド",
+    "edit": "ファイルの編集",
+    "fieldRead": "項目設定の確認",
+    "file": "ファイルの読み取り",
+    "runRead": "Runの結果の確認",
+    "runStop": "Runの停止",
+    "search": "ファイルの検索",
+    "taskComment": "タスクへの記録",
+    "taskMove": "タスクの移動",
+    "taskNew": "タスクの作成",
+    "taskRead": "タスクの確認",
+    "taskReport": "タスクの状態・報告",
+    "taskRequest": "エージェントへの依頼",
+    "taskUpdate": "タスクの変更",
+    "tool": "ツール",
+    "web": "ウェブ検索"
+  }
+}

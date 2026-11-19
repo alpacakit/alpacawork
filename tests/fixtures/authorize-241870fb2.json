@@ -1,0 +1,648 @@
+{
+  "sourceCommit": "241870fb21d97379a9edbe32073d469a60b4f3e6",
+  "decisions": [
+    {
+      "action": {
+        "name": "task.read"
+      },
+      "cases": 16176,
+      "sha256": "41fdcf6ca049838032fc7ef3b6a8c90b49d41fdfc0ff4cb35b0e9b218d1496e9"
+    },
+    {
+      "action": {
+        "name": "task.list"
+      },
+      "cases": 16176,
+      "sha256": "0a94ddab1bc0513684c36d3d60bd69957e13ecd6b1e3e3d98e648fe65477adf9"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "task",
+        "userRequested": null
+      },
+      "cases": 16176,
+      "sha256": "bd00d5ae521fd6347ed082f135f931f7f5293063edd39b391fe324cc24287969"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "task",
+        "userRequested": false
+      },
+      "cases": 16176,
+      "sha256": "f7533862e5815a3ffec9bbda48de832d874e49e6366dae5797dfe4f8e98fe6f3"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "task",
+        "userRequested": true
+      },
+      "cases": 16176,
+      "sha256": "9da1453659a831756bf4cf21738597e0c57e5e254c25d9fed223786c4ad705ee"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "project",
+        "userRequested": null
+      },
+      "cases": 16176,
+      "sha256": "49e25ca21349b161ae1fc07f878d02c35dc6a5fae959ebae928f054063564d75"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "project",
+        "userRequested": false
+      },
+      "cases": 16176,
+      "sha256": "49e25ca21349b161ae1fc07f878d02c35dc6a5fae959ebae928f054063564d75"
+    },
+    {
+      "action": {
+        "name": "task.new",
+        "kind": "project",
+        "userRequested": true
+      },
+      "cases": 16176,
+      "sha256": "49e25ca21349b161ae1fc07f878d02c35dc6a5fae959ebae928f054063564d75"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "title"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "69ac877c4b149bbbac7222f22f1557c593f28a63513c52f40bf3bcb68c55af35"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "body"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "e5f6d61695e08f22702c88b829ec2e68f66b0537052f35ff04f38e098910389d"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "cwd"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "0a8b5eb0c1a96359aca0b107438979c831e332cae1d971440ba957a293a487fb"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "extracts"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "2006a57fc6ac6d7db08273f5217da0afee0137cff93af6877c51d9b61bbde9a8"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "userRequested"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "f1c2402b31356fe4bbe203dcf0d4bb78f2012b4e365a787e4072544e40bdc429"
+    },
+    {
+      "action": {
+        "name": "task.update",
+        "fields": [
+          "title",
+          "body",
+          "cwd",
+          "extracts",
+          "userRequested"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "2ebd70e3a1efd67bbbc20f1959636fe4ab950464012e683187b8c473bb5e7b78"
+    },
+    {
+      "action": {
+        "name": "task.move",
+        "to": [
+          "T5",
+          "T2",
+          "T1"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "5a91396860de35583678abde3ffa8c1ba6f6001366f1c034e97a41f12e07f6ee"
+    },
+    {
+      "action": {
+        "name": "task.move",
+        "to": [
+          "T1"
+        ]
+      },
+      "cases": 16176,
+      "sha256": "98ab728d01e6e365072b15bcc485d882624b6745d57d855479a471c8cbf72b86"
+    },
+    {
+      "action": {
+        "name": "task.archive"
+      },
+      "cases": 16176,
+      "sha256": "31fa4bc2231121b858f8fef9329840971587359c22a33923899a50b7ac682b71"
+    },
+    {
+      "action": {
+        "name": "task.delete"
+      },
+      "cases": 16176,
+      "sha256": "df0ca77109202824680ac42b1d22e4df6520a60044bc61b72b6cf4e9c08b3e4f"
+    },
+    {
+      "action": {
+        "name": "task.restore"
+      },
+      "cases": 16176,
+      "sha256": "7ade41f486836d8c550f63788c1320098f3a32cb6f79744b0cf8ebe7b6d8f44f"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "todo",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "todo",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "todo",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "todo",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "doing",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "5af3487c896d67c0d2a11503be7d6de152b8b52f6a178493c86e7962aa9eab01"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "doing",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "5af3487c896d67c0d2a11503be7d6de152b8b52f6a178493c86e7962aa9eab01"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "doing",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "3c58e731ede9c8928051ce958cd6b6a0baad558bc15f8ab393c49b1cee2bb480"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "doing",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "3c58e731ede9c8928051ce958cd6b6a0baad558bc15f8ab393c49b1cee2bb480"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "waiting",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "6acb3d92c30f1e942bede3dfc450e677d7935a2ea6bcc88dcf6de1cf5bbe0b70"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "waiting",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "6acb3d92c30f1e942bede3dfc450e677d7935a2ea6bcc88dcf6de1cf5bbe0b70"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "waiting",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "3c58e731ede9c8928051ce958cd6b6a0baad558bc15f8ab393c49b1cee2bb480"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "waiting",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "3c58e731ede9c8928051ce958cd6b6a0baad558bc15f8ab393c49b1cee2bb480"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "done",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "56c12f2180b60156f5d59669136c381ebb60e5deaf3327d9857a87ade9f533d8"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "done",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "7e8a40a4efc6e3a06509a5c4f6a0c6d2999efbb4d9ee04ca0245280fce7905f7"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "done",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "56799e55a697a35c1fa8d24a205b81085e536eeb984ed0a14cd8245140712254"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "done",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "920c5b5eeeb0c4c1d621b685e4c778c5f3a70af363427c288c84a893d8d072b4"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "stopped",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "07224167d883c82be2f77f667e7571de035e5e1784280871cf21047ea27a7747"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "stopped",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "07224167d883c82be2f77f667e7571de035e5e1784280871cf21047ea27a7747"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "stopped",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "07224167d883c82be2f77f667e7571de035e5e1784280871cf21047ea27a7747"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "stopped",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "07224167d883c82be2f77f667e7571de035e5e1784280871cf21047ea27a7747"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "error",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "error",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "error",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "error",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c0bf64df16df727518d2f2814b329e4174db67605b98318505bd8daebb450ece"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "held",
+        "checkpoint": false,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c7357cfda9ebd5c409d4abd4c76b9d26be235fd01893649e235118df3234675e"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "held",
+        "checkpoint": false,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c7357cfda9ebd5c409d4abd4c76b9d26be235fd01893649e235118df3234675e"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "held",
+        "checkpoint": true,
+        "confirmation": false
+      },
+      "cases": 16176,
+      "sha256": "c7357cfda9ebd5c409d4abd4c76b9d26be235fd01893649e235118df3234675e"
+    },
+    {
+      "action": {
+        "name": "task.report",
+        "state": "held",
+        "checkpoint": true,
+        "confirmation": true
+      },
+      "cases": 16176,
+      "sha256": "c7357cfda9ebd5c409d4abd4c76b9d26be235fd01893649e235118df3234675e"
+    },
+    {
+      "action": {
+        "name": "task.withdraw"
+      },
+      "cases": 16176,
+      "sha256": "b30ad817934cc344db5c2d85da6c661c89410d5eeb0bb827c9c82644bf51e596"
+    },
+    {
+      "action": {
+        "name": "task.comment",
+        "urgent": false
+      },
+      "cases": 16176,
+      "sha256": "8d5c350b3fdd2255acb84da5764c9171d7322f5cfc61f019ca518584ca97500b"
+    },
+    {
+      "action": {
+        "name": "task.comment",
+        "urgent": true
+      },
+      "cases": 16176,
+      "sha256": "d0faa281fbbd1999a7d0522fef238f25b562e787d0238cce70067ea1d4f75106"
+    },
+    {
+      "action": {
+        "name": "task.request",
+        "worker": false
+      },
+      "cases": 16176,
+      "sha256": "31fbe19bd29a7c16b540f2f0c17a392fa5cb6d7baf64d14777c4fea398bbbe74"
+    },
+    {
+      "action": {
+        "name": "task.request",
+        "worker": true
+      },
+      "cases": 16176,
+      "sha256": "8cb51cbffe053d3743bb950b3aa34ee11605c143bc4325261e41a5b900f6d35e"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": null,
+        "closed": false
+      },
+      "cases": 16176,
+      "sha256": "99af288bef5606e9027a71459d4ec42bf1ac22e7b6aba9d72f1ef1acf31a9d89"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": null,
+        "closed": true
+      },
+      "cases": 16176,
+      "sha256": "99af288bef5606e9027a71459d4ec42bf1ac22e7b6aba9d72f1ef1acf31a9d89"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": "T2",
+        "closed": false
+      },
+      "cases": 16176,
+      "sha256": "44cd38c916c6bf9d293d4a245132209a5e2047d1cef01b3b7036d4f670455ce7"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": "T2",
+        "closed": true
+      },
+      "cases": 16176,
+      "sha256": "00666094383df228e39632c78a83bfb1dab5e7401ad48a188b5f9eaf4a866e48"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": "T5",
+        "closed": false
+      },
+      "cases": 16176,
+      "sha256": "2174a6a2d7b1b14ae23e5d38ed941b91456ce0fa1e089fa81bb3fac1bab63353"
+    },
+    {
+      "action": {
+        "name": "task.answer",
+        "askedTo": "T5",
+        "closed": true
+      },
+      "cases": 16176,
+      "sha256": "36a347def74d9d074609fe9e850b494da0eb1d90a88343fb0247a0342cf0b066"
+    },
+    {
+      "action": {
+        "name": "agent.assign",
+        "worker": false
+      },
+      "cases": 16176,
+      "sha256": "d77fedd30d435710c315e74c60d54c70a03d0c4eb1b34b3fc4e2d83be2d41ffe"
+    },
+    {
+      "action": {
+        "name": "agent.assign",
+        "worker": true
+      },
+      "cases": 16176,
+      "sha256": "53224867b106a0684c3382e0882262dff2656797cf865b679e70fb1e0c169c2b"
+    },
+    {
+      "action": {
+        "name": "agent.release",
+        "worker": false
+      },
+      "cases": 16176,
+      "sha256": "b380fb69e4b462118abf57b069988c1c168a3f8f8a6c6244ba33cdea1eed9dee"
+    },
+    {
+      "action": {
+        "name": "agent.release",
+        "worker": true
+      },
+      "cases": 16176,
+      "sha256": "24c23bfd1743423b4eab8de5731f167ab22c37a0e535f29bf4d5c8672e072434"
+    },
+    {
+      "action": {
+        "name": "agent.handover"
+      },
+      "cases": 16176,
+      "sha256": "53ff0a8a8b4acc9c5ca357e84ab06e835afa48f6cb23078179d20475a25c3a2f"
+    },
+    {
+      "action": {
+        "name": "run.stop"
+      },
+      "cases": 16176,
+      "sha256": "ffa436af46b7e445aa27726806600abf72c35279461a7f04fd51373f849b5992"
+    },
+    {
+      "action": {
+        "name": "file.write"
+      },
+      "cases": 16176,
+      "sha256": "c4a804613a78f68b871896d1b0b1a2a74fbae4f7d7ce3b954dd51be7033967d2"
+    },
+    {
+      "action": {
+        "name": "screen"
+      },
+      "cases": 16176,
+      "sha256": "352c2d3b28680f25130f928971944c7f0af50bd82d43bf4161efed2641393f5c"
+    },
+    {
+      "action": {
+        "name": "coordinator.screen"
+      },
+      "cases": 16176,
+      "sha256": "d6a2b2db1454d7db24c8310ed74fedf887046f436638ba2bde370e808bb3449e"
+    },
+    {
+      "action": {
+        "name": "runtime"
+      },
+      "cases": 16176,
+      "sha256": "5e2400ced124f7e0f4666c525934ab446a966e42d95b189dc869f8ee0f3045c4"
+    },
+    {
+      "action": {
+        "name": "config.set"
+      },
+      "cases": 16176,
+      "sha256": "8e00dfb06b7b370493e8a0d05da359f296ae3c1d22fa8392d6ad37f831b78439"
+    },
+    {
+      "action": {
+        "name": "admin"
+      },
+      "cases": 16176,
+      "sha256": "db51fe26fbab570e8b7e8497c1319040b4fc7397641c466365bfb08fdd57ffbf"
+    },
+    {
+      "action": {
+        "name": "release"
+      },
+      "cases": 16176,
+      "sha256": "c4ce7a692d38a126b4f5cbb14c0c9ae9ae429a80f64c390bd0f4c4872117c77d"
+    }
+  ]
+}

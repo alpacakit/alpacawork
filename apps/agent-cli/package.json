@@ -1,0 +1,18 @@
+{
+  "name": "@alpacawork/agent-cli",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "alpacawork-agent": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist test-dist && tsc -p tsconfig.json --outDir test-dist && vite build --config vite.config.ts && chmod +x dist/cli.js"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "1.0.14",
+    "@alpacawork/contract": "workspace:*",
+    "@alpacawork/core": "workspace:*"
+  }
+}

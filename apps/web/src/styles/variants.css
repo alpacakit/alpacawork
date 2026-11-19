@@ -1,0 +1,17 @@
+/* A phone's width: every phone rule in these files is this variant. The screen's script reads the same width (NARROW_QUERY,
+ * state/view-store.ts). The coordinator's own window (picture-in-picture) is as narrow on a computer, and keeps a computer's sizes. */
+@custom-variant narrow {
+  @media (max-width: 700px) {
+    &:not(:where([data-surface="pip"] *)) {
+      @slot;
+    }
+  }
+}
+/* App bar and list have the same content width; search moves below both when that width is tight. */
+@custom-variant compactbar (@container (width < 660px));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* While the keyboard is in use (input-mode.ts writes data-input): for a focus a part shows in its own way, not the ring. */
+@custom-variant keys (&:where(:root[data-input="keyboard"] *));
+/* The image viewer's video row too narrow for the time, its length and a seek one can drag (under 320px: a 320px phone).
+   Asked of the row itself, so the video's size never changes it. */
+@custom-variant tightrow (@container media-row (width < 320px));

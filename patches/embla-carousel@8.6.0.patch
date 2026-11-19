@@ -1,0 +1,84 @@
+diff --git a/cjs/embla-carousel.cjs.js b/cjs/embla-carousel.cjs.js
+index 03e30fa6eb188331dd0ac5e9cc64a107929470d8..a704decbb3b8e385203d0b37dc1ba423c31f3320 100644
+--- a/cjs/embla-carousel.cjs.js
++++ b/cjs/embla-carousel.cjs.js
+@@ -557,8 +557,10 @@ function ScrollBody(location, offsetLocation, previousLocation, target, baseDura
+     return self;
+   }
+   function settled() {
+-    const diff = target.get() - offsetLocation.get();
+-    return mathAbs(diff) < 0.001;
++    const targetLocation = target.get();
++    return mathAbs(targetLocation - offsetLocation.get()) < 0.001 &&
++      mathAbs(targetLocation - location.get()) < 0.001 &&
++      mathAbs(targetLocation - previousLocation.get()) < 0.001;
+   }
+   function duration() {
+     return scrollDuration;
+@@ -858,6 +860,10 @@ function ScrollTo(animation, indexCurrent, indexPrevious, scrollBody, scrollTarg
+     const distanceDiff = target.distance;
+     const indexDiff = target.index !== indexCurrent.get();
+     targetVector.add(distanceDiff);
++    if (indexDiff) {
++      indexPrevious.set(indexCurrent.get());
++      indexCurrent.set(target.index);
++    }
+     if (distanceDiff) {
+       if (scrollBody.duration()) {
+         animation.start();
+@@ -868,8 +874,6 @@ function ScrollTo(animation, indexCurrent, indexPrevious, scrollBody, scrollTarg
+       }
+     }
+     if (indexDiff) {
+-      indexPrevious.set(indexCurrent.get());
+-      indexCurrent.set(target.index);
+       eventHandler.emit('select');
+     }
+   }
+@@ -1669,4 +1673,3 @@ function EmblaCarousel(root, userOptions, userPlugins) {
+ EmblaCarousel.globalOptions = undefined;
+ 
+ module.exports = EmblaCarousel;
+-//# sourceMappingURL=embla-carousel.cjs.js.map
+diff --git a/esm/embla-carousel.esm.js b/esm/embla-carousel.esm.js
+index 5b0cee64a00f87b939eb052d85b0502dceee700a..36854020dc62037bb3f584df6fd78193c065f53e 100644
+--- a/esm/embla-carousel.esm.js
++++ b/esm/embla-carousel.esm.js
+@@ -555,8 +555,10 @@ function ScrollBody(location, offsetLocation, previousLocation, target, baseDura
+     return self;
+   }
+   function settled() {
+-    const diff = target.get() - offsetLocation.get();
+-    return mathAbs(diff) < 0.001;
++    const targetLocation = target.get();
++    return mathAbs(targetLocation - offsetLocation.get()) < 0.001 &&
++      mathAbs(targetLocation - location.get()) < 0.001 &&
++      mathAbs(targetLocation - previousLocation.get()) < 0.001;
+   }
+   function duration() {
+     return scrollDuration;
+@@ -856,6 +858,10 @@ function ScrollTo(animation, indexCurrent, indexPrevious, scrollBody, scrollTarg
+     const distanceDiff = target.distance;
+     const indexDiff = target.index !== indexCurrent.get();
+     targetVector.add(distanceDiff);
++    if (indexDiff) {
++      indexPrevious.set(indexCurrent.get());
++      indexCurrent.set(target.index);
++    }
+     if (distanceDiff) {
+       if (scrollBody.duration()) {
+         animation.start();
+@@ -866,8 +872,6 @@ function ScrollTo(animation, indexCurrent, indexPrevious, scrollBody, scrollTarg
+       }
+     }
+     if (indexDiff) {
+-      indexPrevious.set(indexCurrent.get());
+-      indexCurrent.set(target.index);
+       eventHandler.emit('select');
+     }
+   }
+@@ -1667,4 +1671,3 @@ function EmblaCarousel(root, userOptions, userPlugins) {
+ EmblaCarousel.globalOptions = undefined;
+ 
+ export { EmblaCarousel as default };
+-//# sourceMappingURL=embla-carousel.esm.js.map

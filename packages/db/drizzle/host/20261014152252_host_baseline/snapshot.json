@@ -1,0 +1,137 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "f136dc06-7c73-43a2-8b2d-4d599e183b0d",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "name": "episodes",
+      "entityType": "tables"
+    },
+    {
+      "name": "minutes",
+      "entityType": "tables"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "episodes"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "start_at",
+      "entityType": "columns",
+      "table": "episodes"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "end_at",
+      "entityType": "columns",
+      "table": "episodes"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_at",
+      "entityType": "columns",
+      "table": "episodes"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "detail",
+      "entityType": "columns",
+      "table": "episodes"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "at",
+      "entityType": "columns",
+      "table": "minutes"
+    },
+    {
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "cpu_average",
+      "entityType": "columns",
+      "table": "minutes"
+    },
+    {
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "cpu_max",
+      "entityType": "columns",
+      "table": "minutes"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "memory_free_average",
+      "entityType": "columns",
+      "table": "minutes"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "memory_free_min",
+      "entityType": "columns",
+      "table": "minutes"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "episodes_pk",
+      "table": "episodes",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "at"
+      ],
+      "nameExplicit": false,
+      "name": "minutes_pk",
+      "table": "minutes",
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}

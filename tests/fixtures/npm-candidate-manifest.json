@@ -1,0 +1,140 @@
+{
+  "name": "@fixture/alpacawork-candidate",
+  "version": "0.3.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.16.0"
+  },
+  "bin": {
+    "alpacawork": "bin/alpacawork.mjs",
+    "alpacawork-backend": "bin/backend.mjs",
+    "alpacawork-agent": "bin/agent.mjs"
+  },
+  "dependencies": {
+    "@alpacakit/channels": "0.1.0-beta.39",
+    "@alpacakit/core": "0.1.0-beta.39",
+    "@alpacawork/cli-kit": "0.3.0",
+    "@alpacawork/contract": "0.3.0",
+    "@alpacawork/core": "0.3.0",
+    "@alpacawork/db": "0.3.0",
+    "@alpacawork/raw": "0.3.0",
+    "@alpacawork/runs": "0.3.0",
+    "@babel/helper-string-parser": "7.29.7",
+    "@babel/helper-validator-identifier": "7.29.7",
+    "@babel/parser": "7.29.9",
+    "@babel/types": "7.29.8",
+    "@block65/webcrypto-web-push": "2.0.0",
+    "@github/copilot-sdk": "1.0.14",
+    "@github/copilot-sdk-linux-x64": "1.0.14",
+    "@hono/node-server": "2.1.1",
+    "@koromix/koffi-linux-x64": "3.3.1",
+    "commander": "14.0.3",
+    "drizzle-orm": "1.0.0-rc.4",
+    "get-east-asian-width": "1.7.0",
+    "hono": "4.13.8",
+    "immer": "11.1.18",
+    "koffi": "3.3.1",
+    "re2js": "2.8.6",
+    "uint8array-extras": "1.6.0",
+    "unicode-case-folding": "1.1.1",
+    "vscode-jsonrpc": "8.2.1",
+    "yaml": "2.9.1",
+    "zod": "4.3.6"
+  },
+  "bundleDependencies": [
+    "@alpacakit/channels",
+    "@alpacakit/core",
+    "@alpacawork/cli-kit",
+    "@alpacawork/contract",
+    "@alpacawork/core",
+    "@alpacawork/db",
+    "@alpacawork/raw",
+    "@alpacawork/runs",
+    "@babel/helper-string-parser",
+    "@babel/helper-validator-identifier",
+    "@babel/parser",
+    "@babel/types",
+    "@block65/webcrypto-web-push",
+    "@github/copilot-sdk",
+    "@github/copilot-sdk-linux-x64",
+    "@hono/node-server",
+    "@koromix/koffi-linux-x64",
+    "commander",
+    "drizzle-orm",
+    "get-east-asian-width",
+    "hono",
+    "immer",
+    "koffi",
+    "re2js",
+    "uint8array-extras",
+    "unicode-case-folding",
+    "vscode-jsonrpc",
+    "yaml",
+    "zod"
+  ],
+  "alpacawork": {
+    "source": "cb2de1b741ac0a385a201123326ed1c293b9719c",
+    "edition": "production",
+    "format": "df2bc388cf32c6d28fa429eeda76533a12bd53606dad45ce3126618694e2faff",
+    "schema": {
+      "control": {
+        "version": 16,
+        "history": [
+          {
+            "name": "20261031000000_control_baseline",
+            "hash": "80b6d8831a275a0e67079ec2a0d14133ce6ec1d2413a7090ce23232f30ba2829"
+          },
+          {
+            "name": "20261103000000_dependency_history",
+            "hash": "574d013c635e06770d16f75883497f8174f176dd2a6240990cefd3a1b65cbd80"
+          }
+        ]
+      },
+      "host": [
+        {
+          "name": "20261014152252_host_baseline",
+          "hash": "1ab822f9ffebdba0305585f25ffe19e9b372441402ad503de0d22c9c00d1c6c3"
+        }
+      ]
+    },
+    "skills": {
+      "sha256": "6385c563cf27add69eb973f6f16a1196fac0b1459ffbf6f5c504c31fd9d35c71"
+    },
+    "targets": [
+      "linux-x64-glibc"
+    ],
+    "update": {
+      "handoff": 1,
+      "records": {
+        "receipt": {
+          "read": [
+            1
+          ],
+          "write": 1,
+          "migrate": []
+        },
+        "journal": {
+          "read": [
+            4
+          ],
+          "write": 4,
+          "migrate": []
+        },
+        "installation": {
+          "read": [
+            4
+          ],
+          "write": 4,
+          "migrate": []
+        },
+        "update": {
+          "read": [
+            3
+          ],
+          "write": 3,
+          "migrate": []
+        }
+      }
+    }
+  }
+}

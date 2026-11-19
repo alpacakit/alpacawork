@@ -1,0 +1,24 @@
+/* Hallmark · macrostructure: Workbench (one list in groups beside a time sheet, kept) · tone: utilitarian · anchor hue: 260 (cool neutral; meaning hues on marks only)
+ * genre: modern-minimal · theme: custom (system.md) · nav: app bar (kept) · footer: none · enrichment: none · design-system: system.md
+ * pre-emit critique: P4 H4 E4 S4 R5 V3 · contrast: pass (40–41) */
+/* ════════ The screen's stylesheet ════════
+
+   Each file holds what changes for one reason, in the order they cascade; a comment elsewhere that says styles.css
+   means these files. Screens write the names as classes. These files hold only what cannot be a class on an element.
+   variants   `narrow:`, `compactbar:`, `dark:`, `keys:`, `tightrow:`
+   tokens     every colour, size and step, for light and dark
+   base       element defaults for every element of a kind
+   parts      what a shared part needs beyond classes: hairlines, a label in text, sideways fades, the viewer's range
+   motion     the steps every move, fade and tint is timed by, and reduced motion
+   toast      a toast's surface, place and time left
+   surfaces   what stands over the screen's foot, a sheet in the hand, a surface reshaping
+   reader     the reader's head, a timeline's day dividers, a reply's and a question's rings */
+@import "tailwindcss";
+@import "./styles/variants.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/parts.css";
+@import "./styles/motion.css";
+@import "./styles/toast.css";
+@import "./styles/surfaces.css";
+@import "./styles/reader.css";

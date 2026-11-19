@@ -1,0 +1,401 @@
+{
+  "allRead": {
+    "done": "Marked all as read",
+    "failed": "Could not mark as read. Reload to check.",
+    "undo": "Undo"
+  },
+  "coordinatorCard": {
+    "attached": "Attachments only",
+    "clear": "Clear conversation",
+    "clearConfirm": "Click again to clear",
+    "clearFailed": "Could not clear the conversation.",
+    "clearing": "Clearing…",
+    "clearingHint": "Clearing the conversation",
+    "clearUnknown": "Couldn't confirm whether the conversation was cleared.",
+    "complete": "Mark this task done",
+    "completeHint": "Mark {{id}} as done",
+    "conflict": "different content already arrived under the same ID",
+    "conversationChanged": "The conversation changed",
+    "copyAnswer": "Copy reply",
+    "deliveryRefused": "The agent could not take the message. It remains queued.",
+    "done": "Done",
+    "draft": "Draft",
+    "earlierCount_one": "{{count}} earlier message",
+    "earlierCount_other": "{{count}} earlier messages",
+    "error": {
+      "attachment": "Could not read the attachment",
+      "attachmentSave": "Could not save the reply attachments",
+      "config": "Could not read the agent settings",
+      "conversationBusy": "The conversation is in use",
+      "exit": "The agent exited before finishing",
+      "internal": "Something went wrong while processing",
+      "interrupted": "Interrupted",
+      "launch": "Could not start the agent",
+      "output": "Could not read the reply",
+      "server": "Could not read the server connection",
+      "timeout": "Stopped after the time limit",
+      "tooLarge": "The reply is too large",
+      "unreadable": "The reply is corrupted"
+    },
+    "exchangeFold": "Collapse",
+    "exchangeOpen": "Expand",
+    "expand": "Open the conversation",
+    "failed": "Could not receive a reply: {{reason}}",
+    "filesCount_one": "{{count}} attachment",
+    "filesCount_other": "{{count}} attachments",
+    "fold": "Close the conversation",
+    "foldExchange": "Collapse the exchange at {{time}}",
+    "foldHint": "Close the conversation (Esc)",
+    "goToReply": "Go to the original reply",
+    "height": "Card height",
+    "heightHint": "Drag up or down to resize (flick up for full screen, down to close)",
+    "interrupted": "Interrupted before sending",
+    "joinedCount_one": "+{{count}} more",
+    "joinedCount_other": "+{{count}} more",
+    "launchChoiceChanged": "The model and other choices it was sent with can't be sent now. Choose again and send",
+    "launchChoiceUnresendable": "The model and other choices it was sent with can't be resent now. Whether it arrived will show once confirmed",
+    "loadFailed": "Could not load the conversation",
+    "loading": "Loading the conversation…",
+    "loadingWanted": "Opens once it is loaded…",
+    "maximize": "Maximize the conversation",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "moreMedia_one": "Show {{count}} more",
+    "moreMedia_other": "Show {{count}} more",
+    "move": "Move the coordinator",
+    "moveHint": "Drag to move · double-click to return it to the bottom right (arrow keys move, Alt + arrow keys resize, Home returns it)",
+    "newAnswer": "New answer",
+    "notCarriedOut": "Not carried out",
+    "notReached": "the check could not reach the server",
+    "open": "Talk to the coordinator",
+    "openExchange": "Expand the exchange at {{time}}",
+    "popIn": "Back into the app",
+    "popOut": "Open in a separate window",
+    "popOutFailed": "Could not open a separate window",
+    "popOutHint": "Open in a separate window (stays on top of other apps)",
+    "posting": "Sending…",
+    "queuedLocally": "Queued",
+    "queueEmpty": "Nothing is waiting to be sent",
+    "readerConfirmed": "Sent to “{{tasks}}”.",
+    "readerTargetSeparator": ", ",
+    "readerUnconfirmed": "Couldn't confirm whether the message to “{{tasks}}” arrived. Please check.",
+    "reattachFiles_one": "Reattach {{count}} attachment.",
+    "reattachFiles_other": "Reattach {{count}} attachments.",
+    "reattachNamedFiles": "Reattach {{names}}.",
+    "refused": "Not sent ({{reason}})",
+    "refusedKept": "Not sent ({{reason}}). It's still in the chat.",
+    "refusedRestored": "Not sent ({{reason}}). Moved back to the input box.",
+    "removeContext": "Remove {{id}}",
+    "removeTask": "Remove {{id}}",
+    "replyAnswer": "Reply to this message",
+    "replyLabel": "Reply at {{time}}",
+    "replySource": "Coordinator's reply",
+    "replyUnavailable": "Reply target unavailable",
+    "resend": "Send again",
+    "resizeBoth": "Drag to resize",
+    "resizeHeight": "Drag to resize the conversation",
+    "resizeWidth": "Drag to change the width",
+    "restore": "Restore the conversation size",
+    "retry": "Send again",
+    "returnFromReply": "Back to message at {{time}}",
+    "seconds_one": "{{count}} second",
+    "seconds_other": "{{count}} seconds",
+    "send": "Send",
+    "sendFailed": "Could not send. Please try again.",
+    "sendNow": "Send now",
+    "sendNowFailed": "Could not send. The message remains queued.",
+    "sendNowHint": "Read at the next pause in the work (doesn't stop the work)",
+    "sendNowUnknown": "Couldn't confirm whether the message was sent.",
+    "sendTo": "Message the coordinator",
+    "sentDuringWork": "Sent during work",
+    "serverRefused": "the server refused it",
+    "sheetHint": "Drag to resize\nSwipe up for full screen, down to close",
+    "soon": "Sending soon",
+    "speak": "Ask the coordinator by voice",
+    "speakHint": "Press and speak",
+    "takeBack": "Return to input",
+    "takeBackHint": "Clear the input box to move it back",
+    "takeBackParked": "Return to input · {{task}}",
+    "thinking": "Working on it…",
+    "title": "Coordinator",
+    "unconfirmed": "Couldn't confirm whether it arrived.",
+    "unconfirmedToast": "Couldn't confirm whether it arrived. Resend or cancel it in the conversation.",
+    "unknown": "Unknown cause",
+    "viewImage": "Enlarge {{name}}",
+    "waitingCount_one": "{{count}} waiting",
+    "waitingCount_other": "{{count}} waiting",
+    "waitingMessages": "Messages waiting to be sent",
+    "warm": {
+      "examples": {
+        "policy": {
+          "label": "Add a standing rule to the policy",
+          "words": "Add this rule to the project policy: \"Reports start with the conclusion, in 3 lines.\""
+        },
+        "research": {
+          "label": "Have options researched and compared",
+          "words": "Research (your topic), compare 3 options, and ask me before deciding."
+        },
+        "steer": {
+          "label": "Add an instruction to work in progress",
+          "words": "Tell the tasks in progress to narrow their scope to what can be finished by 5 pm."
+        },
+        "turn": {
+          "label": "Ask what is waiting on me",
+          "words": "Tell me what is waiting for my answer or review right now."
+        }
+      },
+      "failed": "Could not start the coordinator.",
+      "preparing": "Starting the coordinator",
+      "ready": "Hello. How can I help?",
+      "start": "Choose an example in the task list, or just write what you need."
+    },
+    "window": "Coordinator — alpacawork",
+    "withdraw": "Cancel",
+    "withdrawFailed": "Could not cancel the message.",
+    "withdrawing": "Cancelling…",
+    "withdrawKeptUnknown": "You can move the input back from here. Couldn't confirm the result of the earlier run.",
+    "withdrawn": "Cancelled.",
+    "withdrawRecoveredUnknown": "Moved the input back. Couldn't confirm the result of the earlier run.",
+    "withdrawRestored": "Cancelled and moved back to the input box.",
+    "withdrawRestoredUnknown": "Moved back to the input box. Couldn't confirm the result of the earlier run.",
+    "withdrawStarted": "It had already started, so it could not be cancelled.",
+    "withdrawUnknown": "Couldn't confirm whether it was cancelled.",
+    "working": "{{words}} {{seconds}}s",
+    "you": "You"
+  },
+  "copied": "Copied",
+  "copyFailed": "Could not copy. Select the text shown and copy it.",
+  "defaultField": {
+    "artifact": {
+      "hint": "One per deliverable: `[name](location) — what it is, revision`. The location is a relative path inside the task folder, an absolute path for code, otherwise a URL or a branch and commit. Put the description of the contents in the linked file. Attach a diff as `![diff](changes.patch)` only when the user decides by reading the wording itself.",
+      "title": "Deliverables"
+    },
+    "conclusion": {
+      "hint": "What the parent and the list need to know, in 3 sentences: what was found, what was decided, the recommendation, and whether an answer is awaited. Screen details and numbers go in the notes or deliverables. Do not repeat what a question says.",
+      "title": "Conclusion"
+    },
+    "conditions": {
+      "hint": "One per condition: `<condition> — met|not met|unchecked (where the evidence is)`. Evidence details and test counts go in the linked file.",
+      "title": "Done conditions"
+    },
+    "decide": {
+      "hint": "Write only when something needs deciding. One question at a time: what to decide, the choices (name and description) and a note. Numbers follow the order. The first word of a choice’s name (up to its first space) becomes its answer button and answer word; do not repeat it within a question, and do not start a name with `stop` or `other`, which the app keeps. The answer arrives as `<number>-<first word of the name>` with any words added; `<number>-other` says none of the choices, with what to do instead. Clear it with null once answered.",
+      "title": "Questions"
+    },
+    "decide_choice": {
+      "title": "Name"
+    },
+    "decide_choice_detail": {
+      "hint": "In 3 lines: what changes if chosen and what is weak. Images as `![subject or action](relative path in the task)`, one per line. Review history and the steps after choosing go in the notes.",
+      "title": "Description"
+    },
+    "decide_choice_recommended": {
+      "hint": "Only on the one choice you recommend: why, in one sentence. The screen marks that choice as recommended.",
+      "title": "Recommended"
+    },
+    "decide_choices": {
+      "title": "Choices"
+    },
+    "decide_note": {
+      "hint": "Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.",
+      "title": "Note"
+    },
+    "decide_question": {
+      "hint": "One sentence on what to choose. Background goes in the note.",
+      "title": "What to decide"
+    },
+    "decide_stop": {
+      "hint": "Only when stopping the task is one of the options: what stopping means here, in 3 lines. It is offered as a choice of its own (`<number>-stop`), and whoever picks it stops the task instead of answering. Do not write it as one of the choices.",
+      "title": "Stop"
+    },
+    "forbidden": {
+      "hint": "What this task alone must not do. Leave out what the project policy already forbids. Write nothing if there is none.",
+      "title": "Forbidden"
+    },
+    "goal": {
+      "hint": "One deciding sign that the task is done: what must be in place. Means go in Policy; what not to do goes in Forbidden.",
+      "title": "Goal"
+    },
+    "left_running": {
+      "hint": "One per thing running now: what, where, when it stops, and the one command that stops it. Write `none` if there is none. How to restart and clean up goes in files in the task folder.",
+      "title": "Running processes"
+    },
+    "notes": {
+      "hint": "What the next agent needs to carry on: the decisions in effect and why, one line on how a decision changed (rejected options and why), unchecked points that could change a decision, and the next step and where. Commands, test counts and work steps go in files in the task folder, linked from the deliverables.",
+      "title": "Notes"
+    },
+    "policy": {
+      "hint": "Key points of how this task is approached. History and reasons go in the notes. Do not copy the project policy.",
+      "title": "Policy"
+    },
+    "pr": {
+      "hint": "Only when a PR (MR) was opened: one URL per PR.",
+      "title": "PR (MR)"
+    },
+    "project_policy": {
+      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
+      "title": "Project policy"
+    },
+    "remaining": {
+      "hint": "One per piece of work left: `<what> — <who / waiting for what>` (the condition to resume). Steps and commands go in files in the task folder. Remove what is done.",
+      "title": "Remaining work"
+    },
+    "size": {
+      "list_one": "Up to {{count}} item.",
+      "list_other": "Up to {{count}} items.",
+      "text_one": "About {{count}} character.",
+      "text_other": "About {{count}} characters.",
+      "textList_one": "About {{chars}} characters each, up to {{count}} item.",
+      "textList_other": "About {{chars}} characters each, up to {{count}} items."
+    },
+    "user_instructions": {
+      "hint": "On the top task, the user’s statements and decisions that still apply, as `<date hh:mm> “original words”` (the user’s local time, 24-hour clock, e.g. `2026-11-11 09:06 “…”`). Fold the same point into its latest one and add how it got there, like “(3 options → B → option 1)”. Quote only the key part of a long statement. Leave out replaced statements, interim options, commands and attachment descriptions (the original stays in History). Goes into the launch prompts of every task below.",
+      "title": "User instructions"
+    }
+  },
+  "field": {
+    "optional": "Optional"
+  },
+  "input": {
+    "cancelVoice": "Cancel recording",
+    "copyProject": "Copy {{id}}",
+    "enterHint": "Enter to send · Shift+Enter for a new line (⌘/Ctrl+Enter also sends)",
+    "expand": "Make input taller",
+    "noMatches": "No matching items",
+    "openProject": "View in list",
+    "openTask": "Open",
+    "placeholder": "Manage tasks and request work, all from here",
+    "placeholderFolded": "Ask for anything here",
+    "placeholderProject": "Send instructions to this project",
+    "placeholderTask": "Send instructions to {{id}}",
+    "placeholderTasks": "Send instructions to {{id}} and others",
+    "project": "Project",
+    "projects": "Projects",
+    "questionsChanged": "The questions changed. Choose your answers again.",
+    "recording": "Recording",
+    "remove": "Remove",
+    "shrink": "Make input shorter",
+    "skillReasons": {
+      "launch": "Skill lists aren't supported for this launch profile",
+      "limit": "The skill list exceeds the read limit",
+      "managed": "Organization skill settings cannot be verified",
+      "plugins": "Skills from enabled plugins cannot be verified",
+      "settings": "Skill settings cannot be read reliably",
+      "system": "Codex system skills cannot be verified",
+      "unreadable": "A skill location cannot be read"
+    },
+    "skills": "Use a skill",
+    "skillsChanged": "Choose again from the skills this agent can use",
+    "skillsUnavailable": "Available skills could not be verified",
+    "skipAnswer": "Leave this question unanswered",
+    "storageUnavailable": "Couldn't save the draft. Sending is paused to prevent duplicates. Copy your text before closing.",
+    "tasks": "Insert a task or project",
+    "touchEnterHint": "Enter for a new line · Use the button to send (⌘/Ctrl+Enter also sends)",
+    "transcribing": "Transcribing…",
+    "viewing": "Viewing"
+  },
+  "loading": "Loading",
+  "role": {
+    "coordinator": "Coordinator",
+    "coordinatorDescription": "Coordinates agents on your behalf"
+  },
+  "run": {
+    "cause": {
+      "modelCapacity": "The model was at capacity, so the run failed. Retry later or with another model, or stop",
+      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Retry after the limit resets, or stop"
+    },
+    "causeReason": {
+      "modelCapacity": "The model is at capacity",
+      "weeklyLimit": "Weekly usage limit reached"
+    }
+  },
+  "state": {
+    "doing": "In progress",
+    "done": "Done",
+    "error": "Error",
+    "held": "On hold",
+    "stopped": "Stopped",
+    "todo": "Not started",
+    "waiting": "Waiting",
+    "waitingReview": "Awaiting review"
+  },
+  "turn": {
+    "continue": "Continue",
+    "question": "Question",
+    "reason": {
+      "children": "The run reached its request limit. Review the work and send a separate instruction if needed",
+      "depth": "Request depth limit reached. Review the result and send a new instruction if needed",
+      "failed": "The agent run failed or ended without a report. Choose to retry or stop",
+      "limit_one": "Automatic exchanges stopped at the limit ({{count}} waiting)",
+      "limit_other": "Automatic exchanges stopped at the limit ({{count}} waiting)",
+      "noProfile": "There is no launch profile for this agent. Check the settings and send an instruction",
+      "notResumable": "The agent's previous conversation can't be continued. Send an instruction to start a new conversation",
+      "refused": "The continuation request was refused. Check why and send a new instruction",
+      "responsibleUnavailable": "Could not start the request to the owner. Check the owner assignment and launch profile, then resend the instruction",
+      "unconfirmed": "Couldn't confirm whether the reply reached the agent. Check the result and send an instruction if needed"
+    },
+    "retry": "Retry",
+    "stop": "Stop"
+  },
+  "undo": {
+    "offer": {
+      "approve": "Marked {{task}} as done",
+      "approveUndone": "Completion undone",
+      "archive": "Archived {{task}}",
+      "archiveUndone": "Archive undone",
+      "cancelled": "Undone",
+      "delete": "Deleted {{task}}",
+      "deleteUndone": "Deletion undone",
+      "hold": "Put {{task}} on hold",
+      "holdUndone": "Hold undone",
+      "message": "Sent",
+      "messageUndone": "Message cancelled",
+      "move": "Moved {{task}}",
+      "moveUndone": "Move undone",
+      "projectCreate": "Created a project",
+      "projectCreateUndone": "Project creation undone",
+      "responsible": "Replaced the owner of {{task}}",
+      "responsibleUndone": "Owner replacement undone",
+      "restore": "Restored {{task}}",
+      "restoreUndone": "Restoration undone",
+      "unhold": "Took {{task}} off hold",
+      "unholdUndone": "Back on hold"
+    }
+  },
+  "work": {
+    "agentAssign": "Assigning an agent…",
+    "agentHandover": "Handing over to a new owner…",
+    "agentRelease": "Releasing an agent…",
+    "fieldRead": "Checking the field settings…",
+    "runRead": "Checking a run result…",
+    "runStop": "Stopping a run…",
+    "taskComment": "Adding a note to a task…",
+    "taskMove": "Moving a task…",
+    "taskNew": "Creating a task…",
+    "taskRead": "Checking tasks…",
+    "taskReport": "Updating a task's state and report…",
+    "taskRequest": "Sending a request to an agent…",
+    "taskUpdate": "Updating a task…"
+  },
+  "workName": {
+    "agentAssign": "Agent assignment",
+    "agentHandover": "Owner handover",
+    "agentRelease": "Agent release",
+    "command": "Command",
+    "edit": "File edit",
+    "fieldRead": "Field settings check",
+    "file": "File read",
+    "runRead": "Run result check",
+    "runStop": "Run stop",
+    "search": "File search",
+    "taskComment": "Task note",
+    "taskMove": "Task move",
+    "taskNew": "New task",
+    "taskRead": "Task check",
+    "taskReport": "Task state and report",
+    "taskRequest": "Request to an agent",
+    "taskUpdate": "Task update",
+    "tool": "Tool",
+    "web": "Web search"
+  }
+}

@@ -1,0 +1,348 @@
+{
+  "root": "/fixture/workspace",
+  "tasks": [
+    {
+      "id": "T1",
+      "parentId": "P100",
+      "path": "tasks/T1",
+      "kind": "task",
+      "userRequested": true,
+      "lifecycle": "active",
+      "title": "Parent",
+      "state": "waiting",
+      "version": 2,
+      "hash": "fecebc3d4643eafcc02b69737d99a941a5dc8c02ad7c5b6221e0031b2decb741",
+      "log": [
+        {
+          "id": "L1",
+          "kind": "created",
+          "at": "2026-09-29T00:00:00.000Z",
+          "title": null,
+          "description": null,
+          "actor": {
+            "kind": "human"
+          },
+          "fromState": null,
+          "toState": null,
+          "userRequested": true
+        },
+        {
+          "id": "LfinishR1",
+          "kind": "reported",
+          "at": "2026-09-29T00:06:01.000Z",
+          "title": null,
+          "description": null,
+          "actor": {
+            "kind": "placement",
+            "placementId": "P1"
+          },
+          "fromState": "doing",
+          "toState": "waiting"
+        }
+      ],
+      "baseState": "waiting",
+      "hold": false,
+      "policyVersion": "product-3",
+      "allowedActions": [
+        "report_doing",
+        "report_done",
+        "confirm",
+        "stop",
+        "hold"
+      ],
+      "values": {
+        "notes": "Parent instructions"
+      }
+    },
+    {
+      "id": "T12",
+      "parentId": "T1",
+      "path": "tasks/T12",
+      "kind": "task",
+      "userRequested": true,
+      "lifecycle": "active",
+      "title": "Child moved under T1",
+      "state": "waiting",
+      "version": 4,
+      "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "log": [
+        {
+          "id": "L2",
+          "kind": "reported",
+          "at": "2026-09-29T00:05:00.000Z",
+          "title": "Ready for review",
+          "description": null,
+          "actor": {
+            "kind": "placement",
+            "placementId": "P2"
+          },
+          "fromState": "doing",
+          "toState": "waiting"
+        }
+      ],
+      "baseState": "waiting",
+      "hold": false,
+      "policyVersion": "product-3",
+      "allowedActions": [
+        "report_doing",
+        "report_done",
+        "confirm",
+        "stop",
+        "hold"
+      ],
+      "values": {
+        "notes": "Child instructions"
+      }
+    },
+    {
+      "id": "P100",
+      "parentId": null,
+      "path": "tasks/P100",
+      "kind": "project",
+      "userRequested": false,
+      "lifecycle": "active",
+      "title": "default",
+      "state": "todo",
+      "version": 1,
+      "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "log": [
+        {
+          "id": "L1",
+          "kind": "created",
+          "at": "2026-09-29T00:00:00.000Z",
+          "title": null,
+          "description": null,
+          "actor": {
+            "kind": "human"
+          },
+          "fromState": null,
+          "toState": null,
+          "userRequested": false
+        }
+      ],
+      "baseState": "todo",
+      "hold": false,
+      "policyVersion": "product-3",
+      "allowedActions": [
+        "report_doing",
+        "report_done",
+        "stop",
+        "hold"
+      ],
+      "settings": {
+        "color": "#39659b"
+      },
+      "values": {}
+    }
+  ],
+  "placements": [
+    {
+      "id": "P1",
+      "taskId": "T1",
+      "agentId": "A1",
+      "profileKey": "codex",
+      "responsible": true,
+      "active": true,
+      "revision": 1,
+      "startedAt": "2026-09-29T00:00:00.000Z",
+      "endedAt": null,
+      "headRunId": "R1",
+      "runtime": {
+        "displayState": "idle",
+        "reason": null,
+        "sourceRunIds": [],
+        "runningCount": 0,
+        "queuedCount": 0,
+        "since": null,
+        "lastOutputAt": null,
+        "activityKind": null,
+        "toolName": null
+      }
+    },
+    {
+      "id": "P2",
+      "taskId": "T12",
+      "agentId": "A2",
+      "profileKey": "claude",
+      "responsible": true,
+      "active": true,
+      "revision": 3,
+      "startedAt": "2026-09-29T00:02:00.000Z",
+      "endedAt": null,
+      "headRunId": "R2",
+      "runtime": {
+        "displayState": "attention",
+        "reason": "manager_lost",
+        "sourceRunIds": [
+          "R2"
+        ],
+        "runningCount": 0,
+        "queuedCount": 0,
+        "since": "2026-09-29T00:04:00.000Z",
+        "lastOutputAt": null,
+        "activityKind": null,
+        "toolName": null
+      }
+    },
+    {
+      "id": "P3",
+      "taskId": "T1",
+      "agentId": "A3",
+      "profileKey": "codex",
+      "responsible": false,
+      "active": false,
+      "revision": 1,
+      "startedAt": "2026-09-28T23:00:00.000Z",
+      "endedAt": "2026-09-29T00:00:00.000Z",
+      "headRunId": null,
+      "runtime": {
+        "displayState": "idle",
+        "reason": null,
+        "sourceRunIds": [],
+        "runningCount": 0,
+        "queuedCount": 0,
+        "since": null,
+        "lastOutputAt": null,
+        "activityKind": null,
+        "toolName": null
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "R1",
+      "taskId": "T1",
+      "cwd": "/fixture/runs/R1",
+      "placementId": "P1",
+      "requestId": "Q1",
+      "caller": null,
+      "resumes": null,
+      "continues": false,
+      "session": {
+        "provider": "codex",
+        "id": "agent-session"
+      },
+      "state": "succeeded",
+      "reason": null,
+      "into": null,
+      "takesInput": false,
+      "activity": null,
+      "createdAt": "2026-09-29T00:00:30.000Z",
+      "startedAt": "2026-09-29T00:01:00.000Z",
+      "endedAt": "2026-09-29T00:06:00.000Z",
+      "usage": null,
+      "agent": "codex",
+      "effort": null,
+      "modelId": null,
+      "launchValues": {}
+    },
+    {
+      "id": "R2",
+      "taskId": "T12",
+      "cwd": "/fixture/runs/R2",
+      "placementId": "P2",
+      "requestId": "Q2",
+      "caller": {
+        "run": "R1"
+      },
+      "resumes": null,
+      "continues": false,
+      "session": {
+        "provider": "claude",
+        "id": "child-session"
+      },
+      "state": "needs_review",
+      "reason": "manager_lost",
+      "into": null,
+      "takesInput": false,
+      "activity": null,
+      "createdAt": "2026-09-29T00:02:00.000Z",
+      "startedAt": "2026-09-29T00:02:30.000Z",
+      "endedAt": null,
+      "usage": null,
+      "agent": "claude",
+      "effort": null,
+      "modelId": null,
+      "launchValues": {}
+    }
+  ],
+  "requests": [
+    {
+      "id": "Q1",
+      "taskId": "T1",
+      "placementId": "P1",
+      "runId": "R1",
+      "recipientRole": "owner",
+      "purpose": "instruction",
+      "author": {
+        "kind": "human"
+      },
+      "mode": "new",
+      "body": "Please inspect this task.",
+      "submittedAt": "2026-09-29T00:00:30.000Z",
+      "deliveryState": "queued",
+      "aboutRunId": null
+    }
+  ],
+  "attachmentBytes": 52428800,
+  "fieldCatalog": [],
+  "projectSchemas": {
+    "P100": {
+      "fields": [
+        "goal",
+        "policy",
+        "forbidden",
+        "user_instructions",
+        "conclusion",
+        "remaining",
+        "left_running",
+        "conditions",
+        "artifact",
+        "pr",
+        "decide",
+        "notes"
+      ],
+      "from": null
+    }
+  },
+  "taskValues": {
+    "T1": {},
+    "T12": {},
+    "P100": {}
+  },
+  "profiles": [
+    {
+      "key": "claude",
+      "choices": [],
+      "without": {}
+    },
+    {
+      "key": "codex",
+      "choices": [],
+      "without": {}
+    }
+  ],
+  "errors": [],
+  "writable": true,
+  "replies": {
+    "T1": {
+      "runId": "R1",
+      "state": "present"
+    }
+  },
+  "balls": {},
+  "dialogues": [],
+  "requestedByUser": {},
+  "working": [],
+  "historyFacts": {
+    "answerTexts": {},
+    "placementRoles": {
+      "P1": "owner",
+      "P2": "owner",
+      "P3": "member"
+    },
+    "runRoles": {},
+    "deliveries": [],
+    "coordinatorRuns": {}
+  }
+}

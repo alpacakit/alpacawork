@@ -1,0 +1,47 @@
+/* A toast's own surface (components/ui/toaster.tsx): the theme turned over, so it is seen the moment it comes: near
+   black in the light theme, near white in the dark one, with an ink, muted and error of the other theme's kind inside
+   it (each 4.5:1 or more on it). Its edge is a faint step toward its ink, so it still has a shape over a ground as
+   dark or as light as itself (the image viewer's, a white page); a failure's is tinged red, and its way
+   back's edge is 3:1 to the card. The edge is a hairline laid over the card rather than its border, so the card's
+   own box is its outer edge and the time it has left (below) lies along its foot with no gap under it. What is
+   pointed at in it is a step from its paper toward its ink (--hover), and what is pressed a step further, edged
+   (--press, --press-line). */
+:root { --toast: oklch(23% 0.007 260); --toast-ink: oklch(97% 0.004 260); --toast-muted: oklch(80% 0.006 260);
+  --toast-error: oklch(71% 0.16 25); --toast-line: oklch(53% 0.008 260); --toast-scheme: dark; }
+:root[data-theme="dark"] { --toast: oklch(96% 0.004 260); --toast-ink: oklch(21% 0.006 260); --toast-muted: oklch(47% 0.008 260);
+  --toast-error: oklch(53% 0.19 27); --toast-line: oklch(63% 0.008 260); --toast-scheme: light; }
+/* One place for every screen and window. Symmetric safe-area padding keeps the cards centred and on screen. */
+[data-toaster] {
+  --toast-gutter: max(14px, env(safe-area-inset-left), env(safe-area-inset-right));
+  position: fixed;
+  top: calc(var(--toast-view-top, 0px) + env(safe-area-inset-top) + 8px);
+  left: var(--toast-view-left, 0px);
+  width: var(--toast-view-width, 100%);
+  z-index: var(--layer-toast);
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--toast-gutter);
+  pointer-events: none;
+}
+/* Keep vertical scrolling and the cards' inset, but clip a departing card only at the viewport's edge. */
+[data-toaster] > ol { flex: 1; min-width: 0; margin-inline: calc(-1 * var(--toast-gutter)); padding-inline: var(--toast-gutter); }
+[data-toast] { --toast-widest: 32rem; touch-action: pan-y; max-width: min(var(--toast-widest), calc(var(--toast-view-width, 100vw) - 2 * var(--toast-gutter)));
+  color-scheme: var(--toast-scheme); --ink: var(--toast-ink); --muted: var(--toast-muted); --error: var(--toast-error);
+  --hover: color-mix(in oklab, var(--ink) 12%, var(--toast)); --press: color-mix(in oklab, var(--ink) 24%, var(--toast));
+  --press-line: var(--muted); --toast-edge: color-mix(in oklab, var(--ink) 16%, var(--toast));
+  --toast-failure-line: color-mix(in oklab, var(--error) 75%, var(--toast)); }
+[data-toast][data-kind="error"] { --toast-edge: var(--toast-failure-line); }
+/* Its hairline edge, laid over the card's ground, under its buttons and the time it has left. */
+[data-toast]::before { @apply border-hairline; content: ""; position: absolute; inset: 0; border-color: var(--toast-edge);
+  border-radius: inherit; pointer-events: none; }
+/* What a toast that goes by itself has left (TimeLeft): a thin line along the card's foot, on its outer edge and cut
+ * to its round corners (the span covers the card and clips the line it draws), running out to nothing while its
+ * clock runs, and still where it stands while the clock stops. A press goes through it to the control under it.
+ * The span's clip, not the line, makes its foot: the line runs on past it by as much again. Running, the line is a
+ * layer of its own, rounded to device pixels from its own top and height rather than from the card's foot as the
+ * edge is, so at a scale such as 2.625x it stopped a device row short and the edge showed under it. */
+[data-toast-time] { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+[data-toast-time]::before { content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 4px; background: var(--muted);
+  transform-origin: left; scale: var(--time-left) 1; }
+[data-toast-time][data-running]::before { animation: toast-time var(--time-left-ms) linear forwards; }
+@keyframes toast-time { to { scale: 0 1; } }

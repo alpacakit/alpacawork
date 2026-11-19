@@ -1,0 +1,178 @@
+name: Release
+
+# Publishes the alpacawork npm package.
+# - A tag `vX.Y.Z` (or `vX.Y.Z-beta.N`) releases: the tag must equal the root package.json version.
+#   "Tag release" adds the tag and starts this workflow when a merge into main changes the version;
+#   pushing a tag by hand also starts it. Running it by hand on a tag repeats that release: a version
+#   already on npm is not packed or published again, and a missing GitHub Release is created.
+#   A plain version goes to the `latest` dist-tag (the only tag the in-app update reads);
+#   a version with `-` goes to `beta`, or to `latest` while `latest` is itself a prerelease
+#   (no plain version yet), so installs and the in-app update reach the newest beta.
+#   A GitHub Release uses the version's CHANGELOG.md section and a folded list of pull requests.
+# - Run this workflow by hand on a branch: publishes `0.0.0-canary.<UTC time>.<sha>` to the
+#   `canary` dist-tag only. No GitHub Release.
+# npm authentication uses Trusted Publishing (OIDC); no npm token is stored.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+# Releases (tags) and canaries (branches) queue separately, so a canary never cancels a waiting release.
+concurrency:
+  group: release-${{ github.ref_type }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE_NAME: alpacawork
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          path: source
+
+      # release pack builds from a git ref, and the tarball acceptance check refuses to run
+      # in a main/shared checkout. Work in a dedicated linked worktree.
+      - name: Create release worktree
+        run: git -C source worktree add --detach "$RUNNER_TEMP/release-worktree" "$GITHUB_SHA"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: source/.nvmrc
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Decide version and dist-tag
+        id: release
+        working-directory: ${{ runner.temp }}/release-worktree
+        shell: bash
+        run: |
+          committed="$(node -p "require('./package.json').version")"
+          published=false
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [[ "$version" != "$committed" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $committed."
+              exit 1
+            fi
+            if [[ "$version" == *-* ]]; then
+              prerelease=true
+              latest="$(npm view "$PACKAGE_NAME" dist-tags.latest)"
+              if [[ "$latest" == *-* ]]; then dist_tag=latest; else dist_tag=beta; fi
+            else dist_tag=latest; prerelease=false; fi
+            override=""
+            # A re-run after the publish succeeded (and the GitHub Release did not) skips to the Release.
+            if [[ "$(npm view "$PACKAGE_NAME@$version" version 2>/dev/null)" == "$version" ]]; then
+              published=true
+              echo "$PACKAGE_NAME@$version is already on npm; only the GitHub Release is checked."
+            fi
+          else
+            version="0.0.0-canary.$(date -u +%Y%m%d%H%M%S).$(git rev-parse --short=7 HEAD)"
+            dist_tag=canary; prerelease=true; override="$version"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$dist_tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "override=$override" >> "$GITHUB_OUTPUT"
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies (supportedArchitectures also fetches the macOS native parts)
+        if: steps.release.outputs.published != 'true'
+        working-directory: ${{ runner.temp }}/release-worktree
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Build the release tool
+        if: steps.release.outputs.published != 'true'
+        working-directory: ${{ runner.temp }}/release-worktree
+        run: pnpm build:packages && pnpm build:apps
+
+      - name: Pack
+        if: steps.release.outputs.published != 'true'
+        id: pack
+        working-directory: ${{ runner.temp }}/release-worktree
+        shell: bash
+        run: |
+          fixture="$(node scripts/dev-fixtures/fixture.ts create --profile small --seed release --cache "$RUNNER_TEMP/fixture-cache")"
+          workspace="$(node -p 'JSON.parse(process.argv[1]).root' "$fixture")"
+          args=(release pack --repo "$PWD" --ref "$GITHUB_SHA" --releases "$RUNNER_TEMP/releases"
+            --name "$PACKAGE_NAME" --output "$RUNNER_TEMP/tarballs")
+          if [[ -n "${{ steps.release.outputs.override }}" ]]; then args+=(--version "${{ steps.release.outputs.override }}"); fi
+          node apps/backend/dist/backend.js --workspace "$workspace" "${args[@]}"
+          tarball="$RUNNER_TEMP/tarballs/$PACKAGE_NAME-${{ steps.release.outputs.version }}.tgz"
+          test -f "$tarball"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      - name: Accept the tarball
+        if: steps.release.outputs.published != 'true'
+        working-directory: ${{ runner.temp }}/release-worktree
+        run: node scripts/check-npm-package.ts --tarball "${{ steps.pack.outputs.tarball }}" --output "$RUNNER_TEMP/acceptance"
+
+      - name: Keep the tarball
+        if: steps.release.outputs.published != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Keep acceptance evidence on failure
+        if: failure() && steps.release.outputs.published != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence
+          path: |
+            ${{ runner.temp }}/acceptance
+            ${{ runner.temp }}/tarballs/.npm-stage-*
+          if-no-files-found: ignore
+
+      - name: Publish to npm
+        if: steps.release.outputs.published != 'true'
+        shell: bash
+        run: |
+          npm install --global npm@^11.5.1
+          npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.release.outputs.dist_tag }}" --access public
+
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        working-directory: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then exit 0; fi
+          flags=(--verify-tag --title "$GITHUB_REF_NAME")
+          if [[ "${{ steps.release.outputs.prerelease }}" == "true" ]]; then flags+=(--prerelease --latest=false); fi
+          generated="$RUNNER_TEMP/generated-release-notes.md"
+          notes="$RUNNER_TEMP/release-notes.md"
+          version_pr="$(git log -1 --format=%s "${GITHUB_REF_NAME}^{commit}" | sed -nE 's/^Release .* \(#([0-9]+)\)$/\1/p')"
+          args=(CHANGELOG.md "${GITHUB_REF_NAME#v}" "$generated")
+          if [[ -n "$version_pr" ]]; then args+=("$version_pr"); fi
+          # npm already has this version, so a missing or broken section falls back to the generated notes
+          # instead of failing a step that a re-run could not fix.
+          if gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f "tag_name=$GITHUB_REF_NAME" --jq .body > "$generated" &&
+            node scripts/release-notes.ts "${args[@]}" > "$notes"; then
+            flags+=(--notes-file "$notes")
+          else
+            echo "::warning::No usable CHANGELOG.md section for ${GITHUB_REF_NAME#v} (exit $?); using GitHub's generated notes."
+            flags+=(--generate-notes)
+          fi
+          gh release create "$GITHUB_REF_NAME" "${flags[@]}"
+
+      - name: Summary
+        run: |
+          if [[ "${{ steps.release.outputs.published }}" == "true" ]]; then
+            echo "${PACKAGE_NAME}@${{ steps.release.outputs.version }} was already on npm; GitHub Release checked" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Published ${PACKAGE_NAME}@${{ steps.release.outputs.version }} with dist-tag ${{ steps.release.outputs.dist_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          fi

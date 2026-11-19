@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="description" content="Manage tasks and coordinate AI agents with alpacawork."/>
+  <!-- A phone's keyboard shrinks the page (Chrome and Firefox on Android) instead of covering it, so what is held on the
+       screen (the coordinator card, the full text's input) is laid out over the keyboard, and the browser does not
+       slide the whole screen up to bring a focused input to the middle of what is left. Safari keeps covering it. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="__PWA_LIGHT__"/>
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="__PWA_DARK__"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="__PWA_NAME__"/>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" href="/icons/icon-16-2c.png" sizes="16x16" type="image/png"/>
+  <link rel="icon" href="/icons/icon-32-2c.png" sizes="32x32" type="image/png"/>
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-2c.png"/>
+  <title>alpacawork</title>
+</head>
+<body><div id="root"></div><script defer src="/browser-check.js"></script><script type="module" src="/src/main.tsx"></script></body>
+</html>

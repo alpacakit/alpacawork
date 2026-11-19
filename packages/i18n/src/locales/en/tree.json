@@ -1,0 +1,131 @@
+{
+  "home": {
+    "awaited": "Waiting",
+    "error": "Needs attention",
+    "finished": "Done",
+    "fresh_one": "{{count}} newly finished",
+    "fresh_other": "{{count}} newly finished",
+    "held": "On hold",
+    "less": "Show fewer",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more",
+    "running": "In progress",
+    "todo": "Not started",
+    "turn": "Awaiting review"
+  },
+  "row": {
+    "review": "Review"
+  },
+  "sent": {
+    "pending": "Instruction sent"
+  },
+  "shelved": {
+    "archived": "Archived",
+    "count_one": "Archived or deleted: {{count}}",
+    "count_other": "Archived or deleted: {{count}}",
+    "deleted": "Deleted",
+    "restore": "Restore"
+  },
+  "status": {
+    "children": "Subtasks {{progress}}",
+    "failure": {
+      "conversationBusy": "Conversation busy",
+      "exit": "Ended early",
+      "launch": "Did not start",
+      "managerLost": "Run unconfirmed",
+      "noReport": "Ended without report",
+      "output": "Output unreadable",
+      "stopped": "Interrupted",
+      "timeout": "Timed out",
+      "unknown": "Reason unknown"
+    },
+    "length": {
+      "days_one": "{{count}}d",
+      "days_other": "{{count}}d",
+      "hours_one": "{{count}}h",
+      "hours_other": "{{count}}h",
+      "minutes_one": "{{count}}m",
+      "minutes_other": "{{count}}m"
+    },
+    "long": {
+      "reason": "{{length}} since this came up",
+      "since": "In this state for {{length}}"
+    },
+    "queued": "Queued",
+    "report": {
+      "after": "{{time}}+",
+      "over": "Past {{time}}",
+      "pending": {
+        "long": "A new instruction arrived. Waiting for the owner to give a new report estimate.",
+        "short": "?"
+      }
+    },
+    "running": "Running",
+    "runningRuns_one": "{{count}} agent running (including tasks below)",
+    "runningRuns_other": "{{count}} agents running (including tasks below)",
+    "tip": {
+      "elapsed": "Elapsed",
+      "report": "Report estimate"
+    },
+    "turn": {
+      "children": "Request limit",
+      "depth": "Depth limit",
+      "failed": "Failed",
+      "limit": "Limit hit",
+      "noProfile": "No launch profile",
+      "notResumable": "Can't resume",
+      "refused": "Refused",
+      "responsibleUnavailable": "Can't start",
+      "unconfirmed": "Receipt unconfirmed"
+    },
+    "unclear": "Status unknown",
+    "work": {
+      "heading": "Total agent working time",
+      "hours": "{{hours}}h {{minutes}}m",
+      "minutes_one": "{{count}} min",
+      "minutes_other": "{{count}} min",
+      "own": "This task only",
+      "separator": ", ",
+      "subtree": "With tasks below"
+    }
+  },
+  "timeView": {
+    "axisAbsent": "The time view is not saved on this device. It loads when the connection is back.",
+    "edge": {
+      "done": "Completed {{time}}",
+      "go": "{{note}}. Go to this row's time",
+      "since": "From {{time}}",
+      "stopped": "Stopped {{time}}",
+      "todo": "Not started · from {{time}}",
+      "turn": "{{kind}} · from {{time}}"
+    },
+    "help": "Scroll sideways to move through time. Zoom with ctrl (⌘) + wheel, a pinch, or two fingers. Double-click the time scale to see everything. Point at a line (tap on a phone) for details. Keys: + − 0 N; press → on a title to read its lines in turn.",
+    "now": "Now {{clock}}",
+    "scaleAll": "All time",
+    "scaleLabel": "Time span",
+    "time": "Timeline",
+    "toNow": "Now",
+    "yourTurn": "Your turn"
+  },
+  "welcome": {
+    "examples": {
+      "decide": {
+        "label": "Pick a mini game idea, then have it built",
+        "shows": "AI compares ideas and asks you a question. Your answer starts the build.",
+        "words": "I'd like to make one mini game I can play in the browser. Make it a task: list 3 ideas, and ask me which to build, with a comparison table and your recommendation in the question. Once I answer, build the one I chose in about 5 minutes without asking anything else, and report back. This is a tutorial, so keep the effort light: go for speed, don't overthink it, and take it easy. Please write everything in English."
+      },
+      "models": {
+        "label": "Have 3 models build a snake game, then pick one",
+        "shows": "Different models build in parallel, then you pick the one to keep.",
+        "words": "I'd like to make a snake game. Could you try building 3 in parallel with different models? When they're done, ask me which one to go with. This is a tutorial, so please keep the effort light and take about 5 minutes. Please write everything in English."
+      },
+      "triage": {
+        "label": "Split a café opening into 5 tasks",
+        "shows": "The results line up for your review, and you choose which to complete.",
+        "words": "Please split a fictional café's opening into 5 separate tasks: \"Order the beans\", \"Arrange the sign\", \"Print the menu\", \"Hire staff\" and \"Send the invitations\", and give each one to an agent. Have each write a one-line fictional result in its report and wait for my review. Once all 5 are in, I'll choose which to complete. No research or files needed, and please write everything in English."
+      }
+    },
+    "lead": "Choose an example to try it out.",
+    "title": "Welcome to alpacawork"
+  }
+}

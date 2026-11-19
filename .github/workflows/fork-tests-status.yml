@@ -1,0 +1,40 @@
+name: Fork tests status
+
+# Reports a finished "Fork tests" run as the `tests` commit status on the pull request's head.
+# workflow_run always uses this file from the default branch, so a pull request cannot change it.
+# It never checks out or runs pull request code; it only reads the run's outcome.
+
+on:
+  workflow_run:
+    workflows: [Fork tests]
+    types: [completed]
+
+permissions:
+  actions: read
+  statuses: write
+
+jobs:
+  report:
+    # Only the real file: a pull request could add another workflow with the same name.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.path == '.github/workflows/fork-tests.yml'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the tests status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          # A skipped job (our own pull request without the label) and a cancelled one report nothing.
+          outcome="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs" --jq '.jobs[] | select(.name == "quick") | .conclusion')"
+          case "$outcome" in
+            success) state=success ;;
+            failure|timed_out) state=failure ;;
+            *) echo "quick: ${outcome:-not run}; nothing to report"; exit 0 ;;
+          esac
+          gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$SHA" --silent \
+            -f state="$state" -f context=tests -f target_url="$URL" \
+            -f description="GitHub-hosted: quick ${outcome/_/ }"

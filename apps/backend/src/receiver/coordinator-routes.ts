@@ -1,0 +1,72 @@
+/** Coordinator HTTP mutation admission starts after bounded input parsing. */
+import type { Hono } from 'hono';
+import { coordinatorMessageInputSchema, coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
+import { selectionSchema } from '@alpacawork/contract/agent-settings';
+import { fileBytesResponse } from './file-response.js';
+import type { Mutate } from './lifecycle.js';
+import { parseInput, Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { CoordinatorConversation } from '../coordinator/conversation.js';
+import { readCoordinatorAttachment, saveCoordinatorAttachment, removeCoordinatorAttachment, moveCoordinatorAttachments } from '../coordinator/files.js';
+import { attachmentLimit } from '../agents-settings.js';
+import { boundedBytes, requiredOpId } from './file-routes.js';
+
+export function installCoordinatorRoutes(api: Hono, root: string, generation: string, conversation: CoordinatorConversation,
+  authorize: (request: Request) => void, mutate: Mutate = async work => work()) {
+  const json = async (request: Request) => {
+    if (request.headers.get('content-type') !== 'application/json') throw new Problem(PROBLEM_CODE.invalidInput, 'Content-Type must be application/json', undefined, { reason: { kind: 'content_type_must_application_json' } });
+    try { return JSON.parse((await boundedBytes(request, 256 * 1024)).toString('utf8')) as Record<string, unknown>; }
+    catch (error) { if (error instanceof SyntaxError) throw new Problem(PROBLEM_CODE.invalidInput, 'Expected JSON', undefined, { reason: { kind: 'expected_json' } }); throw error; }
+  };
+  const selected = (value: unknown) => parseInput(selectionSchema.default({}), value);
+  api.get('/api/coordinator', c => { authorize(c.req.raw); return c.json(conversation.snapshot(generation)); });
+  api.post('/api/coordinator/read', async c => {
+    authorize(c.req.raw); const input = parseInput(coordinatorReadInputSchema, await json(c.req.raw));
+    return c.json(await mutate(() => conversation.markSeen(input.conversationId, input.seen)));
+  });
+  api.get('/api/coordinator/skills', async c => { authorize(c.req.raw); return c.json(await conversation.skills(c.req.query('conversationId') ?? '', c.req.query('agent'))); });
+  api.post('/api/coordinator/messages', async c => {
+    authorize(c.req.raw); const input = parseInput(coordinatorMessageInputSchema, await json(c.req.raw));
+    return c.json(conversation.snapshot(generation, await mutate(() => conversation.ask(input))));
+  });
+  for (const action of ['withdraw', 'send-now'] as const) api.post(`/api/coordinator/messages/${action}`, async c => {
+    authorize(c.req.raw); const input = await json(c.req.raw);
+    if (typeof input.conversationId !== 'string' || typeof input.id !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, 'Conversation and message IDs are required', undefined, { reason: { kind: 'conversation_and_message_ids_required' } });
+    const { conversationId, id } = input;
+    return c.json(conversation.snapshot(generation, await mutate(() => action === 'withdraw' ? conversation.withdraw(conversationId, id) : conversation.sendNow(conversationId, id))));
+  });
+  for (const action of ['warm','clear'] as const) api.post(`/api/coordinator/${action}`, async c => {
+    authorize(c.req.raw); const input = await json(c.req.raw);
+    if (typeof input.conversationId !== 'string' || input.agent !== undefined && typeof input.agent !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, 'Conversation ID is required', undefined, { reason: { kind: 'conversation_id_required' } });
+    const id = input.conversationId;
+    return c.json(conversation.snapshot(generation, await mutate(() => action === 'warm' ? conversation.warm(id, selected(input.selected), input.agent as string | undefined) : conversation.clear(id))));
+  });
+  api.post('/api/coordinator/attachments', async c => {
+    authorize(c.req.raw); const id = c.req.query('requestId') ?? '';
+    const bytes = await boundedBytes(c.req.raw, attachmentLimit(root));
+    return c.json(await mutate(() => conversation.attachments(c.req.query('conversationId') ?? '', [id],
+      open => saveCoordinatorAttachment(root, open, id, c.req.query('name') ?? '', bytes, requiredOpId(c.req.raw)))));
+  });
+  api.delete('/api/coordinator/attachments', async c => {
+    authorize(c.req.raw); const id = c.req.query('requestId') ?? '';
+    return c.json(await mutate(() => conversation.attachments(c.req.query('conversationId') ?? '', [id],
+      open => removeCoordinatorAttachment(root, open, id, c.req.query('name') ?? '', requiredOpId(c.req.raw)))));
+  });
+  api.post('/api/coordinator/attachments/move', async c => {
+    authorize(c.req.raw); const input = await json(c.req.raw);
+    if (typeof input.conversationId !== 'string' || typeof input.from !== 'string' || typeof input.to !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, 'Attachment move needs request IDs', undefined, { reason: { kind: 'attachment_move_needs_request_ids' } });
+    const { conversationId, from, to } = input;
+    return c.json(await mutate(() => conversation.attachments(conversationId, [from, to],
+      open => moveCoordinatorAttachments(root, open, from, to, requiredOpId(c.req.raw)))));
+  });
+  api.get('/api/coordinator/file', async c => {
+    authorize(c.req.raw); const id = c.req.query('requestId') ?? '', name = c.req.query('name') ?? '';
+    const area = c.req.query('area');
+    if (area !== undefined && area !== 'answers') throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid coordinator file area', undefined, { reason: { kind: 'invalid_coordinator_file_area' } });
+    const download = c.req.query('download');
+    if (download !== undefined && download !== '1') throw new Problem(PROBLEM_CODE.invalidInput, 'download=1 reads the original file');
+    const bytes = area === 'answers'
+      ? conversation.readAnswerFile(id, name, open => readCoordinatorAttachment(root, open, id, name, 'answers'))
+      : conversation.readAttachment(id, open => readCoordinatorAttachment(root, open, id, name));
+    return fileBytesResponse(name, bytes, c.req.header('range'), download === '1');
+  });
+}

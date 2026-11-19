@@ -1,0 +1,13 @@
+{
+  "name": "@alpacawork/runs",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./rules": { "types": "./dist/rules.d.ts", "default": "./dist/rules.js" }
+  },
+  "scripts": { "build": "rm -rf dist && tsc -p tsconfig.json" },
+  "dependencies": { "@alpacawork/core": "workspace:*", "@alpacawork/db": "workspace:*", "@alpacawork/contract": "workspace:*", "@alpacawork/raw": "workspace:*" }
+}

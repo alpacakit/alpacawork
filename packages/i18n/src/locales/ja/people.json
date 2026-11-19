@@ -1,0 +1,89 @@
+{
+  "agentLabel": {
+    "unknown": "不明",
+    "unstarted": "未起動"
+  },
+  "attach": {
+    "add": "添付",
+    "addHint": "ファイルを添付（画像は貼り付け・ドロップでも）",
+    "checking": "添付の結果を確認中です",
+    "notReceived": "受け取れませんでした",
+    "pastedImage": "貼り付けた画像",
+    "pastedText": "貼り付けた文",
+    "receiptMismatch": "添付の保存結果が選んだファイルと一致しません",
+    "remove": "{{name}} を外す",
+    "reselect": "見つかりません。ファイルを再選択してください",
+    "restored": "データの復旧をはさんだため、結果を確かめられません。送り直しません。添付カードの × で外してください",
+    "storageUnavailable": "下書きを保存できません",
+    "tooLarge": "{{size}} を超えています",
+    "tooMany": "添付は1回に{{limit}}件までです",
+    "unconfirmed": "結果は未確定です。再読込して確認してください",
+    "unnamed": "ファイル",
+    "uploading": "{{name}} を送っています"
+  },
+  "clock": {
+    "base": "{{clock}}",
+    "date": "{{date}} {{clock}}",
+    "today": "今日 {{clock}}",
+    "tomorrow": "明日 {{clock}}",
+    "yesterday": "昨日 {{clock}}"
+  },
+  "day": {
+    "date": "{{date}}（{{weekday}}）",
+    "tomorrow": "明日",
+    "yesterday": "昨日"
+  },
+  "dot": {
+    "attention": "エラー"
+  },
+  "duration": {
+    "days_other": "{{count}}日",
+    "hours": "{{hours}}時間{{minutes}}分",
+    "minutes_other": "{{count}}分",
+    "underMinute": "1分未満"
+  },
+  "finish": {
+    "after": "{{time}}以降",
+    "bandOver": "{{length}}超過",
+    "done": "完了 {{time}}",
+    "end": "報告見込み {{time}}",
+    "long": {
+      "after_other": "見込みのない{{count}}件を除くと、一番遅い報告見込みは {{time}}。これより前には報告がそろいません",
+      "end": "見込み{{total}}分のうち{{used}}分作業。報告見込み {{time}}",
+      "over": "見込み{{total}}分に対し{{used}}分作業。{{time}}の見込みを{{length}}超過",
+      "subtree_other": "見込み{{count}}件のうち一番遅い時刻。報告見込み {{time}}",
+      "subtreeOver": "下のタスクが{{time}}の見込みを{{length}}超過"
+    },
+    "over": "{{time}}から{{length}}超過",
+    "overBy": {
+      "days_other": "約{{count}}日",
+      "hours_other": "約{{count}}時間",
+      "minutes_other": "約{{count}}分"
+    },
+    "pending": "見込みの出し直し待ち",
+    "reported": "$t(ui:state.waitingReview)・{{time}}に報告",
+    "review": "$t(ui:state.waitingReview)",
+    "stopped": "$t(people:dot.attention)",
+    "unknown": "$t(ui:state.doing)"
+  },
+  "line": {
+    "children": "子 {{done}}/{{total}}"
+  },
+  "now": {
+    "event": "{{kind}}",
+    "kind": {
+      "error": "エラー",
+      "message": "メッセージ",
+      "output": "出力",
+      "result": "結果",
+      "tool_end": "ツールの結果",
+      "tool_start": "ツールを使用"
+    },
+    "output": "{{event}}（{{ago}}前）",
+    "stale": "最後の出力が古い: {{event}}（{{ago}}前）",
+    "toolEvent": "{{tool}}: {{kind}}"
+  },
+  "records": {
+    "close": "閉じる…"
+  }
+}

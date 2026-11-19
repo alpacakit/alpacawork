@@ -1,0 +1,36 @@
+{
+  "input": {
+    "taskId": "T1",
+    "mode": "continue",
+    "body": "Please inspect the child result.",
+    "requestId": "Q2",
+    "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expectedPlacementRevision": 1,
+    "expectedHeadRunId": "R1"
+  },
+  "receipt": {
+    "requestId": "Q2",
+    "placementId": "P1",
+    "runId": "R3",
+    "deliveryState": "waiting_for_run",
+    "conversationRef": {
+      "provider": "codex",
+      "sessionId": "agent-session",
+      "headRunId": "R1"
+    },
+    "acceptedAt": "2026-09-29T00:06:00.000Z"
+  },
+  "rejection": {
+    "error": {
+      "code": "conflict",
+      "message": "Task changed; reload before retrying",
+      "retry": "reread",
+      "detail": {
+        "currentTaskHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "currentPlacementRevision": 2,
+        "currentHeadRunId": "R2",
+        "preserveDraft": true
+      }
+    }
+  }
+}

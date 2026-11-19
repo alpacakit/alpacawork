@@ -1,0 +1,142 @@
+{
+  "agentPicker": {
+    "brief": {
+      "gone": "Choose someone else to ask",
+      "new_conversation": "Start over with “{{action}}”",
+      "select_value": "Choose the {{row}} again"
+    },
+    "next": {
+      "anew": "A new conversation is needed",
+      "clear": "Start over with “{{action}}”"
+    },
+    "none": "None",
+    "notOffered": "Not offered for this model",
+    "pickerLabel": "{{agent}}. Press to change",
+    "pickerTitle": "Who to ask",
+    "problem": {
+      "gone": "{{agent}} isn't available with the current settings. Choose someone else to ask",
+      "invalid_value": "The previous {{row}}, {{previous}}, is no longer offered. Choose again",
+      "null_required": "{{row}} can no longer be None. Choose a value",
+      "removed": "{{row}} (previously {{previous}}) was removed from the settings, so this conversation can't be continued. {{next}}",
+      "unused": "{{row}} (previously {{previous}}) is no longer used by the launch options, so this conversation can't be continued. {{next}}"
+    }
+  },
+  "draft": {
+    "checking": "Checking…",
+    "closeKeep": "Close · keep draft",
+    "discard": "Discard draft",
+    "discardConfirm": "Discard this draft? This cannot be undone.",
+    "reviewLatest": "Review the latest version and keep editing",
+    "saving": "Saving…",
+    "storageUnavailable": "Draft storage is unavailable. Sending is paused to prevent duplicates. Keep this page open and copy your draft."
+  },
+  "folderInput": {
+    "cancel": "Cancel new folder",
+    "choose": "Choose",
+    "close": "Close",
+    "create": "Create",
+    "creating": "Creating…",
+    "empty": "No folders inside.",
+    "example": "e.g. {{path}}",
+    "inside": "Folders inside",
+    "made": "This is a newly created folder.",
+    "make": "Create a new folder",
+    "name": "New folder name",
+    "offered": "Suggested folders",
+    "openExisting": "Open that folder",
+    "path": "Where you are",
+    "placeholder": "Folder name",
+    "problem": {
+      "dots": "A name cannot be \".\" or \"..\".",
+      "long": "The name is too long (255 bytes maximum).",
+      "slash": "A name cannot contain /.",
+      "taken": "A folder with this name already exists."
+    },
+    "reading": "Loading…",
+    "truncated": "Only the first {{limit}} are shown. Close the list and type a name in the field to narrow them.",
+    "up": "Up",
+    "use": "Use this folder",
+    "where": "Create inside {{path}}"
+  },
+  "formDialog": {
+    "cancel": "Cancel"
+  },
+  "inlineForm": {
+    "cancel": "Cancel"
+  },
+  "moveForm": {
+    "adopt": "Use the latest version and choose again",
+    "changedElsewhere": "The parent changed elsewhere after this form opened (then: {{opened}}, now: {{current}}). Moving now would be refused.",
+    "note": "The task keeps its ID, folder and runs; running work is not stopped, and its reports go to the new parent from now on",
+    "parent": "New parent",
+    "refused": "Not moved: the task changed elsewhere (parent then: {{opened}}, now: {{current}}). Your choice is kept.",
+    "submit": "Move",
+    "top": "Top level (no parent)"
+  },
+  "projectColor": {
+    "code": "Color code",
+    "more": "Other colors…",
+    "swatch": {
+      "brown": "Brown",
+      "grape": "Grape",
+      "green": "Green",
+      "indigo": "Indigo",
+      "lime": "Lime",
+      "navy": "Navy",
+      "teal": "Teal",
+      "violet": "Violet"
+    }
+  },
+  "reportForm": {
+    "approveDescription": "Reviewed the result.",
+    "approveTitle": "Done",
+    "chooseAgain": "The task has changed. Choose its state again",
+    "heading": "Change the state of {{id}}",
+    "holdDescription": "Handle this later.",
+    "holdTitle": "On hold",
+    "reportDescription": "Description in History",
+    "reportDescriptionHint": "Details and images in Markdown",
+    "reportTitle": "Title in History",
+    "reportTitleHint": "The point of the report, in one line",
+    "restoreDescription": "Back to its state before the hold.",
+    "restoreTitle": "Off hold",
+    "statePick": "Change state",
+    "statePickHint": "Change the state of {{id}}",
+    "stopDescription": "Stops this task and the tasks under it.",
+    "stopTitle": "Stopped",
+    "submit": "Update",
+    "words": "Report in History"
+  },
+  "responsibleForm": {
+    "change": "Change",
+    "choiceUnavailable": "The selected agent or launch profile is no longer available. This form was closed.",
+    "decide": "Assign",
+    "effort": "Effort",
+    "legend": "Owner of this task",
+    "model": "Model",
+    "newPerson": "New agent",
+    "noProfiles": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server",
+    "promote": "{{name}} takes over",
+    "replaceNote": "{{name}} stops being the owner and stays in History without becoming a member",
+    "taskUnavailable": "This task is no longer available. This form was closed.",
+    "type": "Launch profile"
+  },
+  "runForm": {
+    "closed": "Closed",
+    "closeDescription": "Close {{run}}.",
+    "closeSubmit": "Close run",
+    "closeTitle": "Close run",
+    "noLongerAvailable": "This run can no longer be closed. This form was closed."
+  },
+  "writeFailure": {
+    "checkWhich": "Couldn't confirm the result of “{{subject}}”",
+    "conflict": "Nothing was saved. Review the latest content before continuing.",
+    "operationUnconfirmed": "Couldn't confirm the result. Sending again reuses the same ID: if it hasn't arrived, it runs now; an operation already received won't run twice.",
+    "readLatest": "Read the latest",
+    "unconfirmed": "Couldn't confirm whether it was sent. Resending is paused to prevent duplicates. Close with your input kept, then check the latest content or run records.",
+    "unproven": "Sending it again could run it twice, so it won't be sent. Copy what you need and continue in a new tab."
+  },
+  "writeResult": {
+    "confirmed": "{{subject}}: confirmed the operation is complete."
+  }
+}

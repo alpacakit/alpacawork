@@ -1,0 +1,555 @@
+[
+  {
+    "file": "packages/db/src/control-migration-snapshot.ts",
+    "sql": "INSERT INTO control_migration_evidence(source_id,table_name,source_rowid,cells) VALUES (?,?,?,?)",
+    "table": "control_migration_evidence",
+    "line": 22,
+    "status": "maintenance"
+  },
+  {
+    "file": "packages/db/src/control-migration-snapshot.ts",
+    "sql": "INSERT INTO control_migration_sources(id,metadata,evidence_digest) VALUES (?,?,?)",
+    "table": "control_migration_sources",
+    "line": 28,
+    "status": "maintenance"
+  },
+  {
+    "file": "packages/db/src/control.ts",
+    "sql": "INSERT INTO cli_operations(op_id,operation,fingerprint,status,response_json,committed_at) VALUES (?,?,?,?,?,?)",
+    "table": "cli_operations",
+    "line": 339,
+    "status": "unobserved"
+  },
+  {
+    "file": "packages/db/src/recovery-evidence.ts",
+    "sql": "UPDATE task_sequence SET next_number=max(next_number,?) WHERE singleton=1",
+    "table": "task_sequence",
+    "line": 62,
+    "status": "maintenance"
+  },
+  {
+    "file": "packages/db/src/recovery-evidence.ts",
+    "sql": "UPDATE run_sequence SET next_number=max(next_number,?) WHERE singleton=1",
+    "table": "run_sequence",
+    "line": 63,
+    "status": "maintenance"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "UPDATE run_sequence SET next_number = ? WHERE singleton = 1",
+    "table": "run_sequence",
+    "line": 209,
+    "status": "unobserved"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "INSERT INTO runs(id,record,prompt) VALUES (?,?,?)",
+    "table": "runs",
+    "line": 224,
+    "status": "touch"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
+    "table": "requests",
+    "line": 236,
+    "status": "touch"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "INSERT INTO requests (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to) SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?",
+    "table": "requests",
+    "line": 250,
+    "status": "touch"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "UPDATE requests SET delivery_state = ? WHERE id = ?",
+    "table": "requests",
+    "line": 261,
+    "status": "touch"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "UPDATE runs SET record = ?, result_state = CASE WHEN result_state = 'pending' AND ? IN ('failed','cancelled') THEN 'missing' ELSE result_state END WHERE id = ?",
+    "table": "runs",
+    "line": 299,
+    "status": "touch"
+  },
+  {
+    "file": "packages/runs/src/store.ts",
+    "sql": "UPDATE runs SET record = ?, result = ?, result_state = ? WHERE id = ?",
+    "table": "runs",
+    "line": 320,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/agents/migration-storage.ts",
+    "sql": "UPDATE cli_operations SET status=?,response_json=?",
+    "table": "cli_operations",
+    "line": 150,
+    "status": "maintenance"
+  },
+  {
+    "file": "apps/backend/src/agents/migration-storage.ts",
+    "sql": "UPDATE file_operations SET result_json=? WHERE result_json IS NOT NULL",
+    "table": "file_operations",
+    "line": 151,
+    "status": "maintenance"
+  },
+  {
+    "file": "apps/backend/src/control/dependencies.ts",
+    "sql": "DELETE FROM task_dependencies WHERE task_id=?",
+    "table": "task_dependencies",
+    "line": 106,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/dependencies.ts",
+    "sql": "INSERT INTO task_dependencies(task_id,after_task_id) VALUES (?,?)",
+    "table": "task_dependencies",
+    "line": 108,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "INSERT INTO file_operations(id,op_id,kind,task_uuid,source_path,destination_path, old_digest,new_digest,stage_path,tombstone_path,fingerprint,state,result_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    "table": "file_operations",
+    "line": 308,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "INSERT INTO file_path_reservations(path,operation_id) VALUES (?,?)",
+    "table": "file_path_reservations",
+    "line": 314,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "UPDATE file_operations SET state='published' WHERE id=?",
+    "table": "file_operations",
+    "line": 423,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "DELETE FROM file_path_reservations WHERE operation_id=?",
+    "table": "file_path_reservations",
+    "line": 424,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "INSERT INTO cli_operations(op_id,operation,fingerprint,status,response_json,committed_at) VALUES (?,?,?,?,?,?)",
+    "table": "cli_operations",
+    "line": 425,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/file-journal.ts",
+    "sql": "UPDATE file_operations SET state='needs_review' WHERE id=? AND state='prepared'",
+    "table": "file_operations",
+    "line": 442,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/placements.ts",
+    "sql": "INSERT INTO agents(id, created_at) VALUES (?, ?)",
+    "table": "agents",
+    "line": 56,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/placements.ts",
+    "sql": "INSERT INTO placements (id, task_id, agent_id, profile_key, responsible, revision, started_at, ended_at) VALUES (?, ?, ?, ?, ?, 1, ?, NULL)",
+    "table": "placements",
+    "line": 68,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/placements.ts",
+    "sql": "UPDATE placements SET responsible = 1, revision = revision + 1 WHERE id = ?",
+    "table": "placements",
+    "line": 134,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/placements.ts",
+    "sql": "UPDATE placements SET revision = revision + 1, ended_at = ? WHERE id = ?",
+    "table": "placements",
+    "line": 189,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE return_deliveries SET received_at=? WHERE return_id=? AND wake_request_id=?",
+    "table": "return_deliveries",
+    "line": 222,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE return_deliveries SET consumed_at=? WHERE return_id=? AND wake_request_id=?",
+    "table": "return_deliveries",
+    "line": 228,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE return_deliveries SET released_at=?,release_reason=? WHERE return_id=? AND wake_request_id=? AND consumed_at IS NULL AND released_at IS NULL",
+    "table": "return_deliveries",
+    "line": 233,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "INSERT INTO return_resolutions(return_id,reason,at) VALUES (?,?,?)",
+    "table": "return_resolutions",
+    "line": 236,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "INSERT INTO return_deliveries(return_id,wake_request_id,reserved_at) VALUES (?,?,?)",
+    "table": "return_deliveries",
+    "line": 240,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE returns SET hold_reason=NULL WHERE id=?",
+    "table": "returns",
+    "line": 241,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "INSERT INTO returns(id,request_id,to_task_id,outcome,boundary_run_id,cause_log_id,created_at) VALUES (?,?,?,?,?,?,?)",
+    "table": "returns",
+    "line": 255,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE wait_cycles SET closed_at=? WHERE id=?",
+    "table": "wait_cycles",
+    "line": 276,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "UPDATE returns SET hold_reason=? WHERE id=? AND hold_reason IS NOT ?",
+    "table": "returns",
+    "line": 310,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "INSERT INTO wait_cycles(id,task_id,opened_at) VALUES (?,?,?)",
+    "table": "wait_cycles",
+    "line": 347,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/return-lifecycle.ts",
+    "sql": "INSERT INTO returns(id,to_task_id,outcome,cause_log_id,created_at) VALUES (?,?,?,?,?)",
+    "table": "returns",
+    "line": 357,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "UPDATE task_sequence SET next_number = next_number + 1 WHERE singleton = 1 RETURNING next_number - 1 AS number",
+    "table": "task_sequence",
+    "line": 388,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold, user_requested,settings,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    "table": "tasks",
+    "line": 401,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "UPDATE tasks SET parent_id=?,kind=?,title=?,lifecycle=?,base_state=?,hold=?,user_requested=?,settings=?, revision=?,updated_at=? WHERE id=?",
+    "table": "tasks",
+    "line": 449,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "INSERT INTO task_log(id,task_id,ordinal,entry) VALUES (?,?,?,?)",
+    "table": "task_log",
+    "line": 473,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "INSERT INTO task_log(id,task_id,ordinal,request_id,note_title,note_description) VALUES (?,?,?,?,?,?)",
+    "table": "task_log",
+    "line": 476,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "INSERT INTO task_log_question(log_id,question_log_id) VALUES (?,?)",
+    "table": "task_log_question",
+    "line": 481,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-store.ts",
+    "sql": "INSERT INTO log_texts(log_id,text) VALUES (?,?)",
+    "table": "log_texts",
+    "line": 489,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-transition.ts",
+    "sql": "INSERT INTO task_start_grants(request_id,path,intent) VALUES (?,?,?)",
+    "table": "task_start_grants",
+    "line": 202,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-transition.ts",
+    "sql": "INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id",
+    "table": "task_stop_epochs",
+    "line": 438,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-migration.ts",
+    "sql": "INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?)",
+    "table": "task_values",
+    "line": 229,
+    "status": "maintenance"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "INSERT INTO field_defs(id,definition,updated_at) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET definition=excluded.definition, updated_at=excluded.updated_at",
+    "table": "field_defs",
+    "line": 61,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "DELETE FROM task_values WHERE field_id=?",
+    "table": "task_values",
+    "line": 95,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "DELETE FROM field_defs WHERE id=?",
+    "table": "field_defs",
+    "line": 97,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "DELETE FROM project_fields WHERE project_task_id=?",
+    "table": "project_fields",
+    "line": 128,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "INSERT INTO project_fields(project_task_id,position,field_id) VALUES (?,?,?)",
+    "table": "project_fields",
+    "line": 130,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "DELETE FROM task_values WHERE task_id=?",
+    "table": "task_values",
+    "line": 188,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?)",
+    "table": "task_values",
+    "line": 190,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/conversation.ts",
+    "sql": "INSERT INTO coordinator_conversations(id, started_at) VALUES (?, ?)",
+    "table": "coordinator_conversations",
+    "line": 56,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/conversation.ts",
+    "sql": "UPDATE coordinator_conversations SET warm_request_id = ? WHERE id = ?",
+    "table": "coordinator_conversations",
+    "line": 242,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/conversation.ts",
+    "sql": "UPDATE coordinator_conversations SET cleared_at = ? WHERE id = ?",
+    "table": "coordinator_conversations",
+    "line": 366,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/messages.ts",
+    "sql": "INSERT INTO task_dialogues(task_uuid,request_id) VALUES (?,?) ON CONFLICT DO NOTHING",
+    "table": "task_dialogues",
+    "line": 57,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/messages.ts",
+    "sql": "INSERT INTO coordinator_refusals(request_id,task_uuid,problem_json,refused_at) VALUES (?,?,?,?)",
+    "table": "coordinator_refusals",
+    "line": 84,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/runs/ending.ts",
+    "sql": "UPDATE run_attempts SET dirty=1 WHERE run_no=?",
+    "table": "run_attempts",
+    "line": 67,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_inputs SET state=?,receipt_json=? WHERE input_id=?",
+    "table": "run_inputs",
+    "line": 33,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_inputs SET state='not_sent',receipt_json=? WHERE attempt_id=? AND state='reserved' RETURNING input_id",
+    "table": "run_inputs",
+    "line": 48,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET dirty=0 WHERE dirty=1 AND attempt_id=? AND next_seq=? AND completed_digest IS ? AND EXISTS (SELECT 1 FROM runs r WHERE r.id=run_attempts.run_no AND r.task_id IN (SELECT value FROM json_each(?)) AND r.record=?)",
+    "table": "run_attempts",
+    "line": 70,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET next_seq=?,last_digest=? WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 149,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET acked_seq=max(acked_seq,?) WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 161,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET diagnostic=NULL WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 168,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET diagnostic=? WHERE attempt_id=? AND diagnostic IS NOT ?",
+    "table": "run_attempts",
+    "line": 177,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET claimed=1 WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 195,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET spawn_intent=1 WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 199,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET started_json=? WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 202,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_inputs SET state='attempted' WHERE input_id=?",
+    "table": "run_inputs",
+    "line": 212,
+    "status": "pending-routing"
+  },
+  {
+    "file": "apps/backend/src/runs/event-importer.ts",
+    "sql": "UPDATE run_attempts SET completed_digest=? WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 230,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "INSERT INTO run_attempts(run_no,attempt_id,launch_json) VALUES (?,?,?)",
+    "table": "run_attempts",
+    "line": 63,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "INSERT INTO run_inputs(input_id,attempt_id,instruction_run_no,content_digest,state,initial) VALUES (?,?,?,?,'reserved',1)",
+    "table": "run_inputs",
+    "line": 66,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "INSERT INTO run_commands(attempt_id,seq,command_id,type,input_id,instruction_run_no,operation_id,text,content_digest) VALUES (?,?,?,?,?,?,?,?,?)",
+    "table": "run_commands",
+    "line": 80,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "UPDATE run_inputs SET state='resolved' WHERE input_id=?",
+    "table": "run_inputs",
+    "line": 122,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "INSERT INTO run_inputs(input_id,attempt_id,instruction_run_no,content_digest,state,initial) VALUES (?,?,?,?,'reserved',0)",
+    "table": "run_inputs",
+    "line": 189,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/runs/execution-control.ts",
+    "sql": "UPDATE run_commands SET published=1 WHERE command_id=? AND published=0",
+    "table": "run_commands",
+    "line": 207,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/runs/scheduler.ts",
+    "sql": "UPDATE run_attempts SET diagnostic=? WHERE attempt_id=?",
+    "table": "run_attempts",
+    "line": 305,
+    "status": "touch"
+  }
+]

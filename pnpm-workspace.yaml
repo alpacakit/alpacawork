@@ -1,0 +1,43 @@
+packages:
+  - apps/*
+  - packages/*
+
+packageImportMethod: hardlink
+engineStrict: true
+verifyDepsBeforeRun: false
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  koffi: true
+patchedDependencies:
+  embla-carousel@8.6.0: patches/embla-carousel@8.6.0.patch
+  prosemirror-view@1.42.6: patches/prosemirror-view@1.42.6.patch
+
+# pnpm expands these axes as a cross product; exclusions below remove the
+# unsupported pairs. Runtime targets are Linux x64/glibc and macOS arm64.
+# This does not supply every dependency needed to build the source on macOS.
+supportedArchitectures:
+  os: [linux, darwin]
+  cpu: [x64, arm64]
+  libc: [glibc]
+
+# Exclude the unsupported pairs from the cross product above.
+# tests/platform-inputs.test.ts checks the actual lock graph against PACKAGE_TARGETS.
+ignoredOptionalDependencies:
+  - "@esbuild/darwin-x64"
+  - "@esbuild/linux-arm64"
+  - "@github/copilot-sdk-darwin-x64"
+  - "@github/copilot-sdk-linux-arm64"
+  - "@koromix/koffi-darwin-x64"
+  - "@koromix/koffi-linux-arm64"
+  - "@rolldown/binding-darwin-x64"
+  - "@rolldown/binding-linux-arm64-gnu"
+  - "@swc/core-darwin-x64"
+  - "@swc/core-linux-arm64-gnu"
+  - "@tailwindcss/oxide-darwin-x64"
+  - "@tailwindcss/oxide-linux-arm64-gnu"
+  - lightningcss-darwin-x64
+  - lightningcss-linux-arm64-gnu
+
+minimumReleaseAgeExclude:
+  - '@alpacakit/channels@0.2.0-beta.5'

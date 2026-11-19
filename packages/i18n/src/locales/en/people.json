@@ -1,0 +1,96 @@
+{
+  "agentLabel": {
+    "unknown": "unknown",
+    "unstarted": "not started"
+  },
+  "attach": {
+    "add": "Attach",
+    "addHint": "Attach files (or paste or drop images)",
+    "checking": "Checking the attachment result",
+    "notReceived": "Could not be received",
+    "pastedImage": "pasted-image",
+    "pastedText": "pasted-text",
+    "receiptMismatch": "The saved attachment doesn't match the file you selected",
+    "remove": "Remove {{name}}",
+    "reselect": "Not found. Select the file again",
+    "restored": "Data was recovered in between, so the result can't be confirmed and it won't be resent. Remove it with × on the attachment card",
+    "storageUnavailable": "Could not save the draft",
+    "tooLarge": "Larger than {{size}}",
+    "tooMany": "Up to {{limit}} attachments at a time",
+    "unconfirmed": "Couldn't confirm the result. Reload to check",
+    "unnamed": "file",
+    "uploading": "Uploading {{name}}"
+  },
+  "clock": {
+    "base": "{{clock}}",
+    "date": "{{date}} {{clock}}",
+    "today": "today {{clock}}",
+    "tomorrow": "tomorrow {{clock}}",
+    "yesterday": "yesterday {{clock}}"
+  },
+  "day": {
+    "date": "{{weekday}} {{date}}",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday"
+  },
+  "dot": {
+    "attention": "Error"
+  },
+  "duration": {
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "hours": "{{hours}}h {{minutes}}m",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "underMinute": "<1 min"
+  },
+  "finish": {
+    "after": "After {{time}}",
+    "bandOver": "{{length}} overdue",
+    "done": "Done {{time}}",
+    "end": "Expected report {{time}}",
+    "long": {
+      "after_one": "Excluding {{count}} task without an estimate, the latest expected report is {{time}}. Not all reports will be in before then",
+      "after_other": "Excluding {{count}} tasks without an estimate, the latest expected report is {{time}}. Not all reports will be in before then",
+      "end": "{{used}} of {{total}} min worked. Expected report {{time}}",
+      "over": "{{used}} of {{total}} min worked. Past the {{time}} estimate by {{length}}",
+      "subtree_one": "Based on {{count}} estimate. Expected report {{time}}",
+      "subtree_other": "The latest of {{count}} estimates. Expected report {{time}}",
+      "subtreeOver": "A task under it is past the {{time}} estimate by {{length}}"
+    },
+    "over": "{{length}} past {{time}}",
+    "overBy": {
+      "days_one": "~{{count}} day",
+      "days_other": "~{{count}} days",
+      "hours_one": "~{{count}} hour",
+      "hours_other": "~{{count}} hours",
+      "minutes_one": "~{{count}} min",
+      "minutes_other": "~{{count}} min"
+    },
+    "pending": "Awaiting a new estimate",
+    "reported": "$t(ui:state.waitingReview), reported {{time}}",
+    "review": "$t(ui:state.waitingReview)",
+    "stopped": "$t(people:dot.attention)",
+    "unknown": "$t(ui:state.doing)"
+  },
+  "line": {
+    "children": "Subtasks {{done}}/{{total}}"
+  },
+  "now": {
+    "event": "{{kind}}",
+    "kind": {
+      "error": "Error",
+      "message": "Message",
+      "output": "Output",
+      "result": "Result",
+      "tool_end": "Tool result",
+      "tool_start": "Tool use"
+    },
+    "output": "{{event}} {{ago}} ago",
+    "stale": "Last output is old: {{event}} ({{ago}} ago)",
+    "toolEvent": "{{tool}}: {{kind}}"
+  },
+  "records": {
+    "close": "Close run…"
+  }
+}

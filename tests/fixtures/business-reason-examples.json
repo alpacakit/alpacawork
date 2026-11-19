@@ -1,0 +1,2339 @@
+[
+  {
+    "reason": {
+      "kind": "run_database_busy"
+    },
+    "en": "The run database is busy"
+  },
+  {
+    "reason": {
+      "kind": "cannot_close_active_run_transaction"
+    },
+    "en": "Cannot close an active run transaction"
+  },
+  {
+    "reason": {
+      "kind": "run_folder_prepared_only_after_commit"
+    },
+    "en": "The run folder can only be prepared after commit"
+  },
+  {
+    "reason": {
+      "kind": "run_does_not_exist"
+    },
+    "en": "Run not found"
+  },
+  {
+    "reason": {
+      "kind": "run_transaction_has_ended"
+    },
+    "en": "The run transaction has ended"
+  },
+  {
+    "reason": {
+      "kind": "run_database_read_only"
+    },
+    "en": "The run database is read-only"
+  },
+  {
+    "reason": {
+      "kind": "run_numbers_exhausted"
+    },
+    "en": "Run numbers have run out"
+  },
+  {
+    "reason": {
+      "kind": "referenced_run_does_not_exist"
+    },
+    "en": "Referenced run not found"
+  },
+  {
+    "reason": {
+      "kind": "task_does_not_exist"
+    },
+    "en": "Task not found"
+  },
+  {
+    "reason": {
+      "kind": "request_task_does_not_exist"
+    },
+    "en": "Task for the request not found"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_conversation_does_not_exist"
+    },
+    "en": "Coordinator conversation not found"
+  },
+  {
+    "reason": {
+      "kind": "request_does_not_exist"
+    },
+    "en": "Request not found"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_run_does_not_exist"
+    },
+    "en": "Coordinator run not found"
+  },
+  {
+    "reason": {
+      "kind": "run_success_must_commit_final_reply_with_finish"
+    },
+    "en": "A successful run must commit its final answer with finish"
+  },
+  {
+    "reason": {
+      "kind": "finished_run_must_have_ended_state"
+    },
+    "en": "A finished run must have an end state"
+  },
+  {
+    "reason": {
+      "kind": "run_success_requires_one_valid_final_reply"
+    },
+    "en": "A successful run needs one valid final answer"
+  },
+  {
+    "reason": {
+      "kind": "final_reply_too_large"
+    },
+    "en": "The final answer is too large"
+  },
+  {
+    "reason": {
+      "kind": "run_cannot_finished_twice_or_changed"
+    },
+    "en": "A run cannot be finished twice or changed after finishing"
+  },
+  {
+    "reason": {
+      "kind": "run_creation_fields_immutable"
+    },
+    "en": "A run's creation values cannot change"
+  },
+  {
+    "reason": {
+      "kind": "launched_run_keeps_session"
+    },
+    "en": "A launched run's session cannot change"
+  },
+  {
+    "reason": {
+      "kind": "illegal_run_state_transition"
+    },
+    "en": "Run state transition not allowed"
+  },
+  {
+    "reason": {
+      "kind": "run_store_closed_or_already_transaction"
+    },
+    "en": "The run store is closed or already in a transaction"
+  },
+  {
+    "reason": {
+      "kind": "run_transaction_callback_must_synchronous"
+    },
+    "en": "Run transaction callbacks must be synchronous"
+  },
+  {
+    "reason": {
+      "kind": "cannot_determine_whether_caller_sandboxed"
+    },
+    "en": "Couldn't confirm whether the caller is sandboxed"
+  },
+  {
+    "reason": {
+      "kind": "workspace_already_has_serve_writer_process"
+    },
+    "en": "This process already has a serve writer for this workspace"
+  },
+  {
+    "reason": {
+      "kind": "unsafe_control_writer_lock"
+    },
+    "en": "The control database write lock is not safe"
+  },
+  {
+    "reason": {
+      "kind": "another_serve_writer_owns_workspace"
+    },
+    "en": "Another serve process is writing to this workspace"
+  },
+  {
+    "reason": {
+      "kind": "no_migrations_packaged"
+    },
+    "en": "No migrations are included. The existing database is kept"
+  },
+  {
+    "reason": {
+      "kind": "database_migration_failed_existing_database_preserved"
+    },
+    "en": "Database migration failed. The existing database is kept"
+  },
+  {
+    "reason": {
+      "kind": "unknown_or_modified_migration_history"
+    },
+    "en": "The migration history is unknown or modified. The existing database is kept"
+  },
+  {
+    "reason": {
+      "kind": "database_schema_unsupported"
+    },
+    "en": "Unsupported database structure. The existing database is kept"
+  },
+  {
+    "reason": {
+      "kind": "local_voice_not_configured"
+    },
+    "en": "Local speech recognition is not set up"
+  },
+  {
+    "reason": {
+      "kind": "invalid_busy_timeout"
+    },
+    "en": "Invalid busy timeout"
+  },
+  {
+    "reason": {
+      "kind": "control_database_absent"
+    },
+    "en": "Control database not found"
+  },
+  {
+    "reason": {
+      "kind": "control_database_must_regular_file_without_links"
+    },
+    "en": "The control database must be a regular file without links"
+  },
+  {
+    "reason": {
+      "kind": "control_transaction_active"
+    },
+    "en": "A control database transaction is in progress"
+  },
+  {
+    "reason": {
+      "kind": "control_store_busy_or_closed"
+    },
+    "en": "The control database is busy or closed"
+  },
+  {
+    "reason": {
+      "kind": "control_database_read_only"
+    },
+    "en": "The control database is read-only"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_different_input"
+    },
+    "en": "The operation ID is used for different input"
+  },
+  {
+    "reason": {
+      "kind": "operation_response_must_json"
+    },
+    "en": "The operation response must be JSON"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_file_operation"
+    },
+    "en": "The operation ID is used for a file operation"
+  },
+  {
+    "reason": {
+      "kind": "control_transaction_callback_must_synchronous"
+    },
+    "en": "Control database transaction callbacks must be synchronous"
+  },
+  {
+    "reason": {
+      "kind": "expected_real_directories_without_links"
+    },
+    "en": "Real directories without links are required"
+  },
+  {
+    "reason": {
+      "kind": "busy_timeout_must_nonnegative_32_bit_integer"
+    },
+    "en": "The wait time must be a non-negative 32-bit integer"
+  },
+  {
+    "reason": {
+      "kind": "database_could_not_opened_existing_files_preserved"
+    },
+    "en": "Could not open the database. Existing files are kept"
+  },
+  {
+    "reason": {
+      "kind": "database_startup_lock_must_regular_file_without_hard_links"
+    },
+    "en": "The database startup lock must be a regular file without hard links"
+  },
+  {
+    "reason": {
+      "kind": "database_initialization_busy_retry_after_current_opener"
+    },
+    "en": "The database is being initialized. Try again after the current process finishes"
+  },
+  {
+    "reason": {
+      "kind": "database_or_sidecar_linked_or_not_regular_file"
+    },
+    "en": "The database or a related file is a link or not a regular file"
+  },
+  {
+    "reason": {
+      "kind": "database_could_not_read_existing_files_preserved"
+    },
+    "en": "Could not read the database. Existing files are kept"
+  },
+  {
+    "reason": {
+      "kind": "settings_changed"
+    },
+    "en": "Settings changed. Reload and try again"
+  },
+  {
+    "reason": {
+      "kind": "config_file_reserved"
+    },
+    "en": "The config file is reserved by another operation"
+  },
+  {
+    "reason": {
+      "kind": "cannot_confirm_settings_were_saved_reload_and_check_saved_content"
+    },
+    "en": "Couldn't confirm whether the settings were saved. Reload and check the saved content"
+  },
+  {
+    "reason": {
+      "kind": "estimateminutes_must_integer_from",
+      "ESTIMATE_MINUTESMin": "FACT_ESTIMATE_MINUTESMin",
+      "ESTIMATE_MINUTESMax": "FACT_ESTIMATE_MINUTESMax"
+    },
+    "en": "estimateMinutes must be an integer from FACT_ESTIMATE_MINUTESMin to FACT_ESTIMATE_MINUTESMax"
+  },
+  {
+    "reason": {
+      "kind": "unknown_log_kind"
+    },
+    "en": "Unknown History entry kind"
+  },
+  {
+    "reason": {
+      "kind": "task_log_has_no_creation"
+    },
+    "en": "The task's History has no creation entry"
+  },
+  {
+    "reason": {
+      "kind": "unsupported_task_format_expected_integer_3"
+    },
+    "en": "Unsupported task format (expected integer 3)"
+  },
+  {
+    "reason": {
+      "kind": "task_cannot_parent_itself"
+    },
+    "en": "A task cannot be its own parent"
+  },
+  {
+    "reason": {
+      "kind": "unknown_task_kind"
+    },
+    "en": "Unknown task kind"
+  },
+  {
+    "reason": {
+      "kind": "unknown_task_lifecycle"
+    },
+    "en": "Unknown task lifecycle"
+  },
+  {
+    "reason": {
+      "kind": "version_must_positive_integer"
+    },
+    "en": "version must be a positive integer"
+  },
+  {
+    "reason": {
+      "kind": "log_must_array"
+    },
+    "en": "log must be an array"
+  },
+  {
+    "reason": {
+      "kind": "log_ids_must_unique_within_task"
+    },
+    "en": "History IDs must be unique within a task"
+  },
+  {
+    "reason": {
+      "kind": "userrequested_must_what_log_last_set"
+    },
+    "en": "userRequested must match the value last set in the History"
+  },
+  {
+    "reason": {
+      "kind": "workspace_required"
+    },
+    "en": "--workspace is required"
+  },
+  {
+    "reason": {
+      "kind": "write_requires_operation_id"
+    },
+    "en": "This write requires an operation ID"
+  },
+  {
+    "reason": {
+      "kind": "placement_does_not_exist_on_task"
+    },
+    "en": "The specified owner or member is not on this task"
+  },
+  {
+    "reason": {
+      "kind": "run_creates_below_own_task_and_names_it_with_parent"
+    },
+    "en": "A run must create tasks under its own task and specify it with --parent"
+  },
+  {
+    "reason": {
+      "kind": "member_needs_expected_responsible_revision"
+    },
+    "en": "A member needs --expected-responsible-revision"
+  },
+  {
+    "reason": {
+      "kind": "question_does_not_exist"
+    },
+    "en": "Question not found"
+  },
+  {
+    "reason": {
+      "kind": "runs_stopped_but_their_audit_could_not_read"
+    },
+    "en": "Runs stopped, but their audit records could not be read"
+  },
+  {
+    "reason": {
+      "kind": "must_nonempty_string_at_most_characters",
+      "name": "FACT_name",
+      "limit": "FACT_limit"
+    },
+    "en": "FACT_name must be a non-empty string of at most FACT_limit characters"
+  },
+  {
+    "reason": {
+      "kind": "task_id_must_1_999999999"
+    },
+    "en": "IDs must be T1–T999999999 for tasks or P1–P999999999 for projects"
+  },
+  {
+    "reason": {
+      "kind": "requires_exactly",
+      "name": "FACT_name",
+      "keysSort": "FACT_keysSort"
+    },
+    "en": "FACT_name accepts only these fields: FACT_keysSort"
+  },
+  {
+    "reason": {
+      "kind": "unknown_task_state"
+    },
+    "en": "Unknown task state"
+  },
+  {
+    "reason": {
+      "kind": "only_managed_workspace_files_accepted"
+    },
+    "en": "Only managed workspace files are accepted"
+  },
+  {
+    "reason": {
+      "kind": "filesystem_root_cannot_task_root"
+    },
+    "en": "The filesystem root cannot be a task root"
+  },
+  {
+    "reason": {
+      "kind": "expected_regular_file"
+    },
+    "en": "A regular file is required"
+  },
+  {
+    "reason": {
+      "kind": "expected_regular_file_without_hard_links"
+    },
+    "en": "A regular file without hard links is required"
+  },
+  {
+    "reason": {
+      "kind": "invalid_managed_directory"
+    },
+    "en": "Invalid managed directory"
+  },
+  {
+    "reason": {
+      "kind": "file_exceeds_size_limit"
+    },
+    "en": "The file exceeds the size limit"
+  },
+  {
+    "reason": {
+      "kind": "root_use_retry_after_current_operation"
+    },
+    "en": "The root is in use. Try again after the current operation finishes"
+  },
+  {
+    "reason": {
+      "kind": "placement_intent_disappeared"
+    },
+    "en": "Pending owner or member change not found"
+  },
+  {
+    "reason": {
+      "kind": "invalid_placement_intent"
+    },
+    "en": "Invalid pending owner or member change"
+  },
+  {
+    "reason": {
+      "kind": "invalid_placement_intent_id"
+    },
+    "en": "Invalid pending owner or member change ID"
+  },
+  {
+    "reason": {
+      "kind": "file_changed_reload_before_retrying"
+    },
+    "en": "The file changed. Reload and try again"
+  },
+  {
+    "reason": {
+      "kind": "document_exceeds_size_limit"
+    },
+    "en": "The document exceeds the size limit"
+  },
+  {
+    "reason": {
+      "kind": "document_changed_during_save_verification_inspect_current_files_before_retrying"
+    },
+    "en": "The document changed while the save was being checked. Check the current files before retrying"
+  },
+  {
+    "reason": {
+      "kind": "document_may_have_been_saved_inspect_current_files_before_retrying"
+    },
+    "en": "The document may have been saved. Check the current files before retrying"
+  },
+  {
+    "reason": {
+      "kind": "invalid_coordinator_request_id"
+    },
+    "en": "Invalid coordinator request ID"
+  },
+  {
+    "reason": {
+      "kind": "invalid_attachment_name"
+    },
+    "en": "Invalid attachment name"
+  },
+  {
+    "reason": {
+      "kind": "attachment_publication_pending"
+    },
+    "en": "Waiting for the attachment to be applied"
+  },
+  {
+    "reason": {
+      "kind": "attachment_request_ids_must_differ"
+    },
+    "en": "The source and destination request IDs must be different"
+  },
+  {
+    "reason": {
+      "kind": "file_exceeds_mib",
+      "limit": "FACT_limit"
+    },
+    "en": "The file exceeds FACT_limit MiB"
+  },
+  {
+    "reason": {
+      "kind": "invalid_selection",
+      "name": "FACT_name",
+      "value": "FACT_value"
+    },
+    "en": "Invalid selection FACT_name=FACT_value"
+  },
+  {
+    "reason": {
+      "kind": "conversation_has_changed"
+    },
+    "en": "The conversation has changed"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_message_not_conversation"
+    },
+    "en": "This coordinator message is not in the specified conversation"
+  },
+  {
+    "reason": {
+      "kind": "no_configured_agents"
+    },
+    "en": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server"
+  },
+  {
+    "reason": {
+      "kind": "agent_not_configured",
+      "agent": "FACT_agent"
+    },
+    "en": "Agent FACT_agent is not configured"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_message_too_large"
+    },
+    "en": "The coordinator message is too large"
+  },
+  {
+    "reason": {
+      "kind": "message_id_belongs_different_input"
+    },
+    "en": "The message ID is already used for different input"
+  },
+  {
+    "reason": {
+      "kind": "message_has_already_been_sent"
+    },
+    "en": "The message has already been sent"
+  },
+  {
+    "reason": {
+      "kind": "message_has_already_left_queue"
+    },
+    "en": "The message has already left the queue"
+  },
+  {
+    "reason": {
+      "kind": "message_already_sent_again"
+    },
+    "en": "The message has already been sent again"
+  },
+  {
+    "reason": {
+      "kind": "message_cannot_reach_working_agent_it_remains_queued"
+    },
+    "en": "The message cannot reach the working agent. It stays in the queue"
+  },
+  {
+    "reason": {
+      "kind": "sent_attachments_cannot_changed"
+    },
+    "en": "Sent attachments cannot be changed"
+  },
+  {
+    "reason": {
+      "kind": "answer_file_not_conversation"
+    },
+    "en": "The answer file is not in this conversation"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_attachment_not_conversation"
+    },
+    "en": "The coordinator attachment is not in this conversation"
+  },
+  {
+    "reason": {
+      "kind": "invalid_answer_file_path"
+    },
+    "en": "Invalid answer file path"
+  },
+  {
+    "reason": {
+      "kind": "expected_regular_answer_file_without_links"
+    },
+    "en": "The answer file must be a regular file without links"
+  },
+  {
+    "reason": {
+      "kind": "answer_file_exceeds_attachment_limit"
+    },
+    "en": "The answer file exceeds the attachment size limit"
+  },
+  {
+    "reason": {
+      "kind": "answer_file_changed_while_reading"
+    },
+    "en": "The answer file changed while it was being read"
+  },
+  {
+    "reason": {
+      "kind": "required",
+      "flag": "FACT_flag"
+    },
+    "en": "FACT_flag is required"
+  },
+  {
+    "reason": {
+      "kind": "stop_committed_but_publication_pending_query_or_retry_same_operation_id"
+    },
+    "en": "The stop was committed but is waiting to be applied. Check or retry with the same operation ID"
+  },
+  {
+    "reason": {
+      "kind": "run_file_access_failed"
+    },
+    "en": "Could not access the run's files"
+  },
+  {
+    "reason": {
+      "kind": "cannot_manage_runs_from_inside_sandbox"
+    },
+    "en": "Cannot manage runs from inside a sandbox"
+  },
+  {
+    "reason": {
+      "kind": "no_runs_stop"
+    },
+    "en": "No runs to stop"
+  },
+  {
+    "reason": {
+      "kind": "cannot_read_repair_file_before_editing",
+      "name": "FACT_name"
+    },
+    "en": "Could not read FACT_name. Repair the file before editing"
+  },
+  {
+    "reason": {
+      "kind": "cannot_confirm_reread_before_retrying",
+      "name": "FACT_name"
+    },
+    "en": "Couldn't confirm FACT_name. Reload it and try again"
+  },
+  {
+    "reason": {
+      "kind": "invalid_time_zone"
+    },
+    "en": "Invalid time zone"
+  },
+  {
+    "reason": {
+      "kind": "invalid_setting_or_value"
+    },
+    "en": "Invalid setting or value"
+  },
+  {
+    "reason": {
+      "kind": "settings_changed_another_view"
+    },
+    "en": "Settings changed in another view"
+  },
+  {
+    "reason": {
+      "kind": "notice_state_changed_another_view"
+    },
+    "en": "The notification state changed in another view"
+  },
+  {
+    "reason": {
+      "kind": "serve_quiescing_mutation_was_not_admitted"
+    },
+    "en": "serve is preparing to shut down. The change was not accepted"
+  },
+  {
+    "reason": {
+      "kind": "task_changed"
+    },
+    "en": "The task changed. Reload and try again"
+  },
+  {
+    "reason": {
+      "kind": "task_not_active"
+    },
+    "en": "The task is not active"
+  },
+  {
+    "reason": {
+      "kind": "assign_responsible_first_task_with_children_or_work_under_way_has_one",
+      "tasks": "FACT_tasks"
+    },
+    "en": "Assign an owner to FACT_tasks first. A task with subtasks or work in progress needs an owner"
+  },
+  {
+    "reason": {
+      "kind": "task_needs_parent_project_or_task_project"
+    },
+    "en": "A task needs a parent. Specify its project or a task in that project"
+  },
+  {
+    "reason": {
+      "kind": "project_s_parent_project_task",
+      "parent": "FACT_parent"
+    },
+    "en": "A project's parent must be a project. FACT_parent is a task"
+  },
+  {
+    "reason": {
+      "kind": "logical_task_depth_exceeds_32_levels"
+    },
+    "en": "The task hierarchy exceeds the 32-level limit"
+  },
+  {
+    "reason": {
+      "kind": "project_project_does_not_move",
+      "task": "FACT_task"
+    },
+    "en": "FACT_task is a project. Projects cannot move"
+  },
+  {
+    "reason": {
+      "kind": "moves_only_within_project",
+      "task": "FACT_task",
+      "project": "FACT_project"
+    },
+    "en": "FACT_task can only move within its project FACT_project"
+  },
+  {
+    "reason": {
+      "kind": "logical_parent_cycle"
+    },
+    "en": "The task parent-child relationship forms a loop"
+  },
+  {
+    "reason": {
+      "kind": "tasks_below_still_at_work",
+      "task": "FACT_task",
+      "working": "FACT_working"
+    },
+    "en": "Tasks below FACT_task are still in progress (FACT_working)"
+  },
+  {
+    "reason": {
+      "kind": "task_has_unfinished_runs"
+    },
+    "en": "The task has unfinished runs"
+  },
+  {
+    "reason": {
+      "kind": "task_has_active_children"
+    },
+    "en": "The task has active subtasks"
+  },
+  {
+    "reason": {
+      "kind": "project_settings_need_color"
+    },
+    "en": "Project settings require a color in the form #rrggbb"
+  },
+  {
+    "reason": {
+      "kind": "only_project_has_settings"
+    },
+    "en": "Only a project can have settings (color)"
+  },
+  {
+    "reason": {
+      "kind": "project_only_task_user_s_request",
+      "task": "FACT_task"
+    },
+    "en": "FACT_task is a project. Only a task can be a user request"
+  },
+  {
+    "reason": {
+      "kind": "awaits_user_s_review_confirm_it_or_send_it_back_first",
+      "task": "FACT_task"
+    },
+    "en": "FACT_task is awaiting the user's review. Accept it or send it back first"
+  },
+  {
+    "reason": {
+      "kind": "unknown_query_parameter",
+      "unknown": "FACT_unknown"
+    },
+    "en": "Unknown query parameter: FACT_unknown"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_required"
+    },
+    "en": "Operation ID is required"
+  },
+  {
+    "reason": {
+      "kind": "content_digest_differs"
+    },
+    "en": "The content digest does not match"
+  },
+  {
+    "reason": {
+      "kind": "invalid_expected_digest"
+    },
+    "en": "Invalid expected digest"
+  },
+  {
+    "reason": {
+      "kind": "invalid_attachment_move"
+    },
+    "en": "Invalid attachment move"
+  },
+  {
+    "reason": {
+      "kind": "attachment_move_needs_from_and_request_ids"
+    },
+    "en": "Moving an attachment needs both the source and destination request IDs"
+  },
+  {
+    "reason": {
+      "kind": "content_type_must_application_json"
+    },
+    "en": "Content-Type must be application/json"
+  },
+  {
+    "reason": {
+      "kind": "expected_json"
+    },
+    "en": "JSON is required"
+  },
+  {
+    "reason": {
+      "kind": "invalid_coordinator_launch_choices"
+    },
+    "en": "Invalid coordinator launch options"
+  },
+  {
+    "reason": {
+      "kind": "conversation_and_message_ids_required"
+    },
+    "en": "Conversation and message IDs are required"
+  },
+  {
+    "reason": {
+      "kind": "conversation_id_required"
+    },
+    "en": "Conversation ID is required"
+  },
+  {
+    "reason": {
+      "kind": "attachment_move_needs_request_ids"
+    },
+    "en": "Moving an attachment needs request IDs"
+  },
+  {
+    "reason": {
+      "kind": "invalid_coordinator_file_area"
+    },
+    "en": "Invalid coordinator file area"
+  },
+  {
+    "reason": {
+      "kind": "invalid_page_cursor"
+    },
+    "en": "Invalid page cursor"
+  },
+  {
+    "reason": {
+      "kind": "page_changed_read_from_first_page"
+    },
+    "en": "The page changed. Read again from the first page"
+  },
+  {
+    "reason": {
+      "kind": "project_does_not_exist"
+    },
+    "en": "Project not found"
+  },
+  {
+    "reason": {
+      "kind": "parent_task_does_not_exist"
+    },
+    "en": "Parent task not found"
+  },
+  {
+    "reason": {
+      "kind": "invalid_visible_task_ids"
+    },
+    "en": "Invalid visible task IDs"
+  },
+  {
+    "reason": {
+      "kind": "scope_task_does_not_exist"
+    },
+    "en": "Task for the view scope not found"
+  },
+  {
+    "reason": {
+      "kind": "task_outside_scope"
+    },
+    "en": "The task is outside the view scope"
+  },
+  {
+    "reason": {
+      "kind": "invalid_timeline_cursor"
+    },
+    "en": "Invalid timeline cursor"
+  },
+  {
+    "reason": {
+      "kind": "timeline_changed_read_from_first_page"
+    },
+    "en": "The timeline changed. Read again from the first page"
+  },
+  {
+    "reason": {
+      "kind": "invalid_search_cursor"
+    },
+    "en": "Invalid search cursor"
+  },
+  {
+    "reason": {
+      "kind": "search_changed_read_from_first_page"
+    },
+    "en": "Search results changed. Read again from the first page"
+  },
+  {
+    "reason": {
+      "kind": "request_exceeds_kib",
+      "limit": "FACT_limit"
+    },
+    "en": "Request exceeds FACT_limit KiB"
+  },
+  {
+    "reason": {
+      "kind": "invalid_run_authorization_header"
+    },
+    "en": "Invalid run authorization header"
+  },
+  {
+    "reason": {
+      "kind": "invalid_direct_conversation_headers"
+    },
+    "en": "Invalid direct conversation headers"
+  },
+  {
+    "reason": {
+      "kind": "invalid_x_alpacawork_cwd"
+    },
+    "en": "Invalid X-Alpacawork-Cwd"
+  },
+  {
+    "reason": {
+      "kind": "only_coordinator_quotes_user"
+    },
+    "en": "Only the coordinator can quote the user"
+  },
+  {
+    "reason": {
+      "kind": "workspace_has_no_active_project"
+    },
+    "en": "The workspace has no active project"
+  },
+  {
+    "reason": {
+      "kind": "public_host_must_host_port_lower_case"
+    },
+    "en": "public-host must be host[:port] in lower case"
+  },
+  {
+    "reason": {
+      "kind": "workspace_requires_repair_or_explicit_migration_before_serve"
+    },
+    "en": "The workspace needs repair or an explicit migration before starting serve"
+  },
+  {
+    "reason": {
+      "kind": "run_database_requires_explicit_migration_before_serve"
+    },
+    "en": "The run database needs an explicit migration before starting serve"
+  },
+  {
+    "reason": {
+      "kind": "serve_quiescing"
+    },
+    "en": "serve is preparing to shut down"
+  },
+  {
+    "reason": {
+      "kind": "index_not_running"
+    },
+    "en": "The index projection is not running"
+  },
+  {
+    "reason": {
+      "kind": "reload_client_before_checking_or_sending_operation_x_alpacawork_op_id_required"
+    },
+    "en": "Reload the page before checking or sending this operation. X-Alpacawork-Op-Id is required"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_body_and_header_must_match"
+    },
+    "en": "The operation IDs in the body and header must match"
+  },
+  {
+    "reason": {
+      "kind": "cli_command_route_missing",
+      "key": "FACT_key"
+    },
+    "en": "CLI command route is missing: FACT_key"
+  },
+  {
+    "reason": {
+      "kind": "unknown_endpoint"
+    },
+    "en": "alpacawork's version has changed. Reload the page."
+  },
+  {
+    "reason": {
+      "kind": "server_closing"
+    },
+    "en": "The server is shutting down"
+  },
+  {
+    "reason": {
+      "kind": "host_not_local_service"
+    },
+    "en": "The host is not this local service"
+  },
+  {
+    "reason": {
+      "kind": "cross_origin_request_rejected"
+    },
+    "en": "Requests from another origin are not accepted"
+  },
+  {
+    "reason": {
+      "kind": "build_browser_application_with_pnpm_build"
+    },
+    "en": "Build the browser application with pnpm build"
+  },
+  {
+    "reason": {
+      "kind": "invalid_last_event_id"
+    },
+    "en": "Invalid Last-Event-ID"
+  },
+  {
+    "reason": {
+      "kind": "return_continuation_requires_destination_and_returns"
+    },
+    "en": "Continuing with replies needs a destination and the replies"
+  },
+  {
+    "reason": {
+      "kind": "request_text_exceeds_160_kib"
+    },
+    "en": "The request text exceeds 160 KiB"
+  },
+  {
+    "reason": {
+      "kind": "launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value"
+    },
+    "en": "Send launch options with an instruction or a send-back. Fields left out keep the conversation's current values"
+  },
+  {
+    "reason": {
+      "kind": "placement_s_request_comes_from_run_placement"
+    },
+    "en": "A request from an agent must come from that agent's run"
+  },
+  {
+    "reason": {
+      "kind": "review_send_back_goes_current_responsible_with_held_decision_and_reviewed_run"
+    },
+    "en": "A send-back must go to the current owner with the decision on hold and the reviewed run"
+  },
+  {
+    "reason": {
+      "kind": "request_was_aborted_after_conflict_use_new_operation_id"
+    },
+    "en": "The request was aborted due to a conflict. Use a new operation ID"
+  },
+  {
+    "reason": {
+      "kind": "request_id_already_has_different_input"
+    },
+    "en": "The request ID already has different input"
+  },
+  {
+    "reason": {
+      "kind": "request_id_belongs_another_author"
+    },
+    "en": "The request ID is used by another requester"
+  },
+  {
+    "reason": {
+      "kind": "request_exists_without_confirmed_run"
+    },
+    "en": "The request exists, but its run could not be confirmed"
+  },
+  {
+    "reason": {
+      "kind": "request_id_belongs_another_launch_choice"
+    },
+    "en": "The request ID is used for other launch options"
+  },
+  {
+    "reason": {
+      "kind": "request_id_belongs_another_launch_directory"
+    },
+    "en": "The request ID is used for another launch directory"
+  },
+  {
+    "reason": {
+      "kind": "request_id_belongs_task_decision"
+    },
+    "en": "The request ID is used for a task decision"
+  },
+  {
+    "reason": {
+      "kind": "active_task_does_not_exist"
+    },
+    "en": "No active task"
+  },
+  {
+    "reason": {
+      "kind": "task_not_waiting_for_review"
+    },
+    "en": "The task is not awaiting review"
+  },
+  {
+    "reason": {
+      "kind": "task_waiting_for_review_takes_only_send_back"
+    },
+    "en": "A task awaiting review accepts only a send-back"
+  },
+  {
+    "reason": {
+      "kind": "task_needs_responsible_placement"
+    },
+    "en": "The task needs an owner"
+  },
+  {
+    "reason": {
+      "kind": "target_not_current_placement_task"
+    },
+    "en": "The recipient is not a current agent of this task"
+  },
+  {
+    "reason": {
+      "kind": "return_destination_changed"
+    },
+    "en": "The reply destination changed"
+  },
+  {
+    "reason": {
+      "kind": "return_seat_cannot_resume",
+      "wakeBlockCode": "FACT_wakeBlockCode"
+    },
+    "en": "Cannot resume the agent receiving the reply: FACT_wakeBlockCode"
+  },
+  {
+    "reason": {
+      "kind": "returns_changed_before_admission"
+    },
+    "en": "The replies changed before they were accepted"
+  },
+  {
+    "reason": {
+      "kind": "task_or_placement_changed"
+    },
+    "en": "The task or agent changed. Reload and try again"
+  },
+  {
+    "reason": {
+      "kind": "conversation_head_changed"
+    },
+    "en": "The conversation's latest run changed. Reload and try again"
+  },
+  {
+    "reason": {
+      "kind": "reviewed_run_no_longer_conversation_head"
+    },
+    "en": "The reviewed run is no longer the conversation's latest run"
+  },
+  {
+    "reason": {
+      "kind": "continued_conversation_must_use_previous_run_directory"
+    },
+    "en": "A continued conversation must use the previous run's directory"
+  },
+  {
+    "reason": {
+      "kind": "there_no_conversation_continue"
+    },
+    "en": "There is no conversation to continue"
+  },
+  {
+    "reason": {
+      "kind": "automatic_requests_reached_placement_limit"
+    },
+    "en": "Automatic requests to the agent have reached the limit"
+  },
+  {
+    "reason": {
+      "kind": "conversation_requires_review_before_another_request"
+    },
+    "en": "The conversation needs review before the next request"
+  },
+  {
+    "reason": {
+      "kind": "cannot_start_new_conversation_while_run_unfinished"
+    },
+    "en": "Cannot start a new conversation while a run is unfinished"
+  },
+  {
+    "reason": {
+      "kind": "conversation_session_unavailable"
+    },
+    "en": "The conversation session is unavailable"
+  },
+  {
+    "reason": {
+      "kind": "request_would_exceed_allowed_child_run_depth_continue_existing_run_or_simplify_delegation_chain"
+    },
+    "en": "This request would exceed the child-run depth limit. Continue in an existing run or make the request chain shallower"
+  },
+  {
+    "reason": {
+      "kind": "parent_has_reached_total_child_run_limit_completed_children_still_count_toward_limit"
+    },
+    "en": "This parent has reached its total child-run limit. Completed child runs also count toward it"
+  },
+  {
+    "reason": {
+      "kind": "responsible_profile_cannot_launch_request"
+    },
+    "en": "The owner's launch profile cannot launch this request"
+  },
+  {
+    "reason": {
+      "kind": "run_acts_only_own_project_and_run_s_project_was_not_read"
+    },
+    "en": "A run can act only in its own project, but that project was not read"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_creates_task_with_from_user_or_internal"
+    },
+    "en": "When the coordinator creates a task, specify --from-user or --internal"
+  },
+  {
+    "reason": {
+      "kind": "not_for_run_while_own_task_held",
+      "action": "FACT_action"
+    },
+    "en": "A run whose own task is on hold cannot run FACT_action"
+  },
+  {
+    "reason": {
+      "kind": "report_media_need_purpose_purpose_path"
+    },
+    "en": "Write the purpose of each report image or video in the purpose part of ![purpose](path)"
+  },
+  {
+    "reason": {
+      "kind": "invalid_report_media_path",
+      "referencePath": "FACT_referencePath"
+    },
+    "en": "Invalid report image or video path: FACT_referencePath"
+  },
+  {
+    "reason": {
+      "kind": "report_media_does_not_exist",
+      "path": "FACT_path"
+    },
+    "en": "Report image or video not found: FACT_path"
+  },
+  {
+    "reason": {
+      "kind": "report_media_must_regular_task_file_without_links",
+      "path": "FACT_path"
+    },
+    "en": "Report images and videos must be regular task files without links: FACT_path"
+  },
+  {
+    "reason": {
+      "kind": "report_image_exceeds_mib_attachment_limit",
+      "limit": "FACT_limit",
+      "path": "FACT_path"
+    },
+    "en": "The report image exceeds the FACT_limit MiB attachment limit: FACT_path"
+  },
+  {
+    "reason": {
+      "kind": "report_media_format_mismatch",
+      "name": "FACT_name"
+    },
+    "en": "The report media does not match its file format: FACT_name"
+  },
+  {
+    "reason": {
+      "kind": "report_image_cannot_opened",
+      "name": "FACT_name"
+    },
+    "en": "Could not open the report image: FACT_name"
+  },
+  {
+    "reason": {
+      "kind": "serve_only_available_from_local_cli"
+    },
+    "en": "serve can only run from the CLI on this PC"
+  },
+  {
+    "reason": {
+      "kind": "push_notifications_not_running"
+    },
+    "en": "Push notifications are not running"
+  },
+  {
+    "reason": {
+      "kind": "host_status_not_running"
+    },
+    "en": "The host status check is not running"
+  },
+  {
+    "reason": {
+      "kind": "host_episode_not_recorded",
+      "id": "FACT_id"
+    },
+    "en": "Host record FACT_id not found"
+  },
+  {
+    "reason": {
+      "kind": "returns_yielded_task_write"
+    },
+    "en": "Reply processing yielded to a task write"
+  },
+  {
+    "reason": {
+      "kind": "invalid_task_file_path"
+    },
+    "en": "Invalid task file path"
+  },
+  {
+    "reason": {
+      "kind": "task_file_path_contains_link"
+    },
+    "en": "The task file path contains a link"
+  },
+  {
+    "reason": {
+      "kind": "task_file_does_not_exist"
+    },
+    "en": "Task file not found"
+  },
+  {
+    "reason": {
+      "kind": "file_size_cannot_represented_safely"
+    },
+    "en": "The file size cannot be represented accurately"
+  },
+  {
+    "reason": {
+      "kind": "invalid_attachment_request_id"
+    },
+    "en": "Invalid attachment request ID"
+  },
+  {
+    "reason": {
+      "kind": "attached_file_missing"
+    },
+    "en": "Attached file not found"
+  },
+  {
+    "reason": {
+      "kind": "attached_file_missing_remove_it_from_draft_and_try_again"
+    },
+    "en": "Attached file not found. Remove it from the draft and try again"
+  },
+  {
+    "reason": {
+      "kind": "attachment_delete_has_no_prior_file"
+    },
+    "en": "There is no existing file to delete for this attachment"
+  },
+  {
+    "reason": {
+      "kind": "run_credential_key_unavailable"
+    },
+    "en": "The run credential key is unavailable"
+  },
+  {
+    "reason": {
+      "kind": "run_credential_key_has_unsafe_permissions_or_shape"
+    },
+    "en": "The run credential key has unsafe permissions or format"
+  },
+  {
+    "reason": {
+      "kind": "conversation_belongs_alpacawork_run"
+    },
+    "en": "This conversation belongs to an alpacawork run"
+  },
+  {
+    "reason": {
+      "kind": "run_credential_missing_or_invalid"
+    },
+    "en": "The run credential is missing or invalid"
+  },
+  {
+    "reason": {
+      "kind": "run_not_current_placement"
+    },
+    "en": "The run does not belong to the current agent"
+  },
+  {
+    "reason": {
+      "kind": "project_project_has_no_working_state",
+      "task": "FACT_task"
+    },
+    "en": "FACT_task is a project. Projects have no work state"
+  },
+  {
+    "reason": {
+      "kind": "hold_returns_only_state_it_was_held_from",
+      "targetNone": "FACT_targetNone"
+    },
+    "en": "A hold returns only to the state it was held from (FACT_targetNone)"
+  },
+  {
+    "reason": {
+      "kind": "put_responsible_on_before_it_works",
+      "tasks": "FACT_tasks"
+    },
+    "en": "Assign an owner to FACT_tasks before work starts"
+  },
+  {
+    "reason": {
+      "kind": "cannot_go_from_by",
+      "task": "FACT_task",
+      "state": "FACT_state",
+      "toState": "FACT_toState",
+      "action": "FACT_action"
+    },
+    "en": "FACT_action cannot move FACT_task from FACT_state to FACT_toState"
+  },
+  {
+    "reason": {
+      "kind": "owner_run_task_does_not_exist"
+    },
+    "en": "Task owner's run not found"
+  },
+  {
+    "reason": {
+      "kind": "run_has_not_ended"
+    },
+    "en": "The run has not ended yet"
+  },
+  {
+    "reason": {
+      "kind": "unfinished_tasks_below_make_them_done_or_stopped_first",
+      "taskId": "FACT_taskId",
+      "issueTasks": "FACT_issueTasks"
+    },
+    "en": "FACT_taskId has unfinished tasks below it (FACT_issueTasks). Make them done or stopped first"
+  },
+  {
+    "reason": {
+      "kind": "nothing_unfinished_goes_below_finished_task",
+      "task": "FACT_task",
+      "state": "FACT_state"
+    },
+    "en": "FACT_task is FACT_state. Unfinished tasks cannot go below a finished task"
+  },
+  {
+    "reason": {
+      "kind": "has_open_questions_withdraw_them_before_finishing",
+      "taskId": "FACT_taskId",
+      "ids": "FACT_ids"
+    },
+    "en": "FACT_taskId has unanswered questions (FACT_ids). Withdraw them before finishing"
+  },
+  {
+    "reason": {
+      "kind": "has_open_requests_finish_after_their_returns",
+      "taskId": "FACT_taskId",
+      "count": "FACT_count"
+    },
+    "en": "FACT_taskId still has open requests (FACT_count). Receive their replies before finishing"
+  },
+  {
+    "reason": {
+      "kind": "returns_not_taken_yet_finish_after_taking_them",
+      "count": "FACT_count",
+      "taskId": "FACT_taskId"
+    },
+    "en": "Replies to FACT_taskId not yet received: FACT_count. Receive them before finishing"
+  },
+  {
+    "reason": {
+      "kind": "runs_on_or_below_unfinished",
+      "taskId": "FACT_taskId",
+      "ids": "FACT_ids"
+    },
+    "en": "FACT_taskId or tasks below it have unfinished runs (FACT_ids)"
+  },
+  {
+    "reason": {
+      "kind": "path_must_absolute_path"
+    },
+    "en": "path must be an absolute path"
+  },
+  {
+    "reason": {
+      "kind": "path_must_directory_not_file",
+      "path": "FACT_path"
+    },
+    "en": "path must be a directory, not a file: FACT_path"
+  },
+  {
+    "reason": {
+      "kind": "path_must_readable_directory",
+      "path": "FACT_path"
+    },
+    "en": "path must be a readable directory: FACT_path"
+  },
+  {
+    "reason": {
+      "kind": "projects_share_code_location_use_id",
+      "holding": "FACT_holding",
+      "option": "FACT_option"
+    },
+    "en": "Projects FACT_holding use the same code location. Specify one with --FACT_option <ID>"
+  },
+  {
+    "reason": {
+      "kind": "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project",
+      "option": "FACT_option"
+    },
+    "en": "Several projects are active. Specify one with --FACT_option <ID>, or run inside a project's code location (alpacawork task list --kind project)"
+  },
+  {
+    "reason": {
+      "kind": "no_project_active_use_id",
+      "option": "FACT_option"
+    },
+    "en": "No active project. Specify one with --FACT_option <ID>"
+  },
+  {
+    "reason": {
+      "kind": "only_project_has_code_location"
+    },
+    "en": "Only a project can have a code location"
+  },
+  {
+    "reason": {
+      "kind": "logical_parent_cannot_read"
+    },
+    "en": "Could not read the logical parent"
+  },
+  {
+    "reason": {
+      "kind": "task_has_no_project"
+    },
+    "en": "The task has no project"
+  },
+  {
+    "reason": {
+      "kind": "task_number_limit_reached"
+    },
+    "en": "Task numbers have reached the limit"
+  },
+  {
+    "reason": {
+      "kind": "task_body_exceeds_1_mib"
+    },
+    "en": "The task body exceeds 1 MiB"
+  },
+  {
+    "reason": {
+      "kind": "task_identity_mismatch"
+    },
+    "en": "The task identity does not match"
+  },
+  {
+    "reason": {
+      "kind": "task_revision_must_advance_once"
+    },
+    "en": "The task revision must advance one step at a time"
+  },
+  {
+    "reason": {
+      "kind": "task_history_cannot_rewritten"
+    },
+    "en": "A task's History cannot be rewritten"
+  },
+  {
+    "reason": {
+      "kind": "cwd_must_absolute_path"
+    },
+    "en": "cwd must be an absolute path"
+  },
+  {
+    "reason": {
+      "kind": "cwd_must_directory_not_file",
+      "cwd": "FACT_cwd"
+    },
+    "en": "cwd must be a directory, not a file: FACT_cwd"
+  },
+  {
+    "reason": {
+      "kind": "cwd_must_existing_directory",
+      "cwd": "FACT_cwd"
+    },
+    "en": "cwd must be an existing directory: FACT_cwd"
+  },
+  {
+    "reason": {
+      "kind": "cwd_cannot_inside_task_workspace_root"
+    },
+    "en": "cwd cannot be inside the task workspace root"
+  },
+  {
+    "reason": {
+      "kind": "task_body_was_not_read"
+    },
+    "en": "The task body was not read"
+  },
+  {
+    "reason": {
+      "kind": "question_does_not_exist_on_task"
+    },
+    "en": "The specified question is not on this task"
+  },
+  {
+    "reason": {
+      "kind": "answer_text_was_not_read"
+    },
+    "en": "The answer text was not read"
+  },
+  {
+    "reason": {
+      "kind": "subtree_root_does_not_exist"
+    },
+    "en": "Subtree root not found"
+  },
+  {
+    "reason": {
+      "kind": "task_changed_reload_before_review"
+    },
+    "en": "The task changed. Reload before reviewing"
+  },
+  {
+    "reason": {
+      "kind": "responsible_placement_changed"
+    },
+    "en": "The owner changed"
+  },
+  {
+    "reason": {
+      "kind": "task_still_has_unfinished_runs"
+    },
+    "en": "The task still has unfinished runs"
+  },
+  {
+    "reason": {
+      "kind": "review_run_not_current_completed_head"
+    },
+    "en": "The run under review is not the latest completed run"
+  },
+  {
+    "reason": {
+      "kind": "review_id_belongs_another_decision"
+    },
+    "en": "The review ID is used for another decision"
+  },
+  {
+    "reason": {
+      "kind": "review_id_belongs_another_task_use_new_operation_id"
+    },
+    "en": "The review ID is used for another task. Use a new operation ID"
+  },
+  {
+    "reason": {
+      "kind": "review_id_belongs_request_use_new_operation_id"
+    },
+    "en": "The review ID is used for a request. Use a new operation ID"
+  },
+  {
+    "reason": {
+      "kind": "held_review_sent_back_once_it_returns_waiting_task_report_state_waiting"
+    },
+    "en": "Return a held review to waiting before sending it back (task report --state waiting)"
+  },
+  {
+    "reason": {
+      "kind": "task_required_only_run_defaults_own_task"
+    },
+    "en": "--task is required. Only a run can default to its own task"
+  },
+  {
+    "reason": {
+      "kind": "only_task_s_responsible_run_asks_or_withdraws_question"
+    },
+    "en": "Only the task owner's run can send or withdraw a question"
+  },
+  {
+    "reason": {
+      "kind": "supply_state_or_withdraw"
+    },
+    "en": "Specify --state or --withdraw"
+  },
+  {
+    "reason": {
+      "kind": "confirming_review_needs_about_run_reviewrun_task_get_shows_and_expected_placement_revision"
+    },
+    "en": "Accepting a review needs --about-run (the reviewRun shown by task get) and --expected-placement-revision"
+  },
+  {
+    "reason": {
+      "kind": "confirmation_not_urgent_urgent_for_done_report"
+    },
+    "en": "Accepting a review cannot be urgent. Use --urgent for a done report"
+  },
+  {
+    "reason": {
+      "kind": "report_needs_title_and_description"
+    },
+    "en": "A question or completion report needs --title and --description-file with nonblank text"
+  },
+  {
+    "reason": {
+      "kind": "question_carries_no_estimate"
+    },
+    "en": "A question cannot take --estimate"
+  },
+  {
+    "reason": {
+      "kind": "unknown_return_cursor"
+    },
+    "en": "Unknown reply cursor"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_another_task"
+    },
+    "en": "The operation ID is used for another task"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_request"
+    },
+    "en": "The operation ID is used for a request"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_has_different_report_input"
+    },
+    "en": "The operation ID is used for a different report input"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_another_decision"
+    },
+    "en": "The operation ID is used for another decision"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_has_different_input"
+    },
+    "en": "The operation ID is used for different input"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_belongs_another_operation"
+    },
+    "en": "The operation ID is used for another operation"
+  },
+  {
+    "reason": {
+      "kind": "no_question_in_decide_value_write_full_question_before_asking"
+    },
+    "en": "The task's “Question” (decide) value is empty. Write the full question there before sending"
+  },
+  {
+    "reason": {
+      "kind": "responsible_placement_requires_configured_launch_profile"
+    },
+    "en": "The owner needs a configured launch profile"
+  },
+  {
+    "reason": {
+      "kind": "project_cannot_have_responsible_or_member"
+    },
+    "en": "A project cannot have an owner or members"
+  },
+  {
+    "reason": {
+      "kind": "responsible_placement_revision_changed"
+    },
+    "en": "The owner changed after it was read"
+  },
+  {
+    "reason": {
+      "kind": "placement_does_not_belong_task"
+    },
+    "en": "The specified owner or member is not part of this task"
+  },
+  {
+    "reason": {
+      "kind": "agent_does_not_exist"
+    },
+    "en": "Agent not found"
+  },
+  {
+    "reason": {
+      "kind": "only_active_member_on_task_can_released"
+    },
+    "en": "Only a current member of this task can be released"
+  },
+  {
+    "reason": {
+      "kind": "invalid_managed_file_path"
+    },
+    "en": "Invalid managed file path"
+  },
+  {
+    "reason": {
+      "kind": "file_write_authorized_for_another_task"
+    },
+    "en": "File writes are authorized for another task"
+  },
+  {
+    "reason": {
+      "kind": "invalid_task_file_path_2"
+    },
+    "en": "Invalid task file path"
+  },
+  {
+    "reason": {
+      "kind": "file_publication_pending"
+    },
+    "en": "Waiting for the file changes to be applied"
+  },
+  {
+    "reason": {
+      "kind": "file_does_not_exist"
+    },
+    "en": "File not found"
+  },
+  {
+    "reason": {
+      "kind": "expected_file_digest_differs"
+    },
+    "en": "The expected file digest does not match"
+  },
+  {
+    "reason": {
+      "kind": "attachment_folder_does_not_exist"
+    },
+    "en": "Attachment folder not found"
+  },
+  {
+    "reason": {
+      "kind": "destination_attachment_folder_exists"
+    },
+    "en": "An attachment folder already exists at the destination"
+  },
+  {
+    "reason": {
+      "kind": "task_changed_before_reservation"
+    },
+    "en": "The task changed before it was reserved"
+  },
+  {
+    "reason": {
+      "kind": "operation_id_already_used"
+    },
+    "en": "Operation ID is already used"
+  },
+  {
+    "reason": {
+      "kind": "file_path_reserved_by_another_operation"
+    },
+    "en": "The file path is reserved by another operation"
+  },
+  {
+    "reason": {
+      "kind": "file_changed_before_reservation"
+    },
+    "en": "The file changed before it was reserved"
+  },
+  {
+    "reason": {
+      "kind": "attachment_request_belongs_another_task"
+    },
+    "en": "The attachment's request belongs to another task"
+  },
+  {
+    "reason": {
+      "kind": "file_changed_during_publication"
+    },
+    "en": "The file changed while being applied"
+  },
+  {
+    "reason": {
+      "kind": "file_changed_during_deletion"
+    },
+    "en": "The file changed while being deleted"
+  },
+  {
+    "reason": {
+      "kind": "attachment_folder_changed_during_move"
+    },
+    "en": "The attachment folder changed during the move"
+  },
+  {
+    "reason": {
+      "kind": "unsafe_attachment_folder"
+    },
+    "en": "The attachment folder is not safe"
+  },
+  {
+    "reason": {
+      "kind": "published_file_digest_differs"
+    },
+    "en": "The applied file's digest does not match"
+  },
+  {
+    "reason": {
+      "kind": "file_reservation_changed"
+    },
+    "en": "The file reservation changed"
+  },
+  {
+    "reason": {
+      "kind": "file_path_reserved"
+    },
+    "en": "The file path is reserved"
+  },
+  {
+    "reason": {
+      "kind": "invalid_attachment_request_ids"
+    },
+    "en": "Invalid attachment request IDs"
+  },
+  {
+    "reason": {
+      "kind": "exceeds_mib",
+      "CONFIG_FILE": "FACT_CONFIG_FILE",
+      "MAX_DOCUMENT": "FACT_MAX_DOCUMENT"
+    },
+    "en": "FACT_CONFIG_FILE exceeds FACT_MAX_DOCUMENT MiB"
+  },
+  {
+    "reason": {
+      "kind": "config_digest_differs"
+    },
+    "en": "The config digest does not match"
+  },
+  {
+    "reason": {
+      "kind": "person_already_active_on_task"
+    },
+    "en": "This agent is already on this task"
+  },
+  {
+    "reason": {
+      "kind": "task_already_has_responsible_placement"
+    },
+    "en": "The task already has an owner"
+  },
+  {
+    "reason": {
+      "kind": "current_responsible_placement_does_not_exist"
+    },
+    "en": "Current owner not found"
+  },
+  {
+    "reason": {
+      "kind": "current_responsible_placement_has_unfinished_runs"
+    },
+    "en": "The current owner has unfinished runs"
+  },
+  {
+    "reason": {
+      "kind": "placement_does_not_exist"
+    },
+    "en": "The specified owner or member was not found"
+  },
+  {
+    "reason": {
+      "kind": "placement_inactive"
+    },
+    "en": "The agent is no longer on this task"
+  },
+  {
+    "reason": {
+      "kind": "placement_revision_changed"
+    },
+    "en": "The specified owner or member changed after it was read"
+  },
+  {
+    "reason": {
+      "kind": "placement_changed"
+    },
+    "en": "The task's owner or member changed"
+  },
+  {
+    "reason": {
+      "kind": "placement_has_unfinished_runs"
+    },
+    "en": "The agent has unfinished runs"
+  },
+  {
+    "reason": {
+      "kind": "keeps_responsible_while_it_has_children_or_work_under_way_hand_it_over_with_agent_handover_or_replace_it_with",
+      "uncoveredTaskId": "FACT_uncoveredTaskId"
+    },
+    "en": "FACT_uncoveredTaskId has subtasks or work in progress, so it needs an owner. Hand it over with agent handover or replace it with agent assign --replace"
+  },
+  {
+    "reason": {
+      "kind": "publication_pending"
+    },
+    "en": "Waiting for the file changes to be applied. Check the same operation"
+  },
+  {
+    "reason": {
+      "kind": "publication_needs_review"
+    },
+    "en": "Applying the file changes needs review. Check the saved operation"
+  },
+  {
+    "reason": {
+      "kind": "coordinator_seen_ids_must_be_completed_answers"
+    },
+    "en": "Only messages in this conversation whose reply is complete can be marked as read"
+  },
+  {
+    "reason": {
+      "kind": "person_state_too_large"
+    },
+    "en": "Personal data exceeds the size that can be saved"
+  },
+  {
+    "reason": {
+      "kind": "user_request_belongs_to_top"
+    },
+    "en": "Only a task directly under a project can carry the user request mark. Subtasks are created by their parent's owner. Ask that owner for additional results with task request"
+  },
+  {
+    "reason": {
+      "kind": "child_by_its_responsible"
+    },
+    "en": "Only the parent task owner's run can create subtasks. Ask that owner for additional results with task request. To rearrange tasks, create them directly under the project and move them"
+  },
+  {
+    "reason": {
+      "kind": "directory_path_invalid",
+      "path": "/tmp/設置 space"
+    },
+    "en": "Specify a normalized absolute directory path: /tmp/設置 space"
+  },
+  {
+    "reason": {
+      "kind": "sqlite_serialization_required"
+    },
+    "en": "Node with SQLite serialization support is required"
+  },
+  {
+    "reason": {
+      "kind": "control_wal_activation_failed"
+    },
+    "en": "Could not switch the control database to WAL mode"
+  },
+  {
+    "reason": {
+      "kind": "control_journal_mode_unsupported",
+      "mode": "775"
+    },
+    "en": "Unsupported control database journal mode: 775"
+  },
+  {
+    "reason": {
+      "kind": "init_only_available_from_local_cli"
+    },
+    "en": "init can only run from the local CLI"
+  },
+  {
+    "reason": {
+      "kind": "installation_path_invalid",
+      "path": "/tmp/設置 space"
+    },
+    "en": "Specify a normalized absolute path other than /: /tmp/設置 space"
+  },
+  {
+    "reason": {
+      "kind": "installation_sticky_child_unsafe",
+      "path": "/tmp/設置 space"
+    },
+    "en": "The owner of /tmp/設置 space does not meet the safety requirements under the sticky parent of the installation record"
+  },
+  {
+    "reason": {
+      "kind": "installation_file_too_large",
+      "name": "installation.json",
+      "limit": "16384"
+    },
+    "en": "installation.json is too large (limit 16384 bytes)"
+  },
+  {
+    "reason": {
+      "kind": "installation_platform_unsupported"
+    },
+    "en": "New installations require Linux, macOS, or WSL2"
+  },
+  {
+    "reason": {
+      "kind": "installation_sudo_refused"
+    },
+    "en": "Initialize as the intended user without sudo"
+  },
+  {
+    "reason": {
+      "kind": "installation_wsl_filesystem_refused"
+    },
+    "en": "On WSL2, use the Linux user's HOME and filesystem"
+  },
+  {
+    "reason": {
+      "kind": "installation_wsl_filesystem_unknown"
+    },
+    "en": "Could not check the WSL2 workspace filesystem"
+  },
+  {
+    "reason": {
+      "kind": "installation_home_missing",
+      "path": "/tmp/設置 space"
+    },
+    "en": "User HOME not found: /tmp/設置 space"
+  },
+  {
+    "reason": {
+      "kind": "workspace_already_initialized",
+      "path": "/tmp/設置 space"
+    },
+    "en": "/tmp/設置 space is already initialized. Start it with workspace serve"
+  },
+  {
+    "reason": {
+      "kind": "installation_record_invalid"
+    },
+    "en": "The installation record is invalid. Check it before choosing a workspace. Stop serve before changing it. Fix: skills/alpacawork/references/troubleshoot.md#installation-record"
+  },
+  {
+    "reason": {
+      "kind": "installation_user_mismatch"
+    },
+    "en": "The installation record belongs to another user. Stop serve before changing it. Fix: skills/alpacawork/references/troubleshoot.md#installation-record"
+  },
+  {
+    "reason": {
+      "kind": "installation_workspace_changed",
+      "path": "/tmp/設置 space"
+    },
+    "en": "The recorded workspace is missing or has been replaced: /tmp/設置 space. Stop serve before changing it. Fix: skills/alpacawork/references/troubleshoot.md#installation-record"
+  },
+  {
+    "reason": {
+      "kind": "installation_directory_changed"
+    },
+    "en": "The installation record directory changed. Check it and try again"
+  },
+  {
+    "reason": {
+      "kind": "installation_busy"
+    },
+    "en": "Another installation operation is running. Try again after it finishes"
+  },
+  {
+    "reason": {
+      "kind": "installation_record_changed"
+    },
+    "en": "The installation record changed. Check it and try again"
+  },
+  {
+    "reason": {
+      "kind": "installation_save_unconfirmed",
+      "path": "/tmp/設置 space"
+    },
+    "en": "Installation record /tmp/設置 space may have been saved. Check it and try again"
+  },
+  {
+    "reason": {
+      "kind": "workspace_selection_changed"
+    },
+    "en": "The selected workspace changed before initialization"
+  },
+  {
+    "reason": {
+      "kind": "workspace_initialization_requires_empty_directory"
+    },
+    "en": "Initializing a workspace needs an empty directory. Existing contents were not changed"
+  },
+  {
+    "reason": {
+      "kind": "workspace_root_moved_during_initialization"
+    },
+    "en": "The initialized workspace directory moved. No installation record was created"
+  },
+  {
+    "reason": {
+      "kind": "workspace_metadata_moved_during_initialization"
+    },
+    "en": "The initialized workspace's management area moved. No installation record was created"
+  },
+  {
+    "reason": {
+      "kind": "new_workspace_file_invalid"
+    },
+    "en": "Invalid new workspace file"
+  },
+  {
+    "reason": {
+      "kind": "new_workspace_file_save_unconfirmed"
+    },
+    "en": "The new workspace file may have been saved. Check it and try again"
+  },
+  {
+    "reason": {
+      "kind": "release_maintenance_incomplete"
+    },
+    "en": "The app update or recovery is not complete"
+  },
+  {
+    "reason": {
+      "kind": "release_maintenance_resume_before_serve"
+    },
+    "en": "The app update or recovery is not complete. Before starting, resume it from the same target and journal"
+  },
+  {
+    "reason": {
+      "kind": "release_waiting_new_runs_paused"
+    },
+    "en": "New run reservations are paused while an app update or recovery is waiting"
+  },
+  {
+    "reason": {
+      "kind": "recovery_continuation_credential_mismatch"
+    },
+    "en": "The recovery continuation credential does not match the accepted run"
+  },
+  {
+    "reason": {
+      "kind": "orphan_sqlite_sidecar_blocks_database_access"
+    },
+    "en": "Cannot access the database because SQLite helper files exist without the main database"
+  }
+]

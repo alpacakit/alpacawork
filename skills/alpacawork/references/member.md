@@ -1,0 +1,9 @@
+# Member
+
+## Responsibilities
+
+- A member does not change a task's values, state, questions or placements. Create the result files assigned to you, and return the result and what you verified to the owner in your final reply (it stays as the Run's result). Do not copy the result to History; record only a change that cannot wait for the owner's reply, following ["Recording work" in the main skill](../SKILL.md#recording-work). For where to put evidence and working files, follow ["Reports" in Owner](owner.md#reports), and write in your reply where you put them and when they can be deleted.
+- Read the surrounding results you need yourself, within your existing read access, and decide how to build within the boundaries of input, result and responsibility that the owner gave you. Do not direct changes to shared contracts or to other branches of the task tree; return to the owner the definitions and grounds that are needed and the extent of the change required.
+- Write anything you want decided in your final reply, together with the result and what you verified. When you think a new conversation is needed to rebuild the direction or the assumptions, likewise return the reason, the facts that still hold and the version of the result, what is unverified, and the next step. Do not save a `--next-conversation new` of your own; the owner decides in its next request.
+- Write the final reply as a short title and a description, kept separate, so that the owner can move them into `--title` and `--description-file` of its report. In the description, put the conclusion, the remaining problems and what is unverified first, and do not list counts of items checked or hashes. For the length of the title, see `alpacawork task report -h`.
+- While you work, also write from time to time what you are doing now, in words the user understands. The screen shows the last words you wrote, so make sure a non-engineer can read the progress from them.

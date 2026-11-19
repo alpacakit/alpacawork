@@ -1,0 +1,59 @@
+name: Tag release
+
+# When a merge into main changes the root package.json version, tags that commit `v<version>` and
+# starts "Release" on the tag, which publishes to npm and creates the GitHub Release. An existing
+# tag is never moved or re-created. A tag pushed with GITHUB_TOKEN starts no other workflow, so this
+# starts Release by workflow_dispatch, the event GITHUB_TOKEN is allowed to trigger.
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Tag a changed version and start Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version_at() { git show "$1:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version'; }
+          version="$(version_at HEAD)"
+          # A first commit changes no version: its version was released, if at all, from another history.
+          if ! git rev-parse --quiet --verify "HEAD^" >/dev/null; then
+            echo "First commit; nothing to tag."
+            exit 0
+          fi
+          previous="$(version_at HEAD^)"
+          if [[ "$version" == "$previous" ]]; then
+            echo "package.json version is still $version; nothing to tag."
+            exit 0
+          fi
+          tag="v$version"
+          # gh prints the error body on a missing ref, so only the exit status says whether the tag exists.
+          if tagged="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq .object.sha 2>/dev/null)"; then
+            if [[ "$tagged" != "$GITHUB_SHA" ]]; then
+              echo "$tag already exists and was pushed by hand; it is not moved, and that push started Release."
+              exit 0
+            fi
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" --silent -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA"
+          fi
+          # Also when re-run after tagging: Release on a version already on npm only checks the GitHub Release.
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$tag"
+          echo "Tagged $GITHUB_SHA as $tag ($previous -> $version) and started Release." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,20 @@
+{
+  "run": "R1",
+  "taskId": "T1",
+  "files": [
+    {
+      "kind": "prompt",
+      "state": "present",
+      "source": "alpacawork.sqlite",
+      "bytes": 33,
+      "text": "Please inspect the child result.\n"
+    },
+    {
+      "kind": "result",
+      "state": "pending",
+      "source": "alpacawork.sqlite",
+      "bytes": null,
+      "text": null
+    }
+  ]
+}

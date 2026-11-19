@@ -1,0 +1,82 @@
+/* Keep the compact search field in front of an overlapping reader without narrowing the list underneath it.
+   The list's right inset has 36px beyond its reservation; the reader's right gap is 12px. */
+[data-search-row] {
+  padding-inline-end: max(0px, calc(var(--window-fit) - var(--window-reserve) - 24px));
+}
+
+/* The coordinator at the screen's foot (CoordinatorCard), as one line or brought up: --coordinator-dock is how
+ * much of the screen's foot it stands over. The list runs behind it and keeps that much room inside its end
+ * (--list-foot); every reader box goes on under it to the screen's foot (readerBox), and toasts stand over it. The
+ * task's Done is in the input's button row. */
+html:has([data-coordinator-card]:not([data-coordinator-own-window])) main#main { padding-bottom: 0; }
+/* While the hand moves or sizes the coordinator (frame-hand.tsx), its pointer is the page's whatever it passes over. */
+:root[data-coordinator-cursor] * { cursor: inherit !important; }
+/* On a screen lower than the list's least height it stays within the screen, so its end can still come clear of the input. */
+html:has([data-coordinator-card]:not([data-coordinator-own-window])) main#main .min-h-75 { min-height: 0; }
+/* What scrolls behind what stands over the screen's foot ends clear of it by one gap (--foot-gap): a list (the
+ * coordinator or a phone's task sheet, --sheet-cover, whichever stands higher), and a reader box the coordinator stands
+ * over: on a computer it stands left of the panel at the window's right edge (frame.ts besidePanel), so over all but
+ * that panel (the docked reader, or the file or diff read beside it), and over a file read inside the reader that
+ * takes the whole screen; a phone's file covers the whole screen, over the coordinator. Each keeps that room inside its end, as padding and as
+ * scroll padding for what is brought into view, so its last row or control comes clear of it. */
+@property --coordinator-dock { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sheet-cover { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --list-foot { syntax: "<length>"; inherits: false; initial-value: 8px; }
+:root { --foot-gap: 0.5rem; --sheet-close-room: 3.25rem; }
+[data-list-scroll] {
+  --list-foot: calc(max(var(--sheet-cover, 0px), var(--coordinator-dock, 0px)) + var(--foot-gap));
+}
+[data-reader-mode]:not([data-reader-mode="docked"]) [data-reader-content],
+[data-view-beside] [data-reader-mode="docked"] [data-reader-content],
+[data-viewer-place="reader"] [data-viewer-scroll] {
+  padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
+  scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
+}
+/* A phone's task sheet closes from over the input's row (TaskActions SheetClose): its end comes clear of that too. */
+html:has([data-reader-sheet-close]) [data-reader-mode="sheet"] [data-reader-content] {
+  padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap) + var(--sheet-close-room));
+  scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap) + var(--sheet-close-room));
+}
+/* Only the scroll containers consume these reservations. Stop their changing inherited values at
+   content boundaries so moving the coordinator does not restyle every report and task row. */
+[data-list-scroll] > *, [data-reader-content] > *, [data-viewer-scroll] > *, [data-coordinator-card] {
+  --coordinator-dock: initial;
+  --sheet-cover: initial;
+}
+/* Placement belongs to the surface consuming it. Its changing dimensions are not inherited by the thread,
+   report text or editor descendants. Editor room is written directly on the scrolling editor. */
+@property --coordinator-input-top { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --coordinator-left { syntax: "<length>"; inherits: false; initial-value: 12px; }
+@property --coordinator-width { syntax: "<length>"; inherits: false; initial-value: 440px; }
+@property --coordinator-panel-room { syntax: "*"; inherits: false; }
+@property --coordinator-editor-room { syntax: "*"; inherits: false; }
+/* A still copy of a surface (lib/motion.ts stillCopy) shows it as it was, held where it was seen: what pulses or fades
+ * in by the sheet's rules inside it would start again from nothing. */
+[data-still-copy] * { animation: none !important; }
+/* A hand moves a sheet directly. Reserve its transform layer only while it is held/settling; Web Animations
+ * manage their own layers for ordinary entrances and departures. */
+[data-sheet-held] { will-change: transform; }
+
+/* A surface reshaping (lib/motion.ts `reshape`): its own look (ground, edge, corners) drawn as tall as the taller of the
+ * two shapes from the edge it keeps (its foot, or its top: the attribute's value), behind what it holds; the clip that moves shows as much of it as the shape is now. Its sizes
+ * are set on the surface and read only by the skin (not inherited: setting them restyles nothing that it holds). */
+@property --reshape-tall { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --reshape-edge { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --reshape-radius { syntax: "*"; inherits: false; }
+[data-reshaping]::before {
+  --reshape-tall: inherit;
+  --reshape-edge: inherit;
+  --reshape-radius: inherit;
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto calc(-1 * var(--reshape-edge)) calc(-1 * var(--reshape-edge));
+  height: var(--reshape-tall);
+  box-sizing: border-box;
+  border: inherit;
+  border-radius: var(--reshape-radius);
+  background: inherit;
+  pointer-events: none;
+}
+/* Standing by its top, the skin hangs from it. */
+[data-reshaping="top"]::before { inset: calc(-1 * var(--reshape-edge)) calc(-1 * var(--reshape-edge)) auto; }

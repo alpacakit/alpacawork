@@ -1,0 +1,23 @@
+{
+  "extends": "./apps/web/tsconfig.json",
+  "include": [
+    "e2e/**/*.ts"
+  ],
+  "compilerOptions": {
+    "paths": {
+      "@alpacawork/backend/test-dist/*": [
+        "./apps/backend/src/*"
+      ],
+      "@/*": [
+        "./apps/web/src/*"
+      ]
+    },
+    "baseUrl": ".",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable",
+      "DOM.AsyncIterable"
+    ]
+  }
+}

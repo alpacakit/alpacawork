@@ -1,0 +1,40 @@
+{
+  "tree": {
+    "writable": false,
+    "errors": [
+      {
+        "code": "runs_unavailable",
+        "message": "Database requires explicit migration; existing database is preserved",
+        "path": ".alpacawork/alpacawork.sqlite",
+        "reason": {
+          "kind": "database_migration_required"
+        }
+      }
+    ]
+  },
+  "get": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "invalid_root",
+        "message": "Workspace has read errors",
+        "detail": {
+          "errors": [
+            {
+              "code": "runs_unavailable",
+              "message": "Database requires explicit migration; existing database is preserved",
+              "path": ".alpacawork/alpacawork.sqlite",
+              "reason": {
+                "kind": "database_migration_required"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "serve": {
+    "cliExit": 2,
+    "code": "invalid_root"
+  }
+}

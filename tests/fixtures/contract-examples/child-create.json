@@ -1,0 +1,37 @@
+{
+  "input": {
+    "title": "Child",
+    "parentId": "T1",
+    "expectedParentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "authorizedRun": {
+    "taskId": "T1",
+    "role": "owner",
+    "placementId": "P1"
+  },
+  "receiptTask": {
+    "parentId": "T1",
+    "creationActor": {
+      "kind": "placement",
+      "placementId": "P1"
+    }
+  },
+  "rejections": [
+    {
+      "reason": "root task from a Run",
+      "code": "forbidden"
+    },
+    {
+      "reason": "parent Task differs from the Run Task",
+      "code": "forbidden"
+    },
+    {
+      "reason": "parent Task hash omitted",
+      "code": "invalid_input"
+    },
+    {
+      "reason": "parent Task hash stale",
+      "code": "conflict"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "approve": {
+    "input": {
+      "action": "approve",
+      "taskId": "T12",
+      "operationId": "dc51edc2-8c21-4f31-a26d-9e05a6079dcc",
+      "expectedTaskHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expectedPlacementRevision": 3,
+      "aboutRunId": "R2"
+    }
+  },
+  "sendBack": {
+    "input": {
+      "action": "send_back",
+      "taskId": "T12",
+      "operationId": "2d998120-f7c4-4692-8c70-2e77f7f55879",
+      "expectedTaskHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expectedPlacementRevision": 3,
+      "aboutRunId": "R2",
+      "mode": "new",
+      "body": "Please revise the result."
+    }
+  }
+}

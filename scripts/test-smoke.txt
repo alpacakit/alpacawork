@@ -1,0 +1,9 @@
+# Native Playwright --test-list: fixed file and full stable title, never line numbers.
+# Real backend body save; question/answer; approval; revision; hold/restore; coordinator send; reader Back.
+behavior.check.ts › G: decide and change the responsible person and see it on the same SSE connection
+optimistic-reader.check.ts › 412 normal › a choice completes its flight while Task reads and POST are held
+task-snapshot-review.check.ts › Done approves a Task snapshot with no responsible, Run target, or placement version
+task-snapshot-review.check.ts › a written revision request sends a Task snapshot back without inventing the reviewed Run
+hold.check.ts › holding a confirmation advances the reader and restores the original turn from the list
+coordinator.check.ts › the pinned coordinator card sends, resumes, attaches an image and starts over after clear
+reader-back.check.ts › on a computer › a file opened from Context and another task followed from it: Back lands on Context, at the same scroll; Forward and Back step the same way

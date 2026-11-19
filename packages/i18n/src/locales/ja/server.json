@@ -1,0 +1,196 @@
+{
+  "confirmation": {
+    "notTerminal": "端末から打ち直してください。",
+    "prompt": "Enter で始める / Ctrl-C でやめる",
+    "stopped": "止めました。何も変えていません。"
+  },
+  "deploy": {
+    "accepted": "更新を受け付けました: {{opId}}",
+    "overwrite": {
+      "noRestore": "スキルの上書きを始めたあとは、控えから前の版へ戻せません。",
+      "switch": "DB と、エージェントとのやり取りの形が今と同じなら、エージェントを動かしたまま切り替えます。変わる版なら、すべてのエージェントが終わってから打ち直してください。"
+    },
+    "preview": "投入先: {{workspace}}\n{{current}} → {{target}}\n照合値: {{confirmation}}"
+  },
+  "hostAlert": {
+    "body": "{{parts}}。{{heaviest}}",
+    "coordinator": "コーディネーター",
+    "cpu": "CPU {{percent}}% が{{minutes}}分続いています",
+    "disk": "ディスクの空きが {{gigabytes}} GB です",
+    "heaviest_other": "重い順に {{tasks}}（Run {{count}}件）",
+    "memory": "メモリの空きが {{percent}}% のまま{{minutes}}分続いています",
+    "noRuns": "動いている Run はありません",
+    "partSeparator": "・",
+    "taskSeparator": "・",
+    "title": "端末の負荷が厳しい"
+  },
+  "push": {
+    "groupTitle": "{{updateCount}}件の知らせ",
+    "reason": {
+      "blocked": {
+        "body": "起動できず・理由を確かめてください",
+        "short": "起動できず"
+      },
+      "done": {
+        "body": "完了",
+        "short": "完了"
+      },
+      "failed": {
+        "body": "エラーで停止・やり直すか決めてください",
+        "short": "エラー"
+      },
+      "limit": {
+        "body": "上限で停止・続けるか決めてください",
+        "short": "上限で停止"
+      },
+      "question": {
+        "body": "要回答",
+        "short": "回答待ち"
+      },
+      "review": {
+        "body": "要確認",
+        "short": "確認待ち"
+      },
+      "stopped": {
+        "body": "中止",
+        "short": "中止"
+      },
+      "unconfirmed": {
+        "body": "届いたか不明・確かめてください",
+        "short": "届いたか不明"
+      }
+    },
+    "withReport": "{{label}}：{{reportTitle}}"
+  },
+  "setup": {
+    "agents": {
+      "enabled": "有効: {{names}}",
+      "none": "見つかりません",
+      "ready": "利用できるエージェント: {{names}}",
+      "signIn": "{{name}} はサインインしていません。使うには次を実行してください: {{action}}"
+    },
+    "browserOpened": "ブラウザで開きました。",
+    "change": {
+      "none": "なし"
+    },
+    "changed": "✔ alpacawork {{version}} の設定を変更しました",
+    "changePrompt": "この変更を適用しますか？ [Y/n]",
+    "completed": "✔ alpacawork {{version}} をインストールしました",
+    "data": {
+      "existing": "既存",
+      "new": "新規"
+    },
+    "fact": {
+      "node": "Node.js",
+      "path": "PATH",
+      "port": "ポート",
+      "publicHost": "公開ホスト"
+    },
+    "listSeparator": "、",
+    "open": "開く: {{url}}",
+    "overwriteSkill": "同梱のスキル {{path}} を上書きします。手元で編集した内容も上書きされ、バックアップは作成しません。",
+    "portWayBack": "元のポートに戻すには: alpacawork setup --port {{port}}",
+    "prompt": "続行しますか？ [Y/n]",
+    "ready": "起動しました。ポート {{port}}、URL {{url}}",
+    "readyChanged": "設定を変更しました。ポート {{port}}、URL {{url}}",
+    "row": {
+      "agents": "エージェント",
+      "data": "データ",
+      "overwrite": "上書き",
+      "releases": "リリース",
+      "resume": "再開",
+      "service": "自動起動",
+      "skill": "スキル",
+      "warning": "警告"
+    },
+    "service": {
+      "publicHost": "、公開ホスト {{host}}",
+      "summary": "{{name}}（{{manager}}）、ポート {{port}}、ログイン時に起動"
+    },
+    "skillAction": {
+      "keep": "既存",
+      "replace": "上書き"
+    },
+    "skills": {
+      "baseMissing": "alpacawork スキルが見つかりません。このサーバーと同じ HOME で alpacawork setup を実行してから、もう一度お試しください。"
+    },
+    "skillWriteFailed": "スキルの上書きが完了しませんでした。ログに出ている原因を解消してから、もう一度 alpacawork setup を実行してください。",
+    "startFailure": {
+      "keep": "設置記録とデータはそのまま残してください。",
+      "reason": "理由: {{reason}}"
+    },
+    "startup": {
+      "check": "自動起動できませんでした。次のコマンドで状態とログを調べてください。",
+      "launchdLogs": "この launchd の定義には、標準出力・標準エラーのログファイルが設定されていません。上の log コマンドは launchd のイベントを表示します。",
+      "rerun": "問題を直したら、同じ alpacawork setup を実行し直してください。保存済みのポートと設定で再開します。",
+      "startSaved": "このポートを使っているほかのプロセスがあれば停止してから、次のコマンドでサービスを起動してください。\n{{command}}\n起動後、同じ alpacawork setup を実行して確認してください。"
+    },
+    "title": {
+      "change": "alpacawork {{version}} の設定を変更します",
+      "configure": "alpacawork {{version}} を設定します",
+      "install": "alpacawork {{version}} をインストールします",
+      "update": "alpacawork を {{current}} から {{version}} に更新します"
+    },
+    "updated": "✔ alpacawork {{version}} に更新しました",
+    "value": {
+      "data": "{{path}}（{{state}}）",
+      "link": "{{path}} からリンク",
+      "linkConflict": "{{path}} は使用中です。リンクを作成せず、既存の内容を残します。",
+      "linkExisting": "{{path}} からの既存リンク",
+      "resume": "中断したセットアップを続けます。",
+      "skill": "{{path}}（{{action}}）"
+    },
+    "wslFilesystem": {
+      "refused": "WSL2 のデータ・アプリの保存先・設定は Linux 側に置いてください。/mnt/c など Windows 側のフォルダは使えません。",
+      "retry": "WSL の端末で Linux 側のホーム（/home/<利用者名>）を開いてください。HOME・XDG_CONFIG_HOME・--workspace・--releases は Linux 側のフォルダを指定します。標準の保存先を使う場合は --workspace と --releases を付けずに実行してください:\ncd ~\nalpacawork setup",
+      "unknown": "この WSL2 の設置先が Linux 側のファイルシステムか確認できませんでした。"
+    }
+  },
+  "skillLinks": {
+    "conflict": "{{path}}：リンク未作成・既存の内容を保持"
+  },
+  "uninstall": {
+    "alreadyGone": "「すでに無い」と返すコマンドは、もう済んでいます",
+    "busy": "更新などの操作が進行中です。終わってから、もう一度 alpacawork uninstall を実行してください。",
+    "done": "alpacawork をこの PC から外しました。タスク・履歴・ファイルは残しています。",
+    "note": "消したものは元に戻せません。控えは残しません。",
+    "nothingLeft": "消すものはもう残っていません。",
+    "notInstalled": "この PC に alpacawork の設置は見つかりません。消すものはありません。",
+    "refused": {
+      "agent": "alpacawork uninstall は、この PC の本人だけが実行できます。エージェントからは実行できません。",
+      "notTerminal": "端末から打ち直すか、--yes を付けて確認なしで進めてください。",
+      "sudo": "sudo を付けずに、使っている本人として実行してください。",
+      "workspaceOption": "--workspace は指定できません。消すものは設置記録で決まり、データのフォルダは消しません。"
+    },
+    "remaining": "残りの手順（コマンド本体を消す）: npm uninstall -g alpacawork",
+    "removed": "消しました: {{subject}}",
+    "row": {
+      "config": "消す    設定と設置記録    {{subject}}",
+      "data": "残す    データ            {{subject}}（タスクと履歴。要らなくなったら手で消せます）",
+      "holdsData": "残す    データを含む      {{subject}}（データのフォルダそのものか、中にデータがあるので消しません）",
+      "link": "消す    skillのリンク     {{subject}}",
+      "notOurs": "残す    配布先のフォルダ  {{subject}}（alpacawork が置いていないものが入っているので消しません）",
+      "receipt": "消す    skillの記録       {{subject}}",
+      "record": "残す    設置記録          {{subject}}（残すデータの場所を記しているので消しません。次に実行したときも同じように守ります）",
+      "releases": "消す    配布先            {{subject}}（alpacawork が置いたものだけ。ほかに何も無ければフォルダも消す）",
+      "service": "消す    自動起動          {{subject}}（止めてから登録を外す）",
+      "setting": "消す    設定              {{subject}}",
+      "skill": "消す    管理skill         {{subject}}（手で直した内容も消える）",
+      "skillsUnknown": "残す    skill             {{subject}}（skillの記録が読めず、どれが alpacawork のものか分からないので消しません）",
+      "stage": "消す    skillの作業場所   {{subject}}",
+      "state": "消す    状態              {{subject}}"
+    },
+    "running_other": "エージェントか更新がまだ動いています（{{releases}} から起動したプロセス {{count}} 個: pid {{pids}}）。このまま外すと、見守る相手のいないまま動き続けます。画面で止めるか（コマンドなら alpacawork run stop --run <Run ID>）、終わるのを待ってから、もう一度 alpacawork uninstall を実行してください。",
+    "service": {
+      "blocked": "{{why}}何も変えていません。\n手で外すには次を実行してください（{{alreadyGone}}）。\n{{commands}}\nそのあと、もう一度 alpacawork uninstall を実行してください。",
+      "conflict": "自動起動の登録 {{name}} が、alpacawork が登録した内容と違うため、手を付けません。",
+      "left": "自動起動の登録 {{name}} を外しきれませんでした{{fault}}。サーバーは止まっているかもしれませんが、ログイン時に起動する登録は残っています。\nほかは何も消していません。使える状態に戻すには alpacawork setup を、外すのを最後まで進めるには alpacawork uninstall をもう一度実行してください。\nまた同じところで止まるときは、次を実行して手で外してください（{{alreadyGone}}）。\n{{commands}}",
+      "unavailable": "サービス管理（launchd / systemd --user）に届かないため、自動起動の登録 {{name}} が残っているか分からず、外すこともできません。何も変えていません。\n通常のログインの端末から alpacawork uninstall を実行してください（WSL2 は systemd を有効にして）。",
+      "uninspectable": "自動起動の登録 {{name}} を調べられません: {{failure}}。",
+      "unrecorded": "自動起動の登録 {{name}} がありますが、それを記した設置記録がありません。"
+    },
+    "stoppedAt": "{{subject}} で止まりました: {{failure}}\nここまでに消したものは消えたままです。原因を直してから、もう一度 alpacawork uninstall を実行してください。残りを消します。",
+    "title": "alpacawork をこの PC から外します",
+    "unreadableRecord": "設置記録 {{path}} がありますが、この版の alpacawork では読めません（別の版が書いた・壊れている・別の利用者のもの、のどれかです）。データ・配布先・自動起動の登録の場所はこの記録だけが記しているので、推測では消しません。何も変えていません。\nこの記録を書いた版の alpacawork で（npm install -g alpacawork@<その版>）、記録の持ち主の利用者として alpacawork uninstall を実行してください。\n手で外す場合は、まず自動起動の登録を外します（登録名は記録にあります。既定の名前なら次のとおり。{{alreadyGone}}）。\n{{commands}}\nそのあと、記録を見てデータのフォルダが中に無いことを確かめてから、次を消します: 配布先 {{releases}}（記録が別の場所を記していればそちら）、{{state}}、{{receipt}} に載っている skill、最後に {{config}}。"
+  }
+}

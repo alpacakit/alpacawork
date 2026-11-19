@@ -1,0 +1,92 @@
+{
+  "placeAgent": {
+    "input": {
+      "taskId": "T1",
+      "profileKey": "claude",
+      "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "replacePlacementId": "P1",
+      "expectedPlacementRevision": 1
+    },
+    "receipt": {
+      "agent": {
+        "id": "A2",
+        "createdAt": "2026-09-29T00:08:00.000Z"
+      },
+      "placement": {
+        "id": "P2",
+        "taskId": "T1",
+        "agentId": "A2",
+        "profileKey": "claude",
+        "responsible": true,
+        "active": true,
+        "revision": 1,
+        "startedAt": "2026-09-29T00:08:00.000Z",
+        "endedAt": null
+      },
+      "previousPlacement": {
+        "id": "P1",
+        "taskId": "T1",
+        "agentId": "A1",
+        "profileKey": "codex",
+        "responsible": false,
+        "active": false,
+        "revision": 2,
+        "startedAt": "2026-09-29T00:00:00.000Z",
+        "endedAt": "2026-09-29T00:08:00.000Z"
+      }
+    }
+  },
+  "setResponsible": {
+    "input": {
+      "taskId": "T1",
+      "placementId": "P2",
+      "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedPlacementRevision": 1
+    },
+    "receipt": {
+      "placement": {
+        "id": "P2",
+        "taskId": "T1",
+        "agentId": "A2",
+        "profileKey": "claude",
+        "responsible": true,
+        "active": true,
+        "revision": 2,
+        "startedAt": "2026-09-29T00:02:00.000Z",
+        "endedAt": null
+      },
+      "previousPlacement": {
+        "id": "P1",
+        "taskId": "T1",
+        "agentId": "A1",
+        "profileKey": "codex",
+        "responsible": false,
+        "active": false,
+        "revision": 2,
+        "startedAt": "2026-09-29T00:00:00.000Z",
+        "endedAt": "2026-09-29T00:08:00.000Z"
+      }
+    }
+  },
+  "releaseAgent": {
+    "input": {
+      "taskId": "T1",
+      "placementId": "P2",
+      "expectedTaskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedPlacementRevision": 2
+    },
+    "receipt": {
+      "placement": {
+        "id": "P2",
+        "taskId": "T1",
+        "agentId": "A2",
+        "profileKey": "claude",
+        "responsible": false,
+        "active": false,
+        "revision": 3,
+        "startedAt": "2026-09-29T00:02:00.000Z",
+        "endedAt": "2026-09-29T00:09:00.000Z"
+      }
+    }
+  }
+}

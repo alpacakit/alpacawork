@@ -1,0 +1,35 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: This project is maintained on a best-effort basis. Issues may not get a response or a fix.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `alpacawork --version`.
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 15, Ubuntu 24.04, ...
+  - type: input
+    id: agent
+    attributes:
+      label: AI agent
+      placeholder: Claude Code, Codex, ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove tokens, passwords, and private paths before pasting.
+      render: text

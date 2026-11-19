@@ -1,0 +1,470 @@
+{
+  "answer": {
+    "other": "Other",
+    "question": "Question {{n}}/{{total}}",
+    "stop": "Stop",
+    "stopMark": "Stops the task if chosen",
+    "write": "Write an answer"
+  },
+  "brief": {
+    "recommended": "Recommended"
+  },
+  "delimited": {
+    "empty": "This file is empty.",
+    "header": "Header row",
+    "headerOnly": "Only the header row",
+    "malformed": "Some parts could not be split into cells (an unclosed quote, for example).",
+    "malformedHint": "The table may not match the file.",
+    "next_one": "Next {{count}} row",
+    "next_other": "Next {{count}} rows",
+    "openOriginal": "Open the original:",
+    "original": "Original file",
+    "previous_one": "Previous {{count}} row",
+    "previous_other": "Previous {{count}} rows",
+    "range": "Rows {{first}}–{{last}} of {{rows}}",
+    "records_one": "{{count}} row",
+    "records_other": "{{count}} rows",
+    "rest": "The rest is in the original:",
+    "tooLarge": "Files over {{limit}} MB are not shown as a table.",
+    "tooWide": "The first row alone is over a table's limit of {{maxCells}} cells, so it is not shown as a table.",
+    "truncated": "Only the first {{rows}} rows are shown (a table holds up to {{maxRows}} rows or {{maxCells}} cells).",
+    "uneven": "Rows have different numbers of columns.",
+    "unevenHint": "Cells a row does not have are hatched.",
+    "unreadable": "This file's character encoding could not be recognized, so it is not shown as a table."
+  },
+  "diff": {
+    "copied": "Copied",
+    "deleted": "Deleted",
+    "line": "Line {{line}}",
+    "new": "New",
+    "renamed": "Renamed"
+  },
+  "diffCard": {
+    "binary": "binary",
+    "binaryRows": "A binary file has no lines",
+    "blankOnly": "Only blank lines changed",
+    "close": "Close",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits",
+    "copyCommand": "Copy command",
+    "deletedFile": "This file was deleted",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files",
+    "missing": "The diff file is missing: {{name}}",
+    "moreCommits_one": "Show {{count}} more",
+    "moreCommits_other": "Show {{count}} more",
+    "noRows": "No lines changed",
+    "notKept": "The lines were too large to keep.",
+    "notKeptHint": "View them with this command:",
+    "olderCommits_one": "{{count}} older commit not listed",
+    "olderCommits_other": "{{count}} older commits not listed",
+    "open": "Open the diff",
+    "openFiles": "Open the file list",
+    "renamedOnly": "Only renamed (was {{from}})",
+    "tooLarge": "Too large to show: {{name}}",
+    "unchanged": "No change (0 files)",
+    "unreadable": "Could not read the diff: {{name}}"
+  },
+  "entries": {
+    "after": "Waits for",
+    "context": "Context",
+    "count_one": "{{count}}",
+    "count_other": "{{count}}",
+    "dependencies": "Dependencies",
+    "files": "Files",
+    "history": "History",
+    "waiters": "Followed by"
+  },
+  "family": {
+    "close": "Close the task tree",
+    "count_one": "{{count}} task",
+    "count_other": "{{count}} tasks",
+    "deep_one": "{{count}} level down",
+    "deep_other": "{{count}} levels down",
+    "entry": "Task tree",
+    "fold": "Collapse tasks under {{title}}",
+    "height": "Height of the task tree",
+    "here": "Current",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more",
+    "rowDeep_one": ", {{count}} level down",
+    "rowDeep_other": ", {{count}} levels down",
+    "rowHere": ", current",
+    "rowName": "{{id}} {{title}}, {{state}}",
+    "title": "Task tree",
+    "tree": "Task tree of {{title}}",
+    "unfold": "Expand tasks under {{title}}"
+  },
+  "files": {
+    "all": "Deliverables",
+    "copyLink": "Copy link",
+    "copyPath": "Copy path",
+    "documents": "Documents",
+    "empty": "This folder has no files.",
+    "facet": {
+      "after": "After",
+      "before": "Before",
+      "dark": "Dark",
+      "desktop": "Desktop",
+      "light": "Light",
+      "mobile": "Mobile"
+    },
+    "images": "Images",
+    "inFolder": "In {{folder}}",
+    "media": "Images, videos and audio",
+    "onlyWork": "No deliverables yet.",
+    "onlyWorkHint": "The agents’ working files are in Work files.",
+    "otherMedia": "Other media",
+    "path": "Path",
+    "unavailable": "Could not display file: {{name}}",
+    "videos": "Videos",
+    "work": "Work files"
+  },
+  "frontMatter": {
+    "invalid": "The opening YAML could not be parsed. Its source is shown below.",
+    "label": "YAML metadata",
+    "limit": "The opening YAML exceeds the table display limits. Its full source is shown below.",
+    "source": "Original YAML",
+    "unclosed": "The opening YAML has no closing delimiter. The full source is shown below.",
+    "unsupported": "This YAML cannot be shown as a table. Its source is shown below."
+  },
+  "gathered": {
+    "position": "{{current}} / {{total}}"
+  },
+  "history": {
+    "approved": "Done",
+    "reasons": {
+      "conversation_busy": "This conversation was already in use, so work could not start.",
+      "exit": "The agent program ended early. Work remains unfinished.",
+      "launch": "The agent could not start.",
+      "manager_lost": "The process supervising this work disappeared. Its outcome is unknown.",
+      "no_report": "The work ended without a report, question or request.",
+      "output": "The agent output could not be read.",
+      "scope_invalidated": "The task scope changed after the request was accepted, so this work ended without starting.",
+      "stopped": "A stop request ended the work.",
+      "timeout": "The time limit was reached. Work remains unfinished.",
+      "unknown": "No stop reason was recorded."
+    },
+    "runError": "Error",
+    "waiting": {
+      "held": "On hold",
+      "review": "$t(ui:state.waitingReview)"
+    }
+  },
+  "image": {
+    "audioUnavailable": "Audio unavailable: {{name}}",
+    "openFile": "Open file",
+    "saveFile": "Save file",
+    "unavailable": "Image unavailable: {{name}}",
+    "videoUnavailable": "Video unavailable: {{name}}"
+  },
+  "imageSlider": {
+    "closeImage": "Close image",
+    "closeMedia": "Close viewer",
+    "controlsFailed": "Could not change the playback settings. Try again.",
+    "expandVideo": "Open video in viewer",
+    "fullScreen": "Full screen",
+    "fullScreenFailed": "Could not open full screen. Try again or open the original video.",
+    "mute": "Mute",
+    "nextImage": "Next image",
+    "nextMedia": "Next item",
+    "openOriginalInNewTab": "Open original image {{name}} in a new tab",
+    "pause": "Pause",
+    "play": "Play",
+    "playFailed": "Could not start playback. Try playing again.",
+    "position": "{{current}} of {{total}}",
+    "previousImage": "Previous image",
+    "previousMedia": "Previous item",
+    "saveOriginal": "Save original file {{name}}",
+    "seek": "Playback position",
+    "speed": "Playback speed",
+    "unmute": "Unmute",
+    "volume": "Volume"
+  },
+  "intent": {
+    "continue": "Continue {{id}}",
+    "retry": "Retry {{id}}",
+    "sendback": "Send back {{id}}"
+  },
+  "markdownBody": {
+    "copyCode": "Copy code",
+    "diagram": "Diagram {{number}}",
+    "diagramFailed": "Could not render diagram",
+    "diagramLoading": "Preparing diagram…"
+  },
+  "nextQuestion": {
+    "allAnswered": "You've answered everything awaiting review",
+    "allAnsweredHeld": "You've answered everything on hold",
+    "autoSwipe": {
+      "hint": "On: sending a message swipes the card away and moves on to the next task. Off: sending stays on this task with the chat open.",
+      "label": "Auto-swipe",
+      "toastOff": "Auto-swipe off",
+      "toastOffDetail": "Sending a message stays on this task",
+      "toastOn": "Auto-swipe on",
+      "toastOnDetail": "Sending a message moves on to the next task"
+    },
+    "close": "Close",
+    "countPart": "{{n}} {{word}}",
+    "done": "$t(ui:state.done)",
+    "held": "$t(reader:swipe.hold)",
+    "kind": {
+      "done": "done",
+      "hold": "held",
+      "send": "sent",
+      "stop": "stopped"
+    },
+    "sent": "$t(reader:swipe.send)",
+    "stopped": "Stop"
+  },
+  "order": {
+    "alsoWaits": "Also waits for {{ids}}",
+    "history": {
+      "cleared": "Start order cleared",
+      "previous": "Previously: {{ids}}",
+      "set": "Starts after {{ids}}"
+    },
+    "list": {
+      "wait": "Waits for {{ids}}",
+      "waited": "Next: {{id}}",
+      "waitedMore_one": "Next: {{id}} +{{count}}",
+      "waitedMore_other": "Next: {{id}} +{{count}}",
+      "waitMore_one": "Waits for {{id}} and {{count}} more",
+      "waitMore_other": "Waits for {{id}} and {{count}} more"
+    },
+    "onlyThis": "Waits only for this task",
+    "runEnding": "waiting for its run to end",
+    "separator": ", ",
+    "startedLead": "This task started after the following tasks",
+    "stuck": {
+      "error": "{{id}} stopped with an error. The wait ends once it is fixed and marked done or stopped, and its runs have ended.",
+      "held": "{{id}} is on hold. The wait ends once it is taken off hold and marked done or stopped, and its runs have ended."
+    },
+    "tip": "What this task waits for",
+    "waitedTip": "What waits for this task"
+  },
+  "overview": {
+    "createdAt": "Created {{time}}",
+    "empty": "No body yet.",
+    "updatedAt": "Updated {{time}}"
+  },
+  "reader": {
+    "label": "Full text of the task",
+    "resize": "Details width (left and right arrow keys)"
+  },
+  "readerHeader": {
+    "back": "Back",
+    "close": "Close details",
+    "closeShort": "Close",
+    "dock": "Restore details width",
+    "full": "Show details full screen",
+    "insert": "Add {{id}} to the input box",
+    "inserted": "Added {{id}} to the input box",
+    "next": "Next task",
+    "path": "Task path",
+    "previous": "Previous task"
+  },
+  "recovery": {
+    "cancelled": "Sending to “<title>{{title}}</title>” was cancelled. You can send it again.",
+    "check": "Check",
+    "closed": "The conversation ended. You can send to “<title>{{title}}</title>” again.",
+    "confirmedDone": "Marked <subject>“<title>{{title}}</title>”</subject> as done",
+    "confirmedHold": "Put <subject>“<title>{{title}}</title>”</subject> on hold",
+    "confirmedRestore": "Moved <subject>“<title>{{title}}</title>”</subject> back to awaiting review",
+    "confirmedSend": "Sent to <subject>“<title>{{title}}</title>”</subject>",
+    "confirmedStop": "Marked <subject>“<title>{{title}}</title>”</subject> as stopped",
+    "latest": "Open",
+    "notCarriedOut": "There is no record of the requested action being carried out. Check the task's state and the coordinator's reply.",
+    "pending_one": "Checking {{count}} result",
+    "pending_other": "Checking {{count}} results",
+    "refusedDone": "Could not mark <subject>“<title>{{title}}</title>”</subject> as done",
+    "refusedHold": "Could not put <subject>“<title>{{title}}</title>”</subject> on hold",
+    "refusedRestore": "Could not move <subject>“<title>{{title}}</title>”</subject> back to awaiting review",
+    "refusedSend": "Your instruction for <subject>“<title>{{title}}</title>”</subject> didn't go through",
+    "refusedStop": "Could not stop <subject>“<title>{{title}}</title>”</subject>",
+    "unknownDone": "Couldn't confirm whether marking <subject>“<title>{{title}}</title>”</subject> as done was saved",
+    "unknownHold": "Couldn't confirm whether putting <subject>“<title>{{title}}</title>”</subject> on hold was saved",
+    "unknownRestore": "Couldn't confirm whether restoring <subject>“<title>{{title}}</title>”</subject> was saved",
+    "unknownSend": "Couldn't confirm whether your instruction for <subject>“<title>{{title}}</title>”</subject> went through",
+    "unknownStop": "Couldn't confirm whether stopping <subject>“<title>{{title}}</title>”</subject> was saved"
+  },
+  "reportFeed": {
+    "childWorking": {
+      "fold": "Collapse",
+      "grandchild": "Nested subtask",
+      "others_one": "{{count}} more below",
+      "others_other": "{{count}} more below"
+    },
+    "copy": "Copy",
+    "goAnswer": "Answer",
+    "goQuestion": "Answer: 1 question for you, {{title}}",
+    "goQuestionAt": "Answer: {{at}} {{title}}",
+    "jumpToLatest": "Jump to latest",
+    "listQuestions_one": "List of {{count}} question for you",
+    "listQuestions_other": "List of {{count}} questions for you",
+    "questions_one": "Question for you · {{count}}",
+    "questions_other": "Questions for you · {{count}}",
+    "questionsUnavailable": "Could not read the questions.",
+    "received": "Received by this task",
+    "result": {
+      "from": "Result from {{who}}",
+      "label": "Result",
+      "unavailable": "The result could not be read"
+    },
+    "reviewsUnavailable": "Could not read the items awaiting review",
+    "row": {
+      "answerTo": "Question: {{question}}",
+      "between": "From {{from}} to {{to}}",
+      "cause": "Received “{{title}}” · {{at}}",
+      "changedTo": "Set to {{state}}",
+      "end": {
+        "again": {
+          "question": "Asked the same question again",
+          "review": "Sent the same report again"
+        },
+        "answered": "{{who}} answered · {{at}}",
+        "closed": {
+          "expired": "Expired when the addressee changed",
+          "invalidated": "Back to work",
+          "stopped": "Closed when the task was stopped",
+          "withdrawn": "Withdrawn without an answer"
+        },
+        "confirmed": "{{who}} reviewed · {{at}}",
+        "replaced": {
+          "question": "Replaced by the next question",
+          "review": "Replaced by the next report"
+        },
+        "resumed": {
+          "question": "Not answered; back to work on the next request",
+          "review": "Back to work on the next request"
+        },
+        "waiting": "Waiting for {{who}} to answer",
+        "waitingReview": "Waiting for {{who}} to review",
+        "waitingReviewYou": "Waiting for your review",
+        "waitingYou": "Waiting for your answer"
+      },
+      "kind": {
+        "answer": "Answer",
+        "changed": "Change",
+        "comment": "Note",
+        "confirm": "Review",
+        "dialogue": "Message",
+        "done": "Done",
+        "error": "Stopped",
+        "expired": "Expired",
+        "question": "Question",
+        "reply": "Reply",
+        "report": "Report",
+        "request": "Request",
+        "review": "Report",
+        "run_end": "Stopped",
+        "urgent": "Urgent",
+        "withdrawn": "Withdrawn"
+      },
+      "older": "Show {{n}} earlier",
+      "openTask": "Open “{{task}}”",
+      "own": "{{who}}:",
+      "party": {
+        "child": "Subtask",
+        "coordinator": "Coordinator",
+        "member": "Member",
+        "other": "Another task",
+        "parent": "Parent",
+        "self": "Owner",
+        "you": "You"
+      },
+      "sameTitle": "Same title as above, different content",
+      "tag": {
+        "child": "Subtask",
+        "coordinator": "Coordinator",
+        "member": "Member",
+        "other": "Another task",
+        "parent": "Parent task",
+        "self": "Owner",
+        "you": "You"
+      },
+      "times": "×{{n}}",
+      "working": "is working"
+    },
+    "sendBack": "Send back…",
+    "sentBody": "Body sent to the agent",
+    "working": {
+      "others_one": "+{{count}} more",
+      "others_other": "+{{count}} more"
+    }
+  },
+  "ruleTab": {
+    "more": "Show more ({{shown}}/{{total}})",
+    "readFailed": "Could not read the file.",
+    "readFailedHelp": "Check the file's permissions in the task folder."
+  },
+  "sheet": {
+    "grip": "Change the height (flick up for full screen, down to close)",
+    "toShare": "Back to a sheet",
+    "toWhole": "Open full screen"
+  },
+  "summaryTab": {
+    "childCount": {
+      "doing": "$t(ui:state.doing) {{n}}",
+      "done": "$t(ui:state.done) {{done}}/{{total}}",
+      "stopped": "$t(ui:state.stopped) {{n}}",
+      "todo": "$t(ui:state.todo) {{n}}",
+      "waiting": "$t(ui:state.waiting) {{n}}"
+    }
+  },
+  "swipe": {
+    "choose": "Choose an option to send",
+    "hold": "Hold",
+    "notAnswered": "Can't send: nothing answered yet",
+    "notSaid": "Can't send: no instruction after Other",
+    "notWritten": "Can't send: no answer written",
+    "otherWords": "Write an instruction after Other to send",
+    "send": "Send",
+    "write": "Write an answer to send",
+    "writeAfterOther": "Write an instruction after Other"
+  },
+  "viewer": {
+    "binary": "Not a text file, so it cannot be opened",
+    "cannotOpen": "This file cannot be opened",
+    "close": "Close (Esc)",
+    "copy": "Copy",
+    "copyCommand": "Copy diff command",
+    "copyText": "Copy contents",
+    "download": "Download",
+    "downloadFile": "Download file",
+    "inGitFolder": "Inside git's own folder, so it cannot be opened",
+    "label": "Diff and files",
+    "missing": "No such file",
+    "outside": "Outside the project's registered code location, so it cannot be opened",
+    "rendered": "Rendered",
+    "shared": "Shares its contents with another location, so it cannot be opened",
+    "source": "Source",
+    "sourceGroup": "Document diff view",
+    "split": "Split",
+    "splitGroup": "Diff layout",
+    "tooLarge": "Too large to open",
+    "unified": "Unified",
+    "viewed": "Viewed",
+    "viewedCount": "Viewed {{read}}/{{total}}"
+  },
+  "voiceInput": {
+    "again": "Try again",
+    "connecting": "Connecting to the microphone…",
+    "failure": {
+      "audio": "Could not start the microphone audio",
+      "lost": "Speech recognition stopped partway",
+      "noSpeech": "No speech was heard",
+      "permission": "Microphone access is blocked. Allow it in your browser settings",
+      "refused": "Could not start voice input. Check the voice settings",
+      "tooLarge": "The recording is too long. Split it into shorter parts",
+      "unreachable": "Could not reach speech recognition",
+      "unsupported": "Voice input is not available in this browser. Open the app over HTTPS"
+    },
+    "hint": "Voice input (Alt+Shift+M) · Up to 60 seconds",
+    "start": "Start voice input",
+    "stop": "Stop voice input"
+  },
+  "wrapToggle": {
+    "unwrap": "Show lines unwrapped",
+    "wrap": "Wrap lines"
+  }
+}

@@ -1,0 +1,398 @@
+import { selectionSchema } from './agent-settings.js';
+/** Public entry values. Channels decode transport types; these schemas own input rules. */
+import { z } from 'zod';
+import { projectColorSchema } from '@alpacawork/raw/project-settings';
+import { folderNameProblem } from './workspace-contract.js';
+import { parseDocument } from 'yaml';
+import { MAX_DOCUMENT } from '@alpacawork/raw/values';
+import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
+  logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
+  titleSchema, urgentReasonSchema } from './fields.js';
+import { runFileKindSchema } from './control-contract.js';
+import { FIELD_TYPES, fieldIdSchema, valuesInputSchema } from './task-schema.js';
+import { historyCursorSchema } from './history-events.js';
+import { pushSubscriptionSchema } from './push-contract.js';
+import { noticeStateSchema, pauseChoices, personalSettings, readSettingValue, validSetting, validSettingWrite, validTimeZone } from './personal-settings.js';
+import { addAgentsIssues, configEditSchema } from './server-settings.js';
+
+const nonempty = z.string().min(1);
+const revision = z.number().int().positive();
+const cliCount = z.string().regex(/^[0-9]{1,9}$/, 'must be a non-negative integer');
+const count = cliCount.transform(Number);
+const parent = z.union([taskIdSchema, z.literal('none')]);
+/** An option given as JSON text. */
+const json = <Value extends z.ZodType>(value: Value, message: string) => z.string().transform((text, context) => {
+  try { return JSON.parse(text) as unknown; }
+  catch {
+    context.addIssue({ code: 'custom', message, params: { kind: 'invalid_json' } });
+    return z.NEVER;
+  }
+}).pipe(value);
+const selected = json(selectionSchema, 'Must be a JSON object of strings or null');
+const issue = (context: z.RefinementCtx, path: string, code: string, message: string) =>
+  context.addIssue({ code: 'custom', path: [path], message, params: { kind: code } });
+/** This PC's code location for a project Task: absolute, or from home (`~`, `~/…`); `''` turns it off. */
+const projectCwd = z.string().trim().refine(value => value === '' || value.startsWith('/') || value === '~' || value.startsWith('~/'),
+  { message: 'cwd must be an absolute path', params: { kind: 'absolute_path' } });
+/** --values-file: a JSON object of the fields a write changes, each a value or null to clear it. */
+const valuesText = json(valuesInputSchema, '--values-file must be a JSON object: field ID to value or null');
+
+/** A flag an input rule names: the input key it sets, as the CLI writes it. */
+type Flag<Value> = { key: keyof Value & string; flag: string };
+type Flags<Value> = readonly [Flag<Value>, ...Flag<Value>[]];
+/**
+ * A rule the input alone decides, stated once: the schema checks it and -h shows it (`ruleHelp`, cli-commands). Where
+ * `applies`, as `scope` says, `required` asks for each flag and `forbidden` refuses each; `one` asks for exactly one of
+ * the flags and `some` for at least one. A rule that turns on the Task, its state or the caller is the server's.
+ */
+type InputRule<Value> =
+  | { kind: 'required' | 'forbidden'; scope: string; applies: (value: Value) => boolean; flags: Flags<Value> }
+  | { kind: 'one' | 'some'; flags: Flags<Value> };
+/** `--a`, `--a or --b`, `--a, --b or --c`. */
+const named = <Value>(flags: Flags<Value>, conjunction: 'and' | 'or') => flags.map(each => each.flag)
+  .reduce((text, flag, index, all) => `${text}${index === all.length - 1 ? ` ${conjunction} ` : ', '}${flag}`);
+/** The lines -h shows for `rules`. */
+export function ruleHelp<Value>(rules: readonly InputRule<Value>[]): string[] {
+  return rules.map(rule => {
+    switch (rule.kind) {
+      case 'required': return `${rule.scope}: ${named(rule.flags, 'and')} required.`;
+      case 'forbidden': return `${rule.scope}: no ${named(rule.flags, 'or')}.`;
+      case 'one': return `Exactly one of ${named(rule.flags, 'or')}.`;
+      case 'some': return `Supply ${named(rule.flags, 'or')}.`;
+    }
+  });
+}
+function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readonly InputRule<Value>[]): void {
+  for (const rule of rules) {
+    const given = rule.flags.filter(each => value[each.key] !== undefined);
+    switch (rule.kind) {
+      case 'required':
+        if (rule.applies(value)) for (const each of rule.flags) if (value[each.key] === undefined)
+          issue(context, each.key, 'required', `${each.flag} is required (${rule.scope})`);
+        break;
+      case 'forbidden':
+        if (rule.applies(value)) for (const each of given)
+          issue(context, each.key, 'incompatible', `${each.flag} is not allowed (${rule.scope})`);
+        break;
+      case 'one':
+        if (given.length !== 1) issue(context, (given[1] ?? rule.flags[0]).key, 'exactly_one',
+          `Supply exactly one of ${named(rule.flags, 'or')}`);
+        break;
+      case 'some':
+        if (!given.length) issue(context, rule.flags[0].key, 'required', `Supply ${named(rule.flags, 'or')}`);
+        break;
+    }
+  }
+}
+
+export const taskGetInput = z.object({ task: taskIdSchema, log: count.optional(),
+  runs: count.optional(), files: z.boolean().optional(), usage: z.boolean().optional(),
+  estimateExamples: z.boolean().optional(), openObligations: z.boolean().optional(), question: logIdSchema.optional() });
+export const taskGetCliInput = taskGetInput.extend({ log: cliCount.optional(), runs: cliCount.optional() });
+export const taskListShape = z.object({ under: taskIdSchema.optional(), depth: count.optional(),
+  text: z.string().optional(), state: z.array(z.union([taskStateSchema, z.literal('all')])).optional(),
+  all: z.boolean().optional(), kind: taskKindSchema.optional() });
+export const taskSearchPlaceSchema = z.enum(['history', 'runs', 'files', 'work']);
+export type TaskSearchPlace = z.infer<typeof taskSearchPlaceSchema>;
+const searchOptions = { in: z.array(taskSearchPlaceSchema).min(1).optional(), limit: count.pipe(z.number().positive()).optional() };
+export const taskListRules: readonly InputRule<{ text?: string; in?: unknown; limit?: unknown }>[] = [
+  { kind: 'forbidden', scope: 'Without --text', applies: value => !value.text,
+    flags: [{ key: 'in', flag: '--in' }, { key: 'limit', flag: '--limit' }] },
+];
+export const taskListInput = taskListShape.extend(searchOptions).superRefine((value, context) => checkRules(value, context, taskListRules));
+export const taskListCliInput = taskListShape.extend({ ...searchOptions, depth: cliCount.optional(),
+  limit: cliCount.refine(value => Number(value) > 0, 'must be a positive integer').optional() })
+  .superRefine((value, context) => checkRules(value, context, taskListRules));
+/**
+ * One Task's fields, as a form picks them. Without a parent the server picks one from where the person works. Only a
+ * project may be at the top (`none`) and name this PC's code location (`cwd`); without one it inherits its parent
+ * project's. `userRequested` is --from-user (true) or --internal (false); left out, the server marks it by who
+ * creates it. `quote` records the user's words; `sourceRequest` attributes a screen write to a delivered message.
+ */
+const writeRecordShape = { quote: quoteTextSchema.optional(), sourceRequest: z.string().min(1).max(128).optional() };
+export const taskCreateShape = z.object({ title: titleSchema, kind: taskKindSchema.optional(), parent: parent.optional(),
+  cwd: projectCwd.optional(), color: projectColorSchema.optional(), values: valuesInputSchema.optional(),
+  expectedParentHash: digestSchema.optional(), userRequested: z.boolean().optional(), ...writeRecordShape });
+/** --plan-file: sibling Tasks made in one operation under one parent, with one mark; each is a title and its values. */
+const taskPlan = z.array(z.object({ title: titleSchema, values: valuesInputSchema.optional() }).strict()).min(1);
+/** The command takes one Task's title, or a plan in its place. */
+const taskCreateFields = taskCreateShape.extend({ title: titleSchema.optional() });
+type CreateChecks = z.output<typeof taskCreateFields> & { plan?: unknown };
+const planFlag = { key: 'plan', flag: '--plan-file' } as const;
+const markFlag = { key: 'userRequested', flag: '--from-user/--internal' } as const;
+export const taskCreateRules: readonly InputRule<CreateChecks>[] = [
+  { kind: 'required', scope: 'With --kind project', applies: value => value.kind === 'project',
+    flags: [{ key: 'color', flag: '--color' }] },
+  { kind: 'one', flags: [{ key: 'title', flag: '--title' }, planFlag] },
+  { kind: 'forbidden', scope: 'With --plan-file', applies: value => value.plan !== undefined,
+    flags: [{ key: 'values', flag: '--values-file' }] },
+  { kind: 'forbidden', scope: 'With --kind project', applies: value => value.kind === 'project',
+    flags: [planFlag, markFlag] },
+];
+function checkTaskCreate(value: CreateChecks, context: z.RefinementCtx): void {
+  checkRules(value, context, taskCreateRules);
+  if (value.kind === 'project') return;
+  if (value.parent === 'none') issue(context, 'parent', 'project_only', 'Only a project can be created without a parent');
+  if (value.color !== undefined) issue(context, 'color', 'project_only', 'Only a project has color');
+  if (value.cwd !== undefined) issue(context, 'cwd', 'project_only', 'Only a project has a cwd');
+}
+export const taskCreateInput = taskCreateFields.extend({
+  plan: json(taskPlan, '--plan-file must be JSON: a list of {"title", "values"?}').optional(),
+}).superRefine(checkTaskCreate);
+/** CLI flags stay textual; the receiving entry parses the plan's JSON once. */
+export const taskCreateCliInput = taskCreateFields.extend({ plan: z.string().optional(), values: valuesText.optional() })
+  .superRefine(checkTaskCreate);
+/** A project's cwd: null drops its own, so it inherits its parent project's. */
+export const taskUpdateShape = z.object({ task: taskIdSchema, title: titleSchema.optional(),
+  values: valuesInputSchema.optional(), color: projectColorSchema.optional(), cwd: projectCwd.nullable().optional(),
+  userRequested: z.boolean().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
+export const taskUpdateRules: readonly InputRule<z.output<typeof taskUpdateShape>>[] = [
+  { kind: 'some', flags: [{ key: 'title', flag: '--title' }, { key: 'values', flag: '--values-file' },
+    { key: 'cwd', flag: '--cwd' }, { key: 'color', flag: '--color' }, markFlag] },
+];
+const checkTaskUpdate = (value: z.output<typeof taskUpdateShape>, context: z.RefinementCtx) =>
+  checkRules(value, context, taskUpdateRules);
+export const taskUpdateInput = taskUpdateShape.superRefine(checkTaskUpdate);
+/** `--values-file` is JSON text the receiving entry parses. */
+export const taskUpdateCliInput = taskUpdateShape.extend({ values: valuesText.optional() }).superRefine(checkTaskUpdate);
+export const taskMoveShape = z.object({ task: taskIdSchema, parent, ...writeRecordShape, expectedTaskHash: digestSchema });
+export const taskMoveInput = taskMoveShape;
+export const taskLifecycleInput = z.object({ task: taskIdSchema, ...writeRecordShape, expectedTaskHash: digestSchema });
+
+export const taskReturnsInput = z.object({ task: taskIdSchema, after: z.string().optional(), limit: z.number().int().min(1).max(200).optional() });
+export const taskReturnsCliInput = taskReturnsInput.extend({ limit: cliCount.optional() });
+/**
+ * task report: the Task's state, a question (--state waiting), or a question's withdrawal. Without `task` a Run reports
+ * on its own Task. `urgent` is why a done report goes to the requester now; `aboutRun` the Run whose review a done
+ * report confirms.
+ */
+export const taskReportShape = z.object({ task: taskIdSchema.optional(), state: reportStateSchema.optional(),
+  askTo: z.union([z.literal('user'), taskIdSchema]).optional(), withdraw: logIdSchema.optional(), title: reportTitleSchema.optional(), description: descriptionSchema.optional(),
+  urgent: urgentReasonSchema.optional(), aboutRun: runIdSchema.optional(),
+  values: valuesInputSchema.optional(), nextConversation: z.literal('new').optional(),
+  estimateMinutes: estimateMinutesSchema.optional(), ...writeRecordShape, opId: nonempty,
+  expectedTaskHash: digestSchema, expectedPlacementRevision: revision.optional() });
+/**
+ * What a report's input alone decides. A question's --title and --description-file are the server's to require: the
+ * same --state waiting returns a Task held from review, which needs neither. So are where a done report goes, the state
+ * a held Task returns to, an urgent report's requester (refused when it is the user) and who may report.
+ */
+export const taskReportRules: readonly InputRule<z.output<typeof taskReportShape>>[] = [
+  { kind: 'forbidden', scope: 'Other than --state waiting', applies: value => value.state !== 'waiting',
+    flags: [{ key: 'askTo', flag: '--ask-to' }] },
+  { kind: 'required', scope: 'With --next-conversation', applies: value => value.nextConversation !== undefined,
+    flags: [{ key: 'values', flag: '--values-file' }] },
+  { kind: 'forbidden', scope: 'Other than an owner doing, waiting or done report',
+    applies: value => value.withdraw !== undefined || value.aboutRun !== undefined || !['doing', 'waiting', 'done'].includes(value.state ?? ''),
+    flags: [{ key: 'values', flag: '--values-file' }, { key: 'nextConversation', flag: '--next-conversation' }] },
+  { kind: 'one', flags: [{ key: 'state', flag: '--state' }, { key: 'withdraw', flag: '--withdraw' }] },
+  { kind: 'required', scope: 'With --description-file', applies: value => value.description !== undefined,
+    flags: [{ key: 'title', flag: '--title' }] },
+  { kind: 'forbidden', scope: 'With --withdraw', applies: value => value.withdraw !== undefined,
+    flags: [{ key: 'title', flag: '--title' }, { key: 'description', flag: '--description-file' }] },
+  { kind: 'forbidden', scope: 'Other than --state done', applies: value => value.state !== 'done',
+    flags: [{ key: 'urgent', flag: '--urgent' }, { key: 'aboutRun', flag: '--about-run' }] },
+  { kind: 'required', scope: 'With --about-run', applies: value => value.aboutRun !== undefined,
+    flags: [{ key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
+  { kind: 'forbidden', scope: 'With --state done or --withdraw',
+    applies: value => value.state === 'done' || value.withdraw !== undefined,
+    flags: [{ key: 'estimateMinutes', flag: '--estimate' }] },
+];
+export const taskReportInput = taskReportShape.superRefine((value, context) =>
+  checkRules(value, context, taskReportRules));
+export const taskReportCliInput = taskReportShape.extend({ values: valuesText.optional() }).superRefine((value, context) =>
+  checkRules(value, context, taskReportRules));
+/**
+ * task request: an instruction to the Task's responsible (or, with `agent`, a member), or an answer to its
+ * question (`answers`), all in `body`. Revisions are shared with the answer path, never an alias.
+ */
+export const taskRequestShape = z.object({ task: taskIdSchema, body: instructionSchema, answers: logIdSchema.optional(),
+  agent: nonempty.optional(), newConversation: z.boolean().optional(),
+  cwd: nonempty.optional(), selected: selected.optional(), ...writeRecordShape, opId: nonempty,
+  expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
+  expectedHeadRun: runIdSchema.optional() });
+type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected'> & { selected?: unknown };
+const agentFlag = { key: 'agent', flag: '--agent' } as const;
+const headRunFlag = { key: 'expectedHeadRun', flag: '--expected-head-run' } as const;
+/** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
+export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
+  { kind: 'forbidden', scope: 'With --answers', applies: value => value.answers !== undefined,
+    flags: [agentFlag, { key: 'newConversation', flag: '--new-conversation' },
+      { key: 'cwd', flag: '--cwd' }, { key: 'selected', flag: '--selected' }, headRunFlag,
+      { key: 'expectedTaskHash', flag: '--expected-task-hash' }, { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
+  { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined, flags: [{ key: 'expectedTaskHash', flag: '--expected-task-hash' }] },
+  { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined,
+    flags: [{ key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
+];
+const checkTaskRequest = (value: RequestChecks, context: z.RefinementCtx) => checkRules(value, context, taskRequestRules);
+export const taskRequestInput = taskRequestShape.strict().superRefine(checkTaskRequest);
+/** CLI flags stay textual; the receiving entry parses selected JSON once. */
+export const taskRequestCliInput = taskRequestShape.extend({ selected: z.string().optional() })
+  .strict().superRefine(checkTaskRequest);
+/** `urgent` is why the comment goes to the requester now. */
+export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitleSchema,
+  description: descriptionSchema.optional(), urgent: urgentReasonSchema.optional(), ...writeRecordShape,
+  expectedTaskHash: digestSchema });
+
+export const agentAssignShape = z.object({ task: taskIdSchema, role: z.enum(['responsible', 'member']),
+  person: nonempty.optional(), profile: nonempty, selected: selected.optional(), ...writeRecordShape,
+  expectedTaskHash: digestSchema, replace: nonempty.optional(),
+  expectedPlacementRevision: revision.optional(), expectedResponsibleRevision: revision.optional() });
+const replaceFlags = [{ key: 'replace', flag: '--replace' },
+  { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] as const;
+const responsibleRevisionFlag = { key: 'expectedResponsibleRevision', flag: '--expected-responsible-revision' } as const;
+type AssignChecks = Omit<z.output<typeof agentAssignShape>, 'selected'> & { selected?: unknown };
+export const agentAssignRules: readonly InputRule<AssignChecks>[] = [
+  { kind: 'required', scope: 'Replacing a responsible', applies: value => value.role === 'responsible' &&
+    (value.replace !== undefined || value.expectedPlacementRevision !== undefined), flags: replaceFlags },
+  { kind: 'forbidden', scope: 'With --role responsible', applies: value => value.role === 'responsible',
+    flags: [{ key: 'person', flag: '--person' }, responsibleRevisionFlag] },
+  { kind: 'required', scope: 'With --role member', applies: value => value.role === 'member',
+    flags: [responsibleRevisionFlag] },
+  { kind: 'forbidden', scope: 'With --role member', applies: value => value.role === 'member', flags: replaceFlags },
+];
+export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
+  checkRules(value, context, agentAssignRules));
+/** Leave the flag textual until the receiving entry parses its selected JSON. */
+export const agentAssignCliInput = agentAssignShape.extend({ selected: z.string().optional() }).superRefine((value, context) =>
+  checkRules(value, context, agentAssignRules));
+export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty,
+  ...writeRecordShape, expectedTaskHash: digestSchema, expectedPlacementRevision: revision });
+export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
+
+export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
+/** run stop stops one Run; a Task with its subtree stops by task report --state stopped. */
+export const runStopInput = z.object({ run: runIdSchema, ...writeRecordShape });
+/**
+ * field get: the schema a Task uses (its nearest project's, inherited where that has none of its own); `version` held
+ * from an earlier read omits an unchanged schema.
+ */
+export const fieldGetInput = z.object({ version: z.string().optional(), task: taskIdSchema.optional() });
+/**
+ * field set: one field's definition; a key left out keeps the current value (a new field needs title and type). The
+ * server merges and checks the whole definition (contract fieldDefSchema) and the catalog it makes.
+ */
+export const fieldSetShape = z.object({ field: fieldIdSchema, title: z.string().optional(), type: z.enum(FIELD_TYPES).optional(),
+  many: z.boolean().optional(), maxChars: z.number().int().positive().nullable().optional(),
+  maxItems: z.number().int().positive().nullable().optional(), hint: z.string().optional(),
+  members: z.array(fieldIdSchema).optional(), required: z.boolean().optional(),
+  /** Only add: a field ID the workspace already has is refused (field_exists) rather than changed. */
+  create: z.boolean().optional(), ...writeRecordShape });
+export const fieldSetInput = fieldSetShape;
+/** The CLI's text flags: --max-chars/--max-items are numbers or none, --many and --required true or false, --members a list. */
+const cliLimit = z.union([z.literal('none').transform(() => null), count.pipe(z.number().int().positive())]);
+const cliBoolean = z.enum(['true', 'false']).transform(value => value === 'true');
+export const fieldSetCliInput = fieldSetShape.extend({ many: cliBoolean.optional(), required: cliBoolean.optional(),
+  maxChars: cliLimit.optional(), maxItems: cliLimit.optional() });
+export const fieldDeleteInput = z.object({ field: fieldIdSchema, ...writeRecordShape });
+/** field use: a project's own fields in order (system fields included), or --inherit to drop its own. */
+export const fieldUseShape = z.object({ task: taskIdSchema, fields: z.array(fieldIdSchema).min(1).optional(),
+  inherit: z.boolean().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
+export const fieldUseRules: readonly InputRule<z.output<typeof fieldUseShape>>[] = [
+  { kind: 'one', flags: [{ key: 'fields', flag: '--fields' }, { key: 'inherit', flag: '--inherit' }] },
+];
+export const fieldUseInput = fieldUseShape.superRefine((value, context) => checkRules(value, context, fieldUseRules));
+export const emptyInput = z.object({});
+
+export const configSetShape = z.object({ config: z.string(), agents: z.string(), expectedConfigHash: digestSchema });
+/**
+ * A folder to list (absolute, or `~` and below); none lists where projects' code usually is. `prefix` keeps the names
+ * starting with it (any case); hidden folders on request.
+ */
+export const foldersInput = z.object({ path: z.string().trim().optional(), prefix: z.string().optional(),
+  hidden: z.boolean().optional() });
+export const makeFolderInput = z.object({ path: z.string().trim(), name: z.string().trim().refine(name => !folderNameProblem(name),
+  { message: 'This folder name cannot be used', params: { kind: 'folder_name' } }) });
+export const configSetInput = configSetShape.transform((value, context) => {
+  const bytes = new TextEncoder().encode(value.config).length + new TextEncoder().encode(value.agents).length;
+  if (bytes > MAX_DOCUMENT) issue(context, '', 'too_big', 'Settings must be at most 1 MiB');
+  let edit: z.output<typeof configEditSchema> | undefined;
+  try {
+    const document = parseDocument(value.config, { uniqueKeys: true });
+    for (const problem of [...document.errors, ...document.warnings])
+      issue(context, '', 'yaml', problem.message);
+    if (!document.errors.length && !document.warnings.length) {
+      const parsed = configEditSchema.safeParse(document.toJS({ maxAliasCount: 0 }));
+      if (parsed.success) edit = parsed.data;
+      else for (const problem of parsed.error.issues) context.addIssue({ ...problem });
+    }
+  } catch (error) {
+    issue(context, '', 'yaml', error instanceof Error ? error.message : 'Invalid YAML');
+  }
+  addAgentsIssues(value.agents, context);
+  return edit === undefined ? z.NEVER : { ...value, edit };
+});
+export type ConfigSetValues = z.output<typeof configSetInput>;
+export const validTaskFileName = (name: string): boolean =>
+  !!name && !name.startsWith('/') && name.split('/').every(part =>
+    !!part && part !== '.' && part !== '..' && !part.includes('\0'));
+export const taskFileInput = z.object({ task: taskIdSchema,
+  name: nonempty.refine(validTaskFileName, 'Invalid task file path') });
+/** Browser-facing host[:port], without a scheme or path. */
+export const PUBLIC_HOST_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?$/;
+export const serveInput = z.object({ port: z.string().transform(Number).pipe(z.number().int().min(0).max(65535)),
+  'public-host': z.string().regex(PUBLIC_HOST_PATTERN).optional(), timing: z.boolean().optional() });
+export const pushSubscribeInput = z.object({ subscription: pushSubscriptionSchema,
+  label: z.string().min(1).max(80) });
+export const pushUnsubscribeInput = z.object({ id: z.string().min(1).max(64) });
+export const taskViewInput = z.union([
+  z.object({ task: taskIdSchema }),
+  z.object({ address: z.string().min(1).max(1024) }),
+]);
+/**
+ * A History page: older than `before` (the previous page's nextBefore, a historyCursor), at `after` or later (the newest
+ * time the reader holds; records of that time come again).
+ */
+export const taskHistoryInput = z.object({ task: taskIdSchema, before: historyCursorSchema.optional(),
+  after: z.iso.datetime({ offset: true }).optional(),
+  limit: z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().min(1).max(80)).optional(),
+  children: z.union([z.literal('1'), z.literal('0')]).optional() });
+/** The project Task whose subtree (nested projects included) a list is narrowed to, as the screen shows it; none for all. */
+const projectScope = projectIdSchema.optional();
+export const taskSearchInput = z.object({ text: z.string().max(1024), scope: projectScope,
+  after: z.string().min(1).max(4096).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  limit: z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().min(1).max(80)).optional() });
+const pageLimit = z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().min(1).max(20));
+export const taskFinishedInput = z.object({ parent: z.union([taskIdSchema, z.literal('root')]), scope: projectScope,
+  after: z.string().min(1).max(1024).optional(), limit: pageLimit.optional() });
+export const taskShelvedInput = z.object({ scope: projectScope,
+  after: z.string().min(1).max(1024).optional(), limit: pageLimit.optional() });
+export const taskTimelineAxisInput = z.object({
+  scope: z.union([taskIdSchema, z.literal('root')]), lanes: z.string().max(8192), folded: z.string().max(8192),
+});
+export const taskTimelineInput = z.object({
+  scope: z.union([taskIdSchema, z.literal('root')]),
+  visible: z.string().max(8192), folded: z.string().max(8192),
+  from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }),
+  after: z.string().min(1).max(1024).optional(),
+  limit: z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().min(1).max(2000)).optional(),
+}).refine(value => Date.parse(value.from) <= Date.parse(value.to), 'Invalid time range');
+export const personSettingsSetShape = z.object({ key: nonempty, value: z.union([z.string(), z.boolean(), z.null()]),
+  expectedRevision: nonempty, timeZone: z.string().optional() });
+/** A setting's value is read by its kind first (`readSettingValue`): the command line's `true`, `null` or `ja-jp`. */
+export const personSettingsSetInput = personSettingsSetShape.transform(value =>
+  ({ ...value, value: readSettingValue(personalSettings, value.key, value.value) as string | boolean | null })).superRefine((value, context) => {
+  if (!personalSettings.some(setting => setting.key === value.key))
+    issue(context, 'key', 'unknown_setting', 'Unknown personal setting');
+  else if (!validSettingWrite(personalSettings, value.key, value.value))
+    issue(context, 'value', 'invalid_setting', 'Invalid setting value');
+  if (value.timeZone !== undefined && !validSetting(personalSettings, 'push.timeZone', value.timeZone))
+    issue(context, 'timeZone', 'invalid_time_zone', 'Invalid time zone');
+});
+/** Page-instance state; event ages are milliseconds on the page's own clock. */
+export const presenceReportInput = z.object({
+  screen: z.string().min(1).max(128), seq: z.number().int().positive(),
+  touchSeq: z.number().int().nonnegative(),
+  touchedAgo: z.number().finite().nonnegative().nullable(),
+  hiddenAgo: z.number().finite().nonnegative().nullable(),
+}).strict();
+export type PresenceReport = z.infer<typeof presenceReportInput>;
+export const presencePauseInput = z.object({ duration: z.enum(pauseChoices),
+  timeZone: z.string().refine(validTimeZone, 'Invalid time zone') });
+export const personNoticesSaveInput = z.object({ state: noticeStateSchema, expectedRevision: z.string().nullable() });
+export const workspaceInput = z.object({ workspace: z.string().refine(value => value.trim() !== '',
+  '--workspace must name a directory').optional() });
+
+/** Replace the execution order of a Task that has never started. */
+export const dependencyClearInput = z.object({ task: taskIdSchema, ...writeRecordShape, opId: nonempty.optional(), expectedTaskHash: digestSchema }).strict();
+export const dependencySetInput = dependencyClearInput.extend({ after: z.array(taskIdSchema).min(1).refine(ids => new Set(ids).size === ids.length, 'Duplicate dependency') });

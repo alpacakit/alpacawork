@@ -1,0 +1,198 @@
+{
+  "confirmation": {
+    "notTerminal": "Run this from a terminal.",
+    "prompt": "Enter to start / Ctrl-C to cancel",
+    "stopped": "Stopped. Nothing was changed."
+  },
+  "deploy": {
+    "accepted": "Deployment accepted: {{opId}}",
+    "overwrite": {
+      "noRestore": "After skill overwrite starts, backups cannot restore the previous application.",
+      "switch": "Switch while Runs continue when DB and execution FORMAT match. Otherwise retry after all Runs finish."
+    },
+    "preview": "Destination: {{workspace}}\n{{current}} → {{target}}\nConfirmation: {{confirmation}}"
+  },
+  "hostAlert": {
+    "body": "{{parts}}. {{heaviest}}",
+    "coordinator": "Coordinator",
+    "cpu": "CPU at {{percent}}% for {{minutes}} minutes",
+    "disk": "{{gigabytes}} GB disk free",
+    "heaviest_one": "Heaviest: {{tasks}} ({{count}} run)",
+    "heaviest_other": "Heaviest: {{tasks}} ({{count}} runs)",
+    "memory": "{{percent}}% memory free for {{minutes}} minutes",
+    "noRuns": "No runs in progress",
+    "partSeparator": "; ",
+    "taskSeparator": ", ",
+    "title": "This machine is under heavy load"
+  },
+  "push": {
+    "groupTitle": "{{updateCount}} updates",
+    "reason": {
+      "blocked": {
+        "body": "Couldn't wake the agent. Please check why",
+        "short": "Couldn't wake"
+      },
+      "done": {
+        "body": "Completed",
+        "short": "Completed"
+      },
+      "failed": {
+        "body": "Stopped by an error. Decide whether to retry",
+        "short": "Error"
+      },
+      "limit": {
+        "body": "Stopped at the wake limit. Decide whether to continue",
+        "short": "At limit"
+      },
+      "question": {
+        "body": "Please answer",
+        "short": "Question"
+      },
+      "review": {
+        "body": "Please review",
+        "short": "Review"
+      },
+      "stopped": {
+        "body": "Stopped",
+        "short": "Stopped"
+      },
+      "unconfirmed": {
+        "body": "A request may not have arrived. Please check",
+        "short": "Unconfirmed"
+      }
+    },
+    "withReport": "{{label}}: {{reportTitle}}"
+  },
+  "setup": {
+    "agents": {
+      "enabled": "Enabled: {{names}}",
+      "none": "None found",
+      "ready": "Agents ready: {{names}}",
+      "signIn": "{{name}} is not signed in. To use it, run: {{action}}"
+    },
+    "browserOpened": "Opened in your browser.",
+    "change": {
+      "none": "none"
+    },
+    "changed": "✔ Reconfigured alpacawork {{version}}",
+    "changePrompt": "Apply these changes? [Y/n]",
+    "completed": "✔ Installed alpacawork {{version}}",
+    "data": {
+      "existing": "existing",
+      "new": "new"
+    },
+    "fact": {
+      "node": "Node.js",
+      "path": "PATH",
+      "port": "Port",
+      "publicHost": "Public host"
+    },
+    "listSeparator": ", ",
+    "open": "Open: {{url}}",
+    "overwriteSkill": "Overwrite the distributed skill {{path}}, including local edits. No backup is kept.",
+    "portWayBack": "To go back to the old port: alpacawork setup --port {{port}}",
+    "prompt": "Proceed? [Y/n]",
+    "ready": "Ready on port {{port}}. Open {{url}}",
+    "readyChanged": "Installation changed. Ready on port {{port}}. Open {{url}}",
+    "row": {
+      "agents": "Agents",
+      "data": "Data",
+      "overwrite": "Overwrite",
+      "releases": "Releases",
+      "resume": "Resume",
+      "service": "Service",
+      "skill": "Skills",
+      "warning": "Warning"
+    },
+    "service": {
+      "publicHost": ", public host {{host}}",
+      "summary": "{{name}} ({{manager}}), port {{port}}, starts at login"
+    },
+    "skillAction": {
+      "keep": "existing",
+      "replace": "overwrite"
+    },
+    "skills": {
+      "baseMissing": "The alpacawork skill was not found. Run alpacawork setup with the same HOME as this server, then try again."
+    },
+    "skillWriteFailed": "Couldn't overwrite the skill. Fix the cause shown in the log, then run alpacawork setup again.",
+    "startFailure": {
+      "keep": "Keep the installation record and data.",
+      "reason": "Reason: {{reason}}"
+    },
+    "startup": {
+      "check": "The service could not start. Check its status and logs with:",
+      "launchdLogs": "This launchd definition does not configure stdout/stderr log files. The log command shows launchd events.",
+      "rerun": "After fixing the problem, run the same alpacawork setup again. It resumes with the saved port and definition.",
+      "startSaved": "After resolving any other process using the port, start the saved service with:\n{{command}}\nThen run the same alpacawork setup to check it."
+    },
+    "title": {
+      "change": "alpacawork {{version}} will be reconfigured",
+      "configure": "alpacawork {{version}} will be configured",
+      "install": "alpacawork {{version}} will be installed",
+      "update": "alpacawork will be updated from {{current}} to {{version}}"
+    },
+    "updated": "✔ Updated alpacawork to {{version}}",
+    "value": {
+      "data": "{{path}} ({{state}})",
+      "link": "linked from {{path}}",
+      "linkConflict": "{{path}} is in use; no link will be created and existing content is kept.",
+      "linkExisting": "existing link from {{path}}",
+      "resume": "Continue the interrupted setup.",
+      "skill": "{{path}} ({{action}})"
+    },
+    "wslFilesystem": {
+      "refused": "WSL2 needs data, releases and settings on the Linux filesystem. Windows folders such as /mnt/c are not supported.",
+      "retry": "Open your WSL terminal in your Linux home (/home/<user>). Use Linux folders for HOME, XDG_CONFIG_HOME, --workspace and --releases. To use the default folders, omit --workspace and --releases and run:\ncd ~\nalpacawork setup",
+      "unknown": "The Linux filesystem for this WSL2 installation could not be determined."
+    }
+  },
+  "skillLinks": {
+    "conflict": "{{path}}: Link not created; existing content preserved"
+  },
+  "uninstall": {
+    "alreadyGone": "a command that reports the service or file is already gone has nothing left to do",
+    "busy": "An update or another release operation is in progress. Run alpacawork uninstall again after it finishes.",
+    "done": "alpacawork was removed from this PC. Your tasks, history and files were kept.",
+    "note": "What is removed cannot be restored. No backup is kept.",
+    "nothingLeft": "Nothing is left to remove.",
+    "notInstalled": "No alpacawork installation was found on this PC. There is nothing to remove.",
+    "refused": {
+      "agent": "Only a person on this PC can run alpacawork uninstall, not an agent.",
+      "notTerminal": "Run this in a terminal, or add --yes to go ahead without asking.",
+      "sudo": "Run it as yourself, without sudo.",
+      "workspaceOption": "--workspace is not accepted: the installation record decides what is removed, and the data folder is never removed."
+    },
+    "remaining": "Remaining step (removes the command itself): npm uninstall -g alpacawork",
+    "removed": "Removed: {{subject}}",
+    "row": {
+      "config": "Remove  Settings, record  {{subject}}",
+      "data": "Keep    Data              {{subject}} (your tasks and history; delete it by hand when you no longer need it)",
+      "holdsData": "Keep    Holds the data    {{subject}} (not removed: it is the data folder or contains it)",
+      "link": "Remove  Skill link        {{subject}}",
+      "notOurs": "Keep    Releases folder   {{subject}} (not removed: it holds entries alpacawork did not put there)",
+      "receipt": "Remove  Skill record      {{subject}}",
+      "record": "Keep    Record            {{subject}} (not removed: it names the data folder, so a later run protects it the same way)",
+      "releases": "Remove  Releases          {{subject}} (what alpacawork put there; the folder itself only when nothing else is in it)",
+      "service": "Remove  Auto-start        {{subject}} (stop, then unregister)",
+      "setting": "Remove  Settings          {{subject}}",
+      "skill": "Remove  Managed skill     {{subject}} (including local edits)",
+      "skillsUnknown": "Keep    Skills            {{subject}} (not removed: the skill record is unreadable, so alpacawork cannot tell which skills are its own)",
+      "stage": "Remove  Skill staging     {{subject}}",
+      "state": "Remove  State             {{subject}}"
+    },
+    "running_one": "Agents or an update are still at work ({{count}} process started from {{releases}}: pid {{pids}}). Uninstalling now would leave them running with nothing watching them. Stop them on the screen (or with alpacawork run stop --run <Run ID>), or wait until they finish, then run alpacawork uninstall again.",
+    "running_other": "Agents or an update are still at work ({{count}} processes started from {{releases}}: pid {{pids}}). Uninstalling now would leave them running with nothing watching them. Stop them on the screen (or with alpacawork run stop --run <Run ID>), or wait until they finish, then run alpacawork uninstall again.",
+    "service": {
+      "blocked": "{{why}} Nothing was changed.\nTo remove the registration by hand, run these ({{alreadyGone}}):\n{{commands}}\nThen run alpacawork uninstall again.",
+      "conflict": "The auto-start registration {{name}} differs from what alpacawork registered, so uninstall will not touch it.",
+      "left": "The auto-start registration {{name}} was not fully removed{{fault}}. The server may be stopped now, but it is still registered to start at login.\nNothing else was removed. To get a working alpacawork back, run alpacawork setup. To finish removing it, run alpacawork uninstall again.\nIf uninstall stops here again, remove the registration by hand with these ({{alreadyGone}}):\n{{commands}}",
+      "unavailable": "The user service manager cannot be reached, so uninstall cannot tell whether the auto-start registration {{name}} is still there, or remove it. Nothing was changed.\nRun alpacawork uninstall from a normal login session (on WSL2, with systemd enabled).",
+      "uninspectable": "The auto-start registration {{name}} cannot be inspected: {{failure}}.",
+      "unrecorded": "An auto-start registration named {{name}} exists, but no installation record describes it."
+    },
+    "stoppedAt": "Uninstall stopped at {{subject}}: {{failure}}\nWhat was already removed stays removed. Fix the cause, then run alpacawork uninstall again; it removes what is left.",
+    "title": "Remove alpacawork from this PC",
+    "unreadableRecord": "The installation record {{path}} exists, but this version of alpacawork cannot read it: it was written by another version, is damaged, or is another user's. Only this record names the data folder, the releases folder and the auto-start registration, so uninstall will not guess at them. Nothing was changed.\nRun alpacawork uninstall with the alpacawork version that wrote it (npm install -g alpacawork@<that version>), as the user it belongs to.\nTo remove alpacawork by hand instead, first remove the auto-start registration (the record names it; for the default name these are the commands, and {{alreadyGone}}):\n{{commands}}\nThen, after checking in the record that your data folder is not inside any of them, delete: the releases folder {{releases}} (or the one the record names), {{state}}, the skills listed in {{receipt}}, and last {{config}}."
+  }
+}

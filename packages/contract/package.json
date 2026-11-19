@@ -1,0 +1,164 @@
+{
+  "name": "@alpacawork/contract",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./file-formats": {
+      "types": "./dist/file-formats.d.ts",
+      "default": "./dist/file-formats.js"
+    },
+    "./telemetry": {
+      "types": "./dist/telemetry.d.ts",
+      "default": "./dist/telemetry.js"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./run-failure": {
+      "types": "./dist/run-failure.d.ts",
+      "default": "./dist/run-failure.js"
+    },
+    "./run": {
+      "types": "./dist/run-contract.d.ts",
+      "default": "./dist/run-contract.js"
+    },
+    "./fields": {
+      "types": "./dist/fields.d.ts",
+      "default": "./dist/fields.js"
+    },
+    "./report-media": {
+      "types": "./dist/report-media.d.ts",
+      "default": "./dist/report-media.js"
+    },
+    "./markdown-embeds": {
+      "types": "./dist/markdown-embeds.d.ts",
+      "default": "./dist/markdown-embeds.js"
+    },
+    "./report-diff": {
+      "types": "./dist/report-diff.d.ts",
+      "default": "./dist/report-diff.js"
+    },
+    "./inputs": {
+      "types": "./dist/inputs.d.ts",
+      "default": "./dist/inputs.js"
+    },
+    "./control": {
+      "types": "./dist/control-contract.d.ts",
+      "default": "./dist/control-contract.js"
+    },
+    "./coordinator": {
+      "types": "./dist/coordinator-contract.d.ts",
+      "default": "./dist/coordinator-contract.js"
+    },
+    "./connection": {
+      "types": "./dist/connection.d.ts",
+      "default": "./dist/connection.js"
+    },
+    "./default-server": {
+      "types": "./dist/default-server.d.ts",
+      "default": "./dist/default-server.js"
+    },
+    "./problem": {
+      "types": "./dist/problem.d.ts",
+      "default": "./dist/problem.js"
+    },
+    "./cli-commands": {
+      "types": "./dist/cli-commands.d.ts",
+      "default": "./dist/cli-commands.js"
+    },
+    "./branch": {
+      "types": "./dist/finished-branch.d.ts",
+      "default": "./dist/finished-branch.js"
+    },
+    "./moved": {
+      "types": "./dist/task-moved.d.ts",
+      "default": "./dist/task-moved.js"
+    },
+    "./run-protocol": {
+      "types": "./dist/run-protocol.d.ts",
+      "default": "./dist/run-protocol.js"
+    },
+    "./local-stop": {
+      "types": "./dist/local-stop.d.ts",
+      "default": "./dist/local-stop.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "default": "./dist/markdown.js"
+    },
+    "./task-policy": {
+      "types": "./dist/task-policy.d.ts",
+      "default": "./dist/task-policy.js"
+    },
+    "./command-access": {
+      "types": "./dist/command-access.d.ts",
+      "default": "./dist/command-access.js"
+    },
+    "./access-help": {
+      "types": "./dist/access-help.d.ts",
+      "default": "./dist/access-help.js"
+    },
+    "./access-boundaries": {
+      "types": "./dist/access-boundaries.d.ts",
+      "default": "./dist/access-boundaries.js"
+    },
+    "./recovery": {
+      "types": "./dist/recovery.d.ts",
+      "default": "./dist/recovery.js"
+    },
+    "./client-contract": {
+      "types": "./dist/client-contract.d.ts",
+      "default": "./dist/client-contract.js"
+    },
+    "./agent-adapters": {
+      "types": "./dist/agent-adapters.d.ts",
+      "default": "./dist/agent-adapters.js"
+    },
+    "./agent-variables": {
+      "types": "./dist/agent-variables.d.ts",
+      "default": "./dist/agent-variables.js"
+    },
+    "./launch-options": {
+      "types": "./dist/launch-options.d.ts",
+      "default": "./dist/launch-options.js"
+    },
+    "./agent-settings": {
+      "types": "./dist/agent-settings.d.ts",
+      "default": "./dist/agent-settings.js"
+    },
+    "./agent-selection": {
+      "types": "./dist/agent-selection.d.ts",
+      "default": "./dist/agent-selection.js"
+    },
+    "./agent-launch": {
+      "types": "./dist/agent-launch.d.ts",
+      "default": "./dist/agent-launch.js"
+    },
+    "./agent-environment": {
+      "types": "./dist/agent-environment.d.ts",
+      "default": "./dist/agent-environment.js"
+    },
+    "./agent-bridge": {
+      "types": "./dist/agent-bridge.d.ts",
+      "default": "./dist/agent-bridge.js"
+    },
+    "./agent-diagnostics": {
+      "types": "./dist/agent-diagnostics.d.ts",
+      "default": "./dist/agent-diagnostics.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@alpacawork/core": "workspace:*",
+    "@alpacawork/raw": "workspace:*",
+    "get-east-asian-width": "1.7.0",
+    "re2js": "2.8.6",
+    "yaml": "2.9.1",
+    "zod": "4.3.6"
+  }
+}

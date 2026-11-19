@@ -1,0 +1,92 @@
+/* The phone's reading header follows the list bar: its room stays in the scroller, so only the layer moves. */
+.reader-heading {
+  @variant narrow {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 1;
+    transition: transform var(--motion-base) var(--ease-out);
+  }
+}
+.reader-heading[data-reader-header="hidden"] {
+  @variant narrow {
+    transform: translateY(-100%);
+    transition-timing-function: var(--ease-in-out);
+  }
+}
+/* The reports stand in a box of their own with a diff or a file over them (Reader), so not a direct child. */
+.reader-reading .reader-content { @variant narrow { padding-top: calc(var(--reader-header-h, 0px) + 0.5rem); } }
+
+/* A task timeline's day dividers (ReportFeed DayHead), a thin band across the column where a day has turned
+ * (today's rows have none). Each heads its day's rows and is sticky inside them, so it stays at the top while they pass
+ * under it and the next day's pushes it out. Stuck
+ * (scroll-state), it steps back to the aside grey, covers the rail's marks passing under it and fades what it cuts
+ * off: only colour and opacity change, so scrolling moves no layout. It takes no pointer, so what passes under it can
+ * still be pressed, and what is brought into view keeps clear of it (--day-over). The reader's content is its
+ * own stack, so a divider pushed out goes under the phone's reading header, not over it; a day's rows are their own
+ * stack too (isolate), so what stands raised inside a row (a video's controls) passes under the divider, not over it. */
+[data-report-feed] { --day-head: 1.5rem; --day-over: 0px; }
+/* The room above a headed day is outside it, so its divider stands where its day starts (the list motion places it so). */
+[data-day]:has(> .day-head) { --day-over: var(--day-head); margin-top: 0.75rem; }
+/* Every timeline destination clears only the bands actually shown over its scrollport: its own day's divider, if any. */
+[data-report-feed] :is([data-report-key], [data-folded-report], button[aria-expanded]) { scroll-margin-top: var(--day-over); }
+.reader-reading:has([data-reader-header="shown"]) [data-report-feed] :is([data-report-key], [data-folded-report], button[aria-expanded]) {
+  @variant narrow { scroll-margin-top: calc(var(--reader-header-h, 0px) + var(--day-over)); }
+}
+[data-reader-content] { isolation: isolate; }
+.day-head {
+  position: sticky;
+  top: -0.5rem;
+  z-index: 2;
+  height: var(--day-head);
+  container-type: scroll-state;
+  pointer-events: none;
+}
+.day-words {
+  position: relative;
+  height: 100%;
+  padding-left: var(--gutter);
+  background: var(--color-lit);
+  border-bottom: 1px solid var(--color-rule);
+}
+.day-words > * { transition: color var(--motion-base) var(--ease-out); }
+.day-words::before, .day-words::after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+.day-words::before { inset: 0 100% -1px auto; z-index: -1; width: 0.75rem; background: var(--color-lit); }
+.day-words::after { inset: calc(100% + 1px) 0 auto; height: 0.5rem; background: linear-gradient(var(--color-lit), transparent); }
+/* Stuck, its ground also reaches up under the phone's reading header. The header is a layer of its own, so the
+ * two edges never meet exactly: a measured room is off by a fraction, a fractional pixel ratio splits the shared pixel
+ * row, and while the header slides away each moves on its own. Whatever is between them is the divider's ground,
+ * never the rows under it; above the scroller's top (the header gone, or a wide screen) the scroller cuts it off. */
+@container scroll-state(stuck: top) {
+  .day-words > * { color: var(--color-aside); }
+  .day-words::before, .day-words::after { opacity: 1; }
+  .day-words::before { inset: calc(-1 * var(--reader-header-h, 0px)) 0 -1px -0.75rem; width: auto; }
+}
+/* Where a stuck divider cannot be told apart, the rail stays covered beside every one. */
+@supports not (container-type: scroll-state) { .day-words::before { opacity: 1; } }
+/* On a phone it stays under the reading header, and rises with it when the header goes, as the list's sticky heads
+ * follow its bar (TimeTree): only then does its place change. */
+.reader-reading .day-head { @variant narrow { transition: top var(--motion-base) var(--ease-out); } }
+.reader-reading:has([data-reader-header="hidden"]) .day-head { @variant narrow { top: calc(-1 * var(--reader-header-h, 0px) - 0.5rem); transition-timing-function: var(--ease-in-out); } }
+
+/* A right swipe that waits on a question (askChoice): its choices are ringed in the turn's ink for a moment, fading
+ * out; under reduced motion the ring stands still until it goes. */
+[data-asked] { border-radius: var(--radius-md); outline: 2px solid var(--color-turn); outline-offset: 4px; animation: asked 1.6s var(--ease-in) both; }
+@keyframes asked { 0%, 55% { outline-color: var(--color-turn); } to { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { [data-asked] { animation: none; } }
+/* Where a reply's explicit move lands (the answer's words, or the sent words coming back): ringed quietly while it is
+ * read, 2.4s (CoordinatorThread). */
+[data-reply-flash] { border-radius: var(--radius-sm); outline: 2px solid var(--color-muted); outline-offset: 6px; }
+
+/* Who a History row was between (ReportFeed's PartyTag): its kind's mark, and its words in the row's grey that darken
+ * with it. You and the Coordinator take a colour of their own; a member and a Task take the words' grey, their mark too,
+ * told apart by its shape (a member's green mark stood out on nearly every row). No ground or frame of its own:
+ * on every row they stood before the words a row is read for. */
+.party-tag { --party: currentColor; }
+.party-tag .party-mark { color: var(--party); }
+.party-tag[data-row-end="you"] { --party: var(--party-you); }
+.party-tag[data-row-end="coordinator"] { --party: var(--party-coordinator); }

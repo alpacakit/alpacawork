@@ -1,0 +1,49 @@
+{
+  "name": "@alpacawork/raw",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./project-settings": {
+      "types": "./dist/project-settings.d.ts",
+      "default": "./dist/project-settings.js"
+    },
+    "./task-id": {
+      "types": "./dist/task-id.d.ts",
+      "default": "./dist/task-id.js"
+    },
+    "./task-enums": {
+      "types": "./dist/task-enums.d.ts",
+      "default": "./dist/task-enums.js"
+    },
+    "./task-log-schema": {
+      "types": "./dist/task-log-schema.d.ts",
+      "default": "./dist/task-log-schema.js"
+    },
+    "./values": {
+      "types": "./dist/values.d.ts",
+      "default": "./dist/values.js"
+    },
+    "./conversation-context": {
+      "types": "./dist/conversation-context.d.ts",
+      "default": "./dist/conversation-context.js"
+    },
+    "./questions": {
+      "types": "./dist/questions.d.ts",
+      "default": "./dist/questions.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@alpacawork/core": "workspace:*",
+    "yaml": "2.9.1",
+    "zod": "4.3.6"
+  }
+}

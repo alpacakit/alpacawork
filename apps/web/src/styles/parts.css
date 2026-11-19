@@ -1,0 +1,155 @@
+/* A surface's edge, a hairline: 0.5px as written; how thin it is drawn is the browser's (one device pixel on
+   a Mac's 2x screen, 1px at 1x, and 1px under Playwright's emulated 2x). */
+@utility border-hairline {
+  border-width: 0.5px;
+}
+@utility border-t-hairline {
+  border-top-width: 0.5px;
+}
+/* An icon at a line's end: its icon's drawing square (4 to 20 of its 24, icon.tsx; the line a list's names start
+   on, tokens.css list-text) ends where the line's words and rules end, so its box reaches past that end by the room round
+   the icon. --edge-press is the box's width (2rem when unset: a 32px press; an icon alone gives its own size), --edge-icon the
+   icon's when not 1rem. Only an unbordered press or icon takes it: a bordered one lines up by its border. Its reach past
+   the end (a 32px press: 10.7px) stays within the room the line has there (12px or more); a phone's larger press reaches
+   inward instead (press-reach). */
+@utility press-end {
+  margin-inline-end: calc(-1 * ((var(--edge-press, 2rem) - var(--edge-icon, 1rem)) / 2 + var(--edge-icon, 1rem) * 4 / 24));
+  /* Its ring goes inside it: outside, the room past the line's end cuts it. */
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+}
+/* A press whose face is smaller than a finger: on a phone it keeps its face and reaches 44px each way, inward and up and
+   down, so it takes a finger's place beside its neighbours and nothing of it stands past a line's end (as the bar's Time,
+   AppBar). Its width is --edge-press, as press-end reads it. */
+@utility press-reach {
+  position: relative;
+  @variant narrow {
+    margin-inline-start: max(0px, calc(var(--spacing) * 11 - var(--edge-press, 2rem)));
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block: min(0px, calc((100% - var(--spacing) * 11) / 2));
+      inset-inline-start: min(0px, calc(100% - var(--spacing) * 11));
+      inset-inline-end: 0;
+    }
+  }
+}
+/* A link in a sentence: a Markdown or bare address (`a`, base.css) and a task's ID (Button's `ref`). Its words are
+   the sentence's own (size, line height and face come from where it stands: a body, a quote, a heading, a note);
+   only the ink and the underline mark it as a link, so a link never carries a type step of its own. */
+@utility inline-link {
+  color: var(--ink);
+  text-decoration-line: underline;
+  text-decoration-color: var(--muted);
+  text-underline-offset: 3px;
+  /* Tailwind's own `hover`: only where a pointer hovers, so a phone's tap does not leave the line dark. */
+  @variant hover {
+    text-decoration-color: var(--ink);
+  }
+}
+/* A label in a line of text: a zero-width character of its own, in the text's size, starts its place and stands
+   on the text's baseline as a word does, and the label is centred on that character's box, so it meets the text and
+   the caret in their middle whatever the font's metrics, also after a wrap. `align-middle` (the font's x-height) set
+   labels low beside Japanese text.
+   The place keeps the gap two characters of the text keep between them on each side of the face it holds:
+   about 0.16em between Japanese glyphs and 0.06em between Latin ones, so a fifth of the text's size. It is padding,
+   not margin: a caret beside an uneditable box is drawn inside that box's edge, so a margin left the caret on the
+   face's border. */
+@property --label-text-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+:where(:has(> .label-line)) {
+  --label-text-size: 1em;
+}
+@utility label-line {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: calc(var(--label-text-size) * 0.2);
+  &::before {
+    content: "\200b";
+    font-size: var(--label-text-size);
+    line-height: normal;
+  }
+}
+
+/* A frame that scrolls sideways (a Markdown table wider than its place) fades its edge on each side where more
+   lies beyond (`data-more`: start, end or both), so a phone or a Mac, whose scrollbars hide, still shows that it goes
+   on. A frame with nothing to scroll has no mark and is drawn as it is. */
+@utility scroll-more-x {
+  &[data-more] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--more-start, 0px), #000 calc(100% - var(--more-end, 0px)), transparent);
+  }
+  &[data-more~="start"] { --more-start: --spacing(6); }
+  &[data-more~="end"] { --more-end: --spacing(6); }
+}
+
+/* A pane's part that scrolls up and down inside it (a dialog's body). The bar is thin and in the pane's greys, and
+   stands clear of the pane's edge and of its round corner below (the part ends short of both). Its room is always
+   kept, so the words do not move when a longer page brings the bar, and it comes out of the side room (`--pane-side`)
+   by the width the part measured (`--scroll-gutter`). The last lines fade out over the pane's foot. */
+@utility pane-scroll {
+  --pane-edge: 2px;
+  margin-inline-end: var(--pane-edge);
+  margin-block-end: --spacing(2.5);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+  scrollbar-gutter: stable;
+  padding-inline: var(--pane-side) calc(var(--pane-side) - var(--pane-edge) - var(--scroll-gutter, 0px));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - --spacing(4)), transparent);
+}
+
+/* A conversation surface's head and foot over what scrolls between them: what passes under either fades into the
+   surface's ground over 16px, as a dialog's last lines do (pane-scroll) and the reader's rows under a day head, so the
+   thread never ends on a ruled cut at an edge that shows no reason for it. The head is sticky over what scrolls; the
+   foot stands after it, over its end. */
+@utility pane-head-fade {
+  &::after {
+    content: ""; position: absolute; inset: 100% 0 auto; height: --spacing(4);
+    background: linear-gradient(var(--color-raised), transparent); pointer-events: none;
+  }
+}
+@utility pane-foot-fade {
+  position: relative; z-index: 10;
+  &::before {
+    content: ""; position: absolute; inset: auto 0 100%; height: --spacing(4);
+    background: linear-gradient(transparent, var(--color-raised)); pointer-events: none;
+  }
+}
+
+/* The image viewer's seek and volume: white over the picture as its other controls are. A 44px row to press,
+   a 4px line whose played part is white and the rest white at 40% (3:1 or more over the viewer's black), and a
+   16px white knob, the size of a Switch's. The keyboard's ring goes round the knob, white as the viewer's ring is.
+   The element writes --played (0%–100%) from the value it shows; Firefox draws the played part itself. */
+@utility media-range {
+  appearance: none;
+  height: 44px;
+  background: transparent;
+  cursor: pointer;
+  &:disabled { cursor: default; opacity: 0.4; }
+  &:focus-visible { outline: none; }
+  &::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(to right, #fff var(--played, 0%), rgb(255 255 255 / 0.4) var(--played, 0%));
+  }
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border: 0;
+    border-radius: 9999px;
+    background: #fff;
+  }
+  &:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 2px; }
+  &::-moz-range-track { height: 4px; border-radius: 9999px; background: rgb(255 255 255 / 0.4); }
+  &::-moz-range-progress { height: 4px; border-radius: 9999px; background: #fff; }
+  &::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 9999px; background: #fff; }
+  &:focus-visible::-moz-range-thumb { outline: 2px solid #fff; outline-offset: 2px; }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@alpacawork/backend",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "alpacawork-backend": "dist/backend.js"
+  },
+  "scripts": {
+    "build": "rm -rf test-dist && tsc -p tsconfig.json && vite build --config vite.config.ts && chmod +x dist/backend.js",
+    "build:diagnostic": "vite build --mode diagnostic --config vite.config.ts && chmod +x dist/backend.js"
+  },
+  "dependencies": {
+    "@alpacakit/channels": "0.2.0-beta.5",
+    "@alpacawork/cli-kit": "workspace:*",
+    "@alpacawork/contract": "workspace:*",
+    "@alpacawork/core": "workspace:*",
+    "@alpacawork/db": "workspace:*",
+    "@alpacawork/i18n": "workspace:*",
+    "@alpacawork/raw": "workspace:*",
+    "@alpacawork/runs": "workspace:*",
+    "@block65/webcrypto-web-push": "2.0.0",
+    "@hono/node-server": "2.1.1",
+    "drizzle-orm": "1.0.0-rc.4",
+    "hono": "4.13.8",
+    "unicode-case-folding": "1.1.1",
+    "yaml": "2.9.1",
+    "zod": "4.3.6"
+  }
+}

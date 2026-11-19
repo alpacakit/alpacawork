@@ -1,0 +1,442 @@
+/* ════════ The screen's shared rules ════════
+
+   Every colour, size, step and line the screen uses is named here, or beside what it is for (a toast's, a move's, a
+   surface's: toast.css, motion.css, surfaces.css, reader.css); screens
+   write the names (`text-muted`, `text-sm`, `gap-2`), never a value
+   (`text-[11px]`, a hex, a `/60` see-through). A value that is missing is
+   added here first.
+
+   theme.ts writes `data-theme`. Colours are OKLCH except the sRGB ground shared with PWA metadata; small text on bg, lit, raised and hover is 4.5:1 or more.
+   One colour says one thing. The ground, ink and lines:
+   bg (the screen) · lit (a surface on it: a panel, a card, a field) ·
+   raised (a surface over a surface: a menu, a sheet, a dialog, a hover card,
+   an edit box) · hover (pointed at or picked) · ink · muted · soft · line (a
+   row's rule) · lit-line (an edge: a field, the frozen column, a group's head).
+   What lies over another colour is named here too, never `/60` on a screen:
+   dim (under a sheet or a menu) · dim-dialog (under a dialog) · picked (an
+   answer chosen) and picked-hover · found (a search hit) · well (a wait's own
+   question box; the side of a diff side by side that a change has nothing on) ·
+   placeholder (a part still reading) · tab-shown (the ground under the tab shown) · trail (words along the time line) ·
+   clock-rule (now, and the time the pointer reads) · future (the time line
+   not yet come) · fold (time the line folds away) · work-area (work drawn on the time line) · overdue-area and
+   overdue (work past its estimate) · stamp (behind the answered stamp) ·
+   inverse-muted (a count on an ink chip) · strain (when the host was hard
+   pressed) · progress-track (under the feed's progress line and an upload's ring, in its colour) · mention (a row the coordinator
+   names) · pale (the white over a picture still on its way, in either theme) and pale-ink (the ring drawn on it) ·
+   diff-add and diff-del (a painted diff's added and removed rows, under its code colours) · diff-add-word and
+   diff-del-word (the words a changed paragraph added and removed, in a diff card: a step deeper than the rows') ·
+   diff-add-number and diff-del-number (a changed row's number and +/−, between the two, so a run of changes reads down
+   the edge). A painted diff's letters
+   are the one colour not named here: the Shiki themes' (github-light-high-contrast, github-dark-default), written per
+   letter as --code-light and --code-dark (CodeBlock.tsx); every one is 4.5:1 or more on the code's ground and on
+   both rows'.
+   A shadow is one name: float (`shadow-float`), on what lies over something else (a window, a sheet, the
+   coordinator's conversation, its input and one line, Done, a menu, a popover, a hover card, an edit box, a stamp,
+   a card behind the reader, the pull's mark, a switch's knob), never on what lies in its own place in the page.
+   It is the person's own value (0 2px 6px 2px, rgb(60 64 67 / 0.1)) in shade; Tailwind's own named steps are
+   removed, so `shadow-md` makes no CSS. In the dark shade is black at 30%: the same step down in lightness on a
+   lit surface as the light's 10% grey makes on white; on the near-black ground the lift is the surface's own
+   lighter step and its edge. A surface's edge is a hairline (`border-hairline`) in lit-line; the rules
+   inside the surfaces (rows, a head's foot, a rail) are rule, fainter than line.
+   Only the image viewer's controls stay white and black over the picture,
+   which has no theme (its video row's seek and volume: `media-range`, parts.css). Opacity elsewhere fades a whole thing (disabled,
+   reading, shown on hover, motion), never makes a colour.
+   Every other colour is named for what it says, and components/ui/tone.ts
+   is the one place that says which state, wait or emphasis takes which:
+   turn (Your turn: a review or a question waits on you) · error (a failure:
+   Error, stopped by an error, a read or a save that failed — `warn` is the same) ·
+   working (Working) · done (Done) · stopped (Stop) · todo (Not started) ·
+   changed (not yet read — `new` is the same) ·
+   scrim (under a dialog) · paper (behind a Task-folder page, white as a
+   page is in both themes). A wait that is not yours is said in muted, and so
+   is a turn the reader has set aside (Hold, `[data-held]` below).
+*/
+
+:root {
+  color-scheme: light;
+  /* Global surfaces, from the reader through the image viewer. The coordinator, in every form, stands over the places
+     the work is read in (the list's notes, the bar, the reader); what is opened for a moment (a task's card, a toast, an
+     edit, a dialog or sheet, a menu, an image) comes over it, so nothing opened is drawn under it while it takes the
+     presses. Esc closes in the same order (ESCAPE_LAYER, lib/escape-layer.ts). */
+  --layer-bar: 16;
+  /* A diff or a file read in the list's place (UrlViewer): over the bar it hides, under the reader beside it. */
+  --layer-view: 18;
+  --layer-reader: 20;
+  /* The reader's column at its widest, for every pane: about 50 characters of Japanese a line at the reading size. */
+  --reading-column: 48rem;
+  /* The answered card's copy, leaving over the reader that already shows the next one (NextQuestion). */
+  --layer-flying-card: 21;
+  --layer-coordinator: 25;
+  /* The coordinator's input, one over its conversation, so the conversation's shadow passes under it. */
+  --layer-coordinator-input: 26;
+  --layer-card: 30;
+  --layer-edit-surface: 50;
+  --layer-dialog: 60;
+  --layer-progress: 65;
+  --layer-popover: 70;
+  --layer-image-viewer: 80;
+  /* Over everything opened for a moment, the image viewer too, in one place (the top: components/ui/toaster.tsx): a
+     failure that comes while it is open is read, not timed out under it. What stays waits for it to close. */
+  --layer-toast: 85;
+  --bg: #f4f6f9;
+  --lit: oklch(99.7% 0.005 260);
+  --ink: oklch(21% 0.006 260);
+  --muted: oklch(47% 0.008 260);
+  /* 52%, not lighter: soft words (a History row's kind, a placeholder) keep 4.5:1 on bg and on hover too. */
+  --soft: oklch(52% 0.008 260);
+  /* What a line says under its title (a list row's id, words and time): a step under ink in either theme, so the title
+     leads. On a light ground muted is already far from ink; on a dark one it sits close, so the softer grey. */
+  --aside: var(--muted);
+  --line: oklch(90.5% 0.006 260);
+  --lit-line: oklch(85% 0.007 260);
+  --hover: oklch(94% 0.006 260);
+  --turn: oklch(53% 0.15 55);
+  --working: oklch(50% 0.1 235);
+  --done: oklch(50% 0.1 160);
+  --stopped: oklch(50% 0.07 350);
+  --stamp-stop: oklch(50% 0.13 25);
+  --error: oklch(53% 0.19 27);
+  --todo: oklch(50% 0.025 260);
+  --changed: oklch(50% 0.17 290);
+  --new: var(--changed);
+  --option-param: oklch(48% 0.19 265);
+  --warn: var(--error);
+  /* Who a History row was between (ReportFeed's PartyTag): you and the Coordinator by hues no state colour takes; a member
+     and Tasks in grey, told apart by their mark. */
+  --party-you: oklch(50% 0.09 195);
+  --party-coordinator: oklch(52% 0.13 320);
+  --scrim: #000;
+  --paper: #fff;
+  --stamp: #fff;
+  --rule: color-mix(in oklab, var(--ink) 6%, transparent);
+  --diff-add: oklch(97% 0.035 150);
+  --diff-del: oklch(97% 0.025 20);
+  --diff-add-word: oklch(91% 0.075 150);
+  --diff-del-word: oklch(91% 0.055 20);
+  /* rgb(60 64 67 / 0.1), the person's shadow. */
+  --shade: oklch(36.9% 0.0074 240 / 10%);
+}
+
+/* raised is lit unless a theme gives it a value of its own; mention is written by a style element (coordinator/parts.tsx),
+   so it is a variable rather than a class. */
+:root {
+  --raised: var(--lit);
+  /* A named row is tinted, not picked: quieter than the hover a row takes, so the open row and the states lead. The
+     dark ground is near black, where the same tint all but vanishes, so it keeps its own step below. */
+  --mention: color-mix(in oklch, var(--changed) 6%, var(--bg));
+  /* What stays pressed (a switch that is on, as the reader's pin): opaque, a step from raised toward ink in either
+     theme, so nothing behind shows through it and its ink keeps 4.5:1. A toast's own pressed step is from its paper. */
+  --press: color-mix(in oklab, var(--ink) 22%, var(--raised));
+  --press-line: var(--muted);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Each surface a step lighter than the one under it, and what is pointed at or picked lighter than any. */
+  --bg: #07090c;
+  --lit: oklch(24.5% 0.007 260);
+  --raised: oklch(27.5% 0.007 260);
+  --ink: oklch(95% 0.005 260);
+  --muted: oklch(80% 0.006 260);
+  --soft: oklch(71.5% 0.006 260);
+  --aside: var(--soft);
+  --mention: color-mix(in oklch, var(--changed) 9%, var(--bg));
+  --line: oklch(35% 0.007 260);
+  --lit-line: oklch(45% 0.008 260);
+  --hover: oklch(30.5% 0.007 260);
+  --turn: oklch(78% 0.13 70);
+  --working: oklch(76% 0.09 225);
+  --done: oklch(76% 0.1 160);
+  --stopped: oklch(76% 0.07 350);
+  --stamp-stop: oklch(74% 0.11 25);
+  --error: oklch(71% 0.16 25);
+  --todo: oklch(76% 0.02 260);
+  --changed: oklch(74% 0.12 290);
+  --new: var(--changed);
+  --option-param: oklch(78% 0.12 265);
+  --warn: var(--error);
+  --party-you: oklch(80% 0.08 195);
+  --party-coordinator: oklch(78% 0.11 320);
+  --scrim: #000;
+  --paper: #fff;
+  /* Opaque raised paper stays within sRGB; the existing theme owns all three stamp colors. */
+  --stamp: var(--raised);
+  --rule: color-mix(in oklab, var(--ink) 8%, transparent);
+  --diff-add: oklch(25% 0.045 150);
+  --diff-del: oklch(25% 0.05 20);
+  --diff-add-word: oklch(34% 0.08 150);
+  --diff-del-word: oklch(34% 0.085 20);
+  --shade: oklch(0% 0 0 / 30%);
+}
+
+/* Hold: a held task is still the reader's turn, set aside. Inside it, all that says "your turn" says it in grey;
+   tone.ts gives its state the same grey. */
+[data-held] {
+  --turn: var(--muted);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-lit: var(--lit);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-soft: var(--soft);
+  --color-aside: var(--aside);
+  --color-line: var(--line);
+  --color-lit-line: var(--lit-line);
+  --color-rule: var(--rule);
+  --color-hover: var(--hover);
+  --color-press: var(--press);
+  --color-press-line: var(--press-line);
+  --color-turn: var(--turn);
+  --color-working: var(--working);
+  --color-done: var(--done);
+  --color-stopped: var(--stopped);
+  --color-stamp-stop: var(--stamp-stop);
+  --color-error: var(--error);
+  --color-todo: var(--todo);
+  --color-new: var(--new);
+  --color-changed: var(--changed);
+  /* Editable selection references in launch options; system references stay soft. */
+  --color-option-param: var(--option-param);
+  --color-warn: var(--warn);
+  --color-scrim: var(--scrim);
+  --color-paper: var(--paper);
+  --color-diff-add: var(--diff-add);
+  --color-diff-del: var(--diff-del);
+  --color-diff-add-word: var(--diff-add-word);
+  --color-diff-del-word: var(--diff-del-word);
+  --color-diff-add-number: color-mix(in oklab, var(--diff-add) 55%, var(--diff-add-word));
+  --color-diff-del-number: color-mix(in oklab, var(--diff-del) 55%, var(--diff-del-word));
+  /* The one shadow (above). Tailwind's own named steps of shadow, inset shadow and drop shadow are removed. A surface
+     still lifting (the answered card on its way to its chip) says how far with --lift, 0 to 1; one at rest is 1. */
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --shadow-float: 0 2px 6px 2px color-mix(in oklab, var(--shade) calc(var(--lift, 1) * 100%), transparent);
+  /* Over another colour, mixed where it is drawn, so a held row's grey turn (below) reaches them too. */
+  --color-dim: color-mix(in oklab, var(--scrim) 20%, transparent);
+  --color-dim-dialog: color-mix(in oklab, var(--scrim) 33%, transparent);
+  --color-picked: color-mix(in oklab, var(--turn) 12%, transparent);
+  --color-picked-hover: color-mix(in oklab, var(--turn) 18%, transparent);
+  --color-found: color-mix(in oklab, var(--turn) 15%, transparent);
+  --color-well: color-mix(in oklab, var(--hover) 70%, transparent);
+  /* The ground under the tab shown (TabMarker, tabs.tsx): ink laid thin over whatever surface the row stands on, so it
+     reads alike on a panel (lit) and on a dialog (raised), where hover would all but vanish. */
+  --color-tab-shown: color-mix(in oklab, var(--ink) 9%, transparent);
+  --color-placeholder: color-mix(in oklab, var(--line) 60%, transparent);
+  --color-trail: color-mix(in oklab, var(--ink) 75%, transparent);
+  /* A History row's words at rest, the work going on now with them: one colour for every row not opened, a step
+     under the ink a row opened or pointed at takes, so that row is the one that stands out, and still over its time and
+     who it was between, so a closed row is read by its words first in either theme. 70% keeps 6.5:1 on every ground. */
+  --color-row-words: color-mix(in oklab, var(--ink) 70%, transparent);
+  --color-clock-rule: color-mix(in oklab, var(--ink) 35%, transparent);
+  --color-future: color-mix(in oklab, var(--line) 45%, transparent);
+  /* Where the axis folds away time in which nothing happened (the gap between two stretches drawn on the list): one
+     dotted hairline down the sheet, faint enough not to read as a rule between rows or as now. */
+  --color-fold: color-mix(in oklab, var(--ink) 22%, transparent);
+  /* The row whose task the reader shows: one ground under its title and its time alike. `-solid` is the same colour
+     where the frozen title column must hide the strip passing under it. */
+  --color-row-picked: color-mix(in oklab, var(--ink) 7%, transparent);
+  --color-row-picked-solid: color-mix(in oklab, var(--ink) 7%, var(--bg));
+  /* The wait on the reader, from its mark to now: the mark says it, so the line only carries it on. */
+  --color-turn-line: color-mix(in oklab, var(--turn) 45%, transparent);
+  /* Where a task's line has no one at work and waits on no one: a trace that the task was there, the quietest stroke on
+     the sheet, so the rows where something is so stand out. */
+  --color-idle-line: color-mix(in oklab, var(--ink) 16%, transparent);
+  --color-work-area: color-mix(in oklab, var(--working) 16%, transparent);
+  --color-overdue-area: color-mix(in oklab, var(--muted) 30%, transparent);
+  --color-overdue: color-mix(in oklab, var(--ink) 65%, transparent);
+  --color-inverse-muted: color-mix(in oklab, var(--bg) 70%, transparent);
+  --color-strain: color-mix(in oklab, var(--warn) 12%, transparent);
+  --color-progress-track: color-mix(in oklab, currentColor 18%, transparent);
+  --color-pale: color-mix(in oklab, var(--paper) 40%, transparent);
+  --color-pale-ink: color-mix(in oklab, var(--scrim) 85%, transparent);
+  /* The keyboard's ring as a class (`outline-ring`), the colour focus rings take in base.css. */
+  --color-ring: var(--muted);
+  /* Stamp paper changes with the theme; its semantic inks come from done/muted. */
+  --color-stamp: var(--stamp);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Size steps. Screens write these names, never a pixel value such
+   as `text-[11px]`, so the same kind of thing has the same size everywhere.
+   Tailwind's own steps for these kinds are removed (`initial`), so a name
+   outside this list makes no CSS instead of a slightly different size.
+
+   Type steps     A step is a size with its line height and letter spacing:
+                  writing `text-sm` sets all three, so the same
+                  kind of thing reads the same everywhere. No part writes a
+                  line height or a letter spacing of its own: there are no
+                  named `leading-*` or `tracking-*` steps, and what Tailwind
+                  still makes (`leading-none`, a number such as `leading-5`,
+                  `text-base/7`, `[line-height:…]`) is refused by
+                  tests/type-steps.test.tsx outside the few that must (a
+                  label's box, a mark laid over a picture), each said there.
+                    xs   12 / 18 · 0        ids, times, counts, notes
+                    sm   13 / 20 · 0        states, words said, buttons, heads
+                    base 14 / 22 · 0        body, titles, the conversation
+                    md   16 / 26 · 0        reading, headings in a report
+                    lg   18 / 28 · 0        the project's name; the detail's
+                                            title on a phone
+                    xl   20 / 30 · -0.01em  the detail's title on a computer
+                                            (the task read leads the bar)
+                    seal 28–40 / 1 · +0.025em  a card's stamp (Send, Hold,
+                         Sent …; narrower with the screen so the
+                         longest fits a phone's card)
+                    display 28–36 / 1.25 · -0.01em  the welcome heading
+                         of an empty project (26px on a phone)
+                  Sizes are rem (the table's px at the browser's 16px), so
+                  they follow the reader's own text size; a line height is
+                  a bare ratio (line ÷ size, `calc(22 / 14)`) and a letter
+                  spacing is em, so both follow the size they belong to.
+                  Lines grow less than the size (1.5 → 1.57 → 1.63, then
+                  back to 1.5): Japanese under 1.5 looks packed, a UI row
+                  over 1.7 looks loose. Letters keep their own spacing:
+                  full-width glyphs carry their room already, and opening
+                  small sizes cut a phone's row short; only
+                  the detail's title closes a little and a stamp opens.
+                  On a phone (`narrow`) base is 15 / 23: a phone is held
+                  nearer and narrower, and 14px Japanese titles and History
+                  words read small there; the line stays near 1.5.
+   Text spacing   Between text and text, in the text's own lines (`lh`), so
+                  it follows the step: mt-type-close 0.25lh (a list's items,
+                  a head and what it heads, a label and its note) ·
+                  mt-type-block 0.5lh (paragraph to paragraph, a row of
+                  choices and the words after it) · mt-type-section 1lh
+                  (before a heading). Room inside parts, between controls
+                  and round surfaces stays on the 4px spacing below.
+   Weight         400 · 500 titles · 600 heads, pressed words and the project's name
+                  (a list row's title is 400 on a phone too, as on a computer, so the
+                  group's 600 heading leads its rows)
+                  (700 only a project's tile letter)
+   Corner radius  rounded-xs 2 · rounded-sm 4 · rounded-md 6 · rounded-lg 10 · rounded-pane 24 (30 under a finger):
+                  a surface standing by itself over the page; what is inside it steps down
+   Control height min-h-control-xs 28 · -sm 32 · -md 36 · -lg 40
+                  (also h-control-*, max-h-control-*)
+   Head line      A window keeps window 12px from the screen's edges all
+                  round and head-room 8px over its head's row (a control's
+                  face stands clear of its edge), whatever the text size;
+                  the row, min-h-head 2rem, is a head's controls (32px at
+                  the browser's own size). Its row stands on the head line,
+                  top-head = window + head-room, and the app bar on a
+                  computer, min-h-bar, is as tall as puts its own controls
+                  on that line: 2 × head + the row (72px). So the bar and
+                  the window's head read on one line at any text size; the
+                  full screen's head comes down to the line (pt-head). The
+                  reader's width is reckoned with the same window margin
+                  (state/screen-settings.ts reads it)
+   Spacing        Tailwind's steps on 4px: 1 4 · 1.5 6 · 2 8 · 3 12 · 4 16 ·
+                  6 24 · 8 32; 0.5 (2) only between words in a line and
+                  round a phone row's two lines (they fill its 48px)
+   Lines          1px: border-line between rows (border-rule inside the
+                  reader, the conversation and the list), border-lit-line for
+                  a field's edge; a surface's edge is a hairline, 0.5px
+                  (`border-hairline`, `border-t-hairline`); no see-through (`/60`)
+   One-off sizes  w-dialog 460 ·
+                  w-dialog-wide 790 (large dialog) ·
+   Not steps      calculated values stay as `[calc(...)]` (tree height,
+                  dialog and panel limits) and so do lines drawn from another
+                  element's size (tree connectors: half the card head + 1px);
+                  1px nudges use Tailwind's `px` (`mt-px`, `-left-px`).
+   `cn` (lib/utils.ts) knows the names that tailwind-merge does not, so a
+   caller's `min-h-control-lg` replaces a part's `min-h-control-sm`. */
+@theme {
+  --text-*: initial;
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1;
+  --text-micro--letter-spacing: 0em;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(18 / 12);
+  --text-xs--letter-spacing: 0em;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: calc(20 / 13);
+  --text-sm--letter-spacing: 0em;
+  --text-base: 0.875rem;
+  --text-base--line-height: calc(22 / 14);
+  --text-base--letter-spacing: 0em;
+  --text-md: 1rem;
+  --text-md--line-height: calc(26 / 16);
+  --text-md--letter-spacing: 0em;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(28 / 18);
+  --text-lg--letter-spacing: 0em;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(30 / 20);
+  --text-xl--letter-spacing: -0.01em;
+  --text-seal: clamp(1.75rem, 9vw, 2.5rem);
+  --text-seal--line-height: 1;
+  --text-seal--letter-spacing: 0.025em;
+  --text-display: clamp(1.75rem, 2.6vw, 2.25rem);
+  --text-display--line-height: 1.25;
+  --text-display--letter-spacing: -0.01em;
+
+  /* No line heights or letter spacings of their own (Type steps, above). */
+  --leading-*: initial;
+  --tracking-*: initial;
+
+  --spacing-type-close: 0.25lh;
+  --spacing-type-block: 0.5lh;
+  --spacing-type-section: 1lh;
+
+  --radius-*: initial;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  /* A pane: every surface that stands by itself over the page with room round it (the detail, the conversation, the
+     input, a dialog). A sheet that reaches both sides of a phone's screen is not rounded: its corners meet the screen's
+     own edge. Its corner rounds the round action set 8px inside it (the input's send or microphone, size control-sm),
+     so that circle and the corner share one centre; a phone's or a touch screen's larger action, below. What
+     stands inside a pane steps down: a card or menu lg, a field or chip md/sm, a round control full. */
+  --radius-pane: calc(var(--height-control-sm) / 2 + var(--spacing) * 2);
+
+  --height-control-xs: 28px;
+  --height-control-sm: 32px;
+  --height-control-md: 36px;
+  --height-control-lg: 40px;
+  --spacing-window: 12px;
+  --spacing-head-room: 8px;
+  --height-head: 2rem;
+  --spacing-head: calc(var(--spacing-window) + var(--spacing-head-room));
+  --height-bar: calc(2 * var(--spacing-head) + var(--height-head));
+
+  --container-dialog: 460px;
+  --container-dialog-wide: 790px;
+
+  /* The home list's grid: the lines a row, a section's heading and its "N more items" share, from the row's left.
+     list-mark is the centre of the small marks before a line: a heading's square and a row's unread dot.
+     list-lead is where a row's state icon box starts; list-icon is that icon's size (a phone's is larger, below). */
+  --spacing-list-mark: calc(var(--spacing) * 3.75);
+  --spacing-list-lead: calc(var(--spacing) * 5.5);
+  --spacing-list-icon: calc(var(--spacing) * 3.5);
+}
+
+/* list-text: where a heading's name and "N more items" start, on the drawn edge of the rows' state icons. The icon set draws
+   inside 4 to 20 of its 24 (icon.tsx: the state circles are r=8 about the middle), so that edge is 4/24 of the icon in. It is
+   inline so a phone's larger icon (below) moves it too. */
+@theme inline {
+  --spacing-list-text: calc(var(--spacing-list-lead) + var(--spacing-list-icon) * 4 / 24);
+}
+
+/* A phone's base step (Type steps, above): 15 / 23 under the narrow variant, the same names everywhere. It is set on
+   the body, not the root, so the coordinator's own window on a computer (picture-in-picture, a body marked
+   data-surface="pip") keeps a computer's step, as the narrow variant says it does. */
+body:not([data-surface="pip"]) {
+  @variant narrow {
+    --radius-pane: calc(var(--spacing) * 11 / 2 + var(--spacing) * 2);
+    --text-base: 0.9375rem;
+    --text-base--line-height: calc(23 / 15);
+    --text-display: 1.625rem;
+    --spacing-list-icon: calc(var(--spacing) * 4);
+  }
+}
+/* A finger's round action is 44px wherever the pointer is coarse (inputFinger), the coordinator's own window too. */
+body {
+  @variant pointer-coarse {
+    --radius-pane: calc(var(--spacing) * 11 / 2 + var(--spacing) * 2);
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@alpacawork/db",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./host/schema": { "types": "./dist/host/schema.d.ts", "default": "./dist/host/schema.js" }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json --emitDeclarationOnly && vite build --config vite.config.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.host.config.ts"
+  },
+  "dependencies": {
+    "@alpacawork/contract": "workspace:*",
+    "@alpacawork/core": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.4"
+  },
+  "devDependencies": {
+    "drizzle-kit": "1.0.0-rc.4",
+    "vite": "8.3.0"
+  }
+}

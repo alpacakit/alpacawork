@@ -1,0 +1,90 @@
+{
+  "appBar": {
+    "settings": "Settings",
+    "settingsUpdate": {
+      "attention": "Settings — the update needs attention",
+      "available": "Settings — {{version}} is available",
+      "busy": "Settings — updating",
+      "done": "Settings — reload to use the new version",
+      "failed": "Settings — the update failed"
+    }
+  },
+  "documentTitle": {
+    "separator": " · ",
+    "waiting_one": "$t(tree:home.turn): {{count}}",
+    "waiting_other": "$t(tree:home.turn): {{count}}",
+    "withCounts": "({{counts}}) {{page}}"
+  },
+  "gathered": {
+    "markAllRead": "Mark all read"
+  },
+  "notice": {
+    "back": "Updates resumed",
+    "diagnostics": "View status",
+    "hostCpu": "CPU {{value}}",
+    "hostDisk": "{{value}} disk free",
+    "hostMemory": "{{value}} memory free",
+    "hostMinutes_one": "{{count}} min",
+    "hostMinutes_other": "{{count}} min",
+    "hostOpen": "View",
+    "hostTight": "This machine is under heavy load",
+    "previousBoth": "Using the previous settings and state.",
+    "previousReads": "Showing the previous state.",
+    "previousSettings": "Using the previous settings.",
+    "readOnly": "Cannot write",
+    "reconnect": "Reconnect",
+    "reloadBoth": "Could not reload your personal settings or read status.",
+    "reloadReads": "Could not reload read status.",
+    "reloadSettings": "Could not reload your personal settings.",
+    "shownFromBefore": "Previous content",
+    "unreadableMany_one": "Cannot read {{count}} file",
+    "unreadableMany_other": "Cannot read {{count}} files",
+    "unreadableOne": "Cannot read {{path}}"
+  },
+  "presence": {
+    "ariaAway": "Notifications: sent right away while away",
+    "ariaMuted": "Notifications paused {{until}}",
+    "ariaPresent": "Notifications: not sent while present",
+    "away": "Away",
+    "menuLabel": "Notification status",
+    "mutedUntil": "until {{time}} today",
+    "mutedUntilTomorrow": "until {{time}} tomorrow",
+    "notSent": "Don't notify",
+    "pausedUntil": "Notifications paused {{until}}",
+    "pauseHour": "Pause for 1 hour",
+    "pauseMorning": "Pause until {{time}} tomorrow",
+    "pauseMorningToday": "Pause until {{time}} today",
+    "pauseTwoHours": "Pause for 2 hours",
+    "present": "Present",
+    "resume": "Resume",
+    "saveFailed": "Could not save the change.",
+    "sentImmediately": "Notify right away",
+    "settings": "Notification settings…"
+  },
+  "projects": {
+    "all": "All projects",
+    "menu": "Projects",
+    "new": "New project",
+    "settings": "{{name}} settings…",
+    "settingsAll": "Project settings…",
+    "settingsOf": " settings…"
+  },
+  "search": {
+    "clear": "Clear all",
+    "count_one": "{{count}} task",
+    "count_other": "{{count}} tasks",
+    "empty": "No matching tasks.",
+    "emptyHint": "Change a condition or clear all.",
+    "failedFirst": "Could not search.",
+    "failedWhat": "Could not read more search results.",
+    "loading": "Searching…",
+    "more": "Show more",
+    "queryCondition": "“{{query}}”",
+    "removeCondition": "Remove this condition",
+    "removeNamedCondition": "Remove condition: {{name}}"
+  },
+  "toolbar": {
+    "searchLabel": "Search tasks",
+    "searchPlaceholder": "Search title, body or ID"
+  }
+}

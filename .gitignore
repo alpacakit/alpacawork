@@ -1,0 +1,17 @@
+dist/
+test-dist/
+node_modules
+# Per-machine test settings; see .env.example
+.env
+__pycache__/
+.local/
+.platform-local*/
+.typescript-local*/
+
+apps/backend/public/
+
+# Local-only: Claude preview config, stray alpacawork lock, task scratch notes
+.claude/
+.alpacawork/
+scratchpad/
+

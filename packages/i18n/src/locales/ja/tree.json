@@ -1,0 +1,125 @@
+{
+  "home": {
+    "awaited": "待機中",
+    "error": "対応待ち",
+    "finished": "完了",
+    "fresh_one": "新しく終わった {{count}}",
+    "fresh_other": "新しく終わった {{count}}",
+    "held": "保留",
+    "less": "たたむ",
+    "more_other": "あと {{count}}件",
+    "running": "作業中",
+    "todo": "未着手",
+    "turn": "確認待ち"
+  },
+  "row": {
+    "review": "レビュー"
+  },
+  "sent": {
+    "pending": "指示を送りました"
+  },
+  "shelved": {
+    "archived": "アーカイブ",
+    "count_other": "アーカイブ・削除 {{count}}件",
+    "deleted": "削除",
+    "restore": "元に戻す"
+  },
+  "status": {
+    "children": "子{{progress}}",
+    "failure": {
+      "conversationBusy": "会話が使用中",
+      "exit": "途中で終了",
+      "launch": "起動できず",
+      "managerLost": "実行を確認できず",
+      "noReport": "報告せず終了",
+      "output": "出力を読めず",
+      "stopped": "中断",
+      "timeout": "時間切れ",
+      "unknown": "理由不明"
+    },
+    "length": {
+      "days_other": "{{count}}日",
+      "hours_other": "{{count}}時間",
+      "minutes_other": "{{count}}分"
+    },
+    "long": {
+      "reason": "この理由が出てから {{length}}",
+      "since": "この状態になって {{length}}"
+    },
+    "queued": "順番待ち",
+    "report": {
+      "after": "{{time}}〜",
+      "over": "{{time}} 超過",
+      "pending": {
+        "long": "新しい指示が届いたので、責任者が報告見込みを出し直すのを待っている",
+        "short": "？"
+      }
+    },
+    "running": "実行中",
+    "runningRuns_one": "稼働中のエージェント {{count}}（配下を含む）",
+    "runningRuns_other": "稼働中のエージェント {{count}}（配下を含む）",
+    "tip": {
+      "elapsed": "経過時間",
+      "report": "報告の見込み"
+    },
+    "turn": {
+      "children": "依頼上限",
+      "depth": "深さ上限",
+      "failed": "失敗",
+      "limit": "上限停止",
+      "noProfile": "設定なし",
+      "notResumable": "再開不可",
+      "refused": "受付拒否",
+      "responsibleUnavailable": "開始不可",
+      "unconfirmed": "受領不明"
+    },
+    "unclear": "状態不明",
+    "work": {
+      "heading": "エージェントが動いた時間の合計",
+      "hours": "{{hours}}時間{{minutes}}分",
+      "minutes_other": "{{count}}分",
+      "own": "このタスクだけ",
+      "separator": "、",
+      "subtree": "配下のタスクも含めて"
+    }
+  },
+  "timeView": {
+    "axisAbsent": "時間の表示はこの端末に保存されていません。接続が戻ると読み込みます",
+    "edge": {
+      "done": "{{time}} に完了",
+      "go": "{{note}}。この行の時間へ移る",
+      "since": "{{time}} から",
+      "stopped": "{{time}} に中止",
+      "todo": "未着手 · {{time}} から",
+      "turn": "{{kind}} · {{time}} から"
+    },
+    "help": "時間は横へ送れます。拡大・縮小は ctrl(⌘)＋ホイール、ピンチ、2本指。目盛りをダブルクリックで全体。線の上にポインタを置く（スマホは押す）と補足。キーは ＋ − 0 N、タイトルで → を押すと線を順に読めます。",
+    "now": "今 {{clock}}",
+    "scaleAll": "全期間",
+    "scaleLabel": "1画面の期間",
+    "time": "時間",
+    "toNow": "今へ",
+    "yourTurn": "あなたの番"
+  },
+  "welcome": {
+    "examples": {
+      "decide": {
+        "label": "ミニゲームの案を選んで、作ってもらう",
+        "shows": "AI が案を比べて質問してきます。答えると、選んだゲームを作ります。",
+        "words": "ブラウザで遊べるミニゲームを1つ作りたいです。タスクにして、案を3つ出し、比べた表とおすすめを質問に入れて、どれにするか私に聞いてください。答えたら、ほかの確認はせずに、選んだものを5分くらいで作って報告してください。チュートリアルなので、軽いエフォートで余り考えずスピード重視で気軽に進めてください。"
+      },
+      "models": {
+        "label": "スネークゲームを3つのモデルに作ってもらい、選ぶ",
+        "shows": "モデルの違う AI が並行して3つ作り、どれにするか質問が届きます。",
+        "words": "スネークゲームを作りたいなと思うんですけど、3つ並行して違うモデルで作ってみてくれる？ できたら、どれにするか私に質問してください。チュートリアルなので、軽いエフォートで5分くらいでお願いします。"
+      },
+      "triage": {
+        "label": "開店準備を5つに分けて任せる",
+        "shows": "結果が確認待ちに並び、完了にするものを選べます。",
+        "words": "架空のカフェの開店準備を、「豆の発注」「看板の手配」「メニューの印刷」「スタッフの募集」「案内状の送付」の5つの別々のタスクに分けて、それぞれエージェントに任せてください。どれも架空の結果を1行、報告に書いて確認待ちにしてください。完了にするものは、そろったら私が選びます。調べものやファイルは要りません。"
+      }
+    },
+    "lead": "例を選んで試してみてください。",
+    "title": "alpacawork へようこそ"
+  }
+}

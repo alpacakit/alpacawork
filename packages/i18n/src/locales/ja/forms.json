@@ -1,0 +1,142 @@
+{
+  "agentPicker": {
+    "brief": {
+      "gone": "頼む相手を選び直してください",
+      "new_conversation": "「{{action}}」で始め直してください",
+      "select_value": "{{row}}を選び直してください"
+    },
+    "next": {
+      "anew": "新しい会話で始める必要があります",
+      "clear": "「{{action}}」で新しく始めてください"
+    },
+    "none": "なし",
+    "notOffered": "このモデルでは選べません",
+    "pickerLabel": "{{agent}}。押すと替えられます",
+    "pickerTitle": "頼む相手",
+    "problem": {
+      "gone": "{{agent}} は今の設定では使えません。頼む相手を選び直してください",
+      "invalid_value": "{{row}}の前の値 {{previous}} は今は選べません。選び直してください",
+      "null_required": "{{row}}は今は「なし」にできません。値を選んでください",
+      "removed": "{{row}}（前の値 {{previous}}）は設定から消えたため、この会話は続けられません。{{next}}",
+      "unused": "{{row}}（前の値 {{previous}}）は今の起動オプションで使われないため、この会話は続けられません。{{next}}"
+    }
+  },
+  "draft": {
+    "checking": "確かめています…",
+    "closeKeep": "閉じる・下書きを残す",
+    "discard": "下書きを破棄",
+    "discardConfirm": "この下書きを破棄しますか？元には戻せません。",
+    "reviewLatest": "最新の版を確認して編集を続ける",
+    "saving": "保存中…",
+    "storageUnavailable": "下書きを保存できないため、二重に送らないよう送信を止めています。この画面を閉じずに入力をコピーしてください。"
+  },
+  "folderInput": {
+    "cancel": "やめる",
+    "choose": "選ぶ",
+    "close": "閉じる",
+    "create": "作成する",
+    "creating": "作っています…",
+    "empty": "中にフォルダはありません。",
+    "example": "例: {{path}}",
+    "inside": "中のフォルダ",
+    "made": "新しく作ったフォルダです",
+    "make": "新しいフォルダを作る",
+    "name": "新しいフォルダの名前",
+    "offered": "候補のフォルダ",
+    "openExisting": "そのフォルダを開く",
+    "path": "たどっている場所",
+    "placeholder": "フォルダの名前",
+    "problem": {
+      "dots": "「.」「..」は名前に使えません。",
+      "long": "名前が長すぎます（255バイトまで）。",
+      "slash": "「/」は名前に使えません。",
+      "taken": "同じ名前のフォルダがあります。"
+    },
+    "reading": "読み込み中…",
+    "truncated": "多いので先頭の {{limit}} 件だけです。一覧を閉じて欄に名前を打つと絞れます。",
+    "up": "上へ",
+    "use": "このフォルダにする",
+    "where": "{{path}} の中に作ります"
+  },
+  "formDialog": {
+    "cancel": "キャンセル"
+  },
+  "inlineForm": {
+    "cancel": "キャンセル"
+  },
+  "moveForm": {
+    "adopt": "最新の状態で選び直す",
+    "changedElsewhere": "このフォームを開いた後に、別の画面で親が変わりました（開いたとき: {{opened}}、いま: {{current}}）。このまま移すと拒否されます。",
+    "note": "IDとフォルダと実行はそのままで、動いている作業は止めません。以後の報告は新しい親へ届きます",
+    "parent": "新しい親",
+    "refused": "移していません。別の画面でタスクが変わりました（開いたときの親: {{opened}}、いま: {{current}}）。選んだ親はそのままです。",
+    "submit": "移す",
+    "top": "トップレベル（親なし）"
+  },
+  "projectColor": {
+    "code": "色のコード",
+    "more": "ほかの色…",
+    "swatch": {
+      "brown": "茶",
+      "grape": "葡萄",
+      "green": "深緑",
+      "indigo": "藍",
+      "lime": "若草",
+      "navy": "紺",
+      "teal": "青緑",
+      "violet": "菫"
+    }
+  },
+  "reportForm": {
+    "approveDescription": "成果を確認しました。",
+    "approveTitle": "完了",
+    "chooseAgain": "状態が変わりました。選び直してください",
+    "heading": "{{id}} の状態を変更",
+    "holdDescription": "あとで扱います。",
+    "holdTitle": "保留",
+    "reportDescription": "履歴に残す説明",
+    "reportDescriptionHint": "詳しい内容や画像を Markdown で",
+    "reportTitle": "履歴に残す題",
+    "reportTitleHint": "報告の要点を1行で",
+    "restoreDescription": "保留前の状態に戻します。",
+    "restoreTitle": "保留を解除",
+    "statePick": "状態を変更",
+    "statePickHint": "{{id}}のステータスを変更します",
+    "stopDescription": "このタスクと下のタスクを止めます。",
+    "stopTitle": "中止",
+    "submit": "更新",
+    "words": "履歴に残す報告"
+  },
+  "responsibleForm": {
+    "change": "替える",
+    "choiceUnavailable": "選んだ人または起動設定は、もう使えません。この欄を閉じました。",
+    "decide": "決める",
+    "effort": "エフォート",
+    "legend": "このタスクの責任者",
+    "model": "モデル",
+    "newPerson": "新しい人",
+    "noProfiles": "有効な AI がありません。使う AI をインストールして認証し、設定 → サーバーで有効にしてください",
+    "promote": "{{name}} が引き継ぐ",
+    "replaceNote": "{{name}} は責任者を外れ、作業者にはならずに履歴に残ります",
+    "taskUnavailable": "このタスクはもう使えません。この欄を閉じました。",
+    "type": "種類"
+  },
+  "runForm": {
+    "closed": "閉じました",
+    "closeDescription": "{{run}} を閉じます。",
+    "closeSubmit": "閉じる",
+    "closeTitle": "閉じる",
+    "noLongerAvailable": "この実行はもう閉じられません。フォームを閉じました。"
+  },
+  "writeFailure": {
+    "checkWhich": "「{{subject}}」の結果を確認できません",
+    "conflict": "保存されていません。最新の内容を確認してから、編集を続けてください。",
+    "operationUnconfirmed": "結果を確認できません。同じIDで送り直すと、届いていなければ今実行します。すでに届いた操作は二重に実行しません。",
+    "readLatest": "最新を読む",
+    "unconfirmed": "送信結果を確認できません。重複を防ぐため再送を止めています。入力を保持して閉じ、最新の内容や実行記録を確認してください。",
+    "unproven": "送り直すと二重に実行するおそれがあるため、送りません。必要な入力を写して、新しいタブで続けてください。"
+  },
+  "writeResult": {
+    "confirmed": "{{subject}}：操作の完了を確認しました。"
+  }
+}

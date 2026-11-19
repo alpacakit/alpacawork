@@ -1,0 +1,88 @@
+{
+  "name": "alpacawork",
+  "version": "0.1.0",
+  "description": "Run a team of AI agents from your phone. Hand off work, see what every agent is doing, and review the results from anywhere. Open-source task management for Claude Code, Codex and other coding agents, running on your own PC.",
+  "keywords": [
+    "ai-agents", "ai", "claude-code", "codex", "claude", "coding-agents", "ai-coding",
+    "agent-orchestration", "multi-agent", "task-management", "task-manager", "project-management",
+    "human-in-the-loop", "mobile-first", "remote-control", "pwa", "self-hosted", "agent-skills",
+    "developer-tools", "cli"
+  ],
+  "license": "MIT",
+  "author": "Masahiro Tonomura",
+  "homepage": "https://github.com/alpacakit/alpacawork#readme",
+  "bugs": {
+    "url": "https://github.com/alpacakit/alpacawork/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alpacakit/alpacawork.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.16.0"
+  },
+  "scripts": {
+    "dev:web": "vite --config apps/web/vite.config.ts",
+    "build:packages": "pnpm --filter @alpacawork/core --filter @alpacawork/raw --filter @alpacawork/contract --filter @alpacawork/db --filter @alpacawork/runs --filter @alpacawork/cli-kit --filter @alpacawork/i18n build",
+    "build:apps": "pnpm --filter @alpacawork/backend --filter @alpacawork/cli --filter @alpacawork/agent-cli build",
+    "build:web": "NODE_ENV=production vite build --mode production --config apps/web/vite.config.ts",
+    "build": "node scripts/testing/queue.ts build -- node scripts/testing/run.ts build",
+    "typecheck": "node scripts/testing/queue.ts typecheck -- sh -c 'pnpm build:packages && pnpm build:apps && pnpm typecheck:built'",
+    "typecheck:built": "node scripts/testing/run.ts typecheck",
+    "i18n:extract": "i18next-cli -c packages/i18n/i18next.config.ts extract",
+    "i18n:check": "pnpm i18n:extract && git diff --exit-code -- packages/i18n/src/locales && node packages/i18n/check-filled.ts",
+    "test:all": "node scripts/testing/run.ts",
+    "db:generate": "pnpm --filter @alpacawork/db db:generate",
+    "test:e2e": "pnpm build && pnpm test:e2e:run",
+    "test:e2e:run": "node scripts/testing/queue.ts e2e -- playwright test -c e2e --workers=8",
+    "test:e2e:fixtures": "node scripts/testing/queue.ts e2e -- node --test --test-concurrency=2 e2e/fixture-regression.test.ts e2e/fixture-boundaries.test.ts e2e/motion-settled.test.ts e2e/guard.test.ts e2e/read-persistence.test.ts e2e/serve-lifetime.test.ts",
+    "test:e2e:offline": "node scripts/testing/queue.ts e2e -- playwright test -c e2e/offline-scope.config.ts --workers=4",
+    "test:web": "node scripts/testing/queue.ts web -- vitest run --config apps/web/vitest.config.ts --maxWorkers=8",
+    "test:node": "node scripts/testing/queue.ts node -- node --test --test-concurrency=16 tests/*.test.ts",
+    "test:acceptance": "pnpm build && pnpm test:acceptance:run",
+    "test:real-agents": "pnpm build && node scripts/testing/queue.ts node -- node tests/acceptance/real-agents.mjs",
+    "perf": "pnpm build && node scripts/testing/queue.ts e2e -- node e2e/perf/all.mjs",
+    "test:quick": "node scripts/testing/run.ts quick",
+    "test:e2e:smoke": "node scripts/testing/run.ts smoke",
+    "test:acceptance:run": "node scripts/testing/queue.ts node -- node --test --test-concurrency=1 --test-timeout=300000 tests/acceptance/*.test.ts",
+    "build:web:diagnostic": "NODE_ENV=production vite build --mode production --config apps/web/vite.diagnostic.config.ts",
+    "build:diagnostic": "node scripts/testing/queue.ts build -- node scripts/testing/run.ts build --kind diagnostic",
+    "build:apps:diagnostic": "pnpm build:apps && pnpm --filter @alpacawork/backend build:diagnostic",
+    "test:diagnostic": "node scripts/test-diagnostic.ts"
+  },
+  "dependencies": {
+    "koffi": "3.3.1",
+    "@alpacawork/contract": "workspace:*",
+    "@alpacawork/core": "workspace:*",
+    "@alpacawork/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@alpacakit/channels": "0.2.0-beta.5",
+    "@alpacawork/backend": "workspace:*",
+    "@alpacawork/cli-kit": "workspace:*",
+    "@alpacawork/cli": "workspace:*",
+    "@alpacawork/raw": "workspace:*",
+    "@alpacawork/runs": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "24.10.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "drizzle-kit": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.4",
+    "i18next-cli": "1.74.1",
+    "jsdom": "30.1.1",
+    "shadcn": "4.21.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "yaml": "2.9.1",
+    "zod": "4.3.6"
+  },
+  "packageManager": "pnpm@11.6.0"
+}

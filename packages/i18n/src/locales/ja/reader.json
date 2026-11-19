@@ -1,0 +1,452 @@
+{
+  "answer": {
+    "other": "それ以外",
+    "question": "問 {{n}}/{{total}}",
+    "stop": "中止",
+    "stopMark": "選ぶと中止",
+    "write": "書いて答える"
+  },
+  "brief": {
+    "recommended": "おすすめ"
+  },
+  "delimited": {
+    "empty": "このファイルは空です。",
+    "header": "1行目を見出し",
+    "headerOnly": "見出しの行だけです",
+    "malformed": "引用符が閉じていないなど、セルに分けられない箇所があります。",
+    "malformedHint": "表が元のファイルとずれているかもしれません。",
+    "next_other": "次の{{count}}行",
+    "openOriginal": "元のファイルを開いてください:",
+    "original": "元のファイル",
+    "previous_other": "前の{{count}}行",
+    "range": "{{first}}–{{last}}行目 / {{rows}}行",
+    "records_other": "{{count}}行",
+    "rest": "続きは元のファイルにあります:",
+    "tooLarge": "{{limit}} MB を超えるファイルは表にしません。",
+    "tooWide": "最初の行だけで表の上限（{{maxCells}}セル）を超えるため、表にしません。",
+    "truncated": "表にしたのは最初の{{rows}}行までです（上限 {{maxRows}}行・{{maxCells}}セル）。",
+    "uneven": "行によって列の数が違います。",
+    "unevenHint": "その行に無い列は斜線で示しています。",
+    "unreadable": "文字コードを判別できないため、表にしません。"
+  },
+  "diff": {
+    "copied": "複製",
+    "deleted": "削除",
+    "line": "{{line}}行目",
+    "new": "新規",
+    "renamed": "名前を変更"
+  },
+  "diffCard": {
+    "binary": "バイナリ",
+    "binaryRows": "バイナリファイルのため行はありません",
+    "blankOnly": "空行だけが変わりました",
+    "close": "閉じる",
+    "commits_other": "コミット {{count}}件",
+    "copyCommand": "コマンドをコピー",
+    "deletedFile": "このファイルは消されました",
+    "files_other": "{{count}}ファイル",
+    "missing": "差分のファイルがありません: {{name}}",
+    "moreCommits_other": "残り {{count}}件を表示",
+    "noRows": "行の変更はありません",
+    "notKept": "行が大きすぎて残していません。",
+    "notKeptHint": "このコマンドで見られます:",
+    "olderCommits_other": "古いコミット {{count}}件は省略",
+    "open": "差分を開く",
+    "openFiles": "ファイルの一覧を開く",
+    "renamedOnly": "名前だけ変わりました（元: {{from}}）",
+    "tooLarge": "画面に出せない大きさの差分です: {{name}}",
+    "unchanged": "変更なし（0ファイル）",
+    "unreadable": "差分を読めません: {{name}}"
+  },
+  "entries": {
+    "after": "待ち先",
+    "context": "コンテキスト",
+    "count_other": "{{count}}",
+    "dependencies": "依存",
+    "files": "ファイル",
+    "history": "履歴",
+    "waiters": "後続"
+  },
+  "family": {
+    "close": "タスクツリーを閉じる",
+    "count_other": "{{count}}件",
+    "deep_other": "{{count}}段下",
+    "entry": "タスクツリー",
+    "fold": "{{title}}の下を畳む",
+    "height": "タスクツリーの高さ",
+    "here": "表示中",
+    "more_other": "ほか {{count}}件",
+    "rowDeep_other": "、{{count}}段下",
+    "rowHere": "、表示中",
+    "rowName": "{{id}} {{title}}、{{state}}",
+    "title": "タスクツリー",
+    "tree": "{{title}} のタスクツリー",
+    "unfold": "{{title}}の下を開く"
+  },
+  "files": {
+    "all": "成果物",
+    "copyLink": "リンクをコピー",
+    "copyPath": "パスをコピー",
+    "documents": "文書",
+    "empty": "このフォルダにはファイルがありません。",
+    "facet": {
+      "after": "後",
+      "before": "前",
+      "dark": "暗",
+      "desktop": "PC",
+      "light": "明",
+      "mobile": "スマホ"
+    },
+    "images": "画像",
+    "inFolder": "{{folder}} の中",
+    "media": "画像・動画・音声",
+    "onlyWork": "成果物はまだありません。",
+    "onlyWorkHint": "担当の作業ファイルは「作業ファイル」にあります。",
+    "otherMedia": "その他の画像・動画・音声",
+    "path": "場所",
+    "unavailable": "ファイルを表示できません: {{name}}",
+    "videos": "動画",
+    "work": "作業ファイル"
+  },
+  "frontMatter": {
+    "invalid": "冒頭のYAMLを解析できませんでした。以下に原文を表示します。",
+    "label": "YAMLのメタデータ",
+    "limit": "冒頭のYAMLが表の表示上限を超えています。以下に全文を表示します。",
+    "source": "元の YAML",
+    "unclosed": "冒頭のYAMLが閉じていません。以下に全文を表示します。",
+    "unsupported": "このYAMLは表にできません。以下に原文を表示します。"
+  },
+  "gathered": {
+    "position": "{{current}} / {{total}}"
+  },
+  "history": {
+    "approved": "完了",
+    "reasons": {
+      "conversation_busy": "同じ会話が別の作業で使われていたので始められませんでした。",
+      "exit": "エージェントのプログラムが途中で終わりました。作業の続きはまだです。",
+      "launch": "エージェントを起動できませんでした。",
+      "manager_lost": "作業を見守る処理が消え、作業がどうなったか分かりません。",
+      "no_report": "報告も質問も依頼も無いまま作業が終わりました。",
+      "output": "エージェントの出力を読めませんでした。",
+      "scope_invalidated": "依頼を受け付けた後で作業の範囲が変わったため、開始せずに終わりました。",
+      "stopped": "止める操作で終わりました。",
+      "timeout": "決めた時間を過ぎたので止めました。作業の続きはまだです。",
+      "unknown": "終わった理由の記録がありません。"
+    },
+    "runError": "エラー",
+    "waiting": {
+      "held": "保留",
+      "review": "$t(ui:state.waitingReview)"
+    }
+  },
+  "image": {
+    "audioUnavailable": "音声を再生できません: {{name}}",
+    "openFile": "ファイルを開く",
+    "saveFile": "ファイルを保存",
+    "unavailable": "画像を表示できません: {{name}}",
+    "videoUnavailable": "動画を表示できません: {{name}}"
+  },
+  "imageSlider": {
+    "closeImage": "画像を閉じる",
+    "closeMedia": "表示を閉じる",
+    "controlsFailed": "動画の操作を反映できませんでした。もう一度試してください。",
+    "expandVideo": "動画を大きく見る",
+    "fullScreen": "全画面",
+    "fullScreenFailed": "全画面にできませんでした。もう一度試すか、元の動画を開いてください。",
+    "mute": "消音",
+    "nextImage": "次の画像",
+    "nextMedia": "次へ",
+    "openOriginalInNewTab": "{{name}}の元画像を新しいタブで開く",
+    "pause": "一時停止",
+    "play": "再生",
+    "playFailed": "再生できませんでした。もう一度再生してください。",
+    "position": "{{current}} / {{total}}",
+    "previousImage": "前の画像",
+    "previousMedia": "前へ",
+    "saveOriginal": "{{name}}の元ファイルを保存",
+    "seek": "再生位置",
+    "speed": "再生速度",
+    "unmute": "消音を解除",
+    "volume": "音量"
+  },
+  "intent": {
+    "continue": "{{id}} を続ける",
+    "retry": "{{id}} をやり直す",
+    "sendback": "{{id}} を差し戻す"
+  },
+  "markdownBody": {
+    "copyCode": "コードをコピー",
+    "diagram": "図 {{number}}",
+    "diagramFailed": "図にできませんでした",
+    "diagramLoading": "図を準備しています"
+  },
+  "nextQuestion": {
+    "allAnswered": "確認待ちに全部答えました",
+    "allAnsweredHeld": "保留に全部答えました",
+    "autoSwipe": {
+      "hint": "オン: 送信するとカードが右へ抜けて次のタスクへ移ります。オフ: 送信してもこのタスクに留まり、チャット欄も開いたままです。",
+      "label": "自動スワイプ",
+      "toastOff": "自動スワイプをオフにしました",
+      "toastOffDetail": "メッセージを送信しても、このタスクに留まります",
+      "toastOn": "自動スワイプをオンにしました",
+      "toastOnDetail": "メッセージを送信すると、次のタスクへ自動で移ります"
+    },
+    "close": "閉じる",
+    "countPart": "{{word}} {{n}}",
+    "done": "$t(ui:state.done)",
+    "held": "$t(ui:state.held)",
+    "kind": {
+      "done": "$t(ui:state.done)",
+      "hold": "$t(ui:state.held)",
+      "send": "送信",
+      "stop": "$t(ui:state.stopped)"
+    },
+    "sent": "$t(reader:swipe.send)",
+    "stopped": "$t(ui:state.stopped)"
+  },
+  "order": {
+    "alsoWaits": "ほかに {{ids}} も待っています",
+    "history": {
+      "cleared": "始まる順序の指定を外しました",
+      "previous": "前の指定: {{ids}}",
+      "set": "{{ids}} のあとに始めます"
+    },
+    "list": {
+      "wait": "{{ids}} 待ち",
+      "waited": "後続 {{id}}",
+      "waitedMore_other": "後続 {{id}} ほか{{count}}件",
+      "waitMore_other": "{{id}} ほか{{count}}件待ち"
+    },
+    "onlyThis": "このタスクだけを待っています",
+    "runEnding": "実行の終わり待ち",
+    "separator": "・",
+    "startedLead": "このタスクは次のタスクのあとに始まりました",
+    "stuck": {
+      "error": "{{id}} はエラーで止まっています。直して完了するか中止し、実行が終わると、待ちが解けます。",
+      "held": "{{id}} は保留中です。保留が外れて完了するか中止し、実行が終わると、待ちが解けます。"
+    },
+    "tip": "このタスクが待っているもの",
+    "waitedTip": "このタスクを待っているもの"
+  },
+  "overview": {
+    "createdAt": "作成 {{time}}",
+    "empty": "本文はまだありません。",
+    "updatedAt": "更新 {{time}}"
+  },
+  "reader": {
+    "label": "タスクの全文",
+    "resize": "詳細の幅（左右の矢印キーで変える）"
+  },
+  "readerHeader": {
+    "back": "戻る",
+    "close": "詳細を閉じる",
+    "closeShort": "閉じる",
+    "dock": "詳細を通常幅に戻す",
+    "full": "詳細を全画面にする",
+    "insert": "{{id}} を入力欄に入れる",
+    "inserted": "{{id}} を入力欄に入れました",
+    "next": "次のタスク",
+    "path": "このタスクの場所",
+    "previous": "前のタスク"
+  },
+  "recovery": {
+    "cancelled": "「<title>{{title}}</title>」への送信を取り消したので、もう一度送れます",
+    "check": "確かめる",
+    "closed": "会話を終えたので、「<title>{{title}}</title>」へもう一度送れます",
+    "confirmedDone": "<subject>「<title>{{title}}</title>」</subject>を完了にしました",
+    "confirmedHold": "<subject>「<title>{{title}}</title>」</subject>を保留しました",
+    "confirmedRestore": "<subject>「<title>{{title}}</title>」</subject>を確認待ちに戻しました",
+    "confirmedSend": "<subject>「<title>{{title}}</title>」</subject>に送りました",
+    "confirmedStop": "<subject>「<title>{{title}}</title>」</subject>を中止にしました",
+    "latest": "開く",
+    "notCarriedOut": "依頼した処理が実行された記録がありません。タスクの状態とコーディネーターの返事を確認してください。",
+    "pending_one": "{{count}}件の結果を確認中",
+    "pending_other": "{{count}}件の結果を確認中",
+    "refusedDone": "<subject>「<title>{{title}}</title>」</subject>を完了にできませんでした",
+    "refusedHold": "<subject>「<title>{{title}}</title>」</subject>を保留できませんでした",
+    "refusedRestore": "<subject>「<title>{{title}}</title>」</subject>を確認待ちに戻せませんでした",
+    "refusedSend": "<subject>「<title>{{title}}</title>」</subject>への指示は通りませんでした",
+    "refusedStop": "<subject>「<title>{{title}}</title>」</subject>を中止にできませんでした",
+    "unknownDone": "<subject>「<title>{{title}}</title>」</subject>の完了が保存されたか分かりません",
+    "unknownHold": "<subject>「<title>{{title}}</title>」</subject>の保留が保存されたか分かりません",
+    "unknownRestore": "<subject>「<title>{{title}}</title>」</subject>の復元が保存されたか分かりません",
+    "unknownSend": "<subject>「<title>{{title}}</title>」</subject>への指示が通ったか分かりません",
+    "unknownStop": "<subject>「<title>{{title}}</title>」</subject>の中止が保存されたか分かりません"
+  },
+  "reportFeed": {
+    "childWorking": {
+      "fold": "たたむ",
+      "grandchild": "孫",
+      "others_other": "ほか{{count}}件"
+    },
+    "copy": "コピー",
+    "goAnswer": "答える",
+    "goQuestion": "答える: あなたへの質問 1件、{{title}}",
+    "goQuestionAt": "答える: {{at}} {{title}}",
+    "jumpToLatest": "最新へ移る",
+    "listQuestions_other": "あなたへの質問 {{count}}件の一覧",
+    "questions_other": "あなたへの質問 {{count}}件",
+    "questionsUnavailable": "質問を読み取れませんでした。",
+    "received": "このタスクが受け取り済み",
+    "result": {
+      "from": "{{who}} の結果",
+      "label": "結果",
+      "unavailable": "結果を読み込めませんでした"
+    },
+    "reviewsUnavailable": "成果の確認待ちを読み取れませんでした",
+    "row": {
+      "answerTo": "質問: {{question}}",
+      "between": "{{from}}から{{to}}へ",
+      "cause": "{{at}} に受け取った「{{title}}」",
+      "changedTo": "{{state}}にしました",
+      "end": {
+        "again": {
+          "question": "同じ質問を出し直しました",
+          "review": "同じ報告を出し直しました"
+        },
+        "answered": "{{who}}が {{at}} に回答しました",
+        "closed": {
+          "expired": "宛先が変わり、失効しました",
+          "invalidated": "作業に戻りました",
+          "stopped": "タスクの中止で閉じました",
+          "withdrawn": "回答を待たずに取り下げました"
+        },
+        "confirmed": "{{who}}が {{at}} に確認しました",
+        "replaced": {
+          "question": "次の質問に置き換わりました",
+          "review": "次の報告に置き換わりました"
+        },
+        "resumed": {
+          "question": "回答を待たず、次の依頼で作業に戻りました",
+          "review": "次の依頼で作業に戻りました"
+        },
+        "waiting": "{{who}}の回答を待っています",
+        "waitingReview": "{{who}}の確認を待っています",
+        "waitingReviewYou": "あなたの確認を待っています",
+        "waitingYou": "あなたの回答を待っています"
+      },
+      "kind": {
+        "answer": "回答",
+        "changed": "変更",
+        "comment": "記録",
+        "confirm": "確認",
+        "dialogue": "発言",
+        "done": "完了",
+        "error": "停止",
+        "expired": "失効",
+        "question": "質問",
+        "reply": "返事",
+        "report": "報告",
+        "request": "依頼",
+        "review": "報告",
+        "run_end": "停止",
+        "urgent": "緊急",
+        "withdrawn": "取り下げ"
+      },
+      "older": "前の{{n}}回を読む",
+      "openTask": "「{{task}}」を開く",
+      "own": "{{who}}の",
+      "party": {
+        "child": "子",
+        "coordinator": "コーディネーター",
+        "member": "作業者",
+        "other": "別のタスク",
+        "parent": "親",
+        "self": "責任者",
+        "you": "あなた"
+      },
+      "sameTitle": "上と同じ題で、中身が違います",
+      "tag": {
+        "child": "子タスク",
+        "coordinator": "コーディネーター",
+        "member": "作業者",
+        "other": "別のタスク",
+        "parent": "親タスク",
+        "self": "責任者",
+        "you": "あなた"
+      },
+      "times": "{{n}}回",
+      "working": "が作業中"
+    },
+    "sendBack": "差し戻しを書く",
+    "sentBody": "エージェントに送った本文",
+    "working": {
+      "others_other": "ほか{{count}}人"
+    }
+  },
+  "ruleTab": {
+    "more": "続きを読む（{{shown}}/{{total}}件）",
+    "readFailed": "ファイルを読めませんでした。",
+    "readFailedHelp": "タスクのフォルダでファイルの権限を確認してください。"
+  },
+  "sheet": {
+    "grip": "高さを変える（上へ払うと全画面、下へで閉じる）",
+    "toShare": "シートに戻す",
+    "toWhole": "全画面で開く"
+  },
+  "summaryTab": {
+    "childCount": {
+      "doing": "$t(ui:state.doing) {{n}}",
+      "done": "$t(ui:state.done) {{done}}/{{total}}",
+      "stopped": "$t(ui:state.stopped) {{n}}",
+      "todo": "$t(ui:state.todo) {{n}}",
+      "waiting": "$t(ui:state.waiting) {{n}}"
+    }
+  },
+  "swipe": {
+    "choose": "案を選ぶと送れます",
+    "hold": "$t(ui:state.held)",
+    "notAnswered": "まだ答えていないため送れません",
+    "notSaid": "それ以外のあとに指示が無いため送れません",
+    "notWritten": "答えを書いていないため送れません",
+    "otherWords": "それ以外のあとに指示を書くと送れます",
+    "send": "送る",
+    "write": "書いて答えると送れます",
+    "writeAfterOther": "それ以外のあとに指示を書く"
+  },
+  "viewer": {
+    "binary": "文字のファイルではないので開けません",
+    "cannotOpen": "このファイルは開けません",
+    "close": "閉じる（Esc）",
+    "copy": "コピー",
+    "copyCommand": "差分のコマンドをコピー",
+    "copyText": "内容をコピー",
+    "download": "ダウンロード",
+    "downloadFile": "ファイルをダウンロード",
+    "inGitFolder": "git の管理用フォルダの中なので開けません",
+    "label": "差分とファイル",
+    "missing": "このファイルはありません",
+    "outside": "プロジェクトに登録したコードの場所の外なので開けません",
+    "rendered": "整形",
+    "shared": "ほかの場所と中身を共有しているので開けません",
+    "source": "元の文",
+    "sourceGroup": "文書の差分の見せ方",
+    "split": "左右",
+    "splitGroup": "差分の並べ方",
+    "tooLarge": "大きすぎて開けません",
+    "unified": "上下",
+    "viewed": "読了",
+    "viewedCount": "読了 {{read}}/{{total}}"
+  },
+  "voiceInput": {
+    "again": "もう一度",
+    "connecting": "マイクに接続中…",
+    "failure": {
+      "audio": "マイクの音声を始められませんでした",
+      "lost": "音声認識が途中で止まりました",
+      "noSpeech": "声を聞き取れませんでした",
+      "permission": "マイクが許可されていません。ブラウザの設定で許可してください",
+      "refused": "音声入力を始められませんでした。音声の設定を確認してください",
+      "tooLarge": "録音が長すぎます。短く区切ってください",
+      "unreachable": "音声認識につながりませんでした",
+      "unsupported": "このブラウザでは音声入力を使えません。HTTPS で開くと使えます"
+    },
+    "hint": "音声入力 (Alt+Shift+M)・1回60秒まで",
+    "start": "音声入力を始める",
+    "stop": "音声入力を止める"
+  },
+  "wrapToggle": {
+    "unwrap": "折り返さずに表示",
+    "wrap": "行を折り返す"
+  }
+}

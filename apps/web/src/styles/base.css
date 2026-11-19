@@ -1,0 +1,88 @@
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: var(--text-base) / var(--text-base--line-height) var(--font-sans);
+    letter-spacing: var(--text-base--letter-spacing);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    /* A press says itself by its own pressed ground (active:bg-press); a phone's browser would also lay its tint box
+       over whatever was touched, a flash of a frame that is not the app's. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  time {
+    white-space: nowrap;
+  }
+  /* A heading's size is its step, written where it stands (a note's headings take the size of the note). */
+  h2, h3 {
+    font-weight: 600;
+  }
+  /* A link is a word of its sentence (`inline-link`, parts.css): it takes the sentence's type, not a step of its own. */
+  a {
+    @apply inline-link;
+  }
+  a[target="_blank"]::after {
+    content: "↗";
+    display: inline-block;
+    margin-left: 0.2em;
+    color: var(--muted);
+    font-size: 0.85em;
+    text-decoration: none;
+  }
+  /* A sheet grip owns the finger from its press, including a heading inside a scroller. Keep the browser's
+     gesture policy on the same mark the sheet listens for, so a visible grip cannot silently become a scroll. */
+  [data-task-sheet-grab] {
+    touch-action: none;
+    user-select: none;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  /* Pinch-zoomed, a finger pans and zooms the page from anywhere, over any element's own touch-action (lib/pinch-zoom.ts). */
+  [data-pinch-zoomed],
+  [data-pinch-zoomed] * {
+    touch-action: manipulation !important;
+  }
+  /* A sheet's handle keeps its finger at any zoom (lib/pinch-zoom.ts). */
+  [data-pinch-zoomed] [data-sheet-handle] {
+    touch-action: none !important;
+  }
+  button:not(:disabled),
+  select,
+  summary {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--soft);
+  }
+  [hidden] {
+    display: none !important;
+  }
+
+  /* Focus rings: always on fields (1px, their edge darkens too); on buttons,
+     summaries and links only while the keyboard is in use (input-mode.ts
+     writes data-input), 2px so it is found at a glance. */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 1px solid var(--muted);
+    outline-offset: 2px;
+  }
+  :root[data-input="keyboard"] button:focus-visible,
+  :root[data-input="keyboard"] summary:focus-visible,
+  :root[data-input="keyboard"] a:focus-visible {
+    outline: 2px solid var(--muted);
+    outline-offset: 2px;
+  }
+  html:not([data-input="keyboard"]) button:focus-visible {
+    outline: none;
+  }
+}

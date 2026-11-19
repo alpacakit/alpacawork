@@ -1,0 +1,12 @@
+[
+  {
+    "type": "error",
+    "message": "Error running remote compact task: Selected model is at capacity. Please try a different model."
+  },
+  {
+    "type": "turn.failed",
+    "error": {
+      "message": "Error running remote compact task: Selected model is at capacity. Please try a different model."
+    }
+  }
+]

@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"00000000-0000-4000-8000-000000000102"}
+{"type":"input.accepted","id":"synthetic-input-01"}
+{"type":"turn.started"}
+{"type":"input.taken","id":"synthetic-input-01"}
+{"type":"error","message":"Selected model is at capacity. Please try a different model."}
+{"type":"turn.failed","error":{"message":"Selected model is at capacity. Please try a different model."}}

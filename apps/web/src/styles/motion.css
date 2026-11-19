@@ -1,0 +1,174 @@
+/* ════════ Motion ════════
+
+   Every transition, animation and Web Animation on the screen is timed by these names; screens write
+   `duration-(--motion-base)`, `ease-out`, `animate-rise` or lib/motion.ts, never a number of ms or a curve.
+
+   Length  --motion-fast 120ms  in place: hover, press, a colour, a chevron, a switch, a hover card
+           --motion-base 200ms  appears or moves within its place: a row, a report, a popover, a dialog, the reader, a disclosure
+           --motion-slow 320ms  crosses the screen: a sheet from the bottom, a toast
+           --motion-tint 2000ms "this changed here": a row or a report tinted, holding, then fading
+   Hold    --motion-read 500ms  words that say what was just done, held still after they land so they are read before
+           what carries them moves on: the answered card's stamp (500ms, so with the firm press and the fling that
+           moves at once the stamp is still seen held). Not motion, so reduced motion keeps it.
+   Stamp    the answered card, one rhythm for every way of answering: the stamp is pressed on over
+           --motion-stamp 160ms ease-stamp (a firm press that gives only a little), held still for --motion-read, then
+           the card is flung off over --motion-fling 280ms ease-fling: it moves from its first frame and gains only a
+           little speed, so the hold ends on the push and not on a creep, and it is seen crossing rather than vanishing;
+           it fades over the second half of the way. The next card comes forward over the same --motion-fling, ease-out.
+           A card a finger let go is already moving: it is flung at once, its stamp pressed on as it goes.
+   Curve   ease-out     arrives and settles (every enter and move)
+           ease-move    a panel moving across the screen from one rest to another: eases off, then settles long
+           ease-in      leaves (a toast going)
+           ease-in-out  turns over in place (a switch, a chevron, a disclosure)
+           ease-pop     a small overshoot, only for something landing (a new time mark, a copy's ✓, the all-answered ring)
+   Aside   stepping aside for reading: the bar over the list and its frozen heads slide away over
+           --motion-base in-out and come back over --motion-base out (state/bar.ts `barVars`)
+   Answer choice: on a computer, one card becomes its input chip along a gently raised cubic arc,
+           cubic-bezier(0.3,0,0.2,1), slow ×1.6–2.2 by distance; a turn carries its current velocity into the new leg.
+           Card words fade over 0–13% of the way; chip words appear over 14–35%. Other chips slide over base.
+   Welcome  an empty project's welcome rises in three parts over slow, ease-out, shift: heading, then lead after fast/2,
+           then hint and examples after fast; with reduced motion all three fade together
+   Distance --motion-shift 6px (a surface rising into place) · --motion-shift-far 16px (coming in from further off)
+   Grow    a surface grown out of its button (the conversation's queue, ThreadQueue): from the shape on screen (the button, or a
+           fold still under way) it spreads from the corner it shares with the button over slow out, what it holds
+           uncovered by it in step; it folds back from the shape it showed over base in-out, the button's face coming
+           back over its last part (lib/motion.ts growOut, growBack)
+   Placeholder a region's pale blocks fade in over --motion-slow with ease-in, the one appearance that starts slow: a
+           read that ends while they come in is hardly seen, and what it read is drawn at once (Loadable holds nothing)
+   Panel   the reader and the diff beside it. The reader comes in from its side, shift-far over slow, ease-out, solid by
+           halfway (lib/motion.ts appear); the diff rises into place as the conversation does (arise: shift-far and
+           a little smaller), over slow, starting fast/2 after the reader starts to move, so the reader leads into the
+           room it leaves. Going, a still copy goes the way it came over base: the reader out to its side, ease-in;
+           the diff sinks (lib/motion.ts leave). Making room, a panel moves to its other place over slow, ease-move,
+           by transform alone and laid out once (lib/motion.ts moveAcross): the reader moves left as the diff opens
+           beside it and back as it closes. The list under them stays seen while the reader moves over it (data-panel-moving).
+   Closing is not animated: what the person dismissed goes at once (but a grown surface folds back into its button,
+           a surface that rose sinks, and a panel goes back the way it came).
+   Crossfade the reader turned to another task stays where it is; what it showed, a still copy over it, fades away over
+           --motion-base in-out while what it shows now is there under it at once, and in the same turn the old reading
+           column sinks by --motion-shift as the new one rises that much into place; the head stays still
+           (lib/motion.ts `crossfade`). Another pane of the same task (a tab chosen) is the same turn under the title and
+           its tabs, on the same time as the tab's grey slides (tabs.tsx TabMarker), both starting as the tab is chosen:
+           the grey, out, is most of the way there as the panes pass halfway, and settles as the new pane does.
+           The answered card flying away is its own leaving.
+   Reshape  the coordinator at the foot (its one line, its input brought up, its sheet on a phone) is one surface changing
+           shape, not one dismissed: what takes the other's place grows or shrinks from the other's height and corners
+           over --motion-base out, both ways (lib/motion.ts `reshape`). Only a clip moves: nothing is laid out on the way
+   Light    what moves on its own moves only what the compositor draws (transform, translate, scale, opacity, clip-path),
+           so it goes on smoothly while script runs and lays nothing out each frame; a size is set once, where it lands
+   Edge note a time strip's note at its edge (Not started · … since) rides with the strip while it scrolls or is held; once it rests
+           it glides to the edge over slow out, or, out of sight, comes in from its side by shift-far, fading in
+           (features/tree/time-line.tsx useEdgeRest)
+   Frequent things move least: the clock's tick moves nothing; a row's update only tints it.
+   Every question answered: once the stamp is read (its hold) and the card is half gone (fling ÷2), a ring of one
+   piece per answer fills piece by piece (each base, all within slow ×2), its tick draws in base, it settles with
+   ease-pop over slow, and the words and Close rise after it.
+   Reduced motion: nothing travels (shifts are 0, moves between places are skipped), transitions are off,
+   and what appears only fades, at --motion-fast; a tint still shows, since it is colour, not motion. */
+:root {
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-tint: 2000ms;
+  --motion-read: 500ms;
+  --motion-stamp: 160ms;
+  --motion-fling: 280ms;
+  /* The stamp's curves live here, not in @theme: only script reads them (departure.ts), and Tailwind leaves
+     out a theme curve no class names. */
+  --ease-stamp: cubic-bezier(0.3, 1.35, 0.5, 1);
+  --ease-fling: cubic-bezier(0.3, 0.3, 0.8, 0.6);
+  /* A panel's move across the screen (lib/motion.ts moveAcross): also only script reads it. */
+  --ease-move: cubic-bezier(0.3, 0, 0, 1);
+  --motion-shift: 6px;
+  --motion-shift-far: 16px;
+  --motion-sheet: 100%;
+}
+
+@theme {
+  --ease-*: initial;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--ease-in-out);
+
+  --animate-*: initial;
+  /* A hover card, a scrim: only its opacity. */
+  --animate-fade: motion-fade var(--motion-fast) var(--ease-out) both;
+  /* A dialog, or a popover over what opened it: rises into place. */
+  --animate-rise: motion-rise var(--motion-base) var(--ease-out) both;
+  /* The welcome of an empty project: its heading, lead and examples rise in turn, each a little after the one above. */
+  --animate-welcome: motion-rise var(--motion-slow) var(--ease-out) both;
+  /* A popover under what opened it: comes down from it. */
+  --animate-drop: motion-drop var(--motion-base) var(--ease-out) both;
+  /* A mark that says a press landed (a copy's ✓): grows into place. */
+  --animate-pop: motion-pop var(--motion-fast) var(--ease-pop) both;
+  /* A surface growing out of what opened it (the state form out of Change state), from its transform origin. */
+  --animate-grow: motion-grow var(--motion-base) var(--ease-out) both;
+  /* The phone's sheet: up from the screen's foot. */
+  --animate-sheet: motion-sheet var(--motion-slow) var(--ease-out) both;
+  /* Something still at work that turns (the pull's ring while it refreshes); still under reduced motion. */
+  --animate-spin: motion-spin 0.8s linear infinite;
+  /* Something still at work: it pulses. */
+  --animate-pulse: motion-pulse 2s var(--ease-in-out) infinite;
+  /* A placeholder while a region reads: its blocks come in slowly (slow, ease-in), so one that the data cuts short is
+     hardly seen, then pulse. It never holds the data back: what arrives replaces it at once (Loadable). */
+  --animate-placeholder: motion-fade var(--motion-slow) var(--ease-in) both, motion-pulse 2s var(--ease-in-out) var(--motion-slow) infinite;
+
+  /* A value that changed without a press on it (the effort that came with another kind of agent): ringed, then let go
+     to the thin line a chosen value has. The ring is a line (an outline), not a shadow: the site has one shadow. It is
+     drawn by a layer over the value (its ::after), so the value's own outline stays the focus's. */
+  --animate-noted: motion-noted 1.6s var(--ease-out) both;
+  @keyframes motion-noted { from, 60% { outline: 2px solid var(--color-ink); } to { outline: 1px solid var(--color-line); } }
+  @keyframes motion-fade { from { opacity: 0; } }
+  @keyframes motion-rise { from { opacity: 0; translate: 0 var(--motion-shift); } }
+  @keyframes motion-drop { from { opacity: 0; translate: 0 calc(-1 * var(--motion-shift)); } }
+  @keyframes motion-sheet { from { translate: 0 var(--motion-sheet); } }
+  @keyframes motion-pop { from { opacity: 0; scale: 0.75; } }
+  @keyframes motion-grow { from { opacity: 0; scale: 0.9; } }
+  @keyframes motion-pulse { 50% { opacity: 0.5; } }
+  @keyframes motion-spin { to { transform: rotate(1turn); } }
+
+  /* The progress line: a segment runs across again and again; going live fills it and lets it go. */
+  --animate-progress-flow: progress-flow 1.4s var(--ease-in-out) infinite;
+  --animate-progress-fill: progress-fill 520ms var(--ease-out) both;
+  @keyframes progress-flow { from { translate: -100% 0; } to { translate: 250% 0; } }
+  @keyframes progress-fill { from { scale: 0.4 1; } 55% { scale: 1 1; opacity: 1; } to { scale: 1 1; opacity: 0; } }
+  /* A place's line, its read over: it fades where it stands. */
+  --animate-progress-leave: progress-leave var(--motion-base) var(--ease-in) both;
+  @keyframes progress-leave { to { opacity: 0; } }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-base: var(--motion-fast);
+    --motion-slow: var(--motion-fast);
+    --motion-stamp: var(--motion-fast);
+    --motion-fling: var(--motion-fast);
+    --motion-shift: 0px;
+    --motion-shift-far: 0px;
+    --motion-sheet: 0%;
+    --animate-sheet: motion-fade var(--motion-fast) var(--ease-out) both;
+    --animate-pop: motion-fade var(--motion-fast) var(--ease-out) both;
+    --animate-pulse: none;
+    --animate-spin: none;
+    --animate-placeholder: motion-fade var(--motion-fast) var(--ease-in) both;
+    --animate-progress-flow: none;
+    /* Still ends, so the line goes. */
+    --animate-progress-fill: progress-fill 1ms linear both;
+  }
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A placeholder standing for a wait already under way comes in on that wait's time (RegionSkeleton's waitFrom). */
+[data-placeholder-at] .animate-placeholder {
+  animation-delay: var(--placeholder-at), calc(var(--motion-slow) + var(--placeholder-at));
+}
+
+@keyframes send-grace-ring { from { stroke-dashoffset: 37.7; } to { stroke-dashoffset: 0; } }
