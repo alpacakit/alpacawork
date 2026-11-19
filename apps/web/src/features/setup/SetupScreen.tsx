@@ -60,7 +60,8 @@ function Setup() {
   return <Frame aside={<>
     <Steps current={step} onPick={go} />
     <div key={step} className="animate-welcome">
-      <h1 className="m-0 mt-8 text-display font-semibold text-balance [word-break:auto-phrase] narrow:mt-6">{{ agents: t("agents.title"), skills: t("skills.title"), project: t("project.title") }[step]}</h1>
+      {/* Beside the settings the column is narrow: a step down keeps a short name such as "First project" on one line. */}
+      <h1 className="m-0 mt-8 text-display font-semibold [word-break:auto-phrase] min-[60rem]:text-[1.875rem] narrow:mt-6">{{ agents: t("agents.title"), skills: t("skills.title"), project: t("project.title") }[step]}</h1>
       {lead.map((line, at) => <p key={at} className={cn("m-0 mt-3 text-md text-muted [word-break:auto-phrase]", at > 0 && "narrow:hidden")}>{line}</p>)}
     </div>
   </>}>
