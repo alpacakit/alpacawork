@@ -7,6 +7,7 @@
   "coordinatorCard": {
     "appHint": {
       "close": "この案内を閉じる",
+      "detail": "PC にアプリとして入れる・スマホから開く",
       "open": "スマホやアプリで使う"
     },
     "attached": "添付だけ",

@@ -7,6 +7,7 @@
   "coordinatorCard": {
     "appHint": {
       "close": "Close this tip",
+      "detail": "Install it on your computer, or open it from your phone",
       "open": "Use on your phone or as an app"
     },
     "attached": "Attachments only",
