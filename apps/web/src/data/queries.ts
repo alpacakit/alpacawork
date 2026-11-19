@@ -220,9 +220,9 @@ export function useClosedCounts() {
 /** What the list's place shows: nothing known yet, search results, a project still looked up, no project yet, how work starts, or the list. */
 export type ListPlace = "loading" | "search" | "lookup" | "no-projects" | "welcome" | "list";
 /**
- * The one rule for what the list's place shows, read by the page (Workbench) and the list (TimeTree). Until the first index arrives nothing
- * is known: no index is not "no project" and not empty. How work starts shows while the project in view (or every
- * project) holds no Task at all, as the index counts them, and nothing else takes the place.
+ * The one rule for what the list's place shows, read by the page (Workbench) and the list (TimeTree). Until the first
+ * index arrives nothing is known: no index is not "no project" and not empty. How work starts shows while the project
+ * in view (or every project) holds no Task at all, as the index counts them, and nothing else takes the place.
  */
 export function listPlace(searching: boolean, project: string | null, info: WorkspaceInfo | null): ListPlace {
   if (searching) return "search";

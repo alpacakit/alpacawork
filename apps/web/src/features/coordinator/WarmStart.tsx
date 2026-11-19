@@ -45,6 +45,8 @@ export function WarmStart({ warm }: { warm: Warm }) {
   const { said, examples } = useWarmWords(warm);
   // 100cqh: the conversation's scrolling area, a size container while this is in it (CoordinatorCard), less its head
   // (--pane-head) and 20px, a little more than the list's own 12px round it, so it fills the area without scrolling.
+  // py-4, not more: with four examples and the phone and app line, more would make the conversation as it first opens
+  // on a computer (frame.ts FIRST) scroll.
   return <li data-coordinator-warm={warm} className="flex min-h-[calc(100cqh-var(--pane-head,1.25rem)-1.25rem)] animate-rise items-center justify-center py-4">
     <div className="w-[min(100%,26rem)]">
       <Said warm={warm} said={said} className="mb-3" />
