@@ -1,3 +1,4 @@
+import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { releasePath } from '../release/edition.js';
 /** Local acquisition composes with the existing setup and update Owners. */
 import { setTimeout as delay } from 'node:timers/promises';
@@ -22,7 +23,7 @@ import { launchUpdateController } from '../release/update-controller.js';
 import { resolveUpdateRuntime, candidateEnvironment, npmAcquisitionRuntime } from '../release/update-runtime.js';
 import { InstallationStore, installationPath } from './store.js';
 import { installationSkillsRoot } from './setup.js';
-import { confirmInstallation, installationLanguage, type InstallationTerminal } from './confirmation.js';
+import { confirmInstallation, type InstallationTerminal } from './confirmation.js';
 import { readSetupSkills } from './setup-skills.js';
 import { inspectAgentSkillLinks } from './agent-skill-links.js';
 import { inspectSetup, installSetup, requestedInstallationService, serviceDescription, type SetupRequest, type SetupArtifact, type InstallationResult } from './public-setup.js';
@@ -88,7 +89,7 @@ export async function applyDeployArtifact(request: SetupRequest & {source?:strin
   const target = releasePath(plan.releases,artifact.facts);
   const preview = {workspace:plan.workspace,releases:plan.releases,service:managed.definition.name,
     current:{release:current,version:readPackageVersion(current).version},target:{release:target,version:artifact.facts.version},skills};
-  const confirmation = deployConfirmation({...preview,installation:plan.installation}), t = serverText(installationLanguage(request.env));
+  const confirmation = deployConfirmation({...preview,installation:plan.installation}), t = serverText(uiLocaleFromEnvironment(request.env));
   const application = {current:preview.current.version,target:preview.target.version};
   say(t('server:deploy.preview',{workspace:plan.workspace,...application,confirmation}));
   if (request.confirm !== undefined) assertDeployConfirmation({...preview,installation:plan.installation},request.confirm);

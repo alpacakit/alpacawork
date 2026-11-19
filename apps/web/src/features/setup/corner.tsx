@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { activateLocale, type Locale } from "@alpacawork/i18n";
-import { personalSettings, type SettingDefinition } from "@alpacawork/contract";
+import { activateLocale } from "@alpacawork/i18n";
+import { isUiLocale, uiLocaleOrDefault } from "@alpacawork/core/ui-language";
+import { personalSettings, uiLanguageOptions, type SettingDefinition } from "@alpacawork/contract";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
@@ -51,12 +52,17 @@ export function ThemeSwitch() {
 export function LanguageSwitch() {
   const { t, i18n } = useTranslation("setup");
   const { locked, choose } = useCornerSetting("language");
-  const current = i18n.resolvedLanguage === "ja" ? "ja" : "en";
+  const current = uiLocaleOrDefault(i18n.language);
   return <label className={cn("inline-flex h-9 items-center gap-2 rounded-sm border-hairline border-lit-line bg-lit px-3 text-sm", locked && "opacity-60")}>
     <Icon name="globe" className="size-4 text-muted" />
     <select aria-label={t("language")} value={current} disabled={locked} className="cursor-pointer border-0 bg-transparent text-ink disabled:cursor-default"
-      onChange={event => { const next = event.target.value as Locale; activateLocale(next); void choose(next, value => activateLocale(value === "ja" || value === "en" ? value : current)); }}>
-      <option value="ja">日本語</option><option value="en">English</option>
+      onChange={event => {
+        const next = event.target.value;
+        if (!isUiLocale(next)) return;
+        activateLocale(next);
+        void choose(next, value => activateLocale(isUiLocale(value) ? value : current));
+      }}>
+      {uiLanguageOptions.map(({ value, labelKey }) => <option key={value} value={value}>{t(labelKey, { ns: "panels" })}</option>)}
     </select>
   </label>;
 }

@@ -17,7 +17,7 @@ type Permission = "default" | "granted" | "denied";
  * device is removed here, since delivery does not go through the tailnet).
  */
 export function PushSection({ focusHeading = false }: { focusHeading?: boolean }) {
-  const { t } = useTranslation("panels");
+  const { t, i18n } = useTranslation("panels");
   const supported = pushSupported();
   const [permission, setPermission] = useState<Permission>(() => (supported ? Notification.permission : "default"));
   // undefined: not read yet; null: this browser has no subscription.
@@ -71,7 +71,7 @@ export function PushSection({ focusHeading = false }: { focusHeading?: boolean }
                   <span className="min-w-0 text-muted">
                     <span className="text-ink">{device.label}</span>
                     {ownOf(device) ? <span> · {t("push.thisDevice")}</span> : null}
-                    <span> · {formatNoticeTime(device.created_at)}</span>
+                    <span> · {formatNoticeTime(device.created_at, i18n.language)}</span>
                   </span>
                   <Button variant="quiet" disabled={busy} onClick={() => removeDevice(device)}>
                     {t("push.remove")}

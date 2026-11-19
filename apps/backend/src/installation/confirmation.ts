@@ -2,6 +2,7 @@
  * It runs before any setup or uninstall change; approval is not evidence that the change completed. */
 import { isAbsolute, normalize } from 'node:path';
 import { serverText, type ServerLocale, type ServerText } from '@alpacawork/i18n/server';
+import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import type { AgentSkillLink } from './agent-skill-links.js';
 import type { SetupPlan } from './public-setup.js';
 
@@ -70,10 +71,6 @@ function uninstallRow(item: UninstallItem, t: ServerText): string {
 /** The same line says what stays before the person approves and after the removal finished. */
 export const uninstallKeptRows = (keep: readonly UninstallKept[], t: ServerText): string[] => keep.map(item => uninstallRow(item, t));
 
-export function installationLanguage(env: InstallationTerminal['env']): ServerLocale {
-  return /^ja(?:[-_.@]|$)/i.test(env.LC_ALL || env.LC_MESSAGES || env.LANG || '') ? 'ja' : 'en';
-}
-
 // A line break or escape sequence in a shown value could rewrite the screen the person approves.
 // ZWNJ/ZWJ shape legitimate script/emoji names; other format controls can hide or reorder what is approved.
 const UNPRINTABLE = /[\p{Cc}\p{Zl}\p{Zp}]|(?:(?![\u200c\u200d])\p{Cf})/u;
@@ -137,7 +134,7 @@ export async function confirmInstallation(request: InstallationConfirmationReque
   options: { yes?: boolean } = {},
 ): Promise<ApprovedInstallation | RefusedInstallation> {
   assertRequest(request);
-  const t = serverText(installationLanguage(terminal.env));
+  const t = serverText(uiLocaleFromEnvironment(terminal.env));
   const versions = { current: request.application?.current ?? '', version: request.application?.target ?? '' };
   const title = request.changes ? t('server:setup.title.change', versions)
     : request.application?.current ? request.application.current === request.application.target ? t('server:setup.title.configure', versions) : t('server:setup.title.update', versions)
@@ -148,7 +145,7 @@ export async function confirmInstallation(request: InstallationConfirmationReque
 /** Every subject is shown escaped rather than refused: a strange path must not leave a person without a way out. */
 export async function confirmUninstall(request: UninstallConfirmationRequest,
   terminal: InstallationTerminal = defaultTerminal(), options: { yes?: boolean } = {}): Promise<{ approved: true } | RefusedInstallation> {
-  const t = serverText(installationLanguage(terminal.env));
+  const t = serverText(uiLocaleFromEnvironment(terminal.env));
   return confirmTerminal({ title: t('server:uninstall.title'), note: t('server:uninstall.note'),
     rows: [...request.remove, ...request.keep].map(item => uninstallRow(item, t)) }, t, terminal, { yes: options.yes });
 }

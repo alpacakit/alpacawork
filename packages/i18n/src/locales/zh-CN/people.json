@@ -1,0 +1,89 @@
+{
+  "agentLabel": {
+    "unknown": "未知",
+    "unstarted": "未开始"
+  },
+  "attach": {
+    "add": "添加附件",
+    "addHint": "添加文件（也可粘贴或拖入图片）",
+    "checking": "正在确认附件的结果",
+    "notReceived": "未能接收",
+    "pastedImage": "粘贴的图片",
+    "pastedText": "粘贴的文本",
+    "receiptMismatch": "保存的附件与你选择的文件不一致",
+    "remove": "移除 {{name}}",
+    "reselect": "未找到。请重新选择文件",
+    "restored": "期间进行过数据恢复，因此无法确认结果，也不会重新发送。请用附件卡片上的 × 将其移除",
+    "storageUnavailable": "无法保存草稿",
+    "tooLarge": "超过 {{size}}",
+    "tooMany": "一次最多 {{limit}} 个附件",
+    "unconfirmed": "无法确认结果。请重新加载后查看",
+    "unnamed": "文件",
+    "uploading": "正在上传 {{name}}"
+  },
+  "clock": {
+    "base": "{{clock}}",
+    "date": "{{date}} {{clock}}",
+    "today": "今天 {{clock}}",
+    "tomorrow": "明天 {{clock}}",
+    "yesterday": "昨天 {{clock}}"
+  },
+  "day": {
+    "date": "{{date}} {{weekday}}",
+    "tomorrow": "明天",
+    "yesterday": "昨天"
+  },
+  "dot": {
+    "attention": "出错"
+  },
+  "duration": {
+    "days_other": "{{count}} 天",
+    "hours": "{{hours}}小时{{minutes}}分",
+    "minutes_other": "{{count}} 分钟",
+    "underMinute": "不到 1 分钟"
+  },
+  "finish": {
+    "after": "{{time}} 之后",
+    "bandOver": "已超时 {{length}}",
+    "done": "{{time}} 完成",
+    "end": "预计 {{time}} 报告",
+    "long": {
+      "after_other": "不计 {{count}} 个没有预计时间的任务，最晚的预计报告时间是 {{time}}。在此之前报告不会全部到齐",
+      "end": "已工作 {{used}}/{{total}} 分钟。预计 {{time}} 报告",
+      "over": "已工作 {{used}}/{{total}} 分钟。已超过预计的 {{time}} {{length}}",
+      "subtree_other": "{{count}} 个预计时间中最晚的一个。预计 {{time}} 报告",
+      "subtreeOver": "其下有任务已超过预计的 {{time}} {{length}}"
+    },
+    "over": "已超过 {{time}} {{length}}",
+    "overBy": {
+      "days_other": "约 {{count}} 天",
+      "hours_other": "约 {{count}} 小时",
+      "minutes_other": "约 {{count}} 分钟"
+    },
+    "pending": "等待新的预计时间",
+    "reported": "$t(ui:state.waitingReview)，{{time}} 报告",
+    "review": "$t(ui:state.waitingReview)",
+    "stopped": "$t(people:dot.attention)",
+    "unknown": "$t(ui:state.doing)"
+  },
+  "line": {
+    "children": "子任务 {{done}}/{{total}}"
+  },
+  "now": {
+    "event": "{{kind}}",
+    "kind": {
+      "error": "出错",
+      "message": "消息",
+      "output": "输出",
+      "result": "结果",
+      "tool_end": "工具结果",
+      "tool_start": "使用工具"
+    },
+    "output": "{{event}}（{{ago}}前）",
+    "stale": "最后一次输出已较久：{{event}}（{{ago}}前）",
+    "toolEvent": "{{tool}}：{{kind}}"
+  },
+  "records": {
+    "close": "关闭运行…"
+  }
+}

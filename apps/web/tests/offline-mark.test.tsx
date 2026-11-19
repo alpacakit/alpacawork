@@ -30,7 +30,7 @@ test("the offline mark tells the feed's last arrival and offers to reconnect whe
   const reconnect = vi.fn();
   useConnection.setState({ lastReceivedAt: at, reconnect });
   render(<OfflineMark />);
-  const clock = formatNoticeTime(new Date(at).toISOString());
+  const clock = formatNoticeTime(new Date(at).toISOString(), i18n.language);
   fireEvent.click(screen.getByRole("button", { name: `オフライン · ${clock} に取得` }));
   expect(document.querySelector("[data-offline-explanation]")!.textContent).toContain(`${clock} 時点の内容を表示しています。`);
   fireEvent.click(document.querySelector("[data-offline-reconnect]")!);

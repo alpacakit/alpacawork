@@ -37,31 +37,37 @@ export function HostTab() {
 
 function Measured({ status }: { status: Measured }) {
   const { t, i18n } = useTranslation("panels");
+  const locale = i18n.language;
   const [openEpisode, setOpenEpisode] = useState<number | null>(null);
   const { facts, sample, current, limits } = status;
+  const load = sample?.load?.[0];
+  const loadText = load === undefined ? "—"
+    : new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(load);
+  const diskLimit = new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", maximumFractionDigits: 0 })
+    .format(limits.diskFreeBytes / 1024 ** 3);
   const tight = new Set<HostKind>(current?.kinds ?? []);
   const now = sample?.at ?? Date.now();
   const models = [...sample?.runs.slice(0, 3) ?? [], ...status.episodes.find(episode => episode.id === openEpisode)?.runs ?? []]
     .flatMap(run => run.model ? [run.model] : []);
   return (
     <div data-host-status>
-      {facts && <FieldHint>{t("host.facts", { hostname: facts.hostname, os: facts.os, cores: facts.cores, memory: formatGigabytes(facts.memoryBytes) })}</FieldHint>}
+      {facts && <FieldHint>{t("host.facts", { hostname: facts.hostname, os: facts.os, cores: facts.cores, memory: formatGigabytes(facts.memoryBytes, locale) })}</FieldHint>}
       {current
         ? <Message tone="caution" size="line" live className="mt-type-close mb-3" title={t("host.tight")}
           description={t("host.since", { time: formatClock(iso(current.start)), minutes: spanMinutes(current.start, now) })} />
         : !status.error && <p role="status" className="mt-type-close mb-3 text-md font-semibold">{t("host.calm")}</p>}
       {!sample ? <Message tone="waiting" size="line" live title={t("host.firstSample")} /> : <>
-        <Meter label={t("host.cpu")} value={formatPercent(sample.cpu)} tight={tight.has("cpu")}
+        <Meter label={t("host.cpu")} value={formatPercent(sample.cpu, locale)} tight={tight.has("cpu")}
           line={<Spark points={status.history.map((point) => ({ at: point.at, value: point.cpu }))} window={{ from: now - HOUR, to: now }}
             line={limits.cpu} tightBelow={false} step={SAMPLE} />}
-          note={t("host.cpuNote", { load: sample.load?.[0].toFixed(1) ?? "—", cores: facts?.cores ?? "—" })} limit={t("host.limitPercent", { value: limits.cpu })} />
-        <Meter label={t("host.memory")} value={formatPercent(100 * sample.memory.availableBytes / sample.memory.totalBytes)} tight={tight.has("memory")}
+          note={t("host.cpuNote", { load: loadText, cores: facts?.cores ?? "—" })} limit={t("host.limitPercent", { value: limits.cpu })} />
+        <Meter label={t("host.memory")} value={formatPercent(100 * sample.memory.availableBytes / sample.memory.totalBytes, locale)} tight={tight.has("memory")}
           line={<Spark points={status.history.map((point) => ({ at: point.at, value: point.memoryFreePercent }))} window={{ from: now - HOUR, to: now }}
             line={limits.memoryFreePercent} tightBelow step={SAMPLE} />}
-          note={t("host.memoryNote", { swap: formatGigabytes(sample.memory.swapUsedBytes), free: formatGigabytes(sample.memory.availableBytes) })}
+          note={t("host.memoryNote", { swap: formatGigabytes(sample.memory.swapUsedBytes, locale), free: formatGigabytes(sample.memory.availableBytes, locale) })}
           limit={t("host.limitPercent", { value: limits.memoryFreePercent })} />
-        <Meter label={t("host.disk")} value={formatGigabytes(sample.disk.freeBytes)} tight={tight.has("disk")}
-          note={t("host.diskNote", { total: formatGigabytes(sample.disk.totalBytes) })} limit={t("host.limitBytes", { value: `${Math.round(limits.diskFreeBytes / 1024 ** 3)} GB` })} />
+        <Meter label={t("host.disk")} value={formatGigabytes(sample.disk.freeBytes, locale)} tight={tight.has("disk")}
+          note={t("host.diskNote", { total: formatGigabytes(sample.disk.totalBytes, locale) })} limit={t("host.limitBytes", { value: diskLimit })} />
         <Meter label={t("host.runs")} value={<>{sample.runs.length}{status.parallel !== null &&
           <span className="text-sm font-normal text-muted"> / {status.parallel}</span>}</>} tight={false} />
         <Heavy sample={sample} models={models} />
@@ -112,20 +118,20 @@ function runDetail(run: { model: string | null; role: string }, heaviest: string
 
 /** One Run's row: its name, what it takes, and its second line; pressing it opens its Task. */
 function RunRow({ run, cpu, memory, detail, mark }: { run: { taskId: string | null; title: string }; cpu: number | null; memory: number | null; detail: ReturnType<typeof runDetail>; mark?: string }) {
-  const { t } = useTranslation("panels");
+  const { t, i18n } = useTranslation("panels");
   const moveTo = useMoveToTask();
   return (
     <Button variant="ghost" data-host-run={mark} onClick={() => { if (run.taskId !== null) moveTo(run.taskId); }}
       className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline justify-stretch gap-x-2.5 gap-y-0 rounded-none border-t border-line px-0 py-1.5 text-left text-base whitespace-normal">
       <span className="truncate">{run.taskId !== null && <span className="mr-1.5 text-muted tabular-nums">{run.taskId}</span>}{runName(run, t("ui:role.coordinator"))}</span>
-      <span className="text-right tabular-nums">{formatPercent(cpu)} · {formatGigabytes(memory)}</span>
+      <span className="text-right tabular-nums">{formatPercent(cpu, i18n.language)} · {formatGigabytes(memory, i18n.language)}</span>
       <span title={detail.full} aria-label={detail.full} className="col-span-2 truncate text-xs text-muted">{detail.short}</span>
     </Button>
   );
 }
 
 function Heavy({ sample, models }: { sample: NonNullable<Measured["sample"]>; models: readonly string[] }) {
-  const { t } = useTranslation("panels");
+  const { t, i18n } = useTranslation("panels");
   const top = sample.runs.slice(0, 3), rest = sample.runs.slice(3);
   const sum = (key: "cpu" | "memoryBytes") => rest.some(run => run[key] === null) ? null : rest.reduce((total, run) => total + run[key]!, 0);
   return (
@@ -136,12 +142,12 @@ function Heavy({ sample, models }: { sample: NonNullable<Measured["sample"]>; mo
         detail={runDetail(run, heaviestText(run.heaviest), t("host.worker"), models)} />)}
       <div data-host-outside className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 border-t border-line py-1.5">
         <span className="text-muted">{t("host.outside")}</span>
-        <span className="text-right tabular-nums">{formatPercent(sample.outside.cpu)} · {formatGigabytes(sample.outside.memoryBytes)}</span>
+        <span className="text-right tabular-nums">{formatPercent(sample.outside.cpu, i18n.language)} · {formatGigabytes(sample.outside.memoryBytes, i18n.language)}</span>
         {sample.outside.names.length > 0 &&
           <span className="col-span-2 truncate text-xs text-muted">{t("host.outsideNames", { names: sample.outside.names.join(" · ") })}</span>}
       </div>
       {rest.length > 0 && <p className="m-0 border-t border-line py-2 text-sm text-muted">
-        {t("host.moreRuns", { count: rest.length, cpu: formatPercent(sum("cpu")), memory: formatGigabytes(sum("memoryBytes")) })}</p>}
+        {t("host.moreRuns", { count: rest.length, cpu: formatPercent(sum("cpu"), i18n.language), memory: formatGigabytes(sum("memoryBytes"), i18n.language) })}</p>}
     </section>
   );
 }
@@ -153,10 +159,10 @@ function Heading({ id, title, note }: { id: string; title: string; note: string 
 
 /** "Today 13:02" / "Yesterday 22:40" / "10/12 10:15" */
 function useWhen() {
-  const { t } = useTranslation("panels");
+  const { t, i18n } = useTranslation("panels");
   return (at: number, now: number) => {
     const offset = calendarDayOffset(at, now);
-    const day = offset === 0 ? t("host.today") : offset === -1 ? t("host.yesterday") : formatCalendarDate(at, now);
+    const day = offset === 0 ? t("host.today") : offset === -1 ? t("host.yesterday") : formatCalendarDate(at, now, i18n.language);
     return `${day} ${formatClock(iso(at))}`;
   };
 }
@@ -176,11 +182,11 @@ function Episodes({ episodes, now, limits, models, open, setOpen }: { episodes: 
 }
 
 function Episode({ episode, now, limits, models, open, onToggle }: { episode: HostEpisode; now: number; limits: Limits; models: readonly string[]; open: boolean; onToggle: () => void }) {
-  const { t } = useTranslation("panels");
+  const { t, i18n } = useTranslation("panels");
   const when = useWhen();
   const span = episode.end === null ? t("host.ongoing", { from: when(episode.start, now) })
     : t("host.span", { from: when(episode.start, now), to: formatClock(iso(episode.end)), minutes: spanMinutes(episode.start, episode.end) });
-  const reasons = episodeReasons(episode).map((reason) => reason.kind === "cpu" ? t("host.reasonCpu", { value: reason.value })
+  const reasons = episodeReasons(episode, i18n.language).map((reason) => reason.kind === "cpu" ? t("host.reasonCpu", { value: reason.value })
     : reason.kind === "memory" ? t("host.reasonMemory", { value: reason.value }) : t("host.reasonDisk", { value: reason.value })).join(" · ");
   const who = [t("host.runCount", { count: episode.runs.length }),
     ...episode.runs.slice(0, 3).map((run) => [run.taskId ?? runName(run, t("ui:role.coordinator")), run.heaviest].filter(Boolean).join(" "))].join(" · ");

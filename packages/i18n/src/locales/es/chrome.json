@@ -1,0 +1,94 @@
+{
+  "appBar": {
+    "settings": "Configuración",
+    "settingsUpdate": {
+      "attention": "Configuración — la actualización requiere atención",
+      "available": "Configuración — {{version}} está disponible",
+      "busy": "Configuración — actualizando",
+      "done": "Configuración — recarga para usar la nueva versión",
+      "failed": "Configuración — la actualización falló"
+    }
+  },
+  "documentTitle": {
+    "separator": " · ",
+    "waiting_one": "$t(tree:home.turn): {{count}}",
+    "waiting_many": "$t(tree:home.turn): {{count}}",
+    "waiting_other": "$t(tree:home.turn): {{count}}",
+    "withCounts": "({{counts}}) {{page}}"
+  },
+  "gathered": {
+    "markAllRead": "Marcar todo como leído"
+  },
+  "notice": {
+    "back": "Cambios en vivo reanudados",
+    "diagnostics": "Ver estado",
+    "hostCpu": "CPU {{value}}",
+    "hostDisk": "{{value}} libres en disco",
+    "hostMemory": "{{value}} de memoria libre",
+    "hostMinutes_one": "{{count}} min",
+    "hostMinutes_many": "{{count}} min",
+    "hostMinutes_other": "{{count}} min",
+    "hostOpen": "Ver",
+    "hostTight": "Este equipo tiene mucha carga",
+    "previousBoth": "Se usan la configuración y el estado anteriores.",
+    "previousReads": "Se muestra el estado anterior.",
+    "previousSettings": "Se usa la configuración anterior.",
+    "readOnly": "No se puede escribir",
+    "reconnect": "Reconectar",
+    "reloadBoth": "No se pudieron recargar tu configuración personal ni el estado de lectura.",
+    "reloadReads": "No se pudo recargar el estado de lectura.",
+    "reloadSettings": "No se pudo recargar tu configuración personal.",
+    "shownFromBefore": "Contenido anterior",
+    "unreadableMany_one": "No se puede leer {{count}} archivo",
+    "unreadableMany_many": "No se pueden leer {{count}} archivos",
+    "unreadableMany_other": "No se pueden leer {{count}} archivos",
+    "unreadableOne": "No se puede leer {{path}}"
+  },
+  "presence": {
+    "ariaAway": "Notificaciones: se envían de inmediato cuando estás ausente",
+    "ariaMuted": "Notificaciones en pausa {{until}}",
+    "ariaPresent": "Notificaciones: no se envían mientras estás presente",
+    "away": "Ausente",
+    "menuLabel": "Estado de las notificaciones",
+    "mutedUntil": "hasta las {{time}} de hoy",
+    "mutedUntilTomorrow": "hasta las {{time}} de mañana",
+    "notSent": "No notificar",
+    "pausedUntil": "Notificaciones en pausa {{until}}",
+    "pauseHour": "Pausar 1 hora",
+    "pauseMorning": "Pausar hasta las {{time}} de mañana",
+    "pauseMorningToday": "Pausar hasta las {{time}} de hoy",
+    "pauseTwoHours": "Pausar 2 horas",
+    "present": "Presente",
+    "resume": "Reanudar",
+    "saveFailed": "No se pudo guardar el cambio.",
+    "sentImmediately": "Notificar de inmediato",
+    "settings": "Configuración de notificaciones…"
+  },
+  "projects": {
+    "all": "Todos los proyectos",
+    "menu": "Proyectos",
+    "new": "Nuevo proyecto",
+    "settings": "Configuración de {{name}}…",
+    "settingsAll": "Configuración del proyecto…",
+    "settingsOf": " · configuración…"
+  },
+  "search": {
+    "clear": "Borrar todo",
+    "count_one": "{{count}} tarea",
+    "count_many": "{{count}} tareas",
+    "count_other": "{{count}} tareas",
+    "empty": "Ninguna tarea coincide.",
+    "emptyHint": "Cambia una condición o bórralas todas.",
+    "failedFirst": "No se pudo buscar.",
+    "failedWhat": "No se pudieron leer más resultados de la búsqueda.",
+    "loading": "Buscando…",
+    "more": "Mostrar más",
+    "queryCondition": "“{{query}}”",
+    "removeCondition": "Quitar esta condición",
+    "removeNamedCondition": "Quitar condición: {{name}}"
+  },
+  "toolbar": {
+    "searchLabel": "Buscar tareas",
+    "searchPlaceholder": "Buscar por título, contenido o ID"
+  }
+}

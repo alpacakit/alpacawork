@@ -144,7 +144,7 @@ test("the long words say how many estimates count, how many have none, or that o
 
 test("an overrun says how far past the estimate it is, no finer than the estimate is said", async () => {
   await i18n.changeLanguage("ja");
-  const past = (minutes: number) => finishWords({ kind: "subtree", at: now - minutes * minute, count: 1, open: 0 }, now, i18n.getFixedT(null, "people"));
+  const past = (minutes: number) => finishWords({ kind: "subtree", at: now - minutes * minute, count: 1, open: 0 }, now, i18n.getFixedT(null, "people"), i18n.language);
   expect(past(2).short).toBe(`${clock(-2)}から約5分超過`);
   expect(past(31).short).toBe(`${clock(-31)}から約30分超過`);
   expect(past(58).short).toBe(`${clock(-58)}から約1時間超過`);
@@ -160,7 +160,7 @@ test("an overrun says how far past the estimate it is, no finer than the estimat
 
 test("an estimate an instruction or send-back made void says it waits for a new one, not that it was passed", async () => {
   await i18n.changeLanguage("ja");
-  const said = () => finishWords({ kind: "pending" }, now, i18n.getFixedT(null, "people")).short;
+  const said = () => finishWords({ kind: "pending" }, now, i18n.getFixedT(null, "people"), i18n.language).short;
   expect(said()).toBe("見込みの出し直し待ち");
   await i18n.changeLanguage("en");
   expect(said()).toBe("Awaiting a new estimate");

@@ -258,7 +258,8 @@
   /* Stamp paper changes with the theme; its semantic inks come from done/muted. */
   --color-stamp: var(--stamp);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", sans-serif;
+  /* Han characters are drawn in the forms of the page's language: --font-han is set by the page's lang (base.css). */
+  --font-sans: -apple-system, BlinkMacSystemFont, var(--font-han), sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 

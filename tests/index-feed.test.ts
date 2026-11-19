@@ -440,9 +440,9 @@ test('person writes publish only revision metadata in the index stream', async t
   assert.deepEqual(changed.tasks, first.tasks);
   assert.equal(changed.person.settings, UNSAVED_SETTINGS);
   const personal = await (await fetch(new URL('/api/settings/get', app.url), {
-    headers: { 'Accept-Language': 'ja-JP,ja;q=0.9' },
+    headers: { 'Accept-Language': 'zh-TW,pt-PT;q=0.9,es;q=0.8' },
   })).json();
-  assert.equal(personal.values.language, 'ja', 'the first browser request chooses the language');
+  assert.equal(personal.values.language, 'pt-BR', 'the first browser request chooses the language');
   let initialized = changed;
   while (initialized.person.settings !== personal.revision) initialized = await stream.index();
   assert.equal(initialized.person.settings, personal.revision);

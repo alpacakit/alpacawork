@@ -2,6 +2,7 @@
 import { buildControlDatabaseImage, controlDatabasePath, openControlDatabase } from '@alpacawork/db';
 import { CONFIG_FILE, initialControlDocument } from '@alpacawork/raw';
 import { initialFirstRun, canonicalLanguageTag } from '@alpacawork/contract';
+import { defaultUiLocale, matchUiLocale } from '@alpacawork/core/ui-language';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { randomUUID } from 'node:crypto';
 import { initialAgentsTemplate } from '../agents-settings.js';
@@ -27,7 +28,7 @@ export async function initializeWorkspace(root: string, detected: readonly Detec
         version: 1, revision: randomUUID(), value: initialFirstRun(id),
       })));
       if (language) writer.createFile(writer.meta, 'personal-settings.json', Buffer.from(JSON.stringify({
-        version: 1, revision: randomUUID(), value: { language: new Intl.Locale(language).language === 'ja' ? 'ja' : 'en', 'ai.language': language },
+        version: 1, revision: randomUUID(), value: { language: matchUiLocale([language]) ?? defaultUiLocale, 'ai.language': language },
       })));
       const db = openControlDatabase(writer.root, { busyTimeoutMs: 1000 }, true);
       try {

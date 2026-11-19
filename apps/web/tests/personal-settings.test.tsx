@@ -3,7 +3,8 @@ import { seedPersonal } from './read-fixtures';
 import { beforeAll, beforeEach, afterEach, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { defaultSettings, personalSettings, type SettingDefinition } from '@alpacawork/contract';
+import { uiLocales } from '@alpacawork/core/ui-language';
+import { defaultSettings, personalSettings, uiLanguageOptions, type SettingDefinition } from '@alpacawork/contract';
 import { PersonalSettingsTab } from '../src/features/panels/PersonalSettingsTab';
 import { usePersonalSettings } from '../src/data/personal-settings';
 import { intentKey, useWriteIntentStore } from '../src/data/write-intent';
@@ -31,7 +32,7 @@ test('a personal setting uses the common durable send state while its answer is 
   expect(await save).toBe(true);
 });
 
-test('every registered label, hint and choice has both translations', () => {
+test('every registered label, hint and choice has English and Japanese translations', () => {
   for (const definition of personalSettings) {
     for (const key of [definition.labelKey, 'helpKey' in definition ? definition.helpKey : undefined,
       ...('options' in definition ? definition.options.map((option) => 'labelKey' in option ? option.labelKey : undefined) : [])]) {
@@ -39,6 +40,15 @@ test('every registered label, hint and choice has both translations', () => {
       expect(i18n.exists(key, { lng: 'ja', ns: 'panels' }), key).toBe(true);
       expect(i18n.exists(key, { lng: 'en', ns: 'panels' }), key).toBe(true);
     }
+  }
+});
+
+test('every catalog supplies the settings language choices in their own names', () => {
+  const names: Record<typeof uiLocales[number], string> = {
+    en: 'English', ja: '日本語', 'zh-CN': '简体中文', es: 'Español', 'pt-BR': 'Português (Brasil)',
+  };
+  for (const locale of uiLocales) for (const { value, labelKey } of uiLanguageOptions) {
+    expect(i18n.getResource(locale, 'panels', labelKey)).toBe(names[value]);
   }
 });
 
@@ -156,7 +166,7 @@ test('an unconfirmed save keeps its control disabled and explains how to recover
   expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
 });
 
-for (const language of ['ja', 'en'] as const) test(`initial settings GET applies its admitted ${language} language when the Query itself advances revision`, async () => {
+for (const language of uiLocales) test(`initial settings GET applies its admitted ${language} language when the Query itself advances revision`, async () => {
   await i18n.changeLanguage(language === 'ja' ? 'en' : 'ja');
   const index = indexOf(tree());
   receiveFullIndex(queryClient, { ...index, person: { ...index.person, settings: 'initial-language' } });

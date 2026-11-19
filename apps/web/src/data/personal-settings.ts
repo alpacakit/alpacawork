@@ -3,7 +3,8 @@ import { readWriteBasis } from './connection';
 import type { ProjectedIndexDTO } from '@alpacawork/contract/control';
 import { useSyncExternalStore } from 'react';
 import { createStore } from 'zustand/vanilla';
-import { activateLocale, i18n, type Locale } from '@alpacawork/i18n';
+import { activateLocale, i18n } from '@alpacawork/i18n';
+import { isUiLocale } from '@alpacawork/core/ui-language';
 import { personalSettingsResponseSchema, type SettingValues } from '@alpacawork/contract';
 import { createApi, retryOf } from './client';
 import { queryClient } from './query-client';
@@ -30,7 +31,7 @@ type PersonState = {
   save: (key: string, value: string | boolean | null) => Promise<boolean>;
 };
 function applyLanguage(values: SettingValues) {
-  if (i18n.isInitialized && i18n.language !== values.language && (values.language === 'ja' || values.language === 'en')) activateLocale(values.language as Locale);
+  if (i18n.isInitialized && i18n.language !== values.language && isUiLocale(values.language)) activateLocale(values.language);
 }
 type PersonControl = Omit<PersonState, 'values' | 'revision' | 'fresh'>;
 /** Each setting's last save, whole; a later save of the same setting starts once it has ended. */

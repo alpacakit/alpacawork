@@ -1,8 +1,8 @@
 # Internationalization (i18n)
 
 This package holds translations for the web interface, terminal confirmations and notifications.
-English (`en`) is the source language and fallback. The build currently ships English and Japanese
-(`ja`); keep every supported locale complete as more languages are added.
+English (`en`) is the source language and fallback. The [UI locale registry](../core/src/ui-language.ts)
+lists the catalogs this build ships.
 
 ## Catalogs and keys
 
@@ -77,10 +77,9 @@ choose the related Node, web or browser tests for the behavior affected; see [Ch
 
 ### Web components and other browser code
 
-The browser entry, `@alpacawork/i18n`, exports `startI18n`, `activateLocale`, `i18n` and the `Locale`
-type. It loads the web catalogs directly as TypeScript/JSON through the bundler; it is not the Node
-entry. `apps/web/src/main.tsx` calls `startI18n()` before the first render and updates the document's
-`lang` when the language changes.
+The browser entry, `@alpacawork/i18n`, exports `startI18n`, `activateLocale` and `i18n`. It loads
+web catalogs through Vite. `apps/web/src/main.tsx` calls `startI18n()` before the first render and sets
+the document's `lang` to the active catalog code on each language change.
 
 A component chooses its feature namespace:
 
@@ -93,10 +92,13 @@ Outside React, evaluate `i18n.t("namespace:key")` when the function is called. D
 module initialization: that freezes text before the language is chosen and prevents later changes
 from taking effect.
 
-`startI18n()` uses the first supported base language in `navigator.languages` as a loading hint,
-falling back to English. The server owns the saved screen-language setting, `language`: its first
-settings read can initialize it from `Accept-Language`, and the web settings store applies saved
-changes through `activateLocale`. Missing or empty translations fall back to English.
+The browser uses `navigator.languages` as a loading hint. The server initializes the saved screen
+setting, `language`, from the first settings read that names a language in `Accept-Language`, in
+quality order. Both use the shared BCP 47 matcher. It takes the first preference whose language
+and writing system match a catalog, so `es-MX` uses `es` and `zh-Hant` skips the Simplified Chinese
+catalog. A bare language fallback inserted by a browser inherits the earlier preference's writing
+system. English is the fallback when no preference matches and when a translation is missing
+or empty. The web settings store applies saved choices through `activateLocale`.
 
 For dates and numbers, pass the active language to the formatter, such as
 `date.toLocaleString(i18n.language)` or `new Intl.NumberFormat(i18n.language)`. Do not hardcode a
@@ -120,8 +122,9 @@ const line = t("server:setup.title");
 ```
 
 Installation commands select the language from the first nonempty value of `LC_ALL`, `LC_MESSAGES`
-and `LANG`. The current selector recognizes Japanese and otherwise uses English. Notifications use
-the saved screen language, independently of the AI reply language.
+and `LANG`, using the shared matcher after converting POSIX locale names to BCP 47 tags.
+Notifications use the saved screen language. `setup --lang` matches its BCP 47 input to a catalog
+for the confirmation and the new workspace's screen, and saves the complete tag for AI replies.
 
 `serverText` replaces each `{{name}}` once with a supplied string or number. Replacement values are
 not interpreted again, so paths or titles containing `{{...}}` stay as written. A numeric `count`
@@ -175,25 +178,13 @@ Once saved in a Run prompt, it is record data and is not translated again.
 
 ## Adding a language
 
-Creating a catalog directory alone does not enable a language. The current build has explicit
-English/Japanese registrations in the following places; extend them together when adding a locale.
-
 | Area | Required updates |
 | --- | --- |
-| Catalogs and extraction | Add `src/locales/<locale>/` with every namespace, translate its entries, and add the locale to `locales` in `i18next.config.ts`. Include the locale's plural forms. |
-| Browser registration | Import its web catalogs and register them in `locales` and `resources` in `src/index.ts`. Review `detectLocale()`, which currently reduces browser tags to their base language. |
-| Node registration | Extend `ServerLocale`, import its `server.json` and register its resources in `src/server.ts`. |
-| Screen selection and validation | Add the `language` option in `packages/contract/src/personal-settings.ts` and its `panels:settings.personal.option.<locale>` label in every locale. The settings screen renders these definitions; validation uses the same options. Extend `applyLanguage` in `apps/web/src/data/personal-settings.ts`. |
-| First-use detection | Extend `languageFrom` in `apps/backend/src/receiver/person-state.ts`, including its accepted tags and return type. Keep browser detection and the server's `Accept-Language` handling consistent. |
-| Terminal and notifications | Extend `installationLanguage` in `apps/backend/src/installation/confirmation.ts` and the language selection in `apps/backend/src/receiver/push.ts` and `receiver/server.ts`. Update the boolean Japanese/English argument of `serviceStartupAdvice` in `apps/backend/src/installation/public-setup.ts`. |
-| AI and CLI guidance | Keep the coordinator skill's reply-language rules aligned with the separate `language` and `ai.language` settings, retaining supported BCP 47 reply tags beyond the UI locales. Update the screen-language list in the settings help in `packages/contract/src/cli-commands.ts`. |
-| Linked documentation | Add `docs/<locale>/telemetry.md`, as required by the locale-specific telemetry policy link in `packages/contract/src/telemetry.ts`. English uses `docs/telemetry.md`. Translations of the other guides under `docs/` go in the same folder. |
-| Checks | Run extraction and the filled-catalog check. Extend language-specific assertions in settings, field-display, reply-language, terminal and notification tests, and verify the new language through the screen's settings and first-use flow. |
-
-The filled-catalog checker already iterates the configured locale list. Other tests explicitly name
-English and Japanese, so passing them unchanged does not establish that a new locale works.
-These registrations and restrictions describe the current implementation,
-not a limit on the number of languages the application should support.
+| Locale registry | Add the canonical BCP 47 catalog code to `uiLocales` in [`packages/core/src/ui-language.ts`](../core/src/ui-language.ts). Browser and server detection, settings validation, CLI settings help and catalog extraction read this list. |
+| Catalogs | Add `src/locales/<locale>/` with every namespace and the required plural forms. Add the new `panels:settings.personal.option.<locale>` key to all catalogs, using the language's own name. Settings and the setup picker both use these labels. The browser discovers its catalogs by path. |
+| Server registration | Import the new `server.json` and add its bundle to the typed resource map in `src/server.ts` so Node and the packaged server both include it. |
+| Linked documentation and media | Add `docs/<locale>/telemetry.md` for the locale-specific telemetry policy link and place other translated guides in that directory. English uses `docs/telemetry.md`. The app installation guide uses English screenshots for locales without their own images. |
+| Checks | Run extraction and the filled-catalog check, and verify the new locale through the screen's settings and first-use flow. Exercise regional and script variants in the matcher when their behavior matters. |
 
 ## Checks
 

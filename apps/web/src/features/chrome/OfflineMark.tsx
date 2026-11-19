@@ -17,12 +17,12 @@ import { formatNoticeTime } from "@/domain/time";
  * The time is the feed's last arrival, the newest any of the screen was; none is told before anything arrived.
  */
 export function OfflineMark() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const at = useConnection((state) => state.lastReceivedAt ?? null);
   // A browser that says it is offline has nothing to reconnect to.
   const online = useSyncExternalStore(subscribeOnline, browserOnline);
-  const clock = at ? formatNoticeTime(new Date(at).toISOString()) : "";
+  const clock = at ? formatNoticeTime(new Date(at).toISOString(), i18n.language) : "";
   const label = clock ? `${t("offline.mark")} · ${t("offline.acquired", { time: clock })}` : t("offline.mark");
   const trigger = useRef<HTMLButtonElement>(null);
   return <>

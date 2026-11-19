@@ -1,0 +1,388 @@
+{
+  "allRead": {
+    "done": "已全部标为已读",
+    "failed": "无法标为已读。请重新加载后确认。",
+    "undo": "撤销"
+  },
+  "coordinatorCard": {
+    "attached": "仅附件",
+    "clear": "清空对话",
+    "clearConfirm": "再点一次即可清空",
+    "clearFailed": "无法清空对话。",
+    "clearing": "正在清空…",
+    "clearingHint": "正在清空对话",
+    "clearUnknown": "无法确认对话是否已清空。",
+    "complete": "将此任务标记为已完成",
+    "completeHint": "将 {{id}} 标记为已完成",
+    "conflict": "同一 ID 下已收到不同的内容",
+    "conversationChanged": "对话已切换",
+    "copyAnswer": "复制回复",
+    "deliveryRefused": "智能体未能接收这条消息，消息仍在排队。",
+    "done": "完成",
+    "draft": "草稿",
+    "earlierCount_other": "更早的 {{count}} 条消息",
+    "error": {
+      "attachment": "无法读取附件",
+      "attachmentSave": "无法保存回复中的附件",
+      "config": "无法读取智能体设置",
+      "conversationBusy": "对话正在使用中",
+      "exit": "智能体未完成就退出了",
+      "internal": "处理时出了问题",
+      "interrupted": "已中断",
+      "launch": "无法启动智能体",
+      "output": "无法读取回复",
+      "server": "无法读取服务器连接",
+      "timeout": "超过时限，已停止",
+      "tooLarge": "回复过大",
+      "unreadable": "回复已损坏"
+    },
+    "exchangeFold": "收起",
+    "exchangeOpen": "展开",
+    "expand": "打开对话",
+    "failed": "未能收到回复：{{reason}}",
+    "filesCount_other": "{{count}} 个附件",
+    "fold": "关闭对话",
+    "foldExchange": "收起 {{time}} 的这轮对话",
+    "foldHint": "关闭对话（Esc）",
+    "goToReply": "前往原回复",
+    "height": "卡片高度",
+    "heightHint": "上下拖动可调整高度（向上快速滑动为全屏，向下为关闭）",
+    "interrupted": "发送前已中断",
+    "joinedCount_other": "还有 {{count}} 条",
+    "launchChoiceChanged": "发送时所选的模型等选项现在无法使用。请重新选择后发送",
+    "launchChoiceUnresendable": "发送时所选的模型等选项现在无法重新发送。是否送达将在确认后显示",
+    "loadFailed": "无法加载对话",
+    "loading": "正在加载对话…",
+    "loadingWanted": "加载完成后打开…",
+    "maximize": "最大化对话",
+    "minutes_other": "{{count}} 分钟",
+    "moreMedia_other": "再显示 {{count}} 项",
+    "move": "移动协调员",
+    "moveHint": "拖动可移动 · 双击回到右下角（方向键移动，Alt + 方向键调整大小，Home 复位）",
+    "newAnswer": "新回答",
+    "notCarriedOut": "未执行",
+    "notReached": "检查时无法连接服务器",
+    "open": "与协调员对话",
+    "openExchange": "展开 {{time}} 的这轮对话",
+    "popIn": "放回应用内",
+    "popOut": "在独立窗口中打开",
+    "popOutFailed": "无法打开独立窗口",
+    "popOutHint": "在独立窗口中打开（始终显示在其他应用上方）",
+    "posting": "正在发送…",
+    "queuedLocally": "排队中",
+    "queueEmpty": "没有待发送的消息",
+    "readerConfirmed": "已发送给“{{tasks}}”。",
+    "readerTargetSeparator": "、",
+    "readerUnconfirmed": "无法确认发给“{{tasks}}”的消息是否送达，请检查。",
+    "reattachFiles_other": "请重新添加 {{count}} 个附件。",
+    "reattachNamedFiles": "请重新添加 {{names}}。",
+    "refused": "未发送（{{reason}}）",
+    "refusedKept": "未发送（{{reason}}）。消息仍保留在聊天中。",
+    "refusedRestored": "未发送（{{reason}}）。已放回输入框。",
+    "removeContext": "移除 {{id}}",
+    "removeTask": "移除 {{id}}",
+    "replyAnswer": "回复这条消息",
+    "replyLabel": "{{time}} 的回复",
+    "replySource": "协调员的回复",
+    "replyUnavailable": "无法获取回复对象",
+    "resend": "重新发送",
+    "resizeBoth": "拖动可调整大小",
+    "resizeHeight": "拖动可调整对话高度",
+    "resizeWidth": "拖动可调整宽度",
+    "restore": "恢复对话大小",
+    "retry": "重新发送",
+    "returnFromReply": "返回 {{time}} 的消息",
+    "seconds_other": "{{count}} 秒",
+    "send": "发送",
+    "sendFailed": "发送失败，请重试。",
+    "sendNow": "立即发送",
+    "sendNowFailed": "发送失败，消息仍在排队。",
+    "sendNowHint": "在工作的下一个间隙读取（不会中断工作）",
+    "sendNowUnknown": "无法确认消息是否已发送。",
+    "sendTo": "给协调员发消息",
+    "sentDuringWork": "工作期间发送",
+    "serverRefused": "被服务器拒绝",
+    "sheetHint": "拖动可调整高度\n上滑全屏，下滑关闭",
+    "soon": "即将发送",
+    "speak": "用语音告诉协调员",
+    "speakHint": "按下说话",
+    "takeBack": "放回输入框",
+    "takeBackHint": "清空输入框后可放回",
+    "takeBackParked": "放回输入框 · {{task}}",
+    "thinking": "正在处理…",
+    "title": "协调员",
+    "unconfirmed": "无法确认是否送达。",
+    "unconfirmedToast": "无法确认是否送达。请在对话中重新发送或撤回。",
+    "unknown": "原因不明",
+    "viewImage": "放大查看 {{name}}",
+    "waitingCount_other": "{{count}} 条待发送",
+    "waitingMessages": "待发送的消息",
+    "warm": {
+      "examples": {
+        "policy": {
+          "label": "把一条固定规则加入准则",
+          "words": "请在项目准则中加上这一条：“报告先写结论，用 3 行写完。”"
+        },
+        "research": {
+          "label": "让 AI 调研并比较方案",
+          "words": "请调研（你想了解的主题），比较 3 个方案，并在决定前先问我。"
+        },
+        "steer": {
+          "label": "给进行中的工作追加指示",
+          "words": "请告诉进行中的任务，把范围缩小到下午 5 点前能完成的部分。"
+        },
+        "turn": {
+          "label": "问问有哪些事在等我",
+          "words": "请告诉我现在有哪些事在等我回答或验收。"
+        }
+      },
+      "failed": "无法启动协调员。",
+      "preparing": "正在启动协调员",
+      "ready": "你好，有什么可以帮你？",
+      "start": "在任务列表中选一个示例，或直接写下你的需求。"
+    },
+    "window": "协调员 — alpacawork",
+    "withdraw": "撤回",
+    "withdrawFailed": "无法撤回消息。",
+    "withdrawing": "正在撤回…",
+    "withdrawKeptUnknown": "可以从这里把输入内容放回。无法确认之前那次运行的结果。",
+    "withdrawn": "已撤回。",
+    "withdrawRecoveredUnknown": "已把输入内容放回。无法确认之前那次运行的结果。",
+    "withdrawRestored": "已撤回并放回输入框。",
+    "withdrawRestoredUnknown": "已放回输入框。无法确认之前那次运行的结果。",
+    "withdrawStarted": "已经开始处理，无法撤回。",
+    "withdrawUnknown": "无法确认是否已撤回。",
+    "working": "{{words}} {{seconds}} 秒",
+    "you": "你"
+  },
+  "copied": "已复制",
+  "copyFailed": "无法复制。请选中显示的文本后手动复制。",
+  "defaultField": {
+    "artifact": {
+      "hint": "每个成果一条：`[名称](位置) — 是什么、版本`。位置：在任务文件夹内的写相对路径，代码写绝对路径，其他写 URL 或分支加提交。内容的说明写在链接指向的文件里。只有用户要读措辞本身来做决定时，才用 `![差异](changes.patch)` 附上差异。",
+      "title": "成果"
+    },
+    "conclusion": {
+      "hint": "用 3 句话写出父任务和列表需要知道的事：发现了什么、决定了什么、推荐什么、是否在等回答。界面细节和数字写在备注或成果里。不要重复提问里的内容。",
+      "title": "结论"
+    },
+    "conditions": {
+      "hint": "每个条件一条：`<条件> — 已满足|未满足|未确认（依据所在位置）`。依据的细节和测试数量写在链接指向的文件里。",
+      "title": "完成条件"
+    },
+    "decide": {
+      "hint": "只在需要对方做决定时填写。一次写一个提问：待决定的事、选项（名称和说明）和补充。编号按排列顺序生成。选项名称的第一个词（到第一个空格为止）会成为回答按钮和回答用词；同一个提问内不要重复，也不要以应用保留的 `stop` 或 `other` 开头。回答会以 `<编号>-<名称的第一个词>` 加上附带的话送达；`<编号>-other` 表示哪个选项都不选，并附上改为怎么做。收到回答后用 null 清除。",
+      "title": "提问"
+    },
+    "decide_choice": {
+      "title": "名称"
+    },
+    "decide_choice_detail": {
+      "hint": "用 3 行写：选了会有什么变化、弱点是什么。图片写成 `![对象或动作](任务内的相对路径)`，每行一张。检查的经过和选定后的步骤写在备注里。",
+      "title": "说明"
+    },
+    "decide_choice_recommended": {
+      "hint": "只写在你推荐的那一个选项上：用一句话说明理由。界面会给该选项加上推荐标记。",
+      "title": "推荐"
+    },
+    "decide_choices": {
+      "title": "选项"
+    },
+    "decide_note": {
+      "hint": "写共同的前提、示例的链接和停止的时间。不要重复选项的说明或检查记录。",
+      "title": "补充"
+    },
+    "decide_question": {
+      "hint": "用一句话写出要选什么。背景写在补充里。",
+      "title": "待决定的事"
+    },
+    "decide_stop": {
+      "hint": "只在停止任务也是选择之一时填写：用 3 行说明在这里停止意味着什么。它会作为单独的选项（`<编号>-stop`）出现，选它的人不是回答，而是停止任务。不要把它写成选项之一。",
+      "title": "停止"
+    },
+    "forbidden": {
+      "hint": "只有此任务不能做的事。项目准则已经禁止的不用再写。没有就不填。",
+      "title": "禁止事项"
+    },
+    "goal": {
+      "hint": "判断任务完成的一个决定性标志：必须具备什么。手段写在“准则”里，不做的事写在“禁止事项”里。",
+      "title": "目标"
+    },
+    "left_running": {
+      "hint": "每个正在运行的东西一条：是什么、在哪里、何时停止、停止它的那一条命令。没有就写 `无`。重启和清理的方法写在任务文件夹的文件里。",
+      "title": "运行中的进程"
+    },
+    "notes": {
+      "hint": "下一个智能体接手所需要的内容：当前有效的决定及理由、用一行写决定是怎么改的（否决的方案及理由）、可能改变决定的未确认事项、下一步及其位置。命令、测试数量和工作步骤写在任务文件夹的文件里，并从成果中链接。",
+      "title": "备注"
+    },
+    "policy": {
+      "hint": "此任务做法的要点。经过和理由写在备注里。不要照抄项目准则。",
+      "title": "准则"
+    },
+    "pr": {
+      "hint": "只在创建了 PR（MR）时填写：每个 PR 一个 URL。",
+      "title": "PR（MR）"
+    },
+    "project_policy": {
+      "hint": "这里写的内容会原样写入此项目中每一项工作的指示。例如：目的（这个项目是做什么的）、你偏好的做事方式（哪些可以交给智能体决定、哪些要先问你）、不能做的事。",
+      "title": "项目准则"
+    },
+    "remaining": {
+      "hint": "每项剩余工作一条：`<做什么> — <谁来做／在等什么>`（恢复的条件）。步骤和命令写在任务文件夹的文件里。做完的要删掉。",
+      "title": "剩余工作"
+    },
+    "size": {
+      "list_other": "最多 {{count}} 条。",
+      "text_other": "约 {{count}} 字。",
+      "textList_other": "每条约 {{chars}} 字，最多 {{count}} 条。"
+    },
+    "user_instructions": {
+      "hint": "写在顶层任务上：用户仍然有效的发言和决定，格式为 `<日期 时:分> “原话”`（用户当地时间，24 小时制，例如 `2026-11-11 09:06 “…”`）。同一个要点合并到最新的一条，并补上经过，例如“（3 个方案 → B → 方案 1）”。发言很长时只引用关键部分。不写已被取代的发言、中途的方案、命令和附件的说明（原文保留在历史中）。会写入下方所有任务的启动提示词。",
+      "title": "用户指示"
+    }
+  },
+  "field": {
+    "optional": "可选"
+  },
+  "input": {
+    "cancelVoice": "取消录音",
+    "copyProject": "复制 {{id}}",
+    "enterHint": "Enter 发送 · Shift+Enter 换行（⌘/Ctrl+Enter 也可发送）",
+    "expand": "增加输入框高度",
+    "noMatches": "没有匹配的项",
+    "openProject": "在列表中查看",
+    "openTask": "打开",
+    "placeholder": "管理任务、委托工作，都在这里",
+    "placeholderFolded": "有什么需求都写在这里",
+    "placeholderProject": "向此项目发送指示",
+    "placeholderTask": "向 {{id}} 发送指示",
+    "placeholderTasks": "向 {{id}} 等发送指示",
+    "project": "项目",
+    "projects": "项目",
+    "questionsChanged": "提问已更改，请重新选择回答。",
+    "recording": "录音中",
+    "remove": "移除",
+    "shrink": "降低输入框高度",
+    "skillReasons": {
+      "launch": "此启动配置不支持技能列表",
+      "limit": "技能列表超出读取上限",
+      "managed": "无法确认组织的技能设置",
+      "plugins": "无法确认已启用插件的技能",
+      "settings": "无法可靠地读取技能设置",
+      "system": "无法确认 Codex 的系统技能",
+      "unreadable": "某个技能位置无法读取"
+    },
+    "skills": "使用技能",
+    "skillsChanged": "请从此智能体可用的技能中重新选择",
+    "skillsUnavailable": "无法确认可用的技能",
+    "skipAnswer": "不回答这个提问",
+    "storageUnavailable": "无法保存草稿。为避免重复发送，已暂停发送。关闭前请先复制你的文字。",
+    "tasks": "插入任务或项目",
+    "touchEnterHint": "Enter 换行 · 用按钮发送（⌘/Ctrl+Enter 也可发送）",
+    "transcribing": "正在转写…",
+    "viewing": "正在查看"
+  },
+  "loading": "正在加载",
+  "role": {
+    "coordinator": "协调员",
+    "coordinatorDescription": "代你协调各个智能体"
+  },
+  "run": {
+    "cause": {
+      "modelCapacity": "模型容量已满，运行失败。请稍后重试、换一个模型重试，或停止",
+      "weeklyLimit": "智能体已达到每周用量上限，运行失败。请在上限重置后重试，或停止"
+    },
+    "causeReason": {
+      "modelCapacity": "模型容量已满",
+      "weeklyLimit": "已达到每周用量上限"
+    }
+  },
+  "state": {
+    "doing": "进行中",
+    "done": "已完成",
+    "error": "出错",
+    "held": "已搁置",
+    "stopped": "已停止",
+    "todo": "未开始",
+    "waitingReview": "待验收"
+  },
+  "turn": {
+    "continue": "继续",
+    "question": "提问",
+    "reason": {
+      "children": "此次运行的委托数已达上限。请查看工作情况，必要时另行发送指示",
+      "depth": "委托的层级已达上限。请查看结果，必要时发送新的指示",
+      "failed": "智能体的运行失败，或没有报告就结束了。请选择重试或停止",
+      "limit_other": "自动往来已达上限并停止（{{count}} 条等待中）",
+      "noProfile": "此智能体没有启动配置。请检查设置后发送指示",
+      "notResumable": "无法继续此智能体之前的对话。请发送指示以开始新对话",
+      "refused": "后续的委托被拒绝。请确认原因后发送新的指示",
+      "responsibleUnavailable": "无法启动给负责人的委托。请检查负责人的指派和启动配置，然后重新发送指示",
+      "unconfirmed": "无法确认回复是否已送达智能体。请查看结果，必要时发送指示"
+    },
+    "retry": "重试",
+    "stop": "停止"
+  },
+  "undo": {
+    "offer": {
+      "approve": "已将 {{task}} 标记为已完成",
+      "approveUndone": "已撤销完成",
+      "archive": "已归档 {{task}}",
+      "archiveUndone": "已撤销归档",
+      "cancelled": "已撤销",
+      "delete": "已删除 {{task}}",
+      "deleteUndone": "已撤销删除",
+      "hold": "已搁置 {{task}}",
+      "holdUndone": "已撤销搁置",
+      "message": "已发送",
+      "messageUndone": "已撤回消息",
+      "move": "已移动 {{task}}",
+      "moveUndone": "已撤销移动",
+      "projectCreate": "已创建项目",
+      "projectCreateUndone": "已撤销创建项目",
+      "responsible": "已更换 {{task}} 的负责人",
+      "responsibleUndone": "已撤销更换负责人",
+      "restore": "已恢复 {{task}}",
+      "restoreUndone": "已撤销恢复",
+      "unhold": "已取消搁置 {{task}}",
+      "unholdUndone": "已重新搁置"
+    }
+  },
+  "work": {
+    "agentAssign": "正在指派智能体…",
+    "agentHandover": "正在交接给新的负责人…",
+    "agentRelease": "正在解除智能体的指派…",
+    "fieldRead": "正在查看字段设置…",
+    "runRead": "正在查看运行结果…",
+    "runStop": "正在停止运行…",
+    "taskComment": "正在给任务添加记录…",
+    "taskMove": "正在移动任务…",
+    "taskNew": "正在创建任务…",
+    "taskRead": "正在查看任务…",
+    "taskReport": "正在更新任务的状态和报告…",
+    "taskRequest": "正在向智能体发送委托…",
+    "taskUpdate": "正在更新任务…"
+  },
+  "workName": {
+    "agentAssign": "指派智能体",
+    "agentHandover": "交接负责人",
+    "agentRelease": "解除智能体指派",
+    "command": "命令",
+    "edit": "编辑文件",
+    "fieldRead": "查看字段设置",
+    "file": "读取文件",
+    "runRead": "查看运行结果",
+    "runStop": "停止运行",
+    "search": "搜索文件",
+    "taskComment": "任务记录",
+    "taskMove": "移动任务",
+    "taskNew": "新建任务",
+    "taskRead": "查看任务",
+    "taskReport": "任务状态和报告",
+    "taskRequest": "给智能体的委托",
+    "taskUpdate": "更新任务",
+    "tool": "工具",
+    "web": "网页搜索"
+  }
+}

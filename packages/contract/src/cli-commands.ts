@@ -1,3 +1,4 @@
+import { uiLocales } from '@alpacawork/core/ui-language';
 import { AGENT_CHECK_MS, agentInspectionSchema } from './server-settings.js';
 /** The ordinary CLI's wire commands and what -h says of them. The receiver can register these paths and schemas. */
 import { z } from 'zod';
@@ -97,7 +98,7 @@ const agentsHelp = 'agents: profiles in order; a coordinator message that names 
   'Use [] for an empty candidate or environment list, and {} for an empty without map.';
 
 /** The settings a person or the coordinator changes from the command line (settings get, settings set). */
-const settingsHelp = 'language: the screen\'s language (en or ja). ai.language: the language the AI replies to the user in, ' +
+const settingsHelp = `language: the screen's language (${uiLocales.join(', ')}). ai.language: the language the AI replies to the user in, ` +
   'a BCP 47 tag such as ja-JP, or null while none is chosen; the screen does not show it. ' +
   'The others are the screen\'s theme and notification choices, as settings get lists them.';
 

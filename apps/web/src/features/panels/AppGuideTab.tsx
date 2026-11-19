@@ -41,7 +41,7 @@ const INSTALL_CAPTURE = { en: { light: installEnLight, dark: installEnDark }, ja
 function DesktopApp() {
   const { t, i18n } = useTranslation("panels");
   const installed = useInstalledApp();
-  const capture = INSTALL_CAPTURE[i18n.language.startsWith("ja") ? "ja" : "en"];
+  const capture = INSTALL_CAPTURE[i18n.language === "ja" ? "ja" : "en"];
   return <Part id="app-guide-desktop" title={t("settings.apps.desktopTitle")}>
     {installed ? <p>{t("settings.apps.desktopInstalled")}</p> : <>
       <p><Trans t={t} i18nKey="settings.apps.desktopBody" components={{ ui: <UiName /> }} /></p>

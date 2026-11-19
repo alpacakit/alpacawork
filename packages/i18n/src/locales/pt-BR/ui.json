@@ -1,0 +1,412 @@
+{
+  "allRead": {
+    "done": "Tudo marcado como lido",
+    "failed": "Não foi possível marcar como lido. Recarregue para verificar.",
+    "undo": "Desfazer"
+  },
+  "coordinatorCard": {
+    "attached": "Somente anexos",
+    "clear": "Limpar conversa",
+    "clearConfirm": "Clique de novo para limpar",
+    "clearFailed": "Não foi possível limpar a conversa.",
+    "clearing": "Limpando…",
+    "clearingHint": "Limpando a conversa",
+    "clearUnknown": "Não foi possível confirmar se a conversa foi limpa.",
+    "complete": "Marcar esta tarefa como concluída",
+    "completeHint": "Marcar {{id}} como concluída",
+    "conflict": "já chegou um conteúdo diferente com o mesmo ID",
+    "conversationChanged": "A conversa mudou",
+    "copyAnswer": "Copiar resposta",
+    "deliveryRefused": "O agente não pôde receber a mensagem. Ela continua na fila.",
+    "done": "Concluir",
+    "draft": "Rascunho",
+    "earlierCount_one": "{{count}} mensagem anterior",
+    "earlierCount_many": "{{count}} mensagens anteriores",
+    "earlierCount_other": "{{count}} mensagens anteriores",
+    "error": {
+      "attachment": "Não foi possível ler o anexo",
+      "attachmentSave": "Não foi possível salvar os anexos da resposta",
+      "config": "Não foi possível ler as configurações do agente",
+      "conversationBusy": "A conversa está em uso",
+      "exit": "O agente encerrou antes de terminar",
+      "internal": "Algo deu errado durante o processamento",
+      "interrupted": "Interrompido",
+      "launch": "Não foi possível iniciar o agente",
+      "output": "Não foi possível ler a resposta",
+      "server": "Não foi possível ler a conexão com o servidor",
+      "timeout": "Parou ao atingir o limite de tempo",
+      "tooLarge": "A resposta é grande demais",
+      "unreadable": "A resposta está corrompida"
+    },
+    "exchangeFold": "Recolher",
+    "exchangeOpen": "Expandir",
+    "expand": "Abrir a conversa",
+    "failed": "Não foi possível receber uma resposta: {{reason}}",
+    "filesCount_one": "{{count}} anexo",
+    "filesCount_many": "{{count}} anexos",
+    "filesCount_other": "{{count}} anexos",
+    "fold": "Fechar a conversa",
+    "foldExchange": "Recolher a troca das {{time}}",
+    "foldHint": "Fechar a conversa (Esc)",
+    "goToReply": "Ir para a resposta original",
+    "height": "Altura do cartão",
+    "heightHint": "Arraste para cima ou para baixo para redimensionar (deslize rápido para cima para tela cheia, para baixo para fechar)",
+    "interrupted": "Interrompido antes do envio",
+    "joinedCount_one": "mais {{count}}",
+    "joinedCount_many": "mais {{count}}",
+    "joinedCount_other": "mais {{count}}",
+    "launchChoiceChanged": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados agora. Escolha de novo e envie",
+    "launchChoiceUnresendable": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados para reenviar agora. Você verá se ela chegou assim que isso for confirmado",
+    "loadFailed": "Não foi possível carregar a conversa",
+    "loading": "Carregando a conversa…",
+    "loadingWanted": "Abre assim que terminar de carregar…",
+    "maximize": "Maximizar a conversa",
+    "minutes_one": "{{count}} minuto",
+    "minutes_many": "{{count}} minutos",
+    "minutes_other": "{{count}} minutos",
+    "moreMedia_one": "Mostrar mais {{count}}",
+    "moreMedia_many": "Mostrar mais {{count}}",
+    "moreMedia_other": "Mostrar mais {{count}}",
+    "move": "Mover o coordenador",
+    "moveHint": "Arraste para mover · clique duas vezes para voltar ao canto inferior direito (as setas movem, Alt + setas redimensionam, Home volta ao lugar)",
+    "newAnswer": "Nova resposta",
+    "notCarriedOut": "Não executado",
+    "notReached": "a verificação não conseguiu acessar o servidor",
+    "open": "Falar com o coordenador",
+    "openExchange": "Expandir a troca das {{time}}",
+    "popIn": "Voltar para o app",
+    "popOut": "Abrir em outra janela",
+    "popOutFailed": "Não foi possível abrir outra janela",
+    "popOutHint": "Abrir em outra janela (fica por cima dos outros apps)",
+    "posting": "Enviando…",
+    "queuedLocally": "Na fila",
+    "queueEmpty": "Nada aguardando envio",
+    "readerConfirmed": "Enviado para “{{tasks}}”.",
+    "readerTargetSeparator": ", ",
+    "readerUnconfirmed": "Não foi possível confirmar se a mensagem para “{{tasks}}” chegou. Verifique.",
+    "reattachFiles_one": "Anexe de novo {{count}} arquivo.",
+    "reattachFiles_many": "Anexe de novo {{count}} arquivos.",
+    "reattachFiles_other": "Anexe de novo {{count}} arquivos.",
+    "reattachNamedFiles": "Anexe de novo {{names}}.",
+    "refused": "Não enviado ({{reason}})",
+    "refusedKept": "Não enviado ({{reason}}). Continua no chat.",
+    "refusedRestored": "Não enviado ({{reason}}). Voltou para o campo de mensagem.",
+    "removeContext": "Remover {{id}}",
+    "removeTask": "Remover {{id}}",
+    "replyAnswer": "Responder a esta mensagem",
+    "replyLabel": "Resposta das {{time}}",
+    "replySource": "Resposta do coordenador",
+    "replyUnavailable": "Mensagem respondida indisponível",
+    "resend": "Enviar novamente",
+    "resizeBoth": "Arraste para redimensionar",
+    "resizeHeight": "Arraste para redimensionar a conversa",
+    "resizeWidth": "Arraste para mudar a largura",
+    "restore": "Restaurar o tamanho da conversa",
+    "retry": "Enviar novamente",
+    "returnFromReply": "Voltar à mensagem das {{time}}",
+    "seconds_one": "{{count}} segundo",
+    "seconds_many": "{{count}} segundos",
+    "seconds_other": "{{count}} segundos",
+    "send": "Enviar",
+    "sendFailed": "Não foi possível enviar. Tente novamente.",
+    "sendNow": "Enviar agora",
+    "sendNowFailed": "Não foi possível enviar. A mensagem continua na fila.",
+    "sendNowHint": "Lida na próxima pausa do trabalho (não interrompe o trabalho)",
+    "sendNowUnknown": "Não foi possível confirmar se a mensagem foi enviada.",
+    "sendTo": "Mensagem para o coordenador",
+    "sentDuringWork": "Enviada durante o trabalho",
+    "serverRefused": "o servidor recusou",
+    "sheetHint": "Arraste para redimensionar\nDeslize para cima para tela cheia, para baixo para fechar",
+    "soon": "Envio em breve",
+    "speak": "Pedir ao coordenador por voz",
+    "speakHint": "Pressione e fale",
+    "takeBack": "Voltar ao campo",
+    "takeBackHint": "Esvazie o campo de mensagem para trazê-la de volta",
+    "takeBackParked": "Voltar ao campo · {{task}}",
+    "thinking": "Trabalhando nisso…",
+    "title": "Coordenador",
+    "unconfirmed": "Não foi possível confirmar se chegou.",
+    "unconfirmedToast": "Não foi possível confirmar se chegou. Envie novamente ou cancele na conversa.",
+    "unknown": "Causa desconhecida",
+    "viewImage": "Ampliar {{name}}",
+    "waitingCount_one": "{{count}} aguardando",
+    "waitingCount_many": "{{count}} aguardando",
+    "waitingCount_other": "{{count}} aguardando",
+    "waitingMessages": "Mensagens aguardando envio",
+    "warm": {
+      "examples": {
+        "policy": {
+          "label": "Adicionar uma regra permanente à política",
+          "words": "Adicione esta regra à política do projeto: \"Os relatórios começam pela conclusão, em 3 linhas.\""
+        },
+        "research": {
+          "label": "Pedir uma pesquisa com comparação de opções",
+          "words": "Pesquise (seu tema), compare 3 opções e me pergunte antes de decidir."
+        },
+        "steer": {
+          "label": "Adicionar uma instrução a um trabalho em andamento",
+          "words": "Diga às tarefas em andamento para reduzirem o escopo ao que dá para terminar até as 17h."
+        },
+        "turn": {
+          "label": "Perguntar o que está esperando por mim",
+          "words": "Me diga o que está aguardando minha resposta ou revisão agora."
+        }
+      },
+      "failed": "Não foi possível iniciar o coordenador.",
+      "preparing": "Iniciando o coordenador",
+      "ready": "Olá. Como posso ajudar?",
+      "start": "Escolha um exemplo na lista de tarefas ou simplesmente escreva o que você precisa."
+    },
+    "window": "Coordenador — alpacawork",
+    "withdraw": "Cancelar",
+    "withdrawFailed": "Não foi possível cancelar a mensagem.",
+    "withdrawing": "Cancelando…",
+    "withdrawKeptUnknown": "Você pode trazer o texto de volta ao campo por aqui. Não foi possível confirmar o resultado da execução anterior.",
+    "withdrawn": "Cancelada.",
+    "withdrawRecoveredUnknown": "O texto voltou para o campo de mensagem. Não foi possível confirmar o resultado da execução anterior.",
+    "withdrawRestored": "Cancelada e devolvida ao campo de mensagem.",
+    "withdrawRestoredUnknown": "Voltou para o campo de mensagem. Não foi possível confirmar o resultado da execução anterior.",
+    "withdrawStarted": "Já tinha começado, por isso não foi possível cancelar.",
+    "withdrawUnknown": "Não foi possível confirmar se foi cancelada.",
+    "working": "{{words}} {{seconds}}s",
+    "you": "Você"
+  },
+  "copied": "Copiado",
+  "copyFailed": "Não foi possível copiar. Selecione o texto exibido e copie.",
+  "defaultField": {
+    "artifact": {
+      "hint": "Uma linha por entrega: `[nome](local) — o que é, revisão`. O local é um caminho relativo dentro da pasta da tarefa, um caminho absoluto para código ou, nos outros casos, uma URL ou uma branch e um commit. Coloque a descrição do conteúdo no arquivo vinculado. Anexe um diff como `![diff](changes.patch)` somente quando o usuário decide lendo o próprio texto.",
+      "title": "Entregas"
+    },
+    "conclusion": {
+      "hint": "O que a tarefa pai e a lista precisam saber, em 3 frases: o que foi encontrado, o que foi decidido, a recomendação e se há uma resposta pendente. Detalhes de tela e números vão nas notas ou nas entregas. Não repita o que uma pergunta já diz.",
+      "title": "Conclusão"
+    },
+    "conditions": {
+      "hint": "Uma linha por condição: `<condição> — atendida|não atendida|não verificada (onde está a evidência)`. Detalhes da evidência e contagens de testes vão no arquivo vinculado.",
+      "title": "Condições de conclusão"
+    },
+    "decide": {
+      "hint": "Escreva somente quando algo precisa ser decidido. Uma pergunta por vez: o que decidir, as opções (nome e descrição) e uma nota. Os números seguem a ordem. A primeira palavra do nome de uma opção (até o primeiro espaço) vira o botão e a palavra da resposta; não a repita dentro de uma pergunta e não comece um nome com `stop` ou `other`, que o app reserva. A resposta chega como `<número>-<primeira palavra do nome>` com as palavras que forem acrescentadas; `<número>-other` diz que nenhuma das opções serve, com o que fazer no lugar. Limpe com null depois da resposta.",
+      "title": "Perguntas"
+    },
+    "decide_choice": {
+      "title": "Nome"
+    },
+    "decide_choice_detail": {
+      "hint": "Em 3 linhas: o que muda se for escolhida e qual é o ponto fraco. Imagens como `![assunto ou ação](caminho relativo na tarefa)`, uma por linha. O histórico de revisões e os passos depois da escolha vão nas notas.",
+      "title": "Descrição"
+    },
+    "decide_choice_recommended": {
+      "hint": "Somente na única opção que você recomenda: o motivo, em uma frase. A tela marca essa opção como recomendada.",
+      "title": "Recomendada"
+    },
+    "decide_choices": {
+      "title": "Opções"
+    },
+    "decide_note": {
+      "hint": "Premissas em comum, links para prévias e quando as coisas param. Não repita as descrições das opções nem as notas de revisão.",
+      "title": "Nota"
+    },
+    "decide_question": {
+      "hint": "Uma frase sobre o que escolher. O contexto vai na nota.",
+      "title": "O que decidir"
+    },
+    "decide_stop": {
+      "hint": "Somente quando parar a tarefa é uma das possibilidades: o que parar significa aqui, em 3 linhas. É oferecida como uma opção à parte (`<número>-stop`), e quem a escolhe para a tarefa em vez de responder. Não a escreva como uma das opções.",
+      "title": "Parar"
+    },
+    "forbidden": {
+      "hint": "O que só esta tarefa não pode fazer. Deixe de fora o que a política do projeto já proíbe. Não escreva nada se não houver.",
+      "title": "Proibido"
+    },
+    "goal": {
+      "hint": "Um único sinal decisivo de que a tarefa está concluída: o que precisa estar pronto. Os meios vão em Política; o que não fazer vai em Proibido.",
+      "title": "Objetivo"
+    },
+    "left_running": {
+      "hint": "Uma linha por coisa em execução agora: o quê, onde, quando para e o único comando que a faz parar. Escreva `nenhum` se não houver. Como reiniciar e limpar vai em arquivos na pasta da tarefa.",
+      "title": "Processos em execução"
+    },
+    "notes": {
+      "hint": "O que o próximo agente precisa para continuar: as decisões em vigor e o motivo, uma linha sobre como uma decisão mudou (opções rejeitadas e por quê), pontos não verificados que poderiam mudar uma decisão e o próximo passo e onde. Comandos, contagens de testes e passos do trabalho vão em arquivos na pasta da tarefa, vinculados nas entregas.",
+      "title": "Notas"
+    },
+    "policy": {
+      "hint": "Pontos principais de como esta tarefa é conduzida. Histórico e motivos vão nas notas. Não copie a política do projeto.",
+      "title": "Política"
+    },
+    "pr": {
+      "hint": "Somente quando um PR (MR) foi aberto: uma URL por PR.",
+      "title": "PR (MR)"
+    },
+    "project_policy": {
+      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: o propósito (para que serve o projeto), como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
+      "title": "Política do projeto"
+    },
+    "remaining": {
+      "hint": "Uma linha por trabalho que falta: `<o quê> — <quem / aguardando o quê>` (a condição para retomar). Passos e comandos vão em arquivos na pasta da tarefa. Remova o que já foi feito.",
+      "title": "Trabalho restante"
+    },
+    "size": {
+      "list_one": "Até {{count}} item.",
+      "list_many": "Até {{count}} itens.",
+      "list_other": "Até {{count}} itens.",
+      "text_one": "Cerca de {{count}} caractere.",
+      "text_many": "Cerca de {{count}} caracteres.",
+      "text_other": "Cerca de {{count}} caracteres.",
+      "textList_one": "Cerca de {{chars}} caracteres cada, até {{count}} item.",
+      "textList_many": "Cerca de {{chars}} caracteres cada, até {{count}} itens.",
+      "textList_other": "Cerca de {{chars}} caracteres cada, até {{count}} itens."
+    },
+    "user_instructions": {
+      "hint": "Na tarefa do topo, as falas e decisões do usuário que ainda valem, como `<data hh:mm> “palavras originais”` (hora local do usuário, formato de 24 horas, por exemplo `2026-11-11 09:06 “…”`). Junte o mesmo ponto na versão mais recente e acrescente como se chegou a ela, como “(3 opções → B → opção 1)”. Cite só a parte essencial de uma fala longa. Deixe de fora falas substituídas, opções intermediárias, comandos e descrições de anexos (o original fica no Histórico). Entra nos prompts de inicialização de todas as tarefas abaixo.",
+      "title": "Instruções do usuário"
+    }
+  },
+  "field": {
+    "optional": "Opcional"
+  },
+  "input": {
+    "cancelVoice": "Cancelar gravação",
+    "copyProject": "Copiar {{id}}",
+    "enterHint": "Enter para enviar · Shift+Enter para nova linha (⌘/Ctrl+Enter também envia)",
+    "expand": "Aumentar o campo",
+    "noMatches": "Nenhum item encontrado",
+    "openProject": "Ver na lista",
+    "openTask": "Abrir",
+    "placeholder": "Gerencie tarefas e solicite trabalho, tudo por aqui",
+    "placeholderFolded": "Peça o que precisar aqui",
+    "placeholderProject": "Envie instruções para este projeto",
+    "placeholderTask": "Envie instruções para {{id}}",
+    "placeholderTasks": "Envie instruções para {{id}} e outras",
+    "project": "Projeto",
+    "projects": "Projetos",
+    "questionsChanged": "As perguntas mudaram. Escolha suas respostas de novo.",
+    "recording": "Gravando",
+    "remove": "Remover",
+    "shrink": "Diminuir o campo",
+    "skillReasons": {
+      "launch": "Este perfil de inicialização não oferece lista de skills",
+      "limit": "A lista de skills passa do limite de leitura",
+      "managed": "Não é possível verificar as configurações de skills da organização",
+      "plugins": "Não é possível verificar as skills dos plugins ativados",
+      "settings": "Não é possível ler as configurações de skills com segurança",
+      "system": "Não é possível verificar as skills de sistema do Codex",
+      "unreadable": "Não é possível ler um dos locais de skills"
+    },
+    "skills": "Usar uma skill",
+    "skillsChanged": "Escolha de novo entre as skills que este agente pode usar",
+    "skillsUnavailable": "Não foi possível verificar as skills disponíveis",
+    "skipAnswer": "Deixar esta pergunta sem resposta",
+    "storageUnavailable": "Não foi possível salvar o rascunho. O envio está pausado para evitar duplicatas. Copie seu texto antes de fechar.",
+    "tasks": "Inserir uma tarefa ou um projeto",
+    "touchEnterHint": "Enter para nova linha · Use o botão para enviar (⌘/Ctrl+Enter também envia)",
+    "transcribing": "Transcrevendo…",
+    "viewing": "Em exibição"
+  },
+  "loading": "Carregando",
+  "role": {
+    "coordinator": "Coordenador",
+    "coordinatorDescription": "Coordena os agentes em seu nome"
+  },
+  "run": {
+    "cause": {
+      "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Tente novamente mais tarde ou com outro modelo, ou pare",
+      "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare"
+    },
+    "causeReason": {
+      "modelCapacity": "O modelo está sobrecarregado",
+      "weeklyLimit": "Limite semanal de uso atingido"
+    }
+  },
+  "state": {
+    "doing": "Em andamento",
+    "done": "Concluída",
+    "error": "Erro",
+    "held": "Adiada",
+    "stopped": "Parada",
+    "todo": "Não iniciada",
+    "waitingReview": "Aguardando revisão"
+  },
+  "turn": {
+    "continue": "Continuar",
+    "question": "Pergunta",
+    "reason": {
+      "children": "A execução atingiu o limite de solicitações. Revise o trabalho e envie outra instrução se precisar",
+      "depth": "Limite de profundidade de solicitações atingido. Revise o resultado e envie uma nova instrução se precisar",
+      "failed": "A execução do agente falhou ou terminou sem relatório. Escolha entre tentar novamente ou parar",
+      "limit_one": "As trocas automáticas pararam no limite ({{count}} aguardando)",
+      "limit_many": "As trocas automáticas pararam no limite ({{count}} aguardando)",
+      "limit_other": "As trocas automáticas pararam no limite ({{count}} aguardando)",
+      "noProfile": "Não há perfil de inicialização para este agente. Verifique as configurações e envie uma instrução",
+      "notResumable": "Não é possível continuar a conversa anterior do agente. Envie uma instrução para começar uma nova conversa",
+      "refused": "A solicitação de continuação foi recusada. Verifique o motivo e envie uma nova instrução",
+      "responsibleUnavailable": "Não foi possível iniciar a solicitação ao responsável. Verifique a atribuição do responsável e o perfil de inicialização e envie a instrução novamente",
+      "unconfirmed": "Não foi possível confirmar se a resposta chegou ao agente. Verifique o resultado e envie uma instrução se precisar"
+    },
+    "retry": "Tentar novamente",
+    "stop": "Parar"
+  },
+  "undo": {
+    "offer": {
+      "approve": "Você marcou {{task}} como concluída",
+      "approveUndone": "Conclusão desfeita",
+      "archive": "Você arquivou {{task}}",
+      "archiveUndone": "Arquivamento desfeito",
+      "cancelled": "Desfeito",
+      "delete": "Você excluiu {{task}}",
+      "deleteUndone": "Exclusão desfeita",
+      "hold": "Você adiou {{task}}",
+      "holdUndone": "Adiamento desfeito",
+      "message": "Enviado",
+      "messageUndone": "Mensagem cancelada",
+      "move": "Você moveu {{task}}",
+      "moveUndone": "Movimentação desfeita",
+      "projectCreate": "Projeto criado",
+      "projectCreateUndone": "Criação do projeto desfeita",
+      "responsible": "Você trocou o responsável de {{task}}",
+      "responsibleUndone": "Troca de responsável desfeita",
+      "restore": "Você restaurou {{task}}",
+      "restoreUndone": "Restauração desfeita",
+      "unhold": "Você retomou {{task}}",
+      "unholdUndone": "Adiada novamente"
+    }
+  },
+  "work": {
+    "agentAssign": "Atribuindo um agente…",
+    "agentHandover": "Transferindo para um novo responsável…",
+    "agentRelease": "Liberando um agente…",
+    "fieldRead": "Verificando as configurações dos campos…",
+    "runRead": "Verificando o resultado de uma execução…",
+    "runStop": "Parando uma execução…",
+    "taskComment": "Adicionando uma nota a uma tarefa…",
+    "taskMove": "Movendo uma tarefa…",
+    "taskNew": "Criando uma tarefa…",
+    "taskRead": "Verificando tarefas…",
+    "taskReport": "Atualizando o status e o relatório de uma tarefa…",
+    "taskRequest": "Enviando uma solicitação a um agente…",
+    "taskUpdate": "Atualizando uma tarefa…"
+  },
+  "workName": {
+    "agentAssign": "Atribuição de agente",
+    "agentHandover": "Transferência de responsável",
+    "agentRelease": "Liberação de agente",
+    "command": "Comando",
+    "edit": "Edição de arquivo",
+    "fieldRead": "Verificação dos campos",
+    "file": "Leitura de arquivo",
+    "runRead": "Verificação de resultado",
+    "runStop": "Parada de execução",
+    "search": "Busca em arquivos",
+    "taskComment": "Nota na tarefa",
+    "taskMove": "Movimentação de tarefa",
+    "taskNew": "Nova tarefa",
+    "taskRead": "Verificação de tarefas",
+    "taskReport": "Status e relatório da tarefa",
+    "taskRequest": "Solicitação a um agente",
+    "taskUpdate": "Atualização de tarefa",
+    "tool": "Ferramenta",
+    "web": "Busca na web"
+  }
+}

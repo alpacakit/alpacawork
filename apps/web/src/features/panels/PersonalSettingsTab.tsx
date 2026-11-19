@@ -51,7 +51,8 @@ function PersonalSettingRow({ definition }: { definition: SettingDefinition }) {
   if (definition.shownWhenChanged && !changed.current) return null;
   return <SettingRow id={id} label={label}
     hint={definition.helpKey ? t(definition.helpKey) : undefined} status={status} error={error}>
-    <div className="flex items-center gap-2">
+    {/* On a phone the way to read again stands under the choice, so the choice keeps its width beside the name. */}
+    <div className="flex items-center gap-2 narrow:flex-col-reverse narrow:items-end">
       {retry}
       <SettingControl definition={definition} id={id} value={value} label={label}
         disabled={locked}

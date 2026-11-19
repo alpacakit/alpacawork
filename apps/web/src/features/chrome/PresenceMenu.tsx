@@ -43,7 +43,7 @@ function formatUntil(until: string | null, zone: string, language: string, now: 
   if (!until) return { time: '', tomorrow: false };
   const date = new Date(until);
   const time = new Intl.DateTimeFormat(language, { timeZone: zone, hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).format(date);
-  const day = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const day = new Intl.DateTimeFormat(language, { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' });
   return { time, tomorrow: day.format(date) !== day.format(now) };
 }
 

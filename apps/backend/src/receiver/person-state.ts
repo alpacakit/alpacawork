@@ -1,3 +1,4 @@
+import { uiLocaleFromAcceptLanguage } from '@alpacawork/core/ui-language';
 import { syncFile } from '@alpacawork/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -100,16 +101,6 @@ export function createCoordinatorReadState(root: string) {
       }),
   };
 }
-/** The screen language a reader names first in its Accept-Language; null when it names none (a command line sends none or `*`). */
-function languageFrom(header: string | undefined): 'ja' | 'en' | null {
-  const named = (header ?? '').split(',').map(part => part.trim().split(';')[0]!).filter(tag => tag && tag !== '*');
-  if (!named.length) return null;
-  for (const tag of named) {
-    const base = tag.split('-')[0]!.toLowerCase();
-    if (base === 'ja' || base === 'en') return base;
-  }
-  return 'en';
-}
 /** The revision of settings no one has saved yet: a save may start from it while no file exists. */
 export const UNSAVED_SETTINGS = 'unsaved';
 export function createPersonSettings(root: string, definitions: readonly SettingDefinition[] = personalSettings) {
@@ -145,7 +136,7 @@ export function createPersonSettings(root: string, definitions: readonly Setting
      * language while none is chosen, as the first save; any other read saves nothing.
      */
     get: async (acceptLanguage?: string) => {
-      const language = languageFrom(acceptLanguage), stored = readPerson(root, 'personal-settings.json', parse);
+      const language = uiLocaleFromAcceptLanguage(acceptLanguage), stored = readPerson(root, 'personal-settings.json', parse);
       if (stored && 'language' in stored.value || !language) return stored ? result(stored) :
         { values: view(undefined), revision: UNSAVED_SETTINGS };
       const state = await transaction(root, 'personal-settings.json', parse, (current, put) =>

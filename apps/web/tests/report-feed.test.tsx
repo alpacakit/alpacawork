@@ -1172,11 +1172,11 @@ test("a time stands under its day: the clock alone on that day, else with its ow
   const now = new Date(2026, 9, 27, 3, 0).getTime();
   const local = (year: number, month: number, day: number, hour = 2, minute = 1) => new Date(year, month - 1, day, hour, minute).getTime();
   // Under today, as the lists say it.
-  expect([local(2026, 10, 27), local(2026, 10, 26), local(2026, 10, 28), local(2026, 10, 25), local(2025, 12, 31)].map(at => dayClock(at, now, t)))
+  expect([local(2026, 10, 27), local(2026, 10, 26), local(2026, 10, 28), local(2026, 10, 25), local(2025, 12, 31)].map(at => dayClock(at, now, t, "ja")))
     .toEqual(["02:01", "昨日 02:01", "明日 02:01", "10/25 02:01", "2025/12/31 02:01"]);
   // Under yesterday's divider: its own day is the clock alone, today's says so.
   const yesterday = local(2026, 10, 26, 0, 0);
-  expect([local(2026, 10, 26, 23, 28), local(2026, 10, 27), local(2026, 10, 25)].map(at => dayClock(at, now, t, yesterday)))
+  expect([local(2026, 10, 26, 23, 28), local(2026, 10, 27), local(2026, 10, 25)].map(at => dayClock(at, now, t, "ja", yesterday)))
     .toEqual(["23:28", "今日 02:01", "10/25 02:01"]);
   expect(dayHeading(local(2025, 12, 31), now, t, "ja")).toEqual({ name: null, date: "2025/12/31（水）" });
   expect(dayHeading(local(2026, 10, 26), now, i18n.getFixedT("en", "people"), "en")).toEqual({ name: "Yesterday", date: "Mon 10/26" });
@@ -1187,15 +1187,15 @@ test("in English a time alone starts with a capital, while inside a sentence its
   const en = i18n.getFixedT("en", "people");
   const now = new Date(2026, 9, 27, 3, 0).getTime();
   const tomorrow = new Date(2026, 9, 28, 1, 20).getTime();
-  expect(dayClockLabel(tomorrow, now, en)).toBe("Tomorrow 01:20");
-  expect(dayClock(tomorrow, now, en)).toBe("tomorrow 01:20");
-  expect(en("finish.end", { time: dayClock(tomorrow, now, en) })).toBe("Expected report tomorrow 01:20");
-  expect(dayClockLabel(tomorrow, now, i18n.getFixedT("ja", "people"))).toBe("明日 01:20");
+  expect(dayClockLabel(tomorrow, now, en, "en")).toBe("Tomorrow 01:20");
+  expect(dayClock(tomorrow, now, en, "en")).toBe("tomorrow 01:20");
+  expect(en("finish.end", { time: dayClock(tomorrow, now, en, "en") })).toBe("Expected report tomorrow 01:20");
+  expect(dayClockLabel(tomorrow, now, i18n.getFixedT("ja", "people"), "ja")).toBe("明日 01:20");
   // After a "·" the time is a label too, never "answered at yesterday 16:51".
   const reader = i18n.getFixedT("en", "reader"), yesterday = new Date(2026, 9, 26, 16, 51).getTime();
-  expect(reader("reportFeed.row.end.answered", { who: "You", at: dayClockLabel(yesterday, now, en) })).toBe("You answered · Yesterday 16:51");
-  expect(reader("reportFeed.row.end.confirmed", { who: "You", at: dayClockLabel(yesterday, now, en) })).toBe("You reviewed · Yesterday 16:51");
-  expect(reader("reportFeed.row.cause", { title: "Draft", at: dayClockLabel(yesterday, now, en) })).toBe("Received “Draft” · Yesterday 16:51");
+  expect(reader("reportFeed.row.end.answered", { who: "You", at: dayClockLabel(yesterday, now, en, "en") })).toBe("You answered · Yesterday 16:51");
+  expect(reader("reportFeed.row.end.confirmed", { who: "You", at: dayClockLabel(yesterday, now, en, "en") })).toBe("You reviewed · Yesterday 16:51");
+  expect(reader("reportFeed.row.cause", { title: "Draft", at: dayClockLabel(yesterday, now, en, "en") })).toBe("Received “Draft” · Yesterday 16:51");
 });
 
 test("a rail mark's colour says what its record did, never which way it went, and guesses none", () => {

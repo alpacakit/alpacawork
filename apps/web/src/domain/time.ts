@@ -3,7 +3,25 @@ const two = (value: number) => String(value).padStart(2, "0");
 const clockOf = (date: Date) => `${two(date.getHours())}:${two(date.getMinutes())}`;
 const dayOf = (date: Date, locale: string) =>
   new Intl.DateTimeFormat(locale, { month: "long", day: "numeric" }).format(date);
-const logTimeOf = (date: Date) => `${two(date.getMonth() + 1)}/${two(date.getDate())} ${clockOf(date)}`;
+// Format the same local calendar day as clockOf, even after the browser's time zone changes.
+const localCalendarTime = (date: Date) => date.getTime() - date.getTimezoneOffset() * 60_000;
+const dateFormats = new Map<string, {
+  short: Intl.DateTimeFormat;
+  withYear: Intl.DateTimeFormat;
+  padded: Intl.DateTimeFormat;
+}>();
+function dates(locale: string) {
+  const cached = dateFormats.get(locale);
+  if (cached) return cached;
+  const formats = {
+    short: new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone: "UTC" }),
+    withYear: new Intl.DateTimeFormat(locale, { year: "numeric", month: "numeric", day: "numeric", timeZone: "UTC" }),
+    padded: new Intl.DateTimeFormat(locale, { month: "2-digit", day: "2-digit", timeZone: "UTC" }),
+  };
+  dateFormats.set(locale, formats);
+  return formats;
+}
+const logTimeOf = (date: Date, locale: string) => `${dates(locale).padded.format(localCalendarTime(date))} ${clockOf(date)}`;
 const sameDayOf = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -18,9 +36,10 @@ export function calendarDayOffset(at: number, other: number): number {
 }
 
 /** A date says its year only when it differs from the reference year's. */
-export function formatCalendarDate(at: number, reference: number): string {
+export function formatCalendarDate(at: number, reference: number, locale: string): string {
   const date = new Date(at), today = new Date(reference);
-  return `${date.getFullYear() !== today.getFullYear() ? `${date.getFullYear()}/` : ""}${date.getMonth() + 1}/${date.getDate()}`;
+  const formats = dates(locale);
+  return (date.getFullYear() === today.getFullYear() ? formats.short : formats.withYear).format(localCalendarTime(date));
 }
 
 /** "14:12" */
@@ -31,17 +50,17 @@ export function formatClock(iso: string): string {
 }
 
 /** "14:12" on the day of `now`, otherwise "09/25 14:12" (notification rows). */
-export function formatNoticeTime(iso: string, now = new Date()): string {
+export function formatNoticeTime(iso: string, locale: string, now = new Date()): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "";
-  return sameDayOf(date, now) ? clockOf(date) : logTimeOf(date);
+  return sameDayOf(date, now) ? clockOf(date) : logTimeOf(date, locale);
 }
 
 /** "09/25 14:12" (history entries) */
-export function formatLogTime(iso: string): string {
+export function formatLogTime(iso: string, locale: string): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "";
-  return logTimeOf(date);
+  return logTimeOf(date, locale);
 }
 
 /** The localized month and day followed by a 24-hour clock time. */

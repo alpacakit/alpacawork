@@ -189,8 +189,8 @@ function MediaRow({ task, item, path, onOpen }: { task: TaskDetail; item: Listed
 
 /** The time a file was written, or why it cannot be read. */
 function FileMeta({ file }: { file: TaskFile }) {
-  const { t } = useTranslation("reader");
-  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <>{formatLogTime(file.at)}</>;
+  const { t, i18n } = useTranslation("reader");
+  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <>{formatLogTime(file.at, i18n.language)}</>;
 }
 
 /** A picture of a file, or a quiet placeholder when it cannot be shown here. */

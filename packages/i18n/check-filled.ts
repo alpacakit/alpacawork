@@ -1,6 +1,6 @@
 // Fails when any catalog entry is empty. The extractor writes every new key as
 // "" in every language, so this is how `pnpm i18n:check` finds text that no
-// person has written yet in `en` or translated into `ja`. See packages/i18n/README.md.
+// person has written yet in a supported language. See packages/i18n/README.md.
 import { readFileSync, readdirSync } from "node:fs";
 import config from "./i18next.config.ts";
 

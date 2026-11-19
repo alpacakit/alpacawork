@@ -32,8 +32,9 @@ const status: HostStatus = {
 };
 
 test("numbers keep small shares readable and lines break where a value is missing", () => {
-  expect([formatPercent(null), formatPercent(0.01), formatPercent(0.42), formatPercent(31.4)]).toEqual(["—", "0%", "0.4%", "31%"]);
-  expect([formatGigabytes(0.3 * GB), formatGigabytes(465.4 * GB)]).toEqual(["0.3 GB", "465 GB"]);
+  expect([formatPercent(null, "en"), formatPercent(0.01, "en"), formatPercent(0.42, "en"), formatPercent(31.4, "en")]).toEqual(["—", "0%", "0.4%", "31%"]);
+  expect([formatGigabytes(0.3 * GB, "en"), formatGigabytes(465.4 * GB, "en")]).toEqual(["0.3 GB", "465 GB"]);
+  expect(formatGigabytes(0.3 * GB, "pt-BR")).toBe("0,3 GB");
   const shape = sparkShape([{ at: 0, value: 95 }, { at: 10, value: null }, { at: 20, value: 50 }, { at: 30, value: 60 }],
     { from: 0, to: 30 }, 90, false, 30, 10, 10);
   expect(shape.paths).toHaveLength(2);

@@ -1,0 +1,480 @@
+{
+  "answer": {
+    "other": "Outra",
+    "question": "Pergunta {{n}}/{{total}}",
+    "stop": "Parar",
+    "stopMark": "Se for escolhida, a tarefa para",
+    "write": "Escrever uma resposta"
+  },
+  "brief": {
+    "recommended": "Recomendada"
+  },
+  "delimited": {
+    "empty": "Este arquivo está vazio.",
+    "header": "Linha de cabeçalho",
+    "headerOnly": "Somente a linha de cabeçalho",
+    "malformed": "Algumas partes não puderam ser divididas em células (uma aspa sem fechamento, por exemplo).",
+    "malformedHint": "A tabela pode não corresponder ao arquivo.",
+    "next_one": "{{count}} linha seguinte",
+    "next_many": "{{count}} linhas seguintes",
+    "next_other": "{{count}} linhas seguintes",
+    "openOriginal": "Abrir o original:",
+    "original": "Arquivo original",
+    "previous_one": "{{count}} linha anterior",
+    "previous_many": "{{count}} linhas anteriores",
+    "previous_other": "{{count}} linhas anteriores",
+    "range": "Linhas {{first}}–{{last}} de {{rows}}",
+    "records_one": "{{count}} linha",
+    "records_many": "{{count}} linhas",
+    "records_other": "{{count}} linhas",
+    "rest": "O restante está no original:",
+    "tooLarge": "Arquivos com mais de {{limit}} MB não são exibidos como tabela.",
+    "tooWide": "Só a primeira linha já passa do limite de {{maxCells}} células de uma tabela, por isso o arquivo não é exibido como tabela.",
+    "truncated": "Somente as primeiras {{rows}} linhas são exibidas (uma tabela comporta até {{maxRows}} linhas ou {{maxCells}} células).",
+    "uneven": "As linhas têm números diferentes de colunas.",
+    "unevenHint": "As células que uma linha não tem aparecem hachuradas.",
+    "unreadable": "Não foi possível reconhecer a codificação de caracteres deste arquivo, por isso ele não é exibido como tabela."
+  },
+  "diff": {
+    "copied": "Copiado",
+    "deleted": "Excluído",
+    "line": "Linha {{line}}",
+    "new": "Novo",
+    "renamed": "Renomeado"
+  },
+  "diffCard": {
+    "binary": "binário",
+    "binaryRows": "Um arquivo binário não tem linhas",
+    "blankOnly": "Só mudaram linhas em branco",
+    "close": "Fechar",
+    "commits_one": "{{count}} commit",
+    "commits_many": "{{count}} commits",
+    "commits_other": "{{count}} commits",
+    "copyCommand": "Copiar comando",
+    "deletedFile": "Este arquivo foi excluído",
+    "files_one": "{{count}} arquivo",
+    "files_many": "{{count}} arquivos",
+    "files_other": "{{count}} arquivos",
+    "missing": "O arquivo de diff não existe: {{name}}",
+    "moreCommits_one": "Mostrar mais {{count}}",
+    "moreCommits_many": "Mostrar mais {{count}}",
+    "moreCommits_other": "Mostrar mais {{count}}",
+    "noRows": "Nenhuma linha mudou",
+    "notKept": "As linhas eram grandes demais para guardar.",
+    "notKeptHint": "Veja-as com este comando:",
+    "olderCommits_one": "{{count}} commit mais antigo não listado",
+    "olderCommits_many": "{{count}} commits mais antigos não listados",
+    "olderCommits_other": "{{count}} commits mais antigos não listados",
+    "open": "Abrir o diff",
+    "openFiles": "Abrir a lista de arquivos",
+    "renamedOnly": "Só renomeado (era {{from}})",
+    "tooLarge": "Grande demais para exibir: {{name}}",
+    "unchanged": "Sem mudanças (0 arquivos)",
+    "unreadable": "Não foi possível ler o diff: {{name}}"
+  },
+  "entries": {
+    "after": "Aguarda",
+    "context": "Contexto",
+    "count_one": "{{count}}",
+    "count_many": "{{count}}",
+    "count_other": "{{count}}",
+    "dependencies": "Dependências",
+    "files": "Arquivos",
+    "history": "Histórico",
+    "waiters": "Seguida por"
+  },
+  "family": {
+    "close": "Fechar a árvore de tarefas",
+    "count_one": "{{count}} tarefa",
+    "count_many": "{{count}} tarefas",
+    "count_other": "{{count}} tarefas",
+    "deep_one": "{{count}} nível abaixo",
+    "deep_many": "{{count}} níveis abaixo",
+    "deep_other": "{{count}} níveis abaixo",
+    "entry": "Árvore de tarefas",
+    "fold": "Recolher as tarefas abaixo de {{title}}",
+    "height": "Altura da árvore de tarefas",
+    "here": "Atual",
+    "more_one": "Mostrar mais {{count}}",
+    "more_many": "Mostrar mais {{count}}",
+    "more_other": "Mostrar mais {{count}}",
+    "rowDeep_one": ", {{count}} nível abaixo",
+    "rowDeep_many": ", {{count}} níveis abaixo",
+    "rowDeep_other": ", {{count}} níveis abaixo",
+    "rowHere": ", atual",
+    "rowName": "{{id}} {{title}}, {{state}}",
+    "title": "Árvore de tarefas",
+    "tree": "Árvore de tarefas de {{title}}",
+    "unfold": "Expandir as tarefas abaixo de {{title}}"
+  },
+  "files": {
+    "all": "Entregas",
+    "copyLink": "Copiar link",
+    "copyPath": "Copiar caminho",
+    "documents": "Documentos",
+    "empty": "Esta pasta não tem arquivos.",
+    "facet": {
+      "after": "Depois",
+      "before": "Antes",
+      "dark": "Escuro",
+      "desktop": "Desktop",
+      "light": "Claro",
+      "mobile": "Celular"
+    },
+    "images": "Imagens",
+    "inFolder": "Em {{folder}}",
+    "media": "Imagens, vídeos e áudio",
+    "onlyWork": "Ainda não há entregas.",
+    "onlyWorkHint": "Os arquivos de trabalho dos agentes estão em Arquivos de trabalho.",
+    "otherMedia": "Outras mídias",
+    "path": "Caminho",
+    "unavailable": "Não foi possível exibir o arquivo: {{name}}",
+    "videos": "Vídeos",
+    "work": "Arquivos de trabalho"
+  },
+  "frontMatter": {
+    "invalid": "Não foi possível interpretar o YAML de abertura. O código-fonte dele aparece abaixo.",
+    "label": "Metadados YAML",
+    "limit": "O YAML de abertura passa dos limites de exibição em tabela. O código-fonte completo aparece abaixo.",
+    "source": "YAML original",
+    "unclosed": "O YAML de abertura não tem o delimitador de fechamento. O código-fonte completo aparece abaixo.",
+    "unsupported": "Este YAML não pode ser exibido como tabela. O código-fonte dele aparece abaixo."
+  },
+  "gathered": {
+    "position": "{{current}} / {{total}}"
+  },
+  "history": {
+    "approved": "Concluída",
+    "reasons": {
+      "conversation_busy": "Esta conversa já estava em uso, por isso o trabalho não pôde começar.",
+      "exit": "O programa do agente encerrou antes da hora. O trabalho ficou inacabado.",
+      "launch": "Não foi possível iniciar o agente.",
+      "manager_lost": "O processo que supervisionava este trabalho desapareceu. O resultado é desconhecido.",
+      "no_report": "O trabalho terminou sem relatório, pergunta ou solicitação.",
+      "output": "Não foi possível ler a saída do agente.",
+      "scope_invalidated": "O escopo da tarefa mudou depois que a solicitação foi aceita, por isso este trabalho terminou sem começar.",
+      "stopped": "Uma solicitação de parada encerrou o trabalho.",
+      "timeout": "O limite de tempo foi atingido. O trabalho ficou inacabado.",
+      "unknown": "Nenhum motivo de parada foi registrado."
+    },
+    "runError": "Erro",
+    "waiting": {
+      "held": "Adiada",
+      "review": "$t(ui:state.waitingReview)"
+    }
+  },
+  "image": {
+    "audioUnavailable": "Áudio indisponível: {{name}}",
+    "openFile": "Abrir arquivo",
+    "saveFile": "Salvar arquivo",
+    "unavailable": "Imagem indisponível: {{name}}",
+    "videoUnavailable": "Vídeo indisponível: {{name}}"
+  },
+  "imageSlider": {
+    "closeImage": "Fechar imagem",
+    "closeMedia": "Fechar visualizador",
+    "controlsFailed": "Não foi possível mudar as configurações de reprodução. Tente novamente.",
+    "expandVideo": "Abrir vídeo no visualizador",
+    "fullScreen": "Tela cheia",
+    "fullScreenFailed": "Não foi possível abrir em tela cheia. Tente novamente ou abra o vídeo original.",
+    "mute": "Silenciar",
+    "nextImage": "Próxima imagem",
+    "nextMedia": "Próximo item",
+    "openOriginalInNewTab": "Abrir a imagem original {{name}} em uma nova aba",
+    "pause": "Pausar",
+    "play": "Reproduzir",
+    "playFailed": "Não foi possível iniciar a reprodução. Tente reproduzir de novo.",
+    "position": "{{current}} de {{total}}",
+    "previousImage": "Imagem anterior",
+    "previousMedia": "Item anterior",
+    "saveOriginal": "Salvar o arquivo original {{name}}",
+    "seek": "Posição da reprodução",
+    "speed": "Velocidade de reprodução",
+    "unmute": "Ativar som",
+    "volume": "Volume"
+  },
+  "intent": {
+    "continue": "Continuar {{id}}",
+    "retry": "Tentar {{id}} novamente",
+    "sendback": "Devolver {{id}}"
+  },
+  "markdownBody": {
+    "copyCode": "Copiar código",
+    "diagram": "Diagrama {{number}}",
+    "diagramFailed": "Não foi possível renderizar o diagrama",
+    "diagramLoading": "Preparando o diagrama…"
+  },
+  "nextQuestion": {
+    "allAnswered": "Você respondeu a tudo que aguardava revisão",
+    "allAnsweredHeld": "Você respondeu a tudo que estava adiado",
+    "autoSwipe": {
+      "hint": "Ativado: ao enviar uma mensagem, o cartão sai da tela e você passa para a próxima tarefa. Desativado: ao enviar, você continua nesta tarefa, com o chat aberto.",
+      "label": "Avanço automático",
+      "toastOff": "Avanço automático desativado",
+      "toastOffDetail": "Ao enviar uma mensagem, você continua nesta tarefa",
+      "toastOn": "Avanço automático ativado",
+      "toastOnDetail": "Ao enviar uma mensagem, você passa para a próxima tarefa"
+    },
+    "close": "Fechar",
+    "countPart": "{{word}}: {{n}}",
+    "done": "$t(ui:state.done)",
+    "held": "$t(reader:swipe.hold)",
+    "kind": {
+      "done": "concluídas",
+      "hold": "adiadas",
+      "send": "enviadas",
+      "stop": "paradas"
+    },
+    "sent": "$t(reader:swipe.send)",
+    "stopped": "Parar"
+  },
+  "order": {
+    "alsoWaits": "Também aguarda {{ids}}",
+    "history": {
+      "cleared": "Ordem de início removida",
+      "previous": "Antes: {{ids}}",
+      "set": "Começa depois de {{ids}}"
+    },
+    "list": {
+      "wait": "Aguarda {{ids}}",
+      "waited": "Em seguida: {{id}}",
+      "waitedMore_one": "Em seguida: {{id}} +{{count}}",
+      "waitedMore_many": "Em seguida: {{id}} +{{count}}",
+      "waitedMore_other": "Em seguida: {{id}} +{{count}}",
+      "waitMore_one": "Aguarda {{id}} e mais {{count}}",
+      "waitMore_many": "Aguarda {{id}} e mais {{count}}",
+      "waitMore_other": "Aguarda {{id}} e mais {{count}}"
+    },
+    "onlyThis": "Aguarda somente esta tarefa",
+    "runEnding": "aguardando o fim da execução",
+    "separator": ", ",
+    "startedLead": "Esta tarefa começou depois das seguintes tarefas",
+    "stuck": {
+      "error": "{{id}} parou com um erro. A espera termina quando o erro for corrigido, a tarefa for marcada como concluída ou parada e as execuções dela terminarem.",
+      "held": "{{id}} está adiada. A espera termina quando ela for retomada e marcada como concluída ou parada, e as execuções dela terminarem."
+    },
+    "tip": "O que esta tarefa aguarda",
+    "waitedTip": "O que aguarda esta tarefa"
+  },
+  "overview": {
+    "createdAt": "Criada: {{time}}",
+    "empty": "Ainda sem conteúdo.",
+    "updatedAt": "Atualizada: {{time}}"
+  },
+  "reader": {
+    "label": "Texto completo da tarefa",
+    "resize": "Largura dos detalhes (setas para a esquerda e para a direita)"
+  },
+  "readerHeader": {
+    "back": "Voltar",
+    "close": "Fechar detalhes",
+    "closeShort": "Fechar",
+    "dock": "Restaurar a largura dos detalhes",
+    "full": "Mostrar detalhes em tela cheia",
+    "insert": "Adicionar {{id}} ao campo de mensagem",
+    "inserted": "{{id}} foi para o campo de mensagem",
+    "next": "Próxima tarefa",
+    "path": "Caminho da tarefa",
+    "previous": "Tarefa anterior"
+  },
+  "recovery": {
+    "cancelled": "O envio para “<title>{{title}}</title>” foi cancelado. Você pode enviar de novo.",
+    "check": "Verificar",
+    "closed": "A conversa terminou. Você pode enviar para “<title>{{title}}</title>” de novo.",
+    "confirmedDone": "<subject>“<title>{{title}}</title>”</subject> marcada como concluída",
+    "confirmedHold": "<subject>“<title>{{title}}</title>”</subject> adiada",
+    "confirmedRestore": "<subject>“<title>{{title}}</title>”</subject> voltou para aguardando revisão",
+    "confirmedSend": "Enviado para <subject>“<title>{{title}}</title>”</subject>",
+    "confirmedStop": "<subject>“<title>{{title}}</title>”</subject> marcada como parada",
+    "latest": "Abrir",
+    "notCarriedOut": "Não há registro de que a ação solicitada tenha sido executada. Verifique o status da tarefa e a resposta do coordenador.",
+    "pending_one": "Verificando {{count}} resultado",
+    "pending_many": "Verificando {{count}} resultados",
+    "pending_other": "Verificando {{count}} resultados",
+    "refusedDone": "Não foi possível marcar <subject>“<title>{{title}}</title>”</subject> como concluída",
+    "refusedHold": "Não foi possível adiar <subject>“<title>{{title}}</title>”</subject>",
+    "refusedRestore": "Não foi possível voltar <subject>“<title>{{title}}</title>”</subject> para aguardando revisão",
+    "refusedSend": "Sua instrução para <subject>“<title>{{title}}</title>”</subject> não foi entregue",
+    "refusedStop": "Não foi possível parar <subject>“<title>{{title}}</title>”</subject>",
+    "unknownDone": "Não foi possível confirmar se a conclusão de <subject>“<title>{{title}}</title>”</subject> foi salva",
+    "unknownHold": "Não foi possível confirmar se o adiamento de <subject>“<title>{{title}}</title>”</subject> foi salvo",
+    "unknownRestore": "Não foi possível confirmar se a restauração de <subject>“<title>{{title}}</title>”</subject> foi salva",
+    "unknownSend": "Não foi possível confirmar se sua instrução para <subject>“<title>{{title}}</title>”</subject> foi entregue",
+    "unknownStop": "Não foi possível confirmar se a parada de <subject>“<title>{{title}}</title>”</subject> foi salva"
+  },
+  "reportFeed": {
+    "childWorking": {
+      "fold": "Recolher",
+      "grandchild": "Subtarefa aninhada",
+      "others_one": "mais {{count}} abaixo",
+      "others_many": "mais {{count}} abaixo",
+      "others_other": "mais {{count}} abaixo"
+    },
+    "copy": "Copiar",
+    "goAnswer": "Responder",
+    "goQuestion": "Responder: 1 pergunta para você, {{title}}",
+    "goQuestionAt": "Responder: {{at}} {{title}}",
+    "jumpToLatest": "Ir para o mais recente",
+    "listQuestions_one": "Lista com {{count}} pergunta para você",
+    "listQuestions_many": "Lista com {{count}} perguntas para você",
+    "listQuestions_other": "Lista com {{count}} perguntas para você",
+    "questions_one": "Pergunta para você · {{count}}",
+    "questions_many": "Perguntas para você · {{count}}",
+    "questions_other": "Perguntas para você · {{count}}",
+    "questionsUnavailable": "Não foi possível ler as perguntas.",
+    "received": "Recebido por esta tarefa",
+    "result": {
+      "from": "Resultado de {{who}}",
+      "label": "Resultado",
+      "unavailable": "Não foi possível ler o resultado"
+    },
+    "reviewsUnavailable": "Não foi possível ler os itens que aguardam revisão",
+    "row": {
+      "answerTo": "Pergunta: {{question}}",
+      "between": "De {{from}} para {{to}}",
+      "cause": "Recebeu “{{title}}” · {{at}}",
+      "changedTo": "Mudou para {{state}}",
+      "end": {
+        "again": {
+          "question": "Fez a mesma pergunta de novo",
+          "review": "Enviou o mesmo relatório de novo"
+        },
+        "answered": "{{who}} respondeu · {{at}}",
+        "closed": {
+          "expired": "Expirou quando o destinatário mudou",
+          "invalidated": "De volta ao trabalho",
+          "stopped": "Encerrada quando a tarefa foi parada",
+          "withdrawn": "Retirada sem resposta"
+        },
+        "confirmed": "{{who}} revisou · {{at}}",
+        "replaced": {
+          "question": "Substituída pela pergunta seguinte",
+          "review": "Substituído pelo relatório seguinte"
+        },
+        "resumed": {
+          "question": "Sem resposta; de volta ao trabalho com a solicitação seguinte",
+          "review": "De volta ao trabalho com a solicitação seguinte"
+        },
+        "waiting": "Aguardando a resposta de {{who}}",
+        "waitingReview": "Aguardando a revisão de {{who}}",
+        "waitingReviewYou": "Aguardando sua revisão",
+        "waitingYou": "Aguardando sua resposta"
+      },
+      "kind": {
+        "answer": "Resposta",
+        "changed": "Mudança",
+        "comment": "Nota",
+        "confirm": "Revisão",
+        "dialogue": "Mensagem",
+        "done": "Concluída",
+        "error": "Parada",
+        "expired": "Expirada",
+        "question": "Pergunta",
+        "reply": "Resposta",
+        "report": "Relatório",
+        "request": "Solicitação",
+        "review": "Relatório",
+        "run_end": "Parada",
+        "urgent": "Urgente",
+        "withdrawn": "Retirada"
+      },
+      "older": "Mostrar {{n}} anteriores",
+      "openTask": "Abrir “{{task}}”",
+      "own": "{{who}}:",
+      "party": {
+        "child": "Subtarefa",
+        "coordinator": "Coordenador",
+        "member": "Membro",
+        "other": "Outra tarefa",
+        "parent": "Tarefa pai",
+        "self": "Responsável",
+        "you": "Você"
+      },
+      "sameTitle": "Mesmo título de cima, conteúdo diferente",
+      "tag": {
+        "child": "Subtarefa",
+        "coordinator": "Coordenador",
+        "member": "Membro",
+        "other": "Outra tarefa",
+        "parent": "Tarefa pai",
+        "self": "Responsável",
+        "you": "Você"
+      },
+      "times": "×{{n}}",
+      "working": "está trabalhando"
+    },
+    "sendBack": "Devolver…",
+    "sentBody": "Texto enviado ao agente",
+    "working": {
+      "others_one": "mais {{count}}",
+      "others_many": "mais {{count}}",
+      "others_other": "mais {{count}}"
+    }
+  },
+  "ruleTab": {
+    "more": "Mostrar mais ({{shown}}/{{total}})",
+    "readFailed": "Não foi possível ler o arquivo.",
+    "readFailedHelp": "Verifique as permissões do arquivo na pasta da tarefa."
+  },
+  "sheet": {
+    "grip": "Mudar a altura (deslize rápido para cima para tela cheia, para baixo para fechar)",
+    "toShare": "Voltar ao painel",
+    "toWhole": "Abrir em tela cheia"
+  },
+  "swipe": {
+    "choose": "Escolha uma opção para enviar",
+    "hold": "Adiar",
+    "notAnswered": "Não dá para enviar: nada respondido ainda",
+    "notSaid": "Não dá para enviar: falta a instrução depois de Outra",
+    "notWritten": "Não dá para enviar: nenhuma resposta escrita",
+    "otherWords": "Escreva uma instrução depois de Outra para enviar",
+    "send": "Enviar",
+    "write": "Escreva uma resposta para enviar",
+    "writeAfterOther": "Escreva uma instrução depois de Outra"
+  },
+  "viewer": {
+    "binary": "Não é um arquivo de texto, por isso não pode ser aberto",
+    "cannotOpen": "Este arquivo não pode ser aberto",
+    "close": "Fechar (Esc)",
+    "copy": "Copiar",
+    "copyCommand": "Copiar comando do diff",
+    "copyText": "Copiar conteúdo",
+    "download": "Baixar",
+    "downloadFile": "Baixar arquivo",
+    "inGitFolder": "Fica dentro da pasta do próprio git, por isso não pode ser aberto",
+    "label": "Diff e arquivos",
+    "missing": "Arquivo não encontrado",
+    "outside": "Fica fora do local do código registrado no projeto, por isso não pode ser aberto",
+    "rendered": "Formatado",
+    "shared": "Compartilha o conteúdo com outro local, por isso não pode ser aberto",
+    "source": "Código-fonte",
+    "sourceGroup": "Exibição do diff do documento",
+    "split": "Lado a lado",
+    "splitGroup": "Layout do diff",
+    "tooLarge": "Grande demais para abrir",
+    "unified": "Unificado",
+    "viewed": "Visto",
+    "viewedCount": "Vistos {{read}}/{{total}}"
+  },
+  "voiceInput": {
+    "again": "Tentar novamente",
+    "connecting": "Conectando ao microfone…",
+    "failure": {
+      "audio": "Não foi possível iniciar o áudio do microfone",
+      "lost": "O reconhecimento de voz parou no meio",
+      "noSpeech": "Nenhuma fala foi detectada",
+      "permission": "O acesso ao microfone está bloqueado. Permita o acesso nas configurações do navegador",
+      "refused": "Não foi possível iniciar a entrada por voz. Verifique as configurações de voz",
+      "tooLarge": "A gravação é longa demais. Divida em partes mais curtas",
+      "unreachable": "Não foi possível acessar o reconhecimento de voz",
+      "unsupported": "A entrada por voz não está disponível neste navegador. Abra o app por HTTPS"
+    },
+    "hint": "Entrada por voz (Alt+Shift+M) · Até 60 segundos",
+    "start": "Iniciar entrada por voz",
+    "stop": "Parar entrada por voz"
+  },
+  "wrapToggle": {
+    "unwrap": "Mostrar linhas sem quebra",
+    "wrap": "Quebrar linhas"
+  }
+}

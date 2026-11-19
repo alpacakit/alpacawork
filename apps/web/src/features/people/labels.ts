@@ -26,11 +26,11 @@ function ownFinishFacts(taskId: string, people: PeopleIndex, now: number): Finis
 
 /** When the task reports, with the tasks under it, in the "Expected report" words (domain/finish-words); null when there is nothing to say. */
 export function useFinishWords(taskId: string): FinishWords | null {
-  const { t } = useTranslation("people");
+  const { t, i18n } = useTranslation("people");
   const people = usePeopleFor(taskId, true);
   const index = useTaskIndexFor(taskId);
   const now = useNow();
-  return finishWordsFor(taskId, index, people, now, t);
+  return finishWordsFor(taskId, index, people, now, t, i18n.language);
 }
 
 /** What is known of when a task reports, with the tasks under it (domain/finish-words finishOf). */
@@ -40,9 +40,9 @@ export function finishFactsFor(taskId: string, index: TaskIndex, people: PeopleI
 
 /** The same end words for a list of visible rows, without one hook per row in the time axis. */
 export function finishWordsFor(taskId: string, index: TaskIndex, people: PeopleIndex, now: number,
-  t: (key: string, options?: Record<string, unknown>) => string): FinishWords | null {
+  t: (key: string, options?: Record<string, unknown>) => string, locale: string): FinishWords | null {
   const facts = finishFactsFor(taskId, index, people, now);
-  return facts && finishWords(facts, now, t);
+  return facts && finishWords(facts, now, t, locale);
 }
 
 /** "43m", "2h 6m", "3d"; null when the start is not known. */

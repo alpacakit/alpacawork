@@ -21,6 +21,7 @@ import { endpointAllowed, pushPayloadSchema, pushSubscriptionSchema, userTurn, t
 import { noticeStateSchema } from '@alpacawork/contract';
 import { isFinished } from '@alpacawork/contract/branch';
 import { serverText, type ServerLocale, type ServerText } from '@alpacawork/i18n/server';
+import { defaultUiLocale, uiLocaleOrDefault } from '@alpacawork/core/ui-language';
 import type { PresenceStatus } from './presence.js';
 import type { ControlTaskDTO, ControlTreeDTO } from '@alpacawork/contract/control';
 
@@ -165,7 +166,7 @@ export function deriveEvents(seen: ReadonlySet<string>, current: Tasks, balls: B
 }
 function deriveHeldEvents(seen: ReadonlySet<string>, holding: Iterable<readonly [string, HeldNotice]>, settings: SettingValues): Derived[] {
   const events: Derived[] = [];
-  const t = serverText(settings.language === 'ja' ? 'ja' : 'en');
+  const t = serverText(uiLocaleOrDefault(settings.language));
   for (const [key, { task, state, reason, at: occurredAt }] of holding) {
     if (seen.has(key) || settings[state === 'error' ? 'push.followup' : `push.${state}`] !== true) continue;
     const reportTitle = task.log.find(entry => entry.id === key.slice(task.id.length + 1))?.title;
@@ -374,7 +375,7 @@ export class PushStore {
   /** The tight host episode whose event may still be sent (`hostPushKey`); null once the machine is calm again. */
   holdHost(key: string | null): void { this.hostHolding = key; }
   /** Every pending delivery whose turn has come. One pass at a time. */
-  tick(now = Date.now(), presence: PresenceStatus = { state: 'away', until: null }, notices: NoticeSnapshot = null, language: ServerLocale = 'en'): Promise<void> {
+  tick(now = Date.now(), presence: PresenceStatus = { state: 'away', until: null }, notices: NoticeSnapshot = null, language: ServerLocale = defaultUiLocale): Promise<void> {
     if (this.closing) return Promise.resolve();
     return this.sending ??= this.deliver(now, presence, notices, language).catch(error => this.log(`Push delivery pass failed: ${String(error)}`)).finally(() => { this.sending = undefined; });
   }

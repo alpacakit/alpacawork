@@ -1,0 +1,142 @@
+{
+  "agentPicker": {
+    "brief": {
+      "gone": "Elige a otro agente",
+      "new_conversation": "Empieza de nuevo con “{{action}}”",
+      "select_value": "Vuelve a elegir: {{row}}"
+    },
+    "next": {
+      "anew": "Se necesita una conversación nueva",
+      "clear": "Empieza de nuevo con “{{action}}”"
+    },
+    "none": "Ninguno",
+    "notOffered": "No disponible para este modelo",
+    "pickerLabel": "{{agent}}. Presiona para cambiar",
+    "pickerTitle": "A quién pedírselo",
+    "problem": {
+      "gone": "{{agent}} no está disponible con la configuración actual. Elige a otro agente",
+      "invalid_value": "El valor anterior de {{row}}, {{previous}}, ya no está disponible. Elige de nuevo",
+      "null_required": "{{row}} ya no puede ser Ninguno. Elige un valor",
+      "removed": "{{row}} (antes {{previous}}) se quitó de la configuración, así que esta conversación no se puede continuar. {{next}}",
+      "unused": "{{row}} (antes {{previous}}) ya no se usa en las opciones de inicio, así que esta conversación no se puede continuar. {{next}}"
+    }
+  },
+  "draft": {
+    "checking": "Comprobando…",
+    "closeKeep": "Cerrar · conservar borrador",
+    "discard": "Descartar borrador",
+    "discardConfirm": "¿Descartar este borrador? No se puede deshacer.",
+    "reviewLatest": "Revisar la versión más reciente y seguir editando",
+    "saving": "Guardando…",
+    "storageUnavailable": "El almacenamiento de borradores no está disponible. El envío está en pausa para evitar duplicados. Mantén esta página abierta y copia tu borrador."
+  },
+  "folderInput": {
+    "cancel": "Cancelar la carpeta nueva",
+    "choose": "Elegir",
+    "close": "Cerrar",
+    "create": "Crear",
+    "creating": "Creando…",
+    "empty": "No hay carpetas dentro.",
+    "example": "p. ej. {{path}}",
+    "inside": "Carpetas que contiene",
+    "made": "Esta es una carpeta recién creada.",
+    "make": "Crear una carpeta nueva",
+    "name": "Nombre de la carpeta nueva",
+    "offered": "Carpetas sugeridas",
+    "openExisting": "Abrir esa carpeta",
+    "path": "Ubicación actual",
+    "placeholder": "Nombre de la carpeta",
+    "problem": {
+      "dots": "El nombre no puede ser \".\" ni \"..\".",
+      "long": "El nombre es demasiado largo (255 bytes como máximo).",
+      "slash": "El nombre no puede contener /.",
+      "taken": "Ya existe una carpeta con este nombre."
+    },
+    "reading": "Cargando…",
+    "truncated": "Solo se muestran las primeras {{limit}}. Cierra la lista y escribe un nombre en el campo para acotarlas.",
+    "up": "Subir",
+    "use": "Usar esta carpeta",
+    "where": "Crear dentro de {{path}}"
+  },
+  "formDialog": {
+    "cancel": "Cancelar"
+  },
+  "inlineForm": {
+    "cancel": "Cancelar"
+  },
+  "moveForm": {
+    "adopt": "Usar la versión más reciente y elegir de nuevo",
+    "changedElsewhere": "La tarea superior cambió en otro lugar después de abrirse este formulario (entonces: {{opened}}, ahora: {{current}}). Si la mueves ahora, se rechazará.",
+    "note": "La tarea conserva su ID, su carpeta y sus ejecuciones; el trabajo en ejecución no se detiene y, a partir de ahora, sus informes van a la nueva tarea superior",
+    "parent": "Nueva tarea superior",
+    "refused": "No se movió: la tarea cambió en otro lugar (tarea superior entonces: {{opened}}, ahora: {{current}}). Tu elección se conserva.",
+    "submit": "Mover",
+    "top": "Primer nivel (sin tarea superior)"
+  },
+  "projectColor": {
+    "code": "Código de color",
+    "more": "Otros colores…",
+    "swatch": {
+      "brown": "Marrón",
+      "grape": "Uva",
+      "green": "Verde",
+      "indigo": "Índigo",
+      "lime": "Lima",
+      "navy": "Azul marino",
+      "teal": "Turquesa",
+      "violet": "Violeta"
+    }
+  },
+  "reportForm": {
+    "approveDescription": "Se revisó el resultado.",
+    "approveTitle": "Completada",
+    "chooseAgain": "La tarea cambió. Elige su estado de nuevo",
+    "heading": "Cambiar el estado de {{id}}",
+    "holdDescription": "Ocuparse de esto más tarde.",
+    "holdTitle": "En pausa",
+    "reportDescription": "Descripción en el Historial",
+    "reportDescriptionHint": "Detalles e imágenes en Markdown",
+    "reportTitle": "Título en el Historial",
+    "reportTitleHint": "Lo esencial del informe, en una línea",
+    "restoreDescription": "Vuelve al estado que tenía antes de la pausa.",
+    "restoreTitle": "Reanudada",
+    "statePick": "Cambiar estado",
+    "statePickHint": "Cambiar el estado de {{id}}",
+    "stopDescription": "Detiene esta tarea y sus tareas inferiores.",
+    "stopTitle": "Detenida",
+    "submit": "Actualizar",
+    "words": "Informe en el Historial"
+  },
+  "responsibleForm": {
+    "change": "Cambiar",
+    "choiceUnavailable": "El agente o el perfil de inicio seleccionado ya no está disponible. Este formulario se cerró.",
+    "decide": "Asignar",
+    "effort": "Esfuerzo",
+    "legend": "Responsable de esta tarea",
+    "model": "Modelo",
+    "newPerson": "Nuevo agente",
+    "noProfiles": "No hay ningún agente activado. Instala una IA, inicia sesión en ella y actívala en Configuración → Servidor",
+    "promote": "{{name}} toma el relevo",
+    "replaceNote": "{{name}} deja de ser responsable y queda en el Historial sin pasar a ser miembro",
+    "taskUnavailable": "Esta tarea ya no está disponible. Este formulario se cerró.",
+    "type": "Perfil de inicio"
+  },
+  "runForm": {
+    "closed": "Cerrada",
+    "closeDescription": "Cerrar {{run}}.",
+    "closeSubmit": "Cerrar ejecución",
+    "closeTitle": "Cerrar ejecución",
+    "noLongerAvailable": "Esta ejecución ya no se puede cerrar. Este formulario se cerró."
+  },
+  "writeFailure": {
+    "checkWhich": "No se pudo confirmar el resultado de “{{subject}}”",
+    "conflict": "No se guardó nada. Revisa el contenido más reciente antes de continuar.",
+    "operationUnconfirmed": "No se pudo confirmar el resultado. Al reenviar se reutiliza el mismo ID: si no había llegado, se ejecuta ahora; una operación ya recibida no se ejecuta dos veces.",
+    "readLatest": "Leer lo más reciente",
+    "unconfirmed": "No se pudo confirmar si se envió. El reenvío está en pausa para evitar duplicados. Cierra conservando lo que escribiste y luego comprueba el contenido más reciente o los registros de ejecución.",
+    "unproven": "Reenviarlo podría ejecutarlo dos veces, así que no se enviará. Copia lo que necesites y continúa en una pestaña nueva."
+  },
+  "writeResult": {
+    "confirmed": "{{subject}}: se confirmó que la operación se completó."
+  }
+}
