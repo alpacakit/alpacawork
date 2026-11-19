@@ -249,8 +249,9 @@ test("a result says a task asking the user as every screen does, not by its stat
   // A working child with no estimate asks the user: the list and the tree say Question, and so does its result.
   const asking = taskFixture({ id: "T2", parentId: "T1", state: "doing",
     ball: userBall("question", "Lask", at, { questionId: "Lask" }) });
-  const value = tree({ tasks: [dto({ id: "T1" }), asking] });
-  seedSearch(value.root, "x", ["T2"]);
+  const finished = taskFixture({ id: "T3", state: "done", log: [logEntry({ id: "Ldone", kind: "reported", toState: "done", fromState: "doing" })] });
+  const value = tree({ tasks: [dto({ id: "T1" }), asking, finished] });
+  seedSearch(value.root, "x", ["T2", "T3"]);
   useViewStore.setState({ query: "x" });
   render(<TestWorkspace data={screenData(value)}><SearchResults /></TestWorkspace>);
   const row = document.querySelector<HTMLElement>('[data-result="T2"]')!;
@@ -258,4 +259,7 @@ test("a result says a task asking the user as every screen does, not by its stat
   const word = row.querySelector<HTMLElement>("span span span")!;
   expect(word.textContent).toBe(i18n.t("ui:turn.question"));
   expect(word.className).toContain("text-turn");
+  // An end it reached still says when: a done task's result keeps its time.
+  const done = document.querySelector<HTMLElement>('[data-result="T3"] span span span')!.textContent!;
+  expect(done).toMatch(new RegExp(`^${i18n.t("ui:state.done")}\\s*\\S`));
 });

@@ -117,8 +117,8 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   const people = usePeopleFor(task.id);
   const unread = !useReadIdsFor(task.id).has(task.id);
   const { word, tone } = useTaskLook(task);
-  // A Task said as working may say when it is expected to report in its word's place; any other is said as everywhere else.
-  const known = useFinishWords(task.id), finish = tone === "working" ? known : null;
+  // An end it reached stands in its word's place; words of the report still to come do only for a Task said as working.
+  const known = useFinishWords(task.id), finish = known && (!known.ahead || tone === "working") ? known : null;
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>

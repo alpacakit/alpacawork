@@ -22,7 +22,11 @@ type FinishTone = Extract<Tone, "quiet" | "turn" | "late" | "error">;
  * before" time; never the state, which the row's icon already says. Its clock names no day ("00:55", not "tomorrow 00:55"):
  * `briefDays` is how many days from today that clock is, which the band marks small beside it ("+1").
  */
-export type FinishWords = { short: string; long: string; tone: FinishTone; at: number | null; ends: boolean; brief: string; briefDays: number };
+/**
+ * `ahead`: the words say the report still to come (an estimate, a wait for one, the work below, or work with no end
+ * known), which only a Task said as working has; otherwise they say an end already reached (done, reported, stopped).
+ */
+export type FinishWords = { short: string; long: string; tone: FinishTone; at: number | null; ends: boolean; brief: string; briefDays: number; ahead: boolean };
 type T = (key: string, options?: Record<string, unknown>) => string;
 
 /**
@@ -126,9 +130,10 @@ export function finishOf(id: string, { index, factsOf, now }: {
 export function finishWords(facts: FinishFacts, now: number, t: T): FinishWords {
   const clock = (at: number) => dayClock(at, now, t);
   const bare = (at: number) => formatClock(new Date(at).toISOString());
+  const ahead = facts.kind !== "done" && facts.kind !== "reported" && facts.kind !== "stopped";
   const said = (short: string, tone: FinishTone = "quiet", at: number | null = null, long = short, ends = false,
     brief = at === null ? short : bare(at), briefDays = at === null ? 0 : calendarDayOffset(at, now)) =>
-    ({ short, long, tone, at, ends, brief, briefDays });
+    ({ short, long, tone, at, ends, brief, briefDays, ahead });
   const bandOver = (at: number) => t("finish.bandOver", { length: overBy(at, now, t) });
   switch (facts.kind) {
     case "done": return said(t("finish.done", { time: clock(facts.at) }), "quiet", facts.at);
