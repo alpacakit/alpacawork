@@ -116,8 +116,9 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   const prefetch = usePrefetch(task.id);
   const people = usePeopleFor(task.id);
   const unread = !useReadIdsFor(task.id).has(task.id);
-  const finish = useFinishWords(task.id);
-  const { word, tone } = useTaskLook(task);
+  const { word, tone, over } = useTaskLook(task);
+  // When end words are known they stand in the word's place, unless the Task is said as waiting or failed, as the list says it.
+  const known = useFinishWords(task.id), finish = over ? null : known;
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>
