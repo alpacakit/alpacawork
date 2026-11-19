@@ -1,4 +1,4 @@
-import { memo, useState, useRef, type ReactNode } from "react";
+import { memo, useEffect, useState, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
@@ -27,6 +27,7 @@ import { MessageDelivery } from "./MessageDelivery";
 import { LINE_ACTION } from "./delivery-presentation";
 import { useActionFocus } from "./use-action-focus";
 import { WarmStart } from "./WarmStart";
+import { finishAppHint } from "./app-hint";
 
 /**
  * A message's head line: who and when, and what it was sent with. `mark` is its turn's mark on the rail: drawn here and
@@ -234,6 +235,9 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry,
   // Empty is no row drawn at all: a first message sent before the warm-up ends waits at the thread's end (tail), in no
   // other list, and stands in the greeting's place as any message does.
   const empty = !work.length && !shown.tail.length && warm !== "none" ? warm : null;
+  // A conversation with a message means this person has started: the first conversation's app hint is over for good.
+  const started = work.length > 0 || shown.tail.length > 0;
+  useEffect(() => { if (started) finishAppHint(); }, [started]);
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <WarmStart warm={empty} />}

@@ -5,6 +5,11 @@
     "undo": "撤销"
   },
   "coordinatorCard": {
+    "appHint": {
+      "close": "关闭此提示",
+      "detail": "安装为电脑应用，或在手机上打开",
+      "open": "在手机上或作为应用使用"
+    },
     "attached": "仅附件",
     "clear": "清空对话",
     "clearConfirm": "再点一次即可清空",

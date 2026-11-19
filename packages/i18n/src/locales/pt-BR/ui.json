@@ -5,6 +5,11 @@
     "undo": "Desfazer"
   },
   "coordinatorCard": {
+    "appHint": {
+      "close": "Fechar esta dica",
+      "detail": "Instale no PC ou abra pelo celular",
+      "open": "Usar no celular ou como app"
+    },
     "attached": "Somente anexos",
     "clear": "Limpar conversa",
     "clearConfirm": "Clique de novo para limpar",

@@ -5,6 +5,11 @@
     "undo": "元に戻す"
   },
   "coordinatorCard": {
+    "appHint": {
+      "close": "この案内を閉じる",
+      "detail": "PC にアプリとして入れる・スマホから開く",
+      "open": "スマホやアプリで使う"
+    },
     "attached": "添付だけ",
     "clear": "会話を消す",
     "clearConfirm": "もう一度で消去",
