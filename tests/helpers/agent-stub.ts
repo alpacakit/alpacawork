@@ -6,7 +6,7 @@ import { BUILTIN_ADAPTER_IDS, optionsBase, type BuiltinAdapterId } from '@alpaca
 
 // Adapter IDs plus executable aliases used by the installed bridges/private provider guard.
 export const FIXTURE_PROVIDER_COMMANDS = [...BUILTIN_ADAPTER_IDS, 'gemini', 'alpacawork-agent'];
-const stubCommands = ['claude', 'alpacawork-agent', 'codex', 'grok', 'agy', 'pi'] as const;
+const stubCommands = ['claude', 'alpacawork-agent', 'codex', 'grok', 'pi'] as const;
 const quote = (word: string) => "'" + word.replaceAll("'", "'\\''") + "'";
 // A real provider command is not a shell script. Where /bin/sh is bash (macOS), its exec exports SHLVL=0, which the
 // launch never gave; drop it so the agent sees the launch's environment. Test (l) checks that environment without a stub.

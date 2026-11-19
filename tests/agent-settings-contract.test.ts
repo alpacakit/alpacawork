@@ -6,6 +6,11 @@ import { defaultAgentSetting, compileAgentSetting, agentSettingSchemaFor, agentS
 import { resolveAgentSelection, SelectionRequired, InvalidAgentSelection, AgentUnavailable, agentChoices } from '@alpacawork/contract/agent-selection';
 import { resolveLaunchOptions, resolveLaunchArgv } from '@alpacawork/contract/launch-options';
 import { agentLaunchSchema, agentInvocationSchema, coordinatorRestartSchema } from '@alpacawork/contract/agent-launch';
+const modelsWithOptionalEffort = {
+  ...defaultAgentSetting('grok'),
+  params: { model: ['model-with-effort', 'fixed-model'], effort: ['high', 'low', 'medium'] },
+  without: { 'fixed-model': ['effort'] },
+};
 const edited = (params: Record<string, string[]>, start: string, resume = start): AgentSetting =>
   ({ params: { model: [], ...params }, options: { base: 'a'.repeat(64), start, resume } });
 function paths(profile: string, input: unknown): string[] {
@@ -26,7 +31,7 @@ for (const id of BUILTIN_ADAPTER_IDS) test(`adapter ${id}: valid detached initia
   }
   initial.params.extra = ['x']; assert.equal(Object.hasOwn(compiled.setting.params, 'extra'), false);
 });
-test('omitted settings follow the adapter, explicit lists replace defaults, and inherited exclusions apply only to optional choices', () => {
+test('omitted settings follow the adapter, explicit lists replace defaults, and exclusions apply only to optional choices', () => {
   const codex = agentSettingSchemaFor('codex').parse({});
   assert.deepEqual(codex.params, { model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra'],
     effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'] });
@@ -38,16 +43,15 @@ test('omitted settings follow the adapter, explicit lists replace defaults, and 
   assert.deepEqual(AGENT_ADAPTERS.codex.fixedEnv, ['CODEX_HOME']);
   assert.deepEqual(AGENT_ADAPTERS.grok.fixedEnv, ['GROK_HOME']);
 
-  const model = 'claude-sonnet-4-6';
-  const agy = agentSettingSchemaFor('agy-alias');
-  const inherited = agy.parse({ adapter: 'agy', params: { model: [model] } });
-  assert.deepEqual(inherited.without, { [model]: ['effort'] });
-  const blank = agy.parse({ adapter: 'agy', params: { model: [] }, env: [], without: {} });
+  const schema = agentSettingSchemaFor('grok-alias');
+  const { params, without } = modelsWithOptionalEffort;
+  const configured = schema.parse({ adapter: 'grok', params, without });
+  assert.deepEqual(configured.without, without);
+  const blank = schema.parse({ adapter: 'grok', params: { model: [] }, env: [], without: {} });
   assert.deepEqual([blank.params.model, blank.env, blank.without], [[], [], {}]);
-  assert.deepEqual(agy.parse({ adapter: 'agy', params: { model: [model] }, without: {} }).without, {});
-  const required = { ...edited({ model: [model] }, '[--model {model}] --effort {effort}'), adapter: 'agy' as const };
-  assert.deepEqual(agy.parse(required).without, {});
-  assert.equal(agy.safeParse({ ...required, without: { [model]: ['effort'] } }).success, false);
+  const required = { ...edited(params, '[--model {model}] --effort {effort}'), adapter: 'grok' as const };
+  assert.deepEqual(schema.parse(required).without, {});
+  assert.equal(schema.safeParse({ ...required, without }).success, false);
 });
 test('param overrides keep adapter order and append custom keys in written order', () => {
   const setting = agentSettingSchemaFor('codex').parse({ params: { zebra: ['one'], effort: ['high', 'low'], alpha: ['two'] } });
@@ -140,13 +144,13 @@ test('deleted and unused previous params remain actionable failures; previous nu
   assert.throws(() => resolveAgentSelection(compiled, { required: null }), InvalidAgentSelection);
 });
 test('without inactivity preserves valid latent values but never conceals deleted candidates', () => {
-  const compiled = compileAgentSetting('agy', defaultAgentSetting('agy'));
-  const resolved = resolveAgentSelection(compiled, { model: 'claude-sonnet-4-6' }, { effort: 'medium' });
+  const compiled = compileAgentSetting('grok', modelsWithOptionalEffort);
+  const resolved = resolveAgentSelection(compiled, { model: 'fixed-model' }, { effort: 'medium' });
   assert.equal(resolved.values.effort, 'medium'); assert.equal(resolved.effective.effort, null);
   assert.equal(resolved.choices.find(choice => choice.key === 'effort')!.active, false);
   assert.ok(!resolveLaunchOptions(compiled.options.start, resolved.effective, { result: 'synthetic-result' }).includes('--effort'));
-  assert.equal(resolveAgentSelection(compiled, { model: 'gemini-3.8-flash' }, resolved.values).effective.effort, 'medium');
-  assert.throws(() => resolveAgentSelection(compiled, { model: 'claude-sonnet-4-6' }, { effort: 'deleted' }), SelectionRequired);
+  assert.equal(resolveAgentSelection(compiled, { model: 'model-with-effort' }, resolved.values).effective.effort, 'medium');
+  assert.throws(() => resolveAgentSelection(compiled, { model: 'fixed-model' }, { effort: 'deleted' }), SelectionRequired);
 });
 test('disabled admission is an explicit typed rejection', () => {
   const compiled = compileAgentSetting('copilot', { ...defaultAgentSetting('copilot'), enabled: false });
@@ -185,8 +189,8 @@ test('admission snapshot freezes prefix, values and fixed+extra env; later confi
 });
 test('admission retains without values but removes their whole argument group before freezing', async () => {
   const { prepareAgentLaunch } = await import('@alpacawork/contract/agent-launch');
-  const { launch } = prepareAgentLaunch(compileAgentSetting('agy', defaultAgentSetting('agy')), {
-    mode: 'start', path: 'synthetic-path', explicit: { model: 'claude-sonnet-4-6', effort: 'medium' },
+  const { launch } = prepareAgentLaunch(compileAgentSetting('grok', modelsWithOptionalEffort), {
+    mode: 'start', path: 'synthetic-path', explicit: { model: 'fixed-model', effort: 'medium' },
   });
   assert.equal(launch.values.effort, 'medium'); assert.equal(launch.argv.includes('--effort'), false);
 });

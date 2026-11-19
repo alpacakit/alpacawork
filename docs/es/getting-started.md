@@ -51,11 +51,11 @@ Durante la instalación, la IA los comprueba e instala Node.js si falta.
 | --- | --- |
 | [Claude Code](https://claude.com/claude-code), [Codex](https://github.com/openai/codex) | Haber iniciado sesión con su propia CLI |
 | [GitHub Copilot](https://github.com/features/copilot) | No hay que instalar nada: viene incluido con alpacawork. Funciona con tu sesión de GitHub CLI (`gh auth login`) |
-| Grok Build (`grok`), Antigravity (`agy`), pi (`pi`) | Haber iniciado sesión, o una clave de API. alpacawork solo puede saber si están instalados, no si tienen la sesión iniciada |
+| Grok Build (`grok`), pi (`pi`) | Haber iniciado sesión, o una clave de API. alpacawork solo puede saber si están instalados, no si tienen la sesión iniciada. Para usar Gemini, ejecuta `/login` en pi y guarda una clave de API de Google Gemini. Consulta la [configuración de proveedores de pi](https://pi.dev/docs/latest/providers). |
 
 El primer paso de la pantalla de configuración inicial muestra cuáles de ellos están instalados en este PC y, en el caso de los tres primeros, si tienen la sesión iniciada. Ahí activas los que vas a usar. Más adelante puedes cambiarlo en Configuración → Servidor.
 
-Cuando una empresa de IA lanza un modelo nuevo, puedes añadirlo tú. Pídelo en el chat, por ejemplo “Añade Gemini 4 a los modelos de Antigravity”, y la IA lo añade a la configuración. También puedes editar los modelos tú mismo en Configuración → Servidor.
+Cuando una empresa de IA lanza un modelo nuevo, puedes añadirlo tú. Pídelo en el chat, por ejemplo “Añade el último modelo a la lista de modelos de Codex”, y la IA lo añade a la configuración. También puedes editar los modelos tú mismo en Configuración → Servidor.
 
 Dentro de una misma solicitud puedes repartir los papeles; por ejemplo, el diseño con Claude Code y la implementación con Codex.
 

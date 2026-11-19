@@ -6,7 +6,7 @@ import { serverText, type ServerLocale } from '@alpacawork/i18n/server';
 import type { InstallationResult } from './public-setup.js';
 import type { DetectedSetupAgent } from './setup-ai.js';
 
-export const setupAgentName = (name: string): string => ({ claude: 'Claude Code', codex: 'Codex', grok: 'Grok Build', agy: 'Antigravity', pi: 'pi', copilot: 'GitHub Copilot' }[name] ?? name);
+export const setupAgentName = (name: string): string => ({ claude: 'Claude Code', codex: 'Codex', grok: 'Grok Build', pi: 'pi', copilot: 'GitHub Copilot' }[name] ?? name);
 /** A lazy logger: inspection and cancellation before Enter create nothing. */
 export function setupLog(env: Readonly<NodeJS.ProcessEnv>) {
   const directory = join(env.XDG_STATE_HOME ?? join(env.HOME!, '.local/state'), 'alpacawork');

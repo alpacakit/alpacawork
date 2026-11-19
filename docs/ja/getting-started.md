@@ -51,11 +51,11 @@ alpacawork は、Claude Code や Codex を、確認を求めないフル権限�
 | --- | --- |
 | [Claude Code](https://claude.com/claude-code)、[Codex](https://github.com/openai/codex) | それぞれの CLI でのサインイン |
 | [GitHub Copilot](https://github.com/features/copilot) | インストールは要りません（alpacawork に同梱）。GitHub CLI のサインイン（`gh auth login`）で動きます |
-| Grok Build（`grok`）、Antigravity（`agy`）、pi（`pi`） | サインイン、または API キー。alpacawork が確かめられるのは、インストールされているかどうかだけで、サインインの状態は確かめられません |
+| Grok Build（`grok`）、pi（`pi`） | サインイン、または API キー。alpacawork が確かめられるのは、インストールされているかどうかだけで、サインインの状態は確かめられません。Gemini を使うには、pi で `/login` を実行し、Google Gemini の API キーを保存します。[pi のプロバイダー設定](https://pi.dev/docs/latest/providers)を参照してください。 |
 
 この PC にどれが入っているかと、上の3つについてはサインインしてあるかが、セットアップの最初のステップに表示されます。使うものを、そこで有効にします。あとからは、画面の「設定 → サーバー」で変えられます。
 
-各社の新しいモデルが出たときは、自分で追加できます。チャットで「Antigravity のモデルに Gemini 4 を追加して」のように頼むと、AI が設定に追加します。画面の「設定 → サーバー」で、自分で編集することもできます。
+各社の新しいモデルが出たときは、自分で追加できます。チャットで「Codex のモデル一覧に最新のモデルを追加して」のように頼むと、AI が設定に追加します。画面の「設定 → サーバー」で、自分で編集することもできます。
 
 1つの依頼の中で、設計は Claude Code、実装は Codex のように使い分けられます。
 

@@ -5,8 +5,8 @@ import { controlTreeSchema } from '../packages/contract/dist/control-contract.js
 import { defaultAgentSetting } from '../packages/contract/dist/agent-settings.js';
 
 test('profiles preserve model-specific omissions without sharing mutable configuration', () => {
-  const setting = defaultAgentSetting('agy');
-  const profile = controlTreeSchema.shape.profiles.element.parse(agentProfile('agy', setting));
+  const setting = { ...defaultAgentSetting('grok'), without: { 'grok-4.7': ['effort'] } };
+  const profile = controlTreeSchema.shape.profiles.element.parse(agentProfile('grok', setting));
   assert.deepEqual(profile.without, setting.without);
   assert.deepEqual(Object.keys(profile.without), Object.keys(setting.without!));
   const model = Object.keys(profile.without)[0]!;

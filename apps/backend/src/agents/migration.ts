@@ -211,8 +211,6 @@ function setting(profile: string, input: unknown, path: string, notices: Migrati
   const target = convertedFields(fields, id, path, !!known);
   const env = migratedEnv(id).filter(name => !AGENT_ADAPTERS[id].fixedEnv.includes(name));
   const result: AgentSetting = { ...target, ...(profile === id ? {} : { adapter: id }), env };
-  // Omission in the legacy settings meant no exclusions beyond those converted from its fields.
-  if (result.without === undefined && Object.keys(AGENT_ADAPTERS[id].defaultWithout).length) result.without = {};
   if (known) notices.push({ path, code: 'historical_default', source: 'id' in known ? known.id : known.commit, reason: 'Verified historical shape uses target defaults without options or edited marker' });
   else {
     result.options = { base: optionsBase(id), start: optionsOf(start, id, at(path, 'start')), resume: optionsOf(resume, id, at(path, 'resume')) };

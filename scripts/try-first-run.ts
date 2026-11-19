@@ -125,9 +125,9 @@ async function runPreview() {
     // setup prepends its real Node directory to the service PATH. A private copy keeps that directory isolated too.
     const node = join(bin, 'node'); copyFileSync(process.execPath, node);
     env.PATH = `${bin}:${installAgentStub(root, 'claude')}`;
-    // Kinds with no sign-in check of their own (Grok Build, Antigravity, pi) are left out, as on a PC without them: a
+    // Kinds with no sign-in check of their own (Grok Build and pi) are left out, as on a PC without them: a
     // stand-in that answers --version would read as installed, which the preview cannot make true.
-    for (const kind of ['grok', 'agy', 'pi']) rmSync(join(root, 'agent-bin', kind), { force: true });
+    for (const kind of ['grok', 'pi']) rmSync(join(root, 'agent-bin', kind), { force: true });
     const network = join(root, 'network.mjs'); copyFileSync(join(repo, 'scripts/first-run-preview/network.mjs'), network);
     copyFileSync(join(repo, 'scripts/first-run-preview/agent.mjs'), join(root, 'actor.mjs'));
     copyFileSync(join(repo, 'scripts/first-run-preview/scenario.mjs'), join(root, 'scenario.mjs'));
@@ -192,7 +192,7 @@ async function runPreview() {
       if (!executable || !realpathSync(executable).startsWith(root + '/')) throw new Error(`Preview command escaped isolation: ${command}`);
     }
     // The kinds left out stay out: a real one on the service PATH would be run by the availability check.
-    for (const command of ['grok', 'agy', 'pi'])
+    for (const command of ['grok', 'pi'])
       if (service.environment.PATH!.split(':').some(directory => existsSync(join(directory, command)))) throw new Error(`Preview found a real ${command} on its PATH`);
     const url = `http://127.0.0.1:${selected}/`;
     const checked = async (path: string) => { const response = await fetch(new URL(path, url)); if (!response.ok) throw new Error(`${path}: ${response.status}`); return response; };

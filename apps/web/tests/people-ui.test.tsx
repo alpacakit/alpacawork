@@ -149,20 +149,20 @@ test("a person decides who is responsible: a new person replaces the current one
     .toEqual(posted()[0]!.body);
 });
 
-/** agy's fixed models have no effort; grok's must be given. */
+/** The configured Pi profile omits effort for fixed models. The Grok profile requires effort. */
 const effortProfiles: ControlTreeDTO["profiles"] = [
-  launchProfile("agy", { model: ["gemini-3.8-flash", "claude-sonnet-4-6", "claude-opus-4-6-thinking"], effort: ["high", "low", "medium"] }, ["effort"],
-    { "claude-sonnet-4-6": ["effort"], "claude-opus-4-6-thinking": ["effort"] }),
+  launchProfile("pi", { model: ["model-with-effort", "fixed-first", "fixed-second"], effort: ["high", "low", "medium"] }, ["effort"],
+    { "fixed-first": ["effort"], "fixed-second": ["effort"] }),
   launchProfile("grok", { model: ["grok-4.7"], effort: ["high", "low", "medium", "xhigh"] })];
 const options = (name: string) => [...(screen.getByRole("combobox", { name }) as HTMLSelectElement).options].map(option => option.value);
 const shown = (name: string) => (screen.getByRole("combobox", { name }) as HTMLSelectElement).value;
 
 test.each([
   ["grok", [["Effort", "xhigh"]], { model: "grok-4.7", effort: "xhigh" }],
-  ["agy", [["Effort", "low"]], { model: "gemini-3.8-flash", effort: "low" }],
+  ["pi", [["Effort", "low"]], { model: "model-with-effort", effort: "low" }],
   // Changing to a fixed model takes its effort away: nothing to show, nothing sent.
-  ["agy", [["Effort", "low"], ["Model", "claude-sonnet-4-6"]], { model: "claude-sonnet-4-6" }],
-  ["agy", [["Model", "claude-sonnet-4-6"], ["Model", "gemini-3.8-flash"]], { model: "gemini-3.8-flash", effort: "high" }],
+  ["pi", [["Effort", "low"], ["Model", "fixed-first"]], { model: "fixed-first" }],
+  ["pi", [["Model", "fixed-first"], ["Model", "model-with-effort"]], { model: "model-with-effort", effort: "high" }],
 ] as const)("a new responsible person of %s is placed with the model and effort chosen for them (%j)", async (profile, changes, selected) => {
   serve(() => json({}));
   vi.mocked(fetch).mockImplementation(async (url, init) => String(url) === "/api/agent/assign" && init?.method === "POST"
@@ -173,14 +173,14 @@ test.each([
   expect(options("Model")).toEqual(["grok-4.7"]);
   expect(options("Effort")).toEqual(["high", "low", "medium", "xhigh"]);
   expect(shown("Effort")).toBe("high");
-  fireEvent.change(screen.getByRole("combobox", { name: "Launch profile" }), { target: { value: "agy" } });
-  expect(options("Model")).toEqual(["gemini-3.8-flash", "claude-sonnet-4-6", "claude-opus-4-6-thinking"]);
+  fireEvent.change(screen.getByRole("combobox", { name: "Launch profile" }), { target: { value: "pi" } });
+  expect(options("Model")).toEqual(["model-with-effort", "fixed-first", "fixed-second"]);
   // No "none" is added: only the written values.
   expect(options("Effort")).toEqual(["high", "low", "medium"]);
   expect(shown("Effort")).toBe("high");
-  fireEvent.change(screen.getByRole("combobox", { name: "Model" }), { target: { value: "claude-opus-4-6-thinking" } });
+  fireEvent.change(screen.getByRole("combobox", { name: "Model" }), { target: { value: "fixed-second" } });
   expect(screen.queryByRole("combobox", { name: "Effort" })).toBeNull();
-  fireEvent.change(screen.getByRole("combobox", { name: "Model" }), { target: { value: "gemini-3.8-flash" } });
+  fireEvent.change(screen.getByRole("combobox", { name: "Model" }), { target: { value: "model-with-effort" } });
   fireEvent.change(screen.getByRole("combobox", { name: "Launch profile" }), { target: { value: profile } });
   for (const [name, value] of changes) fireEvent.change(screen.getByRole("combobox", { name }), { target: { value } });
   expect(screen.queryByRole("combobox", { name: "Effort" }) === null).toBe(!("effort" in selected));

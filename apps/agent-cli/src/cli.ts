@@ -7,14 +7,12 @@ import { resolveExecutable } from '@alpacawork/core';
 import { CopilotRuntime, inspectCopilotArgs } from './copilot.js';
 import { GrokRuntime } from './grok.js';
 import { PiRuntime } from './pi.js';
-import { AgyRuntime } from './agy.js';
 
 type AgentModule = { create(args: string[], io: RuntimeIO, command: string): Runtime; inspect?(args: string[]): Promise<boolean> };
 const agents: Record<BridgeAdapterId, AgentModule> = {
   codex: { create: (args, io, command) => new CodexRuntime(args, io, command) },
   copilot: { create: (args, io) => new CopilotRuntime(args, io), inspect: inspectCopilotArgs },
   grok: { create: (args, io, command) => new GrokRuntime(args, io, command) },
-  agy: { create: (args, io, command) => new AgyRuntime(args, io, command) },
   pi: { create: (args, io, command) => new PiRuntime(args, io, command) },
 };
 

@@ -17,12 +17,12 @@ describe('the setup\'s agents', () => {
       { name: 'claude', adapter: 'claude', status: 'signedOut', signIn: 'claude auth login', command: 'claude', configured: true },
       { name: 'grok', adapter: 'grok', status: 'missing', signIn: null, command: 'grok', configured: true }]);
     // A supported kind config.yaml does not list is shown too when its CLI is missing, and cannot be enabled.
-    const absent = startAgents([agent('codex', true)], { availability: { codex: seen('ready') }, detected: { pi: seen('not_found'), agy: seen('unknown') } }, false);
-    expect(absent.map(row => [row.name, row.status])).toEqual([['codex', 'ready'], ['agy', 'found'], ['pi', 'missing']]);
+    const absent = startAgents([agent('codex', true)], { availability: { codex: seen('ready') }, detected: { pi: seen('not_found'), grok: seen('unknown') } }, false);
+    expect(absent.map(row => [row.name, row.status])).toEqual([['codex', 'ready'], ['grok', 'found'], ['pi', 'missing']]);
     expect(usableAgents(absent, { codex: true, pi: true })).toEqual(['codex']);
     // Switched on, a kind config.yaml did not list is added to it; one whose CLI is missing is never written.
-    const added = chosenAgents([agent('codex', true)], absent, { codex: true, agy: true, pi: true }, 'codex')!;
-    expect(added.map(each => [each.name, each.enabled])).toEqual([['codex', true], ['agy', true]]);
+    const added = chosenAgents([agent('codex', true)], absent, { codex: true, grok: true, pi: true }, 'codex')!;
+    expect(added.map(each => [each.name, each.enabled])).toEqual([['codex', true], ['grok', true]]);
     expect(startAgents(agents, undefined, true).map(row => row.status)).toEqual(['checking', 'checking', 'checking']);
     // A kind with no sign-in check (or a check that did not answer) can still take work, as in Settings.
     const found = startAgents([agent('pi', true)], { availability: { pi: seen('unknown') } }, false);

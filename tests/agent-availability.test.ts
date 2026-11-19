@@ -72,7 +72,7 @@ test('the real bridge entry starts the supplied executable and rejects a missing
 test('one deadline bounds all hung targets, shares probes across profiles and reaps every child', async t => {
   const f = fixture(t), log = join(f.root, 'checks.jsonl');
   const source = `#!${process.execPath}\nrequire('node:fs').appendFileSync(${JSON.stringify(log)},JSON.stringify({pid:process.pid,argv:process.argv.slice(1)})+'\\n');setInterval(()=>{},1000);\n`;
-  for (const name of ['claude', 'codex', 'grok', 'agy', 'pi']) writeFileSync(join(f.bin, name), source, { mode: 0o700 });
+  for (const name of ['claude', 'codex', 'grok', 'pi']) writeFileSync(join(f.bin, name), source, { mode: 0o700 });
   const bridge = join(f.root, 'hung-bridge.cjs'); writeFileSync(bridge, source);
   f.environment.bridge = [process.execPath, bridge];
   const started = performance.now();

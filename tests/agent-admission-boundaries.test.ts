@@ -178,12 +178,12 @@ for (const id of BUILTIN_ADAPTER_IDS) test(`built-in profile ${id}: reject a dif
 });
 
 test('hidden without model reference keeps its old diagnostic and identifies the visible model row without deleting hidden data', () => {
-  const setting = defaultAgentSetting('agy'); setting.params.model = ['gemini-3.8-flash'];
+  const setting = { ...defaultAgentSetting('grok'), without: { 'removed-model': ['effort'] } };
   const before = structuredClone(setting);
-  const result = agentSettingsSchema.safeParse({ custom: { ...setting, adapter: 'agy' } });
+  const result = agentSettingsSchema.safeParse({ custom: { ...setting, adapter: 'grok' } });
   assert.equal(result.success, false);
   const paths = result.error!.issues.map(issue => issue.path.join('.'));
-  assert.ok(paths.includes('custom.without.claude-sonnet-4-6')); assert.ok(paths.includes('custom.params.model'));
+  assert.ok(paths.includes('custom.without.removed-model')); assert.ok(paths.includes('custom.params.model'));
   assert.deepEqual(setting, before);
 });
 for (const state of ['deleted', 'unused', 'required'] as const)

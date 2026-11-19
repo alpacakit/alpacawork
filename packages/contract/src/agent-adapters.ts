@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { SystemVariableName } from './agent-variables.js';
 import { fingerprintOptions } from './options-base.js';
 
-export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'agy', 'pi', 'copilot'] as const;
+export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'pi', 'copilot'] as const;
 export const unavailableAgentKind = (id: unknown) => `Agent kind "${String(id)}" is unavailable in this version; select a supported adapter or remove this profile from config.yaml`;
 export const builtinAdapterIdSchema = z.enum(BUILTIN_ADAPTER_IDS, { error: issue => unavailableAgentKind(issue.input) });
 export type BuiltinAdapterId = z.infer<typeof builtinAdapterIdSchema>;
@@ -16,7 +16,6 @@ export type LaunchMode = (typeof LAUNCH_MODES)[number];
 export type AdapterDescription = {
   id: BuiltinAdapterId;
   defaultParams: Readonly<Record<string, readonly string[]>>;
-  defaultWithout: Readonly<Record<string, readonly string[]>>;
   prefix: readonly string[];
   options: Readonly<Record<LaunchMode, string>>;
   /** Values supplied by the adapter/session policy, independent of edited options.
@@ -33,8 +32,8 @@ export type AdapterDescription = {
 };
 const bridge = <Id extends BridgeAdapterId>(id: Id, defaultParams: AdapterDescription['defaultParams'], start: string, resume: string,
   referenceUrl: string, defaultEnv: readonly string[] = [], fixedEnv: readonly string[] = [],
-  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'defaultWithout'>> = {}): AdapterDescription & { id: Id } =>
-  ({ id, command: id, auth: null, defaultWithout: {}, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
+  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth'>> = {}): AdapterDescription & { id: Id } =>
+  ({ id, command: id, auth: null, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
     system: { start: ['result'], resume: ['result', 'session'] }, fixedEnv, defaultEnv, referenceUrl });
 const me = '[--model {model}] [--effort {effort}]';
 const result = '-o {result}';
@@ -42,7 +41,7 @@ const result = '-o {result}';
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
     id: 'claude', command: 'claude', auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
-    defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] }, defaultWithout: {},
+    defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
     options: {
@@ -58,11 +57,6 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
   { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' } }),
   grok: bridge('grok', { model: ['grok-4.7'], effort: ['high', 'low', 'medium', 'xhigh'] },
     `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME']),
-  agy: bridge('agy', { model: ['gemini-3.8-flash', 'claude-sonnet-4-6', 'claude-opus-4-6-thinking', 'gpt-oss-120b-medium'],
-    effort: ['high', 'low', 'medium'] }, `${me} ${result}`, `${me} ${result} --conversation {session}`,
-  'https://antigravity.google/docs/cli/reference/',
-    ['GEMINI_API_KEY', 'AGY_ADC_AUTH', 'GOOGLE_CLOUD_QUOTA_PROJECT', 'GOOGLE_CLOUD_LOCATION', 'GOOGLE_APPLICATION_CREDENTIALS'], [],
-    { defaultWithout: { 'claude-sonnet-4-6': ['effort'], 'claude-opus-4-6-thinking': ['effort'], 'gpt-oss-120b-medium': ['effort'] } }),
   copilot: bridge('copilot', { model: [] }, `[-m {model}] ${result}`, `[-m {model}] ${result} resume {session}`,
     'https://docs.github.com/en/copilot/reference/copilot-cli-reference', [], [],
     { command: null, auth: { args: ['--auth-status'], ready: 0, signedOut: 1, nextAction: 'gh auth login' } }),
@@ -74,9 +68,8 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
 // Keep descriptors immutable even when imported by a mutable form draft.
 for (const adapter of Object.values(AGENT_ADAPTERS)) {
   for (const values of Object.values(adapter.defaultParams)) Object.freeze(values);
-  for (const values of Object.values(adapter.defaultWithout)) Object.freeze(values);
   if (adapter.auth) { Object.freeze(adapter.auth.args); Object.freeze(adapter.auth); }
-  Object.freeze(adapter.defaultParams); Object.freeze(adapter.defaultWithout); Object.freeze(adapter.prefix); Object.freeze(adapter.options);
+  Object.freeze(adapter.defaultParams); Object.freeze(adapter.prefix); Object.freeze(adapter.options);
   for (const names of Object.values(adapter.system)) Object.freeze(names);
   Object.freeze(adapter.system);
   Object.freeze(adapter.fixedEnv); Object.freeze(adapter.defaultEnv); Object.freeze(adapter);
