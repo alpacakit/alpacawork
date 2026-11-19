@@ -3,7 +3,10 @@
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.png">
+    <img src="docs/images/wordmark.png" alt="alpacawork" width="380">
+  </picture>
 </h1>
 
 <h3 align="center">Deja que la IA gestione tus IA.</h3>
