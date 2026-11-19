@@ -83,12 +83,16 @@ alpacawork setup
 
 ## What it does
 
+<img align="right" width="380" src="docs/images/intro.gif" alt="The alpacawork intro video: asking in one chat box, AI splitting the request into tasks and picking an agent for each, steering every running agent with one message, answering a question by picking an option, and approving a result that another AI has reviewed">
+
 - **Write every request in one chat box.** The coordinator turns each request into a task and hands it to an AI. You never have to switch chats or AIs from one job to the next.
 - **AI manages several AIs at once.** To add to or change work in progress, you only tell the coordinator. Write "For all three tasks in progress, also check the phone layout," and the coordinator gives that instruction to each AI working on them.
 - **Describe a workflow in words, and the AIs carry it out together.** Even an involved one, such as "Make three proposals, each with a different model. Combine them into one, have another AI review it, and fix it before you report," is carried out as you described it: AI manages the steps, and the AIs hand work to one another.
 - **Questions from the AI come with options and a recommendation.** Questions and reports arrive with images and videos. Pick an option to answer.
 - **A screen built for phones.** Swipe right to answer a question or to mark a result done. You can take a task from request to done on your phone alone. The same screen also works in a browser on your PC.
 - **It runs in your usual setup.** `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. You don't need an account or an API key for alpacawork.
+
+<br clear="right">
 
 ## Good to know
 
