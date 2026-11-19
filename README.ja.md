@@ -13,7 +13,7 @@
 
 <p align="center">
   Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
-  もう、PC の前に座って仕事をすることから解放されます。
+  PC の前に座って働くことから、解放されます。
 </p>
 
 <p align="center">

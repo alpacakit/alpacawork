@@ -42,7 +42,7 @@ to README.md#install): keep those headings, or change the links with them.
 
 <p align="center">
   It assigns work to Claude Code and Codex<br/>and tracks their progress.<br/>
-  You no longer have to sit at your PC to get work done.
+  You no longer have to sit at your PC to work.
 </p>
 
 <p align="center">
