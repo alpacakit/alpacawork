@@ -185,6 +185,8 @@ majority と try-and-keep は非公開リポジトリで別に配布します。
 
 スマートフォンでは、PC で動いている alpacawork の画面を開いて使います。AI は PC の上で動くので、使っている間は PC を起動したままにし、スリープしない設定にします（ノート PC は、ふたを閉じると止まります）。
 
+いつも電源を入れてある別の PC に alpacawork を入れて、手元の PC やスマートフォンから使うこともできます。手元の Claude Code や Codex の会話からつなぐ手順は、[セットアップの手順書](../../skills/alpacawork/references/setup.md#connect) にあります（英語です）。
+
 <img src="../images/home-phone.png" alt="スマートフォンの一覧の画面。作業中・確認待ち・完了にタスクが並んでいる" width="320">
 
 PC とスマートフォンは、VPN（自分の端末どうしを安全につなぐ仕組み）でつなぎ、HTTPS の URL で開きます（HTTP の URL では開けません）。[Tailscale](https://tailscale.com/)（個人利用は無料）なら、どちらも用意できます。
