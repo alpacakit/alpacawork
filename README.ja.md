@@ -41,7 +41,7 @@ PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpac
 
 ```text
 次のドキュメントをダウンロードして全文を読み、その手順に従ってこの PC に alpacawork をインストールしてください。
-https://unpkg.com/alpacawork/skills/alpacawork/references/setup.md
+https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
 コマンドで入れるときは、ターミナルで次の2行を順に実行します。

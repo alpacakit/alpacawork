@@ -10,7 +10,7 @@ npm resolves no relative path, so the release rewrites each one in the packaged 
 https://unpkg.com/alpacawork@<version>/<path>, any other file from
 https://github.com/alpacakit/alpacawork/blob/main/<path>. On npm a guide opens as unformatted Markdown
 text, with no pictures, no working links and no jump to a #section.
-The setup guide an AI downloads stays an absolute unpkg URL inside the install text.
+The setup guide an AI downloads uses a GitHub raw URL so the AI can read the Markdown directly.
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else, and npm shows such a URL as
 plain text.
@@ -68,7 +68,7 @@ Paste the following text into Claude Code or Codex on your PC. The AI installs a
 
 ```text
 Download the guide below, read all of it, and follow it to install alpacawork on this PC.
-https://unpkg.com/alpacawork/skills/alpacawork/references/setup.md
+https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
 To install with commands, run these two lines in a terminal, in order.

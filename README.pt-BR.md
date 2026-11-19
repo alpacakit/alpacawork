@@ -41,7 +41,7 @@ Cole o texto abaixo no Claude Code ou no Codex do seu PC. A IA instala o alpacaw
 
 ```text
 Baixe o guia abaixo, leia-o inteiro e siga as instruções para instalar o alpacawork neste PC.
-https://unpkg.com/alpacawork/skills/alpacawork/references/setup.md
+https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
 Para instalar pela linha de comando, execute estas duas linhas no terminal, nesta ordem.
