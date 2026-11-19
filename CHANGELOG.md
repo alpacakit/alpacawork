@@ -26,11 +26,11 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
-## 0.2.0
+## 0.1.1
 
 alpacawork is now available in Simplified Chinese, Spanish and Brazilian Portuguese. First-time setup makes each step clearer, and task status looks the same wherever you open a task.
 
-**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.2.0`. The database schema and Run execution format are unchanged from 0.1.0. From 0.1.0-beta.9 or earlier, follow the instructions for older beta versions in the [0.1.0 update notes](https://github.com/alpacakit/alpacawork/blob/v0.2.0/CHANGELOG.md#010), using `alpacawork@0.2.0` in step 4.
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.1`. The database schema and Run execution format are unchanged from 0.1.0. From 0.1.0-beta.9 or earlier, follow the instructions for older beta versions in the [0.1.0 update notes](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#010), using `alpacawork@0.1.1` in step 4.
 
 ### Highlights
 - **Three more languages.** Choose Simplified Chinese, Spanish or Brazilian Portuguese in Settings or during setup. On first use, alpacawork follows the browser or terminal language when supported. The interface, guides, notifications and terminal confirmations are available in all three languages. ([#2](https://github.com/alpacakit/alpacawork/pull/2))
