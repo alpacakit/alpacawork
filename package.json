@@ -1,11 +1,11 @@
 {
   "name": "alpacawork",
   "version": "0.1.0",
-  "description": "Run a team of AI agents from your phone. Hand off work, see what every agent is doing, and review the results from anywhere. Open-source task management for Claude Code, Codex and other coding agents, running on your own PC.",
+  "description": "Let AI manage your AI. Open-source task management for Claude Code, Codex and other coding agents: an AI assigns your requests to agents on your own PC and tracks their progress. Works from your phone too.",
   "keywords": [
     "ai-agents", "ai", "claude-code", "codex", "claude", "coding-agents", "ai-coding",
     "agent-orchestration", "multi-agent", "task-management", "task-manager", "project-management",
-    "human-in-the-loop", "mobile-first", "remote-control", "pwa", "self-hosted", "agent-skills",
+    "human-in-the-loop", "mobile-first", "agent-harness", "pwa", "self-hosted", "agent-skills",
     "developer-tools", "cli"
   ],
   "license": "MIT",
