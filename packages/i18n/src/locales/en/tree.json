@@ -111,18 +111,18 @@
     "examples": {
       "decide": {
         "label": "Pick a mini game idea, then have it built",
-        "shows": "AI compares ideas and asks you a question. Your answer starts the build.",
-        "words": "I'd like to make one mini game I can play in the browser. Make it a task: list 3 ideas, and ask me which to build, with a comparison table and your recommendation in the question. Once I answer, build the one I chose in about 5 minutes without asking anything else, and report back. This is a tutorial, so keep the effort light: go for speed, don't overthink it, and take it easy. Please write everything in English."
+        "shows": "AI offers ideas; pick one and it builds that game.",
+        "words": "I'd like one mini game I can play in the browser. Suggest 3 ideas and ask me which to build. Then build the one I pick in about 5 minutes. This is a trial run, so keep the effort light. Please write everything in English."
       },
       "models": {
-        "label": "Have 3 models build a snake game, then pick one",
-        "shows": "Different models build in parallel, then you pick the one to keep.",
-        "words": "I'd like to make a snake game. Could you try building 3 in parallel with different models? When they're done, ask me which one to go with. This is a tutorial, so please keep the effort light and take about 5 minutes. Please write everything in English."
+        "label": "Have 3 models build a snake game, then compare",
+        "shows": "Different models build in parallel, then you're asked which to keep.",
+        "words": "Please build a snake game that runs in the browser, 3 times in parallel with a different model each. When they're done, ask me which one to keep. This is a trial run, so keep the effort light and take about 5 minutes. Please write everything in English."
       },
-      "triage": {
-        "label": "Split a café opening into 5 tasks",
-        "shows": "The results line up for your review, and you choose which to complete.",
-        "words": "Please split a fictional café's opening into 5 separate tasks: \"Order the beans\", \"Arrange the sign\", \"Print the menu\", \"Hire staff\" and \"Send the invitations\", and give each one to an agent. Have each write a one-line fictional result in its report and wait for my review. Once all 5 are in, I'll choose which to complete. No research or files needed, and please write everything in English."
+      "settings": {
+        "label": "Set a working rule and how many agents run at once",
+        "shows": "A rule joins the project policy, and at most 4 agents run at once.",
+        "words": "Please add this rule to this project's policy: \"When you finish, report what you changed in 3 lines or fewer.\" Also, set this environment to run at most 4 agents at once. Please write everything in English."
       }
     },
     "lead": "Choose an example to try it out.",

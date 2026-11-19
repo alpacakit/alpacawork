@@ -19,7 +19,7 @@ export function Welcome() {
   const examples = [
     { name: "models", label: t("welcome.examples.models.label"), shows: t("welcome.examples.models.shows"), words: t("welcome.examples.models.words") },
     { name: "decide", label: t("welcome.examples.decide.label"), shows: t("welcome.examples.decide.shows"), words: t("welcome.examples.decide.words") },
-    { name: "triage", label: t("welcome.examples.triage.label"), shows: t("welcome.examples.triage.shows"), words: t("welcome.examples.triage.words") },
+    { name: "settings", label: t("welcome.examples.settings.label"), shows: t("welcome.examples.settings.shows"), words: t("welcome.examples.settings.words") },
   ];
   // One column in the middle: the heading and one short line inviting a try, centred, then the examples, whose rows
   // read from their left edge; it rises into place in three parts, each a little

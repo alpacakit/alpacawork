@@ -18,6 +18,8 @@
     "noneOnTitle": "No agent is enabled",
     "noneReady": "Install an agent or sign in to one, then choose “Check again”.",
     "noneReadyTitle": "No agent is ready yet",
+    "off": "Off",
+    "on": "On",
     "ready": "Signed in",
     "recheck": "Check again",
     "signedOut": "Sign-in required",
@@ -51,7 +53,7 @@
     "failed": "Couldn't finish setup. Try again.",
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
-    "lead": "Tasks are handed off project by project. Name your first one and choose the folder agents work in (\"Code location\").",
+    "lead": "Tasks are handed off project by project. Name your first one and choose the folder agents work in.",
     "policyLead": "The project policy that is filled in is only an example. Rewrite it to fit your own work. You can change all of this later in Settings.",
     "policyNote": "What you write here is given as written to every agent working in this project.",
     "policySkillLine": "- {{skill}}: use {{when}}.",
@@ -101,6 +103,7 @@
   "steps": {
     "agents": "Agents",
     "label": "Setup steps",
+    "of": "Step {{at}} of {{total}}",
     "project": "Project",
     "skills": "Skills"
   },

@@ -425,7 +425,7 @@
     "inGitFolder": "Inside git's own folder, so it cannot be opened",
     "label": "Diff and files",
     "missing": "No such file",
-    "outside": "Outside the project's registered code location, so it cannot be opened",
+    "outside": "Outside the project's registered working folder, so it cannot be opened",
     "rendered": "Rendered",
     "shared": "Shares its contents with another location, so it cannot be opened",
     "source": "Source",
