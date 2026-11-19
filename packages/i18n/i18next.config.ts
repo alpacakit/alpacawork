@@ -35,7 +35,7 @@ export default defineConfig({
       "setup:skills.reason.*", // Why a skill was not installed, by the server's reason code.
       "panels:settings.show.*", "panels:settings.showShort.*",
       "panels:settings.server.limit.*", "panels:settings.server.agentIssue.*",
-      "reader:history.waiting.*", "reader:history.reasons.*", "reader:summaryTab.childCount.*", "reader:files.facet.*",
+      "reader:history.waiting.*", "reader:history.reasons.*", "reader:files.facet.*",
       "reader:reportFeed.row.*", // A History row says its party, kind and ending by the record's own values.
       "translation:problem.*", "translation:validation.*",
     ],

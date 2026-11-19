@@ -243,3 +243,19 @@ test.each([true, false])('search shortcut retains an existing query and results 
   expect(document.activeElement).toBe(search);
   expect(search.value).toBe('Invoice'); expect(document.querySelector('[data-result-list]')).toBeTruthy();
 });
+
+test("a result says a task asking the user as every screen does, not by its state or its end words", async () => {
+  await i18n.changeLanguage("en");
+  // A working child with no estimate asks the user: the list and the tree say Question, and so does its result.
+  const asking = taskFixture({ id: "T2", parentId: "T1", state: "doing",
+    ball: userBall("question", "Lask", at, { questionId: "Lask" }) });
+  const value = tree({ tasks: [dto({ id: "T1" }), asking] });
+  seedSearch(value.root, "x", ["T2"]);
+  useViewStore.setState({ query: "x" });
+  render(<TestWorkspace data={screenData(value)}><SearchResults /></TestWorkspace>);
+  const row = document.querySelector<HTMLElement>('[data-result="T2"]')!;
+  expect(row.querySelector("[data-icon]")?.getAttribute("data-icon")).toBe("question");
+  const word = row.querySelector<HTMLElement>("span span span")!;
+  expect(word.textContent).toBe(i18n.t("ui:turn.question"));
+  expect(word.className).toContain("text-turn");
+});
