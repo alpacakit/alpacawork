@@ -1,0 +1,13 @@
+# Generated from defaultAgentSetting in @alpacawork/contract; explicit test settings.
+agents:
+  grok:
+    params:
+      model:
+        - grok-4.7
+      effort:
+        - high
+        - low
+        - medium
+        - xhigh
+    env:
+      - XAI_API_KEY

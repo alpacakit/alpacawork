@@ -139,7 +139,7 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
 }
 
 /** Each kind's two letters in its row's mark. */
-const MARKS: Record<string, string> = { codex: "Cx", claude: "Cl", grok: "Gk", agy: "Ag", copilot: "Gh", pi: "Pi" };
+const MARKS: Record<string, string> = { codex: "Cx", claude: "Cl", grok: "Gk", copilot: "Gh", pi: "Pi" };
 
 function AgentRow({ row, on, name, onChange, onRecheck, checking }: {
   row: StartAgent; on: boolean; name: string; onChange: (on: boolean) => void; onRecheck: () => Promise<boolean>; checking: boolean;

@@ -11,9 +11,9 @@ vi.mock("../src/data/workspace-store", () => ({ useFrameSelector: (select: (valu
   profiles: given.profiles,
 } }) }));
 const codex = launchProfile("codex", { model: ["a", "b"] });
-/** agy's fixed models have no effort; grok's must be given. */
-const agy = launchProfile("agy", { model: ["gemini-3.8-flash", "claude-sonnet-4-6", "claude-opus-4-6-thinking"], effort: ["high", "low", "medium"] }, ["effort"],
-  { "claude-sonnet-4-6": ["effort"], "claude-opus-4-6-thinking": ["effort"] });
+/** The configured Pi profile omits effort for fixed models. The Grok profile requires effort. */
+const pi = launchProfile("pi", { model: ["model-with-effort", "fixed-first", "fixed-second"], effort: ["high", "low", "medium"] }, ["effort"],
+  { "fixed-first": ["effort"], "fixed-second": ["effort"] });
 /** A row a setting adds (tier) is offered like effort, with nothing written for it. */
 const grok = launchProfile("grok", { model: ["grok-4.7"], effort: ["high", "low", "medium", "xhigh"], tier: ["standard", "priority"] });
 const stored = () => JSON.parse(localStorage.getItem("alpacawork.launchChoice")!) as { agent: string; values: Record<string, Record<string, string>> };
@@ -54,43 +54,43 @@ test.each([true, false])("an input that rendered an intermediate model returns t
 });
 
 test("the picker offers each row's written values, shallow to deep, never a 'none' the settings did not write", () => {
-  given.profiles = [agy, grok];
+  given.profiles = [pi, grok];
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
   render(<Picker />);
-  expect(choice.selected).toEqual({ model: "gemini-3.8-flash", effort: "high" });
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "high" });
   fireEvent.click(document.querySelector("[data-agent-picker]")!);
   const steps = () => [...document.querySelectorAll<HTMLInputElement>('input[name="agent-effort"]')].map(input => input.parentElement!.textContent);
   expect(steps()).toEqual(["low", "medium", "high"]);
   expect(screen.queryByRole("radio", { name: "None" })).toBeNull();
   fireEvent.click(screen.getByRole("radio", { name: "low" }));
-  expect(stored().values.agy).toEqual({ model: "gemini-3.8-flash", effort: "low" });
-  expect(choice.send).toEqual({ model: "gemini-3.8-flash", effort: "low" });
+  expect(stored().values.pi).toEqual({ model: "model-with-effort", effort: "low" });
+  expect(choice.send).toEqual({ model: "model-with-effort", effort: "low" });
   // A fixed model has no effort: no row of steps, and no effort in what is kept and sent.
-  fireEvent.click(screen.getByRole("radio", { name: /claude-sonnet-4-6/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /fixed-first/ }));
   expect(steps()).toEqual([]);
   screen.getByText("agentPicker.notOffered");
-  expect(choice.selected).toEqual({ model: "claude-sonnet-4-6" });
-  expect(choice.send).toEqual({ model: "claude-sonnet-4-6" });
-  expect(Object.hasOwn(stored().values.agy!, "effort")).toBe(false);
+  expect(choice.selected).toEqual({ model: "fixed-first" });
+  expect(choice.send).toEqual({ model: "fixed-first" });
+  expect(Object.hasOwn(stored().values.pi!, "effort")).toBe(false);
   expect(document.querySelector("[data-agent-picker]")!.getAttribute("aria-label")).not.toMatch(/low|high/);
   fireEvent.click(screen.getByRole("radio", { name: /grok-4\.7/ }));
   expect(choice.selected).toEqual({ model: "grok-4.7", effort: "high", tier: "standard" });
   expect(steps()).toEqual(["low", "medium", "high", "xhigh"]);
   expect([...document.querySelectorAll<HTMLInputElement>('input[name="agent-tier"]')].map(input => input.parentElement!.textContent)).toEqual(["standard", "priority"]);
-  fireEvent.click(screen.getByRole("radio", { name: /gemini-3\.8-flash/ }));
-  expect(choice.selected).toEqual({ model: "gemini-3.8-flash", effort: "high" });
+  fireEvent.click(screen.getByRole("radio", { name: /model-with-effort/ }));
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "high" });
 });
 
 test.each([
-  [{ model: "claude-sonnet-4-6", effort: "max" }, { model: "claude-sonnet-4-6" }],
-  [{ model: "claude-sonnet-4-6", effort: "low" }, { model: "claude-sonnet-4-6" }],
-  [{ model: "gemini-3.8-flash", effort: "xhigh" }, { model: "gemini-3.8-flash", effort: "high" }],
-  [{ model: "gone-model", effort: "low" }, { model: "gemini-3.8-flash", effort: "low" }],
-  [{ model: "gemini-3.8-flash", effort: "low", tier: "old" }, { model: "gemini-3.8-flash", effort: "low" }],
+  [{ model: "fixed-first", effort: "max" }, { model: "fixed-first" }],
+  [{ model: "fixed-first", effort: "low" }, { model: "fixed-first" }],
+  [{ model: "model-with-effort", effort: "xhigh" }, { model: "model-with-effort", effort: "high" }],
+  [{ model: "gone-model", effort: "low" }, { model: "model-with-effort", effort: "low" }],
+  [{ model: "model-with-effort", effort: "low", tier: "old" }, { model: "model-with-effort", effort: "low" }],
 ])("a choice saved on this device before, %o, is shown and sent as %o", (saved, shown) => {
-  given.profiles = [agy];
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "agy", values: { agy: saved } }));
+  given.profiles = [pi];
+  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "pi", values: { pi: saved } }));
   window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" }));
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
@@ -102,7 +102,7 @@ test.each([
 });
 
 test("an effort left out (a written -) is left out of the picker's heading, while a Run's unknown effort is still said so", () => {
-  given.profiles = [launchProfile("agy", { model: ["gemini-3.8-flash"], effort: ["-", "high"] }, ["effort"])];
+  given.profiles = [launchProfile("pi", { model: ["model-with-effort"], effort: ["-", "high"] }, ["effort"])];
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
   render(<Picker />);
@@ -110,9 +110,9 @@ test("an effort left out (a written -) is left out of the picker's heading, whil
   const effort = [...document.querySelectorAll<HTMLInputElement>('input[name="agent-effort"]')];
   // "None" is offered only because the settings wrote it, first.
   fireEvent.click(effort[1]!); fireEvent.click(effort[0]!);
-  expect(choice.selected).toEqual({ model: "gemini-3.8-flash", effort: null });
-  expect(document.querySelector("[data-agent-picker]")!.getAttribute("title")).toBe("gemini-3.8-flash");
-  expect(agentLabel("gemini-3.8-flash", null, "agy")).toMatch(/\(.+\)$/);
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: null });
+  expect(document.querySelector("[data-agent-picker]")!.getAttribute("title")).toBe("model-with-effort");
+  expect(agentLabel("model-with-effort", null, "pi")).toMatch(/\(.+\)$/);
 });
 
 test("a required row of one value whose previous value is no longer offered can be chosen again", () => {
@@ -154,7 +154,7 @@ test("a value chosen for a new launch that the settings stop offering stays to c
 });
 
 test("a value chosen here for a row the model leaves out, gone from the settings, can be settled there, then the row is out of sight again", () => {
-  given.profiles = [launchProfile("agy", { model: ["live", "fixed"], effort: ["high", "low"] }, ["effort"], { fixed: ["effort"] })];
+  given.profiles = [launchProfile("pi", { model: ["live", "fixed"], effort: ["high", "low"] }, ["effort"], { fixed: ["effort"] })];
   let choice!: ReturnType<typeof useLaunchChoice>, bump!: () => void;
   function Picker() {
     const [, renderAgain] = useState(0); bump = () => renderAgain(n => n + 1);
@@ -164,7 +164,7 @@ test("a value chosen here for a row the model leaves out, gone from the settings
   act(() => choice.setSelected({ effort: "low" }));
   act(() => choice.setSelected({ model: "fixed" }));
   expect(choice.ready).toBe(true);
-  given.profiles = [launchProfile("agy", { model: ["fixed"], effort: ["high"] }, ["effort"], { fixed: ["effort"] })];
+  given.profiles = [launchProfile("pi", { model: ["fixed"], effort: ["high"] }, ["effort"], { fixed: ["effort"] })];
   act(() => bump());
   expect(choice.ready).toBe(false);
   fireEvent.click(document.querySelector("[data-agent-picker]")!);

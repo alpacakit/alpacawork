@@ -10,28 +10,26 @@ import { launchSnapshot } from '@alpacawork/backend/test-dist/agents-settings.js
 import { cleanupGroups } from './helpers/process-groups.ts';
 import { alive, setup } from './runs-runtime.fixture.ts';
 
-const profilesText = readFileSync(join(import.meta.dirname, 'fixtures/grok-agy.yaml'), 'utf8');
+const profilesText = readFileSync(join(import.meta.dirname, 'fixtures/grok.yaml'), 'utf8');
 const profiles = parse(profilesText).agents;
-test('Grok and Antigravity profile examples pass the production config validator', () => {
+test('The Grok profile example passes the production config validator', () => {
   assert.deepEqual(checkAgentsText(profilesText).issues, []);
 });
 
-for (const provider of ['grok', 'agy']) test(`${provider} starts and resumes through the Run manager and closes both Runs`, async t => {
+test('Grok starts and resumes through the Run manager and closes both Runs', async t => {
+  const provider = 'grok';
   const area = mkdtempSync(join(tmpdir(), `alpacawork-${provider}-runs-`));
   t.after(async () => {
     try { await cleanupGroups(area); }
     finally { rmSync(area, { recursive: true, force: true }); }
   });
   const binary = join(area, provider);
-  const fakeUrl = new URL(`./fixtures/fake-${provider}.mjs`, import.meta.url).href;
-  const marker = provider.toUpperCase();
+  const fakeUrl = new URL('./fixtures/fake-grok.mjs', import.meta.url).href;
   writeFileSync(binary, `#!${process.execPath}\n` +
     `import { appendFileSync } from 'node:fs';\n` +
     `appendFileSync(${JSON.stringify(join(area, 'receipts'))}, JSON.stringify({pid:process.pid,ppid:process.ppid,argv:process.argv})+'\\n');\n` +
     `setTimeout(()=>process.exit(124),15000).unref();\n` +
-    `process.env.FAKE_${marker}_LOG=${JSON.stringify(join(area, 'prompts'))};\n` +
-    `process.env.FAKE_${marker}_ARGS=${JSON.stringify(join(area, 'args'))};\n` +
-    (provider === 'agy' ? `process.env.FAKE_AGY_MODEL='gemini-3.8-flash';\n` : '') +
+    `process.env.FAKE_GROK_LOG=${JSON.stringify(join(area, 'prompts'))};\n` +
     `await import(${JSON.stringify(fakeUrl)});\n`);
   chmodSync(binary, 0o755);
   const entry = join(import.meta.dirname, '../apps/agent-cli/dist/cli.js');
@@ -72,23 +70,12 @@ for (const provider of ['grok', 'agy']) test(`${provider} starts and resumes thr
       return { id: saved.id, state: saved.state, pids: saved.pids, launch: saved.launch, session: saved.session,
         result: h.store.getText(run.id)?.result };
     }) }));
-  if (provider === 'grok') {
-    const calls = readFileSync(join(area, 'prompts'), 'utf8').trim().split('\n').map(row => JSON.parse(row));
-    assert.equal(calls.length, 2);
-    assert.equal(calls[0].session, calls[1].session);
-    assert.ok(calls[1].args.includes('--resume'));
-    for (const call of calls) {
-      assert.equal(call.args[call.args.indexOf('--model') + 1], 'grok-4.7');
-      assert.equal(call.args[call.args.indexOf('--reasoning-effort') + 1], 'high');
-    }
-  } else {
-    const calls = readFileSync(join(area, 'args'), 'utf8').trim().split('\n').map(row => JSON.parse(row));
-    assert.equal(calls.length, 2);
-    assert.ok(calls[1].includes('--conversation'));
-    for (const call of calls) {
-      assert.equal(call[call.indexOf('--model') + 1], 'gemini-3.8-flash');
-      assert.equal(call[call.indexOf('--effort') + 1], 'high');
-    }
-    assert.equal(calls[1][calls[1].indexOf('--conversation') + 1], ended.session?.id);
+  const calls = readFileSync(join(area, 'prompts'), 'utf8').trim().split('\n').map(row => JSON.parse(row));
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].session, calls[1].session);
+  assert.ok(calls[1].args.includes('--resume'));
+  for (const call of calls) {
+    assert.equal(call.args[call.args.indexOf('--model') + 1], 'grok-4.7');
+    assert.equal(call.args[call.args.indexOf('--reasoning-effort') + 1], 'high');
   }
 });

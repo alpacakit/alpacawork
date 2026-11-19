@@ -66,9 +66,9 @@ test('a HOME without a linked agent gets no plan and no agent folder', t => {
   assert.deepEqual(inspect(f.root), []); for (const [, config] of linked) assert.equal(existsSync(join(f.home, config)), false);
 });
 test('an agent that reads ~/.agents/skills itself gets no link, in use or found', t => {
-  const f = fixture(t); mkdirSync(join(f.home, '.codex')); mkdirSync(join(f.home, '.gemini/config'), { recursive: true });
-  assert.deepEqual(inspect(f.root, ['codex', 'agy']), []); syncAgentSkillLinks(f.root, basic, ['codex', 'agy']);
-  assert.deepEqual(readdirSync(join(f.home, '.codex')), []); assert.deepEqual(readdirSync(join(f.home, '.gemini/config')), []);
+  const f = fixture(t); mkdirSync(join(f.home, '.codex'));
+  assert.deepEqual(inspect(f.root, ['codex']), []); syncAgentSkillLinks(f.root, basic, ['codex']);
+  assert.deepEqual(readdirSync(join(f.home, '.codex')), []);
 });
 test('links stay in the HOME that owns the root; another root gets none even when the commands were found', t => {
   const f = fixture(t), root = join(f.home, 'elsewhere/skills'); for (const [, config] of linked) mkdirSync(join(f.home, config, 'skills'), { recursive: true });

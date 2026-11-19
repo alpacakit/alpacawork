@@ -16,13 +16,13 @@ function value<T>(result: DraftResult<T>): T {
 }
 const base = 'a'.repeat(64); // A test digest supplied by the integration boundary, never a production fallback.
 const input = `# agents comment
-agy: # profile comment
+pi: # profile comment
   params: # params comment
-    model: [gemini-3.8-flash, claude-sonnet-4-6, gpt-oss-120b-medium] # choices comment
+    model: [model-with-effort, fixed-first, fixed-second] # choices comment
     effort: [high, low, medium]
   without: # keep model exceptions
-    claude-sonnet-4-6: [effort] # exception comment
-  env: [GEMINI_API_KEY]
+    fixed-first: [effort] # exception comment
+  env: [SYNTHETIC_KEY]
 claude:
   params:
     model: [opus]
@@ -76,13 +76,13 @@ describe('agent form YAML boundary', () => {
   });
   it('preserves comments, model exceptions and candidate order while writing default rows in adapter order', () => {
     const draft = value(readAgentsDraft(input));
-    const agy = draft.agents[0]!;
-    const edited = { ...agy, enabled: false, params: [...agy.params].reverse().map(row => row.key === 'effort' ? { ...row, values: 'medium, high, low' } : row) };
+    const agent = draft.agents[0]!;
+    const edited = { ...agent, enabled: false, params: [...agent.params].reverse().map(row => row.key === 'effort' ? { ...row, values: 'medium, high, low' } : row) };
     const source = value(writeAgentsDraft({ ...draft, agents: [draft.agents[1]!, edited] }));
-    expect(Object.keys(parse(source))).toEqual(['claude', 'agy']);
-    expect(Object.keys(parse(source).agy.params)).toEqual(['model', 'effort']);
-    expect(parse(source).agy.params.effort).toEqual(['medium', 'high', 'low']);
-    expect(parse(source).agy.without).toEqual({ 'claude-sonnet-4-6': ['effort'] });
+    expect(Object.keys(parse(source))).toEqual(['claude', 'pi']);
+    expect(Object.keys(parse(source).pi.params)).toEqual(['model', 'effort']);
+    expect(parse(source).pi.params.effort).toEqual(['medium', 'high', 'low']);
+    expect(parse(source).pi.without).toEqual({ 'fixed-first': ['effort'] });
     for (const comment of ['agents comment', 'profile comment', 'params comment', 'choices comment', 'keep model exceptions', 'exception comment']) expect(source).toContain(`# ${comment}`);
     expect(draft.source).toBe(input);
   });
@@ -184,23 +184,26 @@ describe('agent form YAML boundary', () => {
   });
 
   it('restores defaults by deleting options while preserving params, without and comments', () => {
-    const config = { agy: { ...defaultAgentSetting('agy'), params: { effort: ['low'] }, without: {},
-      options: { base, ...AGENT_ADAPTERS.agy.options, start: `${AGENT_ADAPTERS.agy.options.start} --fixture` } } };
+    const params = { model: ['fixed-first'], effort: ['low'] }, without = { 'fixed-first': ['effort'] };
+    const config = { pi: { ...defaultAgentSetting('pi'), params, without,
+      options: { base, ...AGENT_ADAPTERS.pi.options, start: `${AGENT_ADAPTERS.pi.options.start} --fixture` } } };
     const draft = value(readAgentsDraft(stringify(config)));
     const agent = draft.agents[0]!;
     const reset = resetDraftOptions(agent);
     const source = value(writeAgentsDraft({ ...draft, agents: [reset] }));
-    expect(parse(source).agy).toEqual({ params: { effort: ['low'] }, without: {} });
+    expect(parse(source).pi).toEqual({ params, without });
     expect(reset.params).toEqual(agent.params); expect(reset.without).toEqual(agent.without);
     expect(reset.options).toBeUndefined(); expect(agent.options).toBeDefined();
   });
 
   it('retains paths for hidden without errors and references to a deleted row', () => {
-    const agent = newAgentDraft('agy', 'agy', 'agy');
-    const broken = { ...agent, without: { 'claude-sonnet-4-6': ['custom'] } };
+    const agent = newAgentDraft('pi', 'pi', 'pi');
+    const broken = { ...agent,
+      params: agent.params.map(row => row.key === 'model' ? { ...row, values: 'fixed-first' } : row),
+      without: { 'fixed-first': ['custom'] } };
     expect(validateAgentsDraft({ source: '{}', agents: [broken] })).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'without', path: ['agy', 'without', 'claude-sonnet-4-6', 0] }),
-      expect.objectContaining({ field: 'key', path: ['agy', 'params', 'custom'] }),
+      expect.objectContaining({ field: 'without', path: ['pi', 'without', 'fixed-first', 0] }),
+      expect.objectContaining({ field: 'key', path: ['pi', 'params', 'custom'] }),
     ]));
   });
 

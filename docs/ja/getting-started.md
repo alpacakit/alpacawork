@@ -51,7 +51,9 @@ alpacawork は、Claude Code や Codex を、確認を求めないフル権限�
 | --- | --- |
 | [Claude Code](https://claude.com/claude-code)、[Codex](https://github.com/openai/codex) | それぞれの CLI でのサインイン |
 | [GitHub Copilot](https://github.com/features/copilot) | インストールは要りません（alpacawork に同梱）。GitHub CLI のサインイン（`gh auth login`）で動きます |
-| Grok Build（`grok`）、Antigravity（`agy`）、pi（`pi`） | サインイン、または API キー。alpacawork が確かめられるのは、インストールされているかどうかだけで、サインインの状態は確かめられません |
+| Grok Build（`grok`）、pi（`pi`） | サインイン、または API キー。alpacawork が確かめられるのは、インストールされているかどうかだけで、サインインの状態は確かめられません。Gemini を使うには、pi で `/login` を実行し、Google Gemini の API キーを保存します。[pi のプロバイダー設定](https://pi.dev/docs/latest/providers)を参照してください。 |
+
+Google は、個人向けプランでログインした `agy` を他社のアプリから起動することを認めていないため、alpacawork は Antigravity の対応を終了しました。[Antigravity の FAQ](https://antigravity.google/docs/faq)と[追加利用規約](https://antigravity.google/terms)を参照してください。
 
 この PC にどれが入っているかと、上の3つについてはサインインしてあるかが、セットアップの最初のステップに表示されます。使うものを、そこで有効にします。あとからは、画面の「設定 → サーバー」で変えられます。
 

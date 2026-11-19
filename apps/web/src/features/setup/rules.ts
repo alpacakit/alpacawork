@@ -70,5 +70,5 @@ export function chosenAgents(agents: readonly AgentDraft[], rows: readonly Start
 }
 
 /** Product names of the kinds setup finds; an agent config.yaml names otherwise keeps its own name. */
-const PRODUCT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", grok: "Grok Build", agy: "Antigravity", pi: "pi", copilot: "GitHub Copilot" };
+const PRODUCT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", grok: "Grok Build", pi: "pi", copilot: "GitHub Copilot" };
 export const agentDisplayName = (name: string) => PRODUCT_NAMES[name] ?? name;

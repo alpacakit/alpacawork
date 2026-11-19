@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { SystemVariableName } from './agent-variables.js';
 import { fingerprintOptions } from './options-base.js';
 
-export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'agy', 'pi', 'copilot'] as const;
+export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'pi', 'copilot'] as const;
 export const unavailableAgentKind = (id: unknown) => `Agent kind "${String(id)}" is unavailable in this version; select a supported adapter or remove this profile from config.yaml`;
 export const builtinAdapterIdSchema = z.enum(BUILTIN_ADAPTER_IDS, { error: issue => unavailableAgentKind(issue.input) });
 export type BuiltinAdapterId = z.infer<typeof builtinAdapterIdSchema>;
@@ -58,11 +58,6 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
   { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' } }),
   grok: bridge('grok', { model: ['grok-4.7'], effort: ['high', 'low', 'medium', 'xhigh'] },
     `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME']),
-  agy: bridge('agy', { model: ['gemini-3.8-flash', 'claude-sonnet-4-6', 'claude-opus-4-6-thinking', 'gpt-oss-120b-medium'],
-    effort: ['high', 'low', 'medium'] }, `${me} ${result}`, `${me} ${result} --conversation {session}`,
-  'https://antigravity.google/docs/cli/reference/',
-    ['GEMINI_API_KEY', 'AGY_ADC_AUTH', 'GOOGLE_CLOUD_QUOTA_PROJECT', 'GOOGLE_CLOUD_LOCATION', 'GOOGLE_APPLICATION_CREDENTIALS'], [],
-    { defaultWithout: { 'claude-sonnet-4-6': ['effort'], 'claude-opus-4-6-thinking': ['effort'], 'gpt-oss-120b-medium': ['effort'] } }),
   copilot: bridge('copilot', { model: [] }, `[-m {model}] ${result}`, `[-m {model}] ${result} resume {session}`,
     'https://docs.github.com/en/copilot/reference/copilot-cli-reference', [], [],
     { command: null, auth: { args: ['--auth-status'], ready: 0, signedOut: 1, nextAction: 'gh auth login' } }),

@@ -1,6 +1,6 @@
 # Agent CLI
 
-`alpacawork-agent <agent> [agent options]` connects Codex, GitHub Copilot, Grok Build, Antigravity CLI, or pi to alpacawork's line-oriented `{id,text}` stdin and JSONL stdout.
+`alpacawork-agent <agent> [agent options]` connects Codex, GitHub Copilot, Grok Build, or pi to alpacawork's line-oriented `{id,text}` stdin and JSONL stdout.
 
 - `src/cli.ts` selects the agent.
 - `src/run.ts` owns stdin validation and ordering, instruction outcomes, stdout serialization, signals, and exit status.

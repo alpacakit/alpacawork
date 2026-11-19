@@ -9,10 +9,9 @@ import { managedSkillsRoot } from '@alpacawork/core/installed-skills';
 import type { BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 
 /** Where each kind reads personal skills, relative to HOME. null: no link, because the kind reads ~/.agents/skills
- * itself (agy does not, but nothing its maker publishes says it loads a linked skill). Sources as read on 2026-11-11. */
+ * itself. Sources as read on 2026-11-11. */
 const PERSONAL_SKILLS: Readonly<Record<BuiltinAdapterId, string | null>> = {
   claude: '.claude/skills', // its own folder only; a linked skill is read: https://code.claude.com/docs/en/skills
-  agy: null, // ~/.gemini/config/skills; links are not documented: https://antigravity.google/docs/skills
   codex: null, // https://learn.chatgpt.com/docs/build-skills
   grok: null, // https://docs.x.ai/build/features/skills-plugins-marketplaces
   copilot: null, // https://docs.github.com/en/copilot/concepts/agents/about-agent-skills

@@ -51,7 +51,9 @@ During the install, the AI checks these, and installs Node.js if it is missing.
 | --- | --- |
 | [Claude Code](https://claude.com/claude-code), [Codex](https://github.com/openai/codex) | A sign-in through its own CLI |
 | [GitHub Copilot](https://github.com/features/copilot) | Nothing to install: it is bundled with alpacawork. It runs on your GitHub CLI sign-in (`gh auth login`) |
-| Grok Build (`grok`), Antigravity (`agy`), pi (`pi`) | A sign-in, or an API key. alpacawork can only tell whether these are installed, not whether they are signed in |
+| Grok Build (`grok`), pi (`pi`) | A sign-in, or an API key. alpacawork can only tell whether these are installed, not whether they are signed in. To use Gemini, run `/login` in pi and save a Google Gemini API key. See [pi provider setup](https://pi.dev/docs/latest/providers). |
+
+alpacawork removed Antigravity because Google does not allow third-party apps to launch `agy` with a consumer plan sign-in. See the [Antigravity FAQ](https://antigravity.google/docs/faq) and [Additional Terms of Service](https://antigravity.google/terms).
 
 The first step of the setup screen shows which of these are installed on this PC and, for the first three, whether they are signed in. You enable the ones to use there. Later, you can change this under Settings → Server.
 

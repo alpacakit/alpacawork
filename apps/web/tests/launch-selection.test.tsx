@@ -69,18 +69,18 @@ test("a value chosen here that the settings stop offering stays to choose again;
 });
 
 test("for an agent whose models omit rows, what the picker shows is what admission launches with", () => {
-  const setting = { params: { model: ["gemini-3.8-flash", "claude-sonnet-4-6"], effort: ["high", "low"] }, without: { "claude-sonnet-4-6": ["effort"] } };
-  const served = compileAgentSetting("agy", setting);
+  const setting = { params: { model: ["model-with-effort", "fixed-first"], effort: ["high", "low"] }, without: { "fixed-first": ["effort"] } };
+  const served = compileAgentSetting("pi", setting);
   // As serve lists it: the rows and each model's omitted rows.
-  const [offer] = agentOffers([{ key: "agy", choices: agentChoices(served), without: setting.without }]);
-  const tries: Record<string, string | null>[] = [{}, { model: "claude-sonnet-4-6" }, { model: "claude-sonnet-4-6", effort: "low" }];
+  const [offer] = agentOffers([{ key: "pi", choices: agentChoices(served), without: setting.without }]);
+  const tries: Record<string, string | null>[] = [{}, { model: "fixed-first" }, { model: "fixed-first", effort: "low" }];
   for (const changes of tries) {
     const view = launchSelection(offer!.offer, { kind: "new", hints: {} }, changes);
     const admitted = resolveAgentSelection(served, view.send);
     const launched = Object.fromEntries(admitted.choices.filter(choice => choice.active).map(choice => [choice.key, admitted.effective[choice.key]]));
     expect(view.shown).toEqual(launched);
   }
-  expect(launchSelection(offer!.offer, { kind: "new", hints: {} }, { model: "claude-sonnet-4-6" }).choices.map(choice => choice.key)).toEqual(["model"]);
+  expect(launchSelection(offer!.offer, { kind: "new", hints: {} }, { model: "fixed-first" }).choices.map(choice => choice.key)).toEqual(["model"]);
 });
 
 test("a model named like an object's own property still starts and is sent when no row leaves it out", () => {

@@ -51,7 +51,9 @@ alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不�
 | --- | --- |
 | [Claude Code](https://claude.com/claude-code)、[Codex](https://github.com/openai/codex) | 通过各自的 CLI 登录 |
 | [GitHub Copilot](https://github.com/features/copilot) | 无需安装：它随 alpacawork 一同提供。使用你的 GitHub CLI 登录（`gh auth login`）运行 |
-| Grok Build（`grok`）、Antigravity（`agy`）、pi（`pi`） | 登录，或 API 密钥。对于这几个，alpacawork 只能判断是否已安装，无法判断是否已登录 |
+| Grok Build（`grok`）、pi（`pi`） | 登录，或 API 密钥。对于这几个，alpacawork 只能判断是否已安装，无法判断是否已登录。要使用 Gemini，请在 pi 中运行 `/login`，然后保存 Google Gemini 的 API 密钥。请参阅 [pi 的服务提供商设置](https://pi.dev/docs/latest/providers)。 |
+
+由于 Google 不允许第三方应用使用个人套餐的登录凭据启动 `agy`，alpacawork 已移除对 Antigravity 的支持。请参阅 [Antigravity 常见问题](https://antigravity.google/docs/faq)和[附加服务条款](https://antigravity.google/terms)。
 
 初始设置界面的第一步会显示其中哪些已安装在这台电脑上，对于前三个，还会显示是否已登录。在那里启用要使用的智能体。之后可以在“设置 → 服务器”中更改。
 

@@ -10,7 +10,7 @@ export const MIGRATION_SOURCES = {
   activityTextless: {commit:'10ed809214250ec29e24fa5580f7650a392a3a7d',path:'apps/backend/src/agents-settings.ts',section:'AGENTS_TEMPLATE.read.activity (message has no text path)'},
   activityEarly: {commit:'027ea2665b210759defaafd64e3fc11008de5e7f',path:'apps/backend/src/agents-settings.ts',section:'AGENTS_TEMPLATE.read.activity'},
   activity: {commit:'55dc7463db905ab2c078ea4f4e8ae546689128d4',path:'apps/backend/src/agents-settings.ts',section:'AGENTS_TEMPLATE.read.activity'},
-  integrations: {commit:'9b84ceb85fd0491f6fa055985184322dcf2fc408',path:'docs/integrations/grok-agy.yaml',section:'agents.grok/agy'},
+  integrations: {commit:'9b84ceb85fd0491f6fa055985184322dcf2fc408',path:'docs/integrations/grok-agy.yaml',section:'agents.grok'},
   plan: {document:'migration plan, kept outside the repository',sha256:'35fc05289b907d82420238e4b365df88219c9c5e9c5d741c3da0616d38527f3a',section:'§4.1/4.2 (production-shaped synthetic argv)'},
   savedLaunch: {commit:'b8633011c3e7168c2800abd84e975242f328a55d',path:'packages/contract/src/run-contract.ts',section:'runLaunchSchema.readRoots usage:string|null; launch values retained'},
   environment: {commit:'b8633011c3e7168c2800abd84e975242f328a55d',path:'apps/backend/src/runs/env.ts',section:'ALLOWED (historical global forwarding, excluding base environment)'},
@@ -92,22 +92,6 @@ export const LEGACY_PROTOCOLS = {
     }
   },
   grok: {
-    input: {
-      line: { id: '{input}', text: '{prompt}' },
-      taken: { where: { type: 'input.taken' }, path: 'id' },
-      done: { where: { type: [ 'turn.completed', 'turn.failed' ] } }
-    },
-    read: {
-      stdout: 'jsonl',
-      session: {
-        from: 'stdout',
-        event: { where: { type: 'thread.started' }, take: 'first', path: 'thread_id', require: 'string' }
-      },
-      completion: { require_session: true },
-      reply: { from: 'result_file' }
-    }
-  },
-  agy: {
     input: {
       line: { id: '{input}', text: '{prompt}' },
       taken: { where: { type: 'input.taken' }, path: 'id' },
@@ -276,23 +260,6 @@ export const MIGRATION_DEFAULTS: readonly MigrationDefault[] = [
       '--effort',
       '{effort}',
       '--session',
-      '{session}',
-      '-o',
-      '{result}'
-    ]
-  },
-  {
-    id: 'opt-in-agy',
-    adapter: 'agy',
-    source: 'integrations',
-    start: [ 'alpacawork-agent', 'agy', '--model', '{model}', [ '--effort', '{effort}' ], '-o', '{result}' ],
-    resume: [
-      'alpacawork-agent',
-      'agy',
-      '--model',
-      '{model}',
-      [ '--effort', '{effort}' ],
-      '--conversation',
       '{session}',
       '-o',
       '{result}'

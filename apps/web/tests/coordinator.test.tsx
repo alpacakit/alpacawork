@@ -504,22 +504,22 @@ test("a message sent again after an unknown result goes with the choice it was f
 
 test("after changing to a model without effort, the coordinator input sends no effort", async () => {
   await i18n.changeLanguage("en");
-  const agy: ControlTreeDTO["profiles"] = [launchProfile("agy", { model: ["gemini-3.8-flash", "claude-sonnet-4-6"], effort: ["high", "low", "medium"] },
-    ["effort"], { "claude-sonnet-4-6": ["effort"] })];
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "agy", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
+  const profiles: ControlTreeDTO["profiles"] = [launchProfile("pi", { model: ["model-with-effort", "fixed-first"], effort: ["high", "low", "medium"] },
+    ["effort"], { "fixed-first": ["effort"] })];
+  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "pi", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
   stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: agy }))}><CoordinatorCard /></TestWorkspace>);
+  render(<TestWorkspace data={screenData(tree({ profiles }))}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
   await act(() => useConversation.getState().refresh());
-  fireEvent.click(await screen.findByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "gemini-3.8-flash(high)" }) }));
-  fireEvent.click(screen.getByRole("radio", { name: /claude-sonnet-4-6/ }));
+  fireEvent.click(await screen.findByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "model-with-effort(high)" }) }));
+  fireEvent.click(screen.getByRole("radio", { name: /fixed-first/ }));
   expect(screen.queryByRole("radio", { name: "low" })).toBeNull();
   writeEditor("Continued");
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
   const sent = JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/messages")![1].body);
-  expect(sent).toMatchObject({ agent: "agy" });
-  expect(sent.selected).toEqual({ model: "claude-sonnet-4-6" });
+  expect(sent).toMatchObject({ agent: "pi" });
+  expect(sent.selected).toEqual({ model: "fixed-first" });
 });
 
 test("a send's answer arriving after a newer read of the conversation does not bring the queued turn back", async () => {
