@@ -129,7 +129,7 @@ export function readCodeBytes(root: string, taskId: string, path: string): Buffe
     throw refuse(PROBLEM_CODE.invalidInput, 'Write an absolute path', { kind: 'code_file_outside', path });
   const data = real(root) ?? root;
   const roots = codeRoots(root, taskId);
-  const outside = () => refuse(PROBLEM_CODE.forbidden, `Outside the project's code location: ${path}`, { kind: 'code_file_outside', path });
+  const outside = () => refuse(PROBLEM_CODE.forbidden, `Outside the project's working folder: ${path}`, { kind: 'code_file_outside', path });
   /** Why a real place may not be read, or null: what every check before and after opening asks. */
   const refusal = (place: string): Problem | null => {
     const top = roots.find(each => within(place, each) && place !== each);
