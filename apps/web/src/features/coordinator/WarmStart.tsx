@@ -39,7 +39,8 @@ function Said({ warm, said, className }: { warm: Warm; said: string; className?:
  * as the empty list's (Welcome): a heading and the examples on their own surface (ExampleList), in a column in the middle of the
  * conversation both ways, so a cleared conversation is never a small line in its corner. The rows only fill the input;
  * the person sends. Failed to start, it says so in the same place and offers no examples. While the list shows its own
- * examples (Welcome), this only points there in one line. Under it, the first time, one line to the phone and app guide (AppHint).
+ * examples (Welcome), this only points there in one line. Under the examples, the first time, one line to the phone and app guide (AppHint), which the list's welcome carries
+ * instead while it shows.
  */
 export function WarmStart({ warm }: { warm: Warm }) {
   const { said, start, examples } = useWarmWords(warm);
@@ -52,7 +53,7 @@ export function WarmStart({ warm }: { warm: Warm }) {
       {warm !== "failed" && (welcome
         ? <p data-warm-start className="m-0 text-sm text-soft [word-break:auto-phrase]">{start}</p>
         : <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />)}
-      {warm !== "failed" && <AppHint />}
+      {warm !== "failed" && !welcome && <AppHint />}
     </div>
   </li>;
 }
