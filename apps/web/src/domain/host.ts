@@ -14,7 +14,7 @@ export function formatGigabytes(bytes: number | null, locale: string): string {
   if (bytes === null) return "—";
   const gb = bytes / GB;
   const digits = gb < 100 ? 1 : 0;
-  return new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(gb);
+  return new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", useGrouping: false, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(gb);
 }
 
 /** Whole minutes, at least one, for a stretch shown as "12m". */

@@ -43,7 +43,7 @@ function Measured({ status }: { status: Measured }) {
   const load = sample?.load?.[0];
   const loadText = load === undefined ? "—"
     : new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(load);
-  const diskLimit = new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", maximumFractionDigits: 0 })
+  const diskLimit = new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", useGrouping: false, maximumFractionDigits: 0 })
     .format(limits.diskFreeBytes / 1024 ** 3);
   const tight = new Set<HostKind>(current?.kinds ?? []);
   const now = sample?.at ?? Date.now();

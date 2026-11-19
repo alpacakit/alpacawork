@@ -163,6 +163,8 @@ test("clock and log times use local time and unknown timestamps stay empty", () 
   expect(formatClock(time)).toBe("14:12");
   expect(formatLogTime(time, "en")).toBe("09/25 14:12");
   expect(formatClock("unknown")).toBe("");
-  expect(formatLogTime(time, "pt-BR")).toBe("25/09 14:12");
+  const singleDigits = new Date(2026, 8, 5, 14, 12).toISOString();
+  expect(formatLogTime(singleDigits, "es")).toBe("05/09 14:12");
+  expect(formatLogTime(singleDigits, "pt-BR")).toBe("05/09 14:12");
   expect(formatLogTime("unknown", "en")).toBe("");
 });

@@ -20,7 +20,7 @@ const run = (n: number, cpu: number, role: "owner" | "worker" = "owner") => ({ r
 const status: HostStatus = {
   supported: true, facts: { hostname: "workstation", os: "Ubuntu 24.04", cores: 52, memoryBytes: 125 * GB }, parallel: 12,
   sample: { at: now, cpu: 6.3, memory: { totalBytes: 125 * GB, availableBytes: 100 * GB, swapUsedBytes: 0 }, load: [5.2, 4.9, 4.5],
-    disk: { freeBytes: 465 * GB, totalBytes: 915 * GB },
+    disk: { freeBytes: 465 * GB, totalBytes: 2000 * GB },
     runs: [run(1, 31), run(2, 0.4, "worker"), run(3, 0.02), run(4, 0.01), run(5, 0)],
     outside: { cpu: 1.9, memoryBytes: 25 * GB, names: ["chrome-headless", "Xorg"] } },
   history: [{ at: now - 20_000, cpu: 5, memoryFreePercent: 80 }, { at: now, cpu: 6.3, memoryFreePercent: 80 }],
@@ -28,13 +28,14 @@ const status: HostStatus = {
   episodes: [{ id: 7, start: now - 3_600_000, end: now - 3_000_000, kinds: ["cpu"], peak: { cpu: 99.4, memoryFreePercent: 40, diskFreeBytes: 465 * GB },
     runs: [{ runId: "R1", taskId: "T1", title: "Task 1", model: "opus", role: "owner", cpuPeak: 46, memoryPeakBytes: 2.4 * GB, heaviest: "vitest ×4",
       firstSeen: now - 3_600_000, lastSeen: now - 3_000_000 }] }],
-  limits: { cpu: 90, memoryFreePercent: 10, diskFreeBytes: 20 * GB }, error: null,
+  limits: { cpu: 90, memoryFreePercent: 10, diskFreeBytes: 1863 * GB }, error: null,
 };
 
 test("numbers keep small shares readable and lines break where a value is missing", () => {
   expect([formatPercent(null, "en"), formatPercent(0.01, "en"), formatPercent(0.42, "en"), formatPercent(31.4, "en")]).toEqual(["—", "0%", "0.4%", "31%"]);
   expect([formatGigabytes(0.3 * GB, "en"), formatGigabytes(465.4 * GB, "en")]).toEqual(["0.3 GB", "465 GB"]);
   expect(formatGigabytes(0.3 * GB, "pt-BR")).toBe("0,3 GB");
+  for (const locale of ["en", "ja"]) expect(formatGigabytes(1863 * GB, locale)).toBe("1863 GB");
   const shape = sparkShape([{ at: 0, value: 95 }, { at: 10, value: null }, { at: 20, value: 50 }, { at: 30, value: 60 }],
     { from: 0, to: 30 }, 90, false, 30, 10, 10);
   expect(shape.paths).toHaveLength(2);
@@ -47,6 +48,7 @@ test("the tab shows this machine, the heaviest Runs with a way to their Task, an
   const request = vi.spyOn(api, "request").mockImplementation(async (path: string) => path === "host/status" ? status : minutes);
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
   expect(await screen.findByText(i18n.t("panels:host.calm"))).toBeTruthy();
+  expect(screen.getByText(i18n.t("panels:host.limitBytes", { value: "1863 GB" }))).toBeTruthy();
   expect(screen.getByText(i18n.t("panels:host.facts", { hostname: "workstation", os: "Ubuntu 24.04", cores: 52, memory: "125 GB" }))).toBeTruthy();
   expect(screen.getByText(i18n.t("panels:host.cpuNote", { load: "5.2", cores: 52 }))).toBeTruthy();
   expect(screen.getByText("31% · 1.0 GB")).toBeTruthy();

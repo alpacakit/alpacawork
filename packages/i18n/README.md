@@ -183,6 +183,8 @@ Once saved in a Run prompt, it is record data and is not translated again.
 | Locale registry | Add the canonical BCP 47 catalog code to `uiLocales` in [`packages/core/src/ui-language.ts`](../core/src/ui-language.ts). Browser and server detection, settings validation, CLI settings help and catalog extraction read this list. |
 | Catalogs | Add `src/locales/<locale>/` with every namespace and the required plural forms. Add the new `panels:settings.personal.option.<locale>` key to all catalogs, using the language's own name. Settings and the setup picker both use these labels. The browser discovers its catalogs by path. |
 | Server registration | Import the new `server.json` and add its bundle to the typed resource map in `src/server.ts` so Node and the packaged server both include it. |
+| Unsupported browsers | Add the translated message and the language and script match to [`browser-check.js`](../../apps/web/public/browser-check.js). Keep the standalone script in legacy JavaScript syntax and check its results against the shared matcher. |
+| Han fonts | For languages that use Han characters, set the locale-specific `--font-han` stack in [`base.css`](../../apps/web/src/styles/base.css), following the `:root:lang(zh-CN)` rule. |
 | Linked documentation and media | Add `docs/<locale>/telemetry.md` for the locale-specific telemetry policy link and place other translated guides in that directory. English uses `docs/telemetry.md`. The app installation guide uses English screenshots for locales without their own images. |
 | Checks | Run extraction and the filled-catalog check, and verify the new locale through the screen's settings and first-use flow. Exercise regional and script variants in the matcher when their behavior matters. |
 

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { Script } from 'node:vm';
 import { matchUiLocale, uiLocaleFromAcceptLanguage, uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 
 test('a regional language preference matches a catalog with the same language and script', () => {
@@ -33,4 +35,30 @@ test('the terminal matches POSIX locale names in environment precedence order', 
   assert.equal(uiLocaleFromEnvironment({ LANG: 'es_MX.UTF-8@traditional' }), 'es');
   assert.equal(uiLocaleFromEnvironment({ LC_ALL: 'zh_HK.UTF-8', LANG: 'es_MX.UTF-8' }), 'en');
   assert.equal(uiLocaleFromEnvironment({ LANG: 'C.UTF-8' }), 'en');
+});
+
+test('the standalone unsupported-browser notice matches the shared locale with or without Intl.Locale', () => {
+  const script = new Script(readFileSync(new URL('../apps/web/public/browser-check.js', import.meta.url), 'utf8'));
+  const element = () => ({
+    firstChild: null as unknown,
+    style: {},
+    setAttribute() {},
+    appendChild(child: unknown) { this.firstChild ??= child; },
+  });
+
+  for (const tags of [
+    ['zh-TW'], ['zh-HK'], ['zh-MO'], ['zh-Hant'], ['zh-TW', 'zh', 'es-MX'], ['zh-Hant', 'zh-Hans-TW'],
+    ['zh-CN'], ['zh-SG'], ['zh-US'], ['zh-158'], ['zh-pinyin'], ['zh-TW-u-nu-latn'], ['pt-PT'], ['es-MX'], ['ja'], ['fr'],
+  ]) for (const intl of [Intl, undefined]) {
+    const root = element();
+    const html = { lang: '' };
+    script.runInNewContext({
+      window: {},
+      Intl: intl,
+      navigator: tags.length > 1 ? { languages: tags, language: tags[0] } : { language: tags[0] },
+      document: { getElementById: () => root, documentElement: html, createElement: element },
+    });
+    assert.ok(root.firstChild);
+    assert.equal(html.lang, matchUiLocale(tags) ?? 'en', `${tags.join(', ')} (Intl.Locale: ${Boolean(intl)})`);
+  }
 });

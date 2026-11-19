@@ -9,6 +9,7 @@ const dateFormats = new Map<string, {
   short: Intl.DateTimeFormat;
   withYear: Intl.DateTimeFormat;
   padded: Intl.DateTimeFormat;
+  zero: string;
 }>();
 function dates(locale: string) {
   const cached = dateFormats.get(locale);
@@ -17,11 +18,18 @@ function dates(locale: string) {
     short: new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone: "UTC" }),
     withYear: new Intl.DateTimeFormat(locale, { year: "numeric", month: "numeric", day: "numeric", timeZone: "UTC" }),
     padded: new Intl.DateTimeFormat(locale, { month: "2-digit", day: "2-digit", timeZone: "UTC" }),
+    zero: new Intl.NumberFormat(locale).format(0),
   };
   dateFormats.set(locale, formats);
   return formats;
 }
-const logTimeOf = (date: Date, locale: string) => `${dates(locale).padded.format(localCalendarTime(date))} ${clockOf(date)}`;
+function logTimeOf(date: Date, locale: string): string {
+  const { padded, zero } = dates(locale);
+  // Some date patterns leave single-digit fields even when asked for two digits.
+  const day = padded.formatToParts(localCalendarTime(date)).map(({ type, value }) =>
+    (type === "month" || type === "day") && [...value].length === 1 ? zero + value : value).join("");
+  return `${day} ${clockOf(date)}`;
+}
 const sameDayOf = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
