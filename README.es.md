@@ -12,7 +12,8 @@
 <h3 align="center">Deja que la IA gestione tus IA.</h3>
 
 <p align="center">
-  Asigna trabajo a Claude Code y Codex<br/>y hace el seguimiento de su progreso.
+  Asigna trabajo a Claude Code y Codex<br/>y hace el seguimiento de su progreso.<br/>
+  Ya no tienes que sentarte frente al PC para trabajar.
 </p>
 
 <p align="center">
@@ -56,7 +57,7 @@ alpacawork setup
 
 ## Qué hace
 
-<img align="right" width="380" src="docs/images/intro.gif" alt="El video de presentación de alpacawork: pedir en un solo cuadro de chat, la IA divide la solicitud en tareas y elige un agente para cada una, dar una instrucción a todos los agentes en curso con un solo mensaje, responder una pregunta eligiendo una opción y aprobar un resultado que otra IA ya revisó">
+<img align="right" width="380" src="docs/images/intro.gif" alt="El video de presentación de alpacawork: pedir en un solo cuadro de chat; la IA divide la solicitud en tareas y elige un agente para cada una; dar una instrucción a todos los agentes en curso con un solo mensaje; responder una pregunta eligiendo una opción, y marcar como completado un resultado que otra IA ya revisó">
 
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.
 - **Una IA gestiona varias IA a la vez.** Para añadir o cambiar algo en el trabajo en curso, solo tienes que decírselo al coordinador. Escribe “En las tres tareas en curso, comprueba también cómo se ve en el teléfono” y el coordinador se lo indica a cada IA que trabaja en ellas.

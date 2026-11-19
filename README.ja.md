@@ -12,7 +12,8 @@
 <h3 align="center">AI の管理は、AI に任せる。</h3>
 
 <p align="center">
-  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。
+  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
+  もう、PC の前に座って仕事をすることから解放されます。
 </p>
 
 <p align="center">
