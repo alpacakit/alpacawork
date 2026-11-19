@@ -5,6 +5,10 @@
     "undo": "Deshacer"
   },
   "coordinatorCard": {
+    "appHint": {
+      "close": "Cerrar esta sugerencia",
+      "open": "Usar en el móvil o como app"
+    },
     "attached": "Solo archivos adjuntos",
     "clear": "Borrar conversación",
     "clearConfirm": "Haz clic otra vez para borrar",
