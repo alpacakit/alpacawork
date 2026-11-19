@@ -628,7 +628,9 @@ test("desktop sections share the completed row's unread dot, icon, ID and title;
   ];
   // A question still listed on a finished task is not drawn on its row.
   const listed = (taskId: string, title: string) => questionFixture({ id: "L9", taskId, title, decide: [decideItem(title, [["Yes", "Check"]])] });
+  // T1 works: a Run of it runs, as its doing row says.
   const data = served(tree({ tasks, questions: [listed("T3", "Answer"), listed("T6", "Answered question"), listed("T7", "Stopped question")],
+    runs: [run("R9", { taskId: "T1", state: "running", endedAt: null })],
     home: homeFixture([{ taskId: "T1", section: "doing" }, { taskId: "T2", section: "review" }, { taskId: "T3", section: "review" },
       { taskId: "T5", section: "review" }, { taskId: "T4", section: "todo" }, { taskId: "T6", section: "done" }, { taskId: "T7", section: "done" }]) }));
   expect(data.tasks.find(task => task.id === "T6")?.question).toBe("Answered question");

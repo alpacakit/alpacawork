@@ -11,7 +11,7 @@ import { act, fireEvent } from "@testing-library/react";
 import { useConversation } from "@/features/coordinator/coordinator";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { onTestFinished, vi } from "vitest";
-import { adapterCatalog, joinBusy, runSpan, timeMarkAt, standingRecord, DEFAULT_FIELDS, DEFAULT_LIMITS, DEFAULT_SCHEMA, isSystemField, eventOf, fieldCatalog, historyEventSchema, homeRowSchema, questionSchema, userTurn,
+import { adapterCatalog, joinBusy, runSpan, timeMarkAt, standingRecord, DEFAULT_FIELDS, DEFAULT_LIMITS, DEFAULT_SCHEMA, isSystemField, eventOf, fieldCatalog, historyEventSchema, homeRowSchema, placeHome, questionSchema, userTurn,
   renderContext, type Ball, type TaskValues } from "@alpacawork/contract";
 import { projectedIndexSchema, controlRunSchema, controlTaskSchema, controlTreeSchema,
   timelineNoteOf, taskLogSchema, taskRowFields, taskRowSchema, taskProjectedSearchSchema, taskProjectedViewSchema, viewReportLog,
@@ -290,9 +290,14 @@ export function rowOf(task: ControlTaskDTO, value: Served = tree()): TaskRowDTO 
   const question = questionsOf(task.id, value)[0]?.title ?? "";
   const rowFacts = projectRowFacts({ ...fields, ball, question }, value.placements,
     value.runs.filter(run => run.taskId === task.id), value.children?.[task.id]?.runningBelow ?? 0, value.children?.[task.id]?.runningBelow ?? 0, value.runningRuns?.[task.id] ?? 0);
-  const moved = movedAt([...value.tasks.filter(each => each.id !== task.id), task].map(each =>
+  const tasks = [...value.tasks.filter(each => each.id !== task.id), task];
+  // Its position, by the server's own rule: work is a queued, running or needs-review Run (screen-derive's homeWorking).
+  const homeWorking = new Set(value.runs.filter(run => run.state === "queued" || run.state === "running" || run.state === "needs_review").map(run => run.taskId));
+  const position = placeHome(tasks.map(each => ({ ...each, summary: { done: 0, total: 0 } })), value.balls, homeWorking)
+    .find(each => each.taskId === task.id)?.position ?? null;
+  const moved = movedAt(tasks.map(each =>
     ({ id: each.id, parentId: each.parentId, updatedAt: each.log.at(-1)?.at ?? null })), value.runs);
-  return taskRowSchema.parse({ ...fields, ...value.usage?.[task.id], movedAt: moved.get(task.id) ?? 0, rowFacts, projectId: owningProject(task, value), startOrder: value.startOrder?.[task.id] ?? null, ball, notice: { ...fields.notice, turnKey: userTurn(ball)?.key ?? null },
+  return taskRowSchema.parse({ ...fields, ...value.usage?.[task.id], movedAt: moved.get(task.id) ?? 0, rowFacts: { ...rowFacts, position }, projectId: owningProject(task, value), startOrder: value.startOrder?.[task.id] ?? null, ball, notice: { ...fields.notice, turnKey: userTurn(ball)?.key ?? null },
     question: questionsOf(task.id, value)[0]?.title ?? "" });
 }
 /**

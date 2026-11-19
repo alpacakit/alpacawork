@@ -13,7 +13,7 @@ import { serverReadFacts } from '../src/data/read-model';
 import { mapWorkspace } from "../src/data/map";
 import { indexPeople } from "../src/domain/people";
 import { BriefLine } from "../src/features/reader/BriefLine";
-import { StateLabel } from "../src/components/ui/state-label";
+import { TaskLabel } from "../src/components/ui/state-label";
 import { useViewStore } from "../src/state/view-store";
 import { taskDetail, useTaskIndex } from "../src/data/queries";
 import type { TaskIndex } from "../src/domain/tasks";
@@ -121,7 +121,7 @@ test("wait reasons use the same words and emphasis on labels", () => {
     ["doing", asking(), "turn.question", true],
     ["waiting", null, "state.waitingReview", false],
   ] as const) {
-    const label = render(<StateLabel state={state} ball={ball} />);
+    const label = render(<TaskLabel task={{ state, ball, rowFacts: null }} />);
     expect(label.container.textContent).toContain(i18n.t(`ui:${key}`));
     expect(label.container.firstElementChild?.className.includes("text-turn")).toBe(emphasized);
     label.unmount();
@@ -130,8 +130,8 @@ test("wait reasons use the same words and emphasis on labels", () => {
 
 test("a review and a question are both your turn's colour, told apart by their icon and word", () => {
   const look = (reason: "review" | "question") => {
-    const view = render(reason === "review" ? <StateLabel state="waiting" ball={review()} />
-      : <StateLabel state="doing" ball={asking()} />);
+    const view = render(reason === "review" ? <TaskLabel task={{ state: "waiting", ball: review(), rowFacts: null }} />
+      : <TaskLabel task={{ state: "doing", ball: asking(), rowFacts: null }} />);
     const svg = view.container.querySelector("svg")!;
     const seen = { colour: svg.getAttribute("class")!.split(" ").find((name) => name.startsWith("text-") && name !== "text-xs"),
       icon: svg.getAttribute("data-icon"), word: view.container.textContent };

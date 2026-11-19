@@ -216,6 +216,8 @@ export interface ScreenAggregate {
   runningRuns(task: TaskId): number;
   workingBelow(task: TaskId): number;
   live(task: TaskId): boolean;
+  /** The active Task's position (home's taskPosition); null for any other. */
+  position(task: TaskId): ControlIndexDTO['home'][number]['section'] | null;
   home(task: TaskId): ControlIndexDTO['home'][number] | undefined;
   /** The home row the Task's row follows in the list's order (null for the first); undefined when it lists none. */
   homeAfter(task: TaskId): TaskId | null | undefined;

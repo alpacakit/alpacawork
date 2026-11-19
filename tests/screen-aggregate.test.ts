@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HOME_SECTIONS, projectHome, type UsageTotal } from '@alpacawork/contract';
+import { HOME_SECTIONS, placeHome, type UsageTotal } from '@alpacawork/contract';
 import { isFinished } from '@alpacawork/contract/branch';
 import { closedPageScope } from '@alpacawork/contract/control';
 import { byTaskNumber } from '@alpacawork/contract/moved';
@@ -36,9 +36,10 @@ function full(input: ReadonlyMap<string, Contribution>, facts: ReadonlyMap<strin
   }));
   const below = (id: string) => all.filter(t => ancestors(t.id).includes(id));
   const moved = new Map(all.map(t => [t.id, Math.max(t.movedAt, ...below(t.id).map(c => c.movedAt))]));
-  const home = projectHome(all.map(t => ({ ...t, summary: { done: counted[t.id]?.states.done ?? 0,
+  const placed = placeHome(all.map(t => ({ ...t, summary: { done: counted[t.id]?.states.done ?? 0,
     total: (counted[t.id]?.live ?? 0) + (counted[t.id]?.states.done ?? 0) } })),
     Object.fromEntries(all.filter(t => t.ball).map(t => [t.id, t.ball!])), new Set(all.filter(t => t.homeWorking).map(t => t.id)));
+  const home = placed.flatMap(each => each.row ? [each.row] : []);
   const byMoved = (a: string, b: string) => moved.get(b)! - moved.get(a)! || byTaskNumber({ id: a }, { id: b });
   const order = home.filter(h => h.section !== 'done' && facts.get(h.taskId)?.listed !== false).sort((a, b) => HOME_SECTIONS.indexOf(a.section) - HOME_SECTIONS.indexOf(b.section) || byMoved(a.taskId, b.taskId)).map(h => h.taskId);
   const scopes = (t: Contribution) => facts.get(t.id)?.scopes ?? (() => {
@@ -86,7 +87,7 @@ function full(input: ReadonlyMap<string, Contribution>, facts: ReadonlyMap<strin
       movedAt: moved.get(t.id), usageBelow: usage(descendants), runsBelow: runs, runningRuns: runs.length + t.openRuns.length,
       workingBelow: all.filter(c => c.working && ancestors(c.id, true).includes(t.id)).length,
       live: [t, ...descendants].some(c => c.lifecycle === 'active' && !isFinished(c.state)),
-      home: home.find(h => h.taskId === t.id), homeAfter: order.includes(t.id) ? order[order.indexOf(t.id) - 1] ?? null : undefined }];
+      home: home.find(h => h.taskId === t.id), position: placed.find(each => each.taskId === t.id)?.position ?? null, homeAfter: order.includes(t.id) ? order[order.indexOf(t.id) - 1] ?? null : undefined }];
   })) };
 }
 function observed(frame: AggregateSnapshot, ids: Iterable<string>, pageNames: Iterable<string>) {
@@ -94,7 +95,7 @@ function observed(frame: AggregateSnapshot, ids: Iterable<string>, pageNames: It
     order: [...frame.homeIds()], pages: Object.fromEntries([...pageNames].map(scope => [scope, frame.page(scope)])),
     tasks: Object.fromEntries([...ids].map(id => [id, { children: frame.children(id), childCounts: frame.childCounts(id), movedAt: frame.movedAt(id),
       usageBelow: frame.usageBelow(id), runsBelow: frame.runsBelow(id), runningRuns: frame.runningRuns(id), workingBelow: frame.workingBelow(id),
-      live: frame.live(id), home: frame.home(id), homeAfter: frame.homeAfter(id) }])) };
+      live: frame.live(id), home: frame.home(id), position: frame.position(id), homeAfter: frame.homeAfter(id) }])) };
 }
 function check(frame: AggregateSnapshot, input: ReadonlyMap<string, Contribution>, facts = new Map<string, AggregateFacts>()) {
   const reference = full(input, facts);

@@ -54,7 +54,7 @@ test("the Task's own userQuestion and urgent child reports stay visible even whe
   const records = [make('final', { wroteIn: 'R1', at: at(9) }),
     make('question', { kind: 'question', wroteIn: 'R1', question: 'question', at: at(3) }),
     make('urgent', { kind: 'urgent', sourceTaskId: 'T3', taskId: 'T3', consumedBy: ['R1'], at: at(4) })];
-  const projected = questionReports(records, { id: 'T1', state: 'doing', ball: { holder: 'user', reason: 'question', key: 'question', at: '2026-10-10T10:00:00Z', questionId: 'question', aboutRunId: null, count: null, code: null, failure: null }, userQuestions: [{ id: 'question', taskId: 'T1', taskTitle: 'Own',
+  const projected = questionReports(records, { id: 'T1', state: 'doing', rowFacts: null, ball: { holder: 'user', reason: 'question', key: 'question', at: '2026-10-10T10:00:00Z', questionId: 'question', aboutRunId: null, count: null, code: null, failure: null }, userQuestions: [{ id: 'question', taskId: 'T1', taskTitle: 'Own',
     destination: { kind: 'user' }, applicable: true, state: 'open', askedAt: at(3), title: 'question', summary: '', decide: [{ decide_question: 'Choose' }] }] });
   const display = reportDisplay(projected);
   expect(display.targets.get('log:T1:question')).toBe('log:T1:question');

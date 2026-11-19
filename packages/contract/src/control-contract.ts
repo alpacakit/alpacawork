@@ -19,7 +19,7 @@ import { bodyMarkSchema, descriptionSchema, reportTitleSchema, digestSchema, est
 import { errorEntrySchema, problemErrorSchema } from './problem.js';
 import { hostNoticeSchema } from './host-contract.js';
 import { ballSchema, userTurn, type Ball } from './ball.js';
-import { homeCountsSchema, homeRowSchema, taskActionSchema } from './home.js';
+import { HOME_SECTIONS, homeCountsSchema, homeRowSchema, taskActionSchema } from './home.js';
 import { historyCursorSchema, historyEventSchema, NOTICED_LOG_KINDS, STATE_LOG_KINDS } from './history-events.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
@@ -346,6 +346,8 @@ export const rowFactsSchema = z.object({
     z.object({ kind: z.literal('followup'), turn: ballSchema.options[0] }).strict(),
     z.object({ kind: z.literal('stopped'), failure: z.string() }).strict(),
   ]).nullable(),
+  /** The active Task's position (home's taskPosition), which every screen says it by; null for any other row. */
+  position: z.enum(HOME_SECTIONS).nullable(),
 }).strict();
 export type RowFacts = z.infer<typeof rowFactsSchema>;
 const usageTotalSchema = z.object({ runs: z.number().int().nonnegative(), runMs: z.number().nonnegative(),

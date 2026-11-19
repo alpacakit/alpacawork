@@ -3,7 +3,7 @@ import { PanelFirstRow } from "./PanelFirstRow";
 import { panelPosition } from "./reader-panel";
 import type { PanelForm } from "./ReaderPanel";
 import { useTranslation } from "react-i18next";
-import { StateIcon, StateLabel } from "@/components/ui/state-label";
+import { TaskIcon, TaskLabel } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
 import { useEveryTaskIndex } from "@/data/queries";
 import type { Task } from "@/data/types";
@@ -32,7 +32,7 @@ export function useWaitedWord(task: Task): { shown: string; items: WaiterItem[] 
     : t("order.list.waitedMore", { id: items[0]!.id, count: items.length - 1 }), items };
 }
 
-const asWaiterItem = (task: Task): WaiterItem => ({ kind: "waiter", id: task.id, title: task.title, state: task.state, ball: task.ball });
+const asWaiterItem = (task: Task): WaiterItem => ({ kind: "waiter", id: task.id, title: task.title, state: task.state, ball: task.ball, rowFacts: task.rowFacts });
 
 /** In the related list, a task is a row as the tree's are: a band with round ends, tinted under a pointer, reaching
  * 6px from the surface's sides as the tree's rows do; the list's head and notes keep 12px, clear of its round corners. */
@@ -44,10 +44,10 @@ export function OrderLink({ item, onFollow, word = true, className }: { item: Or
   const prerequisite = item.kind === "prerequisite" ? item : null;
   return <button type="button" data-order-task={item.id} onClick={() => onFollow(item.id)}
     className={cn("flex min-w-0 max-w-full items-center gap-1.5 rounded-sm text-left hover:underline", className)}>
-    <StateIcon state={item.state} ball={prerequisite?.finished ? null : item.ball} className="size-3.5 flex-none" />
+    <TaskIcon task={item} className="size-3.5 flex-none" />
     <TaskId id={item.id} className="flex-none text-xs tabular-nums text-muted" />
     <span className="min-w-0 truncate text-ink">{item.title}</span>
-    {word && <StateLabel state={item.state} ball={prerequisite?.finished ? null : item.ball} className="ms-1" />}
+    {word && <TaskLabel task={item} className="ms-1" />}
     {/* Done or stopped, but a Run of it has not ended: it still waits for that. */}
     {word && prerequisite && !prerequisite.finished && (item.state === "done" || item.state === "stopped")
       && <span className="ms-1 flex-none text-xs text-ink">{t("order.runEnding")}</span>}

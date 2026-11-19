@@ -4,9 +4,9 @@ import { isFinished } from "@alpacawork/contract/branch";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/icon";
-import { StateIcon } from "@/components/ui/state-label";
+import { TaskIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
-import { useStateLook } from "@/components/ui/tone";
+import { useTaskLook } from "@/components/ui/tone";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { useEveryTaskIndex, useReadState, useWorkspaceInfo } from "@/data/queries";
@@ -185,7 +185,7 @@ function FamilyRow({ task, depth, here, indent, mark, fold, onPick }: {
   fold: { open: boolean; press: () => void } | null; onPick: (id: string) => void;
 }) {
   const { t } = useTranslation("reader");
-  const { word } = useStateLook(task.state, task.ball);
+  const { word } = useTaskLook(task);
   const order = useOrderWord(task);
   const finished = isFinished(task.state);
   const deep = depth > FAMILY_INDENT_CAP;
@@ -208,7 +208,7 @@ function FamilyRow({ task, depth, here, indent, mark, fold, onPick }: {
       : <span aria-hidden="true" className="flex-none" style={{ width: mark }} />}
     <button type="button" data-family-go onClick={() => onPick(task.id)} aria-current={here ? "page" : undefined} aria-label={name} title={task.title}
       className="flex h-7.5 min-w-0 flex-1 items-center gap-2 rounded-full pr-3 pl-0.5 text-left text-sm narrow:h-10 narrow:text-base">
-      <StateIcon state={task.state} ball={task.ball} className="size-4 flex-none" />
+      <TaskIcon task={task} className="size-4 flex-none" />
       <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
       <span className={cn("min-w-0 flex-1 truncate", finished && "text-muted", here && "font-semibold")}>{task.title}</span>
       {order && <span data-family-order className="flex-none text-xs tabular-nums text-muted">{order.shown}</span>}

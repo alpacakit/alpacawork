@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { userTurn } from '@alpacawork/contract';
 import { Icon } from '@/components/ui/icon';
 import { Message } from '@/components/ui/message';
-import { stateLook, TONE } from '@/components/ui/tone';
+import { TaskIcon } from '@/components/ui/state-label';
 import { useTaskCard } from '../TaskCard';
 import { isComposingKey, observeComposition } from '@/components/ui/composing';
 import { useEveryTaskIndex, taskIndex } from '@/data/queries';
@@ -61,14 +61,13 @@ function TaskBadge({ node, editor, getPos }: LabelProps) {
   const id = String(node.attrs.id);
   const card = useTaskCard(id, () => useViewStore.getState().openTask(id, { reader: true }), node.attrs.title);
   const mark = useProjectMarks().get(id);
-  const { look } = card;
   const remove = () => removeLabel(editor, getPos);
   if (mark) return <span className="inline" data-label="task" data-label-project>
     <ProjectLabelCard mark={mark} remove={remove} />
   </span>;
   return <span className="inline" data-label="task">
     <LabelPopover kind="task" name={id}
-      face={<TaskLabelText id={id} title={card.task?.title ?? node.attrs.title} mark={look && <Icon name={look.icon} className={cn('size-3', TONE[look.tone])} />} />}
+      face={<TaskLabelText id={id} title={card.task?.title ?? node.attrs.title} mark={card.mark('size-3')} />}
       tail={<LabelRemove name={t('coordinatorCard.removeTask', { id })} remove={remove} />}
       header={card.header}
       actions={close => <>{card.openButton(close)}
@@ -260,8 +259,7 @@ export function LabelEditor({ draft, catalog, onSend, disabled, attaching, tall,
   const taskItems = (query: string): Item[] => {
     const foldedQuery = fold(query);
     return [...projectItems(query), ...[...latest.current.index.byId.values()].filter(task => task.kind !== 'project' && fold(`${task.id} ${task.title}`).includes(foldedQuery)).sort((a, b) => Number(b.id === latest.current.viewing) - Number(a.id === latest.current.viewing) || Number(!!userTurn(b.ball)) - Number(!!userTurn(a.ball)) || Number(b.id.slice(1)) - Number(a.id.slice(1))).slice(0, 12).map(task => {
-      const look = stateLook(task.state, task.ball);
-      return { id: task.id, apply: insert('taskLabel', { id: task.id, title: task.title }), label: <><Icon name={look.icon} className={cn('size-4', TONE[look.tone])} /><span className="flex-none text-muted">{task.id}</span><span className="min-w-0 flex-1 truncate">{task.title}</span></> };
+      return { id: task.id, apply: insert('taskLabel', { id: task.id, title: task.title }), label: <><TaskIcon task={task} className="size-4" /><span className="flex-none text-muted">{task.id}</span><span className="min-w-0 flex-1 truncate">{task.title}</span></> };
     })];
   };
   const skillItems = (query: string): Item[] => {

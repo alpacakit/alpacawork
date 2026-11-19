@@ -1,7 +1,7 @@
 /** Rows and keyed patches from the published incremental projection. */
 import { currentTransition, waitStates, type ControlIndexDTO, type ControlRunDTO, type IndexPatchDTO, type PlacementDTO,
   type ProjectionVersion, type RequiredPvDTO, type TaskRowDTO } from '@alpacawork/contract/control';
-import { projectRowFacts } from './row-facts.js';
+import { aggregateRowFacts } from './row-facts.js';
 import type { AffectedSet, AggregateChanges, ScreenAggregate, TaskDerived, TaskId } from './projection-contract.js';
 import type { ChildCounts, HomeRowDTO } from './task-reads.js';
 import { MapUndo } from './map-undo.js';
@@ -34,8 +34,7 @@ export function composeRow(derived: TaskDerived, aggregate: ScreenAggregate): Ta
   const { id, row } = derived;
   return { ...row, movedAt: aggregate.movedAt(id), usageBelow: aggregate.usageBelow(id),
     runsBelow: aggregate.runsBelow(id).map(([run, at]) => [run, at] as [typeof run, number]),
-    rowFacts: projectRowFacts(row, derived.placements, derived.runs, aggregate.children(id)?.runningBelow ?? 0,
-      aggregate.workingBelow(id), aggregate.runningRuns(id)) };
+    rowFacts: aggregateRowFacts(derived, aggregate) };
 }
 /** The row the live index carries: only the log entries its current state is drawn from. */
 export const liveRow = (row: TaskRowDTO): TaskRowDTO => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });

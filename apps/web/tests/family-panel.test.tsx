@@ -12,7 +12,8 @@ import { indexTasks } from "../src/domain/tasks";
 import type { Task } from "../src/data/types";
 import { branchOpen, familyRoot, familyShape, familySize, FAMILY_LEVEL_CAP, forgetFamilyShapes, hasChildren, openOn, shownChildren } from "../src/features/reader/family";
 import { Dialog, DialogContent, DialogHeading } from "../src/components/ui/dialog";
-import { TestWorkspace, at, userBall, dto, narrowScreen, screenData, tree } from "./fixtures";
+import { TestWorkspace, at, userBall, dto, homeFixture, narrowScreen, screenData, tree } from "./fixtures";
+import { TimeTree } from "../src/features/tree/TimeTree";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("en"); });
 beforeEach(() => {
@@ -51,8 +52,7 @@ const family = [
   dto({ id: "T4", title: "Second child", parentId: "T1", state: "done" }),
   dto({ id: "T9", title: "Alone" }),
 ];
-const open = (id: string) => {
-  const data = screenData(tree({ tasks: family }));
+const open = (id: string, data = screenData(tree({ tasks: family }))) => {
   act(() => useViewStore.getState().openTask(id, { reader: true, pane: "task" }));
   return render(<TestWorkspace data={data}><Reader mode="docked" /></TestWorkspace>);
 };
@@ -109,7 +109,7 @@ test("from a grandchild, the panel shows the whole family from the root, the tas
   await waitFor(() => panel());
   const here = row(/^T3 Grandchild, Not started, current$/);
   expect(here.getAttribute("aria-current")).toBe("page");
-  expect(row(/^T1 Root work, In progress$/)).toBeTruthy();
+  expect(row(/^T1 Root work, Waiting$/)).toBeTruthy();
   expect(row(/^T4 Second child, Done/)).toBeTruthy();
   // A row says its state and title; its children are behind its fold mark, not a number.
   expect(within(panel()).queryByText(/^\d+$/)).toBeNull();
@@ -159,7 +159,7 @@ test("picking a task opens it in the reader and the panel stays open, the box mo
   expect(entry().getAttribute("aria-expanded")).toBe("true");
   fireEvent.click(row(/^T1 Root work/));                // and another, in a row
   await waitFor(() => expect(useViewStore.getState().selected).toBe("T1"));
-  expect(row(/^T1 Root work, In progress, current$/)).toBeTruthy();
+  expect(row(/^T1 Root work, Waiting, current$/)).toBeTruthy();
 });
 
 test("the panel stays open whichever way the reader moves, to another family too, and closes with the reader or its ×", async () => {
@@ -170,7 +170,7 @@ test("the panel stays open whichever way the reader moves, to another family too
   await waitFor(() => screen.getByRole("list", { name: "Task tree of Alone" }));
   act(() => useViewStore.getState().openTask("T2", { reader: true, pane: "task" }));
   await waitFor(() => panel());
-  expect(row(/^T2 First child, In progress, current$/)).toBeTruthy();
+  expect(row(/^T2 First child, Waiting, current$/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Close the task tree" }));
   await waitFor(() => expect(screen.queryByRole("list", { name: /Task tree of/ })).toBeNull());
   expect((useReaderPanel.getState().kind !== null)).toBe(false);
@@ -509,4 +509,25 @@ for (const narrow of [false, true]) test(`dependencies disappear at a task with 
     expect(relationEntry("dependencies").getAttribute("aria-expanded")).toBe("true");
     expect(relatedPanel().querySelectorAll('[data-order-task]')).toHaveLength(6);
   } finally { phone.restore(); }
+});
+
+test("a task has the same mark in the list as in the task tree: idle work waits, a stop for the user is an error", async () => {
+  // T1 works on nothing itself and its children run nothing: its child T2 is held, T3 stopped at its limit.
+  const tasks = [dto({ id: "T1", title: "Root work" }), dto({ id: "T2", title: "Held child", parentId: "T1", state: "held" }),
+    dto({ id: "T3", title: "Stopped child", parentId: "T1" })];
+  const data = () => screenData(tree({ tasks, balls: { T3: userBall("limit", "Llimit", at, { count: 1 }) },
+    home: homeFixture([{ taskId: "T1", section: "awaited" }, { taskId: "T3", section: "error" }]) }));
+  const listData = data();
+  listData.info.counts.home.root!.awaited = 1;
+  listData.info.counts.home.root!.error = 1;
+  const list = render(<TestWorkspace data={listData}><TimeTree /></TestWorkspace>);
+  fireEvent.click(list.container.querySelector('[data-section="awaited"] button')!);
+  const listed = (id: string) => document.querySelector(`[data-row="${id}"] [data-row-label] [data-icon]`)?.getAttribute("data-icon");
+  expect([listed("T1"), listed("T3")]).toEqual(["pause", "error"]);
+  list.unmount();
+  open("T1", data());
+  fireEvent.click(entry());
+  await waitFor(() => panel());
+  const inTree = (id: string) => document.querySelector(`[data-family-row="${id}"] [data-icon]:not([data-icon="right"])`)?.getAttribute("data-icon");
+  expect([inTree("T1"), inTree("T2"), inTree("T3")]).toEqual(["pause", "held", "error"]);
 });

@@ -81,7 +81,7 @@ export class FakeRecords implements RecordsReader {
 
 export const emptyAggregate: ScreenAggregate = {
   children: () => undefined, movedAt: () => 0, usageBelow: () => null, runsBelow: () => [], runningRuns: () => 0,
-  workingBelow: () => 0, live: () => true, home: () => undefined, homeAfter: () => undefined, page: () => [],
+  workingBelow: () => 0, live: () => true, position: () => null, home: () => undefined, homeAfter: () => undefined, page: () => [],
   counts: () => ({ closed: {}, home: {}, tasks: {}, all: { turn: 0, running: 0 } }),
 };
 

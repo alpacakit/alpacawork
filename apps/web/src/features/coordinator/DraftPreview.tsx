@@ -1,7 +1,7 @@
 import { ReplyLabelText } from './ReplyLabel';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/icon';
-import { stateLook, TONE } from '@/components/ui/tone';
+import { TaskIcon } from '@/components/ui/state-label';
 import { useEveryTaskIndex } from '@/data/queries';
 import { cn } from '@/lib/utils';
 import type { Document, Inline } from './editor/document';
@@ -45,9 +45,9 @@ export function DraftPreview({ doc, preview }: { doc: Document; preview: { reado
     if (label.type === 'taskLabel') {
       const mark = marks.get(label.attrs.id);
       if (mark) return <LabelFace kind="project" style={projectFace(mark)}><ProjectLabelText mark={mark} /></LabelFace>;
-      const task = index.byId.get(label.attrs.id), look = task && stateLook(task.state, task.ball);
+      const task = index.byId.get(label.attrs.id);
       return <LabelFace kind="task"><TaskLabelText id={label.attrs.id} title={task?.title ?? label.attrs.title}
-        mark={look && <Icon name={look.icon} className={cn('size-3 flex-none', TONE[look.tone])} />} /></LabelFace>;
+        mark={task && <TaskIcon task={task} className="size-3 flex-none" />} /></LabelFace>;
     }
     // No × follows it here, so its right side takes the left's room.
     if (label.type === 'answerLabel') return <LabelFace kind="answer" className="pr-2"><AnswerLabelText n={label.attrs.n} name={label.attrs.name} /></LabelFace>;

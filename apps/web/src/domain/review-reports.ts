@@ -1,10 +1,11 @@
 import type { TaskDetail } from '@/data/types';
 import { pendingReportMark } from './pending-report';
+import type { LookTask } from '@/components/ui/tone';
 import { logKey } from './history';
 import { reportMark, type ReportEvent } from './report-events';
 
 /** The server chooses the Task's own human reviews. History and this view retain one original submission identity. */
-export function reviewReports(reports: ReportEvent[], task: Pick<TaskDetail, 'userReviews' | 'state' | 'ball' | 'id'>): ReportEvent[] {
+export function reviewReports(reports: ReportEvent[], task: Pick<TaskDetail, 'userReviews' | 'id'> & LookTask): ReportEvent[] {
   const byKey = new Map<string, ReportEvent>();
   for (const report of reports) byKey.set(report.key, report);
   for (const review of task.userReviews ?? []) {
