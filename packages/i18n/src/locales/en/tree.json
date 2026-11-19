@@ -117,7 +117,7 @@
       "models": {
         "label": "Have 3 models build a snake game, then compare",
         "shows": "Different models build in parallel, then you're asked which to keep.",
-        "words": "Please build a snake game that runs in the browser, 3 times in parallel with a different model each. When they're done, ask me which one to keep. This is a trial run, so keep the effort light and take about 5 minutes. Please write everything in English."
+        "words": "Please build a snake game that runs in the browser, 3 times in parallel, each with a different model; if there aren't enough models, vary the effort instead. When they're done, ask me which one to keep. This is a trial run, so keep the settings light and take about 5 minutes. Please write everything in English."
       },
       "settings": {
         "label": "Set a working rule and how many agents run at once",
