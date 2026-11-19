@@ -55,7 +55,7 @@ During the install, the AI checks these, and installs Node.js if it is missing.
 
 The first step of the setup screen shows which of these are installed on this PC and, for the first three, whether they are signed in. You enable the ones to use there. Later, you can change this under Settings → Server.
 
-alpacawork removed Antigravity because Google does not allow third-party apps to launch `agy` with a consumer plan sign-in. See the [Antigravity FAQ](https://antigravity.google/docs/faq) and [Additional Terms of Service](https://antigravity.google/terms).
+When an AI company releases a new model, you can add it yourself. Ask in the chat, for example "Add the latest model to the Codex model list," and the AI adds it to the settings. You can also edit the models yourself under Settings → Server.
 
 Within one request, you can split the roles, for example design with Claude Code and implementation with Codex.
 
@@ -106,6 +106,8 @@ Add a "News" box at the top of the home page where we can post things like unexp
 The coordinator turns your request into a task, hands it to an AI that owns the task (the owner), and writes the specific instructions for that owner. Owners do the work, so you can keep making requests without waiting for earlier ones to finish. The coordinator works out the order and who does what.
 
 You can ask for more than work. From the same input box, you can ask the coordinator to change settings, resume an AI that stopped, create a project, update alpacawork and more. Most things can be done just by asking, without hunting for the right place on the screen.
+
+If you are unsure about any of the app's settings, ask there as well. The AI can change most settings for you. A few steps, such as signing in to an AI agent and entering API keys, are left to you.
 
 <img src="images/chat-phone.png" alt="A conversation with the coordinator on a phone. It replies that the request became a task and was given an owner" width="320">
 

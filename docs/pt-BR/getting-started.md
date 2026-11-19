@@ -55,7 +55,7 @@ Durante a instalação, a IA verifica esses itens e instala o Node.js se ele est
 
 A primeira etapa da tela de configuração inicial mostra quais deles estão instalados neste PC e, para os três primeiros, se estão com login feito. É ali que você ativa os que vai usar. Depois, você pode mudar isso em Configurações → Servidor.
 
-O alpacawork deixou de oferecer suporte ao Antigravity porque o Google não permite que aplicativos de terceiros iniciem o `agy` com o login de um plano para usuários individuais. Veja as [perguntas frequentes do Antigravity](https://antigravity.google/docs/faq) e os [Termos de Serviço Adicionais](https://antigravity.google/terms).
+Quando uma empresa de IA lança um modelo novo, você mesmo pode adicioná-lo. Peça no chat, por exemplo “Adicione o modelo mais recente à lista de modelos do Codex”, e a IA o adiciona às configurações. Você também pode editar os modelos por conta própria em Configurações → Servidor.
 
 Em uma mesma solicitação, você pode dividir os papéis: por exemplo, o design com o Claude Code e a implementação com o Codex.
 
@@ -106,6 +106,8 @@ Adicione uma área de “Avisos” no topo da página inicial, para a gente publ
 O coordenador transforma a sua solicitação em uma tarefa, delega-a a uma IA responsável pela tarefa (o responsável) e escreve as instruções específicas para esse responsável. São os responsáveis que fazem o trabalho, então você pode continuar fazendo solicitações sem esperar as anteriores terminarem. O coordenador organiza a ordem e quem faz o quê.
 
 Você pode pedir mais do que trabalho. No mesmo campo de mensagem, você pode pedir ao coordenador que altere configurações, retome uma IA que parou, crie um projeto, atualize o alpacawork e muito mais. A maioria das coisas se resolve só pedindo, sem procurar o lugar certo na tela.
+
+Se tiver dúvida sobre qualquer configuração do app, pergunte também ali. A IA consegue mudar a maioria das configurações por você. Algumas etapas, como o login em um agente de IA e a inclusão de chaves de API, ficam com você.
 
 <img src="../images/chat-phone.png" alt="Uma conversa com o coordenador em um celular. Ele responde que a solicitação virou uma tarefa e ganhou um responsável" width="320">
 
