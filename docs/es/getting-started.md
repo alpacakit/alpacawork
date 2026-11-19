@@ -55,6 +55,8 @@ Durante la instalación, la IA los comprueba e instala Node.js si falta.
 
 El primer paso de la pantalla de configuración inicial muestra cuáles de ellos están instalados en este PC y, en el caso de los tres primeros, si tienen la sesión iniciada. Ahí activas los que vas a usar. Más adelante puedes cambiarlo en Configuración → Servidor.
 
+Cuando una empresa de IA lanza un modelo nuevo, puedes añadirlo tú. Pídelo en el chat, por ejemplo “Añade Gemini 4 a los modelos de Antigravity”, y la IA lo añade a la configuración. También puedes editar los modelos tú mismo en Configuración → Servidor.
+
 Dentro de una misma solicitud puedes repartir los papeles; por ejemplo, el diseño con Claude Code y la implementación con Codex.
 
 Cada agente de IA funciona con tu plan y tu configuración actuales.
@@ -104,6 +106,8 @@ Añade un recuadro de “Avisos” en la parte superior de la página principal 
 El coordinador convierte tu solicitud en una tarea, se la encarga a una IA responsable de la tarea (el responsable) y redacta las instrucciones concretas para ese responsable. El trabajo lo hacen los responsables, así que puedes seguir haciendo solicitudes sin esperar a que terminen las anteriores. El coordinador resuelve el orden y quién hace qué.
 
 Puedes pedir más cosas además de trabajo. Desde el mismo cuadro de texto puedes pedirle al coordinador que cambie la configuración, que reanude una IA que se detuvo, que cree un proyecto, que actualice alpacawork y más. La mayoría de las cosas se pueden hacer con solo pedirlas, sin tener que buscar el lugar adecuado en la pantalla.
+
+Si tienes dudas sobre cualquier ajuste de la app, pregunta también ahí. La IA puede cambiar la mayoría de los ajustes por ti. Algunos pasos, como iniciar sesión en un agente de IA o introducir claves de API, quedan en tus manos.
 
 <img src="../images/chat-phone.png" alt="Una conversación con el coordinador en un teléfono. Responde que la solicitud se convirtió en una tarea y que se le asignó un responsable" width="320">
 
