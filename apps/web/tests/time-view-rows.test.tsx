@@ -217,7 +217,7 @@ test("a mark cannot shift the future estimate away from the no-mark column", () 
   const history = projectTimeHistory(timeHistoryBase(data.tasks.find((each) => each.id === "T2")!, data.people, recordNotes(data.people, (data.tasks.find((each) => each.id === "T2")!).id)), now)!;
   const reportEvent = history.events.find((event) => event.source.log?.kind === "reported")!;
   const mark = { event: { ...reportEvent, at: now - minute, source: { ...reportEvent.source, finished: true } } };
-  const finish = { short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet" as const, at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0, ahead: true };
+  const finish = { short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet" as const, at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0 };
   const scale = { x: (at: number) => 200 + (at - now) / minute * 3, from: now - 60 * minute, to: now + 30 * minute, width: 324 };
   const draw = (marks: typeof mark[]) => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
     marks={marks} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
@@ -297,7 +297,7 @@ test("a mark keeps its event time even beside the now line", () => {
   const scale = { x: (at: number) => 200 + (at - now) / minute * 3, from: now - 60 * minute, to: now + 30 * minute, width: 324 };
   const draw = (pin: boolean) => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
     marks={[pin ? { ...mark, display: "pin" } : mark]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }}
-    now={now} finish={{ short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet", at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0, ahead: true }}
+    now={now} finish={{ short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet", at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0 }}
     onPick={() => {}} /></svg>).container;
   const ordinary = draw(false).querySelector("[data-mark] g circle")!;
   expect(Number(ordinary.getAttribute("cx"))).toBe(scale.x(now + 2 * minute));
@@ -383,7 +383,7 @@ test("a finished row on a phone says no Question, whatever question it still lis
 
 test("an overrun stays in the future band while its quiet past keeps its true time", () => {
   const hour = 60 * minute;
-  const finish = { short: "~9 hours past 04:30", long: "540 of 30 min worked", tone: "late" as const, at: now - 9 * hour, ends: false, brief: "~9 hours overdue", briefDays: 0, ahead: true };
+  const finish = { short: "~9 hours past 04:30", long: "540 of 30 min worked", tone: "late" as const, at: now - 9 * hour, ends: false, brief: "~9 hours overdue", briefDays: 0 };
   const scale = { x: (time: number) => (time - (now - 10 * hour)) / minute * 3, from: now - 10 * hour, to: now + 14 * minute, width: 1924 };
   const lane = () => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
     marks={[]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
@@ -407,7 +407,7 @@ test("an overrun stays in the future band while its quiet past keeps its true ti
 
 test("work past the estimate is redrawn quietly on its own line, in the row's ground, inside a phone's row", () => {
   const hour = 60 * minute;
-  const finish = { short: "~45 min overdue", long: "60 of 15 min worked", tone: "late" as const, at: now - 45 * minute, ends: false, brief: "~45 min overdue", briefDays: 0, ahead: true };
+  const finish = { short: "~45 min overdue", long: "60 of 15 min worked", tone: "late" as const, at: now - 45 * minute, ends: false, brief: "~45 min overdue", briefDays: 0 };
   const stretch = (from: number, to: number, count: number) => ({ from, to, count, wait: null, peak: count, merged: 0 });
   // Past the estimate: one at work, a quiet gap, then two at once up to now: a row with two concurrent workers.
   const line = { stretches: [stretch(now - 50 * minute, now - 40 * minute, 1), stretch(now - 40 * minute, now - 35 * minute, 0),

@@ -117,9 +117,9 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   const people = usePeopleFor(task.id);
   const unread = !useReadIdsFor(task.id).has(task.id);
   const { word, tone, stated } = useTaskLook(task);
-  // An end it reached stands in its word's place; words of the report still to come, made from its state, do only while
-  // it is said by its state's word.
-  const known = useFinishWords(task.id), finish = known && (!known.ahead || stated) ? known : null;
+  // End words are made from its state and records, so they stand in its word's place only while it is said by its
+  // state's word; a Task said as waiting, as an error over its state or as a question is said as everywhere else.
+  const known = useFinishWords(task.id), finish = stated ? known : null;
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>
