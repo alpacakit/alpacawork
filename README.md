@@ -1,15 +1,14 @@
 <!--
-Link to files of this project by their path from the repository root (docs/images/logo.png,
-docs/getting-started.md, LICENSE), and only to files committed to git: GitHub opens them on every
-branch. Put pictures in docs/images/, which the npm package carries. Write links and pictures as
-inline Markdown links or as src and href attributes in double quotes.
+Use repository-root paths for local files (docs/images/logo.png, LICENSE) so they open on every
+branch. Link to the guides in this README with absolute GitHub URLs so the npm copy opens the
+rendered guides and their section links. Put pictures in docs/images/, which the npm package
+carries. Write links and pictures as inline Markdown links or as src and href attributes in double quotes.
 Double-quoted srcset attributes are also rewritten, preserving each image candidate's descriptor.
 Other forms are not rewritten for npm.
 npm resolves no relative path, so the release rewrites each one in the packaged copy
 (apps/backend/src/release/npm-readme.ts): a file the package carries opens from
 https://unpkg.com/alpacawork@<version>/<path>, any other file from
-https://github.com/alpacakit/alpacawork/blob/main/<path>. On npm a guide opens as unformatted Markdown
-text, with no pictures, no working links and no jump to a #section.
+https://github.com/alpacakit/alpacawork/blob/main/<path>.
 The setup guide an AI downloads uses a GitHub raw URL so the AI can read the Markdown directly.
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else, and npm shows such a URL as
@@ -45,8 +44,8 @@ to README.md#install): keep those headings, or change the links with them.
 
 <p align="center">
   <a href="#install"><b>Install</b></a> ·
-  <a href="docs/getting-started.md">Getting started</a> ·
-  <a href="docs/concept.md">How it works</a>
+  <a href="https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md">Getting started</a> ·
+  <a href="https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md">How it works</a>
 </p>
 
 <p align="center">
@@ -78,9 +77,9 @@ npm install -g alpacawork
 alpacawork setup
 ```
 
-- **Requirements:** macOS (Apple silicon), Linux (x64) or Windows (inside WSL2). You need an AI agent you are signed in to, such as Claude Code or Codex, and Node.js 24.16 or later (if an AI does the install, it installs Node.js when it is missing). [Full requirements](docs/getting-started.md#requirements)
-- **After installing:** [Make your first request](docs/getting-started.md#2-make-your-first-request). To use it from your phone, connect to your PC over a VPN such as Tailscale ([Use it from your phone](docs/getting-started.md#5-use-it-from-your-phone)).
-- **Stopping and uninstalling:** [Stop, update or uninstall](docs/getting-started.md#7-stop-update-or-uninstall)
+- **Requirements:** macOS (Apple silicon), Linux (x64) or Windows (inside WSL2). You need an AI agent you are signed in to, such as Claude Code or Codex, and Node.js 24.16 or later (if an AI does the install, it installs Node.js when it is missing). [Full requirements](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#requirements)
+- **After installing:** [Make your first request](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#2-make-your-first-request). To use it from your phone, connect to your PC over a VPN such as Tailscale ([Use it from your phone](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#5-use-it-from-your-phone)).
+- **Stopping and uninstalling:** [Stop, update or uninstall](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#7-stop-update-or-uninstall)
 
 ## What it does
 
@@ -95,8 +94,8 @@ alpacawork setup
 
 - **It is free (MIT License).** AI usage is billed under your existing Claude Code, Codex or other plan.
 - **It runs on your PC.** The AI runs on your PC, so keep the PC on and set it not to sleep while you use alpacawork.
-- **It runs AI agents with full permissions, so they don't stop to ask for approval.** You can write what the AI should not do, or should ask you about first, in the [project policy](docs/getting-started.md#4-write-the-ground-rules-for-the-ai).
-- **Tasks, conversations and result files are kept on your PC.** alpacawork does not send them to any outside server run by its developers. Your instructions to the AI, and what the AI reads, are sent to the AI's provider, just as when you use each AI agent directly ([more on how data is handled](docs/getting-started.md#what-is-stored-and-what-is-sent-out)).
+- **It runs AI agents with full permissions, so they don't stop to ask for approval.** You can write what the AI should not do, or should ask you about first, in the [project policy](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#4-write-the-ground-rules-for-the-ai).
+- **Tasks, conversations and result files are kept on your PC.** alpacawork does not send them to any outside server run by its developers. Your instructions to the AI, and what the AI reads, are sent to the AI's provider, just as when you use each AI agent directly ([more on how data is handled](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#what-is-stored-and-what-is-sent-out)).
 
 ## FAQ
 
@@ -107,9 +106,9 @@ If you are unsure about any of the app's settings, ask the AI in the chat box as
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md): from installing to your first request, using it from your phone, updating and uninstalling
-- [The ideas behind alpacawork](docs/concept.md): how one request moves along, and the design principles
-- [Troubleshooting](docs/getting-started.md#troubleshooting): when something doesn't work. Please report bugs in [Issues](https://github.com/alpacakit/alpacawork/issues)
+- [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md): from installing to your first request, using it from your phone, updating and uninstalling
+- [The ideas behind alpacawork](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md): how one request moves along, and the design principles
+- [Troubleshooting](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#troubleshooting): when something doesn't work. Please report bugs in [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## License
 
