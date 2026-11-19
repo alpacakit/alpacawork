@@ -26,6 +26,18 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.2
+
+The first screen now shows how to use alpacawork on a phone or as an app. Links from the npm README take you straight to the relevant sections of the guides.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.2`. The database schema and Run execution format are unchanged from 0.1.1. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.2` in step 4.
+
+### Highlights
+- **Find the app and phone setup on your first visit.** On a computer, the welcome screen or the opening conversation offers a one-time link to **Apps & phone** in Settings. That tab explains how to install the app on your PC or use alpacawork from your phone. ([#12](https://github.com/alpacakit/alpacawork/pull/12))
+
+### Setup
+- Guide links in the English npm README open the matching sections on GitHub, including requirements, phone setup, and troubleshooting. ([#13](https://github.com/alpacakit/alpacawork/pull/13))
+
 ## 0.1.1
 
 alpacawork is now available in Simplified Chinese, Spanish and Brazilian Portuguese. First-time setup makes each step clearer, and task status looks the same wherever you open a task.
