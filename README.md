@@ -1,5 +1,5 @@
 <!--
-Link to files of this project by their path from the repository root (docs/images/hero.gif,
+Link to files of this project by their path from the repository root (docs/images/logo.png,
 docs/getting-started.md, LICENSE), and only to files committed to git: GitHub opens them on every
 branch. Put pictures in docs/images/, which the npm package carries. Write links and pictures as
 inline Markdown links or as src and href attributes in double quotes.
@@ -51,7 +51,7 @@ to README.md#install): keep those headings, or change the links with them.
 <!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="alpacawork in a PC browser, with the task list and an open report side by side, next to a phone showing a question that offers two options to choose from" width="820">
+  <img src="docs/images/pc-phone-dark.png" alt="alpacawork in a PC browser, with a list of ten tasks in progress and three awaiting review beside an open task's report, and a phone on the right showing the same report" width="820">
 </p>
 
 alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.

@@ -26,7 +26,7 @@
 <!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="alpacawork en el navegador de un PC, con la lista de tareas y un informe abierto, uno al lado del otro, junto a un teléfono que muestra una pregunta con dos opciones para elegir" width="820">
+  <img src="docs/images/pc-phone-dark.png" alt="alpacawork en el navegador de un PC, con una lista de diez tareas en curso y tres por revisar junto al informe abierto de una tarea, y a la derecha un teléfono que muestra el mismo informe" width="820">
 </p>
 
 alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude Code y Codex que ya tienes instalados en tu PC y les asigna trabajo. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y sigue el progreso. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.

@@ -26,7 +26,7 @@
 <!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="电脑浏览器中的 alpacawork，任务列表和打开的报告并排显示；旁边的手机上是一个提问，附有两个可供选择的选项" width="820">
+  <img src="docs/images/pc-phone-dark.png" alt="电脑浏览器中的 alpacawork，列表里有 10 个进行中和 3 个待验收的任务，旁边并排显示打开的任务报告；右侧的手机上打开着同一份报告" width="820">
 </p>
 
 alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
