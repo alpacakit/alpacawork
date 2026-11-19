@@ -63,10 +63,18 @@ export function splitAttachments(body: string, folder: string | null): { words: 
 }
 
 /** A file's size as people read it: 820 B, 14 KB, 3.2 MB. */
-export function sizeText(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+export function sizeText(bytes: number, locale: string): string {
+  let size = bytes, unit = "B", digits = 0;
+  if (bytes >= 1024 ** 2) {
+    size = bytes / 1024 ** 2;
+    unit = "MB";
+    digits = size < 10 ? 1 : 0;
+  } else if (bytes >= 1024) {
+    size = bytes / 1024;
+    unit = "KB";
+  }
+  const number = new Intl.NumberFormat(locale, { useGrouping: false, minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${number.format(size)} ${unit}`;
 }
 
 /** The short type shown on a file card: its extension, or nothing. */

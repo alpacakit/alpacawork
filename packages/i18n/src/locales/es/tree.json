@@ -1,0 +1,139 @@
+{
+  "home": {
+    "awaited": "En espera",
+    "error": "Requiere atención",
+    "finished": "Completadas",
+    "fresh_one": "{{count}} recién completada",
+    "fresh_many": "{{count}} recién completadas",
+    "fresh_other": "{{count}} recién completadas",
+    "held": "En pausa",
+    "less": "Mostrar menos",
+    "more_one": "Mostrar {{count}} más",
+    "more_many": "Mostrar {{count}} más",
+    "more_other": "Mostrar {{count}} más",
+    "running": "En curso",
+    "todo": "Sin iniciar",
+    "turn": "Por revisar"
+  },
+  "row": {
+    "review": "Revisar"
+  },
+  "sent": {
+    "pending": "Instrucción enviada"
+  },
+  "shelved": {
+    "archived": "Archivada",
+    "count_one": "Archivadas o eliminadas: {{count}}",
+    "count_many": "Archivadas o eliminadas: {{count}}",
+    "count_other": "Archivadas o eliminadas: {{count}}",
+    "deleted": "Eliminada",
+    "restore": "Restaurar"
+  },
+  "status": {
+    "children": "Subtareas {{progress}}",
+    "failure": {
+      "conversationBusy": "Conversación ocupada",
+      "exit": "Fin anticipado",
+      "launch": "No se inició",
+      "managerLost": "Ejecución sin confirmar",
+      "noReport": "Terminó sin informe",
+      "output": "Salida ilegible",
+      "stopped": "Interrumpida",
+      "timeout": "Tiempo agotado",
+      "unknown": "Motivo desconocido"
+    },
+    "length": {
+      "days_one": "{{count}} d",
+      "days_many": "{{count}} d",
+      "days_other": "{{count}} d",
+      "hours_one": "{{count}} h",
+      "hours_many": "{{count}} h",
+      "hours_other": "{{count}} h",
+      "minutes_one": "{{count}} min",
+      "minutes_many": "{{count}} min",
+      "minutes_other": "{{count}} min"
+    },
+    "long": {
+      "reason": "Hace {{length}} que surgió",
+      "since": "En este estado desde hace {{length}}"
+    },
+    "queued": "En cola",
+    "report": {
+      "after": "{{time}}+",
+      "over": "Vencido {{time}}",
+      "pending": {
+        "long": "Llegó una nueva instrucción. A la espera de que el responsable dé una nueva estimación del informe.",
+        "short": "?"
+      }
+    },
+    "running": "En ejecución",
+    "runningRuns_one": "{{count}} agente en ejecución (incluidas las tareas inferiores)",
+    "runningRuns_many": "{{count}} agentes en ejecución (incluidas las tareas inferiores)",
+    "runningRuns_other": "{{count}} agentes en ejecución (incluidas las tareas inferiores)",
+    "tip": {
+      "elapsed": "Transcurrido",
+      "report": "Informe previsto"
+    },
+    "turn": {
+      "children": "Límite de solicitudes",
+      "depth": "Límite de profundidad",
+      "failed": "Falló",
+      "limit": "Límite alcanzado",
+      "noProfile": "Sin perfil de inicio",
+      "notResumable": "No se puede reanudar",
+      "refused": "Rechazada",
+      "responsibleUnavailable": "No se puede iniciar",
+      "unconfirmed": "Recepción sin confirmar"
+    },
+    "unclear": "Estado desconocido",
+    "work": {
+      "heading": "Tiempo total de trabajo de los agentes",
+      "hours": "{{hours}} h {{minutes}} min",
+      "minutes_one": "{{count}} min",
+      "minutes_many": "{{count}} min",
+      "minutes_other": "{{count}} min",
+      "own": "Solo esta tarea",
+      "separator": ", ",
+      "subtree": "Con las tareas inferiores"
+    }
+  },
+  "timeView": {
+    "axisAbsent": "La cronología no está guardada en este dispositivo. Se cargará cuando vuelva la conexión.",
+    "edge": {
+      "done": "Completada {{time}}",
+      "go": "{{note}}. Ir al momento de esta fila",
+      "since": "Desde {{time}}",
+      "stopped": "Detenida {{time}}",
+      "todo": "Sin iniciar · desde {{time}}",
+      "turn": "{{kind}} · desde {{time}}"
+    },
+    "help": "Desplázate hacia los lados para moverte en el tiempo. Amplía con Ctrl (⌘) + rueda, pellizcando o con dos dedos. Haz doble clic en la escala de tiempo para verlo todo. Pasa el puntero sobre una línea (en el teléfono, tócala) para ver los detalles. Teclas: + − 0 N; presiona → sobre un título para leer sus líneas una por una.",
+    "now": "Ahora {{clock}}",
+    "scaleAll": "Todo",
+    "scaleLabel": "Intervalo de tiempo",
+    "time": "Cronología",
+    "toNow": "Ahora",
+    "yourTurn": "Tu turno"
+  },
+  "welcome": {
+    "examples": {
+      "decide": {
+        "label": "Elige una idea de minijuego y pide que lo creen",
+        "shows": "La IA compara ideas y te hace una pregunta. Con tu respuesta empieza la creación.",
+        "words": "Quiero crear un minijuego para jugar en el navegador. Conviértelo en una tarea: propón 3 ideas y pregúntame cuál crear, con una tabla comparativa y tu recomendación en la pregunta. Cuando responda, crea el que elegí en unos 5 minutos sin preguntar nada más y envíame un informe. Es un tutorial, así que mantén un esfuerzo ligero: prioriza la rapidez, no lo pienses demasiado y no te compliques. Escribe todo en español, por favor."
+      },
+      "models": {
+        "label": "Pide a 3 modelos un juego de la serpiente y elige uno",
+        "shows": "Modelos distintos lo crean en paralelo y tú eliges con cuál quedarte.",
+        "words": "Quiero crear un juego de la serpiente. ¿Podrías probar a crear 3 en paralelo con modelos distintos? Cuando estén listos, pregúntame con cuál me quedo. Es un tutorial, así que mantén un esfuerzo ligero y que tarde unos 5 minutos. Escribe todo en español, por favor."
+      },
+      "triage": {
+        "label": "Divide la apertura de una cafetería en 5 tareas",
+        "shows": "Los resultados quedan por revisar y tú eliges cuáles completar.",
+        "words": "Divide la apertura de una cafetería ficticia en 5 tareas separadas: \"Pedir el café en grano\", \"Encargar el letrero\", \"Imprimir el menú\", \"Contratar personal\" y \"Enviar las invitaciones\", y encarga cada una a un agente. Que cada uno escriba en su informe un resultado ficticio de una línea y espere mi revisión. Cuando estén las 5, elegiré cuáles completar. No hace falta investigar ni crear archivos, y escribe todo en español, por favor."
+      }
+    },
+    "lead": "Elige un ejemplo para probarlo.",
+    "title": "Te damos la bienvenida a alpacawork"
+  }
+}

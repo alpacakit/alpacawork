@@ -402,9 +402,12 @@
         "away5": "After 5 minutes",
         "dark": "Dark",
         "en": "English",
+        "es": "Español",
         "ja": "日本語",
         "light": "Light",
-        "system": "System"
+        "pt-BR": "Português (Brasil)",
+        "system": "System",
+        "zh-CN": "简体中文"
       },
       "previousShown": "Showing the previous settings.",
       "pushDone": "When a task is done",

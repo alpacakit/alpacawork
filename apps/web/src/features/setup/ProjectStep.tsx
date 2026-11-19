@@ -67,7 +67,7 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
     const next = recommendedPolicy(t, installed);
     offered.current = next;
     if (now !== next) form.setValue("policy", next, { shouldDirty: true });
-  }, [active, base, installed?.join(), i18n.resolvedLanguage]);
+  }, [active, base, installed?.join(), i18n.language]);
   const failedRead = base === null ? [query, tasksSchema].find(read => read.isError) : undefined;
   if (failedRead) return <ReadFailure what={t("project.title")} error={failedRead.error} retry={() => void failedRead.refetch()} />;
   if (base === null) return <Loading />;

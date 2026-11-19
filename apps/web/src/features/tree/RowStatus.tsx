@@ -198,13 +198,13 @@ export function ReportTime({ task, people, className }: { task: Task; people: Pe
 /** Its own component, so only a row at work follows the clock and walks the tasks under it. */
 function ReportWords({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
   const { t } = useTranslation("tree");
-  const { t: pt } = useTranslation("people");
+  const { t: pt, i18n } = useTranslation("people");
   const index = useTaskIndexFor(task.id);
   const now = useNow();
   const facts = finishFactsFor(task.id, index, people, now);
   if (facts?.kind !== "estimate" && facts?.kind !== "subtree" && facts?.kind !== "pending") return null;
-  const words = finishWords(facts, now, pt);
-  const time = words.at === null ? "" : dayClock(words.at, now, pt);
+  const words = finishWords(facts, now, pt, i18n.language);
+  const time = words.at === null ? "" : dayClock(words.at, now, pt, i18n.language);
   // Shown alone (or leading "{{time}}+"), the time starts with a capital: "Tomorrow 01:20".
   const label = capitalized(time);
   const over = words.tone === "late";

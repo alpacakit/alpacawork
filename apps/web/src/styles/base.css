@@ -1,4 +1,7 @@
 @layer base {
+  /* A Japanese face draws shared Han characters in Japanese forms, so Simplified Chinese names its own faces first. */
+  :root { --font-han: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI"; }
+  :root:lang(zh-CN) { --font-han: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei"; }
   *,
   ::before,
   ::after {

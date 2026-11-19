@@ -375,6 +375,9 @@ importers:
 
   packages/i18n:
     dependencies:
+      '@alpacawork/core':
+        specifier: workspace:*
+        version: link:../core
       i18next:
         specifier: 26.4.2
         version: 26.4.2(typescript@5.9.3)

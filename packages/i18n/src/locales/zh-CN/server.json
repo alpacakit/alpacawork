@@ -1,0 +1,196 @@
+{
+  "confirmation": {
+    "notTerminal": "请在终端中运行。",
+    "prompt": "按 Enter 开始 / 按 Ctrl-C 取消",
+    "stopped": "已停止。没有做任何更改。"
+  },
+  "deploy": {
+    "accepted": "已接受部署：{{opId}}",
+    "overwrite": {
+      "noRestore": "开始覆盖技能后，就无法用备份恢复到之前的应用。",
+      "switch": "数据库和执行 FORMAT 一致时，会在运行继续的同时切换。否则请在所有运行结束后重试。"
+    },
+    "preview": "目标位置：{{workspace}}\n{{current}} → {{target}}\n确认码：{{confirmation}}"
+  },
+  "hostAlert": {
+    "body": "{{parts}}。{{heaviest}}",
+    "coordinator": "协调员",
+    "cpu": "CPU 占用 {{percent}}% 已持续 {{minutes}} 分钟",
+    "disk": "磁盘可用空间 {{gigabytes}} GB",
+    "heaviest_other": "负载最高：{{tasks}}（{{count}} 次运行）",
+    "memory": "可用内存 {{percent}}% 已持续 {{minutes}} 分钟",
+    "noRuns": "没有进行中的运行",
+    "partSeparator": "；",
+    "taskSeparator": "、",
+    "title": "这台主机处于高负载"
+  },
+  "push": {
+    "groupTitle": "{{updateCount}} 条更新",
+    "reason": {
+      "blocked": {
+        "body": "无法唤醒智能体，请查看原因",
+        "short": "无法唤醒"
+      },
+      "done": {
+        "body": "已完成",
+        "short": "已完成"
+      },
+      "failed": {
+        "body": "因出错而停止，请决定是否重试",
+        "short": "出错"
+      },
+      "limit": {
+        "body": "已达唤醒上限并停止，请决定是否继续",
+        "short": "已达上限"
+      },
+      "question": {
+        "body": "请回答",
+        "short": "提问"
+      },
+      "review": {
+        "body": "请验收",
+        "short": "待验收"
+      },
+      "stopped": {
+        "body": "已停止",
+        "short": "已停止"
+      },
+      "unconfirmed": {
+        "body": "有委托可能没有送达，请检查",
+        "short": "未确认"
+      }
+    },
+    "withReport": "{{label}}：{{reportTitle}}"
+  },
+  "setup": {
+    "agents": {
+      "enabled": "已启用：{{names}}",
+      "none": "未找到",
+      "ready": "可用的智能体：{{names}}",
+      "signIn": "{{name}} 尚未登录。要使用它，请运行：{{action}}"
+    },
+    "browserOpened": "已在浏览器中打开。",
+    "change": {
+      "none": "无"
+    },
+    "changed": "✔ 已重新配置 alpacawork {{version}}",
+    "changePrompt": "应用这些更改吗？[Y/n]",
+    "completed": "✔ 已安装 alpacawork {{version}}",
+    "data": {
+      "existing": "已有",
+      "new": "新建"
+    },
+    "fact": {
+      "node": "Node.js",
+      "path": "PATH",
+      "port": "端口",
+      "publicHost": "公开主机"
+    },
+    "listSeparator": "、",
+    "open": "打开：{{url}}",
+    "overwriteSkill": "将覆盖随附的技能 {{path}}，本地的修改也会被覆盖。不保留备份。",
+    "portWayBack": "要改回原来的端口：alpacawork setup --port {{port}}",
+    "prompt": "继续吗？[Y/n]",
+    "ready": "已在端口 {{port}} 就绪。请打开 {{url}}",
+    "readyChanged": "安装已更改。已在端口 {{port}} 就绪。请打开 {{url}}",
+    "row": {
+      "agents": "智能体",
+      "data": "数据",
+      "overwrite": "覆盖",
+      "releases": "应用版本",
+      "resume": "继续",
+      "service": "服务",
+      "skill": "技能",
+      "warning": "警告"
+    },
+    "service": {
+      "publicHost": "，公开主机 {{host}}",
+      "summary": "{{name}}（{{manager}}），端口 {{port}}，登录时启动"
+    },
+    "skillAction": {
+      "keep": "已有",
+      "replace": "覆盖"
+    },
+    "skills": {
+      "baseMissing": "未找到 alpacawork 技能。请使用与此服务器相同的 HOME 运行 alpacawork setup，然后重试。"
+    },
+    "skillWriteFailed": "无法覆盖技能。请解决日志中显示的原因，然后再次运行 alpacawork setup。",
+    "startFailure": {
+      "keep": "请保留安装记录和数据。",
+      "reason": "原因：{{reason}}"
+    },
+    "startup": {
+      "check": "服务无法启动。请用以下命令查看其状态和日志：",
+      "launchdLogs": "此 launchd 定义没有配置 stdout/stderr 日志文件。log 命令显示的是 launchd 的事件。",
+      "rerun": "解决问题后，请再次运行同样的 alpacawork setup。它会用已保存的端口和定义继续。",
+      "startSaved": "处理好占用该端口的其他进程后，用以下命令启动已保存的服务：\n{{command}}\n然后运行同样的 alpacawork setup 进行检查。"
+    },
+    "title": {
+      "change": "将重新配置 alpacawork {{version}}",
+      "configure": "将配置 alpacawork {{version}}",
+      "install": "将安装 alpacawork {{version}}",
+      "update": "将把 alpacawork 从 {{current}} 更新到 {{version}}"
+    },
+    "updated": "✔ 已将 alpacawork 更新到 {{version}}",
+    "value": {
+      "data": "{{path}}（{{state}}）",
+      "link": "从 {{path}} 链接",
+      "linkConflict": "{{path}} 已被占用；不会创建链接，现有内容保持不变。",
+      "linkExisting": "已有来自 {{path}} 的链接",
+      "resume": "继续被中断的初始设置。",
+      "skill": "{{path}}（{{action}}）"
+    },
+    "wslFilesystem": {
+      "refused": "在 WSL2 中，数据、应用版本和设置必须放在 Linux 文件系统上。不支持 /mnt/c 等 Windows 文件夹。",
+      "retry": "请在 Linux 主目录（/home/<user>）中打开 WSL 终端。HOME、XDG_CONFIG_HOME、--workspace 和 --releases 请使用 Linux 文件夹。要使用默认文件夹，请省略 --workspace 和 --releases 并运行：\ncd ~\nalpacawork setup",
+      "unknown": "无法确定此 WSL2 安装所用的 Linux 文件系统。"
+    }
+  },
+  "skillLinks": {
+    "conflict": "{{path}}：未创建链接；已保留现有内容"
+  },
+  "uninstall": {
+    "alreadyGone": "如果命令提示服务或文件已不存在，说明这一步已经完成",
+    "busy": "更新或其他版本操作正在进行。请在它结束后再次运行 alpacawork uninstall。",
+    "done": "已从这台电脑移除 alpacawork。你的任务、历史和文件都已保留。",
+    "note": "移除的内容无法恢复。不保留备份。",
+    "nothingLeft": "没有可移除的内容了。",
+    "notInstalled": "在这台电脑上没有找到 alpacawork 的安装。没有可移除的内容。",
+    "refused": {
+      "agent": "alpacawork uninstall 只能由这台电脑上的人运行，智能体不能运行。",
+      "notTerminal": "请在终端中运行，或加上 --yes 不经询问直接执行。",
+      "sudo": "请以你自己的身份运行，不要使用 sudo。",
+      "workspaceOption": "不接受 --workspace：移除哪些内容由安装记录决定，数据文件夹永远不会被移除。"
+    },
+    "remaining": "剩余步骤（移除命令本身）：npm uninstall -g alpacawork",
+    "removed": "已移除：{{subject}}",
+    "row": {
+      "config": "移除    设置和安装记录    {{subject}}",
+      "data": "保留    数据              {{subject}}（你的任务和历史；不再需要时请手动删除）",
+      "holdsData": "保留    包含数据          {{subject}}（不移除：它就是数据文件夹，或其中包含数据文件夹）",
+      "link": "移除    技能链接          {{subject}}",
+      "notOurs": "保留    应用版本文件夹    {{subject}}（不移除：其中有并非 alpacawork 放入的内容）",
+      "receipt": "移除    技能记录          {{subject}}",
+      "record": "保留    安装记录          {{subject}}（不移除：其中记录了数据文件夹的位置，以后运行时会同样保护它）",
+      "releases": "移除    应用版本          {{subject}}（仅 alpacawork 放入的内容；文件夹本身只在其中没有其他内容时移除）",
+      "service": "移除    自动启动          {{subject}}（先停止，再取消注册）",
+      "setting": "移除    设置              {{subject}}",
+      "skill": "移除    受管理的技能      {{subject}}（包括本地的修改）",
+      "skillsUnknown": "保留    技能              {{subject}}（不移除：技能记录无法读取，alpacawork 无法判断哪些技能是自己的）",
+      "stage": "移除    技能暂存区        {{subject}}",
+      "state": "移除    状态              {{subject}}"
+    },
+    "running_other": "智能体或更新仍在工作（从 {{releases}} 启动的进程有 {{count}} 个：pid {{pids}}）。现在卸载会让它们在无人看管的情况下继续运行。请在界面上停止它们（或使用 alpacawork run stop --run <Run ID>），或等它们结束，然后再次运行 alpacawork uninstall。",
+    "service": {
+      "blocked": "{{why}}没有做任何更改。\n要手动移除注册，请运行以下命令（{{alreadyGone}}）：\n{{commands}}\n然后再次运行 alpacawork uninstall。",
+      "conflict": "自动启动注册 {{name}} 与 alpacawork 注册的内容不同，因此卸载不会动它。",
+      "left": "自动启动注册 {{name}} 未能完全移除{{fault}}。服务器现在可能已停止，但仍注册为登录时启动。\n其他内容都没有移除。要恢复可用的 alpacawork，请运行 alpacawork setup。要完成移除，请再次运行 alpacawork uninstall。\n如果卸载再次停在这里，请用以下命令手动移除注册（{{alreadyGone}}）：\n{{commands}}",
+      "unavailable": "无法连接用户服务管理器，因此卸载无法判断自动启动注册 {{name}} 是否还在，也无法移除它。没有做任何更改。\n请在正常的登录会话中运行 alpacawork uninstall（在 WSL2 上需启用 systemd）。",
+      "uninspectable": "无法检查自动启动注册 {{name}}：{{failure}}。",
+      "unrecorded": "存在名为 {{name}} 的自动启动注册，但没有安装记录记载它。"
+    },
+    "stoppedAt": "卸载停在 {{subject}}：{{failure}}\n已经移除的内容不会恢复。请解决原因后再次运行 alpacawork uninstall，它会移除剩下的内容。",
+    "title": "从这台电脑移除 alpacawork",
+    "unreadableRecord": "安装记录 {{path}} 存在，但此版本的 alpacawork 无法读取它：它由其他版本写入、已损坏，或属于其他用户。只有这份记录写明了数据文件夹、应用版本文件夹和自动启动注册，因此卸载不会去猜测它们。没有做任何更改。\n请使用写入该记录的 alpacawork 版本（npm install -g alpacawork@<该版本>），以记录所属的用户身份运行 alpacawork uninstall。\n如果要改为手动移除 alpacawork，请先移除自动启动注册（记录中写有注册名；默认名称对应以下命令，{{alreadyGone}}）：\n{{commands}}\n然后，在记录中确认你的数据文件夹不在其中任何一个里面之后，删除：应用版本文件夹 {{releases}}（或记录中写明的那个）、{{state}}、{{receipt}} 中列出的技能，最后删除 {{config}}。"
+  }
+}

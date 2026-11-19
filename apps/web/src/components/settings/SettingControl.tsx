@@ -12,7 +12,7 @@ const controls = {
   checkbox: ({ id, value, disabled, onChange, label }: ControlProps) =>
     <Switch id={id} aria-label={label} checked={value === true} disabled={disabled} onCheckedChange={onChange} />,
   select: ({ definition, id, value, disabled, onChange, label, optionLabel }: ControlProps) =>
-    <NativeSelect id={id} variant="field" className="w-44 narrow:w-40" aria-label={label}
+    <NativeSelect id={id} variant="field" className="w-44" aria-label={label}
       value={String(value)} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
       {(definition.kind === 'select' ? definition.options : []).map((option) =>
         <option key={option.value} value={option.value}>{option.labelKey ? optionLabel(option.labelKey) : option.value}</option>)}

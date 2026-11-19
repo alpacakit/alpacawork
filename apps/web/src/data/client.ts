@@ -52,6 +52,12 @@ export class ApiError extends Error {
 export class FileReadLimitError extends Error {
   constructor(readonly limit: number) { super(`File read exceeds ${limit} bytes`); }
 }
+/** Phrases one after another, a space between them, except before one that opens with a full-width bracket, which
+ * brings its own room. */
+function phrases(parts: string[]): string {
+  return parts.reduce((text, part) => !text || part.startsWith('（') ? text + part : `${text} ${part}`, '');
+}
+
 /** One translation of the reason and all of its parameters, independent of retry guidance. */
 export function problemReasonText(reason: ProblemReason): string {
   const technical = (diagnostic: string) => i18n.t('problem.technical', { diagnostic });
@@ -63,8 +69,8 @@ export function problemReasonText(reason: ProblemReason): string {
     case 'run_store_unavailable': return i18n.t('problem.context.runs', { cause: problemReasonText(reason.cause) });
     case 'push_unavailable': return i18n.t('problem.context.push', { cause: problemReasonText(reason.cause) });
     case 'authorization_required': return i18n.t('problem.authorization.required', { action: reason.action,
-      grants: reason.grants.map(([seat, ...conditions]) => [i18n.t(`problem.authorization.seat.${seat}`),
-        ...conditions.map(condition => i18n.t(`problem.authorization.condition.${condition}`))].join(' ')).join(i18n.t('problem.authorization.or')) });
+      grants: reason.grants.map(([seat, ...conditions]) => phrases([i18n.t(`problem.authorization.seat.${seat}`),
+        ...conditions.map(condition => i18n.t(`problem.authorization.condition.${condition}`))])).join(i18n.t('problem.authorization.or')) });
     case 'voice_stream_failed': return reason.diagnostic
       ? i18n.t('problem.reason.voice_stream_failed', { ...reason })
       : i18n.t('voice.providerFailed');

@@ -6,6 +6,7 @@
  * The data folder outranks completeness: a folder that is the data folder, or contains it, is never removed, and
  * neither is the record that names it, so every later run protects it the same way.
  */
+import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { lstatSync, readdirSync, realpathSync, rmdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { userConfigDirectory, userStateDirectory } from '@alpacawork/cli-kit';
@@ -15,7 +16,7 @@ import { InstalledSkillsStore, SkillsRefused, skillsReceiptDirectory } from '@al
 import { serverText, type ServerText } from '@alpacawork/i18n/server';
 import { releasesEntries, tryHoldReleases, users } from '../release/layout.js';
 import { defaultWorkspace, userHome } from '../workspace.js';
-import { confirmUninstall, displayInstallationPath, installationLanguage, uninstallKeptRows, type InstallationTerminal,
+import { confirmUninstall, displayInstallationPath, uninstallKeptRows, type InstallationTerminal,
   type RefusedInstallation, type UninstallKept, type UninstallRemoval } from './confirmation.js';
 import { DEFAULT_SERVICE_NAME, serviceDefinition, defaultReleases, installationSkillsRoot, underSudo } from './setup.js';
 import { inspectAgentSkillLinks, syncAgentSkillLinks } from './agent-skill-links.js';
@@ -193,7 +194,7 @@ function runningFrom(releases: string): number[] {
 }
 
 export async function runUninstall(request: UninstallRequest, say: (line: string) => void, terminal?: InstallationTerminal): Promise<UninstallResult> {
-  const { env } = request, t = serverText(installationLanguage(env));
+  const { env } = request, t = serverText(uiLocaleFromEnvironment(env));
   const refuse = (line: string, code: Problem['code'] = PROBLEM_CODE.conflict): never => {
     say(line);
     throw new Problem(code, 'Uninstall did not start. Nothing was changed.');

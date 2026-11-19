@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitAttachments } from "@/domain/attachments";
+import { sizeText, splitAttachments } from "@/domain/attachments";
 
 const folder = "/api/tasks/T1/file?path=";
 const shot = { name: "shot.png", path: "attachments/0a1b2c3d/shot.png", absolutePath: `${folder}attachments%2F0a1b2c3d%2Fshot.png`, size: 10 };
@@ -28,4 +28,13 @@ describe("attachments in an instruction", () => {
       expect(splitAttachments(body, folder)).toEqual({ words: body.trim(), files: [] });
     }
   });
+});
+
+it("uses the file size abbreviations and the screen language's decimal separator", () => {
+  for (const locale of ["en", "ja"]) {
+    expect(sizeText(820, locale)).toBe("820 B");
+    expect(sizeText(14 * 1024, locale)).toBe("14 KB");
+    expect(sizeText(3.2 * 1024 ** 2, locale)).toBe("3.2 MB");
+  }
+  expect(sizeText(3.2 * 1024 ** 2, "es")).toBe("3,2 MB");
 });

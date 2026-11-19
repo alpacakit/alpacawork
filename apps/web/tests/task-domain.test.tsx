@@ -161,7 +161,10 @@ test("a question offers its choices, Stop only when it says what stopping means,
 test("clock and log times use local time and unknown timestamps stay empty", () => {
   const time = new Date(2026, 8, 25, 14, 12).toISOString();
   expect(formatClock(time)).toBe("14:12");
-  expect(formatLogTime(time)).toBe("09/25 14:12");
+  expect(formatLogTime(time, "en")).toBe("09/25 14:12");
   expect(formatClock("unknown")).toBe("");
-  expect(formatLogTime("unknown")).toBe("");
+  const singleDigits = new Date(2026, 8, 5, 14, 12).toISOString();
+  expect(formatLogTime(singleDigits, "es")).toBe("05/09 14:12");
+  expect(formatLogTime(singleDigits, "pt-BR")).toBe("05/09 14:12");
+  expect(formatLogTime("unknown", "en")).toBe("");
 });

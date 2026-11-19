@@ -89,10 +89,10 @@ function Steps({ current, onPick }: { current: SetupStep; onPick: (step: SetupSt
 /** The header with the corner's choices, then the step's description on the left and its settings on the right. */
 function Frame({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
   return <div data-setup-screen className="min-h-dvh bg-bg text-ink">
-    <header className="flex items-center justify-between gap-3 px-8 py-4 narrow:px-4 narrow:py-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 px-8 py-4 narrow:px-4 narrow:py-3">
       <span className="inline-flex items-center gap-2 text-lg font-semibold">
         <img src={logo} alt="" className="size-7 rounded-full" />alpacawork</span>
-      <div className="flex items-center gap-2"><ThemeSwitch /><LanguageSwitch /></div>
+      <div className="ml-auto flex items-center gap-2"><ThemeSwitch /><LanguageSwitch /></div>
     </header>
     <main className="mx-auto grid w-full max-w-272 grid-cols-[minmax(16rem,1fr)_minmax(0,40rem)] items-start gap-16 px-8 pt-12 pb-16 max-[60rem]:grid-cols-1 max-[60rem]:gap-6 narrow:px-4 narrow:pt-4">
       <div className="min-w-0">{aside}</div>

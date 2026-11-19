@@ -1,0 +1,142 @@
+{
+  "agentPicker": {
+    "brief": {
+      "gone": "请选择其他委托对象",
+      "new_conversation": "用“{{action}}”重新开始",
+      "select_value": "请重新选择 {{row}}"
+    },
+    "next": {
+      "anew": "需要开始新对话",
+      "clear": "用“{{action}}”重新开始"
+    },
+    "none": "无",
+    "notOffered": "此模型不支持",
+    "pickerLabel": "{{agent}}。点击可更改",
+    "pickerTitle": "委托对象",
+    "problem": {
+      "gone": "当前设置下无法使用 {{agent}}。请选择其他委托对象",
+      "invalid_value": "之前的 {{row}}（{{previous}}）已不再提供。请重新选择",
+      "null_required": "{{row}} 不能再设为“无”。请选择一个值",
+      "removed": "{{row}}（之前为 {{previous}}）已从设置中移除，因此无法继续此对话。{{next}}",
+      "unused": "启动选项已不再使用 {{row}}（之前为 {{previous}}），因此无法继续此对话。{{next}}"
+    }
+  },
+  "draft": {
+    "checking": "正在检查…",
+    "closeKeep": "关闭 · 保留草稿",
+    "discard": "放弃草稿",
+    "discardConfirm": "要放弃这份草稿吗？此操作无法撤销。",
+    "reviewLatest": "查看最新版本后继续编辑",
+    "saving": "正在保存…",
+    "storageUnavailable": "无法使用草稿存储。为避免重复发送，已暂停发送。请保持此页面打开，并复制你的草稿。"
+  },
+  "folderInput": {
+    "cancel": "取消新建文件夹",
+    "choose": "选择",
+    "close": "关闭",
+    "create": "创建",
+    "creating": "正在创建…",
+    "empty": "里面没有文件夹。",
+    "example": "例如 {{path}}",
+    "inside": "子文件夹",
+    "made": "这是新创建的文件夹。",
+    "make": "新建文件夹",
+    "name": "新文件夹名称",
+    "offered": "建议的文件夹",
+    "openExisting": "打开该文件夹",
+    "path": "当前位置",
+    "placeholder": "文件夹名称",
+    "problem": {
+      "dots": "名称不能是“.”或“..”。",
+      "long": "名称过长（最多 255 字节）。",
+      "slash": "名称不能包含 /。",
+      "taken": "已存在同名的文件夹。"
+    },
+    "reading": "正在加载…",
+    "truncated": "只显示前 {{limit}} 个。请关闭列表，在输入框中输入名称来缩小范围。",
+    "up": "上一级",
+    "use": "使用此文件夹",
+    "where": "在 {{path}} 中创建"
+  },
+  "formDialog": {
+    "cancel": "取消"
+  },
+  "inlineForm": {
+    "cancel": "取消"
+  },
+  "moveForm": {
+    "adopt": "采用最新版本并重新选择",
+    "changedElsewhere": "此表单打开后，父任务已在别处更改（当时：{{opened}}，现在：{{current}}）。现在移动会被拒绝。",
+    "note": "任务的 ID、文件夹和运行都会保留；正在进行的工作不会停止，今后的报告会发给新的父任务",
+    "parent": "新的父任务",
+    "refused": "未移动：任务已在别处更改（父任务当时：{{opened}}，现在：{{current}}）。你的选择已保留。",
+    "submit": "移动",
+    "top": "顶层（无父任务）"
+  },
+  "projectColor": {
+    "code": "颜色代码",
+    "more": "其他颜色…",
+    "swatch": {
+      "brown": "棕色",
+      "grape": "葡萄紫",
+      "green": "绿色",
+      "indigo": "靛蓝",
+      "lime": "青柠绿",
+      "navy": "藏青",
+      "teal": "青绿",
+      "violet": "紫罗兰"
+    }
+  },
+  "reportForm": {
+    "approveDescription": "已验收结果。",
+    "approveTitle": "已完成",
+    "chooseAgain": "任务已发生变化。请重新选择状态",
+    "heading": "更改 {{id}} 的状态",
+    "holdDescription": "以后再处理。",
+    "holdTitle": "已搁置",
+    "reportDescription": "写入历史的说明",
+    "reportDescriptionHint": "用 Markdown 写详情和图片",
+    "reportTitle": "写入历史的标题",
+    "reportTitleHint": "用一行写出报告的要点",
+    "restoreDescription": "回到搁置前的状态。",
+    "restoreTitle": "取消搁置",
+    "statePick": "更改状态",
+    "statePickHint": "更改 {{id}} 的状态",
+    "stopDescription": "停止此任务及其下的任务。",
+    "stopTitle": "已停止",
+    "submit": "更新",
+    "words": "写入历史的报告"
+  },
+  "responsibleForm": {
+    "change": "更改",
+    "choiceUnavailable": "所选的智能体或启动配置已不可用。此表单已关闭。",
+    "decide": "指派",
+    "effort": "推理强度",
+    "legend": "此任务的负责人",
+    "model": "模型",
+    "newPerson": "新智能体",
+    "noProfiles": "没有已启用的智能体。请安装并登录一个 AI，然后在“设置 → 服务器”中启用",
+    "promote": "由 {{name}} 接手",
+    "replaceNote": "{{name}} 不再是负责人，会保留在历史中，但不会成为成员",
+    "taskUnavailable": "此任务已不可用。此表单已关闭。",
+    "type": "启动配置"
+  },
+  "runForm": {
+    "closed": "已关闭",
+    "closeDescription": "关闭 {{run}}。",
+    "closeSubmit": "关闭运行",
+    "closeTitle": "关闭运行",
+    "noLongerAvailable": "此运行已无法关闭。此表单已关闭。"
+  },
+  "writeFailure": {
+    "checkWhich": "无法确认“{{subject}}”的结果",
+    "conflict": "没有保存任何内容。请先查看最新内容再继续。",
+    "operationUnconfirmed": "无法确认结果。重新发送会沿用同一个 ID：如果还没有送达，这次会执行；已经收到的操作不会执行两次。",
+    "readLatest": "查看最新内容",
+    "unconfirmed": "无法确认是否已发送。为避免重复，已暂停重新发送。请保留输入内容并关闭，然后查看最新内容或运行记录。",
+    "unproven": "重新发送可能导致执行两次，因此不会发送。请复制需要的内容，在新标签页中继续。"
+  },
+  "writeResult": {
+    "confirmed": "{{subject}}：已确认操作完成。"
+  }
+}

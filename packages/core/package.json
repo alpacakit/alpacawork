@@ -5,6 +5,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./ui-language": {
+      "types": "./dist/ui-language.d.ts",
+      "default": "./dist/ui-language.js"
+    },
     "./package-version": {
       "types": "./dist/package-version.d.ts",
       "default": "./dist/package-version.js"

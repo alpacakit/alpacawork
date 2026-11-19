@@ -1,0 +1,103 @@
+{
+  "agentLabel": {
+    "unknown": "desconocido",
+    "unstarted": "sin iniciar"
+  },
+  "attach": {
+    "add": "Adjuntar",
+    "addHint": "Adjuntar archivos (o pegar o soltar imágenes)",
+    "checking": "Comprobando el resultado del adjunto",
+    "notReceived": "No se pudo recibir",
+    "pastedImage": "imagen-pegada",
+    "pastedText": "texto-pegado",
+    "receiptMismatch": "El adjunto guardado no coincide con el archivo que seleccionaste",
+    "remove": "Quitar {{name}}",
+    "reselect": "No se encontró. Selecciona el archivo de nuevo",
+    "restored": "Entretanto se recuperaron datos, así que no se puede confirmar el resultado y no se reenviará. Quítalo con la × de la tarjeta del adjunto",
+    "storageUnavailable": "No se pudo guardar el borrador",
+    "tooLarge": "Supera {{size}}",
+    "tooMany": "Hasta {{limit}} archivos adjuntos a la vez",
+    "unconfirmed": "No se pudo confirmar el resultado. Recarga para comprobarlo",
+    "unnamed": "archivo",
+    "uploading": "Subiendo {{name}}"
+  },
+  "clock": {
+    "base": "{{clock}}",
+    "date": "{{date}} {{clock}}",
+    "today": "hoy {{clock}}",
+    "tomorrow": "mañana {{clock}}",
+    "yesterday": "ayer {{clock}}"
+  },
+  "day": {
+    "date": "{{weekday}} {{date}}",
+    "tomorrow": "Mañana",
+    "yesterday": "Ayer"
+  },
+  "dot": {
+    "attention": "Error"
+  },
+  "duration": {
+    "days_one": "{{count}} día",
+    "days_many": "{{count}} días",
+    "days_other": "{{count}} días",
+    "hours": "{{hours}} h {{minutes}} min",
+    "minutes_one": "{{count}} min",
+    "minutes_many": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "underMinute": "<1 min"
+  },
+  "finish": {
+    "after": "Después de {{time}}",
+    "bandOver": "{{length}} de retraso",
+    "done": "Completada {{time}}",
+    "end": "Informe previsto {{time}}",
+    "long": {
+      "after_one": "Sin contar {{count}} tarea sin estimación, el último informe previsto es {{time}}. No todos los informes llegarán antes de ese momento",
+      "after_many": "Sin contar {{count}} tareas sin estimación, el último informe previsto es {{time}}. No todos los informes llegarán antes de ese momento",
+      "after_other": "Sin contar {{count}} tareas sin estimación, el último informe previsto es {{time}}. No todos los informes llegarán antes de ese momento",
+      "end": "{{used}} de {{total}} min trabajados. Informe previsto {{time}}",
+      "over": "{{used}} de {{total}} min trabajados. Superó la estimación ({{time}}) en {{length}}",
+      "subtree_one": "Según {{count}} estimación. Informe previsto {{time}}",
+      "subtree_many": "La más tardía de {{count}} estimaciones. Informe previsto {{time}}",
+      "subtree_other": "La más tardía de {{count}} estimaciones. Informe previsto {{time}}",
+      "subtreeOver": "Una tarea inferior superó la estimación ({{time}}) en {{length}}"
+    },
+    "over": "{{length}} de retraso ({{time}})",
+    "overBy": {
+      "days_one": "~{{count}} día",
+      "days_many": "~{{count}} días",
+      "days_other": "~{{count}} días",
+      "hours_one": "~{{count}} hora",
+      "hours_many": "~{{count}} horas",
+      "hours_other": "~{{count}} horas",
+      "minutes_one": "~{{count}} min",
+      "minutes_many": "~{{count}} min",
+      "minutes_other": "~{{count}} min"
+    },
+    "pending": "A la espera de una nueva estimación",
+    "reported": "$t(ui:state.waitingReview), informe enviado {{time}}",
+    "review": "$t(ui:state.waitingReview)",
+    "stopped": "$t(people:dot.attention)",
+    "unknown": "$t(ui:state.doing)"
+  },
+  "line": {
+    "children": "Subtareas {{done}}/{{total}}"
+  },
+  "now": {
+    "event": "{{kind}}",
+    "kind": {
+      "error": "Error",
+      "message": "Mensaje",
+      "output": "Salida",
+      "result": "Resultado",
+      "tool_end": "Resultado de herramienta",
+      "tool_start": "Uso de herramienta"
+    },
+    "output": "{{event}} hace {{ago}}",
+    "stale": "La última salida es antigua: {{event}} (hace {{ago}})",
+    "toolEvent": "{{tool}}: {{kind}}"
+  },
+  "records": {
+    "close": "Cerrar ejecución…"
+  }
+}

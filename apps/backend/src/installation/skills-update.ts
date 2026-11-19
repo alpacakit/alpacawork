@@ -1,4 +1,5 @@
 /** Local skills-only caller. Placement and receipt publication belong exclusively to the common writer. */
+import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { skillsUpdateCommand } from './skills-update-command.js';
 import { parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
@@ -11,7 +12,7 @@ import { readPackageVersion } from '@alpacawork/core/package-version';
 import { ManagedSkillsWriter, type SkillWriteRequest, type SkillWriteResult } from './skills.js';
 import { installationSkillsRoot } from './setup.js';
 import { inspectAgentSkillLinks } from './agent-skill-links.js';
-import { skillLinkConflicts, installationLanguage } from './confirmation.js';
+import { skillLinkConflicts } from './confirmation.js';
 
 export type SkillsUpdateFactory = (input: { root: string }) => { install(input: SkillWriteRequest): Promise<SkillWriteResult> };
 
@@ -34,6 +35,6 @@ export async function main(args: string[], input: { release: string; createWrite
   const writer = (input.createWriter ?? (input => new ManagedSkillsWriter(input)))({ root });
   console.error(`Skills update operation: ${operationId}. To resume: ${skillsUpdateCommand(facts.version)} --operation-id ${operationId}`);
   const result = await writer.install({ version: 2, operationId, release, intent: { place, remove: [] } });
-  for (const line of skillLinkConflicts(inspectAgentSkillLinks(root, place, []), installationLanguage(process.env))) console.error(line);
+  for (const line of skillLinkConflicts(inspectAgentSkillLinks(root, place, []), uiLocaleFromEnvironment(process.env))) console.error(line);
   console.log(JSON.stringify(result));
 }

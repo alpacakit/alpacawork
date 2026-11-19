@@ -395,9 +395,12 @@
         "away5": "5分後",
         "dark": "暗い",
         "en": "English",
+        "es": "Español",
         "ja": "日本語",
         "light": "明るい",
-        "system": "システム"
+        "pt-BR": "Português (Brasil)",
+        "system": "システム",
+        "zh-CN": "简体中文"
       },
       "previousShown": "前回の設定を表示しています。",
       "pushDone": "タスクが完了したとき",

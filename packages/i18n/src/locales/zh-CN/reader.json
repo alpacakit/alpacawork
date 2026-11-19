@@ -1,0 +1,443 @@
+{
+  "answer": {
+    "other": "其他",
+    "question": "提问 {{n}}/{{total}}",
+    "stop": "停止",
+    "stopMark": "选择后将停止任务",
+    "write": "填写回答"
+  },
+  "brief": {
+    "recommended": "推荐"
+  },
+  "delimited": {
+    "empty": "此文件为空。",
+    "header": "表头行",
+    "headerOnly": "只有表头行",
+    "malformed": "有些部分无法拆分成单元格（例如引号没有闭合）。",
+    "malformedHint": "表格可能与文件不一致。",
+    "next_other": "后 {{count}} 行",
+    "openOriginal": "打开原文件：",
+    "original": "原文件",
+    "previous_other": "前 {{count}} 行",
+    "range": "第 {{first}}–{{last}} 行，共 {{rows}} 行",
+    "records_other": "{{count}} 行",
+    "rest": "其余部分见原文件：",
+    "tooLarge": "超过 {{limit}} MB 的文件不以表格显示。",
+    "tooWide": "仅第一行就超过了表格 {{maxCells}} 个单元格的上限，因此不以表格显示。",
+    "truncated": "只显示前 {{rows}} 行（表格最多容纳 {{maxRows}} 行或 {{maxCells}} 个单元格）。",
+    "uneven": "各行的列数不一致。",
+    "unevenHint": "某一行缺少的单元格以斜线标出。",
+    "unreadable": "无法识别此文件的字符编码，因此不以表格显示。"
+  },
+  "diff": {
+    "copied": "已复制",
+    "deleted": "已删除",
+    "line": "第 {{line}} 行",
+    "new": "新增",
+    "renamed": "已重命名"
+  },
+  "diffCard": {
+    "binary": "二进制",
+    "binaryRows": "二进制文件没有行",
+    "blankOnly": "只有空行有变化",
+    "close": "关闭",
+    "commits_other": "{{count}} 个提交",
+    "copyCommand": "复制命令",
+    "deletedFile": "此文件已删除",
+    "files_other": "{{count}} 个文件",
+    "missing": "找不到差异文件：{{name}}",
+    "moreCommits_other": "再显示 {{count}} 个",
+    "noRows": "没有行发生变化",
+    "notKept": "这些行过大，未保留。",
+    "notKeptHint": "可用此命令查看：",
+    "olderCommits_other": "还有 {{count}} 个更早的提交未列出",
+    "open": "打开差异",
+    "openFiles": "打开文件列表",
+    "renamedOnly": "仅重命名（原名 {{from}}）",
+    "tooLarge": "过大，无法显示：{{name}}",
+    "unchanged": "无变化（0 个文件）",
+    "unreadable": "无法读取差异：{{name}}"
+  },
+  "entries": {
+    "after": "等待",
+    "context": "上下文",
+    "count_other": "{{count}}",
+    "dependencies": "依赖",
+    "files": "文件",
+    "history": "历史",
+    "waiters": "后续"
+  },
+  "family": {
+    "close": "关闭任务树",
+    "count_other": "{{count}} 个任务",
+    "deep_other": "向下 {{count}} 层",
+    "entry": "任务树",
+    "fold": "收起 {{title}} 下的任务",
+    "height": "任务树的高度",
+    "here": "当前",
+    "more_other": "再显示 {{count}} 个",
+    "rowDeep_other": "，向下 {{count}} 层",
+    "rowHere": "，当前",
+    "rowName": "{{id}} {{title}}，{{state}}",
+    "title": "任务树",
+    "tree": "{{title}} 的任务树",
+    "unfold": "展开 {{title}} 下的任务"
+  },
+  "files": {
+    "all": "成果",
+    "copyLink": "复制链接",
+    "copyPath": "复制路径",
+    "documents": "文档",
+    "empty": "此文件夹中没有文件。",
+    "facet": {
+      "after": "之后",
+      "before": "之前",
+      "dark": "深色",
+      "desktop": "电脑端",
+      "light": "浅色",
+      "mobile": "手机端"
+    },
+    "images": "图片",
+    "inFolder": "位于 {{folder}}",
+    "media": "图片、视频和音频",
+    "onlyWork": "还没有成果。",
+    "onlyWorkHint": "智能体的工作文件在“工作文件”中。",
+    "otherMedia": "其他媒体",
+    "path": "路径",
+    "unavailable": "无法显示文件：{{name}}",
+    "videos": "视频",
+    "work": "工作文件"
+  },
+  "frontMatter": {
+    "invalid": "无法解析开头的 YAML。下面显示其原文。",
+    "label": "YAML 元数据",
+    "limit": "开头的 YAML 超出了表格的显示上限。下面显示其完整原文。",
+    "source": "YAML 原文",
+    "unclosed": "开头的 YAML 没有结束分隔符。下面显示完整原文。",
+    "unsupported": "此 YAML 无法以表格显示。下面显示其原文。"
+  },
+  "gathered": {
+    "position": "{{current}} / {{total}}"
+  },
+  "history": {
+    "approved": "已完成",
+    "reasons": {
+      "conversation_busy": "此对话已在使用中，因此工作未能开始。",
+      "exit": "智能体程序提前结束。工作尚未完成。",
+      "launch": "智能体未能启动。",
+      "manager_lost": "负责监视这项工作的进程已消失。结果不明。",
+      "no_report": "工作结束时没有留下报告、提问或委托。",
+      "output": "无法读取智能体的输出。",
+      "scope_invalidated": "委托被接受后任务范围发生了变化，因此这项工作未开始就结束了。",
+      "stopped": "工作因停止操作而结束。",
+      "timeout": "已达到时间上限。工作尚未完成。",
+      "unknown": "没有记录停止原因。"
+    },
+    "runError": "出错",
+    "waiting": {
+      "held": "已搁置",
+      "review": "$t(ui:state.waitingReview)"
+    }
+  },
+  "image": {
+    "audioUnavailable": "音频不可用：{{name}}",
+    "openFile": "打开文件",
+    "saveFile": "保存文件",
+    "unavailable": "图片不可用：{{name}}",
+    "videoUnavailable": "视频不可用：{{name}}"
+  },
+  "imageSlider": {
+    "closeImage": "关闭图片",
+    "closeMedia": "关闭查看器",
+    "controlsFailed": "无法更改播放设置，请重试。",
+    "expandVideo": "在查看器中打开视频",
+    "fullScreen": "全屏",
+    "fullScreenFailed": "无法进入全屏。请重试，或打开原视频。",
+    "mute": "静音",
+    "nextImage": "下一张图片",
+    "nextMedia": "下一项",
+    "openOriginalInNewTab": "在新标签页中打开原图 {{name}}",
+    "pause": "暂停",
+    "play": "播放",
+    "playFailed": "无法开始播放，请再试一次。",
+    "position": "第 {{current}} 项，共 {{total}} 项",
+    "previousImage": "上一张图片",
+    "previousMedia": "上一项",
+    "saveOriginal": "保存原文件 {{name}}",
+    "seek": "播放位置",
+    "speed": "播放速度",
+    "unmute": "取消静音",
+    "volume": "音量"
+  },
+  "intent": {
+    "continue": "继续 {{id}}",
+    "retry": "重试 {{id}}",
+    "sendback": "退回 {{id}}"
+  },
+  "markdownBody": {
+    "copyCode": "复制代码",
+    "diagram": "图表 {{number}}",
+    "diagramFailed": "无法渲染图表",
+    "diagramLoading": "正在准备图表…"
+  },
+  "nextQuestion": {
+    "allAnswered": "待验收的内容已全部处理完",
+    "allAnsweredHeld": "已搁置的内容已全部处理完",
+    "autoSwipe": {
+      "hint": "开启：发送消息后卡片会滑走，并转到下一个任务。关闭：发送后留在此任务，聊天保持打开。",
+      "label": "自动滑动",
+      "toastOff": "自动滑动已关闭",
+      "toastOffDetail": "发送消息后留在此任务",
+      "toastOn": "自动滑动已开启",
+      "toastOnDetail": "发送消息后转到下一个任务"
+    },
+    "close": "关闭",
+    "countPart": "{{word}} {{n}}",
+    "done": "$t(ui:state.done)",
+    "held": "$t(reader:swipe.hold)",
+    "kind": {
+      "done": "已完成",
+      "hold": "已搁置",
+      "send": "已发送",
+      "stop": "已停止"
+    },
+    "sent": "$t(reader:swipe.send)",
+    "stopped": "停止"
+  },
+  "order": {
+    "alsoWaits": "还在等待 {{ids}}",
+    "history": {
+      "cleared": "已清除开始顺序",
+      "previous": "此前：{{ids}}",
+      "set": "在 {{ids}} 之后开始"
+    },
+    "list": {
+      "wait": "等待 {{ids}}",
+      "waited": "后续：{{id}}",
+      "waitedMore_other": "后续：{{id}} +{{count}}",
+      "waitMore_other": "等待 {{id}} 及另外 {{count}} 个"
+    },
+    "onlyThis": "只等待此任务",
+    "runEnding": "等待其运行结束",
+    "separator": "、",
+    "startedLead": "此任务在以下任务之后开始",
+    "stuck": {
+      "error": "{{id}} 因出错而停止。等它修复并标记为已完成或已停止，且其运行结束后，等待才会结束。",
+      "held": "{{id}} 已搁置。等它取消搁置并标记为已完成或已停止，且其运行结束后，等待才会结束。"
+    },
+    "tip": "此任务在等待的任务",
+    "waitedTip": "在等待此任务的任务"
+  },
+  "overview": {
+    "createdAt": "创建于 {{time}}",
+    "empty": "还没有正文。",
+    "updatedAt": "更新于 {{time}}"
+  },
+  "reader": {
+    "label": "任务全文",
+    "resize": "详情宽度（左右方向键）"
+  },
+  "readerHeader": {
+    "back": "返回",
+    "close": "关闭详情",
+    "closeShort": "关闭",
+    "dock": "恢复详情宽度",
+    "full": "全屏显示详情",
+    "insert": "将 {{id}} 添加到输入框",
+    "inserted": "已将 {{id}} 添加到输入框",
+    "next": "下一个任务",
+    "path": "任务路径",
+    "previous": "上一个任务"
+  },
+  "recovery": {
+    "cancelled": "已取消发给“<title>{{title}}</title>”的内容。可以重新发送。",
+    "check": "检查",
+    "closed": "对话已结束。可以重新发给“<title>{{title}}</title>”。",
+    "confirmedDone": "已将<subject>“<title>{{title}}</title>”</subject>标记为已完成",
+    "confirmedHold": "已搁置<subject>“<title>{{title}}</title>”</subject>",
+    "confirmedRestore": "已将<subject>“<title>{{title}}</title>”</subject>恢复为待验收",
+    "confirmedSend": "已发送给<subject>“<title>{{title}}</title>”</subject>",
+    "confirmedStop": "已将<subject>“<title>{{title}}</title>”</subject>标记为已停止",
+    "latest": "打开",
+    "notCarriedOut": "没有记录显示所请求的操作已执行。请查看任务的状态和协调员的回复。",
+    "pending_one": "正在确认 {{count}} 项结果",
+    "pending_other": "正在确认 {{count}} 项结果",
+    "refusedDone": "无法将<subject>“<title>{{title}}</title>”</subject>标记为已完成",
+    "refusedHold": "无法搁置<subject>“<title>{{title}}</title>”</subject>",
+    "refusedRestore": "无法将<subject>“<title>{{title}}</title>”</subject>恢复为待验收",
+    "refusedSend": "给<subject>“<title>{{title}}</title>”</subject>的指示未能送达",
+    "refusedStop": "无法停止<subject>“<title>{{title}}</title>”</subject>",
+    "unknownDone": "无法确认将<subject>“<title>{{title}}</title>”</subject>标记为已完成的操作是否已保存",
+    "unknownHold": "无法确认搁置<subject>“<title>{{title}}</title>”</subject>的操作是否已保存",
+    "unknownRestore": "无法确认恢复<subject>“<title>{{title}}</title>”</subject>的操作是否已保存",
+    "unknownSend": "无法确认给<subject>“<title>{{title}}</title>”</subject>的指示是否已送达",
+    "unknownStop": "无法确认停止<subject>“<title>{{title}}</title>”</subject>的操作是否已保存"
+  },
+  "reportFeed": {
+    "childWorking": {
+      "fold": "收起",
+      "grandchild": "下级子任务",
+      "others_other": "下方还有 {{count}} 个"
+    },
+    "copy": "复制",
+    "goAnswer": "回答",
+    "goQuestion": "回答：给你的 1 个提问，{{title}}",
+    "goQuestionAt": "回答：{{at}} {{title}}",
+    "jumpToLatest": "跳到最新",
+    "listQuestions_other": "给你的 {{count}} 个提问的列表",
+    "questions_other": "给你的提问 · {{count}}",
+    "questionsUnavailable": "无法读取提问。",
+    "received": "此任务已收到",
+    "result": {
+      "from": "{{who}} 的结果",
+      "label": "结果",
+      "unavailable": "无法读取结果"
+    },
+    "reviewsUnavailable": "无法读取待验收的内容",
+    "row": {
+      "answerTo": "提问：{{question}}",
+      "between": "{{from}} 发给 {{to}}",
+      "cause": "收到“{{title}}” · {{at}}",
+      "changedTo": "已设为 {{state}}",
+      "end": {
+        "again": {
+          "question": "再次提出了同一个提问",
+          "review": "再次发送了同一份报告"
+        },
+        "answered": "{{who}} 已回答 · {{at}}",
+        "closed": {
+          "expired": "因接收方变更而失效",
+          "invalidated": "已恢复工作",
+          "stopped": "因任务停止而关闭",
+          "withdrawn": "未获回答即撤回"
+        },
+        "confirmed": "{{who}} 已验收 · {{at}}",
+        "replaced": {
+          "question": "已被下一个提问取代",
+          "review": "已被下一份报告取代"
+        },
+        "resumed": {
+          "question": "未获回答；收到下一个委托后恢复工作",
+          "review": "收到下一个委托后恢复工作"
+        },
+        "waiting": "等待 {{who}} 回答",
+        "waitingReview": "等待 {{who}} 验收",
+        "waitingReviewYou": "等待你验收",
+        "waitingYou": "等待你回答"
+      },
+      "kind": {
+        "answer": "回答",
+        "changed": "更改",
+        "comment": "记录",
+        "confirm": "验收",
+        "dialogue": "消息",
+        "done": "已完成",
+        "error": "已停止",
+        "expired": "已失效",
+        "question": "提问",
+        "reply": "回复",
+        "report": "报告",
+        "request": "委托",
+        "review": "报告",
+        "run_end": "已停止",
+        "urgent": "紧急",
+        "withdrawn": "已撤回"
+      },
+      "older": "显示更早的 {{n}} 条",
+      "openTask": "打开“{{task}}”",
+      "own": "{{who}}：",
+      "party": {
+        "child": "子任务",
+        "coordinator": "协调员",
+        "member": "成员",
+        "other": "其他任务",
+        "parent": "父任务",
+        "self": "负责人",
+        "you": "你"
+      },
+      "sameTitle": "标题与上一条相同，内容不同",
+      "tag": {
+        "child": "子任务",
+        "coordinator": "协调员",
+        "member": "成员",
+        "other": "其他任务",
+        "parent": "父任务",
+        "self": "负责人",
+        "you": "你"
+      },
+      "times": "×{{n}}",
+      "working": "正在工作"
+    },
+    "sendBack": "退回…",
+    "sentBody": "发给智能体的正文",
+    "working": {
+      "others_other": "还有 {{count}} 个"
+    }
+  },
+  "ruleTab": {
+    "more": "显示更多（{{shown}}/{{total}}）",
+    "readFailed": "无法读取文件。",
+    "readFailedHelp": "请检查任务文件夹中该文件的权限。"
+  },
+  "sheet": {
+    "grip": "调整高度（向上快速滑动为全屏，向下为关闭）",
+    "toShare": "恢复为底部面板",
+    "toWhole": "全屏打开"
+  },
+  "swipe": {
+    "choose": "选择一个选项即可发送",
+    "hold": "搁置",
+    "notAnswered": "无法发送：还没有回答",
+    "notSaid": "无法发送：“其他”后面没有写指示",
+    "notWritten": "无法发送：还没有写回答",
+    "otherWords": "在“其他”后面写下指示即可发送",
+    "send": "发送",
+    "write": "写下回答即可发送",
+    "writeAfterOther": "在“其他”后面写下指示"
+  },
+  "viewer": {
+    "binary": "不是文本文件，无法打开",
+    "cannotOpen": "此文件无法打开",
+    "close": "关闭（Esc）",
+    "copy": "复制",
+    "copyCommand": "复制差异命令",
+    "copyText": "复制内容",
+    "download": "下载",
+    "downloadFile": "下载文件",
+    "inGitFolder": "位于 git 自身的文件夹内，无法打开",
+    "label": "差异和文件",
+    "missing": "文件不存在",
+    "outside": "位于项目登记的代码位置之外，无法打开",
+    "rendered": "预览",
+    "shared": "与其他位置共用内容，无法打开",
+    "source": "源码",
+    "sourceGroup": "文档差异的显示方式",
+    "split": "并排",
+    "splitGroup": "差异布局",
+    "tooLarge": "过大，无法打开",
+    "unified": "单栏",
+    "viewed": "已查看",
+    "viewedCount": "已查看 {{read}}/{{total}}"
+  },
+  "voiceInput": {
+    "again": "重试",
+    "connecting": "正在连接麦克风…",
+    "failure": {
+      "audio": "无法启动麦克风音频",
+      "lost": "语音识别中途停止",
+      "noSpeech": "没有听到语音",
+      "permission": "麦克风访问被阻止。请在浏览器设置中允许",
+      "refused": "无法启动语音输入。请检查语音设置",
+      "tooLarge": "录音过长。请分成较短的几段",
+      "unreachable": "无法连接语音识别",
+      "unsupported": "此浏览器无法使用语音输入。请通过 HTTPS 打开应用"
+    },
+    "hint": "语音输入（Alt+Shift+M） · 最长 60 秒",
+    "start": "开始语音输入",
+    "stop": "停止语音输入"
+  },
+  "wrapToggle": {
+    "unwrap": "不换行显示",
+    "wrap": "自动换行"
+  }
+}

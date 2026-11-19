@@ -22,7 +22,7 @@ test("the clock writes clock times and dates only, and a fold starts and ends on
   const pieces = stripAxis(axis, 900);
   const gap = pieces.find((piece) => piece.gap)!;
   for (const at of [gap.from, gap.to]) expect([new Date(at).getMinutes() % 5, new Date(at).getSeconds()]).toEqual([0, 0]);
-  const labels = clockLabels(pieces, pieces.at(-1)!.x1, now, [10_000, 10_001]);
+  const labels = clockLabels(pieces, pieces.at(-1)!.x1, now, [10_000, 10_001], "en");
   expect(labels.length).toBeGreaterThan(3);
   for (const label of labels) expect(label.text).toMatch(/^(\d{1,2}\/\d{1,2})?( ?\d{2}:\d{2})?$/);
   // The times on both sides of the fold are written.
@@ -43,28 +43,28 @@ test("no clock label runs over a fold's cut, and only what is on screen is writt
   const extent = (label: { x: number; anchor: string; text: string }): [number, number] => label.anchor === "start" ? [label.x, label.x + width(label.text)]
     : label.anchor === "end" ? [label.x - width(label.text), label.x] : [label.x - width(label.text) / 2, label.x + width(label.text) / 2];
   const cuts = pieces.filter((piece) => piece.gap).map((piece) => (piece.x0 + piece.x1) / 2);
-  for (const label of clockLabels(pieces, 900, now, [10_000, 10_001])) {
+  for (const label of clockLabels(pieces, 900, now, [10_000, 10_001], "en")) {
     const [a, b] = extent(label);
     for (const cut of cuts) expect(b <= cut - 2.5 || a >= cut + 2.5).toBe(true);
   }
-  const seen = clockLabels(pieces, 900, now, [10_000, 10_001], [150, 900]);
+  const seen = clockLabels(pieces, 900, now, [10_000, 10_001], "en", [150, 900]);
   for (const label of seen) expect(extent(label)[0]).toBeGreaterThanOrEqual(150);
   expect(seen[0]!.text).toMatch(/^\d{1,2}\/\d{1,2}/);
   // With the reader's text at twice the browser's size (the steps are rem), the words are twice as wide and the
   // clock writes fewer of them, still apart.
-  const big = clockLabels(pieces, 900, now, [10_000, 10_001], [0, 900], 2);
+  const big = clockLabels(pieces, 900, now, [10_000, 10_001], "en", [0, 900], 2);
   const bigExtent = (label: { x: number; anchor: string; text: string }) => extent(label).map((edge) => label.anchor === "start"
     ? label.x + (edge - label.x) * 2 : label.anchor === "end" ? label.x - (label.x - edge) * 2 : label.x + (edge - label.x) * 2) as [number, number];
   const ordered = big.map(bigExtent).sort((a, b) => a[0] - b[0]);
   for (const [at, [, end]] of ordered.slice(0, -1).entries()) expect(end).toBeLessThanOrEqual(ordered[at + 1]![0]);
-  expect(big.length).toBeLessThanOrEqual(clockLabels(pieces, 900, now, [10_000, 10_001]).length);
+  expect(big.length).toBeLessThanOrEqual(clockLabels(pieces, 900, now, [10_000, 10_001], "en").length);
 });
 
 test("the axis shows the year when its day crosses into another year", () => {
   const start = new Date(2026, 11, 31, 22).getTime();
   const end = new Date(2027, 0, 1, 2).getTime();
   const today = new Date(2027, 0, 1, 0, 21).getTime();
-  const labels = clockLabels([{ from: start, to: end, x0: 0, x1: 900, gap: false }], 900, today, [2000, 2001]);
+  const labels = clockLabels([{ from: start, to: end, x0: 0, x1: 900, gap: false }], 900, today, [2000, 2001], "ja");
   expect(labels.some((label) => label.text.includes("2026/12/31"))).toBe(true);
   expect(labels.some((label) => label.text === "1/1")).toBe(true);
 });
