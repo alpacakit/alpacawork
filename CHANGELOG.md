@@ -26,6 +26,18 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.3
+
+An empty coordinator conversation now gives you examples you can try right there.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.3`. The database schema and Run execution format are unchanged from 0.1.2. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.3` in step 4.
+
+### Highlights
+- **Four examples in the conversation.** Even when the conversation covers the welcome screen, its opening offers four examples and the app and phone link where available. ([#16](https://github.com/alpacakit/alpacawork/pull/16))
+
+### Setup
+- The Brazilian Portuguese README clarifies that you can edit the models yourself. The Spanish and Brazilian Portuguese FAQs use consistent quotation marks. ([#15](https://github.com/alpacakit/alpacawork/pull/15))
+
 ## 0.1.2
 
 The first screen now shows how to use alpacawork on a phone or as an app. Links from the npm README take you straight to the relevant sections of the guides.

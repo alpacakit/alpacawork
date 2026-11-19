@@ -140,7 +140,7 @@ export class CodexRuntime implements Runtime {
       try { this.receive(chunk); }
       catch (error) { this.io.fatal(error instanceof Error ? error : new Error(String(error))); }
     });
-    await this.request('initialize', { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.2' },
+    await this.request('initialize', { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.3' },
       capabilities: { experimentalApi: false, requestAttestation: false } });
     this.write({ method: 'initialized', params: {} });
   }
