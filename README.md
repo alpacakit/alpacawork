@@ -97,7 +97,7 @@ alpacawork setup
 **When an AI company releases a new model, can I add it myself?**
 Yes. Ask in the chat box, for example "Add Gemini 4 to the Antigravity models," and the AI adds it to the settings. You can also edit the models yourself under Settings → Server.
 
-If you are unsure about any of the app's settings, ask the AI in the chat box as well. It can change most settings for you. Only signing in to an AI agent and entering API keys are left to you.
+If you are unsure about any of the app's settings, ask the AI in the chat box as well. It can change most settings for you. A few steps, such as signing in to an AI agent and entering API keys, are left to you.
 
 ## Documentation
 
