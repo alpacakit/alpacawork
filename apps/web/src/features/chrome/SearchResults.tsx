@@ -116,9 +116,10 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   const prefetch = usePrefetch(task.id);
   const people = usePeopleFor(task.id);
   const unread = !useReadIdsFor(task.id).has(task.id);
-  const { word, tone } = useTaskLook(task);
-  // An end it reached stands in its word's place; words of the report still to come do only for a Task said as working.
-  const known = useFinishWords(task.id), finish = known && (!known.ahead || tone === "working") ? known : null;
+  const { word, tone, stated } = useTaskLook(task);
+  // An end it reached stands in its word's place; words of the report still to come, made from its state, do only while
+  // it is said by its state's word.
+  const known = useFinishWords(task.id), finish = known && (!known.ahead || stated) ? known : null;
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>

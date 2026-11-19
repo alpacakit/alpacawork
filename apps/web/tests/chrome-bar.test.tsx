@@ -250,8 +250,12 @@ test("a result says a task asking the user as every screen does, not by its stat
   const asking = taskFixture({ id: "T2", parentId: "T1", state: "doing",
     ball: userBall("question", "Lask", at, { questionId: "Lask" }) });
   const finished = taskFixture({ id: "T3", state: "done", log: [logEntry({ id: "Ldone", kind: "reported", toState: "done", fromState: "doing" })] });
-  const value = tree({ tasks: [dto({ id: "T1" }), asking, finished] });
-  seedSearch(value.root, "x", ["T2", "T3"]);
+  // A held parent says when the work below it is expected to report, as it is said by its own state's word.
+  const held = dto({ id: "T4", state: "held" });
+  const below = taskFixture({ id: "T5", parentId: "T4", state: "doing",
+    log: [logEntry({ id: "Lplan", kind: "reported", fromState: "todo", toState: "doing", estimateMinutes: 60 })] });
+  const value = tree({ tasks: [dto({ id: "T1" }), asking, finished, held, below] });
+  seedSearch(value.root, "x", ["T2", "T3", "T4"]);
   useViewStore.setState({ query: "x" });
   render(<TestWorkspace data={screenData(value)}><SearchResults /></TestWorkspace>);
   const row = document.querySelector<HTMLElement>('[data-result="T2"]')!;
@@ -262,4 +266,5 @@ test("a result says a task asking the user as every screen does, not by its stat
   // An end it reached still says when: a done task's result keeps its time.
   const done = document.querySelector<HTMLElement>('[data-result="T3"] span span span')!.textContent!;
   expect(done).toMatch(new RegExp(`^${i18n.t("ui:state.done")}\\s*\\S`));
+  expect(document.querySelector<HTMLElement>('[data-result="T4"] span span span')!.textContent).toMatch(/\d{1,2}:\d{2}/);
 });

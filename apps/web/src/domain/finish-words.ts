@@ -23,8 +23,9 @@ type FinishTone = Extract<Tone, "quiet" | "turn" | "late" | "error">;
  * `briefDays` is how many days from today that clock is, which the band marks small beside it ("+1").
  */
 /**
- * `ahead`: the words say the report still to come (an estimate, a wait for one, the work below, or work with no end
- * known), which only a Task said as working has; otherwise they say an end already reached (done, reported, stopped).
+ * `ahead`: the words say the report still to come, made from the Task's state and the work below it (an estimate, a
+ * wait for one, the estimates gathered from below, or work with no end known); otherwise they say an end already
+ * reached (done, reported, stopped).
  */
 export type FinishWords = { short: string; long: string; tone: FinishTone; at: number | null; ends: boolean; brief: string; briefDays: number; ahead: boolean };
 type T = (key: string, options?: Record<string, unknown>) => string;

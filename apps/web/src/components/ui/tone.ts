@@ -101,10 +101,14 @@ export function taskLook(task: LookTask): { tone: Tone; icon: IconName } {
   return said.pause ? PAUSE : stateLook(said.state, said.ball);
 }
 
-/** A Task's meaning, icon and word (saidAs); `turn` marks what waits on the reader. */
+/**
+ * A Task's meaning, icon and word (saidAs); `turn` marks what waits on the reader, and `stated` that its word is its own
+ * state's (not a pause, an error over its state, or a question), so words made from that state agree with it.
+ */
 export function useTaskLook(task: LookTask) {
   const said = saidAs(task);
   const own = useStateLook(said.pause ? "doing" : said.state, said.pause ? null : said.ball);
   const { t } = useTranslation("tree");
-  return said.pause ? { ...own, ...PAUSE, word: t("home.awaited"), turn: false } : own;
+  const stated = !said.pause && said.state === task.state && !asksUser(visibleTurn(said.state, said.ball));
+  return said.pause ? { ...own, ...PAUSE, word: t("home.awaited"), turn: false, stated } : { ...own, stated };
 }
