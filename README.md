@@ -14,8 +14,6 @@ The setup guide an AI downloads stays an absolute unpkg URL inside the install t
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else, and npm shows such a URL as
 plain text.
-The intro video is a GIF (intro.gif; intro-ja.gif in README.ja.md) because an uploaded video sits on
-a line of its own and cannot float beside the feature list; keep the <br clear="right"> after the list.
 The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages) so that it shows
 larger than a heading can; its alt text carries the name.
 The pictures show made-up data. This file and its translations use the dark-theme pictures
@@ -86,16 +84,12 @@ alpacawork setup
 
 ## What it does
 
-<img align="right" width="380" src="docs/images/intro.gif" alt="The alpacawork intro video: asking in one chat box, AI splitting the request into tasks and picking an agent for each, steering every running agent with one message, answering a question by picking an option, and marking a result done after another AI has reviewed it">
-
 - **Write every request in one chat box.** The coordinator turns each request into a task and hands it to an AI. You never have to switch chats or AIs from one job to the next.
 - **AI manages several AIs at once.** To add to or change work in progress, you only tell the coordinator. Write "For all three tasks in progress, also check the phone layout," and the coordinator gives that instruction to each AI working on them.
 - **Describe a workflow in words, and the AIs carry it out together.** Even an involved one, such as "Make three proposals, each with a different model. Combine them into one, have another AI review it, and fix it before you report," is carried out as you described it: AI manages the steps, and the AIs hand work to one another.
 - **Questions from the AI come with options and a recommendation.** Questions and reports arrive with images and videos. Pick an option to answer.
 - **A screen built for phones.** Swipe right to answer a question or to mark a result done. You can take a task from request to done on your phone alone. The same screen also works in a browser on your PC.
 - **It runs in your usual setup.** `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. You don't need an account or an API key for alpacawork.
-
-<br clear="right">
 
 ## Good to know
 

@@ -57,16 +57,12 @@ alpacawork setup
 
 ## Qué hace
 
-<img align="right" width="380" src="docs/images/intro.gif" alt="El video de presentación de alpacawork: pedir en un solo cuadro de chat; la IA divide la solicitud en tareas y elige un agente para cada una; dar una instrucción a todos los agentes en curso con un solo mensaje; responder una pregunta eligiendo una opción, y marcar como completado un resultado que otra IA ya revisó">
-
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.
 - **Una IA gestiona varias IA a la vez.** Para añadir o cambiar algo en el trabajo en curso, solo tienes que decírselo al coordinador. Escribe “En las tres tareas en curso, comprueba también cómo se ve en el teléfono” y el coordinador se lo indica a cada IA que trabaja en ellas.
 - **Describe el proceso con tus palabras y las IA lo llevan a cabo juntas.** Incluso un proceso elaborado, como “Haz tres propuestas, cada una con un modelo distinto. Combínalas en una, haz que otra IA la revise y corrígela antes de pasarme el informe”, se lleva a cabo tal como lo describes: la IA gestiona los pasos y las IA se pasan el trabajo entre sí.
 - **Las preguntas de la IA vienen con opciones y una recomendación.** Las preguntas y los informes llegan con imágenes y videos. Para responder, basta con elegir una opción.
 - **Una pantalla pensada para el teléfono.** Desliza hacia la derecha para responder una pregunta o para marcar un resultado como completado. Puedes llevar una tarea desde la solicitud hasta completarla solo con tu teléfono. La misma pantalla también funciona en el navegador de tu PC.
 - **Funciona con tu entorno de siempre.** `AGENTS.md`, `CLAUDE.md`, las skills, MCP y los hooks se usan tal cual. No necesitas una cuenta ni una clave de API para alpacawork.
-
-<br clear="right">
 
 ## Ten en cuenta
 
