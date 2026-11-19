@@ -30,7 +30,7 @@ alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不�
 
 安装交给 AI 来做。
 
-1. **粘贴安装指示。** 复制 [README 的“Install”一节](https://github.com/alpacakit/alpacawork/blob/main/README.md#install)（英文）中的那段文字，原样粘贴给你电脑上的 AI 智能体（例如 Claude Code 或 Codex）。
+1. **粘贴安装指示。** 复制 [README 的“安装”一节](https://github.com/alpacakit/alpacawork/blob/main/README.zh-CN.md#安装)中的那段文字，原样粘贴给你电脑上的 AI 智能体（例如 Claude Code 或 Codex）。
 2. **AI 进行安装。** 它会检查这台电脑能否运行 alpacawork，安装缺少的东西，然后启动 alpacawork。过程中不需要你执行命令或回答确认。如果你的 AI 智能体自己请求执行命令的权限，请允许。
 3. **初始设置界面会在浏览器中打开。** AI 也会告诉你它的 URL。重启电脑并登录后，同一个 URL 仍然可用。如果忘了 URL，可以问 AI，或在终端中执行 `alpacawork workspace url`。
 

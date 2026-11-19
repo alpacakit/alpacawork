@@ -211,7 +211,7 @@ test('README pictures and links open on GitHub, and the packaged README shows it
   const tracked = new Set(spawnSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).stdout.split('\0'));
   const targets = (text: string) => [...text.matchAll(/(!?)\[[^\]]*\]\(([^)\s]+)\)|\b(src|srcset|href)="([^"]+)"/g)]
     .map(m => ({ picture: m[1] === '!' || ['src', 'srcset'].includes(m[3]!), target: (m[2] ?? m[4])! }));
-  for (const readme of ['README.md', 'README.ja.md'])
+  for (const readme of readdirSync('.').filter(file => /^README(?:\.[\w-]+)?\.md$/.test(file)))
     for (const { target } of targets(readFileSync(readme, 'utf8')).filter(({ target }) => !/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(target)))
       assert.ok(tracked.has(target.split(/[?#]/)[0]!), `${readme} links to ${target}, which GitHub cannot open`);
   const packaged = (file: string) => /^(?:docs|skills)\//.test(file) || ['LICENSE', 'SECURITY.md'].includes(file);

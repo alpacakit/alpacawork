@@ -30,7 +30,7 @@ O alpacawork inicia agentes de IA, como o Claude Code e o Codex, com permissões
 
 Para instalar, você pede a uma IA.
 
-1. **Cole o texto de instalação.** Copie o texto que está em [Install, no README](https://github.com/alpacakit/alpacawork/blob/main/README.md#install) (em inglês) e cole-o, sem alterações, em um agente de IA no seu PC (como o Claude Code ou o Codex).
+1. **Cole o texto de instalação.** Copie o texto da seção [Instalar](https://github.com/alpacakit/alpacawork/blob/main/README.pt-BR.md#instalar) do README e cole-o, sem alterações, em um agente de IA no seu PC (como o Claude Code ou o Codex).
 2. **A IA instala.** Ela verifica se o alpacawork pode rodar neste PC, instala o que falta e inicia o alpacawork. Você não executa comandos nem responde a confirmações durante o processo. Se o seu próprio agente de IA pedir permissão para executar um comando, permita.
 3. **A tela de configuração inicial abre no navegador.** A IA também informa a URL. Depois que você reiniciar o PC e fizer login, a mesma URL volta a funcionar. Se esquecer a URL, pergunte à IA ou execute `alpacawork workspace url` em um terminal.
 
