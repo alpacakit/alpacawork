@@ -26,12 +26,6 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
-## Unreleased
-
-### Check before updating
-
-- Antigravity (`agy`) support was removed because Google does not allow third-party apps to launch it with a consumer plan sign-in. See the [Antigravity FAQ](https://antigravity.google/docs/faq) and [Additional Terms of Service](https://antigravity.google/terms). If `config.yaml` still contains an `agy:` profile, the configuration is invalid until you remove that section.
-
 ## 0.1.3
 
 An empty coordinator conversation now gives you examples you can try right there.

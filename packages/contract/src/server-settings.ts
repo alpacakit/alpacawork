@@ -107,7 +107,7 @@ export function checkAgentsConfigText(text: string): { agents: Agents; issues: [
 /** Read-only adapter metadata, derived from the built-in catalog. */
 export const adapterCatalogEntrySchema = z.object({
   id: builtinAdapterIdSchema, command: z.string().nullable(), prefix: z.array(z.string()),
-  params: paramsSchema, env: agentSettingShapeSchema.shape.env.unwrap(), without: agentSettingShapeSchema.shape.without.unwrap(),
+  params: paramsSchema, env: agentSettingShapeSchema.shape.env.unwrap(),
   options: z.object({ start: z.string(), resume: z.string() }).strict(),
   optionsBase: digestSchema, referenceUrl: z.string(),
 }).strict();
@@ -117,7 +117,7 @@ export function adapterCatalog(): z.infer<typeof adapterCatalogSchema> {
     const adapter = AGENT_ADAPTERS[id];
     return { id, command: adapter.command, prefix: [...adapter.prefix], options: { ...adapter.options },
       params: Object.fromEntries(Object.entries(adapter.defaultParams).map(([key, values]) => [key, [...values]])),
-      env: [...adapter.defaultEnv], without: Object.fromEntries(Object.entries(adapter.defaultWithout).map(([model, keys]) => [model, [...keys]])),
+      env: [...adapter.defaultEnv],
       optionsBase: optionsBase(id), referenceUrl: adapter.referenceUrl };
   });
 }

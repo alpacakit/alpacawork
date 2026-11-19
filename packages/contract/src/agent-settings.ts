@@ -59,28 +59,15 @@ function readOptions(options: Record<LaunchMode, string>) {
 function canOmitParam(params: AgentSetting['params'], refs: ReturnType<typeof readOptions>, key: string): boolean {
   return key !== 'model' && Object.hasOwn(params, key) && refs.all.has(key) && !refs.required.has(key);
 }
-function applicableDefaultWithout(id: BuiltinAdapterId, params: AgentSetting['params'], refs: ReturnType<typeof readOptions>) {
-  return Object.fromEntries(Object.entries(AGENT_ADAPTERS[id].defaultWithout).flatMap(([model, keys]) => {
-    if (!params.model?.includes(model)) return [];
-    const usable = keys.filter(key => canOmitParam(params, refs, key));
-    return usable.length ? [[model, usable]] : [];
-  }));
-}
 
-function resolveSetting(id: BuiltinAdapterId, input: WrittenAgentSetting) {
+/** Resolve defaults for a shape-checked setting. Contextual errors remain available to the editor. */
+export function resolveAgentSetting(id: BuiltinAdapterId, input: WrittenAgentSetting): ResolvedAgentSetting {
   const adapter = AGENT_ADAPTERS[id];
   const params = Object.fromEntries(Object.entries({ ...adapter.defaultParams, ...input.params })
     .map(([key, values]) => [key, [...values]]));
   const options = input.options ? { ...input.options } : { base: optionsBase(id), ...adapter.options };
-  const refs = readOptions(options);
-  const without = input.without === undefined ? applicableDefaultWithout(id, params, refs)
-    : Object.fromEntries(Object.entries(input.without).map(([model, keys]) => [model, [...keys]]));
-  const setting: ResolvedAgentSetting = { ...input, params, options, without, env: [...(input.env ?? adapter.defaultEnv)] };
-  return { setting, refs };
-}
-/** Resolve defaults for a shape-checked setting. Contextual errors remain available to the editor. */
-export function resolveAgentSetting(id: BuiltinAdapterId, input: WrittenAgentSetting): ResolvedAgentSetting {
-  return resolveSetting(id, input).setting;
+  const without = Object.fromEntries(Object.entries(input.without ?? {}).map(([model, keys]) => [model, [...keys]]));
+  return { ...input, params, options, without, env: [...(input.env ?? adapter.defaultEnv)] };
 }
 export const defaultAgentSetting = (id: BuiltinAdapterId): ResolvedAgentSetting => resolveAgentSetting(id, {});
 
@@ -94,19 +81,17 @@ export function agentSettingOverrides(id: BuiltinAdapterId, setting: ResolvedAge
   const { params, env, without, options, enabled, ...identity } = setting;
   const overrides = Object.fromEntries(Object.entries(params).filter(([key, values]) =>
     !Object.hasOwn(adapter.defaultParams, key) || !sameSettingValues(values, adapter.defaultParams[key])));
-  const defaultWithout = applicableDefaultWithout(id, params, readOptions(options));
-  const sameWithout = Object.keys(without).length === Object.keys(defaultWithout).length && Object.entries(without)
-    .every(([model, keys]) => Object.hasOwn(defaultWithout, model) && sameSettingValues(keys, defaultWithout[model]));
   return { ...identity, ...(enabled === false ? { enabled } : {}),
     ...(Object.keys(overrides).length ? { params: overrides } : {}),
     ...(!sameSettingValues(env, adapter.defaultEnv) ? { env } : {}),
-    ...(!sameWithout ? { without } : {}),
+    ...(Object.keys(without).length ? { without } : {}),
     ...(options.start !== adapter.options.start || options.resume !== adapter.options.resume ? { options } : {}) };
 }
 
-function validateSetting(id: BuiltinAdapterId, setting: ResolvedAgentSetting, refs: ReturnType<typeof readOptions>,
+function validateSetting(id: BuiltinAdapterId, setting: ResolvedAgentSetting,
   add: (path: (string | number)[], message: string) => void): void {
   const adapter = AGENT_ADAPTERS[id];
+  const refs = readOptions(setting.options);
   if (setting.command !== undefined && adapter.command === null) add(['command'], 'This adapter uses a bundled runtime and does not accept command');
   for (const { mode, system, all, error } of refs.modes) {
     if (/(?:^|[\s'"\[])--command(?:[\s='"\]]|$)/.test(setting.options[mode])) add(['options', mode], 'command is configured separately from launch options');
@@ -147,8 +132,8 @@ export const agentSettingSchemaFor = (profile: string) => agentSettingShapeSchem
     issue(ctx, ['adapter'], id ? 'A built-in profile name must use its own adapter' : unavailableAgentKind(profile));
     return z.NEVER;
   }
-  const { setting, refs } = resolveSetting(id, input);
-  validateSetting(id, setting, refs, (path, message) => issue(ctx, path, message));
+  const setting = resolveAgentSetting(id, input);
+  validateSetting(id, setting, (path, message) => issue(ctx, path, message));
   return setting;
 });
 export const agentSettingsSchema = z.record(z.string().regex(/^[a-z][a-z0-9_-]*$(?![\s\S])/), z.unknown())

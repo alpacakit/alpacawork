@@ -53,9 +53,9 @@ Durante a instalação, a IA verifica esses itens e instala o Node.js se ele est
 | [GitHub Copilot](https://github.com/features/copilot) | Nada a instalar: ele vem junto com o alpacawork. Funciona com o login da sua GitHub CLI (`gh auth login`) |
 | Grok Build (`grok`), pi (`pi`) | Login ou uma chave de API. O alpacawork só consegue saber se eles estão instalados, não se estão com login feito. Para usar o Gemini, execute `/login` no pi e salve uma chave de API do Google Gemini. Veja a [configuração de provedores do pi](https://pi.dev/docs/latest/providers). |
 
-O alpacawork deixou de oferecer suporte ao Antigravity porque o Google não permite que aplicativos de terceiros iniciem o `agy` com o login de um plano para usuários individuais. Veja as [perguntas frequentes do Antigravity](https://antigravity.google/docs/faq) e os [Termos de Serviço Adicionais](https://antigravity.google/terms).
-
 A primeira etapa da tela de configuração inicial mostra quais deles estão instalados neste PC e, para os três primeiros, se estão com login feito. É ali que você ativa os que vai usar. Depois, você pode mudar isso em Configurações → Servidor.
+
+O alpacawork deixou de oferecer suporte ao Antigravity porque o Google não permite que aplicativos de terceiros iniciem o `agy` com o login de um plano para usuários individuais. Veja as [perguntas frequentes do Antigravity](https://antigravity.google/docs/faq) e os [Termos de Serviço Adicionais](https://antigravity.google/terms).
 
 Em uma mesma solicitação, você pode dividir os papéis: por exemplo, o design com o Claude Code e a implementação com o Codex.
 
