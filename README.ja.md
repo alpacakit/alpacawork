@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" valign="middle" alt="alpacawork のロゴ">&nbsp;alpacawork
+  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
 </h1>
 
 <h3 align="center">AI の管理は、AI に任せる。</h3>
