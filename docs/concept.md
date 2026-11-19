@@ -6,6 +6,12 @@ This page explains what alpacawork is for, how one request moves through it, and
 
 When you give several jobs to AI agents at once, the work of managing them falls to you: remembering what you asked where, checking on each one's progress, and deciding who does what. alpacawork hands that work to the AI. You say what you want done, answer the AI's questions, and check what it made.
 
+## Why it was made
+
+There are already many services that let you give instructions to the AI on your PC from your phone, Claude and ChatGPT among them. But they all assume you do the work at your PC. On a phone, you can mostly only do supporting tasks, such as checking progress or asking for small fixes. Following the work and reviewing results on a small screen was more stressful than I had imagined. That is why I started building alpacawork.
+
+I designed alpacawork from the start for getting work done from a phone. So you don't have to track every step on a small screen, AI manages the tasks and the other AI agents, and you only talk to one AI, the coordinator, your point of contact.
+
 ## How it works
 
 <p align="center">
@@ -77,6 +83,7 @@ Requests for the job at hand are plain sentences too. For example:
 
 - "Do this with Claude Code's opus, at high effort"
 - "Have Claude Code and Codex each draft a version, then compare them for me"
+- "I want this finished quickly, so split the work and run the parts in parallel"
 - "When it's done, have a different model from the one that built it check it"
 - "Run only the tests related to the change"
 - "The AI working on this seems to have gotten confused; switch to a new AI and carry on"

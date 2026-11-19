@@ -6,6 +6,12 @@ Esta página explica para que serve o alpacawork, como uma solicitação passa p
 
 Quando você entrega vários trabalhos a agentes de IA ao mesmo tempo, o trabalho de gerenciá-los fica com você: lembrar o que pediu e onde, acompanhar o andamento de cada um e decidir quem faz o quê. O alpacawork passa esse trabalho para a IA. Você diz o que quer que seja feito, responde às perguntas da IA e revisa o que ela fez.
 
+## Por que ele foi criado
+
+Já existem muitos serviços que permitem dar instruções pelo celular à IA que está no seu PC, entre eles o Claude e o ChatGPT. Mas todos partem do princípio de que você trabalha no PC. No celular, quase tudo o que dá para fazer são operações de apoio, como ver o andamento ou pedir correções simples. Acompanhar o trabalho e revisar os resultados em uma tela pequena foi mais estressante do que eu imaginava. Foi por isso que comecei a criar o alpacawork.
+
+Desde o início, criei o alpacawork pensando em levar o trabalho adiante pelo celular. Para que você não precise acompanhar o andamento em detalhes em uma tela pequena, o gerenciamento das tarefas e das IAs fica com a IA, e você só precisa falar com a IA que é seu ponto de contato (o coordenador).
+
 ## Como funciona
 
 <p align="center">
@@ -77,6 +83,7 @@ As solicitações para o trabalho do momento também são frases simples. Por ex
 
 - “Faça isso com o opus do Claude Code, com esforço high”
 - “Peça ao Claude Code e ao Codex que cada um faça uma versão e depois compare as duas para mim”
+- “Quero que isso fique pronto rápido, então divida o trabalho e faça as partes em paralelo”
 - “Quando terminar, peça que um modelo diferente do que criou verifique o resultado”
 - “Rode apenas os testes relacionados à mudança”
 - “A IA que está trabalhando nisso parece ter se confundido; troque por uma nova IA e continue”

@@ -185,6 +185,8 @@ Os complementos opcionais majority e try-and-keep são mantidos separadamente em
 
 No celular, você abre a tela do alpacawork que roda no seu PC. A IA roda no PC, então mantenha o PC ligado e configure-o para não entrar em suspensão enquanto você usa o alpacawork (o notebook para de funcionar quando você fecha a tampa).
 
+Você também pode instalar o alpacawork em outro PC que fique sempre ligado e usá-lo pelo seu PC do dia a dia ou pelo celular. Os passos para se conectar a partir de uma conversa do Claude Code ou do Codex no seu PC do dia a dia estão no [guia de configuração inicial](../../skills/alpacawork/references/setup.md#connect) (em inglês).
+
 <img src="../images/home-phone.png" alt="A tela da lista em um celular, com tarefas em Em andamento, Aguardando revisão e Concluídas" width="320">
 
 Conecte o PC e o celular por uma VPN (uma forma de conectar com segurança os seus próprios dispositivos) e abra o alpacawork em uma URL HTTPS (uma URL HTTP não funciona). O [Tailscale](https://tailscale.com/) (gratuito para uso pessoal) oferece as duas coisas.

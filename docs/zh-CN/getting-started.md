@@ -185,6 +185,8 @@ AI 自己无法决定的事，会附上选项、理由和推荐来问你。选�
 
 在手机上，打开的是运行在你电脑上的 alpacawork 的界面。AI 在电脑上运行，所以使用 alpacawork 期间请保持电脑开机，并设置为不休眠（笔记本电脑合上盖子就会停止）。
 
+也可以把 alpacawork 安装在另一台始终开机的电脑上，再从手边的电脑或手机使用。从手边电脑上的 Claude Code 或 Codex 对话连接的步骤，见[设置指南](../../skills/alpacawork/references/setup.md#connect)（英文）。
+
 <img src="../images/home-phone.png" alt="手机上的列表界面，“进行中”“待验收”和“已完成”下列有任务" width="320">
 
 通过 VPN（一种把你自己的设备安全连接起来的方式）连接电脑和手机，并用 HTTPS 的 URL 打开 alpacawork（HTTP 的 URL 无法使用）。[Tailscale](https://tailscale.com/)（个人使用免费）两者都能提供。

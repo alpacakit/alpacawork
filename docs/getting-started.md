@@ -185,6 +185,8 @@ The optional majority and try-and-keep add-ons are maintained separately in a pr
 
 On a phone, you open the screen of the alpacawork running on your PC. The AI runs on the PC, so keep the PC on and set it not to sleep while you use alpacawork (a laptop stops when you close the lid).
 
+You can also install alpacawork on another PC that is always on, and use it from your everyday PC or from your phone. The steps for connecting from a Claude Code or Codex conversation on your everyday PC are in the [setup guide](../skills/alpacawork/references/setup.md#connect).
+
 <img src="images/home-phone.png" alt="The list screen on a phone, with tasks under In progress, Awaiting review and Done" width="320">
 
 Connect the PC and the phone through a VPN (a way to connect your own devices securely), and open alpacawork at an HTTPS URL (an HTTP URL doesn't work). [Tailscale](https://tailscale.com/) (free for personal use) provides both.

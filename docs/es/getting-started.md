@@ -185,6 +185,8 @@ Los complementos opcionales majority y try-and-keep se mantienen aparte en un re
 
 En un teléfono abres la pantalla del alpacawork que se ejecuta en tu PC. La IA se ejecuta en el PC, así que mantén el PC encendido y configúralo para que no entre en suspensión mientras usas alpacawork (un equipo portátil se detiene cuando cierras la tapa).
 
+También puedes instalar alpacawork en otro PC que mantengas siempre encendido y usarlo desde tu PC habitual o desde tu teléfono. Los pasos para conectarte desde una conversación de Claude Code o Codex en tu PC habitual están en la [guía de configuración inicial](../../skills/alpacawork/references/setup.md#connect) (en inglés).
+
 <img src="../images/home-phone.png" alt="La pantalla de la lista en un teléfono, con tareas en En curso, Por revisar y Completadas" width="320">
 
 Conecta el PC y el teléfono a través de una VPN (una forma de conectar tus propios dispositivos de manera segura) y abre alpacawork en una URL HTTPS (una URL HTTP no funciona). [Tailscale](https://tailscale.com/) (gratis para uso personal) ofrece ambas cosas.
