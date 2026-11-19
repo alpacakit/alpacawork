@@ -159,8 +159,7 @@
       },
       "failed": "No se pudo iniciar el coordinador.",
       "preparing": "Iniciando el coordinador",
-      "ready": "Hola. ¿En qué puedo ayudarte?",
-      "start": "Elige un ejemplo en la lista de tareas o simplemente escribe lo que necesitas."
+      "ready": "Hola. ¿En qué puedo ayudarte?"
     },
     "window": "Coordinador — alpacawork",
     "withdraw": "Cancelar",

@@ -8,8 +8,7 @@ import type { Runtime } from "./server.ts";
 /**
  * A section is drawn while it holds something, its heading included; a list holding nothing has no section and no
  * clock, and its place says how work starts. An example only goes into the input, after the project in view's label;
- * the person sends it. While it shows, the conversation points to it instead of offering its own examples. The first Task
- * takes the welcome away and brings the conversation's examples back.
+ * the person sends it. The conversation, which opens over it, offers its own examples whatever the list shows.
  */
 test.use({ isolated: true });
 
@@ -84,26 +83,14 @@ for (const [width, height] of [[1440, 900]] as const) {
     await expect(field(page)).toContainText("3 times in parallel, each with a different model");
     // Nothing is sent: the project stays empty until the person sends it.
     await expect(welcome).toBeVisible();
-    // The conversation leaves the examples to the list and points there.
+    // The conversation opens over the list, so it offers its own examples there too, as it does whatever the list shows.
     await openCoordinator(page);
     const warm = page.locator("[data-coordinator-warm]");
-    await expect(warm.locator("[data-warm-start]")).toBeVisible();
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(0);
-    // Only while the examples are on screen: searching the empty project takes the list's place, and the conversation
-    // offers its own examples again.
-    await page.getByRole("searchbox").fill("café");
-    await expect(welcome).toHaveCount(0);
     await expect(warm.locator("[data-warm-example]")).toHaveCount(4);
-    await expect(warm.locator("[data-warm-start]")).toHaveCount(0);
-    await page.getByRole("searchbox").fill("");
-    await expect(welcome).toBeVisible();
-    await expect(warm.locator("[data-warm-start]")).toBeVisible();
 
     // A Task an agent made is a Task too: no welcome, and as a top Task it is a row like the user's.
     await post(page, runtime, "task/new", { parent: project.id, title: "Agent's own", userRequested: false });
     await expect(welcome).toHaveCount(0);
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(4);
-    await expect(warm.locator("[data-warm-start]")).toHaveCount(0);
     await expect.poll(() => sections(page)).toEqual(["todo"]);
     await expect(page.locator("[data-time-corner]")).toHaveCount(1);
     await post(page, runtime, "task/new", { parent: project.id, title: "First one" });

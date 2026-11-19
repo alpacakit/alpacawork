@@ -159,8 +159,7 @@
       },
       "failed": "Não foi possível iniciar o coordenador.",
       "preparing": "Iniciando o coordenador",
-      "ready": "Olá. Como posso ajudar?",
-      "start": "Escolha um exemplo na lista de tarefas ou simplesmente escreva o que você precisa."
+      "ready": "Olá. Como posso ajudar?"
     },
     "window": "Coordenador — alpacawork",
     "withdraw": "Cancelar",

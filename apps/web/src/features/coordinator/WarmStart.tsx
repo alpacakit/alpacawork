@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ExampleList } from "@/components/ui/example-list";
 import { TimelineMark } from "@/components/ui/timeline-mark";
-import { useListPlace } from "@/data/queries";
 import { cn } from "@/lib/utils";
 import { AppHint } from "./app-hint";
 import { exampleInDraft } from "./editor/draft";
@@ -21,7 +20,7 @@ function useWarmWords(warm: Warm) {
     { name: "steer", label: t("coordinatorCard.warm.examples.steer.label"), words: t("coordinatorCard.warm.examples.steer.words") },
     { name: "policy", label: t("coordinatorCard.warm.examples.policy.label"), words: t("coordinatorCard.warm.examples.policy.words") },
   ];
-  return { said: words[warm], start: t("coordinatorCard.warm.start"), examples };
+  return { said: words[warm], examples };
 }
 function Mark({ warm, className }: { warm: Warm; className?: string }) {
   return warm === "ready" ? <UnreadMark className={cn(ON_DISC, className)} />
@@ -38,22 +37,23 @@ function Said({ warm, said, className }: { warm: Warm; said: string; className?:
  * A conversation with no message yet: how far the coordinator has got ready and examples to start from,
  * as the empty list's (Welcome): a heading and the examples on their own surface (ExampleList), in a column in the middle of the
  * conversation both ways, so a cleared conversation is never a small line in its corner. The rows only fill the input;
- * the person sends. Failed to start, it says so in the same place and offers no examples. While the list shows its own
- * examples (Welcome), this only points there in one line. Under the examples, the first time, the pointer to the phone
- * and app guide (AppHint), which the list's welcome carries instead while it shows.
+ * the person sends. Failed to start, it says so in the same place and offers no examples. The examples are the same
+ * whatever the list shows: the conversation opens over the list, so it never leaves them to the list. Under the
+ * examples, the first time, the pointer to the phone and app guide (AppHint).
  */
 export function WarmStart({ warm }: { warm: Warm }) {
-  const { said, start, examples } = useWarmWords(warm);
-  const welcome = useListPlace() === "welcome";
+  const { said, examples } = useWarmWords(warm);
   // 100cqh: the conversation's scrolling area, a size container while this is in it (CoordinatorCard), less its head
   // (--pane-head) and 20px, a little more than the list's own 12px round it, so it fills the area without scrolling.
-  return <li data-coordinator-warm={warm} className="flex min-h-[calc(100cqh-var(--pane-head,1.25rem)-1.25rem)] animate-rise items-center justify-center py-6">
+  // py-4, not more: with four examples and the phone and app line, more would make the conversation as it first opens
+  // on a computer (frame.ts FIRST) scroll.
+  return <li data-coordinator-warm={warm} className="flex min-h-[calc(100cqh-var(--pane-head,1.25rem)-1.25rem)] animate-rise items-center justify-center py-4">
     <div className="w-[min(100%,26rem)]">
       <Said warm={warm} said={said} className="mb-3" />
-      {warm !== "failed" && (welcome
-        ? <p data-warm-start className="m-0 text-sm text-soft [word-break:auto-phrase]">{start}</p>
-        : <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />)}
-      {warm !== "failed" && !welcome && <AppHint />}
+      {warm !== "failed" && <>
+        <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />
+        <AppHint />
+      </>}
     </div>
   </li>;
 }

@@ -151,8 +151,7 @@
       },
       "failed": "Could not start the coordinator.",
       "preparing": "Starting the coordinator",
-      "ready": "Hello. How can I help?",
-      "start": "Choose an example in the task list, or just write what you need."
+      "ready": "Hello. How can I help?"
     },
     "window": "Coordinator — alpacawork",
     "withdraw": "Cancel",
