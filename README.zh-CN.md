@@ -3,13 +3,17 @@
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.png">
+    <img src="docs/images/wordmark.png" alt="alpacawork" width="380">
+  </picture>
 </h1>
 
 <h3 align="center">让 AI 来管理你的 AI。</h3>
 
 <p align="center">
-  为 Claude Code 和 Codex 指派工作，<br/>并跟进它们的进度。
+  为 Claude Code 和 Codex 指派工作，<br/>并跟进它们的进度。<br/>
+  你不必再坐在电脑前工作。
 </p>
 
 <p align="center">

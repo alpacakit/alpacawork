@@ -3,13 +3,17 @@
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.png">
+    <img src="docs/images/wordmark.png" alt="alpacawork" width="380">
+  </picture>
 </h1>
 
 <h3 align="center">AI の管理は、AI に任せる。</h3>
 
 <p align="center">
-  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。
+  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
+  PC の前に座って働くことから、解放されます。
 </p>
 
 <p align="center">

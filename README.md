@@ -14,6 +14,8 @@ The setup guide an AI downloads stays an absolute unpkg URL inside the install t
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else, and npm shows such a URL as
 plain text.
+The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages) so that it shows
+larger than a heading can; its alt text carries the name.
 The pictures show made-up data. This file and its translations use the dark-theme pictures
 (*-dark.png); README.ja.md shows the Japanese screen (*-dark-ja.png), the others the English one.
 README.ja.md, README.zh-CN.md, README.es.md and README.pt-BR.md are translations: keep all five with
@@ -28,13 +30,17 @@ to README.md#install): keep those headings, or change the links with them.
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.png">
+    <img src="docs/images/wordmark.png" alt="alpacawork" width="380">
+  </picture>
 </h1>
 
 <h3 align="center">Let AI manage your AI.</h3>
 
 <p align="center">
-  It assigns work to Claude Code and Codex<br/>and tracks their progress.
+  It assigns work to Claude Code and Codex<br/>and tracks their progress.<br/>
+  You no longer have to sit at your PC to work.
 </p>
 
 <p align="center">

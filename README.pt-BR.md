@@ -3,13 +3,17 @@
 </p>
 
 <h1 align="center">
-  <img src="docs/images/logo.png" width="44" align="absmiddle" alt="">&nbsp;alpacawork
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.png">
+    <img src="docs/images/wordmark.png" alt="alpacawork" width="380">
+  </picture>
 </h1>
 
 <h3 align="center">Deixe a gestão das suas IAs com a IA.</h3>
 
 <p align="center">
-  Ela atribui trabalho ao Claude Code e ao Codex<br/>e acompanha o andamento deles.
+  Ela atribui trabalho ao Claude Code e ao Codex<br/>e acompanha o andamento deles.<br/>
+  Você não precisa mais ficar na frente do PC para trabalhar.
 </p>
 
 <p align="center">
