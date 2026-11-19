@@ -57,7 +57,7 @@
     "policySkillLine": "- {{skill}}: use {{when}}.",
     "policySkills": "## Skills para usar",
     "policyStart": "## Propósito do projeto\n- Permitir que o usuário aprenda a usar o alpacawork experimentando.\n\n## Pergunte antes ao usuário\n- Para uma mudança que afete a aparência ou a experiência de uso de algo, mostre uma prévia e pergunte antes de criar.\n- Pergunte antes de começar um trabalho que mude a direção ou que vá levar muito tempo.\n- Obtenha aprovação antes de publicar, enviar qualquer coisa a serviços ou pessoas de fora, substituir um serviço em execução, fazer qualquer coisa que custe dinheiro ou excluir algo que não possa ser restaurado.\n\n## Decida sem perguntar\n- Para tudo o que não está listado acima, decida sem perguntar, siga em frente e relate o resultado.\n\n## Como trabalhar\n- Exceto em pequenas correções, quando o trabalho estiver pronto, peça que ele seja verificado por uma IA diferente da que o fez, corrija o que ela encontrar e só então peça a revisão do usuário.\n- Para uma mudança no design de uma tela, peça que uma IA separada crie cada candidato, até três no total. O responsável mostra todos juntos ao usuário e pergunta qual ele prefere. Ao perguntar, o responsável também diz qual recomenda e por quê.\n\n## Não permitido\n- Não escreva segredos, como chaves de API ou senhas, em registros ou entregas.",
-    "reread": "Carregar a versão mais recente",
+    "reread": "Carregar dados atuais",
     "title": "Primeiro projeto"
   },
   "skills": {

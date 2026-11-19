@@ -14,7 +14,7 @@ Esta guía te lleva desde la instalación de alpacawork hasta su uso diario. Sig
 5. [Usarlo desde tu teléfono](#5-usarlo-desde-tu-teléfono)
 6. [Usarlo desde Claude Code o Codex](#6-usarlo-desde-claude-code-o-codex)
 
-**Mantenlo**
+**Mantenimiento**
 
 7. [Detener, actualizar o desinstalar](#7-detener-actualizar-o-desinstalar)
 
@@ -141,7 +141,7 @@ Cuando la IA no puede decidir algo por sí sola, te lo pregunta, con opciones, m
 
 Cuando una tarea termina, aparece en Por revisar. Lee el informe y, si te parece bien, presiona “Completar” (el botón con la marca de verificación). Si quieres cambios, descríbelos en el cuadro de texto y envíalo.
 
-En un teléfono, desliza una tarjeta hacia la derecha para “Completada” o “Enviar”, o hacia la izquierda para “Pausar”. Después de marcar una como completada, se abre la siguiente tarjeta.
+En un teléfono, desliza una tarjeta hacia la derecha para “Completar” o “Enviar”, o hacia la izquierda para “Pausar”. Después de marcar una como completada, se abre la siguiente tarjeta.
 
 <p>
   <img src="../images/review-phone.png" alt="Revisión de un resultado en un teléfono" width="320">&nbsp;&nbsp;

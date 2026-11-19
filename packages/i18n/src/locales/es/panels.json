@@ -95,7 +95,7 @@
     "confirm": {
       "cancel": "Cancelar",
       "insideGeneral": "Lo que haya dentro y se haya archivado por separado sigue archivado después de restaurar.",
-      "keeps": "Se conserva",
+      "keeps": "Se conservan",
       "keepsValue": "Estados, notas, historial de ejecuciones, archivos y código",
       "leaves": "Se quita de la lista",
       "leavesValue": "Este proyecto y todo lo que contiene",

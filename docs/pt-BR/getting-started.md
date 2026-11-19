@@ -101,7 +101,7 @@ Descubra por que os testes estão falhando e corrija.
 Adicione uma área de “Avisos” no topo da página inicial, para a gente publicar coisas como fechamentos imprevistos.
 ```
 
-O coordenador transforma a sua solicitação em uma tarefa, entrega-a a uma IA responsável pela tarefa (o responsável) e escreve as instruções específicas para esse responsável. São os responsáveis que fazem o trabalho, então você pode continuar fazendo solicitações sem esperar as anteriores terminarem. O coordenador organiza a ordem e quem faz o quê.
+O coordenador transforma a sua solicitação em uma tarefa, delega-a a uma IA responsável pela tarefa (o responsável) e escreve as instruções específicas para esse responsável. São os responsáveis que fazem o trabalho, então você pode continuar fazendo solicitações sem esperar as anteriores terminarem. O coordenador organiza a ordem e quem faz o quê.
 
 Você pode pedir mais do que trabalho. No mesmo campo de mensagem, você pode pedir ao coordenador que altere configurações, retome uma IA que parou, crie um projeto, atualize o alpacawork e muito mais. A maioria das coisas se resolve só pedindo, sem procurar o lugar certo na tela.
 
@@ -192,7 +192,7 @@ Conecte o PC e o celular por uma VPN (uma forma de conectar com segurança os se
 Estas cinco coisas ficam por sua conta. A IA cuida do restante da configuração no PC.
 
 1. **Instale o Tailscale no PC e no celular e faça login com a mesma conta.** No Windows, instale-o no próprio Windows, não dentro do Ubuntu.
-2. **Peça a um agente de IA no PC (como o Claude Code ou o Codex): “Deixe o alpacawork pronto para usar no meu celular”.** A tela do PC traz a instrução completa para copiar, em Configurações (a engrenagem) → App e celular.
+2. **Peça a um agente de IA no PC (como o Claude Code ou o Codex): “Configure o alpacawork para que eu possa usá-lo no meu celular”.** A tela do PC traz a instrução completa para copiar, em Configurações (a engrenagem) → App e celular.
 3. **Na tela do PC, abra Configurações (a engrenagem) → App e celular.** Um QR code e os passos aparecem em “Usar pelo celular”; leia o código com a câmera do celular para abrir o alpacawork.
 
    ![A tela de configurações App e celular, mostrando os passos para usar o alpacawork em um celular e um QR code](../images/phone-setup-desktop.png)
@@ -214,7 +214,7 @@ Fazer anotações em uma captura de tela para mostrar o que corrigir, e acrescen
   <tr>
     <td align="center" valign="top" width="33%"><b>1. Faça anotações</b><br><img src="../images/phone-tip-1.png" alt="Uma captura de tela do site em construção, com instruções escritas nela com caneta vermelha" width="240"><br><sub>Escreva direto na captura de tela</sub></td>
     <td align="center" valign="top" width="33%"><b>2. Compartilhe e fale</b><br><img src="../images/phone-tip-2-dark.png" alt="O campo de mensagem do coordenador, com duas imagens anotadas anexadas" width="240"><br><sub>Compartilhe ou cole no campo de mensagem. Acrescente palavras com a digitação por voz do teclado</sub></td>
-    <td align="center" valign="top" width="33%"><b>3. Envie</b><br><img src="../images/phone-tip-3-dark.png" alt="Depois do envio de uma solicitação com imagens, o coordenador criou uma tarefa e respondeu" width="240"><br><sub>O coordenador transforma a solicitação em tarefa e a entrega a um responsável</sub></td>
+    <td align="center" valign="top" width="33%"><b>3. Envie</b><br><img src="../images/phone-tip-3-dark.png" alt="Depois do envio de uma solicitação com imagens, o coordenador criou uma tarefa e respondeu" width="240"><br><sub>O coordenador transforma a solicitação em tarefa e a delega a um responsável</sub></td>
   </tr>
 </table>
 

@@ -294,7 +294,7 @@
       "no_configured_agents": "没有已启用的智能体。请安装并登录一个 AI，然后在“设置 → 服务器”中启用",
       "no_migrations_packaged": "未包含任何迁移。现有数据库已保留",
       "no_project_active_use_id": "没有活动项目。请用 --{{option}} <ID> 指定",
-      "no_question_in_decide_value_write_full_question_before_asking": "任务的“提问”（decide）值为空。请先在其中写下完整的提问再发送",
+      "no_question_in_decide_value_write_full_question_before_asking": "任务的“提问”（decide）字段为空。请先在其中写下完整的提问再发送",
       "no_runs_stop": "没有可停止的运行",
       "not_for_run_while_own_task_held": "自己的任务处于搁置状态的运行不能执行 {{action}}",
       "nothing_unfinished_goes_below_finished_task": "{{task}} 的状态是 {{state}}。已结束的任务下面不能放未结束的任务",

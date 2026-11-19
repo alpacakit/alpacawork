@@ -120,7 +120,7 @@
       "decide": {
         "label": "Elige una idea de minijuego y pide que lo creen",
         "shows": "La IA compara ideas y te hace una pregunta. Con tu respuesta empieza la creación.",
-        "words": "Quiero crear un minijuego para jugar en el navegador. Conviértelo en una tarea: propón 3 ideas y pregúntame cuál crear, con una tabla comparativa y tu recomendación en la pregunta. Cuando responda, crea el que elegí en unos 5 minutos sin preguntar nada más y envíame un informe. Es un tutorial, así que mantén un esfuerzo ligero: prioriza la rapidez, no lo pienses demasiado y tómatelo con calma. Escribe todo en español, por favor."
+        "words": "Quiero crear un minijuego para jugar en el navegador. Conviértelo en una tarea: propón 3 ideas y pregúntame cuál crear, con una tabla comparativa y tu recomendación en la pregunta. Cuando responda, crea el que elegí en unos 5 minutos sin preguntar nada más y envíame un informe. Es un tutorial, así que mantén un esfuerzo ligero: prioriza la rapidez, no lo pienses demasiado y no te compliques. Escribe todo en español, por favor."
       },
       "models": {
         "label": "Pide a 3 modelos un juego de la serpiente y elige uno",

@@ -23,7 +23,7 @@
         "review": "mientras espera la revisión del usuario",
         "same_project": "dentro de su propio proyecto",
         "task": "en una tarea que no es un proyecto",
-        "top": "en una tarea de primer nivel (cuyo nivel superior es un proyecto)",
+        "top": "en una tarea de primer nivel (situada directamente bajo un proyecto)",
         "within": "al moverla mientras sigue bajo la tarea propia de la ejecución"
       },
       "or": ", o ",

@@ -205,7 +205,7 @@
       "title": "Opciones"
     },
     "decide_note": {
-      "hint": "Supuestos comunes, enlaces a muestras y cuándo se detienen las cosas. No repitas las descripciones de las opciones ni las notas de revisión.",
+      "hint": "Supuestos comunes, enlaces a ejemplos y cuándo se detienen las cosas. No repitas las descripciones de las opciones ni las notas de revisión.",
       "title": "Nota"
     },
     "decide_question": {

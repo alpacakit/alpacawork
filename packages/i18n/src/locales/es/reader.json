@@ -217,7 +217,7 @@
     },
     "close": "Cerrar",
     "countPart": "{{word}}: {{n}}",
-    "done": "$t(ui:state.done)",
+    "done": "Completar",
     "held": "$t(reader:swipe.hold)",
     "kind": {
       "done": "completadas",
@@ -332,7 +332,7 @@
     "row": {
       "answerTo": "Pregunta: {{question}}",
       "between": "De {{from}} a {{to}}",
-      "cause": "Recibió “{{title}}” · {{at}}",
+      "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
       "end": {
         "again": {

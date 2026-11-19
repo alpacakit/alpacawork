@@ -125,7 +125,7 @@
       "check": "El servicio no pudo iniciarse. Comprueba su estado y sus logs con:",
       "launchdLogs": "Esta definición de launchd no configura archivos de log para stdout/stderr. El comando log muestra los eventos de launchd.",
       "rerun": "Después de corregir el problema, vuelve a ejecutar el mismo alpacawork setup. Continúa con el puerto y la definición guardados.",
-      "startSaved": "Si otro proceso está usando el puerto, libera el puerto. Luego inicia el servicio guardado con:\n{{command}}\nLuego ejecuta el mismo alpacawork setup para comprobarlo."
+      "startSaved": "Si otro proceso está usando el puerto, libéralo primero. Después inicia el servicio guardado con:\n{{command}}\nLuego ejecuta el mismo alpacawork setup para comprobarlo."
     },
     "title": {
       "change": "Se reconfigurará alpacawork {{version}}",
@@ -189,7 +189,7 @@
       "blocked": "{{why}} No se cambió nada.\nPara quitar el registro a mano, ejecuta estos comandos ({{alreadyGone}}):\n{{commands}}\nLuego vuelve a ejecutar alpacawork uninstall.",
       "conflict": "El registro de inicio automático {{name}} difiere del que registró alpacawork, así que la desinstalación no lo tocará.",
       "left": "El registro de inicio automático {{name}} no se quitó por completo{{fault}}. Puede que el servidor esté detenido ahora, pero sigue registrado para iniciarse al iniciar sesión.\nNo se quitó nada más. Para volver a tener un alpacawork que funcione, ejecuta alpacawork setup. Para terminar de quitarlo, vuelve a ejecutar alpacawork uninstall.\nSi la desinstalación vuelve a detenerse aquí, quita el registro a mano con estos comandos ({{alreadyGone}}):\n{{commands}}",
-      "unavailable": "No se puede acceder al gestor de servicios del usuario, así que la desinstalación no puede saber si el registro de inicio automático {{name}} sigue ahí, ni quitarlo. No se cambió nada.\nEjecuta alpacawork uninstall desde una sesión de inicio normal (en WSL2, con systemd activado).",
+      "unavailable": "No se puede acceder al gestor de servicios del usuario, así que la desinstalación no puede saber si el registro de inicio automático {{name}} sigue ahí, ni quitarlo. No se cambió nada.\nEjecuta alpacawork uninstall desde una sesión de usuario normal (en WSL2, con systemd activado).",
       "uninspectable": "El registro de inicio automático {{name}} no se puede inspeccionar: {{failure}}.",
       "unrecorded": "Existe un registro de inicio automático llamado {{name}}, pero ningún registro de instalación lo describe."
     },

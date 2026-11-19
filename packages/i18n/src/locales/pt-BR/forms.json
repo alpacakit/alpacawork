@@ -11,7 +11,7 @@
     },
     "none": "Nenhum",
     "notOffered": "Não oferecido para este modelo",
-    "pickerLabel": "{{agent}}. Pressione para mudar",
+    "pickerLabel": "{{agent}}. Selecione para mudar",
     "pickerTitle": "A quem pedir",
     "problem": {
       "gone": "{{agent}} não está disponível com as configurações atuais. Escolha outro agente a quem pedir",

@@ -217,13 +217,13 @@
     },
     "close": "Fechar",
     "countPart": "{{word}}: {{n}}",
-    "done": "$t(ui:state.done)",
+    "done": "Concluir",
     "held": "$t(reader:swipe.hold)",
     "kind": {
-      "done": "concluídas",
-      "hold": "adiadas",
-      "send": "enviadas",
-      "stop": "paradas"
+      "done": "Concluídas",
+      "hold": "Adiadas",
+      "send": "Enviadas",
+      "stop": "Paradas"
     },
     "sent": "$t(reader:swipe.send)",
     "stopped": "Parar"
@@ -306,9 +306,9 @@
     "childWorking": {
       "fold": "Recolher",
       "grandchild": "Subtarefa aninhada",
-      "others_one": "mais {{count}} abaixo",
-      "others_many": "mais {{count}} abaixo",
-      "others_other": "mais {{count}} abaixo"
+      "others_one": "Mais {{count}} abaixo",
+      "others_many": "Mais {{count}} abaixo",
+      "others_other": "Mais {{count}} abaixo"
     },
     "copy": "Copiar",
     "goAnswer": "Responder",
@@ -424,9 +424,9 @@
   "swipe": {
     "choose": "Escolha uma opção para enviar",
     "hold": "Adiar",
-    "notAnswered": "Não dá para enviar: nada respondido ainda",
-    "notSaid": "Não dá para enviar: falta a instrução depois de Outra",
-    "notWritten": "Não dá para enviar: nenhuma resposta escrita",
+    "notAnswered": "Não é possível enviar: nada respondido ainda",
+    "notSaid": "Não é possível enviar: falta a instrução depois de Outra",
+    "notWritten": "Não é possível enviar: nenhuma resposta escrita",
     "otherWords": "Escreva uma instrução depois de Outra para enviar",
     "send": "Enviar",
     "write": "Escreva uma resposta para enviar",
