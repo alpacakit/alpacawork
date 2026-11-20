@@ -3,7 +3,7 @@
     "brief": {
       "gone": "Elige a otro agente",
       "new_conversation": "Empieza de nuevo con “{{action}}”",
-      "none": "Ningún agente está listo",
+      "none": "No hay ningún agente activado",
       "select_value": "Vuelve a elegir: {{row}}"
     },
     "next": {

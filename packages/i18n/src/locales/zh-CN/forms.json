@@ -3,7 +3,7 @@
     "brief": {
       "gone": "请选择其他委托对象",
       "new_conversation": "用“{{action}}”重新开始",
-      "none": "没有可用的智能体",
+      "none": "没有已启用的智能体",
       "select_value": "请重新选择 {{row}}"
     },
     "next": {
