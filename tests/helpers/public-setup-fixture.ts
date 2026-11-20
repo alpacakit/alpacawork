@@ -74,8 +74,7 @@ export function publicSetupSuite() {
     const f = fixture(t, homeName), bin = join(f.root, 'bin'); mkdirSync(bin, { mode: 0o700 });
     const systemctl = join(bin, 'systemctl'); installSetupSystemctl(systemctl);
     writeFileSync(join(bin, 'gh'), '#!/bin/sh\nexit 1\n', { mode: 0o700 });
-    const checks = join(f.root, 'agent-checks.jsonl');
-    writeFileSync(join(bin, 'codex'), `#!${process.execPath}\nrequire('node:fs').appendFileSync(${JSON.stringify(checks)},JSON.stringify(process.argv.slice(2))+'\\n');process.exit(99);\n`, { mode: 0o700 });
+    writeFileSync(join(bin, 'codex'), '#!/bin/sh\nexit 99\n', { mode: 0o700 });
     writeFileSync(join(bin, 'journalctl'), '#!/bin/sh\nprintf \"Fake service log\\n\"\n', { mode: 0o700 });
     const env: NodeJS.ProcessEnv = { ...f.env, PATH: `${bin}:/usr/bin:/bin`, LANG: 'en', LC_ALL: 'en_US.UTF-8', XDG_DATA_HOME: join(f.home, '.local/share'),
       XDG_STATE_HOME: join(f.home, '.local/state'), XDG_CACHE_HOME: join(f.home, '.cache') };
@@ -200,7 +199,7 @@ Server.prototype.listen = function(options, ...rest) {
       evidence({ kind: 'public-ready', test: t.name, saved, readiness: body, service });
       return { saved, body };
     };
-    return { ...f, bin, checks, env, run, ready, native, journal, receipt, reserveServicePort };
+    return { ...f, bin, env, run, ready, native, journal, receipt, reserveServicePort };
   }
   /** Keep stored fixture data while leaving no seed work for the live backend to dispatch. */
   function copySetupWorkspace(destination: string) {

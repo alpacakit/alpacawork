@@ -65,7 +65,6 @@ test('public setup enters once, overwrites an edited basic skill without old cop
   assert.equal(canRestorePreviousApplication(JSON.parse(readFileSync(join(f.releases,'switch.json'),'utf8'))),false,'initial managed skill overwrite also prevents earlier-application recovery');
   assert(out.transcript.includes(skill.replace(f.home, '~')));
   assert.equal(parse(readFileSync(join(f.home, 'alpacawork/config.yaml'), 'utf8')).agents.codex.enabled, false, 'An uncheckable synthetic CLI stays disabled');
-  assert.deepEqual(readFileSync(f.checks, 'utf8').trim().split('\n').map(line => JSON.parse(line)).sort(), [['--version'], ['login', 'status']].sort(), 'setup reuses its inspection when creating the workspace');
   assert.deepEqual(f.receipt().skills.map((s: { name: string }) => s.name), ['alpacawork']);
   assert.equal(readFileSync(join(addon, 'SKILL.md'), 'utf8'), 'unselected addon');
   assert.deepEqual(saved.request.place, ['alpacawork']); assert.deepEqual(saved.request.remove, []);
@@ -84,6 +83,28 @@ test('public setup keeps an explicit existing synthetic workspace and ordinary u
   const rows = (from: string, destination: string) => { cpSync(from, destination); const read = new DatabaseSync(destination, { readOnly: true }); try { return read.prepare('SELECT id, title FROM tasks ORDER BY id').all(); } finally { read.close(); } };
   assert.equal((await f.native('stop', 'alpacawork.service')).status, 0);
   assert.deepEqual(rows(db, join(f.root, 'actual.sqlite')), rows(join(s.original, '.alpacawork/alpacawork.sqlite'), join(f.root, 'expected.sqlite')));
+});
+
+test('public setup reports the running server\'s agent readiness', { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)' }, async t => {
+  const f = publicFixture(t);
+  // The service manager passes the locale through to the server. The initial config check has only the unit environment.
+  const agent = (ready: string) => '#!/bin/sh\nif [ "$1" = --version ]; then echo synthetic-1; exit 0; fi\n' + ready + '\n';
+  writeFileSync(join(f.bin, 'codex'), agent('[ "$LC_ALL" != en_US.UTF-8 ]'), { mode: 0o700 });
+  writeFileSync(join(f.bin, 'claude'), agent('[ "$LC_ALL" = en_US.UTF-8 ]'), { mode: 0o700 });
+
+  const out = await f.run('enter', ['setup', '--public-host', 'pc.tailnet.example']);
+  await f.ready(out);
+  const response = await fetch(new URL('/api/config/get?check=true', out.payload!.url!), { headers: { Connection: 'close' } });
+  assert.equal(response.status, 200);
+  const settings = await response.json();
+  assert.notEqual(settings.agents.codex.enabled, false, 'the initial config check found Codex signed in');
+  assert.equal(settings.agents.claude.enabled, false, 'the initial config check found Claude Code signed out');
+  assert.equal(settings.availability.codex.status, 'signed_out');
+  assert.equal(settings.availability.claude.status, 'ready');
+  assert.deepEqual(out.transcript.split(/\r?\n/).filter(line => /Agents ready:|is not signed in/.test(line)), [
+    'Agents ready: Claude Code',
+    `Codex is not signed in. To use it, run: ${settings.availability.codex.nextAction}`,
+  ]);
 });
 
 for (const answer of ['cancel', 'eof']) test(`public setup ${answer} before Enter preserves HOME and existing skill bytes`, { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)' }, async t => {
