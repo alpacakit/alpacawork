@@ -26,6 +26,23 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.4
+
+This release removes Antigravity (`agy`) support. The getting-started guide now includes the FAQ from the README.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.4`. The database schema and Run execution format are unchanged from 0.1.3. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.4` in step 4.
+
+### Check before updating
+
+If you have an `agy` agent in your settings, delete it before updating. Open **Settings → Server**, choose **Delete agy**, and save, or ask in the chat, “Remove agy from settings.” If you gave a profile using `adapter: agy` a different name, delete that profile too. Leaving any of these profiles in your settings prevents alpacawork from accepting new requests after the update.
+
+### Highlights
+- **Antigravity support removed.** Google does not support running `agy` through third-party apps with a personal-plan sign-in. [Google Antigravity FAQ](https://antigravity.google/docs/faq) · [#19](https://github.com/alpacakit/alpacawork/pull/19)
+- To use Gemini in alpacawork, set up pi with a Google Gemini API key. [pi provider setup](https://pi.dev/docs/latest/providers)
+
+### Setup
+- The answers about adding new models and asking the AI to change settings are now in the getting-started guide in all five languages. ([#18](https://github.com/alpacakit/alpacawork/pull/18))
+
 ## 0.1.3
 
 An empty coordinator conversation now gives you examples you can try right there.
