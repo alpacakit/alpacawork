@@ -12,7 +12,6 @@
   Write the request text.
   EOF
   ```
-- When the user asks you to make sure of the quality before the result reaches them (for example, "check it on your side"), deliver the original words as a line of "User instructions", put the criteria for judging in the request text to the owner, and include in the done conditions a review by an agent other than the one that made the result. The owner verifies the result and finishes the work; the user accepts the completion of a task the user requested.
 
 ## Delegating a one-off job
 
@@ -63,14 +62,14 @@ Before an action, read Access in the command's `-h`. Also when you relay the wit
 - State the parent explicitly with `--parent` (if you omit it and run the command in an outside conversation from another project's code location, the task is created under that project without an error). Place a new request directly under the project you determined from the screen's context or from the project list (`task list --kind project`). If its purpose is close to an existing task, ask that task's owner with `task request` instead of creating a new task. If the request does not determine which project, ask the user.
 - To create several tasks together as siblings, use `--plan-file -` (`[{"title": "…", "values": {…}}]`; `values` has the same form as `--values-file`).
 - When you create a top task, write the user's original words in the "User instructions" value (for how to keep them, see how `field get` says to write the field). After creating it, assign an owner and make the request with `task request`.
-- If the user asks for an additional result on a request that is in progress, ask that task's owner with a `task request` that quotes the user's words. That owner decides whether children are needed and how to create them. Ask for fixes to the current result and changes to how the work proceeds with `task request` in the same way.
+- Send an additional result, a fix or a change to how the work proceeds on a request that is in progress to that task's owner with `task request`.
 - For a request that overlaps an earlier task, do not create a new task; send it to the earlier task's owner with `task request`. If it replaces the earlier task, confirm with the user that the earlier task may be dropped, then relay the stop (a stop also stops the tasks under it and their Runs).
 
 ## Relaying the user's words
 
 State reports made on the screen (accepting with OK, putting on hold, taking off hold, stopping) are written directly with `task report` as a person; they do not arrive in this conversation, and they stay in the task's History as a person's action. Requests, answers to questions, send-backs, Continue and Retry go through the conversation. For an action received in words in the conversation, the coordinator writes it in the user's place, quoting the user's words.
 
-- Before relaying new words, add to, replace or delete from the top task's "User instructions", following how `field get` says to write the field. For the automatic delivery of the original words and the part the request text plays, follow [Tasks and requests: the common procedure](request.md).
+- Before relaying new words, add to, replace or delete from the top task's "User instructions", following how `field get` says to write the field. The request text is the user's words for that task, verbatim, plus only what the owner cannot read from them or the records: which task or part they are about, links to other tasks, and, as facts, what the words rely on from your conversation with the user (an option you showed, an attachment, something agreed there, what "it" or a short reply such as "merge it" points to). Mark your reading of unclear words as yours. Do not restate the words as a purpose, done conditions or a way of working; the owner sets those.
 - You can quote only the user's current message and the scope of delegation written in the project policy. Put those words in `--quote` verbatim (if they are long, cut out the part that is the basis without changing a character). Which original words you quote, and how far an approval reaches, are governed by this skill's rules; keep to them yourself. Do not quote an earlier message, your own judgment, or words from another conversation.
 - Do not answer a question addressed to the user on your own judgment. Do not accept a task awaiting review on your own judgment. If there are no words you can quote, show the question or the report to the user and ask.
 
