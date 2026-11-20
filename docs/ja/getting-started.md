@@ -38,7 +38,7 @@ alpacawork は、Claude Code や Codex を、確認を求めないフル権限�
 
 ### 動作環境
 
-- macOS（Apple シリコン）、Linux（x64、glibc）、Windows（WSL2 の中。下の [Windows で使うとき](#windows-で使うとき)）
+- macOS（Apple シリコン）、Linux（x64、glibc、systemd のユーザーセッションがあること。デスクトップやサーバーの多くは既定であります）、Windows（WSL2 の中で systemd を有効にして。Ubuntu では既定で有効。下の [Windows で使うとき](#windows-で使うとき)）
 - [Node.js](https://nodejs.org/ja) 24.16 以降
 - Chrome・Edge 111 以降、Safari 16.4 以降（iPhone・iPad は iOS／iPadOS 16.4 以降）、Firefox 128 以降。これより古いと画面が真っ白になります
 - サインインしてある AI エージェント（Claude Code や Codex など）
