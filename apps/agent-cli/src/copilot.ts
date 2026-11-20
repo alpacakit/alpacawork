@@ -1,5 +1,7 @@
 /** GitHub Copilot SDK protocol and options. Admission is distinct from user.message delivery. */
 import { writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { managedSkillsRoot } from '@alpacawork/core/installed-skills';
 import { CopilotClient, RuntimeConnection, approveAll, type CopilotSession, type SessionEvent } from '@github/copilot-sdk';
 import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
@@ -66,7 +68,10 @@ export class CopilotRuntime implements Runtime {
     const client = new CopilotClient({ connection, workingDirectory: process.cwd() });
     this.client = client;
     await this.opening(client.start());
-    const config = { ...(this.options.model ? { model: this.options.model } : {}), onPermissionRequest: approveAll };
+    // The SDK finds no personal skills by itself: it is given the folder alpacawork installs them in for every kind that
+    // reads it (and nothing else of the person's configuration). Without it a coordinator told to load its skill searches the disk for it.
+    const config = { ...(this.options.model ? { model: this.options.model } : {}), onPermissionRequest: approveAll,
+      skillDirectories: [managedSkillsRoot(homedir())] };
     const session = await this.opening(this.options.resume
       ? client.resumeSession(this.options.resume, config)
       : client.createSession(config));
