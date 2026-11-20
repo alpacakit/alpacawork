@@ -120,6 +120,8 @@ for (const resume of [false, true]) test(`Copilot ${resume ? 'resumes' : 'opens'
   await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'one'));
   const opened = h.requests.find(request => request.method === (resume ? 'session.resume' : 'session.create'));
   assert.deepEqual(opened?.params.skillDirectories, [join(homedir(), '.agents', 'skills')]);
+  // Only that folder: discovering the rest of the person's configuration would let their custom agents and plugins act on a Run.
+  assert.notEqual(opened?.params.enableConfigDiscovery, true);
   h.answer('start', 'answer');
   h.idle();
   await h.until(() => h.events().some(event => event.type === 'turn.completed'));
