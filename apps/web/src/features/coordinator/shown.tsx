@@ -31,6 +31,8 @@ export type Shown = {
   send: <T>(turn: LocalTurn, work: () => Promise<T>) => Promise<T>;
   pressed: ReadonlyMap<string, Press['action']>;
   closing: boolean;
+  /** The coordinator is still starting (the conversation's warm-up): what waits, waits for that. */
+  preparing: boolean;
   press: (target: string, action: Press['action'], work: () => Promise<void>) => Promise<void>;
 };
 
@@ -132,7 +134,8 @@ export function ShownConversationProvider({ children }: { children: ReactNode })
     }
     const pressed = new Map<string, Press['action']>();
     for (const each of presses) if (each.root === root && each.conversationId === conversation?.id) pressed.set(each.target, each.action);
-    return { turns, local, ...partitionTurns(turns, local, conversation?.busy, conversation?.warm === "preparing", rows), pressed, closing: pressed.get(conversation?.id ?? '') === 'clear',
+    const preparing = conversation?.warm === "preparing";
+    return { turns, local, ...partitionTurns(turns, local, conversation?.busy, preparing, rows), pressed, closing: pressed.get(conversation?.id ?? '') === 'clear', preparing,
       press: (target, action, work) => conversation ? press({ root, conversationId: conversation.id, target, action }, work, addPress) : Promise.resolve(),
       send: (turn, work) => new Promise((resolve, reject) => startTransition(async () => {
         addSending(turn);
@@ -142,7 +145,7 @@ export function ShownConversationProvider({ children }: { children: ReactNode })
   return <ShownConversation.Provider value={value}>{children}</ShownConversation.Provider>;
 }
 /** Outside the card (a lone input in a test), what serve holds, with nothing drawn ahead of it. */
-const alone: Shown = { turns: [], local: [], ...partitionTurns([]), pressed: new Map(), closing: false, press: (_target, _action, work) => work(), send: (_turn, work) => work() };
+const alone: Shown = { turns: [], local: [], ...partitionTurns([]), pressed: new Map(), closing: false, preparing: false, press: (_target, _action, work) => work(), send: (_turn, work) => work() };
 export function useShownConversation(fallback?: CoordinatorTurn[]): Shown {
   const shown = useContext(ShownConversation);
   const turns = useConversation(state => state.conversation?.turns);

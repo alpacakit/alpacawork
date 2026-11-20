@@ -433,7 +433,7 @@ test('cancellation beside an occupied input clears its uncertain notice while ke
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.stage).toBe('refused');
 });
 for (const stage of ['refused', 'cancelled'] as const) for (const activity of ['running', 'warming'] as const)
-test(`folded ${activity} work wins over a ${stage} local row`, () => {
+test(`folded, a ${stage} local row yields only to work the open conversation shows (${activity})`, () => {
   const id = queued();
   const entry = useDraftStore.getState().entries[outgoingKey(root, id)]!;
   updateDraft(outgoingKey(root, id), { values: { ...entry.values, stage: 'refused', last: stage === 'cancelled' ? 'withdraw' : 'ask', refusal: 'refused' } });
@@ -441,8 +441,9 @@ test(`folded ${activity} work wins over a ${stage} local row`, () => {
   setConversationState({ conversation: { ...conv(), turns: working, busy: true, warm: activity === 'warming' ? 'preparing' as const : 'none' as const } });
   render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><LastWordsPill style={{}} /></ShownConversationProvider></TestWorkspace>);
   const pill = document.querySelector('[data-coordinator-pill]')!;
-  expect(pill.getAttribute('data-coordinator-pill-state')).toBe('running');
-  expect(pill.textContent).toContain(i18n.t('ui:coordinatorCard.thinking'));
+  // A warm-up is no message's work: the row's own words stay the line's, as in the open conversation.
+  expect(pill.getAttribute('data-coordinator-pill-state')).toBe(activity === 'running' ? 'running' : 'unread');
+  if (activity === 'running') expect(pill.textContent).toContain(i18n.t('ui:coordinatorCard.thinking'));
   act(() => { setConversationState({ conversation: conv() }); });
   expect(pill.getAttribute('data-coordinator-pill-state')).toBe('unread');
 });

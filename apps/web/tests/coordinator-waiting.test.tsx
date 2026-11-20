@@ -247,7 +247,7 @@ test(`folded ${unfinished} remains visible ahead of a newer ${terminal} row`, ()
   else if (terminal === 'cancelled') cancelOutgoing('/fixture', second, key);
   else cancelUnsent('/fixture', second);
   render(<Surface />);
-  const expected = { grace: ['Sending soonUndo', 'waiting'], queued: ['Queued', 'running'],
+  const expected = { grace: ['Sending soonUndo', 'waiting'], queued: ['Queued', 'waiting'],
     sending: ['Sending…', 'running'], unknown: ['Couldn\'t confirm whether it arrived.', 'unread'],
     withdrawing: ['Cancelling…', 'running'], withdrawUnknown: ['Couldn\'t confirm whether it was cancelled.', 'unread'] }[unfinished];
   const pill = document.querySelector('[data-coordinator-pill]')!;
@@ -269,9 +269,26 @@ test('preparation projects accepted queued messages as waiting, without a Send n
   setConversationState({ root: '/fixture', expanded: true, conversation: { ...conversation([turn()], true), warm: 'preparing' } });
   render(<Surface />);
   const row = document.querySelector('[data-coordinator-thread] [data-coordinator-waiting=first]')!;
-  expect(row.textContent).toContain('Queued');
+  expect(row.textContent).toContain('Starting the coordinator');
   expect(row.querySelector('[data-coordinator-send-now]')).toBeNull();
   expect(row.querySelector('[data-coordinator-posting]')).toBeNull();
+});
+
+// The folded line says what the open conversation's row says, from the same facts: never at work while the row waits.
+test.each([
+  ['the coordinator is starting', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Starting the coordinator'],
+  ['it waits its turn', conversation([turn({ waiting: true })], true), 'Queued'],
+  ['it is on its way', conversation([turn()]), 'Sending…'],
+  ['it is at work', conversation([turn({ status: 'running' })], true), 'Working on it…'],
+  ['it is sent now to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ waiting: true, joinRequested: true })], true), 'Sending…'],
+  ['it is handed to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ status: 'sending', waiting: true })], true), 'Sending…'],
+  ['it is taken back while the coordinator starts', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Cancelling…', true],
+])('the folded line and the row say the same while %s', (_, value, words, withdraw = false) => {
+  setConversationState({ root: '/fixture', expanded: true, conversation: value });
+  if (withdraw) beginWithdrawal('/fixture', 'first', value);
+  render(<Surface />);
+  expect(document.querySelector('[data-coordinator-thread] [data-coordinator-message=first]')!.textContent).toContain(words);
+  expect(document.querySelector('[data-coordinator-pill]')!.textContent).toContain(words);
 });
 
 test('waiting messages and later recoverable words keep their original send order in the open thread', () => {
