@@ -3,6 +3,7 @@
     "brief": {
       "gone": "Escolha outro agente a quem pedir",
       "new_conversation": "Recomece com “{{action}}”",
+      "none": "Nenhum agente está pronto",
       "select_value": "Escolha de novo: {{row}}"
     },
     "next": {
@@ -11,11 +12,13 @@
     },
     "none": "Nenhum",
     "notOffered": "Não oferecido para este modelo",
+    "openSettings": "Abrir as configurações de agentes",
     "pickerLabel": "{{agent}}. Selecione para mudar",
     "pickerTitle": "A quem pedir",
     "problem": {
       "gone": "{{agent}} não está disponível com as configurações atuais. Escolha outro agente a quem pedir",
       "invalid_value": "O valor anterior de {{row}}, {{previous}}, não é mais oferecido. Escolha de novo",
+      "none": "Nenhum agente pode receber pedidos ainda. Entre em um agente ou instale um; a entrada dele nas configurações de agentes mostra como.",
       "null_required": "{{row}} não pode mais ficar como Nenhum. Escolha um valor",
       "removed": "{{row}} (antes {{previous}}) saiu das configurações, por isso esta conversa não pode continuar. {{next}}",
       "unused": "{{row}} (antes {{previous}}) não é mais usado pelas opções de inicialização, por isso esta conversa não pode continuar. {{next}}"

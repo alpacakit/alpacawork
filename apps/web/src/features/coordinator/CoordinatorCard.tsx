@@ -61,7 +61,8 @@ function useCoordinatorLaunch() {
   const read = useFrameSelector(data => data !== null);
   const conversation = useConversation(state => state.conversation);
   const choice = useLaunchChoice(conversation ? { id: conversation.id, agent: conversation.agent, previous: conversationSelection(conversation) } : undefined);
-  return { profile: choice.profile, selected: choice.send, picker: choice.profiles.length || choice.gone ? choice : null,
+  // Once read, the picker is there even with no agent to choose: it says so, and a send opens it (admitLaunch).
+  return { profile: choice.profile, selected: choice.send, picker: read ? choice : null,
     ready: read && conversation !== null };
 }
 const CoordinatorFooter = memo(function CoordinatorFooter() {

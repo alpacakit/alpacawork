@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { AgentAvailability } from '@alpacawork/contract';
 import { chosenAgents, firstAgentOf, startAgents, usableAgents } from '../src/features/setup/rules';
 import type { AgentDraft } from '../src/features/panels/agent-settings-draft';
+import { agentOffers, workingOffers } from '../src/features/forms/agent-offers';
+import { launchProfile } from './fixtures';
 
 const agent = (name: string, enabled: boolean): AgentDraft => ({ id: name, originalName: name, name, adapter: name as AgentDraft['adapter'], enabled, params: [] });
 const seen = (status: AgentAvailability['status']): AgentAvailability =>
@@ -51,5 +53,18 @@ describe('the setup\'s agents', () => {
     expect(firstAgentOf(usable, 'claude')).toBe('claude');
     expect(firstAgentOf(usableAgents(rows, { codex: true, claude: false }), 'claude')).toBe('codex');
     expect(firstAgentOf([], null)).toBeNull();
+  });
+
+  it('takes requests from the same agents the send pickers offer, and never calls an agent without an answer signed out', () => {
+    const configured = [agent('codex', true), agent('claude', true), agent('grok', true), agent('pi', true)];
+    const observations = { availability: { codex: seen('signed_out'), claude: seen('ready'), grok: seen('not_found') } };
+    // pi has no answer: nothing says it is signed out, so it is shown and offered as it would be with no sign-in check.
+    const rows = startAgents(configured, observations, false);
+    expect(rows.map(row => [row.name, row.status])).toEqual([['codex', 'signedOut'], ['claude', 'ready'], ['pi', 'found'], ['grok', 'missing']]);
+    const usable = usableAgents(rows, { codex: true, claude: true, grok: true, pi: true });
+    const offers = workingOffers(agentOffers(configured.map(each => launchProfile(each.name, { model: ['m'] }))), observations);
+    expect(offers.map(offer => offer.key)).toEqual(usable);
+    // Every enabled agent signed out: nothing to send to, as nothing to enable in the setup.
+    expect(workingOffers(agentOffers([launchProfile('codex', { model: ['m'] })]), observations)).toEqual([]);
   });
 });

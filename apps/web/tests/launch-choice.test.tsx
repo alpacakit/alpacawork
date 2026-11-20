@@ -10,6 +10,8 @@ const given = vi.hoisted(() => ({ profiles: [] as unknown[] }));
 vi.mock("../src/data/workspace-store", () => ({ useFrameSelector: (select: (value: unknown) => unknown) => select({ info: {
   profiles: given.profiles,
 } }) }));
+// The agents' check has not answered: every enabled agent is offered.
+vi.mock("../src/data/queries", () => ({ useAgentObservations: () => undefined }));
 const codex = launchProfile("codex", { model: ["a", "b"] });
 /** The configured Pi profile omits effort for fixed models. The Grok profile requires effort. */
 const pi = launchProfile("pi", { model: ["model-with-effort", "fixed-first", "fixed-second"], effort: ["high", "low", "medium"] }, ["effort"],

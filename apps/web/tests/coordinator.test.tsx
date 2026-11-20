@@ -19,6 +19,8 @@ import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
 import { appHintDone } from '../src/features/coordinator/app-hint';
 import { useDialogStore } from '../src/state/dialog-store';
+// The agents' check is not asked here: every enabled agent is offered, as before the check answers.
+vi.mock("../src/data/queries", async original => ({ ...await original<typeof import("../src/data/queries")>(), useAgentObservations: () => undefined }));
 
 const empty = { id: "conversation-1", agent: null, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],
@@ -417,7 +419,7 @@ test("a message going on in the conversation sends only what is changed in its p
   expect(sent()[0].selected).not.toHaveProperty("model");
 });
 
-test("a message whose conversation's agent the settings no longer enable, with no other agent left, says so and does not go", async () => {
+test("a message with no agent left to take it says so, does not go, and leads to the agent settings", async () => {
   await i18n.changeLanguage("en");
   const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues: { model: "opus", effort: "high" },
     turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] }));
@@ -425,11 +427,13 @@ test("a message whose conversation's agent the settings no longer enable, with n
   render(<TestWorkspace data={screenData(tree({ profiles: [] }))}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
   await act(() => useConversation.getState().refresh());
-  expect(await screen.findByText(i18n.t("forms:agentPicker.brief.gone"))).toBeTruthy();
+  expect(await screen.findByText(i18n.t("forms:agentPicker.brief.none"))).toBeTruthy();
   writeEditor("Continue please");
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  expect(await screen.findByText(i18n.t("forms:agentPicker.problem.gone", { agent: "claude" }))).toBeTruthy();
+  expect(await screen.findByText(i18n.t("forms:agentPicker.problem.none"))).toBeTruthy();
   expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: i18n.t("forms:agentPicker.openSettings") }));
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server" });
 });
 
 test("a message whose conversation's previous model is no longer offered does not go: the picker opens to choose again", async () => {

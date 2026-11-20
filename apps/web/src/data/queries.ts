@@ -463,6 +463,13 @@ export function useAgentStatus() {
   const root = useFrameSelector((data) => data?.info.root ?? "");
   return useQuery({ ...resources.agentStatus(root), enabled: !!root, refetchOnMount: "always" });
 }
+/** What the launch pickers go by (useAgentOffers): the agents' last check, read once here; setup and Settings check
+ * again and this follows. Undefined until it answers, or when it could not be read. */
+export function useAgentObservations() {
+  const root = useFrameSelector((data) => data?.info.root ?? "");
+  const status = useQuery({ ...resources.agentStatus(root), enabled: !!root }).data;
+  return status && !status.error ? status : undefined;
+}
 export function useAgentExecutable(adapter: string, command: string | null) {
   const root = useFrameSelector((data) => data?.info.root ?? "");
   return useQuery({ ...resources.agentExecutable(root, adapter, command ?? ""), enabled: !!root && command !== null });
