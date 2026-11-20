@@ -68,7 +68,7 @@ alpacawork setup
 
 - **無料です（MIT License）。** AI の利用料は、お使いの Claude Code や Codex などの契約のとおりです。
 - **あなたの PC で動きます。** AI は PC で動くので、使っている間は PC を起動したまま、スリープしない設定にします。
-- **AI エージェントは、確認を求めないフル権限で起動します。** やってほしくないことや、確認してほしいことは、[プロジェクト方針](docs/ja/getting-started.md#4-ai-への約束ごとを書く) に書けます。
+- **AI エージェントは、Claude Code の `bypassPermissions` や Codex の `danger-full-access` と同じ、確認を求めない設定で起動します。** やってほしくないことや、確認してほしいことは、[プロジェクト方針](docs/ja/getting-started.md#4-ai-への約束ごとを書く) に書けます。
 - **タスクや会話、成果のファイルは PC に保存されます。** alpacawork の開発元が、これらを外部サーバーに送信することはありません。AI への指示や AI が読んだ内容は、各 AI エージェントを直接使う場合と同じように、AI の提供元へ送られます（[詳しいデータの扱い](docs/ja/getting-started.md#保存されるもの外へ送られるもの)）。
 
 ## ドキュメント
