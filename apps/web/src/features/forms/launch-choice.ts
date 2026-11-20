@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import type { Selection } from "@alpacawork/contract/agent-settings";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
-import { useAgentOffers, type AgentOffer } from "./agent-offers";
+import { useFrameSelector } from "@/data/workspace-store";
+import type { WorkspaceInfo } from "@/data/types";
+import { agentOffers, type AgentOffer } from "./agent-offers";
 import { launchSelection, selectionReady, type SelectionBasis } from "./launch-selection";
 
+type Profile = WorkspaceInfo["profiles"][number];
 type Values = Record<string, string | null>;
 /** The agent kind last chosen on this device, and by kind the launch values last chosen for it (null: "none", a written -). */
 type Stored = { agent: string | null; values: Record<string, Values> };
+const NO_PROFILES: Profile[] = [];
 const isValues = (value: unknown): value is Values => !!value && typeof value === "object" && !Array.isArray(value)
   && Object.values(value).every(each => each === null || typeof each === "string");
 const storedChoice = deviceValue<Stored>("alpacawork.launchChoice", jsonCodec((value) => {
@@ -47,7 +51,7 @@ export function selectionBasis(agent: string, conversation: ConversationLaunch |
  * values and sends only what the person changes here, so a choice made elsewhere never overrides the conversation.
  */
 export function useLaunchChoice(conversation?: ConversationLaunch) {
-  const offers = useAgentOffers();
+  const offers = agentOffers(useFrameSelector(data => data?.info.profiles) ?? NO_PROFILES);
   const stored = useDeviceValue(storedChoice);
   const own = useConversationChanges(state => state.conversation === (conversation?.id ?? null) ? state : null);
   const find = (key: string | null | undefined) => key ? offers.find(item => item.key === key) : undefined;
@@ -71,8 +75,8 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
     remember(target.key, launchSelection(target.offer, { kind: "new", hints: storedChoice.get().values[target.key] ?? {} }, update).send);
   };
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems,
-    /** The agent this send went to, which can no longer take requests (the settings no longer enable it, or it is
-     * signed out): the person picks another. */
+    /** The agent this send went to, which the settings no longer enable: the person picks another. With no agent
+     * enabled at all there is nothing to send to either. */
     gone, ready: !gone && !!offer && selectionReady(view),
     /** What the send carries: null is "none" (a written -). */
     send: view.send,

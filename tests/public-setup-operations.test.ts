@@ -1,4 +1,6 @@
 import { serviceDefinition } from '../apps/backend/test-dist/installation/setup.js';
+import { setupAgentName } from '../apps/backend/test-dist/installation/setup-output.js';
+import { serverText } from '../packages/i18n/dist/server.js';
 import { parse } from 'yaml';
 
 
@@ -101,10 +103,12 @@ test('public setup reports the running server\'s agent readiness', { skip: proce
   assert.equal(settings.agents.claude.enabled, false, 'the initial config check found Claude Code signed out');
   assert.equal(settings.availability.codex.status, 'signed_out');
   assert.equal(settings.availability.claude.status, 'ready');
-  assert.deepEqual(out.transcript.split(/\r?\n/).filter(line => /Agents ready:|is not signed in/.test(line)), [
-    'Agents ready: Claude Code',
-    `Codex is not signed in. To use it, run: ${settings.availability.codex.nextAction}`,
-  ]);
+  const text = serverText('en'), lines = out.transcript.split(/\r?\n/);
+  const said = [text('server:setup.agents.ready', { names: setupAgentName('claude') }),
+    text('server:setup.agents.signIn', { name: setupAgentName('codex'), action: settings.availability.codex.nextAction })];
+  // Every readiness line setup said: the ready list and each sign-in line, whatever agent they name.
+  const ready = text('server:setup.agents.ready', { names: '' }), signIn = text('server:setup.agents.signIn', { name: '', action: '' });
+  assert.deepEqual(lines.filter(line => line.startsWith(ready) || line.includes(signIn)), said);
 });
 
 for (const answer of ['cancel', 'eof']) test(`public setup ${answer} before Enter preserves HOME and existing skill bytes`, { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)' }, async t => {

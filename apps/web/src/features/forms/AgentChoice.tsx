@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useWorkspaceInfo } from "@/data/queries";
 import { useTranslation } from "react-i18next";
 import { FieldError } from "@/components/ui/field";
 import { modelLabel } from "@/domain/agent-label";
-import { useAgentOffers } from "./agent-offers";
+import { agentOffers } from "./agent-offers";
 import { launchSelection, modelCandidates, problemsToSay, selectionReady } from "./launch-selection";
 import { useChoiceText } from "./choice-text";
 
@@ -18,7 +19,7 @@ const UNSPECIFIED = "", UNSETTLED = " ";
  * server keeps what the placement starts with.
  */
 export function useAgentChoice(initial?: { profile: string; selected: Values }) {
-  const offers = useAgentOffers();
+  const offers = agentOffers(useWorkspaceInfo((info) => info.profiles));
   const [profile, setProfile] = useState(initial?.profile ?? offers[0]?.key ?? "");
   const [changes, setChanges] = useState<Values>(initial?.selected ?? {});
   const offer = offers.find(item => item.key === profile);
@@ -26,7 +27,7 @@ export function useAgentChoice(initial?: { profile: string; selected: Values }) 
   const chooseProfile = (key: string, overrides: Values = {}) => { setProfile(key); setChanges(overrides); };
   // A change the settings stop offering stays to choose again (launchSelection), even when another row changes.
   const setSelected = (update: Values) => setChanges(before => ({ ...before, ...update }));
-  return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems, ready: !!offer && selectionReady(view),
+  return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems, ready: selectionReady(view),
     send: view.send, setSelected, chooseProfile };
 }
 

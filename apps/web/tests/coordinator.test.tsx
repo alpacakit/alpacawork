@@ -19,8 +19,6 @@ import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
 import { appHintDone } from '../src/features/coordinator/app-hint';
 import { useDialogStore } from '../src/state/dialog-store';
-// The agents' check is not asked here: every enabled agent is offered, as before the check answers.
-vi.mock("../src/data/queries", async original => ({ ...await original<typeof import("../src/data/queries")>(), useAgentObservations: () => undefined }));
 
 const empty = { id: "conversation-1", agent: null, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],

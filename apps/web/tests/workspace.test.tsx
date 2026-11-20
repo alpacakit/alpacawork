@@ -31,8 +31,6 @@ import type { ControlTreeDTO } from "@alpacawork/contract/control";
 import { dto, homeFixture, timelineAxisAnswer, timelineAnswer, indexOf, rowOf, logEntry, project, searchAnswer, tree, viewsOf, PROJECT_TASK } from "./fixtures";
 import { DEFAULT_LIMITS } from "@alpacawork/contract";
 import { problemResponse } from "./problem";
-// The agents' check is not asked here: every enabled agent is offered, as before the check answers.
-vi.mock("../src/data/queries", async original => ({ ...await original<typeof import("../src/data/queries")>(), useAgentObservations: () => undefined }));
 
 const { fetchEventSource } = vi.hoisted(() => ({ fetchEventSource: vi.fn() }));
 vi.mock("@microsoft/fetch-event-source", () => ({ fetchEventSource }));

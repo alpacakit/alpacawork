@@ -15,23 +15,6 @@ export function agentObservation(agent: AgentDraft, observations: AgentObservati
   return adapter && agent.command === undefined ? observations?.detected?.[adapter] : undefined;
 }
 
-/**
- * Whether an agent can take requests, by what the server last saw of it: the one rule the setup and every send go by.
- * ready: signed in. found: its CLI is here and nothing says it is signed out (it has no sign-in check, or the check did
- * not answer, or there is no answer for it yet), so it works once the CLI itself is signed in. signedOut and missing
- * cannot take requests until the person signs in or installs it.
- */
-export type AgentReadiness = 'ready' | 'found' | 'signedOut' | 'missing';
-export function agentReadiness(observation: AgentAvailability | undefined): AgentReadiness {
-  switch (observation?.status) {
-    case 'ready': return 'ready';
-    case 'signed_out': return 'signedOut';
-    case 'not_found': return 'missing';
-    default: return 'found';
-  }
-}
-export const takesRequests = (readiness: AgentReadiness | 'checking') => readiness === 'ready' || readiness === 'found';
-
 /** The one line a closed card adds, only when the agent is known not to start: signed out, or no executable. */
 export type AgentNotice = { kind: 'signedOut'; action: string } | { kind: 'notFound'; executable: string };
 export function agentNotice(adapter: BuiltinAdapterId | null, observation: AgentAvailability | undefined): AgentNotice | null {

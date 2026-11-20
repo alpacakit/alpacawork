@@ -1,11 +1,7 @@
 import type { Selection } from "@alpacawork/contract/agent-settings";
 import type { SelectionOffer } from "@alpacawork/contract/agent-selection";
 import type { CoordinatorConversation } from "@alpacawork/contract/coordinator";
-import { useMemo } from "react";
 import type { WorkspaceInfo } from "@/data/types";
-import { useAgentObservations } from "@/data/queries";
-import { useFrameSelector } from "@/data/workspace-store";
-import { agentReadiness, takesRequests, type AgentObservations } from "@/features/panels/agent-status";
 
 /**
  * The one place the screen's launch pickers read the server's agent data: each enabled agent, in config order, with
@@ -23,20 +19,6 @@ export function agentOffers(profiles: readonly Profile[]): AgentOffer[] {
     offers.set(profiles, known);
   }
   return known;
-}
-
-/** The enabled agents that can take requests (takesRequests): one the server saw signed out or without its CLI is not
- * offered, as if the settings did not enable it. Before the check answers, or when it cannot, every enabled one is. */
-export function workingOffers(offers: readonly AgentOffer[], observations: AgentObservations | undefined): AgentOffer[] {
-  return offers.filter(item => takesRequests(agentReadiness(observations?.availability?.[item.key])));
-}
-
-const NO_PROFILES: Profile[] = [];
-/** What every launch picker offers: the enabled agents that can take requests, in config order. */
-export function useAgentOffers(): AgentOffer[] {
-  const enabled = agentOffers(useFrameSelector(data => data?.info.profiles) ?? NO_PROFILES);
-  const observations = useAgentObservations();
-  return useMemo(() => workingOffers(enabled, observations), [enabled, observations]);
 }
 
 /** The conversation's previous launch values (its latest saved Run's launch.values); null before any Run, or when that

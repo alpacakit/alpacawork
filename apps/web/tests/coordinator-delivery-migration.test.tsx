@@ -21,8 +21,6 @@ import { useViewStore } from '../src/state/view-store';
 import { Toaster } from '../src/components/ui/toaster';
 import { notify, useToasts } from '../src/lib/notify';
 import { TestWorkspace } from './fixtures';
-// The agents' check is not asked here: every enabled agent is offered, as before the check answers.
-vi.mock("../src/data/queries", async original => ({ ...await original<typeof import("../src/data/queries")>(), useAgentObservations: () => undefined }));
 
 const root = '/fixture', cid = 'migration-delivery', key = draftKey(root, 'coordinator', cid);
 const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, agent: null, warm: 'none' as const, busy, cancelled: [], turns });

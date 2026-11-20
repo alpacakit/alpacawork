@@ -49,7 +49,7 @@ export function AgentPicker({ choice, disabled = false, className, open: shown, 
   const options = agentModelChoices(choice.profiles.map(profile => ({ key: profile.key, models: modelCandidates(profile.offer) })));
   const selected = listedLabel(options, choice.profile, chosenName(choice.selected, choice.profile));
   const kind = kindToName(options, choice.profile, choice.selected.model);
-  // No agent can take requests (none enabled, or every one signed out or missing): the button says so in its name's place.
+  // No agent is enabled: the button says so in its name's place.
   const none = choice.profiles.length === 0;
   const named = none ? text.brief.none() : kind ? `${kind} ${selected.full}` : selected.full;
   const trigger = useRef<HTMLButtonElement>(null);
@@ -232,7 +232,7 @@ function AgentMenu({ choice, disabled, options, close }: { choice: Choice; disab
         </div>;
       })}
     </div>}
-    {/* With no agent to choose, the way to one: the agents in Settings, which say how to sign in or install each. */}
+    {/* With no agent to choose, the way to one: the agents in Settings, which say how to sign in to each and enable it. */}
     {choice.profiles.length === 0 ? <div data-selection-problems className="flex flex-col items-start gap-2">
       <FieldError className="mt-0">{text.none()}</FieldError>
       <Button variant="outline" data-open-agent-settings onClick={() => { close(); openSettings("server"); }}>{t("agentPicker.openSettings")}</Button>

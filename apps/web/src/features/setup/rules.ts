@@ -1,19 +1,23 @@
 import type { AgentAvailability } from "@alpacawork/contract";
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
 import { draftAdapter, newAgentDraft, type AgentDraft } from "@/features/panels/agent-settings-draft";
-import { agentObservation, agentReadiness, takesRequests, type AgentObservations, type AgentReadiness } from "@/features/panels/agent-status";
+import { agentObservation, type AgentObservations } from "@/features/panels/agent-status";
 import { firstEnabledAgent, withFirstAgent } from "@/features/panels/agent-settings-order";
 
 /**
  * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (a kind it does not list is
  * added there when it is switched on). `command` is the CLI it runs, named when it was not found.
- * The status is the agent's readiness (agentReadiness), or checking while the first check has not answered.
+ * ready: signed in, as the check confirmed. found: the CLI is here and nothing says it is signed out (this kind has no
+ * sign-in check, or the check did not answer, or there is no answer for it), so it may be enabled and works once the
+ * CLI itself is signed in. signedOut: the check saw it signed out. missing: its CLI is not on this PC, so it cannot be
+ * enabled. checking: no answer yet.
  */
-export type StartAgent = { name: string; adapter: BuiltinAdapterId | null; status: AgentReadiness | "checking";
+export type StartAgent = { name: string; adapter: BuiltinAdapterId | null; status: "ready" | "found" | "signedOut" | "missing" | "checking";
   signIn: string | null; command: string | null; configured: boolean };
 
 const statusOf = (seen: AgentAvailability | undefined, checking: boolean): StartAgent["status"] =>
-  !seen && checking ? "checking" : agentReadiness(seen);
+  !seen && checking ? "checking" : seen?.status === "ready" ? "ready" : seen?.status === "signed_out" ? "signedOut"
+    : seen?.status === "not_found" ? "missing" : "found";
 
 /**
  * The agents the setup lists: config.yaml's in its order, then each kind alpacawork supports that config.yaml does not
@@ -41,7 +45,7 @@ export function startAgents(agents: readonly AgentDraft[], observations: AgentOb
 export type AgentSwitches = Record<string, boolean>;
 
 /** Whether a listed agent can take work once switched on. */
-export const canWork = (row: Pick<StartAgent, "status">) => takesRequests(row.status);
+export const canWork = (row: Pick<StartAgent, "status">) => row.status === "ready" || row.status === "found";
 /** The agents that would take work: listed, able to and switched on, in config order. */
 export const usableAgents = (rows: readonly StartAgent[], on: AgentSwitches) =>
   rows.filter(row => canWork(row) && on[row.name]).map(row => row.name);

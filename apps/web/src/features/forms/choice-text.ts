@@ -27,9 +27,9 @@ const choiceText = Object.assign((choice: string | null) => value(choice), {
   row,
   problem: (problem: SelectionProblem) => selectionProblemText(problem,
     i18n.t("forms:agentPicker.next.clear", { action: i18n.t("ui:coordinatorCard.clear") })),
-  /** The agent the send went to can no longer take requests (not enabled in the settings, or signed out). */
+  /** The agent the send went to is no longer enabled in the settings. */
   gone: (agent: string) => i18n.t("forms:agentPicker.problem.gone", { agent }),
-  /** No agent can take requests: none is enabled, or every enabled one is signed out or missing. */
+  /** No agent is enabled in the settings. */
   none: () => i18n.t("forms:agentPicker.problem.none"),
   brief: Object.assign((problem: SelectionProblem) => problem.recovery === "new_conversation"
     ? i18n.t("forms:agentPicker.brief.new_conversation", { action: i18n.t("ui:coordinatorCard.clear") })
