@@ -5,7 +5,7 @@ import { spawnBridge } from './helpers/bridge-process.ts';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Socket } from 'node:net';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -114,12 +114,12 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   assert.deepEqual(h.events().filter(event => event.type === 'input.accepted').map(event => event.id), ['one', 'two']);
 });
 
-for (const resume of [false, true]) test(`Copilot ${resume ? 'resumes' : 'opens'} its session discovering the person's skills and configuration`, async t => {
+for (const resume of [false, true]) test(`Copilot ${resume ? 'resumes' : 'opens'} its session with the folder of the person's skills`, async t => {
   const h = await setup(t, resume);
   h.send('one', 'start');
   await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'one'));
   const opened = h.requests.find(request => request.method === (resume ? 'session.resume' : 'session.create'));
-  assert.equal(opened?.params.enableConfigDiscovery, true);
+  assert.deepEqual(opened?.params.skillDirectories, [join(homedir(), '.agents', 'skills')]);
   h.answer('start', 'answer');
   h.idle();
   await h.until(() => h.events().some(event => event.type === 'turn.completed'));
