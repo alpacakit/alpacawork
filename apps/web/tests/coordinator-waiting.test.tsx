@@ -247,7 +247,7 @@ test(`folded ${unfinished} remains visible ahead of a newer ${terminal} row`, ()
   else if (terminal === 'cancelled') cancelOutgoing('/fixture', second, key);
   else cancelUnsent('/fixture', second);
   render(<Surface />);
-  const expected = { grace: ['Sending soonUndo', 'waiting'], queued: ['Queued', 'running'],
+  const expected = { grace: ['Sending soonUndo', 'waiting'], queued: ['Queued', 'waiting'],
     sending: ['Sending…', 'running'], unknown: ['Couldn\'t confirm whether it arrived.', 'unread'],
     withdrawing: ['Cancelling…', 'running'], withdrawUnknown: ['Couldn\'t confirm whether it was cancelled.', 'unread'] }[unfinished];
   const pill = document.querySelector('[data-coordinator-pill]')!;
@@ -280,8 +280,12 @@ test.each([
   ['it waits its turn', conversation([turn({ waiting: true })], true), 'Queued'],
   ['it is on its way', conversation([turn()]), 'Sending…'],
   ['it is at work', conversation([turn({ status: 'running' })], true), 'Working on it…'],
-])('the folded line and the row say the same while %s', (_, value, words) => {
+  ['it is sent now to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ waiting: true, joinRequested: true })], true), 'Sending…'],
+  ['it is handed to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ status: 'sending' })], true), 'Sending…'],
+  ['it is taken back while the coordinator starts', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Cancelling…', true],
+])('the folded line and the row say the same while %s', (_, value, words, withdraw = false) => {
   setConversationState({ root: '/fixture', expanded: true, conversation: value });
+  if (withdraw) beginWithdrawal('/fixture', 'first', value);
   render(<Surface />);
   expect(document.querySelector('[data-coordinator-thread] [data-coordinator-message=first]')!.textContent).toContain(words);
   expect(document.querySelector('[data-coordinator-pill]')!.textContent).toContain(words);

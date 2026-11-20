@@ -1,63 +1,77 @@
 import { useDeliverySurface } from './delivery-notice';
 import { ROW_GIVES_WAY, ROW_WHOLE, useToolsHere } from './task-action-slot';
 import { LocalOutcome } from './LocalOutcome';
-import { latestOutgoing, outgoingFinished } from './editor/outbox';
-import { localDeliveryKey, localDeliveryText, waitingKey } from './delivery-copy';
+import { isOutgoingIn, latestOutgoing, outgoingFinished, useOutbox } from './editor/outbox';
+import { localDeliveryText } from './delivery-copy';
+import { deliveryLine, deliveryLineWords, deliveryOf, type DeliveryFacts, type DeliveryLine } from './delivery-line';
+import { useDraftStore } from '@/features/forms/draft-store';
+import { useShallow } from 'zustand/react/shallow';
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { useConversation } from "./coordinator";
-import { useShownConversation, type Shown } from "./shown";
+import { useShownConversation, type SentTurn, type Shown } from "./shown";
 import { firstSentence } from "./foot";
 import { coordinatorErrorReason, useWorkingWords } from "./parts";
 import { UnreadMark } from "./unread-mark";
 
 /**
- * What the conversation says last while it is folded: what its latest message at work or on its way says in the open
- * conversation (the same partition, Shown, and the same words), or its last turn's own words (its answer's first
- * sentence, or that it failed or was stopped), unread until its end has been on screen (`read`: read-boundary).
+ * What the conversation says last while it is folded: what the open conversation says under its latest message at work
+ * or on its way, from the same decision (deliveryLine), or its last turn's own words (its answer's first sentence, or that
+ * it failed or was stopped), unread until its end has been on screen (`read`: read-boundary).
  * Said by the one way into the folded conversation over the input (LastWordsPill).
  */
 /** `saying`: what it says while running, when not that it thinks. */
 type LastWords = { running: true; said: null; unread: false; saying: string; waiting?: never; soon?: never }
   | { running: false; said: string | null; unread: boolean; waiting?: boolean; saying?: never; soon?: import("./shown").LocalTurn };
-const lastTurn = (shown: Shown) => {
-  for (let index = shown.thread.length - 1; index >= 0; index--) {
-    const turn = shown.thread[index]!;
-    if (turn.status === 'running' || turn.status === 'queued' || turn.status === 'sending') return turn;
-  }
-  return shown.thread.at(-1);
-};
-function lastWords(shown: Shown, last: ReturnType<typeof lastTurn>, read: boolean, working: string, t: TFunction<'ui'>): LastWords {
-  const active = last?.status === 'running' || last?.status === 'queued' || last?.status === 'sending' ? last : undefined;
-  // A request sent from here that would start at once is the conversation's last word until a snapshot holds it.
+type Speaking = { turn: SentTurn; line: DeliveryLine };
+/**
+ * The message the folded line speaks for: the latest whose line says more than that it waits; else the latest waiting
+ * (a message waiting behind work leaves the line to the work, and the waiting count beside it says it waits).
+ */
+function speaking(shown: Shown, facts: DeliveryFacts): Speaking | undefined {
+  const rows = [...shown.thread.filter(turn => turn.status === 'running' || turn.status === 'queued' || turn.status === 'sending').map(turn => ({ turn, local: undefined })),
+    ...shown.tail.map(row => row.kind === 'local' ? { turn: row.turn, local: row.turn } : { turn: row.turn, local: undefined })]
+    .filter(({ local }) => !local || !outgoingFinished(local) && local.stage !== 'waiting');
+  const lines = rows.map(({ turn, local }) => ({ turn, line: deliveryLine(turn, local, deliveryOf(turn, local, facts)) })).filter(({ line }) => line.kind !== 'none');
+  return lines.filter(({ line }) => !waits(line)).at(-1) ?? lines.at(-1);
+}
+const waits = (line: DeliveryLine) => line.kind === 'waiting' || line.kind === 'outcome' && line.turn.stage === 'queued';
+function lastWords(shown: Shown, now: Speaking | undefined, read: boolean, working: string, t: TFunction<'ui'>): LastWords {
   const mine = latestOutgoing(shown.local);
   if (mine?.stage === 'waiting') return { running: false, unread: false, waiting: true,
     soon: mine, said: t('coordinatorCard.soon') };
-  if (mine && (mine.stage === 'queued' || mine.stage === 'sending') && shown.localWaiting.includes(mine) && last?.status === 'running')
-    return { running: true, said: null, unread: false, saying: working };
-  if (mine && !(outgoingFinished(mine) && (active || shown.waiting.length))) return mine.stage === 'sending' || mine.stage === 'queued' ? { running: true, said: null, unread: false, saying: t(localDeliveryKey(mine, shown.preparing)) }
-    : { running: false, said: localDeliveryText(mine, t, shown.preparing), unread: true };
-  // Serve's own facts, as the open conversation draws them: at work, or on its way to the work.
-  if (last?.status === 'running') return { running: true, said: null, unread: false, saying: working };
-  if (active) return { running: true, said: null, unread: false, saying: t("coordinatorCard.posting") };
+  const last = shown.thread.at(-1);
   // The last turn's own words: its answer's first sentence, or that it failed or was stopped (not an older answer).
-  const said = !last ? null : last.status === "succeeded" ? last.answer ? firstSentence(last.answer) : null
-    : t("coordinatorCard.failed", { reason: coordinatorErrorReason(last) });
-  const unread = !read && !!said;
-  // An answer not read yet stays the notice; else a message waiting to start says what it waits for, as its row does.
-  if (!unread && shown.waiting.length) return { running: true, said: null, unread: false, saying: t(waitingKey(shown.preparing)) };
-  return { running: false, said, unread };
+  const answer = !last ? null : last.status === "succeeded" ? last.answer ? firstSentence(last.answer) : null
+    : last.status === "failed" ? t("coordinatorCard.failed", { reason: coordinatorErrorReason(last) }) : null;
+  const unread = !read && !!answer;
+  if (now) {
+    const words = deliveryLineWords(now.line, shown.preparing, t) ?? '';
+    if (now.line.kind === 'working') return { running: true, said: null, unread: false, saying: working };
+    // An answer not read yet stays the notice over a message that only waits.
+    if (waits(now.line)) return unread ? { running: false, said: answer, unread } : { running: false, said: words, unread: false, waiting: true };
+    if (now.line.kind === 'outcome' && now.line.turn.stage !== 'sending') return { running: false, said: words, unread: true };
+    return { running: true, said: null, unread: false, saying: words };
+  }
+  // A send that did not go, when nothing is under way, is the conversation's last word.
+  if (mine) return { running: false, said: localDeliveryText(mine, t, shown.preparing), unread: true };
+  return { running: false, said: answer, unread };
 }
 function useLastWords(): LastWords {
   const { t } = useTranslation("ui");
   const shown = useShownConversation();
-  const last = lastTurn(shown);
-  const working = useWorkingWords(last?.status === 'running' ? last : undefined);
+  const root = useConversation(state => state.root);
+  const conversationId = useConversation(state => state.conversation?.id ?? '');
+  // Only this conversation's sends: an input edit changes drafts too.
+  const entries = useDraftStore(useShallow(state => Object.fromEntries(Object.entries(state.entries).filter(([key]) => isOutgoingIn(key, root)))));
+  const live = useOutbox(state => state.live);
+  const now = speaking(shown, { root, conversationId, entries, live, shown });
+  const working = useWorkingWords(now?.line.kind === 'working' ? now.turn : undefined);
   const read = useConversation(state => state.read);
-  return lastWords(shown, last, read, working, t);
+  return lastWords(shown, now, read, working, t);
 }
 /**
  * The one way into the folded conversation: always over the input's left end while the conversation is folded,
