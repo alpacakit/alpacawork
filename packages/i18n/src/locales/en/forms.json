@@ -18,7 +18,7 @@
     "problem": {
       "gone": "{{agent}} isn't available with the current settings. Choose someone else to ask",
       "invalid_value": "The previous {{row}}, {{previous}}, is no longer offered. Choose again",
-      "none": "No agent is enabled. In the agent settings, enable an agent you have signed in to.",
+      "none": "No agent is enabled. In the agent settings, sign in to an agent, then enable it.",
       "null_required": "{{row}} can no longer be None. Choose a value",
       "removed": "{{row}} (previously {{previous}}) was removed from the settings, so this conversation can't be continued. {{next}}",
       "unused": "{{row}} (previously {{previous}}) is no longer used by the launch options, so this conversation can't be continued. {{next}}"

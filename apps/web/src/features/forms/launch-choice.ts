@@ -75,9 +75,9 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
     remember(target.key, launchSelection(target.offer, { kind: "new", hints: storedChoice.get().values[target.key] ?? {} }, update).send);
   };
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems,
-    /** The agent this send went to, which the settings no longer enable: the person picks another. With no agent
-     * enabled at all there is nothing to send to either. */
-    gone, ready: !gone && !!offer && selectionReady(view),
+    /** The agent this send went to, which the settings no longer enable: the person picks another. A send goes only
+     * to an offered agent, so neither it nor a send with no agent enabled at all is ready. */
+    gone, ready: !!offer && selectionReady(view),
     /** What the send carries: null is "none" (a written -). */
     send: view.send,
     /** Changes some values; a value the change leaves inactive (the effort of a model without one) is not sent. */

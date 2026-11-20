@@ -18,7 +18,7 @@
     "problem": {
       "gone": "{{agent}} não está disponível com as configurações atuais. Escolha outro agente a quem pedir",
       "invalid_value": "O valor anterior de {{row}}, {{previous}}, não é mais oferecido. Escolha de novo",
-      "none": "Nenhum agente está ativado. Nas configurações de agentes, ative um agente em que você entrou.",
+      "none": "Nenhum agente está ativado. Nas configurações de agentes, entre em um agente e depois ative-o.",
       "null_required": "{{row}} não pode mais ficar como Nenhum. Escolha um valor",
       "removed": "{{row}} (antes {{previous}}) saiu das configurações, por isso esta conversa não pode continuar. {{next}}",
       "unused": "{{row}} (antes {{previous}}) não é mais usado pelas opções de inicialização, por isso esta conversa não pode continuar. {{next}}"
