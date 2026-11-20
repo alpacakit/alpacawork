@@ -16,6 +16,7 @@ import { LocalOutcome } from './LocalOutcome';
 import { Thinking } from './parts';
 import { rowControl } from './delivery-presentation';
 import { cn } from '@/lib/utils';
+import { waitingKey } from './delivery-copy';
 
 /** One sent message's status and actions, wherever that message is drawn. */
 export function MessageDelivery({ turn, local, children, panel = false }: { turn: SentTurn; local?: LocalTurn; children?: ReactNode; panel?: boolean }) {
@@ -63,7 +64,7 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
   if (!panel && !local && turn.status === 'running') return <div className="flex flex-wrap items-center gap-x-2"><Thinking turn={turn} /></div>;
   return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3'}>
     {panel ? <div className="min-w-0 flex-1">{children}{status}</div> : status}
-    {!panel && !outcome && (control === 'cancel' || control === 'send-now') && <WaitingStatus>{t('coordinatorCard.queuedLocally')}</WaitingStatus>}
+    {!panel && !outcome && (control === 'cancel' || control === 'send-now') && <WaitingStatus>{t(waitingKey(shown.preparing))}</WaitingStatus>}
     {/* Under a message its state is said in the conversation's own words and size, from the reply's edge (as "Working on it…" is);
         the panel's compact row says it among its controls. */}
     {!panel && !outcome && words}

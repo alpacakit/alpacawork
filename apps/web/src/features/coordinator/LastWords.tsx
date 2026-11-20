@@ -2,7 +2,7 @@ import { useDeliverySurface } from './delivery-notice';
 import { ROW_GIVES_WAY, ROW_WHOLE, useToolsHere } from './task-action-slot';
 import { LocalOutcome } from './LocalOutcome';
 import { latestOutgoing, outgoingFinished } from './editor/outbox';
-import { localDeliveryKey, localDeliveryText } from './delivery-copy';
+import { localDeliveryKey, localDeliveryText, waitingKey } from './delivery-copy';
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -15,8 +15,9 @@ import { coordinatorErrorReason, useWorkingWords } from "./parts";
 import { UnreadMark } from "./unread-mark";
 
 /**
- * What the conversation says last while it is folded: that it is thinking, or its last turn's own words (its answer's
- * first sentence, or that it failed or was stopped), unread until its end has been on screen (`read`: read-boundary).
+ * What the conversation says last while it is folded: what its latest message at work or on its way says in the open
+ * conversation (the same partition, Shown, and the same words), or its last turn's own words (its answer's first
+ * sentence, or that it failed or was stopped), unread until its end has been on screen (`read`: read-boundary).
  * Said by the one way into the folded conversation over the input (LastWordsPill).
  */
 /** `saying`: what it says while running, when not that it thinks. */
@@ -25,36 +26,38 @@ type LastWords = { running: true; said: null; unread: false; saying: string; wai
 const lastTurn = (shown: Shown) => {
   for (let index = shown.thread.length - 1; index >= 0; index--) {
     const turn = shown.thread[index]!;
-    if (turn.status === 'running' || turn.status === 'queued') return turn;
+    if (turn.status === 'running' || turn.status === 'queued' || turn.status === 'sending') return turn;
   }
   return shown.thread.at(-1);
 };
-function lastWords(shown: Shown, last: ReturnType<typeof lastTurn>, serveBusy: boolean, read: boolean, working: string, t: TFunction<'ui'>): LastWords {
-  const active = last?.status === 'running' || last?.status === 'queued' ? last : undefined;
-  const busy = serveBusy && (shown.turns.length > 0 || shown.local.length > 0);
+function lastWords(shown: Shown, last: ReturnType<typeof lastTurn>, read: boolean, working: string, t: TFunction<'ui'>): LastWords {
+  const active = last?.status === 'running' || last?.status === 'queued' || last?.status === 'sending' ? last : undefined;
   // A request sent from here that would start at once is the conversation's last word until a snapshot holds it.
   const mine = latestOutgoing(shown.local);
   if (mine?.stage === 'waiting') return { running: false, unread: false, waiting: true,
     soon: mine, said: t('coordinatorCard.soon') };
   if (mine && (mine.stage === 'queued' || mine.stage === 'sending') && shown.localWaiting.includes(mine) && last?.status === 'running')
     return { running: true, said: null, unread: false, saying: working };
-  if (mine && !(outgoingFinished(mine) && (busy || active))) return mine.stage === 'sending' || mine.stage === 'queued' ? { running: true, said: null, unread: false, saying: t(localDeliveryKey(mine)) }
-    : { running: false, said: localDeliveryText(mine, t), unread: true };
-  if (last?.status === "queued") return { running: true, said: null, unread: false, saying: t("coordinatorCard.posting") };
-  if (last?.status === 'running' || busy) return { running: true, said: null, unread: false, saying: working };
+  if (mine && !(outgoingFinished(mine) && (active || shown.waiting.length))) return mine.stage === 'sending' || mine.stage === 'queued' ? { running: true, said: null, unread: false, saying: t(localDeliveryKey(mine, shown.preparing)) }
+    : { running: false, said: localDeliveryText(mine, t, shown.preparing), unread: true };
+  // Serve's own facts, as the open conversation draws them: at work, or on its way to the work.
+  if (last?.status === 'running') return { running: true, said: null, unread: false, saying: working };
+  if (active) return { running: true, said: null, unread: false, saying: t("coordinatorCard.posting") };
   // The last turn's own words: its answer's first sentence, or that it failed or was stopped (not an older answer).
   const said = !last ? null : last.status === "succeeded" ? last.answer ? firstSentence(last.answer) : null
     : t("coordinatorCard.failed", { reason: coordinatorErrorReason(last) });
-  return { running: false, said, unread: !read && !!said };
+  const unread = !read && !!said;
+  // An answer not read yet stays the notice; else a message waiting to start says what it waits for, as its row does.
+  if (!unread && shown.waiting.length) return { running: true, said: null, unread: false, saying: t(waitingKey(shown.preparing)) };
+  return { running: false, said, unread };
 }
 function useLastWords(): LastWords {
   const { t } = useTranslation("ui");
   const shown = useShownConversation();
-  const busy = useConversation(state => state.conversation?.busy ?? false);
   const last = lastTurn(shown);
   const working = useWorkingWords(last?.status === 'running' ? last : undefined);
   const read = useConversation(state => state.read);
-  return lastWords(shown, last, busy, read, working, t);
+  return lastWords(shown, last, read, working, t);
 }
 /**
  * The one way into the folded conversation: always over the input's left end while the conversation is folded,

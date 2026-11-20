@@ -269,9 +269,22 @@ test('preparation projects accepted queued messages as waiting, without a Send n
   setConversationState({ root: '/fixture', expanded: true, conversation: { ...conversation([turn()], true), warm: 'preparing' } });
   render(<Surface />);
   const row = document.querySelector('[data-coordinator-thread] [data-coordinator-waiting=first]')!;
-  expect(row.textContent).toContain('Queued');
+  expect(row.textContent).toContain('Starting the coordinator');
   expect(row.querySelector('[data-coordinator-send-now]')).toBeNull();
   expect(row.querySelector('[data-coordinator-posting]')).toBeNull();
+});
+
+// The folded line says what the open conversation's row says, from the same facts: never at work while the row waits.
+test.each([
+  ['the coordinator is starting', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Starting the coordinator'],
+  ['it waits its turn', conversation([turn({ waiting: true })], true), 'Queued'],
+  ['it is on its way', conversation([turn()]), 'Sending…'],
+  ['it is at work', conversation([turn({ status: 'running' })], true), 'Working on it…'],
+])('the folded line and the row say the same while %s', (_, value, words) => {
+  setConversationState({ root: '/fixture', expanded: true, conversation: value });
+  render(<Surface />);
+  expect(document.querySelector('[data-coordinator-thread] [data-coordinator-message=first]')!.textContent).toContain(words);
+  expect(document.querySelector('[data-coordinator-pill]')!.textContent).toContain(words);
 });
 
 test('waiting messages and later recoverable words keep their original send order in the open thread', () => {
