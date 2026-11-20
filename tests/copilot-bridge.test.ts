@@ -114,6 +114,19 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   assert.deepEqual(h.events().filter(event => event.type === 'input.accepted').map(event => event.id), ['one', 'two']);
 });
 
+for (const resume of [false, true]) test(`Copilot ${resume ? 'resumes' : 'opens'} its session discovering the person's skills and configuration`, async t => {
+  const h = await setup(t, resume);
+  h.send('one', 'start');
+  await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'one'));
+  const opened = h.requests.find(request => request.method === (resume ? 'session.resume' : 'session.create'));
+  assert.equal(opened?.params.enableConfigDiscovery, true);
+  h.answer('start', 'answer');
+  h.idle();
+  await h.until(() => h.events().some(event => event.type === 'turn.completed'));
+  h.child.stdin.end();
+  assert.equal(await h.exited, 0);
+});
+
 test('Copilot queued input joins only after its SDK turn starts, then a later input starts a new turn', async t => {
   const h = await setup(t, true);
   h.send('one', 'start');

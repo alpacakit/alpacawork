@@ -66,7 +66,10 @@ export class CopilotRuntime implements Runtime {
     const client = new CopilotClient({ connection, workingDirectory: process.cwd() });
     this.client = client;
     await this.opening(client.start());
-    const config = { ...(this.options.model ? { model: this.options.model } : {}), onPermissionRequest: approveAll };
+    // Discover the person's configuration as the Copilot CLI does (the SDK leaves it off): their skills in ~/.agents/skills
+    // above all, which alpacawork installs there for every kind that reads that folder. Without it a coordinator told to
+    // load its skill searches the disk for it.
+    const config = { ...(this.options.model ? { model: this.options.model } : {}), onPermissionRequest: approveAll, enableConfigDiscovery: true };
     const session = await this.opening(this.options.resume
       ? client.resumeSession(this.options.resume, config)
       : client.createSession(config));
