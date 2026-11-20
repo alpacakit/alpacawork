@@ -68,7 +68,7 @@ alpacawork setup
 
 - **免费（MIT License）。** AI 的使用按你现有的 Claude Code、Codex 等套餐计费。
 - **在你的电脑上运行。** AI 在电脑上运行，所以使用 alpacawork 期间请保持电脑开机，并设置为不休眠。
-- **AI 智能体以完全权限启动，运行中不会停下来请你确认。** 不希望 AI 做的事，或希望它先问你的事，可以写进[项目准则](docs/zh-CN/getting-started.md#4-写下给-ai-的约定)。
+- **AI 智能体以与 Claude Code 的 `bypassPermissions`、Codex 的 `danger-full-access` 相同的免确认模式启动，运行中不会停下来询问。** 不希望 AI 做的事，或希望它先问你的事，可以写进[项目准则](docs/zh-CN/getting-started.md#4-写下给-ai-的约定)。
 - **任务、对话和结果文件保存在你的电脑上。** alpacawork 不会把它们发送到开发者运营的任何外部服务器。给 AI 的指示，以及 AI 读取的内容，会发送给 AI 的提供商，与你直接使用各个 AI 智能体时相同（[数据处理的详细说明](docs/zh-CN/getting-started.md#保存了什么向外发送了什么)）。
 
 ## 文档

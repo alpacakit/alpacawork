@@ -68,7 +68,7 @@ alpacawork setup
 
 - **É gratuito (licença MIT).** O uso de IA é cobrado de acordo com o plano que você já tem do Claude Code, do Codex ou de outro agente.
 - **Roda no seu PC.** A IA roda no PC, então mantenha o PC ligado e configure-o para não entrar em suspensão enquanto você usa o alpacawork.
-- **O alpacawork inicia os agentes de IA com permissões totais, então eles não param para pedir confirmação.** Você pode escrever na [política do projeto](docs/pt-BR/getting-started.md#4-escrever-as-regras-básicas-para-a-ia) o que a IA não deve fazer, ou o que deve perguntar a você antes.
+- **O alpacawork inicia os agentes de IA no mesmo modo sem confirmações que o `bypassPermissions` do Claude Code e o `danger-full-access` do Codex, então eles não param para perguntar.** Você pode escrever na [política do projeto](docs/pt-BR/getting-started.md#4-escrever-as-regras-básicas-para-a-ia) o que a IA não deve fazer, ou o que deve perguntar a você antes.
 - **Tarefas, conversas e arquivos de resultado ficam no seu PC.** O alpacawork não os envia a nenhum servidor externo mantido pelos desenvolvedores. Suas instruções para a IA e o conteúdo que ela lê são enviados ao provedor da IA, como acontece quando você usa cada agente de IA diretamente ([mais sobre o tratamento dos dados](docs/pt-BR/getting-started.md#o-que-é-armazenado-e-o-que-é-enviado-para-fora)).
 
 ## Documentação
