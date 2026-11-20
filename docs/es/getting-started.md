@@ -38,7 +38,7 @@ La pantalla de configuración inicial tiene tres pasos: los agentes de IA que va
 
 ### Requisitos
 
-- macOS (Apple silicon), Linux (x64, glibc) o Windows (dentro de WSL2; consulta [En Windows](#en-windows) más abajo)
+- macOS (Apple silicon), Linux (x64, glibc, con una sesión de usuario de systemd, que tienen la mayoría de las instalaciones de escritorio y servidor) o Windows (dentro de WSL2 con systemd activado, lo predeterminado en Ubuntu; consulta [En Windows](#en-windows) más abajo)
 - [Node.js](https://nodejs.org/es) 24.16 o posterior
 - Chrome o Edge 111, Safari 16.4 (iOS/iPadOS 16.4 en iPhone y iPad) o Firefox 128, o versiones posteriores. Los navegadores más antiguos muestran una página en blanco
 - Un agente de IA en el que hayas iniciado sesión (como Claude Code o Codex)

@@ -1,7 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { parse } from 'yaml';
+import { DEFAULT_LIMITS } from '@alpacawork/contract';
+import { AgentsStep } from '../src/features/setup/AgentsStep';
 import type { AgentAvailability } from '@alpacawork/contract';
 import { chosenAgents, firstAgentOf, startAgents, usableAgents } from '../src/features/setup/rules';
 import type { AgentDraft } from '../src/features/panels/agent-settings-draft';
+
+// The step's reads, as the server answers them: each read is the same object from render to render, as a query's is.
+const given = vi.hoisted(() => ({ settings: {} as { data: unknown }, status: {} as { data: unknown }, saved: [] as { agents: string }[] }));
+vi.mock('../src/data/queries', () => ({
+  useServerSettings: () => given.settings,
+  useAgentStatus: () => given.status,
+  useSaveServerSettings: () => ({ mutateAsync: async (input: { agents: string }) => { given.saved.push(input); return {}; } }),
+  useWorkspaceInfo: (select: (info: { root: string }) => unknown) => select({ root: '/fixture' }),
+}));
+const telemetry = { status: { data: { state: 'on' } }, choose: async () => true };
+vi.mock('../src/features/telemetry/data', () => ({ useTelemetry: () => telemetry }));
 
 const agent = (name: string, enabled: boolean): AgentDraft => ({ id: name, originalName: name, name, adapter: name as AgentDraft['adapter'], enabled, params: [] });
 const seen = (status: AgentAvailability['status']): AgentAvailability =>
@@ -51,5 +67,28 @@ describe('the setup\'s agents', () => {
     expect(firstAgentOf(usable, 'claude')).toBe('claude');
     expect(firstAgentOf(usableAgents(rows, { codex: true, claude: false }), 'claude')).toBe('codex');
     expect(firstAgentOf([], null)).toBeNull();
+  });
+
+  it('says an agent the check has no answer for is found, never signed out', () => {
+    const rows = startAgents([agent('codex', true), agent('pi', true)], { availability: { codex: seen('signed_out') } }, false);
+    expect(rows.map(row => [row.name, row.status])).toEqual([['codex', 'signedOut'], ['pi', 'found']]);
+  });
+});
+
+describe('leaving the agents step', () => {
+  it('saves the agents that cannot take work as disabled when the person continues without an agent', async () => {
+    // Setup in the terminal enabled Codex; the server's check sees it signed out, and no other agent is usable.
+    given.settings = { data: { hash: 'a'.repeat(64), agentsText: 'agents:\n  claude:\n    enabled: false\n  codex: {}\n', agents: {}, catalog: [],
+      limits: { ...DEFAULT_LIMITS } } };
+    given.status = { data: { availability: { codex: seen('signed_out'), claude: seen('signed_out') } }, isPending: false, isFetching: false } as never;
+    given.saved = [];
+    const next = vi.fn();
+    const view = render(<QueryClientProvider client={new QueryClient()}><AgentsStep onNext={next} /></QueryClientProvider>);
+    // The way on that the step offers when no agent can take work.
+    const without = await waitFor(() => view.container.querySelector<HTMLButtonElement>('[data-setup-without-agent]')!);
+    fireEvent.click(without);
+    await waitFor(() => expect(next).toHaveBeenCalled());
+    expect(given.saved).toHaveLength(1);
+    expect(parse(given.saved[0]!.agents).agents.codex.enabled).toBe(false);
   });
 });

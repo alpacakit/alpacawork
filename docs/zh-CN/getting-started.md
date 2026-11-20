@@ -38,7 +38,7 @@ alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不�
 
 ### 运行要求
 
-- macOS（Apple 芯片）、Linux（x64、glibc）或 Windows（在 WSL2 中运行；见下文[在 Windows 上使用](#在-windows-上使用)）
+- macOS（Apple 芯片）、Linux（x64、glibc，需要 systemd 用户会话，大多数桌面和服务器安装默认具备）或 Windows（在启用 systemd 的 WSL2 中运行，Ubuntu 默认启用；见下文[在 Windows 上使用](#在-windows-上使用)）
 - [Node.js](https://nodejs.org/zh-cn) 24.16 或更高版本
 - Chrome 或 Edge 111、Safari 16.4（iPhone 和 iPad 上为 iOS/iPadOS 16.4）、Firefox 128，或更高版本。更旧的浏览器会显示空白页
 - 已登录的 AI 智能体（例如 Claude Code 或 Codex）
