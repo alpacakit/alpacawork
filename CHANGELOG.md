@@ -26,6 +26,16 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.5
+
+Copilot can find your skills directly, and the coordinator shows the same message status whether its conversation is open or folded.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.5`. The database schema and Run execution format are unchanged from 0.1.4. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.5` in step 4.
+
+### Highlights
+- **Copilot finds your skills at startup.** alpacawork gives Copilot your skills folder when a session starts or resumes. In local Linux tests, this shortened the wait for a new conversation to get ready. ([#22](https://github.com/alpacakit/alpacawork/pull/22))
+- **Consistent coordinator status.** If you send a message while the coordinator is preparing, both the open conversation and its folded line say “Starting the coordinator.” ([#20](https://github.com/alpacakit/alpacawork/pull/20))
+
 ## 0.1.4
 
 This release removes Antigravity (`agy`) support. The getting-started guide now includes the FAQ from the README.
