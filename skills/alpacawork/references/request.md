@@ -1,6 +1,6 @@
 # Tasks and requests: the common procedure
 
-This file is for coordinators and owners, who create tasks and send requests. Members follow [references/member.md](member.md). A coordinator writes request text as ["Relaying the user's words" in Coordinator](coordinator.md#relaying-the-users-words) says, not as the items here on what to write in it.
+This file is for coordinators and owners, who create tasks and send requests. Members follow [references/member.md](member.md). A coordinator relaying the user's words writes the request text as ["Relaying the user's words" in Coordinator](coordinator.md#relaying-the-users-words) says, in place of the items below on what to put in it; the last item, on what not to write, still applies.
 
 - If you split work, aim for pieces that an agent can carry through and verify on its own. Keep decisions that change together in one piece as far as possible. Small work need not be split. When you learn of a new connection, revisit the split within the scope you were given. An owner chooses who does each piece (itself, a member or a child) as ["Choosing who does the work" in Owner](owner.md#choosing-who-does-the-work) says.
 - `task request -h` gives the launch directory of a new conversation when `--cwd` is left out. To have the work location's instruction files (AGENTS.md and the like) apply from launch, pass `--cwd <absolute path>` with the first request or with a `--new-conversation` request. A continued conversation launches in the same directory as the previous Run.
