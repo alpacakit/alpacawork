@@ -4,7 +4,11 @@
 
 画面の URL（`http://127.0.0.1:43127/` のような形）は、ブラウザを閉じても PC を再起動しても変わりません。ブックマークするか、Chrome や Edge ならアドレス欄の右端の「インストール」でアプリとして入れておきます。
 
-URL を忘れたときは、ターミナルで `alpacawork workspace url` を実行し、`"localUrl"` のあとの URL を開きます。AI に「alpacawork の URL を教えて」と頼んでも分かります。
+URL を忘れたときは、PC の Claude Code や Codex に「alpacawork の画面を開いて」と頼むと、ブラウザで開きます。自分で開くときは、ターミナルで次を実行します。
+
+- Linux: `xdg-open "$(alpacawork workspace url | grep -o 'http://[^"]*')"`
+- macOS: `open "$(alpacawork workspace url | grep -o 'http://[^"]*')"`
+- Windows: Ubuntu で `alpacawork workspace url` を実行し、出た `http://` の URL を Windows のブラウザに貼ります。
 
 ## Windows で使うとき
 

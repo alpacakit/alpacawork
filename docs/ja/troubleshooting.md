@@ -43,7 +43,7 @@ PC にログインすると alpacawork は自動で起動し、タスクは元�
 - Linux: `systemctl --user start alpacawork.service`
 - macOS: `launchctl kickstart gui/$(id -u)/alpacawork.service`
 
-URL を忘れたときは、ターミナルで `alpacawork workspace url` を実行します。
+URL を忘れたときは、[画面を開き直す](manage.md#画面を開き直す) を見ます。
 
 ほかの端末から `http://127.0.0.1:...` は開けません。[スマートフォンで使う](remote.md#スマートフォンで使う) か [SSH でつないだ PC](manage.md#ssh-でつないだ-pc-に入れたとき) の `https://` の URL を使います。
 
