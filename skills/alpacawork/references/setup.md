@@ -70,6 +70,7 @@ Run `alpacawork setup --yes --lang <tag>` yourself.
 Check that `alpacawork workspace url` returns `serving`, then tell the user the following in one short message, as information and not as questions.
 
 - The URL of the screen, and that it is already open in their browser when setup said so. The setup screen takes them through three steps (the agents and usage data, the skills, the first project) and explains each one, so do not explain or ask about them in the conversation.
+- The URL stays the same after the browser is closed or the PC restarts: they can bookmark it, or install it as an app from Chrome or Edge, and `alpacawork workspace url` shows it again.
 - For each agent that setup reported as not signed in: the sign-in command it printed. The setup screen shows the same command, and "Check again" picks up the sign-in.
 - alpacawork can be used from a phone through a VPN, and you set that up when they ask ("Connect" below).
 - If you installed Node.js 24 alongside another version: the `alpacawork` command is found only in a shell where 24 is selected. The screen works either way.

@@ -44,7 +44,7 @@ PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpac
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-コマンドで入れるときは、ターミナルで次の2行を順に実行します。
+コマンドで入れるときは、ターミナルで次の2行を順に実行します。セットアップが終わると、セットアップの画面がブラウザで開きます。その URL は `開く:` の行に出ます。
 
 ```sh
 npm install -g alpacawork
@@ -52,8 +52,9 @@ alpacawork setup
 ```
 
 - **動作環境:** macOS（Apple シリコン）、Linux（x64）、Windows（WSL2 の中）。サインイン済みの Claude Code や Codex などの AI エージェントと、Node.js 24.16 以降が要ります（AI に頼む入れ方では、Node.js が無ければ AI が入れます）。[詳しい動作環境](docs/ja/getting-started.md#動作環境)
-- **入れたあと:** [最初の依頼をする](docs/ja/getting-started.md#2-最初の依頼をする)。スマートフォンから使うときは、Tailscale などの VPN で PC につなぎます（[スマートフォンで使う手順](docs/ja/getting-started.md#5-スマートフォンで使う)）。
-- **止める・アンインストール:** [止める・更新する・アンインストールする](docs/ja/getting-started.md#7-止める更新するアンインストールする)
+- **画面を開く:** ブラウザが開かなかったときや、閉じたあと・PC を再起動したあとに開き直すときは、[画面を開く](docs/ja/getting-started.md#2-画面を開く) を見てください。
+- **入れたあと:** [最初の依頼をする](docs/ja/getting-started.md#3-最初の依頼をする)。スマートフォンから使うときは、Tailscale などの VPN で PC につなぎます（[スマートフォンで使う手順](docs/ja/getting-started.md#6-スマートフォンで使う)）。
+- **止める・アンインストール:** [止める・更新する・アンインストールする](docs/ja/getting-started.md#8-止める更新するアンインストールする)
 
 ## できること
 
@@ -68,14 +69,15 @@ alpacawork setup
 
 - **無料です（MIT License）。** AI の利用料は、お使いの Claude Code や Codex などの契約のとおりです。
 - **あなたの PC で動きます。** AI は PC で動くので、使っている間は PC を起動したまま、スリープしない設定にします。
-- **AI エージェントは、Claude Code の `bypassPermissions` や Codex の `danger-full-access` と同じ、確認を求めない設定で起動します。** やってほしくないことや、確認してほしいことは、[プロジェクト方針](docs/ja/getting-started.md#4-ai-への約束ごとを書く) に書けます。
+- **AI エージェントは、Claude Code の `bypassPermissions` や Codex の `danger-full-access` と同じ、確認を求めない設定で起動します。** やってほしくないことや、確認してほしいことは、[プロジェクト方針](docs/ja/getting-started.md#5-ai-への約束ごとを書く) に書けます。
 - **タスクや会話、成果のファイルは PC に保存されます。** alpacawork の開発元が、これらを外部サーバーに送信することはありません。AI への指示や AI が読んだ内容は、各 AI エージェントを直接使う場合と同じように、AI の提供元へ送られます（[詳しいデータの扱い](docs/ja/getting-started.md#保存されるもの外へ送られるもの)）。
 
 ## ドキュメント
 
-- [はじめかた](docs/ja/getting-started.md) — インストールから、最初の依頼、スマートフォンでの使い方、更新とアンインストールまで
+- [はじめかた](docs/ja/getting-started.md) — インストールと画面の開き方から、最初の依頼、スマートフォンでの使い方、更新とアンインストールまで
 - [alpacawork の考え方](docs/ja/concept.md) — 1つの依頼がどう進むかと、設計の考え方
-- [困ったとき](docs/ja/getting-started.md#困ったとき) — うまく動かないとき。不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
+- [画面が開かないとき](docs/ja/getting-started.md#画面が開かないとき) — ブラウザでつながらないとき、URL が分からないとき
+- [困ったとき](docs/ja/getting-started.md#困ったとき) — そのほか、うまく動かないとき。不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
 
 ## ライセンス
 

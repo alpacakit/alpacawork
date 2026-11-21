@@ -62,7 +62,7 @@ Only what you alone can decide comes to you.
 - Checking what was made
 - Approving operations with outside effects (such as publishing or deleting)
 
-The ground rules say when the AI should ask you; no mechanism enforces them ([Write the ground rules for the AI](getting-started.md#4-write-the-ground-rules-for-the-ai)).
+The ground rules say when the AI should ask you; no mechanism enforces them ([Write the ground rules for the AI](getting-started.md#5-write-the-ground-rules-for-the-ai)).
 
 ### Only what you use is on the screen
 
@@ -93,4 +93,4 @@ When the owner is replaced, decisions and results stay in the task's records, so
 ## What it is not for
 
 - **Team use**: It is a tool for one person. For now, the screen has no login and there is no way to separate users.
-- **Exposing it to the internet**: It assumes other devices connect through a VPN that only your own devices are on ([Use it from your phone](getting-started.md#5-use-it-from-your-phone)).
+- **Exposing it to the internet**: It assumes other devices connect through a VPN that only your own devices are on ([Use it from your phone](getting-started.md#6-use-it-from-your-phone)).
