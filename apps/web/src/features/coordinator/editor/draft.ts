@@ -68,8 +68,8 @@ export function useInputDraft() {
     }, edit, voice);
   };
   /** The screen opened `task` (its index has it): the lifecycle's one seed (lifecycle.ts). */
-  const observe = (task: { id: string; title: string }, inPanel = true) => {
-    mutateInput(draft.key, values => observed(values, task, inPanel));
+  const observe = (task: { id: string; title: string }, chosen = true) => {
+    mutateInput(draft.key, values => observed(values, task, chosen));
   };
   /** The screen left `task`: the panel closed on it, or it was the project in view (lifecycle.ts). */
   const close = (task: string) => { mutateInput(draft.key, values => closed(values, task)); };

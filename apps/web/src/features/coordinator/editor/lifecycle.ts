@@ -4,14 +4,15 @@
  * - `prepared`: nothing of the person's is in it yet. Opening another Task puts that Task's label in, in place of what
  *   is there (the screen's seed).
  * - `composing`: the person wrote, chose an answer, put a label in or took one off. What the screen opens no longer
- *   changes it, while anything of theirs is left in it. With nothing left, a Task opened in the panel seeds it again;
- *   the list behind a closed panel opens nothing, so it does not.
+ *   changes it, while anything of theirs is left in it. With nothing left, what the person opens (a Task in the panel,
+ *   a project chosen) seeds it again; the project coming back into view behind a closed panel opens nothing, so it does
+ *   not.
  * - Files say nothing about recipients: attaching leaves the phase as it is, and a seed or a close keeps the files.
  * - `seen`: the last Task the screen was observed to open, kept in either phase. Opening the Task already seen is no
  *   new opening, so it never seeds again.
  * - The screen leaving a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so
- *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing while the
- *   panel shows nothing. Anything else in it keeps the draft as it is.
+ *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing from it.
+ *   Anything else in it keeps the draft as it is.
  *
  * A locally submitted send leaves the current labels as prepared context; its body is retained only for delivery/recovery.
  * Admission consumes that retained body, never restores recipients from it. `seen` is carried: the same panel adds nothing,
@@ -47,15 +48,16 @@ export function edited(values: Values, transform: (current: Document) => Documen
 }
 /**
  * The screen opened `task`, in the panel or else as the project in view: seeded while prepared, only noted while
- * composing; nothing when it is the one already seen. An emptied draft is seeded by the panel alone, and what `seen`
- * held stays until then, so a label taken off does not come back through closing and reopening the panel; the screen
+ * composing; nothing when it is the one already seen. An emptied draft is seeded only by what the person opened just
+ * now (`chosen`: a Task in the panel, a project chosen), and what `seen` held stays until then, so a label taken off
+ * does not come back through closing and reopening the panel; the screen
  * observes again when the draft stops being emptied, so what is in view is noted before any send. A seed is no longer
  * the reader draft an emptied one may have been: that card's binding goes with its words.
  */
-export function observed(values: Values, task: Seed, inPanel = true): Values | null {
+export function observed(values: Values, task: Seed, chosen = true): Values | null {
   if ((values.seen ?? '') === task.id) return null;
   const nothingLeft = emptied(values);
-  if (nothingLeft && !inPanel) return null;
+  if (nothingLeft && !chosen) return null;
   if (written(values) && !nothingLeft) return { ...values, phase: 'composing', seen: task.id };
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
   return { ...rest, phase: 'prepared', seen: task.id, doc: JSON.stringify(labelsDocument([task])) };

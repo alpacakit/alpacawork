@@ -180,11 +180,13 @@ for (const [device, viewport] of [['pc', { width: 1440, height: 900 }]] as ['pc'
 });
 
 // The project in view seeds its label as an opened Task does: choosing another project puts that one's in place of an
-// untouched draft's, every project takes it off, and words written keep the draft as it is.
+// untouched draft's, every project takes it off, and words written keep the draft as it is. A project chosen after its
+// label was taken off is an opening of the person's, and a Task opened over the list does not take off a label put in.
 test.describe('project in view', () => {
   test.use({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
   test('the project in view seeds its label and follows the project chosen', async ({ page, runtime, project }) => {
     const other = (await post<Written>(runtime, 'task/new', { kind: 'project', color: '#9b3939', parent: 'none', title: 'Recipients other' })).task.id;
+    const task = await requested(runtime, project, 'Recipient in project');
     const choose = async (id: string | null) => {
       await page.locator('[data-project-trigger]').click();
       await page.locator(`[data-project-item="${id ?? 'all'}"]`).click();
@@ -198,8 +200,24 @@ test.describe('project in view', () => {
     await expect.poll(() => written(page)).toBe('');
     await choose(project);
     await expect.poll(() => written(page)).toBe(`[${project}]`);
+    // Taken off, then another project chosen: that one's label comes in.
+    await labelLayer(field(page)).locator('[data-label=task] button[aria-label]').first().click();
+    await expect.poll(() => written(page)).toBe('');
+    await choose(other);
+    await expect.poll(() => written(page)).toBe(`[${other}]`);
+    // Put in by the person, a project's label stays while a Task of it is opened over the list.
+    await choose(project);
+    await expect.poll(() => written(page)).toBe(`[${project}]`);
+    await labelLayer(field(page)).locator('[data-label=task] button[aria-label]').first().click();
+    await field(page).press('End'); await page.keyboard.type('#');
+    await page.locator(`[data-project-row] [title="${project}"]`).click();
+    await expect.poll(() => written(page)).toBe(`[${project}] `);
+    await page.getByRole('button', { name: new RegExp(`^${task} Recipient in project`) }).first().click();
+    await expect(reader(page).locator('header [data-reader-task-id]')).toHaveText(task);
+    await expect.poll(() => written(page)).toBe(`[${project}] `);
+    // Words written keep the draft whatever project is chosen.
     await field(page).press('End'); await page.keyboard.insertText('調べて');
     await choose(other);
-    await expect.poll(() => written(page)).toBe(`[${project}]調べて`);
+    await expect.poll(() => written(page)).toBe(`[${project}] 調べて`);
   });
 });
