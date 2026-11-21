@@ -16,7 +16,7 @@ export type ReportEvent = {
   /** Record links projected by the backend, never guessed from wording or nearby times. */
   id: string; taskId: string; author?: HistoryEvent["author"]; recipient?: HistoryEvent["recipient"]; coordinator?: HistoryEvent["coordinator"];
   answers?: string; message?: string; wordsKey?: string; askedTo?: HistoryEvent["askedTo"];
-  answerText?: string; quote?: string; wroteIn?: string; consumedBy?: string[]; causes?: HistoryEvent["causes"];
+  answerText?: string; answerFiles?: HistoryEvent["answerFiles"]; quote?: string; wroteIn?: string; consumedBy?: string[]; causes?: HistoryEvent["causes"];
   /** Membership in the server's userQuestions projection, including held questions. */
   userQuestion?: boolean;
   /** A card's mark: what a placement reported, asked or commented (reportMark). Null on a quiet row. */
@@ -117,6 +117,7 @@ export function reportEvent(event: HistoryEvent, turn: (taskId: string) => strin
     answers: event.answers, message: event.message, wordsKey: event.wordsKey, askedTo: event.askedTo, userQuestion: event.userQuestion,
     answerText: event.answerText, quote: event.quote, wroteIn: event.runId, consumedBy: event.consumedBy, causes: event.causes,
     ...(event.note ? { note: event.note } : {}),
+    ...(event.answerFiles ? { answerFiles: event.answerFiles } : {}),
     ...(event.cause ? { cause: event.cause } : {}),
     ...(event.result ? { result: event.result } : {}),
     mark: mark && (yours || closed) ? { ...mark, tone: yours ? "turn" : "quiet" } : mark,

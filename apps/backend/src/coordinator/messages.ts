@@ -7,6 +7,7 @@ import { type TaskLog, type ControlTask } from '@alpacawork/raw';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { runNumber } from '@alpacawork/contract/run';
 import type { CoordinatorMessage, CoordinatorResult } from '@alpacawork/contract/coordinator';
+import { answerFilesSchema, type AnswerFiles } from '@alpacawork/contract';
 import { problemErrorSchema, recordedProblemSchema } from '@alpacawork/contract/problem';
 import { replyAccess } from '@alpacawork/contract/access-boundaries';
 import { UNSETTLED_INPUTS_SQL } from '@alpacawork/runs';
@@ -139,14 +140,19 @@ export function requestedByUser(log: readonly TaskLog[], said: (message: string)
   return mark && { at: (mark.message === null ? undefined : said(mark.message)) ?? mark.at };
 }
 
-export type Dialogue = { taskId: string; messageId: string; at: string; words: string; answer: string | null };
-/** Screen words stay in Requests; external recorded quotes project from their effect log with no captured answer. */
+export type Dialogue = { taskId: string; messageId: string; at: string; words: string; answer: string | null; answerFiles?: AnswerFiles };
+/**
+ * Screen words stay in Requests; external recorded quotes project from their effect log with no captured answer.
+ * An answer's kept copies come with it only while its conversation holds them (until it is cleared and swept).
+ */
 export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 'id' | 'meta'>[]): Dialogue[] {
   const ids = JSON.stringify(tasks.map(task => task.id));
   const screen = db.prepare(`SELECT k.external_id AS task_id,q.id AS message_id,q.submitted_at AS at,q.body AS words,
-      (SELECT a.result FROM runs r JOIN runs a ON a.id=coalesce(CAST(substr(r.into_id,2) AS INTEGER),r.id)
-        WHERE r.request_id=q.id AND a.state='succeeded' AND a.result_state='present') AS answer
+      a.result AS answer,a.request_id AS kept_by,CASE WHEN c.cleared_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
     FROM task_dialogues d JOIN tasks k ON k.id=d.task_uuid JOIN requests q ON q.id=d.request_id
+    LEFT JOIN runs a ON a.id=(SELECT coalesce(CAST(substr(r.into_id,2) AS INTEGER),r.id) FROM runs r WHERE r.request_id=q.id)
+      AND a.state='succeeded' AND a.result_state='present'
+    LEFT JOIN coordinator_conversations c ON c.id=a.conversation_id
     WHERE k.external_id IN (SELECT value FROM json_each(?))`).all(ids);
   // An independent Task record may quote an outside conversation. A Request's author is part of that Request,
   // not an additional Task dialogue with the same identity; its words and provenance remain on the Request.
@@ -157,7 +163,8 @@ export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 
       && entry.actor.message == null && typeof entry.actor.quote === 'string'
       ? [{ taskId: task.id, messageId: entry.id, at: entry.at, words: entry.actor.quote, answer: null }] : []));
   return [...screen.map(row => ({ taskId: String(row.task_id), messageId: String(row.message_id),
-    at: String(row.at), words: String(row.words), answer: typeof row.answer === 'string' ? row.answer : null })), ...outside]
+    at: String(row.at), words: String(row.words), answer: typeof row.answer === 'string' ? row.answer : null,
+    ...typeof row.answer_files === 'string' ? { answerFiles: answerFilesSchema.parse({ requestId: row.kept_by, files: JSON.parse(row.answer_files) }) } : {} })), ...outside]
     .sort((a, b) => a.at.localeCompare(b.at) || a.messageId.localeCompare(b.messageId));
 }
 /**
