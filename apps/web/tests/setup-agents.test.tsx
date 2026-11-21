@@ -37,9 +37,13 @@ describe('the setup\'s agents', () => {
     expect(rows.map(row => row.name)).toEqual(['claude', 'codex', 'copilot']);
     const on = { claude: true, copilot: true };
     expect(firstAgentOf(usableAgents(rows, on), null)).toBe('claude');
-    expect(chosenAgents(configured, rows, on, 'claude')!.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['copilot', true]]);
+    expect(chosenAgents(configured, rows, on, 'claude')!.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['codex', false], ['copilot', true]]);
     // Switched off, it is saved off, so coming back to this step does not switch it on again.
-    expect(chosenAgents(configured, rows, { claude: false, copilot: true }, 'copilot')!.map(each => [each.name, each.enabled])).toEqual([['claude', false], ['copilot', true]]);
+    const off = chosenAgents(configured, rows, { claude: false, copilot: true }, 'copilot')!;
+    expect(off.map(each => [each.name, each.enabled])).toEqual([['copilot', true], ['claude', false], ['codex', false]]);
+    // Codex signed in after that save, and switched on, stays behind the first agent the person chose.
+    const later = startAgents(off, { availability: { copilot: seen('ready'), claude: seen('ready'), codex: seen('ready') } }, false);
+    expect(firstAgentOf(usableAgents(later, { copilot: true, codex: true }), null)).toBe('copilot');
   });
 
   it('keeps config.yaml\'s order when a listed agent\'s CLI is missing', () => {

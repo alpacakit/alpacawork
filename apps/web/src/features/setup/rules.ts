@@ -2,7 +2,7 @@ import type { AgentAvailability } from "@alpacawork/contract";
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
 import { draftAdapter, newAgentDraft, type AgentDraft } from "@/features/panels/agent-settings-draft";
 import { agentObservation, type AgentObservations } from "@/features/panels/agent-status";
-import { firstEnabledAgent, withFirstAgent } from "@/features/panels/agent-settings-order";
+import { withFirstAgent } from "@/features/panels/agent-settings-order";
 
 /**
  * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (a kind it does not list is
@@ -72,16 +72,19 @@ export const firstAgentOf = (usable: readonly string[], picked: string | null) =
 /**
  * The agents config.yaml should hold for the choice made in the setup, or null when it already does: the switches as
  * `enabled` (only rows the screen lets the person switch; a row whose CLI is missing keeps what config.yaml says), each
- * kind config.yaml did not list that could be switched added with its switch, on or off, so the choice stays when the
- * person comes back (placed as `placeByKind` places it), and the first agent moved to the top of the order.
+ * kind config.yaml did not list and whose CLI is here added with its switch (off when it cannot take work yet), placed as
+ * `placeByKind` places it, and the first agent moved to the top of the order. Once saved, every kind found is listed, so
+ * alpacawork's order no longer moves the person's choice of first agent when one signs in later or they come back.
  */
 export function chosenAgents(agents: readonly AgentDraft[], rows: readonly StartAgent[], on: AgentSwitches, first: string | null): AgentDraft[] | null {
   const switchable = new Set(rows.filter(row => row.configured && row.status !== "missing").map(row => row.name));
   let next = agents.map(agent => switchable.has(agent.name) && (agent.enabled ?? true) !== !!on[agent.name] ? { ...agent, enabled: !!on[agent.name] } : agent);
-  const added = rows.filter(row => !row.configured && row.adapter && canWork(row))
-    .map(row => ({ ...newAgentDraft(row.name, row.adapter!, row.name), enabled: !!on[row.name] }));
+  const added = rows.filter(row => !row.configured && row.adapter && row.status !== "missing" && row.status !== "checking")
+    .map(row => ({ ...newAgentDraft(row.name, row.adapter!, row.name), enabled: canWork(row) && !!on[row.name] }));
   next = placeByKind(next, added, agent => draftAdapter(agent));
-  if (first && firstEnabledAgent(next) !== first) next = withFirstAgent(next, next.find(agent => agent.name === first)?.id ?? "");
+  // At the very top, so no agent before it (off now, or signed in later) can take its place.
+  const firstId = next.find(agent => agent.name === first)?.id;
+  if (firstId && next[0]?.id !== firstId) next = withFirstAgent(next, firstId);
   const same = next.length === agents.length && next.every((agent, at) => agent === agents[at]);
   return same ? null : next;
 }
