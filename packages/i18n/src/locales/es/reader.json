@@ -313,8 +313,8 @@
     "copy": "Copiar",
     "empty": {
       "unassigned": {
-        "next": "Envía desde el cuadro de texto lo que quieres que se haga en esta tarea; se asigna una IA y empieza el trabajo.",
-        "title": "Esperando a que se asigne una IA"
+        "next": "Envía desde el cuadro de texto lo que quieres que se haga en esta tarea y empezará.",
+        "title": "Aún no ha empezado"
       }
     },
     "goAnswer": "Responder",

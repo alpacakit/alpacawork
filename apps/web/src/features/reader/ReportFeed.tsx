@@ -1151,7 +1151,7 @@ const headEnd = (open: boolean, least: string) => open ? "pb-3 narrow:min-h-11" 
 
 
 /**
- * A History with no record yet, of a task no AI owns, says it waits for one and what brings one (before-work), in place
+ * A History with no record yet, of a task no AI owns, says it has not started and what starts it (before-work), in place
  * of a blank column.
  */
 function EmptyHistoryNote({ task, owned }: { task: TaskDetail; owned: boolean }) {

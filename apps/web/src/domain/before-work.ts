@@ -2,7 +2,7 @@ import type { Task } from "@/data/types";
 
 /**
  * Where a task stands before its first report, as History says it at its top:
- *   unassigned  no AI owner yet: History says it waits for one, and that sending what to do from the input brings one
+ *   unassigned  no AI owner yet: History says it has not started, and that sending what to do from the input starts it
  *   assigned    an AI owner is placed: History shows it at work from then on, as it does a Run at work
  * Only a task not started is before its first report, and one waiting for others to finish first is not at work. null for
  * anything else.

@@ -297,8 +297,8 @@
     "copy": "Copy",
     "empty": {
       "unassigned": {
-        "next": "Send what you want done on this task from the input box, and an AI is assigned and starts the work.",
-        "title": "Waiting for an AI to be assigned"
+        "next": "Send what you want done on this task from the input box, and it starts.",
+        "title": "Not started yet"
       }
     },
     "goAnswer": "Answer",

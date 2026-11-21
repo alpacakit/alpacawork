@@ -313,8 +313,8 @@
     "copy": "Copiar",
     "empty": {
       "unassigned": {
-        "next": "Envie pelo campo de mensagem o que você quer que seja feito nesta tarefa; uma IA é designada e começa o trabalho.",
-        "title": "Aguardando a designação de uma IA"
+        "next": "Envie pelo campo de mensagem o que você quer que seja feito nesta tarefa, e ela começa.",
+        "title": "Ainda não começou"
       }
     },
     "goAnswer": "Responder",
