@@ -19,11 +19,11 @@
       "question": "Es tu turno. Pulsa esta fila para abrir su detalle y responde la pregunta.",
       "received": "El coordinador (la IA que recibe tus peticiones) ya tiene tu petición. Pronto aparecerá una tarea. Pulsa aquí para abrir la conversación y leerla.",
       "result": "Hay un informe. Pulsa esta fila y revísalo en su detalle.",
-      "send": "Ahora envía tu primera petición. Escríbela aquí o elige uno de los ejemplos de arriba.",
+      "send": "Ahora envía una petición. Escríbela aquí o elige uno de los ejemplos de arriba.",
       "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo. Se convierte en una tarea de la lista.",
       "sendReady": "Ya está en el cuadro. Envíalo con este botón.",
       "tourCoordinator": "Lo que envías llega al coordinador, la IA que recibe tus peticiones. Convierte cada una en una tarea y se la encarga a una IA. Pulsa aquí para abrir tu conversación con él.",
-      "tourInput": "En este cuadro es donde escribes: desde aquí se envían tanto las peticiones como las respuestas a las preguntas. La etiqueta de la izquierda indica a dónde va el mensaje; con una tarea abierta, pasa a ser esa tarea.",
+      "tourInput": "En este cuadro es donde escribes: desde aquí se envían tanto las peticiones como las respuestas a las preguntas. Cuando hay una etiqueta a su izquierda, el proyecto o la tarea que nombra es el destino del mensaje.",
       "unassigned": "La tarea de esta fila aún no tiene una IA asignada, así que no ha empezado. Abre la fila y envía desde el cuadro de abajo lo que quieres que se haga para que empiece.",
       "working": "Tu petición aparece aquí como una tarea, una fila por cada una. A partir de aquí la lleva la IA y, cuando llegue una pregunta o un informe para ti, pasará a «{{section}}»."
     },

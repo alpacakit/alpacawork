@@ -13,6 +13,16 @@ import { openSettings } from "@/state/dialog-store";
  */
 export const appHintDone = deviceValue("alpacawork.appHintDone", { read: (raw) => raw === "1" || null, write: () => "1" }, false);
 export const finishAppHint = () => { appHintDone.set(true); };
+/**
+ * Whether this browser is still to be pointed at the phone and app guide: not once done with it, not where that guide
+ * is not (a touch screen), and not where it is not needed (already the installed app).
+ */
+export function useAppHintOffered() {
+  const done = useDeviceValue(appHintDone);
+  const coarse = useCoarsePointer();
+  const installed = useInstalledApp();
+  return !(done || coarse || installed);
+}
 
 /**
  * A small drawing of the two places the guide leads to: a computer's window with alpacawork's rows, and a phone in
@@ -46,11 +56,9 @@ function AppHintPicture() {
  */
 export function AppHint() {
   const { t } = useTranslation("ui");
-  const done = useDeviceValue(appHintDone);
-  const coarse = useCoarsePointer();
-  const installed = useInstalledApp();
+  const offered = useAppHintOffered();
   const id = useId();
-  if (done || coarse || installed) return null;
+  if (!offered) return null;
   return <div data-app-hint className="mt-4 flex items-center gap-1">
     <Button variant="ghost" aria-labelledby={`${id}-open`} aria-describedby={`${id}-detail`}
       className="min-w-0 flex-1 justify-start gap-3 rounded-lg py-2 pr-3 pl-2 text-left whitespace-normal [word-break:auto-phrase]"

@@ -22,7 +22,7 @@ function CloseGuide({ className }: { className?: string }) {
     const before = guideStage.get();
     closeGuide();
     notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), guide: t("panels:settings.personal.guide") }),
-      { id: "guide-closed", action: { label: t("guide.reopen"), run: () => moveGuide({ stage: "done" }, before ?? { stage: "done" }) } });
+      { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
     className={cn("flex-none narrow:size-11 narrow:min-h-11", className)}>

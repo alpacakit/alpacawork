@@ -95,7 +95,7 @@ export type GuideFacts = {
   open: "question" | "result" | null;
   /** A phone's width, where a balloon takes most of the screen across. */
   narrow: boolean;
-  /** Settings hold the guide to the installed app and the phone here (not on a touch screen, not in the installed app). */
+  /** This browser is still to be pointed at the installed app and the phone (app-hint's own rule: not once done with it). */
   apps: boolean;
   /** Steps put away with "Got it". */
   seen: ReadonlySet<string>;

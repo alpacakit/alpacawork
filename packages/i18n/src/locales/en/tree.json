@@ -19,11 +19,11 @@
       "question": "It's your turn. Press this row to open its detail, and answer the question.",
       "received": "The coordinator (the AI that takes your requests) has your request. A task will appear shortly. Press here to open the conversation and read it.",
       "result": "A report is ready. Press this row and check it in its detail.",
-      "send": "Now send your first request. Write it here, or pick one of the examples above.",
+      "send": "Now send a request. Write it here, or pick one of the examples above.",
       "sendAgain": "Write what you want done here and send it. It becomes a task in the list.",
       "sendReady": "It's in the box. Send it with this button.",
       "tourCoordinator": "What you send goes to the coordinator, the AI that takes your requests. It makes each one a task and hands it to an AI. Press here to open your conversation with it.",
-      "tourInput": "This box is where you write: requests and answers to questions are both sent from here. The label at its left end is where a message goes; with a task open, it becomes that task.",
+      "tourInput": "This box is where you write: requests and answers to questions are both sent from here. When a label stands at its left end, the project or task it names is where the message goes.",
       "unassigned": "No AI has been put on this row's task yet, so it has not started. Open the row and send what you want done from the box below to start it.",
       "working": "Your request is listed here as a task, one row each. AI takes it from here, and when a question or a report comes for you, it moves to “{{section}}”."
     },
