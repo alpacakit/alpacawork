@@ -44,7 +44,7 @@
       },
       "work": {
         "name": "AI works on it",
-        "say": "What you sent leaves the input, and in 10 to 30 seconds it shows up as a task under “{{section}}”. You don't have to watch the screen while you wait."
+        "say": "What you sent leaves the input, and in 10 to 30 seconds it shows up in the list as a task. While AI works on it, it is under “{{section}}”. You don't have to watch the screen while you wait."
       }
     },
     "label": "How it works",

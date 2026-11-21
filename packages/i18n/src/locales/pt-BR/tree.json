@@ -46,7 +46,7 @@
       },
       "work": {
         "name": "A IA trabalha nele",
-        "say": "O que você enviou sai do campo de mensagem e, em 10 a 30 segundos, aparece como uma tarefa em “{{section}}”. Não é preciso olhar a tela enquanto espera."
+        "say": "O que você enviou sai do campo de mensagem e, em 10 a 30 segundos, aparece na lista como uma tarefa. Enquanto a IA trabalha nela, ela fica em “{{section}}”. Não é preciso olhar a tela enquanto espera."
       }
     },
     "label": "Como funciona",

@@ -46,7 +46,7 @@
       },
       "work": {
         "name": "La IA trabaja en ella",
-        "say": "Lo que enviaste desaparece del cuadro de texto y, en 10 a 30 segundos, aparece como una tarea en «{{section}}». No hace falta mirar la pantalla mientras esperas."
+        "say": "Lo que enviaste desaparece del cuadro de texto y, en 10 a 30 segundos, aparece en la lista como una tarea. Mientras la IA trabaja en ella, está en «{{section}}». No hace falta mirar la pantalla mientras esperas."
       }
     },
     "label": "Cómo funciona",
