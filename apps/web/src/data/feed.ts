@@ -299,20 +299,24 @@ export function useWorkspace() {
   useEffect(() => {
     // A read scope cut while the feed stays live (a held read let go, a checkpoint handed over) is read again here:
     // the list goes on by patches, but no server fact is current until the index is read again, so the reader would
-    // keep drawing the view it had (a Run that ended still at work). Twice per cut at most, since a patch may
-    // overtake the first read and leave the scope cut.
-    let reading = false, era = -1, tries = 0;
+    // keep drawing the view it had (a Run that ended still at work). A patch can overtake a read and leave the scope
+    // cut, so it is read again after the feed's own retry delays for as long as the scope stays cut and the feed live.
+    let busy = false, tries = 0, session: object | undefined, era = -1;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const anchor = () => {
       const scope = readScope(queryClient);
-      if (reading || scope?.anchored !== false || useConnection.getState().state !== "live") return;
-      if (scope.era !== era) { era = scope.era; tries = 0; }
-      if (tries++ >= 2) return;
-      reading = true;
-      void recoverReads(queryClient).catch(() => {}).finally(() => { reading = false; anchor(); });
+      if (busy || scope?.anchored !== false || useConnection.getState().state !== "live") return;
+      // A new server generation starts its eras again, so a cut is known by both.
+      if (scope.session !== session || scope.era !== era) { session = scope.session; era = scope.era; tries = 0; }
+      busy = true;
+      const read = () => void recoverReads(queryClient).catch(() => {}).finally(() => { busy = false; anchor(); });
+      if (tries === 0) read();
+      else timer = setTimeout(read, retryDelays[tries - 1] ?? 30000);
+      tries++;
     };
     const stopReads = queryClient.getQueryCache().subscribe((event) => { if (event.query.queryKey[0] === "index") anchor(); });
     const stopConnection = useConnection.subscribe(anchor);
-    return () => { stopReads(); stopConnection(); };
+    return () => { clearTimeout(timer); stopReads(); stopConnection(); };
   }, [queryClient]);
   return {
     ...query,

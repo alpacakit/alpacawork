@@ -15,7 +15,8 @@ test('a cut read scope is read again while live, so an ended Run leaves the work
   // A search holding a Task the list does not (a child that reported done), then let go as read-retention does.
   const search = page.locator('input[data-search-input]:visible');
   await search.fill('reported done');
-  await expect(page.locator('[data-result-list]')).toBeVisible();
+  // The cut needs the finished child among the results held, so they are seen before the search is closed.
+  await expect(page.locator('[data-result-list]').getByText('A child that reported done while its Run still goes')).toBeVisible();
   await search.fill('');
   await page.evaluate(() => {
     let client: any; const seen = new Set();

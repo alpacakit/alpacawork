@@ -75,6 +75,9 @@ const http: string[] = [];
  * cannot anchor before the pre-anchor observations. Held requests are counted when they are made. */
 let holdLive = false;
 const liveWaiters: (() => void)[] = [];
+/** B's own view GET held, so what the anchor alone gives back is seen apart from B's read. */
+let holdB = false;
+const bWaiters: (() => void)[] = [];
 const releaseLive = (all = true) => { if (all) holdLive = false; (all ? liveWaiters.splice(0) : liveWaiters.splice(0, 1)).forEach(release => release()); };
 /** The anchor: a complete live GET through the index Query (joining one already started after the cut). */
 const anchor = async (...more: Promise<unknown>[]) => {
@@ -96,6 +99,7 @@ function serve() {
     }
     if (target.pathname === '/api/task/view') {
       const id = target.searchParams.get('task');
+      if (id === 'T2' && holdB) await new Promise<void>(resolve => bWaiters.push(resolve));
       if (id === 'T1' && aView === 'refused') return problemResponse('forbidden', 'Refused');
       const view = viewsOf(current, live.sourcePv).find(each => each.task.id === id);
       return view ? new Response(snapshotJson(view)) : problemResponse('not_found', 'No task');
@@ -145,7 +149,7 @@ beforeEach(() => {
   useWriteIntentStore.setState({ entries: {}, unavailable: false });
   useConnection.setState({ offline: false, lastReceivedAt: undefined });
   useViewStore.setState(useViewStore.getInitialState());
-  changedAt.clear(); current = served(); aView = 'served'; live = index(current, 1); saves.length = 0; http.length = 0; holdLive = false; liveWaiters.length = 0;
+  changedAt.clear(); current = served(); aView = 'served'; live = index(current, 1); saves.length = 0; http.length = 0; holdLive = false; liveWaiters.length = 0; holdB = false; bWaiters.length = 0;
   fetchEventSource.mockImplementation((_url, options) => { stream = options; return new Promise(() => {}); });
 });
 afterEach(() => { cleanup(); stopRequired?.(); vi.restoreAllMocks(); });
@@ -234,16 +238,17 @@ test('M6: a complete live GET started before the unique protection loss cannot b
   await evictA();
   releaseLive(false); await act(async () => { await early; }); await settle();
   const before = { row: canSendWrites(rowWriteBasis('T2')), operation: operation('T2'), free: freeWords() };
-  // A GET started after the loss is the anchor.
+  // A GET started after the loss is the anchor. The page then reads B again by itself; B's GET is held here.
+  holdB = true;
   await anchor();
   const after = { row: canSendWrites(rowWriteBasis('T2')), operation: operation('T2'), free: freeWords() };
   // An operation on B (intent/answers) rests on B's own complete GET after the anchor, not on its row.
+  holdB = false; bWaiters.splice(0).forEach(release => release());
   await act(async () => { await queryClient.fetchQuery({ ...resources.taskView(root, 'T2'), staleTime: 0 }); }); await settle();
   const read = { row: canSendWrites(rowWriteBasis('T2')), operation: operation('T2'), free: freeWords() };
   console.log('callers-pre-cut-get', JSON.stringify({ before, after, read }));
   expect.soft(before, 'a pre-cut GET answered after the cut does not anchor').toEqual({ row: false, operation: false, free: true });
-  // The live page reads a cut scope again by itself, B's view included, so the operation is back with the anchor.
-  expect.soft(after, 'the anchor gives the row back, and the recovery after it reads B again').toEqual({ row: true, operation: true, free: true });
+  expect.soft(after, 'the anchor gives the row back; an operation still waits for B\'s own GET').toEqual({ row: true, operation: false, free: true });
   expect.soft(read).toEqual({ row: true, operation: true, free: true });
 });
 
