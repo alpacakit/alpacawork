@@ -42,7 +42,7 @@ export function IntroStart() {
  * The introduction to how the work goes: the slides of intro-definition.ts, one at a time, each a picture of the real
  * screen with its numbered points under it. It can be left at any slide (Skip, ×, Esc, a press outside), which is
  * remembered on this browser so it never opens by itself again (however it goes away: a shortcut that opens something
- * else closes it too); the welcome and the settings open it again.
+ * else closes it too); the welcome and the project's menu open it again.
  * One size whatever the slide holds (a large dialog), so its buttons stay where they are from slide to slide.
  */
 export function IntroDialog() {
@@ -80,8 +80,9 @@ export function IntroDialog() {
           onClick={() => { const { tab } = slide.settings!; close(); openSettings(tab); }}>{slide.settings.label(t)}</Button>}
       </DialogBody>
       <footer className="flex flex-none items-center gap-2 border-t border-line px-6 py-3 narrow:px-4.5">
-        {/* At the end, where it is opened again: the welcome's own way back goes with the welcome, at the first Task. */}
-        {last ? <p className="m-0 min-w-0 flex-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t("intro.againHint", { settings: t("panels:settings.title"), personal: t("panels:settings.tabs.personal") })}</p>
+        {/* At the end, where it is opened again (the project's menu): the welcome's own way back goes with the
+            welcome, at the first Task. */}
+        {last ? <p className="m-0 min-w-0 flex-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t("intro.againHint")}</p>
           : <Button variant="quiet" data-intro-skip onClick={close}>{t("intro.skip")}</Button>}
         <div className="ml-auto flex flex-none items-center gap-2">
           {at > 0 && <Button variant="outline" data-intro-back onClick={() => move(-1)}>{t("intro.back")}</Button>}

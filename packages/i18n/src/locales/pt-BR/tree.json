@@ -17,7 +17,7 @@
   },
   "intro": {
     "again": "Ver como funciona",
-    "againHint": "Você pode abrir esta introdução de novo em “{{settings}}”, em “{{personal}}”.",
+    "againHint": "Você pode abrir esta introdução de novo no menu do nome do projeto, no canto superior esquerdo.",
     "apps": {
       "desktop": {
         "name": "Como app no seu PC",

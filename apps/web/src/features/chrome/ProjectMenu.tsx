@@ -11,6 +11,7 @@ import { useMarksTasks, useProjectMarks } from "@/data/project-marks";
 import { ProjectTile } from "@/components/ui/project-tile";
 import type { WorkspaceInfo } from "@/data/types";
 import { useDialogStore } from "@/state/dialog-store";
+import { openIntro } from "@/features/intro/intro-state";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { moveMenuFocus } from "./menu-move";
@@ -103,7 +104,7 @@ export function ProjectMenu({ className }: { className?: string }) {
       <CountMarks counts={count} className="text-sm" />
       {projects.length > 1 && shortcut <= 9 && <kbd className="w-8 flex-none text-right font-sans text-xs text-soft narrow:hidden">{key}{shortcut}</kbd>}
     </Button>;
-  const action = (mark: string, icon: "plus" | "settings", label: React.ReactNode, open: () => void, name?: string) =>
+  const action = (mark: string, icon: "plus" | "settings" | "info", label: React.ReactNode, open: () => void, name?: string) =>
     <Button variant="ghost" role="menuitem" aria-label={name} {...{ [`data-${mark}`]: "" }} onClick={() => {
         setOpen(false);
         requestAnimationFrame(() => { trigger.current?.focus({ preventScroll: true }); open(); });
@@ -143,6 +144,11 @@ export function ProjectMenu({ className }: { className?: string }) {
             : <><span dir="auto" className="min-w-0 truncate">{name}</span><span className="flex-none whitespace-pre">{t("projects.settingsOf")}</span></>,
             () => useDialogStore.getState().openProject(allProjects ? null : project ?? projects[0]!.id),
             allProjects ? undefined : t("projects.settings", { name }))}
+        </div>
+        {/* The introduction a new person was shown first, again: here, not in the settings, so opening it leaves
+            nothing that was being written there. */}
+        <div role="group" className="mt-1 border-t border-line pt-1">
+          {action("project-intro", "info", t("intro.label", { ns: "tree" }), openIntro)}
         </div>
       </div>
     </Popup>}

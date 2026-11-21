@@ -392,9 +392,6 @@
       "aiLanguage": "Idioma de las conversaciones con la IA",
       "awayAfter": "Ausente tras inactividad",
       "display": "Pantalla",
-      "intro": "Cómo funciona",
-      "introHelp": "Vuelve a ver, con imágenes, cómo avanza el trabajo, qué hay en la pantalla y las operaciones básicas.",
-      "introShow": "Mostrar",
       "issue": {
         "conflict": "Cambió en otra vista. Comprueba el valor más reciente.",
         "error": "No se pudo guardar. Vuelve a intentarlo.",

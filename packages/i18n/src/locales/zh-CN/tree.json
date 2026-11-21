@@ -14,7 +14,7 @@
   },
   "intro": {
     "again": "查看使用介绍",
-    "againHint": "这份介绍可以在“{{settings}}”的“{{personal}}”中再次打开。",
+    "againHint": "点击左上角的项目名称，可以在弹出的菜单中再次打开这份介绍。",
     "apps": {
       "desktop": {
         "name": "在电脑上作为应用使用",

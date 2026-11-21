@@ -14,7 +14,7 @@
   },
   "intro": {
     "again": "使い方の紹介を見る",
-    "againHint": "この紹介は「{{settings}}」の「{{personal}}」からもう一度開けます。",
+    "againHint": "この紹介は、左上のプロジェクト名を押して出るメニューからもう一度開けます。",
     "apps": {
       "desktop": {
         "name": "PC でアプリとして使う",

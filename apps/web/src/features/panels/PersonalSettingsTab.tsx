@@ -15,7 +15,6 @@ import { ReadFailure } from "@/components/ui/loadable";
 import { useReadState, useWriteDisabled } from '@/data/queries';
 import { resources } from '@/data/resources';
 import { useConnection } from '@/data/connection';
-import { openIntro } from '@/features/intro/intro-state';
 
 /**
  * What one row says and allows while its values are saved, a row of three as a row of one. A change made elsewhere or a
@@ -98,14 +97,6 @@ function QuietHoursRow() {
   </SettingRow>;
 }
 
-/** The introduction a new person is shown first (features/intro), opened again over the settings. */
-function IntroRow() {
-  const { t } = useTranslation('panels');
-  return <SettingRow id="setting-intro" label={t('settings.personal.intro')} hint={t('settings.personal.introHelp')}>
-    <Button id="setting-intro" variant="outline" onClick={openIntro}>{t('settings.personal.introShow')}</Button>
-  </SettingRow>;
-}
-
 /** The definitions own rows; this screen only arranges the current groups. */
 export function PersonalSettingsTab({ definitions = personalSettings, focusNotifications = false }: {
   definitions?: readonly SettingDefinition[]; focusNotifications?: boolean;
@@ -138,7 +129,6 @@ export function PersonalSettingsTab({ definitions = personalSettings, focusNotif
       {(state.status === 'idle' || state.status === 'loading') &&
         <FieldHint role="status">{t('settings.personal.loading')}</FieldHint>}
       {displayEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
-      <IntroRow />
     </SettingSection>
     <SettingSection id="settings-notifications" title={t('settings.personal.notifications')} note={t('settings.personal.pushScope')}>
       {awayAfterEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
