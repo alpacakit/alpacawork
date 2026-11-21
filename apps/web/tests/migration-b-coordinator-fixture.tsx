@@ -28,7 +28,8 @@ export function setupCoordinator() {
     // jsdom has no native motion; its geometry is never used as evidence in these contracts.
     Object.defineProperty(Element.prototype, 'getAnimations', { configurable: true, value: () => [] });
     queryClient.clear();
-    useViewStore.setState(useViewStore.getInitialState());
+    // The app reads its address before it shows anything; these contracts start from there.
+    useViewStore.setState({ ...useViewStore.getInitialState(), navigationReady: true });
     useOutbox.setState({ live: new Set(), resend: null });
     screenData(value()); // Serve this fixture's index before arranging its qualified conversation.
     setConversationState({ ...useConversation.getInitialState(), root: '/fixture', open: true, expanded: true, read: true, error: null });

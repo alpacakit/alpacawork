@@ -128,7 +128,7 @@ test('a seed into the loading draft does not reach a draft the person already wr
   mount();
   act(() => input.change(() => textDocument('Retained words')));
   act(() => setConversationState({ conversation: null }));
-  act(() => input.observe({ id: 'T1', title: 'Task one' }));
+  act(() => input.observe({ panel: { id: 'T1', title: 'Task one' }, project: null }));
   act(() => setConversationState({ conversation: { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
   expect(current().getText()).toBe('Retained words'); expect(input.entry.values.phase).toBe('composing');
 });
@@ -252,7 +252,7 @@ test('the project Task the screen is narrowed to seeds a task badge, removable l
     ? { status: 'unavailable', profile: 'claude', skills: [], reason: 'test' }
     : { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
   onTestFinished(() => { vi.unstubAllGlobals(); useViewStore.setState(useViewStore.getInitialState()); });
-  useViewStore.setState({ project: PROJECT_TASK, selected: null });
+  useViewStore.setState({ project: PROJECT_TASK, selected: null, navigationReady: true });
   setConversationState({ open: true, read: true, error: null });
   render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
   const badge = await waitFor(() => {
@@ -348,13 +348,13 @@ test('loading draft merge keeps one reply reference and the retained reply wins'
 test('the reply icon takes the draft\'s Task labels off for good: the Task in view does not seed them back, and a remount keeps it', async () => {
   const reply = { id: 'reply-press', answeredAt: '2026-10-22T11:00:00Z' };
   mount();
-  act(() => input.observe({ id: 'T315', title: 'In view' }));
+  act(() => input.observe({ panel: { id: 'T315', title: 'In view' }, project: null }));
   await waitFor(() => expect(document.querySelector('[data-label=task]')).toBeTruthy());
   act(() => replyInDraft(reply));
   await waitFor(() => expect(document.querySelector('[data-label=reply]')).toBeTruthy());
   expect(inlines(input.doc).map(node => node.type)).toEqual(['replyLabel']);
   expect(document.querySelector('[data-label=task]')).toBeNull();
-  act(() => { input.observe({ id: 'T315', title: 'In view' }); input.observe({ id: 'T400', title: 'Opened next' }); });
+  act(() => { input.observe({ panel: { id: 'T315', title: 'In view' }, project: null }); input.observe({ panel: { id: 'T400', title: 'Opened next' }, project: null }); });
   expect(inlines(input.doc).map(node => node.type)).toEqual(['replyLabel']);
   act(() => input.change(doc => ({ ...doc, content: [...doc.content, { type: 'paragraph', content: [taskLabel({ id: 'T7', title: 'Put in' }), { type: 'text', text: ' about T8' }] }] })));
   act(() => replyInDraft(reply));

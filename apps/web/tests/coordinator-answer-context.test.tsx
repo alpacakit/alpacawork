@@ -46,7 +46,7 @@ test('a reader send follows the next Task without resurrecting its recipient on 
   freeze(root, { conversationId: cid, text: 'T1 1-Yes', agent: 'claude', selected: {}, attachments: [] },
     useDraftStore.getState().entries[key]!.values, { from: key },
     [{ taskId: 'T1', title: original.title, turn: 'Q1', phase: 'doing', kind: 'answer', answer: 'send', expectedWrites: null }]);
-  mutateInput(key, values => observed(values, next));
+  mutateInput(key, values => observed(values, { panel: next, project: null }));
   const visible = () => inlines(draftDocument(availableInput(useDraftStore.getState().entries, root, key)!));
   expect(visible()).toEqual([{ type: 'taskLabel', attrs: next }]);
   reconcileOutbox(conversation([{ id, at: '2026-11-05T00:00:00Z', ask: 'T1 1-Yes', attachments: [],
@@ -67,7 +67,7 @@ for (const answer of [true, false]) test(`a refused reader ${answer ? 'choice' :
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
   freeze(root, { conversationId: cid, text: 'Original answer', agent: 'claude', selected: {}, attachments: [] }, values, { from: key },
     [{ taskId: original.id, title: original.title, turn: 'Q1', phase: 'doing', kind: 'answer', answer: 'send', expectedWrites: null }]);
-  mutateInput(key, values => observed(values, next));
+  mutateInput(key, values => observed(values, { panel: next, project: null }));
   returnReaderSubmission(root, id, 'refused');
   expect(restoreReaderDraft(root, cid, original.id)).toBe(true);
   const restored = draftDocument(availableInput(useDraftStore.getState().entries, root, key)!);

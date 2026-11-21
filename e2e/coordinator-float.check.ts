@@ -5,8 +5,8 @@ import { test, expect, open, openCoordinator, writeCoordinator, settleMotion as 
 import { configureCoordinator, readyCoordinator } from './coordinator-fixture.ts';
 import { seedReview } from './fixture/task-state.ts';
 
-// The coordinator floats at the foot with no ground of its own round it (what scrolls shows round it, and a press
-// there reaches it); reading the list under it leaves the input up; sending with the keys from the input does
+// On a computer the coordinator floats at the foot with no ground of its own round it (what scrolls shows round it,
+// and a press there reaches it); on a phone it stands on the foot's ground from its top down; reading the list under it leaves the input up; sending with the keys from the input does
 // not make the line it goes back to show a keyboard's focus.
 test.use({ isolated: true });
 
@@ -98,10 +98,19 @@ test('a phone closes the conversation from its foot and has no maximize; a compu
   await openCoordinator(page);
   const phone = page.locator('[data-coordinator-phone]');
   await settled(page);
+  // What scrolls behind shows nowhere in the slips round the input: under it, beside it, nor between it and the conversation.
+  const slips = () => page.evaluate(() => {
+    const input = document.querySelector('[data-composer-frame]')!.getBoundingClientRect(), card = document.querySelector('[data-coordinator-card]')!;
+    const middle = (input.left + input.right) / 2, points: [number, number][] = [[middle, input.bottom + 3], [input.left - 4, (input.top + input.bottom) / 2], [middle, input.top - 4]];
+    return points.map(([x, y]) => { const at = document.elementFromPoint(x, y); return !!at && (card.contains(at) || !!at.closest('[data-coordinator-panel]')); });
+  });
+  expect(await slips()).toEqual([true, true, true]);
   await expect(phone.locator('[data-coordinator-maximize]')).toHaveCount(0);
   await phone.locator('[data-coordinator-pane-controls] [data-coordinator-fold]').click();
   await expect(page.locator('[data-coordinator-panel]')).toHaveCount(0);
   await expect(page.locator('[data-one-input]')).toBeVisible();
+  await settled(page);
+  expect((await slips()).slice(0, 2)).toEqual([true, true]);
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await openCoordinator(page);

@@ -55,7 +55,7 @@ const linked = (runtime: Runtime) => {
   finally { db.close(); }
 };
 const history = async (runtime: Runtime, task: string) =>
-  ((await (await fetch(`${runtime.origin}/api/task/history?task=${task}&limit=80`)).json()) as { events: { kind: string }[] }).events.filter(event => event.kind === 'dialogue').length;
+  ((await (await fetch(`${runtime.origin}/api/task/history?task=${task}&mode=latest`)).json()) as { events: { kind: string }[] }).events.filter(event => event.kind === 'dialogue').length;
 async function answered(runtime: Runtime, count: number) {
   await expect.poll(async () => { const { turns } = (await (await fetch(`${runtime.origin}/api/coordinator`)).json()).conversation as { turns: { status: string }[] };
     return turns.length === count && turns.at(-1)!.status; }, { timeout: 30_000 }).toBe('succeeded');
@@ -176,5 +176,53 @@ for (const [device, viewport] of [['pc', { width: 1440, height: 900 }]] as ['pc'
     // Already in: not put in twice.
     await reader(page).locator('header').getByRole('button', { name: new RegExp(`^${second} を入力欄に入れ`) }).click();
     await expect.poll(() => written(page)).toBe(`[${first}] 質[${second}] と問`);
+  });
+});
+
+// The project in view seeds its label as an opened Task does: choosing another project puts that one's in place of an
+// untouched draft's, every project takes it off, and words written keep the draft as it is. A label taken off stays off
+// while the same project is in view, a reload included; another project chosen is a new opening. A Task opened over the
+// list does not take off a label the person put in.
+test.describe('project in view', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
+  test('the project in view seeds its label and follows the project chosen', async ({ page, runtime, project }) => {
+    const other = (await post<Written>(runtime, 'task/new', { kind: 'project', color: '#9b3939', parent: 'none', title: 'Recipients other' })).task.id;
+    const task = await requested(runtime, project, 'Recipient in project');
+    const choose = async (id: string | null) => {
+      await page.locator('[data-project-trigger]').click();
+      await page.locator(`[data-project-item="${id ?? 'all'}"]`).click();
+    };
+    await page.goto(`${runtime.origin}/?project=${project}`);
+    await openCoordinator(page);
+    await expect.poll(() => written(page)).toBe(`[${project}]`);
+    await choose(other);
+    await expect.poll(() => written(page)).toBe(`[${other}]`);
+    await choose(null);
+    await expect.poll(() => written(page)).toBe('');
+    await choose(project);
+    await expect.poll(() => written(page)).toBe(`[${project}]`);
+    // Taken off, it stays off through a reload; another project chosen then puts its label in.
+    await labelLayer(field(page)).locator('[data-label=task] button[aria-label]').first().click();
+    await expect.poll(() => written(page)).toBe('');
+    await page.reload();
+    await openCoordinator(page);
+    await page.waitForTimeout(500);
+    await expect.poll(() => written(page)).toBe('');
+    await choose(other);
+    await expect.poll(() => written(page)).toBe(`[${other}]`);
+    // Put in by the person, a project's label stays while a Task of it is opened over the list.
+    await choose(project);
+    await expect.poll(() => written(page)).toBe(`[${project}]`);
+    await labelLayer(field(page)).locator('[data-label=task] button[aria-label]').first().click();
+    await field(page).press('End'); await page.keyboard.type('#');
+    await page.locator(`[data-project-row] [title="${project}"]`).click();
+    await expect.poll(() => written(page)).toBe(`[${project}] `);
+    await page.getByRole('button', { name: new RegExp(`^${task} Recipient in project`) }).first().click();
+    await expect(reader(page).locator('header [data-reader-task-id]')).toHaveText(task);
+    await expect.poll(() => written(page)).toBe(`[${project}] `);
+    // Words written keep the draft whatever project is chosen.
+    await field(page).press('End'); await page.keyboard.insertText('調べて');
+    await choose(other);
+    await expect.poll(() => written(page)).toBe(`[${project}] 調べて`);
   });
 });

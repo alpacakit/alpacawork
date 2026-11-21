@@ -26,7 +26,7 @@ const failedRun = (id: string, overrides: Partial<ControlRunDTO> = {}) =>
   run(id, { state: "failed", reason: "exit", endedAt: "2026-09-24T09:04:00Z", ...overrides });
 
 test("a failure the backend read a cause for says that cause where the failure is answered, its Retry and Stop kept", () => {
-  for (const [cause, key] of [["model_capacity", "ui:run.cause.modelCapacity"], ["weekly_limit", "ui:run.cause.weeklyLimit"]] as const) {
+  for (const [cause, key] of [["model_capacity", "ui:run.cause.modelCapacity"], ["weekly_limit", "ui:run.cause.weeklyLimit"], ["model_limit", "ui:run.cause.modelLimit"]] as const) {
     const { data, task } = failedTask([failedRun("R2", { errorCause: cause })]);
     expect(failureCause(task, data.people)).toBe(cause);
     const head = render(<TestWorkspace data={data}><TurnReason turn={reasonedTurn(task.ball)!} task={task} cause={failureCause(task, data.people)} /></TestWorkspace>);
