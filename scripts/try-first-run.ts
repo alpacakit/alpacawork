@@ -9,7 +9,7 @@ import { hostname } from 'node:os';
 const repo = realpathSync(new URL('..', import.meta.url));
 const script = resolve(import.meta.filename);
 const { values } = parseArgs({ options: { port: { type: 'string' }, minutes: { type: 'string', default: '30' },
-  lang: { type: 'string', default: 'ja' }, width: { type: 'string', default: '1440' }, yes: { type: 'boolean', short: 'y' }, detach: { type: 'boolean', short: 'd' }, 'no-open': { type: 'boolean' }, check: { type: 'boolean' }, stop: { type: 'string' }, watchdog: { type: 'string' }, help: { type: 'boolean' } } });
+  lang: { type: 'string', default: 'ja' }, width: { type: 'string', default: '1440' }, yes: { type: 'boolean', short: 'y' }, detach: { type: 'boolean', short: 'd' }, 'no-open': { type: 'boolean' }, check: { type: 'boolean' }, 'intro-shots': { type: 'boolean' }, stop: { type: 'string' }, watchdog: { type: 'string' }, help: { type: 'boolean' } } });
 const japanese = values.lang === 'ja';
 if (values.help) {
   console.log(japanese ? `使い方: node scripts/try-first-run.ts [--port <空きポート>] [--minutes 30] [--lang ja|en] [-y|--yes] [-d|--detach] [--no-open] [--check] [--width 390|1440]
@@ -24,6 +24,8 @@ AIのコマンドはすべて代役で、結果は決まった内容です。通
 期限またはCtrl-Cで終了し、一時ファイルを削除します。
 --check は、PTYでEnterを送るsetupと、非TTYで--yesを付けるsetup、3つのステップから例の結果の完了までを自動確認して終了します。
 スマホ幅は --check --width 390 で確かめます（既定: 1440）。
+--intro-shots は、使い方の紹介の画像（apps/web/src/features/intro/shots）を、この試用環境の実際の画面から撮り直して終了します。
+言語ごとに実行します（--lang ja と --lang en）。
 途中で止める: node scripts/try-first-run.ts --stop <表示された一時フォルダ>` : `Usage: node scripts/try-first-run.ts [--port <free port>] [--minutes 30] [--lang ja|en] [-y|--yes] [-d|--detach] [--no-open] [--check] [--width 390|1440]
 Builds this checkout and runs its real setup in /tmp (default language: ja). Review the plan and press Enter to continue.
 -y / --yes skips confirmation. --no-open keeps the browser closed.
@@ -36,6 +38,8 @@ No production HOME, data, credentials, service manager, or port 5499 is used.
 The preview stops and deletes its temporary files at the deadline or on Ctrl-C.
 --check runs setup with Enter in a PTY, then setup with --yes without a terminal, goes through the three steps to an
 example's result and its completion, and exits. Use --check --width 390 for phone width (default 1440).
+--intro-shots takes the introduction's pictures (apps/web/src/features/intro/shots) again from this preview's real
+screens, and exits. Run it once per language (--lang ja and --lang en).
 Stop early: node scripts/try-first-run.ts --stop <printed temporary directory>`);
   process.exit(0);
 }
@@ -179,7 +183,8 @@ async function runPreview() {
       const automatic = await execute(node, [...command.filter(arg => arg !== '--no-open'), '--yes', '--no-open'], { cwd: root, env, capture: true });
       writeFileSync(join(root, 'terminal-yes-result.json'), JSON.stringify({ status: 0, transcript: automatic, terminal: false }));
       if (/\[Y\/n\]/.test(automatic)) throw new Error('Setup --yes still requested confirmation.');
-    } else await execute(node, [...command, ...(values.yes ? ['--yes'] : [])], { cwd: root, env, interactive: true });
+    } else if (values['intro-shots']) await execute(node, [...command.filter(arg => arg !== '--no-open'), '--yes', '--no-open'], { cwd: root, env, capture: true });
+    else await execute(node, [...command, ...(values.yes ? ['--yes'] : [])], { cwd: root, env, interactive: true });
     const record = installation.read();
     if (!record) {
       if (values.check) throw new Error('Automatic setup did not install its service.');
@@ -214,6 +219,11 @@ async function runPreview() {
     if (values.check) {
       const { checkJourney } = await import('./first-run-preview/check.ts');
       await checkJourney(url, root, values.lang!, Number(values.width));
+    }
+    if (values['intro-shots']) {
+      const { captureIntroShots } = await import('./first-run-preview/intro-shots.ts');
+      await captureIntroShots(url, root, values.lang!, join(repo, 'apps/web/src/features/intro/shots'));
+      return;
     }
     const deadline = new Date(marker.expiresAt).toLocaleTimeString(japanese ? 'ja-JP' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
     const host = /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(hostname()) ? hostname() : 'THIS_PC';

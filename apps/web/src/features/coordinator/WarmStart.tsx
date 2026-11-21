@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { ExampleList } from "@/components/ui/example-list";
 import { TimelineMark } from "@/components/ui/timeline-mark";
 import { cn } from "@/lib/utils";
-import { AppHint } from "./app-hint";
 import { exampleInDraft } from "./editor/draft";
 import { UnreadMark } from "./unread-mark";
 
@@ -38,8 +37,7 @@ function Said({ warm, said, className }: { warm: Warm; said: string; className?:
  * as the empty list's (Welcome): a heading and the examples on their own surface (ExampleList), in a column in the middle of the
  * conversation both ways, so a cleared conversation is never a small line in its corner. The rows only fill the input;
  * the person sends. Failed to start, it says so in the same place and offers no examples. The examples are the same
- * whatever the list shows: the conversation opens over the list, so it never leaves them to the list. Under the
- * examples, the first time, the pointer to the phone and app guide (AppHint).
+ * whatever the list shows: the conversation opens over the list, so it never leaves them to the list.
  */
 export function WarmStart({ warm }: { warm: Warm }) {
   const { said, examples } = useWarmWords(warm);
@@ -50,10 +48,7 @@ export function WarmStart({ warm }: { warm: Warm }) {
   return <li data-coordinator-warm={warm} className="flex min-h-[calc(100cqh-var(--pane-head,1.25rem)-1.25rem)] animate-rise items-center justify-center py-4">
     <div className="w-[min(100%,26rem)]">
       <Said warm={warm} said={said} className="mb-3" />
-      {warm !== "failed" && <>
-        <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />
-        <AppHint />
-      </>}
+      {warm !== "failed" && <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />}
     </div>
   </li>;
 }

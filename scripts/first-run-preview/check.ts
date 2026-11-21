@@ -67,6 +67,19 @@ export async function checkJourney(url: string, root: string, language: string, 
 
     // An example from the welcome goes into the input; sent, it becomes a Task with a question, then a result.
     await page.goto(`${url}?agent=1&project=${state.project}`);
+    // A new person's first look opens the introduction over the welcome: read to its end, it is closed for good.
+    const intro = page.locator('[data-intro]');
+    await expect(intro).toBeVisible();
+    while (await intro.locator('[data-intro-next]').count()) {
+      // Every slide shows its picture, loaded.
+      await expect.poll(() => intro.locator('img:visible').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await intro.locator('[data-intro-next]').click();
+    }
+    await intro.locator('[data-intro-done]').click();
+    await expect(intro).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('[data-welcome]')).toBeVisible();
+    await expect(intro).toHaveCount(0);
     await page.locator('[data-welcome-example="decide"]').click();
     await send();
     let id: string | undefined;
@@ -113,7 +126,7 @@ export async function checkJourney(url: string, root: string, language: string, 
       { env: { HOME: marker.home }, encoding: 'utf8', timeout: 5000 });
     assert.equal(probe.status, 0, probe.stderr);
     assert.ok(existsSync(join(root, 'blocked-network.jsonl')), 'The preview transport was not exercised');
-    console.log(`Journey passed (${language}, width ${width}): agents, skills, project, welcome, an example's question, result and completion, a greeting without a Task; external sends: 0.`);
+    console.log(`Journey passed (${language}, width ${width}): agents, skills, project, welcome, the introduction, an example's question, result and completion, a greeting without a Task; external sends: 0.`);
   } catch (error) {
     console.error('Journey error:', error);
     if (existsSync(join(root, 'actor-errors.log'))) console.error(readFileSync(join(root, 'actor-errors.log'), 'utf8'));

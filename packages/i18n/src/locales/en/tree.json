@@ -13,6 +13,78 @@
     "todo": "Not started",
     "turn": "Awaiting review"
   },
+  "intro": {
+    "again": "See how it works",
+    "apps": {
+      "desktop": {
+        "name": "As an app on your PC",
+        "say": "Press “Install” in the browser's address bar, and it opens in a window of its own."
+      },
+      "note": "The steps for both are in “{{settings}}” under “{{apps}}”. You can open them any time.",
+      "open": "Open the app and phone steps",
+      "phone": {
+        "name": "From your phone",
+        "say": "Open the same screen on your phone and answer questions from anywhere. Connecting the phone to your PC takes a one-time setup."
+      },
+      "title": "Use it as an app, and from your phone"
+    },
+    "back": "Back",
+    "done": "Get started",
+    "flow": {
+      "lead": "This is not a chat screen. At its center is the list of tasks, and your part is three things: ask, answer questions, and check what was made.",
+      "send": {
+        "name": "Send a request",
+        "say": "Write what you want done in the input at the bottom, and send it."
+      },
+      "title": "Send a request, and AI turns it into a task and works on it",
+      "turn": {
+        "name": "Your turn",
+        "say": "When AI has a question or a report for you, the task moves to “{{section}}”."
+      },
+      "work": {
+        "name": "AI works on it",
+        "say": "What you sent leaves the input, and in 10 to 30 seconds it shows up as a task under “{{section}}”. You don't have to watch the screen while you wait."
+      }
+    },
+    "label": "How it works",
+    "next": "Next",
+    "parts": {
+      "conversation": {
+        "name": "Conversation with the coordinator",
+        "say": "Press the line above the input to open it. This is where you read how the coordinator, the AI that takes your requests, took what you sent."
+      },
+      "detail": {
+        "name": "Detail",
+        "say": "Press a row of the list to open it. This is where you read AI's questions and reports."
+      },
+      "input": {
+        "name": "Input",
+        "say": "Requests and answers to questions are both written and sent here."
+      },
+      "list": {
+        "name": "List",
+        "say": "Tasks are listed in groups such as “{{running}}” and “{{turn}}”."
+      },
+      "title": "What is where on the screen"
+    },
+    "skip": "Skip",
+    "turn": {
+      "answer": {
+        "name": "Send",
+        "say": "Nothing is answered until you send it."
+      },
+      "choose": {
+        "name": "For a question, pick a choice",
+        "say": "The choice goes into the input. You can also answer in your own words."
+      },
+      "note": "When a report arrives, read it and press “{{finish}}” if it is good. The task is not finished until you do. To have something changed, write it in the input and send it.",
+      "open": {
+        "name": "Open the row under “{{section}}”",
+        "say": "A question or a report is waiting for you."
+      },
+      "title": "When it is your turn"
+    }
+  },
   "row": {
     "review": "Review"
   },

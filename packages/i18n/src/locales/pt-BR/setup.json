@@ -18,6 +18,8 @@
     "noneOnTitle": "Nenhum agente está ativado",
     "noneReady": "Instale um agente ou faça login em um deles e depois escolha “Verificar de novo”.",
     "noneReadyTitle": "Nenhum agente está pronto ainda",
+    "off": "Desativado",
+    "on": "Ativado",
     "ready": "Login feito",
     "recheck": "Verificar de novo",
     "signedOut": "Login necessário",
@@ -103,6 +105,7 @@
   "steps": {
     "agents": "Agentes",
     "label": "Etapas da configuração",
+    "of": "Etapa {{at}} de {{total}}",
     "project": "Projeto",
     "skills": "Skills"
   },

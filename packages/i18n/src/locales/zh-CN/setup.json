@@ -18,6 +18,8 @@
     "noneOnTitle": "没有启用任何智能体",
     "noneReady": "请安装或登录一个智能体，然后选择“重新检查”。",
     "noneReadyTitle": "还没有可用的智能体",
+    "off": "关",
+    "on": "开",
     "ready": "已登录",
     "recheck": "重新检查",
     "signedOut": "需要登录",
@@ -99,6 +101,7 @@
   "steps": {
     "agents": "智能体",
     "label": "初始设置步骤",
+    "of": "第 {{at}} 步，共 {{total}} 步",
     "project": "项目",
     "skills": "技能"
   },

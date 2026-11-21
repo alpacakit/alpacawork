@@ -15,6 +15,78 @@
     "todo": "Não iniciadas",
     "turn": "Aguardando revisão"
   },
+  "intro": {
+    "again": "Ver como funciona",
+    "apps": {
+      "desktop": {
+        "name": "Como app no seu PC",
+        "say": "Pressione “Instalar” na barra de endereços do navegador, e ele abre em uma janela própria."
+      },
+      "note": "Os passos dos dois estão em “{{settings}}”, em “{{apps}}”. Você pode abri-los quando quiser.",
+      "open": "Abrir os passos de app e celular",
+      "phone": {
+        "name": "Pelo celular",
+        "say": "Abra a mesma tela no celular e responda perguntas de qualquer lugar. Conectar o celular ao PC exige uma configuração feita uma única vez."
+      },
+      "title": "Use como app e também pelo celular"
+    },
+    "back": "Voltar",
+    "done": "Começar",
+    "flow": {
+      "lead": "Esta não é uma tela de chat. O centro dela é a lista de tarefas, e a sua parte são três coisas: pedir, responder perguntas e conferir o que foi feito.",
+      "send": {
+        "name": "Envie um pedido",
+        "say": "Escreva o que você quer que seja feito no campo de mensagem abaixo e envie."
+      },
+      "title": "Envie um pedido, e a IA o transforma em uma tarefa e trabalha nela",
+      "turn": {
+        "name": "Sua vez",
+        "say": "Quando a IA tem uma pergunta ou um relatório para você, a tarefa vai para “{{section}}”."
+      },
+      "work": {
+        "name": "A IA trabalha nele",
+        "say": "O que você enviou sai do campo de mensagem e, em 10 a 30 segundos, aparece como uma tarefa em “{{section}}”. Não é preciso olhar a tela enquanto espera."
+      }
+    },
+    "label": "Como funciona",
+    "next": "Avançar",
+    "parts": {
+      "conversation": {
+        "name": "Conversa com o coordenador",
+        "say": "Pressione a linha acima do campo de mensagem para abri-la. Aqui você lê como o coordenador, a IA que recebe os seus pedidos, entendeu o que você enviou."
+      },
+      "detail": {
+        "name": "Detalhe",
+        "say": "Pressione uma linha da lista para abri-lo. É aqui que você lê as perguntas e os relatórios da IA."
+      },
+      "input": {
+        "name": "Campo de mensagem",
+        "say": "Tanto os pedidos quanto as respostas às perguntas são escritos e enviados aqui."
+      },
+      "list": {
+        "name": "Lista",
+        "say": "As tarefas aparecem agrupadas em “{{running}}”, “{{turn}}” e outros grupos."
+      },
+      "title": "O que há na tela"
+    },
+    "skip": "Pular",
+    "turn": {
+      "answer": {
+        "name": "Enviar",
+        "say": "Nada é respondido até você enviar."
+      },
+      "choose": {
+        "name": "Se for uma pergunta, escolha uma opção",
+        "say": "A opção vai para o campo de mensagem. Você também pode responder com suas próprias palavras."
+      },
+      "note": "Quando chegar um relatório, leia e, se estiver bom, pressione “{{finish}}”. A tarefa não termina até você fazer isso. Para pedir uma mudança, escreva no campo de mensagem e envie.",
+      "open": {
+        "name": "Abra a linha em “{{section}}”",
+        "say": "Uma pergunta ou um relatório espera por você."
+      },
+      "title": "Quando for a sua vez"
+    }
+  },
   "row": {
     "review": "Revisar"
   },
@@ -127,10 +199,10 @@
         "shows": "Modelos diferentes criam em paralelo, e depois você escolhe com qual ficar.",
         "words": "Quero fazer um jogo da cobrinha. Você pode tentar criar 3 em paralelo, com modelos diferentes? Quando ficarem prontos, me pergunte com qual seguir. Isto é um tutorial, então, por favor, pegue leve no esforço e leve cerca de 5 minutos. Por favor, escreva tudo em português."
       },
-      "triage": {
-        "label": "Dividir a abertura de um café em 5 tarefas",
-        "shows": "Os resultados ficam em fila para a sua revisão, e você escolhe quais concluir.",
-        "words": "Por favor, divida a abertura de um café fictício em 5 tarefas separadas: \"Encomendar os grãos\", \"Providenciar a placa\", \"Imprimir o cardápio\", \"Contratar a equipe\" e \"Enviar os convites\", e delegue cada uma a um agente. Peça que cada um escreva um resultado fictício de uma linha no relatório e aguarde a minha revisão. Quando as 5 chegarem, eu escolho quais concluir. Não precisa de pesquisa nem de arquivos e, por favor, escreva tudo em português."
+      "settings": {
+        "label": "Definir uma regra de trabalho e quantos agentes trabalham ao mesmo tempo",
+        "shows": "Uma regra entra na política do projeto e no máximo 4 agentes trabalham ao mesmo tempo.",
+        "words": "Adicione esta regra à política deste projeto: \"Ao terminar, resuma o que você mudou em 3 linhas ou menos\". Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
       }
     },
     "lead": "Escolha um exemplo para experimentar.",

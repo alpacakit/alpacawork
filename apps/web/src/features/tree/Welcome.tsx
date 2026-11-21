@@ -3,14 +3,16 @@ import { ExampleList } from "@/components/ui/example-list";
 import { useWorkspaceInfo } from "@/data/queries";
 import { useViewStore } from "@/state/view-store";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
-import { AppHint } from "@/features/coordinator/app-hint";
+import { Button } from "@/components/ui/button";
+import { openIntro } from "@/features/intro/intro-state";
 
 /**
  * The list's place while the scope in view holds no Task at all (counts.tasks; live, finished or shelved): a welcome
  * and how work starts, with examples that show agents working together on a surface of their own (ExampleList), in one
  * column a little above the middle of the list's place (by the screen's height alone, so it never moves when the input
  * at the foot grows), clear of that input. An example only goes into the input; the person sends it. Under the examples,
- * the first time, the line to the phone and app guide (AppHint): this is the first screen a new person sees.
+ * the way back to the introduction (features/intro), which opened by itself on a new person's first look: this is the
+ * first screen they see, and where one who skipped it looks for how the work goes.
  */
 export function Welcome() {
   const { t } = useTranslation("tree");
@@ -33,7 +35,7 @@ export function Welcome() {
       <div className="mt-8 animate-welcome [animation-delay:var(--motion-fast)] motion-reduce:[animation-delay:0s] narrow:mt-6">
         <ExampleList examples={examples} mark="data-welcome-example" roomy
           onPick={words => exampleInDraft(words, project && { id: project.id, title: project.title })} />
-        <AppHint />
+        <p className="m-0 mt-3 text-center text-sm"><Button variant="ref" data-welcome-intro onClick={openIntro}>{t("intro.again")}</Button></p>
       </div>
     </div>
   </section>;

@@ -13,6 +13,8 @@ export type OpenDialog =
   /** `request` counts openings, so asking for a tab while the dialog is open moves it there without remounting it. */
   | { kind: "settings"; tab?: SettingsTab; focusNotifications?: boolean; request?: number }
   | { kind: "diagnostics" }
+  /** The introduction to how the work goes (features/intro): opened by itself the first time, and by hand after. */
+  | { kind: "intro" }
   /**
    * A project's settings: Create project (`project` left out), or one project's (`null`: every project is shown, and
    * the dialog asks which).
@@ -45,7 +47,7 @@ type DialogState = {
   settingsTab: SettingsTab;
   rememberSettingsTab: (tab: SettingsTab) => void;
   openRun: (target: RunFormTarget) => void;
-  open: (kind: "settings" | "diagnostics", options?: { tab?: SettingsTab; focusNotifications?: boolean }) => void;
+  open: (kind: "settings" | "diagnostics" | "intro", options?: { tab?: SettingsTab; focusNotifications?: boolean }) => void;
   /** Create project with no `project`; a project's settings with its ID, or `null` to choose it there. */
   openProject: (project?: string | null) => void;
   openInput: (input: Omit<OpenInput, "kind">) => void;

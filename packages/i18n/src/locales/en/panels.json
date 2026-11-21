@@ -385,6 +385,9 @@
       "aiLanguage": "Language for AI conversations",
       "awayAfter": "Away when idle",
       "display": "Display",
+      "intro": "How it works",
+      "introHelp": "See the flow of the work, what is where on the screen, and the basic operations again, with pictures.",
+      "introShow": "Show",
       "issue": {
         "conflict": "Changed in another view. Check the latest value.",
         "error": "Could not save. Try again.",

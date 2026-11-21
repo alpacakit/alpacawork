@@ -18,6 +18,8 @@
     "noneOnTitle": "No hay ningún agente activado",
     "noneReady": "Instala un agente o inicia sesión en uno y luego elige “Comprobar de nuevo”.",
     "noneReadyTitle": "Aún no hay ningún agente listo",
+    "off": "Desactivado",
+    "on": "Activado",
     "ready": "Sesión iniciada",
     "recheck": "Comprobar de nuevo",
     "signedOut": "Requiere iniciar sesión",
@@ -103,6 +105,7 @@
   "steps": {
     "agents": "Agentes",
     "label": "Pasos de la configuración",
+    "of": "Paso {{at}} de {{total}}",
     "project": "Proyecto",
     "skills": "Skills"
   },
