@@ -9,8 +9,9 @@
  * - Files say nothing about recipients: attaching leaves the phase as it is, and a seed or a close keeps the files.
  * - `seen`: the last Task the screen was observed to open, kept in either phase. Opening the Task already seen is no
  *   new opening, so it never seeds again.
- * - Closing the panel on a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so nothing is
- *   left to go to a Task no longer in view; anything else in it keeps the draft as it is.
+ * - The screen leaving a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so
+ *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing while the
+ *   panel shows nothing. Anything else in it keeps the draft as it is.
  *
  * A locally submitted send leaves the current labels as prepared context; its body is retained only for delivery/recovery.
  * Admission consumes that retained body, never restores recipients from it. `seen` is carried: the same panel adds nothing,
@@ -60,8 +61,9 @@ export function observed(values: Values, task: Seed, inPanel = true): Values | n
   return { ...rest, phase: 'prepared', seen: task.id, doc: JSON.stringify(labelsDocument([task])) };
 }
 /**
- * The panel closed on `task`. With its label all that is in the draft (blank words, line breaks and files are nothing),
- * however it came in, the draft is fresh again: prepared, empty, nothing seen, so the same Task opened again seeds it.
+ * The screen left `task` (the panel closed on it, or it was the project in view). With its label all that is in the
+ * draft (blank words, line breaks and files are nothing), however it came in, the draft is fresh again: prepared, empty,
+ * nothing seen, so the same Task opened again seeds it.
  */
 export function closed(values: Values, task: string): Values | null {
   const left = inlines(draftDocument(values)).filter(node => node.type !== 'hardBreak' && (node.type !== 'text' || node.text.trim()));

@@ -79,14 +79,17 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   const index = useEveryTaskIndex();
   const client = useQueryClient(), root = JSON.parse(draft.key)[0] as string;
   const serverTasks = useServerTasks();
+  // The panel shows a Task once its read presents it; the project in view is shown by the list, which the index draws.
   const presentation = useSyncExternalStore(changed => subscribeReads(client, changed),
-    () => seen ? readerPresentation(client, root, seen).kind : 'absent');
-  // Every way the panel closes (its ×, Esc, Back, a swipe, the address) is this one change: it showed or awaited a Task
-  // and now neither (a Task still being looked up is no close). The draft decides what closing does (lifecycle.ts).
-  // Before the opening below, which then sees the draft closing left.
+    () => selectedTask ? readerPresentation(client, root, selectedTask).kind : project ? 'listed' : 'absent');
+  // What the screen shows leaving a Task is one change, however it goes: the panel closing on it (its ×, Esc, Back, a
+  // swipe, the address) or the project in view changing while the panel shows nothing (a Task still being looked up is
+  // no close). A move from one Task in the panel to another is an opening alone. The draft decides what leaving does
+  // (lifecycle.ts). Before the opening below, which then sees the draft leaving left.
   useEffect(() => useViewStore.subscribe((state, before) => {
-    const was = readerShows(before);
-    if (was && !readerShows(state)) draft.close(was);
+    const panel = readerShows(before), now = readerShows(state);
+    const was = panel ?? before.project;
+    if (was && was !== (now ?? state.project) && !(panel && now)) draft.close(was);
   }), [draft.key]);
   useEffect(() => {
     // Observe after the editor's mount lifecycle; its initial transaction must precede canonical draft seeding.

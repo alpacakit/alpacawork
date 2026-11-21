@@ -71,7 +71,7 @@ export function useInputDraft() {
   const observe = (task: { id: string; title: string }, inPanel = true) => {
     mutateInput(draft.key, values => observed(values, task, inPanel));
   };
-  /** The panel closed on `task` (lifecycle.ts). */
+  /** The screen left `task`: the panel closed on it, or it was the project in view (lifecycle.ts). */
   const close = (task: string) => { mutateInput(draft.key, values => closed(values, task)); };
   /** A review's send-back enters the one editable document with the versions actually reviewed. */
   const intend = (task: Task, intent: SentIntent, words: string) => {
