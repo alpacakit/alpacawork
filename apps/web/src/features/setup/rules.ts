@@ -71,16 +71,20 @@ export const firstAgentOf = (usable: readonly string[], picked: string | null) =
 
 /**
  * The agents config.yaml should hold for the choice made in the setup, or null when it already does: the switches as
- * `enabled` (only rows the screen lets the person switch; a row whose CLI is missing keeps what config.yaml says), each
- * kind config.yaml did not list and whose CLI is here added with its switch (off when it cannot take work yet), placed as
- * `placeByKind` places it, and the first agent moved to the top of the order. Once saved, every kind found is listed, so
- * alpacawork's order no longer moves the person's choice of first agent when one signs in later or they come back.
+ * `enabled` (only rows the screen lets the person switch; a row whose CLI is missing keeps what config.yaml says), every
+ * kind alpacawork supports that config.yaml did not list added with its switch (off when it is not here or cannot take
+ * work yet), placed as `placeByKind` places it, and the first agent moved to the top of the order. Once saved, every kind
+ * is listed, so alpacawork's order no longer moves the person's choice of first agent when one is installed or signed in
+ * later, or they come back.
  */
 export function chosenAgents(agents: readonly AgentDraft[], rows: readonly StartAgent[], on: AgentSwitches, first: string | null): AgentDraft[] | null {
   const switchable = new Set(rows.filter(row => row.configured && row.status !== "missing").map(row => row.name));
   let next = agents.map(agent => switchable.has(agent.name) && (agent.enabled ?? true) !== !!on[agent.name] ? { ...agent, enabled: !!on[agent.name] } : agent);
-  const added = rows.filter(row => !row.configured && row.adapter && row.status !== "missing" && row.status !== "checking")
-    .map(row => ({ ...newAgentDraft(row.name, row.adapter!, row.name), enabled: canWork(row) && !!on[row.name] }));
+  const listedKinds = new Set(agents.map(agent => draftAdapter(agent)));
+  const added = BUILTIN_ADAPTER_IDS.filter(kind => !listedKinds.has(kind)).map(kind => {
+    const row = rows.find(each => !each.configured && each.adapter === kind);
+    return { ...newAgentDraft(kind, kind, kind), enabled: !!row && canWork(row) && !!on[row.name] };
+  });
   next = placeByKind(next, added, agent => draftAdapter(agent));
   // At the very top, so no agent before it (off now, or signed in later) can take its place.
   const firstId = next.find(agent => agent.name === first)?.id;
