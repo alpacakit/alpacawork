@@ -46,7 +46,8 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
   const firstSeen = useRef<Record<string, StartAgent["status"]>>({});
   useEffect(() => {
     if (!drafts || status.isPending) return;
-    setOn(before => Object.fromEntries(rows.map(row => {
+    // A row the latest check no longer lists keeps its switch, so it comes back as the person left it.
+    setOn(before => ({ ...before, ...Object.fromEntries(rows.map(row => {
       if (row.status === "checking") return [row.name, before[row.name] ?? false];
       const was = firstSeen.current[row.name];
       firstSeen.current[row.name] ??= row.status;
@@ -55,7 +56,7 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
       if (was === undefined) return [row.name, row.configured ? drafts.agents.find(agent => agent.name === row.name)?.enabled ?? true : row.status === "ready"];
       // One that became usable after the first look (signed in, or installed, then checked again) is switched on.
       return [row.name, canWork({ status: was }) ? before[row.name] ?? true : before[row.name] || was === "signedOut" || was === "missing"];
-    })));
+    })) }));
   }, [drafts, rows]);
   const initialized = rows.every(row => row.status !== "checking" && firstSeen.current[row.name] !== undefined);
   const readFailure = [settings, status, telemetry.status].find(read => read.isError);
