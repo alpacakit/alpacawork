@@ -30,7 +30,7 @@ import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, R
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
 import { Reader, readerBox, type ReaderMode } from "@/features/reader/Reader";
 import { DialogHost } from "./DialogHost";
-import { IntroStart } from "@/features/intro/Intro";
+import { Intro } from "@/features/intro/Intro";
 import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
@@ -158,7 +158,8 @@ export function Workbench() {
         </>}</IndexRegions>
       </main>
       {ready && <DialogHost />}
-      {ready && <IntroStart />}
+      {/* After the dialogs, so opened from one (the settings) it stands over it. */}
+      {ready && <Intro />}
       {/* Its input reads the workspace; opened before that arrives (by a share at start-up), it waits for it. */}
       {ready && <CoordinatorCard />}
     </PageFrame></ListNavigationProvider>

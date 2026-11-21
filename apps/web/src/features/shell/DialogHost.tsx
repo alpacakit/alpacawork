@@ -3,7 +3,6 @@ import { RunFormDialog } from "@/features/forms/RunFormDialog";
 import { SettingsDialog } from "@/features/panels/SettingsDialog";
 import { DiagnosticsDialog } from "@/features/panels/DiagnosticsDialog";
 import { ProjectDialog } from "@/features/panels/ProjectDialog";
-import { IntroDialog } from "@/features/intro/Intro";
 
 /**
  * The one open dialog. Each dialog renders its
@@ -23,8 +22,6 @@ export function DialogHost() {
       return <SettingsDialog initialTab={dialog.tab} request={dialog.request} focusNotifications={dialog.focusNotifications} />;
     case "diagnostics":
       return <DiagnosticsDialog />;
-    case "intro":
-      return <IntroDialog />;
     case "project":
       return <ProjectDialog key={dialog.project === undefined ? "new" : dialog.project ?? "all"} project={dialog.project} />;
   }

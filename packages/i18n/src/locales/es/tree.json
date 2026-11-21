@@ -21,7 +21,7 @@
     "apps": {
       "desktop": {
         "name": "Como app en tu PC",
-        "say": "Pulsa «Instalar» en la barra de direcciones del navegador y se abre en una ventana propia."
+        "say": "En Chrome o Edge, pulsa «Instalar» en la barra de direcciones y se abre en una ventana propia."
       },
       "note": "Los pasos de ambos están en «{{settings}}», en «{{apps}}». Puedes abrirlos cuando quieras.",
       "open": "Abrir los pasos de app y teléfono",
@@ -54,7 +54,7 @@
     "parts": {
       "conversation": {
         "name": "Conversación con el coordinador",
-        "say": "Pulsa la línea que hay sobre el cuadro de texto para abrirla. Aquí lees cómo recibió tu petición el coordinador, la IA que atiende tus peticiones."
+        "say": "Pulsa la línea que hay sobre el cuadro de texto (al principio dice «{{open}}») para abrirla. Aquí lees cómo recibió tu petición el coordinador, la IA que atiende tus peticiones."
       },
       "detail": {
         "name": "Detalle",

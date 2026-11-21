@@ -150,14 +150,14 @@ export async function captureIntroShots(url: string, root: string, language: str
 
     mkdirSync(out, { recursive: true });
     const phone = await open(await browser.newContext({ ...PHONE, locale: language }));
-    for (const shot of new Set(SLIDES.map(slide => slide.shot))) {
+    for (const { shot, points } of SLIDES) {
       const how = SCENES[shot];
       assert.ok(how, `No scene for the picture “${shot}”: add one to SCENES`);
       const at = how.phone ? phone : page;
       await how.set(at, scene);
       // What the conversation's last line and the rows say settles a moment after the page is drawn.
       await delay(1200);
-      await mark(at, SLIDES.filter(slide => slide.shot === shot).flatMap(slide => slide.points.map(point => point.part)));
+      await mark(at, points.map(point => point.part));
       await at.screenshot({ path: join(out, `${language}-${shot}.png`) });
       await at.evaluate(() => document.querySelectorAll('[data-intro-mark]').forEach(element => element.remove()));
       console.log(`Took ${language}-${shot}.png`);

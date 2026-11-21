@@ -19,7 +19,7 @@
     "apps": {
       "desktop": {
         "name": "As an app on your PC",
-        "say": "Press “Install” in the browser's address bar, and it opens in a window of its own."
+        "say": "In Chrome or Edge, press “Install” in the address bar, and it opens in a window of its own."
       },
       "note": "The steps for both are in “{{settings}}” under “{{apps}}”. You can open them any time.",
       "open": "Open the app and phone steps",
@@ -52,7 +52,7 @@
     "parts": {
       "conversation": {
         "name": "Conversation with the coordinator",
-        "say": "Press the line above the input to open it. This is where you read how the coordinator, the AI that takes your requests, took what you sent."
+        "say": "Press the line above the input (at first it reads “{{open}}”) to open it. This is where you read how the coordinator, the AI that takes your requests, took what you sent."
       },
       "detail": {
         "name": "Detail",
