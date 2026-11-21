@@ -33,6 +33,7 @@ import { DialogHost } from "./DialogHost";
 import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
+import { GuideBalloon } from "@/features/guide/Guide";
 
 const subscribeViewport = (notify: () => void) => {
   addEventListener("resize", notify);
@@ -159,6 +160,7 @@ export function Workbench() {
       {ready && <DialogHost />}
       {/* Its input reads the workspace; opened before that arrives (by a share at start-up), it waits for it. */}
       {ready && <CoordinatorCard />}
+      {ready && <GuideBalloon />}
     </PageFrame></ListNavigationProvider>
   );
 }

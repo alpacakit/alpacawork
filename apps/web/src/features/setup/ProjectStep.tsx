@@ -68,6 +68,19 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
     offered.current = next;
     if (now !== next) form.setValue("policy", next, { shouldDirty: true });
   }, [active, base, installed?.join(), i18n.language]);
+  // The name follows the working folder chosen (its last part) for as long as it is the name set up first or one put in
+  // from a folder, and goes back to the first one when the folder is emptied; once the person writes a name, it is theirs.
+  const cwd = useWatch({ control: form.control, name: "cwd" }) ?? "";
+  const named = useRef<{ first: string; put: string } | null>(null);
+  useEffect(() => {
+    if (!active || base === null) return;
+    const now = form.getValues("title") ?? "";
+    named.current ??= { first: now, put: now };
+    if (now !== named.current.put) return;
+    const next = folderName(cwd) || named.current.first;
+    named.current.put = next;
+    if (now !== next) form.setValue("title", next, { shouldDirty: true });
+  }, [active, base, cwd]);
   const failedRead = base === null ? [query, tasksSchema].find(read => read.isError) : undefined;
   if (failedRead) return <ReadFailure what={t("project.title")} error={failedRead.error} retry={() => void failedRead.refetch()} />;
   if (base === null) return <Loading />;
@@ -90,6 +103,9 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
     </div>
   </FormProvider>;
 }
+
+/** A folder's own name: the last part of its path, whatever the separator. */
+const folderName = (path: string) => path.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
 
 /** The recommended rules, then one line per installed skill: when it is used, in the display language. */
 function recommendedPolicy(t: TFunction<"setup">, installed: readonly SkillName[]): string {

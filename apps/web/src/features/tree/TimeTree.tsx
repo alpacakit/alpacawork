@@ -50,7 +50,6 @@ import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
 import { Welcome } from "./Welcome";
-import { ListGuide } from "@/features/guide/ListGuide";
 import { scrollMotion, useListMotion, useTint } from "@/lib/motion";
 import { sameDrawingSource, type DrawingSource } from "@/lib/drawing";
 import { useWorkspaceSelector } from "@/data/workspace-store";
@@ -484,8 +483,6 @@ export function TimeTree() {
           style={{ ...frozen(shared), top: `calc(var(--bar-in) + ${head}px)` }} className="sticky left-0 z-30 h-0">
           <div className="bg-bg"><PageReadFailure page={timeline} read={timelineRead} /></div>
         </div>}
-        {/* The getting-started guide's line, over the sections; as wide as the list's box, as the welcome is. */}
-        {!welcome && !empty && <div style={{ width: sheet }} className="sticky left-0 z-10"><ListGuide /></div>}
         <RowTimeContext.Provider value={rowTime}>
           {<>
             {sections.map((section, at) => <Fragment key={section.section}>
@@ -670,7 +667,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
     }}
     className={className}>{content}</button>;
   return (
-    <li ref={rowElement} data-row={task.id} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
+    <li ref={rowElement} data-row={task.id} data-row-section={node.row?.section} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
       <div data-row-head data-motion-key={task.id}
         className={cn("group relative flex border-b border-rule", narrow && "flex-col", !narrow && shared.selected === task.id && "bg-row-picked [--row-ground:var(--color-row-picked-solid)]")}>
         <div ref={label} data-row-label style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}

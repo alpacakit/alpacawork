@@ -1,28 +1,35 @@
 {
   "guide": {
     "close": "Cerrar la guía",
-    "line": {
-      "end": "Eso es todo. Ya puedes pedir lo que quieras en el cuadro de abajo.",
-      "question": "Es tu turno. Abre la fila de «{{section}}», elige una respuesta y envíala.",
-      "result": "Hay un resultado. Abre la fila de «{{section}}», revísalo y pulsa «{{finish}}» si está bien.",
-      "send": "Escribe en el cuadro de abajo lo que quieres que se haga y envíalo. Se convierte en una tarea que aparece aquí.",
-      "working": "La IA está trabajando. Cuando llegue una pregunta o un resultado para ti, la tarea pasará a «{{section}}». Pulsa una fila para leer su avance."
-    },
     "name": "Primeros pasos",
+    "next": "Entendido",
     "progress": "{{step}}/3",
+    "say": {
+      "accept": "Lee el informe y, si hay algo hecho, ábrelo desde «{{files}}» para revisarlo. Si está bien, pulsa este botón ({{finish}}).",
+      "answer": "Al elegir una respuesta, se coloca en el cuadro de abajo. Al enviarla, queda como tu respuesta.",
+      "answered": "Enviaste tu respuesta. Tarda un momento en llegar a la IA que trabaja en la tarea.",
+      "answerReady": "Tu respuesta ya está en el cuadro. Envíala con este botón para que cuente como respuesta.",
+      "end": "Eso es todo. Ya puedes pedir lo que quieras aquí.",
+      "question": "Es tu turno. Abre esta fila y responde la pregunta.",
+      "received": "El coordinador (la IA que recibe tus peticiones) ya tiene tu petición. Pronto aparecerá una tarea. Pulsa aquí para abrir la conversación y leerla.",
+      "result": "Hay un informe. Abre esta fila y revísalo.",
+      "send": "Escribe aquí lo que quieres que se haga y envíalo. También puedes elegir uno de los ejemplos de arriba.",
+      "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo. Se convierte en una tarea de la lista.",
+      "sendReady": "Ya está en el cuadro. Envíalo con este botón.",
+      "working": "Tu petición ya es una tarea y la IA está trabajando en ella. Cuando llegue una pregunta o un informe para ti, pasará a «{{section}}»."
+    },
     "stepDone": "Hecho:",
     "steps": {
       "send": {
-        "detail": "Escríbela en el cuadro de abajo y envíala. O elige un ejemplo.",
+        "detail": "Escríbela en el cuadro «{{input}}» y envíala. O elige un ejemplo.",
         "title": "Envía una petición"
       },
       "turn": {
-        "detail": "Abre una tarea que tenga una pregunta o un resultado para ti, y responde o revísalo.",
+        "detail": "Abre una tarea que tenga una pregunta o un informe para ti, y responde la pregunta o revisa lo que se hizo.",
         "title": "Tu turno"
       },
       "work": {
-        "detail": "Tu petición se convierte en una tarea que aparece aquí, y un agente trabaja en ella.",
-        "received": "El coordinador (la IA que recibe tus peticiones) ya tiene tu petición. Pronto aparecerá aquí una tarea. Pulsa la línea encima del cuadro para leer la conversación.",
+        "detail": "Las respuestas no aparecen aquí mismo. Tu petición se convierte en una tarea de la lista de esta pantalla, y una IA trabaja en ella.",
         "title": "La IA trabaja en ella"
       }
     }
@@ -152,8 +159,8 @@
       },
       "folder": {
         "label": "Leer esta carpeta y proponer qué encargar después",
-        "shows": "Resume lo que hay en la carpeta de trabajo y te pregunta por cuál trabajo empezar. No cambia nada.",
-        "words": "Conviértelo en una tarea y encárgasela a un agente. Lee lo que hay en la carpeta de trabajo de este proyecto ({{path}}) y resume en tres líneas de qué trata el proyecto. Después, propón tres trabajos que podría encargar a continuación y pregúntame por cuál empezar. No cambies ningún archivo. Es una prueba, así que mantén un esfuerzo ligero. Escribe todo en español, por favor."
+        "shows": "Resume lo que hay en la carpeta de trabajo y te pregunta por cuál trabajo empezar. Al elegir, recibes un informe de cómo hacerlo. No cambia nada.",
+        "words": "Conviértelo en una tarea y encárgasela a una IA. Lee lo que hay en la carpeta de trabajo {{path}} y resume en tres líneas de qué trata el proyecto. Después, propón tres trabajos que podría encargar a continuación y pregúntame por cuál empezar. Cuando elija, resume en un informe cómo hacer ese trabajo (qué archivos cambiar y cómo). No cambies ningún archivo dentro de esta petición. Es una prueba, así que mantén un esfuerzo ligero. Escribe todo en español, por favor."
       },
       "models": {
         "label": "Pide a 3 modelos un juego de la serpiente y elige uno",
@@ -167,11 +174,12 @@
       }
     },
     "folder": {
+      "ask": "Elige el repositorio o la carpeta que vas a usar y guarda.",
       "at": "Ubicación del código: {{path}}",
       "choose": "Elegir la ubicación del código",
       "none": "Para usarlo con tu propio repositorio, elige esa carpeta como ubicación del código del proyecto."
     },
-    "lead": "Envía lo que quieres que se haga. La IA lo convierte en tareas, trabaja en ellas y solo acude a ti cuando hace falta tu decisión.",
+    "lead": "Envía lo que quieres que se haga. La IA lo convierte en tareas, trabaja en ellas y solo las coloca en «{{section}}» cuando hace falta tu decisión.",
     "title": "Te damos la bienvenida a alpacawork"
   }
 }

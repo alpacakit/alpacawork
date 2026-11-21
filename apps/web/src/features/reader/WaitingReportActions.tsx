@@ -124,7 +124,7 @@ export function WaitingReportActions({ task, question, onFollow }: { task: TaskD
       className={cn("scroll-my-20 py-2", at > 0 && "mt-1 border-t border-rule pt-3")}>
       <p data-question-number className="m-0 text-xs text-muted tabular-nums">{t("answer.question", { total: count, n: at + 1 })}</p>
       <h3 className="m-0 mt-type-close text-md font-semibold">{question.ask}</h3>
-      <div role="group" aria-label={question.ask} className={cn("mt-type-block", row(question))}>
+      <div role="group" aria-label={question.ask} data-guide-part="answer-choices" className={cn("mt-type-block", row(question))}>
         {choices(question, "h-auto min-h-control-sm bg-lit px-2.5 py-1 text-sm narrow:min-h-11", onFollow)}</div>
       {/* Why a right swipe did not send: said here, under what is left to choose (askChoice). */}
       <p data-ask-hint role="status" className="m-0 text-sm text-turn not-empty:mt-1.5">

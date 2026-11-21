@@ -16,7 +16,7 @@ import { useReadState, useWriteDisabled } from '@/data/queries';
 import { resources } from '@/data/resources';
 import { useConnection } from '@/data/connection';
 import { useDialogStore } from '@/state/dialog-store';
-import { restartGuide } from '@/features/guide/guide-step';
+import { restartGuide } from '@/features/guide/guide-state';
 
 /**
  * What one row says and allows while its values are saved, a row of three as a row of one. A change made elsewhere or a
