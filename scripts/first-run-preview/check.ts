@@ -29,7 +29,7 @@ export async function checkJourney(url: string, root: string, language: string, 
     const setup = page.locator('[data-setup-screen]');
     // 1 Language and theme: the language the setup started in is the one chosen.
     const display = setup.locator('[data-setup-panel="display"]');
-    await expect(display.locator(`[data-setup-language="${language}"] input`)).toBeChecked();
+    await expect(display.locator('[data-setup-language]')).toHaveValue(language);
     await display.locator('[data-setup-next]').click();
     // 2 Agents: Codex is signed in and on; Claude Code needs sign-in and has no switch. Usage data starts ticked.
     const agents = setup.locator('[data-setup-panel="agents"]');

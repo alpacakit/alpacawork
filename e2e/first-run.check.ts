@@ -38,9 +38,9 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     await expect(setup.locator('[data-setup-step="display"]')).toHaveAttribute("aria-current", "step");
 
     // 1 Language and theme: each applies at once, and the theme stays after setup.
-    await setup.locator('[data-setup-language="es"]').click();
+    await setup.locator("[data-setup-language]").selectOption("es");
     await expect(setup.locator("h1")).toHaveText("Idioma y tema");
-    await setup.locator('[data-setup-language="en"]').click();
+    await setup.locator("[data-setup-language]").selectOption("en");
     await expect(setup.locator("h1")).toHaveText("Language and theme");
     await setup.locator('[data-setup-theme="dark"]').click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

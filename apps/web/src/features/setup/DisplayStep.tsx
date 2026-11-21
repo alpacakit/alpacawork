@@ -4,7 +4,8 @@ import { activateLocale } from "@alpacawork/i18n";
 import { isUiLocale, uiLocaleOrDefault } from "@alpacawork/core/ui-language";
 import { personalSettings, uiLanguageOptions, type SettingDefinition } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { useWriteDisabled } from "@/data/queries";
@@ -14,7 +15,7 @@ import { intentKey, useWriteIntent, useWriteIntentStore } from "@/data/write-int
 import { StepButtons } from "./parts";
 
 /**
- * Step 1: the screen's language and theme, each a choice laid out in full. A choice applies at once and is saved to the
+ * Step 1: the screen's language, picked from a list, and its theme, each shown with a picture. A choice applies at once and is saved to the
  * person's own setting as Settings saves it, so it stays after setup; Next only moves on. The language comes first, so
  * that the rest of the setup is read in the language chosen.
  */
@@ -52,9 +53,13 @@ function usePersonalChoice(key: string) {
   return { value, locked: denied || settings.status !== "ready", choose };
 }
 
-/** Each language under its own name, so a person who cannot read the current one still finds theirs. */
+/**
+ * The language as a list to pick from, each under its own name, so a person who cannot read the current one still finds
+ * theirs; the globe beside the label marks it in any language.
+ */
 function LanguageChoice() {
   const { t, i18n } = useTranslation("setup");
+  const id = useId();
   const { locked, choose } = usePersonalChoice("language");
   const current = uiLocaleOrDefault(i18n.language);
   const pick = (next: string) => {
@@ -62,12 +67,13 @@ function LanguageChoice() {
     activateLocale(next);
     void choose(next, value => activateLocale(isUiLocale(value) ? value : current));
   };
-  return <Choices name="setup-language" legend={t("language")} icon="globe" locked={locked} grid="grid-cols-2 narrow:grid-cols-1">
-    {uiLanguageOptions.map(({ value, labelKey }) => <Option key={value} name="setup-language" value={value} data-setup-language={value}
-      checked={current === value} locked={locked} onPick={pick}>
-      <Dot on={current === value} /><span lang={value} className="font-semibold">{t(labelKey, { ns: "panels" })}</span>
-    </Option>)}
-  </Choices>;
+  return <div data-setup-choices="setup-language" className={cn("min-w-0", locked && "opacity-60")}>
+    <label htmlFor={id} className="flex items-center gap-1.5 font-semibold"><Icon name="globe" className="size-4 text-muted" />{t("language")}</label>
+    <NativeSelect id={id} variant="field" data-setup-language value={current} disabled={locked} onChange={event => pick(event.target.value)}
+      className="mt-3 w-full max-w-80 narrow:max-w-none">
+      {uiLanguageOptions.map(({ value, labelKey }) => <option key={value} value={value} lang={value}>{t(labelKey, { ns: "panels" })}</option>)}
+    </NativeSelect>
+  </div>;
 }
 
 const themes = (personalSettings.find(setting => setting.key === "theme") as Extract<SettingDefinition, { kind: "select" }>).options.map(option => option.value);
@@ -98,12 +104,12 @@ function ThemePicture({ theme }: { theme: string }) {
   </span>;
 }
 
-function Choices({ name, legend, icon, note, locked, className, grid, children }: {
-  name: string; legend: string; icon?: IconName; note?: string; locked: boolean; className?: string; grid: string; children: ReactNode;
+function Choices({ name, legend, note, locked, className, grid, children }: {
+  name: string; legend: string; note?: string; locked: boolean; className?: string; grid: string; children: ReactNode;
 }) {
   const noteId = useId();
   return <fieldset data-setup-choices={name} disabled={locked} aria-describedby={note ? noteId : undefined} className={cn("m-0 min-w-0 border-0 p-0", locked && "opacity-60", className)}>
-    <legend className="flex items-center gap-1.5 p-0 font-semibold">{icon && <Icon name={icon} className="size-4 text-muted" />}{legend}</legend>
+    <legend className="p-0 font-semibold">{legend}</legend>
     {note && <p id={noteId} className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{note}</p>}
     <div className={cn("mt-3 grid gap-2", grid)}>{children}</div>
   </fieldset>;
