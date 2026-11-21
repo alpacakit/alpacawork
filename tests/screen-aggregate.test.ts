@@ -280,8 +280,15 @@ test('section changes, closed child counts, and freshness follow the same increm
   assert.equal(frame.home('T3')?.section, 'held');
   const child = input.get('T2')!, review = { ...child, hold: true, state: 'held' as const, baseState: 'doing' as const, ball: userBall };
   input.set(child.id, review); let result = updateScreenAggregate(frame, new Map([[child.id, { before: child, after: review }]])); frame = result.next;
-  check(frame, input, facts); assert.equal(frame.home('T2')?.section, 'review');
+  check(frame, input, facts); assert.equal(frame.home('T2')?.section, 'held');
   assert.ok(result.changed.pages.has('finished:root')); assert.deepEqual(frame.childCounts('T1'), { live: 1, finished: 0 });
+  // Taking the hold off a child awaiting the user's review moves its row and count back to review.
+  const reviewCount = (now: typeof frame) => now.counts().home.root?.review ?? 0, heldReview = reviewCount(frame);
+  const unheld = { ...review, hold: false, state: 'doing' as const };
+  input.set(child.id, unheld); frame = replace(frame, review, unheld); check(frame, input, facts);
+  assert.equal(frame.home('T2')?.section, 'review'); assert.equal(reviewCount(frame), heldReview + 1);
+  input.set(child.id, review); frame = replace(frame, unheld, review); check(frame, input, facts);
+  assert.equal(frame.home('T2')?.section, 'held'); assert.equal(reviewCount(frame), heldReview);
   const fact = { scopes: ['root', 'P1'], listed: true, freshFinished: true, menuRunning: true }; facts.set('T1', fact);
   result = updateScreenAggregate(frame, new Map(), new Map([['T1', fact]])); frame = result.next; check(frame, input, facts);
   assert.equal(frame.counts().closed.root?.freshFinished, 1); assert.equal(frame.menu('P1').running, 1);
