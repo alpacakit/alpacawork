@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
 import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { redactSecrets } from '@alpacawork/core';
+import { openBrowser } from '@alpacawork/cli-kit';
 import { serverText, type ServerLocale } from '@alpacawork/i18n/server';
 import type { InstallationResult } from './public-setup.js';
 import type { DetectedSetupAgent } from './setup-ai.js';
@@ -30,18 +30,8 @@ export function setupResult(result: InstallationResult, agents: readonly Detecte
 export async function openSetupBrowser(url: string, env: Readonly<NodeJS.ProcessEnv>, options: {
   noOpen?: boolean; platform?: string; launch?: (command: string, args: string[]) => Promise<void>;
 } = {}): Promise<boolean> {
-  if (options.noOpen || env.SSH_CONNECTION || env.SSH_CLIENT || env.SSH_TTY) return false;
+  if (options.noOpen) return false;
   const parsed = new URL(url);
   if (parsed.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(parsed.hostname) || parsed.username || parsed.password) return false;
-  const platform = options.platform ?? process.platform;
-  const command = platform === 'darwin' ? 'open' : platform === 'linux' ? 'xdg-open' : null;
-  if (!command) return false;
-  const launch = options.launch ?? ((command, args) => new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, { env, stdio: 'ignore', detached: true, shell: false });
-    const timeout = setTimeout(() => reject(new Error('Browser launcher did not finish')), 5_000);
-    child.once('error', error => { clearTimeout(timeout); reject(error); });
-    child.once('spawn', () => child.unref());
-    child.once('exit', code => { clearTimeout(timeout); code === 0 ? resolve() : reject(new Error('Browser launcher failed')); });
-  }));
-  try { await launch(command, [parsed.href]); return true; } catch { return false; }
+  return await openBrowser(parsed.href, env, options) === 'opened';
 }
