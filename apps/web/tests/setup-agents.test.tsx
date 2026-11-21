@@ -30,6 +30,16 @@ describe('the setup\'s agents', () => {
     expect(usableAgents(found, { pi: true })).toEqual(['pi']);
   });
 
+  it('places a kind signed in after config.yaml was made where alpacawork\'s order puts it, so it can be the default', () => {
+    // A new config.yaml lists only what was signed in then; Claude Code's check answered only on the screen.
+    const configured = [agent('copilot', true)];
+    const rows = startAgents(configured, { availability: { copilot: seen('ready') }, detected: { claude: seen('ready'), codex: seen('signed_out') } }, false);
+    expect(rows.map(row => row.name)).toEqual(['claude', 'codex', 'copilot']);
+    const on = { claude: true, copilot: true };
+    expect(firstAgentOf(usableAgents(rows, on), null)).toBe('claude');
+    expect(chosenAgents(configured, rows, on, 'claude')!.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['copilot', true]]);
+  });
+
   it('leaves an agent whose CLI is missing as config.yaml has it', () => {
     const configured = [agent('codex', true), agent('grok', true)];
     const rows = startAgents(configured, { availability: { codex: seen('ready'), grok: seen('not_found') } }, false);

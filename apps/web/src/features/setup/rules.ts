@@ -19,9 +19,12 @@ const statusOf = (seen: AgentAvailability | undefined, checking: boolean): Start
     : !seen && checking ? "checking" : "signedOut";
 
 /**
- * The agents the setup lists: config.yaml's in its order, then each kind alpacawork supports that config.yaml does not
+ * The agents the setup lists: config.yaml's in its order, and each kind alpacawork supports that config.yaml does not
  * list, as the check saw it on this PC (a kind with no CLI of its own, run from alpacawork's bundle, is listed only by
- * config.yaml). Those whose CLI is missing come last, so the ones that can be enabled stand together at the top.
+ * config.yaml), placed where alpacawork's own order of kinds puts it: before the first listed agent of a later kind. A
+ * new config.yaml lists only the kinds signed in when it was made, so one signed in since keeps its usual place (and
+ * stays the default when it comes first). Those whose CLI is missing come last, so the ones that can be enabled stand
+ * together at the top.
  */
 export function startAgents(agents: readonly AgentDraft[], observations: AgentObservations | undefined, checking: boolean): StartAgent[] {
   const configured = agents.map((agent): StartAgent => {
@@ -36,7 +39,12 @@ export function startAgents(agents: readonly AgentDraft[], observations: AgentOb
     if (!command || listedKinds.has(adapter) || !seen) return [];
     return [{ name: adapter, adapter, status: statusOf(seen, false), signIn: seen.nextAction ?? null, command, configured: false }];
   });
-  const rows = [...configured, ...others];
+  const rank = (row: StartAgent) => row.adapter ? BUILTIN_ADAPTER_IDS.indexOf(row.adapter) : BUILTIN_ADAPTER_IDS.length;
+  const rows = [...configured];
+  for (const other of others) {
+    const at = rows.findIndex(row => row.configured && rank(row) > rank(other));
+    rows.splice(at < 0 ? rows.length : at, 0, other);
+  }
   return [...rows.filter(row => row.status !== "missing"), ...rows.filter(row => row.status === "missing")];
 }
 
@@ -56,14 +64,17 @@ export const firstAgentOf = (usable: readonly string[], picked: string | null) =
 /**
  * The agents config.yaml should hold for the choice made in the setup, or null when it already does: the switches as
  * `enabled` (only rows the screen lets the person switch; a row whose CLI is missing keeps what config.yaml says), a kind
- * config.yaml did not list added when it was switched on, and the first agent moved to the top of the order.
+ * config.yaml did not list added when it was switched on, all in the order the setup lists them, and the first agent
+ * moved to the top of the order.
  */
 export function chosenAgents(agents: readonly AgentDraft[], rows: readonly StartAgent[], on: AgentSwitches, first: string | null): AgentDraft[] | null {
   const switchable = new Set(rows.filter(row => row.configured && row.status !== "missing").map(row => row.name));
   let next = agents.map(agent => switchable.has(agent.name) && (agent.enabled ?? true) !== !!on[agent.name] ? { ...agent, enabled: !!on[agent.name] } : agent);
   const added = rows.filter(row => !row.configured && row.adapter && canWork(row) && on[row.name])
     .map(row => ({ ...newAgentDraft(row.name, row.adapter!, row.name), enabled: true }));
-  next = [...next, ...added];
+  // In the order the setup lists them, so a kind added here keeps the place it was shown in.
+  const place = new Map(rows.map((row, at) => [row.name, at]));
+  next = [...next, ...added].sort((a, b) => (place.get(a.name) ?? rows.length) - (place.get(b.name) ?? rows.length));
   if (first && firstEnabledAgent(next) !== first) next = withFirstAgent(next, next.find(agent => agent.name === first)?.id ?? "");
   const same = next.length === agents.length && next.every((agent, at) => agent === agents[at]);
   return same ? null : next;
