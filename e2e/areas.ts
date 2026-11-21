@@ -108,6 +108,7 @@ export const e2eAreas = {
     "public-project-ids",
     "row-time-tip",
     "running-runs",
+    "read-scope-cut",
     "task-classification",
     "task-links",
     "task-sheet",

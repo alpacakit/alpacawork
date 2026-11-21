@@ -296,6 +296,24 @@ export function useWorkspace() {
     };
     useConnection.setState({ reconnect: () => setAttempt((value) => value + 1), refresh });
   }, [queryClient]);
+  useEffect(() => {
+    // A read scope cut while the feed stays live (a held read let go, a checkpoint handed over) is read again here:
+    // the list goes on by patches, but no server fact is current until the index is read again, so the reader would
+    // keep drawing the view it had (a Run that ended still at work). Twice per cut at most, since a patch may
+    // overtake the first read and leave the scope cut.
+    let reading = false, era = -1, tries = 0;
+    const anchor = () => {
+      const scope = readScope(queryClient);
+      if (reading || scope?.anchored !== false || useConnection.getState().state !== "live") return;
+      if (scope.era !== era) { era = scope.era; tries = 0; }
+      if (tries++ >= 2) return;
+      reading = true;
+      void recoverReads(queryClient).catch(() => {}).finally(() => { reading = false; anchor(); });
+    };
+    const stopReads = queryClient.getQueryCache().subscribe((event) => { if (event.query.queryKey[0] === "index") anchor(); });
+    const stopConnection = useConnection.subscribe(anchor);
+    return () => { stopReads(); stopConnection(); };
+  }, [queryClient]);
   return {
     ...query,
     lastReceivedAt,

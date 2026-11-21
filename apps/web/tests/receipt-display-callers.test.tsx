@@ -242,7 +242,8 @@ test('M6: a complete live GET started before the unique protection loss cannot b
   const read = { row: canSendWrites(rowWriteBasis('T2')), operation: operation('T2'), free: freeWords() };
   console.log('callers-pre-cut-get', JSON.stringify({ before, after, read }));
   expect.soft(before, 'a pre-cut GET answered after the cut does not anchor').toEqual({ row: false, operation: false, free: true });
-  expect.soft(after, 'the anchor gives the row back; an operation still waits for B\'s own GET').toEqual({ row: true, operation: false, free: true });
+  // The live page reads a cut scope again by itself, B's view included, so the operation is back with the anchor.
+  expect.soft(after, 'the anchor gives the row back, and the recovery after it reads B again').toEqual({ row: true, operation: true, free: true });
   expect.soft(read).toEqual({ row: true, operation: true, free: true });
 });
 
