@@ -10,7 +10,7 @@ URL を忘れたときは、ターミナルで `alpacawork workspace url` を実
 
 alpacawork、Node.js、AI エージェントは、WSL2 の Ubuntu の中に入れます。インストールの文も、Ubuntu の中の AI に貼ります。WSL2 が無ければ、Windows の AI に同じ文を貼ると準備から案内します。
 
-画面は Windows のブラウザで開きます。alpacawork は Ubuntu が動いている間だけ動くので、使っている間は Ubuntu のウィンドウを1つ開いたままにします。Windows を再起動したら、スタートメニューから Ubuntu を開きます。
+画面は Windows のブラウザで開きます。alpacawork は Ubuntu が動いている間だけ動きます。Ubuntu のウィンドウをすべて閉じると止まることがあるので、使っている間は1つ開いたままにします。Windows を再起動したら、スタートメニューから Ubuntu を開くと、alpacawork も起動します。
 
 systemd が無効と言われたときは、Ubuntu の `/etc/wsl.conf` に `[boot]` と `systemd=true` の2行を足し、PowerShell で `wsl --shutdown` を実行してから Ubuntu を開き直します。
 
@@ -39,7 +39,7 @@ alpacawork は PC にログインすると自動で起動します。自分で�
 
 ## アンインストールする
 
-AI に「alpacawork をアンインストールして」と頼むか、ターミナルで次の2つを順に実行します。AI が作業している間はできません。
+ターミナルで起動した Claude Code や Codex に「alpacawork をアンインストールして」と頼むか、ターミナルで次の2つを順に実行します。AI が作業している間はできません。
 
 ```sh
 alpacawork uninstall
