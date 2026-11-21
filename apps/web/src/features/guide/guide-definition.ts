@@ -1,4 +1,6 @@
 import type { TFunction } from "i18next";
+import { userTurn } from "@alpacawork/contract";
+import type { Task } from "@/data/types";
 import type { GuideStage } from "./guide-state";
 
 /**
@@ -32,8 +34,10 @@ export const PARTS = {
   coordinator: "[data-coordinator-pill][data-coordinator-expand]",
   /** A list row of a Task being worked on or about to be. */
   workingRow: '[data-row-section="doing"], [data-row-section="todo"], [data-row-section="awaited"]',
-  /** A list row awaiting the person. */
-  turnRow: '[data-row-section="review"]',
+  /** A list row awaiting the person's answer to a question. */
+  questionRow: '[data-row-turn="question"]',
+  /** A list row awaiting the person for anything else: a report, mostly. */
+  resultRow: '[data-row-turn="result"]',
   /** An open question's choices, in the detail. */
   choices: '[data-guide-part="answer-choices"]',
   /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
@@ -42,24 +46,34 @@ export const PARTS = {
   project: "[data-project-trigger]",
 } as const;
 export type GuidePart = keyof typeof PARTS;
+/** What a row awaiting the person awaits (its `data-row-turn`): an answer to a question, or anything else (a report). */
+export const turnKind = (task: Pick<Task, "ball">): "question" | "result" => userTurn(task.ball)?.reason === "question" ? "question" : "result";
 export type GuideSide = "top" | "bottom" | "left" | "right";
 /** Where along the part the balloon lines up: its middle, or its start or end (clear of what stands at the other end). */
 export type GuideAlign = "start" | "middle" | "end";
 
-/** What the guide reads to choose its step: all of it already on the screen (use-guide.ts gathers it). */
+/**
+ * What the guide reads to choose its step: all of it already on the screen (use-guide.ts gathers it). The work is
+ * counted across the whole workspace, not the project in view, so a step says what is so wherever the person looks; a
+ * step whose part is not on the screen just shows no balloon.
+ */
 export type GuideFacts = {
   /** This browser's stage; never "done" here (a guide that is over shows nothing). */
   stage: Exclude<GuideStage, { stage: "done" }>;
-  /** The Tasks in the scope in view (none: its welcome is shown). */
+  /** The Tasks in the workspace. */
   tasks: number;
-  /** Rows awaiting the person: asking a question, or bringing a result. */
+  /** Rows awaiting the person, in the workspace: asking a question, or bringing a result. */
   questions: number; results: number;
-  /** Rows still being worked on or about to be (In progress, Not started, Waiting). */
+  /** Rows still being worked on or about to be, in the workspace (In progress, Not started, Waiting). */
   working: number;
   /** A request went to the coordinator after the guide started. */
   sent: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
   busy: boolean;
+  /** An answer the person sent to a question still open is with the coordinator (about to send, or being worked on). */
+  answered: boolean;
+  /** The list's place is an empty scope's welcome (its three steps say where the guide is). */
+  welcome: boolean;
   /** The input holds something to send; and, among it, an answer to the Task open in the detail. */
   drafting: boolean; answerDrafted: boolean;
   /** The Task open in the detail, when it is the person's turn on it. */
@@ -96,20 +110,22 @@ export const GUIDE: readonly GuideEntry[] = [
   // The person's turn, from the most immediate: an answer ready to send, one sent and on its way, then what is open.
   { id: "answer-ready", step: 3, part: "send", side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
     say: t => t("tree:guide.say.answerReady") },
-  { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.questions > 0 && f.busy,
+  { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.answered,
     say: t => t("tree:guide.say.answered") },
   { id: "answer", step: 3, part: "choices", side: "top", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   { id: "accept", step: 3, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },
-  { id: "question", step: 3, part: "turnRow", side: "bottom", when: f => f.questions > 0,
+  { id: "question", step: 3, part: "questionRow", side: "bottom", when: f => f.questions > 0,
     say: t => t("tree:guide.say.question") },
-  { id: "result", step: 3, part: "turnRow", side: "bottom", when: f => f.results > 0,
+  { id: "result", step: 3, part: "resultRow", side: "bottom", when: f => f.results > 0,
     say: t => t("tree:guide.say.result") },
   { id: "working", step: 2, part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // A request sent and the coordinator still on it, with no Task for it yet. Answered without one, the guide goes back to
-  // sending a request.
+  // A request sent and the coordinator still on it, with no Task for it yet (on a phone's welcome, its steps say it: a
+  // balloon there would stand over the examples). Answered without one, the guide goes back to sending a request.
+  { id: "received-welcome-narrow", step: 2, when: f => f.sent && f.busy && f.welcome && f.narrow,
+    say: t => t("tree:guide.say.received") },
   { id: "received", step: 2, part: "coordinator", side: "top", when: f => f.sent && f.busy,
     say: t => t("tree:guide.say.received") },
   // Once the person has had their turn and nothing is left to bring them a report, the guide closes.
@@ -119,13 +135,14 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "another-repository", step: null, part: "project", side: "bottom", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  // Before any turn: words in the input wait to be sent...
+  // Before any turn, on a phone's welcome, its steps say it all, words in the input or not: a balloon there would stand
+  // over the examples...
+  { id: "send-welcome-narrow", step: 1, when: f => f.stage.stage === "started" && f.welcome && f.narrow,
+    say: t => t("tree:guide.say.send") },
+  // ...elsewhere, words in the input wait to be sent...
   { id: "send-ready", step: 1, part: "send", side: "top", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
-  // ...or a request is to be written, from the empty welcome with its examples above (on a phone the welcome's own
-  // steps say it: a balloon there would stand over the examples)...
-  { id: "send-narrow", step: 1, when: f => f.stage.stage === "started" && f.tasks === 0 && f.narrow,
-    say: t => t("tree:guide.say.send") },
+  // ...or a request is to be written, from the empty welcome with its examples above...
   { id: "send", align: "end", step: 1, part: "input", side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
     say: t => t("tree:guide.say.send") },
   // ...or, shown again from settings, over a list with nothing going on.
@@ -137,12 +154,16 @@ export const GUIDE: readonly GuideEntry[] = [
 export const guideEntry = (facts: GuideFacts): GuideEntry | null => GUIDE.find(entry => entry.when(facts)) ?? null;
 
 /**
- * The stage to store as the guide moves: started on an empty welcome seen for the first time; the person's turn once a
- * step of the third holds; over once no step holds. Undefined: nothing to store.
+ * Whether the guide starts by itself: on a browser that has never had it, with the welcome on the screen and no Task in
+ * the whole workspace (a new person's first look; not someone with work elsewhere opening an empty project).
  */
-export function nextStage(stage: GuideStage | null, welcome: boolean, entry: GuideEntry | null, now = Date.now()): GuideStage | undefined {
-  if (!stage) return welcome ? { stage: "started", at: now, seen: [] } : undefined;
-  if (stage.stage === "done") return undefined;
+export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: number) => stage === null && welcome && tasks === 0;
+
+/**
+ * The stage to store as a guide going on moves: the person's turn once a step of the third holds; over once no step
+ * holds. Undefined: nothing to store.
+ */
+export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null): GuideStage | undefined {
   if (!entry) return { stage: "done" };
   return stage.stage === "started" && entry.step === 3 ? { stage: "turn", seen: stage.seen } : undefined;
 }

@@ -393,8 +393,8 @@
       "awayAfter": "Ausente tras inactividad",
       "display": "Pantalla",
       "guide": "Guía de primeros pasos",
-      "guideHelp": "Vuelve a empezar la guía del primer uso desde el primer paso.",
-      "guideShow": "Empezar de nuevo",
+      "guideHelp": "Vuelve a mostrar la guía del primer uso, desde el paso que corresponde a cómo va tu trabajo ahora.",
+      "guideShow": "Mostrar de nuevo",
       "issue": {
         "conflict": "Cambió en otra vista. Comprueba el valor más reciente.",
         "error": "No se pudo guardar. Vuelve a intentarlo.",

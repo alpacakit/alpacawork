@@ -7,9 +7,9 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
 import { useDialogStore } from "@/state/dialog-store";
-import { closeGuide, putAway } from "./guide-state";
+import { closeGuide, putAway, type GoingStage } from "./guide-state";
 import { PARTS, STEPS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGuide, useGuideStage } from "./use-guide";
+import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 const STEP_NUMBERS = [1, 2, 3] as const;
 
@@ -27,9 +27,11 @@ function CloseGuide({ className }: { className?: string }) {
  * your turn), the step the guide is at (its entry's `step`) stressed and the ones behind it checked. On a phone only the
  * current step keeps its line of detail, so the examples under it stay on the first screen.
  */
-export function GuideSteps({ entry }: { entry: GuideEntry }) {
+export function GuideSteps({ stage }: { stage: GoingStage }) {
   const { t } = useTranslation("tree");
   const narrow = useNarrow();
+  const entry = useGuide(stage);
+  if (!entry) return null;
   const current = entry.step ?? 4;
   const tt = t as TFunction;
   return <div data-guide-steps={current} className="relative mt-5 rounded-lg border-hairline border-rule px-4 pt-2 pb-2.5 narrow:mt-4 narrow:px-3">
@@ -88,13 +90,19 @@ export function placeBalloon(target: Box, size: { width: number; height: number 
   return { target, x, y, side, arrow: clamp(middleY - y, ARROW_ROOM, size.height - ARROW_ROOM) };
 }
 
-/** The first element marked as `selector` that is on the screen: laid out, shown and inside the view. */
+/**
+ * The first element marked as `selector` that is seen: laid out and shown, and at its middle it (or what is in it) is
+ * what stands in front, so not scrolled out of its pane, under a fixed heading or under another surface. The balloon and
+ * its ring take no press, so they never stand in front.
+ */
 function shownPart(selector: string): Box | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
     const box = element.getBoundingClientRect();
-    if (box.width < 4 || box.height < 4 || box.bottom <= 0 || box.right <= 0 || box.top >= innerHeight || box.left >= innerWidth) continue;
+    if (box.width < 4 || box.height < 4) continue;
+    const front = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    if (!front || !element.contains(front)) continue;
     return { left: box.left, top: box.top, width: box.width, height: box.height };
   }
   return null;
@@ -106,12 +114,19 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  * The guide's balloon, put once on the page: for the step that holds now (guide-definition.ts), beside the part it
  * names, with an arrow to it and a quiet ring round it. Nothing covers the page and nothing is held: only its buttons
  * take a press, so what is under the balloon stays pressable. It follows the part as the window is resized, scrolled or
- * redrawn, and is not drawn while that part is not on the screen or a dialog is over the page. Read out as a status; it
- * never takes the focus. It also stores the stage as the guide moves (useGuideStage).
+ * redrawn, and is not drawn while that part is not seen or a dialog is over the page. Read out as a status; it never
+ * takes the focus. It also starts the guide (useGuideStart) and stores the stage as it moves (useGuideStage); while no
+ * guide goes on, nothing else is read for it.
  */
 export function GuideBalloon() {
-  const entry = useGuide();
-  useGuideStage(entry);
+  useGuideStart();
+  const stage = useGoingGuide();
+  return stage && <GoingBalloon stage={stage} />;
+}
+
+function GoingBalloon({ stage }: { stage: GoingStage }) {
+  const entry = useGuide(stage);
+  useGuideStage(stage, entry);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);

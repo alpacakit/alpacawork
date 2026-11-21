@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FormProvider, useFormState, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { SkillName } from "@alpacawork/contract";
+import { titleSchema, type SkillName } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/components/ui/message";
 import { ReadFailure } from "@/components/ui/loadable";
@@ -104,8 +104,14 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
   </FormProvider>;
 }
 
-/** A folder's own name: the last part of its path, whatever the separator. */
-const folderName = (path: string) => path.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+/**
+ * A folder's own name, as the project's name: the last part of its path, whatever the separator; empty when that part
+ * names no folder of its own (`~`, `.`, `..`, a drive) or is not a name a project takes (too long).
+ */
+const folderName = (path: string) => {
+  const last = path.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+  return !/^(~|\.\.?|[A-Za-z]:)$/.test(last) && titleSchema.safeParse(last).success ? last : "";
+};
 
 /** The recommended rules, then one line per installed skill: when it is used, in the display language. */
 function recommendedPolicy(t: TFunction<"setup">, installed: readonly SkillName[]): string {

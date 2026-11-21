@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWatch } from "react-hook-form";
+import { useFormState, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ExampleList } from "@/components/ui/example-list";
@@ -10,7 +10,8 @@ import { AppHint } from "@/features/coordinator/app-hint";
 import { useDialogStore } from "@/state/dialog-store";
 import { Button } from "@/components/ui/button";
 import { GuideSteps } from "@/features/guide/Guide";
-import { useGuide } from "@/features/guide/use-guide";
+import { useGoingGuide } from "@/features/guide/use-guide";
+import { FieldError } from "@/components/ui/field";
 import { FolderInput } from "@/features/forms/FolderInput";
 import { FormError, SubmitButton } from "@/features/forms/server-form";
 import { useProjectSave, type Project } from "@/features/panels/use-project-save";
@@ -39,7 +40,7 @@ export function Welcome() {
     { name: "decide", label: t("welcome.examples.decide.label"), shows: t("welcome.examples.decide.shows"), words: t("welcome.examples.decide.words") },
     { name: "settings", label: t("welcome.examples.settings.label"), shows: t("welcome.examples.settings.shows"), words: t("welcome.examples.settings.words") },
   ];
-  const step = useGuide();
+  const step = useGoingGuide();
   // One column in the middle: the heading and its one line, centred, then the examples, whose rows
   // read from their left edge; it rises into place in three parts, each a little
   // after the one above, every time it is put on the screen (motion.css, animate-welcome).
@@ -52,12 +53,13 @@ export function Welcome() {
       <h2 className="m-0 animate-welcome text-center text-balance text-display font-semibold [word-break:auto-phrase]">{t("welcome.title")}</h2>
       <p className="mx-auto mt-3 mb-0 max-w-md animate-welcome text-center text-balance text-md text-muted [word-break:auto-phrase] [animation-delay:calc(var(--motion-fast)/2)] motion-reduce:[animation-delay:0s]">{t("welcome.lead", { section: t("home.turn") })}</p>
       <div className={cn("animate-welcome [animation-delay:var(--motion-fast)] motion-reduce:[animation-delay:0s]", step ? "mt-0" : "mt-8 narrow:mt-6")}>
-        {step && <GuideSteps entry={step} />}
+        {step && <GuideSteps stage={step} />}
         <div className={step ? "mt-3" : undefined}>
           <ExampleList examples={examples} mark="data-welcome-example" roomy={!step}
             onPick={words => exampleInDraft(words, project && { id: project.id, title: project.title })} />
         </div>
-        <WorkingFolder folder={folder} project={project} />
+        {/* Each project its own: a field opened, and what was written in it, stay with the project it was for. */}
+        <WorkingFolder key={project?.id ?? ""} folder={folder} project={project} />
         {/* The phone and app guide waits until the getting-started guide is over or closed. */}
         {!step && <AppHint />}
       </div>
@@ -88,13 +90,18 @@ function ChooseFolder({ project }: { project: Project }) {
   const { t: pt } = useTranslation("panels");
   const { form, base, busy, writeDisabled, unproven, reread } = useProjectSave(project);
   const cwd = useWatch({ control: form.control, name: "cwd" }) ?? "";
+  // Why the folder was not taken (not there, say), under the field, as the project's settings say it.
+  const { errors } = useFormState({ control: form.control, name: "cwd" });
+  const error = errors.cwd?.message;
   return <form data-welcome-folder="choose" className="mt-2" onSubmit={event => { event.preventDefault(); void form.save(); }}>
     <label htmlFor="welcome-folder" className="block text-center text-sm text-pretty text-soft [word-break:auto-phrase]">{t("welcome.folder.ask")}</label>
     <div className="mt-1.5 flex items-start gap-2">
       <FolderInput id="welcome-folder" className="min-w-0 flex-1" value={cwd} disabled={base === null}
+        aria-invalid={error ? true : undefined} aria-describedby={error ? "welcome-folder-error" : undefined}
         onChange={value => form.setValue("cwd", value, { shouldDirty: true })} />
       <SubmitButton form={form} className="self-stretch px-4" label={pt("settings.server.save")} disabled={base === null || busy || writeDisabled || !cwd.trim()} />
     </div>
+    {error && <FieldError id="welcome-folder-error" className="mt-type-close">{error}</FieldError>}
     <FormError form={form} onReread={unproven ? undefined : reread} rereadLabel={pt("settings.server.reload")} />
   </form>;
 }

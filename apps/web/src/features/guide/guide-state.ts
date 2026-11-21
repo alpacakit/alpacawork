@@ -18,8 +18,18 @@ const check = (value: unknown): GuideStage | null => {
 export const guideStage = deviceValue<GuideStage | null>("alpacawork.guide", jsonCodec<GuideStage | null>(check), null);
 /** Ends the guide for good on this browser: closed by hand, or read to its end. */
 export const closeGuide = () => { guideStage.set({ stage: "done" }); };
-/** Settings' "Show again": the guide starts over from its first step. */
+/** Settings' "Show again": the guide goes on again, from the step that holds for the work as it is now. */
 export const restartGuide = () => { guideStage.set({ stage: "started", at: Date.now(), seen: [] }); };
+/** A guide going on, or none (never started, or over): what decides whether anything else is read for it. */
+export type GoingStage = Exclude<GuideStage, { stage: "done" }>;
+export const going = (stage: GuideStage | null): GoingStage | null => stage && stage.stage !== "done" ? stage : null;
+/**
+ * The guide moved on from `from` to `to`: stored only while `from` is still what is stored, so a stage decided on what
+ * this tab saw never overwrites what another tab stored meanwhile (closed there, say).
+ */
+export function moveGuide(from: GuideStage | null, to: GuideStage) {
+  if (JSON.stringify(guideStage.get()) === JSON.stringify(from)) guideStage.set(to);
+}
 /** A step read and put away ("Got it"): the guide goes on to the next one that holds. */
 export const putAway = (id: string) => {
   const stage = guideStage.get();

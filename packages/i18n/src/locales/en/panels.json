@@ -386,8 +386,8 @@
       "awayAfter": "Away when idle",
       "display": "Display",
       "guide": "Getting-started guide",
-      "guideHelp": "Starts the first-use guide again from its first step.",
-      "guideShow": "Start again",
+      "guideHelp": "Shows the first-use guide again, from the step that fits where your work is now.",
+      "guideShow": "Show again",
       "issue": {
         "conflict": "Changed in another view. Check the latest value.",
         "error": "Could not save. Try again.",

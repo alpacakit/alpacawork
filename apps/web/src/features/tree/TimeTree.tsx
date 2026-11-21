@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
 import { HOME_SECTIONS, userTurn } from "@alpacawork/contract";
+import { turnKind } from "@/features/guide/guide-definition";
 import type { TaskProjectedPageDTO, TaskPageRowDTO, TaskProjectedTimelineDTO } from "@alpacawork/contract/control";
 import { StateIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
@@ -667,7 +668,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
     }}
     className={className}>{content}</button>;
   return (
-    <li ref={rowElement} data-row={task.id} data-row-section={node.row?.section} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
+    <li ref={rowElement} data-row={task.id} data-row-section={node.row?.section} data-row-turn={node.row?.section === "review" ? turnKind(task) : undefined} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
       <div data-row-head data-motion-key={task.id}
         className={cn("group relative flex border-b border-rule", narrow && "flex-col", !narrow && shared.selected === task.id && "bg-row-picked [--row-ground:var(--color-row-picked-solid)]")}>
         <div ref={label} data-row-label style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}

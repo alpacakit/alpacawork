@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { userTurn } from "@alpacawork/contract";
-import { useHomeList, useListPlace, useTaskIndex, useWorkspaceInfo } from "@/data/queries";
+import { useEveryTaskIndex, useListPlace, useWorkspaceInfo } from "@/data/queries";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -8,68 +7,105 @@ import { useInputDraft } from "@/features/coordinator/editor/draft";
 import { answersIn, hasContent } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
-import { guideStage } from "./guide-state";
-import { guideEntry, nextStage, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { going, guideStage, moveGuide, type GoingStage } from "./guide-state";
+import { guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
-const NONE: ReadonlySet<string> = new Set();
+const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
 const UNDER_WAY = new Set(["queued", "sending", "joined", "running"]);
 
+type Answers = readonly { question: string }[] | undefined;
+/** What the guide reads of one message of the conversation. */
+export type CoordinatorTurn = { id: string; at: string; status: string; answers?: Answers };
+/** What the guide reads of one message sent from this device and not in the conversation yet (its grace included). */
+export type SendingMessage = { requestId: string; answers?: Answers };
+
 /**
- * The guide's step for the scope in view (guide-definition.ts), from what the screen already holds: this browser's
- * stage, the Tasks in view, the rows awaiting the person (a question, or a report) and those still worked on, whether the
- * coordinator's conversation has a request from after the guide started, and whether the Task open in the detail is the
- * person's turn. Null: no guide (never started, or over).
+ * What the guide knows of the coordinator, from its conversation and what this device is still sending to it:
+ * - `sent`: a message is in the conversation from after `since` (the guide's start), or is still being sent;
+ * - `busy`: a message is still being sent, or one in the conversation is not answered yet;
+ * - `answered`: among those, one carries an answer to a question still open (`questions`, by ID); another request
+ *   being worked on is not an answer.
  */
-export function useGuide(): GuideEntry | null {
+export function coordinatorFacts({ since, turns, sending, questions }: {
+  since: number | null; turns: readonly CoordinatorTurn[]; sending: readonly SendingMessage[]; questions: ReadonlySet<string>;
+}): Pick<GuideFacts, "sent" | "busy" | "answered"> {
+  const underWay = turns.filter(turn => UNDER_WAY.has(turn.status));
+  const answers = (list: Answers) => !!list?.some(answer => questions.has(answer.question));
+  return {
+    sent: since !== null && (sending.length > 0 || turns.some(turn => Date.parse(turn.at) >= since)),
+    busy: sending.length > 0 || underWay.length > 0,
+    answered: sending.some(item => answers(item.answers)) || underWay.some(turn => answers(turn.answers)),
+  };
+}
+
+/** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
+export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
+
+/**
+ * Starts the guide on a new person's first look (startsGuide): read from the stored stage and the workspace's counts
+ * alone, so a browser whose guide is over, or never starts, opens no draft and reads no conversation for it. Mounted
+ * once, beside the balloon, so a stage is written by one owner only.
+ */
+export function useGuideStart() {
   const stage = useDeviceValue(guideStage);
-  const index = useTaskIndex();
-  const home = useHomeList();
-  const project = useViewStore((state) => state.project);
-  const tasks = useWorkspaceInfo((info) => info.counts.tasks[project ?? "root"] ?? 0);
+  const welcome = useListPlace() === "welcome";
+  const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
+  const starts = startsGuide(stage, welcome, tasks);
+  useEffect(() => { if (starts) moveGuide(null, { stage: "started", at: Date.now(), seen: [] }); }, [starts]);
+}
+
+/**
+ * The step of a guide going on (guide-definition.ts), from what the screen already holds: the Tasks in the workspace,
+ * its rows awaiting the person (a question, or a report) and those still worked on, what the coordinator has from the
+ * person (coordinatorFacts), what the input holds, and whether the Task open in the detail is the person's turn. Only
+ * mounted while the guide goes on: it opens the input's draft.
+ */
+export function useGuide(stage: GoingStage): GuideEntry | null {
+  const index = useEveryTaskIndex();
+  const rows = useWorkspaceInfo((info) => info.home);
+  const home = useWorkspaceInfo((info) => info.counts.home.root);
+  const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
+  const welcome = useListPlace() === "welcome";
   const selected = useViewStore((state) => state.reader.open ? state.selected : null);
-  const since = stage?.stage === "started" ? stage.at : null;
-  const sentBefore = useConversation(state => since !== null && !!state.conversation?.turns.some(turn => Date.parse(turn.at) >= since));
-  // The rows awaiting the person, and which of them is open in the detail: read from the list's own rows, so the guide
-  // never says to open a row that is open already.
+  // The rows awaiting the person, the questions they ask, and which of them is open in the detail: read from the list's
+  // own rows, so the guide never says to open a row that is open already.
   let questions = 0, results = 0, open: GuideFacts["open"] = null;
-  for (const row of home.rows) {
+  const asked = new Set<string>();
+  for (const row of rows) {
     if (row.section !== "review") continue;
     const task = index.byId.get(row.taskId);
-    const kind = task && userTurn(task.ball)?.reason === "question" ? "question" : "result";
-    if (kind === "question") questions++; else results++;
+    const kind = task ? turnKind(task) : "result";
+    if (kind === "question") { questions++; if (task?.ball?.holder === "user" && task.ball.questionId) asked.add(task.ball.questionId); }
+    else results++;
     if (row.taskId === selected) open = kind;
   }
-  const working = home.counts.doing + home.counts.todo + home.counts.awaited;
+  const working = (home?.doing ?? 0) + (home?.todo ?? 0) + (home?.awaited ?? 0);
   const opened = selected ? index.byId.get(selected) : undefined;
-  // What the coordinator has from the person and is still on: sent from here and not settled (its grace, "about to
-  // send", included), or a message of the conversation not answered yet.
+  // What the coordinator has from the person: sent from here and not in its conversation yet (its grace, "about to
+  // send", included), and the conversation's own messages.
   const root = useConversation(state => state.root);
-  const pending = useDraftStore(state => outgoing(state.entries, root)
-    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused").map(item => item.requestId).join(" "));
-  const unsettled = useConversation(state => !!pending && pending.split(" ").some(id => !state.conversation?.turns.some(turn => turn.id === id)));
-  const answering = useConversation(state => !!state.conversation?.turns.some(turn => UNDER_WAY.has(turn.status)));
-  const busy = unsettled || answering;
+  const turns = useConversation(state => state.conversation?.turns) ?? NO_TURNS;
+  const entries = useDraftStore(state => state.entries);
+  const sending = useMemo(() => outgoing(entries, root)
+    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId))
+    .map(item => ({ requestId: item.requestId, answers: item.fixed.answers })), [entries, root, turns]);
   // What the input holds now: anything to send, and an answer to the Task open in the detail.
   const { doc } = useInputDraft();
   const drafting = hasContent(doc);
   const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
   const narrow = useNarrow();
-  const seen = useMemo(() => stage && stage.stage !== "done" ? new Set(stage.seen) : NONE, [stage]);
-  if (!stage || stage.stage === "done") return null;
-  // Sent: in the conversation since the guide started, or sent from here and not in it yet (in its grace, or on its way).
-  const sent = since !== null && (sentBefore || unsettled);
-  const facts: GuideFacts = { stage, tasks, questions, results, working, sent, busy, drafting, answerDrafted, open, narrow, seen };
+  const seen = useMemo(() => new Set(stage.seen), [stage]);
+  const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
+  const facts: GuideFacts = { stage, tasks, questions, results, working, ...coordinator, welcome, drafting, answerDrafted, open, narrow, seen };
   return guideEntry(facts);
 }
 
 /**
- * Stores the stage as the guide moves (nextStage). Mounted once, beside the balloon, so a stage is written by one owner
- * only; it starts the guide only while an empty scope's welcome is on the screen.
+ * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide). Mounted
+ * once, beside the balloon, so a stage is written by one owner only.
  */
-export function useGuideStage(entry: GuideEntry | null) {
-  const stage = useDeviceValue(guideStage);
-  const welcome = useListPlace() === "welcome";
-  const next = nextStage(stage, welcome, entry);
-  useEffect(() => { if (next) guideStage.set(next); }, [next?.stage]);
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null) {
+  const next = nextStage(stage, entry);
+  useEffect(() => { if (next) moveGuide(stage, next); }, [next?.stage]);
 }

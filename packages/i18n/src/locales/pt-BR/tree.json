@@ -160,8 +160,8 @@
       },
       "folder": {
         "label": "Ler esta pasta e sugerir o que delegar em seguida",
-        "shows": "Resume o que há na pasta de trabalho e pergunta por qual trabalho começar. Ao escolher, você recebe um relatório de como fazê-lo. Não altera nada.",
-        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há na pasta de trabalho {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como). Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
+        "shows": "Resume o que há no local do código e pergunta por qual trabalho começar. Ao escolher, você recebe um relatório de como fazê-lo. Não altera nada.",
+        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há no local do código {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como). Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
       },
       "models": {
         "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",

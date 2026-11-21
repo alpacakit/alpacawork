@@ -393,8 +393,8 @@
       "awayAfter": "Ausente por inatividade",
       "display": "Exibição",
       "guide": "Guia de primeiros passos",
-      "guideHelp": "Recomeça o guia do primeiro uso desde o primeiro passo.",
-      "guideShow": "Começar de novo",
+      "guideHelp": "Mostra de novo o guia do primeiro uso, a partir do passo que corresponde a como está o seu trabalho agora.",
+      "guideShow": "Mostrar de novo",
       "issue": {
         "conflict": "Alterado em outra tela. Verifique o valor mais recente.",
         "error": "Não foi possível salvar. Tente novamente.",
