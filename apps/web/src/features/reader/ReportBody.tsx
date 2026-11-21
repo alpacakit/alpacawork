@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTaskIndex, useWorkspaceInfo, taskDetail } from "@/data/queries";
 import { resources } from "@/data/resources";
-import { MarkdownBody, type GalleryImage, type MarkdownTask } from "./MarkdownBody";
+import { MarkdownBody, type GalleryImage, type MarkdownFile, type MarkdownTask } from "./MarkdownBody";
 
 /** The same complete report body is read in the column and in a time note. */
-export function ReportBody({ text, sourceTaskId, parentTask, gallery, galleryReportKey, onFollow, variant }: {
+export function ReportBody({ text, sourceTaskId, parentTask, gallery, galleryReportKey, onFollow, variant, files }: {
   text: string; sourceTaskId: string; parentTask?: MarkdownTask; gallery?: GalleryImage[]; galleryReportKey?: string; onFollow: (id: string) => void; variant?: "note";
+  /** Published copies of the local files the text links to (a coordinator answer's), drawn in their place. */
+  files?: MarkdownFile[];
 }) {
   const root = useWorkspaceInfo(info => info.root);
   const index = useTaskIndex();
@@ -15,5 +17,5 @@ export function ReportBody({ text, sourceTaskId, parentTask, gallery, galleryRep
   const task = child ? row && query.data && taskDetail(row, query.data) : parentTask;
   if (!task) return <div className="py-2 text-xs text-muted">…</div>;
   return <MarkdownBody text={text} task={task} onFollow={onFollow} report variant={variant}
-    gallery={gallery} galleryReportKey={galleryReportKey} />;
+    gallery={gallery} galleryReportKey={galleryReportKey} files={files} />;
 }

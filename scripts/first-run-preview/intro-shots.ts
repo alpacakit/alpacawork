@@ -119,9 +119,10 @@ export async function captureIntroShots(url: string, root: string, language: str
     const send = () => page.getByRole('region', { name: en ? 'Coordinator' : 'コーディネーター', exact: true })
       .getByRole('button', { name: en ? 'Send' : '送る', exact: true }).click();
 
-    // The setup's three steps, as a new person takes them.
+    // The setup's steps, as a new person takes them.
     await page.goto(url);
     const setup = page.locator('[data-setup-screen]');
+    await setup.locator('[data-setup-panel="display"] [data-setup-next]').click();
     await setup.locator('[data-setup-panel="agents"] [data-setup-next]').click();
     await setup.locator('[data-setup-panel="skills"] [data-setup-install]').click();
     const project = setup.locator('[data-setup-panel="project"]');

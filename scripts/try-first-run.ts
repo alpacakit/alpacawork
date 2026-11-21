@@ -22,7 +22,7 @@ Codexはサインイン済みの代役、Claude Codeは未サインインです�
 AIのコマンドはすべて代役で、結果は決まった内容です。通知は届きません。
 本番のHOME・データ・資格情報・サービス・5499番ポートは使いません。
 期限またはCtrl-Cで終了し、一時ファイルを削除します。
---check は、PTYでEnterを送るsetupと、非TTYで--yesを付けるsetup、3つのステップから例の結果の完了までを自動確認して終了します。
+--check は、PTYでEnterを送るsetupと、非TTYで--yesを付けるsetup、4つのステップから例の結果の完了までを自動確認して終了します。
 スマホ幅は --check --width 390 で確かめます（既定: 1440）。
 --intro-shots は、使い方の紹介の画像（apps/web/src/features/intro/shots）を、この試用環境の実際の画面から撮り直して終了します。
 言語ごとに実行します（--lang ja と --lang en）。
@@ -36,7 +36,7 @@ Bundled skills are real; skills from their source install clearly marked local p
 Every agent command is a stand-in with scripted results. Notifications do not arrive.
 No production HOME, data, credentials, service manager, or port 5499 is used.
 The preview stops and deletes its temporary files at the deadline or on Ctrl-C.
---check runs setup with Enter in a PTY, then setup with --yes without a terminal, goes through the three steps to an
+--check runs setup with Enter in a PTY, then setup with --yes without a terminal, goes through the four steps to an
 example's result and its completion, and exits. Use --check --width 390 for phone width (default 1440).
 --intro-shots takes the introduction's pictures (apps/web/src/features/intro/shots) again from this preview's real
 screens, and exits. Run it once per language (--lang ja and --lang en).

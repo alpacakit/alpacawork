@@ -1,4 +1,4 @@
-/** The real screens and CLI, against the disposable packaged server: the three setup steps, then an example's journey. */
+/** The real screens and CLI, against the disposable packaged server: the four setup steps, then an example's journey. */
 import assert from 'node:assert/strict';
 import { chromium, expect } from '@playwright/test';
 import { existsSync, readFileSync, readdirSync, mkdirSync } from 'node:fs';
@@ -27,19 +27,23 @@ export async function checkJourney(url: string, root: string, language: string, 
     await page.goto(url + '?agent=1');
     expect(new URL(page.url()).pathname).toBe('/welcome');
     const setup = page.locator('[data-setup-screen]');
-    // 1 Agents: Codex is signed in and on; Claude Code needs sign-in and has no switch. Usage data starts ticked.
+    // 1 Language and theme: the language the setup started in is the one chosen.
+    const display = setup.locator('[data-setup-panel="display"]');
+    await expect(display.locator('[data-setup-language]')).toHaveValue(language);
+    await display.locator('[data-setup-next]').click();
+    // 2 Agents: Codex is signed in and on; Claude Code needs sign-in and has no switch. Usage data starts ticked.
     const agents = setup.locator('[data-setup-panel="agents"]');
     await expect(agents.locator('[data-setup-agent="codex"] [role=switch]')).toHaveAttribute('aria-checked', 'true');
     await expect(agents.locator('[data-setup-agent="claude"] [role=switch]')).toHaveCount(0);
     const consent = agents.locator('[data-setup-consent] input');
     await expect(consent).toBeChecked();
     await agents.locator('[data-setup-next]').click();
-    // 2 Skills: the three recommended are ticked; the button names how many it installs.
+    // 3 Skills: the three recommended are ticked; the button names how many it installs.
     const skills = setup.locator('[data-setup-panel="skills"]');
     await expect(skills.locator('[data-setup-install]')).toHaveText(en ? 'Install 3 skills' : '3 個のスキルをインストール');
     assert.equal((await get('/api/telemetry/status')).state, 'on');
     await skills.locator('[data-setup-install]').click();
-    // 3 Project: reached once every ticked skill is installed; its policy names them.
+    // 4 Project: reached once every ticked skill is installed; its policy names them.
     const project = setup.locator('[data-setup-panel="project"]');
     await expect(project).toBeVisible({ timeout: 40_000 });
     for (const name of ['askmeclearly', 'doyourjob', 'alpacawork-betterquality'])
@@ -126,7 +130,7 @@ export async function checkJourney(url: string, root: string, language: string, 
       { env: { HOME: marker.home }, encoding: 'utf8', timeout: 5000 });
     assert.equal(probe.status, 0, probe.stderr);
     assert.ok(existsSync(join(root, 'blocked-network.jsonl')), 'The preview transport was not exercised');
-    console.log(`Journey passed (${language}, width ${width}): agents, skills, project, welcome, the introduction, an example's question, result and completion, a greeting without a Task; external sends: 0.`);
+    console.log(`Journey passed (${language}, width ${width}): language and theme, agents, skills, project, welcome, the introduction, an example's question, result and completion, a greeting without a Task; external sends: 0.`);
   } catch (error) {
     console.error('Journey error:', error);
     if (existsSync(join(root, 'actor-errors.log'))) console.error(readFileSync(join(root, 'actor-errors.log'), 'utf8'));

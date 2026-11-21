@@ -9,6 +9,7 @@ import { runIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
 import { runErrorCauseSchema } from './run-failure.js';
+import { answerFilesSchema } from './coordinator-files.js';
 import { isReviewMark } from './review-target.js';
 
 /** Launch choices come only from the linked historical Run; omitted when that Run cannot be resolved. */
@@ -74,6 +75,8 @@ export const historyEventSchema = z.object({
   dependencies: dependencyChangeSchema.optional(),
   /** Fixed answer text, and the user's words quoted by the Coordinator. */
   answerText: z.string().optional(), quote: z.string().optional(),
+  /** On a dialogue, the copies kept of the local files the coordinator's answer links to, drawn as its conversation draws them. */
+  answerFiles: answerFilesSchema.optional(),
   /** Records delivered to the writing Run, one level below a child's record. */
   causes: z.array(z.object({ taskId: taskIdSchema, id: z.string().min(1), kind: z.enum(RETURN_OUTCOMES),
     title: z.string(), at: z.iso.datetime({ offset: true }) }).strict()).optional(),

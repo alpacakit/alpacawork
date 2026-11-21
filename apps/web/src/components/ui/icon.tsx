@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * them differently (a state label, a fold toggle, ...).
  */
 const paths = {
-  /* The setup's corner: the display language. */
+  /* The display language, marked so that it is found in a language one cannot read. */
   globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
   microphone: <><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M6 11v1a6 6 0 0 0 12 0v-1M12 18v3M9 21h6" /></>,
   todo: <circle cx="12" cy="12" r="8" />,
@@ -132,8 +132,6 @@ const paths = {
     </>
   ),
   moon: <path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z" />,
-  /* The screen's theme: light and dark halves of one disc. */
-  theme: <><circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" /></>,
   /* Task-folder files in the Files tab. */
   file: <path d="M6.5 3.5h7l4 4v13h-11zM13.5 3.5v4h4M9 12.5h6M9 16h4" />,
   /* Kept in place: a padlock, its shackle over the body. */

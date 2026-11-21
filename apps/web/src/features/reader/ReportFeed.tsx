@@ -5,6 +5,7 @@ import { readQuery } from '@/data/read-model';
 import { holdHistory, type HistoryReader } from '@/data/history-window';
 import { historyCursor } from '@alpacawork/contract';
 import { taskStatement } from '@alpacawork/contract/coordinator';
+import { answerBodyFiles } from "@/features/coordinator/MessageFiles";
 import { markdownMedia, markdownMediumId } from "@/domain/markdown";
 import { errorText } from "@/data/client";
 /* Hallmark · component: report feed · genre: modern-minimal · theme: existing app tokens
@@ -18,6 +19,8 @@ import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contra
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
+import { Message } from "@/components/ui/message";
+import { beforeWork } from "@/domain/before-work";
 import { resultLine } from "@/domain/report-labels";
 import { causeReason } from "@/domain/run-labels";
 import { RegionSkeleton } from "@/components/ui/skeleton";
@@ -35,13 +38,13 @@ import { isCurrentWait } from "@/domain/pending-report";
 import { FINISH_MARK, firstReportMedia, isInstruction, reportEvent, reportTone, turnRecord, type ReportEvent } from "@/domain/report-events";
 import { endAgents } from "@/domain/end-agent";
 import { answerLine, historyRows, recordKey, rowTargets, sameRow, type HistoryRow, type NameEnd, type RowOutcome } from "@/domain/history-rows";
-import type { PeopleIndex } from "@/domain/people";
+import { crewOf, type PeopleIndex } from "@/domain/people";
 import { childWork, working, type ChildWork } from "@/domain/working";
 import { isMedia } from "@/domain/task-files";
 import { sameCalendarDay } from "@/domain/time";
 import { dayClock, dayClockLabel, dayHeading } from "@/domain/day-clock";
 import { useToday } from "@/state/clock";
-import { agentModelName, modelLabel, peopleAgentNames, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
+import { agentModelName, modelLabel, peopleAgentNames, placementAgentLabel, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
 import { useActivityText, useDuration } from "@/features/people/labels";
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { sameForFeed } from "@/domain/people";
@@ -293,6 +296,9 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
         for (const file of splitAttachments(description, folder).files) if (file.media)
           media.push({ kind: "file", occurrence: occurrence++, path: file.path, alt: file.name });
       }
+      // A coordinator answer's kept copies stand for the local files it links to, as its body draws them.
+      const published = !key.endsWith(":note") && each.answerFiles
+        ? answerBodyFiles({ id: each.answerFiles.requestId, answerFiles: each.answerFiles.files }) : undefined;
       for (const medium of media) {
         const id = markdownMediumId(key, medium);
         if (medium.kind !== "file") {
@@ -300,6 +306,11 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
           continue;
         }
         const { path, alt } = medium;
+        const copy = published?.find(file => file.path === path);
+        if (copy) {
+          if (copy.src && isMedia(copy.name)) images.push({ id, reportKey: key, path, alt, src: copy.src });
+          continue;
+        }
         const embed = reportEmbed(path);
         if (!embed || !inGallery(embed.kind)) continue;
         const safe = embed.path;
@@ -468,6 +479,8 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
   // Placement needs the permitted pages already drawn, even if their refresh failed. A missing target is
   // exhausted only by a successful read; retained pages cannot complete that lookup on their own.
   const historyReady = !!pages && !catchingUp && !history.isFetching;
+  // Read whole and holding no row; a refresh of it in flight does not take that back (the note would blink with each one).
+  const historyEmpty = !!pages && !catchingUp && history.isSuccess && !history.hasNextPage && !rows.length;
   const feed = <div data-report-feed data-history-ready={historyReady} data-history-exhausted={history.isSuccess && historyReady && !history.hasNextPage} aria-busy={history.isPending || history.isFetchingNextPage} className="pb-6">
       {task.userQuestions === null && <ReadFailure what={t('reportFeed.questionsUnavailable')} />}
       {task.userReviews === null && <ReadFailure what={t('reportFeed.reviewsUnavailable')} />}
@@ -475,6 +488,7 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
       <FeedWords.Provider value={words}><FeedAgents taskId={task.id} historyNames={agentNames}><FeedTask.Provider value={task}><Today.Provider value={today}><ol ref={feedList} className="m-0 ml-2 flex list-none flex-col border-l border-rule p-0 [--gutter:--spacing(4)] [--rail:-1px]">
       <QuestionsBar task={task} />
       <WorkingRow task={task} onFollow={onFollow} />
+      <AssignedRow task={task} />
       {(partial ? firstScreen(days) : days).map(day => <li key={day.key} data-day={day.key} className="relative">
         <DayHead at={day.at} motionKey={`day:${day.key}`} />
         <ol className="isolate m-0 flex list-none flex-col p-0"><DayBase.Provider value={day.at}>{day.rows.map(row => {
@@ -482,7 +496,9 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
             pressed={chosen.get(row.key) === true}
             open={chosen.get(row.key) ?? ((row.key === firstReport?.key || standing === row.key) && saysMore(row))} />;
         })}</DayBase.Provider></ol></li>)}
-</ol></Today.Provider></FeedTask.Provider></FeedAgents></FeedWords.Provider>
+</ol>
+      {historyEmpty && <EmptyHistoryNote task={task} owned={!!crewOf(task.id, people).responsible} />}
+</Today.Provider></FeedTask.Provider></FeedAgents></FeedWords.Provider>
     <PendingRegion pending={history.isPending || history.isFetchingNextPage} shape="reportLines" waitFrom={history.isPending ? waitFrom : undefined} />
     {/* Out of reach, reports this device does not hold say so (they are read once serve is back); what is held says its
         time in the bar's one offline mark. */}
@@ -679,7 +695,8 @@ function RecordBody({ report, task, gallery, onFollow, beside, children }: { rep
             src: file.media && saved ? taskFileUrl(home, saved.name, saved.revision) : null, open: () => openAttachment(file.path) };
         })} /></>
       : report.kind === "answer" ? <MarkdownBody text={report.description} task={task} onFollow={onFollow} gallery={gallery} galleryReportKey={galleryKey} />
-      : <ReportBody text={report.description} sourceTaskId={home} parentTask={task} gallery={gallery} galleryReportKey={galleryKey} onFollow={onFollow} />}
+      : <ReportBody text={report.description} sourceTaskId={home} parentTask={task} gallery={gallery} galleryReportKey={galleryKey} onFollow={onFollow}
+        files={report.replyTo && report.answerFiles ? answerBodyFiles({ id: report.answerFiles.requestId, answerFiles: report.answerFiles.files }) : undefined} />}
     {children}
     <BodyCopy text={() => reportCopy(request || report.kind === "answer" || report.kind === "dialogue" ? "" : report.text, report.description)} beside={beside} />
   </>;
@@ -1142,6 +1159,43 @@ function RailTime({ mark, live, children }: { mark?: ReportEvent["mark"]; live?:
 const ROW_HEAD = "flex min-w-0 items-baseline gap-2 pt-2.5";
 const headEnd = (open: boolean, least: string) => open ? "pb-3 narrow:min-h-11" : `pb-2.5 ${least}`;
 
+
+/**
+ * A History with no record yet, of a task no AI owns, says it has not started and what starts it (before-work), in place
+ * of a blank column.
+ */
+function EmptyHistoryNote({ task, owned }: { task: TaskDetail; owned: boolean }) {
+  const { t } = useTranslation("reader");
+  const { runs, work } = useContext(WorkingView)!;
+  if (beforeWork(task, owned) !== "unassigned" || runs.length || work.length) return null;
+  return <Message data-empty-history="unassigned" tone="empty" icon="history" live
+    title={t("reportFeed.empty.unassigned.title")} description={t("reportFeed.empty.unassigned.next")} />;
+}
+
+/**
+ * A task not started whose AI owner is placed shows that owner at work, as the working row shows a Run at work, from
+ * the time it was placed: until its Run starts (no request yet, or one waiting for its turn) and the working row takes over.
+ * Work going on below is the working row's to say; a task waiting for others to finish first says so in its own row.
+ */
+function AssignedRow({ task }: { task: TaskDetail }) {
+  const { t } = useTranslation("reader");
+  const { runs, work } = useContext(WorkingView)!;
+  const people = useTaskPeople();
+  const names = useContext(AgentNames);
+  const duration = useDuration();
+  const owner = people ? crewOf(task.id, people).responsible : null;
+  if (!people || !owner || runs.length || work.length || beforeWork(task, true) !== "assigned") return null;
+  // Before its first Run the owner has no effort yet: it is named alone, not "not started" beside "at work".
+  const model = modelLabel(people.runsByPlacement.get(owner.id)?.length ? placementAgentLabel(owner, people) : owner.profileKey, names);
+  return <li data-assigned-row data-motion-key="working" className="relative pl-(--gutter)"><div className="border-b border-rule py-1">
+    <div className={`${RECORD_HEAD} items-baseline !py-1.5`}>
+      <RailTime mark={WORKING_MARK} live>{duration(owner.startedAt)}</RailTime>
+      <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft">
+        <span className="font-medium">{t("reportFeed.row.party.self")}</span>
+        <AgentLabel label={model} /><span>{t("reportFeed.row.working")}</span></span>
+    </div>
+  </div></li>;
+}
 
 /** A single entry point into the existing navigation/acquisition effect. Server membership owns question state: this Task's own questions to you. */
 function QuestionsBar({ task }: { task: TaskDetail }) {

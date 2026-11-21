@@ -24,12 +24,12 @@ function fixture(t: TestContext) {
   };
   return { root, bin, script, environment: { cwd: root, env: { PATH: bin, HOME: root }, bridge: syntheticStatusBridge(root) } };
 }
-test('creation enables only confirmed sign-in; signed-out and uncheckable executables remain disabled', async t => {
+test('creation lists only confirmed sign-in; signed-out and uncheckable executables are left to the setup screen', async t => {
   const f = fixture(t); f.script('claude', 0); f.script('codex', 1); f.script('grok', 0);
   const agents = await inspectSetupAgents(f.environment);
   assert.deepEqual(agents.map(a => [a.id, a.status]), [['claude', 'ready'], ['codex', 'signed_out'], ['grok', 'unknown']]);
   const settings = parseAgentsSettings(initialAgentsTemplate(agents));
-  assert.deepEqual((Object.entries(settings.agents) as [string, AgentSetting][]).map(([name, agent]) => [name, agent.enabled !== false]), [['claude', true], ['codex', false], ['grok', false]]);
+  assert.deepEqual((Object.entries(settings.agents) as [string, AgentSetting][]).map(([name, agent]) => [name, agent.enabled !== false]), [['claude', true]]);
   f.script('codex', 42);
   assert.equal((await inspectAgent('codex', undefined, f.environment)).status, 'unknown');
 });

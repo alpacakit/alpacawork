@@ -9,7 +9,7 @@ import { test, expect } from "./fixtures.ts";
 import type { Runtime } from "./server.ts";
 
 /**
- * A new person's way in, against the real server: the setup's three steps (agents, skills, project), then the page
+ * A new person's way in, against the real server: the setup's four steps (language and theme, agents, skills, project), then the page
  * opening on that project with its welcome, in the same document.
  */
 test.use({ isolated: true });
@@ -26,7 +26,7 @@ async function enroll(page: Page, runtime: Runtime): Promise<string> {
 }
 
 for (const [width, height] of [[1440, 900], [390, 844]] as const) {
-  test(`a new person goes through the three setup steps and lands on the welcome of their project at ${width}px`, async ({ page, runtime }) => {
+  test(`a new person goes through the setup steps and lands on the welcome of their project at ${width}px`, async ({ page, runtime }) => {
     const sample = await enroll(page, runtime);
     await page.setViewportSize({ width, height });
     // On a computer the page's feed answers late, as through a tunnel from another PC: nothing may be written before
@@ -35,9 +35,19 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     await page.goto(runtime.origin);
     expect(new URL(page.url()).pathname).toBe("/welcome");
     const setup = page.locator("[data-setup-screen]");
+    await expect(setup.locator('[data-setup-step="display"]')).toHaveAttribute("aria-current", "step");
+
+    // 1 Language and theme: each applies at once, and the theme stays after setup.
+    await setup.locator("[data-setup-language]").selectOption("es");
+    await expect(setup.locator("h1")).toHaveText("Idioma y tema");
+    await setup.locator("[data-setup-language]").selectOption("en");
+    await expect(setup.locator("h1")).toHaveText("Language and theme");
+    await setup.locator('[data-setup-theme="dark"]').click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await setup.locator("[data-setup-next]").click();
     await expect(setup.locator('[data-setup-step="agents"]')).toHaveAttribute("aria-current", "step");
 
-    // 1 Agents: none is enabled here (Claude Code and Codex signed out; Grok Build found, its sign-in not checkable), so
+    // 2 Agents: none is enabled here (Claude Code and Codex signed out; Grok Build found, its sign-in not checkable), so
     // Next waits until one is. Usage data, where it is asked, starts ticked.
     await expect(setup.locator("[data-setup-no-agent]")).toBeVisible();
     await expect(setup.locator("[data-setup-next]")).toBeDisabled();
@@ -46,14 +56,11 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     await expect(setup.locator("[data-setup-next]")).toBeEnabled();
     const consent = setup.locator("[data-setup-consent] input");
     if (await consent.count()) await expect(consent).toBeChecked();
-    // The corner's theme applies at once and stays after setup.
-    await setup.locator("header select").first().selectOption("dark");
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     const documents: string[] = [];
     page.on("request", request => { if (request.resourceType() === "document") documents.push(request.url()); });
     await setup.locator("[data-setup-next]").click();
 
-    // 2 Skills: three are recommended and ticked; with only the bundled one left ticked, the button names one skill.
+    // 3 Skills: three are recommended and ticked; with only the bundled one left ticked, the button names one skill.
     const skills = setup.locator('[data-setup-panel="skills"]');
     await expect(skills.locator("[data-setup-install]")).toHaveText("Install 3 skills");
     for (const name of ["askmeclearly", "doyourjob"]) await skills.locator(`[data-setup-skill="${name}"] input`).uncheck();
@@ -63,7 +70,7 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     // Moving on, the setup says what went in.
     await expect(page.locator("[data-toast]").filter({ hasText: "Installed 1 skill" })).toBeVisible();
 
-    // 3 Project: settings' own rows, the policy naming the installed skill.
+    // 4 Project: settings' own rows, the policy naming the installed skill.
     const project = setup.locator('[data-setup-panel="project"]');
     await expect(project.locator("#project-policy")).toHaveValue(/alpacawork-betterquality/);
     await expect(project.locator("#project-policy")).not.toHaveValue(/askmeclearly/);
