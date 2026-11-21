@@ -385,6 +385,9 @@
       "aiLanguage": "Language for AI conversations",
       "awayAfter": "Away when idle",
       "display": "Display",
+      "guide": "Getting-started guide",
+      "guideHelp": "Shows the first-use guide again.",
+      "guideShow": "Show again",
       "issue": {
         "conflict": "Changed in another view. Check the latest value.",
         "error": "Could not save. Try again.",

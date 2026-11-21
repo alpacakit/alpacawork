@@ -1,4 +1,32 @@
 {
+  "guide": {
+    "close": "Close the guide",
+    "line": {
+      "end": "That is all there is to it. Go on and ask for anything in the box below.",
+      "question": "It's your turn. Open the row under “{{section}}”, choose an answer and send it.",
+      "result": "A result is ready. Open the row under “{{section}}”, check it, and press “{{finish}}” if it is good.",
+      "send": "Write what you want done in the box below and send it. It becomes a task listed here.",
+      "working": "AI is working on it. When a question or a result comes for you, the task moves to “{{section}}”. Press a row to read its progress."
+    },
+    "name": "Getting started",
+    "progress": "{{step}}/3",
+    "stepDone": "Done:",
+    "steps": {
+      "send": {
+        "detail": "Write it in the box below and send. Or pick an example.",
+        "title": "Send a request"
+      },
+      "turn": {
+        "detail": "Open a task that has a question or a result for you, and answer or check it.",
+        "title": "Your turn"
+      },
+      "work": {
+        "detail": "Your request becomes a task listed here, and an agent works on it.",
+        "received": "The coordinator (the AI that takes your requests) has your request. A task will appear here shortly. Press the line above the box to read the conversation.",
+        "title": "AI works on it"
+      }
+    }
+  },
   "home": {
     "awaited": "Waiting",
     "error": "Needs attention",
@@ -114,6 +142,11 @@
         "shows": "AI offers ideas; pick one and it builds that game.",
         "words": "I'd like one mini game I can play in the browser. Suggest 3 ideas and ask me which to build. Then build the one I pick in about 5 minutes. This is a trial run, so keep the effort light. Please write everything in English."
       },
+      "folder": {
+        "label": "Read this folder and suggest what to hand off next",
+        "shows": "Sums up what is in the working folder and asks you which piece of work to start with. Changes nothing.",
+        "words": "Make this a task and hand it to an agent. Read what is in this project's working folder ({{path}}) and sum up in three lines what the project is. Then suggest three pieces of work I could hand off next and ask me which to start with. Do not change any files. This is a trial run, so keep the effort light. Please write everything in English."
+      },
       "models": {
         "label": "Have 3 models build a snake game, then compare",
         "shows": "Different models build in parallel, then you're asked which to keep.",
@@ -125,7 +158,12 @@
         "words": "Please add this rule to this project's policy: \"When you finish, report what you changed in 3 lines or fewer.\" Also, set this environment to run at most 4 agents at once. Please write everything in English."
       }
     },
-    "lead": "Choose an example to try it out.",
+    "folder": {
+      "at": "Working folder: {{path}}",
+      "choose": "Choose working folder",
+      "none": "To use it on your own repository, choose that folder as the project's working folder."
+    },
+    "lead": "Send what you want done. AI turns it into tasks and works on them, and comes to you only when your judgment is needed.",
     "title": "Welcome to alpacawork"
   }
 }

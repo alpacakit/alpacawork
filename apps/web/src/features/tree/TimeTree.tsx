@@ -50,6 +50,7 @@ import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
 import { Welcome } from "./Welcome";
+import { ListGuide } from "@/features/guide/ListGuide";
 import { scrollMotion, useListMotion, useTint } from "@/lib/motion";
 import { sameDrawingSource, type DrawingSource } from "@/lib/drawing";
 import { useWorkspaceSelector } from "@/data/workspace-store";
@@ -483,6 +484,8 @@ export function TimeTree() {
           style={{ ...frozen(shared), top: `calc(var(--bar-in) + ${head}px)` }} className="sticky left-0 z-30 h-0">
           <div className="bg-bg"><PageReadFailure page={timeline} read={timelineRead} /></div>
         </div>}
+        {/* The getting-started guide's line, over the sections; as wide as the list's box, as the welcome is. */}
+        {!welcome && !empty && <div style={{ width: sheet }} className="sticky left-0 z-10"><ListGuide /></div>}
         <RowTimeContext.Provider value={rowTime}>
           {<>
             {sections.map((section, at) => <Fragment key={section.section}>

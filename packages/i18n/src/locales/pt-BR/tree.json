@@ -1,4 +1,32 @@
 {
+  "guide": {
+    "close": "Fechar o guia",
+    "line": {
+      "end": "Isso é tudo. Agora é só pedir o que quiser na caixa abaixo.",
+      "question": "É a sua vez. Abra a linha em “{{section}}”, escolha uma resposta e envie.",
+      "result": "Chegou um resultado. Abra a linha em “{{section}}”, confira e toque em “{{finish}}” se estiver bom.",
+      "send": "Escreva na caixa abaixo o que você quer que seja feito e envie. Isso vira uma tarefa listada aqui.",
+      "working": "A IA está trabalhando. Quando chegar uma pergunta ou um resultado para você, a tarefa vai para “{{section}}”. Toque em uma linha para ler o andamento."
+    },
+    "name": "Primeiros passos",
+    "progress": "{{step}}/3",
+    "stepDone": "Feito:",
+    "steps": {
+      "send": {
+        "detail": "Escreva na caixa abaixo e envie. Ou escolha um exemplo.",
+        "title": "Envie um pedido"
+      },
+      "turn": {
+        "detail": "Abra uma tarefa que tenha uma pergunta ou um resultado para você, e responda ou confira.",
+        "title": "Sua vez"
+      },
+      "work": {
+        "detail": "Seu pedido vira uma tarefa listada aqui, e um agente trabalha nela.",
+        "received": "O coordenador (a IA que recebe seus pedidos) já tem seu pedido. Uma tarefa vai aparecer aqui em breve. Toque na linha acima da caixa para ler a conversa.",
+        "title": "A IA trabalha nele"
+      }
+    }
+  },
   "home": {
     "awaited": "Aguardando",
     "error": "Requer atenção",
@@ -122,18 +150,28 @@
         "shows": "A IA compara ideias e faz uma pergunta a você. Sua resposta dá início à criação.",
         "words": "Quero fazer um minijogo que eu possa jogar no navegador. Transforme isso em uma tarefa: liste 3 ideias e me pergunte qual criar, com uma tabela comparativa e a sua recomendação na pergunta. Depois que eu responder, crie a que eu escolhi em cerca de 5 minutos, sem perguntar mais nada, e me envie o relatório. Isto é um tutorial, então pegue leve no esforço: priorize a velocidade, não pense demais e faça sem complicar. Por favor, escreva tudo em português."
       },
+      "folder": {
+        "label": "Ler esta pasta e sugerir o que delegar em seguida",
+        "shows": "Resume o que há na pasta de trabalho e pergunta por qual trabalho começar. Não altera nada.",
+        "words": "Transforme isto em uma tarefa e entregue a um agente. Leia o que há na pasta de trabalho deste projeto ({{path}}) e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Não altere nenhum arquivo. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
+      },
       "models": {
         "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",
         "shows": "Modelos diferentes criam em paralelo, e depois você escolhe com qual ficar.",
         "words": "Quero fazer um jogo da cobrinha. Você pode tentar criar 3 em paralelo, com modelos diferentes? Quando ficarem prontos, me pergunte com qual seguir. Isto é um tutorial, então, por favor, pegue leve no esforço e leve cerca de 5 minutos. Por favor, escreva tudo em português."
       },
-      "triage": {
-        "label": "Dividir a abertura de um café em 5 tarefas",
-        "shows": "Os resultados ficam em fila para a sua revisão, e você escolhe quais concluir.",
-        "words": "Por favor, divida a abertura de um café fictício em 5 tarefas separadas: \"Encomendar os grãos\", \"Providenciar a placa\", \"Imprimir o cardápio\", \"Contratar a equipe\" e \"Enviar os convites\", e delegue cada uma a um agente. Peça que cada um escreva um resultado fictício de uma linha no relatório e aguarde a minha revisão. Quando as 5 chegarem, eu escolho quais concluir. Não precisa de pesquisa nem de arquivos e, por favor, escreva tudo em português."
+      "settings": {
+        "label": "Definir uma regra de trabalho e quantos agentes trabalham ao mesmo tempo",
+        "shows": "Uma regra entra na política do projeto e no máximo 4 agentes trabalham ao mesmo tempo.",
+        "words": "Adicione esta regra à política deste projeto: \"Ao terminar, resuma o que você mudou em 3 linhas ou menos\". Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
       }
     },
-    "lead": "Escolha um exemplo para experimentar.",
+    "folder": {
+      "at": "Local do código: {{path}}",
+      "choose": "Escolher o local do código",
+      "none": "Para usar no seu próprio repositório, escolha essa pasta como o local do código do projeto."
+    },
+    "lead": "Envie o que você quer que seja feito. A IA transforma isso em tarefas, trabalha nelas e só vem até você quando sua decisão é necessária.",
     "title": "Boas-vindas ao alpacawork"
   }
 }

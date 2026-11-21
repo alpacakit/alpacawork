@@ -378,6 +378,9 @@
       "aiLanguage": "与 AI 对话的语言",
       "awayAfter": "无操作时视为离开",
       "display": "显示",
+      "guide": "入门指引",
+      "guideHelp": "再次显示首次使用时的指引。",
+      "guideShow": "再次显示",
       "issue": {
         "conflict": "已在别处更改。请查看最新的值。",
         "error": "无法保存。请重试。",
