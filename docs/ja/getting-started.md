@@ -19,7 +19,7 @@ AI と1対1で話すチャットの画面ではありません。画面の中心
 次のものが要ります。
 
 - **PC**: macOS（Apple シリコン）、Linux（x64、glibc、systemd のユーザーセッションが要る。多くのデスクトップやサーバーでは最初から有効）、Windows（WSL2 の Ubuntu の中で systemd を有効にして。Ubuntu では既定で有効。[Windows で使うとき](manage.md#windows-で使うとき)）
-- **AI エージェント**: Claude Code、Codex、GitHub Copilot など。1つ以上を、この PC に入れてサインインしておきます（[使える AI エージェント](projects.md#使える-ai-エージェント)）
+- **AI エージェント**: Claude Code、Codex、GitHub Copilot など。最初の依頼を送るまでに、使うものを1つ以上、この PC で使える状態にしておきます。Claude Code と Codex は、入れてサインインします。GitHub Copilot は alpacawork に同梱で、GitHub CLI のサインインで動きます（[使える AI エージェント](projects.md#使える-ai-エージェント)）
 - **Node.js 24.16 以降**: AI に頼んでインストールするときは、無ければ AI が入れます
 - **ブラウザ**: Chrome・Edge 111 以降、Safari 16.4 以降、Firefox 128 以降。これより古いと、「このブラウザには対応していません」と出ます
 
