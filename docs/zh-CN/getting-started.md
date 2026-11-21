@@ -33,7 +33,7 @@ alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不�
 
 1. **粘贴安装指示。** 复制 [README 的“安装”一节](https://github.com/alpacakit/alpacawork/blob/main/README.zh-CN.md#安装)中的那段文字，原样粘贴给你电脑上的 AI 智能体（例如 Claude Code 或 Codex）。
 2. **AI 进行安装。** 它会检查这台电脑能否运行 alpacawork，安装缺少的东西，然后启动 alpacawork。过程中不需要你执行命令或回答确认。如果你的 AI 智能体自己请求执行命令的权限，请允许。
-3. **初始设置界面会在浏览器中打开。** AI 也会告诉你它的 URL。如果浏览器没有打开，或之后想再次打开界面，请看[打开界面](#2-打开界面)。
+3. **初始设置界面会在浏览器中打开。** AI 也会告诉你它的 URL，所以即使浏览器没有打开，你也能自己打开。如果浏览器没有打开，或之后想再次打开界面，请看[打开界面](#2-打开界面)。
 
 初始设置界面分三步：要使用的 AI 智能体（以及是否发送[使用数据](telemetry.md)）、要安装的[技能](#技能)、你的第一个项目。每一步都附有说明，其中的所有内容之后都可以在设置中更改。
 
@@ -80,32 +80,35 @@ alpacawork 在 Ubuntu 中运行，界面则在 Windows 的浏览器中打开。�
 
 ## 2. 打开界面
 
-alpacawork 的界面是电脑上运行的 alpacawork 提供的网页，用浏览器打开。它的 URL 形如 `http://127.0.0.1:43127/`。最后的数字在安装时决定，每台电脑都不同；关闭浏览器或重启电脑后也不会变。
+alpacawork 的界面是电脑上运行的 alpacawork 提供的网页，用浏览器打开。它的 URL 形如 `http://127.0.0.1:43127/`（把 `127.0.0.1` 换成 `localhost` 也能打开）。最后的数字在安装时决定，每台电脑都不同；关闭浏览器或重启电脑后也不会变。
 
 ### 第一次打开
 
-初始设置完成后，界面会自动在浏览器中打开。你也会得到它的 URL：请 AI 安装时由 AI 告诉你；自己执行 `alpacawork setup` 时，在输出的 `打开：`（英文为 `Open:`）一行中。如果浏览器没有打开（在 Windows 上可能不会打开，通过 SSH 连接安装时不会打开），把这个 URL 粘贴到浏览器的地址栏中打开。在 Windows 上，用 Windows 的浏览器打开。
+初始设置完成后，你会得到界面的 URL：请 AI 安装时由 AI 告诉你；自己执行 `alpacawork setup` 时，在输出的 `打开：` 一行中（终端为英文时是 `Open:`）。通常它也会自动在浏览器中打开。如果浏览器没有打开（在 Windows 上可能不会打开，通过 SSH 连接安装时不会打开），把这个 URL 粘贴到浏览器的地址栏中打开。在 Windows 上，用 Windows 的浏览器打开。
 
-如果你是通过 SSH 连接到另一台电脑上安装的，这个 URL 只能在那台电脑的浏览器中打开。要在你面前的电脑上打开，请像[在手机上使用](#6-在手机上使用)中那样，用 VPN 把两台设备连起来。
+如果你是通过 SSH 连接到另一台电脑上安装的，这个 URL 只能在那台电脑的浏览器中打开。请在 SSH 会话中对那台电脑上的 AI 智能体说：“让 alpacawork 可以从其他设备使用”。AI 会通过 VPN 准备入口，并告诉你需要在自己这边安装什么（说明见[在手机上使用](#6-在手机上使用)）。然后在你面前的浏览器中打开它给你的 `https://` URL。
 
 ### 之后再次打开
 
-- **加入书签，或作为应用安装。** 在 Chrome 或 Edge 中，点击地址栏右端的“安装”。之后就能从程序坞、任务栏或应用列表中，在独立窗口里打开 alpacawork。各浏览器的步骤见“设置（齿轮）→ 应用和手机 → 作为桌面应用使用”。
-- **忘了 URL 时**，在终端中执行 `alpacawork workspace url`。alpacawork 正在运行时会显示 `"status":"serving"`，用浏览器打开 `"localUrl"` 后面的 URL。也可以问 Claude Code 或 Codex 等 AI 智能体：“告诉我 alpacawork 的 URL”。
+- **关闭浏览器或重启电脑后**，打开同一个 URL 即可。重启后，先登录电脑（在 Windows 上，先打开 Ubuntu）。
+- **加入书签，或作为应用安装。** 在 Chrome 或 Edge 中，点击地址栏右端的“安装”（Edge 中是同一位置的图标）。之后就能从程序坞、任务栏或应用列表中，在独立窗口里打开 alpacawork。各浏览器的步骤见“设置（齿轮）→ 应用和手机 → 作为桌面应用使用”。
+- **忘了 URL 时**，在终端（在 Windows 上是 Ubuntu 窗口）中执行 `alpacawork workspace url`。alpacawork 正在运行时会显示 `"status":"serving"`。在这台电脑的浏览器中打开 `"localUrl"` 后面的 URL，从其他设备则打开 `"publicUrl"` 后面的 URL。也可以问 Claude Code 或 Codex 等 AI 智能体：“告诉我 alpacawork 的 URL”。
 
 ### 界面打不开时
 
-alpacawork 会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。如果浏览器显示无法连接（例如“无法访问此网站”或 `ERR_CONNECTION_REFUSED`），或 `alpacawork workspace url` 以“The server gave no answer”失败，说明 alpacawork 没有在运行。启动它，然后重新加载页面。
+不知道 URL 时，请先看[之后再次打开](#之后再次打开)。
+
+alpacawork 会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。如果浏览器显示无法连接（例如“无法访问此网站”或 `ERR_CONNECTION_REFUSED`），或 `alpacawork workspace url` 以“Server not reached”失败，说明 alpacawork 没有在运行。启动它，然后重新加载页面。
 
 - **Windows**：从开始菜单打开 Ubuntu，并让这个窗口保持打开（[在 Windows 上使用](#在-windows-上使用)）。如果仍然打不开，在这个窗口中执行下面 Linux 的命令。
-- **Linux**：在终端中执行 `systemctl --user start alpacawork.service`。在 Linux 上，alpacawork 只在你登录电脑期间运行。
-- **macOS**：在终端中执行 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`。
+- **Linux**：在终端中执行 `systemctl --user start alpacawork.service`。alpacawork 在你登录电脑期间运行。要在注销后也继续运行，请对 AI 智能体说：“让 alpacawork 在我注销后也继续运行”。
+- **macOS**：在终端中执行 `launchctl kickstart gui/$(id -u)/alpacawork.service`。如果你是按[停止 alpacawork](#停止-alpacawork) 中的步骤停止的，请改为执行 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`。
 
 如果仍然打不开，在终端中启动 AI 智能体（例如 Claude Code 或 Codex），调用 alpacawork 技能（[调用方法](#7-在-claude-code-或-codex-中使用)），把看到的错误粘贴给它并请它帮忙。
 
 ## 3. 发起第一个委托
 
-还没有任务时，界面上会显示可以试用的委托示例。点击一个示例，它就会填入输入框，然后原样发送即可。每个示例展示一种不同的流程：使用不同模型的多个 AI 并行做出候选方案供你挑选；AI 先请你选定一个想法，再把它做出来；验收结果并将其标记为已完成。每个都是几分钟就能完成的简短练习。
+第一次打开界面时，先完成初始设置界面的三个步骤（[安装](#1-安装)）。之后，还没有任务时，界面上会显示可以试用的委托示例。点击一个示例，它就会填入输入框，然后原样发送即可。每个示例展示一种不同的流程：使用不同模型的多个 AI 并行做出候选方案供你挑选；AI 先请你选定一个想法，再把它做出来；验收结果并将其标记为已完成。每个都是几分钟就能完成的简短练习。
 
 <img src="../images/welcome-phone.png" alt="手机上首次打开时的界面，列有三个可以马上试用的示例" width="320">
 

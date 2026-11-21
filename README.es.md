@@ -44,7 +44,7 @@ Descarga la siguiente guía, léela completa y síguela para instalar alpacawork
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-Para instalarlo con comandos, ejecuta estas dos líneas en una terminal, en orden. Cuando termina la configuración inicial, la pantalla de configuración se abre en tu navegador, y su URL aparece en la línea `Abrir:`.
+Para instalarlo con comandos, ejecuta estas dos líneas en una terminal (en Windows, dentro de Ubuntu), en orden. La configuración inicial muestra lo que va a preparar y empieza cuando presionas Enter. Al terminar, muestra la URL de la pantalla en la línea `Abrir:` (`Open:` si la terminal está en inglés) y normalmente la abre en tu navegador.
 
 ```sh
 npm install -g alpacawork
@@ -76,7 +76,7 @@ alpacawork setup
 
 - [Primeros pasos](docs/es/getting-started.md): desde la instalación y la apertura de la pantalla hasta tu primera solicitud, el uso desde tu teléfono, la actualización y la desinstalación
 - [Las ideas detrás de alpacawork](docs/es/concept.md): cómo avanza una solicitud y los principios de diseño
-- [Si la pantalla no se abre](docs/es/getting-started.md#si-la-pantalla-no-se-abre): cuando el navegador no puede conectarse o no sabes la URL
+- [Si la pantalla no se abre](docs/es/getting-started.md#si-la-pantalla-no-se-abre): cuando el navegador no puede conectarse
 - [Solución de problemas](docs/es/getting-started.md#solución-de-problemas): cuando otra cosa no funciona. Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## Licencia

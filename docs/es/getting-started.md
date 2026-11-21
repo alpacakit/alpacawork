@@ -33,7 +33,7 @@ La instalación se la pides a una IA.
 
 1. **Pega el texto de instalación.** Copia el texto que aparece en la sección [Instalar](https://github.com/alpacakit/alpacawork/blob/main/README.es.md#instalar) del README y pégalo tal cual en un agente de IA de tu PC (como Claude Code o Codex).
 2. **La IA lo instala.** Comprueba que alpacawork puede ejecutarse en este PC, instala lo que falta e inicia alpacawork. No tienes que ejecutar comandos ni responder confirmaciones durante el proceso. Si tu propio agente de IA pide permiso para ejecutar un comando, concédeselo.
-3. **La pantalla de configuración inicial se abre en tu navegador.** La IA también te indica su URL. Si el navegador no se abrió, o para volver a abrir la pantalla más tarde, consulta [Abrir la pantalla](#2-abrir-la-pantalla).
+3. **La pantalla de configuración inicial se abre en tu navegador.** La IA también te indica su URL, así que puedes abrirla tú si el navegador no se abrió. Si el navegador no se abrió, o para volver a abrir la pantalla más tarde, consulta [Abrir la pantalla](#2-abrir-la-pantalla).
 
 La pantalla de configuración inicial tiene tres pasos: los agentes de IA que vas a usar (y si envías [datos de uso](telemetry.md)), las [skills](#skills) que se instalan y tu primer proyecto. Cada paso se explica por sí mismo, y todo lo que contiene se puede cambiar más adelante en Configuración.
 
@@ -80,32 +80,35 @@ alpacawork se ejecuta dentro de Ubuntu, y su pantalla la abres en un navegador e
 
 ## 2. Abrir la pantalla
 
-La pantalla de alpacawork es una página web que sirve el alpacawork que se ejecuta en tu PC, y se abre en un navegador. Su URL tiene una forma como `http://127.0.0.1:43127/`. El número del final se elige al instalar, así que cambia de un PC a otro, y no cambia al cerrar el navegador ni al reiniciar el PC.
+La pantalla de alpacawork es una página web que sirve el alpacawork que se ejecuta en tu PC, y se abre en un navegador. Su URL tiene una forma como `http://127.0.0.1:43127/` (también funciona con `localhost` en lugar de `127.0.0.1`). El número del final se elige al instalar, así que cambia de un PC a otro, y no cambia al cerrar el navegador ni al reiniciar el PC.
 
 ### La primera vez
 
-Cuando termina la configuración inicial, la pantalla se abre sola en tu navegador. También recibes su URL: si se lo pediste a una IA, te la indica la IA; si ejecutaste `alpacawork setup` tú mismo, está en la línea `Abrir:` que muestra. Si el navegador no se abrió (puede pasar en Windows, y nunca se abre si instalaste por SSH), copia esa URL en la barra de direcciones del navegador. En Windows, ábrela en un navegador de Windows.
+Cuando termina la configuración inicial, recibes la URL: si se lo pediste a una IA, te la indica la IA; si ejecutaste `alpacawork setup` tú mismo, está en la línea `Abrir:` que muestra (`Open:` si la terminal está en inglés). Normalmente también se abre sola en tu navegador. Si el navegador no se abrió (puede pasar en Windows, y nunca se abre si instalaste por SSH), copia la URL en la barra de direcciones del navegador. En Windows, ábrela en un navegador de Windows.
 
-Si instalaste en otro PC al que te conectaste por SSH, la URL solo se abre en un navegador de ese PC. Para abrir la pantalla desde el PC que tienes delante, conecta los dos mediante una VPN, como en [Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono).
+Si instalaste en otro PC al que te conectaste por SSH, esa URL solo se abre en un navegador de ese PC. En la sesión SSH, pídele a un agente de IA de ese PC: “Haz que alpacawork se pueda usar desde otro dispositivo”. La IA prepara una entrada a través de una VPN y te dice qué instalar de tu lado ([Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono) lo describe). Luego abre en el navegador que tienes delante la URL `https://` que te indique.
 
 ### Volver a abrirla más tarde
 
-- **Guárdala en marcadores o instálala como app.** En Chrome o Edge, haz clic en “Instalar”, en el extremo derecho de la barra de direcciones. A partir de entonces, alpacawork se abre en su propia ventana desde el Dock, la barra de tareas o la lista de apps. Los pasos para cada navegador están en Configuración (el engranaje) → App y teléfono → “Usar como app de escritorio”.
-- **Si olvidas la URL**, ejecuta `alpacawork workspace url` en una terminal. Si alpacawork está en marcha, muestra `"status":"serving"`; abre en el navegador la URL que sigue a `"localUrl"`. También puedes pedírsela a un agente de IA como Claude Code o Codex: “Dime la URL de alpacawork”.
+- **Después de cerrar el navegador o de reiniciar el PC**, abre la misma URL. Tras reiniciar, inicia sesión en el PC primero (en Windows, abre Ubuntu).
+- **Guárdala en marcadores o instálala como app.** En Chrome o Edge, haz clic en “Instalar”, en el extremo derecho de la barra de direcciones (en Edge, el icono que está en el mismo lugar). A partir de entonces, alpacawork se abre en su propia ventana desde el Dock, la barra de tareas o la lista de apps. Los pasos para cada navegador están en Configuración (el engranaje) → App y teléfono → “Usar como app de escritorio”.
+- **Si olvidas la URL**, ejecuta `alpacawork workspace url` en una terminal (en Windows, en la ventana de Ubuntu). Si alpacawork está en marcha, muestra `"status":"serving"`. Abre la URL que sigue a `"localUrl"` en un navegador de ese PC, o la que sigue a `"publicUrl"` desde otro dispositivo. También puedes pedírsela a un agente de IA como Claude Code o Codex: “Dime la URL de alpacawork”.
 
 ### Si la pantalla no se abre
 
-alpacawork se inicia solo cuando inicias sesión en el PC (en Windows, cuando abres Ubuntu). Si el navegador dice que no puede conectarse (por ejemplo, “No se puede acceder a este sitio web” o `ERR_CONNECTION_REFUSED`), o si `alpacawork workspace url` falla con “The server gave no answer”, alpacawork no está en marcha. Inícialo y vuelve a cargar la página.
+Si no sabes la URL, consulta primero [Volver a abrirla más tarde](#volver-a-abrirla-más-tarde).
+
+alpacawork se inicia solo cuando inicias sesión en el PC (en Windows, cuando abres Ubuntu). Si el navegador dice que no puede conectarse (por ejemplo, “No se puede acceder a este sitio web” o `ERR_CONNECTION_REFUSED`), o si `alpacawork workspace url` falla con “Server not reached”, alpacawork no está en marcha. Inícialo y vuelve a cargar la página.
 
 - **Windows**: abre Ubuntu desde el menú Inicio y deja su ventana abierta ([En Windows](#en-windows)). Si sigue sin abrirse, ejecuta en esa ventana el comando de Linux de abajo.
-- **Linux**: ejecuta `systemctl --user start alpacawork.service` en una terminal. En Linux, alpacawork solo se ejecuta mientras tienes la sesión iniciada en el PC.
-- **macOS**: ejecuta `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist` en una terminal.
+- **Linux**: ejecuta `systemctl --user start alpacawork.service` en una terminal. alpacawork se ejecuta mientras tienes la sesión iniciada en el PC. Para que siga funcionando después de cerrar la sesión, pídele a un agente de IA: “Haz que alpacawork siga funcionando cuando cierre la sesión”.
+- **macOS**: ejecuta `launchctl kickstart gui/$(id -u)/alpacawork.service` en una terminal. Si lo detuviste como en [Detener alpacawork](#detener-alpacawork), ejecuta en su lugar `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`.
 
 Si sigue sin abrirse, inicia un agente de IA (como Claude Code o Codex) en una terminal, llama a la skill alpacawork ([cómo](#7-usarlo-desde-claude-code-o-codex)) y pega el error que viste para pedir ayuda.
 
 ## 3. Hacer tu primera solicitud
 
-Mientras no tengas tareas, la pantalla muestra solicitudes de ejemplo para probar. Presiona una para ponerla en el cuadro de texto y envíala tal cual. Cada ejemplo muestra un flujo distinto: varias IA con modelos diferentes que crean candidatos en paralelo para que elijas uno, la IA que te pide elegir una idea y luego la construye, y la revisión de un resultado para marcar la tarea como completada. Cada uno es una práctica breve que lleva unos minutos.
+La primera vez que abras la pantalla, completa los tres pasos de la pantalla de configuración inicial ([Instalar](#1-instalar)). Después, mientras no tengas tareas, la pantalla muestra solicitudes de ejemplo para probar. Presiona una para ponerla en el cuadro de texto y envíala tal cual. Cada ejemplo muestra un flujo distinto: varias IA con modelos diferentes que crean candidatos en paralelo para que elijas uno, la IA que te pide elegir una idea y luego la construye, y la revisión de un resultado para marcar la tarea como completada. Cada uno es una práctica breve que lleva unos minutos.
 
 <img src="../images/welcome-phone.png" alt="La pantalla en un teléfono la primera vez que se abre, con tres ejemplos para probar de inmediato" width="320">
 

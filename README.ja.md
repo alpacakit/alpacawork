@@ -44,7 +44,7 @@ PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpac
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-コマンドで入れるときは、ターミナルで次の2行を順に実行します。セットアップが終わると、セットアップの画面がブラウザで開きます。その URL は `開く:` の行に出ます。
+コマンドで入れるときは、ターミナル（Windows では Ubuntu の中）で次の2行を順に実行します。セットアップは、設定する内容を表示し、Enter を押すと始まります。終わると、画面の URL を `開く:` の行（ターミナルが英語のときは `Open:`）に出し、ふつうはブラウザでも開きます。
 
 ```sh
 npm install -g alpacawork
@@ -76,7 +76,7 @@ alpacawork setup
 
 - [はじめかた](docs/ja/getting-started.md) — インストールと画面の開き方から、最初の依頼、スマートフォンでの使い方、更新とアンインストールまで
 - [alpacawork の考え方](docs/ja/concept.md) — 1つの依頼がどう進むかと、設計の考え方
-- [画面が開かないとき](docs/ja/getting-started.md#画面が開かないとき) — ブラウザでつながらないとき、URL が分からないとき
+- [画面が開かないとき](docs/ja/getting-started.md#画面が開かないとき) — ブラウザでつながらないとき
 - [困ったとき](docs/ja/getting-started.md#困ったとき) — そのほか、うまく動かないとき。不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
 
 ## ライセンス

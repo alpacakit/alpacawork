@@ -70,7 +70,7 @@ Download the guide below, read all of it, and follow it to install alpacawork on
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-To install with commands, run these two lines in a terminal, in order. When setup finishes, the setup screen opens in your browser, and its URL is on the `Open:` line.
+To install with commands, run these two lines in a terminal (on Windows, inside Ubuntu), in order. Setup lists what it will set up and starts when you press Enter. When it finishes, it prints the screen's URL on the `Open:` line and usually opens it in your browser.
 
 ```sh
 npm install -g alpacawork
@@ -102,7 +102,7 @@ alpacawork setup
 
 - [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md): from installing and opening the screen to your first request, using it from your phone, updating and uninstalling
 - [The ideas behind alpacawork](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md): how one request moves along, and the design principles
-- [If the screen doesn't open](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#if-the-screen-doesnt-open): when the browser can't connect, or you don't know the URL
+- [If the screen doesn't open](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#if-the-screen-doesnt-open): when the browser can't connect
 - [Troubleshooting](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md#troubleshooting): when something else doesn't work. Please report bugs in [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## License
