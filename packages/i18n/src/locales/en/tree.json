@@ -2,6 +2,7 @@
   "guide": {
     "close": "End the getting-started guide",
     "closed": "The guide has ended. You can show it again from {{settings}}, under “{{guide}}”.",
+    "more": "Next",
     "name": "Getting started",
     "next": "Got it",
     "openSteps": "Open the steps",
@@ -11,8 +12,8 @@
       "accept": "Read the report. When it made files, open them from “{{files}}” above to check them. If it is good, press this button ({{finish}}) and the task is finished.",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
-      "answerReady": "Your answer is in. Send it with this button to make it your answer.",
       "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
+      "answerReady": "Your answer is in. Send it with this button to make it your answer.",
       "apps": "You can also install alpacawork as an app on this computer, or open it from your phone. The steps are in {{settings}}, under “{{apps}}”.",
       "end": "That is all there is to it. Go on and ask for anything here. You can send as many requests as you like without waiting for the last one to finish.",
       "question": "It's your turn. Press this row to open its detail, and answer the question.",

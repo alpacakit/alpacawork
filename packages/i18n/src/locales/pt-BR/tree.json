@@ -2,6 +2,7 @@
   "guide": {
     "close": "Encerrar o guia",
     "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
+    "more": "Próximo",
     "name": "Primeiros passos",
     "next": "Entendi",
     "openSteps": "Abrir os passos",
@@ -11,8 +12,8 @@
       "accept": "Leia o relatório. Se ele gerou arquivos, abra-os em “{{files}}”, acima, para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
-      "answerReady": "Sua resposta já está na caixa. Envie com este botão para que ela vire a sua resposta.",
       "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
+      "answerReady": "Sua resposta já está na caixa. Envie com este botão para que ela vire a sua resposta.",
       "apps": "Você também pode instalar o alpacawork como aplicativo neste computador ou abri-lo pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
       "end": "Isso é tudo. Agora é só pedir o que quiser aqui. Você pode enviar quantos pedidos quiser, sem esperar o anterior terminar.",
       "question": "É a sua vez. Toque nesta linha para abrir o detalhe e responda à pergunta.",

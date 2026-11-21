@@ -16,7 +16,8 @@ import type { GuideStage } from "./guide-state";
  * - `clear`: a part holding the one pointed at, whose whole the balloon stands clear of (what is read there stays read);
  * - `step`: which of the three STEPS it belongs to (1 send, 2 AI works, 3 your turn), shown in every balloon's head
  *   and as the welcome's current step; null for a step past the three;
- * - `next`: it waits for "Got it" before the guide goes on (put away once read);
+ * - `next`: it waits for "Got it" before the guide goes on (put away once read); `more` with it: another step follows
+ *   straight after, so its button says "Next";
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
  * - `settle`: what putting the step away also settles elsewhere (a pointer that says the same thing, say);
@@ -109,6 +110,7 @@ export type GuideEntry = {
   align?: GuideAlign;
   step: 1 | 2 | 3 | null;
   next?: boolean;
+  more?: boolean;
   action?: { label: (t: TFunction) => string; run: () => void };
   settle?: () => void;
   say: (t: TFunction) => string;
@@ -143,9 +145,9 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.result") },
   // First, the parts a request passes through, on any screen (they are always there): the input with the label that
   // says where a message goes, then the coordinator. Read one by one, or passed over by starting to write.
-  { id: "tour-input", step: 1, part: "input", side: "top", align: "end", next: true, when: f => touring(f, "tour-input"),
+  { id: "tour-input", step: 1, part: "input", side: "top", align: "end", next: true, more: true, when: f => touring(f, "tour-input"),
     say: t => t("tree:guide.say.tourInput") },
-  { id: "tour-coordinator", step: 1, part: "coordinator", side: "top", align: "start", next: true, when: f => touring(f, "tour-coordinator"),
+  { id: "tour-coordinator", step: 1, part: "coordinator", side: "top", align: "start", next: true, more: true, when: f => touring(f, "tour-coordinator"),
     say: t => t("tree:guide.say.tourCoordinator") },
   // A Task made with no AI on it waits for the person: nothing there is the AI's yet.
   { id: "unassigned", step: 1, part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
