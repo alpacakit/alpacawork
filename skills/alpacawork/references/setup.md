@@ -69,7 +69,7 @@ Run `alpacawork setup --yes --lang <tag>` yourself.
 
 Check that `alpacawork workspace url` returns `serving`, then tell the user the following in one short message, as information and not as questions.
 
-- The URL of the screen, and that it is already open in their browser when setup said so. The setup screen takes them through three steps (the agents and usage data, the skills, the first project) and explains each one, so do not explain or ask about them in the conversation.
+- The URL of the screen, and that it is already open in their browser when setup said so. The setup screen takes them through four steps (the screen's language and theme, the agents and usage data, the skills, the first project) and explains each one, so do not explain or ask about them in the conversation.
 - The URL stays the same after the browser is closed or the PC restarts: they can bookmark it, or install it as an app from Chrome or Edge, and `alpacawork workspace url` shows it again.
 - For each agent that setup reported as not signed in: the sign-in command it printed. The setup screen shows the same command, and "Check again" picks up the sign-in.
 - alpacawork can be used from a phone through a VPN, and you set that up when they ask ("Connect" below).
@@ -156,7 +156,7 @@ When creating a new project at the user's request, ask only about what is not ye
 | Preferences for the AI and model used for agents | Project policy (the selectable values are in [Configuration](config.md#agents-agents)) |
 | The reply language (only when the user's own writing does not settle it) | The personal setting `ai.language` (["Language for the user" in Coordinator](coordinator.md#language-for-the-user)) |
 
-For the skills for each purpose, write in the project policy only the ones the user chose, one line each, saying when it is used (for example `- alpacawork-betterquality: use when planning, when asking for a review, and when receiving findings.`). The setup screen's second step offers the skills below and writes these lines for the first project; use this table when the user asks you instead. Install the bundled skills as described under "Sync the skills" above. alpacawork does not manage skills that are not bundled, so get the user's approval and install each one by the method of its distributor (for those in `alpacakit/pocket-skills`, `npx skills add alpacakit/pocket-skills --skill <name> -g`).
+For the skills for each purpose, write in the project policy only the ones the user chose, one line each, saying when it is used (for example `- alpacawork-betterquality: use when planning, when asking for a review, and when receiving findings.`). The setup screen's third step offers the skills below and writes these lines for the first project; use this table when the user asks you instead. Install the bundled skills as described under "Sync the skills" above. alpacawork does not manage skills that are not bundled, so get the user's approval and install each one by the method of its distributor (for those in `alpacakit/pocket-skills`, `npx skills add alpacakit/pocket-skills --skill <name> -g`).
 
 | Skill | Purpose | What it is for |
 |---|---|---|

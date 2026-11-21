@@ -4,6 +4,9 @@ import { chosenAgents, firstAgentOf, startAgents, usableAgents } from '../src/fe
 import type { AgentDraft } from '../src/features/panels/agent-settings-draft';
 
 const agent = (name: string, enabled: boolean): AgentDraft => ({ id: name, originalName: name, name, adapter: name as AgentDraft['adapter'], enabled, params: [] });
+// config.yaml after a setup has saved once: every kind is listed, the ones not given here off.
+const kinds = ['claude', 'codex', 'grok', 'pi', 'copilot'];
+const saved = (...listed: AgentDraft[]) => [...listed, ...kinds.filter(kind => !listed.some(each => each.name === kind)).map(kind => agent(kind, false))];
 const seen = (status: AgentAvailability['status']): AgentAvailability =>
   ({ command: '/bin/x', version: null, candidates: [], status, nextAction: status === 'signed_out' ? 'claude auth login' : null, issue: null });
 
@@ -22,7 +25,7 @@ describe('the setup\'s agents', () => {
     expect(usableAgents(absent, { codex: true, pi: true })).toEqual(['codex']);
     // Switched on, a kind config.yaml did not list is added to it; one whose CLI is missing is never written.
     const added = chosenAgents([agent('codex', true)], absent, { codex: true, grok: true, pi: true }, 'codex')!;
-    expect(added.map(each => [each.name, each.enabled])).toEqual([['codex', true], ['grok', true]]);
+    expect(added.map(each => [each.name, each.enabled])).toEqual([['codex', true], ['claude', false], ['grok', true], ['pi', false], ['copilot', false]]);
     expect(startAgents(agents, undefined, true).map(row => row.status)).toEqual(['checking', 'checking', 'checking']);
     // A kind with no sign-in check (or a check that did not answer) can still take work, as in Settings.
     const found = startAgents([agent('pi', true)], { availability: { pi: seen('unknown') } }, false);
@@ -30,19 +33,43 @@ describe('the setup\'s agents', () => {
     expect(usableAgents(found, { pi: true })).toEqual(['pi']);
   });
 
+  it('places a kind signed in after config.yaml was made where alpacawork\'s order puts it, so it can be the default', () => {
+    // A new config.yaml lists only what was signed in then; Claude Code's check answered only on the screen.
+    const configured = [agent('copilot', true)];
+    const rows = startAgents(configured, { availability: { copilot: seen('ready') }, detected: { claude: seen('ready'), codex: seen('signed_out') } }, false);
+    expect(rows.map(row => row.name)).toEqual(['claude', 'codex', 'copilot']);
+    const on = { claude: true, copilot: true };
+    expect(firstAgentOf(usableAgents(rows, on), null)).toBe('claude');
+    expect(chosenAgents(configured, rows, on, 'claude')!.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['codex', false], ['grok', false], ['pi', false], ['copilot', true]]);
+    // Switched off, it is saved off, so coming back to this step does not switch it on again.
+    const off = chosenAgents(configured, rows, { claude: false, copilot: true }, 'copilot')!;
+    expect(off.map(each => [each.name, each.enabled])).toEqual([['copilot', true], ['claude', false], ['codex', false], ['grok', false], ['pi', false]]);
+    // Codex signed in, or Grok installed, after that save stays behind the first agent the person chose.
+    const later = startAgents(off, { availability: { copilot: seen('ready'), claude: seen('ready'), codex: seen('ready') } }, false);
+    expect(firstAgentOf(usableAgents(later, { copilot: true, codex: true }), null)).toBe('copilot');
+  });
+
+  it('keeps config.yaml\'s order when a listed agent\'s CLI is missing', () => {
+    const configured = saved(agent('codex', true), agent('grok', true), agent('copilot', true));
+    const rows = startAgents(configured, { availability: { codex: seen('ready'), grok: seen('not_found'), copilot: seen('ready') } }, false);
+    expect(rows.map(row => row.name)).toEqual(['codex', 'copilot', 'claude', 'pi', 'grok']);
+    expect(chosenAgents(configured, rows, { codex: true, copilot: true }, 'codex')).toBeNull();
+  });
+
   it('leaves an agent whose CLI is missing as config.yaml has it', () => {
-    const configured = [agent('codex', true), agent('grok', true)];
+    const configured = saved(agent('codex', true), agent('grok', true));
     const rows = startAgents(configured, { availability: { codex: seen('ready'), grok: seen('not_found') } }, false);
     expect(chosenAgents(configured, rows, { codex: true, grok: false }, 'codex')).toBeNull();
   });
 
   it('writes config.yaml only when the switches or the first agent differ from it', () => {
-    const rows = startAgents(agents, { availability: { ...observed.availability, claude: seen('ready') } }, false);
-    expect(chosenAgents(agents, rows, { codex: true, claude: false }, 'codex')).toBeNull();
-    const both = chosenAgents(agents, rows, { codex: true, claude: true }, 'claude')!;
-    expect(both.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['codex', true], ['grok', false]]);
+    const all = saved(...agents);
+    const rows = startAgents(all, { availability: { ...observed.availability, claude: seen('ready') } }, false);
+    expect(chosenAgents(all, rows, { codex: true, claude: false }, 'codex')).toBeNull();
+    const both = chosenAgents(all, rows, { codex: true, claude: true }, 'claude')!;
+    expect(both.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['codex', true], ['grok', false], ['pi', false], ['copilot', false]]);
     // An agent the screen does not list keeps what config.yaml says.
-    expect(chosenAgents(agents, rows, { codex: false, claude: true }, 'claude')!.find(each => each.name === 'grok')!.enabled).toBe(false);
+    expect(chosenAgents(all, rows, { codex: false, claude: true }, 'claude')!.find(each => each.name === 'grok')!.enabled).toBe(false);
   });
 
   it('starts requests on the picked agent while it is usable, else on the first usable one', () => {

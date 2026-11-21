@@ -225,7 +225,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
-      wordsKey: createHash('sha256').update(dialogue.words).digest('hex') });
+      wordsKey: createHash('sha256').update(dialogue.words).digest('hex'), ...dialogue.answerFiles ? { answerFiles: dialogue.answerFiles } : {} });
   // A parent's History also shows what was asked of its child, so an exchange between them reads from both ends.
   // A child's instructions to its own members are that child's work, read in its own History as its other records are.
   return fromChild ? events.filter(item => withRequests && item.kind === 'request' && item.recipient?.role !== 'member' || PARENT_VISIBLE_EVENTS.has(item.kind) && item.kind !== 'review' &&

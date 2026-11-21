@@ -34,7 +34,7 @@ Os endereços IP não são incluídos nos relatórios, e o serviço de recebimen
 
 ## Escolher se quer enviar e parar o envio
 
-Você escolhe na primeira etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um workspace criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
+Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um workspace criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
 
 Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a melhorar o alpacawork”, no final de Configurações → Servidor. Desativá-la interrompe o envio; ativá-la o inicia. Se você só quer parar, também pode executar `alpacawork telemetry off`.
 

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { projectIdSchema } from './fields.js';
 
 /** The setup screen's steps, in the order they are taken. */
-export const setupSteps = ['agents', 'skills', 'project'] as const;
+export const setupSteps = ['display', 'agents', 'skills', 'project'] as const;
 export const setupStepSchema = z.enum(setupSteps);
 export type SetupStep = z.infer<typeof setupStepSchema>;
 
@@ -26,7 +26,7 @@ export type FirstRunResponse = z.infer<typeof firstRunResponseSchema>;
 
 /** Written once, by the initialization of a new workspace. */
 export const initialFirstRun = (project: string): FirstRun =>
-  firstRunSchema.parse({ version: 1, project, step: 'agents', finishedAt: null });
+  firstRunSchema.parse({ version: 1, project, step: 'display', finishedAt: null });
 
 /** Setup stays finished; until then the step is where the person last was. */
 export function applyFirstRun(state: FirstRun, change: FirstRunChange, now: string): FirstRun {

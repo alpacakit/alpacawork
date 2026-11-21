@@ -21,7 +21,7 @@ Este guia leva você da instalação do alpacawork ao uso no dia a dia. Siga os 
 
 Veja também: [O que é armazenado e o que é enviado para fora](#o-que-é-armazenado-e-o-que-é-enviado-para-fora), [Solução de problemas](#solução-de-problemas). Para saber como o alpacawork funciona e por quê, consulte [As ideias por trás do alpacawork](concept.md).
 
-As imagens deste guia mostram a tela em inglês. A tela começa no idioma que você usou com a IA que fez a instalação. Você pode mudá-lo no canto superior direito da tela de configuração inicial e, depois, em Configurações (a engrenagem) → Pessoal → Idioma de exibição.
+As imagens deste guia mostram a tela em inglês. A tela começa no idioma que você usou com a IA que fez a instalação. Você o escolhe na primeira etapa da tela de configuração inicial e pode mudá-lo depois em Configurações (a engrenagem) → Pessoal → Idioma de exibição.
 
 ## 1. Instalar
 
@@ -35,7 +35,7 @@ Para instalar, você pede a uma IA.
 2. **A IA instala.** Ela verifica se o alpacawork pode rodar neste PC, instala o que falta e inicia o alpacawork. Você não executa comandos nem responde a confirmações durante o processo. Se o seu próprio agente de IA pedir permissão para executar um comando, permita.
 3. **A IA informa a URL da tela de configuração inicial.** Normalmente ela também abre no navegador. Se não abriu, ou para abri-la de novo depois, veja [Abrir a tela](#2-abrir-a-tela).
 
-A tela de configuração inicial tem três etapas: os agentes de IA a usar (e se você quer enviar [dados de uso](telemetry.md)), as [skills](#skills) a instalar e o seu primeiro projeto. Cada etapa traz a própria explicação, e tudo o que está nela pode ser alterado depois em Configurações.
+A tela de configuração inicial tem quatro etapas: o idioma e o tema da tela, os agentes de IA a usar (e se você quer enviar [dados de uso](telemetry.md)), as [skills](#skills) a instalar e o seu primeiro projeto. Cada etapa traz a própria explicação, e tudo o que está nela pode ser alterado depois em Configurações.
 
 ### Requisitos
 
@@ -54,7 +54,7 @@ Durante a instalação, a IA verifica esses itens e instala o Node.js se ele est
 | [GitHub Copilot](https://github.com/features/copilot) | Nada a instalar: ele vem junto com o alpacawork. Funciona com o login da sua GitHub CLI (`gh auth login`) |
 | Grok Build (`grok`), pi (`pi`) | Login ou uma chave de API. O alpacawork só consegue saber se eles estão instalados, não se estão com login feito. Para usar o Gemini, execute `/login` no pi e salve uma chave de API do Google Gemini. Veja a [configuração de provedores do pi](https://pi.dev/docs/latest/providers). |
 
-A primeira etapa da tela de configuração inicial mostra quais deles estão instalados neste PC e, para os três primeiros, se estão com login feito. É ali que você ativa os que vai usar. Depois, você pode mudar isso em Configurações → Servidor.
+A segunda etapa da tela de configuração inicial mostra quais deles estão instalados neste PC e, para os três primeiros, se estão com login feito. É ali que você ativa os que vai usar. Depois, você pode mudar isso em Configurações → Servidor.
 
 Quando uma empresa de IA lança um modelo novo, você mesmo pode adicioná-lo. Peça no chat, por exemplo “Adicione o modelo mais recente à lista de modelos do Codex”, e a IA o adiciona às configurações. Você também pode editar os modelos por conta própria em Configurações → Servidor.
 
@@ -116,7 +116,7 @@ No início, o alpacawork usa o agente padrão que você escolheu na configuraç�
 
 ### Escolher a pasta de trabalho
 
-Você escolhe a pasta em que a IA trabalha durante a configuração inicial, em “Local do código”, na terceira etapa. Para mudar depois, clique no nome do projeto no topo da tela, abra as configurações dele e informe o local da pasta em “Local do código” (por exemplo, `/Users/seunome/site-da-loja`). Se você deixar em branco, a IA trabalha na pasta de dados (`~/alpacawork`).
+Você escolhe a pasta em que a IA trabalha durante a configuração inicial, em “Local do código”, na quarta etapa. Para mudar depois, clique no nome do projeto no topo da tela, abra as configurações dele e informe o local da pasta em “Local do código” (por exemplo, `/Users/seunome/site-da-loja`). Se você deixar em branco, a IA trabalha na pasta de dados (`~/alpacawork`).
 
 A IA também lê o `AGENTS.md` e o `CLAUDE.md` dessa pasta (arquivos de instruções daquela pasta, que uma IA lê todas as vezes). Para manter trabalhos diferentes separados, adicione projetos com “Novo projeto”, no mesmo menu.
 
@@ -208,7 +208,7 @@ Não há um recurso dedicado de memória. A troca de mensagens de cada tarefa fi
 
 ### Skills
 
-Uma skill é um conjunto de instruções que diz aos agentes como trabalhar. A segunda etapa da configuração inicial oferece três que facilitam delegar tarefas (askmeclearly, doyourjob e alpacawork-betterquality) e diz para que serve cada uma. Elas são instaladas em `~/.agents/skills`, na sua pasta pessoal, e vinculadas para que o Claude Code possa usá-las. Você pode removê-las depois.
+Uma skill é um conjunto de instruções que diz aos agentes como trabalhar. A terceira etapa da configuração inicial oferece três que facilitam delegar tarefas (askmeclearly, doyourjob e alpacawork-betterquality) e diz para que serve cada uma. Elas são instaladas em `~/.agents/skills`, na sua pasta pessoal, e vinculadas para que o Claude Code possa usá-las. Você pode removê-las depois.
 
 Um projeto usa apenas as skills indicadas na política do projeto. A configuração inicial adiciona à política uma linha para cada skill que você instalou, dizendo quando ela é usada. Para começar a usar uma skill depois, peça no chat, por exemplo: “Use o complemento de qualidade neste projeto”.
 
