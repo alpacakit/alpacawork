@@ -180,8 +180,9 @@ for (const [device, viewport] of [['pc', { width: 1440, height: 900 }]] as ['pc'
 });
 
 // The project in view seeds its label as an opened Task does: choosing another project puts that one's in place of an
-// untouched draft's, every project takes it off, and words written keep the draft as it is. A project chosen after its
-// label was taken off is an opening of the person's, and a Task opened over the list does not take off a label put in.
+// untouched draft's, every project takes it off, and words written keep the draft as it is. A label taken off stays off
+// while the same project is in view, a reload included; another project chosen is a new opening. A Task opened over the
+// list does not take off a label the person put in.
 test.describe('project in view', () => {
   test.use({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
   test('the project in view seeds its label and follows the project chosen', async ({ page, runtime, project }) => {
@@ -200,8 +201,12 @@ test.describe('project in view', () => {
     await expect.poll(() => written(page)).toBe('');
     await choose(project);
     await expect.poll(() => written(page)).toBe(`[${project}]`);
-    // Taken off, then another project chosen: that one's label comes in.
+    // Taken off, it stays off through a reload; another project chosen then puts its label in.
     await labelLayer(field(page)).locator('[data-label=task] button[aria-label]').first().click();
+    await expect.poll(() => written(page)).toBe('');
+    await page.reload();
+    await openCoordinator(page);
+    await page.waitForTimeout(500);
     await expect.poll(() => written(page)).toBe('');
     await choose(other);
     await expect.poll(() => written(page)).toBe(`[${other}]`);
