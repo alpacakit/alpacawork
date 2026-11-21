@@ -76,6 +76,7 @@ export function AppBar() {
           className="press-end press-reach"
           aria-label={gearLabel}
           title={gearLabel}
+          data-guide-part="settings"
           onClick={() => open("settings")}
         >
           {/* A new version, one under way or one that failed is told by the gear's corner mark. */}

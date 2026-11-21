@@ -8,18 +8,21 @@ import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
-import { closeGuide, putAway, type GoingStage } from "./guide-state";
+import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { PARTS, STEPS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 const STEP_NUMBERS = [1, 2, 3] as const;
 
-/** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again. */
+/** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
   const { t } = useTranslation("tree");
   const close = () => {
+    // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
+    const before = guideStage.get();
     closeGuide();
-    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), guide: t("panels:settings.personal.guide") }), { id: "guide-closed" });
+    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), guide: t("panels:settings.personal.guide") }),
+      { id: "guide-closed", action: { label: t("guide.reopen"), run: () => moveGuide({ stage: "done" }, before ?? { stage: "done" }) } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
     className={cn("flex-none narrow:size-11 narrow:min-h-11", className)}>
@@ -182,6 +185,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
 function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
+  // Read and put away, by "Got it" or by doing what the step offers: the guide goes on, and what the step settles is settled.
+  const read = () => { putAway(entry.id); entry.settle?.(); };
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };
@@ -193,8 +198,10 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
     <p className="m-0 pr-2 text-sm text-pretty [word-break:auto-phrase]">{entry.say(t as TFunction)}</p>
-    {entry.next && <div className="mt-1.5 flex justify-end pr-1">
-      <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={() => putAway(entry.id)}>{t("guide.next")}</Button>
+    {(entry.next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
+      {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
+        onClick={() => { read(); entry.action!.run(); }}>{entry.action.label(t as TFunction)}</Button>}
+      {entry.next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}
     </div>}
   </div>;
 }

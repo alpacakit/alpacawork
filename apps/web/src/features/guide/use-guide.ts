@@ -1,5 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { useEveryTaskIndex, useListPlace, useWorkspaceInfo } from "@/data/queries";
+import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
+import { beforeWork } from "@/domain/before-work";
+import { crewOf } from "@/domain/people";
+import { useCoarsePointer, useInstalledApp } from "@/lib/input-capabilities";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -57,7 +60,7 @@ export function useGuideStart() {
 
 /**
  * The step of a guide going on (guide-definition.ts), from what the screen already holds: the Tasks in the workspace,
- * its rows awaiting the person (a question, or a report) and those still worked on, what the coordinator has from the
+ * its rows awaiting the person (a question, or a report) and those still worked on (and whether an AI is on them), what the coordinator has from the
  * person (coordinatorFacts), what the input holds, and whether the Task open in the detail is the person's turn. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
@@ -70,11 +73,14 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const selected = useViewStore((state) => state.reader.open ? state.selected : null);
   // The rows awaiting the person, the questions they ask, and which of them is open in the detail: read from the list's
   // own rows, so the guide never says to open a row that is open already.
-  let questions = 0, results = 0, open: GuideFacts["open"] = null;
+  let questions = 0, results = 0, unowned = 0, open: GuideFacts["open"] = null;
   const asked = new Set<string>();
+  const people = usePeople();
   for (const row of rows) {
-    if (row.section !== "review") continue;
     const task = index.byId.get(row.taskId);
+    // A row not started with no AI on it (as its History says it): the guide never calls it the AI's.
+    if (row.section === "todo" && task && beforeWork(task, !!crewOf(task.id, people).responsible) === "unassigned") unowned++;
+    if (row.section !== "review") continue;
     const kind = task ? turnKind(task) : "result";
     if (kind === "question") { questions++; if (task?.ball?.holder === "user" && task.ball.questionId) asked.add(task.ball.questionId); }
     else results++;
@@ -95,9 +101,11 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const drafting = hasContent(doc);
   const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
   const narrow = useNarrow();
+  const coarse = useCoarsePointer(), installed = useInstalledApp();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, ...coordinator, welcome, drafting, answerDrafted, open, narrow, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, welcome, drafting, answerDrafted, open, narrow,
+    apps: !coarse && !installed, seen };
   return guideEntry(facts);
 }
 

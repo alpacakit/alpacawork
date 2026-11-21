@@ -6,12 +6,24 @@ import { placeBalloon } from "../src/features/guide/Guide";
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, sent: false, busy: false, answered: false, welcome: false, drafting: false,
-    answerDrafted: false, open: null, narrow: false, seen: new Set(), ...over });
+  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, sent: false, busy: false, answered: false, welcome: false, drafting: false,
+    answerDrafted: false, open: null, narrow: false, apps: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 
+test("before anything is sent the parts are shown one by one, and starting to write passes them over", () => {
+  expect(shown({ welcome: true })).toBe("tour-input");
+  expect(shown({ welcome: true, seen: new Set(["tour-input"]) })).toBe("tour-coordinator");
+  expect(shown({ welcome: true, seen: new Set(["tour-input", "tour-coordinator"]) })).toBe("send");
+  expect(shown({ welcome: true, drafting: true })).toBe("send-ready");
+});
+
+test("a task made with no AI on it is not said to be the AI's", () => {
+  expect(shown({ tasks: 1, working: 1, unowned: 1, sent: true })).toBe("unassigned");
+  expect(shown({ tasks: 2, working: 2, unowned: 1, sent: true })).toBe("working");
+});
+
 test("from the empty welcome, a request sent moves the guide on to the AI's step and then to the person's turn", () => {
-  expect(shown({ welcome: true })).toBe("send");
+  expect(shown({ welcome: true, seen: new Set(["tour-input", "tour-coordinator"]) })).toBe("send");
   expect(shown({ welcome: true, sent: true, busy: true })).toBe("received");
   expect(shown({ welcome: true, sent: true })).toBe("send");
   expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
@@ -42,10 +54,13 @@ test("after the person's turn, work still going on is the AI's step; with none l
   expect(shown({ stage: turn, tasks: 1, working: 1 })).toBe("working");
   expect(shown({ stage: turn, tasks: 1 })).toBe("end");
   expect(shown({ stage: turn, tasks: 1, seen: new Set(["end", "another-repository"]) })).toBeNull();
+  // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
+  expect(shown({ stage: turn, tasks: 1, apps: true, seen: new Set(["end", "another-repository"]) })).toBe("apps");
 });
 
-test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
-  expect(shown({ tasks: 4 })).toBe("send-again");
+test("shown again over a list with nothing going on, the guide shows the parts and then begins at sending a request", () => {
+  expect(shown({ tasks: 4 })).toBe("tour-input");
+  expect(shown({ tasks: 4, seen: new Set(["tour-input", "tour-coordinator"]) })).toBe("send-again");
 });
 
 test("the guide starts by itself only for a new person: never stored, on the welcome, with no Task in the whole workspace", () => {

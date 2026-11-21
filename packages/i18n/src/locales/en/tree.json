@@ -1,24 +1,30 @@
 {
   "guide": {
-    "close": "Close the guide",
-    "closed": "The guide is closed. You can show it again from {{settings}}, under “{{guide}}”.",
+    "close": "End the getting-started guide",
+    "closed": "The guide has ended. You can show it again from {{settings}}, under “{{guide}}”.",
     "name": "Getting started",
     "next": "Got it",
+    "openSteps": "Open the steps",
     "progress": "{{step}}/3",
+    "reopen": "Undo",
     "say": {
-      "accept": "Read the report, and open what was made from “{{files}}” to check it. If it is good, press this button ({{finish}}) and the task is finished.",
+      "accept": "Read the report. When it made files, open them from “{{files}}” above to check them. If it is good, press this button ({{finish}}) and the task is finished.",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
-      "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
       "answerReady": "Your answer is in. Send it with this button to make it your answer.",
-      "end": "That is all there is to it. Go on and ask for anything here.",
-      "question": "It's your turn. Open this row and answer the question.",
+      "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
+      "apps": "You can also install alpacawork as an app on this computer, or open it from your phone. The steps are in {{settings}}, under “{{apps}}”.",
+      "end": "That is all there is to it. Go on and ask for anything here. You can send as many requests as you like without waiting for the last one to finish.",
+      "question": "It's your turn. Press this row to open its detail, and answer the question.",
       "received": "The coordinator (the AI that takes your requests) has your request. A task will appear shortly. Press here to open the conversation and read it.",
-      "result": "A report is ready. Open this row and check it.",
-      "send": "Write what you want done here and send it. Or pick one of the examples above.",
+      "result": "A report is ready. Press this row and check it in its detail.",
+      "send": "Now send your first request. Write it here, or pick one of the examples above.",
       "sendAgain": "Write what you want done here and send it. It becomes a task in the list.",
       "sendReady": "It's in the box. Send it with this button.",
-      "working": "This row is the task for your request. AI takes it from here, and when a question or a report comes for you, it moves to “{{section}}”."
+      "tourCoordinator": "What you send goes to the coordinator, the AI that takes your requests. It makes each one a task and hands it to an AI. Press here to open your conversation with it.",
+      "tourInput": "This box is where you write: requests and answers to questions are both sent from here. The label at its left end is where a message goes; with a task open, it becomes that task.",
+      "unassigned": "No AI has been put on this row's task yet, so it has not started. Open the row and send what you want done from the box below to start it.",
+      "working": "Your request is listed here as a task, one row each. AI takes it from here, and when a question or a report comes for you, it moves to “{{section}}”."
     },
     "stepDone": "Done:",
     "steps": {
@@ -27,11 +33,11 @@
         "title": "Send a request"
       },
       "turn": {
-        "detail": "Open a task that has a question or a report for you, and answer the question or check what was made.",
+        "detail": "Press the row of a task that has a question or a report for you and its detail opens. Answer the question there, or check what was made.",
         "title": "Your turn"
       },
       "work": {
-        "detail": "Replies don't appear right here. Your request becomes a task listed on this screen, and an AI works on it.",
+        "detail": "Replies don't appear right here. Your request becomes a task in a list that takes this place, and an AI works on it.",
         "title": "AI works on it"
       }
     }

@@ -1,24 +1,30 @@
 {
   "guide": {
-    "close": "Fechar o guia",
-    "closed": "O guia foi fechado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
+    "close": "Encerrar o guia",
+    "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
     "name": "Primeiros passos",
     "next": "Entendi",
+    "openSteps": "Abrir os passos",
     "progress": "{{step}}/3",
+    "reopen": "Desfazer",
     "say": {
-      "accept": "Leia o relatório e, se houver algo feito, abra em “{{files}}” para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
+      "accept": "Leia o relatório. Se ele gerou arquivos, abra-os em “{{files}}”, acima, para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
-      "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
       "answerReady": "Sua resposta já está na caixa. Envie com este botão para que ela vire a sua resposta.",
-      "end": "Isso é tudo. Agora é só pedir o que quiser aqui.",
-      "question": "É a sua vez. Abra esta linha e responda à pergunta.",
+      "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
+      "apps": "Você também pode instalar o alpacawork como aplicativo neste computador ou abri-lo pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
+      "end": "Isso é tudo. Agora é só pedir o que quiser aqui. Você pode enviar quantos pedidos quiser, sem esperar o anterior terminar.",
+      "question": "É a sua vez. Toque nesta linha para abrir o detalhe e responda à pergunta.",
       "received": "O coordenador (a IA que recebe seus pedidos) já tem seu pedido. Uma tarefa vai aparecer em breve. Toque aqui para abrir a conversa e lê-la.",
-      "result": "Chegou um relatório. Abra esta linha e confira.",
-      "send": "Escreva aqui o que você quer que seja feito e envie. Ou escolha um dos exemplos acima.",
+      "result": "Chegou um relatório. Toque nesta linha e confira no detalhe.",
+      "send": "Agora envie seu primeiro pedido. Escreva aqui ou escolha um dos exemplos acima.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie. Isso vira uma tarefa na lista.",
       "sendReady": "Já está na caixa. Envie com este botão.",
-      "working": "Esta linha é a tarefa do seu pedido. Daqui em diante a IA cuida dela e, quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
+      "tourCoordinator": "O que você envia vai para o coordenador, a IA que recebe seus pedidos. Ele transforma cada um em uma tarefa e a entrega a uma IA. Toque aqui para abrir sua conversa com ele.",
+      "tourInput": "Esta caixa é onde você escreve: os pedidos e as respostas às perguntas são enviados daqui. A etiqueta à esquerda mostra para onde vai a mensagem; com uma tarefa aberta, ela passa a ser essa tarefa.",
+      "unassigned": "A tarefa desta linha ainda não tem uma IA responsável, então não começou. Abra a linha e envie pela caixa abaixo o que você quer que seja feito para ela começar.",
+      "working": "Seu pedido aparece aqui como uma tarefa, uma linha para cada. Daqui em diante a IA cuida dela e, quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
     },
     "stepDone": "Feito:",
     "steps": {
@@ -27,11 +33,11 @@
         "title": "Envie um pedido"
       },
       "turn": {
-        "detail": "Abra uma tarefa que tenha uma pergunta ou um relatório para você, e responda à pergunta ou confira o que foi feito.",
+        "detail": "Toque na linha de uma tarefa que tenha uma pergunta ou um relatório para você e o detalhe dela se abre. Ali você responde à pergunta ou confere o que foi feito.",
         "title": "Sua vez"
       },
       "work": {
-        "detail": "As respostas não aparecem aqui mesmo. Seu pedido vira uma tarefa listada nesta tela, e uma IA trabalha nela.",
+        "detail": "As respostas não aparecem aqui mesmo. Seu pedido vira uma tarefa em uma lista que ocupa este lugar, e uma IA trabalha nela.",
         "title": "A IA trabalha nele"
       }
     }

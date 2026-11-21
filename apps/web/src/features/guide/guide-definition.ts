@@ -1,6 +1,8 @@
 import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
+import { finishAppHint } from "@/features/coordinator/app-hint";
+import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
 
 /**
@@ -15,6 +17,9 @@ import type { GuideStage } from "./guide-state";
  * - `step`: which of the three STEPS it belongs to (1 send, 2 AI works, 3 your turn), shown in every balloon's head
  *   and as the welcome's current step; null for a step past the three;
  * - `next`: it waits for "Got it" before the guide goes on (put away once read);
+ * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
+ *   the step away;
+ * - `settle`: what putting the step away also settles elsewhere (a pointer that says the same thing, say);
  * - `say`: its words, by its key, written out so the extractor reads it.
  * Nothing else names a step: the balloon, the welcome and the stored stage read them from here.
  */
@@ -49,6 +54,8 @@ export const PARTS = {
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
   project: "[data-project-trigger]",
+  /** The settings' button at the top right. */
+  settings: '[data-guide-part="settings"]',
 } as const;
 export type GuidePart = keyof typeof PARTS;
 /** What a row awaiting the person awaits (its `data-row-turn`): an answer to a question, or anything else (a report). */
@@ -71,6 +78,8 @@ export type GuideFacts = {
   questions: number; results: number;
   /** Rows still being worked on or about to be, in the workspace (In progress, Not started, Waiting). */
   working: number;
+  /** Among them, rows not started with no AI put on them: nothing goes on there until the person says what to do. */
+  unowned: number;
   /** A request went to the coordinator after the guide started. */
   sent: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
@@ -85,6 +94,8 @@ export type GuideFacts = {
   open: "question" | "result" | null;
   /** A phone's width, where a balloon takes most of the screen across. */
   narrow: boolean;
+  /** Settings hold the guide to the installed app and the phone here (not on a touch screen, not in the installed app). */
+  apps: boolean;
   /** Steps put away with "Got it". */
   seen: ReadonlySet<string>;
 };
@@ -98,6 +109,8 @@ export type GuideEntry = {
   align?: GuideAlign;
   step: 1 | 2 | 3 | null;
   next?: boolean;
+  action?: { label: (t: TFunction) => string; run: () => void };
+  settle?: () => void;
   say: (t: TFunction) => string;
 };
 
@@ -110,6 +123,8 @@ export const STEPS = {
 } as const;
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
+/** Before anything is sent or written, on a screen wide enough for a balloon: the parts are shown first, one by one. */
+const touring = (f: GuideFacts, id: string) => f.stage.stage === "started" && !f.sent && !f.drafting && !f.narrow && !f.seen.has(id);
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 
 export const GUIDE: readonly GuideEntry[] = [
@@ -126,6 +141,15 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.question") },
   { id: "result", step: 3, part: "resultRow", side: "bottom", when: f => f.results > 0,
     say: t => t("tree:guide.say.result") },
+  // First, the parts a request passes through, on any screen (they are always there): the input with the label that
+  // says where a message goes, then the coordinator. Read one by one, or passed over by starting to write.
+  { id: "tour-input", step: 1, part: "input", side: "top", align: "end", next: true, when: f => touring(f, "tour-input"),
+    say: t => t("tree:guide.say.tourInput") },
+  { id: "tour-coordinator", step: 1, part: "coordinator", side: "top", align: "start", next: true, when: f => touring(f, "tour-coordinator"),
+    say: t => t("tree:guide.say.tourCoordinator") },
+  // A Task made with no AI on it waits for the person: nothing there is the AI's yet.
+  { id: "unassigned", step: 1, part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
+    say: t => t("tree:guide.say.unassigned") },
   { id: "working", step: 2, part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
   // A request sent and the coordinator still on it, with no Task for it yet (on a phone's welcome, its steps say it: a
@@ -141,6 +165,12 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "another-repository", step: null, part: "project", side: "right", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
+  // Last, once: alpacawork as an installed app and from a phone, where settings hold the steps. Read here, the first
+  // screen's pointer to the same steps is done with.
+  { id: "apps", step: null, part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
+    action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
+    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && !f.seen.has("apps"),
+    say: t => t("tree:guide.say.apps", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
   // Before any turn, on a phone's welcome, its steps say it all, words in the input or not: a balloon there would stand
   // over the examples...
   { id: "send-welcome-narrow", step: 1, when: f => f.stage.stage === "started" && f.welcome && f.narrow,
