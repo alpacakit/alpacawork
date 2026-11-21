@@ -52,15 +52,15 @@ const POSITION_RULES: readonly { id: string; when: (f: PositionFacts) => boolean
 ];
 export const taskPosition = (facts: PositionFacts): HomeSection => POSITION_RULES.find(rule => rule.when(facts))!.section(facts);
 /**
- * First matching rule wins. These rules select rows, never Task state or whose turn it is. Work running anywhere is
- * listed in the doing section exactly once: on the highest Task no doing row above already lists it (L00), so a
- * subtask works on its own row while its parent awaits review, is held or failed, and on its parent's while that works.
- * A top row is listed by its position.
+ * First matching rule wins. These rules select rows, never Task state or whose turn it is. A top row, and a subtask the
+ * user holds or has a turn on, is listed by its position, so its row sits where its mark says (a held subtask with a
+ * question is in Held, not Awaiting review). Work running anywhere else is listed in the doing section exactly once: on
+ * the highest Task no doing row above already lists it (L00), so a subtask works on its own row while its parent awaits
+ * review, is held or failed, and on its parent's while that works.
  */
 const HOME_RULES: readonly { id: string; when: (f: HomeFacts) => boolean; section: (f: HomeFacts) => HomeSection | null }[] = [
-  { id: 'L00', when: f => !f.top && f.turn === null && f.working && !f.shown, section: () => 'doing' },
-  { id: 'L01', when: f => !f.top && f.turn === null, section: () => null },
-  { id: 'L02', when: f => !f.top, section: f => TURN_SECTION[f.turn!] },
+  { id: 'L00', when: f => !f.top && !f.hold && f.turn === null && f.working && !f.shown, section: () => 'doing' },
+  { id: 'L01', when: f => !f.top && !f.hold && f.turn === null, section: () => null },
   { id: 'position', when: () => true, section: taskPosition },
 ];
 
