@@ -280,6 +280,16 @@
       "others_other": "ほか{{count}}件"
     },
     "copy": "コピー",
+    "empty": {
+      "idle": {
+        "next": "入力欄から、このタスクでしてほしいことを送ると作業が始まります。",
+        "title": "担当の AI は依頼を待っています"
+      },
+      "unowned": {
+        "next": "入力欄から、このタスクでしてほしいことを送ると、担当の AI が付いて作業が始まります。",
+        "title": "担当の AI はまだいません"
+      }
+    },
     "goAnswer": "答える",
     "goQuestion": "答える: あなたへの質問 1件、{{title}}",
     "goQuestionAt": "答える: {{at}} {{title}}",

@@ -311,6 +311,16 @@
       "others_other": "Mais {{count}} abaixo"
     },
     "copy": "Copiar",
+    "empty": {
+      "idle": {
+        "next": "Envie pelo campo de mensagem o que você quer que seja feito nesta tarefa, e o trabalho começa.",
+        "title": "A IA responsável está aguardando uma solicitação"
+      },
+      "unowned": {
+        "next": "Envie pelo campo de mensagem o que você quer que seja feito nesta tarefa; uma IA responsável é designada e começa o trabalho.",
+        "title": "Ainda não há uma IA responsável"
+      }
+    },
     "goAnswer": "Responder",
     "goQuestion": "Responder: 1 pergunta para você, {{title}}",
     "goQuestionAt": "Responder: {{at}} {{title}}",

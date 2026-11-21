@@ -295,6 +295,16 @@
       "others_other": "{{count}} more below"
     },
     "copy": "Copy",
+    "empty": {
+      "idle": {
+        "next": "Send what you want done on this task from the input box, and the work starts.",
+        "title": "The AI owner is waiting for a request"
+      },
+      "unowned": {
+        "next": "Send what you want done on this task from the input box, and an AI owner is assigned and starts the work.",
+        "title": "No AI owner yet"
+      }
+    },
     "goAnswer": "Answer",
     "goQuestion": "Answer: 1 question for you, {{title}}",
     "goQuestionAt": "Answer: {{at}} {{title}}",

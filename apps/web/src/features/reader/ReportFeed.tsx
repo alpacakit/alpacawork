@@ -18,6 +18,8 @@ import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contra
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
+import { Message } from "@/components/ui/message";
+import { emptyHistory } from "@/domain/empty-history";
 import { resultLine } from "@/domain/report-labels";
 import { causeReason } from "@/domain/run-labels";
 import { RegionSkeleton } from "@/components/ui/skeleton";
@@ -35,7 +37,7 @@ import { isCurrentWait } from "@/domain/pending-report";
 import { FINISH_MARK, firstReportMedia, isInstruction, reportEvent, reportTone, turnRecord, type ReportEvent } from "@/domain/report-events";
 import { endAgents } from "@/domain/end-agent";
 import { answerLine, historyRows, recordKey, rowTargets, sameRow, type HistoryRow, type NameEnd, type RowOutcome } from "@/domain/history-rows";
-import type { PeopleIndex } from "@/domain/people";
+import { crewOf, type PeopleIndex } from "@/domain/people";
 import { childWork, working, type ChildWork } from "@/domain/working";
 import { isMedia } from "@/domain/task-files";
 import { sameCalendarDay } from "@/domain/time";
@@ -468,6 +470,8 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
   // Placement needs the permitted pages already drawn, even if their refresh failed. A missing target is
   // exhausted only by a successful read; retained pages cannot complete that lookup on their own.
   const historyReady = !!pages && !catchingUp && !history.isFetching;
+  // Read whole and holding no row; a refresh of it in flight does not take that back (the note would blink with each one).
+  const historyEmpty = !!pages && !catchingUp && history.isSuccess && !history.hasNextPage && !rows.length;
   const feed = <div data-report-feed data-history-ready={historyReady} data-history-exhausted={history.isSuccess && historyReady && !history.hasNextPage} aria-busy={history.isPending || history.isFetchingNextPage} className="pb-6">
       {task.userQuestions === null && <ReadFailure what={t('reportFeed.questionsUnavailable')} />}
       {task.userReviews === null && <ReadFailure what={t('reportFeed.reviewsUnavailable')} />}
@@ -482,7 +486,9 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
             pressed={chosen.get(row.key) === true}
             open={chosen.get(row.key) ?? ((row.key === firstReport?.key || standing === row.key) && saysMore(row))} />;
         })}</DayBase.Provider></ol></li>)}
-</ol></Today.Provider></FeedTask.Provider></FeedAgents></FeedWords.Provider>
+</ol>
+      {historyEmpty && <EmptyHistoryNote task={task} owned={!!crewOf(task.id, people).responsible} />}
+</Today.Provider></FeedTask.Provider></FeedAgents></FeedWords.Provider>
     <PendingRegion pending={history.isPending || history.isFetchingNextPage} shape="reportLines" waitFrom={history.isPending ? waitFrom : undefined} />
     {/* Out of reach, reports this device does not hold say so (they are read once serve is back); what is held says its
         time in the bar's one offline mark. */}
@@ -1142,6 +1148,19 @@ function RailTime({ mark, live, children }: { mark?: ReportEvent["mark"]; live?:
 const ROW_HEAD = "flex min-w-0 items-baseline gap-2 pt-2.5";
 const headEnd = (open: boolean, least: string) => open ? "pb-3 narrow:min-h-11" : `pb-2.5 ${least}`;
 
+
+/**
+ * A History with no record yet says where the task stands and what makes it move (empty-history), in place of a blank
+ * column. It gives way to the working row, which says that already (a Run can be at work before its request is read).
+ */
+function EmptyHistoryNote({ task, owned }: { task: TaskDetail; owned: boolean }) {
+  const { t } = useTranslation("reader");
+  const { runs, work } = useContext(WorkingView)!;
+  const empty = emptyHistory(task, owned);
+  if (!empty || runs.length || work.length) return null;
+  return <Message data-empty-history={empty} tone="empty" icon="history" live
+    title={t(`reportFeed.empty.${empty}.title`)} description={t(`reportFeed.empty.${empty}.next`)} />;
+}
 
 /** A single entry point into the existing navigation/acquisition effect. Server membership owns question state: this Task's own questions to you. */
 function QuestionsBar({ task }: { task: TaskDetail }) {
