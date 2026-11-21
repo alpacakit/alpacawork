@@ -93,4 +93,8 @@ test("a balloon told to stand clear of the box its part is in stands outside tha
   const beside = placeBalloon(choices, size, { width: 1360, height: 900 }, "left", "start", detail);
   expect(beside.x + size.width).toBeLessThanOrEqual(detail.left);
   expect(beside.y).toBe(choices.top);
+  // A detail taking the whole screen leaves no room round it: the balloon stands by the choices, not over them.
+  const view = { width: 1360, height: 900 };
+  const over = placeBalloon(choices, size, view, "left", "start", { left: 0, top: 0, ...view });
+  expect(over.x + size.width).toBeLessThanOrEqual(choices.left);
 });

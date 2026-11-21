@@ -72,7 +72,8 @@ const clamp = (value: number, low: number, high: number) => Math.min(Math.max(va
  * Where a balloon of `size` stands in a view of `view`, pointing at `target`: outside `by` (the target itself, or a
  * part holding it that the balloon stands clear of), on the side asked for if it fits there, else the opposite one,
  * else either side across; lined up with the target as `align` says, kept inside the view whatever happens, its arrow
- * on the target's middle.
+ * on the target's middle. With no room on any side of `by` (a detail taking the whole screen), it stands by the target
+ * alone: never pushed back over the very part it points at.
  */
 export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
   align: GuideAlign = "middle", by: Box = target): Placed {
@@ -82,7 +83,9 @@ export function placeBalloon(target: Box, size: { width: number; height: number 
     left: by.left - GAP - size.width >= MARGIN,
     right: by.left + by.width + GAP + size.width <= view.width - MARGIN,
   };
-  const side = [asked, OPPOSITE[asked], ...ACROSS[asked]].find(each => room[each]) ?? asked;
+  const fits = [asked, OPPOSITE[asked], ...ACROSS[asked]].find(each => room[each]);
+  if (!fits && by !== target) return placeBalloon(target, size, view, asked, align);
+  const side = fits ?? asked;
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
   if (side === "top" || side === "bottom") {
     const along = align === "start" ? target.left : align === "end" ? target.left + target.width - size.width : middleX - size.width / 2;
@@ -101,7 +104,7 @@ export function placeBalloon(target: Box, size: { width: number; height: number 
  * what stands in front, so not scrolled out of its pane, under a fixed heading or under another surface. The balloon and
  * its ring take no press, so they never stand in front.
  */
-function shownPart(selector: string): Box | null {
+function shownPart(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
@@ -109,18 +112,14 @@ function shownPart(selector: string): Box | null {
     if (box.width < 4 || box.height < 4) continue;
     const front = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
     if (!front || !element.contains(front)) continue;
-    return { left: box.left, top: box.top, width: box.width, height: box.height };
+    return element;
   }
   return null;
 }
-/** The box of the first element marked as `selector` that is laid out: a part stood clear of, seen or not at its middle. */
-function boxOf(selector: string): Box | null {
-  for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-    const box = element.getBoundingClientRect();
-    if (box.width >= 4 && box.height >= 4) return { left: box.left, top: box.top, width: box.width, height: box.height };
-  }
-  return null;
-}
+const boxOf = (element: Element): Box => {
+  const box = element.getBoundingClientRect();
+  return { left: box.left, top: box.top, width: box.width, height: box.height };
+};
 const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a && !!b && a.x === b.x && a.y === b.y && a.side === b.side && a.arrow === b.arrow
   && a.target.left === b.target.left && a.target.top === b.target.top && a.target.width === b.target.width && a.target.height === b.target.height;
 
@@ -154,8 +153,10 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const update = () => {
       const target = shownPart(part);
       const own = balloon.current?.getBoundingClientRect();
-      const next = target && own ? placeBalloon(target, { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align,
-        clear ? boxOf(clear) ?? target : target) : null;
+      // The part stood clear of is the one holding the part pointed at, never another of its kind elsewhere on the page.
+      const holder = target && clear ? target.closest(clear) : null;
+      const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
+        entry.align, holder ? boxOf(holder) : undefined) : null;
       if (!same(last, next)) { last = next; setPlaced(next); }
     };
     update();

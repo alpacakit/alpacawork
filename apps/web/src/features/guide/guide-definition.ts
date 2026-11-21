@@ -26,7 +26,7 @@ import type { GuideStage } from "./guide-state";
 export const PARTS = {
   /** The box at the foot where requests are written: folded to one line, or open. */
   input: "[data-coordinator-capsule], [data-composer-frame]",
-  /** The whole foot that box stands in, with the row of buttons over it. */
+  /** The foot that box stands in, open or folded (the row of buttons over it stands outside it). */
   foot: "[data-coordinator-card]",
   /** Its send button, while there is something to send. */
   send: "[data-ask-send]:not(:disabled)",
