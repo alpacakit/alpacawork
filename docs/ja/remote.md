@@ -11,7 +11,7 @@ PC とスマートフォンは VPN でつなぎます。ここでは [Tailscale]
 3. PC の画面で「設定（歯車）→ アプリ・スマホ」を開き、出た QR コードをスマートフォンで読み取ります。
 4. 画面の手順どおりに、ホーム画面に追加します（iPhone は Safari、Android は Chrome）。
 
-![「アプリ・スマホ」の設定画面。スマートフォンから使う手順と QR コードが出ている](../images/phone-setup-desktop.png)
+<img src="../images/phone-setup-ja.png" alt="設定の「アプリ・スマホ」の「スマホから使う」。3つの手順と QR コードが出ている" width="560">
 
 画面にログインはありません。VPN につなぐ端末は自分のものだけにし、インターネットに公開する設定（Tailscale Funnel など）は使いません。端末をなくしたら、VPN からその端末を外します。
 
