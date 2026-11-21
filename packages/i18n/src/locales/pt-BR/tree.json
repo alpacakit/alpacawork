@@ -1,4 +1,41 @@
 {
+  "guide": {
+    "close": "Fechar o guia",
+    "closed": "O guia foi fechado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
+    "name": "Primeiros passos",
+    "next": "Entendi",
+    "progress": "{{step}}/3",
+    "say": {
+      "accept": "Leia o relatório e, se houver algo feito, abra em “{{files}}” para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
+      "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
+      "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
+      "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
+      "answerReady": "Sua resposta já está na caixa. Envie com este botão para que ela vire a sua resposta.",
+      "end": "Isso é tudo. Agora é só pedir o que quiser aqui.",
+      "question": "É a sua vez. Abra esta linha e responda à pergunta.",
+      "received": "O coordenador (a IA que recebe seus pedidos) já tem seu pedido. Uma tarefa vai aparecer em breve. Toque aqui para abrir a conversa e lê-la.",
+      "result": "Chegou um relatório. Abra esta linha e confira.",
+      "send": "Escreva aqui o que você quer que seja feito e envie. Ou escolha um dos exemplos acima.",
+      "sendAgain": "Escreva aqui o que você quer que seja feito e envie. Isso vira uma tarefa na lista.",
+      "sendReady": "Já está na caixa. Envie com este botão.",
+      "working": "Esta linha é a tarefa do seu pedido. Daqui em diante a IA cuida dela e, quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
+    },
+    "stepDone": "Feito:",
+    "steps": {
+      "send": {
+        "detail": "Escreva na caixa abaixo e envie. Ou escolha um exemplo.",
+        "title": "Envie um pedido"
+      },
+      "turn": {
+        "detail": "Abra uma tarefa que tenha uma pergunta ou um relatório para você, e responda à pergunta ou confira o que foi feito.",
+        "title": "Sua vez"
+      },
+      "work": {
+        "detail": "As respostas não aparecem aqui mesmo. Seu pedido vira uma tarefa listada nesta tela, e uma IA trabalha nela.",
+        "title": "A IA trabalha nele"
+      }
+    }
+  },
   "home": {
     "awaited": "Aguardando",
     "error": "Requer atenção",
@@ -122,18 +159,29 @@
         "shows": "A IA compara ideias e faz uma pergunta a você. Sua resposta dá início à criação.",
         "words": "Quero fazer um minijogo que eu possa jogar no navegador. Transforme isso em uma tarefa: liste 3 ideias e me pergunte qual criar, com uma tabela comparativa e a sua recomendação na pergunta. Depois que eu responder, crie a que eu escolhi em cerca de 5 minutos, sem perguntar mais nada, e me envie o relatório. Isto é um tutorial, então pegue leve no esforço: priorize a velocidade, não pense demais e faça sem complicar. Por favor, escreva tudo em português."
       },
+      "folder": {
+        "label": "Ler esta pasta e sugerir o que delegar em seguida",
+        "shows": "Resume o que há no local do código e pergunta por qual trabalho começar. Ao escolher, você recebe um relatório de como fazê-lo. Não altera nada.",
+        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há no local do código {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como) e termine com uma linha sobre como pedir que ele seja feito. Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
+      },
       "models": {
         "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",
         "shows": "Modelos diferentes criam em paralelo, e depois você escolhe com qual ficar.",
         "words": "Quero fazer um jogo da cobrinha. Você pode tentar criar 3 em paralelo, com modelos diferentes? Quando ficarem prontos, me pergunte com qual seguir. Isto é um tutorial, então, por favor, pegue leve no esforço e leve cerca de 5 minutos. Por favor, escreva tudo em português."
       },
-      "triage": {
-        "label": "Dividir a abertura de um café em 5 tarefas",
-        "shows": "Os resultados ficam em fila para a sua revisão, e você escolhe quais concluir.",
-        "words": "Por favor, divida a abertura de um café fictício em 5 tarefas separadas: \"Encomendar os grãos\", \"Providenciar a placa\", \"Imprimir o cardápio\", \"Contratar a equipe\" e \"Enviar os convites\", e delegue cada uma a um agente. Peça que cada um escreva um resultado fictício de uma linha no relatório e aguarde a minha revisão. Quando as 5 chegarem, eu escolho quais concluir. Não precisa de pesquisa nem de arquivos e, por favor, escreva tudo em português."
+      "settings": {
+        "label": "Definir uma regra de trabalho e quantos agentes trabalham ao mesmo tempo",
+        "shows": "Uma regra entra na política do projeto e no máximo 4 agentes trabalham ao mesmo tempo.",
+        "words": "Adicione esta regra à política deste projeto: \"Ao terminar, resuma o que você mudou em 3 linhas ou menos\". Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
       }
     },
-    "lead": "Escolha um exemplo para experimentar.",
+    "folder": {
+      "ask": "Escolha o repositório ou a pasta que vai usar e salve.",
+      "at": "Local do código: {{path}}",
+      "choose": "Escolher o local do código",
+      "none": "Para usar no seu próprio repositório, escolha essa pasta como o local do código do projeto."
+    },
+    "lead": "Envie o que você quer que seja feito. A IA transforma isso em tarefas, trabalha nelas e só as coloca em “{{section}}” quando sua decisão é necessária.",
     "title": "Boas-vindas ao alpacawork"
   }
 }

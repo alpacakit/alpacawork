@@ -15,6 +15,8 @@ import { ReadFailure } from "@/components/ui/loadable";
 import { useReadState, useWriteDisabled } from '@/data/queries';
 import { resources } from '@/data/resources';
 import { useConnection } from '@/data/connection';
+import { useDialogStore } from '@/state/dialog-store';
+import { restartGuide } from '@/features/guide/guide-state';
 
 /**
  * What one row says and allows while its values are saved, a row of three as a row of one. A change made elsewhere or a
@@ -97,6 +99,15 @@ function QuietHoursRow() {
   </SettingRow>;
 }
 
+/** The getting-started guide, kept on this browser: shown again, from the step that holds for the work as it is now. */
+function GuideRow() {
+  const { t } = useTranslation('panels');
+  return <SettingRow id="setting-guide" label={t('settings.personal.guide')} hint={t('settings.personal.guideHelp')}>
+    <Button id="setting-guide" variant="outline" onClick={() => { restartGuide(); useDialogStore.getState().close(); }}>
+      {t('settings.personal.guideShow')}</Button>
+  </SettingRow>;
+}
+
 /** The definitions own rows; this screen only arranges the current groups. */
 export function PersonalSettingsTab({ definitions = personalSettings, focusNotifications = false }: {
   definitions?: readonly SettingDefinition[]; focusNotifications?: boolean;
@@ -129,6 +140,7 @@ export function PersonalSettingsTab({ definitions = personalSettings, focusNotif
       {(state.status === 'idle' || state.status === 'loading') &&
         <FieldHint role="status">{t('settings.personal.loading')}</FieldHint>}
       {displayEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+      <GuideRow />
     </SettingSection>
     <SettingSection id="settings-notifications" title={t('settings.personal.notifications')} note={t('settings.personal.pushScope')}>
       {awayAfterEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
