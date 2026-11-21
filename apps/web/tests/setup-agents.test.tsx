@@ -38,6 +38,15 @@ describe('the setup\'s agents', () => {
     const on = { claude: true, copilot: true };
     expect(firstAgentOf(usableAgents(rows, on), null)).toBe('claude');
     expect(chosenAgents(configured, rows, on, 'claude')!.map(each => [each.name, each.enabled])).toEqual([['claude', true], ['copilot', true]]);
+    // Switched off, it is saved off, so coming back to this step does not switch it on again.
+    expect(chosenAgents(configured, rows, { claude: false, copilot: true }, 'copilot')!.map(each => [each.name, each.enabled])).toEqual([['claude', false], ['copilot', true]]);
+  });
+
+  it('keeps config.yaml\'s order when a listed agent\'s CLI is missing', () => {
+    const configured = [agent('codex', true), agent('grok', true), agent('copilot', true)];
+    const rows = startAgents(configured, { availability: { codex: seen('ready'), grok: seen('not_found'), copilot: seen('ready') } }, false);
+    expect(rows.map(row => row.name)).toEqual(['codex', 'copilot', 'grok']);
+    expect(chosenAgents(configured, rows, { codex: true, copilot: true }, 'codex')).toBeNull();
   });
 
   it('leaves an agent whose CLI is missing as config.yaml has it', () => {
