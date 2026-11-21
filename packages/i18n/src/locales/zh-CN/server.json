@@ -62,6 +62,20 @@
     },
     "withReport": "{{label}}：{{reportTitle}}"
   },
+  "serviceCommands": {
+    "alreadyRunning": "alpacawork 已在运行。",
+    "conflict": "服务器定义与保存的设置不一致。请运行 alpacawork setup 修复。",
+    "failed": "服务管理器未能完成操作。请运行 alpacawork status 查看状态。",
+    "localOnly": "请在 alpacawork Run 之外的终端运行此命令。",
+    "repair": "找不到 alpacawork 服务。请运行 alpacawork setup 修复。",
+    "restarting": "正在重启 alpacawork。",
+    "running": "alpacawork 正在运行，页面地址为 {{url}}",
+    "setup": "请运行 alpacawork setup 安装本地服务器。",
+    "starting": "正在启动 alpacawork。",
+    "stopped": "alpacawork 已停止。",
+    "unavailable": "用户服务管理器不可用。",
+    "workspace": "此命令操作已安装的服务器，请去掉 --workspace。"
+  },
   "setup": {
     "agents": {
       "enabled": "已启用：{{names}}",

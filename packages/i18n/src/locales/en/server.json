@@ -63,6 +63,20 @@
     },
     "withReport": "{{label}}: {{reportTitle}}"
   },
+  "serviceCommands": {
+    "alreadyRunning": "Alpacawork is already running.",
+    "conflict": "The saved server definition has changed. Run alpacawork setup to repair it.",
+    "failed": "The service manager could not complete this action. Check alpacawork status.",
+    "localOnly": "Run this command from a terminal outside an alpacawork Run.",
+    "repair": "The alpacawork service is missing. Run alpacawork setup to repair it.",
+    "restarting": "Restarting alpacawork.",
+    "running": "Alpacawork is running at {{url}}",
+    "setup": "Run alpacawork setup to install the local server.",
+    "starting": "Starting alpacawork.",
+    "stopped": "Alpacawork is stopped.",
+    "unavailable": "The user service manager is unavailable.",
+    "workspace": "This command uses the installed server. Omit --workspace."
+  },
   "setup": {
     "agents": {
       "enabled": "Enabled: {{names}}",

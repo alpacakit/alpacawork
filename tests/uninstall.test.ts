@@ -43,7 +43,8 @@ function fixture(t: TestContext, lang = 'en') {
   platform.service = {
     observe: definition => { service.calls.push({ call: 'observe', definition }); return { state: service.state, running: service.running, registrationStarts: true }; },
     register: () => { throw new Error('Uninstall must not register a service'); },
-    restart: () => { throw new Error('Uninstall must not start a service'); },
+    start: () => { throw new Error('Uninstall must not start a service'); },
+    restart: () => { throw new Error('Uninstall must not restart a service'); },
     restarts: () => 0,
     known: name => { service.calls.push({ call: 'known', definition: name }); return service.loaded; },
     stop: definition => { service.calls.push({ call: 'stop', definition }); service.running = false; service.loaded = false; return service.stopReports; },

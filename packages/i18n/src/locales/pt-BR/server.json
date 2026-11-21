@@ -64,6 +64,20 @@
     },
     "withReport": "{{label}}: {{reportTitle}}"
   },
+  "serviceCommands": {
+    "alreadyRunning": "alpacawork já está em execução.",
+    "conflict": "A definição do servidor não corresponde à que foi salva. Execute alpacawork setup para corrigir.",
+    "failed": "O gerenciador de serviços não conseguiu concluir a ação. Confira com alpacawork status.",
+    "localOnly": "Execute este comando em um terminal fora de uma execução do alpacawork.",
+    "repair": "O serviço do alpacawork não foi encontrado. Execute alpacawork setup para corrigir.",
+    "restarting": "Reiniciando o alpacawork.",
+    "running": "alpacawork está em execução em {{url}}",
+    "setup": "Execute alpacawork setup para instalar o servidor local.",
+    "starting": "Iniciando o alpacawork.",
+    "stopped": "alpacawork está parado.",
+    "unavailable": "O gerenciador de serviços do usuário está indisponível.",
+    "workspace": "Este comando usa o servidor instalado. Remova --workspace."
+  },
   "setup": {
     "agents": {
       "enabled": "Ativados: {{names}}",
