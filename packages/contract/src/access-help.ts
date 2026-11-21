@@ -151,6 +151,7 @@ const clientOnly = new Set(['server.show', 'server.set', 'server.unset']);
 export const accessHelpPointer = 'Before executing, read Access in <group> <command> -h (roles, targets and options).';
 export function accessHelp(command: string): string {
   if (clientOnly.has(command)) return '\nAccess: local client settings; outside server authorization. Changing the server grants no server permissions.';
+  if (command === 'open') return '\nAccess: local; starts a browser on this PC and grants no server permissions.';
   if (unrestricted.has(command)) return '\nAccess: no role restriction at this entry; caller identification still applies.';
   if (command === 'run.stop-local') return `\nAccess: ${localStopCaller.help}`;
   if (command === 'coordinator reply.get') return `\nAccess: ${replyAccess.help}`;
