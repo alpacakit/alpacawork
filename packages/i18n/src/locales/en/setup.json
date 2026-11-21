@@ -47,6 +47,10 @@
       "stopKey": "Stop and delete"
     }
   },
+  "display": {
+    "lead": "Choose the language and colors for the alpacawork screen. You can change both later in Settings.",
+    "title": "Language and theme"
+  },
   "language": "Display language",
   "next": "Next",
   "project": {
@@ -102,6 +106,7 @@
   },
   "steps": {
     "agents": "Agents",
+    "display": "Display",
     "label": "Setup steps",
     "of": "Step {{at}} of {{total}}",
     "project": "Project",
@@ -113,5 +118,6 @@
     "light": "Light",
     "system": "System"
   },
+  "themeSystem": "System follows your device's light or dark appearance.",
   "title": "Setup"
 }

@@ -23,10 +23,10 @@ import { FailureLine, Loading, StepButtons } from "./parts";
 type Failure = { at: "agents" | "consent" | "check"; detail: string } | null;
 
 /**
- * Step 1: the agents this PC has, switched on or off, the one requests go to first, and the usage-data choice. Next
+ * Step 2: the agents this PC has, switched on or off, the one requests go to first, and the usage-data choice. Next
  * saves in that order (the agents only when changed), and a failure stays on the step where it failed.
  */
-export function AgentsStep({ onNext }: { onNext: () => void }) {
+export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   const { t } = useTranslation("setup");
   const settings = useServerSettings(true);
   const status = useAgentStatus();
@@ -130,7 +130,7 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
     {!usable.length && <Message tone="caution" size="line" className="mt-4" data-setup-no-agent
       title={t(signed ? "agents.noneOnTitle" : "agents.noneReadyTitle")} description={t(signed ? "agents.noneOn" : "agents.noneReady")} />}
     {asksConsent && <Consent checked={consent} onChange={setConsent} />}
-    <StepButtons failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
+    <StepButtons back={{ onClick: onBack, disabled: busy }} failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
       : failure?.at === "consent" ? <FailureLine text={t("consent.failed")} detail={failure.detail} /> : null}
       other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next(false)}>{t("agents.continueWithout")}</Button> : null}>
       <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next(true)}>{t("next")}</Button>
