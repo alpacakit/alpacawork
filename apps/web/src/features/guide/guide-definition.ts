@@ -43,8 +43,8 @@ export const PARTS = {
   resultRow: '[data-row-turn="result"]',
   /** The detail beside the list, where an open Task is read. */
   detail: "aside[data-reader-mode]",
-  /** An open question's choices, in the detail. */
-  choices: '[data-guide-part="answer-choices"]',
+  /** An open question in the detail: its number, what it asks and its choices (the first, when several are asked). */
+  asked: "[data-waiting-report-actions] [data-question]",
   /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
@@ -118,7 +118,7 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.answerReady") },
   { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.answered,
     say: t => t("tree:guide.say.answered") },
-  { id: "answer", step: 3, part: "choices", clear: "detail", side: "left", align: "start", when: f => f.open === "question",
+  { id: "answer", step: 3, part: "asked", clear: "detail", side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   { id: "accept", step: 3, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },

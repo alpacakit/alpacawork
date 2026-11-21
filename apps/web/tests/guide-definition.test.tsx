@@ -89,12 +89,12 @@ test("a balloon told to stand clear of the box its part is in stands outside tha
   const placed = placeBalloon(send, size, { width: 1360, height: 900 }, "top", "end", foot);
   expect(placed.y + size.height).toBeLessThanOrEqual(foot.top);
   expect(placed.x + placed.arrow).toBe(send.left + send.width / 2);
-  const choices = { left: 887, top: 424, width: 432, height: 404 }, detail = { left: 832, top: 12, width: 516, height: 876 };
-  const beside = placeBalloon(choices, size, { width: 1360, height: 900 }, "left", "start", detail);
+  const asked = { left: 887, top: 424, width: 432, height: 404 }, detail = { left: 832, top: 12, width: 516, height: 876 };
+  const beside = placeBalloon(asked, size, { width: 1360, height: 900 }, "left", "start", detail);
   expect(beside.x + size.width).toBeLessThanOrEqual(detail.left);
-  expect(beside.y).toBe(choices.top);
-  // A detail taking the whole screen leaves no room round it: the balloon stands by the choices, not over them.
+  expect(beside.y).toBe(asked.top);
+  // A detail taking the whole screen leaves no room round it: the balloon stands by the question, not over it.
   const view = { width: 1360, height: 900 };
-  const over = placeBalloon(choices, size, view, "left", "start", { left: 0, top: 0, ...view });
-  expect(over.x + size.width).toBeLessThanOrEqual(choices.left);
+  const over = placeBalloon(asked, size, view, "left", "start", { left: 0, top: 0, ...view });
+  expect(over.x + size.width).toBeLessThanOrEqual(asked.left);
 });
