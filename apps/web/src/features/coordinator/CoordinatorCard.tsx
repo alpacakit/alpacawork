@@ -492,10 +492,13 @@ function Card() {
       <SurfaceDocument value={own.document}><Toaster name="coordinator" /></SurfaceDocument>
     </div>, own.document.body) : <>
       <div ref={card} data-coordinator-card data-coordinator-folded={expanded ? undefined : true} role="region" aria-label={t("coordinatorCard.title")}
-        // No band of its own around it: what scrolls shows round it and passes behind it, and a press round it reaches
-        // what is there. The input's frame, or its one line, floats by itself (its own edge and shadow).
+        // The input's frame, or its one line, floats by itself (its own edge and shadow). On a computer there is no band
+        // round it: what scrolls shows round it and passes behind it, and a press round it reaches what is there. On a
+        // phone it stands across the screen's foot on the ground of what it stands over (--foot-ground), from its top
+        // (or the open conversation's foot) down: what scrolls ends at its top, not showing in the slips beside and under it.
         className={cn("group/frame pointer-events-none fixed z-(--layer-coordinator-input) flex flex-col text-base text-ink *:pointer-events-auto [&_[data-one-input-area]]:border-0 [&_[data-one-input-area]]:bg-transparent [&_[data-one-input-area]]:p-0 [&_[data-composer-frame]]:shadow-float",
-          narrow ? "inset-x-0 bottom-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "max-h-[85dvh]")}>
+          narrow ? "inset-x-0 bottom-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] before:pointer-events-auto before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-(--foot-ground) before:content-['']"
+            : "max-h-[85dvh]", narrow && shown && "before:-top-2")}>
         {/* The composer keeps its draft and sender while the folded controls stand in their row above it. */}
         {open ? <div className="contents" ref={drawn.holdFoot} /> : <CoordinatorCapsule />}
         {/* Folded, the frame's grip is the input's; open, the conversation's (on its head line). */}
