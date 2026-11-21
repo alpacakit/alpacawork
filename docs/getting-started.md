@@ -1,22 +1,23 @@
 # Getting started
 
-This guide takes you from installing alpacawork to using it day to day. Work through steps 1 to 3 in order to make a first request, answer a question from the AI, and check a result. Read step 4 onward when you need it.
+This guide takes you from installing alpacawork to using it day to day. Work through steps 1 to 4 in order to open the screen, make a first request, answer a question from the AI, and check a result. Read step 5 onward when you need it.
 
 **Try it first**
 
 1. [Install](#1-install)
-2. [Make your first request](#2-make-your-first-request)
-3. [Follow progress and respond](#3-follow-progress-and-respond)
+2. [Open the screen](#2-open-the-screen) (also when it didn't open, or to open it again later)
+3. [Make your first request](#3-make-your-first-request)
+4. [Follow progress and respond](#4-follow-progress-and-respond)
 
 **Use it for your own work**
 
-4. [Write the ground rules for the AI](#4-write-the-ground-rules-for-the-ai)
-5. [Use it from your phone](#5-use-it-from-your-phone)
-6. [Use it from Claude Code or Codex](#6-use-it-from-claude-code-or-codex)
+5. [Write the ground rules for the AI](#5-write-the-ground-rules-for-the-ai)
+6. [Use it from your phone](#6-use-it-from-your-phone)
+7. [Use it from Claude Code or Codex](#7-use-it-from-claude-code-or-codex)
 
 **Maintain it**
 
-7. [Stop, update or uninstall](#7-stop-update-or-uninstall)
+8. [Stop, update or uninstall](#8-stop-update-or-uninstall)
 
 See also: [What is stored, and what is sent out](#what-is-stored-and-what-is-sent-out), [Troubleshooting](#troubleshooting). For how alpacawork works and why, see [The ideas behind alpacawork](concept.md).
 
@@ -24,15 +25,15 @@ The screen starts in the language you used with the AI that installed it. You ch
 
 ## 1. Install
 
-alpacawork is a tool for one person, on their own PC. To use it from other devices, such as a phone, connect through a VPN ([Use it from your phone](#5-use-it-from-your-phone)).
+alpacawork is a tool for one person, on their own PC. To use it from other devices, such as a phone, connect through a VPN ([Use it from your phone](#6-use-it-from-your-phone)).
 
-alpacawork starts AI agents such as Claude Code and Codex with full permissions, without asking for confirmation. The AI can do whatever it could if you ran it yourself with full permissions. You can write what it should not do, or should ask you about first, in the project policy ([how to write it](#4-write-the-ground-rules-for-the-ai)).
+alpacawork starts AI agents such as Claude Code and Codex with full permissions, without asking for confirmation. The AI can do whatever it could if you ran it yourself with full permissions. You can write what it should not do, or should ask you about first, in the project policy ([how to write it](#5-write-the-ground-rules-for-the-ai)).
 
 To install it, you ask an AI to do it.
 
 1. **Paste the install text.** Copy the text under [Install in the README](https://github.com/alpacakit/alpacawork/blob/main/README.md#install) and paste it unchanged into an AI agent on your PC (such as Claude Code or Codex).
 2. **The AI installs it.** It checks that alpacawork can run on this PC, installs what is missing, and starts alpacawork. You don't run commands or answer confirmations along the way. If your AI agent itself asks for permission to run a command, allow it.
-3. **The setup screen opens in your browser.** The AI also tells you its URL. After you restart the PC and log in, the same URL works again. If you forget the URL, ask the AI, or run `alpacawork workspace url` in a terminal.
+3. **The AI tells you the setup screen's URL.** The screen usually opens in your browser too. If it didn't, or to open it again later, see [Open the screen](#2-open-the-screen).
 
 The setup screen has four steps: the screen's language and theme, the AI agents to use (and whether to send [usage data](telemetry.md)), the [skills](#skills) to install, and your first project. Each step explains itself, and everything in it can be changed later in Settings.
 
@@ -77,9 +78,37 @@ alpacawork runs inside Ubuntu, and you open its screen in a browser on Windows. 
 - **Keep one Ubuntu window open while you use it.** This also applies while you use it from your phone. If you close every Ubuntu window, Ubuntu may stop, and alpacawork and any AI at work stop with it.
 - **After restarting Windows, open Ubuntu from the Start menu.** alpacawork then starts automatically, with your tasks as you left them. You don't need to install it again.
 
-## 2. Make your first request
+## 2. Open the screen
 
-Until you have tasks, the screen shows example requests to try. Press one to put it in the input box, then send it unchanged. Each example shows a different flow: AIs running different models building candidates in parallel for you to pick from, the AI asking you to pick an idea and then building it, and checking a result and marking it done. Each is a short practice run that takes a few minutes.
+The alpacawork screen is a web page served by the alpacawork running on your PC, and you open it in a browser. Its URL looks like `http://127.0.0.1:43127/` (`localhost` in place of `127.0.0.1` works too). The number at the end is chosen when you install, so it differs from PC to PC, and it stays the same after you close the browser or restart the PC.
+
+### The first time
+
+When setup finishes, you get the URL: the AI tells you, or, if you ran `alpacawork setup` yourself, it is on the `Open:` line it prints. Setup usually opens it in your browser too. If the browser didn't open (this can happen on Windows, and it never opens when you installed over SSH), copy the URL into your browser's address bar. On Windows, open it in a browser on Windows.
+
+If you installed on another PC that you reached over SSH, that URL opens only in a browser on that PC. In the SSH session, ask an AI agent on that PC, "Make alpacawork usable from another device". It sets up an entry point through a VPN, and tells you what to install on your side ([Use it from your phone](#6-use-it-from-your-phone) describes it). Then open the `https://` URL it gives you in the browser in front of you.
+
+### Open it again later
+
+- **After closing the browser or restarting the PC**, open the same URL. After a restart, log in to the PC first (on Windows, open Ubuntu).
+- **Bookmark it, or install it as an app.** In Chrome or Edge, press "Install" at the right end of the address bar (in Edge, the icon in the same place). alpacawork then opens in its own window from the Dock, the taskbar or the app list. The steps for each browser are under Settings (the gear) → App & phone → "Use as a desktop app".
+- **If you forget the URL**, run `alpacawork workspace url` in a terminal (on Windows, in the Ubuntu window). When alpacawork is running, it prints `"status":"serving"`. Open the URL after `"localUrl"` in a browser on that PC. From another device, open the one after `"publicUrl"`; it is `null` until the PC is set up for other devices ([Use it from your phone](#6-use-it-from-your-phone)). You can also ask an AI agent such as Claude Code or Codex, "Tell me alpacawork's URL".
+
+### If the screen doesn't open
+
+If you don't know the URL, see [Open it again later](#open-it-again-later) first.
+
+alpacawork starts by itself when you log in to the PC (on Windows, when you open Ubuntu). If the browser says it can't connect (for example "This site can't be reached" or `ERR_CONNECTION_REFUSED`), or `alpacawork workspace url` fails with "Server not reached", first check that alpacawork is running: start it as below, then reload the page. If you don't know the URL, run `alpacawork workspace url` again.
+
+- **Windows**: Open Ubuntu from the Start menu and keep its window open ([On Windows](#on-windows)). If it still doesn't open, run the Linux command below in that window.
+- **Linux**: Run `systemctl --user start alpacawork.service` in a terminal. alpacawork runs while you are logged in to the PC. To keep it running after you log out, ask an AI agent, "Keep alpacawork running after I log out".
+- **macOS**: Run `launchctl kickstart gui/$(id -u)/alpacawork.service` in a terminal. If you stopped it as in [Stop alpacawork](#stop-alpacawork), run `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist` instead.
+
+If it still doesn't open, start an AI agent (such as Claude Code or Codex) in a terminal, call the alpacawork skill ([how](#7-use-it-from-claude-code-or-codex)), and paste the error you saw to ask for help.
+
+## 3. Make your first request
+
+The first time you open the screen, finish the three steps of the setup screen ([Install](#1-install)). Then, until you have tasks, the screen shows example requests to try. Press one to put it in the input box, then send it unchanged. Each example shows a different flow: AIs running different models building candidates in parallel for you to pick from, the AI asking you to pick an idea and then building it, and checking a result and marking it done. Each is a short practice run that takes a few minutes.
 
 <img src="images/welcome-phone.png" alt="The screen on a phone the first time it opens, with three examples to try right away" width="320">
 
@@ -117,7 +146,7 @@ If you are unsure about any of the app's settings, ask there as well. The AI can
 
 <img src="images/input-badge-phone.png" alt="The input box on a phone, with the task badge, the &quot;#&quot; button for picking a task, and the coordinator's model and effort picker marked with red boxes" width="390">
 
-## 3. Follow progress and respond
+## 4. Follow progress and respond
 
 The list shows your tasks, grouped by state.
 
@@ -158,7 +187,7 @@ If an AI's run fails, for example, the task appears under Needs attention. Open 
 
 <img src="images/needs-attention-phone.png" alt="A stopped task opened on a phone, showing why it stopped and the Retry and Stop buttons" width="320">
 
-## 4. Write the ground rules for the AI
+## 5. Write the ground rules for the AI
 
 In "Project policy" in the project's settings, write in plain sentences what the AI may decide on its own and what it should ask you about. What you write reaches every owner in that project. You can also ask in the chat: "Add … to the policy".
 
@@ -185,7 +214,7 @@ A project uses only the skills named in its project policy. Setup adds one line 
 
 The optional majority and try-and-keep add-ons are maintained separately in a private repository. Existing installations and project policy selections remain in effect. See [Private add-ons](../skills/alpacawork/references/setup.md#private-add-ons) for access and installation requirements.
 
-## 5. Use it from your phone
+## 6. Use it from your phone
 
 On a phone, you open the screen of the alpacawork running on your PC. The AI runs on the PC, so keep the PC on and set it not to sleep while you use alpacawork (a laptop stops when you close the lid).
 
@@ -226,28 +255,24 @@ Marking up a screenshot to show what to fix, and adding a few words by voice inp
 
 On Android, if you installed alpacawork as an app (from Chrome, for example), you can send a picture to the input box with the share button. On iPhone, copy the screenshot and paste it into the input box, or pick it with "+" in the input box.
 
-## 6. Use it from Claude Code or Codex
+## 7. Use it from Claude Code or Codex
 
 You can also make requests from your usual Claude Code or Codex conversation instead of the alpacawork screen (these are the two agents whose conversations can act as the coordinator). At the start of the conversation, call the alpacawork skill once (`/alpacawork` in Claude Code, `$alpacawork` in Codex). That conversation then acts as your coordinator: just write what you want done, or "Tell me where things stand".
 
 If `/alpacawork` doesn't appear in Claude Code, ask Claude Code, "Make `~/.agents/skills/alpacawork` usable as a Claude Code skill".
 
-## 7. Stop, update or uninstall
+## 8. Stop, update or uninstall
 
 ### Stop the AI's work
 
 Open the task, press "Change state", choose "Stopped", and press "Update". Work on that task and the tasks under it stops. You can also ask in the chat: "Stop the … task".
 
-### Stop or restart alpacawork
+### Stop alpacawork
 
-The alpacawork server starts automatically when you log in to the PC (on Windows, when you open Ubuntu). To stop or start it manually, run the following in a terminal.
+To stop the alpacawork server, run the following in a terminal. It starts again the next time you log in to the PC (on Windows, when you open Ubuntu), or when you start it as in [If the screen doesn't open](#if-the-screen-doesnt-open).
 
-- Linux, WSL2
-  - Stop: `systemctl --user stop alpacawork.service`
-  - Start: `systemctl --user start alpacawork.service`
-- macOS
-  - Stop: `launchctl bootout gui/$(id -u)/alpacawork.service`
-  - Start: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`
+- Linux, WSL2: `systemctl --user stop alpacawork.service`
+- macOS: `launchctl bootout gui/$(id -u)/alpacawork.service`
 
 Stopping the server does not stop the AI's work in progress. To stop the work, first set the task to "Stopped" as described above.
 
@@ -288,7 +313,7 @@ Don't put API keys or other secrets in the chat, the project policy, or the laun
 The quickest way to learn how to use or fix something is to ask the AI. It can read the steps for configuration, updates and recovery in the alpacawork skill.
 
 - **If the screen opens**: Just ask in the chat, for example "Why isn't the booking form task moving?" or "Set up Codex too."
-- **If the screen doesn't open**: On Windows, open Ubuntu first, then open the screen again ([On Windows](#on-windows)). If it still doesn't open, start an AI agent (such as Claude Code or Codex) in a terminal, call the alpacawork skill ([how](#6-use-it-from-claude-code-or-codex)), and paste the error you saw to ask for help.
+- **If the screen doesn't open**: See [If the screen doesn't open](#if-the-screen-doesnt-open). If you don't know its URL, see [Open it again later](#open-it-again-later).
 
 Don't delete the data folder (`~/alpacawork`) or record files yourself to start over; you may lose data.
 

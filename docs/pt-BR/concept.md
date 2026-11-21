@@ -62,7 +62,7 @@ Só chega a você o que só você pode decidir.
 - Revisão do que foi feito
 - Aprovação de operações com efeitos externos (como publicar ou excluir)
 
-São as regras básicas que dizem quando a IA deve perguntar a você; nenhum mecanismo as impõe ([Escrever as regras básicas para a IA](getting-started.md#4-escrever-as-regras-básicas-para-a-ia)).
+São as regras básicas que dizem quando a IA deve perguntar a você; nenhum mecanismo as impõe ([Escrever as regras básicas para a IA](getting-started.md#5-escrever-as-regras-básicas-para-a-ia)).
 
 ### Na tela, só o que você usa
 
@@ -93,4 +93,4 @@ Quando o responsável é substituído, as decisões e os resultados ficam nos re
 ## Para o que ele não serve
 
 - **Uso em equipe**: é uma ferramenta para uma pessoa só. Por enquanto, a tela não tem login e não há como separar usuários.
-- **Exposição à internet**: ele pressupõe que os outros dispositivos se conectem por uma VPN em que só estão os seus próprios dispositivos ([Usar pelo celular](getting-started.md#5-usar-pelo-celular)).
+- **Exposição à internet**: ele pressupõe que os outros dispositivos se conectem por uma VPN em que só estão os seus próprios dispositivos ([Usar pelo celular](getting-started.md#6-usar-pelo-celular)).
