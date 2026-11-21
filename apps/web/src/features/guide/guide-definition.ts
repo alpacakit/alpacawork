@@ -61,6 +61,8 @@ export type GuideFacts = {
   drafting: boolean; answerDrafted: boolean;
   /** The Task open in the detail, when it is the person's turn on it. */
   open: "question" | "result" | null;
+  /** A phone's width, where a balloon takes most of the screen across. */
+  narrow: boolean;
   /** Steps put away with "Got it". */
   seen: ReadonlySet<string>;
 };
@@ -79,7 +81,7 @@ export type GuideEntry = {
 /** The three steps the guide walks through: their names (said in every balloon's head) and what each is about. */
 export const STEPS = {
   1: { title: (t: TFunction) => t("tree:guide.steps.send.title"),
-    detail: (t: TFunction) => t("tree:guide.steps.send.detail", { input: t("ui:input.placeholderFolded") }) },
+    detail: (t: TFunction) => t("tree:guide.steps.send.detail") },
   2: { title: (t: TFunction) => t("tree:guide.steps.work.title"), detail: (t: TFunction) => t("tree:guide.steps.work.detail") },
   3: { title: (t: TFunction) => t("tree:guide.steps.turn.title"), detail: (t: TFunction) => t("tree:guide.steps.turn.detail") },
 } as const;
@@ -89,13 +91,13 @@ const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 
 export const GUIDE: readonly GuideEntry[] = [
   // The person's turn, from the most immediate: an answer ready to send, one sent and on its way, then what is open.
-  { id: "answer-ready", step: 3, part: "send", side: "top", when: f => f.open === "question" && f.answerDrafted,
+  { id: "answer-ready", step: 3, part: "send", side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
     say: t => t("tree:guide.say.answerReady") },
   { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.questions > 0 && f.busy,
     say: t => t("tree:guide.say.answered") },
   { id: "answer", step: 3, part: "choices", side: "top", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
-  { id: "accept", step: 3, part: "finish", side: "top", when: f => f.open === "result",
+  { id: "accept", step: 3, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },
   { id: "question", step: 3, part: "turnRow", side: "bottom", when: f => f.questions > 0,
     say: t => t("tree:guide.say.question") },
@@ -117,7 +119,10 @@ export const GUIDE: readonly GuideEntry[] = [
   // Before any turn: words in the input wait to be sent...
   { id: "send-ready", step: 1, part: "send", side: "top", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
-  // ...or a request is to be written, from the empty welcome with its examples above...
+  // ...or a request is to be written, from the empty welcome with its examples above (on a phone the welcome's own
+  // steps say it: a balloon there would stand over the examples)...
+  { id: "send-narrow", step: 1, when: f => f.stage.stage === "started" && f.tasks === 0 && f.narrow,
+    say: t => t("tree:guide.say.send") },
   { id: "send", align: "end", step: 1, part: "input", side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
     say: t => t("tree:guide.say.send") },
   // ...or, shown again from settings, over a list with nothing going on.

@@ -22,7 +22,7 @@
     "stepDone": "Hecho:",
     "steps": {
       "send": {
-        "detail": "Escríbela en el cuadro «{{input}}» y envíala. O elige un ejemplo.",
+        "detail": "Escríbela en el cuadro de abajo y envíala. O elige un ejemplo.",
         "title": "Envía una petición"
       },
       "turn": {

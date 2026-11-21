@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { userTurn } from "@alpacawork/contract";
 import { useHomeList, useListPlace, useTaskIndex, useWorkspaceInfo } from "@/data/queries";
 import { useDeviceValue } from "@/lib/device-storage";
-import { useViewStore } from "@/state/view-store";
+import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
 import { useInputDraft } from "@/features/coordinator/editor/draft";
 import { answersIn, hasContent } from "@/features/coordinator/editor/document";
@@ -52,11 +52,12 @@ export function useGuide(): GuideEntry | null {
   const { doc } = useInputDraft();
   const drafting = hasContent(doc);
   const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
+  const narrow = useNarrow();
   const seen = useMemo(() => stage && stage.stage !== "done" ? new Set(stage.seen) : NONE, [stage]);
   if (!stage || stage.stage === "done") return null;
   // Sent: in the conversation since the guide started, or sent from here and not in it yet (in its grace, or on its way).
   const sent = since !== null && (sentBefore || unsettled);
-  const facts: GuideFacts = { stage, tasks, questions, results, working, sent, busy, drafting, answerDrafted, open, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, sent, busy, drafting, answerDrafted, open, narrow, seen };
   return guideEntry(facts);
 }
 

@@ -4,11 +4,12 @@ import { guideEntry, nextStage, type GuideFacts } from "../src/features/guide/gu
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, sent: false, busy: false, drafting: false, answerDrafted: false, open: null, seen: new Set(), ...over });
+  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, sent: false, busy: false, drafting: false, answerDrafted: false, open: null, narrow: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 
 test("from the empty welcome, a request sent moves the guide on to the AI's step and then to the person's turn", () => {
   expect(shown({})).toBe("send");
+  expect(guideEntry(facts({ narrow: true }))?.part).toBeUndefined();
   expect(shown({ sent: true, busy: true })).toBe("received");
   expect(shown({ sent: true })).toBe("send");
   expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
@@ -24,7 +25,7 @@ test("what is open in the detail comes before the list: its choices, or Done", (
 test("after the person's turn, work still going on is the AI's step; with none left the guide ends once read", () => {
   expect(shown({ stage: turn, tasks: 1, working: 1 })).toBe("working");
   expect(shown({ stage: turn, tasks: 1 })).toBe("end");
-  expect(shown({ stage: turn, tasks: 1, seen: new Set(["end"]) })).toBeNull();
+  expect(shown({ stage: turn, tasks: 1, seen: new Set(["end", "another-repository"]) })).toBeNull();
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {

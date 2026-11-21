@@ -22,7 +22,7 @@
     "stepDone": "Feito:",
     "steps": {
       "send": {
-        "detail": "Escreva na caixa “{{input}}” e envie. Ou escolha um exemplo.",
+        "detail": "Escreva na caixa abaixo e envie. Ou escolha um exemplo.",
         "title": "Envie um pedido"
       },
       "turn": {

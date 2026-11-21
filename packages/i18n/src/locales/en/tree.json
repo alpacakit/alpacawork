@@ -22,7 +22,7 @@
     "stepDone": "Done:",
     "steps": {
       "send": {
-        "detail": "Write it in the “{{input}}” box and send. Or pick an example.",
+        "detail": "Write it in the box at the bottom and send. Or pick an example.",
         "title": "Send a request"
       },
       "turn": {
