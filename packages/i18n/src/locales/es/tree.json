@@ -23,7 +23,7 @@
         "name": "Como app en tu PC",
         "say": "En Chrome o Edge, pulsa «Instalar» en la barra de direcciones y se abre en una ventana propia."
       },
-      "note": "Los pasos de ambos están en «{{settings}}», en «{{apps}}». Puedes abrirlos cuando quieras.",
+      "note": "Los pasos están en «{{settings}}», en «{{apps}}». Puedes abrirlos cuando quieras.",
       "open": "Abrir los pasos de app y teléfono",
       "phone": {
         "name": "Desde el teléfono",

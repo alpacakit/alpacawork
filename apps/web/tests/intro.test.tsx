@@ -4,11 +4,11 @@ import { afterEach, beforeAll, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { startI18n } from '@alpacawork/i18n';
 import { IntroDialog } from '@/features/intro/Intro';
-import { SLIDES, pointsFor, slidesFor, startsIntro } from '@/features/intro/intro-definition';
-import { introSeen, openIntro, useIntro } from '@/features/intro/intro-state';
+import { SLIDES, atWork, pointsFor, slidesFor, startsIntro } from '@/features/intro/intro-definition';
+import { introSeen, openIntro } from '@/features/intro/intro-state';
 import { useDialogStore } from '@/state/dialog-store';
 beforeAll(() => startI18n());
-afterEach(() => { cleanup(); introSeen.remove(); useIntro.setState({ open: false }); useDialogStore.setState({ dialog: null, behind: [] }); });
+afterEach(() => { cleanup(); introSeen.remove(); useDialogStore.setState({ dialog: null, behind: [] }); });
 
 it('opens by itself only on a new person\'s first look: the welcome, no Task, nothing said to the coordinator, never closed here', () => {
   expect(startsIntro(false, true, 0, 0)).toBe(true);
@@ -19,6 +19,8 @@ it('opens by itself only on a new person\'s first look: the welcome, no Task, no
   // Someone who has only talked with the coordinator so far; and it waits while the conversation is not read yet.
   expect(startsIntro(false, true, 0, 2)).toBe(false);
   expect(startsIntro(false, true, 0, null)).toBe(false);
+  // Either of those is a person at work, which is remembered: a conversation cleared later does not make them new.
+  expect([atWork(3, 0), atWork(0, 2), atWork(0, 0), atWork(0, null)]).toEqual([true, true, false, false]);
 });
 
 it('has a picture of its own for every slide in English, which the languages without their own pictures show', () => {
@@ -45,17 +47,18 @@ it('goes through its slides to the end, and closing it at any slide is remembere
   // Skipped from the middle: closed, and remembered.
   expect(introSeen.get()).toBe(false);
   fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-  expect(introSeen.get()).toBe(true);
-  expect(useIntro.getState().open).toBe(false);
+  expect(useDialogStore.getState().dialog).toBeNull();
+  // It goes away with the page's one open dialog, however that was closed, and that is what is remembered.
   view.unmount();
+  expect(introSeen.get()).toBe(true);
 });
 
 it('opens the settings\' Apps tab from its last slide, in place of the introduction', () => {
   openIntro();
-  render(<IntroDialog />);
+  const view = render(<IntroDialog />);
   for (const _ of SLIDES.slice(1)) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   fireEvent.click(screen.getByRole('button', { name: 'Open the app and phone steps' }));
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: 'settings', tab: 'apps' });
-  expect(useIntro.getState().open).toBe(false);
+  expect(useDialogStore.getState()).toMatchObject({ dialog: { kind: 'settings', tab: 'apps' }, behind: [] });
+  view.unmount();
   expect(introSeen.get()).toBe(true);
 });

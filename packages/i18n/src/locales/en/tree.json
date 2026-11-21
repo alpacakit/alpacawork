@@ -21,7 +21,7 @@
         "name": "As an app on your PC",
         "say": "In Chrome or Edge, press “Install” in the address bar, and it opens in a window of its own."
       },
-      "note": "The steps for both are in “{{settings}}” under “{{apps}}”. You can open them any time.",
+      "note": "The steps are in “{{settings}}” under “{{apps}}”. You can open them any time.",
       "open": "Open the app and phone steps",
       "phone": {
         "name": "From your phone",

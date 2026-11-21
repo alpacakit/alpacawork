@@ -81,6 +81,12 @@ export const pointsFor = (slide: IntroSlide, installed: boolean): readonly Intro
   slide.points.filter(point => !(point.unless === "installed" && installed));
 
 /**
+ * Whether the person is already at work in this workspace: it holds a Task, or the coordinator has been said something.
+ * `said` is how many messages the coordinator's conversation holds, null while that is not known.
+ */
+export const atWork = (tasks: number, said: number | null) => tasks > 0 || (said ?? 0) > 0;
+
+/**
  * Whether the introduction opens by itself: on a browser that has never closed it, with the welcome on the screen, no
  * Task in the whole workspace and nothing said to the coordinator yet (a new person's first look; not someone with work
  * elsewhere opening an empty project, nor someone who has only talked with the coordinator so far). `said` is how many

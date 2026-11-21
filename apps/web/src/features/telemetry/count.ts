@@ -38,7 +38,7 @@ export function endTime(time: TelemetryTime, key: string): void {
   countTime(time, performance.now() - start.at);
 }
 
-const DIALOG_USES = { settings: 'open.settings', diagnostics: 'open.diagnostics', project: 'open.project', run: null } as const;
+const DIALOG_USES = { settings: 'open.settings', diagnostics: 'open.diagnostics', project: 'open.project', run: null, intro: null } as const;
 const FORM_USES = { report: 'form.report', responsible: 'form.responsible', move: 'form.move' } as const;
 /** The use a change of the one open dialog counts: a newly opened kind (or input form); a tab moved within is not one. */
 export function dialogUse(dialog: OpenDialog | null, previous: OpenDialog | null): TelemetryOp | null {
