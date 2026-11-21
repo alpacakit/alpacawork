@@ -34,7 +34,7 @@ Las direcciones IP no se incluyen en los informes, y el receptor no las conserva
 
 ## Elegir si se envía y dejar de enviar
 
-Eliges en el primer paso de la pantalla de configuración inicial, que es la que se abre en una instalación nueva. No se envía nada hasta que elijas; si no hay una elección (por ejemplo, en un espacio de trabajo creado antes de que existiera la pantalla de configuración inicial), no se envía nada y la pantalla no pregunta.
+Eliges en el segundo paso de la pantalla de configuración inicial, que es la que se abre en una instalación nueva. No se envía nada hasta que elijas; si no hay una elección (por ejemplo, en un espacio de trabajo creado antes de que existiera la pantalla de configuración inicial), no se envía nada y la pantalla no pregunta.
 
 Para cambiar tu elección más adelante, usa el interruptor “Enviar datos de uso para ayudar a mejorar alpacawork”, al final de Configuración → Servidor. Al desactivarlo, el envío se detiene; al activarlo, comienza. Si solo quieres dejar de enviar, también puedes ejecutar `alpacawork telemetry off`.
 
