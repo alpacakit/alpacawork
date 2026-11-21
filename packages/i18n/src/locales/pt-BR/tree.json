@@ -6,7 +6,7 @@
     "progress": "{{step}}/3",
     "say": {
       "accept": "Leia o relatório e, se houver algo feito, abra em “{{files}}” para conferir. Se estiver bom, toque neste botão ({{finish}}).",
-      "anotherRepository": "Para usar outro repositório, adicione um projeto aqui e escolha esse repositório como o local do código dele.",
+      "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
       "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
       "answerReady": "Sua resposta já está na caixa. Envie com este botão para que ela vire a sua resposta.",
@@ -17,7 +17,7 @@
       "send": "Escreva aqui o que você quer que seja feito e envie. Ou escolha um dos exemplos acima.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie. Isso vira uma tarefa na lista.",
       "sendReady": "Já está na caixa. Envie com este botão.",
-      "working": "Seu pedido virou uma tarefa, e a IA está trabalhando nela. Quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
+      "working": "Esta linha é a tarefa do seu pedido, e a IA está trabalhando nela. Quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
     },
     "stepDone": "Feito:",
     "steps": {

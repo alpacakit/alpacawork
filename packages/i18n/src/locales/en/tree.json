@@ -6,7 +6,7 @@
     "progress": "{{step}}/3",
     "say": {
       "accept": "Read the report, and open what was made from “{{files}}” to check it. If it is good, press this button ({{finish}}).",
-      "anotherRepository": "To use another repository, add a project here and choose that repository as its working folder.",
+      "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
       "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
       "answerReady": "Your answer is in. Send it with this button to make it your answer.",
@@ -17,7 +17,7 @@
       "send": "Write what you want done here and send it. Or pick one of the examples above.",
       "sendAgain": "Write what you want done here and send it. It becomes a task in the list.",
       "sendReady": "It's in the box. Send it with this button.",
-      "working": "Your request is now a task, and AI is working on it. When a question or a report comes for you, it moves to “{{section}}”."
+      "working": "This row is the task for your request, and AI is working on it. When a question or a report comes for you, it moves to “{{section}}”."
     },
     "stepDone": "Done:",
     "steps": {

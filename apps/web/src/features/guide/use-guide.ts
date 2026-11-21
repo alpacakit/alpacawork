@@ -30,16 +30,18 @@ export function useGuide(): GuideEntry | null {
   const selected = useViewStore((state) => state.reader.open ? state.selected : null);
   const since = stage?.stage === "started" ? stage.at : null;
   const sentBefore = useConversation(state => since !== null && !!state.conversation?.turns.some(turn => Date.parse(turn.at) >= since));
-  let questions = 0, results = 0;
+  // The rows awaiting the person, and which of them is open in the detail: read from the list's own rows, so the guide
+  // never says to open a row that is open already.
+  let questions = 0, results = 0, open: GuideFacts["open"] = null;
   for (const row of home.rows) {
     if (row.section !== "review") continue;
     const task = index.byId.get(row.taskId);
-    if (task && userTurn(task.ball)?.reason === "question") questions++; else results++;
+    const kind = task && userTurn(task.ball)?.reason === "question" ? "question" : "result";
+    if (kind === "question") questions++; else results++;
+    if (row.taskId === selected) open = kind;
   }
   const working = home.counts.doing + home.counts.todo + home.counts.awaited;
   const opened = selected ? index.byId.get(selected) : undefined;
-  const turn = opened ? userTurn(opened.ball)?.reason : undefined;
-  const open = turn === "question" ? "question" : turn === "review" ? "result" : null;
   // What the coordinator has from the person and is still on: sent from here and not settled (its grace, "about to
   // send", included), or a message of the conversation not answered yet.
   const root = useConversation(state => state.root);

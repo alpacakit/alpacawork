@@ -25,16 +25,19 @@ export const PARTS = {
   input: "[data-coordinator-capsule], [data-composer-frame]",
   /** Its send button, while there is something to send. */
   send: "[data-ask-send]:not(:disabled)",
-  /** "Open conversation" over that box, which says what the coordinator is doing; pressed, it opens the conversation. */
-  coordinator: "[data-coordinator-pill]",
+  /**
+   * "Open conversation" over that box, which says what the coordinator is doing; pressed, it opens the conversation.
+   * Not what stands there while a message can still be taken back ("about to send"): it says the message is not sent yet.
+   */
+  coordinator: "[data-coordinator-pill][data-coordinator-expand]",
   /** A list row of a Task being worked on or about to be. */
   workingRow: '[data-row-section="doing"], [data-row-section="todo"], [data-row-section="awaited"]',
   /** A list row awaiting the person. */
   turnRow: '[data-row-section="review"]',
   /** An open question's choices, in the detail. */
   choices: '[data-guide-part="answer-choices"]',
-  /** Done, which accepts a report (a word on a computer, a mark on a phone). */
-  finish: "[data-task-done]",
+  /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
+  finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
   project: "[data-project-trigger]",
 } as const;
@@ -115,7 +118,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // After the end: where another repository is taken on.
   { id: "another-repository", step: null, part: "project", side: "bottom", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
-    say: t => t("tree:guide.say.anotherRepository") },
+    say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   // Before any turn: words in the input wait to be sent...
   { id: "send-ready", step: 1, part: "send", side: "top", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
