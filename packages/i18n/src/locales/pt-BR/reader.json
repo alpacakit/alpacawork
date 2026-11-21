@@ -311,6 +311,12 @@
       "others_other": "Mais {{count}} abaixo"
     },
     "copy": "Copiar",
+    "empty": {
+      "unassigned": {
+        "next": "Envie pelo campo de mensagem o que você quer que seja feito nesta tarefa, e ela começa.",
+        "title": "Ainda não começou"
+      }
+    },
     "goAnswer": "Responder",
     "goQuestion": "Responder: 1 pergunta para você, {{title}}",
     "goQuestionAt": "Responder: {{at}} {{title}}",

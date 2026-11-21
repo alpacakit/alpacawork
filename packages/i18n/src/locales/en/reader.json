@@ -295,6 +295,12 @@
       "others_other": "{{count}} more below"
     },
     "copy": "Copy",
+    "empty": {
+      "unassigned": {
+        "next": "Send what you want done on this task from the input box, and it starts.",
+        "title": "Not started yet"
+      }
+    },
     "goAnswer": "Answer",
     "goQuestion": "Answer: 1 question for you, {{title}}",
     "goQuestionAt": "Answer: {{at}} {{title}}",
