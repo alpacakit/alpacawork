@@ -611,8 +611,9 @@ function applyReadRefusal(client: QueryClient, query: Query) {
 /** One reconnect demand joins standard Queries; it does not cancel an in-flight full/page read. */
 export async function recoverReads(client: QueryClient, keys?: readonly QueryKey[]) {
   await ensureReadAnchor(client);
-  // A read made while the scope is still cut (a patch overtook the index) would be discarded: the caller reads again.
-  if (readScope(client)?.anchored === false) return;
+  // The screen's reads made while the scope is still cut (a patch overtook the index) would be discarded: the caller
+  // reads again. Named reads (settings, notices) are kept whatever the scope, so they go on.
+  if (!keys && readScope(client)?.anchored === false) return;
   const reads: Promise<unknown>[] = [];
   for (const query of client.getQueryCache().getAll()) {
     const kind = String(query.queryKey[0]);
