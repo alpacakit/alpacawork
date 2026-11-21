@@ -99,9 +99,11 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
     // recovers through the same outbox owner even while another draft is being written.
     const task = serverTasks?.find(task => task.id === selectedTask);
     if (!composing(draft.entry.values) && conversation && task && restoreReaderDraft(root, conversation.id, task.id, readerTurn(task)) === true) return;
+    // A project the index does not hold yet is not known: the panel's Task is observed alone meanwhile.
     const front = panel ? index.byId.get(panel) : null, behind = project ? index.byId.get(project) : null;
-    if (!ready || panel && (!front || presentation === 'refused' || presentation === 'absent') || project && !behind) return;
-    draft.observe({ panel: front ? { id: front.id, title: front.title } : null, project: behind ? { id: behind.id, title: behind.title } : null });
+    if (!ready || panel && (!front || presentation === 'refused' || presentation === 'absent') || !panel && project && !behind) return;
+    draft.observe({ panel: front ? { id: front.id, title: front.title } : null,
+      project: behind ? { id: behind.id, title: behind.title } : project ? undefined : null });
   }, [ready, panel, project, index, serverTasks, presentation, root, draft.key, draft.locked, draft.entry.values.phase, draft.entry.values.seen,
     draft.entry.values.seenProject, emptied(draft.entry.values), revision, live, conversation?.id]);
 

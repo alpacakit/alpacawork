@@ -87,6 +87,12 @@ test('the list come back behind a closed panel seeds nothing; a project newly in
   const written = edited(emptied, () => textDocument('Keep'))!.values;
   expect(observed(written, inList(Q))!.seenProject).toBe('P200');
   expect(observed(written, inList(Q))!.doc).toBe(written.doc);
+  // A Task opened over the project chosen is new, the one taken off before included.
+  expect(labels(observed(chosen, { panel: T285, project: Q })!)).toEqual(['T285']);
+  // A project not known yet leaves the project seen as it was; the Task in the panel is observed alone.
+  const waiting = observed(fresh(), { panel: T285 })!;
+  expect(labels(waiting)).toEqual(['T285']); expect(waiting.seenProject ?? '').toBe('');
+  expect(observed({ ...emptied, seenProject: 'P100' }, { panel: T285 })).toBeNull();
   // The panel left with its label all the draft held: the project behind seeds the fresh draft.
   expect(labels(observed(closed(observed(fresh(), { panel: T285, project: P })!, 'T285')!, inList(P))!)).toEqual(['P100']);
 });

@@ -10,7 +10,8 @@
  * - Files say nothing about recipients: attaching leaves the phase as it is, and a seed or a close keeps the files.
  * - `seen` and `seenProject`: what each layer was last observed to show, kept in either phase and across reloads. Only
  *   what a layer had not shown is an opening: a Task new in the panel, else a project new in view with no panel over
- *   it. The project under the panel is noted too, so the list come back behind a closed panel opens nothing.
+ *   it. The project under the panel is noted too, so the list come back behind a closed panel opens nothing; a project
+ *   opened starts the panel's record afresh, so a Task opened over it next is new.
  * - The screen leaving a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so
  *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing from it.
  *   Anything else in it keeps the draft as it is.
@@ -48,17 +49,20 @@ export function edited(values: Values, transform: (current: Document) => Documen
   return { values: { ...bound, phase: 'composing', doc }, document: next };
 }
 /**
- * What the screen shows now (`panel` over `project`; null where a layer shows nothing): an opening seeds a prepared
- * or emptied draft and is only noted in one with anything of the person's left; with no opening, what is shown is
- * noted. Null when nothing changes. A seed is no longer the reader draft an emptied one may have been: that card's
- * binding goes with its words.
+ * What the screen shows now (`panel` over `project`; null where a layer shows nothing, and a project not known yet
+ * left out, which keeps what was seen of it): an opening seeds a prepared or emptied draft and is only noted in one
+ * with anything of the person's left; with no opening, what is shown is noted. A project opened starts the panel's
+ * record afresh, so any Task opened over it next is new. Null when nothing changes. A seed is no longer the reader
+ * draft an emptied one may have been: that card's binding goes with its words.
  */
-export function observed(values: Values, screen: { panel: Seed | null; project: Seed | null }): Values | null {
-  const seen = screen.panel?.id ?? values.seen ?? '', seenProject = screen.project?.id ?? '';
-  const opening = screen.panel ? (screen.panel.id !== (values.seen ?? '') ? screen.panel : null)
-    : screen.project && screen.project.id !== (values.seenProject ?? '') ? screen.project : null;
+export function observed(values: Values, screen: { panel: Seed | null; project?: Seed | null }): Values | null {
+  const before = { seen: values.seen ?? '', seenProject: values.seenProject ?? '' };
+  const seenProject = screen.project === undefined ? before.seenProject : screen.project?.id ?? '';
+  const opening = screen.panel ? (screen.panel.id !== before.seen ? screen.panel : null)
+    : screen.project && screen.project.id !== before.seenProject ? screen.project : null;
+  const seen = screen.panel?.id ?? (opening ? '' : before.seen);
   const noted: Values = { ...values, seen, seenProject };
-  if (!opening) return seen === (values.seen ?? '') && seenProject === (values.seenProject ?? '') ? null : noted;
+  if (!opening) return seen === before.seen && seenProject === before.seenProject ? null : noted;
   if (written(values) && !emptied(values)) return { ...noted, phase: 'composing' };
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = noted;
   return { ...rest, phase: 'prepared', doc: JSON.stringify(labelsDocument([opening])) };
