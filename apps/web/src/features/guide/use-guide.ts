@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
-import { useAppHintOffered } from "@/features/coordinator/app-hint";
+import { useAppGuideHere } from "@/features/coordinator/app-hint";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -101,7 +101,8 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const drafting = hasContent(doc);
   const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
   const narrow = useNarrow();
-  const apps = useAppHintOffered();
+  // Not app-hint's "done": that is set by the first message sent, which everyone at the guide's last step has sent.
+  const apps = useAppGuideHere();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
   const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, welcome, drafting, answerDrafted, open, narrow, apps, seen };

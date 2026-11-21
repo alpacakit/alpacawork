@@ -13,15 +13,11 @@ import { openSettings } from "@/state/dialog-store";
  */
 export const appHintDone = deviceValue("alpacawork.appHintDone", { read: (raw) => raw === "1" || null, write: () => "1" }, false);
 export const finishAppHint = () => { appHintDone.set(true); };
-/**
- * Whether this browser is still to be pointed at the phone and app guide: not once done with it, not where that guide
- * is not (a touch screen), and not where it is not needed (already the installed app).
- */
-export function useAppHintOffered() {
-  const done = useDeviceValue(appHintDone);
+/** Whether the phone and app guide is here to point at: not on a touch screen (it has none), not in the installed app (it needs none). */
+export function useAppGuideHere() {
   const coarse = useCoarsePointer();
   const installed = useInstalledApp();
-  return !(done || coarse || installed);
+  return !(coarse || installed);
 }
 
 /**
@@ -56,9 +52,10 @@ function AppHintPicture() {
  */
 export function AppHint() {
   const { t } = useTranslation("ui");
-  const offered = useAppHintOffered();
+  const done = useDeviceValue(appHintDone);
+  const here = useAppGuideHere();
   const id = useId();
-  if (!offered) return null;
+  if (done || !here) return null;
   return <div data-app-hint className="mt-4 flex items-center gap-1">
     <Button variant="ghost" aria-labelledby={`${id}-open`} aria-describedby={`${id}-detail`}
       className="min-w-0 flex-1 justify-start gap-3 rounded-lg py-2 pr-3 pl-2 text-left whitespace-normal [word-break:auto-phrase]"
