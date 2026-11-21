@@ -110,14 +110,19 @@ alpacawork deploy npm:alpacawork@<版>
 
 ## アンインストールする
 
-AI エージェント（Claude Code や Codex など）に、「alpacawork をアンインストールして」と頼みます。自分で行うときは、ターミナルで次の2行を順に実行します。
+AI エージェント（Claude Code や Codex など）に、「alpacawork をアンインストールして」と頼みます。自分で行うときは、ターミナルで次の2つを順に実行します。
 
-```sh
-alpacawork uninstall
-npm uninstall -g alpacawork
-```
+1. alpacawork をこの PC から外します。消すものと残すものが表示されるので、読んでから Enter を押します。AI が作業している間は、アンインストールできません。
 
-1行目は、消すものと残すものを表示します。読んでから Enter を押します。AI が作業している間は、アンインストールできません。2行目は、1行目が終わってから実行します。1行目を断られたまま2行目を実行すると、`alpacawork uninstall` をやり直せなくなります。
+   ```sh
+   alpacawork uninstall
+   ```
+
+2. 「alpacawork をこの PC から外しました。」と出たのを確かめてから、コマンド本体を消します。1つ目が断られたり途中で止まったりしたときは、先に [断られたとき](#断られたとき) を見てください。2つ目を先に実行すると、`alpacawork uninstall` をやり直せなくなります。
+
+   ```sh
+   npm uninstall -g alpacawork
+   ```
 
 ### 消えるもの・残るもの
 
@@ -134,7 +139,7 @@ npm uninstall -g alpacawork
 - **データの置き場**（`~/alpacawork`。タスクと記録）: 要らなければ、自分で消します
 - **ほかの方法で入ったスキル**（askmeclearly、doyourjob など）
 - **Codex の会話の履歴と記憶**（`~/.codex-alpacawork`）
-- **`alpacawork` コマンド本体**: 2行目の `npm uninstall -g alpacawork` で消えます
+- **`alpacawork` コマンド本体**: 2つ目の `npm uninstall -g alpacawork` で消えます
 
 ### 断られたとき
 
