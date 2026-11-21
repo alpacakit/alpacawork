@@ -108,6 +108,7 @@
     "agents": "Agentes",
     "display": "Exibição",
     "label": "Etapas da configuração",
+    "of": "Etapa {{at}} de {{total}}",
     "project": "Projeto",
     "skills": "Skills"
   },

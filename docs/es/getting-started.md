@@ -20,7 +20,7 @@ Esta guía te lleva desde la instalación de alpacawork hasta su uso diario. Sig
 
 Consulta también: [Qué se guarda y qué se envía fuera](#qué-se-guarda-y-qué-se-envía-fuera), [Solución de problemas](#solución-de-problemas). Para saber cómo funciona alpacawork y por qué, consulta [Las ideas detrás de alpacawork](concept.md).
 
-Las imágenes de esta guía muestran la pantalla en inglés. La pantalla se abre en el idioma que usaste con la IA que instaló alpacawork. Puedes cambiarlo en la parte superior derecha de la pantalla de configuración inicial y, más adelante, en Configuración (el engranaje) → Personal → Idioma de la interfaz.
+Las imágenes de esta guía muestran la pantalla en inglés. La pantalla se abre en el idioma que usaste con la IA que instaló alpacawork. Lo eliges en el primer paso de la pantalla de configuración inicial y puedes cambiarlo más adelante en Configuración (el engranaje) → Personal → Idioma de la interfaz.
 
 ## 1. Instalar
 
@@ -34,7 +34,7 @@ La instalación se la pides a una IA.
 2. **La IA lo instala.** Comprueba que alpacawork puede ejecutarse en este PC, instala lo que falta e inicia alpacawork. No tienes que ejecutar comandos ni responder confirmaciones durante el proceso. Si tu propio agente de IA pide permiso para ejecutar un comando, concédeselo.
 3. **La pantalla de configuración inicial se abre en tu navegador.** La IA también te indica su URL. Después de reiniciar el PC e iniciar sesión, la misma URL vuelve a funcionar. Si olvidas la URL, pregúntasela a la IA o ejecuta `alpacawork workspace url` en una terminal.
 
-La pantalla de configuración inicial tiene tres pasos: los agentes de IA que vas a usar (y si envías [datos de uso](telemetry.md)), las [skills](#skills) que se instalan y tu primer proyecto. Cada paso se explica por sí mismo, y todo lo que contiene se puede cambiar más adelante en Configuración.
+La pantalla de configuración inicial tiene cuatro pasos: el idioma y el tema de la pantalla, los agentes de IA que vas a usar (y si envías [datos de uso](telemetry.md)), las [skills](#skills) que se instalan y tu primer proyecto. Cada paso se explica por sí mismo, y todo lo que contiene se puede cambiar más adelante en Configuración.
 
 ### Requisitos
 
@@ -53,7 +53,7 @@ Durante la instalación, la IA los comprueba e instala Node.js si falta.
 | [GitHub Copilot](https://github.com/features/copilot) | No hay que instalar nada: viene incluido con alpacawork. Funciona con tu sesión de GitHub CLI (`gh auth login`) |
 | Grok Build (`grok`), pi (`pi`) | Haber iniciado sesión, o una clave de API. alpacawork solo puede saber si están instalados, no si tienen la sesión iniciada. Para usar Gemini, ejecuta `/login` en pi y guarda una clave de API de Google Gemini. Consulta la [configuración de proveedores de pi](https://pi.dev/docs/latest/providers). |
 
-El primer paso de la pantalla de configuración inicial muestra cuáles de ellos están instalados en este PC y, en el caso de los tres primeros, si tienen la sesión iniciada. Ahí activas los que vas a usar. Más adelante puedes cambiarlo en Configuración → Servidor.
+El segundo paso de la pantalla de configuración inicial muestra cuáles de ellos están instalados en este PC y, en el caso de los tres primeros, si tienen la sesión iniciada. Ahí activas los que vas a usar. Más adelante puedes cambiarlo en Configuración → Servidor.
 
 Cuando una empresa de IA lanza un modelo nuevo, puedes añadirlo tú. Pídelo en el chat, por ejemplo “Añade el último modelo a la lista de modelos de Codex”, y la IA lo añade a la configuración. También puedes editar los modelos tú mismo en Configuración → Servidor.
 
@@ -87,7 +87,7 @@ Al principio, alpacawork usa el agente predeterminado que elegiste en la configu
 
 ### Elegir la carpeta de trabajo
 
-La carpeta en la que trabaja la IA la eliges durante la configuración inicial, en “Ubicación del código”, en el tercer paso. Para cambiarla más adelante, presiona el nombre del proyecto en la parte superior de la pantalla, abre su configuración y escribe la ubicación de la carpeta en “Ubicación del código” (por ejemplo, `/Users/tunombre/shop-site`). Si lo dejas vacío, la IA trabaja en la carpeta de datos (`~/alpacawork`).
+La carpeta en la que trabaja la IA la eliges durante la configuración inicial, en “Ubicación del código”, en el cuarto paso. Para cambiarla más adelante, presiona el nombre del proyecto en la parte superior de la pantalla, abre su configuración y escribe la ubicación de la carpeta en “Ubicación del código” (por ejemplo, `/Users/tunombre/shop-site`). Si lo dejas vacío, la IA trabaja en la carpeta de datos (`~/alpacawork`).
 
 La IA también lee los archivos `AGENTS.md` y `CLAUDE.md` de esa carpeta (archivos de instrucciones para esa carpeta, que una IA lee cada vez). Para mantener separados trabajos distintos, añade proyectos con “Nuevo proyecto” en el mismo menú.
 
@@ -179,7 +179,7 @@ No hay una función de memoria específica. El intercambio de cada tarea permane
 
 ### Skills
 
-Una skill es un conjunto de instrucciones que les indica a los agentes cómo trabajar. El segundo paso de la configuración inicial ofrece tres que hacen que las tareas sean más fáciles de encargar (askmeclearly, doyourjob y alpacawork-betterquality) y explica para qué sirve cada una. Se instalan en `~/.agents/skills`, en tu carpeta personal, y se enlazan para que Claude Code pueda usarlas. Puedes quitarlas más adelante.
+Una skill es un conjunto de instrucciones que les indica a los agentes cómo trabajar. El tercer paso de la configuración inicial ofrece tres que hacen que las tareas sean más fáciles de encargar (askmeclearly, doyourjob y alpacawork-betterquality) y explica para qué sirve cada una. Se instalan en `~/.agents/skills`, en tu carpeta personal, y se enlazan para que Claude Code pueda usarlas. Puedes quitarlas más adelante.
 
 Un proyecto solo usa las skills nombradas en la política del proyecto. La configuración inicial añade a la política una línea por cada skill que instalaste, en la que se indica cuándo se usa. Para empezar a usar una skill más adelante, pídelo en el chat; por ejemplo, “Usa el complemento de calidad en este proyecto”.
 

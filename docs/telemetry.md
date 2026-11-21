@@ -34,7 +34,7 @@ IP addresses are not included in reports, and the receiver doesn't keep them. Ho
 
 ## Choosing whether to send, and stopping
 
-You choose in the first step of the setup screen, which a new installation opens on. Nothing is sent until you choose; without a choice (for example in a workspace made before the setup screen existed), nothing is sent and the screen does not ask.
+You choose in the second step of the setup screen, which a new installation opens on. Nothing is sent until you choose; without a choice (for example in a workspace made before the setup screen existed), nothing is sent and the screen does not ask.
 
 To change your choice later, use the "Send usage data to help improve alpacawork" switch at the end of Settings → Server. Turning it off stops sending; turning it on starts it. If you only want to stop, you can also run `alpacawork telemetry off`.
 

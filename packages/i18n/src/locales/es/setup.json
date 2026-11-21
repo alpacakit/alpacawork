@@ -108,6 +108,7 @@
     "agents": "Agentes",
     "display": "Pantalla",
     "label": "Pasos de la configuración",
+    "of": "Paso {{at}} de {{total}}",
     "project": "Proyecto",
     "skills": "Skills"
   },

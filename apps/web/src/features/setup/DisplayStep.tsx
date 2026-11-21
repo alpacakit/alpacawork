@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { activateLocale } from "@alpacawork/i18n";
 import { isUiLocale, uiLocaleOrDefault } from "@alpacawork/core/ui-language";
 import { personalSettings, uiLanguageOptions, type SettingDefinition } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { useWriteDisabled } from "@/data/queries";
@@ -61,7 +62,7 @@ function LanguageChoice() {
     activateLocale(next);
     void choose(next, value => activateLocale(isUiLocale(value) ? value : current));
   };
-  return <Choices name="setup-language" legend={t("language")} locked={locked} grid="grid-cols-2 narrow:grid-cols-1">
+  return <Choices name="setup-language" legend={t("language")} icon="globe" locked={locked} grid="grid-cols-2 narrow:grid-cols-1">
     {uiLanguageOptions.map(({ value, labelKey }) => <Option key={value} name="setup-language" value={value} data-setup-language={value}
       checked={current === value} locked={locked} onPick={pick}>
       <Dot on={current === value} /><span lang={value} className="font-semibold">{t(labelKey, { ns: "panels" })}</span>
@@ -97,10 +98,13 @@ function ThemePicture({ theme }: { theme: string }) {
   </span>;
 }
 
-function Choices({ name, legend, note, locked, className, grid, children }: { name: string; legend: string; note?: string; locked: boolean; className?: string; grid: string; children: ReactNode }) {
-  return <fieldset data-setup-choices={name} disabled={locked} className={cn("m-0 min-w-0 border-0 p-0", locked && "opacity-60", className)}>
-    <legend className="p-0 font-semibold">{legend}</legend>
-    {note && <p className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{note}</p>}
+function Choices({ name, legend, icon, note, locked, className, grid, children }: {
+  name: string; legend: string; icon?: IconName; note?: string; locked: boolean; className?: string; grid: string; children: ReactNode;
+}) {
+  const noteId = useId();
+  return <fieldset data-setup-choices={name} disabled={locked} aria-describedby={note ? noteId : undefined} className={cn("m-0 min-w-0 border-0 p-0", locked && "opacity-60", className)}>
+    <legend className="flex items-center gap-1.5 p-0 font-semibold">{icon && <Icon name={icon} className="size-4 text-muted" />}{legend}</legend>
+    {note && <p id={noteId} className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{note}</p>}
     <div className={cn("mt-3 grid gap-2", grid)}>{children}</div>
   </fieldset>;
 }
@@ -109,8 +113,8 @@ function Choices({ name, legend, note, locked, className, grid, children }: { na
 function Option({ name, value, checked, locked, onPick, className, children, ...data }: {
   name: string; value: string; checked: boolean; locked: boolean; onPick: (value: string) => void; className?: string; children: ReactNode;
 } & Record<`data-${string}`, string>) {
-  return <label {...data} className={cn("relative flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border-hairline border-line bg-lit px-3 py-2 text-base hover:border-muted has-[input:focus-visible]:outline has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-ink",
-    checked && "border-ink shadow-[inset_0_0_0_1px_var(--ink)] hover:border-ink", locked && "cursor-default", className)}>
+  return <label {...data} className={cn("relative flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border-hairline border-line bg-lit px-3 py-2 text-base hover:border-muted has-[input:focus-visible]:outline has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-ink",
+    checked && "border-ink outline outline-1 -outline-offset-2 outline-ink hover:border-ink", locked && "cursor-default", className)}>
     <input type="radio" name={name} value={value} checked={checked} disabled={locked} onChange={() => onPick(value)} className="sr-only" />
     {children}
   </label>;

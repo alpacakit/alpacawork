@@ -104,6 +104,7 @@
     "agents": "智能体",
     "display": "显示",
     "label": "初始设置步骤",
+    "of": "第 {{at}} 步，共 {{total}} 步",
     "project": "项目",
     "skills": "技能"
   },

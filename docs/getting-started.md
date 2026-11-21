@@ -20,7 +20,7 @@ This guide takes you from installing alpacawork to using it day to day. Work thr
 
 See also: [What is stored, and what is sent out](#what-is-stored-and-what-is-sent-out), [Troubleshooting](#troubleshooting). For how alpacawork works and why, see [The ideas behind alpacawork](concept.md).
 
-The screen starts in the language you used with the AI that installed it. You can change it at the top right of the setup screen, and later under Settings (the gear) → Personal → Display language.
+The screen starts in the language you used with the AI that installed it. You choose it in the first step of the setup screen, and can change it later under Settings (the gear) → Personal → Display language.
 
 ## 1. Install
 
@@ -34,7 +34,7 @@ To install it, you ask an AI to do it.
 2. **The AI installs it.** It checks that alpacawork can run on this PC, installs what is missing, and starts alpacawork. You don't run commands or answer confirmations along the way. If your AI agent itself asks for permission to run a command, allow it.
 3. **The setup screen opens in your browser.** The AI also tells you its URL. After you restart the PC and log in, the same URL works again. If you forget the URL, ask the AI, or run `alpacawork workspace url` in a terminal.
 
-The setup screen has three steps: the AI agents to use (and whether to send [usage data](telemetry.md)), the [skills](#skills) to install, and your first project. Each step explains itself, and everything in it can be changed later in Settings.
+The setup screen has four steps: the screen's language and theme, the AI agents to use (and whether to send [usage data](telemetry.md)), the [skills](#skills) to install, and your first project. Each step explains itself, and everything in it can be changed later in Settings.
 
 ### Requirements
 
@@ -53,7 +53,7 @@ During the install, the AI checks these, and installs Node.js if it is missing.
 | [GitHub Copilot](https://github.com/features/copilot) | Nothing to install: it is bundled with alpacawork. It runs on your GitHub CLI sign-in (`gh auth login`) |
 | Grok Build (`grok`), pi (`pi`) | A sign-in, or an API key. alpacawork can only tell whether these are installed, not whether they are signed in. To use Gemini, run `/login` in pi and save a Google Gemini API key. See [pi provider setup](https://pi.dev/docs/latest/providers). |
 
-The first step of the setup screen shows which of these are installed on this PC and, for the first three, whether they are signed in. You enable the ones to use there. Later, you can change this under Settings → Server.
+The second step of the setup screen shows which of these are installed on this PC and, for the first three, whether they are signed in. You enable the ones to use there. Later, you can change this under Settings → Server.
 
 When an AI company releases a new model, you can add it yourself. Ask in the chat, for example "Add the latest model to the Codex model list," and the AI adds it to the settings. You can also edit the models yourself under Settings → Server.
 
@@ -87,7 +87,7 @@ At first, alpacawork uses the default agent you chose in setup. To change it, pr
 
 ### Choose the folder to work in
 
-You choose the folder the AI works in during setup, under "Working folder" in the third step. To change it later, press the project name at the top of the screen, open its settings, and enter the folder's location in "Working folder" (for example `/Users/yourname/shop-site`). If you leave it empty, the AI works in the data folder (`~/alpacawork`).
+You choose the folder the AI works in during setup, under "Working folder" in the fourth step. To change it later, press the project name at the top of the screen, open its settings, and enter the folder's location in "Working folder" (for example `/Users/yourname/shop-site`). If you leave it empty, the AI works in the data folder (`~/alpacawork`).
 
 The AI also reads the `AGENTS.md` and `CLAUDE.md` in that folder (instruction files for that folder, which an AI reads every time). To keep separate pieces of work apart, add projects with "New project" in the same menu.
 
@@ -179,7 +179,7 @@ There is no dedicated memory feature. The back-and-forth on each task stays in i
 
 ### Skills
 
-A skill is a set of instructions that tells agents how to work. The second step of setup offers three that make tasks easier to hand off (askmeclearly, doyourjob and alpacawork-betterquality) and says what each one is for. They are installed to `~/.agents/skills` in your home folder and linked so that Claude Code can use them. You can remove them later.
+A skill is a set of instructions that tells agents how to work. The third step of setup offers three that make tasks easier to hand off (askmeclearly, doyourjob and alpacawork-betterquality) and says what each one is for. They are installed to `~/.agents/skills` in your home folder and linked so that Claude Code can use them. You can remove them later.
 
 A project uses only the skills named in its project policy. Setup adds one line to the policy for each skill you installed, stating when it is used. To start using a skill later, ask in the chat, for example "Use the quality add-on in this project".
 
