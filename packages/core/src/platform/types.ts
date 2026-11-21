@@ -55,6 +55,8 @@ export type HostAdapter = {
     known(name: string): boolean;
     /** Stop `name` and return once it has ended; false when this host cannot stop and wait. */
     stop(service: string | ServiceDefinition): boolean;
+    /** Start the saved service without interrupting an already-running instance. */
+    start(definition: ServiceDefinition): boolean;
     /** Start `name` again, or start it when stopped; false when the manager refused. */
     restart(service: string | ServiceDefinition): boolean;
     /** How often the manager restarted `name` after it failed; 0 where the host does not count. */

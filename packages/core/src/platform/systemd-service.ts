@@ -53,6 +53,9 @@ export function createSystemdService(command: ServiceCommand = (file, args) => s
       if (typeof service !== 'string') { const state = observe(service); if (state.state === 'absent') return true; if (state.state !== 'matching') return false; }
       return run('stop', typeof service === 'string' ? service : service.name).status === 0;
     },
+    start(definition) {
+      return observe(definition).state === 'matching' && run('start', definition.name).status === 0;
+    },
     restart(service) {
       if (typeof service !== 'string' && observe(service).state !== 'matching') return false;
       return run('restart', typeof service === 'string' ? service : service.name).status === 0;
