@@ -51,10 +51,7 @@ npm install -g alpacawork
 alpacawork setup
 ```
 
-- **動作環境:** macOS（Apple シリコン）、Linux（x64）、Windows（WSL2 の中）。サインイン済みの Claude Code や Codex などの AI エージェントと、Node.js 24.16 以降が要ります（AI に頼む入れ方では、Node.js が無ければ AI が入れます）。[詳しい動作環境](docs/ja/getting-started.md#始める前に)
-- **画面を開く:** ブラウザが開かなかったときや、閉じたあと・PC を再起動したあとに開き直すときは、[画面を開く](docs/ja/getting-started.md#2-画面を開く) を見てください。
-- **入れたあと:** [セットアップを済ませて、最初の依頼を送る](docs/ja/getting-started.md#3-セットアップを済ませる)。スマートフォンから使うときは、Tailscale などの VPN で PC につなぎます（[スマートフォンで使う手順](docs/ja/remote.md#スマートフォンで使う)）。
-- **止める・更新する・アンインストール:** [開き直す・止める・更新する](docs/ja/manage.md)
+動作環境は macOS（Apple シリコン）、Linux（x64）、Windows（WSL2）です。入れたあとは [はじめかた](docs/ja/getting-started.md) に沿って、最初の1件を頼みます。
 
 ## できること
 
@@ -70,19 +67,13 @@ alpacawork setup
 - **無料です（MIT License）。** AI の利用料は、お使いの Claude Code や Codex などの契約のとおりです。
 - **あなたの PC で動きます。** AI は PC で動くので、使っている間は PC を起動したまま、スリープしない設定にします。
 - **AI エージェントは、Claude Code の `bypassPermissions` や Codex の `danger-full-access` と同じ、確認を求めない設定で起動します。** やってほしくないことや、確認してほしいことは、[プロジェクト方針](docs/ja/projects.md#プロジェクト方針) に書けます。
-- **タスクや会話、成果のファイルは PC に保存されます。** alpacawork の開発元が、これらを外部サーバーに送信することはありません。AI への指示や AI が読んだ内容は、各 AI エージェントを直接使う場合と同じように、AI の提供元へ送られます（[詳しいデータの扱い](docs/ja/manage.md#保存されるもの外へ送られるもの)）。
+- **タスクや会話、成果のファイルは PC に保存されます。** alpacawork の開発元が、これらを外部サーバーに送信することはありません。AI への指示や AI が読んだ内容は、各 AI エージェントを直接使う場合と同じように、AI の提供元へ送られます（[詳しいデータの扱い](docs/ja/manage.md#データの置き場と外へ送られるもの)）。
 
 ## ドキュメント
 
-- [はじめかた](docs/ja/getting-started.md) — インストールから、画面を開いて最初の依頼を送り、できあがりを確かめるまで
-- [使いかた](docs/ja/guide.md) — 頼みかた、一覧の見かた、質問への答え方、保留や中止
-- [プロジェクトと AI の設定](docs/ja/projects.md) — 自分のリポジトリでの使い方、AI への約束ごと、使う AI とモデル
-- [スマートフォンやいつもの会話から使う](docs/ja/remote.md) — スマートフォン、通知、Claude Code・Codex の会話から
-- [困ったとき](docs/ja/troubleshooting.md) — 画面が開かない、タスクが止まった、など。不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
-- [開き直す・止める・更新する](docs/ja/manage.md) — 画面の開き直し、更新、アンインストール、データの扱い
-- [alpacawork の考え方](docs/ja/concept.md) — 1つの依頼がどう進むかと、設計の考え方
-
-知りたいことから探すときは、[ドキュメントの入口](docs/ja/README.md) を見てください。
+- [はじめかた](docs/ja/getting-started.md) — 入れて、1件頼んで、確かめるまで
+- [ドキュメントの入口](docs/ja/README.md) — 使いかた、設定、困ったときなど、全ページの一覧
+- 不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
 
 ## ライセンス
 
