@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runRecordSchema, runFolder, RUN_FILES, type RunRecord } from '@alpacawork/contract/run';
-import { controlRunSchema, projectedIndexSchema, taskProjectedViewSchema } from '@alpacawork/contract/control';
+import { controlRunSchema, projectedIndexSchema, taskHistoryWindowSchema, taskProjectedViewSchema } from '@alpacawork/contract/control';
 import { controlRuns } from '@alpacawork/backend/test-dist/control/tree.js';
 import { RunStore } from '@alpacawork/runs';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
@@ -170,6 +170,11 @@ test('synthetic fixture logs reach the live index while opened views carry durab
   }
   const view = taskProjectedViewSchema.parse(await (await commandFetch(new URL(`/api/task/view?task=${task.id}`, server.url))).json());
   assert.ok(view.runs.every(run => !Object.hasOwn(run, 'errorCause')));
+  // History's row for each failed Run says the same cause, and a failure without one keeps its general reason.
+  const history = taskHistoryWindowSchema.parse(await (await commandFetch(new URL(`/api/task/history?task=${task.id}&mode=latest`, server.url))).json());
+  const rows = new Map(history.events.filter(event => event.kind === 'error').map(event => [event.id, event.cause]));
+  for (const { id, expected } of seeded) if (rows.has(id)) assert.equal(rows.get(id), expected, `history ${id}`);
+  assert.equal([...rows.values()].filter(Boolean).length, seeded.filter(each => each.expected).length);
   assert.equal(JSON.stringify(body).includes(capacity), false);
   assert.equal(JSON.stringify(body).includes(weekly), false);
 });
@@ -187,6 +192,9 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
   assert.deepEqual(project(claudeError, { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'weekly_limit', message: reset });
   assert.deepEqual(project(claudeError + jsonl({ type: 'result', session_id: session, is_error: true, result: '' }),
     { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'weekly_limit', message: reset }, 'empty terminal preserves the explicit API error');
+  const modelLimit = "You've reached your Fable limit. Switch to another model, or manage usage credits at https://claude.ai/settings/usage?from=cc_cli_limit_message, to continue.";
+  assert.deepEqual(project(jsonl({ type: 'result', session_id: session, is_error: true, result: modelLimit }),
+    { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: modelLimit }, 'a model limit without a period is still a known cause');
   assert.deepEqual(project(codex + jsonl({ type: 'turn.failed' })), { cause: 'model_capacity', message: capacity }, 'terminal without words retains this turn’s explicit error');
   const secret = 'sk-syntheticSecret123456';
   const general = project(prefix + jsonl({ type: 'turn.failed', error: { message: `Service unavailable. token=${secret}` } }));

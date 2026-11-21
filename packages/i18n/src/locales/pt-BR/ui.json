@@ -317,10 +317,12 @@
   "run": {
     "cause": {
       "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Tente novamente mais tarde ou com outro modelo, ou pare",
+      "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Tente novamente com outro modelo ou depois que o limite for renovado, ou pare",
       "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare"
     },
     "causeReason": {
       "modelCapacity": "O modelo está sobrecarregado",
+      "modelLimit": "Limite de uso do modelo atingido",
       "weeklyLimit": "Limite semanal de uso atingido"
     }
   },
