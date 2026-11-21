@@ -35,6 +35,8 @@ export const PARTS = {
   choices: '[data-guide-part="answer-choices"]',
   /** Done, which accepts a report (a word on a computer, a mark on a phone). */
   finish: "[data-task-done]",
+  /** The project's name at the top left, which opens the projects' menu. */
+  project: "[data-project-trigger]",
 } as const;
 export type GuidePart = keyof typeof PARTS;
 export type GuideSide = "top" | "bottom" | "left" | "right";
@@ -108,6 +110,10 @@ export const GUIDE: readonly GuideEntry[] = [
   // Once the person has had their turn and nothing is left to bring them a report, the guide closes.
   { id: "end", align: "end", step: null, part: "input", side: "top", next: true, when: f => f.stage.stage === "turn" && !f.seen.has("end"),
     say: t => t("tree:guide.say.end") },
+  // After the end: where another repository is taken on.
+  { id: "another-repository", step: null, part: "project", side: "bottom", align: "start", next: true,
+    when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
+    say: t => t("tree:guide.say.anotherRepository") },
   // Before any turn: words in the input wait to be sent...
   { id: "send-ready", step: 1, part: "send", side: "top", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },

@@ -6,6 +6,7 @@
     "progress": "{{step}}/3",
     "say": {
       "accept": "Lee el informe y, si hay algo hecho, ábrelo desde «{{files}}» para revisarlo. Si está bien, pulsa este botón ({{finish}}).",
+      "anotherRepository": "Para usar otro repositorio, añade aquí un proyecto y elige ese repositorio como su ubicación del código.",
       "answer": "Al elegir una respuesta, se coloca en el cuadro de abajo. Al enviarla, queda como tu respuesta.",
       "answered": "Enviaste tu respuesta. Tarda un momento en llegar a la IA que trabaja en la tarea.",
       "answerReady": "Tu respuesta ya está en el cuadro. Envíala con este botón para que cuente como respuesta.",

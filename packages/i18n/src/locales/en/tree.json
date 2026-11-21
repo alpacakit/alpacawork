@@ -6,6 +6,7 @@
     "progress": "{{step}}/3",
     "say": {
       "accept": "Read the report, and open what was made from “{{files}}” to check it. If it is good, press this button ({{finish}}).",
+      "anotherRepository": "To use another repository, add a project here and choose that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
       "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
       "answerReady": "Your answer is in. Send it with this button to make it your answer.",
