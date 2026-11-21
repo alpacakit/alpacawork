@@ -99,7 +99,7 @@ function shownPart(selector: string): Box | null {
   }
   return null;
 }
-const same = (a: Placed | null, b: Placed | null) => a === b || !!a && !!b && a.x === b.x && a.y === b.y && a.side === b.side && a.arrow === b.arrow
+const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a && !!b && a.x === b.x && a.y === b.y && a.side === b.side && a.arrow === b.arrow
   && a.target.left === b.target.left && a.target.top === b.target.top && a.target.width === b.target.width && a.target.height === b.target.height;
 
 /**
@@ -118,7 +118,9 @@ export function GuideBalloon() {
   const [placed, setPlaced] = useState<Placed | null>(null);
   useLayoutEffect(() => {
     if (!part || !entry) { setPlaced(null); return; }
-    let last: Placed | null = null;
+    // Not looked at yet for this step: its first look is always kept, so a step whose part is not on the screen never
+    // stands where the step before it stood.
+    let last: Placed | null | undefined;
     const update = () => {
       const target = shownPart(part);
       const own = balloon.current?.getBoundingClientRect();
