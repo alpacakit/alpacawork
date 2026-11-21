@@ -8,6 +8,7 @@ import { Caret, DisclosureSummary } from "@/components/ui/caret";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldHint } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Message } from "@/components/ui/message";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { DEFAULT_SCHEMA } from "@alpacawork/contract";
@@ -123,6 +124,9 @@ export function ProjectPolicySection({ project, projects, note }: { project: Pro
   const { control, register } = useFormContext<ProjectDraft>();
   const policy = useWatch({ control, name: "policy" }) ?? "";
   return <SettingSection id="project-policy-heading" title={t("project.policy")} note={note ?? t("project.policyNote")} spaced>
+    {/* Shown, not behind a hover, so a phone gets it too; the detail is an element so it starts its own line under the title. */}
+    <Message data-policy-vs-agents-md tone="info" size="band" title={t("project.policyVsAgentsMd.title")}
+      description={<>{t("project.policyVsAgentsMd.detail")}</>} />
     <Textarea id="project-policy" dir="auto" aria-labelledby="project-policy-heading" aria-describedby="project-policy-count"
       placeholder={t("project.policyExample")} className="min-h-56 whitespace-pre-wrap" {...register("policy")} />
     <FieldHint id="project-policy-count" className="mt-0 text-end tabular-nums">{t("project.policyCount", { count: [...policy].length })}</FieldHint>
