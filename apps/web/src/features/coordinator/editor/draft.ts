@@ -67,11 +67,11 @@ export function useInputDraft() {
       return changed && { ...changed.values, ...(!hasReaderOperation(changed.document) ? clearedEditableIntent() : {}) };
     }, edit, voice);
   };
-  /** The screen opened `task` (its index has it): the lifecycle's one seed (lifecycle.ts). */
-  const observe = (task: { id: string; title: string }, inPanel = true) => {
-    mutateInput(draft.key, values => observed(values, task, inPanel));
+  /** What the screen shows, the panel's Task over the project in view (each as its index has it): the lifecycle's one seed (lifecycle.ts). */
+  const observe = (screen: Parameters<typeof observed>[1]) => {
+    mutateInput(draft.key, values => observed(values, screen));
   };
-  /** The panel closed on `task` (lifecycle.ts). */
+  /** The screen left `task`: the panel closed on it, or it was the project in view (lifecycle.ts). */
   const close = (task: string) => { mutateInput(draft.key, values => closed(values, task)); };
   /** A review's send-back enters the one editable document with the versions actually reviewed. */
   const intend = (task: Task, intent: SentIntent, words: string) => {

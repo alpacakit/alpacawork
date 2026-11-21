@@ -72,21 +72,26 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   const live = useOutbox(state => state.live);
   const conversation = useConversation(state => state.conversation);
   const selectedTask = useViewStore(shownInReader);
-  // What the screen opens: the opened Task, else the project Task it is narrowed to. Nothing open, or a Task the index
-  // does not hold yet, is no opening; the draft decides what an opening does (lifecycle.ts).
+  // What the screen shows, on its two layers: the Task the panel shows or awaits, over the project in view (the list's).
+  // Nothing is shown before the address is read; then the panel's Task once its read presents it, the project once the
+  // index holds it. Until then nothing is observed, so a reload is not taken for the list showing every project, nor a
+  // Task still awaited for the project behind it. The draft decides what an opening does (lifecycle.ts).
+  const ready = useViewStore(state => state.navigationReady);
+  const panel = useViewStore(readerShows);
   const project = useViewStore(state => state.project);
-  const seen = selectedTask ?? project;
   const index = useEveryTaskIndex();
   const client = useQueryClient(), root = JSON.parse(draft.key)[0] as string;
   const serverTasks = useServerTasks();
   const presentation = useSyncExternalStore(changed => subscribeReads(client, changed),
-    () => seen ? readerPresentation(client, root, seen).kind : 'absent');
-  // Every way the panel closes (its ×, Esc, Back, a swipe, the address) is this one change: it showed or awaited a Task
-  // and now neither (a Task still being looked up is no close). The draft decides what closing does (lifecycle.ts).
-  // Before the opening below, which then sees the draft closing left.
+    () => panel ? readerPresentation(client, root, panel).kind : 'absent');
+  // The screen leaving a Task, on either layer: the panel closing on it (its ×, Esc, Back, a swipe, the address; a Task
+  // still being looked up is no close), or the project in view changing from it. A move from one Task in the panel to
+  // another, or the panel opening over the list, is an opening alone. The draft decides what leaving does
+  // (lifecycle.ts). Before the observing below, which then sees the draft leaving left.
   useEffect(() => useViewStore.subscribe((state, before) => {
     const was = readerShows(before);
     if (was && !readerShows(state)) draft.close(was);
+    if (before.project && before.project !== state.project) draft.close(before.project);
   }), [draft.key]);
   useEffect(() => {
     // Observe after the editor's mount lifecycle; its initial transaction must precede canonical draft seeding.
@@ -94,9 +99,13 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
     // recovers through the same outbox owner even while another draft is being written.
     const task = serverTasks?.find(task => task.id === selectedTask);
     if (!composing(draft.entry.values) && conversation && task && restoreReaderDraft(root, conversation.id, task.id, readerTurn(task)) === true) return;
-    const opened = seen ? index.byId.get(seen) : null;
-    if (opened && presentation !== 'refused' && presentation !== 'absent') draft.observe({ id: opened.id, title: opened.title }, !!selectedTask);
-  }, [seen, index, serverTasks, presentation, root, draft.key, draft.locked, draft.entry.values.phase, emptied(draft.entry.values), revision, live, conversation?.id]);
+    // A project the index does not hold yet is not known: the panel's Task is observed alone meanwhile.
+    const front = panel ? index.byId.get(panel) : null, behind = project ? index.byId.get(project) : null;
+    if (!ready || panel && (!front || presentation === 'refused' || presentation === 'absent') || !panel && project && !behind) return;
+    draft.observe({ panel: front ? { id: front.id, title: front.title } : null,
+      project: behind ? { id: behind.id, title: behind.title } : project ? undefined : null });
+  }, [ready, panel, project, index, serverTasks, presentation, root, draft.key, draft.locked, draft.entry.values.phase, draft.entry.values.seen,
+    draft.entry.values.seenProject, emptied(draft.entry.values), revision, live, conversation?.id]);
 
   return <CoordinatorInput launch={launch} profile={launch.profile} />;
 });
@@ -483,10 +492,13 @@ function Card() {
       <SurfaceDocument value={own.document}><Toaster name="coordinator" /></SurfaceDocument>
     </div>, own.document.body) : <>
       <div ref={card} data-coordinator-card data-coordinator-folded={expanded ? undefined : true} role="region" aria-label={t("coordinatorCard.title")}
-        // No band of its own around it: what scrolls shows round it and passes behind it, and a press round it reaches
-        // what is there. The input's frame, or its one line, floats by itself (its own edge and shadow).
+        // The input's frame, or its one line, floats by itself (its own edge and shadow). On a computer there is no band
+        // round it: what scrolls shows round it and passes behind it, and a press round it reaches what is there. On a
+        // phone it stands across the screen's foot on the ground of what it stands over (--foot-ground), from its top
+        // (or the open conversation's foot) down: what scrolls ends at its top, not showing in the slips beside and under it.
         className={cn("group/frame pointer-events-none fixed z-(--layer-coordinator-input) flex flex-col text-base text-ink *:pointer-events-auto [&_[data-one-input-area]]:border-0 [&_[data-one-input-area]]:bg-transparent [&_[data-one-input-area]]:p-0 [&_[data-composer-frame]]:shadow-float",
-          narrow ? "inset-x-0 bottom-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "max-h-[85dvh]")}>
+          narrow ? "inset-x-0 bottom-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] before:pointer-events-auto before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-(--foot-ground) before:content-['']"
+            : "max-h-[85dvh]", narrow && shown && "before:-top-2")}>
         {/* The composer keeps its draft and sender while the folded controls stand in their row above it. */}
         {open ? <div className="contents" ref={drawn.holdFoot} /> : <CoordinatorCapsule />}
         {/* Folded, the frame's grip is the input's; open, the conversation's (on its head line). */}

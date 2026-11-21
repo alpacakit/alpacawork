@@ -280,6 +280,12 @@
       "others_other": "下方还有 {{count}} 个"
     },
     "copy": "复制",
+    "empty": {
+      "unassigned": {
+        "next": "从输入框发送你希望此任务完成的事，就会开始。",
+        "title": "尚未开始"
+      }
+    },
     "goAnswer": "回答",
     "goQuestion": "回答：给你的 1 个提问，{{title}}",
     "goQuestionAt": "回答：{{at}} {{title}}",

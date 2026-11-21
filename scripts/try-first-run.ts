@@ -22,7 +22,7 @@ Codexはサインイン済みの代役、Claude Codeは未サインインです�
 AIのコマンドはすべて代役で、結果は決まった内容です。通知は届きません。
 本番のHOME・データ・資格情報・サービス・5499番ポートは使いません。
 期限またはCtrl-Cで終了し、一時ファイルを削除します。
---check は、PTYでEnterを送るsetupと、非TTYで--yesを付けるsetup、3つのステップから例の結果の完了までを自動確認して終了します。
+--check は、PTYでEnterを送るsetupと、非TTYで--yesを付けるsetup、4つのステップから例の結果の完了までを自動確認して終了します。
 スマホ幅は --check --width 390 で確かめます（既定: 1440）。
 途中で止める: node scripts/try-first-run.ts --stop <表示された一時フォルダ>` : `Usage: node scripts/try-first-run.ts [--port <free port>] [--minutes 30] [--lang ja|en] [-y|--yes] [-d|--detach] [--no-open] [--check] [--width 390|1440]
 Builds this checkout and runs its real setup in /tmp (default language: ja). Review the plan and press Enter to continue.
@@ -34,7 +34,7 @@ Bundled skills are real; skills from their source install clearly marked local p
 Every agent command is a stand-in with scripted results. Notifications do not arrive.
 No production HOME, data, credentials, service manager, or port 5499 is used.
 The preview stops and deletes its temporary files at the deadline or on Ctrl-C.
---check runs setup with Enter in a PTY, then setup with --yes without a terminal, goes through the three steps to an
+--check runs setup with Enter in a PTY, then setup with --yes without a terminal, goes through the four steps to an
 example's result and its completion, and exits. Use --check --width 390 for phone width (default 1440).
 Stop early: node scripts/try-first-run.ts --stop <printed temporary directory>`);
   process.exit(0);

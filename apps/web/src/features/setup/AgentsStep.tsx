@@ -23,10 +23,10 @@ import { FailureLine, Loading, StepButtons } from "./parts";
 type Failure = { at: "agents" | "consent" | "check"; detail: string } | null;
 
 /**
- * Step 1: the agents this PC has, switched on or off, the one requests go to first, and the usage-data choice. Next
+ * Step 2: the agents this PC has, switched on or off, the one requests go to first, and the usage-data choice. Next
  * saves in that order (the agents only when changed), and a failure stays on the step where it failed.
  */
-export function AgentsStep({ onNext }: { onNext: () => void }) {
+export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   const { t } = useTranslation("setup");
   const settings = useServerSettings(true);
   const status = useAgentStatus();
@@ -46,7 +46,8 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
   const firstSeen = useRef<Record<string, StartAgent["status"]>>({});
   useEffect(() => {
     if (!drafts || status.isPending) return;
-    setOn(before => Object.fromEntries(rows.map(row => {
+    // A row the latest check no longer lists keeps its switch, so it comes back as the person left it.
+    setOn(before => ({ ...before, ...Object.fromEntries(rows.map(row => {
       if (row.status === "checking") return [row.name, before[row.name] ?? false];
       const was = firstSeen.current[row.name];
       firstSeen.current[row.name] ??= row.status;
@@ -55,7 +56,7 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
       if (was === undefined) return [row.name, row.configured ? drafts.agents.find(agent => agent.name === row.name)?.enabled ?? true : row.status === "ready"];
       // One that became usable after the first look (signed in, or installed, then checked again) is switched on.
       return [row.name, canWork({ status: was }) ? before[row.name] ?? true : before[row.name] || was === "signedOut" || was === "missing"];
-    })));
+    })) }));
   }, [drafts, rows]);
   const initialized = rows.every(row => row.status !== "checking" && firstSeen.current[row.name] !== undefined);
   const readFailure = [settings, status, telemetry.status].find(read => read.isError);
@@ -130,7 +131,7 @@ export function AgentsStep({ onNext }: { onNext: () => void }) {
     {!usable.length && <Message tone="caution" size="line" className="mt-4" data-setup-no-agent
       title={t(signed ? "agents.noneOnTitle" : "agents.noneReadyTitle")} description={t(signed ? "agents.noneOn" : "agents.noneReady")} />}
     {asksConsent && <Consent checked={consent} onChange={setConsent} />}
-    <StepButtons failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
+    <StepButtons back={{ onClick: onBack, disabled: busy }} failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
       : failure?.at === "consent" ? <FailureLine text={t("consent.failed")} detail={failure.detail} /> : null}
       other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next(false)}>{t("agents.continueWithout")}</Button> : null}>
       <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next(true)}>{t("next")}</Button>

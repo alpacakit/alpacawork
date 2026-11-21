@@ -17,7 +17,7 @@ import { useProjectSave, type Project } from "@/features/panels/use-project-save
 import { FailureLine, Loading, StepButtons } from "./parts";
 
 /**
- * Step 3: the project setup made, with the rows its settings have for its name, its code location and its policy (the
+ * Step 4: the project setup made, with the rows its settings have for its name, its code location and its policy (the
  * rest stays in Settings). Finish saves what changed, records setup as finished and opens the page on the project.
  */
 export function ProjectStep({ projectId, active, onBack, onFinish }: { projectId: string; active: boolean; onBack: () => void; onFinish: () => Promise<void> }) {

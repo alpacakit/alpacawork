@@ -1,6 +1,7 @@
 import { agentSettingShapeSchema, selectionSchema } from './agent-settings.js';
 import { runErrorCauseSchema, runFailureSchema } from './run-failure.js';
 import { restoreIdSchema } from './recovery.js';
+import { answerFilesSchema } from './coordinator-files.js';
 import { projectColorSchema, projectSettingsSchema } from '@alpacawork/raw/project-settings';
 import { launchChoicesSchema } from './agent-selection.js';
 import { coordinatorMarkerSchema } from './coordinator-contract.js';
@@ -259,10 +260,11 @@ export const controlTreeSchema = z.object({
   }).strict(),
   /**
    * The Tasks' dialogues with a coordinator (task_dialogues), oldest first: what the user said and when, and the
-   * coordinator's answer (null until it answered).
+   * coordinator's answer (null until it answered), with the copies kept of the local files it links to while its
+   * conversation still holds them.
    */
   dialogues: z.array(z.object({ taskId: taskIdSchema, messageId: z.string().min(1), at: z.iso.datetime({ offset: true }),
-    words: z.string(), answer: z.string().nullable() }).strict()),
+    words: z.string(), answer: z.string().nullable(), answerFiles: answerFilesSchema.optional() }).strict()),
   /** When the user asked for each Task they asked for (its mark's utterance, else its mark's record). */
   requestedByUser: z.record(taskIdSchema, z.object({ at: z.iso.datetime({ offset: true }) }).strict()),
   profiles: z.array(z.object({ key: z.string().min(1), choices: launchChoicesSchema,

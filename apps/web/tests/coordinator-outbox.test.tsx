@@ -443,7 +443,7 @@ test('a parked past-turn original stays discoverable for explicit recovery witho
 test('browsing a refused answer cannot take the input from a pending answer; explicit recovery still moves each original once',()=>{
  const original=setup('original A');
  freeze(root,fixed('original A'),values('original A',original),{from:key},[binding]);
- act(()=>{mutateInput(key,input=>observed(input,{id:'T2',title:'Other'}));});
+ act(()=>{mutateInput(key,input=>observed(input,{panel:{id:'T2',title:'Other'},project:null}));});
  act(()=>{mutateInput(key,input=>{
   const doc=JSON.parse(input.doc!);doc.content[0].content.push({type:'text',text:'later free words'});
   return {...input,doc:JSON.stringify(doc),phase:'composing'};
@@ -468,7 +468,7 @@ test('browsing a refused answer cannot take the input from a pending answer; exp
  const rawB=availableInput(useDraftStore.getState().entries,root,key)!,b=rawB.requestId!,other={...binding,taskId:'T2',turn:'Q2'};
  const payload={...fixed('original B'),tasks:['T2']};
  expect(freeze(root,payload,rawB,{from:key},[other])).toBe(b);
- act(()=>{mutateInput(key,input=>observed(input,{id:'T1',title:'Question'}));});
+ act(()=>{mutateInput(key,input=>observed(input,{panel:{id:'T1',title:'Question'},project:null}));});
  const before=useDraftStore.getState().entries;
  expect(restoreReaderDraft(root,cid,'T1',{taskId:'T1',turn:'Q1',phase:'doing'})).toBe(false);
  expect(useDraftStore.getState().entries).toBe(before);
@@ -723,7 +723,7 @@ test('immediate undo restores files after the prepared input follows another Tas
   const files = [{ name: 'a.txt', path: `attachments/${id}/a.txt`, absolutePath: '/a.txt', size: 1 }];
   updateDraft(key, { values: { ...values('', id), doc: JSON.stringify(doc), attachments: JSON.stringify(files), phase: 'composing', seen: 'T1' } });
   freeze(root, { ...fixed(), tasks: ['T1'], attachments: ['a.txt'] }, useDraftStore.getState().entries[key]!.values, { from: key });
-  mutateInput(key, values => observed(values, { id: 'T2', title: 'Next' }));
+  mutateInput(key, values => observed(values, { panel: { id: 'T2', title: 'Next' }, project: null }));
   expect(attachmentsOf(availableInput(useDraftStore.getState().entries, root, key)!)).toEqual([]);
   const next = availableInput(useDraftStore.getState().entries, root, key)!.requestId!;
   const laterFiles = [{ name: 'b.txt', path: `attachments/${next}/b.txt`, absolutePath: '/b.txt', size: 2 }];

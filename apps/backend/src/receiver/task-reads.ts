@@ -220,11 +220,12 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     // The Run that stopped is the row's writer: its Task's responsible or member, by what it ran with.
     const placement = placements.get(run.placementId);
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
+      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause } : {}),
       ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: placement.profileKey, ...choices(run) } } : {}) });
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
-      wordsKey: createHash('sha256').update(dialogue.words).digest('hex') });
+      wordsKey: createHash('sha256').update(dialogue.words).digest('hex'), ...dialogue.answerFiles ? { answerFiles: dialogue.answerFiles } : {} });
   // A parent's History also shows what was asked of its child, so an exchange between them reads from both ends.
   // A child's instructions to its own members are that child's work, read in its own History as its other records are.
   return fromChild ? events.filter(item => withRequests && item.kind === 'request' && item.recipient?.role !== 'member' || PARENT_VISIBLE_EVENTS.has(item.kind) && item.kind !== 'review' &&
@@ -377,7 +378,9 @@ function recordedHistory(records: RecordsReader, id: string): ReturnType<typeof 
     if (runs.has(key)) return;
     const raw = records.run(key);
     if (!raw) return;
-    runs.set(key, recordedRun(raw));
+    // The folder facts its owner's records captured say a failure's cause; History never rereads the folder.
+    const owner = records.runOwner(key), errorCause = owner ? records.bundle(owner)?.runFiles?.get(key)?.errorCause : undefined;
+    runs.set(key, { ...recordedRun(raw), ...errorCause ? { errorCause } : {} });
     runRoles[key] = raw.role === 'owner' ? 'owner' : 'member';
     addPlacement(raw.placementId);
     if (raw.into) addRun(raw.into);

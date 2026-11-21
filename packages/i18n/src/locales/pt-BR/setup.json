@@ -47,6 +47,10 @@
       "stopKey": "Parar e excluir"
     }
   },
+  "display": {
+    "lead": "Escolha o idioma e as cores da tela do alpacawork. Você pode mudar os dois depois, em Configurações.",
+    "title": "Idioma e tema"
+  },
   "language": "Idioma de exibição",
   "next": "Avançar",
   "project": {
@@ -104,6 +108,7 @@
   },
   "steps": {
     "agents": "Agentes",
+    "display": "Exibição",
     "label": "Etapas da configuração",
     "of": "Etapa {{at}} de {{total}}",
     "project": "Projeto",
@@ -115,5 +120,6 @@
     "light": "Claro",
     "system": "Sistema"
   },
+  "themeSystem": "Sistema segue a aparência clara ou escura do seu dispositivo.",
   "title": "Configuração inicial"
 }
