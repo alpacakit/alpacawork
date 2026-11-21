@@ -118,7 +118,7 @@ AI エージェント（Claude Code や Codex など）に、「alpacawork を�
    alpacawork uninstall
    ```
 
-2. 「alpacawork をこの PC から外しました。」と出たのを確かめてから、コマンド本体を消します。1つ目が断られたり途中で止まったりしたときは、先に [断られたとき](#断られたとき) を見てください。2つ目を先に実行すると、`alpacawork uninstall` をやり直せなくなります。
+2. 「残りの手順（コマンド本体を消す）: npm uninstall -g alpacawork」と出たのを確かめてから、コマンド本体を消します。1つ目が断られたり途中で止まったりしたときは、先に [断られたとき](#断られたとき) を見てください。2つ目を先に実行すると、`alpacawork uninstall` をやり直せなくなります。
 
    ```sh
    npm uninstall -g alpacawork
