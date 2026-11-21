@@ -37,14 +37,14 @@ alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 C
 
 ## 安装
 
-把下面这段文字粘贴给你电脑上的 Claude Code 或 Codex。AI 会安装 alpacawork，随后初始设置界面会在浏览器中打开。
+把下面这段文字粘贴给你电脑上的 Claude Code 或 Codex。AI 会安装 alpacawork，并告诉你初始设置界面的 URL，通常它也会在浏览器中打开。
 
 ```text
 请下载下面的指南，完整阅读后，按其中的步骤在这台电脑上安装 alpacawork。
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-想用命令安装的话，在终端中依次执行以下两行。
+想用命令安装的话，在终端（在 Windows 上是 Ubuntu 中）依次执行以下两行。初始设置会列出要设置的内容，按 Enter 后开始。完成后，它会在 `打开：` 一行（终端为英文时是 `Open:`）中显示界面的 URL，通常也会在浏览器中打开它。
 
 ```sh
 npm install -g alpacawork
@@ -52,8 +52,9 @@ alpacawork setup
 ```
 
 - **运行要求**：macOS（Apple 芯片）、Linux（x64）或 Windows（在 WSL2 中）。需要一个已登录的 AI 智能体（例如 Claude Code 或 Codex），以及 Node.js 24.16 或更高版本（让 AI 安装时，如果缺少 Node.js，AI 会一并安装）。[完整的运行要求](docs/zh-CN/getting-started.md#运行要求)
-- **安装之后**：[发起第一个委托](docs/zh-CN/getting-started.md#2-发起第一个委托)。要从手机使用，需通过 Tailscale 等 VPN 连接到电脑（[在手机上使用](docs/zh-CN/getting-started.md#5-在手机上使用)）。
-- **停止和卸载**：[停止、更新或卸载](docs/zh-CN/getting-started.md#7-停止更新或卸载)
+- **打开界面**：如果浏览器没有打开，或在关闭浏览器、重启电脑后想再次打开界面，请看[打开界面](docs/zh-CN/getting-started.md#2-打开界面)。
+- **安装之后**：[发起第一个委托](docs/zh-CN/getting-started.md#3-发起第一个委托)。要从手机使用，需通过 Tailscale 等 VPN 连接到电脑（[在手机上使用](docs/zh-CN/getting-started.md#6-在手机上使用)）。
+- **停止和卸载**：[停止、更新或卸载](docs/zh-CN/getting-started.md#8-停止更新或卸载)
 
 ## 能做什么
 
@@ -68,14 +69,15 @@ alpacawork setup
 
 - **免费（MIT License）。** AI 的使用按你现有的 Claude Code、Codex 等套餐计费。
 - **在你的电脑上运行。** AI 在电脑上运行，所以使用 alpacawork 期间请保持电脑开机，并设置为不休眠。
-- **AI 智能体以与 Claude Code 的 `bypassPermissions`、Codex 的 `danger-full-access` 相同的免确认模式启动，运行中不会停下来询问。** 不希望 AI 做的事，或希望它先问你的事，可以写进[项目准则](docs/zh-CN/getting-started.md#4-写下给-ai-的约定)。
+- **AI 智能体以与 Claude Code 的 `bypassPermissions`、Codex 的 `danger-full-access` 相同的免确认模式启动，运行中不会停下来询问。** 不希望 AI 做的事，或希望它先问你的事，可以写进[项目准则](docs/zh-CN/getting-started.md#5-写下给-ai-的约定)。
 - **任务、对话和结果文件保存在你的电脑上。** alpacawork 不会把它们发送到开发者运营的任何外部服务器。给 AI 的指示，以及 AI 读取的内容，会发送给 AI 的提供商，与你直接使用各个 AI 智能体时相同（[数据处理的详细说明](docs/zh-CN/getting-started.md#保存了什么向外发送了什么)）。
 
 ## 文档
 
-- [入门指南](docs/zh-CN/getting-started.md)：从安装、第一个委托、在手机上使用，到更新和卸载
+- [入门指南](docs/zh-CN/getting-started.md)：从安装、打开界面、第一个委托、在手机上使用，到更新和卸载
 - [alpacawork 的设计理念](docs/zh-CN/concept.md)：一个委托如何推进，以及设计原则
-- [遇到问题时](docs/zh-CN/getting-started.md#遇到问题时)：无法正常使用时。如果发现 bug，请在 [Issues](https://github.com/alpacakit/alpacawork/issues) 中报告
+- [界面打不开时](docs/zh-CN/getting-started.md#界面打不开时)：浏览器无法连接时
+- [遇到问题时](docs/zh-CN/getting-started.md#遇到问题时)：其他无法正常使用的情况。如果发现 bug，请在 [Issues](https://github.com/alpacakit/alpacawork/issues) 中报告
 
 ## 许可证
 

@@ -1,22 +1,23 @@
 # 入门指南
 
-本指南带你从安装 alpacawork 一直到日常使用。按顺序完成第 1 到第 3 步，就能发起第一个委托、回答 AI 的提问并验收结果。第 4 步及之后的内容，需要时再读。
+本指南带你从安装 alpacawork 一直到日常使用。按顺序完成第 1 到第 4 步，就能打开界面、发起第一个委托、回答 AI 的提问并验收结果。第 5 步及之后的内容，需要时再读。
 
 **先试一试**
 
 1. [安装](#1-安装)
-2. [发起第一个委托](#2-发起第一个委托)
-3. [查看进度并回应](#3-查看进度并回应)
+2. [打开界面](#2-打开界面)（包括没有自动打开、之后再次打开的情况）
+3. [发起第一个委托](#3-发起第一个委托)
+4. [查看进度并回应](#4-查看进度并回应)
 
 **用于自己的工作**
 
-4. [写下给 AI 的约定](#4-写下给-ai-的约定)
-5. [在手机上使用](#5-在手机上使用)
-6. [在 Claude Code 或 Codex 中使用](#6-在-claude-code-或-codex-中使用)
+5. [写下给 AI 的约定](#5-写下给-ai-的约定)
+6. [在手机上使用](#6-在手机上使用)
+7. [在 Claude Code 或 Codex 中使用](#7-在-claude-code-或-codex-中使用)
 
 **日常维护**
 
-7. [停止、更新或卸载](#7-停止更新或卸载)
+8. [停止、更新或卸载](#8-停止更新或卸载)
 
 另见：[保存了什么，向外发送了什么](#保存了什么向外发送了什么)、[遇到问题时](#遇到问题时)。alpacawork 的工作方式和设计思路，见 [alpacawork 的设计理念](concept.md)。
 
@@ -24,15 +25,15 @@
 
 ## 1. 安装
 
-alpacawork 是供一个人在自己的电脑上使用的工具。要从手机等其他设备使用，需通过 VPN 连接（[在手机上使用](#5-在手机上使用)）。
+alpacawork 是供一个人在自己的电脑上使用的工具。要从手机等其他设备使用，需通过 VPN 连接（[在手机上使用](#6-在手机上使用)）。
 
-alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不请求确认。AI 能做的事，与你自己以完全权限运行它时相同。不希望它做的事，或希望它先问你的事，可以写进项目准则（[写法](#4-写下给-ai-的约定)）。
+alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不请求确认。AI 能做的事，与你自己以完全权限运行它时相同。不希望它做的事，或希望它先问你的事，可以写进项目准则（[写法](#5-写下给-ai-的约定)）。
 
 安装交给 AI 来做。
 
 1. **粘贴安装指示。** 复制 [README 的“安装”一节](https://github.com/alpacakit/alpacawork/blob/main/README.zh-CN.md#安装)中的那段文字，原样粘贴给你电脑上的 AI 智能体（例如 Claude Code 或 Codex）。
 2. **AI 进行安装。** 它会检查这台电脑能否运行 alpacawork，安装缺少的东西，然后启动 alpacawork。过程中不需要你执行命令或回答确认。如果你的 AI 智能体自己请求执行命令的权限，请允许。
-3. **初始设置界面会在浏览器中打开。** AI 也会告诉你它的 URL。重启电脑并登录后，同一个 URL 仍然可用。如果忘了 URL，可以问 AI，或在终端中执行 `alpacawork workspace url`。
+3. **AI 会告诉你初始设置界面的 URL。** 通常它也会在浏览器中打开。如果没有打开，或之后想再次打开，请看[打开界面](#2-打开界面)。
 
 初始设置界面分三步：要使用的 AI 智能体（以及是否发送[使用数据](telemetry.md)）、要安装的[技能](#技能)、你的第一个项目。每一步都附有说明，其中的所有内容之后都可以在设置中更改。
 
@@ -77,9 +78,37 @@ alpacawork 在 Ubuntu 中运行，界面则在 Windows 的浏览器中打开。�
 - **使用期间请保持一个 Ubuntu 窗口打开。** 从手机使用时也是如此。如果关闭所有 Ubuntu 窗口，Ubuntu 可能会停止，alpacawork 和正在工作的 AI 也会随之停止。
 - **重启 Windows 后，请从“开始”菜单打开 Ubuntu。** alpacawork 随后会自动启动，任务保持你离开时的样子。不需要重新安装。
 
-## 2. 发起第一个委托
+## 2. 打开界面
 
-还没有任务时，界面上会显示可以试用的委托示例。点击一个示例，它就会填入输入框，然后原样发送即可。每个示例展示一种不同的流程：使用不同模型的多个 AI 并行做出候选方案供你挑选；AI 先请你选定一个想法，再把它做出来；验收结果并将其标记为已完成。每个都是几分钟就能完成的简短练习。
+alpacawork 的界面是电脑上运行的 alpacawork 提供的网页，用浏览器打开。它的 URL 形如 `http://127.0.0.1:43127/`（把 `127.0.0.1` 换成 `localhost` 也能打开）。最后的数字在安装时决定，每台电脑都不同；关闭浏览器或重启电脑后也不会变。
+
+### 第一次打开
+
+初始设置完成后，你会得到界面的 URL：请 AI 安装时由 AI 告诉你；自己执行 `alpacawork setup` 时，在输出的 `打开：` 一行中（终端为英文时是 `Open:`）。通常它也会自动在浏览器中打开。如果浏览器没有打开（在 Windows 上可能不会打开，通过 SSH 连接安装时不会打开），把这个 URL 粘贴到浏览器的地址栏中打开。在 Windows 上，用 Windows 的浏览器打开。
+
+如果你是通过 SSH 连接到另一台电脑上安装的，这个 URL 只能在那台电脑的浏览器中打开。请在 SSH 会话中对那台电脑上的 AI 智能体说：“让 alpacawork 可以从其他设备使用”。AI 会通过 VPN 准备入口，并告诉你需要在自己这边安装什么（说明见[在手机上使用](#6-在手机上使用)）。然后在你面前的浏览器中打开它给你的 `https://` URL。
+
+### 之后再次打开
+
+- **关闭浏览器或重启电脑后**，打开同一个 URL 即可。重启后，先登录电脑（在 Windows 上，先打开 Ubuntu）。
+- **加入书签，或作为应用安装。** 在 Chrome 或 Edge 中，点击地址栏右端的“安装”（Edge 中是同一位置的图标）。之后就能从程序坞、任务栏或应用列表中，在独立窗口里打开 alpacawork。各浏览器的步骤见“设置（齿轮）→ 应用和手机 → 作为桌面应用使用”。
+- **忘了 URL 时**，在终端（在 Windows 上是 Ubuntu 窗口）中执行 `alpacawork workspace url`。alpacawork 正在运行时会显示 `"status":"serving"`。在这台电脑的浏览器中打开 `"localUrl"` 后面的 URL。从其他设备则打开 `"publicUrl"` 后面的 URL；在完成供其他设备使用的设置之前，它是 `null`（[在手机上使用](#6-在手机上使用)）。也可以问 Claude Code 或 Codex 等 AI 智能体：“告诉我 alpacawork 的 URL”。
+
+### 界面打不开时
+
+不知道 URL 时，请先看[之后再次打开](#之后再次打开)。
+
+alpacawork 会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。如果浏览器显示无法连接（例如“无法访问此网站”或 `ERR_CONNECTION_REFUSED`），或 `alpacawork workspace url` 以“Server not reached”失败，请先确认 alpacawork 是否在运行：按下面的步骤启动它，然后重新加载页面。如果不知道 URL，再执行一次 `alpacawork workspace url`。
+
+- **Windows**：从开始菜单打开 Ubuntu，并让这个窗口保持打开（[在 Windows 上使用](#在-windows-上使用)）。如果仍然打不开，在这个窗口中执行下面 Linux 的命令。
+- **Linux**：在终端中执行 `systemctl --user start alpacawork.service`。alpacawork 在你登录电脑期间运行。要在注销后也继续运行，请对 AI 智能体说：“让 alpacawork 在我注销后也继续运行”。
+- **macOS**：在终端中执行 `launchctl kickstart gui/$(id -u)/alpacawork.service`。如果你是按[停止 alpacawork](#停止-alpacawork) 中的步骤停止的，请改为执行 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`。
+
+如果仍然打不开，在终端中启动 AI 智能体（例如 Claude Code 或 Codex），调用 alpacawork 技能（[调用方法](#7-在-claude-code-或-codex-中使用)），把看到的错误粘贴给它并请它帮忙。
+
+## 3. 发起第一个委托
+
+第一次打开界面时，先完成初始设置界面的三个步骤（[安装](#1-安装)）。之后，还没有任务时，界面上会显示可以试用的委托示例。点击一个示例，它就会填入输入框，然后原样发送即可。每个示例展示一种不同的流程：使用不同模型的多个 AI 并行做出候选方案供你挑选；AI 先请你选定一个想法，再把它做出来；验收结果并将其标记为已完成。每个都是几分钟就能完成的简短练习。
 
 <img src="../images/welcome-phone.png" alt="手机上首次打开时的界面，列有三个可以马上试用的示例" width="320">
 
@@ -117,7 +146,7 @@ AI 还会读取该文件夹中的 `AGENTS.md` 和 `CLAUDE.md`（针对该文件�
 
 <img src="../images/input-badge-phone.png" alt="手机上的输入框，任务徽标、用于选择任务的“#”按钮，以及协调员的模型和推理强度选择器用红框标出" width="390">
 
-## 3. 查看进度并回应
+## 4. 查看进度并回应
 
 列表按状态分组显示你的任务。
 
@@ -158,7 +187,7 @@ AI 自己无法决定的事，会附上选项、理由和推荐来问你。选�
 
 <img src="../images/needs-attention-phone.png" alt="手机上打开的一个已停止的任务，显示停止的原因以及“重试”和“停止”按钮" width="320">
 
-## 4. 写下给 AI 的约定
+## 5. 写下给 AI 的约定
 
 在项目设置的“项目准则”中，用平常的句子写下 AI 可以自行决定什么、应该问你什么。写下的内容会传达给该项目中的每一位负责人。也可以在聊天中提出：“把…加进准则”。
 
@@ -185,7 +214,7 @@ AI 自己无法决定的事，会附上选项、理由和推荐来问你。选�
 
 可选的附加技能 majority 和 try-and-keep 在一个私有仓库中单独维护。已有的安装和项目准则中的选择仍然有效。访问权限和安装要求见 [Private add-ons](../../skills/alpacawork/references/setup.md#private-add-ons)（英文）。
 
-## 5. 在手机上使用
+## 6. 在手机上使用
 
 在手机上，打开的是运行在你电脑上的 alpacawork 的界面。AI 在电脑上运行，所以使用 alpacawork 期间请保持电脑开机，并设置为不休眠（笔记本电脑合上盖子就会停止）。
 
@@ -226,28 +255,24 @@ alpacawork 的界面没有登录。请只把你自己的设备接入 VPN。
 
 在 Android 上，如果已把 alpacawork 安装为应用（例如通过 Chrome），可以用分享按钮把图片发送到输入框。在 iPhone 上，复制截图后粘贴到输入框，或用输入框中的“+”选择图片。
 
-## 6. 在 Claude Code 或 Codex 中使用
+## 7. 在 Claude Code 或 Codex 中使用
 
 也可以不用 alpacawork 的界面，直接在平时的 Claude Code 或 Codex 对话中提出委托（只有这两种智能体的对话可以充当协调员）。在对话开头调用一次 alpacawork 技能（Claude Code 中是 `/alpacawork`，Codex 中是 `$alpacawork`）。此后这个对话就充当你的协调员：直接写下想做的事，或者写“告诉我现在的进展”即可。
 
 如果 Claude Code 中没有出现 `/alpacawork`，请对 Claude Code 说：“让 `~/.agents/skills/alpacawork` 可以作为 Claude Code 的技能使用”。
 
-## 7. 停止、更新或卸载
+## 8. 停止、更新或卸载
 
 ### 停止 AI 的工作
 
 打开任务，点击“更改状态”，选择“已停止”，再点击“更新”。该任务及其下级任务的工作都会停止。也可以在聊天中提出：“停止…任务”。
 
-### 停止或重新启动 alpacawork
+### 停止 alpacawork
 
-alpacawork 的服务器会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。要手动停止或启动，请在终端中执行以下命令。
+要停止 alpacawork 的服务器，请在终端中执行以下命令。下次登录电脑时（在 Windows 上，是打开 Ubuntu 时），或按[界面打不开时](#界面打不开时)中的步骤启动后，它会再次运行。
 
-- Linux、WSL2
-  - 停止：`systemctl --user stop alpacawork.service`
-  - 启动：`systemctl --user start alpacawork.service`
-- macOS
-  - 停止：`launchctl bootout gui/$(id -u)/alpacawork.service`
-  - 启动：`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`
+- Linux、WSL2：`systemctl --user stop alpacawork.service`
+- macOS：`launchctl bootout gui/$(id -u)/alpacawork.service`
 
 停止服务器并不会停止 AI 正在进行的工作。要停止工作，请先按上文所述把任务设为“已停止”。
 
@@ -288,7 +313,7 @@ npm uninstall -g alpacawork
 想知道怎么用、怎么修，最快的办法是问 AI。它可以读取 alpacawork 技能中有关配置、更新和恢复的步骤。
 
 - **界面能打开时**：直接在聊天中问，例如“预约表单的任务为什么不动了？”或“把 Codex 也配置好。”
-- **界面打不开时**：在 Windows 上，先打开 Ubuntu，再重新打开界面（[在 Windows 上使用](#在-windows-上使用)）。如果仍然打不开，在终端中启动 AI 智能体（例如 Claude Code 或 Codex），调用 alpacawork 技能（[调用方法](#6-在-claude-code-或-codex-中使用)），把看到的错误粘贴给它并请它帮忙。
+- **界面打不开时**：请看[界面打不开时](#界面打不开时)。不知道 URL 时，见[之后再次打开](#之后再次打开)。
 
 不要为了从头再来而自行删除数据文件夹（`~/alpacawork`）或记录文件，否则可能丢失数据。
 
