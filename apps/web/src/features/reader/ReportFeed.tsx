@@ -19,7 +19,7 @@ import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
-import { emptyHistory } from "@/domain/empty-history";
+import { beforeWork } from "@/domain/before-work";
 import { resultLine } from "@/domain/report-labels";
 import { causeReason } from "@/domain/run-labels";
 import { RegionSkeleton } from "@/components/ui/skeleton";
@@ -43,7 +43,7 @@ import { isMedia } from "@/domain/task-files";
 import { sameCalendarDay } from "@/domain/time";
 import { dayClock, dayClockLabel, dayHeading } from "@/domain/day-clock";
 import { useToday } from "@/state/clock";
-import { agentModelName, modelLabel, peopleAgentNames, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
+import { agentModelName, modelLabel, peopleAgentNames, placementAgentLabel, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
 import { useActivityText, useDuration } from "@/features/people/labels";
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { sameForFeed } from "@/domain/people";
@@ -479,6 +479,7 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
       <FeedWords.Provider value={words}><FeedAgents taskId={task.id} historyNames={agentNames}><FeedTask.Provider value={task}><Today.Provider value={today}><ol ref={feedList} className="m-0 ml-2 flex list-none flex-col border-l border-rule p-0 [--gutter:--spacing(4)] [--rail:-1px]">
       <QuestionsBar task={task} />
       <WorkingRow task={task} onFollow={onFollow} />
+      <AssignedRow task={task} />
       {(partial ? firstScreen(days) : days).map(day => <li key={day.key} data-day={day.key} className="relative">
         <DayHead at={day.at} motionKey={`day:${day.key}`} />
         <ol className="isolate m-0 flex list-none flex-col p-0"><DayBase.Provider value={day.at}>{day.rows.map(row => {
@@ -1150,16 +1151,39 @@ const headEnd = (open: boolean, least: string) => open ? "pb-3 narrow:min-h-11" 
 
 
 /**
- * A History with no record yet says where the task stands and what makes it move (empty-history), in place of a blank
- * column. It gives way to the working row, which says that already (a Run can be at work before its request is read).
+ * A History with no record yet, of a task no AI owns, says it waits for one and what brings one (before-work), in place
+ * of a blank column.
  */
 function EmptyHistoryNote({ task, owned }: { task: TaskDetail; owned: boolean }) {
   const { t } = useTranslation("reader");
   const { runs, work } = useContext(WorkingView)!;
-  const empty = emptyHistory(task, owned);
-  if (!empty || runs.length || work.length) return null;
-  return <Message data-empty-history={empty} tone="empty" icon="history" live
-    title={t(`reportFeed.empty.${empty}.title`)} description={t(`reportFeed.empty.${empty}.next`)} />;
+  if (beforeWork(task, owned) !== "unassigned" || runs.length || work.length) return null;
+  return <Message data-empty-history="unassigned" tone="empty" icon="history" live
+    title={t("reportFeed.empty.unassigned.title")} description={t("reportFeed.empty.unassigned.next")} />;
+}
+
+/**
+ * A task not started whose AI owner is placed shows that owner at work, as the working row shows a Run at work, from
+ * the time it was placed: until its Run starts (no request yet, or one waiting for its turn) and the working row takes over.
+ */
+function AssignedRow({ task }: { task: TaskDetail }) {
+  const { t } = useTranslation("reader");
+  const { runs } = useContext(WorkingView)!;
+  const people = useTaskPeople();
+  const names = useContext(AgentNames);
+  const duration = useDuration();
+  const owner = people ? crewOf(task.id, people).responsible : null;
+  if (!people || !owner || runs.length || beforeWork(task, true) !== "assigned") return null;
+  // Before its first Run the owner has no effort yet: it is named alone, not "not started" beside "at work".
+  const model = modelLabel(people.runsByPlacement.get(owner.id)?.length ? placementAgentLabel(owner, people) : owner.profileKey, names);
+  return <li data-assigned-row data-motion-key="working" className="relative pl-(--gutter)"><div className="border-b border-rule py-1">
+    <div className={`${RECORD_HEAD} items-baseline !py-1.5`}>
+      <RailTime mark={WORKING_MARK} live>{duration(owner.startedAt)}</RailTime>
+      <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft">
+        <span className="font-medium">{t("reportFeed.row.party.self")}</span>
+        <AgentLabel label={model} /><span>{t("reportFeed.row.working")}</span></span>
+    </div>
+  </div></li>;
 }
 
 /** A single entry point into the existing navigation/acquisition effect. Server membership owns question state: this Task's own questions to you. */

@@ -312,13 +312,9 @@
     },
     "copy": "Copiar",
     "empty": {
-      "idle": {
-        "next": "Envía desde el cuadro de texto lo que quieres que se haga en esta tarea y el trabajo empieza.",
-        "title": "La IA responsable espera una solicitud"
-      },
-      "unowned": {
-        "next": "Envía desde el cuadro de texto lo que quieres que se haga en esta tarea; se asigna una IA responsable y empieza el trabajo.",
-        "title": "Aún no hay una IA responsable"
+      "unassigned": {
+        "next": "Envía desde el cuadro de texto lo que quieres que se haga en esta tarea; se asigna una IA y empieza el trabajo.",
+        "title": "Esperando a que se asigne una IA"
       }
     },
     "goAnswer": "Responder",
