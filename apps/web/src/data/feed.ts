@@ -296,6 +296,32 @@ export function useWorkspace() {
     };
     useConnection.setState({ reconnect: () => setAttempt((value) => value + 1), refresh });
   }, [queryClient]);
+  useEffect(() => {
+    // A read scope cut while the feed stays live (a held read let go, a checkpoint handed over) is read again here:
+    // the list goes on by patches, but no server fact is current until the index is read again, so the reader would
+    // keep drawing the view it had (a Run that ended still at work). A patch can overtake a read and leave the scope
+    // cut, so it is read again after the feed's own retry delays for as long as the scope stays cut and the feed live.
+    let stopped = false, reading = false, tries = 0, session: object | undefined, era = -1;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const read = () => {
+      timer = undefined; reading = true;
+      void recoverReads(queryClient).catch(() => {}).finally(() => { reading = false; anchor(); });
+    };
+    const anchor = () => {
+      const scope = readScope(queryClient);
+      if (stopped || reading || scope?.anchored !== false || useConnection.getState().state !== "live") return;
+      // A new cut is read at once, whatever wait an earlier one left. A new server generation starts its eras again,
+      // so a cut is known by both.
+      if (scope.session !== session || scope.era !== era) { session = scope.session; era = scope.era; tries = 0; clearTimeout(timer); timer = undefined; }
+      if (timer) return;
+      if (tries === 0) read();
+      else timer = setTimeout(read, retryDelays[tries - 1] ?? 30000);
+      tries++;
+    };
+    const stopReads = queryClient.getQueryCache().subscribe((event) => { if (event.query.queryKey[0] === "index") anchor(); });
+    const stopConnection = useConnection.subscribe(anchor);
+    return () => { stopped = true; clearTimeout(timer); stopReads(); stopConnection(); };
+  }, [queryClient]);
   return {
     ...query,
     lastReceivedAt,
