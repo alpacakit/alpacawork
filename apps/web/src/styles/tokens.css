@@ -71,6 +71,9 @@
   --layer-coordinator-input: 26;
   --layer-card: 30;
   --layer-edit-surface: 50;
+  /* The getting-started guide's balloon and the ring round the part it points at: over the page and what is edited
+     in it (the row over the input stands there), under a dialog, which puts it away. */
+  --layer-guide: 55;
   --layer-dialog: 60;
   --layer-progress: 65;
   --layer-popover: 70;

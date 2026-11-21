@@ -137,10 +137,10 @@ export function GuideBalloon() {
   }, [part, entry?.id, entry?.side, entry?.align]);
   if (!entry || !part) return null;
   return createPortal(<>
-    {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-[calc(var(--layer-edit-surface)+1)] rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"
+    {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-(--layer-guide) rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"
       style={{ left: placed.target.left, top: placed.target.top, width: placed.target.width, height: placed.target.height }} />}
     <div ref={balloon} data-guide-balloon={entry.id} data-guide-side={placed?.side}
-      className={cn("pointer-events-none fixed z-[calc(var(--layer-edit-surface)+1)] w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
+      className={cn("pointer-events-none fixed z-(--layer-guide) w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
       style={placed ? { left: placed.x, top: placed.y } : { left: 0, top: 0 }}>
       <BalloonBody entry={entry} placed={placed} />
     </div>
@@ -185,7 +185,7 @@ function BalloonHead({ step }: { step: GuideEntry["step"] }) {
       const now = at === step, done = step === null || at < step;
       return <li key={at} aria-current={now ? "step" : undefined} className={cn("flex items-center gap-1.5", now ? "font-semibold" : "opacity-65")}>
         {at > 1 && <span aria-hidden="true" className="opacity-60">›</span>}
-        <span aria-hidden="true" className={cn("flex size-4 items-center justify-center rounded-full text-[0.625rem] tabular-nums", now ? "bg-bg text-ink" : "border border-bg/50")}>
+        <span aria-hidden="true" className={cn("flex size-4 items-center justify-center rounded-full text-micro tabular-nums", now ? "bg-bg text-ink" : "border border-bg/50")}>
           {done ? <Icon name="check" className="size-2.5" /> : at}</span>
         {done && <span className="sr-only">{t("guide.stepDone")}</span>}{STEPS[at].title(tt)}
       </li>;
