@@ -1165,15 +1165,16 @@ function EmptyHistoryNote({ task, owned }: { task: TaskDetail; owned: boolean })
 /**
  * A task not started whose AI owner is placed shows that owner at work, as the working row shows a Run at work, from
  * the time it was placed: until its Run starts (no request yet, or one waiting for its turn) and the working row takes over.
+ * Work going on below is the working row's to say; a task waiting for others to finish first says so in its own row.
  */
 function AssignedRow({ task }: { task: TaskDetail }) {
   const { t } = useTranslation("reader");
-  const { runs } = useContext(WorkingView)!;
+  const { runs, work } = useContext(WorkingView)!;
   const people = useTaskPeople();
   const names = useContext(AgentNames);
   const duration = useDuration();
   const owner = people ? crewOf(task.id, people).responsible : null;
-  if (!people || !owner || runs.length || beforeWork(task, true) !== "assigned") return null;
+  if (!people || !owner || runs.length || work.length || beforeWork(task, true) !== "assigned") return null;
   // Before its first Run the owner has no effort yet: it is named alone, not "not started" beside "at work".
   const model = modelLabel(people.runsByPlacement.get(owner.id)?.length ? placementAgentLabel(owner, people) : owner.profileKey, names);
   return <li data-assigned-row data-motion-key="working" className="relative pl-(--gutter)"><div className="border-b border-rule py-1">
