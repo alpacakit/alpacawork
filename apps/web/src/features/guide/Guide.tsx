@@ -7,16 +7,21 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
 import { useDialogStore } from "@/state/dialog-store";
+import { notify } from "@/lib/notify";
 import { closeGuide, putAway, type GoingStage } from "./guide-state";
 import { PARTS, STEPS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 const STEP_NUMBERS = [1, 2, 3] as const;
 
-/** The guide's close mark (×): it ends the guide on this browser; settings can show it again. */
+/** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again. */
 function CloseGuide({ className }: { className?: string }) {
   const { t } = useTranslation("tree");
-  return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={closeGuide}
+  const close = () => {
+    closeGuide();
+    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), guide: t("panels:settings.personal.guide") }), { id: "guide-closed" });
+  };
+  return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
     className={cn("flex-none narrow:size-11 narrow:min-h-11", className)}>
     <Icon name="close" className="size-4" />
   </Button>;
@@ -64,29 +69,30 @@ const ACROSS: Record<GuideSide, GuideSide[]> = { top: ["right", "left"], bottom:
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), Math.max(low, high));
 
 /**
- * Where a balloon of `size` stands by `target` in a view of `view`: on the side asked for if it fits there, else the
- * opposite one, else either side across; lined up with the target as `align` says, kept inside the view whatever
- * happens, its arrow on the target's middle.
+ * Where a balloon of `size` stands in a view of `view`, pointing at `target`: outside `by` (the target itself, or a
+ * part holding it that the balloon stands clear of), on the side asked for if it fits there, else the opposite one,
+ * else either side across; lined up with the target as `align` says, kept inside the view whatever happens, its arrow
+ * on the target's middle.
  */
 export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
-  align: GuideAlign = "middle"): Placed {
+  align: GuideAlign = "middle", by: Box = target): Placed {
   const room: Record<GuideSide, boolean> = {
-    top: target.top - GAP - size.height >= MARGIN,
-    bottom: target.top + target.height + GAP + size.height <= view.height - MARGIN,
-    left: target.left - GAP - size.width >= MARGIN,
-    right: target.left + target.width + GAP + size.width <= view.width - MARGIN,
+    top: by.top - GAP - size.height >= MARGIN,
+    bottom: by.top + by.height + GAP + size.height <= view.height - MARGIN,
+    left: by.left - GAP - size.width >= MARGIN,
+    right: by.left + by.width + GAP + size.width <= view.width - MARGIN,
   };
   const side = [asked, OPPOSITE[asked], ...ACROSS[asked]].find(each => room[each]) ?? asked;
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
   if (side === "top" || side === "bottom") {
     const along = align === "start" ? target.left : align === "end" ? target.left + target.width - size.width : middleX - size.width / 2;
     const x = clamp(along, MARGIN, view.width - size.width - MARGIN);
-    const y = clamp(side === "top" ? target.top - GAP - size.height : target.top + target.height + GAP, MARGIN, view.height - size.height - MARGIN);
+    const y = clamp(side === "top" ? by.top - GAP - size.height : by.top + by.height + GAP, MARGIN, view.height - size.height - MARGIN);
     return { target, x, y, side, arrow: clamp(middleX - x, ARROW_ROOM, size.width - ARROW_ROOM) };
   }
   const down = align === "start" ? target.top : align === "end" ? target.top + target.height - size.height : middleY - size.height / 2;
   const y = clamp(down, MARGIN, view.height - size.height - MARGIN);
-  const x = clamp(side === "left" ? target.left - GAP - size.width : target.left + target.width + GAP, MARGIN, view.width - size.width - MARGIN);
+  const x = clamp(side === "left" ? by.left - GAP - size.width : by.left + by.width + GAP, MARGIN, view.width - size.width - MARGIN);
   return { target, x, y, side, arrow: clamp(middleY - y, ARROW_ROOM, size.height - ARROW_ROOM) };
 }
 
@@ -104,6 +110,14 @@ function shownPart(selector: string): Box | null {
     const front = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
     if (!front || !element.contains(front)) continue;
     return { left: box.left, top: box.top, width: box.width, height: box.height };
+  }
+  return null;
+}
+/** The box of the first element marked as `selector` that is laid out: a part stood clear of, seen or not at its middle. */
+function boxOf(selector: string): Box | null {
+  for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+    const box = element.getBoundingClientRect();
+    if (box.width >= 4 && box.height >= 4) return { left: box.left, top: box.top, width: box.width, height: box.height };
   }
   return null;
 }
@@ -129,6 +143,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
   useGuideStage(stage, entry);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
+  const clear = entry?.clear ? PARTS[entry.clear] : null;
   const balloon = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
   useLayoutEffect(() => {
@@ -139,7 +154,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const update = () => {
       const target = shownPart(part);
       const own = balloon.current?.getBoundingClientRect();
-      const next = target && own ? placeBalloon(target, { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align) : null;
+      const next = target && own ? placeBalloon(target, { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align,
+        clear ? boxOf(clear) ?? target : target) : null;
       if (!same(last, next)) { last = next; setPlaced(next); }
     };
     update();
@@ -149,7 +165,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     addEventListener("resize", update);
     addEventListener("scroll", update, true);
     return () => { clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true); };
-  }, [part, entry?.id, entry?.side, entry?.align]);
+  }, [part, clear, entry?.id, entry?.side, entry?.align]);
   if (!entry || !part) return null;
   return createPortal(<>
     {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-(--layer-guide) rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"

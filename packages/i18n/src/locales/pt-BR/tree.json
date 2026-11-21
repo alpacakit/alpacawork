@@ -1,11 +1,12 @@
 {
   "guide": {
     "close": "Fechar o guia",
+    "closed": "O guia foi fechado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
     "name": "Primeiros passos",
     "next": "Entendi",
     "progress": "{{step}}/3",
     "say": {
-      "accept": "Leia o relatório e, se houver algo feito, abra em “{{files}}” para conferir. Se estiver bom, toque neste botão ({{finish}}).",
+      "accept": "Leia o relatório e, se houver algo feito, abra em “{{files}}” para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
       "answered": "Sua resposta foi enviada. Leva um momento para chegar à IA que trabalha na tarefa.",
@@ -17,7 +18,7 @@
       "send": "Escreva aqui o que você quer que seja feito e envie. Ou escolha um dos exemplos acima.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie. Isso vira uma tarefa na lista.",
       "sendReady": "Já está na caixa. Envie com este botão.",
-      "working": "Esta linha é a tarefa do seu pedido, e a IA está trabalhando nela. Quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
+      "working": "Esta linha é a tarefa do seu pedido. Daqui em diante a IA cuida dela e, quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
     },
     "stepDone": "Feito:",
     "steps": {
@@ -161,7 +162,7 @@
       "folder": {
         "label": "Ler esta pasta e sugerir o que delegar em seguida",
         "shows": "Resume o que há no local do código e pergunta por qual trabalho começar. Ao escolher, você recebe um relatório de como fazê-lo. Não altera nada.",
-        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há no local do código {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como). Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
+        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há no local do código {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como) e termine com uma linha sobre como pedir que ele seja feito. Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
       },
       "models": {
         "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",

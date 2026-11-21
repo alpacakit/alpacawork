@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { PARTS, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { coordinatorFacts } from "../src/features/guide/use-guide";
+import { placeBalloon } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
@@ -80,4 +81,16 @@ test("an answer is with the coordinator only when a message carries one to a que
 
 test("shown again, a request sent while nothing is listed for it yet is received, not to be written again", () => {
   expect(shown({ tasks: 4, sent: true, busy: true })).toBe("received");
+});
+
+test("a balloon told to stand clear of the box its part is in stands outside that box, its arrow still on the part", () => {
+  const send = { left: 940, top: 846, width: 32, height: 32 }, foot = { left: 380, top: 655, width: 600, height: 235 };
+  const size = { width: 496, height: 68 };
+  const placed = placeBalloon(send, size, { width: 1360, height: 900 }, "top", "end", foot);
+  expect(placed.y + size.height).toBeLessThanOrEqual(foot.top);
+  expect(placed.x + placed.arrow).toBe(send.left + send.width / 2);
+  const choices = { left: 887, top: 424, width: 432, height: 404 }, detail = { left: 832, top: 12, width: 516, height: 876 };
+  const beside = placeBalloon(choices, size, { width: 1360, height: 900 }, "left", "start", detail);
+  expect(beside.x + size.width).toBeLessThanOrEqual(detail.left);
+  expect(beside.y).toBe(choices.top);
 });

@@ -1,11 +1,12 @@
 {
   "guide": {
     "close": "Close the guide",
+    "closed": "The guide is closed. You can show it again from {{settings}}, under “{{guide}}”.",
     "name": "Getting started",
     "next": "Got it",
     "progress": "{{step}}/3",
     "say": {
-      "accept": "Read the report, and open what was made from “{{files}}” to check it. If it is good, press this button ({{finish}}).",
+      "accept": "Read the report, and open what was made from “{{files}}” to check it. If it is good, press this button ({{finish}}) and the task is finished.",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
       "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
@@ -17,7 +18,7 @@
       "send": "Write what you want done here and send it. Or pick one of the examples above.",
       "sendAgain": "Write what you want done here and send it. It becomes a task in the list.",
       "sendReady": "It's in the box. Send it with this button.",
-      "working": "This row is the task for your request, and AI is working on it. When a question or a report comes for you, it moves to “{{section}}”."
+      "working": "This row is the task for your request. AI takes it from here, and when a question or a report comes for you, it moves to “{{section}}”."
     },
     "stepDone": "Done:",
     "steps": {
@@ -153,7 +154,7 @@
       "folder": {
         "label": "Read this folder and suggest what to hand off next",
         "shows": "Sums up what is in the working folder and asks you which piece of work to start with. Choose one and you get a report on how to do it. Changes nothing.",
-        "words": "Make this a task and hand it to an AI. Read what is in the working folder {{path}} and sum up in three lines what the project is. Then suggest three pieces of work I could hand off next and ask me which to start with. When I choose, put how to do that work (which files to change and how) in a report. Do not change any files as part of this request. This is a trial run, so keep the effort light. Please write everything in English."
+        "words": "Make this a task and hand it to an AI. Read what is in the working folder {{path}} and sum up in three lines what the project is. Then suggest three pieces of work I could hand off next and ask me which to start with. When I choose, put how to do that work (which files to change and how) in a report, and end it with one line on how to ask for that work to be done. Do not change any files as part of this request. This is a trial run, so keep the effort light. Please write everything in English."
       },
       "models": {
         "label": "Have 3 models build a snake game, then compare",

@@ -11,6 +11,7 @@ import type { GuideStage } from "./guide-state";
  * - `when`: the facts under which it holds; the first entry from the top that holds is the one shown;
  * - `part`, `side` and `align`: the part it points at (a name from PARTS), the side of that part its balloon stands on,
  *   and where along that side (middle unless said); without a part it has no balloon (the welcome's steps say it);
+ * - `clear`: a part holding the one pointed at, whose whole the balloon stands clear of (what is read there stays read);
  * - `step`: which of the three STEPS it belongs to (1 send, 2 AI works, 3 your turn), shown in every balloon's head
  *   and as the welcome's current step; null for a step past the three;
  * - `next`: it waits for "Got it" before the guide goes on (put away once read);
@@ -25,6 +26,8 @@ import type { GuideStage } from "./guide-state";
 export const PARTS = {
   /** The box at the foot where requests are written: folded to one line, or open. */
   input: "[data-coordinator-capsule], [data-composer-frame]",
+  /** The whole foot that box stands in, with the row of buttons over it. */
+  foot: "[data-coordinator-card]",
   /** Its send button, while there is something to send. */
   send: "[data-ask-send]:not(:disabled)",
   /**
@@ -38,6 +41,8 @@ export const PARTS = {
   questionRow: '[data-row-turn="question"]',
   /** A list row awaiting the person for anything else: a report, mostly. */
   resultRow: '[data-row-turn="result"]',
+  /** The detail beside the list, where an open Task is read. */
+  detail: "aside[data-reader-mode]",
   /** An open question's choices, in the detail. */
   choices: '[data-guide-part="answer-choices"]',
   /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
@@ -88,6 +93,7 @@ export type GuideEntry = {
   id: string;
   when: (facts: GuideFacts) => boolean;
   part?: GuidePart;
+  clear?: GuidePart;
   side?: GuideSide;
   align?: GuideAlign;
   step: 1 | 2 | 3 | null;
@@ -108,11 +114,11 @@ const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 
 export const GUIDE: readonly GuideEntry[] = [
   // The person's turn, from the most immediate: an answer ready to send, one sent and on its way, then what is open.
-  { id: "answer-ready", step: 3, part: "send", side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
+  { id: "answer-ready", step: 3, part: "send", clear: "foot", side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
     say: t => t("tree:guide.say.answerReady") },
   { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.answered,
     say: t => t("tree:guide.say.answered") },
-  { id: "answer", step: 3, part: "choices", side: "top", when: f => f.open === "question",
+  { id: "answer", step: 3, part: "choices", clear: "detail", side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   { id: "accept", step: 3, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },
@@ -132,7 +138,7 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "end", align: "end", step: null, part: "input", side: "top", next: true, when: f => f.stage.stage === "turn" && !f.seen.has("end"),
     say: t => t("tree:guide.say.end") },
   // After the end: where another repository is taken on.
-  { id: "another-repository", step: null, part: "project", side: "bottom", align: "start", next: true,
+  { id: "another-repository", step: null, part: "project", side: "right", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   // Before any turn, on a phone's welcome, its steps say it all, words in the input or not: a balloon there would stand
@@ -140,7 +146,7 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "send-welcome-narrow", step: 1, when: f => f.stage.stage === "started" && f.welcome && f.narrow,
     say: t => t("tree:guide.say.send") },
   // ...elsewhere, words in the input wait to be sent...
-  { id: "send-ready", step: 1, part: "send", side: "top", when: f => f.stage.stage === "started" && f.drafting,
+  { id: "send-ready", step: 1, part: "send", clear: "foot", side: "top", align: "end", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
   // ...or a request is to be written, from the empty welcome with its examples above...
   { id: "send", align: "end", step: 1, part: "input", side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
