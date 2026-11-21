@@ -294,6 +294,9 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
         for (const file of splitAttachments(description, folder).files) if (file.media)
           media.push({ kind: "file", occurrence: occurrence++, path: file.path, alt: file.name });
       }
+      // A coordinator answer's kept copies stand for the local files it links to, as its body draws them.
+      const published = !key.endsWith(":note") && each.answerFiles
+        ? answerBodyFiles({ id: each.answerFiles.requestId, answerFiles: each.answerFiles.files }) : undefined;
       for (const medium of media) {
         const id = markdownMediumId(key, medium);
         if (medium.kind !== "file") {
@@ -301,6 +304,11 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
           continue;
         }
         const { path, alt } = medium;
+        const copy = published?.find(file => file.path === path);
+        if (copy) {
+          if (copy.src && isMedia(copy.name)) images.push({ id, reportKey: key, path, alt, src: copy.src });
+          continue;
+        }
         const embed = reportEmbed(path);
         if (!embed || !inGallery(embed.kind)) continue;
         const safe = embed.path;

@@ -148,7 +148,7 @@ export type Dialogue = { taskId: string; messageId: string; at: string; words: s
 export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 'id' | 'meta'>[]): Dialogue[] {
   const ids = JSON.stringify(tasks.map(task => task.id));
   const screen = db.prepare(`SELECT k.external_id AS task_id,q.id AS message_id,q.submitted_at AS at,q.body AS words,
-      a.result AS answer,a.request_id AS kept_by,CASE WHEN c.cleared_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
+      a.result AS answer,a.request_id AS kept_by,CASE WHEN c.id IS NOT NULL AND c.cleared_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
     FROM task_dialogues d JOIN tasks k ON k.id=d.task_uuid JOIN requests q ON q.id=d.request_id
     LEFT JOIN runs a ON a.id=(SELECT coalesce(CAST(substr(r.into_id,2) AS INTEGER),r.id) FROM runs r WHERE r.request_id=q.id)
       AND a.state='succeeded' AND a.result_state='present'
