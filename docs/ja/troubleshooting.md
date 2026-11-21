@@ -59,7 +59,14 @@ Node.js を更新したあとから起動しないときは、`alpacawork setup`
 
 「設定（歯車）→ サーバー」の「エージェント」に状態が出ます。
 
-- 「サインインが必要」: 出ているコマンド（`claude auth login`、`codex login`、`gh auth login`）をターミナルで実行します。
+- 「サインインが必要」: ターミナルでサインインのコマンドを実行します。
+
+  | AI エージェント | コマンド |
+  | --- | --- |
+  | Claude Code | `claude auth login` |
+  | Codex | `codex login` |
+  | GitHub Copilot | `gh auth login` |
+
 - 「見つかりません」: 入れていなければ入れます。入れてあるなら、カードの「実行ファイル」で場所を指定します。
 - 「有効な AI がありません」: 使う AI を有効にします。
 

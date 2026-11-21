@@ -12,7 +12,16 @@ alpacawork、Node.js、AI エージェントは、WSL2 の Ubuntu の中に入�
 
 画面は Windows のブラウザで開きます。alpacawork は Ubuntu が動いている間だけ動きます。Ubuntu のウィンドウをすべて閉じると止まることがあるので、使っている間は1つ開いたままにします。Windows を再起動したら、スタートメニューから Ubuntu を開くと、alpacawork も起動します。
 
-systemd が無効と言われたときは、Ubuntu の `/etc/wsl.conf` に `[boot]` と `systemd=true` の2行を足し、PowerShell で `wsl --shutdown` を実行してから Ubuntu を開き直します。
+systemd が無効と言われたときは、次の順に有効にします。
+
+1. Ubuntu で `/etc/wsl.conf` に次の2行を足します（`sudo` が要ります）。
+
+   ```ini
+   [boot]
+   systemd=true
+   ```
+
+2. PowerShell で `wsl --shutdown` を実行し、Ubuntu を開き直します。
 
 ## SSH でつないだ PC に入れたとき
 
@@ -22,8 +31,12 @@ systemd が無効と言われたときは、Ubuntu の `/etc/wsl.conf` に `[boo
 
 alpacawork は PC にログインすると自動で起動します。自分で操作するときは、ターミナルで次を実行します。
 
-- Linux・WSL2: `systemctl --user stop alpacawork.service`（`start`、`restart`、`status` も同じ形）
-- macOS: 止める `launchctl bootout gui/$(id -u)/alpacawork.service`、止めたあとに起動する `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`、再起動する `launchctl kickstart -k gui/$(id -u)/alpacawork.service`
+| すること | Linux・WSL2 | macOS |
+| --- | --- | --- |
+| 止める | `systemctl --user stop alpacawork.service` | `launchctl bootout gui/$(id -u)/alpacawork.service` |
+| 止めたあとに起動する | `systemctl --user start alpacawork.service` | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist` |
+| 再起動する | `systemctl --user restart alpacawork.service` | `launchctl kickstart -k gui/$(id -u)/alpacawork.service` |
+| 動いているか見る | `systemctl --user status alpacawork.service` | `launchctl print gui/$(id -u)/alpacawork.service` |
 
 サーバーを止めても、動いている AI の作業は止まりません。作業を止めるときは、タスクを [中止](guide.md#保留中止) します。
 
