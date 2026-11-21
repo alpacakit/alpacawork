@@ -151,7 +151,10 @@ async function runPreview() {
   const folder = join(marker.home, '.agents/skills', offer.name); mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, 'SKILL.md'), '---\\nname: ' + offer.name + '\\ndescription: Synthetic preview placeholder\\n---\\n# Synthetic preview skill\\nThis disposable file demonstrates installation. It contains no real skill instructions.\\n');
   `, { mode: 0o700 });
-    if (values.check) writeFileSync(join(bin, 'xdg-open'), `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(join(root, 'opened-url'))},process.argv[2]);\n`, { mode: 0o700 });
+    if (values.check) {
+      writeFileSync(join(bin, 'xdg-open'), `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(join(root, 'opened-url'))},process.argv[2]);\n`, { mode: 0o700 });
+      env.DISPLAY ??= ':0'; // Setup starts xdg-open only on a desktop; the stand-in records the URL instead.
+    }
     else if (existsSync('/usr/bin/xdg-open')) symlinkSync('/usr/bin/xdg-open', join(bin, 'xdg-open'));
     const artifact = join(root, 'distribution');
     assembleFixtureDistribution(repo, join(root, 'build'), artifact, undefined, built => {

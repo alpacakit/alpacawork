@@ -12,12 +12,12 @@ import { Command, CommanderError } from 'commander';
 import {
   cliCommands, cliCommandWords, cliGroups, cliWriteHelp, taskFileRoute, type CliCommand, type CliOption,
 } from '@alpacawork/contract/cli-commands';
-import { CLI_EXIT_CODE, defaultPolicy, failureExitCode } from '@alpacawork/cli-kit';
+import { CLI_EXIT_CODE, defaultPolicy, failureExitCode, openBrowser } from '@alpacawork/cli-kit';
 import { DEFAULT_SERVER_ORIGIN } from '@alpacawork/contract/default-server';
 import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { operationId, writeAttempt } from './write-attempt.js';
 import { actorHeaders, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
-import { saveServer, selectServer, unsetServer } from './endpoint.js';
+import { saveServer, selectServer, unsetServer, verifyServer } from './endpoint.js';
 import { MAX_FILE_BYTES } from '@alpacawork/contract';
 import { stopLocal } from '@alpacawork/contract/local-stop';
 import { findDiffCommands } from '@alpacawork/contract/report-diff';
@@ -260,7 +260,7 @@ const serverOrderHelp = 'Selection order: --server, ALPACAWORK_SERVER, client.js
 async function runMain(args: string[], installedServer?: string): Promise<number> {
   const program = new Command().name('alpacawork').description('Task tree and agent runs over HTTP')
     .exitOverride().allowExcessArguments(false).enablePositionalOptions()
-    .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
+    .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork telemetry      This PC\'s usage reporting: status, show or off\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
   program.option('--server <url>', 'Use this server for one command (overrides environment and saved server)');
   const selectedServer = () => selectServer(program.opts().server as string | undefined, process.env, installedServer);
   // Local removal delegates to the backend, which owns installation records and deletion policy.
@@ -285,6 +285,24 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     .addHelpText('after', accessHelp('server.unset'))
     .action(async () => {
       process.stdout.write(JSON.stringify(await unsetServer(process.env)) + '\n');
+    });
+  program.command('open').description('Open the screen of the selected server in this PC\'s browser')
+    .addHelpText('after', accessHelp('open') + '\nOn WSL it opens the Windows default browser. Where no browser can be opened here (over SSH, or ' +
+      'without a desktop), it prints the URL and what to do instead.\n' + serverOrderHelp)
+    .action(async () => {
+      const { server } = await selectedServer();
+      await verifyServer(server);
+      const url = new URL(server), outcome = await openBrowser(url.href, process.env);
+      if (outcome === 'opened') { process.stdout.write(`Opened ${url.href} in the browser.\n`); return; }
+      const urlSpec = cliCommands.find(spec => spec.group === 'workspace' && spec.name === 'url')!;
+      const published = (await execute(urlSpec, {}, server) as { publicUrl: string | null }).publicUrl;
+      if (published) { process.stdout.write(published + '\n'); process.stderr.write('Open the URL in the browser on your own PC.\n'); return; }
+      process.stdout.write(url.href + '\n');
+      const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127\./.test(url.hostname);
+      const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+      process.stderr.write(outcome === 'remote' && loopback
+        ? `Over SSH, run ssh -N -L ${port}:${url.hostname}:${port} <this host> on your own PC, then open the URL there.\n`
+        : 'No browser could be started here. Open the URL in your own browser.\n');
     });
   const groups = new Map<string, Command>();
   /** The command for the words before a command's name (`task file`), as the contract's table describes it. */
