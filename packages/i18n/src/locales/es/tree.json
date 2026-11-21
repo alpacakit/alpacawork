@@ -17,6 +17,7 @@
   },
   "intro": {
     "again": "Ver cómo funciona",
+    "againHint": "Puedes volver a abrir esta introducción desde «{{settings}}», en «{{personal}}».",
     "apps": {
       "desktop": {
         "name": "Como app en tu PC",
@@ -36,7 +37,7 @@
       "lead": "Esta no es una pantalla de chat. Su centro es la lista de tareas, y lo tuyo son tres cosas: pedir, responder preguntas y revisar lo que se hizo.",
       "send": {
         "name": "Envía una petición",
-        "say": "Escribe lo que quieres que se haga en el cuadro de texto de abajo y envíalo."
+        "say": "Escribe lo que quieres que se haga en el cuadro de texto de abajo y pulsa Enviar. Un ejemplo que elijas tampoco se envía hasta que lo pulses."
       },
       "title": "Envía una petición y la IA la convierte en una tarea y trabaja en ella",
       "turn": {

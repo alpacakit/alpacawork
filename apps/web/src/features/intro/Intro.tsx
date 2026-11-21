@@ -68,8 +68,10 @@ export function IntroDialog() {
           onClick={() => { const { tab } = slide.settings!; close(); openSettings(tab); }}>{slide.settings.label(t)}</Button>}
       </DialogBody>
       <footer className="flex flex-none items-center gap-2 border-t border-line px-6 py-3 narrow:px-4.5">
-        {!last && <Button variant="quiet" data-intro-skip onClick={close}>{t("intro.skip")}</Button>}
-        <div className="ml-auto flex items-center gap-2">
+        {/* At the end, where it is opened again: the welcome's own way back goes with the welcome, at the first Task. */}
+        {last ? <p className="m-0 min-w-0 flex-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t("intro.againHint", { settings: t("panels:settings.title"), personal: t("panels:settings.tabs.personal") })}</p>
+          : <Button variant="quiet" data-intro-skip onClick={close}>{t("intro.skip")}</Button>}
+        <div className="ml-auto flex flex-none items-center gap-2">
           {at > 0 && <Button variant="outline" data-intro-back onClick={() => move(-1)}>{t("intro.back")}</Button>}
           {last ? <Button data-intro-done onClick={close}>{t("intro.done")}</Button>
             : <Button data-intro-next onClick={() => move(1)}>{t("intro.next")}</Button>}

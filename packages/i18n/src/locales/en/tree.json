@@ -15,6 +15,7 @@
   },
   "intro": {
     "again": "See how it works",
+    "againHint": "You can open this introduction again from “{{settings}}” under “{{personal}}”.",
     "apps": {
       "desktop": {
         "name": "As an app on your PC",
@@ -34,7 +35,7 @@
       "lead": "This is not a chat screen. At its center is the list of tasks, and your part is three things: ask, answer questions, and check what was made.",
       "send": {
         "name": "Send a request",
-        "say": "Write what you want done in the input at the bottom, and send it."
+        "say": "Write what you want done in the input at the bottom, and press Send. An example you pick is not sent until you press it either."
       },
       "title": "Send a request, and AI turns it into a task and works on it",
       "turn": {
