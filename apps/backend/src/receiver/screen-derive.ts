@@ -281,7 +281,7 @@ const same = <T>(a: readonly T[] | undefined, b: readonly T[] | undefined) =>
 const sameMap = <K, V>(a: ReadonlyMap<K, V> | undefined, b: ReadonlyMap<K, V> | undefined) =>
   a === b || !!a && !!b && a.size === b.size && [...a].every(([key, value]) => b.get(key) === value);
 
-/** Run folder observations belong only to the list; reloaded containers are not changes to the remaining records. */
+/** Run folder observations are not compared as records: activity marks the list, and a changed failure cause History too (keyRelations). */
 function durableRecords(bundle: TaskBundle | undefined) {
   if (!bundle) return undefined;
   const { runFiles: _runFiles, ...records } = bundle;
@@ -525,7 +525,16 @@ function keyRelations(key: ChangeKey, change: RecordsChange, gather: Gather, own
     case 'activity': {
       const run = key.id as RunId;
       // Only the list carries what activity shows (withoutActivity): an opened view or the timeline does not read it again.
-      gather.addAll(gather.each(reader => [reader.runOwner(run)].filter((id): id is string => id !== null)), ['row']);
+      const owners = gather.each(reader => [reader.runOwner(run)].filter((id): id is string => id !== null));
+      gather.addAll(owners, ['row']);
+      // History says a failed Run's cause from these folder facts, so a cause read later changes where that row is shown.
+      const causeOf = (reader: RecordsReader) => {
+        const owner = reader.runOwner(run);
+        return owner === null ? undefined : reader.bundle(owner)?.runFiles?.get(run)?.errorCause;
+      };
+      if (causeOf(before) !== causeOf(after)) for (const owner of owners)
+        gather.addAll([owner, ...gather.each(reader => [reader.parent(owner)].filter((id): id is string => id !== null)),
+          ...gather.each(reader => reader.historyReferrers(owner))], ['history']);
       return;
     }
     case 'field_def':

@@ -195,6 +195,8 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
   const modelLimit = "You've reached your Fable limit. Switch to another model, or manage usage credits at https://claude.ai/settings/usage?from=cc_cli_limit_message, to continue.";
   assert.deepEqual(project(jsonl({ type: 'result', session_id: session, is_error: true, result: modelLimit }),
     { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: modelLimit }, 'a model limit without a period is still a known cause');
+  assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've reached your weekly limit. Try again later." }),
+    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'another limit is not said as a model limit');
   assert.deepEqual(project(codex + jsonl({ type: 'turn.failed' })), { cause: 'model_capacity', message: capacity }, 'terminal without words retains this turn’s explicit error');
   const secret = 'sk-syntheticSecret123456';
   const general = project(prefix + jsonl({ type: 'turn.failed', error: { message: `Service unavailable. token=${secret}` } }));

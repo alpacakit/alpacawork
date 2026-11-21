@@ -8,7 +8,7 @@ function causeOf(message: unknown): Cause | undefined {
   if (typeof message === 'string' && /^You've hit your weekly limit(?: · resets [^\r\n]+)?$/.test(message))
     return 'weekly_limit';
   // A per-model usage limit ("You've reached your Fable limit. Switch to another model, …") names no period or reset time.
-  if (typeof message === 'string' && /^You've reached your [^\r\n]+? limit\.(?: [^\r\n]*)?$/.test(message))
+  if (typeof message === 'string' && /^You've reached your [^\r\n]+? limit\. Switch to another model\b[^\r\n]*$/.test(message))
     return 'model_limit';
   return undefined;
 }
