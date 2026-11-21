@@ -295,10 +295,12 @@
   "run": {
     "cause": {
       "modelCapacity": "模型容量已满，运行失败。请稍后重试、换一个模型重试，或停止",
+      "modelLimit": "智能体已达到所用模型的用量上限，运行失败。请换一个模型或在上限重置后重试，或停止",
       "weeklyLimit": "智能体已达到每周用量上限，运行失败。请在上限重置后重试，或停止"
     },
     "causeReason": {
       "modelCapacity": "模型容量已满",
+      "modelLimit": "已达到模型用量上限",
       "weeklyLimit": "已达到每周用量上限"
     }
   },

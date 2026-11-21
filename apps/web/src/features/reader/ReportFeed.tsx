@@ -19,6 +19,7 @@ import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
 import { resultLine } from "@/domain/report-labels";
+import { causeReason } from "@/domain/run-labels";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
 import { TONE, stateWord } from "@/components/ui/tone";
@@ -532,6 +533,7 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const kindWord = t(`reportFeed.row.kind.${report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
   const words = same ? t("reportFeed.row.sameTitle")
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
+    : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
     : report.kind === "answer" ? answerLine(taskStatement(report.quote ?? report.answerText ?? report.description ?? report.text, home)) || kindWord
     : taskStatement(plain, home) || kindWord;
