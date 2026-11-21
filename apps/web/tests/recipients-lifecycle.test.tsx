@@ -11,18 +11,20 @@ const labels = (values: Record<string, string>) => draftDocument(values).content
 const words = (text: string, ...prefix: Inline[]): Document => ({ type: 'doc', content: [{ type: 'paragraph', content: [...prefix, { type: 'text', text }] }] });
 const choice = { question: 'Q1', task: 'T285', n: '1', name: 'Option1', answer: '1-Option1' };
 const FILE = JSON.stringify([{ name: 'a.png', path: 'a.png', absolutePath: '/f/a.png', size: 1 }]);
+/** The screen with `task` in the panel and no project narrowing the list, or the list narrowed to `project` alone. */
+const at = (task: { id: string; title: string }) => ({ panel: task, project: null }), inList = (project: { id: string; title: string }) => ({ panel: null, project });
 const labelsOf = (...tasks: { id: string; title: string }[]): Document => ({ type: 'doc', content: [{ type: 'paragraph', content: tasks.map(task => taskLabel(task)) }] });
 
 test('an untouched draft follows each newly opened Task; the Task already seen seeds nothing again', () => {
-  let values = observed(fresh(), T285)!;
+  let values = observed(fresh(), at(T285))!;
   expect(labels(values)).toEqual(['T285']); expect(values.phase).toBe('prepared');
-  expect(observed(values, T285)).toBeNull();
-  values = observed(values, T253)!;
+  expect(observed(values, at(T285))).toBeNull();
+  values = observed(values, at(T253))!;
   expect(labels(values)).toEqual(['T253']); expect(values.seen).toBe('T253');
 });
 
 test('once the person writes, chooses or takes one label of two off, opening Tasks only notes what is seen', () => {
-  const seeded = observed(fresh(), T285)!;
+  const seeded = observed(fresh(), at(T285))!;
   const cases: Record<string, string>[] = [
     edited(seeded, () => words('Do this', taskLabel(T285)))!.values,
     edited(seeded, current => toggleAnswer(current, T285, choice))!.values,
@@ -30,12 +32,12 @@ test('once the person writes, chooses or takes one label of two off, opening Tas
   ];
   for (const values of cases) {
     const before = values.doc;
-    const after = observed(values, T253)!;
+    const after = observed(values, at(T253))!;
     expect(after.doc).toBe(before); expect(after.seen).toBe('T253'); expect(after.phase).toBe('composing');
   }
   // Writing then erasing it all leaves the draft the person's: the label they kept is not handed back to the panel.
   const erased = edited(edited(seeded, () => words('x', taskLabel(T285)))!.values, () => draftDocument(seeded))!.values;
-  expect(composing(erased)).toBe(true); expect(labels(observed(erased, T253)!)).toEqual(['T285']);
+  expect(composing(erased)).toBe(true); expect(labels(observed(erased, at(T253))!)).toEqual(['T285']);
 });
 
 test.each<[string, (seeded: Record<string, string>) => Record<string, string>]>([
@@ -45,9 +47,9 @@ test.each<[string, (seeded: Record<string, string>) => Record<string, string>]>(
   ['only empty lines left', seeded => edited(seeded, () => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'hardBreak' }] }, { type: 'paragraph' }] }))!.values],
   ['nothing in a retained draft', () => ({ doc: JSON.stringify(emptyDocument()), requestId: 'retained', seen: 'T285' })],
 ])('with %s, another opened Task puts its label in; the Task it was seen on stays off', (_name, emptied) => {
-  const values = emptied(observed(fresh(), T285)!);
-  expect(observed(values, T285)).toBeNull();
-  const next = observed(values, T253)!;
+  const values = emptied(observed(fresh(), at(T285))!);
+  expect(observed(values, at(T285))).toBeNull();
+  const next = observed(values, at(T253))!;
   expect(labels(next)).toEqual(['T253']); expect(next.phase).toBe('prepared'); expect(next.seen).toBe('T253');
 });
 
@@ -58,79 +60,90 @@ test.each<[string, Document]>([
   ['a skill', { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'skillLabel', attrs: { name: 'review', invocation: '/' } }] }] }],
   ['a reply', { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'replyLabel', attrs: { id: 'r1', answeredAt: '2026-11-01T00:00:00Z' } }] }] }],
 ])('with %s left, an opened Task changes nothing', (_name, left) => {
-  const values = edited(observed(fresh(), T285)!, () => left)!.values;
-  const after = observed(values, T253)!;
+  const values = edited(observed(fresh(), at(T285))!, () => left)!.values;
+  const after = observed(values, at(T253))!;
   expect(after.doc).toBe(values.doc); expect(after.phase).toBe('composing'); expect(after.seen).toBe('T253');
 });
 
 test.each(['attachments', 'uploadOps'])('files (%s) do not hold the recipients: an opened Task still puts its label in, and the files stay', field => {
   const file = { [field]: field === 'attachments' ? FILE : '[{"opId":"u1"}]' };
-  for (const values of [{ ...observed(fresh(), T285)!, ...file }, { ...edited(observed(fresh(), T285)!, () => emptyDocument())!.values, ...file }]) {
-    const after = observed(values, T253)!;
+  for (const values of [{ ...observed(fresh(), at(T285))!, ...file }, { ...edited(observed(fresh(), at(T285))!, () => emptyDocument())!.values, ...file }]) {
+    const after = observed(values, at(T253))!;
     expect(labels(after)).toEqual(['T253']); expect(after[field]).toBe(values[field]);
   }
 });
 
-test('closing the panel to the list behind it neither seeds an emptied draft nor forgets what was seen', () => {
-  const P = { id: 'P100', title: 'Project' };
-  const emptied = edited(observed(fresh(), T285)!, () => emptyDocument())!.values;
-  expect(observed(emptied, P, false)).toBeNull();
-  expect(observed(emptied, T285)).toBeNull();
-  expect(labels(observed(emptied, P)!)).toEqual(['P100']);
-  // A prepared draft still follows the project in view, and a written one still notes it.
-  expect(labels(observed(observed(fresh(), T285)!, P, false)!)).toEqual(['P100']);
+test('the list come back behind a closed panel seeds nothing; a project newly in view seeds, and seen again does not', () => {
+  const P = { id: 'P100', title: 'Project' }, Q = { id: 'P200', title: 'Other project' };
+  // A Task opened over the list of P, then its label taken off: neither layer opens anything again.
+  const emptied = edited(observed(fresh(), { panel: T285, project: P })!, () => emptyDocument())!.values;
+  expect(observed(emptied, inList(P))).toBeNull();
+  expect(observed(emptied, { panel: T285, project: P })).toBeNull();
+  // Another project chosen seeds it; the same project seen again (a reload) does not.
+  const chosen = observed(emptied, inList(Q))!;
+  expect(labels(chosen)).toEqual(['P200']);
+  expect(observed(edited(chosen, () => emptyDocument())!.values, inList(Q))).toBeNull();
+  // A written draft only notes the project.
   const written = edited(emptied, () => textDocument('Keep'))!.values;
-  expect(observed(written, P, false)!.seen).toBe('P100');
-  expect(observed(written, P, false)!.doc).toBe(written.doc);
+  expect(observed(written, inList(Q))!.seenProject).toBe('P200');
+  expect(observed(written, inList(Q))!.doc).toBe(written.doc);
+  // A Task opened over the project chosen is new, the one taken off before included.
+  expect(labels(observed(chosen, { panel: T285, project: Q })!)).toEqual(['T285']);
+  // A project not known yet leaves the project seen as it was; the Task in the panel is observed alone.
+  const waiting = observed(fresh(), { panel: T285 })!;
+  expect(labels(waiting)).toEqual(['T285']); expect(waiting.seenProject ?? '').toBe('');
+  expect(observed({ ...emptied, seenProject: 'P100' }, { panel: T285 })).toBeNull();
+  // The panel left with its label all the draft held: the project behind seeds the fresh draft.
+  expect(labels(observed(closed(observed(fresh(), { panel: T285, project: P })!, 'T285')!, inList(P))!)).toEqual(['P100']);
 });
 
 test('closing the panel takes off its Task\'s label when that is all the draft holds, put in by the screen or by hand', () => {
-  for (const only of [observed(fresh(), T285)!, edited(fresh(), () => words(' ', taskLabel(T285)))!.values]) {
+  for (const only of [observed(fresh(), at(T285))!, edited(fresh(), () => words(' ', taskLabel(T285)))!.values]) {
     const after = closed(only, 'T285')!;
     expect(labels(after)).toEqual([]); expect(after.phase).toBe('prepared');
-    expect(labels(observed(after, T285)!)).toEqual(['T285']);
+    expect(labels(observed(after, at(T285))!)).toEqual(['T285']);
   }
-  const seeded = observed(fresh(), T285)!;
+  const seeded = observed(fresh(), at(T285))!;
   for (const values of [edited(seeded, () => words('Do', taskLabel(T285)))!.values, edited(seeded, () => labelsOf(T285, T300))!.values,
     edited(seeded, current => toggleAnswer(current, T285, choice))!.values]) expect(closed(values, 'T285')).toBeNull();
   expect(closed(seeded, 'T300')).toBeNull();
 });
 
 test('a reader draft emptied and seeded by another Task no longer belongs to its card', () => {
-  const emptied: Record<string, string> = { ...edited(observed(fresh(), T285)!, () => emptyDocument())!.values, readerDraftTask: 'T285', readerDraftTurn: '{}' };
-  const next = observed(emptied, T253)!;
+  const emptied: Record<string, string> = { ...edited(observed(fresh(), at(T285))!, () => emptyDocument())!.values, readerDraftTask: 'T285', readerDraftTurn: '{}' };
+  const next = observed(emptied, at(T253))!;
   expect(next.readerDraftTask).toBeUndefined(); expect(next.readerDraftTurn).toBeUndefined();
   expect(next.requestId).toBe(emptied.requestId);
 });
 
 test('a change that changes nothing makes no phase', () => {
-  const seeded = observed(fresh(), T285)!;
+  const seeded = observed(fresh(), at(T285))!;
   expect(edited(seeded, current => current)).toBeNull();
 });
 
 test('a send keeps only the labels, prepared, with what was seen: the same panel adds nothing, a new Task replaces them', () => {
   // T285's label is being written to while T253 is open on the right.
-  let values = observed(fresh(), T285)!;
+  let values = observed(fresh(), at(T285))!;
   values = edited(values, () => toggleAnswer(words(' Go on', taskLabel(T285)), T285, choice))!.values;
-  values = observed(values, T253)!;
+  values = observed(values, at(T253))!;
   const next = afterSend(values, draftDocument(values));
   expect(labels(next)).toEqual(['T285']); expect(next.phase).toBe('prepared'); expect(next.seen).toBe('T253');
   expect(draftDocument(next).content[0]!.content!.every(node => node.type === 'taskLabel')).toBe(true);
   expect(next.requestId).not.toBe(values.requestId);
-  expect(observed(next, T253)).toBeNull();
-  expect(labels(observed(next, T300)!)).toEqual(['T300']);
+  expect(observed(next, at(T253))).toBeNull();
+  expect(labels(observed(next, at(T300))!)).toEqual(['T300']);
 });
 
 test('a label taken off for a general question stays off on the same panel after the send', () => {
-  let values = observed(fresh(), T253)!;
+  let values = observed(fresh(), at(T253))!;
   values = edited(values, () => textDocument('What is a PWA?'))!.values;
   const next = afterSend(values, draftDocument(values));
-  expect(labels(next)).toEqual([]); expect(observed(next, T253)).toBeNull();
-  expect(labels(observed(next, T300)!)).toEqual(['T300']);
+  expect(labels(next)).toEqual([]); expect(observed(next, at(T253))).toBeNull();
+  expect(labels(observed(next, at(T300))!)).toEqual(['T300']);
 });
 
 test('a refused send comes back as it was sent, the person\'s, with what is seen now', () => {
-  const sent = { ...observed(fresh(), T285)!, phase: 'composing', doc: JSON.stringify(words(' Do', taskLabel(T285))) };
+  const sent = { ...observed(fresh(), at(T285))!, phase: 'composing', doc: JSON.stringify(words(' Do', taskLabel(T285))) };
   const input = { ...afterSend(sent, draftDocument(sent)), seen: 'T253' };
   const back = restored(sent, input);
   expect(back.doc).toBe(sent.doc); expect(back.phase).toBe('composing'); expect(back.seen).toBe('T253');
@@ -156,7 +169,7 @@ test('recipients are labels, answers and Task IDs in prose; quotes, fences, code
 // A retained draft has no evidence that the owner just prepared it. Its words are never a fresh screen seed.
 test('only an explicitly prepared draft may have its recipients replaced by an opened Task', () => {
   const retained = { doc: JSON.stringify(words('Keep my draft', taskLabel(T285))), requestId: 'retained' };
-  const next = observed(retained, T253)!;
+  const next = observed(retained, at(T253))!;
   expect(next.doc).toBe(retained.doc);
   expect(next.phase).toBe('composing');
 });
