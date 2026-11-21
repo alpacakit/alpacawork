@@ -63,7 +63,7 @@ alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents 
 
 ## Install
 
-Paste the following text into Claude Code or Codex on your PC. The AI installs alpacawork, and the setup screen opens in your browser.
+Paste the following text into Claude Code or Codex on your PC. The AI installs alpacawork and tells you the URL of the setup screen, which usually opens in your browser too.
 
 ```text
 Download the guide below, read all of it, and follow it to install alpacawork on this PC.

@@ -33,7 +33,7 @@ Para instalar, você pede a uma IA.
 
 1. **Cole o texto de instalação.** Copie o texto da seção [Instalar](https://github.com/alpacakit/alpacawork/blob/main/README.pt-BR.md#instalar) do README e cole-o, sem alterações, em um agente de IA no seu PC (como o Claude Code ou o Codex).
 2. **A IA instala.** Ela verifica se o alpacawork pode rodar neste PC, instala o que falta e inicia o alpacawork. Você não executa comandos nem responde a confirmações durante o processo. Se o seu próprio agente de IA pedir permissão para executar um comando, permita.
-3. **A tela de configuração inicial abre no navegador.** A IA também informa a URL, então você pode abri-la por conta própria se o navegador não abriu. Se o navegador não abriu, ou para abrir a tela de novo depois, veja [Abrir a tela](#2-abrir-a-tela).
+3. **A IA informa a URL da tela de configuração inicial.** Normalmente ela também abre no navegador. Se não abriu, ou para abri-la de novo depois, veja [Abrir a tela](#2-abrir-a-tela).
 
 A tela de configuração inicial tem três etapas: os agentes de IA a usar (e se você quer enviar [dados de uso](telemetry.md)), as [skills](#skills) a instalar e o seu primeiro projeto. Cada etapa traz a própria explicação, e tudo o que está nela pode ser alterado depois em Configurações.
 
@@ -92,13 +92,13 @@ Se você instalou em outro PC acessado por SSH, essa URL só abre em um navegado
 
 - **Depois de fechar o navegador ou reiniciar o PC**, abra a mesma URL. Depois de reiniciar, faça login no PC primeiro (no Windows, abra o Ubuntu).
 - **Salve nos favoritos ou instale como app.** No Chrome ou no Edge, clique em “Instalar”, na extremidade direita da barra de endereço (no Edge, é o ícone no mesmo lugar). Depois disso, o alpacawork abre em uma janela própria pelo Dock, pela barra de tarefas ou pela lista de apps. Os passos para cada navegador estão em Configurações (a engrenagem) → App e celular → “Usar como app de desktop”.
-- **Se esquecer a URL**, execute `alpacawork workspace url` em um terminal (no Windows, na janela do Ubuntu). Se o alpacawork estiver rodando, ele mostra `"status":"serving"`. Abra a URL que vem depois de `"localUrl"` em um navegador daquele PC, ou a que vem depois de `"publicUrl"` a partir de outro dispositivo. Você também pode perguntar a um agente de IA como o Claude Code ou o Codex: “Qual é a URL do alpacawork?”.
+- **Se esquecer a URL**, execute `alpacawork workspace url` em um terminal (no Windows, na janela do Ubuntu). Se o alpacawork estiver rodando, ele mostra `"status":"serving"`. Abra a URL que vem depois de `"localUrl"` em um navegador daquele PC. A partir de outro dispositivo, abra a que vem depois de `"publicUrl"`; ela é `null` até o PC ser configurado para outros dispositivos ([Usar pelo celular](#6-usar-pelo-celular)). Você também pode perguntar a um agente de IA como o Claude Code ou o Codex: “Qual é a URL do alpacawork?”.
 
 ### Se a tela não abrir
 
 Se não souber a URL, veja primeiro [Abrir de novo depois](#abrir-de-novo-depois).
 
-O alpacawork inicia sozinho quando você faz login no PC (no Windows, quando você abre o Ubuntu). Se o navegador disser que não consegue se conectar (por exemplo, “Não é possível acessar esse site” ou `ERR_CONNECTION_REFUSED`), ou se `alpacawork workspace url` falhar com “Server not reached”, o alpacawork não está rodando. Inicie-o e recarregue a página.
+O alpacawork inicia sozinho quando você faz login no PC (no Windows, quando você abre o Ubuntu). Se o navegador disser que não consegue se conectar (por exemplo, “Não é possível acessar esse site” ou `ERR_CONNECTION_REFUSED`), ou se `alpacawork workspace url` falhar com “Server not reached”, verifique primeiro se o alpacawork está rodando: inicie-o como abaixo e recarregue a página. Se não souber a URL, execute `alpacawork workspace url` de novo.
 
 - **Windows**: abra o Ubuntu pelo menu Iniciar e deixe a janela dele aberta ([No Windows](#no-windows)). Se ainda assim não abrir, execute nessa janela o comando de Linux abaixo.
 - **Linux**: execute `systemctl --user start alpacawork.service` em um terminal. O alpacawork roda enquanto você está com login feito no PC. Para que continue rodando depois do logout, peça a um agente de IA: “Faça o alpacawork continuar rodando depois que eu sair da sessão”.

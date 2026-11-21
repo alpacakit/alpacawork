@@ -33,7 +33,7 @@ To install it, you ask an AI to do it.
 
 1. **Paste the install text.** Copy the text under [Install in the README](https://github.com/alpacakit/alpacawork/blob/main/README.md#install) and paste it unchanged into an AI agent on your PC (such as Claude Code or Codex).
 2. **The AI installs it.** It checks that alpacawork can run on this PC, installs what is missing, and starts alpacawork. You don't run commands or answer confirmations along the way. If your AI agent itself asks for permission to run a command, allow it.
-3. **The setup screen opens in your browser.** The AI also tells you its URL, so you can open it yourself if the browser didn't open. If the browser didn't open, or to open the screen again later, see [Open the screen](#2-open-the-screen).
+3. **The AI tells you the setup screen's URL.** The screen usually opens in your browser too. If it didn't, or to open it again later, see [Open the screen](#2-open-the-screen).
 
 The setup screen has three steps: the AI agents to use (and whether to send [usage data](telemetry.md)), the [skills](#skills) to install, and your first project. Each step explains itself, and everything in it can be changed later in Settings.
 
@@ -92,13 +92,13 @@ If you installed on another PC that you reached over SSH, that URL opens only in
 
 - **After closing the browser or restarting the PC**, open the same URL. After a restart, log in to the PC first (on Windows, open Ubuntu).
 - **Bookmark it, or install it as an app.** In Chrome or Edge, press "Install" at the right end of the address bar (in Edge, the icon in the same place). alpacawork then opens in its own window from the Dock, the taskbar or the app list. The steps for each browser are under Settings (the gear) → App & phone → "Use as a desktop app".
-- **If you forget the URL**, run `alpacawork workspace url` in a terminal (on Windows, in the Ubuntu window). When alpacawork is running, it prints `"status":"serving"`. Open the URL after `"localUrl"` in a browser on that PC, or the one after `"publicUrl"` from another device. You can also ask an AI agent such as Claude Code or Codex, "Tell me alpacawork's URL".
+- **If you forget the URL**, run `alpacawork workspace url` in a terminal (on Windows, in the Ubuntu window). When alpacawork is running, it prints `"status":"serving"`. Open the URL after `"localUrl"` in a browser on that PC. From another device, open the one after `"publicUrl"`; it is `null` until the PC is set up for other devices ([Use it from your phone](#6-use-it-from-your-phone)). You can also ask an AI agent such as Claude Code or Codex, "Tell me alpacawork's URL".
 
 ### If the screen doesn't open
 
 If you don't know the URL, see [Open it again later](#open-it-again-later) first.
 
-alpacawork starts by itself when you log in to the PC (on Windows, when you open Ubuntu). If the browser says it can't connect (for example "This site can't be reached" or `ERR_CONNECTION_REFUSED`), or `alpacawork workspace url` fails with "Server not reached", alpacawork isn't running. Start it, then reload the page.
+alpacawork starts by itself when you log in to the PC (on Windows, when you open Ubuntu). If the browser says it can't connect (for example "This site can't be reached" or `ERR_CONNECTION_REFUSED`), or `alpacawork workspace url` fails with "Server not reached", first check that alpacawork is running: start it as below, then reload the page. If you don't know the URL, run `alpacawork workspace url` again.
 
 - **Windows**: Open Ubuntu from the Start menu and keep its window open ([On Windows](#on-windows)). If it still doesn't open, run the Linux command below in that window.
 - **Linux**: Run `systemctl --user start alpacawork.service` in a terminal. alpacawork runs while you are logged in to the PC. To keep it running after you log out, ask an AI agent, "Keep alpacawork running after I log out".

@@ -37,7 +37,7 @@ alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 C
 
 ## 安装
 
-把下面这段文字粘贴给你电脑上的 Claude Code 或 Codex。AI 会安装 alpacawork，随后初始设置界面会在浏览器中打开。
+把下面这段文字粘贴给你电脑上的 Claude Code 或 Codex。AI 会安装 alpacawork，并告诉你初始设置界面的 URL，通常它也会在浏览器中打开。
 
 ```text
 请下载下面的指南，完整阅读后，按其中的步骤在这台电脑上安装 alpacawork。

@@ -33,7 +33,7 @@ alpacawork は、Claude Code や Codex を、確認を求めないフル権限�
 
 1. **指示文を貼り付けます。** [README の「インストール」](https://github.com/alpacakit/alpacawork/blob/main/README.ja.md#インストール) にある指示文を、PC に入れてある AI エージェント（Claude Code や Codex など）に、そのまま貼り付けます。
 2. **AI がインストールします。** AI は、この PC で動かせるかを確かめ、足りないものを入れて、alpacawork を起動します。途中で、あなたがコマンドを実行したり、確認に答えたりする必要はありません。お使いの AI エージェント自身がコマンドの実行の許可を求めたときは、許可してください。
-3. **セットアップの画面が、ブラウザで開きます。** URL は AI も伝えるので、ブラウザが開かなくても自分で開けます。ブラウザが開かなかったときや、あとで開き直すときは、[画面を開く](#2-画面を開く) を見てください。
+3. **AI が、セットアップの画面の URL を伝えます。** ふつうはブラウザでも開きます。開かなかったときや、あとで開き直すときは、[画面を開く](#2-画面を開く) を見てください。
 
 セットアップの画面のステップは3つで、使う AI エージェント（と、[使用統計データ](telemetry.md)を送信するかどうか）、インストールする[スキル](#スキル)、最初のプロジェクトを順に決めます。説明は各ステップにあり、どの内容も、あとから設定で変えられます。
 
@@ -92,13 +92,13 @@ SSH でつないだ別の PC に入れたときは、その URL は、その PC 
 
 - **ブラウザを閉じたあとや、PC を再起動したあと**も、同じ URL で開きます。再起動したときは、先に PC にログインします（Windows では Ubuntu を開きます）。
 - **ブックマークするか、アプリとして入れます。** Chrome や Edge では、アドレス欄の右端の「インストール」を押します（Edge では同じ場所のアイコン）。入れると、Dock やタスクバー、アプリの一覧から、専用のウィンドウで開けます。ブラウザごとの手順は、画面の「設定（歯車）→ アプリ・スマホ → デスクトップアプリとして使う」にあります。
-- **URL を忘れたときは**、ターミナル（Windows では Ubuntu のウィンドウ）で `alpacawork workspace url` を実行します。alpacawork が動いていれば `"status":"serving"` と出ます。その PC のブラウザでは `"localUrl"` のあとの URL を、ほかの端末からは `"publicUrl"` のあとの URL を開きます。Claude Code や Codex などの AI エージェントに「alpacawork の URL を教えて」と頼んでも分かります。
+- **URL を忘れたときは**、ターミナル（Windows では Ubuntu のウィンドウ）で `alpacawork workspace url` を実行します。alpacawork が動いていれば `"status":"serving"` と出ます。その PC のブラウザでは `"localUrl"` のあとの URL を開きます。ほかの端末からは `"publicUrl"` のあとの URL を開きます。ほかの端末から使う設定をするまでは `null` です（[スマートフォンで使う](#6-スマートフォンで使う)）。Claude Code や Codex などの AI エージェントに「alpacawork の URL を教えて」と頼んでも分かります。
 
 ### 画面が開かないとき
 
 URL が分からないときは、先に [あとで開き直す](#あとで開き直す) を見てください。
 
-alpacawork は、PC にログインすると自動で起動します（Windows では、Ubuntu を開くと起動します）。ブラウザに「このサイトにアクセスできません」や `ERR_CONNECTION_REFUSED` のように出てつながらないときや、`alpacawork workspace url` が「Server not reached」で失敗するときは、alpacawork が動いていません。起動してから、ページを再読み込みします。
+alpacawork は、PC にログインすると自動で起動します（Windows では、Ubuntu を開くと起動します）。ブラウザに「このサイトにアクセスできません」や `ERR_CONNECTION_REFUSED` のように出てつながらないときや、`alpacawork workspace url` が「Server not reached」で失敗するときは、まず alpacawork が動いているかを確かめます。下の手順で起動してから、ページを再読み込みします。URL が分からないときは、もう一度 `alpacawork workspace url` を実行します。
 
 - **Windows**: スタートメニューから Ubuntu を開き、そのウィンドウを開いたままにします（[Windows で使うとき](#windows-で使うとき)）。それでも開かないときは、そのウィンドウで下の Linux のコマンドを実行します。
 - **Linux**: ターミナルで `systemctl --user start alpacawork.service` を実行します。alpacawork は PC にログインしている間動きます。ログアウトしたあとも動かしておくときは、AI エージェントに「ログアウトしても alpacawork が動き続けるようにして」と頼みます。

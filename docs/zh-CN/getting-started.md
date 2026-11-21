@@ -33,7 +33,7 @@ alpacawork 以完全权限启动 Claude Code、Codex 等 AI 智能体，且不�
 
 1. **粘贴安装指示。** 复制 [README 的“安装”一节](https://github.com/alpacakit/alpacawork/blob/main/README.zh-CN.md#安装)中的那段文字，原样粘贴给你电脑上的 AI 智能体（例如 Claude Code 或 Codex）。
 2. **AI 进行安装。** 它会检查这台电脑能否运行 alpacawork，安装缺少的东西，然后启动 alpacawork。过程中不需要你执行命令或回答确认。如果你的 AI 智能体自己请求执行命令的权限，请允许。
-3. **初始设置界面会在浏览器中打开。** AI 也会告诉你它的 URL，所以即使浏览器没有打开，你也能自己打开。如果浏览器没有打开，或之后想再次打开界面，请看[打开界面](#2-打开界面)。
+3. **AI 会告诉你初始设置界面的 URL。** 通常它也会在浏览器中打开。如果没有打开，或之后想再次打开，请看[打开界面](#2-打开界面)。
 
 初始设置界面分三步：要使用的 AI 智能体（以及是否发送[使用数据](telemetry.md)）、要安装的[技能](#技能)、你的第一个项目。每一步都附有说明，其中的所有内容之后都可以在设置中更改。
 
@@ -92,13 +92,13 @@ alpacawork 的界面是电脑上运行的 alpacawork 提供的网页，用浏览
 
 - **关闭浏览器或重启电脑后**，打开同一个 URL 即可。重启后，先登录电脑（在 Windows 上，先打开 Ubuntu）。
 - **加入书签，或作为应用安装。** 在 Chrome 或 Edge 中，点击地址栏右端的“安装”（Edge 中是同一位置的图标）。之后就能从程序坞、任务栏或应用列表中，在独立窗口里打开 alpacawork。各浏览器的步骤见“设置（齿轮）→ 应用和手机 → 作为桌面应用使用”。
-- **忘了 URL 时**，在终端（在 Windows 上是 Ubuntu 窗口）中执行 `alpacawork workspace url`。alpacawork 正在运行时会显示 `"status":"serving"`。在这台电脑的浏览器中打开 `"localUrl"` 后面的 URL，从其他设备则打开 `"publicUrl"` 后面的 URL。也可以问 Claude Code 或 Codex 等 AI 智能体：“告诉我 alpacawork 的 URL”。
+- **忘了 URL 时**，在终端（在 Windows 上是 Ubuntu 窗口）中执行 `alpacawork workspace url`。alpacawork 正在运行时会显示 `"status":"serving"`。在这台电脑的浏览器中打开 `"localUrl"` 后面的 URL。从其他设备则打开 `"publicUrl"` 后面的 URL；在完成供其他设备使用的设置之前，它是 `null`（[在手机上使用](#6-在手机上使用)）。也可以问 Claude Code 或 Codex 等 AI 智能体：“告诉我 alpacawork 的 URL”。
 
 ### 界面打不开时
 
 不知道 URL 时，请先看[之后再次打开](#之后再次打开)。
 
-alpacawork 会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。如果浏览器显示无法连接（例如“无法访问此网站”或 `ERR_CONNECTION_REFUSED`），或 `alpacawork workspace url` 以“Server not reached”失败，说明 alpacawork 没有在运行。启动它，然后重新加载页面。
+alpacawork 会在你登录电脑时自动启动（在 Windows 上，是在打开 Ubuntu 时）。如果浏览器显示无法连接（例如“无法访问此网站”或 `ERR_CONNECTION_REFUSED`），或 `alpacawork workspace url` 以“Server not reached”失败，请先确认 alpacawork 是否在运行：按下面的步骤启动它，然后重新加载页面。如果不知道 URL，再执行一次 `alpacawork workspace url`。
 
 - **Windows**：从开始菜单打开 Ubuntu，并让这个窗口保持打开（[在 Windows 上使用](#在-windows-上使用)）。如果仍然打不开，在这个窗口中执行下面 Linux 的命令。
 - **Linux**：在终端中执行 `systemctl --user start alpacawork.service`。alpacawork 在你登录电脑期间运行。要在注销后也继续运行，请对 AI 智能体说：“让 alpacawork 在我注销后也继续运行”。

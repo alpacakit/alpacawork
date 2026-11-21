@@ -37,7 +37,7 @@ alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude 
 
 ## Instalar
 
-Pega el siguiente texto en Claude Code o Codex, en tu PC. La IA instala alpacawork y la pantalla de configuración inicial se abre en tu navegador.
+Pega el siguiente texto en Claude Code o Codex, en tu PC. La IA instala alpacawork y te indica la URL de la pantalla de configuración inicial, que normalmente también se abre en tu navegador.
 
 ```text
 Descarga la siguiente guía, léela completa y síguela para instalar alpacawork en este PC.

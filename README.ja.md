@@ -37,7 +37,7 @@ alpacawork は、あなたの PC に入っている Claude Code や Codex に仕
 
 ## インストール
 
-PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpacawork をインストールし、セットアップの画面がブラウザで開きます。
+PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpacawork をインストールし、セットアップの画面の URL を伝えます。ふつうはブラウザでも開きます。
 
 ```text
 次のドキュメントをダウンロードして全文を読み、その手順に従ってこの PC に alpacawork をインストールしてください。
