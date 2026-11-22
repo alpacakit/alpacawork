@@ -75,9 +75,9 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
   return <FormProvider {...form}>
     <div data-setup-panel="project">
       {/* Settings' own rows, each stacked (its name, its hint, then the control): the panel is narrower than Settings. */}
-      <fieldset disabled={working} className="m-0 -mt-3 min-w-0 border-0 p-0 [&_[data-slot=setting-row]]:grid-cols-1 [&_[data-slot=setting-row]]:gap-y-2 [&_[data-slot=setting-row]:first-child]:border-t-0 [&_#project-policy]:min-h-80">
+      <fieldset disabled={working} className="m-0 -mt-3 min-w-0 border-0 p-0 [&_[data-slot=setting-row]]:grid-cols-1 [&_[data-slot=setting-row]]:gap-y-2 [&_[data-slot=setting-row]:first-child]:border-t-0 [&_#project-policy]:min-h-40">
         <ProjectNameRow />
-        <ProjectLocationRow project={project} projects={projects} />
+        <ProjectLocationRow project={project} projects={projects} rootHint={path => t("project.cwdHint", { path })} />
         <div className="mt-8" />
         <ProjectPolicySection project={project} projects={projects} note={t("project.policyNote")} />
       </fieldset>
