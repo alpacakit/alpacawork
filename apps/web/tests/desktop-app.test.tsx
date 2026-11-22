@@ -90,12 +90,18 @@ test("with the browser's offer, finishing asks once; installing or declining bot
   expect(run.left).toEqual(["/?project=P1"]);
 });
 
-test("the browser is asked once: setup finished again in another tab opens the project at once", async () => {
+test("the person is asked until they answer, once: a tab closed unanswered asks in the next, an answer ends it", async () => {
   offer("accepted");
-  const first = render(<SetupScreen />);
+  const closed = render(<SetupScreen />);
   await finish();
   expect(screen.getByRole("button", { name: "Install and start" })).toBeTruthy();
-  first.unmount();
+  closed.unmount();
+  run.data = unfinished;
+  const answered = render(<SetupScreen />);
+  await finish();
+  fireEvent.click(screen.getByRole("button", { name: "Start in the browser" }));
+  expect(run.left).toEqual(["/?project=P1"]);
+  answered.unmount();
   run.left = []; run.data = unfinished;
   render(<SetupScreen />);
   await finish();

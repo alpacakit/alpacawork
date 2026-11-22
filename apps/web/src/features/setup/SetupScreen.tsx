@@ -18,7 +18,10 @@ import { SkillsStep } from "./SkillsStep";
 import { ProjectStep } from "./ProjectStep";
 import logo from "../../../public/icons/icon-192-2c.png?inline";
 
-/** Whether this browser has been asked about the desktop app after setup: it is asked once, whichever tab finishes. */
+/**
+ * Whether the person has answered about the desktop app after setup in this browser: asked until answered, whichever
+ * tab finishes. A tab closed before it was answered (or never looked at) has not asked.
+ */
 const desktopAppAsked = deviceValue("alpacawork.desktopAppAsked", { read: (raw) => raw === "1" || null, write: () => "1" }, false);
 
 /**
@@ -66,10 +69,7 @@ function Setup() {
     const url = new URL("/", location.href);
     url.searchParams.set("project", state.project);
     const app = desktopApp();
-    if ((app?.kind === "prompt" || app?.kind === "menu") && !desktopAppAsked.get()) {
-      desktopAppAsked.set(true);
-      setFinished({ to: url, way: app.kind });
-    }
+    if ((app?.kind === "prompt" || app?.kind === "menu") && !desktopAppAsked.get()) setFinished({ to: url, way: app.kind });
     else leaveSetup(url);
   };
   if (finished) return <DesktopAppOffer {...finished} />;
@@ -136,7 +136,7 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
   const app = useDesktopApp();
   const asks = way === "prompt";
   const [asking, setAsking] = useState(false);
-  const open = () => leaveSetup(to);
+  const open = () => { desktopAppAsked.set(true); leaveSetup(to); };
   useEffect(() => { if (!asking && app?.kind !== way) open(); }, [app, asking]);
   const install = async () => {
     if (app?.kind !== "prompt") return;
