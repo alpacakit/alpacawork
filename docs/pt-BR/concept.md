@@ -1,96 +1,56 @@
 # As ideias por trás do alpacawork
 
-Esta página explica para que serve o alpacawork, como uma solicitação passa por ele e o raciocínio por trás do seu design. Ela é para quem quer entender as ideias e aproveitar melhor o alpacawork. Para instruções passo a passo, consulte [Primeiros passos](getting-started.md).
+Esta página explica o que acontece nos bastidores depois que você envia uma solicitação e o que cabe a você fazer.
 
-## O que ele resolve
+## Para que serve
 
-Quando você entrega vários trabalhos a agentes de IA ao mesmo tempo, o trabalho de gerenciá-los fica com você: lembrar o que pediu e onde, acompanhar o andamento de cada um e decidir quem faz o quê. O alpacawork passa esse trabalho para a IA. Você diz o que quer que seja feito, responde às perguntas da IA e revisa o que ela fez.
+Quando você entrega vários trabalhos à IA, fica com você o trabalho de lembrar o que pediu e onde, acompanhar o andamento de cada um e decidir quem faz o quê em seguida. O alpacawork entrega também esse trabalho de gerenciamento à IA.
 
-## Por que ele foi criado
+Você faz três coisas: pede, responde às perguntas e revisa o resultado. Tudo foi feito para funcionar também no celular.
 
-Já existem muitos serviços que permitem dar instruções pelo celular à IA que está no seu PC, entre eles o Claude e o ChatGPT. Mas todos partem do princípio de que você trabalha no PC. No celular, quase tudo o que dá para fazer são operações de apoio, como ver o andamento ou pedir correções simples. Acompanhar o trabalho e revisar os resultados em uma tela pequena foi mais estressante do que eu imaginava. Foi por isso que comecei a criar o alpacawork.
+## Como uma solicitação avança
 
-Desde o início, criei o alpacawork pensando em levar o trabalho adiante pelo celular. Para que você não precise acompanhar o andamento em detalhes em uma tela pequena, o gerenciamento das tarefas e das IAs fica com a IA, e você só precisa falar com a IA que é seu ponto de contato (o coordenador).
-
-## Como funciona
+Suponha que você peça: “Crie um formulário de reservas para o site da loja”. Os números da figura são os mesmos do texto abaixo.
 
 <p align="center">
-  <img src="../images/how-it-works.svg" alt="Você diz ao coordenador, a IA que é seu ponto de contato, o que quer que seja feito. O coordenador organiza a solicitação e a repassa a um responsável, a IA que responde por uma tarefa. O responsável divide o trabalho em subtarefas, cada uma com seu próprio responsável, e pede ajuda a membros. As perguntas e os resultados para revisar voltam para você." width="520">
+  <img src="../images/concept-flow.svg" alt="1 Você diz à IA que é seu ponto de contato (o coordenador) o que quer. 2 O coordenador cria uma tarefa e a passa à IA que cuida dela (o responsável). 3 O responsável divide o trabalho em subtarefas e pede ajuda a membros. 4 As perguntas e os relatórios chegam até você." width="410">
 </p>
 
-Suponha que você peça: “Crie um formulário de reservas para o site da loja.”
+1. A solicitação que você escreve no campo de mensagem chega à IA que é seu ponto de contato (o coordenador).
+2. O coordenador decide se cria uma nova tarefa ou se acrescenta a uma tarefa em andamento e passa essa tarefa à IA que cuida dela (o responsável).
+3. O responsável divide o trabalho em subtarefas, como “Definir os campos da reserva”, “Criar a tela de preenchimento” e “Conferir a exibição no celular”, e entrega cada uma a um responsável próprio. Quando precisa de ajuda, chama membros (IAs que ajudam). O que não precisa esperar avança em paralelo. O resultado de cada subtarefa volta ao responsável acima dela.
+4. O que a IA não consegue decidir, como “Quais campos colocar na reserva”, chega a você como uma pergunta com opções e uma recomendação. Quando o trabalho fica pronto, chega um relatório. Revise o relatório e pressione “Concluir” para terminar.
 
-1. **Toda solicitação vai para o coordenador, a IA que é seu ponto de contato.** Trabalhos novos e acréscimos ou mudanças em trabalhos em andamento vão todos no mesmo campo de mensagem. Pergunte “O que está em andamento agora?” e ele responde.
-2. **O coordenador olha o trabalho já em andamento e decide como prosseguir.** Ele decide se acrescenta a solicitação a uma tarefa já em andamento, se cria uma nova tarefa ou se a inicia depois que outras tarefas terminarem; em seguida, passa a solicitação à IA responsável pela tarefa (o responsável). Se ficar em dúvida, ele confirma com você. O chat já fica pronto para a sua próxima solicitação.
-3. **O responsável leva a tarefa até o fim.** Ele divide o trabalho em tarefas menores, como “Definir os campos da reserva”, “Criar a tela de preenchimento”, “Escrever o e-mail enviado após a reserva” e “Verificar como fica no celular”, e delega cada uma a uma IA adequada. As partes que não dependem umas das outras avançam em paralelo.
-4. **Chega a sua vez quando é preciso que você decida.** O que a IA não consegue decidir sozinha (por exemplo, quais campos o formulário de reservas deve ter) chega a você como uma pergunta com opções, motivos e uma recomendação. Quando o trabalho termina, a tarefa aparece em “Aguardando revisão” com um relatório; revise e marque a tarefa como concluída, ou descreva o que precisa mudar e devolva-a. Se a execução de uma IA falhar e parar, também é a sua vez. O alpacawork pode notificar o seu celular sempre que for a sua vez.
+No histórico da tela aparecem os nomes dos papéis, como “Responsável”. Todas essas IAs são o próprio Claude Code, Codex ou outro agente que está no seu PC.
 
-O histórico de cada tarefa registra quem pediu o quê e o que cada IA fez, para que você possa reconstituir depois o que aconteceu.
+## O que chega até você
 
-O modelo e o esforço que você escolhe no campo de mensagem valem para o coordenador. Os modelos dos responsáveis você define na política do projeto ou na sua solicitação ([Pedir](getting-started.md#pedir)).
+Só chega a você o que só você pode decidir. As tarefas com uma pergunta ou um relatório ficam em “Aguardando revisão” na lista, e as tarefas em que a execução da IA parou ficam em “Requer atenção”.
 
-![Uma solicitação dividida em subtarefas, cada uma executada por uma IA diferente](../images/tree-desktop.png)
+![À esquerda, a lista de tarefas, com “In progress” em cima e “Awaiting review” embaixo. À direita, o relatório aberto de uma tarefa aguardando revisão. Abaixo da lista, o botão “Done”](../images/home-desktop-dark.png)
 
-Os responsáveis são os próprios agentes de IA que estão no seu PC, como o Claude Code e o Codex. O alpacawork não acrescenta nenhuma IA própria; ele mantém o registro das tarefas e cuida de passar o trabalho para a IA e recebê-lo de volta.
 
-## Os elementos
+- Perguntas para escolher preferências ou direção
+- Revisão do que ficou pronto
+- Aprovação de operações com efeitos externos, como publicar ou excluir
+- Decisões quando a execução da IA para
 
-| Nome | Descrição |
-| --- | --- |
-| Projeto | Um conjunto de trabalhos, com a pasta em que a IA trabalha e as regras básicas para a IA (a política do projeto) |
-| Tarefa | Um trabalho. A IA divide um trabalho grande em subtarefas |
-| Coordenador | A IA que é seu ponto de contato. Ela olha o trabalho em andamento, decide se uma solicitação vira uma nova tarefa ou entra em uma tarefa atual e a repassa a um responsável |
-| Responsável | A IA que responde pelo resultado de uma tarefa |
-| Membro | Uma IA que um responsável chama para ajudar |
-| Sua vez | Uma situação que só avança quando você age: uma pergunta, um resultado para revisar, a execução de uma IA que falhou e parou, entre outros |
+A IA decide a forma de trabalhar, a divisão do trabalho, a ordem e a forma de verificar. Você pode continuar pedindo sem esperar a solicitação anterior terminar.
 
-## Princípios de design
+## Diga como prosseguir com palavras
 
-### Não faz mais do que precisa
+Em vez de procurar itens nas configurações, peça em frases simples.
 
-O alpacawork cuida do gerenciamento de tarefas e da mecânica de passar o trabalho para a IA e receber os resultados de volta. Ele não dita os detalhes de como a IA trabalha nem de como ela relata. Para que a IA trabalhe do seu jeito, escreva o que você quer na política do projeto ou no `AGENTS.md`, ou coloque os passos em uma skill, como você já faz com o seu agente de IA ([Diga com palavras, não com configurações](#diga-com-palavras-não-com-configurações)).
+- “Faça este trabalho com o opus, esforço high”
+- “Peça ao Claude Code e ao Codex que cada um faça uma proposta e me mostre as duas comparadas”
+- “Quando terminar, peça que um modelo diferente do que criou verifique”
+- “A IA responsável parece ter se confundido; troque por uma nova IA e continue”
 
-As skills, o MCP e o `AGENTS.md` que você usa hoje continuam funcionando sem mudanças, e o ambiente que você construiu também beneficia a IA que trabalha no alpacawork. Nada fica no meio do caminho para vigiar ou interromper o que a IA faz, então não há gasto extra de tempo nem de tokens com isso.
+O que você quer sempre, escreva na [política do projeto](projects.md#política-do-projeto). A política é um combinado com a IA, não um mecanismo que a impede.
 
-### As pessoas só decidem e revisam
-
-A IA decide como prosseguir, quem faz o quê e como verificar o trabalho. Ela também cuida do gerenciamento: a ordem entre as tarefas, se continua a conversa de um responsável ou inicia uma nova, e se transfere o trabalho para outra IA. Você pode continuar fazendo solicitações no mesmo campo de mensagem, sem precisar acompanhar o andamento ou a ordem para descobrir quem deve fazer o quê.
-
-Só chega a você o que só você pode decidir.
-
-- Perguntas sobre preferências e direção (com opções, motivos e uma recomendação)
-- Revisão do que foi feito
-- Aprovação de operações com efeitos externos (como publicar ou excluir)
-
-São as regras básicas que dizem quando a IA deve perguntar a você; nenhum mecanismo as impõe ([Escrever as regras básicas para a IA](getting-started.md#5-escrever-as-regras-básicas-para-a-ia)).
-
-### Na tela, só o que você usa
-
-O que não é usado não é criado nem exibido. Você pode pedir ao coordenador, em linguagem simples, a maioria das operações, como alterar configurações, criar um projeto e atualizar; por isso, são necessários poucos botões e formulários para trabalhos específicos.
-
-A tela se concentra no que foi feito e no que depende da sua decisão. Suas solicitações são listadas por status, para que você veja o que está avançando e o que está esperando por você. Você pode abrir a troca detalhada de mensagens com a IA quando precisar.
-
-Como a tela traz apenas o que você usa, ela cabe bem em um celular.
-
-### Diga com palavras, não com configurações
-
-Escreva o que você quer que a IA faça em frases simples, e não por meio de configurações.
-
-- **Política do projeto**: regras básicas que chegam a todos os responsáveis do projeto. Escreva coisas como “Para mudanças na aparência, mostre uma prévia antes de criar” ou “Rode apenas os testes da área que mudou”. Quanto mais você disser sobre o que a IA pode decidir e sobre o que ela deve perguntar a você, menos perguntas você recebe.
-- **`AGENTS.md`, `CLAUDE.md`**: como de costume, a IA lê os que estão na pasta de trabalho do projeto.
-
-As solicitações para o trabalho do momento também são frases simples. Por exemplo:
-
-- “Faça isso com o opus do Claude Code, com esforço high”
-- “Peça ao Claude Code e ao Codex que cada um faça uma versão e depois compare as duas para mim”
-- “Quero que isso fique pronto rápido, então divida o trabalho e faça as partes em paralelo”
-- “Quando terminar, peça que um modelo diferente do que criou verifique o resultado”
-- “Rode apenas os testes relacionados à mudança”
-- “A IA que está trabalhando nisso parece ter se confundido; troque por uma nova IA e continue”
-
-Quando o responsável é substituído, as decisões e os resultados ficam nos registros da tarefa, então a nova IA continua a partir dali. Coloque na política do projeto o que você quer sempre (por exemplo, “Implementação com o Codex, verificação dos resultados com o Claude Code”).
+O `AGENTS.md`, o `CLAUDE.md`, as skills e o MCP que você usa hoje continuam funcionando como estão.
 
 ## Para o que ele não serve
 
-- **Uso em equipe**: é uma ferramenta para uma pessoa só. Por enquanto, a tela não tem login e não há como separar usuários.
-- **Exposição à internet**: ele pressupõe que os outros dispositivos se conectem por uma VPN em que só estão os seus próprios dispositivos ([Usar pelo celular](getting-started.md#6-usar-pelo-celular)).
+- Uso em equipe: é uma ferramenta para uma pessoa só. A tela não tem login.
+- Exposição à internet: ele pressupõe que os outros dispositivos se conectem por uma VPN em que só estão os seus próprios dispositivos.

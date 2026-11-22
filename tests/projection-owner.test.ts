@@ -25,7 +25,7 @@ test('reads bypass batching, preserve old frames and recover every resource afte
       const heldRevision = personalRevision;
       if (changeDuringPersonal) { changeDuringPersonal = false; personalRevision = 'a'.repeat(64); title('Synthetic concurrent personal change'); }
       return {
-      notices: null, person: { settings: heldRevision, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 },
+      person: { settings: heldRevision, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 },
     }; }, published: frame => { frames.push(frame); } });
   t.after(async () => { await owner.close(); db.close(); removeWorkspace(root); removeWorkspace(original.root); rmSync(area, { recursive: true, force: true }); });
   await owner.start();
@@ -99,7 +99,7 @@ function workspace(t: TestContext, seed: string) {
     db.prepare('UPDATE tasks SET title=?,revision=revision+1 WHERE external_id=?').run(value, id);
     return log.append([{ kind: 'task', id }]);
   };
-  const personal = async () => ({ notices: null, person: { settings: null, notices: null, coordinator: null },
+  const personal = async () => ({ person: { settings: null, notices: null, coordinator: null },
     presence: { state: 'away' as const, until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 } });
   return { root, db, log, title, personal, own: (owner: ProjectionOwner) => { owners.push(owner); return owner; } };
 }

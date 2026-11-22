@@ -4,7 +4,7 @@
 
 画面の URL（`http://127.0.0.1:43127/` のような形）は、ブラウザを閉じても PC を再起動しても変わりません。ブックマークするか、Chrome や Edge ならアドレス欄の右端の「インストール」でアプリとして入れておきます。
 
-URL を忘れたときは、PC の Claude Code や Codex に「alpacawork の画面を開いて」と頼むと、ブラウザで開きます。URL は、ターミナルで `alpacawork workspace url` を実行しても確かめられます（`"localUrl"` のあとの URL）。
+URL を忘れたときは、ターミナルで `alpacawork open` を実行すると、ブラウザで画面が開きます。SSH でつないだ PC のようにブラウザを開けない所では、URL と開き方が出ます。
 
 ## Windows で使うとき
 
@@ -31,12 +31,12 @@ systemd が無効と言われたときは、次の順に有効にします。
 
 alpacawork は PC にログインすると自動で起動します。自分で操作するときは、ターミナルで次を実行します。
 
-| すること | Linux・WSL2 | macOS |
-| --- | --- | --- |
-| 止める | `systemctl --user stop alpacawork.service` | `launchctl bootout gui/$(id -u)/alpacawork.service` |
-| 止めたあとに起動する | `systemctl --user start alpacawork.service` | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist` |
-| 再起動する | `systemctl --user restart alpacawork.service` | `launchctl kickstart -k gui/$(id -u)/alpacawork.service` |
-| 動いているか見る | `systemctl --user status alpacawork.service` | `launchctl print gui/$(id -u)/alpacawork.service` |
+| すること | コマンド |
+| --- | --- |
+| 止める | `alpacawork stop` |
+| 止めたあとに起動する | `alpacawork start` |
+| 再起動する | `alpacawork restart` |
+| 動いているか見る | `alpacawork status` |
 
 サーバーを止めても、動いている AI の作業は止まりません。作業を止めるときは、タスクを [中止](guide.md#保留中止) します。
 

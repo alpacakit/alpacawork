@@ -11,6 +11,8 @@ import { agentModelChoices, agentModelName, kindToName, listedLabel } from "@/do
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { Popup } from "@/components/ui/popup";
 import { FieldError } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
+import { openSettings } from "@/state/dialog-store";
 import { cn } from "@/lib/utils";
 import { offeredChoices } from "@alpacawork/contract/agent-selection";
 import type { LaunchChoice } from "./launch-choice";
@@ -47,7 +49,9 @@ export function AgentPicker({ choice, disabled = false, className, open: shown, 
   const options = agentModelChoices(choice.profiles.map(profile => ({ key: profile.key, models: modelCandidates(profile.offer) })));
   const selected = listedLabel(options, choice.profile, chosenName(choice.selected, choice.profile));
   const kind = kindToName(options, choice.profile, choice.selected.model);
-  const named = kind ? `${kind} ${selected.full}` : selected.full;
+  // No agent is enabled: the button says so in its name's place.
+  const none = choice.profiles.length === 0;
+  const named = none ? text.brief.none() : kind ? `${kind} ${selected.full}` : selected.full;
   const trigger = useRef<HTMLButtonElement>(null);
   // A press on the open menu's own button closes it as a press outside (the popover's), so the click that ends that
   // press must not open it again: it goes by how the menu stood when the press began. A click without a press (the
@@ -66,13 +70,14 @@ export function AgentPicker({ choice, disabled = false, className, open: shown, 
             has the height instead: what does not fit goes on a second line rather than be cut to its start (the kind
             whole, never broken). */}
         <span className="flex min-w-0 items-baseline gap-1 narrow:line-clamp-2 narrow:text-left narrow:whitespace-normal narrow:[overflow-wrap:anywhere]">
+          {none ? <span data-agent-none className="truncate">{named}</span> : <>
           {kind && <span data-agent-kind aria-hidden="true" className="max-w-full min-w-0 shrink-[99] truncate after:ms-1 after:content-['·'] narrow:inline-block narrow:align-bottom narrow:after:me-1">{kind}</span>}
-          <AgentLabel label={selected} className="narrow:inline narrow:[&>*]:inline narrow:[&>[data-agent-name]]:whitespace-normal" />
+          <AgentLabel label={selected} className="narrow:inline narrow:[&>*]:inline narrow:[&>[data-agent-name]]:whitespace-normal" /></>}
         </span>
         <Icon name="down" className="size-3 flex-none text-muted" />
       </button>
       {/* Closed, the first thing to settle stays said under it; open, the list's foot says them all. */}
-      {!open && choice.gone && <FieldError data-selection-problem className="mt-0 truncate text-xs" title={text.gone(choice.gone)}>{text.brief.gone()}</FieldError>}
+      {!open && !none && choice.gone && <FieldError data-selection-problem className="mt-0 truncate text-xs" title={text.gone(choice.gone)}>{text.brief.gone()}</FieldError>}
       {!open && !choice.gone && problems.length > 0 && <FieldError data-selection-problem className="mt-0 truncate text-xs" title={text.problem(problems[0]!)}>{text.brief(problems[0]!)}</FieldError>}
     </div>}>
     {open && <AgentMenu choice={choice} disabled={disabled} options={options} close={() => setOpen(false)} />}
@@ -227,7 +232,11 @@ function AgentMenu({ choice, disabled, options, close }: { choice: Choice; disab
         </div>;
       })}
     </div>}
-    {(choice.gone || problems.length > 0) && <div data-selection-problems className={cn(TO_EDGES, "mt-3 flex flex-none flex-col gap-1 border-t border-line px-3 pt-2 in-data-[slot=sheet]:px-4")}>
+    {/* With no agent to choose, the way to one: the agents in Settings, which say how to sign in to each and enable it. */}
+    {choice.profiles.length === 0 ? <div data-selection-problems className="flex flex-col items-start gap-2">
+      <FieldError className="mt-0">{text.none()}</FieldError>
+      <Button variant="outline" data-open-agent-settings onClick={() => { close(); openSettings("server"); }}>{t("agentPicker.openSettings")}</Button>
+    </div> : (choice.gone || problems.length > 0) && <div data-selection-problems className={cn(TO_EDGES, "mt-3 flex flex-none flex-col gap-1 border-t border-line px-3 pt-2 in-data-[slot=sheet]:px-4")}>
       {choice.gone && <FieldError className="mt-0">{text.gone(choice.gone)}</FieldError>}
       {problems.map(problem => <FieldError key={problem.key} className="mt-0">{text.problem(problem)}</FieldError>)}
     </div>}

@@ -125,8 +125,9 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
     rememberLaunch({ kind: "choose", agent: target.key, values: update }, () => shared).catch(sayUnsaved);
   };
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems,
-    /** The agent this send went to, which the settings no longer enable: the person picks another. */
-    gone, ready: !gone && selectionReady(view),
+    /** The agent this send went to, which the settings no longer enable: the person picks another. A send goes only
+     * to an offered agent, so neither it nor a send with no agent enabled at all is ready. */
+    gone, ready: !!offer && selectionReady(view),
     /** A choice made here is still being saved: a send waits for it. */
     saving: saving.length > 0,
     /** What the send carries: null is "none" (a written -). */

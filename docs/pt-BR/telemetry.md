@@ -6,7 +6,7 @@ O envio é opcional. Nada é enviado até você escolher, e o alpacawork funcion
 
 ## O que é enviado
 
-Para cada dia em que você usa o alpacawork, os dados daquele dia são reunidos em um relatório e enviados no dia seguinte. Os dias são contados em UTC. Nenhum relatório é enviado nos dias em que você não usa o alpacawork. Se um relatório não puder ser enviado, o envio é tentado novamente por 7 dias; depois disso, ele é excluído sem ser enviado.
+Para cada dia em que você usa o alpacawork, os dados daquele dia são reunidos em um relatório e enviados no dia seguinte. O dia vira à meia-noite UTC (21h no horário de Brasília). Nenhum relatório é enviado nos dias em que você não usa o alpacawork. Se um relatório não puder ser enviado, o envio é tentado novamente por 7 dias; depois disso, ele é excluído sem ser enviado.
 
 Um relatório contém:
 
@@ -34,7 +34,7 @@ Os endereços IP não são incluídos nos relatórios, e o serviço de recebimen
 
 ## Escolher se quer enviar e parar o envio
 
-Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um workspace criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
+Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um espaço de trabalho criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
 
 Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a melhorar o alpacawork”, no final de Configurações → Servidor. Desativá-la interrompe o envio; ativá-la o inicia. Se você só quer parar, também pode executar `alpacawork telemetry off`.
 

@@ -67,8 +67,8 @@ test('activity updates list patches without aging the opened view, while batched
   let files: RunFileRecord = { activity: null, errorCause: undefined };
   const owner = new ProjectionOwner({ root: h.root, generation: 'activity-regression', log: journal,
     observations: { runFiles: run => run.id === 'R4' ? files : { activity: null, errorCause: undefined } },
-    locations: () => ({}), published: () => {}, personal: async () => ({ notices: null,
-      person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 } }) });
+    locations: () => ({}), published: () => {}, personal: async () => ({
+      person: { settings: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 } }) });
   try {
     await owner.start();
     let before = owner.current!;
@@ -268,10 +268,7 @@ test('folder observations, Request ordering and personal count facts all read th
   const withRequests = after.advance(h.db, [{ kind: 'request', id: 'z-earlier' }, { kind: 'request', id: 'a-later' }], pv(3)).next;
   const requested = withRequests.bundle('T5')!.requests.filter(request => ['z-earlier', 'a-later'].includes(request.id));
   assert.deepEqual(requested.map(request => request.id), ['a-later', 'z-earlier']);
-  const row = { state: 'done', notice: { bodyHash: 'body', logCount: 2, lastNoticed: { kind: 'reported', position: 1, at }, turnKey: null } };
-  assert.deepEqual(aggregateFactsOf(withRequests, 'T5', row, null), { scopes: ['root', 'P1'], listed: true, menuRunning: false, freshFinished: false });
-  assert.equal(aggregateFactsOf(withRequests, 'T5', row, { checkpoint: { tasks: {} }, reads: {} }).freshFinished, true);
-  assert.equal(aggregateFactsOf(withRequests, 'T5', row, { checkpoint: { tasks: { T5: { log: 2, state: 'done', body: 'body' } } }, reads: {} }).freshFinished, false);
+  assert.deepEqual(aggregateFactsOf(withRequests, 'T5'), { scopes: ['root', 'P1'], listed: true, menuRunning: false });
   fileLists.set('T5', [{ name: 'synthetic.md', size: 12, revision: 'synthetic', at }]);
   const withFiles = withRequests.advance(h.db, [{ kind: 'files', id: 'T5' }], pv(4)).next;
   assert.deepEqual(withRequests.bundle('T5')!.files, []);

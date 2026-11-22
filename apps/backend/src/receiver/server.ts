@@ -435,8 +435,6 @@ export async function startServer(root: string, port: number, options: ServerOpt
   let coordinatorWork: ReturnType<typeof coordinator.work> = null;
   async function personalProjection() {
     readPersonalSettings();
-    let notices: Awaited<ReturnType<typeof noticeState.get>>['state'] = null;
-    try { notices = (await noticeState.get()).state; } catch { /* The personal read endpoint reports a damaged file. */ }
     personRevisions.settings = settingsReadable ? personSettings.revision() ?? UNSAVED_SETTINGS : null; personRevisions.notices = noticeState.revision();
     if (coordinatorDirty) try {
       const snapshot = coordinator.snapshot(generation);
@@ -447,7 +445,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     // A damaged file starts new conversations from nothing remembered, says so, and refuses a change until repaired.
     let remembered = emptyLaunchMemory, launchError: string | null = null;
     try { remembered = launchMemory.get(); } catch (error) { launchError = (error as Error).message; }
-    return { notices, person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork, launchMemory: remembered,
+    return { person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork, launchMemory: remembered,
       errors: [...fileFaults.values(), ...runReviews.issues, ...(settleError ? [{ code: PROBLEM_CODE.readFailed,
         path: '.alpacawork/runs', message: settleError, reason: faultReason(new Error(settleError)) }] : []),
       ...(launchError ? [{ code: PROBLEM_CODE.readFailed, path: `.alpacawork/${LAUNCH_MEMORY_FILE}`, message: launchError,

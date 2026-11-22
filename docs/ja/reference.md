@@ -66,6 +66,9 @@
 | `alpacawork setup` | インストールする |
 | `alpacawork setup --yes --port <番号>` | 画面の URL のポートを変える |
 | `alpacawork setup --yes --public-host <名前>` | ほかの端末から開く `https://` の名前を設定する |
+| `alpacawork open` | 画面をブラウザで開く |
+| `alpacawork start`、`stop`、`restart` | 起動する、止める、再起動する |
+| `alpacawork status` | 動いているかと、画面の URL を表示する |
 | `alpacawork workspace url` | 画面の URL を表示する |
 | `alpacawork deploy npm:alpacawork` | 最新の版へ更新する |
 | `alpacawork uninstall` | この PC から外す。データの置き場は残る |

@@ -51,10 +51,7 @@ npm install -g alpacawork
 alpacawork setup
 ```
 
-- **Requisitos:** macOS (Apple silicon), Linux (x64) o Windows (dentro de WSL2). Necesitas un agente de IA en el que hayas iniciado sesión, como Claude Code o Codex, y Node.js 24.16 o posterior (si la instalación la hace una IA, esta instala Node.js cuando falta). [Requisitos completos](docs/es/getting-started.md#requisitos)
-- **Abrir la pantalla:** si el navegador no se abrió, o para volver a abrir la pantalla después de cerrarla o de reiniciar el PC, consulta [Abrir la pantalla](docs/es/getting-started.md#2-abrir-la-pantalla).
-- **Después de instalar:** [Hacer tu primera solicitud](docs/es/getting-started.md#3-hacer-tu-primera-solicitud). Para usarlo desde tu teléfono, conéctate a tu PC a través de una VPN como Tailscale ([Usarlo desde tu teléfono](docs/es/getting-started.md#6-usarlo-desde-tu-teléfono)).
-- **Detener y desinstalar:** [Detener, actualizar o desinstalar](docs/es/getting-started.md#8-detener-actualizar-o-desinstalar)
+Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de instalarlo, sigue [Primeros pasos](docs/es/getting-started.md) para hacer tu primera solicitud.
 
 ## Qué hace
 
@@ -69,15 +66,14 @@ alpacawork setup
 
 - **Es gratis (licencia MIT).** El uso de IA se factura según el plan que ya tienes con Claude Code, Codex u otro agente.
 - **Se ejecuta en tu PC.** La IA se ejecuta en tu PC, así que mantén el PC encendido y configúralo para que no entre en suspensión mientras usas alpacawork.
-- **alpacawork inicia los agentes de IA en el mismo modo sin confirmaciones que `bypassPermissions` de Claude Code y `danger-full-access` de Codex, así que no se detienen a preguntar.** Lo que la IA no debe hacer, o lo que debe consultarte antes, puedes escribirlo en la [política del proyecto](docs/es/getting-started.md#5-escribir-las-reglas-básicas-para-la-ia).
-- **Las tareas, las conversaciones y los archivos de resultados se guardan en tu PC.** alpacawork no los envía a ningún servidor externo gestionado por sus desarrolladores. Tus instrucciones a la IA y lo que la IA lee se envían al proveedor de la IA, igual que cuando usas cada agente de IA directamente ([más sobre el tratamiento de los datos](docs/es/getting-started.md#qué-se-guarda-y-qué-se-envía-fuera)).
+- **alpacawork inicia los agentes de IA en el mismo modo sin confirmaciones que `bypassPermissions` de Claude Code y `danger-full-access` de Codex, así que no se detienen a preguntar.** Lo que la IA no debe hacer, o lo que debe consultarte antes, puedes escribirlo en la [política del proyecto](docs/es/projects.md#política-del-proyecto).
+- **Las tareas, las conversaciones y los archivos de resultados se guardan en tu PC.** alpacawork no los envía a ningún servidor externo gestionado por sus desarrolladores. Tus instrucciones a la IA y lo que la IA lee se envían al proveedor de la IA, igual que cuando usas cada agente de IA directamente ([más sobre el tratamiento de los datos](docs/es/manage.md#dónde-se-guardan-los-datos-y-qué-se-envía-fuera)).
 
 ## Documentación
 
-- [Primeros pasos](docs/es/getting-started.md): desde la instalación y la apertura de la pantalla hasta tu primera solicitud, el uso desde tu teléfono, la actualización y la desinstalación
-- [Las ideas detrás de alpacawork](docs/es/concept.md): cómo avanza una solicitud y los principios de diseño
-- [Si la pantalla no se abre](docs/es/getting-started.md#si-la-pantalla-no-se-abre): cuando el navegador no puede conectarse
-- [Solución de problemas](docs/es/getting-started.md#solución-de-problemas): cuando otra cosa no funciona. Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
+- [Primeros pasos](docs/es/getting-started.md): instalar, pedir una tarea y revisarla
+- [Índice de la documentación](docs/es/README.md): la lista de todas las páginas: cómo usarlo, la configuración, la solución de problemas y más
+- Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## Licencia
 
