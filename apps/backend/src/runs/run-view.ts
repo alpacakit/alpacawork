@@ -14,4 +14,3 @@ export function recordedRun(run: ReadRunRecord): ControlRunDTO {
     createdAt: run.created_at, startedAt: run.started_at, endedAt: run.ended_at,
     usage: run.usage ? { run: run.usage.run ? { ...run.usage.run } : null, includesEarlier: run.usage.includesEarlier } : null };
 }
-
