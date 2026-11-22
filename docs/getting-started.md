@@ -37,13 +37,13 @@ If you can't open it, see [The screen doesn't open](troubleshooting.md#the-scree
 Go through the screen's four steps in order.
 
 1. Choose the screen's language and theme, and press "Next".
-2. Turn the AIs you will use "On", and press "Next".
+2. Check that the AIs you will use are "On", and press "Next".
 3. In the next step, keep the recommended choices and press the install button.
-4. Choose the project's name and "Working folder", and press "Finish setup".
+4. Name the project, choose your repository's folder as the "Working folder" if you use an existing one, and press "Finish setup".
 
 <img src="images/setup-project.png" alt="The last step of setup, with the “Name” and “Working folder” fields and a “Choose” button beside the working folder" width="480">
 
-A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (`~/alpacawork` is used). You can start with the example project policy as it is.
+A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start with the example project policy as it is.
 
 ## 4. Send a request
 
