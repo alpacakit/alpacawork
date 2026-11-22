@@ -72,6 +72,24 @@ test("a choice made on another screen is where the next new conversation starts,
   expect(stored()).toMatchObject({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
 });
 
+test("a message inherits the conversation's AI after its own choice was admitted", async () => {
+  given.profiles = [codex, pi];
+  let choice!: ReturnType<typeof useLaunchChoice>;
+  function Picker({ agent, previous }: { agent: string; previous: { model: string } }) {
+    choice = useLaunchChoice({ id: "c1", agent, previous });
+    return null;
+  }
+  const view = render(<Picker agent="codex" previous={{ model: "a" }} />);
+  expect([choice.sendAgent, choice.send]).toEqual([undefined, {}]);
+  await act(async () => choice.setSelected({ model: "b" }));
+  expect([choice.sendAgent, choice.send]).toEqual(["codex", { model: "b" }]);
+  view.rerender(<Picker agent="codex" previous={{ model: "b" }} />);
+  expect([choice.sendAgent, choice.send]).toEqual([undefined, {}]);
+  view.rerender(<Picker agent="pi" previous={{ model: "fixed-first" }} />);
+  expect([choice.profile, choice.sendAgent, choice.send]).toEqual(["pi", undefined, {}]);
+  expect(stored().values.codex).toEqual({ model: "b" });
+});
+
 test("a conversation whose launch never got going (no previous values) starts as a new one: the memory's agent and values", () => {
   const claude = launchProfile("claude", { model: ["opus", "fable"], effort: ["medium", "high", "low"] });
   given.profiles = [claude, codex];

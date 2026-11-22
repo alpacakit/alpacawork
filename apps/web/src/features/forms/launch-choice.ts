@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { create } from "zustand";
 import { applyLaunchMemory, launchMemoryRequestSchema, launchMemoryResponseSchema, type LaunchMemory, type LaunchMemoryChange } from "@alpacawork/contract/agent-selection";
 import type { Selection } from "@alpacawork/contract/agent-settings";
@@ -104,6 +105,14 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
   // What the person changed in the conversation is theirs: checked as chosen, never quietly replaced.
   const changes = own?.agent === profile ? own.changes : {};
   const view = offer ? launchSelection(offer.offer, basis, changes) : { choices: [], shown: {}, send: {}, problems: [] };
+  // Once the server has taken a choice, it is the conversation's previous value. Inheriting it lets later messages
+  // stay with that conversation if the current message needs another AI.
+  const applied = !!own?.agent && goesOn?.agent === own.agent && selectionReady(view) &&
+    Object.entries(view.send).every(([key, value]) => goesOn.previous?.[key] === value);
+  useEffect(() => {
+    if (applied && useConversationChanges.getState() === own)
+      useConversationChanges.setState({ conversation: goesOn!.id, agent: null, changes: {} });
+  }, [applied, goesOn?.id, own]);
   const change = (target: AgentOffer, update: Values) => {
     if (goesOn) {
       const before = changesFor(goesOn.id);
@@ -122,6 +131,7 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
     saving: saving.length > 0,
     /** What the send carries: null is "none" (a written -). */
     send: view.send,
+    sendAgent: goesOn && !own?.agent ? undefined : profile || undefined,
     /** Changes some values; a value the change leaves inactive (the effort of a model without one) is not sent. */
     setSelected: (update: Values) => { if (offer) change(offer, update); },
     chooseProfile: (key: string, overrides: Values = {}) => { const target = find(key); if (target) change(target, overrides); } };

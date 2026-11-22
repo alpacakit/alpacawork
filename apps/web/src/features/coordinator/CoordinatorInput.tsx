@@ -172,7 +172,7 @@ export function CoordinatorInput({ launch, profile }: {
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
     const fixed: Fixed = { conversationId, text: serialize(doc, profile), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
-      agent: profile, selected: launch.selected, attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
+      agent: launch.picker ? launch.picker.sendAgent : profile, selected: launch.selected, attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };
     const accept = captureReaderSubmission(fixed, doc, serverTasksFor(client) ?? [], requestId, scope, recheck(requestId, scope), card);
     if (accept.reader.some(reader => holdsReaderTurn(useDraftStore.getState().entries, root, reader))) return null;
