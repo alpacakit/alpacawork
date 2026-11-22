@@ -9,7 +9,7 @@ import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
+import { useGoingGuide, useGuide, useGuideRestartFromUrl, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -99,10 +99,11 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  * names, with an arrow to it and a quiet ring round it. Nothing covers the page and nothing is held: only its buttons
  * take a press, so what is under the balloon stays pressable. It follows the part as the window is resized, scrolled or
  * redrawn, and is not drawn while that part is not seen or a dialog is over the page. Read out as a status; it never
- * takes the focus. It also starts the guide (useGuideStart) and stores the stage as it moves (useGuideStage); while no
- * guide goes on, nothing else is read for it.
+ * takes the focus. It also starts the guide (useGuideStart, or over again from the address: useGuideRestartFromUrl)
+ * and stores the stage as it moves (useGuideStage); while no guide goes on, nothing else is read for it.
  */
 export function GuideBalloon() {
+  useGuideRestartFromUrl();
   useGuideStart();
   const stage = useGoingGuide();
   return stage && <GoingBalloon stage={stage} />;

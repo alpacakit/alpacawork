@@ -10,7 +10,8 @@ import { useInputDraft } from "@/features/coordinator/editor/draft";
 import { answersIn, hasContent } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
-import { going, guideStage, moveGuide, type GoingStage } from "./guide-state";
+import { replaceStep } from "@/lib/history";
+import { going, guideStage, moveGuide, restartGuide, type GoingStage } from "./guide-state";
 import { guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
@@ -44,6 +45,20 @@ export function coordinatorFacts({ since, turns, sending, questions }: {
 
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
 export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
+
+/**
+ * Opened with `?guide=restart`, the guide starts over as settings' "Show again" does (for trying it again without
+ * clearing the browser's data); the address then drops it, so a reload does not start it over again.
+ */
+export function useGuideRestartFromUrl() {
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (url.searchParams.get("guide") !== "restart") return;
+    url.searchParams.delete("guide");
+    replaceStep(history.state, url);
+    restartGuide();
+  }, []);
+}
 
 /**
  * Starts the guide on a new person's first look (startsGuide): read from the stored stage and the workspace's counts
