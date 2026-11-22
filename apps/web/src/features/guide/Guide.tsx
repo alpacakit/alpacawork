@@ -9,7 +9,7 @@ import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGoingGuide, useGuide, useGuideRestartFromUrl, useGuideStage, useGuideStart } from "./use-guide";
+import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -82,6 +82,28 @@ function shownPart(selector: string): HTMLElement | null {
   }
   return null;
 }
+/** The nearest box `element` (itself included) scrolls in: one that lets its content overflow and scroll. */
+function scrollerOf(element: Element | null): HTMLElement | null {
+  for (let at = element instanceof HTMLElement ? element : element?.parentElement ?? null; at; at = at.parentElement) {
+    const { overflowY } = getComputedStyle(at);
+    if (overflowY === "auto" || overflowY === "scroll") return at;
+  }
+  return null;
+}
+/**
+ * The first element marked as `selector` that is laid out and shown but scrolled out of the box it scrolls in (its
+ * middle outside that box): a part to bring into view.
+ */
+function scrolledAway(selector: string): HTMLElement | null {
+  for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+    if (element.closest("[inert], [aria-hidden=true]")) continue;
+    if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+    const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
+    const middle = box.top + Math.min(box.height, 40) / 2;
+    if (pane && (middle < pane.top || middle > pane.bottom)) return element;
+  }
+  return null;
+}
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
   return { left: box.left, top: box.top, width: box.width, height: box.height };
@@ -99,11 +121,10 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  * names, with an arrow to it and a quiet ring round it. Nothing covers the page and nothing is held: only its buttons
  * take a press, so what is under the balloon stays pressable. It follows the part as the window is resized, scrolled or
  * redrawn, and is not drawn while that part is not seen or a dialog is over the page. Read out as a status; it never
- * takes the focus. It also starts the guide (useGuideStart, or over again from the address: useGuideRestartFromUrl)
- * and stores the stage as it moves (useGuideStage); while no guide goes on, nothing else is read for it.
+ * takes the focus. It also starts the guide (useGuideStart) and stores the stage as it moves (useGuideStage); while no
+ * guide goes on, nothing else is read for it.
  */
 export function GuideBalloon() {
-  useGuideRestartFromUrl();
   useGuideStart();
   const stage = useGoingGuide();
   return stage && <GoingBalloon stage={stage} />;
@@ -121,8 +142,16 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     // Not looked at yet for this step: its first look is always kept, so a step whose part is not on the screen never
     // stands where the step before it stood.
     let last: Placed | null | undefined;
+    // A part scrolled out of its pane is brought into view once, when its step begins; after that the person scrolls.
+    let broughtIn = false;
+    // The box the balloon stands over and scrolls (its room, below).
+    let roomed: HTMLElement | null = null;
     const update = () => {
-      const target = shownPart(part);
+      let target = shownPart(part);
+      if (!target && !broughtIn) {
+        const away = scrolledAway(part);
+        if (away) { broughtIn = true; away.scrollIntoView({ block: "nearest" }); target = shownPart(part); }
+      }
       const own = balloon.current?.getBoundingClientRect();
       // Each part stood clear of is the one holding the part pointed at, else the one of its kind seen beside it.
       const clear = target ? (entry.clear ?? []).flatMap(name => {
@@ -132,6 +161,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear.length ? around([boxOf(target), ...clear]) : undefined) : null;
       if (!same(last, next)) { last = next; setPlaced(next); }
+      roomed = keepRoom(roomed, next && own ? own : null);
     };
     update();
     // A part comes and goes with the data, and moves with layout and motion no event reports, so it is looked at again
@@ -139,7 +169,10 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const timer = setInterval(update, 250);
     addEventListener("resize", update);
     addEventListener("scroll", update, true);
-    return () => { clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true); };
+    return () => {
+      clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true);
+      keepRoom(roomed, null);
+    };
   }, [part, entry?.id, entry?.side, entry?.align]);
   if (!entry || !part) return null;
   return createPortal(<>
@@ -152,6 +185,27 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     </div>
   </>, document.body);
 }
+
+/**
+ * While the balloon (at `balloon`, or none) stands over a box that scrolls, that box gets room at its end as tall as
+ * the balloon reaches into it (`data-guide-room`, parts.css), so what the balloon covers can be scrolled out from under
+ * it. The room leaves the box it was in (`before`) as soon as the balloon moves off it or is gone. Returns the box that
+ * has the room now.
+ */
+function keepRoom(before: HTMLElement | null, balloon: DOMRect | null): HTMLElement | null {
+  // What is under its middle, the balloon's own buttons aside, is what it stands over.
+  const under = balloon ? scrollerOf(document.elementsFromPoint(balloon.left + balloon.width / 2, balloon.top + balloon.height / 2)
+    .find(element => !element.closest("[data-guide-balloon]")) ?? null) : null;
+  const room = under && balloon ? roomUnder(under.getBoundingClientRect(), balloon) : 0;
+  if (before && (before !== under || !room)) { before.removeAttribute("data-guide-room"); before.style.removeProperty("--guide-room"); }
+  if (!under || !room) return null;
+  under.setAttribute("data-guide-room", "");
+  under.style.setProperty("--guide-room", `${room}px`);
+  return under;
+}
+/** The room a box needs at its end for what a balloon over it covers to be scrolled clear: from the balloon's top to the box's foot. */
+export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DOMRect, "top" | "bottom">) =>
+  balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
 function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | null }) {
   const { t } = useTranslation("tree");

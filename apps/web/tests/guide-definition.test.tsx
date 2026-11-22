@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { PARTS, doneOnLeaving, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { coordinatorFacts, foundDraft } from "../src/features/guide/use-guide";
-import { placeBalloon } from "../src/features/guide/Guide";
+import { placeBalloon, roomUnder } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
@@ -133,4 +133,11 @@ test("shown again, what the input already held is not writing; a change to it is
   expect(foundDraft(intro, "old words", found)?.same).toBe(true);
   expect(foundDraft(intro, "old words and more", found)?.same).toBe(false);
   expect(foundDraft(started, "old words", found)).toBeNull();
+});
+
+test("a box under the balloon gets room at its end from the balloon's top down, and none when the balloon is off it", () => {
+  const sheet = { top: 300, bottom: 844 };
+  expect(roomUnder(sheet, { top: 600, bottom: 700 })).toBe(244);
+  expect(roomUnder(sheet, { top: 250, bottom: 320 })).toBe(594);
+  expect(roomUnder(sheet, { top: 100, bottom: 200 })).toBe(0);
 });

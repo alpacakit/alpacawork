@@ -153,3 +153,7 @@
   &::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 9999px; background: #fff; }
   &:focus-visible::-moz-range-thumb { outline: 2px solid #fff; outline-offset: 2px; }
 }
+
+/* Room at the end of a box that scrolls while the getting-started guide's balloon stands over it, as tall as the balloon
+   reaches into it from its foot, so what the balloon covers can be scrolled out from under it (Guide.tsx, keepRoom). */
+[data-guide-room]::after { content: ""; display: block; flex: none; height: var(--guide-room); }
