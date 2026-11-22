@@ -22,7 +22,7 @@ vi.mock("../src/features/setup/ProjectStep", () => ({
 vi.mock("../src/data/mobile-access", () => ({ useMobileAccess: () => ({ data: undefined, isPending: true, isError: false, refetch: () => {} }) }));
 
 beforeAll(() => { startI18n(); watchDesktopApp(window); });
-beforeEach(async () => { await i18n.changeLanguage("en"); run.left = []; run.data = unfinished; run.finished.mockClear(); });
+beforeEach(async () => { await i18n.changeLanguage("en"); run.left = []; run.data = unfinished; run.finished.mockClear(); localStorage.clear(); });
 afterEach(() => { cleanup(); act(() => { window.dispatchEvent(new Event("appinstalled")); }); });
 
 /** The browser offering to install the page, answering its prompt with `outcome`. */
@@ -56,7 +56,7 @@ test("finishing setup without a way to install opens the project at once", async
 
 test("with the browser's offer, finishing asks once; installing or declining both open the project", async () => {
   for (const outcome of ["accepted", "dismissed"] as const) {
-    run.left = []; run.data = unfinished;
+    run.left = []; run.data = unfinished; localStorage.clear();
     const event = offer(outcome);
     const view = render(<SetupScreen />);
     await finish();
@@ -67,25 +67,38 @@ test("with the browser's offer, finishing asks once; installing or declining bot
     expect(run.left).toEqual(["/?project=P1"]);
     view.unmount();
   }
-  // While the browser asks, the screen still says what is being asked (not Safari's menu), and waits for the answer.
-  run.left = []; run.data = unfinished;
+  // While the browser asks, neither way on can be pressed again, and the answer opens the project.
+  run.left = []; run.data = unfinished; localStorage.clear();
   let answer = () => {};
   offer("accepted", new Promise<void>(done => { answer = done; }));
   const asking = render(<SetupScreen />);
   await finish();
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Install and start" })); });
-  expect(screen.getByText(/the Dock or the taskbar/)).toBeTruthy();
+  for (const name of ["Install and start", "Start in the browser"])
+    expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
   expect(run.left).toEqual([]);
   await act(async () => { answer(); });
   expect(run.left).toEqual(["/?project=P1"]);
   asking.unmount();
   // Starting in the browser does not ask.
-  run.left = []; run.data = unfinished;
+  run.left = []; run.data = unfinished; localStorage.clear();
   const event = offer("accepted");
   render(<SetupScreen />);
   await finish();
   fireEvent.click(screen.getByRole("button", { name: "Start in the browser" }));
   expect(event.prompt).not.toHaveBeenCalled();
+  expect(run.left).toEqual(["/?project=P1"]);
+});
+
+test("the browser is asked once: setup finished again in another tab opens the project at once", async () => {
+  offer("accepted");
+  const first = render(<SetupScreen />);
+  await finish();
+  expect(screen.getByRole("button", { name: "Install and start" })).toBeTruthy();
+  first.unmount();
+  run.left = []; run.data = unfinished;
+  render(<SetupScreen />);
+  await finish();
   expect(run.left).toEqual(["/?project=P1"]);
 });
 
@@ -102,12 +115,20 @@ test("Settings shows its Install button only while the offer can be used, and th
   expect(within(part()).getByRole("img")).toBeTruthy();
 });
 
-test("a touch screen leaves the offer to the browser's own banner: nothing is kept and the browser is not stopped", () => {
+test("a touch screen leaves the offer to the browser's own banner, and one that becomes touch is not asked", async () => {
   const original = window.matchMedia;
-  vi.spyOn(window, "matchMedia").mockImplementation(media => ({ ...original(media), matches: media === "(pointer: coarse)" }));
-  const event = offer("accepted");
-  expect(event.defaultPrevented).toBe(false);
+  const touch = () => vi.spyOn(window, "matchMedia").mockImplementation(media => ({ ...original(media), matches: media === "(pointer: coarse)" }));
+  touch();
+  expect(offer("accepted").defaultPrevented).toBe(false);
   vi.restoreAllMocks();
   render(<AppGuideTab />);
   expect(screen.queryByRole("button", { name: "Install" })).toBeNull();
+  cleanup();
+  // Offered on a computer, then used by touch: setup opens the project at once.
+  expect(offer("accepted").defaultPrevented).toBe(true);
+  touch();
+  render(<SetupScreen />);
+  await finish();
+  vi.restoreAllMocks();
+  expect(run.left).toEqual(["/?project=P1"]);
 });

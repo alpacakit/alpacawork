@@ -11,11 +11,15 @@ import { useFirstRun, useFirstRunChange } from "@/data/first-run";
 import { useFrameSelector } from "@/data/workspace-store";
 import { Loading, StepButtons } from "./parts";
 import { leaveSetup } from "./entrance";
+import { deviceValue } from "@/lib/device-storage";
 import { DisplayStep } from "./DisplayStep";
 import { AgentsStep } from "./AgentsStep";
 import { SkillsStep } from "./SkillsStep";
 import { ProjectStep } from "./ProjectStep";
 import logo from "../../../public/icons/icon-192-2c.png?inline";
+
+/** Whether this browser has been asked about the desktop app after setup: it is asked once, whichever tab finishes. */
+const desktopAppAsked = deviceValue("alpacawork.desktopAppAsked", { read: (raw) => raw === "1" || null, write: () => "1" }, false);
 
 /**
  * The setup a new workspace opens on, in four steps: the language and theme, the agents, the skills, the project. Each step saves when it is
@@ -62,7 +66,10 @@ function Setup() {
     const url = new URL("/", location.href);
     url.searchParams.set("project", state.project);
     const app = desktopApp();
-    if (app?.kind === "prompt" || app?.kind === "menu") setFinished({ to: url, way: app.kind });
+    if ((app?.kind === "prompt" || app?.kind === "menu") && !desktopAppAsked.get()) {
+      desktopAppAsked.set(true);
+      setFinished({ to: url, way: app.kind });
+    }
     else leaveSetup(url);
   };
   if (finished) return <DesktopAppOffer {...finished} />;

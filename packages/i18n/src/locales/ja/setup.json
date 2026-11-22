@@ -57,7 +57,7 @@
     "browser": "ブラウザのまま始める",
     "install": "アプリとして入れて始める",
     "later": "あとから、{{settings}}の「{{apps}}」でも入れられます。",
-    "menuBody": "メニューの<ui>ファイル</ui> → <ui>Dock に追加</ui>で入れると、Dock のアイコンから開き直せます。",
+    "menuBody": "メニューの<ui>ファイル</ui> → <ui>Dock に追加</ui>（macOS Sonoma 以降）で入れると、Dock のアイコンから開き直せます。",
     "start": "始める",
     "title": "セットアップが終わりました"
   },

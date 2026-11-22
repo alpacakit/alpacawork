@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 const COARSE_POINTER_QUERY = "(pointer: coarse)";
 export const hasCoarsePointer = (at: Window = window) => at.matchMedia(COARSE_POINTER_QUERY).matches;
 
-const subscribeCoarsePointer = (onChange: () => void) => {
+export const subscribeCoarsePointer = (onChange: () => void) => {
   const query = matchMedia(COARSE_POINTER_QUERY);
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);

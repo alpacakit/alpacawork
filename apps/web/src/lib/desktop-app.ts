@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { hasCoarsePointer, isInstalledApp, subscribeInstalledApp } from "./input-capabilities";
+import { hasCoarsePointer, isInstalledApp, subscribeCoarsePointer, subscribeInstalledApp } from "./input-capabilities";
 
 /** Chrome's and Edge's offer to install the page (not in TypeScript's DOM types). */
 type InstallPromptEvent = Event & { prompt: () => Promise<unknown>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -10,8 +10,8 @@ type InstallPromptEvent = Event & { prompt: () => Promise<unknown>; userChoice: 
  * - prompt: the browser has offered to install it (Chrome, Edge), so a button of the page's own can ask; `install`
  *   asks once and says whether it was installed.
  * - menu: Safari on a Mac, which installs only from its menu (File → Add to Dock).
- * - null: no way this page knows of (Firefox, a browser that has not offered, or an offer used up), or a touch screen,
- *   where the page has no Install button of its own and leaves the offer to the browser's own banner.
+ * - null: no way this page knows of (Firefox, a browser that has not offered, or an offer used up), or a touch screen
+ *   now (the input can change while the page is open), where the page has no Install button of its own.
  */
 export type DesktopApp =
   | { kind: "installed" }
@@ -34,9 +34,10 @@ const listeners = new Set<() => void>();
 const changed = () => listeners.forEach(listener => listener());
 const keep = (next: InstallPromptEvent | null) => { offer = next; changed(); };
 
-/** Starts keeping the browser's offer on a computer; called once, as the page starts. */
+/** Starts keeping the browser's offer; called once, as the page starts. */
 export function watchDesktopApp(at: Window = window) {
   at.addEventListener("beforeinstallprompt", event => {
+    // A touch screen's browser shows its own banner, which is left to it.
     if (hasCoarsePointer(at)) return;
     // The page asks from its own button, so the browser's own way to ask is not shown as well.
     event.preventDefault();
@@ -45,12 +46,17 @@ export function watchDesktopApp(at: Window = window) {
   at.addEventListener("appinstalled", () => keep(null));
 }
 
+/** Asks the browser once. A browser that refuses to ask (the offer was no longer good) has not installed it. */
 async function install(): Promise<boolean> {
   const asked = offer;
   if (!asked) return false;
   keep(null);
-  await asked.prompt();
-  return (await asked.userChoice).outcome === "accepted";
+  try {
+    await asked.prompt();
+    return (await asked.userChoice).outcome === "accepted";
+  } catch {
+    return false;
+  }
 }
 
 const PROMPT: DesktopApp = { kind: "prompt", install };
@@ -59,13 +65,14 @@ const MENU: DesktopApp = { kind: "menu" };
 
 export const desktopApp = (): DesktopApp =>
   isInstalledApp() ? INSTALLED
+    : hasCoarsePointer() ? null
     : offer ? PROMPT
-    : !hasCoarsePointer() && isMacSafari(navigator.userAgent, navigator.maxTouchPoints) ? MENU
+    : isMacSafari(navigator.userAgent, navigator.maxTouchPoints) ? MENU
     : null;
 
 const subscribe = (onChange: () => void) => {
   listeners.add(onChange);
-  const stopInstalled = subscribeInstalledApp(onChange);
-  return () => { listeners.delete(onChange); stopInstalled(); };
+  const stops = [subscribeInstalledApp(onChange), subscribeCoarsePointer(onChange)];
+  return () => { listeners.delete(onChange); stops.forEach(stop => stop()); };
 };
 export const useDesktopApp = () => useSyncExternalStore(subscribe, desktopApp);

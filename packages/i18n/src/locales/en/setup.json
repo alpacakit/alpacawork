@@ -57,7 +57,7 @@
     "browser": "Start in the browser",
     "install": "Install and start",
     "later": "You can also install it later in {{settings}} → {{apps}}.",
-    "menuBody": "Install it with <ui>File</ui> → <ui>Add to Dock</ui> in the menu, and you can open it again from its icon in the Dock.",
+    "menuBody": "Install it with <ui>File</ui> → <ui>Add to Dock</ui> in the menu (macOS Sonoma or later), and you can open it again from its icon in the Dock.",
     "start": "Start",
     "title": "Setup is done"
   },
