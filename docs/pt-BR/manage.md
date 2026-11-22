@@ -2,7 +2,7 @@
 
 ## Abrir a tela de novo
 
-A URL da tela (no formato `http://127.0.0.1:43127/`) não muda, mesmo que você feche o navegador ou reinicie o PC. Salve-a nos favoritos ou, no Chrome ou no Edge, instale-a como app pelo “Instalar”, no canto direito da barra de endereço.
+A URL da tela (no formato `http://127.0.0.1:43127/`) não muda, mesmo que você feche o navegador ou reinicie o PC. Salve-a nos favoritos ou instale-a como app: no Chrome ou no Edge, pelo “Instalar” em “Configurações (engrenagem) → App e celular”; no Safari do Mac, por “Arquivo → Adicionar ao Dock” no menu (macOS Sonoma ou posterior).
 
 Se esqueceu a URL, execute `alpacawork open` no terminal, e a tela abre no navegador. Onde não é possível abrir um navegador, como em um PC acessado por SSH, aparecem a URL e o jeito de abri-la.
 

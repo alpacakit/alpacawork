@@ -93,6 +93,8 @@ In Codex, write `$alpacawork` instead of `/alpacawork`. From a terminal, this co
 alpacawork open
 ```
 
+In Chrome or Edge, you can install it as an app at the end of setup on the screen, or later in Settings → App & phone, and open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with File → Add to Dock in the menu (macOS Sonoma or later).
+
 ## What it does
 
 - **Write every request in one chat box.** The coordinator turns each request into a task and hands it to an AI. You never have to switch chats or AIs from one job to the next.

@@ -2,7 +2,7 @@
 
 ## Open the screen again
 
-The screen's URL (in the form `http://127.0.0.1:43127/`) stays the same after you close the browser or restart the PC. Bookmark it, or in Chrome or Edge, install it as an app with "Install" at the right end of the address bar.
+The screen's URL (in the form `http://127.0.0.1:43127/`) stays the same after you close the browser or restart the PC. Bookmark it, or install it as an app: in Chrome or Edge with "Install" in "Settings (the gear) → App & phone", in Safari on a Mac with "File → Add to Dock" in the menu (macOS Sonoma or later).
 
 If you forgot the URL, run `alpacawork open` in a terminal and the screen opens in your browser. Where a browser can't be opened, such as on a PC you connect to over SSH, it prints the URL and how to open it.
 
