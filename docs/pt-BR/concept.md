@@ -19,7 +19,7 @@ Suponha que você peça: “Crie um formulário de reservas para o site da loja�
 1. A solicitação que você escreve no campo de mensagem chega à IA que é seu ponto de contato (o coordenador).
 2. O coordenador decide se cria uma nova tarefa ou se acrescenta a uma tarefa em andamento e passa essa tarefa à IA que cuida dela (o responsável).
 3. O responsável divide o trabalho em subtarefas, como “Definir os campos da reserva”, “Criar a tela de preenchimento” e “Conferir a exibição no celular”, e entrega cada uma a um responsável próprio. Quando precisa de ajuda, chama membros (IAs que ajudam). O que não precisa esperar avança em paralelo. O resultado de cada subtarefa volta ao responsável acima dela.
-4. O que a IA não consegue decidir, como “Quais campos colocar na reserva”, chega a você como uma pergunta com opções e uma recomendação. Quando o trabalho fica pronto, chega um relatório. Revise o relatório e pressione “Concluída” para terminar.
+4. O que a IA não consegue decidir, como “Quais campos colocar na reserva”, chega a você como uma pergunta com opções e uma recomendação. Quando o trabalho fica pronto, chega um relatório. Revise o relatório e pressione “Concluir” para terminar.
 
 No histórico da tela aparecem os nomes dos papéis, como “Responsável”. Todas essas IAs são o próprio Claude Code, Codex ou outro agente que está no seu PC.
 
@@ -35,7 +35,7 @@ Só chega a você o que só você pode decidir. As tarefas com uma pergunta ou u
 - Aprovação de operações com efeitos externos, como publicar ou excluir
 - Decisões quando a execução da IA para
 
-A forma de trabalhar, a divisão do trabalho, a ordem e a forma de verificar a IA decide. Você pode continuar pedindo sem esperar a solicitação anterior terminar.
+A IA decide a forma de trabalhar, a divisão do trabalho, a ordem e a forma de verificar. Você pode continuar pedindo sem esperar a solicitação anterior terminar.
 
 ## Diga como prosseguir com palavras
 

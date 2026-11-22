@@ -28,7 +28,7 @@ alpacawork setup
 
 Quando a instalação termina, a tela abre no navegador. Se não abrir, execute `alpacawork open` no terminal ou abra no navegador a URL mostrada no final, algo como `http://127.0.0.1:43127/`.
 
-Essa URL não muda, mesmo que você reinicie o PC. Salve-a nos favoritos. O alpacawork roda automaticamente quando você entra no PC, então não é preciso iniciá-lo toda vez.
+Essa URL não muda, mesmo que você reinicie o PC. Salve-a nos favoritos. O alpacawork roda automaticamente quando você faz login no PC, então não é preciso iniciá-lo toda vez.
 
 Se não conseguir abrir, veja [A tela não abre](troubleshooting.md#a-tela-não-abre).
 
@@ -47,7 +47,7 @@ Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar
 
 ## 4. Enviar uma solicitação
 
-Escreva o que você quer no campo de mensagem, na parte de baixo da tela, e envie. Depois de enviar, o início da resposta aparece acima do campo de mensagem. Toque nele para ler tudo.
+Escreva o que você quer no campo de mensagem, na parte de baixo da tela, e envie. Depois de enviar, o início da resposta aparece acima do campo de mensagem. Pressione-o para ler tudo.
 
 <img src="../images/input-reply.png" alt="O campo de mensagem e, acima dele, o início da resposta da IA que é seu ponto de contato" width="560">
 
@@ -57,9 +57,9 @@ Em um repositório existente, comece com uma solicitação que não altere arqui
 Leia o conteúdo desta pasta e resuma em 3 linhas para que ela serve. Não altere nenhum arquivo. Depois, sugira 3 trabalhos que eu poderia pedir em seguida e me pergunte qual deles fazer.
 ```
 
-A IA lê a pasta e escreve na resposta o resumo e as sugestões de trabalho (ela também pode criar uma tarefa e perguntar por meio de uma pergunta). Se vier como resposta, envie pelo campo de mensagem a sugestão que quer seguir, como “Siga com a 1”; ela vira uma tarefa e aparece como uma linha na lista.
+A IA lê a pasta e escreve na resposta o resumo e as sugestões de trabalho (às vezes ela cria uma tarefa e faz a pergunta por lá). Se vier na resposta, envie pelo campo de mensagem a sugestão que quer seguir, como “Siga com a 1”; ela vira uma tarefa e aparece como uma linha na lista.
 
-Em uma pasta vazia, toque no exemplo da tela “Escolher uma ideia de minijogo e mandar criar” e envie.
+Em uma pasta vazia, pressione o exemplo da tela “Escolher uma ideia de minijogo e mandar criar” e envie.
 
 Enquanto a IA trabalha na tarefa, você não precisa ficar olhando a tela.
 
@@ -69,12 +69,12 @@ Quando chega uma pergunta ou um relatório da IA, a tarefa passa para “Aguarda
 
 <img src="../images/list-waiting.png" alt="O título “Awaiting review” na lista e a linha de uma tarefa abaixo dele" width="336">
 
-- Se for uma pergunta, toque em uma opção e depois envie. Só tocar não envia a resposta. Quando você responde, a IA continua o trabalho e, ao terminar, envia um relatório.
-- Se for um relatório, leia e, se estiver bom, pressione “Concluída” (a marca de visto), na parte de baixo da tela. Se quiser correções, escreva o que mudar no campo de mensagem e envie.
+- Se for uma pergunta, pressione uma opção e depois envie. Só pressionar não envia a resposta. Quando você responde, a IA continua o trabalho e, ao terminar, envia um relatório.
+- Se for um relatório, leia e, se estiver bom, pressione “Concluir” (a marca de visto), na parte de baixo da tela. Se quiser correções, escreva o que mudar no campo de mensagem e envie.
 
 <img src="../images/action-bar.png" alt="Os botões que aparecem embaixo quando uma tarefa está aberta: “Auto-swipe”, “Change state” e “Done”" width="338">
 
-Quando a tarefa passa para “Concluídas”, terminou (“Concluídas” começa fechada; toque no título para abrir). As próximas solicitações também vão pelo mesmo campo de mensagem.
+Quando a tarefa passa para “Concluídas”, terminou (“Concluídas” começa fechada; pressione o título para abrir). As próximas solicitações também vão pelo mesmo campo de mensagem.
 
 ## O que ler em seguida
 

@@ -33,27 +33,27 @@ As tarefas ficam agrupadas por status. Você só precisa agir em duas.
 | Aguardando revisão | Chegou uma pergunta ou um relatório |
 | Requer atenção | A execução da IA parou. Abra para ver o motivo |
 
-“Em andamento” é o que a IA está fazendo, e “Concluídas” é o que terminou. “Concluídas” e alguns outros começam fechados; toque no título para abrir. Os outros grupos estão na [lista de termos](reference.md#status-das-tarefas).
+“Em andamento” é o que a IA está fazendo, e “Concluídas” é o que terminou. “Concluídas” e alguns outros começam fechados; pressione o título para abrir. Os outros grupos estão na [lista de termos](reference.md#status-das-tarefas).
 
 ## Responder a perguntas
 
 Ao abrir a tarefa, aparecem a pergunta e as opções de resposta.
 
-1. Toque em uma opção. A resposta vai para o campo de mensagem.
+1. Pressione uma opção. A resposta vai para o campo de mensagem.
 2. Envie. Ela só chega depois de enviada.
 
-Para uma resposta que não está nas opções, toque em “Outra” e escreva com suas palavras.
+Para uma resposta que não está nas opções, pressione “Outra” e escreva com suas palavras.
 
 ## Revisar relatórios
 
 Leia o relatório e abra os arquivos e as diferenças anexados para conferir.
 
-- Se estiver bom, pressione “Concluída” (a marca de visto), na parte de baixo da tela. A tarefa só termina quando você pressiona.
+- Se estiver bom, pressione “Concluir” (a marca de visto), na parte de baixo da tela. A tarefa só termina quando você pressiona.
 - Se quiser correções, com a tarefa aberta, escreva o que mudar no campo de mensagem e envie.
 
 <img src="../images/action-bar.png" alt="Os botões que aparecem embaixo quando uma tarefa está aberta: “Auto-swipe”, “Change state” e “Done”" width="338">
 
-Ao pressionar “Concluída”, a próxima tarefa aguardando revisão se abre. “Mudar status”, que serve para adiar ou parar, fica no mesmo lugar.
+Ao pressionar “Concluir”, a próxima tarefa aguardando revisão se abre. “Mudar status”, que serve para adiar ou parar, fica no mesmo lugar.
 
 ## Tarefas paradas
 
@@ -74,4 +74,4 @@ Para tirar uma tarefa de “Adiada”, escolha para onde ela volta no mesmo “M
 
 ## No celular
 
-Deslize um cartão para a direita para “Concluída” ou “Enviar”, e para a esquerda para “Adiar”.
+Deslize um cartão para a direita para “Concluir” ou “Enviar”, e para a esquerda para “Adiar”.

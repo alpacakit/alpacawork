@@ -1,6 +1,6 @@
 # Adaptar ao seu trabalho
 
-Como definir os projetos, a política do projeto e as IAs que você usa. Todas as configurações desta página a IA muda se você pedir no campo de mensagem (só o login nas IAs e as chaves de API você faz por conta própria).
+Como definir os projetos, a política do projeto e as IAs que você usa. A IA muda qualquer configuração desta página se você pedir no campo de mensagem (só o login nas IAs e as chaves de API você faz por conta própria).
 
 ## Usar em um repositório existente
 
@@ -12,7 +12,7 @@ A IA altera arquivos sem pedir confirmação. Se você fizer um commit antes de 
 
 ## Criar mais projetos
 
-Crie um projeto para cada repositório. Em nome do projeto, no canto superior esquerdo → “Novo projeto”, informe o nome e o local do código e pressione “Criar”.
+Crie um projeto para cada repositório. Pressione o nome do projeto, no canto superior esquerdo → “Novo projeto”, informe o nome e o local do código e pressione “Criar”.
 
 Um projeto que você não usa mais pode ser arquivado no final das configurações do projeto.
 
@@ -36,16 +36,16 @@ A política é um combinado com a IA, não um mecanismo que a impede. Para limit
 | Agente de IA | O que ele exige |
 | --- | --- |
 | Claude Code, Codex | Login pela própria CLI |
-| GitHub Copilot | Login na GitHub CLI (`gh auth login`). O agente vem junto |
+| GitHub Copilot | Login na GitHub CLI (`gh auth login`). O próprio Copilot já vem incluído |
 | Grok Build, pi | Login ou uma chave de API |
 
 Para escolher as IAs que vai usar, ative-as em “Agentes”, em “Configurações (engrenagem) → Servidor”, e pressione “Salvar”. Para dividir o trabalho entre elas, escreva isso na política (“Implementação com o Codex, verificação com o Claude Code”).
 
-Os planos e as configurações das IAs continuam os que você já tem. A cobrança também segue os seus planos.
+As IAs usam os planos e as configurações que você já tem. A cobrança também segue os seus planos.
 
 ## Escolher o modelo
 
-O modelo que você escolhe ao lado do campo de mensagem é o da IA que é seu ponto de contato. O modelo das IAs responsáveis você escreve na solicitação ou na política (“Faça este trabalho com o opus”).
+O modelo que você escolhe ao lado do campo de mensagem é o da IA que é seu ponto de contato. Escreva o modelo das IAs responsáveis na solicitação ou na política (“Faça este trabalho com o opus”).
 
 Para adicionar um modelo novo, abra o cartão da IA em “Agentes”, em “Configurações (engrenagem) → Servidor”, acrescente o nome do modelo na linha `model` de “Valores disponíveis ao solicitar trabalho” e pressione “Salvar”.
 

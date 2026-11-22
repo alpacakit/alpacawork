@@ -1,6 +1,6 @@
 # Termos e comandos
 
-Uma página para consultar o significado dos termos que você vê na tela. O significado dos itens das configurações você pode perguntar à IA no campo de mensagem.
+Uma página para consultar o significado dos termos que você vê na tela. Você pode perguntar à IA, no campo de mensagem, o que significa cada item das configurações.
 
 ## Nomes dos papéis
 
@@ -17,13 +17,12 @@ Uma página para consultar o significado dos termos que você vê na tela. O sig
 | Termo | Significado |
 | --- | --- |
 | Em andamento | A IA está trabalhando |
-| Aguardando revisão | É a sua vez. Chegou uma pergunta ou um relatório |
+| Aguardando revisão | É a sua vez. Chegou uma pergunta ou um relatório. Também aparece como status de uma tarefa esperando a revisão de um relatório |
 | Requer atenção | É a sua vez. A execução da IA parou |
 | Aguardando | Está esperando outra resposta. Não é a sua vez |
 | Não iniciadas | Ainda não começaram |
 | Adiadas | O que você deixou para depois |
 | Concluídas | O que terminou. As tarefas paradas também ficam aqui |
-| Aguardando revisão | Esperando a revisão de um relatório. Na lista, fica em “Aguardando revisão” |
 | Erro | Parou. Na lista, fica em “Requer atenção” |
 
 ## Motivos de parada

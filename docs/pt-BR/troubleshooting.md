@@ -8,18 +8,18 @@ Não apague por conta própria a pasta de dados (`~/alpacawork`) nem os arquivos
 
 Em uma tarefa em “Requer atenção”, a execução da IA parou. Ao abrir, o motivo aparece abaixo do título.
 
-- “Falhou”: pressione “Tentar novamente” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o motivo for o limite de uso ou o modelo congestionado, pressione “Tentar novamente” quando o limite voltar, ou peça no campo de mensagem: “Tente de novo com outro modelo”. Mesmo quando o limite volta, o trabalho não é retomado sozinho.
+- “Falhou”: pressione “Tentar novamente” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o motivo for o limite de uso ou o modelo congestionado, pressione “Tentar novamente” quando o limite de uso for renovado, ou peça no campo de mensagem: “Tente de novo com outro modelo”. Mesmo depois que o limite é renovado, o trabalho não é retomado sozinho.
 - “Limite atingido”: a troca automática entre as IAs chegou ao número fixo de vezes (no início, 20). Se quiser que continue, pressione “Continuar”.
 - Motivos sem botões (“Recebimento não confirmado”, “Sem perfil de inicialização” e outros): leia o texto mostrado e dê uma instrução no campo de mensagem, como “Continue”. O significado de cada um está em [Motivos de parada](reference.md#motivos-de-parada).
 
 ## Enviei, mas nada avança
 
-A situação do envio aparece acima do campo de mensagem. Toque nela para abrir a conversa com a IA que é seu ponto de contato.
+A situação do envio aparece acima do campo de mensagem. Pressione-a para abrir a conversa com a IA que é seu ponto de contato.
 
 - “Enviando…”, “Na fila”, “Trabalhando nisso…” e parecidos: aguarde.
 - “Não enviada (motivo)”: leia o motivo, corrija e envie de novo.
 - “Não foi possível confirmar se chegou”: abra a conversa e pressione “Enviar novamente” ou “Cancelar”.
-- “Não foi possível receber uma resposta”: pressione “Enviar novamente”. Os anexos não são reenviados; se a solicitação tinha anexos, escreva de novo e envie. Se for o limite de uso, espere o limite voltar ou escolha outro modelo antes de enviar.
+- “Não foi possível receber uma resposta”: pressione “Enviar novamente”. Os anexos não são reenviados; se a solicitação tinha anexos, escreva de novo e envie. Se for o limite de uso, espere o limite ser renovado ou escolha outro modelo antes de enviar.
 - “Não foi possível iniciar o coordenador.”: veja “Os agentes de IA não funcionam”, abaixo.
 
 ## Não sei se a tarefa está em andamento
@@ -31,7 +31,7 @@ A situação do envio aparece acima do campo de mensagem. Toque nela para abrir 
 
 ## Reiniciei o PC ou ele entrou em suspensão
 
-Quando você entra no PC, o alpacawork inicia sozinho, e as tarefas continuam como estavam. O trabalho que estava rodando antes de reiniciar para. Abra as tarefas que passaram para “Requer atenção” e pressione “Tentar novamente”. Elas não são retomadas sozinhas.
+Quando você faz login no PC, o alpacawork inicia sozinho, e as tarefas continuam como estavam. O trabalho que estava rodando antes de reiniciar para. Abra as tarefas que passaram para “Requer atenção” e pressione “Tentar novamente”. Elas não são retomadas sozinhas.
 
 Durante a suspensão, o trabalho não avança. Em um notebook, fechar a tampa faz parar.
 
@@ -69,7 +69,7 @@ O estado aparece em “Agentes”, em “Configurações (engrenagem) → Servid
 - “Não encontrado”: se não estiver instalado, instale. Se estiver, indique o local em “Executável”, no cartão.
 - “Nenhum agente está ativado”: ative as IAs que vai usar.
 
-Depois de corrigir, faça avançar as tarefas que tinham parado com “Tentar novamente”.
+Depois de corrigir, use “Tentar novamente” nas tarefas que tinham parado.
 
 ## A instalação para
 
@@ -80,7 +80,7 @@ Corrija a causa mostrada e execute o mesmo comando de novo; ele continua de onde
 - Erros de permissão de escrita, `does not run as root`: execute sem `sudo`, com um Node.js instalado pelo nvm ou parecido.
 - `User service manager is unavailable`: no WSL2, [ative o systemd](manage.md#no-windows).
 
-Para outras mensagens, cole o texto mostrado, como está, para a IA e peça ajuda.
+Para outras mensagens, cole o texto mostrado, sem alterar, na conversa com a IA e peça ajuda.
 
 ## O que passar à IA ao pedir ajuda
 

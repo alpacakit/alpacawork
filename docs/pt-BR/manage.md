@@ -8,11 +8,11 @@ Se esqueceu a URL, execute `alpacawork open` no terminal, e a tela abre no naveg
 
 ## No Windows
 
-Instale o alpacawork, o Node.js e os agentes de IA dentro do Ubuntu no WSL2. O texto de instalação também vai para a IA dentro do Ubuntu. Se você não tem o WSL2, cole o mesmo texto na IA do Windows, e ela orienta a preparação.
+Instale o alpacawork, o Node.js e os agentes de IA dentro do Ubuntu no WSL2. Cole o texto de instalação também na IA dentro do Ubuntu. Se você não tem o WSL2, cole o mesmo texto na IA do Windows, e ela orienta a preparação.
 
 A tela abre no navegador do Windows. O alpacawork só roda enquanto o Ubuntu está rodando. Se você fechar todas as janelas do Ubuntu, ele pode parar; por isso, deixe uma aberta enquanto usa. Depois de reiniciar o Windows, abra o Ubuntu pelo menu Iniciar, e o alpacawork inicia junto.
 
-Se disserem que o systemd está desativado, ative-o nesta ordem.
+Se aparecer uma mensagem dizendo que o systemd está desativado, ative-o nesta ordem.
 
 1. No Ubuntu, acrescente estas duas linhas a `/etc/wsl.conf` (é preciso `sudo`).
 
@@ -29,7 +29,7 @@ A URL desse PC não abre no navegador da sua máquina. Peça à IA desse PC “D
 
 ## Parar e iniciar
 
-O alpacawork inicia sozinho quando você entra no PC. Para controlar por conta própria, execute no terminal:
+O alpacawork inicia sozinho quando você faz login no PC. Para controlar por conta própria, execute no terminal:
 
 | O que fazer | Comando |
 | --- | --- |
