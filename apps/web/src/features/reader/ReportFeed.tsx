@@ -574,7 +574,7 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const media = request ? sentPicture?.path && held(sentPicture.path)?.name : firstReportMedia(report.description ?? "") ?? undefined;
   const shownMedia = media && (home !== task.id || isMedia(media) && held(media)) ? media : null;
   const lines = <>
-    <RailTime mark={report.finish ? FINISH_MARK : { kind: row.way, tone: carried ? "quiet" : reportTone(report) }}><time dateTime={report.at}>{label(report.at)}</time></RailTime>
+    <RailTime mark={report.finish ? FINISH_MARK : { kind: row.way, tone: reportTone(report) }}><time dateTime={report.at}>{label(report.at)}</time></RailTime>
     <RowName row={row} kindWord={kindWord} open={open} />
     <span className="col-start-3 row-start-1 flex items-center justify-self-end"><DisclosureChevron open={open} /></span>
     {(!bodySaysIt || leaving) && <span ref={wordsLine} data-row-words data-leaving={leaving || undefined} aria-hidden={leaving || undefined} dir="auto" title={same ? report.text : undefined} className={`col-span-2 col-start-1 mt-0.5 min-w-0 text-base ${heading || report.kind === "run_end" || report.kind === "error" ? "" : firstLine ? "line-clamp-1" : "line-clamp-2"} ${strong || heading ? "font-semibold" : "font-normal"} ${

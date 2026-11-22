@@ -60,12 +60,12 @@ function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly 
       const path = run.launch.path;
       if (run.role === 'coordinator') {
         const snapshot = coordinatorLaunchSnapshot(config, agent, mode, path, values, history);
-        if (!snapshot.ok) return undefined;
+        if (snapshot.ok === false) return undefined;
         updated = { ...run, agent, launch: snapshot.launch, restartArgv: snapshot.restartArgv,
           resumes: canResume ? run.resumes : null, session: canResume ? session : assignedSession(snapshot.launch, agent) };
       } else {
         const snapshot = launchSnapshot(config, agent, mode, path, values, history);
-        if (!snapshot.ok) return undefined;
+        if (snapshot.ok === false) return undefined;
         updated = { ...run, agent, launch: snapshot.launch,
           resumes: canResume ? run.resumes : null, session: canResume ? session : assignedSession(snapshot.launch, agent) };
       }
@@ -117,7 +117,7 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
       if (error instanceof Problem) continue;
       throw error;
     }
-    if (!prepared.ok || !isDeepStrictEqual(prepared.launch.values, values)) continue;
+    if (prepared.ok === false || !isDeepStrictEqual(prepared.launch.values, values)) continue;
     const launch = prepared.launch;
     const session = assignedSession(launch, agent);
     const bindings = rebindPending(db, settings.config, lane, run, { agent, values }, session, launch.adapter);

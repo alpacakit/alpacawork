@@ -143,6 +143,9 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   const { tree, placements, allRuns, byRequest, actualRun, receivedBy, causesByRun } = context;
   const choices = (run: ControlRunDTO | undefined) => run ? { modelId: run.modelId, effort: run.effort } : {};
   const roleOf = (run: ControlRunDTO) => tree.historyFacts.runRoles[run.id] ?? tree.historyFacts.placementRoles[run.placementId] ?? 'owner';
+  const continued = new Set([...allRuns.values()].flatMap(run => run.supersededBy ? [run.supersededBy] : []));
+  const profileOf = (placement: HistoryPlacement, run: ControlRunDTO | undefined) =>
+    run && (run.supersededBy || continued.has(run.id)) ? run.agent : placement.profileKey;
   /** The Coordinator Run that took a screen message, as a record's Coordinator end. */
   const coordinatorOf = (message: string | null | undefined) => {
     const run = message ? tree.historyFacts.coordinatorRuns[message] : undefined;
@@ -158,7 +161,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     if (!placement) return { kind: 'unknown' };
     const run = runId ? allRuns.get(runId) : undefined;
     const own = run?.placementId === placement.id ? run : undefined;
-    const agent = { profileKey: own?.agent ?? placement.profileKey, ...choices(own) };
+    const agent = { profileKey: profileOf(placement, own), ...choices(own) };
     if (placement.taskId !== task.id) return { kind: 'parent', taskId: placement.taskId, ...agent };
     const role = (runId && tree.historyFacts.runRoles[runId]) || tree.historyFacts.placementRoles[placement.id];
     return role ? { kind: role, ...agent } : { kind: 'unknown' };
@@ -205,7 +208,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       request.author),
       author: authorOf(request.author, accepted?.caller?.run),
       ...(record?.answers ? { answers: record.answers } : {}),
-      ...(recipient && role ? { recipient: { role, profileKey: receiving?.agent ?? recipient.profileKey, ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
+      ...(recipient && role ? { recipient: { role, profileKey: profileOf(recipient, receiving), ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
       ...(result && recipient && role === 'member' ? { result: { runId: result.id, at: result.endedAt! } } : {}) });
   }
   for (const run of runs.values()) {
@@ -218,7 +221,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
       ...(kind === 'error' && (run.availability?.cause ?? run.errorCause) ? { cause: run.availability?.cause ?? run.errorCause } : {}),
       ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
-      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: run.agent, ...choices(run) } } : {}) });
+      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),

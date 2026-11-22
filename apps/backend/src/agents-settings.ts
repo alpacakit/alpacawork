@@ -118,7 +118,7 @@ function snapshotAdmission(config: AgentsSettings, agentName: string, mode: 'sta
 export function launchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
   selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'> | { values: Selection }) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
-  if (!prepared.ok) return prepared;
+  if (prepared.ok === false) return prepared;
   const result = admission(() => prepareAgentLaunch(prepared.compiled, prepared.input));
   pinCommand(result.launch, prepared.compiled.setting);
   return { ok: true as const, launch: result.launch };
@@ -127,7 +127,7 @@ export function launchSnapshot(config: AgentsSettings, agentName: string, mode: 
 export function coordinatorLaunchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
   selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'>) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
-  if (!prepared.ok) return prepared;
+  if (prepared.ok === false) return prepared;
   const result = admission(() => prepareCoordinatorLaunch(prepared.compiled, prepared.input));
   const prefix = pinCommand(result.launch, prepared.compiled.setting);
   if (result.restartArgv) result.restartArgv = [...prefix, ...result.restartArgv.slice(AGENT_ADAPTERS[prepared.compiled.adapter].prefix.length)];
