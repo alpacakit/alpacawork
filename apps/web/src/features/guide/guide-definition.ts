@@ -42,6 +42,8 @@ export const PARTS = {
   coordinator: "[data-coordinator-pill][data-coordinator-expand]",
   /** The conversation with the coordinator: that button while it is folded, its "Clear conversation" while it is open. */
   conversation: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-clear]",
+  /** The open conversation's own panel, over the foot. */
+  panel: "[data-coordinator-panel]",
   /** A list row of a Task being worked on or about to be. */
   workingRow: '[data-row-section="doing"], [data-row-section="todo"], [data-row-section="awaited"]',
   /** A list row awaiting the person's answer to a question. */
@@ -162,7 +164,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // Once the person has had their turn and nothing is left going on: the conversation with the coordinator, over its
   // last reply, is for throwing away (what is to be kept goes into a Task); where another repository is taken on; and
   // last, where settings hold the steps to answering from a phone (installing the app is asked once, as setup ends).
-  { id: "conversation", once: true, part: "conversation", clear: ["foot"], side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
+  { id: "conversation", once: true, part: "conversation", clear: ["foot", "panel"], side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
   { id: "another-repository", once: true, part: "project", side: "right", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
