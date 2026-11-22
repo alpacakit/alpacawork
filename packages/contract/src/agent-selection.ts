@@ -104,7 +104,11 @@ export const launchMemorySchema = z.object({
 }).strict();
 export type LaunchMemory = z.infer<typeof launchMemorySchema>;
 export const emptyLaunchMemory: LaunchMemory = { agent: null, values: {} };
-/** `choose`: the input picked `agent` with these values. `forget-agent`: setup chose where a new launch starts. */
+/**
+ * `choose`: the input picked `agent`, and these values for it: only the rows chosen in that act, so a choice made on
+ * another device for another row stays, and a row never chosen keeps following the config. `forget-agent`: setup chose
+ * where a new launch starts.
+ */
 export const launchMemoryChangeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('choose'), agent: z.string().min(1), values: selectionSchema }).strict(),
   z.object({ kind: z.literal('forget-agent') }).strict(),
@@ -112,8 +116,8 @@ export const launchMemoryChangeSchema = z.discriminatedUnion('kind', [
 export type LaunchMemoryChange = z.infer<typeof launchMemoryChangeSchema>;
 export const launchMemoryRequestSchema = z.object({ change: launchMemoryChangeSchema }).strict();
 export const launchMemoryResponseSchema = z.object({ memory: launchMemorySchema }).strict();
-/** A choice replaces only its own agent's values; the values kept for other agents stay. */
+/** A choice sets only the rows it names, over what is kept; every other row and agent stays as it was. */
 export function applyLaunchMemory(memory: LaunchMemory, change: LaunchMemoryChange): LaunchMemory {
   return change.kind === 'forget-agent' ? { ...memory, agent: null }
-    : { agent: change.agent, values: { ...memory.values, [change.agent]: change.values } };
+    : { agent: change.agent, values: { ...memory.values, [change.agent]: { ...memory.values[change.agent], ...change.values } } };
 }

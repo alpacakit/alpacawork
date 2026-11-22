@@ -54,7 +54,8 @@ function ParamRows({ agent, onChange, issues, nextId }: {
               aria-describedby={rowErrors(row, 'values') ? `${rowId}-values-error` : unused ? `${rowId}-unused` : undefined}
               value={row.values} onChange={event => update(editDraftParam(row, { values: event.target.value }))} />
             {rowErrors(row, 'values') && <FieldError id={`${rowId}-values-error`}>{rowErrors(row, 'values')}</FieldError>}
-            <AgentStartValues values={paramStartValues(row)} onChoose={value => update(withFirstParamValue(row, value))} />
+            {/* A row the launch options do not use starts nothing: no default to mark. */}
+            <AgentStartValues values={unused ? [] : paramStartValues(row)} onChoose={value => update(withFirstParamValue(row, value))} />
             {unused && <FieldHint id={`${rowId}-unused`} className="mt-1">{t(unused === 'adapter' ? 'agentSettings.unusedAdapter' : 'agentSettings.unusedOptions')}</FieldHint>}
             {followable && <AgentDefaultMark isDefault={followsDefaultParam(agent, row)} name={row.key} field={`${rowId}-values`}
               onRestore={() => onChange(resetDraftParam(agent, row.id))} />}

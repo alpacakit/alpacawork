@@ -47,8 +47,8 @@ test('a value written in config.yaml stays until restored, even when it equals t
   expect(saved.ok && parse(saved.value)).toEqual({ claude: {} });
 });
 
-test('each row marks the value tasks start on, and a pressed value moves to the front; a row starting on none offers no change', () => {
-  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: ["-", high]\n');
+test('each row marks the value tasks start on, and a pressed value moves to the front; a row starting on none, or unused, offers no change', () => {
+  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: ["-", high]\n    tier: [a, b]\n');
   if (!read.ok) throw new Error('unreadable');
   const initial = read.value;
   let latest = initial;
@@ -60,8 +60,11 @@ test('each row marks the value tasks start on, and a pressed value moves to the 
   fireEvent.click(screen.getByRole('button', { name: 'Expand claude' }));
   const marks = () => [...document.querySelectorAll('[data-agent-start-values]')].map(row => row.textContent);
   expect(marks()).toEqual(['opusDefault for tasksfable']);
-  fireEvent.click(screen.getByRole('button', { name: 'Make fable the default for tasks' }));
+  // Chosen from the keyboard, the value keeps the focus as it moves to the front.
+  const fable = screen.getByRole('button', { name: 'Make fable the default for tasks' });
+  fable.focus(); fireEvent.click(fable);
   expect(marks()).toEqual(['fableDefault for tasksopus']);
+  expect(document.activeElement?.textContent).toBe('fableDefault for tasks');
   const saved = writeAgentsDraft(latest);
-  expect(saved.ok && parse(saved.value).claude.params).toEqual({ model: ['fable', 'opus'], effort: ['-', 'high'] });
+  expect(saved.ok && parse(saved.value).claude.params).toEqual({ model: ['fable', 'opus'], effort: ['-', 'high'], tier: ['a', 'b'] });
 });

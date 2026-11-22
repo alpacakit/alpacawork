@@ -87,8 +87,9 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
           try { await save.mutateAsync({ yaml: configYaml({ limits: loaded.limits, agents: { ok: true, value: drafts } }), agents: yaml.value, expected: loaded.hash! }); }
           catch (error) { fail("agents", error); void settings.refetch(); return; }
         }
-        // The agent chosen here is where the next request starts, whatever was picked before on any device.
-        forgetLaunchAgent();
+        // The agent chosen here is where the next request starts, whatever was picked before on any device. Unsaved,
+        // the agent picked before would come back: setup stays here to be tried again.
+        try { await forgetLaunchAgent(); } catch (error) { fail("agents", error); return; }
       }
       if (asksConsent) {
         let refused: unknown = null;

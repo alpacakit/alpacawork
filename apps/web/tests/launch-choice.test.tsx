@@ -75,7 +75,8 @@ test("the picker offers each row's written values, shallow to deep, never a 'non
   expect(screen.queryByRole("radio", { name: "None" })).toBeNull();
   fireEvent.click(screen.getByRole("radio", { name: "medium" }));
   await act(async () => {});
-  expect(stored().values.pi).toEqual({ model: "model-with-effort", effort: "medium" });
+  // Only the row chosen is kept: the model, never chosen, goes on following the config.
+  expect(stored().values.pi).toEqual({ effort: "medium" });
   expect(choice.send).toEqual({ model: "model-with-effort", effort: "medium" });
   // A fixed model has no effort: no row of steps, and no effort in what is kept and sent.
   fireEvent.click(screen.getByRole("radio", { name: /fixed-first/ }));
@@ -84,20 +85,21 @@ test("the picker offers each row's written values, shallow to deep, never a 'non
   screen.getByText("agentPicker.notOffered");
   expect(choice.selected).toEqual({ model: "fixed-first" });
   expect(choice.send).toEqual({ model: "fixed-first" });
-  expect(Object.hasOwn(stored().values.pi!, "effort")).toBe(false);
+  // The effort chosen before is kept for when a model with one is chosen again.
+  expect(stored().values.pi).toEqual({ effort: "medium", model: "fixed-first" });
   expect(document.querySelector("[data-agent-picker]")!.getAttribute("aria-label")).not.toMatch(/low|high/);
   fireEvent.click(screen.getByRole("radio", { name: /grok-4\.7/ }));
   expect(choice.selected).toEqual({ model: "grok-4.7", effort: "low", tier: "standard" });
   expect(steps()).toEqual(["low", "medium", "high", "xhigh"]);
   expect([...document.querySelectorAll<HTMLInputElement>('input[name="agent-tier"]')].map(input => input.parentElement!.textContent)).toEqual(["standard", "priority"]);
   fireEvent.click(screen.getByRole("radio", { name: /model-with-effort/ }));
-  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "low" });
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "medium" });
 });
 
 test.each([
   [{ model: "fixed-first", effort: "max" }, { model: "fixed-first" }],
   [{ model: "fixed-first", effort: "low" }, { model: "fixed-first" }],
-  [{ model: "model-with-effort", effort: "xhigh" }, { model: "model-with-effort", effort: "high" }],
+  [{ model: "model-with-effort", effort: "xhigh" }, { model: "model-with-effort", effort: "low" }],
   [{ model: "gone-model", effort: "low" }, { model: "model-with-effort", effort: "low" }],
   [{ model: "model-with-effort", effort: "low", tier: "old" }, { model: "model-with-effort", effort: "low" }],
 ])("a choice remembered before, %o, is shown and sent as %o", (saved, shown) => {
@@ -149,19 +151,24 @@ test("a conversation whose agent the settings no longer enable does not go to an
   expect([choice.profile, choice.gone, choice.ready]).toEqual(["codex", null, true]);
 });
 
-test("a value chosen for a new launch that the settings stop offering stays to choose again and does not go", () => {
+test("a value chosen for a new conversation, once the memory holds it, gives way to the config and to a choice on another screen", async () => {
   let choice!: ReturnType<typeof useLaunchChoice>, bump!: () => void;
   function Picker() {
     const [, renderAgain] = useState(0); bump = () => renderAgain(n => n + 1);
     choice = useLaunchChoice({ id: "fresh", agent: null, previous: null }); return <AgentPicker choice={choice} />;
   }
   render(<Picker />);
-  act(() => choice.setSelected({ model: "b" }));
+  await act(async () => choice.setSelected({ model: "b" }));
   expect(choice.send).toEqual({ model: "b" });
+  // Another screen chooses again: the next new conversation here follows it.
+  given.memory = applyLaunchMemory(given.memory, { kind: "choose", agent: "codex", values: { model: "a" } });
+  act(() => bump());
+  expect(choice.send).toEqual({ model: "a" });
+  // The config stops offering what is kept: the new conversation starts on what is offered.
+  given.memory = applyLaunchMemory(given.memory, { kind: "choose", agent: "codex", values: { model: "b" } });
   given.profiles = [launchProfile("codex", { model: ["a"] })];
   act(() => bump());
-  expect(choice.ready).toBe(false);
-  expect(choice.problems.map(problem => [problem.key, problem.previous])).toEqual([["model", "b"]]);
+  expect([choice.send, choice.ready]).toEqual([{ model: "a" }, true]);
 });
 
 test("a value chosen here for a row the model leaves out, gone from the settings, can be settled there, then the row is out of sight again", () => {
@@ -169,7 +176,7 @@ test("a value chosen here for a row the model leaves out, gone from the settings
   let choice!: ReturnType<typeof useLaunchChoice>, bump!: () => void;
   function Picker() {
     const [, renderAgain] = useState(0); bump = () => renderAgain(n => n + 1);
-    choice = useLaunchChoice({ id: "fresh", agent: null, previous: null }); return <AgentPicker choice={choice} />;
+    choice = useLaunchChoice({ id: "c1", agent: "pi", previous: { model: "live", effort: "high" } }); return <AgentPicker choice={choice} />;
   }
   render(<Picker />);
   act(() => choice.setSelected({ effort: "low" }));

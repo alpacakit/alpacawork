@@ -29,12 +29,12 @@ function offeredValues(offer: SelectionOffer, values: Readonly<Record<string, st
 }
 
 /**
- * Where a new coordinator conversation starts for one agent: the values the person last chose for it, and for a row
- * never chosen, the lightest effort (`low`) when the agent offers it. Anything else not chosen is the first candidate,
- * as for every launch; a hint the agent does not offer, or that the chosen model leaves out, drops (launchSelection).
+ * Where a new coordinator conversation starts for one agent: the values the person last chose for it that the agent
+ * still offers, and for a row never chosen or no longer offered, the lightest effort (`low`) when the agent offers it.
+ * Anything else is the first candidate, as for every launch; a row the chosen model leaves out is not shown.
  */
-export function coordinatorStart(remembered: Readonly<Record<string, string | null>> | undefined): Record<string, string | null> {
-  return { effort: "low", ...remembered };
+export function coordinatorStart(offer: SelectionOffer, remembered: Readonly<Record<string, string | null>> | undefined): Selection {
+  return offeredValues(offer, { effort: "low", ...offeredValues(offer, remembered ?? {}) });
 }
 
 /** A kind's model candidates as the picker names them: written order, no "none". */

@@ -32,8 +32,13 @@ test('the last choice in one screen\'s input is where another screen\'s next new
     await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'opus', effort: 'high' } });
     await change(app.url, { kind: 'choose', agent: 'codex', values: { model: 'gpt-6.2-sol' } });
     // Each agent keeps its own values; the agent last chosen is where a new conversation starts.
-    const both = { claude: { model: 'opus', effort: 'high' }, codex: { model: 'gpt-6.2-sol' } };
+    const both: Record<string, Record<string, string>> = { claude: { model: 'opus', effort: 'high' }, codex: { model: 'gpt-6.2-sol' } };
     assert.deepEqual(await remembered(app.url), { agent: 'codex', values: both });
+    // Two screens on the same agent choose different rows: each keeps the other's.
+    await change(app.url, { kind: 'choose', agent: 'claude', values: { effort: 'low' } });
+    await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'fable' } });
+    both.claude = { model: 'fable', effort: 'low' };
+    assert.deepEqual(await remembered(app.url), { agent: 'claude', values: both });
     // Setup lets the agent go and keeps the values.
     await change(app.url, { kind: 'forget-agent' });
     assert.deepEqual(await remembered(app.url), { agent: null, values: both });

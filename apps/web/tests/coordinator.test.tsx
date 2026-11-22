@@ -391,9 +391,10 @@ test("the coordinator input offers every adapter and sends its chosen model and 
   fireEvent.click(screen.getByRole("radio", { name: /gpt-6-astra/ }));
   expect(screen.queryByRole("radio", { name: "max" })).toBeNull();
   fireEvent.click(screen.getByRole("radio", { name: "xhigh" }));
-  // Each choice is kept on the server, for the next new conversation on any screen.
+  // Each choice is kept on the server, for the next new conversation on any screen: the row chosen, each time.
   const saved = fetcher.mock.calls.filter(([url]) => url === "/api/launch-memory").map(([, init]) => JSON.parse(init.body).change);
-  expect(saved.at(-1)).toEqual({ kind: "choose", agent: "codex", values: { model: "gpt-6-astra", effort: "xhigh" } });
+  expect(saved.slice(-2)).toEqual([{ kind: "choose", agent: "codex", values: { model: "gpt-6-astra" } },
+    { kind: "choose", agent: "codex", values: { effort: "xhigh" } }]);
   writeEditor("Continued");
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
