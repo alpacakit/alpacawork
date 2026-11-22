@@ -4,7 +4,8 @@ import { selectionSchema } from './agent-settings.js';
  * builds the one, the screen parses it; the screen builds the other, serve parses it.
  */
 import { z } from 'zod';
-import { runFailureSchema } from './run-failure.js';
+import { aiRowSchema } from './ai-stack.js';
+import { runAvailabilitySchema, runFailureSchema } from './run-failure.js';
 import { recordedProblemSchema } from './problem.js';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, logIdSchema, runIdSchema, taskIdSchema } from './fields.js';
@@ -120,6 +121,7 @@ export const coordinatorTurnSchema = z.object({
   answer: z.string().nullable(), answeredAt: z.string().nullable(), error: coordinatorErrorSchema.nullable(),
   /** Redacted diagnostic from this failed Run; absent without trustworthy error evidence. */
   failure: runFailureSchema.optional(),
+  attempts: z.array(aiRowSchema.extend({ availability: runAvailabilitySchema.optional() })).optional(),
   seen: z.boolean(),
   answerFiles: z.array(answerFileSchema).optional(),
   result: coordinatorResultSchema.nullable(),

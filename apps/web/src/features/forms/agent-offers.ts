@@ -4,18 +4,20 @@ import type { CoordinatorConversation } from "@alpacawork/contract/coordinator";
 import type { WorkspaceInfo } from "@/data/types";
 
 /**
- * The one place the screen's launch pickers read the server's agent data: each enabled agent, in config order, with
- * its choices (the contract's AgentChoice rows) and the rows each model omits (`without`). That is the offer the
- * contract's selection rule reads (resolveOfferedSelection), so the pickers decide by the same rule as admission.
+ * The one place the screen's launch pickers read the server's agent data: each enabled agent, the AI stack's first
+ * first, with its choices (the contract's AgentChoice rows) and the rows each model omits (`without`). That is the
+ * offer the contract's selection rule reads (resolveOfferedSelection), so the pickers decide by the same rule as
+ * admission. `initial`: the values of the agent's first row in the AI stack, when it has one.
  */
-export type AgentOffer = { key: string; offer: SelectionOffer };
+export type AgentOffer = { key: string; offer: SelectionOffer; initial?: Selection };
 type Profile = WorkspaceInfo["profiles"][number];
 
 const offers = new WeakMap<readonly Profile[], AgentOffer[]>();
 export function agentOffers(profiles: readonly Profile[]): AgentOffer[] {
   let known = offers.get(profiles);
   if (!known) {
-    known = profiles.map(({ key, choices, without }) => ({ key, offer: { choices, without } }));
+    known = profiles.map(({ key, choices, without, initialValues }) => ({ key, offer: { choices, without },
+      ...(initialValues ? { initial: initialValues } : {}) }));
     offers.set(profiles, known);
   }
   return known;

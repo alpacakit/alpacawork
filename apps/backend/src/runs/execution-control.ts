@@ -9,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync, SQLInputValue, SQLOutputValue } from 'node:sqlite';
 import { AWAITING_RECEIPT_SQL, UNSETTLED_INPUTS_SQL, type RunStore, type RunTransaction } from '@alpacawork/runs';
 import { digestBytes, Problem, PROBLEM_CODE } from '@alpacawork/core';
-import type { Limits } from '@alpacawork/contract';
+import { aiStackSchema, type Limits } from '@alpacawork/contract';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { inputUnsettled, launchSchema, commandSchema, protocolFingerprint, type LaunchSnapshot, type RunCommand } from '@alpacawork/contract/run-protocol';
 import { RUN_ENDED_STATES, runNumber, type ReadRunRecord, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
@@ -145,6 +145,16 @@ export function queuedStart(store: Pick<RunStore, 'connection'>, tx: RunTransact
   if (start.kind === 'reject') return { kind: 'reject' as const, code: start.code, invalidateRequest: start.invalidateRequest === true };
   return start.kind === 'wait' ? { kind: 'wait' as const } : { kind: 'go' as const, request };
 }
+/** A joined input shares the working Run's remaining candidates and final result. */
+function compatibleFallbacks(db: DatabaseSync, working: RuntimeRunRecord, pending: RuntimeRunRecord): boolean {
+  const read = db.prepare('SELECT ai_stack FROM requests WHERE id=?');
+  const remaining = (run: RuntimeRunRecord) => {
+    const value = read.get(run.requestId)?.ai_stack;
+    return typeof value === 'string' ? aiStackSchema.parse(JSON.parse(value)).slice((run.attempt ?? 0) + 1) : [];
+  };
+  return isDeepStrictEqual(remaining(working), remaining(pending));
+}
+
 /**
  * FeedPlanner alone decides whether queued work can join a live invocation. A Task's queued work joins its
  * placement's working Run by itself; a message to the screen's coordinator joins only when the person sends it now
@@ -180,7 +190,7 @@ export function planInputs(store: RunStore): void {
         // One the working invocation cannot take: a Task's work waits in order; a coordinator message answers on its
         // own and holds back no later one.
         const session = continuationSession(runs, next, { kind: 'input', working: run });
-        if (next.stop_requested || !session) { if (next.role === 'coordinator') continue; break; }
+        if (next.stop_requested || !session || !compatibleFallbacks(store.connection, run, next)) { if (next.role === 'coordinator') continue; break; }
         const promptRow = store.connection.prepare('SELECT prompt FROM runs WHERE id=?').get(runNumber(next.id));
         const prompt = promptRow ? String(promptRow.prompt) : null;
         if (!prompt) break;

@@ -33,7 +33,8 @@ const AGENTS = `agents:
 const goal = (body: string, hash: string): ControlTaskDTO => project({ body, hash });
 /** The project's view as `task/view` answers it. */
 const goalView = (body: string, hash: string) => viewsOf(tree({ tasks: [dto(), goal(body, hash)] })).find((view) => view.task.id === PROJECT_TASK);
-const serverSettings = (hash = OPEN) => ({ hash, agentsText: AGENTS, agents: checkAgentsText(AGENTS).agents!, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS } });
+const serverSettings = (hash = OPEN) => ({ hash, agentsText: AGENTS, agents: checkAgentsText(AGENTS).agents!, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS },
+  aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }] });
 
 function serverFetch(saves: (Response | Error)[], reads: unknown[] = [serverSettings()]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
@@ -130,6 +131,21 @@ test("invalid agent values in a collapsed card block saving, open and focus the 
   fireEvent.click(save());
   await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
   expect(parse(saveBody(fetcher).agents).agents.claude.params.model).toEqual(['sonnet', 'opus']);
+});
+
+test("a save the AI stack refuses says why by the button and takes the eye to the row to fix", async () => {
+  const fetcher = serverFetch([answer(serverSettings(SAVED_1))], [{ ...serverSettings(),
+    aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }, { agent: 'gone', values: {} }] }]);
+  await openServer();
+  fireEvent.change(parallel(), { target: { value: "3" } });
+  fireEvent.click(save());
+  await waitFor(() => expect(document.querySelector('[data-ai-stack-refused]')).not.toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Agent in row 2')));
+  expect(saveCalls(fetcher)).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Remove row 2' }));
+  await waitFor(() => expect(document.querySelector('[data-ai-stack-refused]')).toBeNull());
+  fireEvent.click(save());
+  await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
 });
 
 test("a broken YAML read and a limit below its minimum block saving without dropping the source", async () => {

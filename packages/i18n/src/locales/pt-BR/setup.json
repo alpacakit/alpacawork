@@ -8,8 +8,8 @@
       "check": "Não foi possível verificar os agentes neste PC.",
       "save": "Não foi possível salvar as configurações dos agentes."
     },
-    "first": "Agente padrão",
-    "firstHint": "É o que já vem escolhido quando você envia uma solicitação. Você pode trocá-lo a cada solicitação.",
+    "first": "Primeira IA a usar",
+    "firstHint": "Ela passa a ser a IA 1 de “IA das tarefas e ordem das alternativas” nas configurações, e as conversas novas também começam com ela. Você pode mudar a ordem das alternativas depois nas configurações.",
     "found": "Instalado. Funciona com login feito ou chave de API",
     "how": "Execute este comando em um terminal e siga as instruções para fazer login.",
     "lead": "O alpacawork entrega o trabalho aos agentes de IA que já estão neste PC, como o Claude Code e o Codex. Os que você ativar serão as opções ao escolher a quem pedir.",

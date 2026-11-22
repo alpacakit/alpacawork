@@ -51,7 +51,7 @@ export function captureAnswer(root: string, run: RuntimeRunRecord, succeeded: bo
  * is left for routing to read (`dirty`); a coordinator's Run has nothing to route.
  */
 export function recordEnd(db: DatabaseSync, tx: RunTransaction, run: RuntimeRunRecord, end: EndObservation,
-  occurredAt = new Date().toISOString(), answer: AnswerCapture = undefined): void {
+  occurredAt = new Date().toISOString(), answer: AnswerCapture = undefined, supersededBy?: RuntimeRunRecord['id']): void {
   const { outcome, session, measuredUsage } = end;
   const latest = tx.runtimeGet(run.id);
   if (!latest) throw new Error(`Run disappeared: ${run.id}`);
@@ -60,8 +60,10 @@ export function recordEnd(db: DatabaseSync, tx: RunTransaction, run: RuntimeRunR
     exit: end.exit, ended_at: occurredAt,
     session: latest.session ?? (session ? { provider: run.agent, id: session } : null),
     usage: measuredUsage ? runUsage(latest, measuredUsage, tx) : null };
-  const settled: RuntimeRunRecord = latest.role !== 'coordinator' ? { ...latest, ...ended }
-    : { ...latest, ...ended, ...Array.isArray(answer) && answer.length ? { answerFiles: answer } : {} };
+  const availability = end.availability ? { availability: end.availability } : {};
+  const continuation = supersededBy === undefined ? {} : { supersededBy };
+  const settled: RuntimeRunRecord = latest.role !== 'coordinator' ? { ...latest, ...ended, ...availability, ...continuation }
+    : { ...latest, ...ended, ...availability, ...continuation, ...Array.isArray(answer) && answer.length ? { answerFiles: answer } : {} };
   if (settled.state === 'needs_review') tx.update(settled);
   else tx.finish(settled, end.finalResult);
   if (run.role !== 'coordinator') db.prepare('UPDATE run_attempts SET dirty=1 WHERE run_no=?').run(runNumber(run.id));

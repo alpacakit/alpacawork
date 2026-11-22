@@ -226,6 +226,7 @@ export const cliCommands: readonly CliCommand[] = [
     text('selected', 'Launch choices as a JSON object: a candidate string, or null where the candidates begin with - (or none are written). A field left out ' +
       'keeps the conversation\'s value. Only a Request without --new-conversation to a placement with no Run yet takes its ' +
       'initial choice; any other new conversation, --new-conversation included, takes the first candidate'),
+    text('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
   ], { help: help(...ruleHelp(taskRequestRules),
@@ -293,9 +294,10 @@ export const cliCommands: readonly CliCommand[] = [
     { path: '/api/tasks/:task/attachments/move', file: 'attachment-move', mutation: true }),
   agent('assign', 'Assign a responsible agent or a member', agentAssignCliInput, [
     taskId, text('role', 'responsible or member'), text('person', 'Existing agent ID for a member'),
-    text('profile', 'Launch profile'), text('selected', 'Initial launch choices as a JSON object: a candidate string, or null where the candidates begin with - (or none are written); ' +
+    text('profile', 'Launch profile, defaulting to the first AI row'), text('selected', 'Initial launch choices as a JSON object: a candidate string, or null where the candidates begin with - (or none are written); ' +
       'only a Request without --new-conversation while the placement has no Run yet starts from them; ' +
       'any other new conversation, --new-conversation included, starts from the first candidates'),
+    text('aiStack', 'AI rows to use for this placement before the server stack, as JSON, with an optional final "stop"'),
     expectedTaskHash, text('replace', 'Responsible placement to replace'),
     number('expectedPlacementRevision', 'Revision of the responsible placement it replaces'),
     number('expectedResponsibleRevision', 'Current responsible revision'), quote, sourceRequest,

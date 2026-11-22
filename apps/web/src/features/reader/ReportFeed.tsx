@@ -22,7 +22,7 @@ import { PendingRegion } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
 import { beforeWork } from "@/domain/before-work";
 import { resultLine } from "@/domain/report-labels";
-import { causeReason } from "@/domain/run-labels";
+import { causeReason, limitName } from "@/domain/run-labels";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
 import { TONE, stateWord } from "@/components/ui/tone";
@@ -520,8 +520,9 @@ const HistoryItem = memo(function HistoryItem({ row, pressed, flash, ...props }:
   const pointed = flash || hovered, lit = report.currentWait || pointed;
   const point = (key: string | null) => useTimeView.getState().hover(taskId, key);
   // The existing lit/hover line follows the whole record, including its body while open.
-  const line = lit ? <span aria-hidden data-report-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current ${TONE[reportTone(report)]}`} />
-    : <span aria-hidden data-hover-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current invisible group-hover/row:visible ${TONE[reportTone(report)]}`} />;
+  const tone = reportTone(report);
+  const line = lit ? <span aria-hidden data-report-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current ${TONE[tone]}`} />
+    : <span aria-hidden data-hover-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current invisible group-hover/row:visible ${TONE[tone]}`} />;
   return <li data-report-key={row.key} data-history-keep={pressed ? row.key : undefined} data-motion-key={[row.key, ...row.older.map(each => each.key)].join(" ")} data-lit={pointed || undefined}
     onMouseEnter={() => (report.mark || report.finish) && point(row.key)} onMouseLeave={() => (report.mark || report.finish) && point(null)}
     className="group/row relative pl-(--gutter)">
@@ -547,7 +548,9 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const galleryKey = report.replyTo ?? report.key;
   const plain = (report.note?.title ?? report.text).replace(/\bR\d+\b/g, "").replace(/\s+/g, " ").trim();
   const kindWord = t(`reportFeed.row.kind.${report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
+  const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
+    : report.carriedOn ? carriedOnWords(report, names, t, ui)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -732,7 +735,7 @@ const RECORD_HEAD = "grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] con
 function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; open: boolean }) {
   const { reader: t } = useFeedWords();
   const urgent = row.report.kind === "urgent";
-  const name = row.name;
+  const name = rowEnds(row);
   const words = (end: NameEnd) => [t(`reportFeed.row.party.${end.party}`), end.taskId, end.agent, end.title].filter(Boolean).join(" ");
   const said = "own" in name ? t("reportFeed.row.own", { who: words(name.own) })
     : t("reportFeed.row.between", { from: words(name.ends[0]), to: words(name.ends[1]) });
@@ -812,7 +815,7 @@ function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpe
  * the tag); no separate line stands for the link.
  */
 function RowParties({ row, onFollow }: { row: HistoryRow; onFollow: (id: string) => void }) {
-  const name = row.name;
+  const name = rowEnds(row);
   const tag = (end: NameEnd) => <PartyTag end={end} whole onOpen={end.taskId && end.party !== "self"
     ? button => followReference(button, end.taskId!, () => onFollow(end.taskId!)) : undefined} />;
   // From, then the arrow and to: on one line where both fit, else to goes under from with its arrow. Each end whole.
@@ -839,6 +842,23 @@ function RowEnd({ outcome }: { outcome: RowOutcome }) {
 
 const TaskPeople = createContext<PeopleIndex | null>(null);
 const useTaskPeople = () => useContext(TaskPeople);
+/**
+ * Who a row is between, as its head and its open body both say it: a stop the AI stack carried on goes from the AI that
+ * stopped to the one that took over, not back to its requester.
+ */
+function rowEnds(row: HistoryRow): HistoryRow["name"] {
+  const { carriedOn, recipient } = row.report;
+  return carriedOn && recipient && "ends" in row.name
+    ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
+}
+const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
+  runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
+function carriedOnWords(report: ReportEvent, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {
+  const reason = report.cause ? limitName(report.cause, ui) : t("reportFeed.row.carriedOn.limit");
+  const next = report.recipient;
+  return next ? t("reportFeed.row.carriedOn.to", { reason, next: `${next.profileKey} ${modelLabel(carriedOnAgent(next), names).short}` })
+    : t("reportFeed.row.carriedOn.next", { reason });
+}
 const AgentNames = createContext<readonly ModelName[]>([]);
 
 /** Parents whose work below was unfolded, so coming Back from a child finds the row as it was left. */
@@ -936,13 +956,20 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   // Before a Run has said anything, show its current step.
   const words = run.activity?.note?.text || step(run.activity);
   const member = people?.placements.get(run.placementId)?.responsible === false;
+  const names = useContext(AgentNames);
+  const { t: ui } = useTranslation("ui");
+  // The Run it took the request over from, when the one before stopped on a limit.
+  const before = people ? [...people.runsByTask.get(run.taskId) ?? []].find(each => each.supersededBy === run.id) : undefined;
+  const beforeCause = before?.availability?.cause ?? before?.errorCause;
   const cell = "col-start-2 min-w-0 narrow:col-span-2 narrow:col-start-1";
   // These words can wrap: share their first baseline with the time, rather than centring it on all their lines.
   return <div data-working-person={run.placementId} className={`${RECORD_HEAD} items-baseline !p-0`}>
     <RailTime mark={lead ? WORKING_MARK : undefined} live>{duration(run.startedAt)}</RailTime>
     <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft group-hover/row:text-ink">
       <span className="font-medium">{t(`reportFeed.row.party.${member ? "member" : "self"}`)}</span>
-      <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}</span>
+      <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
+      {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
+        reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
     {lead && <span className="col-start-3 row-start-1 flex items-center self-center justify-self-end"><DisclosureChevron open={open} /></span>}

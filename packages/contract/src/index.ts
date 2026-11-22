@@ -36,6 +36,7 @@ export * from './report-layout.js';
 export { projectColorSchema } from '@alpacawork/raw/project-settings';
 
 export * from './agent-settings.js';
+export * from './ai-stack.js';
 export * from './agent-launch.js';
 export * from './agent-selection.js';
 export * from './first-run.js';

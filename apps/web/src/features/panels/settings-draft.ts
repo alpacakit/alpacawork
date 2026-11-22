@@ -2,24 +2,32 @@ import { detailWriteBasis, type WriteBasis } from "@/data/connection";
 import type { QueryClient } from "@tanstack/react-query";
 import { stringify } from "yaml";
 import { z } from "zod";
-import { PROJECT_POLICY, projectColorSchema, titleSchema, type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
+import { PROJECT_POLICY, compileAgentSetting, enabledAgents, projectColorSchema, resolveAgentSelection, titleSchema,
+  type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
 import { readServerAgents, serverAgentDraftSchema } from './server-agent-draft';
+import { readStack, writeStack } from './ai-stack-draft';
 import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/contract/control";
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
 
-/** The Server tab owns limits, Jev and typed agents; config/set receives one derived agents: block. */
+/** The Server tab owns limits, Jev, typed agents and the AI stack; config/set receives one derived agents: block. */
 export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {
-  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents: readServerAgents(settings.agentsText) };
+  // When there is no saved stack, the settings editor starts with the agent the server uses by default.
+  const first = settings.aiStack === undefined ? enabledAgents(settings.agents)[0] : undefined;
+  const rows = first ? [{ agent: first[0], values: resolveAgentSelection(compileAgentSetting(...first)).values }] : settings.aiStack;
+  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents: readServerAgents(settings.agentsText),
+    aiStack: readStack(rows) };
 }
 /**
- * The limits and Jev config/set writes beside the agents block; the YAML example shows the same text. Jev always goes
- * with them, so an emptied endpoint reaches the server and turns Jev off.
+ * The limits, the AI stack and Jev config/set writes beside the agents block; the YAML example shows the same text.
+ * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. `aiStack` absent leaves the
+ * stack in config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
  */
-export function configYaml(draft: ServerDraft) {
-  return stringify({ limits: draft.limits, /* jev: draft.jev */ }, { lineWidth: 0, aliasDuplicateObjects: false });
+export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack'>>) {
+  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
+    { lineWidth: 0, aliasDuplicateObjects: false });
 }
 /**
  * A project's settings as one draft: its Task's title and colour, its code location on this PC, the fields its Tasks

@@ -82,6 +82,8 @@ export const historyEventSchema = z.object({
     title: z.string(), at: z.iso.datetime({ offset: true }) }).strict()).optional(),
   /** On a failed Run's row, the cause read in that Run's own error words (its errorCause), when one is known. */
   cause: runErrorCauseSchema.optional(),
+  /** The stopped Run's recipient is the agent that took over its request. */
+  carriedOn: z.literal(true).optional(),
   /** Independent Task annotation, never part of the body delivered to the agent. */
   note: z.object({ title: z.string().min(1), description: z.string().nullable() }).strict().optional(),
   /**
@@ -94,6 +96,8 @@ export const historyEventSchema = z.object({
   { path: ['open'], message: 'Questions and reviews say whether they are open' }).refine(event =>
   event.note === undefined || event.kind === 'request', { path: ['note'], message: 'Only a Request row has a Task note' }).refine(event =>
   event.cause === undefined || event.kind === 'error', { path: ['cause'], message: 'Only a failed Run row has a cause' }).refine(event =>
+  event.carriedOn === undefined || event.kind === 'error' && event.recipient !== undefined,
+  { path: ['carriedOn'], message: 'A carried-on Run names the next agent' }).refine(event =>
   event.result === undefined || event.kind === 'request' && event.recipient?.role === 'member', { path: ['result'], message: 'Only a member Request row has a result' });
 export type HistoryEventKind = z.infer<typeof historyEventSchema>['kind'];
 type HistoryEvent = z.infer<typeof historyEventSchema>;

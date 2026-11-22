@@ -1,7 +1,7 @@
 /** One rule decides which session a coordinator message continues and the values an omitted choice keeps. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { continuation } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
+import { continuation, resumable } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
 
 let next = 1;
 const run = (agent: string, state: string, values: Record<string, string | null>, session: string | null = 's') =>
@@ -26,4 +26,12 @@ test('a failed last Run leaves the one before it; another agent or a sessionless
   assert.equal(continuation([run('first', 'succeeded', { model: 'b' }, null)], 'first'), null);
   const starting = run('first', 'running', { model: 'b' }, null);
   assert.equal(continuation([starting], 'first')?.continued, starting, 'A first turn still running is continued');
+});
+
+test('what a conversation goes on from does not count a Run that failed to launch, whichever agent it was', () => {
+  const before = run('first', 'succeeded', { model: 'b' });
+  const runs = [before, run('second', 'failed', { model: 'x' }, null)];
+  assert.equal(resumable(runs)?.continued, before);
+  assert.equal(continuation(runs, 'first')?.continued, before);
+  assert.equal(continuation(runs, 'second'), null);
 });

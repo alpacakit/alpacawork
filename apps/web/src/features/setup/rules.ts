@@ -66,9 +66,12 @@ export const canWork = (row: Pick<StartAgent, "status">) => row.status === "read
 export const usableAgents = (rows: readonly StartAgent[], on: AgentSwitches) =>
   rows.filter(row => canWork(row) && on[row.name]).map(row => row.name);
 
-/** The agent requests go to first: the one picked when it is usable, else the first usable one. */
-export const firstAgentOf = (usable: readonly string[], picked: string | null) =>
-  picked && usable.includes(picked) ? picked : usable[0] ?? null;
+/**
+ * The agent requests go to first: the one picked here when it is usable; until one is picked, the saved AI stack's first
+ * row that is usable (so opening setup and going on leaves the stack as it is); else the first usable one.
+ */
+export const firstAgentOf = (usable: readonly string[], picked: string | null, saved: readonly { agent: string }[] = []) =>
+  picked && usable.includes(picked) ? picked : saved.find(row => usable.includes(row.agent))?.agent ?? usable[0] ?? null;
 
 /**
  * The agents config.yaml should hold for the choice made in the setup, or null when it already does: the switches as

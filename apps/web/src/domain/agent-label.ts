@@ -102,7 +102,7 @@ export function kindToName(choices: ReturnType<typeof agentModelChoices>, profil
   return null;
 }
 
-export const runAgentLabel = (run: ControlRunDTO): string =>
+export const runAgentLabel = (run: Pick<ControlRunDTO, "agent" | "modelId" | "effort">): string =>
   agentLabel(run.modelId, run.effort, run.agent);
 
 export function placementAgentLabel(placement: PlacementDTO, people: PeopleIndex): string {

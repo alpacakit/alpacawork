@@ -303,6 +303,11 @@
     "row": {
       "answerTo": "提问：{{question}}",
       "between": "{{from}} 发给 {{to}}",
+      "carriedOn": {
+        "limit": "上限",
+        "next": "因{{reason}}而停止，由列表中的下一个 AI 接手",
+        "to": "因{{reason}}而停止，由 {{next}} 接手"
+      },
       "cause": "收到“{{title}}” · {{at}}",
       "changedTo": "已设为 {{state}}",
       "end": {
@@ -377,7 +382,8 @@
     "sendBack": "退回…",
     "sentBody": "发给智能体的正文",
     "working": {
-      "others_other": "还有 {{count}} 个"
+      "others_other": "还有 {{count}} 个",
+      "tookOver": "因 {{agent}} 达到{{reason}}而接手"
     }
   },
   "ruleTab": {

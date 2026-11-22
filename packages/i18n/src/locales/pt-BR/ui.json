@@ -11,6 +11,11 @@
       "open": "Usar no celular ou como app"
     },
     "attached": "Somente anexos",
+    "attempts": {
+      "stopped": "{{agent}} — parou por {{reason}}",
+      "title": "IAs tentadas",
+      "tookOver": "{{agent}} assumiu"
+    },
     "clear": "Limpar conversa",
     "clearConfirm": "Clique de novo para limpar",
     "clearFailed": "Não foi possível limpar a conversa.",
@@ -318,12 +323,20 @@
     "cause": {
       "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Tente novamente mais tarde ou com outro modelo, ou pare",
       "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Tente novamente com outro modelo ou depois que o limite for renovado, ou pare",
+      "sessionLimit": "O agente atingiu o limite de uso de 5 horas, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare",
       "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare"
     },
     "causeReason": {
       "modelCapacity": "O modelo está sobrecarregado",
       "modelLimit": "Limite de uso do modelo atingido",
+      "sessionLimit": "Limite de uso de 5 horas atingido",
       "weeklyLimit": "Limite semanal de uso atingido"
+    },
+    "limitName": {
+      "modelCapacity": "a capacidade do modelo",
+      "modelLimit": "o limite de uso do modelo",
+      "sessionLimit": "o limite de uso de 5 horas",
+      "weeklyLimit": "o limite semanal de uso"
     }
   },
   "state": {

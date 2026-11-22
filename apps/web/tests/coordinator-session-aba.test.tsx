@@ -54,7 +54,7 @@ test('a send whose checks a new read session ended, its conversation already rea
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -88,7 +88,7 @@ test('an attempt that could not save its checkpoint keeps the notice saying so w
     if (url.includes('task/view')) return reply(viewsOf(served).find(v => v.task.id === new URL(url, 'http://fixture').searchParams.get('task')));
     return reply(conv());
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -129,7 +129,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       ...(submitted.tasks ? { tasks: submitted.tasks } : {}), ...(submitted.answers ? { answers: submitted.answers } : {}), attachments: [],
       status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null }]);
     vi.stubGlobal('fetch', fetcher);
-    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
     act(() => receiveFullIndex(queryClient, index));
     const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
     await waitFor(() => expect(input?.editor).toBeTruthy());

@@ -91,3 +91,10 @@ test("a model named like an object's own property still starts and is sent when 
     expect(view.send).toEqual({ model: name, effort: "low" });
   }
 });
+
+test("a new coordinator conversation starts on the person's last choice, else the AI stack's values, else low effort", async () => {
+  const { coordinatorStart } = await import("../src/features/forms/launch-selection");
+  expect(coordinatorStart(codex, undefined)).toEqual({ model: "gpt-6.1-sol", effort: "low", fast: null });
+  expect(coordinatorStart(codex, undefined, { model: "gpt-6-astra", effort: "xhigh" })).toEqual({ model: "gpt-6-astra", effort: "xhigh", fast: null });
+  expect(coordinatorStart(codex, { effort: "high" }, { model: "gpt-6-astra", effort: "xhigh" })).toEqual({ model: "gpt-6-astra", effort: "high", fast: null });
+});

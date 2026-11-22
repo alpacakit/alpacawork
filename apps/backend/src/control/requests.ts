@@ -7,10 +7,11 @@ import { savedReplyLanguage } from '../receiver/person-state.js';
 import type { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Problem, PROBLEM_CODE, type ProblemCode, type ProblemReason } from '@alpacawork/core';
-import { currentReview, reviewTarget, startsEstimateRound } from '@alpacawork/contract';
+import { aiStackPrefixSchema, currentReview, reviewTarget, startsEstimateRound } from '@alpacawork/contract';
 import { DELIVERY_STATE, requestReceiptSchema, requestInputSchema,
   type RequestInput, type RequestReceipt } from '@alpacawork/contract/control';
 import type { RunRecord } from '@alpacawork/contract/run';
+import type { Selection } from '@alpacawork/contract/agent-settings';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
@@ -28,6 +29,7 @@ import { assertRotationResolved, continuationSessionUnavailable, conversationFor
 import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
+import { aiRows, freezeAiStack, standingAiRows } from '../ai-stack.js';
 import { initialPlacementValues } from './placement-launch-values.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
 
@@ -87,7 +89,11 @@ function replayedRun(saved: StoredRequest, input: RequestInput, context: Request
       { reason: { kind: 'request_id_already_has_different_input' } });
   if (!isDeepStrictEqual(saved.author, author))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another author', undefined, { reason: { kind: 'request_id_belongs_another_author' } });
-  const run = saved.runId ? tx.get(saved.runId) : null;
+  const first = db.prepare('SELECT r.id,q.ai_prefix FROM requests q JOIN runs r ON r.request_id=q.id AND r.attempt=0 WHERE q.id=?').get(saved.id);
+  const prefix = typeof first?.ai_prefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(first.ai_prefix)) : undefined;
+  if (!isDeepStrictEqual(prefix, input.aiStack))
+    throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another AI stack');
+  const run = first ? tx.get(`R${first.id}`) : null;
   if (!run) reject(PROBLEM_CODE.saveUnconfirmed, 'Request exists without a confirmed Run', { kind: 'request_exists_without_confirmed_run' }, taskHash, null, null);
   if (input.selected !== undefined && Object.entries(input.selected).some(([key, value]) => run.launch.values[key] !== value))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another launch choice', undefined,
@@ -195,9 +201,31 @@ export class RequestService {
             refuse(PROBLEM_CODE.conflict, 'Task or placement changed; reload before retrying', { kind: 'task_or_placement_changed' });
           if (input.expectedHeadRunId !== undefined && input.expectedHeadRunId !== (head?.id ?? null))
             refuse(PROBLEM_CODE.conflict, 'Conversation head changed; reload before retrying', { kind: 'conversation_head_changed' });
-          const resumable = settings.config.agents[placement.profileKey]?.enabled !== false && !!settings.config.agents[placement.profileKey];
+          const storedPrefix = db.prepare('SELECT ai_prefix FROM placements WHERE id=?').get(placement.id)?.ai_prefix;
+          const placementPrefix = typeof storedPrefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(storedPrefix)) : undefined;
+          const plan = aiRows(settings.config, input.aiStack, placementPrefix);
+          const requestedRow = input.aiStack?.[0] && input.aiStack[0] !== 'stop' ? plan[0] : undefined;
+          // An explicit starting row chooses the AI by itself. A stop before the placement's fallbacks leaves only its
+          // configured start and any already adopted valid row relevant to the current session.
+          const standing = !input.aiStack ? plan : requestedRow ? [] : standingAiRows(settings.config, placementPrefix);
+          const placedRow = !requestedRow && placementPrefix?.[0] && placementPrefix[0] !== 'stop' &&
+            standing[0]?.agent === placement.profileKey ? standing[0] : undefined;
+          const matchesHead = (row: { agent: string; values: Selection }) =>
+            !!head && row.agent === head.agent && isDeepStrictEqual(row.values, head.launch.values);
+          const standingPosition = standing.findIndex(matchesHead);
+          const headRequest = head ? db.prepare('SELECT ai_explicit,ai_prefix FROM requests WHERE id=?').get(head.requestId) : undefined;
+          const requestScopedHead = !!head && standingPosition < 0 &&
+            (typeof headRequest?.ai_prefix === 'string' || head.attempt !== undefined ||
+              headRequest?.ai_explicit === 1 && settings.config.aiStack !== undefined);
+          const carriesFallback = standingPosition >= 0 && runs.some(run => run.attempt !== undefined && matchesHead({ agent: run.agent, values: run.launch.values }) &&
+            (run.id === head?.id || run.started_at !== null));
+          const keepHead = !!head && !requestScopedHead && (input.mode !== 'new' || carriesFallback);
+          const profile = requestedRow?.agent ?? (keepHead ? head.agent : placedRow?.agent ?? placement.profileKey);
+          const setting = settings.config.agents[profile];
+          const resumable = setting?.enabled !== false && !!setting;
+          const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
-          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown, explicit: input.mode,
+          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown, explicit: explicitChange ? 'new' : input.mode,
             head, direct: !fromPlacement, resumable });
           if (unsentNew && input.mode === 'continue')
             refuse(PROBLEM_CODE.notResumable, 'An unsent new conversation cannot resume', { kind: 'conversation_session_unavailable' });
@@ -234,14 +262,16 @@ export class RequestService {
             { kind: 'request_would_exceed_allowed_child_run_depth_continue_existing_run_or_simplify_delegation_chain' });
           if (limit) refuse(limit, 'This parent has reached its total child-run limit; completed children still count toward this limit.',
             { kind: 'parent_has_reached_total_child_run_limit_completed_children_still_count_toward_limit' });
-          const profile = placement.profileKey;
+          const placedValues = placedRow?.agent === profile ? placedRow.values : undefined;
+          const rowValues = requestedRow?.values ?? (carriesFallback ? head!.launch.values : placedValues) ??
+            settings.config.aiStack?.find(row => row.agent === profile)?.values;
           const launchMode = mode === 'continue' ? 'resume' : 'start';
           const launch = launchSnapshot(settings.config, profile, launchMode,
             process.env.PATH ?? '', input.selected ?? {},
-            mode === 'continue' ? head?.launch : (() => {
-              const values = initialPlacementValues(task.meta.log, placement.id, tx.runsOfTask(task.id), input.mode);
-              return values === undefined ? undefined : { values };
-            })());
+            mode === 'continue' ? head?.launch : {
+              values: { ...rowValues, ...(!requestedRow
+                ? initialPlacementValues(task.meta.log, placement.id, tx.runsOfTask(task.id), input.mode) : undefined) },
+            });
           if (!launch.ok) refuse(launch.code === 'not_resumable' ? PROBLEM_CODE.notResumable : PROBLEM_CODE.responsibleMissing, 'Responsible profile cannot launch this request', { kind: 'responsible_profile_cannot_launch_request' });
           const session = mode === 'continue' ? head!.session : assignedSession(launch.launch, profile);
           const deliveryState = admittedDelivery(mode === 'continue', session, runs);
@@ -255,6 +285,10 @@ export class RequestService {
             aboutRunId: review ? reviewTarget(task.meta, head, unfinished) : null,
             mode, body: input.body, purpose: review ? 'review_send_back' : context.purpose, author,
             submittedAt: new Date().toISOString(), deliveryState,
+            aiExplicit: input.aiStack !== undefined || Object.keys(input.selected ?? {}).length > 0,
+            aiPrefix: input.aiStack,
+            aiStack: freezeAiStack(settings.config, { agent: profile, values: launch.launch.values },
+              carriesFallback && !input.aiStack ? plan.slice(standingPosition + 1) : plan),
             answersQuestion: context.purpose === 'instruction' ? context.answersQuestion?.id ?? null : null };
           // Project inherited work before inserting this admission: its Request has no Run/caller witness yet.
           const openObligations = placement.responsible ? lifecycle.openObligations(task.id) : undefined;

@@ -43,7 +43,7 @@ const BOUNDARY_LOG = { started: 'LSTART', ended: 'LEND' } as const;
 function boundariesOf(runs: readonly RunRecord[]): Boundary[] {
   return runs.flatMap(run => [
     ...(run.started_at ? [{ id: `${BOUNDARY_LOG.started}${run.id}`, at: run.started_at, run, action: 'run_started' as const }] : []),
-    ...(run.ended_at && endedOwnWork(run.state)
+    ...(run.ended_at && run.supersededBy === undefined && endedOwnWork(run.state)
       ? [{ id: `${BOUNDARY_LOG.ended}${run.id}`, at: run.ended_at, run, action: 'run_ended' as const }] : []),
   ]).sort((a, b) => Date.parse(a.at) - Date.parse(b.at) ||
     (a.action === b.action ? 0 : a.action === 'run_started' ? -1 : 1));
@@ -172,7 +172,7 @@ export function* stateLinksSteps(tx: StateLinkReads, work: RoutingTasks | string
     json_extract(record,'$.ended_at') AS ended_at FROM runs WHERE task_id IN (SELECT value FROM json_each(?))
     AND json_extract(record,'$.role')='owner' AND
     ((json_extract(record,'$.started_at') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM task_log WHERE id=? || 'R' || runs.id)) OR
-     (state IN ('succeeded','failed','cancelled') AND json_extract(record,'$.ended_at') IS NOT NULL
+     (state IN ('succeeded','failed','cancelled') AND json_extract(record,'$.supersededBy') IS NULL AND json_extract(record,'$.ended_at') IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM task_log WHERE id=? || 'R' || runs.id))) ORDER BY id`)
     .all(JSON.stringify(working.map(task => task.id)), BOUNDARY_LOG.started, BOUNDARY_LOG.ended);
   yield;

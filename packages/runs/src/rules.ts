@@ -21,7 +21,10 @@ export const conversationInUse = (runs: readonly Pick<RunRecord, 'session' | 'st
   runs.some(run => run.session?.id === sessionId && usesSlot(run));
 
 type Lane = Pick<RunRecord, 'role' | 'placementId'> | Pick<CoordinatorRunRecord, 'role' | 'conversationId'>;
-type LanePosition = Lane & Partial<Pick<RuntimeRunRecord, 'id' | 'session'>>;
+type LanePosition = Lane & Partial<Pick<RuntimeRunRecord, 'id' | 'session' | 'firstRunId'>>;
+type OrderedRun = Pick<RuntimeRunRecord, 'id' | 'firstRunId'>;
+export const compareRequestOrder = (a: OrderedRun, b: OrderedRun) =>
+  runNumber(a.firstRunId ?? a.id) - runNumber(b.firstRunId ?? b.id);
 const sameLane = (a: Lane, b: Lane): boolean => a.role === 'coordinator'
   ? b.role === 'coordinator' && a.conversationId === b.conversationId
   : b.role !== 'coordinator' && a.placementId === b.placementId;
@@ -38,7 +41,7 @@ export function laneAhead(runs: readonly RuntimeRunRecord[], position: LanePosit
     (sameLane(run, position) || run.session && run.session.id === position.session?.id));
   if (held) return { kind: 'delivery', run: held.id };
   const ahead = runs.find(run => sameLane(run, position) &&
-    (!position.id || compareRunIds(run, { id: position.id }) < 0) && (run.state === 'queued' || usesSlot(run)));
+    (!position.id || compareRequestOrder(run, { id: position.id, firstRunId: position.firstRunId }) < 0) && (run.state === 'queued' || usesSlot(run)));
   return ahead ? { kind: 'turn', run: ahead.id } : null;
 }
 
@@ -140,6 +143,7 @@ export function relationships(runs: Runs) {
       if (!run || found.has(run.id)) continue;
       found.set(run.id, run);
       pending.push(...children(run.id).map(child => child.id));
+      if (run.supersededBy) pending.push(run.supersededBy);
     }
     return [...found.values()].sort(compareRunIds);
   }
@@ -191,7 +195,7 @@ export function checkRunLimits(runs: Runs, identity: RunLimitIdentity,
   if (graph.delegationDepth(identity) > limits.depth) return 'too_deep';
   const parent = ancestors[0];
   // The same seat's automatic continuation goes on with existing work; it does not add a child.
-  if (parent && !identity.continues && graph.children(parent.id).length >= limits.children_per_run)
+  if (parent && !identity.continues && graph.children(parent.id).filter(child => child.attempt === undefined).length >= limits.children_per_run)
     return 'too_many_children';
   return null;
 }
