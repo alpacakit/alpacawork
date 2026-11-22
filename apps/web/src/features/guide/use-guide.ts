@@ -3,6 +3,7 @@ import { useQueries } from "@tanstack/react-query";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
+import { ApiError } from "@/data/client";
 import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
@@ -82,30 +83,33 @@ export function awaiting(rows: readonly { taskId: string; section: string }[], b
   return { questions, results, open };
 }
 
-/** The Tasks Done was pressed on when this guide began (at `at`), and those pressed on since (`fresh`). */
-type DoneBefore = { at: number | null; ids: readonly string[]; fresh: readonly string[] } | null;
+/** One press of Done the reader holds: which press it was (its send), and the Task it was pressed on. */
+export type DonePress = { press: string; task: string };
+/** The presses of Done held when this guide began (at `at`), and the Tasks Done was pressed on since (`fresh`). */
+type DoneBefore = { at: number | null; presses: readonly string[]; fresh: readonly string[] } | null;
 /**
- * Done pressed since the guide began: the reader keeps what was pressed for as long as the page is open, so what it
- * already held when the guide started (again) is not this guide's. `done` is the Tasks it holds Done on now.
+ * Done pressed since the guide began: the reader keeps what was pressed for as long as the page is open, so a press it
+ * already held when the guide started (again) is not this guide's; a new press on the same Task is. `done` is the
+ * presses it holds now.
  */
-export function doneSince(stage: GoingStage, done: readonly string[], before: DoneBefore): NonNullable<DoneBefore> {
+export function doneSince(stage: GoingStage, done: readonly DonePress[], before: DoneBefore): NonNullable<DoneBefore> {
   const at = stage.stage === "started" ? stage.at : before?.at ?? null;
-  const ids = before && before.at === at ? before.ids : stage.stage === "started" ? done : before?.ids ?? [];
-  return { at, ids, fresh: done.filter(id => !ids.includes(id)) };
+  const presses = before && before.at === at ? before.presses : stage.stage === "started" ? done.map(each => each.press) : before?.presses ?? [];
+  return { at, presses, fresh: done.filter(each => !presses.includes(each.press)).map(each => each.task) };
 }
 
 const stateRead = z.object({ task: z.object({ state: z.string() }) });
 /**
  * Each of `ids`' state as the server says it now: the list's row while it holds one; once the list lets it go (finished,
  * stopped, or anything else), the Task read again from the server, each time it is let go and on each load. Undefined
- * while that read is under way or failed: not known.
+ * while that read is under way (tried again until it is read, unless the Task is gone): not known.
  */
 export function useServerState(ids: readonly string[], byId: ReadonlyMap<string, Task>): (id: string) => string | undefined {
   const root = useWorkspaceInfo((info) => info.root);
   const reads = useQueries({ queries: ids.map(id => ({
     queryKey: ["guide-task-state", root, id] as const,
     queryFn: ({ signal }: { signal: AbortSignal }) => api.request(`task/view?task=${encodeURIComponent(id)}`, stateRead, signal).then(read => read.task.state),
-    enabled: !byId.has(id), staleTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false,
+    enabled: !byId.has(id), staleTime: 0, retry: (_: number, error: Error) => !(error instanceof ApiError && error.code === "not_found"), refetchOnWindowFocus: false, refetchOnReconnect: false,
   })) });
   return id => {
     const listed = byId.get(id);
@@ -145,10 +149,12 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
   // Done pressed on a Task here, as the reader keeps it (its next-question deck), since this guide began (doneSince),
   // with those the stage keeps; counted while the server says the Task is finished (finishedHere).
-  const doneIds = useSitting(useShallow(state => Object.entries(state.departures)
-    .filter(([, each]) => each.answer === "done" && readerOutcome(each.status()) === "kept").map(([task]) => task)));
+  // Each press by its send (or, with none, the turn it was pressed on), so pressing again on the same Task is new.
+  const doneKeys = useSitting(useShallow(state => Object.entries(state.departures)
+    .filter(([, each]) => each.answer === "done" && readerOutcome(each.status()) === "kept")
+    .map(([task, each]) => JSON.stringify([each.id ?? `turn:${each.turn}`, task]))));
   const doneBefore = useRef<DoneBefore>(null);
-  doneBefore.current = doneSince(stage, doneIds, doneBefore.current);
+  doneBefore.current = doneSince(stage, doneKeys.map(key => { const [press, task] = JSON.parse(key) as [string, string]; return { press, task }; }), doneBefore.current);
   const fresh = doneBefore.current.fresh;
   // The Task seen in the detail: open there, and not under the card that says every turn is answered.
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);

@@ -203,15 +203,18 @@ test("a row whose turn the person has already answered from here is not theirs, 
   expect(awaiting(rows, byId, each => each.id === "T1", "T1")).toEqual({ questions: 0, results: 1, open: null });
 });
 
-test("Done pressed before the guide began (again) is not its own; Done pressed since is", () => {
+test("Done pressed before the guide began (again) is not its own; Done pressed since is, on the same Task too", () => {
   const again = { stage: "started", at: 9, seen: [], intro: true } as const;
-  const first = doneSince(again, ["T1"], null);
+  const old = { press: "R1", task: "T1" };
+  const first = doneSince(again, [old], null);
   expect(first.fresh).toEqual([]);
-  expect(doneSince(again, ["T1"], first).fresh).toEqual([]);
-  const later = doneSince(turn, ["T1"], first);
+  expect(doneSince(again, [old], first).fresh).toEqual([]);
+  const later = doneSince(turn, [old], first);
   expect(later.fresh).toEqual([]);
   // Pressed while any step shows (words waiting to be sent, say): it is the guide's.
-  expect(doneSince(turn, ["T1", "T5"], later).fresh).toEqual(["T5"]);
+  expect(doneSince(turn, [old, { press: "R5", task: "T5" }], later).fresh).toEqual(["T5"]);
+  // The Task finished before the guide began, opened again and Done pressed on it again: a new press, the guide's.
+  expect(doneSince(turn, [{ press: "R7", task: "T1" }], later).fresh).toEqual(["T1"]);
 });
 
 test("the close holds while the server says a Task pressed Done on here is finished, and nothing else opens it", () => {
