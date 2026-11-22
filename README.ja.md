@@ -55,7 +55,17 @@ alpacawork setup
 
 ### 画面を開き直す
 
-画面を閉じたあとは、Claude Code で `/alpacawork 画面開いて`（Codex では `$alpacawork 画面開いて`）と頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。ターミナルで `alpacawork open` を実行しても開けます。
+画面を閉じたあとは、Claude Code か Codex に次のように頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。
+
+```text
+/alpacawork 画面開いて
+```
+
+Codex では `/alpacawork` を `$alpacawork` にします。ターミナルからは次のコマンドでも開けます。
+
+```sh
+alpacawork open
+```
 
 ## できること
 

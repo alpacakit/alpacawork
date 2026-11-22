@@ -26,7 +26,19 @@ alpacawork setup
 
 ## 2. Abrir a tela
 
-Quando a instalação termina, a tela abre no navegador. Se não abrir, ou se você fechá-la depois, digite `/alpacawork abra a tela` no Claude Code (`$alpacawork abra a tela` no Codex). A IA abre a tela no navegador ou informa a URL dela. Você também pode executar `alpacawork open` no terminal ou abrir no navegador a URL mostrada no final da configuração inicial, algo como `http://127.0.0.1:43127/`.
+Quando a instalação termina, a tela abre no navegador. Se não abrir, ou se você fechá-la depois, peça assim ao Claude Code ou ao Codex. A IA abre a tela no navegador ou informa a URL dela.
+
+```text
+/alpacawork abra a tela
+```
+
+No Codex, escreva `$alpacawork` no lugar de `/alpacawork`. No terminal, este comando também abre a tela.
+
+```sh
+alpacawork open
+```
+
+Você também pode abrir no navegador a URL mostrada no final da configuração inicial, algo como `http://127.0.0.1:43127/`.
 
 Essa URL não muda, mesmo que você reinicie o PC. Salve-a nos favoritos. O alpacawork roda automaticamente quando você faz login no PC, então não é preciso iniciá-lo toda vez.
 

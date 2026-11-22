@@ -55,7 +55,17 @@ alpacawork setup
 
 ### 重新打开界面
 
-关闭界面后，在 Claude Code 中输入 `/alpacawork 打开界面`（Codex 中为 `$alpacawork 打开界面`）。AI 会在浏览器中打开界面，或告诉你界面的 URL。也可以在终端执行 `alpacawork open` 打开。
+关闭界面后，像下面这样请 Claude Code 或 Codex 打开。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+
+```text
+/alpacawork 打开界面
+```
+
+在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`。也可以在终端执行下面的命令打开。
+
+```sh
+alpacawork open
+```
 
 ## 能做什么
 

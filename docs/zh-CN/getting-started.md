@@ -26,7 +26,19 @@ alpacawork setup
 
 ## 2. 打开界面
 
-安装完成后，浏览器会打开界面。如果没有打开，或者之后把它关掉了，请在 Claude Code 中输入 `/alpacawork 打开界面`（Codex 中为 `$alpacawork 打开界面`）。AI 会在浏览器中打开界面，或告诉你界面的 URL。也可以在终端执行 `alpacawork open`，或在浏览器中打开初始设置最后显示的、形如 `http://127.0.0.1:43127/` 的 URL。
+安装完成后，浏览器会打开界面。如果没有打开，或者之后把它关掉了，像下面这样请 Claude Code 或 Codex 打开。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+
+```text
+/alpacawork 打开界面
+```
+
+在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`。也可以在终端执行下面的命令打开。
+
+```sh
+alpacawork open
+```
+
+也可以在浏览器中打开初始设置最后显示的、形如 `http://127.0.0.1:43127/` 的 URL。
 
 这个 URL 在电脑重启后也不会变。请把它加入书签。alpacawork 会在你登录电脑时自动运行，不需要每次启动。
 
