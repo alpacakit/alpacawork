@@ -67,14 +67,14 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
     className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-line px-4 py-3 narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className="flex min-h-control-md items-center justify-end font-mono tabular-nums text-muted">{n}</span>
     <div className="flex min-w-0 items-start gap-x-5 narrow:contents">
-      <div className="flex w-32 shrink-0 flex-col items-start gap-1 narrow:col-start-2 narrow:row-start-1 narrow:w-full narrow:flex-row narrow:items-center narrow:gap-2">
-        <NativeSelect variant="field" className="w-full font-semibold narrow:w-36 narrow:shrink-0" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || undefined}
+      <div className="flex w-32 shrink-0 flex-col items-start gap-1 narrow:col-start-2 narrow:row-start-1 narrow:w-full narrow:flex-row narrow:flex-wrap narrow:items-center narrow:gap-2">
+        <NativeSelect variant="field" className="w-full font-semibold narrow:w-auto narrow:min-w-24 narrow:flex-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || undefined}
           aria-label={t('agentSettings.aiStack.agentFor', { n })}
           onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
           {!listed && <option value={row.agent}>{row.agent}</option>}
           {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
         </NativeSelect>
-        {index === 0 && <span data-ai-stack-first className="whitespace-nowrap rounded-full border border-line px-2 text-sm text-muted">{t('agentSettings.aiStack.first')}</span>}
+        {index === 0 && <span data-ai-stack-first className="shrink-0 whitespace-nowrap rounded-full border border-line px-2 text-sm text-muted">{t('agentSettings.aiStack.first')}</span>}
       </div>
       {choices.length > 0 && <div className="grid min-w-0 flex-1 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-center gap-x-3 gap-y-2 narrow:col-span-2 narrow:col-start-2 narrow:row-start-2 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
         {choices.map((choice, at) => {

@@ -5,6 +5,7 @@ import { RunStore, type ReadRunSnapshot } from '@alpacawork/runs';
 import { runFolder, type ReadRunRecord, type RunActivity, type RunRecord } from '@alpacawork/contract/run';
 import type { PlacementStore } from './placements.js';
 import { projectPlacementRuntimes } from './runtime.js';
+import { recordedRun } from '../runs/run-view.js';
 import { readRunActivity } from '../runs/activity.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
@@ -23,19 +24,9 @@ export type RunFolderFacts = { readonly activity: RunActivity | null; readonly e
  */
 export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): ControlRunDTO {
   const errorCause = run.availability?.cause ?? files?.errorCause;
-  return { id: run.id, taskId: run.task, placementId: run.placementId, requestId: run.requestId,
-    agent: run.agent, modelId: run.launch.values.model?.trim() || null,
-    effort: run.launch.values.effort?.trim() || null,
-    caller: run.caller ? { ...run.caller } : null, resumes: run.resumes, continues: run.continues,
-    session: run.session ? { ...run.session } : null,
-    cwd: run.cwd, state: run.state, reason: run.reason, into: run.into, takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
-    launchValues: { ...run.launch.values },
+  return { ...recordedRun(run), takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
     ...(errorCause ? { errorCause } : {}),
-    ...(run.availability ? { availability: { ...run.availability } } : {}),
-    ...(run.supersededBy ? { supersededBy: run.supersededBy } : {}),
-    activity: run.state === 'running' ? files?.activity ?? null : null,
-    createdAt: run.created_at, startedAt: run.started_at, endedAt: run.ended_at,
-    usage: run.usage ? { run: run.usage.run ? { ...run.usage.run } : null, includesEarlier: run.usage.includesEarlier } : null };
+    activity: run.state === 'running' ? files?.activity ?? null : null };
 }
 /** The screen's Runs of `records`, their folder facts read now. */
 export function controlRuns(root: string, records: readonly ReadRunRecord[]): ControlRunDTO[] {
