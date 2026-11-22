@@ -29,10 +29,12 @@ const choiceText = Object.assign((choice: string | null) => value(choice), {
     i18n.t("forms:agentPicker.next.clear", { action: i18n.t("ui:coordinatorCard.clear") })),
   /** The agent the send went to is no longer enabled in the settings. */
   gone: (agent: string) => i18n.t("forms:agentPicker.problem.gone", { agent }),
+  /** No agent is enabled in the settings. */
+  none: () => i18n.t("forms:agentPicker.problem.none"),
   brief: Object.assign((problem: SelectionProblem) => problem.recovery === "new_conversation"
     ? i18n.t("forms:agentPicker.brief.new_conversation", { action: i18n.t("ui:coordinatorCard.clear") })
     : i18n.t("forms:agentPicker.brief.select_value", { row: row(problem.key) }),
-  { gone: () => i18n.t("forms:agentPicker.brief.gone") }),
+  { gone: () => i18n.t("forms:agentPicker.brief.gone"), none: () => i18n.t("forms:agentPicker.brief.none") }),
 });
 export function useChoiceText() {
   useTranslation("forms"); // Drawn again when the language changes.

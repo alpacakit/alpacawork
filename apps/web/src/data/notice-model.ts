@@ -1,4 +1,5 @@
 import { noticeStateSchema, userTurn } from "@alpacawork/contract";
+import { isFinished } from "@alpacawork/contract/branch";
 import type { TaskRowDTO } from "@alpacawork/contract/control";
 
 export type TaskBaseline = {
@@ -27,13 +28,16 @@ export type NoticeEvent = EventBase & (
 );
 
 /**
- * Compare facts only. Report identity does not depend on the task's mutable state.
+ * Compare facts only, for Tasks not finished. Report identity does not depend on the task's mutable state.
  * A report is news when the latest noticed log entry (NOTICED_LOG_KINDS: a report, a question or its answer, a
  * change of the responsible person, a review decision, a move or shelving) came after the baseline. A turn is news
  * when the row's turn key differs from the baseline's: the key is compared as projected, never derived here.
  */
 export function taskEvents(tasks: TaskRowDTO[], baselines: Record<string, TaskBaseline>): NoticeEvent[] {
   return tasks.flatMap((task) => {
+    // A finished Task is read: what ended is seldom looked at again, and a reader who opens Done is not catching up on news.
+    // Work taken up again is news once more, against the baseline read before it finished.
+    if (isFinished(task.state)) return [];
     const baseline = baselines[task.id];
     const current = taskBaseline(task);
     const events: NoticeEvent[] = [];
@@ -57,6 +61,16 @@ export function taskEvents(tasks: TaskRowDTO[], baselines: Record<string, TaskBa
         line: noticed.title ?? noticed.kind, at: noticed.at });
     return events;
   });
+}
+
+/**
+ * Whether opening the task records something the saved baseline lacks: its news, or, for a finished task (which has none),
+ * the end itself (an end after an earlier one adds to the log). Push notifications close an end the reader has seen by this baseline; the list shows no mark for it.
+ */
+export function unseen(task: TaskRowDTO, baselines: Record<string, TaskBaseline>): boolean {
+  const baseline = baselines[task.id];
+  return taskEvents([task], baselines).length > 0
+    || isFinished(task.state) && (baseline?.state !== task.state || baseline.log < task.notice.logCount);
 }
 
 export type NoticeCheckpoint = { at: string; tasks: Record<string, TaskBaseline> };

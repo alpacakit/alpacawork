@@ -11,7 +11,7 @@ import { useSkillInstall, useSkills } from "@/data/skills";
 import { FailureLine, Loading, StepButtons } from "./parts";
 
 /**
- * Step 3: the offered skills, most recommended first, the recommended ones marked and ticked. The button names what it installs, and pressing it is the
+ * Step 3: the offered skills, each by what it changes, the recommended ones ticked. The button names what it installs, and pressing it is the
  * approval; once every ticked skill is installed the setup goes on by itself. A skill that failed says why on its row
  * and stays ticked, so the same button tries it again. Listing never contacts where a skill comes from.
  */
@@ -49,20 +49,23 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
         const done = installed(offer.name);
         const item = job?.items.find(each => each.name === offer.name);
         return <li key={offer.name} data-setup-skill={offer.name} className="border-b border-line">
-          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
+          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
             <input type="checkbox" checked={done || ticked.has(offer.name)} disabled={done || installing || !selectable(offer.name)}
               onChange={event => toggle(offer.name, event.target.checked)} className="mt-0.75 size-4.5 cursor-pointer accent-ink disabled:cursor-default" />
+            {/* What it changes, then how, then which skill and where it comes from: the name means little before it is used. */}
             <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold [overflow-wrap:anywhere]">{offer.name}</span>
-                {offer.recommended && <span data-setup-recommended className="rounded-sm border-hairline border-lit-line px-1.5 text-xs text-muted">{t("skills.recommended")}</span>}
+              {/* The state sits on the heading's line only, so the lines under it keep the row's width; where the heading
+                  leaves no room for it (a phone), it drops under the heading rather than squeeze it. */}
+              <span className="flex flex-wrap items-baseline gap-x-3">
+                <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
+                {done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
+                  : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null}
               </span>
-              <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">
-                {t(`skills.items.${offer.name}.what`)}{offer.cost && <> {t(`skills.items.${offer.name}.cost`)}</>}</span>
-            </span>
-            <span className="w-28 text-right text-sm whitespace-nowrap narrow:w-auto">
-              {done ? <span className="text-done">{t("skills.installed")}</span>
-                : item?.state === "installing" && installing ? <span className="text-muted">{t("skills.installing")}</span> : null}
+              <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>
+              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-soft">
+                <code className="font-mono text-muted [overflow-wrap:anywhere]">{offer.name}</code>
+                <span className="[word-break:auto-phrase]">{offer.from.kind === "repo" ? t("skills.from.repo", { repo: offer.from.repo }) : t("skills.from.bundled")}</span>
+              </span>
             </span>
           </label>
           {/* Under the row's words, outside its label: a failure is read, not part of what the checkbox names. */}
@@ -74,7 +77,6 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
       })}
     </ul>
     <p className="mt-4 mb-0 text-sm text-muted [overflow-wrap:anywhere] [word-break:auto-phrase]">{t("skills.where", { place: skills.data!.place })}</p>
-    <p className="mt-1 mb-0 text-sm text-muted [word-break:auto-phrase]">{t("skills.source")}</p>
     <StepButtons back={{ onClick: onBack, disabled: installing }}
       failure={install.phase === "failed" ? <FailureLine text={t("skills.failedRequest")} detail={problemText(install.error)} /> : null}
       other={toInstall.length ? <Button variant="outline" data-setup-skip disabled={installing} className="min-h-11 narrow:w-full" onClick={onNext}>{t("skills.skip")}</Button> : null}>

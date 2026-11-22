@@ -69,17 +69,21 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   const [consent, setConsent] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
   const [busy, setBusy] = useState(false);
+  const firstHintId = useId();
 
   const fail = (at: NonNullable<Failure>["at"], error: unknown) => {
     recordFailure(error, ["setup", at].join(": "));
     setFailure({ at, detail: problemText(error) });
   };
-  /** Next, or on without an agent (`agents` false): the same saves in the same order. */
-  const next = async (agents: boolean) => {
+  /**
+   * Next, or on without an agent: the same saves in the same order. Either way the step's switches are what config.yaml
+   * keeps, so an agent that cannot take work (switched off here) is not left enabled for requests to go to.
+   */
+  const next = async () => {
     if (busy) return;
     setBusy(true); setFailure(null);
     try {
-      if (agents && drafts && loaded) {
+      if (drafts && loaded) {
         const chosen = chosenAgents(drafts.agents, rows, on, first);
         if (chosen) {
           const yaml = serverAgentsYaml({ limits: loaded.limits, agents: { ok: true, value: { ...drafts, agents: chosen } } });
@@ -120,21 +124,23 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
       <Button variant="quiet" data-setup-recheck disabled={status.isFetching} onClick={() => void recheck()}>{t("agents.recheck")}</Button>
     </div>}
     {failure?.at === "check" && <FailureLine text={t("agents.failed.check")} detail={failure.detail} />}
-    {usable.length > 1 && <div role="radiogroup" aria-label={t("agents.first")}
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3 text-sm text-muted">
-      <span>{t("agents.first")}</span>
-      {usable.map(name => <button key={name} type="button" role="radio" aria-checked={first === name} onClick={() => setPicked(name)}
-        className="inline-flex min-h-8 items-center gap-1.5 text-ink pointer-coarse:min-h-11">
-        <span className={cn("size-4 flex-none rounded-full border-[1.5px] border-muted", first === name && "border-[5px] border-ink")} />
-        {agentDisplayName(name)}</button>)}
+    {usable.length > 1 && <div className="border-t border-line py-3 text-sm">
+      <div role="radiogroup" aria-label={t("agents.first")} aria-describedby={firstHintId} className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted">
+        <span>{t("agents.first")}</span>
+        {usable.map(name => <button key={name} type="button" role="radio" aria-checked={first === name} onClick={() => setPicked(name)}
+          className="inline-flex min-h-8 items-center gap-1.5 text-ink pointer-coarse:min-h-11">
+          <span className={cn("size-4 flex-none rounded-full border-[1.5px] border-muted", first === name && "border-[5px] border-ink")} />
+          {agentDisplayName(name)}</button>)}
+      </div>
+      <p id={firstHintId} className="m-0 mt-1 text-xs text-soft">{t("agents.firstHint")}</p>
     </div>}
     {!usable.length && <Message tone="caution" size="line" className="mt-4" data-setup-no-agent
       title={t(signed ? "agents.noneOnTitle" : "agents.noneReadyTitle")} description={t(signed ? "agents.noneOn" : "agents.noneReady")} />}
     {asksConsent && <Consent checked={consent} onChange={setConsent} />}
     <StepButtons back={{ onClick: onBack, disabled: busy }} failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
       : failure?.at === "consent" ? <FailureLine text={t("consent.failed")} detail={failure.detail} /> : null}
-      other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next(false)}>{t("agents.continueWithout")}</Button> : null}>
-      <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next(true)}>{t("next")}</Button>
+      other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next()}>{t("agents.continueWithout")}</Button> : null}>
+      <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next()}>{t("next")}</Button>
     </StepButtons>
   </div>;
 }

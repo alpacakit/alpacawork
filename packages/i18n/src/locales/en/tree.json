@@ -32,8 +32,6 @@
     "awaited": "Waiting",
     "error": "Needs attention",
     "finished": "Done",
-    "fresh_one": "{{count}} newly finished",
-    "fresh_other": "{{count}} newly finished",
     "held": "On hold",
     "less": "Show fewer",
     "more_one": "Show {{count}} more",

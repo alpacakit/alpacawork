@@ -112,7 +112,7 @@ test('finished Tasks are fetched as bounded pages, a parent\'s children or a sco
   // Every project's and each listed project's subtree, the root project's holding the fixture project's: the server
   // counts each once, so the screen adds none up.
   for (const scope of ['root', top, h.projectId])
-    assert.deepEqual(live.counts.closed[scope], { finished: 1, freshFinished: 0, shelved: 1 }, scope);
+    assert.deepEqual(live.counts.closed[scope], { finished: 1, shelved: 1 }, scope);
   // And every Task each holds, whoever asked for it, live, finished or shelved; project Tasks are not counted.
   const tasks = many.tasks.filter(task => task.kind === 'task').length;
   assert.ok(tasks > 28);

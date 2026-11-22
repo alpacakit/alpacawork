@@ -321,6 +321,10 @@
     "policyCount_other": "{{count}} caracteres",
     "policyExample": "Por exemplo:\nObjetivo: fechar setembro no prazo\nComo trabalhamos: conferir os documentos originais antes de alterar qualquer coisa\nNunca: entrar em contato com um fornecedor sem aprovação",
     "policyNote": "O que você escreve aqui é passado, tal como está, a todos os agentes deste projeto e dos projetos dentro dele.",
+    "policyVsAgentsMd": {
+      "detail": "A diferença: os agentes só a recebem quando trabalham pelo alpacawork. As instruções que eles devem seguir também fora do alpacawork continuam no AGENTS.md ou no CLAUDE.md.",
+      "title": "Use como você usa o AGENTS.md ou o CLAUDE.md"
+    },
     "settingsTitle": "Configurações do projeto",
     "target": "Projeto",
     "targetHeld": "Salve ou descarte as alterações para escolher outro projeto.",

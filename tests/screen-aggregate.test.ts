@@ -17,7 +17,7 @@ const task = (id: string, parentId: string | null, extra: Partial<Contribution> 
   homeWorking: false, usage: zeroUsage(), openRuns: [], movedAt: 0, ...extra });
 const stateCounts = () => ({ todo: 0, doing: 0, error: 0, waiting: 0, held: 0, done: 0, stopped: 0 });
 const homeCounts = () => ({ doing: 0, error: 0, review: 0, awaited: 0, held: 0, todo: 0 });
-const closedCounts = () => ({ finished: 0, freshFinished: 0, shelved: 0 });
+const closedCounts = () => ({ finished: 0, shelved: 0 });
 
 /** The reference deliberately walks each complete ancestor chain. It never calls the incremental implementation. */
 function full(input: ReadonlyMap<string, Contribution>, facts: ReadonlyMap<string, AggregateFacts>) {
@@ -63,7 +63,6 @@ function full(input: ReadonlyMap<string, Contribution>, facts: ReadonlyMap<strin
       if (kind && (kind === 'shelved' || h?.section === 'done')) {
         addPage(closedPageScope(kind, null, scope === 'root' ? null : scope), t.id);
         counts.closed[scope]![kind]++;
-        if (kind === 'finished' && facts.get(t.id)?.freshFinished) counts.closed[scope]!.freshFinished++;
       }
     }
   }
@@ -154,7 +153,7 @@ test('random batches match a full calculation after each update, including repar
           usage: { runs: 1 + rand(3), runMs: rand(100), tokensUnknown: known ? 0 : 1,
             tokens: known ? { input: rand(3), cacheRead: 0, cacheWrite: 0, output: rand(3) } : null } });
         input.set(id, after); changes.set(id, { before: beforeInput.get(id), after });
-        if (rand(5) === 0) { const value = { scopes: ['root', 'P1', 'P2'], listed: rand(4) > 0, freshFinished: !!rand(2), menuRunning: !!rand(2) };
+        if (rand(5) === 0) { const value = { scopes: ['root', 'P1', 'P2'], listed: rand(4) > 0, menuRunning: !!rand(2) };
           facts.set(id, value); factChanges.set(id, value); }
       }
       const result = updateScreenAggregate(frame, changes, factChanges); frame = result.next;
@@ -188,7 +187,7 @@ test('the home list a screen keeps from patches is the whole list after section 
     for (let i = 1; i <= 20; i++) input.set(`T${i}`, task(`T${i}`, projectOf(i), { projectId: projectOf(i), ...sections[rand(sections.length)], movedAt: i }));
     let p3Listed = false;
     const factsOf = (id: string): AggregateFacts => ({ scopes: ['root'], listed: input.get(id)!.projectId !== 'P3' || p3Listed,
-      freshFinished: false, menuRunning: false });
+      menuRunning: false });
     let frame = createScreenAggregate(input.values(), new Map([...input.keys()].map(id => [id, factsOf(id)]))), clock = 100;
     // What the index sends of a row and the whole list it serves, as projection-owner's source.home and index() do.
     const visible = (id: string) => input.get(id)!.projectId !== 'P3' || p3Listed;
@@ -270,7 +269,7 @@ test('cycles fail without mutating the published snapshot and no-op updates have
   assert.deepEqual([...noop.changed.tasks], []); assert.deepEqual([...noop.changed.pages], []); assert.equal(noop.changed.counts, false);
 });
 
-test('section changes, closed child counts, and freshness follow the same incremental memberships', () => {
+test('section changes, closed child counts, and running facts follow the same incremental memberships', () => {
   const userBall = { holder: 'user' as const, reason: 'review' as const, at: '2026-11-16T00:00:00Z', key: 'review-1',
     questionId: null, aboutRunId: null, count: null, code: null, failure: null };
   const values = [task('P1', null, { kind: 'project' }), task('T1', 'P1', { state: 'done', baseState: 'done' }),
@@ -280,11 +279,18 @@ test('section changes, closed child counts, and freshness follow the same increm
   assert.equal(frame.home('T3')?.section, 'held');
   const child = input.get('T2')!, review = { ...child, hold: true, state: 'held' as const, baseState: 'doing' as const, ball: userBall };
   input.set(child.id, review); let result = updateScreenAggregate(frame, new Map([[child.id, { before: child, after: review }]])); frame = result.next;
-  check(frame, input, facts); assert.equal(frame.home('T2')?.section, 'review');
+  check(frame, input, facts); assert.equal(frame.home('T2')?.section, 'held');
   assert.ok(result.changed.pages.has('finished:root')); assert.deepEqual(frame.childCounts('T1'), { live: 1, finished: 0 });
-  const fact = { scopes: ['root', 'P1'], listed: true, freshFinished: true, menuRunning: true }; facts.set('T1', fact);
+  // Taking the hold off a child awaiting the user's review moves its row and count back to review.
+  const reviewCount = (now: typeof frame) => now.counts().home.root?.review ?? 0, heldReview = reviewCount(frame);
+  const unheld = { ...review, hold: false, state: 'doing' as const };
+  input.set(child.id, unheld); frame = replace(frame, review, unheld); check(frame, input, facts);
+  assert.equal(frame.home('T2')?.section, 'review'); assert.equal(reviewCount(frame), heldReview + 1);
+  input.set(child.id, review); frame = replace(frame, unheld, review); check(frame, input, facts);
+  assert.equal(frame.home('T2')?.section, 'held'); assert.equal(reviewCount(frame), heldReview);
+  const fact = { scopes: ['root', 'P1'], listed: true, menuRunning: true }; facts.set('T1', fact);
   result = updateScreenAggregate(frame, new Map(), new Map([['T1', fact]])); frame = result.next; check(frame, input, facts);
-  assert.equal(frame.counts().closed.root?.freshFinished, 1); assert.equal(frame.menu('P1').running, 1);
+  assert.equal(frame.menu('P1').running, 1);
   assert.equal(frame.movedAt('T1'), 0);
   const removed = { ...review, lifecycle: 'deleted' as const }; input.set(removed.id, removed); frame = replace(frame, review, removed);
   check(frame, input, facts); assert.equal(frame.children('T1'), undefined); assert.deepEqual(frame.childCounts('T1'), { live: 0, finished: 0 });

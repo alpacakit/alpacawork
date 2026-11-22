@@ -361,7 +361,7 @@ export function indexOf(value: Served, rev = 1, requiredPv: Partial<RequiredPvDT
     errors: value.errors, writable: value.writable, staleIds: [],
     person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null,
     counts: { children: value.children ?? {},
-      closed: Object.fromEntries(scopes.map(scope => [scope, { finished: listing(scope, "done"), freshFinished: 0,
+      closed: Object.fromEntries(scopes.map(scope => [scope, { finished: listing(scope, "done"),
         shelved: rows.filter(row => row.lifecycle !== "active" && within(scope, row.id)).length }])),
       tasks: Object.fromEntries(scopes.map(scope => [scope, rows.filter(row => row.kind === "task" && within(scope, row.id)).length])),
       home: Object.fromEntries(scopes.map(scope => [scope, { doing: listing(scope, "doing"), error: listing(scope, "error"), review: listing(scope, "review"), awaited: listing(scope, "awaited"),

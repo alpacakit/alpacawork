@@ -85,30 +85,9 @@ function readableTask(id: string) {
 }
 
 export async function markRead(id: string) {
-  store.getState().release([id]);
   const task = readableTask(id);
   if (!task) return;
   const source = queryClient.getQueryData<ProjectedIndexDTO>(indexKey);
   const saved = await store.getState().read(task);
   reportReadResult([id], saved, source);
-}
-
-const visiblePending = new Map<string, NonNullable<ReturnType<typeof serverReadFacts>>['tasks'][number]>();
-let visibleTimer: ReturnType<typeof setTimeout> | undefined;
-/** Intersection deliveries in one scroll movement save one revision, even if many rows enter view. */
-export function markVisibleRead(id: string) {
-  store.getState().hold([id]);
-  const task = readableTask(id);
-  if (!task) return;
-  visiblePending.set(id, task);
-  if (visibleTimer) return;
-  visibleTimer = setTimeout(() => {
-    visibleTimer = undefined;
-    const tasks = [...visiblePending.keys()].flatMap(id => { const task = readableTask(id); return task ? [task] : []; });
-    visiblePending.clear();
-    // The connection may have gone in the meantime: the same rule decides at the send.
-    if (!tasks.length) return;
-    const source = queryClient.getQueryData<ProjectedIndexDTO>(indexKey);
-    void store.getState().readMany(tasks).then(saved => reportReadResult(tasks.map(task => task.id), saved, source));
-  }, 50);
 }

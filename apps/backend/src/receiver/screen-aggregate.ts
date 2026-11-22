@@ -26,7 +26,7 @@ type Home = NonNullable<ReturnType<ScreenAggregate['home']>>;
 type Counts = ReturnType<ScreenAggregate['counts']>;
 type Change = { readonly before: AggregateContribution | undefined; readonly after: AggregateContribution | undefined };
 /** Inputs absent from AggregateContribution (workspace-aggregate-facts makes them). Supply scopes from
- * RecordsReader.scopes, and freshness from the notice baselines (a personal read changes it without a contribution).
+ * RecordsReader.scopes.
  * menuRunning means a Run in state running (distinct from a placement's running flag or an open span).
  * Changed facts are supplied only for their owners; a changed scope chain includes every Task whose scopes changed,
  * a moved or shelved project's subtree included. `listed`: the index sends its row (its project is listed and its
@@ -34,7 +34,6 @@ type Change = { readonly before: AggregateContribution | undefined; readonly aft
 export interface AggregateFacts {
   readonly scopes: readonly string[];
   readonly listed: boolean;
-  readonly freshFinished: boolean;
   readonly menuRunning: boolean;
 }
 export type AggregateRepairKind = 'aggregate' | 'membership' | 'order';
@@ -124,7 +123,7 @@ function sameRuns(a: Node['runs'], b: Node['runs']): boolean {
   let same = true; a.changes(b, () => { same = false; }); return same;
 }
 interface Membership { readonly home?: Home; readonly position: HomeSection | null; readonly order?: Order; readonly pages: readonly string[]; readonly pageOrder: Order; readonly scopes: readonly string[];
-  readonly task: boolean; readonly running: boolean; readonly fresh: boolean; readonly closed: 'finished' | 'shelved' | null;
+  readonly task: boolean; readonly running: boolean; readonly closed: 'finished' | 'shelved' | null;
   /** Whether a doing row (its own or one above) lists its work: what the working Tasks below it read; not a shown value. */
   readonly listsWork: boolean }
 interface ScopeCounts { readonly home: Counts['home'][string]; readonly tasks: number; readonly running: number; readonly closed: Counts['closed'][string] }
@@ -132,13 +131,12 @@ interface ScopeCounts { readonly home: Counts['home'][string]; readonly tasks: n
 const countedSections = ['doing', 'error', 'review', 'awaited', 'held', 'todo'] as const;
 function countContribution(member: Membership): readonly number[] {
   return [...countedSections.map(section => Number(member.home?.section === section)), Number(member.task), Number(member.running),
-    Number(member.closed === 'finished' && member.home?.section === 'done'),
-    Number(member.closed === 'finished' && member.home?.section === 'done' && member.fresh), Number(member.closed === 'shelved')];
+    Number(member.closed === 'finished' && member.home?.section === 'done'), Number(member.closed === 'shelved')];
 }
 function scopeCounts(totals?: AggregateTotals): ScopeCounts {
   const n = totals?.total ?? [];
   return { home: Object.fromEntries(countedSections.map((section, i) => [section, n[i] ?? 0])) as ScopeCounts['home'],
-    tasks: n[6] ?? 0, running: n[7] ?? 0, closed: { finished: n[8] ?? 0, freshFinished: n[9] ?? 0, shelved: n[10] ?? 0 } };
+    tasks: n[6] ?? 0, running: n[7] ?? 0, closed: { finished: n[8] ?? 0, shelved: n[9] ?? 0 } };
 }
 
 /** Additional reads used to publish project-menu counts and to audit one Task without materializing every count. */
@@ -254,7 +252,7 @@ function membership(frame: Frame, id: string): Membership | undefined {
   const ordered = home && home.section !== 'done' && (facts?.listed ?? true);
   return { home, position, order: ordered ? { id, at: node.moved, section: HOME_SECTIONS.indexOf(home.section) } : undefined,
     pages, pageOrder: moveKey(id, node.moved), scopes, task: own.kind === 'task', running: facts?.menuRunning ?? own.openRuns.length > 0,
-    fresh: facts?.freshFinished ?? false, closed, listsWork };
+    closed, listsWork };
 }
 function defaultScopes(frame: Frame, project: string): string[] {
   const chain: string[] = [], seen = new Set<string>(); let node = frame.nodes.get(project)?.own;

@@ -171,7 +171,7 @@ test('demand, 503, and receipt remain unverified after a flush instead of being 
 });
 
 test('raw language and syncSeen effects stay synchronous while cache drawing is pending', async () => {
-  startI18n(); await i18n.changeLanguage('en'); const f = fixture(queryClient); bindWriteAccess(queryClient);
+  startI18n(); await i18n.changeLanguage('en'); const f = fixture(queryClient, '/review', false); bindWriteAccess(queryClient);
   let draws = 0; stops.push(subscribeReads(queryClient, () => draws++));
   receipt(resources.personalSettings(f.index.root).queryKey, { values: { language: 'ja' }, revision: f.index.person.settings });
   expect(i18n.language).toBe('ja'); expect(draws).toBe(0);

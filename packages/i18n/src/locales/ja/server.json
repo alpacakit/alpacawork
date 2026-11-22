@@ -62,6 +62,20 @@
     },
     "withReport": "{{label}}：{{reportTitle}}"
   },
+  "serviceCommands": {
+    "alreadyRunning": "alpacawork はすでに動いています。",
+    "conflict": "保存したサーバーの設定と一致しません。alpacawork setup で修復してください。",
+    "failed": "サービスを操作できませんでした。alpacawork status で状態を確認してください。",
+    "localOnly": "alpacawork の Run の外にあるターミナルで実行してください。",
+    "repair": "alpacawork のサービスが見つかりません。alpacawork setup で修復してください。",
+    "restarting": "alpacawork を再起動します。",
+    "running": "alpacawork は動いています。画面は {{url}}",
+    "setup": "alpacawork setup でこの PC にサーバーを入れてください。",
+    "starting": "alpacawork を起動します。",
+    "stopped": "alpacawork は停止しています。",
+    "unavailable": "ユーザーのサービス管理に接続できません。",
+    "workspace": "このコマンドはインストール済みのサーバーを操作します。--workspace を外してください。"
+  },
   "setup": {
     "agents": {
       "enabled": "有効: {{names}}",

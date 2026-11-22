@@ -7,7 +7,7 @@ import { clientConfigPath, validateServer } from '@alpacawork/cli-kit';
 export { clientConfigPath, selectServer } from '@alpacawork/cli-kit';
 
 /** A live alpacawork serve exposes a generated identity at this read-only route. */
-async function verifyServer(server: string): Promise<void> {
+export async function verifyServer(server: string): Promise<void> {
   let response: Response;
   try {
     response = await fetch(new URL('/api/identity', server), {

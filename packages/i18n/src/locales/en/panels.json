@@ -314,6 +314,10 @@
     "policyCount_other": "{{count}} characters",
     "policyExample": "For example:\nPurpose: close September on time\nHow we work: check the source documents before changing anything\nNever: contact a supplier without approval",
     "policyNote": "What you write here is given as written to every agent in this project and the projects inside it.",
+    "policyVsAgentsMd": {
+      "detail": "The difference: agents get it only when they work through alpacawork. Instructions they should follow outside alpacawork too stay in AGENTS.md or CLAUDE.md.",
+      "title": "Use it the way you use AGENTS.md or CLAUDE.md"
+    },
     "settingsTitle": "Project settings",
     "target": "Project",
     "targetHeld": "Save or discard the changes to choose another project.",

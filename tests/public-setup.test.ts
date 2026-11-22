@@ -48,7 +48,7 @@ test('refusing a live manual workspace preserves its real HTTP serve and never r
   const core = await import('@alpacawork/core');
   const previous = core.platform.service;
   const forbidden = () => { throw new Error('Preparation must not operate the service manager'); };
-  core.platform.service = { observe: forbidden, register: forbidden, unregister: forbidden, known: forbidden, stop: forbidden, restart: forbidden, restarts: forbidden };
+  core.platform.service = { observe: forbidden, register: forbidden, unregister: forbidden, known: forbidden, stop: forbidden, start: forbidden, restart: forbidden, restarts: forbidden };
   const live = await isolatedServe(workspace, undefined, f.env);
   try {
     const before = await fetch(new URL('/api/runtime/readiness', live.url)); assert.equal(before.status, 200);

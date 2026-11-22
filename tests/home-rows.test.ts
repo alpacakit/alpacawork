@@ -13,8 +13,8 @@ const ball = (reason: Reason): Ball => ({ holder: 'user', reason, at: '2026-10-3
 // Independent prose oracle: no product rule, section table or derived result supplies an expectation.
 function oracle(top: boolean, state: TaskBaseState, hold: boolean, turn: Reason | null, working: boolean): HomeSection | null {
   const turnSection = turn === 'review' || turn === 'question' ? 'review' : 'error';
-  if (!top) return turn === null ? null : turnSection;
   if (hold) return 'held';
+  if (!top) return turn === null ? null : turnSection;
   if (turn !== null) return turnSection;
   if (state === 'error') return 'error';
   if (state === 'waiting') return 'review';
@@ -58,7 +58,8 @@ test('work propagates from a grandchild through a held child, regardless of inpu
   for (const reverse of [false, true]) {
     const tasks = [task(), task('T2', { parentId: 'T1', hold: true }), task('T3', { parentId: 'T2' })];
     if (reverse) tasks.reverse();
-    assert.deepEqual(projectHome(tasks, {}, new Set(['T3'])), [{ taskId: 'T1', section: 'doing', summary: { done: 2, total: 3 } }]);
+    assert.deepEqual(projectHome(tasks, {}, new Set(['T3'])).map(row => [row.taskId, row.section]).sort(),
+      [['T1', 'doing'], ['T2', 'held']]);
   }
 });
 
@@ -81,10 +82,11 @@ test('inactive branches and project boundaries stop work propagation; every proj
     [['T1', 'awaited'], ['T3', 'doing'], ['T4', 'doing'], ['T5', 'awaited']]);
 });
 
-test('held children with turns remain rows and input order is preserved, independently of their parent', () => {
-  const tasks = [task('T3', { parentId: 'T1', hold: true }), task('T2', { parentId: 'T1' }), task('T1', { baseState: 'done' })];
+test('a held child is listed as held, with or without a turn, and input order is preserved, independently of its parent', () => {
+  const tasks = [task('T3', { parentId: 'T1', hold: true }), task('T2', { parentId: 'T1' }), task('T4', { parentId: 'T1', hold: true }),
+    task('T1', { baseState: 'done' })];
   assert.deepEqual(projectHome(tasks, { T3: ball('question'), T2: ball('blocked') }, new Set()).map(row => [row.taskId, row.section]),
-    [['T3', 'review'], ['T2', 'error'], ['T1', 'done']]);
+    [['T3', 'held'], ['T2', 'error'], ['T4', 'held'], ['T1', 'done']]);
 });
 
 test('non-user balls do not expose children and top rows ignore the old userRequested mark', () => {

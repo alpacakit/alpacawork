@@ -32,8 +32,6 @@
     "awaited": "待機中",
     "error": "対応待ち",
     "finished": "完了",
-    "fresh_one": "新しく終わった {{count}}",
-    "fresh_other": "新しく終わった {{count}}",
     "held": "保留",
     "less": "たたむ",
     "more_other": "あと {{count}}件",

@@ -25,11 +25,10 @@ import { initializeInstallation, registerInstallation, validateNewWorkspace, ins
 import { skillLinkConflicts, confirmInstallation, displayInstallationPath, type InstallationChange, type InstallationConfirmationRequest, type InstallationTerminal } from './confirmation.js';
 import { ManagedSkillsWriter, SkillWriteFailure, equal, type SkillWriteRequest } from './skills.js';
 import { completeSetup, finishSetupSkills, newSetupSkills, readSetupSkills, saveSetupSkills } from './setup-skills.js';
-import { detectSetupAgents, inspectSetupAgents } from './setup-ai.js';
+import { detectSetupAgents } from './setup-ai.js';
 import { inspectAgentSkillLinks } from './agent-skill-links.js';
 import { canonicalLanguageTag } from '@alpacawork/contract';
 import { localCaller } from '@alpacawork/contract/access-boundaries';
-import type { DetectedSetupAgent } from './setup-ai.js';
 import { setupAgentName } from './setup-output.js';
 import { switchTo, ServiceStartRequired, ServiceNotReady, assertWorkspaceStopped, assertPortChangeable, replaceService } from '../release/switch.js';
 import { readUpdateRecord, completedUpdate } from '../release/update-record.js';
@@ -39,7 +38,7 @@ export type InstallationResult = {installed:false;reason:string;plan?:unknown;co
 export type SetupArtifact = {facts: {name: string; version: string; source: string; edition: import('../release/layout.js').ReleaseKind; targets: string[]};
   publish: (releases: string, say: (line: string) => void) => Promise<string>};
 export type SetupRequest = Omit<WorkspaceRequest, 'record' | 'intent'> & { releases?: string; service?: string; port?: number; publicHost?: string; artifact?: SetupArtifact;
-  language?: string; yes?: boolean; onFailure?: (line: string) => void; onReady?: (agents: readonly DetectedSetupAgent[]) => void };
+  language?: string; yes?: boolean; onFailure?: (line: string) => void; onReady?: (url: string) => void };
 /** Read-only selection. The workspace Owner enforces all existing/explicit/default conflicts. */
 export function inspectSetup(request: SetupRequest) {
   if (request.language !== undefined && !canonicalLanguageTag(request.language)) throw new Problem(PROBLEM_CODE.invalidInput, '--lang must be a BCP 47 language tag');
@@ -234,16 +233,13 @@ async function performSetup(plan: SetupPlan, request: SetupRequest, say: (line: 
       ...(receipt?.state === 'complete' ? receipt.skills : []).filter(s => s.name !== 'alpacawork').map(s => ({ name: s.name, destination: join(root, s.name), action: 'keep' as const })),
     ], overwrite: alreadyComplete ? [] : overwriteLines(writeRequest, root, t), resuming: !!prior }, terminal, { yes: request.yes, showReleases: request.releases !== undefined });
   if (!approval.approved) return { installed: false, reason: approval.reason };
-  applyEnvironmentFile(agentEnvironment.env);
-  const observedAgents = await inspectSetupAgents(agentEnvironment);
-  const prepared = await prepareSetup(request, plan, say, agentEnvironment, observedAgents);
+  if (!plan.existing) applyEnvironmentFile(agentEnvironment.env);
+  const prepared = await prepareSetup(request, plan, say, agentEnvironment);
   let starting = false;
   try {
     const settings = readAgentsSettings(plan.workspace);
     if (settings.ok) say(t('server:setup.agents.enabled', { names: Object.entries(settings.config.agents)
       .filter(([, setting]) => setting.enabled !== false).map(([name]) => name).join(', ') || t('server:setup.agents.none') }));
-    for (const agent of observedAgents) if (agent.status === 'signed_out' && agent.nextAction)
-      say(t('server:setup.agents.signIn', { name: agent.id, action: agent.nextAction }));
     if (!equal(readSetupSkills(plan.releases), prior)) throw new Error('Setup journal changed after confirmation. Run setup again.');
     if (prepared.release !== writeRequest.release) throw new Error('Prepared release differs from the approved skill request.');
     const saved = prior ?? newSetupSkills(plan.workspace, root, writeRequest);
@@ -270,7 +266,7 @@ async function performSetup(plan: SetupPlan, request: SetupRequest, say: (line: 
     if (Number(new URL(ready.url).port || 80) !== installedService.port) throw new Error('HTTP-ready URL port differs from the approved installation port; preserve this installation.');
     completeSetup(plan.releases, saved);
     say(t('server:setup.ready', { port: installedService.port, url: ready.url }));
-    request.onReady?.(observedAgents);
+    request.onReady?.(ready.url);
     return { installed: true, ...(approval.request.application?.current === plan.facts.version ? { operation: 'change' as const } : {}), url: ready.url, port: installedService.port, version: plan.facts.version };
   } catch (cause) {
     if (starting) startFailure(cause, plan.releases, service.definition.name, language, request.onFailure ?? say);
@@ -290,7 +286,7 @@ export function serviceStartupAdvice(name: string, language: ServerLocale, host:
     (start ? t('server:setup.startup.startSaved', { command: start }) : t('server:setup.startup.rerun'));
 }
 
-export async function prepareSetup(request: SetupRequest, approved: SetupPlan, say: (line: string) => void, agentEnvironment?: InspectionEnvironment, detectedAgents?: readonly import('./setup-ai.js').DetectedSetupAgent[]) {
+export async function prepareSetup(request: SetupRequest, approved: SetupPlan, say: (line: string) => void, agentEnvironment?: InspectionEnvironment) {
   const plan = inspectSetup(request);
   if (plan.workspace !== approved.workspace || plan.releases !== approved.releases || plan.existing !== approved.existing ||
       plan.facts.version !== approved.facts.version || plan.facts.source !== approved.facts.source || !equal(plan.installation, approved.installation))
@@ -313,7 +309,7 @@ export async function prepareSetup(request: SetupRequest, approved: SetupPlan, s
     assertUpdateHandoff(release,{releases,workspace:plan.workspace});
     new InstallationStore(installationPath(request.env)).prepareDirectory(userHome(request.env), approved.installation);
     const workspaceRequest = { ...request, explicit: plan.workspace };
-    if (!plan.existing) await initializeInstallation({ ...workspaceRequest, language: request.language, agentEnvironment, detectedAgents });
+    if (!plan.existing) await initializeInstallation({ ...workspaceRequest, language: request.language, agentEnvironment });
     const installation = await registerInstallation(workspaceRequest, releases);
     return { release, installation, unlock };
   } catch (cause) {

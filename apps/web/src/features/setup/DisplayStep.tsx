@@ -82,7 +82,7 @@ function ThemeChoice() {
   const { t } = useTranslation("setup");
   const { value, locked, choose } = usePersonalChoice("theme");
   const current = typeof value === "string" && themes.includes(value) ? value : "system";
-  return <Choices name="setup-theme" legend={t("theme")} note={t("themeSystem")} locked={locked} className="mt-7" grid="grid-cols-3">
+  return <Choices name="setup-theme" legend={t("theme")} locked={locked} className="mt-7" grid="grid-cols-3">
     {themes.map(theme => <Option key={theme} name="setup-theme" value={theme} data-setup-theme={theme} checked={current === theme} locked={locked}
       onPick={next => { if (next !== current) void choose(next); }} className="flex-col items-stretch gap-2 p-2 pb-2.5">
       <ThemePicture theme={theme} />

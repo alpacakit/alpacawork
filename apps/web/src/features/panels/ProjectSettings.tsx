@@ -8,6 +8,7 @@ import { Caret, DisclosureSummary } from "@/components/ui/caret";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldHint } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Message } from "@/components/ui/message";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { DEFAULT_SCHEMA } from "@alpacawork/contract";
@@ -101,14 +102,16 @@ export function ProjectNameRow() {
 }
 
 /** Where its agents start on this PC; empty, where the nearest project above names, else the workspace. */
-export function ProjectLocationRow({ project, projects }: { project: Project; projects: WorkspaceInfo["projects"] }) {
+export function ProjectLocationRow({ project, projects, rootHint }: { project: Project; projects: WorkspaceInfo["projects"];
+  /** Where it is read before the person has chosen a folder (setup), a hint for the folder it falls back to. */
+  rootHint?: (path: string) => string }) {
   const { t } = useTranslation("panels");
   const root = useWorkspaceInfo((info) => info.root);
   const { control, setValue, formState: { errors } } = useFormContext<ProjectDraft>();
   const cwd = useWatch({ control, name: "cwd" });
   const inherited = inheritedLocation(projects, project);
   return <SettingRow id="project-location" label={t("project.cwd")} className="narrow:grid-cols-1 narrow:gap-y-2"
-    hint={inherited ? t("project.locationInherits", { path: inherited }) : t("project.locationRoot", { path: root })} error={errors.cwd?.message}>
+    hint={inherited ? t("project.locationInherits", { path: inherited }) : (rootHint?.(root) ?? t("project.locationRoot", { path: root }))} error={errors.cwd?.message}>
     <div className="w-110 max-w-full min-w-0 narrow:w-full">
       <FolderInput id="project-location" value={cwd} onChange={(value) => setValue("cwd", value, { shouldDirty: true })} />
     </div>
@@ -123,6 +126,9 @@ export function ProjectPolicySection({ project, projects, note }: { project: Pro
   const { control, register } = useFormContext<ProjectDraft>();
   const policy = useWatch({ control, name: "policy" }) ?? "";
   return <SettingSection id="project-policy-heading" title={t("project.policy")} note={note ?? t("project.policyNote")} spaced>
+    {/* Shown, not behind a hover, so a phone gets it too; the detail is an element so it starts its own line under the title. */}
+    <Message data-policy-vs-agents-md tone="info" size="band" title={t("project.policyVsAgentsMd.title")}
+      description={<>{t("project.policyVsAgentsMd.detail")}</>} />
     <Textarea id="project-policy" dir="auto" aria-labelledby="project-policy-heading" aria-describedby="project-policy-count"
       placeholder={t("project.policyExample")} className="min-h-56 whitespace-pre-wrap" {...register("policy")} />
     <FieldHint id="project-policy-count" className="mt-0 text-end tabular-nums">{t("project.policyCount", { count: [...policy].length })}</FieldHint>

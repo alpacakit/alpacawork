@@ -10,7 +10,7 @@ import type { TaskDerived, TaskBundle, PublishedFrame, RecordsReader, RoutingWor
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from './workspace-records.js';
 import { RecordsMap } from './records-map.js';
 import { affected, deriveTask } from './screen-derive.js';
-import { aggregateFactsOf, type NoticeBaselines } from './workspace-aggregate-facts.js';
+import { aggregateFactsOf } from './workspace-aggregate-facts.js';
 import { createScreenAggregate, updateScreenAggregate, repairScreenAggregate, type AggregateSnapshot, type AggregateFacts, type AggregateRepair } from './screen-aggregate.js';
 import { aggregateResources, composeRow, IndexPatcher, liveRow, patchCandidates, raiseRequiredPv, type PatchSource } from './index-rows.js';
 import { ProjectionAudit, type ProjectionRepairKind } from './projection-audit.js';
@@ -20,7 +20,7 @@ import { coordinatorFileRunChanges } from './coordinator-file-runs.js';
 import type { WatchedRunUpdate } from './workspace-file-thread.js';
 
 export type ProjectionMeta = Required<IndexPatchDTO['meta']>;
-export type PersonalProjection = Pick<ProjectionMeta, 'person' | 'presence' | 'host' | 'coordinatorWork'> & { notices: NoticeBaselines | null; errors?: ProjectionMeta['errors'] };
+export type PersonalProjection = Pick<ProjectionMeta, 'person' | 'presence' | 'host' | 'coordinatorWork'> & { errors?: ProjectionMeta['errors'] };
 export interface ProjectionOptions {
   root: string; generation: string; log: ChangeLog; observations?: WorkspaceObservations;
   personal(): Promise<PersonalProjection>;
@@ -271,7 +271,7 @@ export class ProjectionOwner {
         // build reads them, so a project taken off the list takes its row out of the home order even then.
         if (old) {
           values = values.set(id, old);
-          facts.set(id, aggregateFactsOf(readable, id, old.row, personal.notices));
+          facts.set(id, aggregateFactsOf(readable, id));
         } else {
           const fallback = structuralFallback(readable, id);
           if (fallback) {
@@ -289,20 +289,13 @@ export class ProjectionOwner {
       structural = structural.delete(id);
       values = value ? values.set(id, value) : values.delete(id);
       changes.set(id, { before: old?.contribution ?? before?.structural.get(id), after: value?.contribution });
-      if (value) facts.set(id, aggregateFactsOf(readable, id, value.row, personal.notices));
+      if (value) facts.set(id, aggregateFactsOf(readable, id));
       if (performance.now() - slice >= 4) { await yieldTurn(); slice = performance.now(); }
     }
     if (!full && through === before!.applied && !repairing.size && !reloadKeys.size && !this.globalFailure
       && JSON.stringify(failureErrors(taskFailures)) === JSON.stringify(failureErrors(this.taskFailures)) && !changes.size) {
       this.taskFailures = taskFailures;
       return;
-    }
-    if (keys.some(key => key.kind === 'person' && key.id === 'notices')) {
-      for (const [id, value] of values) {
-        if (taskFailures.has(id)) continue;
-        facts.set(id, aggregateFactsOf(readable, id, value.row, personal.notices));
-        if (performance.now() - slice >= 4) { await yieldTurn(); slice = performance.now(); }
-      }
     }
     let aggregate: AggregateSnapshot, changed: ReturnType<typeof updateScreenAggregate>['changed'];
     if (full) {
@@ -354,12 +347,10 @@ export class ProjectionOwner {
   /** An audit candidate is never published: repairs reread the latest database at the next catch-up. */
   async audit(limit = 16): Promise<void> {
     const frame = this.frame;
-    if (this.closed || this.paused || this.running || this.taskFailures.size || this.globalFailure || !frame || !runRecordsAvailable(frame.records) || frame.applied !== this.options.log.latest) return;
-    const personal = await this.options.personal();
-    if (this.closed || this.paused || this.running || this.auditing || frame !== this.frame) return;
+    if (this.closed || this.paused || this.running || this.auditing || this.taskFailures.size || this.globalFailure || !frame || !runRecordsAvailable(frame.records) || frame.applied !== this.options.log.latest) return;
     const abort = new AbortController(); this.auditAbort = abort;
     const auditing = this.auditor.tickAsync(this.options.root, frame, () => this.options.log.latest,
-      { limit, notices: personal.notices, timing: this.options.timing, signal: abort.signal });
+      { limit, timing: this.options.timing, signal: abort.signal });
     this.auditing = auditing;
     let result;
     try { result = await auditing; }

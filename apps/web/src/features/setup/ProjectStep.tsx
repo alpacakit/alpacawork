@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FormProvider, useFormState, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { titleSchema, type SkillName } from "@alpacawork/contract";
+import type { SkillName } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { Message } from "@/components/ui/message";
 import { ReadFailure } from "@/components/ui/loadable";
@@ -68,19 +68,6 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
     offered.current = next;
     if (now !== next) form.setValue("policy", next, { shouldDirty: true });
   }, [active, base, installed?.join(), i18n.language]);
-  // The name follows the working folder chosen (its last part) for as long as it is the name set up first or one put in
-  // from a folder, and goes back to the first one when the folder is emptied; once the person writes a name, it is theirs.
-  const cwd = useWatch({ control: form.control, name: "cwd" }) ?? "";
-  const named = useRef<{ first: string; put: string } | null>(null);
-  useEffect(() => {
-    if (!active || base === null) return;
-    const now = form.getValues("title") ?? "";
-    named.current ??= { first: now, put: now };
-    if (now !== named.current.put) return;
-    const next = folderName(cwd) || named.current.first;
-    named.current.put = next;
-    if (now !== next) form.setValue("title", next, { shouldDirty: true });
-  }, [active, base, cwd]);
   const failedRead = base === null ? [query, tasksSchema].find(read => read.isError) : undefined;
   if (failedRead) return <ReadFailure what={t("project.title")} error={failedRead.error} retry={() => void failedRead.refetch()} />;
   if (base === null) return <Loading />;
@@ -88,9 +75,9 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
   return <FormProvider {...form}>
     <div data-setup-panel="project">
       {/* Settings' own rows, each stacked (its name, its hint, then the control): the panel is narrower than Settings. */}
-      <fieldset disabled={working} className="m-0 -mt-3 min-w-0 border-0 p-0 [&_[data-slot=setting-row]]:grid-cols-1 [&_[data-slot=setting-row]]:gap-y-2 [&_[data-slot=setting-row]:first-child]:border-t-0 [&_#project-policy]:min-h-80">
+      <fieldset disabled={working} className="m-0 -mt-3 min-w-0 border-0 p-0 [&_[data-slot=setting-row]]:grid-cols-1 [&_[data-slot=setting-row]]:gap-y-2 [&_[data-slot=setting-row]:first-child]:border-t-0 [&_#project-policy]:min-h-40">
         <ProjectNameRow />
-        <ProjectLocationRow project={project} projects={projects} />
+        <ProjectLocationRow project={project} projects={projects} rootHint={path => t("project.cwdHint", { path })} />
         <div className="mt-8" />
         <ProjectPolicySection project={project} projects={projects} note={t("project.policyNote")} />
       </fieldset>
@@ -103,15 +90,6 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
     </div>
   </FormProvider>;
 }
-
-/**
- * A folder's own name, as the project's name: the last part of its path, whatever the separator; empty when that part
- * names no folder of its own (`~`, `.`, `..`, a drive) or is not a name a project takes (too long).
- */
-const folderName = (path: string) => {
-  const last = path.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
-  return !/^(~|\.\.?|[A-Za-z]:)$/.test(last) && titleSchema.safeParse(last).success ? last : "";
-};
 
 /** The recommended rules, then one line per installed skill: when it is used, in the display language. */
 function recommendedPolicy(t: TFunction<"setup">, installed: readonly SkillName[]): string {
