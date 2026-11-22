@@ -208,7 +208,7 @@ const NO_MENU_COUNTS: WorkspaceInfo["counts"]["all"] = { turn: 0, running: 0 };
  * index arrives.
  */
 export const useAllProjectCounts = () => useFrameSelector((data) => data?.info.counts.all ?? NO_MENU_COUNTS);
-const NO_CLOSED = { finished: 0, freshFinished: 0, shelved: 0 };
+const NO_CLOSED = { finished: 0, shelved: 0 };
 /**
  * The top level's closed Tasks in view, as the index counts them for its scope: every project's (`root`), or the one
  * project Task's subtree, nested projects included. The screen adds none up.

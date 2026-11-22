@@ -1,4 +1,3 @@
-import { seedNotices } from './read-fixtures';
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { expect, onTestFinished, test, vi } from "vitest";
 import { logKey } from "../src/domain/history";
@@ -10,7 +9,6 @@ import { projectTimeHistory, timeHistoryBase, type TaskHistory } from "../src/do
 import { TimeTree } from "../src/features/tree/TimeTree";
 import { compactMark, futureBandWidth, futureWords, Lane, laneMarks, lineOf } from "../src/features/tree/time-line";
 import { useViewStore } from "../src/state/view-store";
-import { useReadStore } from "../src/state/read-store";
 import { queryClient } from "../src/data/query-client";
 import { indexKey, resources } from "../src/data/resources";
 import { TestWorkspace, dto, homeFixture, indexOf, logEntry, narrowScreen, decideItem, questionFixture, run, screenData, taskFixture, tree, userBall } from "./fixtures";
@@ -487,90 +485,6 @@ test("desktop time rows put the state icon, ID, title and child progress on one 
   expect(document.querySelector('[data-row="T5"] svg[data-time-strip]')?.getAttribute("height")).toBe("32");
   // Under the work going on, at the end of the top level.
   expect([...document.querySelectorAll('[data-depth="0"]')].at(-1)?.getAttribute("data-row")).toBe("T5");
-});
-
-test("opening Done keeps its fresh count and dots while visible rows await acknowledgement", () => {
-  const observations: { target: Element; callback: IntersectionObserverCallback }[] = [];
-  class ViewObserver {
-    constructor(private callback: IntersectionObserverCallback) {}
-    observe(target: Element) { observations.push({ target, callback: this.callback }); }
-    disconnect() {}
-  }
-  vi.stubGlobal("IntersectionObserver", ViewObserver);
-  onTestFinished(() => { vi.unstubAllGlobals(); });
-  history.replaceState(null, "", "/?agent=1");
-  const finished = (...ids: string[]) => homeFixture(ids.map((taskId) => ({ taskId, section: "done" as const })));
-  const value = tree({ tasks: [
-    dto({ id: "T1", title: "Newly finished", state: "done" }),
-    dto({ id: "T2", title: "Read earlier", state: "done" }),
-  ], home: finished("T1", "T2") });
-  const data = screenData(value);
-  data.info = { ...data.info, counts: { ...data.info.counts, closed: { ...data.info.counts.closed, root: { ...data.info.counts.closed.root!, freshFinished: 1 } } } };
-  data.readIds = new Set(["T2"]);
-  queryClient.setQueryData(indexKey, indexOf(value));
-  const confirm = vi.fn(async () => true);
-  const was = useReadStore.getState();
-  const snapshot = indexOf(value);
-  seedNotices(useReadStore, { confirm, root: snapshot.root, status: 'ready', fresh: true, serverRevision: snapshot.person.notices });
-  onTestFinished(() => useReadStore.setState(was, true));
-  const { rerender } = render(<TestWorkspace data={data}><TimeTree /></TestWorkspace>);
-  const fresh = () => document.querySelector('[data-section="done"] [data-fresh]')?.textContent ?? null;
-  const dotted = () => ["T1", "T2"].filter((id) => document.querySelector(`[data-row="${id}"] [data-unread]`));
-  expect(fresh()).toBe("1 newly finished");
-  openGroup("finished");
-  expect(confirm).not.toHaveBeenCalled();
-  const head = document.querySelector('[data-row="T1"] > [data-row-head]')!;
-  const visible = observations.find((item) => item.target === head)!;
-  act(() => visible.callback([{ target: head, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
-  data.info = { ...data.info, counts: { ...data.info.counts, closed: { ...data.info.counts.closed, root: { ...data.info.counts.closed.root!, freshFinished: 0 } } } };
-  rerender(<TestWorkspace data={{ ...data, readIds: new Set(["T1", "T2"]) }}><TimeTree /></TestWorkspace>);
-  expect(dotted()).toEqual(["T1"]);
-  expect(fresh()).toBe("1 newly finished");
-  // Undone, it is new again; one finished while open is new as well. One that goes back to work loses the kept dot.
-  rerender(<TestWorkspace data={{ ...data, readIds: new Set(["T2"]) }}><TimeTree /></TestWorkspace>);
-  expect(dotted()).toEqual(["T1"]);
-  const more = served(tree({ tasks: [...value.tasks, dto({ id: "T3", title: "Finished while open", state: "done" })],
-    home: finished("T1", "T2", "T3") }));
-  more.info = { ...more.info, counts: { ...more.info.counts, closed: { ...more.info.counts.closed, root: { ...more.info.counts.closed.root!, freshFinished: 2 } } } };
-  rerender(<TestWorkspace data={{ ...more, readIds: new Set(["T1", "T2"]) }}><TimeTree /></TestWorkspace>);
-  expect(["T1", "T2", "T3"].filter((id) => document.querySelector(`[data-row="${id}"] [data-unread]`))).toEqual(["T1", "T3"]);
-  expect(fresh()).toBe("2 newly finished");
-  const back = served(tree({ tasks: [dto({ id: "T1", title: "Newly finished", state: "doing" }), value.tasks[1]!],
-    home: homeFixture([{ taskId: "T1", section: "doing" }, { taskId: "T2", section: "done" }]) }));
-  rerender(<TestWorkspace data={{ ...back, readIds: new Set(["T1", "T2"]) }}><TimeTree /></TestWorkspace>);
-  expect(document.querySelector('[data-row="T1"]')).toBeTruthy();
-  expect(dotted()).toEqual([]);
-  act(() => data.seed()); // The server publishes the finished rows again.
-  rerender(<TestWorkspace data={{ ...data, readIds: new Set(["T1", "T2"]) }}><TimeTree /></TestWorkspace>);
-  expect(dotted()).toEqual(["T1"]);
-  // Closed, it lets them go; opened again, they are read.
-  fireEvent.click(document.querySelector('[data-section="done"] button')!);
-  expect(fresh()).toBeNull();
-  openGroup("finished");
-  expect(dotted()).toEqual([]);
-  expect(confirm).not.toHaveBeenCalled();
-});
-
-test("Done opened for the detail keeps neighboring news marked and clears the opened task", () => {
-  // Both asked for by the user, so on the top level's finished page.
-  const value = tree({ tasks: [
-    dto({ id: "T1", title: "Opened", state: "done", userRequested: true }),
-    dto({ id: "T2", title: "Neighbor", state: "done", userRequested: true }),
-  ], home: homeFixture([{ taskId: "T1", section: "done" }, { taskId: "T2", section: "done" }]) });
-  const data = screenData(value);
-  data.info = { ...data.info, counts: { ...data.info.counts, closed: { ...data.info.counts.closed, root: { ...data.info.counts.closed.root!, freshFinished: 2 } } } };
-  data.readIds = new Set();
-  useViewStore.getState().openTask("T1", { reader: true });
-  const { rerender } = render(<TestWorkspace data={data}><TimeTree /></TestWorkspace>);
-  const dotted = () => ["T1", "T2"].filter((id) => document.querySelector(`[data-row="${id}"] [data-unread]`));
-  expect(dotted()).toEqual(["T1", "T2"]);
-  rerender(<TestWorkspace data={{ ...data, readIds: new Set(["T1"]) }}><TimeTree /></TestWorkspace>);
-  expect(dotted()).toEqual(["T2"]);
-  expect(document.querySelector('[data-section="done"] [data-fresh]')?.textContent).toBe("2 newly finished");
-  // Its heading still closes it while the task stays open in the detail.
-  fireEvent.click(document.querySelector('[data-section="done"] button')!);
-  expect(document.querySelector('[data-section="done"] button')!.getAttribute("aria-expanded")).toBe("false");
-  expect(dotted()).toEqual([]);
 });
 
 test("Done opens for the task in the detail by its list row, and its rows come with the page it then reads", async () => {

@@ -12,6 +12,6 @@ export function structuralFallback(records: RecordsReader, id: string):
       ball: null, running: false, working: false, homeWorking: false,
       usage: { runs: 0, runMs: 0, tokens: null, tokensUnknown: 0 }, openRuns: [], movedAt: 0 },
     // Never listed: the index sends no row of a Task it could not read, so no shown row may follow this one.
-    facts: { scopes: records.scopes(id), listed: false, freshFinished: false, menuRunning: false },
+    facts: { scopes: records.scopes(id), listed: false, menuRunning: false },
   };
 }

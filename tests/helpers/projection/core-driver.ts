@@ -38,7 +38,7 @@ export async function coreDriver() {
     let reader: DatabaseWorkspaceRecords = load();
     let cache = new Map([...reader.taskIds()].map(id => [id, deriveTask(reader, id)]));
     const facts = (source: RecordsReader, derived: ReadonlyMap<string, TaskDerived>) => new Map([...source.taskIds()].map(id => [id, {
-      scopes: source.scopes(id), freshFinished: state.fresh, menuRunning: derived.get(id)!.runs.some(run => run.state === 'running'),
+      scopes: source.scopes(id), menuRunning: derived.get(id)!.runs.some(run => run.state === 'running'),
     } satisfies AggregateFacts]));
     let aggregate = createScreenAggregate([...cache.values()].map(v => v.contribution), facts(reader, cache));
     let required: RequiredPvDTO = { view: {}, history: {}, page: {}, timeline: {}, search: {} };
