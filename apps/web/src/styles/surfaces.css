@@ -22,7 +22,10 @@ html:has([data-coordinator-card]:not([data-coordinator-own-window])) main#main .
 @property --coordinator-dock { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @property --sheet-cover { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @property --list-foot { syntax: "<length>"; inherits: false; initial-value: 8px; }
-:root { --foot-gap: 0.5rem; --sheet-close-room: 3.25rem; }
+:root { --foot-gap: 0.5rem; --sheet-close-room: 3.25rem; --foot-ground: var(--bg); }
+/* A phone's input stands on the ground of what it stands over at the screen's foot (CoordinatorCard): an open task's
+ * sheet, or else the list. */
+html:has([data-reader-mode="sheet"]) { --foot-ground: var(--lit); }
 [data-list-scroll] {
   --list-foot: calc(max(var(--sheet-cover, 0px), var(--coordinator-dock, 0px)) + var(--foot-gap));
 }

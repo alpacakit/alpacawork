@@ -8,6 +8,8 @@ import { TASK_ID_PATTERN } from '@alpacawork/raw/task-id';
 import { runIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
+import { runErrorCauseSchema } from './run-failure.js';
+import { answerFilesSchema } from './coordinator-files.js';
 import { isReviewMark } from './review-target.js';
 
 /** Launch choices come only from the linked historical Run; omitted when that Run cannot be resolved. */
@@ -73,9 +75,13 @@ export const historyEventSchema = z.object({
   dependencies: dependencyChangeSchema.optional(),
   /** Fixed answer text, and the user's words quoted by the Coordinator. */
   answerText: z.string().optional(), quote: z.string().optional(),
+  /** On a dialogue, the copies kept of the local files the coordinator's answer links to, drawn as its conversation draws them. */
+  answerFiles: answerFilesSchema.optional(),
   /** Records delivered to the writing Run, one level below a child's record. */
   causes: z.array(z.object({ taskId: taskIdSchema, id: z.string().min(1), kind: z.enum(RETURN_OUTCOMES),
     title: z.string(), at: z.iso.datetime({ offset: true }) }).strict()).optional(),
+  /** On a failed Run's row, the cause read in that Run's own error words (its errorCause), when one is known. */
+  cause: runErrorCauseSchema.optional(),
   /** Independent Task annotation, never part of the body delivered to the agent. */
   note: z.object({ title: z.string().min(1), description: z.string().nullable() }).strict().optional(),
   /**
@@ -87,6 +93,7 @@ export const historyEventSchema = z.object({
 }).strict().refine(event => (event.open !== undefined) === (event.kind === 'question' || event.kind === 'review'),
   { path: ['open'], message: 'Questions and reviews say whether they are open' }).refine(event =>
   event.note === undefined || event.kind === 'request', { path: ['note'], message: 'Only a Request row has a Task note' }).refine(event =>
+  event.cause === undefined || event.kind === 'error', { path: ['cause'], message: 'Only a failed Run row has a cause' }).refine(event =>
   event.result === undefined || event.kind === 'request' && event.recipient?.role === 'member', { path: ['result'], message: 'Only a member Request row has a result' });
 export type HistoryEventKind = z.infer<typeof historyEventSchema>['kind'];
 type HistoryEvent = z.infer<typeof historyEventSchema>;

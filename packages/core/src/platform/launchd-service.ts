@@ -44,6 +44,10 @@ export function createLaunchdService(command: ServiceCommand = (file, args) => s
       (missing(out) || fields.path === native.path) ? 'matching' : 'conflict';
     return { state, running: out.status === 0 && fields.pid !== undefined, registrationStarts: true };
   };
+  const loadJob = (name: string, path: string) => {
+    const current = run('print', target(name));
+    return current.status === 0 || missing(current) && run('bootstrap', domain, path).status === 0;
+  };
   const stop: HostAdapter['service']['stop'] = service => {
     // A name has no recoverable native definition: preserve the earlier unsupported stop boundary.
     if (typeof service === 'string') return false;
@@ -82,9 +86,7 @@ export function createLaunchdService(command: ServiceCommand = (file, args) => s
       const state = observe(definition), native = launchdDefinition(definition);
       if (!['absent', 'matching'].includes(state.state)) return false;
       if (state.state === 'absent') createDefinition(native.path, native.text);
-      const current = run('print', target(definition.name));
-      if (current.status === 0) return true;
-      return missing(current) && run('bootstrap', domain, native.path).status === 0;
+      return loadJob(definition.name, native.path);
     },
     unregister(definition) {
       if (observe(definition).state !== 'matching' || !stop(definition)) return false;
@@ -92,12 +94,13 @@ export function createLaunchdService(command: ServiceCommand = (file, args) => s
     },
     known: name => run('print', target(name)).status === 0,
     stop,
+    start(definition) {
+      return observe(definition).state === 'matching' && loadJob(definition.name, launchdDefinition(definition).path) &&
+        run('kickstart', target(definition.name)).status === 0;
+    },
     restart(service) {
-      if (typeof service !== 'string') {
-        if (observe(service).state !== 'matching') return false;
-        const current = run('print', target(service.name));
-        if (current.status !== 0 && (!missing(current) || run('bootstrap', domain, launchdDefinition(service).path).status !== 0)) return false;
-      }
+      if (typeof service !== 'string' &&
+          (observe(service).state !== 'matching' || !loadJob(service.name, launchdDefinition(service).path))) return false;
       return run('kickstart', '-k', target(typeof service === 'string' ? service : service.name)).status === 0;
     },
     restarts: () => 0,

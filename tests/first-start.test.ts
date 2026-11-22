@@ -109,7 +109,7 @@ for(let n=0;n<300;n++){if(!live())process.exit(0);Atomics.wait(new Int32Array(ne
     return true;
   };
   platform.service = { observe: () => ({ state, running: running(), registrationStarts }), register: () => { if (!['absent', 'matching'].includes(state)) return false; state = 'matching'; return !registrationStarts || start(); },
-    unregister: () => { if (state !== 'matching' || !stop()) return false; state = 'absent'; return true; }, known: () => state === 'matching', stop, restart: start, restarts: () => failedStarts };
+    unregister: () => { if (state !== 'matching' || !stop()) return false; state = 'absent'; return true; }, known: () => state === 'matching', stop, start, restart: start, restarts: () => failedStarts };
   const place = { releases, workspace, service: definition.name, say: (line: string) => events.push({ line }) };
   t.after(async () => {
     try { await preserveTestFailure(t, root, { databaseRoot: workspace, diagnostics: () => ({ events, journal: loadJournal(place) }) }); }

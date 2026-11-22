@@ -1,19 +1,23 @@
 /**
  * A coordinator draft's lifecycle: the one rule for what may change its Task labels, which are all its recipients.
  *
- * - `prepared`: nothing of the person's is in it yet. Opening another Task puts that Task's label in, in place of what
- *   is there (the screen's seed).
+ * The screen shows on two layers: the Task in the panel, over the list narrowed to the project in view.
+ *
+ * - `prepared`: nothing of the person's is in it yet. An opening puts that Task's label in, in place of what is there
+ *   (the screen's seed).
  * - `composing`: the person wrote, chose an answer, put a label in or took one off. What the screen opens no longer
- *   changes it, while anything of theirs is left in it. With nothing left, a Task opened in the panel seeds it again;
- *   the list behind a closed panel opens nothing, so it does not.
+ *   changes it, while anything of theirs is left in it. With nothing left, an opening seeds it again.
  * - Files say nothing about recipients: attaching leaves the phase as it is, and a seed or a close keeps the files.
- * - `seen`: the last Task the screen was observed to open, kept in either phase. Opening the Task already seen is no
- *   new opening, so it never seeds again.
- * - Closing the panel on a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so nothing is
- *   left to go to a Task no longer in view; anything else in it keeps the draft as it is.
+ * - `seen` and `seenProject`: what each layer was last observed to show, kept in either phase and across reloads. Only
+ *   what a layer had not shown is an opening: a Task new in the panel, else a project new in view with no panel over
+ *   it. The project under the panel is noted too, so the list come back behind a closed panel opens nothing; a project
+ *   opened starts the panel's record afresh, so a Task opened over it next is new.
+ * - The screen leaving a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so
+ *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing from it.
+ *   Anything else in it keeps the draft as it is.
  *
  * A locally submitted send leaves the current labels as prepared context; its body is retained only for delivery/recovery.
- * Admission consumes that retained body, never restores recipients from it. `seen` is carried: the same panel adds nothing,
+ * Admission consumes that retained body, never restores recipients from it. What was seen is carried: the same panel adds nothing,
  * another opened Task replaces the labels. A refused send comes back as it was sent, `composing`. The phase is the draft's
  * own record; what is written is read only to see that nothing is left.
  */
@@ -45,29 +49,34 @@ export function edited(values: Values, transform: (current: Document) => Documen
   return { values: { ...bound, phase: 'composing', doc }, document: next };
 }
 /**
- * The screen opened `task`, in the panel or else as the project in view: seeded while prepared, only noted while
- * composing; nothing when it is the one already seen. An emptied draft is seeded by the panel alone, and what `seen`
- * held stays until then, so a label taken off does not come back through closing and reopening the panel; the screen
- * observes again when the draft stops being emptied, so what is in view is noted before any send. A seed is no longer
- * the reader draft an emptied one may have been: that card's binding goes with its words.
+ * What the screen shows now (`panel` over `project`; null where a layer shows nothing, and a project not known yet
+ * left out, which keeps what was seen of it): an opening seeds a prepared or emptied draft and is only noted in one
+ * with anything of the person's left; with no opening, what is shown is noted. A project opened starts the panel's
+ * record afresh, so any Task opened over it next is new. Null when nothing changes. A seed is no longer the reader
+ * draft an emptied one may have been: that card's binding goes with its words.
  */
-export function observed(values: Values, task: Seed, inPanel = true): Values | null {
-  if ((values.seen ?? '') === task.id) return null;
-  const nothingLeft = emptied(values);
-  if (nothingLeft && !inPanel) return null;
-  if (written(values) && !nothingLeft) return { ...values, phase: 'composing', seen: task.id };
-  const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
-  return { ...rest, phase: 'prepared', seen: task.id, doc: JSON.stringify(labelsDocument([task])) };
+export function observed(values: Values, screen: { panel: Seed | null; project?: Seed | null }): Values | null {
+  const before = { seen: values.seen ?? '', seenProject: values.seenProject ?? '' };
+  const seenProject = screen.project === undefined ? before.seenProject : screen.project?.id ?? '';
+  const opening = screen.panel ? (screen.panel.id !== before.seen ? screen.panel : null)
+    : screen.project && screen.project.id !== before.seenProject ? screen.project : null;
+  const seen = screen.panel?.id ?? (opening ? '' : before.seen);
+  const noted: Values = { ...values, seen, seenProject };
+  if (!opening) return seen === before.seen && seenProject === before.seenProject ? null : noted;
+  if (written(values) && !emptied(values)) return { ...noted, phase: 'composing' };
+  const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = noted;
+  return { ...rest, phase: 'prepared', doc: JSON.stringify(labelsDocument([opening])) };
 }
 /**
- * The panel closed on `task`. With its label all that is in the draft (blank words, line breaks and files are nothing),
- * however it came in, the draft is fresh again: prepared, empty, nothing seen, so the same Task opened again seeds it.
+ * The screen left `task` (the panel closed on it, or it was the project in view). With its label all that is in the
+ * draft (blank words, line breaks and files are nothing), however it came in, the draft is fresh again: prepared, empty,
+ * nothing seen on either layer, so what the screen shows next seeds it.
  */
 export function closed(values: Values, task: string): Values | null {
   const left = inlines(draftDocument(values)).filter(node => node.type !== 'hardBreak' && (node.type !== 'text' || node.text.trim()));
   if (!left.length || !left.every(node => node.type === 'taskLabel' && node.attrs.id === task)) return null;
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
-  return { ...rest, phase: 'prepared', seen: '', doc: JSON.stringify(emptyDocument()) };
+  return { ...rest, phase: 'prepared', seen: '', seenProject: '', doc: JSON.stringify(emptyDocument()) };
 }
 /** What a line the screen offers makes of the draft: it takes a prepared draft's place, and goes after one that is the person's. */
 export const withLine = (values: Values, line: Document['content'][number]) => (current: Document): Document =>
@@ -80,13 +89,13 @@ export const withLine = (values: Values, line: Document['content'][number]) => (
 export function offered(values: Values, line: Document['content'][number], project: Seed | null): Values | null {
   if (composing(values) && !emptied(values)) return edited(values, withLine(values, line))?.values ?? null;
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
-  return { ...rest, phase: 'prepared', doc: JSON.stringify({ type: 'doc', content: [line] }), ...project ? { seen: project.id } : {} };
+  return { ...rest, phase: 'prepared', doc: JSON.stringify({ type: 'doc', content: [line] }), ...project ? { seenProject: project.id } : {} };
 }
 /** Local submission prepares the visible next input; the outbox still retains the original body until admission. */
 export const submitted = (values: Values, requestId: string): Values => ({ ...values, phase: 'prepared', requestId });
 /** Admission leaves the current input's remaining labels, with what was seen; it never restores the sent recipients. */
 export function afterSend(values: Values, remaining: Document): Values {
-  return { doc: JSON.stringify(contextLabels(remaining)), phase: 'prepared', seen: values.seen ?? '', requestId: crypto.randomUUID() };
+  return { doc: JSON.stringify(contextLabels(remaining)), phase: 'prepared', seen: values.seen ?? '', seenProject: values.seenProject ?? '', requestId: crypto.randomUUID() };
 }
 /** Task recipients remain the context for the next message, including when it was already being written. */
 function contextLabels(current: Document): Document {
@@ -94,7 +103,7 @@ function contextLabels(current: Document): Document {
   return labelsDocument(labels);
 }
 /** A refused send back in its input: its own words and labels, composing; what the screen has seen since stays. */
-export const restored = (sent: Values, input: Values): Values => ({ ...sent, phase: 'composing', seen: input.seen ?? '' });
+export const restored = (sent: Values, input: Values): Values => ({ ...sent, phase: 'composing', seen: input.seen ?? '', seenProject: input.seenProject ?? '' });
 
 function labelsDocument(tasks: readonly Seed[]): Document {
   if (!tasks.length) return emptyDocument();

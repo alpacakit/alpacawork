@@ -18,10 +18,12 @@ import { FileWriter } from './raw/storage.js';
 
 export const AGENTS_TEMPLATE = stringify({ agents: { claude: {}, codex: {} } });
 
-/** Creation only: only a confirmed sign-in enables a discovered adapter. */
+/**
+ * Creation only: lists the adapters whose sign-in was confirmed, all enabled. Any other is left out rather than written
+ * disabled, so the setup screen switches it from its own later check (on once signed in) instead of a stale `false`.
+ */
 export function initialAgentsTemplate(detected: readonly DetectedSetupAgent[]): string {
-  return stringify({ agents: Object.fromEntries(detected.map(agent =>
-    [agent.id, agent.status === 'ready' ? {} : { enabled: false }])) });
+  return stringify({ agents: Object.fromEntries(detected.filter(agent => agent.status === 'ready').map(agent => [agent.id, {}])) });
 }
 
 const settingsSchema = z.object({

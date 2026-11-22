@@ -88,6 +88,21 @@ test('Request links deduplicate explicit targets without inheriting prose or rep
   });
 });
 
+test('a dialogue carries its answer\'s kept file copies while its conversation holds them, so History draws the same images', t => {
+  const w = callerWorkspace(t), head = w.screenRun({ words: `Show ${w.project}`, session: 'head', tasks: [w.project] });
+  w.end(head, 'succeeded', '![Before](/tmp/before.png)');
+  const files = [{ state: 'ready', href: '/tmp/before.png', name: 'before.png', size: 3 }];
+  control(w.root, db => {
+    linkMessage(db, runtime(w.root, head.id));
+    db.prepare("UPDATE runs SET record=json_set(record,'$.answerFiles',json(?)) WHERE id=?").run(JSON.stringify(files), Number(head.id.slice(1)));
+    const read = () => dialoguesOf(db, [new TaskRepository(w.root, db).metadataWithHistory(w.project)])[0]!.answerFiles;
+    assert.deepEqual(read(), { requestId: head.requestId, files });
+    db.prepare("UPDATE coordinator_conversations SET cleared_at=? WHERE id=(SELECT conversation_id FROM runs WHERE id=?)")
+      .run(new Date().toISOString(), Number(head.id.slice(1)));
+    assert.equal(read(), undefined, 'a cleared conversation\'s copies are swept, so its answer links stay as written');
+  });
+});
+
 test('real CLI writes after a joined input keep explicit Request ownership and receipts include source identity', async t => {
   const w = callerWorkspace(t), head = w.screenRun({ words: 'Create A', session: 'screen' });
   const joined = w.screenRun({ words: 'Create B', session: null, running: false });

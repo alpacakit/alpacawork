@@ -279,7 +279,7 @@
       "logical_parent_cannot_read": "Could not read the logical parent",
       "logical_parent_cycle": "The task parent-child relationship forms a loop",
       "logical_task_depth_exceeds_32_levels": "The task hierarchy exceeds the 32-level limit",
-      "managed_skills_version": "Skill {{skill}} requires version {{expectedVersion}}. Run this locally, then send again after updating: {{command}}",
+      "managed_skills_version": "Skill {{skill}} requires version {{expectedVersion}}. Run this on the computer where the alpacawork server runs, then send again after updating: {{command}}",
       "member_needs_expected_responsible_revision": "A member needs --expected-responsible-revision",
       "message_already_sent_again": "The message has already been sent again",
       "message_cannot_reach_working_agent_it_remains_queued": "The message cannot reach the working agent. It stays in the queue",

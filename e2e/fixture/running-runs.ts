@@ -95,7 +95,7 @@ export async function runningRuns() {
   for (let at = 0; at < 127; at++) await member(crowded);
   return {
     root, project, busy: busy.id, single: single.id, queuedOnly: queuedOnly.id, asked: asked.id, crowded: crowded.id,
-    busyMember, grandchildRun: grandchild.runId, finishingRun: finishing.runId, waitingRun: waiting.runId, queuedOnlyRun: queuedOnly.runId, start, end,
+    busyMember, grandchildRun: grandchild.runId, finishingRun: finishing.runId, waitingRun: waiting.runId, queuedOnlyRun: queuedOnly.runId, singleRun: single.runId, start, end,
     close: () => { for (const id of [...locks.keys()]) release(id); store.close(); rmSync(root, { recursive: true, force: true }); },
   };
 }

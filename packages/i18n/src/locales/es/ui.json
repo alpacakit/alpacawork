@@ -317,10 +317,12 @@
   "run": {
     "cause": {
       "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Reintenta más tarde o con otro modelo, o detén la tarea",
+      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Reintenta con otro modelo o cuando el límite se restablezca, o detén la tarea",
       "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Reintenta cuando el límite se restablezca, o detén la tarea"
     },
     "causeReason": {
       "modelCapacity": "El modelo está al límite de su capacidad",
+      "modelLimit": "Se alcanzó el límite de uso del modelo",
       "weeklyLimit": "Se alcanzó el límite de uso semanal"
     }
   },

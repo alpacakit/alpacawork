@@ -37,14 +37,14 @@ alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude 
 
 ## Instalar
 
-Pega el siguiente texto en Claude Code o Codex, en tu PC. La IA instala alpacawork y la pantalla de configuración inicial se abre en tu navegador.
+Pega el siguiente texto en Claude Code o Codex, en tu PC. La IA instala alpacawork y te indica la URL de la pantalla de configuración inicial, que normalmente también se abre en tu navegador.
 
 ```text
 Descarga la siguiente guía, léela completa y síguela para instalar alpacawork en este PC.
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-Para instalarlo con comandos, ejecuta estas dos líneas en una terminal, en orden.
+Para instalarlo con comandos, ejecuta estas dos líneas en una terminal (en Windows, dentro de Ubuntu), en orden. La configuración inicial muestra lo que va a preparar y empieza cuando presionas Enter. Al terminar, muestra la URL de la pantalla en la línea `Abrir:` (`Open:` si la terminal está en inglés) y normalmente la abre en tu navegador.
 
 ```sh
 npm install -g alpacawork
@@ -52,8 +52,9 @@ alpacawork setup
 ```
 
 - **Requisitos:** macOS (Apple silicon), Linux (x64) o Windows (dentro de WSL2). Necesitas un agente de IA en el que hayas iniciado sesión, como Claude Code o Codex, y Node.js 24.16 o posterior (si la instalación la hace una IA, esta instala Node.js cuando falta). [Requisitos completos](docs/es/getting-started.md#requisitos)
-- **Después de instalar:** [Hacer tu primera solicitud](docs/es/getting-started.md#2-hacer-tu-primera-solicitud). Para usarlo desde tu teléfono, conéctate a tu PC a través de una VPN como Tailscale ([Usarlo desde tu teléfono](docs/es/getting-started.md#5-usarlo-desde-tu-teléfono)).
-- **Detener y desinstalar:** [Detener, actualizar o desinstalar](docs/es/getting-started.md#7-detener-actualizar-o-desinstalar)
+- **Abrir la pantalla:** si el navegador no se abrió, o para volver a abrir la pantalla después de cerrarla o de reiniciar el PC, consulta [Abrir la pantalla](docs/es/getting-started.md#2-abrir-la-pantalla).
+- **Después de instalar:** [Hacer tu primera solicitud](docs/es/getting-started.md#3-hacer-tu-primera-solicitud). Para usarlo desde tu teléfono, conéctate a tu PC a través de una VPN como Tailscale ([Usarlo desde tu teléfono](docs/es/getting-started.md#6-usarlo-desde-tu-teléfono)).
+- **Detener y desinstalar:** [Detener, actualizar o desinstalar](docs/es/getting-started.md#8-detener-actualizar-o-desinstalar)
 
 ## Qué hace
 
@@ -68,14 +69,15 @@ alpacawork setup
 
 - **Es gratis (licencia MIT).** El uso de IA se factura según el plan que ya tienes con Claude Code, Codex u otro agente.
 - **Se ejecuta en tu PC.** La IA se ejecuta en tu PC, así que mantén el PC encendido y configúralo para que no entre en suspensión mientras usas alpacawork.
-- **alpacawork inicia los agentes de IA con permisos completos, así que no se detienen a pedir confirmación.** Lo que la IA no debe hacer, o lo que debe consultarte antes, puedes escribirlo en la [política del proyecto](docs/es/getting-started.md#4-escribir-las-reglas-básicas-para-la-ia).
+- **alpacawork inicia los agentes de IA en el mismo modo sin confirmaciones que `bypassPermissions` de Claude Code y `danger-full-access` de Codex, así que no se detienen a preguntar.** Lo que la IA no debe hacer, o lo que debe consultarte antes, puedes escribirlo en la [política del proyecto](docs/es/getting-started.md#5-escribir-las-reglas-básicas-para-la-ia).
 - **Las tareas, las conversaciones y los archivos de resultados se guardan en tu PC.** alpacawork no los envía a ningún servidor externo gestionado por sus desarrolladores. Tus instrucciones a la IA y lo que la IA lee se envían al proveedor de la IA, igual que cuando usas cada agente de IA directamente ([más sobre el tratamiento de los datos](docs/es/getting-started.md#qué-se-guarda-y-qué-se-envía-fuera)).
 
 ## Documentación
 
-- [Primeros pasos](docs/es/getting-started.md): desde la instalación hasta tu primera solicitud, el uso desde tu teléfono, la actualización y la desinstalación
+- [Primeros pasos](docs/es/getting-started.md): desde la instalación y la apertura de la pantalla hasta tu primera solicitud, el uso desde tu teléfono, la actualización y la desinstalación
 - [Las ideas detrás de alpacawork](docs/es/concept.md): cómo avanza una solicitud y los principios de diseño
-- [Solución de problemas](docs/es/getting-started.md#solución-de-problemas): cuando algo no funciona. Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
+- [Si la pantalla no se abre](docs/es/getting-started.md#si-la-pantalla-no-se-abre): cuando el navegador no puede conectarse
+- [Solución de problemas](docs/es/getting-started.md#solución-de-problemas): cuando otra cosa no funciona. Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## Licencia
 

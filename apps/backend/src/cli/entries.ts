@@ -6,6 +6,7 @@ import { environmentFileHelp } from '../environment-file.js';
 import { recoveryAccessHelp } from '../release/maintenance-authorization.js';
 import { operationReadHelp } from '@alpacawork/contract/access-boundaries';
 import { deployNode } from '../installation/deploy-entry.js';
+import { serviceCommandNodes, serviceCommandPolicies } from '../installation/service-commands.js';
 import { setupNode, uninstallNode } from '../installation/entries.js';
 import { releaseNode } from '../release/entries.js';
 import { telemetryNode } from '../telemetry/entries.js';
@@ -22,9 +23,9 @@ export const { tree, workspaceTree } = defineCliRoot(
   'alpacawork-backend',
   `Local workspace initialization and HTTP server.\n\n${accessHelpPointer}`,
   'Server data directory (existing installation or unambiguous cwd ancestor; new workspace init defaults to ~/alpacawork)',
-  [...adminNodes, releaseNode, setupNode, uninstallNode, deployNode, telemetryNode],
+  [...adminNodes, releaseNode, setupNode, uninstallNode, deployNode, telemetryNode, ...serviceCommandNodes],
 );
 
 for (const endpoint of deployNode.endpoints ?? []) withCliHelp(endpoint, () => [accessHelp('deploy')]);
 
-export const policyFor = policyIndex([]);
+export const policyFor = policyIndex(serviceCommandPolicies);

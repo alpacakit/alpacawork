@@ -38,20 +38,25 @@ export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, cause?: Err
 export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTurn; task?: Task; cause?: ErrorCause | null; className?: string }) {
   const { t } = useTranslation("ui");
   const words = turnSentence(turn, t, cause);
+  const actions = task ? turnActions(turn) : [];
+  // The buttons stand on their own row under the sentence, so the sentence keeps its line height to its last line.
   return <span data-turn-reason={turn.reason} data-turn-cause={turn.reason === "failed" && cause ? cause : undefined} className={className}>
-    {words}{task && <TurnActions turn={turn} task={task} />}
+    {actions.length ? <><span className="block">{words}</span><TurnActions actions={actions} task={task!} /></> : words}
   </span>;
 }
 
-/** Continue on a limit, Retry and Stop on a failure: requests carry their intent; Stop reports directly with the displayed Task versions. */
-function TurnActions({ turn, task }: { turn: ReasonedTurn; task: Task }) {
+type TurnAction = "continue" | "retry" | "stop";
+/** Continue on a limit, Retry and Stop on a failure; other turns are answered elsewhere. */
+const turnActions = (turn: ReasonedTurn): readonly TurnAction[] => turn.reason === "limit" ? ["continue"] : turn.reason === "failed" ? ["retry", "stop"] : [];
+
+/** The turn's buttons: requests carry their intent; Stop reports directly with the displayed Task versions. */
+function TurnActions({ actions, task }: { actions: readonly TurnAction[]; task: Task }) {
   const { t } = useTranslation("ui");
   const people = useReaderPeople(task.id);
   const card = useReaderCard();
   const ready = useIntentReady(task);
   const report = useTaskReport(task, people, card);
-  const words = { continue: t("turn.continue"), retry: t("turn.retry"), stop: t("turn.stop") };
-  const actions: readonly (keyof typeof words)[] = turn.reason === "limit" ? ["continue"] : turn.reason === "failed" ? ["retry", "stop"] : [];
-  return actions.map((action) => <Button key={action} variant="outline" data-turn-action={action} className="ml-2 min-h-6 px-2 text-xs"
-    disabled={action === 'stop' ? !report.ready : !ready} onClick={() => { if (action === 'stop') report.submit('stop'); else sendIntent(intentAbout(task, action, people), card); }}>{words[action]}</Button>);
+  const words: Record<TurnAction, string> = { continue: t("turn.continue"), retry: t("turn.retry"), stop: t("turn.stop") };
+  return <span className="mt-2 flex flex-wrap gap-2">{actions.map((action) => <Button key={action} variant="outline" data-turn-action={action} className="min-h-6 px-2 text-xs"
+    disabled={action === 'stop' ? !report.ready : !ready} onClick={() => { if (action === 'stop') report.submit('stop'); else sendIntent(intentAbout(task, action, people), card); }}>{words[action]}</Button>)}</span>;
 }

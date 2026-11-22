@@ -30,7 +30,7 @@ export async function launch(mode = 'launcher', args = process.argv.slice(2)) {
     if (command?.value === 'telemetry' && tokens.some(token => token.kind === 'option' && token.name === 'server'))
       throw new Error('--server is unavailable for telemetry; use the command on this PC');
     // Installation management starts here so a broken release cannot block the way in or out.
-    if (command && ['setup', 'uninstall', 'telemetry', 'deploy'].includes(command.value)) { mode = 'backend'; args = localArguments(args, command.index); }
+    if (command && ['setup', 'uninstall', 'telemetry', 'deploy', 'start', 'stop', 'restart', 'status'].includes(command.value)) { mode = 'backend'; args = localArguments(args, command.index); }
     else if (args[0] === 'skills' && args[1] === 'update') { mode = 'skills'; args = args.slice(2); }
     else if (args[0] === 'backend') [mode, ...args] = args;
     else {

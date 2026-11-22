@@ -68,11 +68,18 @@ test('version refusal has no admission effects; local v2 update then explicit se
   assert.deepEqual(counts().map(Number), afterUpdate.map((n, i) => Number(n) + (i < 2 ? 1 : 0)));
 });
 
-test('absent or incomplete managed receipts are refused with the same local command; unrelated skills do not open the root', async t => {
+test('only skills the receipt records are version-checked; an incomplete receipt still refuses them', async t => {
   const f = mkdtempSync(join(tmpdir(), 'skills-send-missing-')); t.after(() => rmSync(f, { recursive: true, force: true }));
   assert.doesNotThrow(() => assertManagedSkillsVersion(['custom'], f, '1.2.3'));
-  assert.throws(() => assertManagedSkillsVersion(['alpacawork'], f, '1.2.3'), /alpacawork@1.2.3/);
+  // No receipt: a bundled skill placed by hand belongs to whoever placed it.
+  assert.doesNotThrow(() => assertManagedSkillsVersion(['alpacawork'], f, '1.2.3'));
   const skill = await installed(f, ['alpacawork']);
+  // The receipt records alpacawork only: a hand-placed alpacawork-betterquality passes while alpacawork is checked.
+  mkdirSync(join(skill.skills, 'alpacawork-betterquality'));
+  writeFileSync(join(skill.skills, 'alpacawork-betterquality/SKILL.md'), 'Hand-placed skill');
+  assert.doesNotThrow(() => assertManagedSkillsVersion(['alpacawork-betterquality'], skill.home, '2.0.0'));
+  assert.throws(() => assertManagedSkillsVersion(['alpacawork-betterquality', 'alpacawork'], skill.home, '2.0.0'), (error: unknown) =>
+    error instanceof Problem && error.reason?.kind === 'managed_skills_version' && error.reason.skill === 'alpacawork' && error.reason.currentVersion === '1.2.3');
   await skill.store.session(session => { session.begin({ operationId: randomUUID(), place: ['alpacawork'], remove: [], release: skill.release }); });
   assert.throws(() => assertManagedSkillsVersion(['alpacawork'], skill.home, '1.2.3'), /alpacawork@1.2.3/);
   assert.throws(() => skillsUpdateCommand('1.0.0;echo bad'), /Invalid/);
@@ -93,11 +100,11 @@ test('version guidance propagates ordinary I/O faults and errors without relabel
   }
 });
 
-test('an uninstalled source checkout does not require an npm skill receipt, while explicit versions still do', t => {
+test('without a receipt nothing is checked, while an unreadable receipt still refuses', t => {
   const home = mkdtempSync(join(tmpdir(), 'skills-source-send-'));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   assert.doesNotThrow(() => assertManagedSkillsVersion(['alpacawork'], home));
-  assert.throws(() => assertManagedSkillsVersion(['alpacawork'], home, '0.3.0'), /alpacawork@0.3.0/);
+  assert.doesNotThrow(() => assertManagedSkillsVersion(['alpacawork'], home, '0.3.0'));
   const control = join(managedSkillsRoot(home), '.alpacawork');
   mkdirSync(control, { recursive: true });
   writeFileSync(join(control, 'installed.json'), '{broken');

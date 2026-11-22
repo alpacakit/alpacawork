@@ -106,6 +106,7 @@ export const e2eAreas = {
     "project-shelf-core",
     "projects",
     "public-project-ids",
+    "read-scope-cut",
     "row-time-tip",
     "running-runs",
     "task-classification",

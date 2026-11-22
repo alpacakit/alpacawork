@@ -61,7 +61,7 @@ test('refused before anything else is written, the words and files go back at on
   freeze('/fixture', fixed('Fixed text'), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
   expect(refuse('/fixture', original.requestId!, 'Reason')).toBe('restored');
   // As it was sent, the person's again; what the screen has seen since is kept.
-  expect(readDrafts().entries[key]!.values).toEqual({ ...original, requestId: expect.any(String), phase: 'composing', seen: 'T9' });
+  expect(readDrafts().entries[key]!.values).toEqual({ ...original, requestId: expect.any(String), phase: 'composing', seen: 'T9', seenProject: '' });
   const again = useDraftStore.getState().entries[key]!.values.requestId!; expect(again).not.toBe(original.requestId);
   freeze('/fixture', fixed('Fixed text'), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
   reconcileOutbox({ id: 'conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] }, '/fixture', null);
