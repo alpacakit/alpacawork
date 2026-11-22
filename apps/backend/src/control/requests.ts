@@ -11,6 +11,7 @@ import { aiStackPrefixSchema, currentReview, reviewTarget, startsEstimateRound }
 import { DELIVERY_STATE, requestReceiptSchema, requestInputSchema,
   type RequestInput, type RequestReceipt } from '@alpacawork/contract/control';
 import type { RunRecord } from '@alpacawork/contract/run';
+import type { Selection } from '@alpacawork/contract/agent-settings';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
@@ -202,14 +203,24 @@ export class RequestService {
             refuse(PROBLEM_CODE.conflict, 'Conversation head changed; reload before retrying', { kind: 'conversation_head_changed' });
           const storedPrefix = db.prepare('SELECT ai_prefix FROM placements WHERE id=?').get(placement.id)?.ai_prefix;
           const placementPrefix = typeof storedPrefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(storedPrefix)) : undefined;
-          const plan = aiRows(settings.config, input.aiStack, placementPrefix);
+          const standing = aiRows(settings.config, placementPrefix);
+          const plan = input.aiStack ? aiRows(settings.config, input.aiStack, placementPrefix) : standing;
           const requestedRow = input.aiStack?.[0] && input.aiStack[0] !== 'stop' ? plan[0] : undefined;
-          const placedRow = !head && placementPrefix?.[0] && placementPrefix[0] !== 'stop' ? plan[0] : undefined;
-          const profile = requestedRow?.agent ?? head?.agent ?? placedRow?.agent ?? placement.profileKey;
+          const placedRow = placementPrefix?.[0] && placementPrefix[0] !== 'stop' ? standing[0] : undefined;
+          const matchesHead = (row: { agent: string; values: Selection }) =>
+            !!head && row.agent === head.agent && isDeepStrictEqual(row.values, head.launch.values);
+          const standingPosition = standing.findIndex(matchesHead);
+          const headRequest = head ? db.prepare('SELECT ai_explicit,ai_prefix FROM requests WHERE id=?').get(head.requestId) : undefined;
+          const requestScopedHead = !!head && standingPosition < 0 &&
+            (typeof headRequest?.ai_prefix === 'string' || head.attempt !== undefined ||
+              headRequest?.ai_explicit === 1 && settings.config.aiStack !== undefined);
+          const keepHead = !!head && input.mode !== 'new' && !requestScopedHead;
+          const carriesFallback = keepHead && standingPosition >= 0 && runs.some(run => run.attempt !== undefined &&
+            (run.id === head.id || head.session && run.session?.provider === head.session.provider && run.session.id === head.session.id));
+          const profile = requestedRow?.agent ?? (keepHead ? head.agent : placedRow?.agent ?? placement.profileKey);
           const setting = settings.config.agents[profile];
           const resumable = setting?.enabled !== false && !!setting;
-          const explicitChange = requestedRow && head &&
-            (requestedRow.agent !== head.agent || !isDeepStrictEqual(requestedRow.values, head.launch.values));
+          const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
           const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown, explicit: explicitChange ? 'new' : input.mode,
             head, direct: !fromPlacement, resumable });
@@ -248,9 +259,9 @@ export class RequestService {
             { kind: 'request_would_exceed_allowed_child_run_depth_continue_existing_run_or_simplify_delegation_chain' });
           if (limit) refuse(limit, 'This parent has reached its total child-run limit; completed children still count toward this limit.',
             { kind: 'parent_has_reached_total_child_run_limit_completed_children_still_count_toward_limit' });
-          const switched = runs.some(run => run.attempt !== undefined && run.started_at !== null);
-          const rowValues = requestedRow?.values ?? placedRow?.values ??
-            (switched ? head?.launch.values : settings.config.aiStack?.find(row => row.agent === profile)?.values);
+          const placedValues = placedRow?.agent === profile ? placedRow.values : undefined;
+          const rowValues = requestedRow?.values ?? (carriesFallback ? head!.launch.values : placedValues) ??
+            settings.config.aiStack?.find(row => row.agent === profile)?.values;
           const launchMode = mode === 'continue' ? 'resume' : 'start';
           const launch = launchSnapshot(settings.config, profile, launchMode,
             process.env.PATH ?? '', input.selected ?? {},
@@ -274,8 +285,7 @@ export class RequestService {
             aiExplicit: input.aiStack !== undefined || Object.keys(input.selected ?? {}).length > 0,
             aiPrefix: input.aiStack,
             aiStack: freezeAiStack(settings.config, { agent: profile, values: launch.launch.values },
-              switched && !input.aiStack ? plan.slice(plan.findIndex(row => row.agent === profile &&
-                isDeepStrictEqual(row.values, launch.launch.values)) + 1) : plan),
+              carriesFallback && !input.aiStack ? plan.slice(standingPosition + 1) : plan),
             answersQuestion: context.purpose === 'instruction' ? context.answersQuestion?.id ?? null : null };
           // Project inherited work before inserting this admission: its Request has no Run/caller witness yet.
           const openObligations = placement.responsible ? lifecycle.openObligations(task.id) : undefined;

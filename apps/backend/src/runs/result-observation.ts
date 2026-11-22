@@ -44,7 +44,7 @@ export function publishCompletion(journal: EventJournal, end: EndObservation): v
  * exits; a settle calls it for a lost manager's Run once the agent's process group is gone.
  */
 export function readEnd(ended: { outcome: Outcome;
-  observed: AdapterObservation; exit: AgentExit | null; measured: boolean }): EndObservation {
+  observed: AdapterObservation; exit: AgentExit | null; measured: boolean; interrupted?: boolean }): EndObservation {
   let { outcome } = ended;
   const observed = ended.observed.outcome;
   let finalResult: FinalResult = absentResult(observed);
@@ -55,6 +55,6 @@ export function readEnd(ended: { outcome: Outcome;
   const availability = ended.measured && cause && outcome.state === 'failed' &&
     (outcome.reason === 'exit' || outcome.reason === 'output') ? { cause } : undefined;
   return { outcome, finalResult, session: ended.observed.session, availability,
-    ...(availability && ended.observed.toolsSettled && ended.exit?.signal === null ? { handoffSafe: true as const } : {}),
+    ...(availability && !ended.interrupted && ended.observed.toolsSettled && ended.exit?.signal === null ? { handoffSafe: true as const } : {}),
     measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit };
 }

@@ -10,29 +10,49 @@ import { assignedSession, coordinatorLaunchSnapshot, launchSnapshot, readAgentsS
 import { queuedStart } from './execution-control.js';
 import type { EndObservation } from './result-observation.js';
 
+/** Previous answers come from the conversation's stored Requests and Runs, never a provider transcript. */
+function priorContext(db: DatabaseSync, run: RuntimeRunRecord, first: number) {
+  if (run.role === 'coordinator') return db.prepare(`SELECT r.id,q.body,r.result FROM requests q
+    JOIN runs first ON first.request_id=q.id AND first.attempt=0
+    JOIN runs r ON r.id=(${currentRequestRun('q.id')}) JOIN coordinator_conversations c ON c.id=q.conversation_id
+    WHERE q.conversation_id=? AND first.id<? AND c.warm_request_id IS NOT q.id AND r.state='succeeded'
+    ORDER BY first.id DESC LIMIT 8`).all(run.conversationId, first);
+  // A resumed Run may be an input taken into the conversation or a replacement that inherited its first trial's work.
+  return db.prepare(`WITH RECURSIVE earlier(id,depth) AS (
+    SELECT CAST(substr(resumes_id,2) AS INTEGER),1 FROM runs WHERE id=?
+    UNION ALL
+    SELECT CAST(substr(coalesce(r.into_id,r.resumes_id,first.resumes_id),2) AS INTEGER),earlier.depth+1
+    FROM earlier JOIN runs r ON r.id=earlier.id JOIN runs first ON first.request_id=r.request_id AND first.attempt=0
+    WHERE earlier.depth<12
+  )
+  SELECT r.id,q.body,r.result FROM earlier JOIN runs r ON r.id=earlier.id JOIN requests q ON q.id=r.request_id
+  WHERE r.state IN ('joined','succeeded') AND r.placement_id=? ORDER BY earlier.depth LIMIT 8`).all(first, run.placementId);
+}
+
+const newConversationText = (prompt: string): string =>
+  prompt.replace(/^(\[alpacawork\] Request for task T\d+) \(continuing the same conversation\)\./, '$1.');
+
 function nextPrompt(db: DatabaseSync, run: RuntimeRunRecord, cause: string): string | undefined {
   const first = db.prepare('SELECT id,prompt FROM runs WHERE request_id=? AND attempt=0').get(run.requestId);
   if (typeof first?.prompt !== 'string') return undefined;
   const received = db.prepare(`SELECT input.prompt FROM runs carrier JOIN run_attempts a ON a.run_no=carrier.id
     JOIN run_inputs i USING(attempt_id) JOIN runs input ON input.id=i.instruction_run_no
     WHERE carrier.request_id=? AND i.initial=0 AND i.state='taken' ORDER BY input.id`).all(run.requestId).map(row => String(row.prompt));
-  const context = run.role !== 'coordinator' ? [] : db.prepare(`SELECT q.body,r.result FROM requests q
-    JOIN runs first ON first.request_id=q.id AND first.attempt=0
-    JOIN runs r ON r.id=(${currentRequestRun('q.id')}) JOIN coordinator_conversations c ON c.id=q.conversation_id
-    WHERE q.conversation_id=? AND first.id<? AND c.warm_request_id IS NOT q.id AND r.state='succeeded'
-    ORDER BY first.id DESC LIMIT 8`).all(run.conversationId, first.id!).reverse()
-    .map(row => JSON.stringify({ earlierMessage: row.body, answer: row.result }));
-  const required = [first.prompt, ...received].join('\n\n');
+  const required = [first.prompt, ...received].map(newConversationText).join('\n\n');
   const header = [
     'Continue the same request in this new conversation.',
     `The previous Run ${run.id} stopped because of ${cause}.`,
     'Check recorded progress and the current working directory before continuing. Do not repeat completed operations or retry operations whose results are unknown.',
+    ...(run.role === 'coordinator' ? [] : [`Read current task records with alpacawork task get --task ${run.task}.`]),
   ].join('\n');
-  if (Buffer.byteLength(header + '\n\n' + required) > PROTOCOL_LIMITS.prompt) return undefined;
+  const remaining = PROTOCOL_LIMITS.prompt - Buffer.byteLength(header + '\n\n' + required);
+  if (remaining < 0) return undefined;
   let history = '';
-  for (const reply of context.reverse()) {
-    if (Buffer.byteLength(header + reply + history + required) + 100 > PROTOCOL_LIMITS.prompt) break;
-    history = '\n' + reply + history;
+  if (remaining > 64) for (const row of priorContext(db, run, Number(first.id))) {
+    const context = JSON.stringify({ earlierMessage: row.body, answer: row.result });
+    const link = run.role === 'coordinator' ? '' : `Earlier Run: alpacawork run get --run R${row.id} (add --kind prompt for its instructions).`;
+    const text = Buffer.byteLength(context + history) + 64 < remaining ? context : link;
+    if (text && Buffer.byteLength(text + history) + 64 < remaining) history = '\n' + text + history;
   }
   return [header, history && `Earlier conversation for context:${history}`, required].filter(Boolean).join('\n\n');
 }
@@ -87,9 +107,9 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
   if (!end.availability || !end.handoffSafe || run.stop_requested || run.state !== 'running' ||
       end.finalResult.state === 'unreadable' || end.finalResult.state === 'too_large') return;
   const db = store.connection;
-  const saved = db.prepare(`SELECT q.ai_stack,q.placement_revision,q.submitted_at,q.delivery_state,
+  const saved = db.prepare(`SELECT q.ai_stack,q.placement_revision,q.delivery_state,
     (${currentRequestRun('q.id')}) AS current_run FROM requests q WHERE q.id=?`).get(run.requestId);
-  if (typeof saved?.ai_stack !== 'string' || typeof saved.submitted_at !== 'string' || saved.current_run !== runNumber(run.id) ||
+  if (typeof saved?.ai_stack !== 'string' || saved.current_run !== runNumber(run.id) ||
     saved.delivery_state === DELIVERY_STATE.aborted || saved.delivery_state === DELIVERY_STATE.recorded_unconfirmed) return;
   if (db.prepare("SELECT 1 FROM run_inputs WHERE attempt_id=? AND state IN ('attempted','uncertain')").get(attemptId)) return;
   if (run.role === 'coordinator') {
@@ -98,9 +118,11 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     if (db.prepare('SELECT 1 FROM returns WHERE request_id=?').get(run.requestId)) return;
     const placement = tx.getPlacement(run.placementId);
     if (!placement?.active || placement.revision !== saved.placement_revision || queuedStart(store, tx, run).kind !== 'go') return;
+    // A long-running earlier trial can publish its end after this Request was admitted.
     if (db.prepare(`SELECT 1 FROM task_log l JOIN tasks t ON t.id=l.task_id
-      WHERE t.external_id=? AND l.at>=? AND json_extract(l.entry,'$.toState') IN ('done','stopped','error') LIMIT 1`)
-      .get(run.task, saved.submitted_at)) return;
+      JOIN runs r ON r.id=CAST(substr(json_extract(l.entry,'$.runId'),2) AS INTEGER)
+      WHERE t.external_id=? AND r.request_id=? AND json_extract(l.entry,'$.toState') IN ('done','stopped','error')
+      LIMIT 1`).get(run.task, run.requestId)) return;
   }
   const prompt = nextPrompt(db, run, end.availability.cause);
   if (prompt === undefined) return;
