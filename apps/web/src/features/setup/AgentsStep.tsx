@@ -62,7 +62,7 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   const readFailure = [settings, status, telemetry.status].find(read => read.isError);
   const prepared = !!drafts && !status.isPending && initialized && !!telemetry.status.data;
   const usable = usableAgents(rows, on);
-  const first = firstAgentOf(usable, picked);
+  const first = firstAgentOf(usable, picked, loaded?.aiStack);
   // Asked here until it is answered; a changed consent version is asked again here as well.
   const asksConsent = telemetry.status.data?.state === "not_asked" || telemetry.status.data?.state === "needs_reask";
   // Ticked at first; it is saved only once the person goes on, whichever way they leave it.

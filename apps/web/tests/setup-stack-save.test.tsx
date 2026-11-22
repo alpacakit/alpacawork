@@ -18,11 +18,19 @@ import { firstAgentOf, startAgents, usableAgents } from '../src/features/setup/r
 import { setupSave } from '../src/features/setup/save';
 
 const roots: string[] = [];
-afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+// The fixture points PATH at its stub agents: each test gets the PATH it started with back.
+const path = process.env.PATH;
+afterEach(() => {
+  process.env.PATH = path;
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 const ready: AgentAvailability = { command: '/bin/x', version: null, candidates: [], status: 'ready', nextAction: null, issue: null };
 
-/** A test-only workspace whose saved AI stack is claude, then codex, and whose person last chose claude in the input. */
-async function workspace() {
+/**
+ * A test-only workspace whose agents are listed claude, then codex, with a saved AI stack (claude, then codex unless
+ * given), and whose person last chose claude in the input.
+ */
+async function workspace(order: readonly ('claude' | 'codex')[] = ['claude', 'codex']) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-setup-stack-')));
   roots.push(root);
   initializeControlFixture(root);
@@ -31,7 +39,8 @@ async function workspace() {
   claude.params = { ...claude.params, model: ['opus', 'fable'], effort: ['high', 'medium'] };
   codex.params = { ...codex.params, model: ['gpt-6.2-sol'], effort: ['high'], fast: ['-'] };
   writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 4 }, agents: { claude, codex },
-    aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }, { agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }] }));
+    aiStack: order.map(agent => agent === 'claude' ? { agent, values: { model: 'opus', effort: 'high' } }
+      : { agent, values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }) }));
   await createLaunchMemory(root).change({ kind: 'choose', agent: 'claude', values: {} });
   return root;
 }
@@ -45,7 +54,7 @@ async function leaveSetup(root: string, on: Record<string, boolean>, picked: str
   const drafts = readServerAgents(loaded.agentsText);
   if (!drafts.ok) throw new Error('unreadable');
   const rows = startAgents(drafts.value.agents, { availability: { claude: ready, codex: ready } }, false);
-  const first = firstAgentOf(usableAgents(rows, on), picked);
+  const first = firstAgentOf(usableAgents(rows, on), picked, loaded.aiStack);
   const saving = setupSave(loaded, drafts.value, rows, on, first);
   if (saving) await saveServerSettings(root, configSetInput.parse({ config: saving.config, agents: saving.agents, expectedConfigHash: loaded.hash }));
   await createLaunchMemory(root).change({ kind: 'forget-agent' });
@@ -65,6 +74,9 @@ test('the first AI chosen in setup is row 1 of the saved stack and the agent a n
   // Switching the old first one off saves too: its rows leave the stack rather than holding the save back.
   expect(await leaveSetup(await workspace(), { claude: false, codex: true }, 'codex'))
     .toEqual({ stack: ['codex'], offered: 'codex', admitted: 'codex' });
+  // Opened with codex first in the saved stack (the agents listed claude first), going on without picking keeps codex.
+  expect(await leaveSetup(await workspace(['codex', 'claude']), { claude: true, codex: true }, null))
+    .toEqual({ stack: ['codex', 'claude'], offered: 'codex', admitted: 'codex' });
   // Going on with no agent empties the stack, rather than leaving rows that would refuse the save.
   expect(await leaveSetup(await workspace(), { claude: false, codex: false }, null)).toEqual({ stack: [], offered: null, admitted: null });
 });
