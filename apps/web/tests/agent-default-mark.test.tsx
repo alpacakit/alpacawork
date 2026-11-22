@@ -46,3 +46,22 @@ test('a value written in config.yaml stays until restored, even when it equals t
   const saved = writeAgentsDraft(latest);
   expect(saved.ok && parse(saved.value)).toEqual({ claude: {} });
 });
+
+test('each row marks the value tasks start on, and a pressed value moves to the front; a row starting on none offers no change', () => {
+  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: ["-", high]\n');
+  if (!read.ok) throw new Error('unreadable');
+  const initial = read.value;
+  let latest = initial;
+  function Form() {
+    const [draft, setDraft] = useState(initial);
+    return <AgentSettings draft={draft} onChange={next => { latest = next; setDraft(next); }} />;
+  }
+  render(<Form />);
+  fireEvent.click(screen.getByRole('button', { name: 'Expand claude' }));
+  const marks = () => [...document.querySelectorAll('[data-agent-start-values]')].map(row => row.textContent);
+  expect(marks()).toEqual(['opusDefault for tasksfable']);
+  fireEvent.click(screen.getByRole('button', { name: 'Make fable the default for tasks' }));
+  expect(marks()).toEqual(['fableDefault for tasksopus']);
+  const saved = writeAgentsDraft(latest);
+  expect(saved.ok && parse(saved.value).claude.params).toEqual({ model: ['fable', 'opus'], effort: ['-', 'high'] });
+});

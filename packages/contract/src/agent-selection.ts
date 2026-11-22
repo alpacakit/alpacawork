@@ -57,7 +57,7 @@ export type ResolvedAgentSelection = {
   choices: AgentChoice[];
 };
 /** Explicit commands → conversation's previous values → defaults for newly introduced keys.
- * Device-local remembered hints are not conversation history: callers must not pass them as previous.
+ * Remembered launch hints (launchMemory) are not conversation history: callers must not pass them as previous.
  * A removed/unused old key requires a new conversation; never silently discard it.
  */
 export function resolveAgentSelection(compiled: CompiledAgentSetting, explicit: Selection = {}, previous: Selection = {}): ResolvedAgentSelection {
@@ -93,4 +93,27 @@ export function resolveOfferedSelection(offer: SelectionOffer, explicit: Selecti
   const effective = { ...values };
   for (const choice of activeChoices) if (!choice.active) effective[choice.key] = null;
   return { values, effective, choices: activeChoices };
+}
+/**
+ * Where the person's next new coordinator conversation starts: the agent last chosen in the screen's input, and by
+ * agent the values last chosen for it (null: "none", a written -). One record on the server, so every device that
+ * uses it starts from the same choices. Hints only: the config may have outgrown them (launch-selection drops those).
+ */
+export const launchMemorySchema = z.object({
+  agent: z.string().min(1).nullable(), values: z.record(z.string().min(1), selectionSchema),
+}).strict();
+export type LaunchMemory = z.infer<typeof launchMemorySchema>;
+export const emptyLaunchMemory: LaunchMemory = { agent: null, values: {} };
+/** `choose`: the input picked `agent` with these values. `forget-agent`: setup chose where a new launch starts. */
+export const launchMemoryChangeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('choose'), agent: z.string().min(1), values: selectionSchema }).strict(),
+  z.object({ kind: z.literal('forget-agent') }).strict(),
+]);
+export type LaunchMemoryChange = z.infer<typeof launchMemoryChangeSchema>;
+export const launchMemoryRequestSchema = z.object({ change: launchMemoryChangeSchema }).strict();
+export const launchMemoryResponseSchema = z.object({ memory: launchMemorySchema }).strict();
+/** A choice replaces only its own agent's values; the values kept for other agents stay. */
+export function applyLaunchMemory(memory: LaunchMemory, change: LaunchMemoryChange): LaunchMemory {
+  return change.kind === 'forget-agent' ? { ...memory, agent: null }
+    : { agent: change.agent, values: { ...memory.values, [change.agent]: change.values } };
 }

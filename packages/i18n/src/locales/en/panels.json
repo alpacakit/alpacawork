@@ -85,11 +85,15 @@
     "resume": "Continuing a conversation",
     "signedOut": "Not signed in. In a terminal, run",
     "start": "New conversation",
+    "taskDefault": {
+      "choose": "Make {{value}} the default for tasks",
+      "label": "Default for tasks"
+    },
     "title": "Agents",
     "unusedAdapter": "Unavailable for this adapter",
     "unusedOptions": "Not used in launch options",
     "useAgent": "Enable {{name}}",
-    "values": "Values (comma-separated; the first is preselected)"
+    "values": "Values (comma-separated)"
   },
   "archive": {
     "confirm": {

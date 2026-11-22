@@ -85,11 +85,15 @@
     "resume": "Continuação de conversa",
     "signedOut": "Você não fez login. Em um terminal, execute",
     "start": "Nova conversa",
+    "taskDefault": {
+      "choose": "Usar {{value}} como padrão para tarefas",
+      "label": "Padrão para tarefas"
+    },
     "title": "Agentes",
     "unusedAdapter": "Indisponível para este adaptador",
     "unusedOptions": "Não usado nas opções de inicialização",
     "useAgent": "Ativar {{name}}",
-    "values": "Valores (separados por vírgula; o primeiro já vem selecionado)"
+    "values": "Valores (separados por vírgula)"
   },
   "archive": {
     "confirm": {

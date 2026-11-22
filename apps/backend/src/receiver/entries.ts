@@ -13,7 +13,7 @@ import { maintenance } from '../maintenance.js';
 import type { PublishedFrame } from './projection-contract.js';
 import { ProjectedPages } from './index-pages.js';
 const pageReads = new ProjectedPages();
-import { createFirstRunState, createNoticeState, createPersonSettings } from './person-state.js';
+import { createFirstRunState, createLaunchMemory, createNoticeState, createPersonSettings } from './person-state.js';
 import { firstRunNodes } from './first-run-entries.js';
 import type { FirstRunSkills } from '../installation/first-run-skills.js';
 import { type Presence } from './presence.js';
@@ -33,6 +33,7 @@ export interface Context extends TaskContext {
   personSettings?: ReturnType<typeof createPersonSettings>;
   noticeState?: ReturnType<typeof createNoticeState>;
   firstRun?: ReturnType<typeof createFirstRunState>;
+  launchMemory?: ReturnType<typeof createLaunchMemory>;
   skills?: FirstRunSkills;
   /** The index Owner already serialized this representation; the HTTP adapter sends its bytes directly. */
   readLive?: () => Promise<Response>;

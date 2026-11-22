@@ -85,11 +85,15 @@
     "resume": "继续对话",
     "signedOut": "尚未登录。请在终端中执行",
     "start": "新对话",
+    "taskDefault": {
+      "choose": "将 {{value}} 设为任务默认",
+      "label": "任务默认"
+    },
     "title": "智能体",
     "unusedAdapter": "不适用于此适配器",
     "unusedOptions": "启动选项中未使用",
     "useAgent": "启用 {{name}}",
-    "values": "值（用逗号分隔；第一个为预选值）"
+    "values": "值（用逗号分隔）"
   },
   "archive": {
     "confirm": {

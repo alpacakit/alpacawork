@@ -13,6 +13,7 @@ import { markCoordinatorSeen, type CoordinatorTurn } from "../src/data/coordinat
 import { rememberWriteIdentity } from "../src/data/write-identity";
 import { useConnection } from "../src/data/connection";
 import type { ControlTreeDTO } from "@alpacawork/contract/control";
+import type { LaunchMemory } from "@alpacawork/contract/agent-selection";
 import { useConversationChanges, useLaunchPicker } from "../src/features/forms/launch-choice";
 import { screenData, TestWorkspace, tree, dto, openReference, launchProfile } from "./fixtures";
 import { setAutoSwipe } from "../src/features/reader/next-question";
@@ -367,17 +368,19 @@ test("an answer is drawn by the reports' Markdown and task references open the t
   expect(openTask).toHaveBeenCalledWith("T1", { reader: true });
 });
 
+/** The screen's data with the person's launch memory as the index brings it. */
+const remembering = (memory: LaunchMemory) => { const data = screenData(tree({ profiles: launchProfiles })); return { ...data, info: { ...data.info, launchMemory: memory } }; };
 const launchProfiles: ControlTreeDTO["profiles"] = [launchProfile("claude", { model: ["opus", "fable"], effort: ["high", "max"] }),
   launchProfile("codex", { model: ["gpt-6.1-sol", "gpt-6-astra"], effort: ["low", "xhigh"] })];
 test("the coordinator input offers every adapter and sends its chosen model and effort", async () => {
   await i18n.changeLanguage("en");
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "codex", values: { claude: { model: "fable", effort: "low" } } }));
-  dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" }));
-  const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [] }));
+  const fetcher = vi.fn().mockImplementation(async (url: string) => url === "/api/launch-memory"
+    ? new Response(JSON.stringify({ memory: { agent: null, values: {} } }), { status: 200, headers: { "Content-Type": "application/json" } })
+    : reply({ ...empty, turns: [] }));
   stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: launchProfiles }))}><CoordinatorCard /></TestWorkspace>);
+  render(<TestWorkspace data={remembering({ agent: "codex", values: { claude: { model: "fable", effort: "low" } } })}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
-  // A new conversation starts with this device's last agent and its first values.
+  // A new conversation starts with the last agent chosen on any screen, its first model and its lightest effort.
   const picker = await screen.findByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "gpt-6.1-sol(low)" }) });
   fireEvent.click(picker);
   // The kept model comes back on its agent; the kept effort is no longer offered, so its first value is used.
@@ -388,7 +391,9 @@ test("the coordinator input offers every adapter and sends its chosen model and 
   fireEvent.click(screen.getByRole("radio", { name: /gpt-6-astra/ }));
   expect(screen.queryByRole("radio", { name: "max" })).toBeNull();
   fireEvent.click(screen.getByRole("radio", { name: "xhigh" }));
-  expect(JSON.parse(localStorage.getItem("alpacawork.launchChoice")!).values.codex).toEqual({ model: "gpt-6-astra", effort: "xhigh" });
+  // Each choice is kept on the server, for the next new conversation on any screen.
+  const saved = fetcher.mock.calls.filter(([url]) => url === "/api/launch-memory").map(([, init]) => JSON.parse(init.body).change);
+  expect(saved.at(-1)).toEqual({ kind: "choose", agent: "codex", values: { model: "gpt-6-astra", effort: "xhigh" } });
   writeEditor("Continued");
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
@@ -398,12 +403,10 @@ test("the coordinator input offers every adapter and sends its chosen model and 
 
 test("a message going on in the conversation sends only what is changed in its picker, not this device's last choice", async () => {
   await i18n.changeLanguage("en");
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "codex", values: { claude: { model: "opus", effort: "max" } } }));
-  dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" }));
   const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues: { model: "fable", effort: "high" },
     turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] }));
   stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: launchProfiles }))}><CoordinatorCard /></TestWorkspace>);
+  render(<TestWorkspace data={remembering({ agent: "codex", values: { claude: { model: "opus", effort: "max" } } })}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
   await act(() => useConversation.getState().refresh());
   const sent = () => fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/messages").map(([, init]) => JSON.parse(init.body));
@@ -474,8 +477,6 @@ test("a failed turn sent again with a previous model no longer offered does not 
 
 test("a message sent again after an unknown result goes with the choice it was first sent with", async () => {
   await i18n.changeLanguage("en");
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "claude", values: { claude: { model: "fable", effort: "max" } } }));
-  dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" }));
   const done = { ...empty, agent: "claude", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] };
   let lost = true;
   const fetcher = vi.fn().mockImplementation(async (url: string) => {
@@ -483,7 +484,7 @@ test("a message sent again after an unknown result goes with the choice it was f
     return reply(done);
   });
   stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: launchProfiles }))}><CoordinatorCard /></TestWorkspace>);
+  render(<TestWorkspace data={remembering({ agent: "claude", values: { claude: { model: "fable", effort: "max" } } })}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
   await act(() => useConversation.getState().refresh());
   fireEvent.click(await screen.findByRole("button", { name: /^opus\(high\)/ }));

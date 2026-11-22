@@ -32,6 +32,21 @@ export function AgentDefaultMark({ isDefault, name, field, onRestore }: {
         onClick={() => { onRestore(); document.getElementById(field)?.focus(); }}>{t('agentSettings.restoreDefault')}</Button>}
   </div>;
 }
+/**
+ * A row's values as buttons, the first marked as where placements start; pressing another moves it to the front. The
+ * draft changes as the field would; the card's save writes it.
+ */
+export function AgentStartValues({ values, onChoose }: { values: string[]; onChoose: (value: string) => void }) {
+  const { t } = useTranslation('panels');
+  if (!values.length) return null;
+  return <div className="mt-2 flex flex-wrap gap-2" data-agent-start-values>
+    {values.map((value, at) => at === 0
+      ? <span key={value} className="inline-flex min-h-control-sm items-center gap-2 rounded-sm border border-ink bg-ink px-2 py-1 font-mono text-sm text-bg">
+        {value}<span className="font-sans">{t('agentSettings.taskDefault.label')}</span></span>
+      : <Button key={value} type="button" variant="outline" className="font-mono" aria-label={t('agentSettings.taskDefault.choose', { value })}
+        onClick={() => onChoose(value)}>{value}</Button>)}
+  </div>;
+}
 export function AgentExtraFields({ agent, onChange, issues, environmentFile }: {
   agent: AgentDraft; onChange: (agent: AgentDraft) => void; issues: AgentDraftIssue[]; environmentFile: string | undefined;
 }) {

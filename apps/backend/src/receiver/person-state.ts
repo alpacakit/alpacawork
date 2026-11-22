@@ -12,6 +12,7 @@ import { morningUntil, quietEnd } from '@alpacawork/contract';
 import { META_DIRECTORY } from '@alpacawork/raw';
 import { FileWriter } from '../raw/storage.js';
 import { applyFirstRun, firstRunSchema, type FirstRunChange, type FirstRunResponse } from '@alpacawork/contract';
+import { applyLaunchMemory, emptyLaunchMemory, launchMemorySchema, type LaunchMemory, type LaunchMemoryChange } from '@alpacawork/contract/agent-selection';
 
 type Stored<T> = { version: 1; revision: string; value: T };
 const MAX_PERSON_BYTES = 1024 * 1024;
@@ -176,6 +177,25 @@ export function savedReplyLanguage(root: string): string | null {
     if (error instanceof Problem && error.code === PROBLEM_CODE.unavailable) return null;
     throw error;
   }
+}
+/** The file of the person's launch memory; the file watcher republishes it when it changes. */
+export const LAUNCH_MEMORY_FILE = 'launch-memory.json';
+/** Where the person's next new coordinator conversation starts. Each change is applied to the latest record under the lock. */
+export function createLaunchMemory(root: string, changed: () => void = () => {}) {
+  const parse = (value: unknown) => launchMemorySchema.parse(value);
+  return {
+    get: (): LaunchMemory => readPerson(root, LAUNCH_MEMORY_FILE, parse)?.value ?? emptyLaunchMemory,
+    change: async (change: LaunchMemoryChange): Promise<LaunchMemory> => {
+      const stored = await transaction(root, LAUNCH_MEMORY_FILE, parse, (current, put) => {
+        const before = current?.value ?? emptyLaunchMemory, next = applyLaunchMemory(before, change);
+        if (current && isDeepStrictEqual(before, next)) return current;
+        const saved = put(next);
+        changed();
+        return saved;
+      });
+      return stored!.value;
+    },
+  };
 }
 /** The file a new workspace's initialization writes. */
 export const FIRST_RUN_FILE = 'first-run.json';

@@ -1,6 +1,8 @@
 
 import { coordinatorMessage, coordinatorCompleted } from './coordinator-completion.ts';
 import { stringify } from 'yaml';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { writeFixtureConfig } from './fixture-writes.ts';
 import { fixtureAgentSetting, installAgentStub } from '../tests/helpers/agent-stub.ts';
 import { test, expect, open, openCoordinator, settleMotion } from './fixtures.ts';
@@ -17,6 +19,10 @@ const fakeCoordinator = (runtime: { root: string }, rows?: Record<string, string
   // A second kind with one more row at the menu's foot (codex's fast).
   writeFixtureConfig(runtime.root, stringify({ agents: { fake: setting, codex: fixtureAgentSetting('codex') } }, { lineWidth: 0 }));
 };
+
+/** The person's launch memory as another screen left it: serve's file watcher brings it to the index. */
+const remember = (runtime: { root: string }, values: Record<string, string>) => writeFileSync(join(runtime.root, '.alpacawork/launch-memory.json'),
+  JSON.stringify({ version: 1, revision: crypto.randomUUID(), value: { agent: 'fake', values: { fake: values } } }));
 
 // On a phone too: the chip is in the send row, and its menu opens over the coordinator's sheet, where a finger reaches it.
 for (const phone of [true]) test.describe(phone ? 'phone' : 'pc', () => {
@@ -75,16 +81,16 @@ for (const phone of [true]) test.describe(phone ? 'phone' : 'pc', () => {
     await page.keyboard.press('Escape');
     await expect(card.locator('[data-agent-picker]')).toHaveText('fable(max)');
     expect(await send(card, 'Select and send', 1)).toEqual(['fable', 'max']);
-    // Opened again, a message going on in the conversation carries none of this device's choices: this device's last
-    // choice changes, the conversation's model and effort stay.
-    await page.evaluate(() => localStorage.setItem('alpacawork.launchChoice', JSON.stringify({ agent: 'fake', values: { fake: { model: 'opus', effort: 'high' } } })));
+    // Opened again, a message going on in the conversation carries none of the remembered choices: the last choice
+    // changes elsewhere, the conversation's model and effort stay.
+    remember(runtime, { model: 'opus', effort: 'high' });
     await page.reload();
     card = await openCard();
     await expect(card.locator('[data-agent-picker]')).toHaveText('fable(max)');
     expect(await send(card, 'Reopen and send', 2)).toEqual(['fable', 'max']);
-    // A new conversation starts from this device's last choice; a kept model the config no longer offers goes back to
+    // A new conversation starts from the remembered choice; a kept model the config no longer offers goes back to
     // the first one, the kept effort stays.
-    await page.evaluate(() => localStorage.setItem('alpacawork.launchChoice', JSON.stringify({ agent: 'fake', values: { fake: { model: 'sonnet', effort: 'max' } } })));
+    remember(runtime, { model: 'sonnet', effort: 'max' });
     await page.reload();
     card = await openCard();
     await card.locator('[data-coordinator-clear]').click();

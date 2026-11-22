@@ -1,73 +1,73 @@
 import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { applyLaunchMemory, type LaunchMemory, type LaunchMemoryChange } from "@alpacawork/contract/agent-selection";
 import { useConversationChanges, useLaunchChoice } from "../src/features/forms/launch-choice";
 import { AgentPicker } from "../src/features/forms/AgentPicker";
 import { agentLabel } from "../src/domain/agent-label";
 import { launchProfile } from "./fixtures";
 
-const given = vi.hoisted(() => ({ profiles: [] as unknown[] }));
+/** The server's launch memory as the index brings it, and the changes the screen saved to it. */
+const given = vi.hoisted(() => ({ profiles: [] as unknown[], memory: { agent: null, values: {} } as LaunchMemory }));
 vi.mock("../src/data/workspace-store", () => ({ useFrameSelector: (select: (value: unknown) => unknown) => select({ info: {
-  profiles: given.profiles,
+  profiles: given.profiles, launchMemory: given.memory,
 } }) }));
+vi.mock("../src/data/resources", () => ({ api: { request: vi.fn(async (_path: string, _schema: unknown, _signal: unknown, data: { change: LaunchMemoryChange }) => {
+  given.memory = applyLaunchMemory(given.memory, data.change);
+  return { memory: given.memory };
+}) } }));
 const codex = launchProfile("codex", { model: ["a", "b"] });
 /** The configured Pi profile omits effort for fixed models. The Grok profile requires effort. */
 const pi = launchProfile("pi", { model: ["model-with-effort", "fixed-first", "fixed-second"], effort: ["high", "low", "medium"] }, ["effort"],
   { "fixed-first": ["effort"], "fixed-second": ["effort"] });
 /** A row a setting adds (tier) is offered like effort, with nothing written for it. */
 const grok = launchProfile("grok", { model: ["grok-4.7"], effort: ["high", "low", "medium", "xhigh"], tier: ["standard", "priority"] });
-const stored = () => JSON.parse(localStorage.getItem("alpacawork.launchChoice")!) as { agent: string; values: Record<string, Record<string, string>> };
-beforeEach(() => { given.profiles = [codex]; localStorage.clear(); window.dispatchEvent(new StorageEvent("storage", { key: null })); });
+const stored = () => given.memory;
+beforeEach(() => { given.profiles = [codex]; given.memory = { agent: null, values: {} }; });
 afterEach(() => { cleanup(); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); });
 
-test.each([true, false])("two prompt inputs show the chosen model when the other tab's notification arrives first=%s", (eventFirst) => {
-  localStorage.clear(); window.dispatchEvent(new StorageEvent("storage", { key: null }));
-  let first!: ReturnType<typeof useLaunchChoice>;
-  function Display({ owner = false }: { owner?: boolean }) {
-    const choice = useLaunchChoice(); if (owner) first = choice;
-    return <span>{choice.selected.model}</span>;
-  }
-  render(<><Display owner /><Display /></>); expect(screen.getAllByText("a")).toHaveLength(2);
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "codex", values: { codex: { model: "b" } } }));
-  if (eventFirst) act(() => window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" })));
-  act(() => first.setSelected({ model: "b" }));
-  act(() => window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" })));
-  expect(screen.getAllByText("b")).toHaveLength(2);
+test.each([
+  ["an agent offering low starts on it", launchProfile("claude", { model: ["opus", "fable"], effort: ["medium", "high", "low"] }), { model: "opus", effort: "low" }],
+  ["an agent without low starts on its first effort", launchProfile("claude", { model: ["opus"], effort: ["high", "max"] }), { model: "opus", effort: "high" }],
+  ["a first model without effort starts on none", launchProfile("pi", { model: ["fixed", "live"], effort: ["high", "low"] }, ["effort"], { fixed: ["effort"] }), { model: "fixed" }],
+])("with nothing remembered, a new conversation starts on the first model and the lightest effort: %s", (_name, profile, start) => {
+  given.profiles = [profile];
+  let choice!: ReturnType<typeof useLaunchChoice>;
+  function Picker() { choice = useLaunchChoice(); return null; }
+  render(<Picker />);
+  expect(choice.send).toEqual(start);
 });
 
-test.each([true, false])("an input that rendered an intermediate model returns to the default after removal, initial event first=%s", (eventFirst) => {
-  localStorage.clear(); window.dispatchEvent(new StorageEvent("storage", { key: null }));
-  let first!: ReturnType<typeof useLaunchChoice>, bump!: () => void;
-  function First() {
-    const [, renderAgain] = useState(0); bump = () => renderAgain(n => n + 1);
-    first = useLaunchChoice(); return <span>{first.selected.model}</span>;
-  }
-  function Second() { return <span>{useLaunchChoice().selected.model}</span>; }
-  render(<><First /><Second /></>); expect(screen.getAllByText("a")).toHaveLength(2);
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "codex", values: { codex: { model: "b" } } }));
-  if (eventFirst) act(() => window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" })));
-  act(() => bump());
-  expect(screen.getAllByText("b")).toHaveLength(eventFirst ? 2 : 1);
-  localStorage.removeItem("alpacawork.launchChoice");
-  act(() => window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" })));
-  expect(screen.getAllByText("a")).toHaveLength(2); expect(first.selected).toEqual({ model: "a" });
+test("a choice made on another screen is where the next new conversation starts, with the agent last chosen", async () => {
+  given.profiles = [codex, pi];
+  given.memory = { agent: "pi", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } };
+  let choice!: ReturnType<typeof useLaunchChoice>;
+  function Picker() { choice = useLaunchChoice(); return null; }
+  render(<Picker />);
+  expect([choice.profile, choice.send]).toEqual(["pi", { model: "fixed-first" }]);
+  // Picking another agent keeps each agent's values and remembers the agent, on the server.
+  await act(async () => choice.chooseProfile("codex"));
+  expect(choice.send).toEqual({ model: "b" });
+  expect(stored()).toEqual({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
 });
 
-test("the picker offers each row's written values, shallow to deep, never a 'none' the settings did not write", () => {
+test("the picker offers each row's written values, shallow to deep, never a 'none' the settings did not write", async () => {
   given.profiles = [pi, grok];
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
   render(<Picker />);
-  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "high" });
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "low" });
   fireEvent.click(document.querySelector("[data-agent-picker]")!);
   const steps = () => [...document.querySelectorAll<HTMLInputElement>('input[name="agent-effort"]')].map(input => input.parentElement!.textContent);
   expect(steps()).toEqual(["low", "medium", "high"]);
   expect(screen.queryByRole("radio", { name: "None" })).toBeNull();
-  fireEvent.click(screen.getByRole("radio", { name: "low" }));
-  expect(stored().values.pi).toEqual({ model: "model-with-effort", effort: "low" });
-  expect(choice.send).toEqual({ model: "model-with-effort", effort: "low" });
+  fireEvent.click(screen.getByRole("radio", { name: "medium" }));
+  await act(async () => {});
+  expect(stored().values.pi).toEqual({ model: "model-with-effort", effort: "medium" });
+  expect(choice.send).toEqual({ model: "model-with-effort", effort: "medium" });
   // A fixed model has no effort: no row of steps, and no effort in what is kept and sent.
   fireEvent.click(screen.getByRole("radio", { name: /fixed-first/ }));
+  await act(async () => {});
   expect(steps()).toEqual([]);
   screen.getByText("agentPicker.notOffered");
   expect(choice.selected).toEqual({ model: "fixed-first" });
@@ -75,11 +75,11 @@ test("the picker offers each row's written values, shallow to deep, never a 'non
   expect(Object.hasOwn(stored().values.pi!, "effort")).toBe(false);
   expect(document.querySelector("[data-agent-picker]")!.getAttribute("aria-label")).not.toMatch(/low|high/);
   fireEvent.click(screen.getByRole("radio", { name: /grok-4\.7/ }));
-  expect(choice.selected).toEqual({ model: "grok-4.7", effort: "high", tier: "standard" });
+  expect(choice.selected).toEqual({ model: "grok-4.7", effort: "low", tier: "standard" });
   expect(steps()).toEqual(["low", "medium", "high", "xhigh"]);
   expect([...document.querySelectorAll<HTMLInputElement>('input[name="agent-tier"]')].map(input => input.parentElement!.textContent)).toEqual(["standard", "priority"]);
   fireEvent.click(screen.getByRole("radio", { name: /model-with-effort/ }));
-  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "high" });
+  expect(choice.selected).toEqual({ model: "model-with-effort", effort: "low" });
 });
 
 test.each([
@@ -88,10 +88,9 @@ test.each([
   [{ model: "model-with-effort", effort: "xhigh" }, { model: "model-with-effort", effort: "high" }],
   [{ model: "gone-model", effort: "low" }, { model: "model-with-effort", effort: "low" }],
   [{ model: "model-with-effort", effort: "low", tier: "old" }, { model: "model-with-effort", effort: "low" }],
-])("a choice saved on this device before, %o, is shown and sent as %o", (saved, shown) => {
+])("a choice remembered before, %o, is shown and sent as %o", (saved, shown) => {
   given.profiles = [pi];
-  localStorage.setItem("alpacawork.launchChoice", JSON.stringify({ agent: "pi", values: { pi: saved } }));
-  window.dispatchEvent(new StorageEvent("storage", { key: "alpacawork.launchChoice" }));
+  given.memory = { agent: "pi", values: { pi: saved } };
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
   render(<Picker />);

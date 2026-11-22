@@ -70,6 +70,20 @@ export function editDraftParam(row: ParamRowDraft, change: Partial<Pick<ParamRow
   const { written: _written, ...rest } = row;
   return { ...rest, ...change };
 }
+/**
+ * The values a row's placements start from, first the one a placement starts on when nothing names another (the
+ * contract's first candidate). None for a row that cannot be read, has no values, or starts on "none" (a written -).
+ */
+export function paramStartValues(row: ParamRowDraft): string[] {
+  let values: string[];
+  try { values = parseParamValues(row.values); } catch { return []; }
+  return values[0] === undefined || values[0] === '-' ? [] : values.filter(value => value !== '-');
+}
+/** The row with `value` moved to the front, the rest in their order: placements start on it. */
+export function withFirstParamValue(row: ParamRowDraft, value: string): ParamRowDraft {
+  const values = parseParamValues(row.values);
+  return editDraftParam(row, { values: [value, ...values.filter(each => each !== value)].join(', ') });
+}
 export function editDraftEnv(agent: AgentDraft, env: string[]): AgentDraft {
   const { envWritten: _written, ...rest } = agent;
   return { ...rest, env };

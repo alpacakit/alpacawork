@@ -38,7 +38,7 @@ import { getRequestListener } from '@hono/node-server';
 import { compress } from 'hono/compress';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
 import { cliCommands, type CliCommand } from '@alpacawork/contract/cli-commands';
-import { defaultSettings } from '@alpacawork/contract';
+import { defaultSettings, emptyLaunchMemory } from '@alpacawork/contract';
 import { ControlStore, keepControlChanges, keepControlTables, holdControlWriter, restoreControlWal } from '@alpacawork/db';
 import { INDEX_HEARTBEAT_MS, taskReportResultSchema, taskPlacementResultSchema, taskRequestResultSchema,
   taskWriteResultSchema, taskPlanResultSchema, type ControlTreeDTO } from '@alpacawork/contract/control';
@@ -88,7 +88,7 @@ import { installTaskFileRoutes, installAttachmentFileRoutes } from './file-route
 import { installCoordinatorRoutes } from './coordinator-routes.js';
 import { CoordinatorConversation } from '../coordinator/conversation.js';
 import { ReturnRouter } from '../control/return-router.js';
-import { createFirstRunState, createNoticeState, createPersonSettings, UNSAVED_SETTINGS } from './person-state.js';
+import { createFirstRunState, createLaunchMemory, createNoticeState, createPersonSettings, LAUNCH_MEMORY_FILE, UNSAVED_SETTINGS } from './person-state.js';
 import { FirstRunSkills } from '../installation/first-run-skills.js';
 import { resolveCaller, type CallerClaim } from '../control/credentials.js';
 import { authorize, reportTaskFacts, type Action, type Caller } from '../control/authorize.js';
@@ -366,6 +366,9 @@ export async function startServer(root: string, port: number, options: ServerOpt
   context.noticeState = noticeState;
   const firstRun = createFirstRunState(root);
   context.firstRun = firstRun;
+  // Republished at once on a save here; the file watcher covers an edit by hand.
+  const launchMemory = createLaunchMemory(root, () => republish('launch'));
+  context.launchMemory = launchMemory;
   const firstRunSkills = new FirstRunSkills({ locale: () => uiLocaleOrDefault(personSettings.values().language) });
   context.skills = firstRunSkills;
   /** The screens subscribed to the index. */
@@ -441,9 +444,14 @@ export async function startServer(root: string, port: number, options: ServerOpt
       coordinatorWork = coordinator.work(); coordinatorDirty = false;
     } catch (error) { console.error('Coordinator projection could not be read', error); }
     publishedPresence = presence.status(latestSettings);
-    return { notices, person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork,
+    // A damaged file starts new conversations from nothing remembered, says so, and refuses a change until repaired.
+    let remembered = emptyLaunchMemory, launchError: string | null = null;
+    try { remembered = launchMemory.get(); } catch (error) { launchError = (error as Error).message; }
+    return { notices, person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork, launchMemory: remembered,
       errors: [...fileFaults.values(), ...runReviews.issues, ...(settleError ? [{ code: PROBLEM_CODE.readFailed,
-        path: '.alpacawork/runs', message: settleError, reason: faultReason(new Error(settleError)) }] : [])] };
+        path: '.alpacawork/runs', message: settleError, reason: faultReason(new Error(settleError)) }] : []),
+      ...(launchError ? [{ code: PROBLEM_CODE.readFailed, path: `.alpacawork/${LAUNCH_MEMORY_FILE}`, message: launchError,
+        reason: faultReason(new Error(launchError)) }] : [])] };
   }
   function queuePushObservation() {
     if (observingPush || lifecycle.state !== 'accepting' || !settingsReadable || !pushPending.size) return;

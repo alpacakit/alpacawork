@@ -17,7 +17,7 @@ const validTask = new RegExp(`^${TASK_ID_PATTERN}$`);
 const taskPath = new RegExp(`^tasks/(${TASK_ID_PATTERN})(?:/|$)`);
 const personFiles = new Map([
   ['.alpacawork/personal-settings.json', 'settings'], ['.alpacawork/notice-state.json', 'notices'],
-  ['.alpacawork/coordinator-read.json', 'coordinator'],
+  ['.alpacawork/coordinator-read.json', 'coordinator'], ['.alpacawork/launch-memory.json', 'launch'],
 ]);
 const post = (message: FileWorkerMessage) => parentPort!.postMessage(message);
 const faultOf = (error: unknown, detail: { task?: string; path?: string } = {}): FileObservationFault => {

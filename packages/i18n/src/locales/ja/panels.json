@@ -85,11 +85,15 @@
     "resume": "会話の続き",
     "signedOut": "サインインしていません。端末で",
     "start": "新しい会話",
+    "taskDefault": {
+      "choose": "{{value}} を担当の既定にする",
+      "label": "担当の既定"
+    },
     "title": "エージェント",
     "unusedAdapter": "この種類では使えません",
     "unusedOptions": "起動オプションで使われていません",
     "useAgent": "{{name}} を有効にする",
-    "values": "値（カンマ区切り・先頭が最初に選ばれる）"
+    "values": "値（カンマ区切り）"
   },
   "archive": {
     "confirm": {

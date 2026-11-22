@@ -2,9 +2,9 @@ import { InvalidAgentSelection, offeredChoices, resolveOfferedSelection, Selecti
 import type { Selection } from "@alpacawork/contract/agent-settings";
 
 /**
- * Where a send's values start from. `new`: a launch with no conversation behind it; `hints` are this device's last
- * choices for the agent, a convenience that the config may have outgrown. `continue`: the conversation's previous
- * launch values (its Run's launch.values). Device hints never stand in for them.
+ * Where a send's values start from. `new`: a launch with no conversation behind it; `hints` are the person's last
+ * choices for the agent (coordinatorStart), a convenience that the config may have outgrown. `continue`: the
+ * conversation's previous launch values (its Run's launch.values). Hints never stand in for them.
  */
 export type SelectionBasis = { kind: "new"; hints: Readonly<Record<string, string | null>> }
   | { kind: "continue"; previous: Selection };
@@ -28,6 +28,15 @@ function offeredValues(offer: SelectionOffer, values: Readonly<Record<string, st
   return Object.fromEntries(Object.entries(values).filter(([key, value]) => choices.get(key)?.candidates.includes(value)));
 }
 
+/**
+ * Where a new coordinator conversation starts for one agent: the values the person last chose for it, and for a row
+ * never chosen, the lightest effort (`low`) when the agent offers it. Anything else not chosen is the first candidate,
+ * as for every launch; a hint the agent does not offer, or that the chosen model leaves out, drops (launchSelection).
+ */
+export function coordinatorStart(remembered: Readonly<Record<string, string | null>> | undefined): Record<string, string | null> {
+  return { effort: "low", ...remembered };
+}
+
 /** A kind's model candidates as the picker names them: written order, no "none". */
 export function modelCandidates(offer: SelectionOffer): string[] {
   return offeredChoices(offer).find(choice => choice.key === "model")?.candidates.filter((value): value is string => value !== null) ?? [];
@@ -49,7 +58,7 @@ function checkChanges(offer: SelectionOffer, changes: Readonly<Record<string, st
   return { chosen, unsettled };
 }
 
-/** The admission rule itself (contract), applied to what the screen knows; no second copy of its order. Device hints
+/** The admission rule itself (contract), applied to what the screen knows; no second copy of its order. Hints
  * that went stale fall back quietly (they were never chosen for this launch); the person's changes do not. */
 export function launchSelection(offer: SelectionOffer, basis: SelectionBasis, changes: Readonly<Record<string, string | null>> = {}): LaunchSelection {
   const { chosen, unsettled } = checkChanges(offer, changes);

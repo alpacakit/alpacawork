@@ -11,12 +11,12 @@ import { SettingRow } from '@/components/settings/SettingRow';
 import { AgentSettingsDisabled } from './agent-settings-editing';
 import { cn } from '@/lib/utils';
 import { AgentSettingsOptions } from './AgentSettingsOptions';
-import { AddAgentControl, AgentDefaultBadge, AgentDefaultMark, AgentExtraFields } from './AgentSettingsExtras';
+import { AddAgentControl, AgentDefaultBadge, AgentDefaultMark, AgentExtraFields, AgentStartValues } from './AgentSettingsExtras';
 import { AgentExecutableRow, AgentNoticeLine } from './AgentSettingsExecutable';
 import { agentDraftIssueText } from './agent-settings-issues';
 import { firstEnabledAgent, withFirstAgent } from './agent-settings-order';
 import { agentOptionsVersion } from './agent-options-version';
-import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, resetDraftParam, unusedParamReason, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
+import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, paramStartValues, resetDraftParam, unusedParamReason, withFirstParamValue, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
 
 export type AgentSettingsHandle = { focus: () => void };
 
@@ -54,6 +54,7 @@ function ParamRows({ agent, onChange, issues, nextId }: {
               aria-describedby={rowErrors(row, 'values') ? `${rowId}-values-error` : unused ? `${rowId}-unused` : undefined}
               value={row.values} onChange={event => update(editDraftParam(row, { values: event.target.value }))} />
             {rowErrors(row, 'values') && <FieldError id={`${rowId}-values-error`}>{rowErrors(row, 'values')}</FieldError>}
+            <AgentStartValues values={paramStartValues(row)} onChoose={value => update(withFirstParamValue(row, value))} />
             {unused && <FieldHint id={`${rowId}-unused`} className="mt-1">{t(unused === 'adapter' ? 'agentSettings.unusedAdapter' : 'agentSettings.unusedOptions')}</FieldHint>}
             {followable && <AgentDefaultMark isDefault={followsDefaultParam(agent, row)} name={row.key} field={`${rowId}-values`}
               onRestore={() => onChange(resetDraftParam(agent, row.id))} />}

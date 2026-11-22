@@ -68,7 +68,7 @@ test('activity updates list patches without aging the opened view, while batched
   const owner = new ProjectionOwner({ root: h.root, generation: 'activity-regression', log: journal,
     observations: { runFiles: run => run.id === 'R4' ? files : { activity: null, errorCause: undefined } },
     locations: () => ({}), published: () => {}, personal: async () => ({ notices: null,
-      person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null }) });
+      person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {} } }) });
   try {
     await owner.start();
     let before = owner.current!;

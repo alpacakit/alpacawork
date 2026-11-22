@@ -85,11 +85,15 @@
     "resume": "Al continuar una conversación",
     "signedOut": "Sin sesión iniciada. En una terminal, ejecuta",
     "start": "Conversación nueva",
+    "taskDefault": {
+      "choose": "Usar {{value}} como predeterminado para tareas",
+      "label": "Predeterminado para tareas"
+    },
     "title": "Agentes",
     "unusedAdapter": "No disponible para este adaptador",
     "unusedOptions": "No se usa en las opciones de inicio",
     "useAgent": "Activar {{name}}",
-    "values": "Valores (separados por comas; el primero viene preseleccionado)"
+    "values": "Valores (separados por comas)"
   },
   "archive": {
     "confirm": {

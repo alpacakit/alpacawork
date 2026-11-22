@@ -29,7 +29,7 @@ test('real patches preserve unrelated Run subscribers, but publish subtree Run c
   const project = () => ({ ...mapWorkspace(index, baseline), people, drawing: { root: index.root, restoredAt: null },
     info: { root: index.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, writable: index.writable,
       errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles, attachmentBytes: index.attachmentBytes, projects: index.projects,
-      presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, counts: index.counts, home: index.home } });
+      presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, launchMemory: index.launchMemory, counts: index.counts, home: index.home } });
   const store = createWorkspaceStore(project());
   const taskIds = ['T1', 'T11', 'T2'] as const;
   const calls: Record<typeof taskIds[number], number> = { T1: 0, T11: 0, T2: 0 };

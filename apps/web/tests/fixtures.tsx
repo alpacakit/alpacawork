@@ -359,7 +359,7 @@ export function indexOf(value: Served, rev = 1, requiredPv: Partial<RequiredPvDT
     projects: listed.map(project => ({ ...project, counts: menu(project.id) })),
     profiles: value.profiles, attachmentBytes: value.attachmentBytes,
     errors: value.errors, writable: value.writable, staleIds: [],
-    person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null,
+    person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {} },
     counts: { children: value.children ?? {},
       closed: Object.fromEntries(scopes.map(scope => [scope, { finished: listing(scope, "done"), freshFinished: 0,
         shelved: rows.filter(row => row.lifecycle !== "active" && within(scope, row.id)).length }])),
@@ -461,7 +461,7 @@ export function screenData(value: Served = tree(), baseline = baselines(value.ta
     people, seed, drawing: { root: value.root, restoredAt: null as number | null },
     info: { root: value.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, writable: value.writable,
       errors: value.errors, staleIds: [] as string[], runs: value.runs, profiles: value.profiles, attachmentBytes: value.attachmentBytes, projects: index.projects,
-      presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, counts: index.counts, home: index.home } };
+      presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, launchMemory: index.launchMemory, counts: index.counts, home: index.home } };
 }
 export function TestWorkspace({ children, data: provided }: { children: ReactNode; data?: ReturnType<typeof screenData> }) {
   const [initial] = useState(() => provided ?? screenData());
