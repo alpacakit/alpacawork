@@ -18,11 +18,11 @@ export function serverDraft(settings: ServerSettings): ServerDraft {
 }
 /**
  * The limits, the AI stack and Jev config/set writes beside the agents block; the YAML example shows the same text.
- * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. Without a stack row (setup's
- * save, or no agent enabled yet), the stack in config.yaml stays as it is.
+ * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. `aiStack` absent leaves the
+ * stack in config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
  */
 export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack'>>) {
-  return stringify({ limits: draft.limits, ...draft.aiStack?.length ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
+  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
     { lineWidth: 0, aliasDuplicateObjects: false });
 }
 /**

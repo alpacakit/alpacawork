@@ -27,7 +27,8 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback AI' }));
   expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   expect(document.activeElement).toBe(screen.getByLabelText('Model in row 2'));
-  expect(document.body.textContent).toContain('Same as row 1, so this row is never used.');
+  // It repeats row 1, and the row says so.
+  expect(document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')[1]!.dataset.repeats).toBe('1');
   fireEvent.change(screen.getByLabelText('Agent in row 2'), { target: { value: 'codex' } });
   fireEvent.change(screen.getByLabelText('Effort in row 2'), { target: { value: 'high' } });
   fireEvent.click(screen.getByRole('button', { name: 'Move row 2 up' }));
@@ -44,6 +45,8 @@ test('a row the agents no longer run is said on the row and keeps the stack from
   expect(issues.map(issue => issue.kind)).toEqual(['value', 'missing', 'disabled']);
   expect(stackIssues([], agents).map(issue => issue.kind)).toEqual(['empty']);
   render(<AiStack rows={rows} agents={agents} onChange={() => {}} />);
-  expect(document.body.textContent).toContain('Model “haiku” is not a value of claude');
-  expect(document.body.textContent).toContain('There is no agent named grok');
+  // Each row the agents no longer run is marked, with its reason under it.
+  const shown = [...document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')];
+  expect(shown.map(row => row.hasAttribute('data-invalid'))).toEqual([true, true]);
+  expect(shown.map(row => row.querySelectorAll('[data-slot="field-error"]').length)).toEqual([1, 1]);
 });

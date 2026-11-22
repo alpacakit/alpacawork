@@ -50,8 +50,9 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
         <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>
       </div>
+      {/* The input's AI follows the same order: said last, inside the box it refers to. */}
+      <p data-ai-stack-input className="m-0 border-t border-line px-4 py-3 text-sm text-muted narrow:px-3">{t('agentSettings.aiStack.coordinatorNote')}</p>
     </section>
-    <p className="text-sm text-muted">{t('agentSettings.aiStack.coordinatorNote')}</p>
   </div>;
 }
 
@@ -72,7 +73,7 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
   // One line on a PC: its number, its agent (the first marked as the default under it), two choices to a line in
   // columns, and its controls. On a phone the choices go under the agent and its controls, one to a line.
-  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length ? '' : undefined}
+  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-line px-4 py-3 narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className="flex min-h-control-md items-center justify-end font-mono tabular-nums text-muted">{n}</span>
     <div className="flex min-w-0 items-start gap-x-5 narrow:contents">

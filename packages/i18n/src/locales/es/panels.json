@@ -8,9 +8,9 @@
       "add": "+ Añadir una IA alternativa",
       "addFirst": "+ Añadir la IA de uso normal",
       "agentFor": "Agente de la fila {{n}}",
-      "agentsNote": "Un agente desactivado no se puede elegir en el orden de arriba. Si una fila aún lo usa, no se puede guardar hasta quitar la fila o volver a activarlo.",
+      "agentsNote": "Un agente desactivado no se puede usar en el orden de arriba.",
       "agentsTitle": "Ajustes de cada agente",
-      "coordinatorNote": "La IA con la que hablas en el cuadro de entrada empieza con el modelo que elegiste por última vez en su menú. Si se detiene, las alternativas siguen en el mismo orden de arriba.",
+      "coordinatorNote": "La IA con la que hablas en el cuadro de entrada empieza cada conversación nueva con el modelo que elegiste por última vez en su menú (la IA 1 hasta que elijas uno). Si se detiene por un límite de uso o de capacidad, las alternativas siguen en el orden de arriba.",
       "down": "Bajar la fila {{n}}",
       "first": "De uso normal",
       "issue": {
@@ -19,8 +19,8 @@
         "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
         "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
       },
-      "lead": "La IA que trabaja en las tareas. Normalmente funciona la IA 1. Solo si se detiene por un límite de uso o de capacidad, las alternativas 2, 3… siguen en orden; si también se detiene la última, el trabajo se detiene y se te avisa.",
-      "namedOnly": "Un modelo que no está aquí solo se usa cuando una solicitud lo nombra, nunca como alternativa.",
+      "lead": "Normalmente funciona la IA 1. Solo si se detiene por un límite de uso o de capacidad, las alternativas 2, 3… siguen en orden; si también se detiene la última, el trabajo se detiene y se te avisa.",
+      "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
       "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar la fila {{n}}",
       "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",

@@ -15,9 +15,9 @@ import { resources } from "@/data/resources";
 import { useTelemetry } from "@/features/telemetry/data";
 import { TelemetryDetailsLink } from "@/features/telemetry/TelemetryDetailsLink";
 import { forgetLaunchAgent } from "@/features/forms/launch-choice";
-import { readServerAgents, serverAgentsYaml } from "@/features/panels/server-agent-draft";
-import { configYaml } from "@/features/panels/settings-draft";
-import { agentDisplayName, canWork, chosenAgents, firstAgentOf, startAgents, usableAgents, type AgentSwitches, type StartAgent } from "./rules";
+import { readServerAgents } from "@/features/panels/server-agent-draft";
+import { setupSave } from "./save";
+import { agentDisplayName, canWork, firstAgentOf, startAgents, usableAgents, type AgentSwitches, type StartAgent } from "./rules";
 import { FailureLine, Loading, StepButtons } from "./parts";
 
 type Failure = { at: "agents" | "consent" | "check"; detail: string } | null;
@@ -84,11 +84,10 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     setBusy(true); setFailure(null);
     try {
       if (drafts && loaded) {
-        const chosen = chosenAgents(drafts.agents, rows, on, first);
-        if (chosen) {
-          const yaml = serverAgentsYaml({ agents: { ok: true, value: { ...drafts, agents: chosen } } });
-          if (!yaml.ok) throw new Error("Invalid agent settings");
-          try { await save.mutateAsync({ yaml: configYaml({ limits: loaded.limits }), agents: yaml.value, expected: loaded.hash! }); }
+        // The agents and the AI stack together: the first AI chosen here is row 1 of the stack the settings show.
+        const saving = setupSave(loaded, drafts, rows, on, first);
+        if (saving) {
+          try { await save.mutateAsync({ yaml: saving.config, agents: saving.agents, expected: loaded.hash! }); }
           catch (error) { fail("agents", error); void settings.refetch(); return; }
         }
         // The agent chosen here is where the next request starts, whatever was picked before on any device. Unsaved,

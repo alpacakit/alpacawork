@@ -33,6 +33,12 @@ import { configYaml, serverDraft, type ServerDraft } from "./settings-draft";
 
 
 type ConfigPayload = { yaml: string; agents: string; expected: string };
+/** The tab writes its stack rows; with none (no agent enabled yet) it leaves the stack in config.yaml as it is. */
+const stackKept = (draft: ServerDraft): ServerDraft | Omit<ServerDraft, 'aiStack'> => {
+  if (draft.aiStack.length) return draft;
+  const { aiStack: _none, ...rest } = draft;
+  return rest;
+};
 
 /** The first row of the AI stack that keeps a save back: brought into view, its control to fix focused. */
 function focusStackIssue() {
@@ -70,7 +76,7 @@ export function ServerSettingsTab() {
         unfold('agents');
         return false;
       }
-      const config = { yaml: configYaml(valid), agents: agents.value, expected: base.hash };
+      const config = { yaml: configYaml(stackKept(valid)), agents: agents.value, expected: base.hash };
       const saving = intent.submit(() => config, send);
       if (saving === undefined) return false;
       const saved = await saving;
@@ -252,6 +258,6 @@ function ServerYamlExample({ draft }: { draft: ServerDraft }) {
   const agents = open ? serverAgentsYaml(draft) : undefined;
   return <details className="mt-6 text-base" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <DisclosureSummary className="gap-x-2 text-sm text-muted hover:text-ink"><Caret open={open} />{t('settings.server.yamlExample')}</DisclosureSummary>
-    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(draft)}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
+    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(stackKept(draft))}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
   </details>;
 }
