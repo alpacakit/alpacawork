@@ -10,6 +10,9 @@ import { object, resultFile, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
 import type { AgentAdapter, InputProtocol } from './types.js';
 
+// Non-tool items do not attest to external work. Unknown item kinds with a lifecycle require a completion.
+const codexTextItems = new Set(['agent_message', 'agent_configuration', 'reasoning', 'plan']);
+
 export const bridgeInput: InputProtocol = {
   encode: (id, text): BridgeInstruction => ({ id, text }),
   receipt(value) {
@@ -66,7 +69,11 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
         if (!session && row.type === 'thread.started' && typeof row.thread_id === 'string' && row.thread_id) session = row.thread_id;
         if (row.type === 'thread.started' && row.thread_id !== session) invalid = true;
         if (!session || row.thread_id != null && row.thread_id !== session) return;
-        tools.observe(bridgeActivity(row, ''));
+        if (id === 'codex' && (row.type === 'item.started' || row.type === 'item.completed')) {
+          const item = object(row.item);
+          if (!codexTextItems.has(String(item.type)))
+            tools.observe([{ kind: row.type === 'item.started' ? 'tool_start' : 'tool_end', id: item.id }]);
+        }
         if (row.type === 'turn.started') { ended = null; usage = null; }
         if (row.type === 'turn.failed') { ended = 'failed'; usage = null; }
         if (row.type === 'turn.completed') {

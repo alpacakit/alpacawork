@@ -12,7 +12,7 @@ export class ToolResults {
   private readonly pending = new Set<string>();
   private unknown = false;
 
-  observe(events: readonly ActivityEvent[]): void {
+  observe(events: readonly Pick<ActivityEvent, 'id' | 'kind'>[]): void {
     for (const { id, kind } of events) {
       if (kind === 'tool_start') {
         if (typeof id !== 'string' || this.pending.has(id)) this.unknown = true;

@@ -146,9 +146,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   const { tree, placements, allRuns, actualRun, receivedBy, causesByRun } = context;
   const choices = (run: ControlRunDTO | undefined) => run ? { modelId: run.modelId, effort: run.effort } : {};
   const roleOf = (run: ControlRunDTO) => tree.historyFacts.runRoles[run.id] ?? tree.historyFacts.placementRoles[run.placementId] ?? 'owner';
-  const continued = new Set([...allRuns.values()].flatMap(run => run.supersededBy ? [run.supersededBy] : []));
-  const profileOf = (placement: HistoryPlacement, run: ControlRunDTO | undefined) =>
-    run && (run.supersededBy || continued.has(run.id)) ? run.agent : placement.profileKey;
+  const profileOf = (placement: HistoryPlacement, run: ControlRunDTO | undefined) => run?.agent ?? placement.profileKey;
   /** The Coordinator Run that took a screen message, as a record's Coordinator end. */
   const coordinatorOf = (message: string | null | undefined) => {
     const run = message ? tree.historyFacts.coordinatorRuns[message] : undefined;

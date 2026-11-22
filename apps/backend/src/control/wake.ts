@@ -14,7 +14,7 @@ import type { RunId } from '@alpacawork/contract/fields';
 import { compareRunIds, type ReadRunRecord, type RunState } from '@alpacawork/contract/run';
 import type { TaskLifecycle, TaskState, TaskBaseState } from '@alpacawork/raw';
 import type { TaskDecisionFacts } from './routing-facts.js';
-import { automaticIndex, type AutomaticIndex, type ReadRunSnapshot, type RunTransaction, type StoredPlacement, type StoredRequest,
+import { automaticIndex, compareRequestOrder, type AutomaticIndex, type ReadRunSnapshot, type RunTransaction, type StoredPlacement, type StoredRequest,
   type StoredReturn } from '@alpacawork/runs';
 import type { AgentsSettingsResult } from '../agents-settings.js';
 import { TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
@@ -88,12 +88,17 @@ export interface SeatSource {
 }
 
 /**
- * The seat's latest owner Run out of a placement's conversation (its Runs but those of aborted Requests, in Run-number
- * order), as the scheduler's gate reads the Run before a queued one: a worker Run the placement ran before it became
- * the responsible is not the seat's turn. Null before its first.
+ * The seat's latest owner Run in request order, with the current attempt of each request. A worker Run the placement
+ * ran before it became the responsible is not the seat's turn.
  */
-export const ownerHead = <Run extends ReadRunRecord>(conversation: readonly Run[]): Run | null =>
-  conversation.filter(run => run.role === 'owner' && run.state !== 'joined').at(-1) ?? null;
+export function ownerHead<Run extends ReadRunRecord>(conversation: readonly Run[]): Run | null {
+  let head: Run | null = null;
+  for (const run of conversation) {
+    if (run.role !== 'owner' || run.state === 'joined' || run.supersededBy !== undefined) continue;
+    if (!head || (compareRequestOrder(run, head) || compareRunIds(run, head)) > 0) head = run;
+  }
+  return head;
+}
 
 /**
  * The seat's owner Run before `run` in its placement's conversation (ownerHead of the Runs before it), as seatFailed
@@ -101,7 +106,7 @@ export const ownerHead = <Run extends ReadRunRecord>(conversation: readonly Run[
  * scheduler's gate and ReturnLifecycle's withdrawal of failed continuations call it.
  */
 export function seatRunBefore(conversation: readonly ReadRunRecord[], run: ReadRunRecord): SeatRun | null {
-  const prior = ownerHead(conversation.filter(other => other.supersededBy === undefined && compareRunIds(other, run) < 0));
+  const prior = ownerHead(conversation.filter(other => compareRequestOrder(other, run) < 0));
   return prior && { state: prior.state, intoState: null };
 }
 
