@@ -4,9 +4,9 @@ Los pasos para instalar alpacawork, pedirle una tarea a la IA y revisar el resul
 
 ## Antes de empezar
 
-- Tu PC tiene macOS (Apple silicon), Linux (x64) o Windows (WSL2). En Windows, lee primero [Usarlo en Windows](manage.md#usarlo-en-windows).
+- Necesitas un PC con macOS (Apple silicon), Linux (x64) o Windows (WSL2). En Windows, lee primero [Usarlo en Windows](manage.md#usarlo-en-windows).
 - Ten Claude Code o Codex listo para usar en este PC.
-- La IA modifica archivos sin pedir confirmación. Se ejecuta con los permisos de tu usuario del PC, así que también llega fuera de la carpeta en la que trabaja.
+- La IA modifica archivos sin pedir confirmación. Se ejecuta con los permisos de tu usuario del PC, así que también puede tocar archivos fuera de la carpeta en la que trabaja.
 
 ## 1. Instalar
 

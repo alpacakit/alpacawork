@@ -1,6 +1,6 @@
 # Adaptarlo a tu trabajo
 
-Cómo decidir los proyectos, la política y las IA que usas. Todos los ajustes de esta página los cambia la IA si se lo pides en el cuadro de texto (solo iniciar sesión en la IA y las claves de API las haces tú).
+Cómo decidir los proyectos, la política y las IA que usas. Todos los ajustes de esta página los cambia la IA si se lo pides en el cuadro de texto (solo el inicio de sesión en la IA y las claves de API tienes que hacerlos tú).
 
 ## Usarlo con un repositorio existente
 
@@ -29,7 +29,7 @@ Lo que dejo en tus manos: decide sin preguntar cómo trabajar, las pruebas y la 
 Lo que no debes hacer: hacer push a GitHub o publicar sin aprobación
 ```
 
-La política es un compromiso de la IA, no un mecanismo que se lo impida. Si quieres limitar lo que la IA puede tocar, usa un PC o un usuario del sistema operativo aparte para el trabajo.
+La política es algo que la IA se compromete a cumplir, no un mecanismo que la frene. Si quieres limitar lo que la IA puede tocar, usa un PC o un usuario del sistema operativo aparte para el trabajo.
 
 ## Las IA que usas
 
@@ -60,4 +60,4 @@ No escribas las claves en el cuadro de texto ni en la pantalla; escríbelas tú 
 
 ## Cuántas se ejecutan a la vez
 
-Al principio se ejecutan hasta 8 IA a la vez. Si gastas demasiado de tu límite de uso, reduce “Máximo de ejecuciones simultáneas” en “Configuración (el engranaje) → Servidor” → “Opciones avanzadas” y pulsa “Guardar”.
+Al principio se ejecutan hasta 8 IA a la vez. Si consumes demasiado de tu cuota de uso, reduce “Máximo de ejecuciones simultáneas” en “Configuración (el engranaje) → Servidor” → “Opciones avanzadas” y pulsa “Guardar”.

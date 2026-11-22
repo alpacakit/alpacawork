@@ -68,7 +68,7 @@ Qué hacer según el motivo está en [Solución de problemas](troubleshooting.md
 ## Pausar y detener
 
 - Pausar: úsalo cuando no quieras decidir ahora. Abre la tarea y elige “Cambiar estado” → “En pausa” → “Actualizar”. La IA que esté trabajando no se detiene.
-- Detener: hace que se deje el trabajo. “Cambiar estado” → “Detenida” → “Actualizar”. Las tareas de debajo también se detienen.
+- Detener: hace que se deje el trabajo. “Cambiar estado” → “Detenida” → “Actualizar”. Sus subtareas también se detienen.
 
 Para sacar una tarea de la pausa, elige adónde vuelve en el mismo “Cambiar estado”. Si quieres retomar una tarea detenida, pídelo en el cuadro de texto.
 

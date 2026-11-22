@@ -77,12 +77,12 @@ Corrige la causa que aparece y vuelve a ejecutar el mismo comando: sigue desde d
 
 - `requires Node >=24.16.0`: instala Node.js 24 y vuelve a ejecutarlo.
 - `command not found`: vuelve a abrir la terminal.
-- Errores de escritura, `does not run as root`: ejecútalo sin `sudo`, con un Node.js instalado con nvm u otro gestor similar.
+- Errores al escribir archivos, `does not run as root`: ejecútalo sin `sudo`, con un Node.js instalado con nvm u otro gestor similar.
 - `User service manager is unavailable`: en WSL2, [activa systemd](manage.md#usarlo-en-windows).
 
-Si aparece otro mensaje, pega el texto tal cual en la IA y consúltale.
+Si aparece otro mensaje, pégale a la IA el texto tal cual y pregúntale.
 
-## Qué pasar a la IA al consultarle
+## Qué darle a la IA cuando le consultes
 
 Inicia Claude Code o Codex en una terminal, llama a la skill de alpacawork (`/alpacawork` o `$alpacawork`) y pásale lo siguiente.
 

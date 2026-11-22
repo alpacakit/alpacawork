@@ -4,7 +4,7 @@
 
 La URL de la pantalla (con la forma `http://127.0.0.1:43127/`) no cambia aunque cierres el navegador o reinicies el PC. Guárdala en marcadores o, en Chrome o Edge, instálala como app con “Instalar”, en el extremo derecho de la barra de direcciones.
 
-Si olvidaste la URL, ejecuta `alpacawork open` en una terminal y la pantalla se abrirá en el navegador. Donde no se puede abrir un navegador, como en un PC al que te conectas por SSH, muestra la URL y cómo abrirla.
+Si olvidaste la URL, ejecuta `alpacawork open` en una terminal y la pantalla se abrirá en el navegador. Donde no se puede abrir un navegador, como en un PC al que te conectas por SSH, el comando muestra la URL y cómo abrirla.
 
 ## Usarlo en Windows
 
@@ -61,7 +61,7 @@ npm uninstall -g alpacawork
 
 Ejecuta el segundo cuando haya terminado el primero. Si lo haces al revés, ya no podrás volver a ejecutar el primero.
 
-La carpeta de datos (`~/alpacawork`) se queda. Si no la necesitas, bórrala tú. Los archivos de configuración y de claves de API, y las skills que instaló alpacawork, se eliminan.
+La carpeta de datos (`~/alpacawork`) se conserva. Si no la necesitas, bórrala tú. Los archivos de configuración y de claves de API, y las skills que instaló alpacawork, se eliminan.
 
 ## Dónde se guardan los datos y qué se envía fuera
 

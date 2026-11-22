@@ -46,7 +46,7 @@ En lugar de buscar una opción en la configuración, pídelo con una frase norma
 - “Cuando esté hecho, haz que lo compruebe un modelo distinto del que lo hizo”
 - “La IA a cargo parece confundida; cámbiala por una IA nueva y sigue”
 
-Lo que quieras siempre, escríbelo en la [política del proyecto](projects.md#política-del-proyecto). La política es un compromiso de la IA, no un mecanismo que se lo impida.
+Lo que quieras siempre, escríbelo en la [política del proyecto](projects.md#política-del-proyecto). La política es algo que la IA se compromete a cumplir, no un mecanismo que la frene.
 
 Los `AGENTS.md`, `CLAUDE.md`, skills y MCP que ya usas siguen funcionando tal cual.
 

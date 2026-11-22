@@ -13,7 +13,7 @@ El PC y el teléfono se conectan por VPN. Aquí se usa [Tailscale](https://tails
 
 <img src="../images/phone-setup.png" alt="“Use from your phone” en “App & phone” de la configuración, con tres pasos y un código QR" width="560">
 
-La pantalla no tiene inicio de sesión. Conecta a la VPN solo tus propios dispositivos y no uses opciones que la publiquen en internet (como Tailscale Funnel). Si pierdes un dispositivo, quítalo de la VPN.
+La pantalla no tiene inicio de sesión. Conecta a la VPN solo tus propios dispositivos y no uses opciones que publiquen alpacawork en internet (como Tailscale Funnel). Si pierdes un dispositivo, quítalo de la VPN.
 
 Para indicar qué corregir, lo más rápido es marcarlo en una captura de pantalla, pegarla en el cuadro de texto y añadir las palabras con el dictado por voz.
 
@@ -26,7 +26,7 @@ Cuando es tu turno (una pregunta, un informe o una IA detenida), te llega una no
 
 En iPhone, hazlo abriendo la pantalla desde el icono que añadiste a la pantalla de inicio.
 
-Mientras usas alpacawork no llegan. Empiezan a llegar 30 segundos después de cambiar a otra app, o 5 minutos después de dejar de usar la pantalla abierta.
+Mientras usas alpacawork no llegan. Empiezan a llegar 30 segundos después de cambiar a otra app, o 5 minutos después de dejar de usarla, aunque la pantalla siga abierta.
 
 ## Silenciar las notificaciones
 

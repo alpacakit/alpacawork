@@ -58,7 +58,7 @@ Ambos se muestran en formato JSON. Los comandos `alpacawork telemetry` solo func
 - Pantalla: usa “Eliminar datos enviados”, debajo del interruptor de datos de uso al final de Configuración → Servidor. Funciona incluso después de dejar de enviar. Lo que aún no se ha enviado desde el PC también se elimina.
 - Página de eliminación: escribe el ID de este PC en <https://alpacakit-telemetry.alpacakit.workers.dev/delete>. Úsala cuando no puedas abrir la pantalla de alpacawork o para eliminar los datos de un PC que ya no usas. El ID aparece en la pantalla que abre “Eliminar datos enviados” o como `id` en `alpacawork telemetry status`.
 
-Se eliminan los informes enviados con ese ID y el registro de ese ID (los días del primer y del último envío). No se puede eliminar de los recuentos que no distinguen entre PC (como el número de operaciones o de equipos por día).
+Se eliminan los informes enviados con ese ID y el registro de ese ID (los días del primer y del último envío). Los datos no se pueden eliminar de los recuentos que no distinguen entre PC (como el número de operaciones o de equipos por día).
 
 Eliminar no detiene el envío. Si sigues enviando, los datos nuevos se envían con el mismo ID. La página de eliminación no borra lo que está en el PC, así que, si ese PC sigue enviando, primero deja de enviar y después elimina. Si no, lo que aún no se ha enviado se enviará más adelante.
 

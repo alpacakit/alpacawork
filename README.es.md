@@ -72,7 +72,7 @@ Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de ins
 ## Documentación
 
 - [Primeros pasos](docs/es/getting-started.md): instalar, pedir una tarea y revisarla
-- [Índice de la documentación](docs/es/README.md): cómo usarlo, la configuración, la solución de problemas y la lista de todas las páginas
+- [Índice de la documentación](docs/es/README.md): la lista de todas las páginas: cómo usarlo, la configuración, la solución de problemas y más
 - Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
 
 ## Licencia

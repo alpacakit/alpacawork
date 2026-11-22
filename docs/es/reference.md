@@ -17,7 +17,7 @@ Una página para consultar qué significan las palabras que ves en la pantalla. 
 | Término | Significado |
 | --- | --- |
 | En curso | La IA está trabajando |
-| Por revisar | Es tu turno. Ha llegado una pregunta o un informe |
+| Por revisar | Es tu turno. Ha llegado una pregunta o un informe. También aparece como el estado de una tarea cuyo informe espera tu revisión |
 | Requiere atención | Es tu turno. La ejecución de la IA se detuvo |
 | En espera | Espera otras respuestas. No es tu turno |
 | Sin iniciar | Aún no ha empezado |
@@ -70,6 +70,6 @@ Se ejecutan en una terminal (en Windows, dentro de Ubuntu). Los demás comandos 
 | `alpacawork status` | Mostrar si está en marcha y la URL de la pantalla |
 | `alpacawork workspace url` | Mostrar la URL de la pantalla |
 | `alpacawork deploy npm:alpacawork` | Actualizar a la última versión |
-| `alpacawork uninstall` | Quitarlo de este PC. La carpeta de datos se queda |
+| `alpacawork uninstall` | Quitarlo de este PC. La carpeta de datos se conserva |
 | `alpacawork --version` | Mostrar la versión instalada |
 | `alpacawork telemetry off` | Dejar de enviar los datos de uso |
