@@ -26,7 +26,19 @@ alpacawork setup
 
 ## 2. Open the screen
 
-When the install finishes, the screen opens in your browser. If it didn't, run `alpacawork open` in a terminal, or open the URL printed at the end, such as `http://127.0.0.1:43127/`, in your browser.
+When the install finishes, the screen opens in your browser. If it didn't, or you closed it later, ask Claude Code or Codex like this. The AI opens the screen in your browser or tells you its URL.
+
+```text
+/alpacawork open the screen
+```
+
+In Codex, write `$alpacawork` instead of `/alpacawork`. From a terminal, this command opens it too.
+
+```sh
+alpacawork open
+```
+
+You can also open the URL setup printed at the end, such as `http://127.0.0.1:43127/`, in your browser.
 
 This URL stays the same even after you restart the PC. Bookmark it. alpacawork starts by itself when you log in to the PC, so you don't need to start it each time.
 
