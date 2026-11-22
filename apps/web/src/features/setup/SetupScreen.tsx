@@ -61,8 +61,10 @@ function Setup() {
     <div key={step} className="animate-welcome">
       {/* Beside the settings the column is narrow: a step down keeps a short name such as "First project" on one line. */}
       <h1 className="m-0 mt-8 text-display font-semibold [word-break:auto-phrase] min-[60rem]:text-[1.875rem] narrow:mt-6">{{ display: t("display.title"), agents: t("agents.title"), skills: t("skills.title"), project: t("project.title") }[step]}</h1>
-      {/* Phrase breaks with lines of even length: filled line by line, the narrow column left a run of short lines. */}
-      <p className="m-0 mt-3 text-md text-muted text-balance [word-break:auto-phrase]">{lead}</p>
+      {/* Phrase breaks with lines of even length: filled line by line, the narrow column left a run of short lines. A
+          phrase longer than the line still breaks inside it: the column's width (the settings take 37rem) avoids that beside
+          the settings, and a phone, whose full-width lines are long enough, fills them instead of narrowing them to balance. */}
+      <p className="m-0 mt-3 text-md text-muted text-balance [word-break:auto-phrase] narrow:text-wrap">{lead}</p>
     </div>
   </>}>
     {step === "display" && <DisplayStep onNext={() => go("agents")} />}
@@ -103,7 +105,7 @@ function Frame({ aside, children }: { aside?: ReactNode; children: ReactNode }) 
       <span className="inline-flex items-center gap-2 text-lg font-semibold">
         <img src={logo} alt="" className="size-7 rounded-full" />alpacawork</span>
     </header>
-    <main className="mx-auto grid w-full max-w-272 grid-cols-[minmax(16rem,1fr)_minmax(0,40rem)] items-start gap-16 px-8 pt-12 pb-16 max-[60rem]:grid-cols-1 max-[60rem]:gap-6 narrow:px-4 narrow:pt-4">
+    <main className="mx-auto grid w-full max-w-272 grid-cols-[minmax(16rem,1fr)_minmax(0,37rem)] items-start gap-16 px-8 pt-12 pb-16 max-[60rem]:grid-cols-1 max-[60rem]:gap-6 narrow:px-4 narrow:pt-4">
       <div className="min-w-0">{aside}</div>
       <section className="min-w-0 rounded-pane border-hairline border-lit-line bg-lit p-7 narrow:p-5">{children}</section>
     </main>

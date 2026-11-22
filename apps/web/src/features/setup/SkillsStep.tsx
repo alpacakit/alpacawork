@@ -49,22 +49,23 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
         const done = installed(offer.name);
         const item = job?.items.find(each => each.name === offer.name);
         return <li key={offer.name} data-setup-skill={offer.name} className="border-b border-line">
-          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
+          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
             <input type="checkbox" checked={done || ticked.has(offer.name)} disabled={done || installing || !selectable(offer.name)}
               onChange={event => toggle(offer.name, event.target.checked)} className="mt-0.75 size-4.5 cursor-pointer accent-ink disabled:cursor-default" />
             {/* What it changes, then how, then which skill and where it comes from: the name means little before it is used. */}
             <span className="min-w-0">
-              <span className="block font-semibold">{t(`skills.items.${offer.name}.title`)}</span>
-              <span className="mt-0.5 block text-sm text-muted text-pretty">
-                {t(`skills.items.${offer.name}.what`)}{offer.cost && <> {t(`skills.items.${offer.name}.cost`)}</>}</span>
+              {/* The state sits on the heading's line only, so the lines under it keep the row's width; where the heading
+                  leaves no room for it (a phone), it drops under the heading rather than squeeze it. */}
+              <span className="flex flex-wrap items-baseline gap-x-3">
+                <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
+                {done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
+                  : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null}
+              </span>
+              <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>
               <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-soft">
                 <code className="font-mono text-muted [overflow-wrap:anywhere]">{offer.name}</code>
-                <span>{offer.from.kind === "repo" ? t("skills.from.repo", { repo: offer.from.repo }) : t("skills.from.bundled")}</span>
+                <span className="[word-break:auto-phrase]">{offer.from.kind === "repo" ? t("skills.from.repo", { repo: offer.from.repo }) : t("skills.from.bundled")}</span>
               </span>
-            </span>
-            <span className="w-28 text-right text-sm whitespace-nowrap narrow:w-auto">
-              {done ? <span className="text-done">{t("skills.installed")}</span>
-                : item?.state === "installing" && installing ? <span className="text-muted">{t("skills.installing")}</span> : null}
             </span>
           </label>
           {/* Under the row's words, outside its label: a failure is read, not part of what the checkbox names. */}
@@ -75,7 +76,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
         </li>;
       })}
     </ul>
-    <p className="mt-4 mb-0 text-sm text-muted [overflow-wrap:anywhere]">{t("skills.where", { place: skills.data!.place })}</p>
+    <p className="mt-4 mb-0 text-sm text-muted [overflow-wrap:anywhere] [word-break:auto-phrase]">{t("skills.where", { place: skills.data!.place })}</p>
     <StepButtons back={{ onClick: onBack, disabled: installing }}
       failure={install.phase === "failed" ? <FailureLine text={t("skills.failedRequest")} detail={problemText(install.error)} /> : null}
       other={toInstall.length ? <Button variant="outline" data-setup-skip disabled={installing} className="min-h-11 narrow:w-full" onClick={onNext}>{t("skills.skip")}</Button> : null}>

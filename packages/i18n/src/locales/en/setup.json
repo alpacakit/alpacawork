@@ -9,10 +9,10 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "Default agent",
-    "firstHint": "Requests go to this one unless you pick another when you send.",
-    "found": "Installed (sign-in not checked)",
+    "firstHint": "The one already selected when you send a request. You can change it for each request.",
+    "found": "Installed. Works if it is signed in",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
-    "lead": "alpacawork has the AI agents on this PC, such as Claude Code and Codex, do the work. Only the ones you enable are used.",
+    "lead": "alpacawork hands your work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable can be chosen to do it.",
     "missing": "The {{command}} command was not found. Install it to use this agent",
     "noneOn": "Enable at least one agent.",
     "noneOnTitle": "No agent is enabled",
@@ -48,7 +48,7 @@
     }
   },
   "display": {
-    "lead": "Choose the language and colors for the alpacawork screen. You can change both later in Settings.",
+    "lead": "Choose the language and colors for the alpacawork screen.",
     "title": "Language and theme"
   },
   "language": "Display language",
@@ -58,11 +58,11 @@
     "failed": "Couldn't finish setup. Try again.",
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
-    "lead": "A project is a folder you have AI work in, plus the rules for working there (the project policy). Choose its name and working folder.",
-    "policyNote": "Instructions given to every AI working in this project. The AI changes files without asking you first, so write here what it should ask you about first. The example already filled in is fine to start with.",
+    "lead": "A project is a folder where AI does the work, together with the rules for working there (the project policy). Choose its name and working folder.",
+    "policyNote": "This is given to every AI working in this project. The AI changes files without asking you first, so write here what it should ask you about first (the example already here is fine to start with).",
     "policySkillLine": "- {{skill}}: use {{when}}.",
     "policySkills": "## Skills to use",
-    "policyStart": "## Project purpose\n- Let the user learn how to use alpacawork by trying it out.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
+    "policyStart": "## About this project\n- The code and documents in the working folder are what this project is about. Follow the rules already there (README, AGENTS.md and the like) and the way things are written.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
     "reread": "Load the latest",
     "title": "First project"
   },
@@ -81,9 +81,8 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "cost": "This takes more time and tokens.",
         "title": "Another AI checks the work",
-        "what": "Before you are asked to review, another AI checks the result and it is fixed.",
+        "what": "Before you are asked to review, another AI checks the result and fixes what it finds. This takes more time and tokens.",
         "when": "when planning, when asking for a review, and when receiving findings"
       },
       "askmeclearly": {
@@ -97,7 +96,7 @@
         "when": "before asking the user, and before making a choice with large consequences"
       }
     },
-    "lead": "A skill is an extra set of instructions that changes how the AI works. alpacawork works without them too.",
+    "lead": "A skill is an extra set of instructions that changes how the AI works. These are published by the makers of alpacawork.",
     "reason": {
       "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
       "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",

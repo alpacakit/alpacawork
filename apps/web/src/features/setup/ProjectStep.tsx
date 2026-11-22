@@ -79,7 +79,7 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
         <ProjectNameRow />
         <ProjectLocationRow project={project} projects={projects} rootHint={path => t("project.cwdHint", { path })} />
         <div className="mt-8" />
-        <ProjectPolicySection project={project} projects={projects} note={t("project.policyNote")} />
+        <ProjectPolicySection project={project} projects={projects} note={t("project.policyNote")} agentsMdNote={false} />
       </fieldset>
       <FormError form={form} onReread={unproven ? undefined : reread} rereadLabel={t("project.reread")} />
       {unconfirmed && <SaveUnconfirmed unproven={unproven} onReread={() => void reread()} />}
