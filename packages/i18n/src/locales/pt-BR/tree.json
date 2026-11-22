@@ -2,11 +2,8 @@
   "guide": {
     "close": "Encerrar o guia",
     "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
-    "more": "Próximo",
-    "name": "Primeiros passos",
     "next": "Entendi",
     "openSteps": "Abrir os passos",
-    "progress": "{{step}}/3",
     "reopen": "Desfazer",
     "say": {
       "accept": "Leia o relatório. Se ele gerou arquivos, abra-os em “{{files}}”, acima, para conferir. Se estiver bom, toque neste botão ({{finish}}) e a tarefa termina.",
@@ -19,28 +16,12 @@
       "question": "É a sua vez. Toque nesta linha para abrir o detalhe e responda à pergunta.",
       "received": "O coordenador (a IA que recebe seus pedidos) já tem seu pedido. Uma tarefa vai aparecer em breve. Toque aqui para abrir a conversa e lê-la.",
       "result": "Chegou um relatório. Toque nesta linha e confira no detalhe.",
-      "send": "Agora envie um pedido. Escreva aqui ou escolha um dos exemplos acima.",
+      "send": "Esta é a única caixa de entrada. Quando há uma etiqueta à esquerda, ela é o destino da mensagem.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie. Isso vira uma tarefa na lista.",
-      "sendReady": "Já está na caixa. Envie com este botão.",
-      "tourCoordinator": "O que você envia vai para o coordenador, a IA que recebe seus pedidos. Ele transforma cada um em uma tarefa e a entrega a uma IA. Toque aqui para abrir sua conversa com ele.",
-      "tourInput": "Esta caixa é onde você escreve: os pedidos e as respostas às perguntas são enviados daqui. Quando há uma etiqueta à esquerda, o projeto ou a tarefa que ela indica é o destino da mensagem.",
+      "sendReady": "Quando terminar de escrever, envie com este botão.",
+      "stop": "Para parar a IA, escolha “{{stop}}” aqui.",
       "unassigned": "A tarefa desta linha ainda não tem uma IA responsável, então não começou. Abra a linha e envie pela caixa abaixo o que você quer que seja feito para ela começar.",
       "working": "Seu pedido aparece aqui como uma tarefa, uma linha para cada. Daqui em diante a IA cuida dela e, quando chegar uma pergunta ou um relatório para você, ela vai para “{{section}}”."
-    },
-    "stepDone": "Feito:",
-    "steps": {
-      "send": {
-        "detail": "Escreva na caixa abaixo e envie. Ou escolha um exemplo.",
-        "title": "Envie um pedido"
-      },
-      "turn": {
-        "detail": "Toque na linha de uma tarefa que tenha uma pergunta ou um relatório para você e o detalhe dela se abre. Ali você responde à pergunta ou confere o que foi feito.",
-        "title": "Sua vez"
-      },
-      "work": {
-        "detail": "As respostas não aparecem aqui mesmo. Seu pedido vira uma tarefa em uma lista que ocupa este lugar, e uma IA trabalha nela.",
-        "title": "A IA trabalha nele"
-      }
     }
   },
   "home": {
@@ -160,35 +141,12 @@
     "yourTurn": "Sua vez"
   },
   "welcome": {
-    "examples": {
-      "decide": {
-        "label": "Escolher uma ideia de minijogo e mandar criar",
-        "shows": "A IA compara ideias e faz uma pergunta a você. Sua resposta dá início à criação.",
-        "words": "Quero fazer um minijogo que eu possa jogar no navegador. Transforme isso em uma tarefa: liste 3 ideias e me pergunte qual criar, com uma tabela comparativa e a sua recomendação na pergunta. Depois que eu responder, crie a que eu escolhi em cerca de 5 minutos, sem perguntar mais nada, e me envie o relatório. Isto é um tutorial, então pegue leve no esforço: priorize a velocidade, não pense demais e faça sem complicar. Por favor, escreva tudo em português."
-      },
-      "folder": {
-        "label": "Ler esta pasta e sugerir o que delegar em seguida",
-        "shows": "Resume o que há no local do código e pergunta por qual trabalho começar. Ao escolher, você recebe um relatório de como fazê-lo. Não altera nada.",
-        "words": "Transforme isto em uma tarefa e entregue a uma IA. Leia o que há no local do código {{path}} e resuma em três linhas do que se trata o projeto. Depois, sugira três trabalhos que eu poderia delegar em seguida e me pergunte por qual começar. Quando eu escolher, resuma em um relatório como fazer esse trabalho (quais arquivos mudar e como) e termine com uma linha sobre como pedir que ele seja feito. Não altere nenhum arquivo dentro deste pedido. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
-      },
-      "models": {
-        "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",
-        "shows": "Modelos diferentes criam em paralelo, e depois você escolhe com qual ficar.",
-        "words": "Quero fazer um jogo da cobrinha. Você pode tentar criar 3 em paralelo, com modelos diferentes? Quando ficarem prontos, me pergunte com qual seguir. Isto é um tutorial, então, por favor, pegue leve no esforço e leve cerca de 5 minutos. Por favor, escreva tudo em português."
-      },
-      "settings": {
-        "label": "Definir uma regra de trabalho e quantos agentes trabalham ao mesmo tempo",
-        "shows": "Uma regra entra na política do projeto e no máximo 4 agentes trabalham ao mesmo tempo.",
-        "words": "Adicione esta regra à política deste projeto: \"Ao terminar, resuma o que você mudou em 3 linhas ou menos\". Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
-      }
+    "lead": "Diferente de um chat, as respostas não aparecem aqui na hora.",
+    "picture": {
+      "listed": "Elas entram na lista. Sua vez chega em “{{section}}”",
+      "send": "Você envia um pedido",
+      "split": "A IA da recepção transforma em tarefas e coloca uma IA em cada"
     },
-    "folder": {
-      "ask": "Escolha o repositório ou a pasta que vai usar e salve.",
-      "at": "Local do código: {{path}}",
-      "choose": "Escolher o local do código",
-      "none": "Para usar no seu próprio repositório, escolha essa pasta como o local do código do projeto."
-    },
-    "lead": "Envie o que você quer que seja feito. A IA transforma isso em tarefas, trabalha nelas e só as coloca em “{{section}}” quando sua decisão é necessária.",
     "title": "Boas-vindas ao alpacawork"
   }
 }

@@ -5,14 +5,11 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
-import { useNarrow } from "@/state/view-store";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { PARTS, STEPS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
+import { PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
-
-const STEP_NUMBERS = [1, 2, 3] as const;
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -30,40 +27,6 @@ function CloseGuide({ className }: { className?: string }) {
   </Button>;
 }
 
-/**
- * On an empty scope's welcome, how using alpacawork goes, in three numbered steps (send a request, AI works on it,
- * your turn), the step the guide is at (its entry's `step`) stressed and the ones behind it checked. On a phone only the
- * current step keeps its line of detail, so the examples under it stay on the first screen.
- */
-export function GuideSteps({ stage }: { stage: GoingStage }) {
-  const { t } = useTranslation("tree");
-  const narrow = useNarrow();
-  const entry = useGuide(stage);
-  if (!entry) return null;
-  const current = entry.step ?? 4;
-  const tt = t as TFunction;
-  return <div data-guide-steps={current} className="relative mt-5 rounded-lg border-hairline border-rule px-4 pt-2 pb-2.5 narrow:mt-4 narrow:px-3">
-    <p className="m-0 mb-1.5 text-xs font-medium text-muted">{t("guide.name")}</p>
-    <div className="absolute top-1 right-1"><CloseGuide /></div>
-    <ol className="m-0 flex list-none flex-col gap-1 p-0">
-      {STEP_NUMBERS.map(at => {
-        const now = at === current, done = at < current;
-        return <li key={at} data-guide-step={at} aria-current={now ? "step" : undefined} className="flex items-start gap-3">
-          <span aria-hidden="true" className={cn("mt-px flex size-5 flex-none items-center justify-center rounded-full text-xs tabular-nums",
-            now ? "bg-ink font-semibold text-bg" : done ? "bg-lit text-muted" : "border-hairline border-line text-soft")}>
-            {done ? <Icon name="check" className="size-3" /> : at}
-          </span>
-          <span className="flex min-w-0 flex-col [word-break:auto-phrase]">
-            <span className={cn("text-base", now ? "font-semibold text-ink" : "text-muted")}>
-              {done && <span className="sr-only">{t("guide.stepDone")} </span>}{STEPS[at].title(tt)}</span>
-            {(now || !narrow) && <span className={cn("text-sm text-pretty", now ? "text-muted" : "text-soft")}>{STEPS[at].detail(tt)}</span>}
-          </span>
-        </li>;
-      })}
-    </ol>
-  </div>;
-}
-
 type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
@@ -72,8 +35,8 @@ const ACROSS: Record<GuideSide, GuideSide[]> = { top: ["right", "left"], bottom:
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), Math.max(low, high));
 
 /**
- * Where a balloon of `size` stands in a view of `view`, pointing at `target`: outside `by` (the target itself, or a
- * part holding it that the balloon stands clear of), on the side asked for if it fits there, else the opposite one,
+ * Where a balloon of `size` stands in a view of `view`, pointing at `target`: outside `by` (the target itself, or the
+ * box round it and the parts the balloon stands clear of), on the side asked for if it fits there, else the opposite one,
  * else either side across; lined up with the target as `align` says, kept inside the view whatever happens, its arrow
  * on the target's middle. With no room on any side of `by` (a detail taking the whole screen), it stands by the target
  * alone: never pushed back over the very part it points at.
@@ -123,6 +86,11 @@ const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
   return { left: box.left, top: box.top, width: box.width, height: box.height };
 };
+/** The smallest box round all of `boxes`. */
+const around = (boxes: Box[]): Box => {
+  const left = Math.min(...boxes.map(box => box.left)), top = Math.min(...boxes.map(box => box.top));
+  return { left, top, width: Math.max(...boxes.map(box => box.left + box.width)) - left, height: Math.max(...boxes.map(box => box.top + box.height)) - top };
+};
 const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a && !!b && a.x === b.x && a.y === b.y && a.side === b.side && a.arrow === b.arrow
   && a.target.left === b.target.left && a.target.top === b.target.top && a.target.width === b.target.width && a.target.height === b.target.height;
 
@@ -145,7 +113,6 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
   useGuideStage(stage, entry);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
-  const clear = entry?.clear ? PARTS[entry.clear] : null;
   const balloon = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
   useLayoutEffect(() => {
@@ -156,10 +123,13 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const update = () => {
       const target = shownPart(part);
       const own = balloon.current?.getBoundingClientRect();
-      // The part stood clear of is the one holding the part pointed at, never another of its kind elsewhere on the page.
-      const holder = target && clear ? target.closest(clear) : null;
+      // Each part stood clear of is the one holding the part pointed at, else the one of its kind seen beside it.
+      const clear = target ? (entry.clear ?? []).flatMap(name => {
+        const element = target.closest(PARTS[name]) ?? shownPart(PARTS[name]);
+        return element ? [boxOf(element)] : [];
+      }) : [];
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
-        entry.align, holder ? boxOf(holder) : undefined) : null;
+        entry.align, clear.length ? around([boxOf(target), ...clear]) : undefined) : null;
       if (!same(last, next)) { last = next; setPlaced(next); }
     };
     update();
@@ -169,13 +139,13 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     addEventListener("resize", update);
     addEventListener("scroll", update, true);
     return () => { clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true); };
-  }, [part, clear, entry?.id, entry?.side, entry?.align]);
+  }, [part, entry?.id, entry?.side, entry?.align]);
   if (!entry || !part) return null;
   return createPortal(<>
     {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-(--layer-guide) rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"
       style={{ left: placed.target.left, top: placed.target.top, width: placed.target.width, height: placed.target.height }} />}
     <div ref={balloon} data-guide-balloon={entry.id} data-guide-side={placed?.side}
-      className={cn("pointer-events-none fixed z-(--layer-guide) w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
+      className={cn("pointer-events-none fixed z-(--layer-guide) w-max max-w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
       style={placed ? { left: placed.x, top: placed.y } : { left: 0, top: 0 }}>
       <BalloonBody entry={entry} placed={placed} />
     </div>
@@ -193,41 +163,14 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
   return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
-    <div className="flex items-start gap-2">
-      <BalloonHead step={entry.step} />
+    <div className="flex items-start gap-1">
+      <p className="m-0 flex-1 py-1.5 text-sm text-pretty [word-break:auto-phrase] narrow:py-2.5">{entry.say(t as TFunction)}</p>
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
-    <p className="m-0 pr-2 text-sm text-pretty [word-break:auto-phrase]">{entry.say(t as TFunction)}</p>
     {(entry.next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
         onClick={() => { read(); entry.action!.run(); }}>{entry.action.label(t as TFunction)}</Button>}
-      {entry.next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{entry.more ? t("guide.more") : t("guide.next")}</Button>}
+      {entry.next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}
     </div>}
   </div>;
-}
-
-/**
- * Every balloon's head: the guide's name and its three steps by name, the current one stressed and those behind it
- * checked, so wherever it is the whole of it can be read; on a phone, the current step alone with how far along it is.
- */
-function BalloonHead({ step }: { step: GuideEntry["step"] }) {
-  const { t } = useTranslation("tree");
-  const narrow = useNarrow();
-  const tt = t as TFunction;
-  if (narrow) return <p className="m-0 flex-1 pt-2 text-xs opacity-80">
-    <span className="font-medium">{t("guide.name")}</span>
-    {step && <><span className="ml-1.5 tabular-nums">{t("guide.progress", { step })}</span><span className="ml-1.5 font-semibold opacity-100">{STEPS[step].title(tt)}</span></>}
-  </p>;
-  return <ol aria-label={t("guide.name")} className="m-0 flex flex-1 list-none flex-wrap items-center gap-x-1.5 gap-y-0.5 p-0 pt-2 text-xs">
-    <li aria-hidden="true" className="mr-1 font-medium opacity-80">{t("guide.name")}</li>
-    {STEP_NUMBERS.map(at => {
-      const now = at === step, done = step === null || at < step;
-      return <li key={at} aria-current={now ? "step" : undefined} className={cn("flex items-center gap-1.5", now ? "font-semibold" : "opacity-65")}>
-        {at > 1 && <span aria-hidden="true" className="opacity-60">›</span>}
-        <span aria-hidden="true" className={cn("flex size-4 items-center justify-center rounded-full text-micro tabular-nums", now ? "bg-bg text-ink" : "border border-bg/50")}>
-          {done ? <Icon name="check" className="size-2.5" /> : at}</span>
-        {done && <span className="sr-only">{t("guide.stepDone")}</span>}{STEPS[at].title(tt)}
-      </li>;
-    })}
-  </ol>;
 }

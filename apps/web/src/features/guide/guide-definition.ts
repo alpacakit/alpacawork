@@ -12,17 +12,16 @@ import type { GuideStage } from "./guide-state";
  * - `id`: its name (also what "Got it" remembers);
  * - `when`: the facts under which it holds; the first entry from the top that holds is the one shown;
  * - `part`, `side` and `align`: the part it points at (a name from PARTS), the side of that part its balloon stands on,
- *   and where along that side (middle unless said); without a part it has no balloon (the welcome's steps say it);
- * - `clear`: a part holding the one pointed at, whose whole the balloon stands clear of (what is read there stays read);
- * - `step`: which of the three STEPS it belongs to (1 send, 2 AI works, 3 your turn), shown in every balloon's head
- *   and as the welcome's current step; null for a step past the three;
- * - `next`: it waits for "Got it" before the guide goes on (put away once read); `more` with it: another step follows
- *   straight after, so its button says "Next";
+ *   and where along that side (middle unless said);
+ * - `clear`: parts the balloon stands clear of, whole (what is read there stays read): the one holding the part pointed
+ *   at, or one standing beside it (the first of its kind seen);
+ * - `turn`: it is the person's turn (a question or a report awaits them); once one holds, the guide is past sending;
+ * - `next`: it waits for "Got it" before the guide goes on (put away once read);
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
  * - `settle`: what putting the step away also settles elsewhere (a pointer that says the same thing, say);
  * - `say`: its words, by its key, written out so the extractor reads it.
- * Nothing else names a step: the balloon, the welcome and the stored stage read them from here.
+ * Nothing else names a step: the balloon and the stored stage read them from here.
  */
 
 /**
@@ -55,6 +54,8 @@ export const PARTS = {
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
   project: "[data-project-trigger]",
+  /** Change state in the detail, where a Task (and the AI on it) is stopped. */
+  taskState: "[data-task-state]:not(:disabled)",
   /** The settings' button at the top right. */
   settings: '[data-guide-part="settings"]',
 } as const;
@@ -87,13 +88,11 @@ export type GuideFacts = {
   busy: boolean;
   /** An answer the person sent to a question still open is with the coordinator (about to send, or being worked on). */
   answered: boolean;
-  /** The list's place is an empty scope's welcome (its three steps say where the guide is). */
-  welcome: boolean;
   /** The input holds something to send; and, among it, an answer to the Task open in the detail. */
   drafting: boolean; answerDrafted: boolean;
-  /** The Task open in the detail, when it is the person's turn on it. */
-  open: "question" | "result" | null;
-  /** A phone's width, where a balloon takes most of the screen across. */
+  /** The Task open in the detail: the person's turn on it (a question, or anything else), or being worked on. */
+  open: "question" | "result" | "working" | null;
+  /** A phone's width. */
   narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen, not in the installed app). */
   apps: boolean;
@@ -105,86 +104,67 @@ export type GuideEntry = {
   id: string;
   when: (facts: GuideFacts) => boolean;
   part?: GuidePart;
-  clear?: GuidePart;
+  clear?: readonly GuidePart[];
   side?: GuideSide;
   align?: GuideAlign;
-  step: 1 | 2 | 3 | null;
+  turn?: boolean;
   next?: boolean;
-  more?: boolean;
   action?: { label: (t: TFunction) => string; run: () => void };
   settle?: () => void;
   say: (t: TFunction) => string;
 };
 
-/** The three steps the guide walks through: their names (said in every balloon's head) and what each is about. */
-export const STEPS = {
-  1: { title: (t: TFunction) => t("tree:guide.steps.send.title"),
-    detail: (t: TFunction) => t("tree:guide.steps.send.detail") },
-  2: { title: (t: TFunction) => t("tree:guide.steps.work.title"), detail: (t: TFunction) => t("tree:guide.steps.work.detail") },
-  3: { title: (t: TFunction) => t("tree:guide.steps.turn.title"), detail: (t: TFunction) => t("tree:guide.steps.turn.detail") },
-} as const;
-
 const turnSection = (t: TFunction) => t("tree:home.turn");
-/** Before anything is sent or written, on a screen wide enough for a balloon: the parts are shown first, one by one. */
-const touring = (f: GuideFacts, id: string) => f.stage.stage === "started" && !f.sent && !f.drafting && !f.narrow && !f.seen.has(id);
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 
 export const GUIDE: readonly GuideEntry[] = [
-  // The person's turn, from the most immediate: an answer ready to send, one sent and on its way, then what is open.
-  { id: "answer-ready", step: 3, part: "send", clear: "foot", side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
+  // What is open in the detail comes first, from the most immediate: an answer ready to send, one sent and on its way,
+  // then the person's turn on what is open, or where the AI on it is stopped; then the rows awaiting the person.
+  { id: "answer-ready", turn: true, part: "send", clear: ["foot"], side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
     say: t => t("tree:guide.say.answerReady") },
-  { id: "answered", step: 3, part: "coordinator", side: "top", when: f => f.answered,
+  { id: "answered", turn: true, part: "coordinator", side: "top", when: f => f.answered,
     say: t => t("tree:guide.say.answered") },
-  { id: "answer", step: 3, part: "asked", clear: "detail", side: "left", align: "start", when: f => f.open === "question",
+  { id: "answer", turn: true, part: "asked", clear: ["detail"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
-  { id: "accept", step: 3, part: "finish", side: "top", align: "end", when: f => f.open === "result",
+  { id: "accept", turn: true, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },
-  { id: "question", step: 3, part: "questionRow", side: "bottom", when: f => f.questions > 0,
+  // A Task being worked on, open in the detail: where the AI on it is stopped, once.
+  { id: "stop", part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working" && !f.seen.has("stop"),
+    say: t => t("tree:guide.say.stop", { stop: t("forms:reportForm.stopTitle") }) },
+  { id: "question", turn: true, part: "questionRow", side: "bottom", when: f => f.questions > 0,
     say: t => t("tree:guide.say.question") },
-  { id: "result", step: 3, part: "resultRow", side: "bottom", when: f => f.results > 0,
+  { id: "result", turn: true, part: "resultRow", side: "bottom", when: f => f.results > 0,
     say: t => t("tree:guide.say.result") },
-  // First, the parts a request passes through, on any screen (they are always there): the input with the label that
-  // says where a message goes, then the coordinator. Read one by one, or passed over by starting to write.
-  { id: "tour-input", step: 1, part: "input", side: "top", align: "end", next: true, more: true, when: f => touring(f, "tour-input"),
-    say: t => t("tree:guide.say.tourInput") },
-  { id: "tour-coordinator", step: 1, part: "coordinator", side: "top", align: "start", next: true, more: true, when: f => touring(f, "tour-coordinator"),
-    say: t => t("tree:guide.say.tourCoordinator") },
   // A Task made with no AI on it waits for the person: nothing there is the AI's yet.
-  { id: "unassigned", step: 1, part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
+  { id: "unassigned", part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
     say: t => t("tree:guide.say.unassigned") },
-  { id: "working", step: 2, part: "workingRow", side: "bottom", when: f => f.working > 0,
+  { id: "working", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // A request sent and the coordinator still on it, with no Task for it yet (on a phone's welcome, its steps say it: a
-  // balloon there would stand over the examples). Answered without one, the guide goes back to sending a request.
-  { id: "received-welcome-narrow", step: 2, when: f => f.sent && f.busy && f.welcome && f.narrow,
-    say: t => t("tree:guide.say.received") },
-  { id: "received", step: 2, part: "coordinator", side: "top", when: f => f.sent && f.busy,
+  // A request sent and the coordinator still on it, with no Task for it yet. Answered without one, the guide goes back
+  // to sending a request.
+  { id: "received", part: "coordinator", side: "top", when: f => f.sent && f.busy,
     say: t => t("tree:guide.say.received") },
   // Once the person has had their turn and nothing is left to bring them a report, the guide closes.
-  { id: "end", align: "end", step: null, part: "input", side: "top", next: true, when: f => f.stage.stage === "turn" && !f.seen.has("end"),
+  { id: "end", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", next: true, when: f => f.stage.stage === "turn" && !f.seen.has("end"),
     say: t => t("tree:guide.say.end") },
   // After the end: where another repository is taken on.
-  { id: "another-repository", step: null, part: "project", side: "right", align: "start", next: true,
+  { id: "another-repository", part: "project", side: "right", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   // Last, once: alpacawork as an installed app and from a phone, where settings hold the steps. Read here, the first
   // screen's pointer to the same steps is done with.
-  { id: "apps", step: null, part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
+  { id: "apps", part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
     when: f => f.stage.stage === "turn" && f.apps && !f.narrow && !f.seen.has("apps"),
     say: t => t("tree:guide.say.apps", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
-  // Before any turn, on a phone's welcome, its steps say it all, words in the input or not: a balloon there would stand
-  // over the examples...
-  { id: "send-welcome-narrow", step: 1, when: f => f.stage.stage === "started" && f.welcome && f.narrow,
-    say: t => t("tree:guide.say.send") },
-  // ...elsewhere, words in the input wait to be sent...
-  { id: "send-ready", step: 1, part: "send", clear: "foot", side: "top", align: "end", when: f => f.stage.stage === "started" && f.drafting,
+  // Before any turn, words in the input wait to be sent...
+  { id: "send-ready", part: "send", clear: ["foot", "coordinator"], side: "top", align: "end", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
-  // ...or a request is to be written, from the empty welcome with its examples above...
-  { id: "send", align: "end", step: 1, part: "input", side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
+  // ...or, from the empty welcome with its picture of how work goes above, the one input there is and where it sends...
+  { id: "send", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
     say: t => t("tree:guide.say.send") },
   // ...or, shown again from settings, over a list with nothing going on.
-  { id: "send-again", align: "end", step: 1, part: "input", side: "top", when: f => f.stage.stage === "started",
+  { id: "send-again", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", when: f => f.stage.stage === "started",
     say: t => t("tree:guide.say.sendAgain") },
 ];
 
@@ -198,10 +178,10 @@ export const guideEntry = (facts: GuideFacts): GuideEntry | null => GUIDE.find(e
 export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: number) => stage === null && welcome && tasks === 0;
 
 /**
- * The stage to store as a guide going on moves: the person's turn once a step of the third holds; over once no step
- * holds. Undefined: nothing to store.
+ * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; over once no
+ * step holds. Undefined: nothing to store.
  */
 export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null): GuideStage | undefined {
   if (!entry) return { stage: "done" };
-  return stage.stage === "started" && entry.step === 3 ? { stage: "turn", seen: stage.seen } : undefined;
+  return stage.stage === "started" && entry.turn ? { stage: "turn", seen: stage.seen } : undefined;
 }

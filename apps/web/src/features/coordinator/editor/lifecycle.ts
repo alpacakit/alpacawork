@@ -83,13 +83,12 @@ export const withLine = (values: Values, line: Document['content'][number]) => (
   ({ type: 'doc', content: composing(values) ? [...current.content, line] : [line] });
 /**
  * An example the person picked. With nothing of theirs in the draft it stays prepared, so the next example takes its
- * place; its project counts as seen, so the screen's next look at that project does not seed over it. After their own
- * words it is one more line of theirs.
+ * place. After their own words it is one more line of theirs.
  */
-export function offered(values: Values, line: Document['content'][number], project: Seed | null): Values | null {
+export function offered(values: Values, line: Document['content'][number]): Values | null {
   if (composing(values) && !emptied(values)) return edited(values, withLine(values, line))?.values ?? null;
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
-  return { ...rest, phase: 'prepared', doc: JSON.stringify({ type: 'doc', content: [line] }), ...project ? { seenProject: project.id } : {} };
+  return { ...rest, phase: 'prepared', doc: JSON.stringify({ type: 'doc', content: [line] }) };
 }
 /** Local submission prepares the visible next input; the outbox still retains the original body until admission. */
 export const submitted = (values: Values, requestId: string): Values => ({ ...values, phase: 'prepared', requestId });

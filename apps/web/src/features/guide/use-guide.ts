@@ -60,8 +60,9 @@ export function useGuideStart() {
 
 /**
  * The step of a guide going on (guide-definition.ts), from what the screen already holds: the Tasks in the workspace,
- * its rows awaiting the person (a question, or a report) and those still worked on (and whether an AI is on them), what the coordinator has from the
- * person (coordinatorFacts), what the input holds, and whether the Task open in the detail is the person's turn. Only
+ * its rows awaiting the person (a question, or a report) and those still worked on (and whether an AI is on them), what
+ * the coordinator has from the person (coordinatorFacts), what the input holds, and whether the Task open in the detail
+ * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
 export function useGuide(stage: GoingStage): GuideEntry | null {
@@ -69,7 +70,6 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
-  const welcome = useListPlace() === "welcome";
   const selected = useViewStore((state) => state.reader.open ? state.selected : null);
   // The rows awaiting the person, the questions they ask, and which of them is open in the detail: read from the list's
   // own rows, so the guide never says to open a row that is open already.
@@ -88,6 +88,8 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   }
   const working = (home?.doing ?? 0) + (home?.todo ?? 0) + (home?.awaited ?? 0);
   const opened = selected ? index.byId.get(selected) : undefined;
+  // Open in the detail and not the person's turn: being worked on, where the AI on it can be stopped.
+  if (!open && opened?.state === "doing") open = "working";
   // What the coordinator has from the person: sent from here and not in its conversation yet (its grace, "about to
   // send", included), and the conversation's own messages.
   const root = useConversation(state => state.root);
@@ -105,7 +107,7 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const apps = useAppGuideHere();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, welcome, drafting, answerDrafted, open, narrow, apps, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, drafting, answerDrafted, open, narrow, apps, seen };
   return guideEntry(facts);
 }
 

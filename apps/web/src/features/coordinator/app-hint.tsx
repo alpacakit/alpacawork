@@ -44,7 +44,7 @@ function AppHintPicture() {
 }
 
 /**
- * Under the first screen's examples (the empty project's welcome, or a first conversation's opening), a picture of a
+ * Under the first screen (the empty project's welcome, or a first conversation's examples), a picture of a
  * computer's window and a phone with a title and one line of detail beside it: it opens the settings' guide to using
  * alpacawork from a phone or as an installed app, which nothing else on the first screen points to. The picture is
  * what makes it seen among the examples' words; it has no frame or fill until hovered, so it does not read as one more

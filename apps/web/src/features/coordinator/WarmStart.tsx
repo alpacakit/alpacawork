@@ -34,8 +34,8 @@ function Said({ warm, said, className }: { warm: Warm; said: string; className?:
   </div>;
 }
 /**
- * A conversation with no message yet: how far the coordinator has got ready and examples to start from,
- * as the empty list's (Welcome): a heading and the examples on their own surface (ExampleList), in a column in the middle of the
+ * A conversation with no message yet: how far the coordinator has got ready and examples to start from: a heading and
+ * the examples on their own surface (ExampleList), in a column in the middle of the
  * conversation both ways, so a cleared conversation is never a small line in its corner. The rows only fill the input;
  * the person sends. Failed to start, it says so in the same place and offers no examples. The examples are the same
  * whatever the list shows: the conversation opens over the list, so it never leaves them to the list. Under the
@@ -51,7 +51,7 @@ export function WarmStart({ warm }: { warm: Warm }) {
     <div className="w-[min(100%,26rem)]">
       <Said warm={warm} said={said} className="mb-3" />
       {warm !== "failed" && <>
-        <ExampleList examples={examples} mark="data-warm-example" onPick={words => exampleInDraft(words, null)} />
+        <ExampleList examples={examples} onPick={words => exampleInDraft(words)} />
         <AppHint />
       </>}
     </div>

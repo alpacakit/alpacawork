@@ -2,11 +2,8 @@
   "guide": {
     "close": "Terminar la guía",
     "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}}, en «{{guide}}».",
-    "more": "Siguiente",
-    "name": "Primeros pasos",
     "next": "Entendido",
     "openSteps": "Abrir los pasos",
-    "progress": "{{step}}/3",
     "reopen": "Deshacer",
     "say": {
       "accept": "Lee el informe. Si generó archivos, ábrelos desde «{{files}}», arriba, para revisarlos. Si está bien, pulsa este botón ({{finish}}) y la tarea termina.",
@@ -19,28 +16,12 @@
       "question": "Es tu turno. Pulsa esta fila para abrir su detalle y responde la pregunta.",
       "received": "El coordinador (la IA que recibe tus peticiones) ya tiene tu petición. Pronto aparecerá una tarea. Pulsa aquí para abrir la conversación y leerla.",
       "result": "Hay un informe. Pulsa esta fila y revísalo en su detalle.",
-      "send": "Ahora envía una petición. Escríbela aquí o elige uno de los ejemplos de arriba.",
+      "send": "Este es el único cuadro de entrada. Cuando hay una etiqueta a su izquierda, esa es el destino del mensaje.",
       "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo. Se convierte en una tarea de la lista.",
-      "sendReady": "Ya está en el cuadro. Envíalo con este botón.",
-      "tourCoordinator": "Lo que envías llega al coordinador, la IA que recibe tus peticiones. Convierte cada una en una tarea y se la encarga a una IA. Pulsa aquí para abrir tu conversación con él.",
-      "tourInput": "En este cuadro es donde escribes: desde aquí se envían tanto las peticiones como las respuestas a las preguntas. Cuando hay una etiqueta a su izquierda, el proyecto o la tarea que nombra es el destino del mensaje.",
+      "sendReady": "Cuando lo tengas escrito, envíalo con este botón.",
+      "stop": "Para detener la IA, elige «{{stop}}» aquí.",
       "unassigned": "La tarea de esta fila aún no tiene una IA asignada, así que no ha empezado. Abre la fila y envía desde el cuadro de abajo lo que quieres que se haga para que empiece.",
       "working": "Tu petición aparece aquí como una tarea, una fila por cada una. A partir de aquí la lleva la IA y, cuando llegue una pregunta o un informe para ti, pasará a «{{section}}»."
-    },
-    "stepDone": "Hecho:",
-    "steps": {
-      "send": {
-        "detail": "Escríbela en el cuadro de abajo y envíala. O elige un ejemplo.",
-        "title": "Envía una petición"
-      },
-      "turn": {
-        "detail": "Pulsa la fila de una tarea que tenga una pregunta o un informe para ti y se abrirá su detalle. Allí respondes la pregunta o revisas lo que se hizo.",
-        "title": "Tu turno"
-      },
-      "work": {
-        "detail": "Las respuestas no aparecen aquí mismo. Tu petición se convierte en una tarea de una lista que ocupa este lugar, y una IA trabaja en ella.",
-        "title": "La IA trabaja en ella"
-      }
     }
   },
   "home": {
@@ -160,35 +141,12 @@
     "yourTurn": "Tu turno"
   },
   "welcome": {
-    "examples": {
-      "decide": {
-        "label": "Elige una idea de minijuego y pide que lo creen",
-        "shows": "La IA compara ideas y te hace una pregunta. Con tu respuesta empieza la creación.",
-        "words": "Quiero crear un minijuego para jugar en el navegador. Conviértelo en una tarea: propón 3 ideas y pregúntame cuál crear, con una tabla comparativa y tu recomendación en la pregunta. Cuando responda, crea el que elegí en unos 5 minutos sin preguntar nada más y envíame un informe. Es un tutorial, así que mantén un esfuerzo ligero: prioriza la rapidez, no lo pienses demasiado y no te compliques. Escribe todo en español, por favor."
-      },
-      "folder": {
-        "label": "Leer esta carpeta y proponer qué encargar después",
-        "shows": "Resume lo que hay en la ubicación del código y te pregunta por cuál trabajo empezar. Al elegir, recibes un informe de cómo hacerlo. No cambia nada.",
-        "words": "Conviértelo en una tarea y encárgasela a una IA. Lee lo que hay en la ubicación del código {{path}} y resume en tres líneas de qué trata el proyecto. Después, propón tres trabajos que podría encargar a continuación y pregúntame por cuál empezar. Cuando elija, resume en un informe cómo hacer ese trabajo (qué archivos cambiar y cómo) y termina con una línea sobre cómo pedir que se haga. No cambies ningún archivo dentro de esta petición. Es una prueba, así que mantén un esfuerzo ligero. Escribe todo en español, por favor."
-      },
-      "models": {
-        "label": "Pide a 3 modelos un juego de la serpiente y elige uno",
-        "shows": "Modelos distintos lo crean en paralelo y tú eliges con cuál quedarte.",
-        "words": "Quiero crear un juego de la serpiente. ¿Podrías probar a crear 3 en paralelo con modelos distintos? Cuando estén listos, pregúntame con cuál me quedo. Es un tutorial, así que mantén un esfuerzo ligero y que tarde unos 5 minutos. Escribe todo en español, por favor."
-      },
-      "settings": {
-        "label": "Fijar una regla de trabajo y cuántos agentes trabajan a la vez",
-        "shows": "Se añade una regla a la política del proyecto y trabajan como máximo 4 agentes a la vez.",
-        "words": "Añade esta regla a la política de este proyecto: \"Al terminar, resume lo que cambiaste en 3 líneas o menos\". Además, configura este entorno para que trabajen como máximo 4 agentes a la vez. Escribe todo en español, por favor."
-      }
+    "lead": "A diferencia de un chat, las respuestas no aparecen aquí al momento.",
+    "picture": {
+      "listed": "Se ponen en la lista. Tu turno llega a «{{section}}»",
+      "send": "Envías una petición",
+      "split": "La IA de recepción la convierte en tareas y asigna una IA a cada una"
     },
-    "folder": {
-      "ask": "Elige el repositorio o la carpeta que vas a usar y guarda.",
-      "at": "Ubicación del código: {{path}}",
-      "choose": "Elegir la ubicación del código",
-      "none": "Para usarlo con tu propio repositorio, elige esa carpeta como ubicación del código del proyecto."
-    },
-    "lead": "Envía lo que quieres que se haga. La IA lo convierte en tareas, trabaja en ellas y solo las coloca en «{{section}}» cuando hace falta tu decisión.",
     "title": "Te damos la bienvenida a alpacawork"
   }
 }

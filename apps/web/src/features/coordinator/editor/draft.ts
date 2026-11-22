@@ -199,20 +199,18 @@ export function replyInDraft(reply: { id: string; answeredAt: string }) {
 }
 
 /**
- * An example of the empty list (Welcome) put in the input, for the person to send or change: its words after the
- * label of the project in view, so the coordinator knows where it goes. Like the screen's other seeds (lifecycle.ts) it
- * takes the place of a prepared draft, another example included, and goes after one the person has made theirs, which is
- * never discarded.
+ * An example of the empty conversation (WarmStart) put in the input, for the person to send or change. Like the
+ * screen's other seeds (lifecycle.ts) it takes the place of a prepared draft, another example included, and goes after
+ * one the person has made theirs, which is never discarded.
  */
-export function exampleInDraft(words: string, project: { id: string; title: string } | null) {
+export function exampleInDraft(words: string) {
   const { root, conversation } = useConversation.getState();
   const key = draftKey(root, 'coordinator', conversation?.id ?? 'loading'), entry = writableEntry(key);
   if (!entry) return;
-  const line: Document['content'][number] = { type: 'paragraph', content: [
-    ...project ? [taskLabel(project), { type: 'text' as const, text: ` ${words}` }] : [{ type: 'text' as const, text: words }]] };
+  const line: Document['content'][number] = { type: 'paragraph', content: [{ type: 'text' as const, text: words }] };
   let unchanged = false;
   const changed = mutateInput(key, visible => {
-    const values = offered(visible, line, project);
+    const values = offered(visible, line);
     unchanged = !values;
     return values;
   });
