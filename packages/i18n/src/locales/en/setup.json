@@ -12,7 +12,7 @@
     "firstHint": "The one already selected when you send a request. You can change it for each request.",
     "found": "Installed. Works if it is signed in",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
-    "lead": "alpacawork hands your work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable can be chosen to do it.",
+    "lead": "alpacawork has the AI agents already on this PC, such as Claude Code and Codex, do the work. The ones you enable become the choices for who to ask.",
     "missing": "The {{command}} command was not found. Install it to use this agent",
     "noneOn": "Enable at least one agent.",
     "noneOnTitle": "No agent is enabled",
@@ -81,22 +81,22 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Another AI checks the work",
-        "what": "Before you are asked to review, another AI checks the result and fixes what it finds. This takes more time and tokens.",
+        "title": "Criteria set first, then another AI checks",
+        "what": "Before building, the AI sets the criteria for passing and compares options for decisions with a large impact. An AI other than the one that built the result checks the real thing, and it is fixed before you are asked to review it. This takes more time and tokens (light work is only checked by the AI itself).",
         "when": "when planning, when asking for a review, and when receiving findings"
       },
       "askmeclearly": {
-        "title": "Shorter, easier-to-check questions and reports",
+        "title": "Shorter, easier-to-read questions and reports",
         "what": "The AI points to what to look at with images or video, so you can decide or check right away.",
         "when": "when asking the user to decide, and when writing a report"
       },
       "doyourjob": {
         "title": "Fewer questions for you",
-        "what": "The AI looks up what it can and decides what it may, and asks you only what you alone can decide.",
+        "what": "The AI goes ahead on its own with what it can find out and what it may decide, and asks you only what you alone can decide.",
         "when": "before asking the user, and before making a choice with large consequences"
       }
     },
-    "lead": "A skill is an extra set of instructions that changes how the AI works. These are published by the makers of alpacawork.",
+    "lead": "A skill is an extra set of instructions that changes how the AI works. These are picked from the ones the makers of alpacawork publish.",
     "reason": {
       "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
       "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",

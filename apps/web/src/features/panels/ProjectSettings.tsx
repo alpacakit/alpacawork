@@ -119,18 +119,16 @@ export function ProjectLocationRow({ project, projects, rootHint }: { project: P
 }
 
 /** One free text: what to write is the person's own; the example only suggests what helps (purpose, policy, what not to do). */
-export function ProjectPolicySection({ project, projects, note, agentsMdNote = true }: { project: Project; projects: WorkspaceInfo["projects"];
+export function ProjectPolicySection({ project, projects, note }: { project: Project; projects: WorkspaceInfo["projects"];
   /** Where it is read before the project has any inside it (setup), a note that names only this project's agents. */
-  note?: string;
-  /** Setup leaves out how it differs from AGENTS.md: a first look decides without it. */
-  agentsMdNote?: boolean }) {
+  note?: string }) {
   const { t } = useTranslation("panels");
   const { control, register } = useFormContext<ProjectDraft>();
   const policy = useWatch({ control, name: "policy" }) ?? "";
   return <SettingSection id="project-policy-heading" title={t("project.policy")} note={note ?? t("project.policyNote")} spaced>
     {/* Shown, not behind a hover, so a phone gets it too; the detail is an element so it starts its own line under the title. */}
-    {agentsMdNote && <Message data-policy-vs-agents-md tone="info" size="band" title={t("project.policyVsAgentsMd.title")}
-      description={<>{t("project.policyVsAgentsMd.detail")}</>} />}
+    <Message data-policy-vs-agents-md tone="info" size="band" title={t("project.policyVsAgentsMd.title")}
+      description={<>{t("project.policyVsAgentsMd.detail")}</>} />
     <Textarea id="project-policy" dir="auto" aria-labelledby="project-policy-heading" aria-describedby="project-policy-count"
       placeholder={t("project.policyExample")} className="min-h-56 whitespace-pre-wrap" {...register("policy")} />
     <FieldHint id="project-policy-count" className="mt-0 text-end tabular-nums">{t("project.policyCount", { count: [...policy].length })}</FieldHint>
