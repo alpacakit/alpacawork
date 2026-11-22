@@ -170,7 +170,7 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
     </div>
     {(entry.next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
-        onClick={() => { read(); entry.action!.run(); }}>{entry.action.label(t as TFunction)}</Button>}
+        onClick={() => { read(); entry.action!.run(t as TFunction); }}>{entry.action.label(t as TFunction)}</Button>}
       {entry.next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}
     </div>}
   </div>;

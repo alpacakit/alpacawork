@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
 import { finishAppHint } from "@/features/coordinator/app-hint";
+import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
 
@@ -56,6 +57,8 @@ export const PARTS = {
   project: "[data-project-trigger]",
   /** Change state in the detail, where a Task (and the AI on it) is stopped. */
   taskState: "[data-task-state]:not(:disabled)",
+  /** A label in that box, at its left end: the project or Task a message goes to. */
+  label: ":is([data-coordinator-capsule], [data-composer-frame]) [data-label=task]",
   /** The settings' button at the top right. */
   settings: '[data-guide-part="settings"]',
 } as const;
@@ -82,6 +85,8 @@ export type GuideFacts = {
   working: number;
   /** Among them, rows not started with no AI put on them: nothing goes on there until the person says what to do. */
   unowned: number;
+  /** The input holds a label (a project's or a Task's). */
+  labelled: boolean;
   /** A request went to the coordinator after the guide started. */
   sent: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
@@ -109,7 +114,7 @@ export type GuideEntry = {
   align?: GuideAlign;
   turn?: boolean;
   next?: boolean;
-  action?: { label: (t: TFunction) => string; run: () => void };
+  action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
   settle?: () => void;
   say: (t: TFunction) => string;
 };
@@ -122,6 +127,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // screen, shown again): the one input there is and where it sends.
   { id: "send", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top",
     when: f => f.stage.stage === "started" && !f.drafting && !f.sent && (f.tasks === 0 || !!f.stage.intro),
+    action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.send") },
   // What is open in the detail comes first, from the most immediate: an answer ready to send, one sent and on its way,
   // then the person's turn on what is open, or where the AI on it is stopped; then the rows awaiting the person.
@@ -149,10 +155,12 @@ export const GUIDE: readonly GuideEntry[] = [
   // to sending a request.
   { id: "received", part: "coordinator", side: "top", when: f => f.sent && f.busy,
     say: t => t("tree:guide.say.received") },
-  // Once the person has had their turn and nothing is left to bring them a report, the guide closes.
-  { id: "end", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", next: true, when: f => f.stage.stage === "turn" && !f.seen.has("end"),
-    say: t => t("tree:guide.say.end") },
-  // After the end: where another repository is taken on.
+  // Once the person has had their turn and nothing is left to bring them a report: what the input's label is for, while
+  // one is there to point at.
+  { id: "label", part: "label", clear: ["foot", "coordinator"], side: "top", align: "start", next: true,
+    when: f => f.stage.stage === "turn" && f.labelled && !f.seen.has("label"),
+    say: t => t("tree:guide.say.label") },
+  // Then where another repository is taken on.
   { id: "another-repository", part: "project", side: "right", align: "start", next: true,
     when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },

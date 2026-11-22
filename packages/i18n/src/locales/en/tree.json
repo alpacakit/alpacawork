@@ -2,6 +2,7 @@
   "guide": {
     "close": "End the getting-started guide",
     "closed": "The guide has ended. You can show it again from {{settings}}, under “{{guide}}”.",
+    "example": "I'd like to try the whole flow of working with alpacawork.\nMake an HTML page that says \"Hello\" in two different fonts, and ask me which one is better.",
     "next": "Got it",
     "openSteps": "Open the steps",
     "reopen": "Undo",
@@ -12,17 +13,18 @@
       "answered": "Your answer is sent. It takes a moment to reach the AI working on it.",
       "answerReady": "Your answer is in. Send it with this button to make it your answer.",
       "apps": "You can also install alpacawork as an app on this computer, or open it from your phone. The steps are in {{settings}}, under “{{apps}}”.",
-      "end": "That is all there is to it. Go on and ask for anything here. You can send as many requests as you like without waiting for the last one to finish.",
+      "label": "A label hints to the AI which work you mean. Remove it and send “Make another one in a different font”: the AI works it out from the conversation.",
       "question": "It's your turn. Press this row to open its detail, and answer the question.",
       "received": "The coordinator (the AI that takes your requests) has your request. A task will appear shortly. Press here to open the conversation and read it.",
       "result": "A report is ready. Press this row and check it in its detail.",
-      "send": "This is the only input. When a label stands at its left end, that is where the message goes.",
+      "send": "This is the only input. Start with an example to try the whole flow.",
       "sendAgain": "Write what you want done here and send it. It becomes a task in the list.",
       "sendReady": "Once it's written, send it with this button.",
-      "stop": "To stop the AI, choose “{{stop}}” here.",
+      "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input. You can also ask there to change settings or add a model.",
       "unassigned": "No AI has been put on this row's task yet, so it has not started. Open the row and send what you want done from the box below to start it.",
       "working": "Your request is listed here as a task, one row each. AI takes it from here, and when a question or a report comes for you, it moves to “{{section}}”."
-    }
+    },
+    "tryExample": "Use the example"
   },
   "home": {
     "awaited": "Waiting",

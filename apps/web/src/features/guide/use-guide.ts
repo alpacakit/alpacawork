@@ -7,7 +7,7 @@ import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
 import { useInputDraft } from "@/features/coordinator/editor/draft";
-import { answersIn, hasContent } from "@/features/coordinator/editor/document";
+import { answersIn, hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { replaceStep } from "@/lib/history";
@@ -116,13 +116,14 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   // What the input holds now: anything to send, and an answer to the Task open in the detail.
   const { doc } = useInputDraft();
   const drafting = hasContent(doc);
+  const labelled = inlines(doc).some(node => node.type === "taskLabel");
   const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
   const narrow = useNarrow();
   // Not app-hint's "done": that is set by the first message sent, which everyone at the guide's last step has sent.
   const apps = useAppGuideHere();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, drafting, answerDrafted, open, narrow, apps, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, answerDrafted, open, narrow, apps, seen };
   return guideEntry(facts);
 }
 

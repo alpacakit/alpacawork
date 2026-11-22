@@ -2,6 +2,7 @@
   "guide": {
     "close": "Terminar la guía",
     "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}}, en «{{guide}}».",
+    "example": "Quiero probar todo el recorrido de trabajar con alpacawork.\nHaz un HTML que diga \"Hello\" con dos fuentes distintas y pregúntame cuál es mejor.",
     "next": "Entendido",
     "openSteps": "Abrir los pasos",
     "reopen": "Deshacer",
@@ -12,17 +13,18 @@
       "answered": "Enviaste tu respuesta. Tarda un momento en llegar a la IA que trabaja en la tarea.",
       "answerReady": "Tu respuesta ya está en el cuadro. Envíala con este botón para que cuente como respuesta.",
       "apps": "También puedes instalar alpacawork como aplicación en este ordenador o abrirlo desde tu teléfono. Los pasos están en {{settings}}, en «{{apps}}».",
-      "end": "Eso es todo. Ya puedes pedir lo que quieras aquí. Puedes enviar todas las peticiones que quieras sin esperar a que termine la anterior.",
+      "label": "La etiqueta orienta a la IA sobre de qué trabajo hablas. Quítala y envía «Haz otro con otra fuente»: la IA lo deduce de la conversación.",
       "question": "Es tu turno. Pulsa esta fila para abrir su detalle y responde la pregunta.",
       "received": "El coordinador (la IA que recibe tus peticiones) ya tiene tu petición. Pronto aparecerá una tarea. Pulsa aquí para abrir la conversación y leerla.",
       "result": "Hay un informe. Pulsa esta fila y revísalo en su detalle.",
-      "send": "Este es el único cuadro de entrada. Cuando hay una etiqueta a su izquierda, esa es el destino del mensaje.",
+      "send": "Este es el único cuadro de entrada. Empieza con un ejemplo para probar todo el recorrido.",
       "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo. Se convierte en una tarea de la lista.",
       "sendReady": "Cuando lo tengas escrito, envíalo con este botón.",
-      "stop": "Para detener la IA, elige «{{stop}}» aquí.",
+      "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada. Desde ahí también puedes pedir cambiar la configuración o añadir un modelo.",
       "unassigned": "La tarea de esta fila aún no tiene una IA asignada, así que no ha empezado. Abre la fila y envía desde el cuadro de abajo lo que quieres que se haga para que empiece.",
       "working": "Tu petición aparece aquí como una tarea, una fila por cada una. A partir de aquí la lleva la IA y, cuando llegue una pregunta o un informe para ti, pasará a «{{section}}»."
-    }
+    },
+    "tryExample": "Usar el ejemplo"
   },
   "home": {
     "awaited": "En espera",

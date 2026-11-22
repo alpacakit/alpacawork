@@ -6,7 +6,7 @@ import { placeBalloon } from "../src/features/guide/Guide";
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, sent: false, busy: false, answered: false, drafting: false,
+  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, answered: false, drafting: false,
     answerDrafted: false, open: null, narrow: false, apps: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 
@@ -53,10 +53,12 @@ test("what is open in the detail comes before the list: its choices, or Done", (
 
 test("after the person's turn, work still going on is the AI's step; with none left the guide ends once read", () => {
   expect(shown({ stage: turn, tasks: 1, working: 1 })).toBe("working");
-  expect(shown({ stage: turn, tasks: 1 })).toBe("end");
-  expect(shown({ stage: turn, tasks: 1, seen: new Set(["end", "another-repository"]) })).toBeNull();
+  // The input's label is pointed at once, only while there is one.
+  expect(shown({ stage: turn, tasks: 1, labelled: true })).toBe("label");
+  expect(shown({ stage: turn, tasks: 1 })).toBe("another-repository");
+  expect(shown({ stage: turn, tasks: 1, labelled: true, seen: new Set(["label", "another-repository"]) })).toBeNull();
   // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
-  expect(shown({ stage: turn, tasks: 1, apps: true, seen: new Set(["end", "another-repository"]) })).toBe("apps");
+  expect(shown({ stage: turn, tasks: 1, apps: true, seen: new Set(["another-repository"]) })).toBe("apps");
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
