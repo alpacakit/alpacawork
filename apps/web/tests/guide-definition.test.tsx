@@ -1,13 +1,14 @@
 import { expect, test } from "vitest";
+import type { Task } from "../src/data/types";
 import { PARTS, doneOnLeaving, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
-import { coordinatorFacts, foundDraft } from "../src/features/guide/use-guide";
+import { awaiting, coordinatorFacts, foundDraft } from "../src/features/guide/use-guide";
 import { placeBalloon, roomUnder } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
   ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, narrow: false, apps: false, installed: false, seen: new Set(), ...over });
+    open: null, narrow: false, apps: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
@@ -70,11 +71,9 @@ test("once the person has had their turn and nothing is going on, the guide clos
   expect(shown({ stage: turn, tasks: 1 })).toBe("conversation");
   expect(shown({ stage: turn, tasks: 1, seen: read("conversation") })).toBe("another-repository");
   expect(shown({ stage: turn, tasks: 1, seen: read("conversation", "another-repository") })).toBeNull();
-  // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
-  expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("conversation", "another-repository") })).toBe("apps");
-  // In the installed app, the same last step says the phone is for answering away from the desk; never on a phone's width.
-  expect(shown({ stage: turn, tasks: 1, apps: true, installed: true, seen: read("conversation", "another-repository") })).toBe("phone");
-  expect(shown({ stage: turn, tasks: 1, apps: true, installed: true, narrow: true, seen: read("conversation", "another-repository") })).toBeNull();
+  // Where settings hold the steps to answering from a phone, pointing at them once is the last step; never on a phone.
+  expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("conversation", "another-repository") })).toBe("phone");
+  expect(shown({ stage: turn, tasks: 1, apps: true, narrow: true, seen: read("conversation", "another-repository") })).toBeNull();
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
@@ -140,4 +139,12 @@ test("a box under the balloon gets room at its end from the balloon's top down, 
   expect(roomUnder(sheet, { top: 600, bottom: 700 })).toBe(244);
   expect(roomUnder(sheet, { top: 250, bottom: 320 })).toBe(594);
   expect(roomUnder(sheet, { top: 100, bottom: 200 })).toBe(0);
+});
+
+test("a row whose turn the person has already answered from here is not theirs, while it still stands in the list", () => {
+  const rows = [{ taskId: "T1", section: "review" }, { taskId: "T2", section: "review" }];
+  const task = (id: string) => ({ id, ball: { holder: "user", reason: "result" } }) as unknown as Task;
+  const byId = new Map([["T1", task("T1")], ["T2", task("T2")]]);
+  expect(awaiting(rows, byId, () => false, "T1")).toEqual({ questions: 0, results: 2, open: "result" });
+  expect(awaiting(rows, byId, each => each.id === "T1", "T1")).toEqual({ questions: 0, results: 1, open: null });
 });

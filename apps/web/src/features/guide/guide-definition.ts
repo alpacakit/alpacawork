@@ -40,6 +40,8 @@ export const PARTS = {
    * Not what stands there while a message can still be taken back ("about to send"): it says the message is not sent yet.
    */
   coordinator: "[data-coordinator-pill][data-coordinator-expand]",
+  /** The conversation with the coordinator: that button while it is folded, its "Clear conversation" while it is open. */
+  conversation: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-clear]",
   /** A list row of a Task being worked on or about to be. */
   workingRow: '[data-row-section="doing"], [data-row-section="todo"], [data-row-section="awaited"]',
   /** A list row awaiting the person's answer to a question. */
@@ -98,8 +100,6 @@ export type GuideFacts = {
   narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
-  /** This window is alpacawork installed as an app. */
-  installed: boolean;
   /** Steps put away (by their button, or left: `once`). */
   seen: ReadonlySet<string>;
 };
@@ -120,8 +120,6 @@ export type GuideEntry = {
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
-/** The steps to alpacawork as an installed app and from a phone, in settings. */
-const OPEN_APPS: GuideEntry["action"] = { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") };
 /** Every input points at the same parts: it stands clear of the foot and the conversation's button beside it. */
 const AT_INPUT = { clear: ["foot", "coordinator"], side: "top" } as const;
 
@@ -163,17 +161,14 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
   // Once the person has had their turn and nothing is left going on: the conversation with the coordinator, over its
   // last reply, is for throwing away (what is to be kept goes into a Task); where another repository is taken on; and
-  // last, where settings hold the steps to alpacawork as an installed app and from a phone: said to someone in the
-  // installed app as answering from a phone, to anyone else as both.
-  { id: "conversation", once: true, part: "coordinator", side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
+  // last, where settings hold the steps to answering from a phone (installing the app is asked once, as setup ends).
+  { id: "conversation", once: true, part: "conversation", clear: ["foot"], side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
   { id: "another-repository", once: true, part: "project", side: "right", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  { id: "apps", once: true, part: "settings", side: "bottom", align: "end", next: true, action: OPEN_APPS,
-    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && !f.installed,
-    say: t => t("tree:guide.say.apps", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
-  { id: "phone", once: true, part: "settings", side: "bottom", align: "end", next: true, action: OPEN_APPS,
-    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && f.installed,
+  { id: "phone", once: true, part: "settings", side: "bottom", align: "end", next: true,
+    action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
+    when: f => f.stage.stage === "turn" && f.apps && !f.narrow,
     say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
   // Before any turn: words in the input wait to be sent, or a request is to be written (over a list with nothing
   // going on, or one sent and answered with no Task).

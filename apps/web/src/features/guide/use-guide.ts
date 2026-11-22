@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
-import { useCoarsePointer, useInstalledApp } from "@/lib/input-capabilities";
+import { useCoarsePointer } from "@/lib/input-capabilities";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -11,6 +11,8 @@ import { hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { useSitting } from "@/features/reader/next-question";
+import { useSubmittedTurns } from "@/features/reader/submitted-turns";
+import type { Task } from "@/data/types";
 import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { doneOnLeaving, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
@@ -49,6 +51,26 @@ export function foundDraft(stage: GoingStage, written: string, before: FoundDraf
   return { at: stage.at, written: kept, same: kept === written };
 }
 
+/**
+ * The rows awaiting the person, as the list's own rows have them (so the guide never says to open a row that is open
+ * already), and which of them is `selected` in the detail. A row whose turn the person has already answered from here
+ * (an answer sent, Done pressed: `submitted`, as the reader's own next-question deck counts them) is not theirs any
+ * more, while it still stands in the list for the moment it can be taken back.
+ */
+export function awaiting(rows: readonly { taskId: string; section: string }[], byId: ReadonlyMap<string, Task>, submitted: (task: Task) => boolean,
+  selected: string | null): Pick<GuideFacts, "questions" | "results" | "open"> {
+  let questions = 0, results = 0, open: GuideFacts["open"] = null;
+  for (const row of rows) {
+    if (row.section !== "review") continue;
+    const task = byId.get(row.taskId);
+    if (task && submitted(task)) continue;
+    const kind = task ? turnKind(task) : "result";
+    if (kind === "question") questions++; else results++;
+    if (row.taskId === selected) open = kind;
+  }
+  return { questions, results, open };
+}
+
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
 export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
 
@@ -81,18 +103,17 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
   const selected = shown === answeredAll ? null : shown;
-  // The rows awaiting the person, and which of them is seen in the detail: read from the list's own rows, so the guide
-  // never says to open a row that is open already.
-  let questions = 0, results = 0, unowned = 0, open: GuideFacts["open"] = null;
+  // The rows awaiting the person, and which of them is seen in the detail (awaiting).
+  const { submitted } = useSubmittedTurns();
+  const awaited = awaiting(rows, index.byId, submitted, selected);
+  const { questions, results } = awaited;
+  let { open } = awaited;
+  let unowned = 0;
   const people = usePeople();
   for (const row of rows) {
     const task = index.byId.get(row.taskId);
     // A row not started with no AI on it (as its History says it): the guide never calls it the AI's.
     if (row.section === "todo" && task && beforeWork(task, !!crewOf(task.id, people).responsible) === "unassigned") unowned++;
-    if (row.section !== "review") continue;
-    const kind = task ? turnKind(task) : "result";
-    if (kind === "question") questions++; else results++;
-    if (row.taskId === selected) open = kind;
   }
   const working = (home?.doing ?? 0) + (home?.todo ?? 0) + (home?.awaited ?? 0);
   const opened = selected ? index.byId.get(selected) : undefined;
@@ -115,10 +136,9 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const narrow = useNarrow();
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
-  const installed = useInstalledApp();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, installed, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
   return guideEntry(facts);
 }
 

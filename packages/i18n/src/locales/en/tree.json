@@ -11,7 +11,6 @@
       "accept": "If it's fine, finish the task with this button ({{finish}}).",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
-      "apps": "You can also install alpacawork as an app on this computer, or open it from your phone. The steps are in {{settings}}, under “{{apps}}”.",
       "conversation": "The conversation with the front-desk AI is disposable. When it piles up, open it and use “{{clear}}”; ask for anything worth keeping to be made a task.",
       "label": "This label tells the AI which task you mean, as a hint. Without it, the AI works it out from the conversation.",
       "more": "You can keep asking after a report. Try having it make one more version to compare.",

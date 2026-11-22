@@ -11,7 +11,6 @@
       "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}).",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
-      "apps": "Você também pode instalar o alpacawork como aplicativo neste computador ou abri-lo pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
       "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, abra-a e use “{{clear}}”; o que quiser guardar, peça para virar uma tarefa.",
       "label": "Esta etiqueta orienta a IA sobre de qual tarefa você fala. Sem ela, a IA entende pelo contexto da conversa.",
       "more": "Depois de um relatório, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
