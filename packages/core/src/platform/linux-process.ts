@@ -139,12 +139,14 @@ export const linuxRun: HostAdapter['run'] = {
     const group = recorded === undefined ? own : groupOf(recorded.scope);
     const mount = cgroup2Mount();
     // Outside cgroup v2 or outside a scope named for the unit, nothing that shares the group is the unit's own.
-    if (group === undefined || mount === undefined || !group.endsWith('.scope')) return;
+    if (group === undefined || mount === undefined || !group.endsWith('.scope')) return false;
     if (recorded === undefined ? !unit || basename(group) !== `${unit}.scope`
-      : group === own || !recorded.ours(basename(group).slice(0, -'.scope'.length))) return;
+      : group === own || !recorded.ours(basename(group).slice(0, -'.scope'.length))) return false;
     const others = () => groupMembers(mount, group).filter(pid => pid !== process.pid);
     const deadline = performance.now() + 10_000;
-    for (let left = others(); left.length; left = others()) {
+    let left = others();
+    const interrupted = left.length > 0;
+    for (; left.length; left = others()) {
       if (performance.now() >= deadline) throw new Error(`Unit ${basename(group)} keeps PID ${left.join(', ')} after SIGKILL`);
       for (const pid of left) {
         try { process.kill(pid, 'SIGKILL'); }
@@ -152,6 +154,7 @@ export const linuxRun: HostAdapter['run'] = {
       }
       await delay(100);
     }
+    return interrupted;
   },
   // A Run's manager starts the next Run's manager; it reaches the user's systemd as serve does.
   environment: ['XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS'],

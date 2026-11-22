@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
 import { AgentSettings } from './AgentSettings';
+import { AiStack } from './AiStack';
+import { followRenames } from './ai-stack-draft';
 import { AgentObservationsProvider } from './AgentSettingsExecutable';
 import { EnvironmentFileLine, EnvironmentFileProblems, useEnvironmentFile } from './EnvironmentFile';
 import { validateAgentsDraft } from './agent-settings-draft';
@@ -31,6 +33,23 @@ import { configYaml, serverDraft, type ServerDraft } from "./settings-draft";
 
 
 type ConfigPayload = { yaml: string; agents: string; expected: string };
+/** The tab writes its stack rows; with none (no agent enabled yet) it leaves the stack in config.yaml as it is. */
+const stackKept = (draft: ServerDraft): ServerDraft | Omit<ServerDraft, 'aiStack'> => {
+  if (draft.aiStack.length) return draft;
+  const { aiStack: _none, ...rest } = draft;
+  return rest;
+};
+
+/** The first row of the AI stack that keeps a save back: brought into view, its control to fix focused. */
+function focusStackIssue() {
+  const stack = document.querySelector<HTMLElement>('[data-ai-stack]');
+  const target = stack?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? stack?.querySelector<HTMLElement>('[data-ai-stack-row][data-invalid] select')
+    ?? stack?.querySelector<HTMLElement>('[data-slot="field-error"]');
+  if (!target) return;
+  target.scrollIntoView?.({ block: 'center' });
+  if (!target.matches('select, input, button')) target.tabIndex = -1;
+  target.focus({ preventScroll: true });
+}
 
 /** This PC's config.yaml as a draft: what it was last read or saved as (with its hash), saved when changed. */
 export function ServerSettingsTab() {
@@ -57,7 +76,7 @@ export function ServerSettingsTab() {
         unfold('agents');
         return false;
       }
-      const config = { yaml: configYaml(valid), agents: agents.value, expected: base.hash };
+      const config = { yaml: configYaml(stackKept(valid)), agents: agents.value, expected: base.hash };
       const saving = intent.submit(() => config, send);
       if (saving === undefined) return false;
       const saved = await saving;
@@ -66,10 +85,15 @@ export function ServerSettingsTab() {
       setBase({ hash: saved.hash ?? base.hash, draft });
       form.reset(draft);
     },
-    onInvalid: errors => { if (errors.agents) unfold('agents'); if (errors.limits) unfold('advanced'); },
+    onInvalid: errors => {
+      if (errors.agents || errors.aiStack) unfold('agents');
+      if (errors.limits) unfold('advanced');
+      // A refused stack takes the eye to the row to fix, once its fold has opened.
+      if (errors.aiStack && !errors.agents) requestAnimationFrame(() => requestAnimationFrame(focusStackIssue));
+    },
   });
   const capture = useAnswerGuard(form);
-  const { isDirty } = useFormState({ control: form.control });
+  const { isDirty, errors: formErrors } = useFormState({ control: form.control });
   const loaded = server.data && !server.data.error && server.data.hash ? server.data : undefined;
   // The draft starts from a read of config.yaml made for this opening, not a cached one; later reads do not move it.
   useEffect(() => {
@@ -119,6 +143,9 @@ export function ServerSettingsTab() {
       <DialogFooter data-settings-foot className="flex-wrap">
         <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
           <FieldHint role="status">{isDirty ? t("settings.status.dirty") : t("settings.status.saved")}</FieldHint>
+          {/* A save the stack refused says why beside the button, and takes the eye to the row to fix. */}
+          {formErrors.aiStack && <FieldError data-ai-stack-refused className="mt-type-close">{t('agentSettings.aiStack.saveRefused')}{' '}
+            <Button type="button" variant="ref" onClick={focusStackIssue}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>}
           <FieldHint className="mt-type-close">{t("settings.server.effect")}</FieldHint>
         </div>
         <Button variant="outline" disabled={!isDirty} onClick={() => form.reset()}>
@@ -140,7 +167,7 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
   folds: Folds; onFoldsChange: (folds: Folds) => void; disabled: boolean; environmentFile: string | undefined;
 }) {
   const { t } = useTranslation("panels");
-  const { control, register } = useFormContext<ServerDraft>();
+  const { control, register, getValues, setValue } = useFormContext<ServerDraft>();
   const draft = useWatch({ control }) as ServerDraft;
   const { errors } = useFormState({ control });
   // Read beside the form, not before it: it waits on each agent's own checks.
@@ -168,10 +195,24 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
     </SettingSection>
     */}
     <ServerFold id="server-agents" title={t('agentSettings.title')} summary={inUse.length ? t('settings.server.agentsInUse', { names: inUse.join(', ') }) : undefined} {...fold('agents')}>
+    {/* The stack the agents run in, above the agents whose choices its rows pick from. */}
+    {draft.agents.ok && <fieldset disabled={disabled} className="mb-4 min-w-0 border-0 p-0"><Controller name="aiStack" control={control} render={({ field }) =>
+      <AiStack rows={field.value} agents={draft.agents.ok ? draft.agents.value.agents : []} onChange={field.onChange} />} /></fieldset>}
+    {/* Under the stack, the agents get their own heading, so their cards do not read as more rows of it. */}
+    {draft.agents.ok && <div className="mb-3">
+      <h3 className="text-base font-semibold">{t('agentSettings.aiStack.agentsTitle')}</h3>
+      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote')}</p>
+    </div>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
         <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
-          onChange={value => field.onChange({ ok: true, value })} /></AgentObservationsProvider>
+          onChange={value => {
+            // A row of the stack follows its agent's new name.
+            const before = field.value;
+            const rows = getValues('aiStack'), followed = before.ok ? followRenames(rows, before.value, value) : rows;
+            if (followed !== rows) setValue('aiStack', followed, { shouldDirty: true });
+            field.onChange({ ok: true, value });
+          }} /></AgentObservationsProvider>
       : <FieldError ref={field.ref} tabIndex={-1}>{agentIssues.map(issue => agentDraftIssueText(issue, t)).join('\n')}</FieldError>} />
     {errors.agents && agentIssues.length === 0 && <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>}
     </ServerFold>
@@ -217,6 +258,6 @@ function ServerYamlExample({ draft }: { draft: ServerDraft }) {
   const agents = open ? serverAgentsYaml(draft) : undefined;
   return <details className="mt-6 text-base" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <DisclosureSummary className="gap-x-2 text-sm text-muted hover:text-ink"><Caret open={open} />{t('settings.server.yamlExample')}</DisclosureSummary>
-    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(draft)}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
+    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(stackKept(draft))}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
   </details>;
 }

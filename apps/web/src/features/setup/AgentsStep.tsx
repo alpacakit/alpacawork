@@ -15,9 +15,9 @@ import { resources } from "@/data/resources";
 import { useTelemetry } from "@/features/telemetry/data";
 import { TelemetryDetailsLink } from "@/features/telemetry/TelemetryDetailsLink";
 import { forgetLaunchAgent } from "@/features/forms/launch-choice";
-import { readServerAgents, serverAgentsYaml } from "@/features/panels/server-agent-draft";
-import { configYaml } from "@/features/panels/settings-draft";
-import { agentDisplayName, canWork, chosenAgents, firstAgentOf, startAgents, usableAgents, type AgentSwitches, type StartAgent } from "./rules";
+import { readServerAgents } from "@/features/panels/server-agent-draft";
+import { setupSave } from "./save";
+import { agentDisplayName, canWork, firstAgentOf, startAgents, usableAgents, type AgentSwitches, type StartAgent } from "./rules";
 import { FailureLine, Loading, StepButtons } from "./parts";
 
 type Failure = { at: "agents" | "consent" | "check"; detail: string } | null;
@@ -62,7 +62,7 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   const readFailure = [settings, status, telemetry.status].find(read => read.isError);
   const prepared = !!drafts && !status.isPending && initialized && !!telemetry.status.data;
   const usable = usableAgents(rows, on);
-  const first = firstAgentOf(usable, picked);
+  const first = firstAgentOf(usable, picked, loaded?.aiStack);
   // Asked here until it is answered; a changed consent version is asked again here as well.
   const asksConsent = telemetry.status.data?.state === "not_asked" || telemetry.status.data?.state === "needs_reask";
   // Ticked at first; it is saved only once the person goes on, whichever way they leave it.
@@ -84,15 +84,15 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     setBusy(true); setFailure(null);
     try {
       if (drafts && loaded) {
-        const chosen = chosenAgents(drafts.agents, rows, on, first);
-        if (chosen) {
-          const yaml = serverAgentsYaml({ limits: loaded.limits, agents: { ok: true, value: { ...drafts, agents: chosen } } });
-          if (!yaml.ok) throw new Error("Invalid agent settings");
-          try { await save.mutateAsync({ yaml: configYaml({ limits: loaded.limits, agents: { ok: true, value: drafts } }), agents: yaml.value, expected: loaded.hash! }); }
+        // The agents and the AI stack together: the first AI chosen here is row 1 of the stack the settings show.
+        const saving = setupSave(loaded, drafts, rows, on, first);
+        if (saving) {
+          try { await save.mutateAsync({ yaml: saving.config, agents: saving.agents, expected: loaded.hash! }); }
           catch (error) { fail("agents", error); void settings.refetch(); return; }
         }
-        // The agent chosen here is where the next request starts, whatever this device picked before.
-        forgetLaunchAgent();
+        // The agent chosen here is where the next request starts, whatever was picked before on any device. Unsaved,
+        // the agent picked before would come back: setup stays here to be tried again.
+        try { await forgetLaunchAgent(); } catch (error) { fail("agents", error); return; }
       }
       if (asksConsent) {
         let refused: unknown = null;

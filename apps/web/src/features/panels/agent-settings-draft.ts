@@ -70,6 +70,19 @@ export function editDraftParam(row: ParamRowDraft, change: Partial<Pick<ParamRow
   const { written: _written, ...rest } = row;
   return { ...rest, ...change };
 }
+/**
+ * The choices a launch of the agent offers: each row the launch options use whose values read, with at least one
+ * value, in the agent's order. The AI stack picks one value of each.
+ */
+export type AgentChoiceRow = { key: string; values: string[] };
+export function agentChoiceRows(agent: AgentDraft): AgentChoiceRow[] {
+  return agent.params.flatMap(row => {
+    if (unusedParamReason(agent, row.key)) return [];
+    let values: string[];
+    try { values = parseParamValues(row.values); } catch (error) { if (error instanceof ZodError) return []; throw error; }
+    return values.length ? [{ key: row.key, values }] : [];
+  });
+}
 export function editDraftEnv(agent: AgentDraft, env: string[]): AgentDraft {
   const { envWritten: _written, ...rest } = agent;
   return { ...rest, env };

@@ -16,8 +16,6 @@ test('a changed default value can be restored, and only fields with a default of
   render(<AgentSettings draft={{ source: '{}', agents: [changed, newAgentDraft('copilot', 'copilot', 'copilot')] } satisfies AgentsDraft} onChange={onChange} />);
   fireEvent.click(screen.getByRole('button', { name: 'Expand codex' }));
   fireEvent.click(screen.getByRole('button', { name: 'Expand copilot' }));
-  // effort and fast follow the default; copilot's empty model default and empty variable list have nothing to follow.
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(3);
   expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Restore the default for model' }));
   const model = onChange.mock.lastCall![0].agents[0].params.find((row: { key: string }) => row.key === 'model');
@@ -36,11 +34,10 @@ test('a value written in config.yaml stays until restored, even when it equals t
   }
   render(<Form />);
   fireEvent.click(screen.getByRole('button', { name: 'Expand claude' }));
-  // effort is not written, so it alone follows the default; model and the variables wait for a restore.
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(1);
+  // model and the variables are written, so they wait for a restore; effort is not.
   expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: 'Restore the default for model' }));
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(2);
+  expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(1);
   expect(latest).not.toEqual(initial);
   // Saving writes no value equal to its default, so the written variables go too, and are followed when read again.
   const saved = writeAgentsDraft(latest);

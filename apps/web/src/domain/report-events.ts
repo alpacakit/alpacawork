@@ -25,6 +25,7 @@ export type ReportEvent = {
   finish?: boolean;
   /** On a failed Run's row, the cause the backend read in its error words. */
   cause?: HistoryEvent["cause"];
+  carriedOn?: true;
   /** A failed Run the column offers to close. */
   runId?: string;
   /** The child whose record it is, in its parent's column: what it reported, asked its ancestors or set, never a wait on you. */
@@ -76,8 +77,8 @@ export const STOP_MARK = { kind: "error", tone: "error" } as const satisfies Non
  * put the Task back to work (working). A record that changed nothing, or whose effect the server does not say, stays
  * quiet: no colour is guessed.
  */
-export function reportTone(report: Pick<ReportEvent, "kind" | "mark" | "finish" | "set">): MarkTone {
-  if (report.kind === "error") return "error";
+export function reportTone(report: Pick<ReportEvent, "kind" | "mark" | "finish" | "set" | "carriedOn">): MarkTone {
+  if (report.kind === "error") return report.carriedOn ? "quiet" : "error";
   if (report.finish || report.set === "done") return "done";
   if (report.mark?.tone === "turn") return "turn";
   return report.kind === "request" || report.kind === "answer" || report.set === "doing" ? "working" : "quiet";
@@ -119,6 +120,7 @@ export function reportEvent(event: HistoryEvent, turn: (taskId: string) => strin
     ...(event.note ? { note: event.note } : {}),
     ...(event.answerFiles ? { answerFiles: event.answerFiles } : {}),
     ...(event.cause ? { cause: event.cause } : {}),
+    ...(event.carriedOn ? { carriedOn: true } : {}),
     ...(event.result ? { result: event.result } : {}),
     mark: mark && (yours || closed) ? { ...mark, tone: yours ? "turn" : "quiet" } : mark,
     ...(event.fromChild ? { sourceTaskId: event.taskId } : {}),

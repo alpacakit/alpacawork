@@ -4,6 +4,32 @@
     "add": "添加",
     "addAgent": "+ 添加智能体",
     "addRow": "+ 添加行",
+    "aiStack": {
+      "add": "+ 添加备选 AI",
+      "addFirst": "+ 添加平时使用的 AI",
+      "agentFor": "第 {{n}} 行的智能体",
+      "agentsNote": "已停用的智能体不能在上面的顺序中使用。",
+      "agentsTitle": "各智能体的设置",
+      "coordinatorNote": "你在输入框中对话的 AI，会用你最后在输入框菜单中选择的模型开始新的对话（尚未选择时为 1 号 AI）。因用量上限或容量不足而停止时，按上面的顺序由备选接着做。",
+      "down": "将第 {{n}} 行下移",
+      "first": "平时使用",
+      "issue": {
+        "disabled": "{{agent}} 已停用。请启用它，或删除这一行。",
+        "empty": "请添加平时使用的 AI。",
+        "missing": "没有名为 {{agent}} 的智能体。请选择其他智能体，或删除这一行。",
+        "value": "{{row}}“{{value}}”不是 {{agent}} 的可选值。请重新选择。"
+      },
+      "lead": "平时由 1 号 AI 工作。只有它因用量上限或容量不足而停止时，才按 2、3… 的顺序由备选接着做；最后一个也停止时，工作会停止并通知你。",
+      "namedOnly": "不在这里的模型不会被自动用作备选，只在请求中指定时才会使用。",
+      "notOffered": "{{value}}（不是可选值）",
+      "remove": "删除第 {{n}} 行",
+      "repeated": "与第 {{n}} 行相同，因此这一行不会被使用。",
+      "saveRefused": "未保存：“任务使用的 AI 与备选顺序”中有无法使用的行。请修正标红的行后再次保存。",
+      "showRow": "前往该行",
+      "title": "任务使用的 AI 与备选顺序",
+      "up": "将第 {{n}} 行上移",
+      "valueFor": "第 {{n}} 行的{{row}}"
+    },
     "authNeeded": "需要认证。请在服务器所在的电脑上登录 {{adapter}}",
     "authNeededCommand": "需要认证。请在服务器所在的电脑上执行 <code>{{command}}</code>",
     "authNeededCommandEnv": "需要认证。请在服务器所在的电脑上执行 <code>{{command}}</code>，或在该电脑的 {{path}} 中添加一行 {{env}}=你的密钥，然后重启服务器",
@@ -12,11 +38,8 @@
     "cancel": "取消",
     "cannotRun": "此路径无法执行",
     "choices": "委托时可选的值",
+    "choicesHint": "上方默认值和输入框菜单中提供的值。",
     "collapse": "收起 {{name}}",
-    "default": {
-      "explanation": "委托任务时，如果没有另选，就会使用这个智能体。想按工作类型使用不同的智能体，可以写进项目准则。例如：“做设计时请使用 Opus。”",
-      "label": "默认"
-    },
     "defaultsChanged": "此适配器的默认启动选项已更新",
     "disabled": "已停用",
     "duplicateName": "{{name}} 已存在，请换一个名称。",
@@ -57,16 +80,11 @@
     "executable": "可执行文件",
     "expand": "展开 {{name}}",
     "fixedEnv": "alpacawork 启动 {{adapter}} 时始终会传入此名称（无法在这里移除）",
-    "followDefault": {
-      "explanation": "更新改动内置默认值时，这里会随之变化。",
-      "label": "内置默认值"
-    },
     "found": "在这台电脑上找到：",
     "key": "键",
     "kind": "适配器：{{adapter}}",
     "launchOptions": "启动选项",
     "locked": "alpacawork 内置，无法在这里更改",
-    "makeDefault": "设为默认",
     "name": "名称",
     "notFound": "找不到可执行文件：",
     "notFoundShort": "未找到",
@@ -89,7 +107,7 @@
     "unusedAdapter": "不适用于此适配器",
     "unusedOptions": "启动选项中未使用",
     "useAgent": "启用 {{name}}",
-    "values": "值（用逗号分隔；第一个为预选值）"
+    "values": "值（用逗号分隔）"
   },
   "archive": {
     "confirm": {

@@ -57,7 +57,7 @@ function setup({restored=true, changed=false, changedTurn=false, changedPlacemen
   }
   return new Response(snapshotJson({status:'unavailable',profile:'claude',skills:[]}));
  }));
- const rendered=render(<TestWorkspace data={data}><CoordinatorInput launch={{selected:{},picker:null}} profile='claude'/></TestWorkspace>);
+ const rendered=render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile='claude'/></TestWorkspace>);
  return {posts,intent,data,current,original,rendered};
 }
 const send=()=>fireEvent.click(document.querySelector('[data-ask-send]')!);

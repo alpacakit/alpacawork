@@ -8,8 +8,8 @@
       "check": "Couldn't check the agents on this PC.",
       "save": "Couldn't save the agent settings."
     },
-    "first": "Default agent",
-    "firstHint": "The one already selected when you send a request. You can change it for each request.",
+    "first": "First AI to use",
+    "firstHint": "It becomes AI 1 in “AI for tasks and fallback order” in the settings, and new conversations start with it too. You can change the fallback order in the settings later.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",

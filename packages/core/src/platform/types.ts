@@ -28,9 +28,9 @@ export type HostAdapter = {
      * its process group, and return once none is left; a process without a unit of its own has none to stop. With
      * `recorded`, the unit is instead the one a process ran in: `scope` is what `scope(pid)` read of it, and only a
      * unit `ours` names (by its name) and this process is not in is stopped, so a recovery stops a lost manager's unit
-     * and never its own.
+     * and never its own. Reports whether any remaining processes needed termination.
      */
-    stopUnitOthers(recorded?: { scope: string; ours: (unit: string) => boolean }): Promise<void>;
+    stopUnitOthers(recorded?: { scope: string; ours: (unit: string) => boolean }): Promise<boolean>;
     /** What names this boot of the host, as an opaque value: a recorded PID means nothing on another boot. */
     bootId(): string;
     /** The unit process `pid` runs in, as an opaque value `stopUnitOthers` reads; null when it has ended or the host has none. */

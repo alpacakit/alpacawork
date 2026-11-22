@@ -7,7 +7,7 @@ import { storedTaskLogSchema, type TaskLog } from '@alpacawork/raw/task-log-sche
 
 export const TASK_RECORD_COLUMNS = `l.id,l.entry,l.request_id,l.note_title,l.note_description,q.purpose,q.author,q.submitted_at,q.about_run_id,q.answers_question,
   json_extract(r.record,'$.role') AS role`;
-export const TASK_RECORD_JOINS = `LEFT JOIN requests q ON q.id=l.request_id LEFT JOIN runs r ON r.request_id=q.id`;
+export const TASK_RECORD_JOINS = `LEFT JOIN requests q ON q.id=l.request_id LEFT JOIN runs r ON r.request_id=q.id AND r.attempt=0`;
 const decode = storedJsonDecoder(storedTaskLogSchema);
 export function taskEvent(row: Record<string, unknown>, fromState: TaskLog['fromState']): TaskLog {
   if (row.request_id === null) return decode(row.id, String(row.entry));

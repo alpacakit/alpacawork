@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { hasRequesterSeat, isSeatContinuation, type RETURN_CLOSURES, type RETURN_NOTICES } from '@alpacawork/contract';
 import { DELIVERY_STATE, type DeliveryState, type RequestPurpose } from '@alpacawork/contract/control';
-import { isRunEnded, type ReadRunRecord } from '@alpacawork/contract/run';
+import { carrierOf, isRunEnded, runNumber, type ReadRunRecord } from '@alpacawork/contract/run';
 import type { TaskKind, TaskLifecycle, TaskLog, TaskState, TaskActor } from '@alpacawork/raw';
 
 /** Where a return or a question goes: a seat's Task ID, or null for the user. */
@@ -20,7 +20,7 @@ export type RequestFacts = { id: string; taskId: string; purpose: RequestPurpose
   deliveryState: DeliveryState };
 /** A Run as these rules read it: the Run that carried a Request, and the Run that called it. */
 export type RunFacts = Pick<ReadRunRecord, 'id' | 'task' | 'role' | 'requestId' | 'caller' | 'state' | 'reason' | 'into' |
-  'stop_requested' | 'ended_at'>;
+  'stop_requested' | 'ended_at' | 'attempt' | 'supersededBy'>;
 /** A Task as these rules read it; `responsible` is whether an active responsible placement holds it now. */
 export type TaskFacts = { id: string; kind: TaskKind; parentId: string | null; lifecycle: TaskLifecycle;
   userRequested: boolean; log: readonly TaskLog[]; responsible: boolean };
@@ -33,7 +33,11 @@ type Closure = { outcome: ReturnClosure; runId: string | null; causeLogId: strin
 export function returnFacts(tasks: Iterable<TaskFacts>, runs: Iterable<RunFacts>,
   returns: Iterable<{ requestId: string | null }> = []): ReturnFacts {
   const byId = new Map<string, RunFacts>(), byRequest = new Map<string, RunFacts>();
-  for (const run of runs) { byId.set(run.id, run); byRequest.set(run.requestId, run); }
+  for (const run of runs) {
+    byId.set(run.id, run);
+    const previous = byRequest.get(run.requestId);
+    if (!previous || runNumber(previous.id) < runNumber(run.id)) byRequest.set(run.requestId, run);
+  }
   return { runs: byId, runOf: byRequest, tasks: new Map([...tasks].map(task => [task.id, task])),
     closedRequests: new Set([...returns].flatMap(row => row.requestId === null ? [] : [row.requestId])) };
 }
@@ -101,7 +105,7 @@ export function closureOf(request: RequestFacts, facts: ReturnFacts): Closure | 
   const run = facts.runOf.get(request.id);
   if (!run) return null;
   if (run.role === 'worker') {
-    const actual = run.state === 'joined' && run.into !== null ? facts.runs.get(run.into) : run;
+    const actual = carrierOf(run, id => facts.runs.get(id));
     const outcome = actual ? workerClosure(actual) : null;
     return actual && outcome ? { outcome, runId: actual.id, causeLogId: null } : null;
   }

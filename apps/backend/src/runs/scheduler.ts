@@ -5,10 +5,10 @@ import { releaseAdmission } from '../release/journal.js';
 import { closeSync, constants, existsSync, statSync, writeSync, mkdirSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { hasCode, platform, tryLock } from '@alpacawork/core';
-import { RUN_FILES, compareRunIds, runNumber, type CoordinatorRunRecord, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
+import { RUN_FILES, runNumber, type CoordinatorRunRecord, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { taskBaseStateSchema, type RunId } from '@alpacawork/contract/fields';
-import { RunStore, conversationInUse, isEnded, usesSlot, laneAhead, type RunTransaction } from '@alpacawork/runs';
+import { RunStore, compareRequestOrder, conversationInUse, isEnded, usesSlot, laneAhead, type RunTransaction } from '@alpacawork/runs';
 import { readAgentsSettings, type AgentsSettingsResult } from '../agents-settings.js';
 import { agentLaunchSchema } from '@alpacawork/contract/agent-launch';
 import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
@@ -149,7 +149,7 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
   const { limits } = settings.config;
   // A coordinator Run answers the person at the screen: it takes no slot and never waits for one.
   let occupied = runs.filter(r => r.role !== 'coordinator' && (usesSlot(r) || blocked.has(runNumber(r.id)))).length;
-  const queued = runs.filter(r => r.state === 'queued').sort(compareRunIds);
+  const queued = runs.filter(r => r.state === 'queued').sort(compareRequestOrder);
   for (let run of queued) {
     if(releaseAdmission(store.root)!=='accepting')break;
     // Uncertain input delivery retains its existing exclusion, including during scope invalidation.
@@ -181,6 +181,12 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
       // Returns wake the responsible seat, and a failed seat takes none until its requester retries. The Run
       // stays queued for the router to abort, so its returns go with that retry. The server's own Request (W0) goes on.
       if (start.request.purpose === 'return_continuation' && failedDeliveryBlocked(seatFailedBefore(store, tx, run), carriedRows(tx, run))) continue;
+    }
+    if (run.attempt !== undefined && (!Object.hasOwn(settings.config.agents, run.agent) ||
+        settings.config.agents[run.agent]?.enabled === false)) {
+      tx.update({ ...run, state: 'cancelled', reason: 'scope_invalidated', ended_at: new Date().toISOString() });
+      runs = tx.forSettle();
+      continue;
     }
     // Requests in one lane are serialized even when `mode=new` selected a
     // different session. A queued reply waits for its predecessor to finish.

@@ -168,12 +168,13 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     tick(); closeChannel(); takeReceipts();
     if (termination) await termination;
     // A process can leave children behind on natural exit; completion requires the entire group to end.
-    if (platform.run.signalGroup(child.pid!, 0)) {
+    const groupLeft = platform.run.signalGroup(child.pid!, 0);
+    if (groupLeft) {
       journal.append('termination_started', { pid: child.pid! }); await terminateAgent(child.pid!);
     }
     groupSettled = true;
     // Nothing this Run started outlives it, including commands that left the agent's group but stayed in its unit.
-    await platform.run.stopUnitOthers(); unitSettled = true;
+    const unitLeft = await platform.run.stopUnitOthers(); unitSettled = true;
     journal.append('exited', exit);
     for (const [inputId, state] of observedInputs) if (state === 'attempted') {
       journal.append('input_uncertain', { inputId, receipt: { evidence: 'process_ended_without_receipt' } });
@@ -181,7 +182,8 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     }
     try { activity.finish(folder); } catch (error) { console.error('Activity finish failed', error); }
     const output = adapter.read(adapterInvocation, folder, exit);
-    const end = readEnd({ outcome: endOutcome(cause, output.outcome), observed: output, exit, measured: true });
+    const end = readEnd({ outcome: endOutcome(cause, output.outcome), observed: output, exit, measured: true,
+      interrupted: !!termination || groupLeft || unitLeft || !!commands?.interrupted });
     publishCompletion(journal, end);
   } catch (error) {
     failed = true;

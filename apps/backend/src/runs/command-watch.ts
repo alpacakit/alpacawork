@@ -6,6 +6,7 @@ import type { EventJournal } from './execution-files.js';
 type Command = { session: number; started: string; since: number; termination: TerminationSequence; members: Map<number, string> };
 export class CommandWatch {
   private readonly commands = new Map<string, Command>();
+  interrupted = false;
   constructor(private readonly root: number, private readonly seconds: number, private readonly scope: string | null,
     private readonly journal: Pick<EventJournal, 'append'>) {}
 
@@ -35,8 +36,11 @@ export class CommandWatch {
         if (result === 'sent') pids.push(row.pid);
         else if (result !== 'stale') failed.push({ pid: row.pid, code: result });
       }
-      if (pids.length || failed.length) this.journal.append('command_stopped', { session: command.session, started: command.started,
-        signal, seconds: this.seconds, pids, failed });
+      if (pids.length || failed.length) {
+        this.interrupted = true;
+        this.journal.append('command_stopped', { session: command.session, started: command.started,
+          signal, seconds: this.seconds, pids, failed });
+      }
     }
   }
   private signal(row: RunProcess, signal: NodeJS.Signals): 'sent' | 'stale' | 'EPERM' | 'ESRCH' {

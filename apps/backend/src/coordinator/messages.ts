@@ -10,7 +10,7 @@ import type { CoordinatorMessage, CoordinatorResult } from '@alpacawork/contract
 import { answerFilesSchema, type AnswerFiles } from '@alpacawork/contract';
 import { problemErrorSchema, recordedProblemSchema } from '@alpacawork/contract/problem';
 import { replyAccess } from '@alpacawork/contract/access-boundaries';
-import { UNSETTLED_INPUTS_SQL } from '@alpacawork/runs';
+import { currentRequestRun, UNSETTLED_INPUTS_SQL } from '@alpacawork/runs';
 
 type Screen = { source: string; conversation: string; runId?: string };
 
@@ -21,14 +21,17 @@ export function messageForRun(db: DatabaseSync, runId: string): string | undefin
     WHERE r.id=? AND c.warm_request_id IS NOT q.id`).get(runNumber(runId));
   return row ? String(row.id) : undefined;
 }
-/** This Run's initial message and messages proved taken into it, including their reply references. */
+/** The original message and every input proved taken into the trial or a trial it replaced. */
 export function deliveredMessages(db: DatabaseSync, runId: string): string[] {
-  return db.prepare(`SELECT q.id FROM runs r JOIN requests q ON q.id=r.request_id
-    JOIN coordinator_conversations c ON c.id=q.conversation_id
-    WHERE c.warm_request_id IS NOT q.id AND (r.id=? OR
-      (r.state='joined' AND r.into_id=? AND EXISTS (SELECT 1 FROM run_inputs i JOIN run_attempts a USING(attempt_id)
-        WHERE i.instruction_run_no=r.id AND i.initial=0 AND i.state='taken' AND a.run_no=?))) ORDER BY r.id`)
-    .all(runNumber(runId), runId, runNumber(runId)).map(row => String(row.id));
+  return db.prepare(`SELECT q.id FROM runs trial
+    JOIN runs r ON r.conversation_id=trial.conversation_id
+    JOIN requests q ON q.id=r.request_id JOIN coordinator_conversations c ON c.id=q.conversation_id
+    WHERE trial.id=? AND c.warm_request_id IS NOT q.id AND (r.id=trial.id OR
+      (r.state='joined' AND EXISTS (SELECT 1 FROM run_inputs i JOIN run_attempts a USING(attempt_id)
+        JOIN runs carrier ON carrier.id=a.run_no
+        WHERE i.instruction_run_no=r.id AND r.into_id='R' || carrier.id AND i.initial=0 AND i.state='taken'
+          AND carrier.request_id=trial.request_id AND carrier.attempt<=trial.attempt))) ORDER BY r.id`)
+    .all(runNumber(runId)).map(row => String(row.id));
 }
 /** A reference whose manager may still publish its receipt. Unrelated queued messages are never candidates. */
 export function pendingInput(db: DatabaseSync, runId: string,
@@ -140,6 +143,11 @@ export function requestedByUser(log: readonly TaskLog[], said: (message: string)
   return mark && { at: (mark.message === null ? undefined : said(mark.message)) ?? mark.at };
 }
 
+/** The current trial that answered for a message, including a message taken into another turn. */
+export const messageCarrier = (request: string) => `SELECT coalesce((${currentRequestRun('host.request_id')}),r.id)
+  FROM runs r LEFT JOIN runs host ON host.id=CAST(substr(r.into_id,2) AS INTEGER)
+  WHERE r.id=(${currentRequestRun(request)})`;
+
 export type Dialogue = { taskId: string; messageId: string; at: string; words: string; answer: string | null; answerFiles?: AnswerFiles };
 /**
  * Screen words stay in Requests; external recorded quotes project from their effect log with no captured answer.
@@ -150,7 +158,7 @@ export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 
   const screen = db.prepare(`SELECT k.external_id AS task_id,q.id AS message_id,q.submitted_at AS at,q.body AS words,
       a.result AS answer,a.request_id AS kept_by,CASE WHEN c.id IS NOT NULL AND c.cleared_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
     FROM task_dialogues d JOIN tasks k ON k.id=d.task_uuid JOIN requests q ON q.id=d.request_id
-    LEFT JOIN runs a ON a.id=(SELECT coalesce(CAST(substr(r.into_id,2) AS INTEGER),r.id) FROM runs r WHERE r.request_id=q.id)
+    LEFT JOIN runs a ON a.id=(${messageCarrier('q.id')})
       AND a.state='succeeded' AND a.result_state='present'
     LEFT JOIN coordinator_conversations c ON c.id=a.conversation_id
     WHERE k.external_id IN (SELECT value FROM json_each(?))`).all(ids);
@@ -173,10 +181,10 @@ export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 
  */
 export function coordinatorRunsOf(db: DatabaseSync, requestIds: readonly string[]): Record<string, { agent: string; modelId: string | null; effort: string | null }> {
   if (!requestIds.length) return {};
-  const rows = db.prepare(`SELECT r.request_id AS message,json_extract(a.record,'$.agent') AS agent,
+  const rows = db.prepare(`SELECT r.id AS message,json_extract(a.record,'$.agent') AS agent,
       json_extract(a.record,'$.launch.values.model') AS model,json_extract(a.record,'$.launch.values.effort') AS effort
-    FROM runs r JOIN runs a ON a.id=coalesce(CAST(substr(r.into_id,2) AS INTEGER),r.id)
-    WHERE r.request_id IN (SELECT value FROM json_each(?)) AND json_extract(r.record,'$.role')='coordinator'`).all(JSON.stringify([...new Set(requestIds)]));
+    FROM requests r JOIN runs a ON a.id=(${messageCarrier('r.id')})
+    WHERE r.id IN (SELECT value FROM json_each(?)) AND r.conversation_id IS NOT NULL`).all(JSON.stringify([...new Set(requestIds)]));
   const text = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : null;
   return Object.fromEntries(rows.flatMap(row => text(row.agent) === null ? []
     : [[String(row.message), { agent: text(row.agent)!, modelId: text(row.model), effort: text(row.effort) }]]));

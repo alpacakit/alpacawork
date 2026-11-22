@@ -8,8 +8,8 @@ import type { AgentLaunch } from '@alpacawork/contract/agent-launch';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { attachmentBytes, checkAgentsConfigText, DEFAULT_LIMITS, limitsShape,
   compileAgentSetting, prepareAgentLaunch, prepareCoordinatorLaunch,
-  agentChoices, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
-  type AgentSetting, type ResolvedAgentSetting, type Selection, type LaunchAdmission } from '@alpacawork/contract';
+  aiStackSchema, agentChoices, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
+  type AiRow, type AgentSetting, type ResolvedAgentSetting, type Selection, type LaunchAdmission } from '@alpacawork/contract';
 import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
 import { stringify } from 'yaml';
 import { commandPrefix, launchCommand } from './agents/availability.js';
@@ -31,7 +31,7 @@ const settingsSchema = z.object({
     [key, rule.default(DEFAULT_LIMITS[key as keyof typeof DEFAULT_LIMITS])])) as
     { [K in keyof typeof limitsShape]: z.ZodDefault<z.ZodNumber> }).strict().prefault({}),
 }).strict();
-export type AgentsSettings = z.infer<typeof settingsSchema> & { agents: Record<string, ResolvedAgentSetting> };
+export type AgentsSettings = z.infer<typeof settingsSchema> & { agents: Record<string, ResolvedAgentSetting>; aiStack?: AiRow[] };
 export const agentFields = (key: string, agent: AgentSetting) => agentChoices(compileAgentSetting(key, agent));
 /** The selection data is one projection of the validated setting, in its original order. */
 export function agentProfile(key: string, agent: AgentSetting) {
@@ -53,7 +53,13 @@ export function parseAgentsSettings(text: string): AgentsSettings {
       `${issue.line === null ? '?' : issue.line}: ${issue.path}: ${issue.message}`).join('; '), undefined,
       { reason: { kind: 'config_invalid', path: CONFIG_FILE, issues: checked.issues.map(issue => ({
         code: issue.kind, path: issue.path, line: issue.line ?? undefined, diagnostic: redactSecrets(issue.message) })) } });
-    return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents };
+    const aiStack = values.aiStack === undefined ? undefined : aiStackSchema.parse(values.aiStack).map(row => {
+      const setting = Object.hasOwn(checked.agents, row.agent) ? checked.agents[row.agent] : undefined;
+      if (!setting) throw new Error(`The AI stack names an undefined agent: ${row.agent}`);
+      const prepared = prepareAgentLaunch(compileAgentSetting(row.agent, setting), { mode: 'start', path: '/bin', explicit: row.values });
+      return { agent: row.agent, values: prepared.launch.values };
+    });
+    return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents, aiStack };
   } catch (error) { throw invalid(error); }
 }
 /**
@@ -112,7 +118,7 @@ function snapshotAdmission(config: AgentsSettings, agentName: string, mode: 'sta
 export function launchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
   selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'> | { values: Selection }) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
-  if (!prepared.ok) return prepared;
+  if (prepared.ok === false) return prepared;
   const result = admission(() => prepareAgentLaunch(prepared.compiled, prepared.input));
   pinCommand(result.launch, prepared.compiled.setting);
   return { ok: true as const, launch: result.launch };
@@ -121,7 +127,7 @@ export function launchSnapshot(config: AgentsSettings, agentName: string, mode: 
 export function coordinatorLaunchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
   selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'>) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
-  if (!prepared.ok) return prepared;
+  if (prepared.ok === false) return prepared;
   const result = admission(() => prepareCoordinatorLaunch(prepared.compiled, prepared.input));
   const prefix = pinCommand(result.launch, prepared.compiled.setting);
   if (result.restartArgv) result.restartArgv = [...prefix, ...result.restartArgv.slice(AGENT_ADAPTERS[prepared.compiled.adapter].prefix.length)];

@@ -67,7 +67,7 @@ export const posixRun: HostAdapter['run'] = {
     }
   },
   // Nothing places a process in a unit of its own here: it has only its group, which its starter stops.
-  stopUnitOthers: () => Promise.resolve(),
+  stopUnitOthers: () => Promise.resolve(false),
   environment: [],
   processes() {
     return execFileSync('ps', ['-xww', '-o', 'pid=,command='], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })

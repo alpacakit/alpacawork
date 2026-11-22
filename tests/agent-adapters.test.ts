@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { AGENT_RUNTIME_ADAPTERS as adapters } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { AgentInputChannel } from '@alpacawork/backend/test-dist/runs/input.js';
+import { readEnd } from '@alpacawork/backend/test-dist/runs/result-observation.js';
 import { agentEnvironment } from '@alpacawork/backend/test-dist/runs/env.js';
 import { MAX_LINE } from '@alpacawork/backend/test-dist/runs/readers/jsonl.js';
 import { RUN_FILES, RUN_RESULT_LIMIT } from '@alpacawork/contract/run';
@@ -77,6 +78,24 @@ test('all bridge IDs consume the common boundary after admission, keep continuat
   assert.equal(adapters.codex.read(resume, f.folder, exit).outcome.state, 'failed');
   f.append({ type: 'thread.started', thread_id: 'other' }, { type: 'turn.completed', usage: null });
   assert.equal(adapters.codex.read(resume, f.folder, exit).outcome.state, 'failed');
+});
+
+test('Codex overload cannot hand off an unfinished tool even when activity omits it', t => {
+  const f = fixture(t), failed = { code: 1, signal: null };
+  for (const type of ['dynamic_tool_call', 'collab_agent_tool_call']) {
+    const item = { type, id: 'tool' };
+    for (const finished of [false, true]) {
+      f.stream({ type: 'thread.started', thread_id: 'session' },
+        { type: 'item.started', item: { type: 'agent_message', id: 'message' } },
+        { type: 'item.started', item },
+        ...finished ? [{ type: 'item.completed', item }] : [],
+        { type: 'turn.failed', error: { codexErrorInfo: 'serverOverloaded' } });
+      const observed = adapters.codex.read(resume, f.folder, failed);
+      const end = readEnd({ observed, outcome: observed.outcome, exit: failed, measured: true });
+      assert.equal(end.availability?.cause, 'model_capacity');
+      assert.equal(end.handoffSafe, finished ? true : undefined, type);
+    }
+  }
 });
 
 test('adapter receipts preserve uncertainty, delayed taken and the existing single-attempt owner', t => {

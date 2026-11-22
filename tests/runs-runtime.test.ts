@@ -437,7 +437,7 @@ test('recovery ends a lost coordinator turn as its manager would: its group gone
   h.store.write(tx => tx.update({ ...tx.runtimeGet(run.id)!, state: 'needs_review', reason: 'manager_lost', stop_requested: true }));
   const stopUnit = platform.run.stopUnitOthers, asked: NonNullable<Parameters<typeof stopUnit>[0]>[] = [];
   let left = true;
-  platform.run.stopUnitOthers = async recorded => { if (recorded) asked.push(recorded); if (left) throw new Error('Unit keeps PID 4242 after SIGKILL'); };
+  platform.run.stopUnitOthers = async recorded => { if (recorded) asked.push(recorded); if (left) throw new Error('Unit keeps PID 4242 after SIGKILL'); return false; };
   t.after(() => { platform.run.stopUnitOthers = stopUnit; });
   await recoverExecution(h.store);
   assert.equal(coordinatorRun(h, run.id).state, 'needs_review', 'a unit that keeps a process leaves the end unconfirmed');
@@ -461,7 +461,7 @@ test('lost-manager recovery releases the execution contract once the recorded gr
     .run(JSON.stringify({ pid: 999_999_998, started: 'gone', bootId: bootIdentity(), group: 999_999_998, scope }), runNumber(run.id));
   h.store.write(tx => tx.update({ ...tx.runtimeGet(run.id)!, state: 'needs_review', reason: 'manager_lost', stop_requested: true }));
   const stopUnit = platform.run.stopUnitOthers;
-  platform.run.stopUnitOthers = async () => {};
+  platform.run.stopUnitOthers = async () => false;
   t.after(() => { platform.run.stopUnitOthers = stopUnit; });
   assert.deepEqual(inspectExecution(h.store).contractUsers.map(user => user.runId), [run.id]);
   await recoverExecution(h.store);

@@ -8,8 +8,8 @@
       "check": "No se pudieron comprobar los agentes de este PC.",
       "save": "No se pudo guardar la configuración de los agentes."
     },
-    "first": "Agente predeterminado",
-    "firstHint": "Es el que ya viene seleccionado al enviar una solicitud. Puedes cambiarlo en cada solicitud.",
+    "first": "Primera IA que se usa",
+    "firstHint": "Pasa a ser la IA 1 de «IA de las tareas y orden de alternativas» en la configuración, y las conversaciones nuevas también empiezan con ella. Puedes cambiar el orden de alternativas más tarde en la configuración.",
     "found": "Instalado. Funciona con sesión o clave de API",
     "how": "Ejecuta este comando en una terminal y sigue las indicaciones para iniciar sesión.",
     "lead": "alpacawork encarga el trabajo a los agentes de IA que ya hay en este PC, como Claude Code y Codex. Los que actives serán las opciones al elegir a quién pedírselo.",

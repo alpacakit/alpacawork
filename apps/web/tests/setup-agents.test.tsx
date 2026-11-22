@@ -18,6 +18,8 @@ vi.mock('../src/data/queries', () => ({
 }));
 const telemetry = { status: { data: { state: 'on' } }, choose: async () => true };
 vi.mock('../src/features/telemetry/data', () => ({ useTelemetry: () => telemetry }));
+// Leaving the step lets the remembered launch agent go on the server; here it just answers.
+vi.mock('../src/features/forms/launch-choice', () => ({ forgetLaunchAgent: async () => {} }));
 
 const agent = (name: string, enabled: boolean): AgentDraft => ({ id: name, originalName: name, name, adapter: name as AgentDraft['adapter'], enabled, params: [] });
 // config.yaml after a setup has saved once: every kind is listed, the ones not given here off.

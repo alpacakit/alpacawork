@@ -60,7 +60,7 @@ const EXPAND_ROOM = cn('[&[data-input-long]_[data-one-input]]:pr-11 narrow:[&[da
   '[&[data-input-long]_[data-attachments]]:mr-10 narrow:[&[data-input-long]_[data-attachments]]:mr-12 pointer-coarse:[&[data-input-long]_[data-attachments]]:mr-12');
 
 export function CoordinatorInput({ launch, profile }: {
-  launch: { selected: Selection; picker: LaunchChoice | null }; profile: string;
+  launch: { selected: Selection; picker: LaunchChoice | null; saving: boolean }; profile: string;
 }) {
   const { t } = useTranslation('ui');
   const conversation = useConversation(state => state.conversation);
@@ -144,7 +144,8 @@ export function CoordinatorInput({ launch, profile }: {
    */
   const closing = shownConversation.closing;
   const canPost = !unreachable && !!conversation && !closing;
-  const canSend = canPost && !draftUnavailable && !shared && !recording && !draft.unavailable && !files.attachments.waiting
+  // A choice made in the picker is still being saved: the send waits, so it goes with that choice.
+  const canSend = canPost && !launch.saving && !draftUnavailable && !shared && !recording && !draft.unavailable && !files.attachments.waiting
     && !pendingInput(useDraftStore.getState().entries, root, draft.key)
     && !(heldReader && readerSendReadiness(draft.doc, serverTasksFor(client) ?? [], null).ready);
   /**
@@ -171,7 +172,7 @@ export function CoordinatorInput({ launch, profile }: {
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
     const fixed: Fixed = { conversationId, text: serialize(doc, profile), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
-      agent: profile, selected: launch.selected, attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
+      agent: launch.picker ? launch.picker.sendAgent : profile, selected: launch.selected, attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };
     const accept = captureReaderSubmission(fixed, doc, serverTasksFor(client) ?? [], requestId, scope, recheck(requestId, scope), card);
     if (accept.reader.some(reader => holdsReaderTurn(useDraftStore.getState().entries, root, reader))) return null;
