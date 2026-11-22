@@ -11,6 +11,11 @@
       "open": "Use on your phone or as an app"
     },
     "attached": "Attachments only",
+    "attempts": {
+      "stopped": "{{agent}} — stopped on {{reason}}",
+      "title": "AIs tried",
+      "tookOver": "{{agent}} took over"
+    },
     "clear": "Clear conversation",
     "clearConfirm": "Click again to clear",
     "clearFailed": "Could not clear the conversation.",
@@ -307,12 +312,20 @@
     "cause": {
       "modelCapacity": "The model was at capacity, so the run failed. Retry later or with another model, or stop",
       "modelLimit": "The agent hit its model's usage limit, so the run failed. Retry with another model or after the limit resets, or stop",
+      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Retry after the limit resets, or stop",
       "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Retry after the limit resets, or stop"
     },
     "causeReason": {
       "modelCapacity": "The model is at capacity",
       "modelLimit": "Model usage limit reached",
+      "sessionLimit": "5-hour usage limit reached",
       "weeklyLimit": "Weekly usage limit reached"
+    },
+    "limitName": {
+      "modelCapacity": "model capacity",
+      "modelLimit": "the model's usage limit",
+      "sessionLimit": "the 5-hour usage limit",
+      "weeklyLimit": "the weekly usage limit"
     }
   },
   "state": {

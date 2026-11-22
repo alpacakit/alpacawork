@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { parse } from 'yaml';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
@@ -42,30 +42,4 @@ test('a value written in config.yaml stays until restored, even when it equals t
   // Saving writes no value equal to its default, so the written variables go too, and are followed when read again.
   const saved = writeAgentsDraft(latest);
   expect(saved.ok && parse(saved.value)).toEqual({ claude: {} });
-});
-
-test('the task defaults: one row per enabled agent, a value from each used row, the marked agent first, and a default no longer offered said', () => {
-  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: [medium, high]\n    tier: [a, b]\n  defaults:\n    effort: max\n'
-    + 'codex:\n  params:\n    model: [gpt-6.2-sol, gpt-6.1-terra]\n    effort: [medium, high, low]\n    fast: ["-", fast]\n'
-    + 'copilot:\n  enabled: false\n');
-  if (!read.ok) throw new Error('unreadable');
-  const initial = read.value;
-  let latest = initial;
-  function Form() {
-    const [draft, setDraft] = useState(initial);
-    return <AgentSettings draft={draft} onChange={next => { latest = next; setDraft(next); }} />;
-  }
-  render(<Form />);
-  const rows = () => [...document.querySelectorAll<HTMLElement>('[data-task-default]')];
-  // A disabled agent has no row; a row the launch options do not use (tier) has no value to pick.
-  expect(rows().map(row => row.dataset.taskDefault)).toEqual(['claude', 'codex']);
-  expect(screen.queryByLabelText('tier for claude')).toBeNull();
-  // A written default no longer among the values: the first stands in, and the row says so.
-  expect(screen.getByLabelText<HTMLSelectElement>('Effort for claude').value).toBe('medium');
-  expect(rows()[0]!.textContent).toContain('“max” is no longer a value, so “medium” is used');
-  fireEvent.click(within(rows()[1]!).getByRole('radio'));
-  fireEvent.change(screen.getByLabelText('Effort for codex'), { target: { value: 'high' } });
-  expect(latest.agents.map(agent => agent.name)).toEqual(['codex', 'claude', 'copilot']);
-  const saved = writeAgentsDraft(latest);
-  expect(saved.ok && parse(saved.value).codex.defaults).toEqual({ effort: 'high' });
 });

@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
 import { AgentSettings } from './AgentSettings';
+import { AiStack } from './AiStack';
+import { followRenames } from './ai-stack-draft';
 import { AgentObservationsProvider } from './AgentSettingsExecutable';
 import { EnvironmentFileLine, EnvironmentFileProblems, useEnvironmentFile } from './EnvironmentFile';
 import { validateAgentsDraft } from './agent-settings-draft';
@@ -66,7 +68,7 @@ export function ServerSettingsTab() {
       setBase({ hash: saved.hash ?? base.hash, draft });
       form.reset(draft);
     },
-    onInvalid: errors => { if (errors.agents) unfold('agents'); if (errors.limits) unfold('advanced'); },
+    onInvalid: errors => { if (errors.agents || errors.aiStack) unfold('agents'); if (errors.limits) unfold('advanced'); },
   });
   const capture = useAnswerGuard(form);
   const { isDirty } = useFormState({ control: form.control });
@@ -140,7 +142,7 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
   folds: Folds; onFoldsChange: (folds: Folds) => void; disabled: boolean; environmentFile: string | undefined;
 }) {
   const { t } = useTranslation("panels");
-  const { control, register } = useFormContext<ServerDraft>();
+  const { control, register, getValues, setValue } = useFormContext<ServerDraft>();
   const draft = useWatch({ control }) as ServerDraft;
   const { errors } = useFormState({ control });
   // Read beside the form, not before it: it waits on each agent's own checks.
@@ -168,10 +170,19 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
     </SettingSection>
     */}
     <ServerFold id="server-agents" title={t('agentSettings.title')} summary={inUse.length ? t('settings.server.agentsInUse', { names: inUse.join(', ') }) : undefined} {...fold('agents')}>
+    {/* The stack the agents run in, above the agents whose choices its rows pick from. */}
+    {draft.agents.ok && <fieldset disabled={disabled} className="mb-4 min-w-0 border-0 p-0"><Controller name="aiStack" control={control} render={({ field }) =>
+      <AiStack rows={field.value} agents={draft.agents.ok ? draft.agents.value.agents : []} onChange={field.onChange} />} /></fieldset>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
         <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
-          onChange={value => field.onChange({ ok: true, value })} /></AgentObservationsProvider>
+          onChange={value => {
+            // A row of the stack follows its agent's new name.
+            const before = field.value;
+            const rows = getValues('aiStack'), followed = before.ok ? followRenames(rows, before.value, value) : rows;
+            if (followed !== rows) setValue('aiStack', followed, { shouldDirty: true });
+            field.onChange({ ok: true, value });
+          }} /></AgentObservationsProvider>
       : <FieldError ref={field.ref} tabIndex={-1}>{agentIssues.map(issue => agentDraftIssueText(issue, t)).join('\n')}</FieldError>} />
     {errors.agents && agentIssues.length === 0 && <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>}
     </ServerFold>

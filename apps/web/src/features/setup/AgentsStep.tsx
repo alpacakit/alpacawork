@@ -82,9 +82,9 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
       if (agents && drafts && loaded) {
         const chosen = chosenAgents(drafts.agents, rows, on, first);
         if (chosen) {
-          const yaml = serverAgentsYaml({ limits: loaded.limits, agents: { ok: true, value: { ...drafts, agents: chosen } } });
+          const yaml = serverAgentsYaml({ agents: { ok: true, value: { ...drafts, agents: chosen } } });
           if (!yaml.ok) throw new Error("Invalid agent settings");
-          try { await save.mutateAsync({ yaml: configYaml({ limits: loaded.limits, agents: { ok: true, value: drafts } }), agents: yaml.value, expected: loaded.hash! }); }
+          try { await save.mutateAsync({ yaml: configYaml({ limits: loaded.limits }), agents: yaml.value, expected: loaded.hash! }); }
           catch (error) { fail("agents", error); void settings.refetch(); return; }
         }
         // The agent chosen here is where the next request starts, whatever was picked before on any device. Unsaved,

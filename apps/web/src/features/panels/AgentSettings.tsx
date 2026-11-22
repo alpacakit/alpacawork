@@ -12,7 +12,6 @@ import { AgentSettingsDisabled } from './agent-settings-editing';
 import { cn } from '@/lib/utils';
 import { AgentSettingsOptions } from './AgentSettingsOptions';
 import { AddAgentControl, AgentDefaultMark, AgentExtraFields } from './AgentSettingsExtras';
-import { TaskDefaults } from './TaskDefaults';
 import { AgentExecutableRow, AgentNoticeLine } from './AgentSettingsExecutable';
 import { agentDraftIssueText } from './agent-settings-issues';
 import { agentOptionsVersion } from './agent-options-version';
@@ -152,9 +151,6 @@ export function AgentSettings({ draft, onChange, issues = [], disabled = false, 
   const change = (updated: AgentsDraft) => { if (!disabled) onChange(updated); };
   return <AgentSettingsDisabled value={disabled}><fieldset ref={fieldset} disabled={disabled} className="min-w-0 border-0 p-0">
     <div className="flex flex-col gap-4">
-      {/* Where owners and members start: the default agent (the first enabled one in config order) and each agent's
-        task defaults. The cards keep their order. */}
-      <TaskDefaults draft={draft} onChange={change} />
       {draft.agents.map(agent => <AgentSettingsCard key={agent.id} agent={agent}
         ref={handle => { if (handle) cards.current.set(agent.id, handle); else cards.current.delete(agent.id); }}
         nextId={nextId} issues={issues.filter(issue => issue.agentId === agent.id)} environmentFile={environmentFile}

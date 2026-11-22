@@ -4,6 +4,27 @@
     "add": "Adicionar",
     "addAgent": "+ Adicionar agente",
     "addRow": "+ Adicionar linha",
+    "aiStack": {
+      "add": "+ Adicionar uma alternativa",
+      "agentFor": "Agente da linha {{n}}",
+      "coordinatorNote": "A IA com quem você fala na caixa de entrada começa com o que você escolheu por último no menu dela (até você escolher, a primeira linha acima). Se ela parar, continua pelas linhas acima.",
+      "down": "Descer a linha {{n}}",
+      "first": "Padrão",
+      "issue": {
+        "disabled": "{{agent}} está desativado. Ative-o ou remova esta linha.",
+        "empty": "Coloque pelo menos uma linha em IA das tarefas.",
+        "missing": "Não há agente chamado {{agent}}. Escolha outro agente ou remova esta linha.",
+        "value": "{{row}} “{{value}}” não é um valor de {{agent}}. Escolha de novo."
+      },
+      "lead": "Usadas de cima para baixo. Se uma parar por limite de uso ou de capacidade, a próxima linha continua; se a última também parar, o trabalho para e você é avisado.",
+      "namedOnly": "Um modelo que não está aqui só é usado quando um pedido o nomeia.",
+      "notOffered": "{{value}} (não é um valor)",
+      "remove": "Remover a linha {{n}}",
+      "repeated": "Igual à linha {{n}}, por isso esta linha nunca é usada.",
+      "title": "IA das tarefas",
+      "up": "Subir a linha {{n}}",
+      "valueFor": "{{row}} da linha {{n}}"
+    },
     "authNeeded": "Autenticação necessária. Faça login no {{adapter}} no PC do servidor",
     "authNeededCommand": "Autenticação necessária. No PC do servidor, execute <code>{{command}}</code>",
     "authNeededCommandEnv": "Autenticação necessária. No PC do servidor, execute <code>{{command}}</code> ou adicione a linha {{env}}=sua-chave a {{path}} no PC do servidor e reinicie o servidor",
@@ -77,15 +98,6 @@
     "resume": "Continuação de conversa",
     "signedOut": "Você não fez login. Em um terminal, execute",
     "start": "Nova conversa",
-    "taskDefaults": {
-      "agentNote": "O agente marcado é usado quando um pedido não indica nenhum agente.",
-      "badge": "Padrão",
-      "coordinatorNote": "A IA com quem você fala no campo de entrada começa com o que você escolheu por último no menu do campo.",
-      "lead": "Quando um pedido não indica nada, as tarefas usam estes valores.",
-      "missing": "{{row}} “{{value}}” não é mais um valor, então “{{first}}” é usado.",
-      "title": "Padrões das tarefas",
-      "valueFor": "{{row}} de {{agent}}"
-    },
     "title": "Agentes",
     "unusedAdapter": "Indisponível para este adaptador",
     "unusedOptions": "Não usado nas opções de inicialização",

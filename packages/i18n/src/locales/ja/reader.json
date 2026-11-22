@@ -303,6 +303,11 @@
     "row": {
       "answerTo": "質問: {{question}}",
       "between": "{{from}}から{{to}}へ",
+      "carriedOn": {
+        "limit": "上限",
+        "next": "{{reason}}で止まり、並びの次の AI に引き継ぎました",
+        "to": "{{reason}}で止まり、{{next}} に引き継ぎました"
+      },
       "cause": "{{at}} に受け取った「{{title}}」",
       "changedTo": "{{state}}にしました",
       "end": {
@@ -377,7 +382,8 @@
     "sendBack": "差し戻しを書く",
     "sentBody": "エージェントに送った本文",
     "working": {
-      "others_other": "ほか{{count}}人"
+      "others_other": "ほか{{count}}人",
+      "tookOver": "{{agent}} が{{reason}}で止まったため引き継ぎ"
     }
   },
   "ruleTab": {

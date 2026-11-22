@@ -9,7 +9,8 @@ import { WorkspaceContext } from '@/data/workspace-store';
 import { useConversation } from './coordinator';
 import { paceKey, workPacer, type Pace } from './work-pace';
 import { workNameWords } from '@/domain/work-words';
-import { causeReason } from '@/domain/run-labels';
+import { causeReason, limitName } from '@/domain/run-labels';
+import { agentLabel } from '@/domain/agent-label';
 
 /**
  * The words of a running turn: its recent work's name while the pacer shows it for this turn, else the turn's own, then
@@ -52,9 +53,13 @@ export function Thinking({ turn }: { turn: { id: string; at: string } }) {
   return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{words}</span>;
 }
 
-/** Why a turn failed: its Run's known cause (the words shared with a Run's failure), else what serve recorded. */
-export function coordinatorErrorReason({ error, failure }: Pick<CoordinatorTurn, "error" | "failure">): string {
-  if (failure?.cause) return causeReason(failure.cause, i18n.getFixedT(null, "ui"));
+/**
+ * Why a turn failed: its Run's known cause (the words shared with a Run's failure), else the limit its last AI of the
+ * stack stopped on, else what serve recorded.
+ */
+export function coordinatorErrorReason({ error, failure, attempts }: Pick<CoordinatorTurn, "error" | "failure" | "attempts">): string {
+  const cause = failure?.cause ?? attempts?.at(-1)?.availability?.cause;
+  if (cause) return causeReason(cause, i18n.getFixedT(null, "ui"));
   switch (error) {
     case "attachment_save": return i18n.t("ui:coordinatorCard.error.attachmentSave");
     case "attachment": return i18n.t("ui:coordinatorCard.error.attachment");
@@ -80,4 +85,24 @@ export function MentionMarks({ text }: { text: string }) {
   if (!ids.length) return null;
   const rows = (id: string) => `[data-row="${id}"]`;
   return <style>{ids.map((id) => `${rows(id)}>[data-row-head]>[data-row-label]{background:var(--mention)}`).join("\n")}</style>;
+}
+
+/**
+ * The AIs of the stack one message went through, when one stopped on a limit: each that stopped and why, then the one
+ * that took it over. Said under the answer (or the failure) in the conversation's small words; the last one stopping
+ * is the failure itself, said above as every failure is.
+ */
+export function Attempts({ turn }: { turn: Pick<CoordinatorTurn, "attempts"> }) {
+  const { t } = useTranslation("ui");
+  const attempts = turn.attempts ?? [];
+  if (!attempts.some(attempt => attempt.availability)) return null;
+  return <ol data-coordinator-attempts aria-label={t("coordinatorCard.attempts.title")} className="m-0 mt-type-close list-none p-0 text-xs text-muted">
+    {attempts.map((attempt, at) => {
+      const label = `${attempt.agent} ${agentLabel(attempt.values.model, attempt.values.effort, attempt.agent)}`;
+      return <li key={at} data-attempt={attempt.availability ? "stopped" : "took-over"} className="flex gap-1.5">
+        <span className="tabular-nums">{at + 1}.</span>
+        <span>{attempt.availability ? t("coordinatorCard.attempts.stopped", { agent: label, reason: limitName(attempt.availability.cause, t) })
+          : t("coordinatorCard.attempts.tookOver", { agent: label })}</span></li>;
+    })}
+  </ol>;
 }

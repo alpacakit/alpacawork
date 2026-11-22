@@ -81,7 +81,9 @@ export function selectionBasis(agent: string, conversation: ConversationLaunch |
  * What every prompt input sends with (the agent picker in its send row). Going on in a conversation (one with previous
  * values), it starts from them and sends only what the person changes here, so a choice made elsewhere never overrides
  * the conversation. Any other send is a new launch: its agent and values come from the person's memory alone, kept on
- * the server for every device (with this screen's saves under way shown over it), and coordinatorStart fills the rest.
+ * the server for every device (with this screen's saves under way shown over it), and coordinatorStart fills the rest
+ * from the AI stack's first row. The server's own switch to a next row when one stops is not a choice: it never writes
+ * the memory.
  */
 export function useLaunchChoice(conversation?: ConversationLaunch) {
   const offers = agentOffers(useFrameSelector(data => data?.info.profiles) ?? NO_PROFILES);
@@ -93,12 +95,12 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
   const find = (key: string | null | undefined) => key ? offers.find(item => item.key === key) : undefined;
   // Going on, the agent is the person's pick here, else the conversation's. One the settings no longer enable is never
   // replaced by another: it stays, unavailable, until the person picks again. A new launch's agent is the memory's,
-  // else the first enabled one.
+  // else the AI stack's first (the offers' first).
   const current = goesOn ? own?.agent ?? goesOn.agent : null;
   const offer = current ? find(current) : find(memory.agent) ?? offers[0];
   const gone = current && !offer ? current : null;
   const profile = offer?.key ?? gone ?? "";
-  const basis = selectionBasis(profile, goesOn, offer ? coordinatorStart(offer.offer, memory.values[profile]) : {});
+  const basis = selectionBasis(profile, goesOn, offer ? coordinatorStart(offer.offer, memory.values[profile], offer.initial) : {});
   // What the person changed in the conversation is theirs: checked as chosen, never quietly replaced.
   const changes = own?.agent === profile ? own.changes : {};
   const view = offer ? launchSelection(offer.offer, basis, changes) : { choices: [], shown: {}, send: {}, problems: [] };

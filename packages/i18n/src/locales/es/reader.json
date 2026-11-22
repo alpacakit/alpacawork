@@ -338,6 +338,11 @@
     "row": {
       "answerTo": "Pregunta: {{question}}",
       "between": "De {{from}} a {{to}}",
+      "carriedOn": {
+        "limit": "un límite",
+        "next": "Se detuvo por {{reason}}; tomó el relevo la siguiente IA de la lista",
+        "to": "Se detuvo por {{reason}}; {{next}} tomó el relevo"
+      },
       "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
       "end": {
@@ -414,7 +419,8 @@
     "working": {
       "others_one": "+{{count}} más",
       "others_many": "+{{count}} más",
-      "others_other": "+{{count}} más"
+      "others_other": "+{{count}} más",
+      "tookOver": "tomó el relevo de {{agent}}, detenido por {{reason}}"
     }
   },
   "ruleTab": {

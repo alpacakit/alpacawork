@@ -4,6 +4,27 @@
     "add": "Add",
     "addAgent": "+ Add agent",
     "addRow": "+ Add row",
+    "aiStack": {
+      "add": "+ Add a fallback",
+      "agentFor": "Agent in row {{n}}",
+      "coordinatorNote": "The AI you talk to in the input starts with what you last chose in the input's menu (until you choose, the first row above). When it stops, it carries on down the rows above.",
+      "down": "Move row {{n}} down",
+      "first": "Default",
+      "issue": {
+        "disabled": "{{agent}} is disabled. Enable it or remove this row.",
+        "empty": "Put at least one row in AI for tasks.",
+        "missing": "There is no agent named {{agent}}. Choose another agent or remove this row.",
+        "value": "{{row}} “{{value}}” is not a value of {{agent}}. Choose again."
+      },
+      "lead": "Used from the top. When one stops on a usage limit or capacity, the next row carries on; when the last stops too, the work stops and you are told.",
+      "namedOnly": "A model not listed here is used only when a request names it.",
+      "notOffered": "{{value}} (not a value)",
+      "remove": "Remove row {{n}}",
+      "repeated": "Same as row {{n}}, so this row is never used.",
+      "title": "AI for tasks",
+      "up": "Move row {{n}} up",
+      "valueFor": "{{row}} in row {{n}}"
+    },
     "authNeeded": "Authentication required. Sign in to {{adapter}} on the server's PC",
     "authNeededCommand": "Authentication required. On the server's PC, run <code>{{command}}</code>",
     "authNeededCommandEnv": "Authentication required. On the server's PC, run <code>{{command}}</code>, or add the line {{env}}=your-key to {{path}} on the server's PC and restart the server",
@@ -77,15 +98,6 @@
     "resume": "Continuing a conversation",
     "signedOut": "Not signed in. In a terminal, run",
     "start": "New conversation",
-    "taskDefaults": {
-      "agentNote": "The marked agent is used when a request names no agent.",
-      "badge": "Default",
-      "coordinatorNote": "The AI you talk to in the input starts with what you last chose in the input's menu.",
-      "lead": "When a request names nothing, tasks run with these values.",
-      "missing": "{{row}} “{{value}}” is no longer a value, so “{{first}}” is used.",
-      "title": "Task defaults",
-      "valueFor": "{{row}} for {{agent}}"
-    },
     "title": "Agents",
     "unusedAdapter": "Unavailable for this adapter",
     "unusedOptions": "Not used in launch options",

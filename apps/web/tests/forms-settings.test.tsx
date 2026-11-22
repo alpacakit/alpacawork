@@ -33,7 +33,8 @@ const AGENTS = `agents:
 const goal = (body: string, hash: string): ControlTaskDTO => project({ body, hash });
 /** The project's view as `task/view` answers it. */
 const goalView = (body: string, hash: string) => viewsOf(tree({ tasks: [dto(), goal(body, hash)] })).find((view) => view.task.id === PROJECT_TASK);
-const serverSettings = (hash = OPEN) => ({ hash, agentsText: AGENTS, agents: checkAgentsText(AGENTS).agents!, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS } });
+const serverSettings = (hash = OPEN) => ({ hash, agentsText: AGENTS, agents: checkAgentsText(AGENTS).agents!, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS },
+  aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }] });
 
 function serverFetch(saves: (Response | Error)[], reads: unknown[] = [serverSettings()]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {

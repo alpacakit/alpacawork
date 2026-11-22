@@ -4,6 +4,27 @@
     "add": "Añadir",
     "addAgent": "+ Añadir agente",
     "addRow": "+ Añadir fila",
+    "aiStack": {
+      "add": "+ Añadir una alternativa",
+      "agentFor": "Agente de la fila {{n}}",
+      "coordinatorNote": "La IA con la que hablas en el cuadro de entrada empieza con lo último que elegiste en su menú (hasta que elijas, la primera fila de arriba). Si se detiene, sigue con las filas de arriba.",
+      "down": "Bajar la fila {{n}}",
+      "first": "Predeterminada",
+      "issue": {
+        "disabled": "{{agent}} está desactivado. Actívalo o quita esta fila.",
+        "empty": "Pon al menos una fila en IA de las tareas.",
+        "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
+        "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
+      },
+      "lead": "Se usan de arriba abajo. Si una se detiene por un límite de uso o de capacidad, sigue la fila siguiente; si también se detiene la última, el trabajo se detiene y se te avisa.",
+      "namedOnly": "Un modelo que no está aquí solo se usa cuando una solicitud lo nombra.",
+      "notOffered": "{{value}} (no es un valor)",
+      "remove": "Quitar la fila {{n}}",
+      "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
+      "title": "IA de las tareas",
+      "up": "Subir la fila {{n}}",
+      "valueFor": "{{row}} de la fila {{n}}"
+    },
     "authNeeded": "Se requiere autenticación. Inicia sesión en {{adapter}} en el PC del servidor",
     "authNeededCommand": "Se requiere autenticación. En el PC del servidor, ejecuta <code>{{command}}</code>",
     "authNeededCommandEnv": "Se requiere autenticación. En el PC del servidor, ejecuta <code>{{command}}</code>, o añade la línea {{env}}=tu-clave a {{path}} en el PC del servidor y reinicia el servidor",
@@ -77,15 +98,6 @@
     "resume": "Al continuar una conversación",
     "signedOut": "Sin sesión iniciada. En una terminal, ejecuta",
     "start": "Conversación nueva",
-    "taskDefaults": {
-      "agentNote": "El agente marcado se usa cuando una solicitud no indica ningún agente.",
-      "badge": "Predeterminado",
-      "coordinatorNote": "La IA con la que hablas en el campo de entrada empieza con lo último que elegiste en el menú del campo.",
-      "lead": "Cuando una solicitud no indica nada, las tareas usan estos valores.",
-      "missing": "{{row}} «{{value}}» ya no es un valor, así que se usa «{{first}}».",
-      "title": "Valores predeterminados de las tareas",
-      "valueFor": "{{row}} de {{agent}}"
-    },
     "title": "Agentes",
     "unusedAdapter": "No disponible para este adaptador",
     "unusedOptions": "No se usa en las opciones de inicio",

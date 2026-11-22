@@ -4,6 +4,27 @@
     "add": "添加",
     "addAgent": "+ 添加智能体",
     "addRow": "+ 添加行",
+    "aiStack": {
+      "add": "+ 添加备选",
+      "agentFor": "第 {{n}} 行的智能体",
+      "coordinatorNote": "你在输入框中对话的 AI，以你最后在输入框菜单中选择的值开始（尚未选择时，使用上面列表的第一行）。停止时，按上面的列表接着做。",
+      "down": "将第 {{n}} 行下移",
+      "first": "默认",
+      "issue": {
+        "disabled": "{{agent}} 已停用。请启用它，或删除这一行。",
+        "empty": "请在任务使用的 AI 中至少放一行。",
+        "missing": "没有名为 {{agent}} 的智能体。请选择其他智能体，或删除这一行。",
+        "value": "{{row}}“{{value}}”不是 {{agent}} 的可选值。请重新选择。"
+      },
+      "lead": "从上往下使用。某一行因用量上限或容量不足而停止时，由下一行接着做；最后一行也停止时，工作会停止并通知你。",
+      "namedOnly": "不在这里的模型，只在请求中点名时才会使用。",
+      "notOffered": "{{value}}（不是可选值）",
+      "remove": "删除第 {{n}} 行",
+      "repeated": "与第 {{n}} 行相同，因此这一行不会被使用。",
+      "title": "任务使用的 AI",
+      "up": "将第 {{n}} 行上移",
+      "valueFor": "第 {{n}} 行的{{row}}"
+    },
     "authNeeded": "需要认证。请在服务器所在的电脑上登录 {{adapter}}",
     "authNeededCommand": "需要认证。请在服务器所在的电脑上执行 <code>{{command}}</code>",
     "authNeededCommandEnv": "需要认证。请在服务器所在的电脑上执行 <code>{{command}}</code>，或在该电脑的 {{path}} 中添加一行 {{env}}=你的密钥，然后重启服务器",
@@ -77,15 +98,6 @@
     "resume": "继续对话",
     "signedOut": "尚未登录。请在终端中执行",
     "start": "新对话",
-    "taskDefaults": {
-      "agentNote": "请求未指定代理时，使用打勾的代理。",
-      "badge": "默认",
-      "coordinatorNote": "在输入框中对话的 AI 从你上次在输入框菜单中选择的值开始。",
-      "lead": "请求中未指定时，任务使用这里的值。",
-      "missing": "{{row}}“{{value}}”已不在可选值中，因此使用“{{first}}”。",
-      "title": "任务默认值",
-      "valueFor": "{{agent}} 的{{row}}"
-    },
     "title": "智能体",
     "unusedAdapter": "不适用于此适配器",
     "unusedOptions": "启动选项中未使用",
