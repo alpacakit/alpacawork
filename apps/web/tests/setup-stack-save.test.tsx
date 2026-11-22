@@ -1,9 +1,9 @@
 import { afterEach, expect, test } from 'vitest';
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stringify } from 'yaml';
-import type { AgentAvailability } from '@alpacawork/contract';
+import { parse, stringify } from 'yaml';
+import { aiStackSchema, type AgentAvailability } from '@alpacawork/contract';
 import { configSetInput } from '@alpacawork/contract/inputs';
 import { randomUUID } from 'node:crypto';
 import { fixtureAgentSetting, installAgentStub } from '../../../tests/helpers/agent-stub.ts';
@@ -27,20 +27,20 @@ afterEach(() => {
 const ready: AgentAvailability = { command: '/bin/x', version: null, candidates: [], status: 'ready', nextAction: null, issue: null };
 
 /**
- * A test-only workspace whose agents are listed claude, then codex, with a saved AI stack (claude, then codex unless
- * given), and whose person last chose claude in the input.
+ * A test-only workspace whose agents are listed claude, then codex, and whose person last chose claude in the input.
+ * The saved stack starts on claude unless another order is given, or is absent when the order is null.
  */
-async function workspace(order: readonly ('claude' | 'codex')[] = ['claude', 'codex']) {
+async function workspace(order: readonly ('claude' | 'codex')[] | null = ['claude', 'codex']) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-setup-stack-')));
   roots.push(root);
   initializeControlFixture(root);
   installAgentStub(root, 'alpacawork-agent');
   const claude = fixtureAgentSetting('claude'), codex = fixtureAgentSetting('codex');
-  claude.params = { ...claude.params, model: ['opus', 'fable'], effort: ['high', 'medium'] };
+  claude.params = { ...claude.params, model: ['fable', 'opus'], effort: ['high', 'medium'] };
   codex.params = { ...codex.params, model: ['gpt-6.2-sol'], effort: ['high'], fast: ['-'] };
   writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 4 }, agents: { claude, codex },
-    aiStack: order.map(agent => agent === 'claude' ? { agent, values: { model: 'opus', effort: 'high' } }
-      : { agent, values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }) }));
+    ...(order === null ? {} : { aiStack: order.map(agent => agent === 'claude' ? { agent, values: { model: 'opus', effort: 'high' } }
+      : { agent, values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }) }) }));
   await createLaunchMemory(root).change({ kind: 'choose', agent: 'claude', values: {} });
   return root;
 }
@@ -58,7 +58,8 @@ async function leaveSetup(root: string, on: Record<string, boolean>, picked: str
   const saving = setupSave(loaded, drafts.value, rows, on, first);
   if (saving) await saveServerSettings(root, configSetInput.parse({ config: saving.config, agents: saving.agents, expectedConfigHash: loaded.hash }));
   await createLaunchMemory(root).change({ kind: 'forget-agent' });
-  const stack = (await readServerSettings(root)).aiStack?.map(row => row.agent);
+  const saved = parse(readFileSync(join(root, 'config.yaml'), 'utf8'));
+  const stack = aiStackSchema.optional().parse(saved.aiStack)?.map(row => row.agent);
   const offered = readControlEnvironment(root).profiles[0]?.key ?? null;
   if (!first) return { stack, offered, admitted: null };
   const conversation = new CoordinatorConversation(root), message = randomUUID();
@@ -79,4 +80,10 @@ test('the first AI chosen in setup is row 1 of the saved stack and the agent a n
     .toEqual({ stack: ['codex', 'claude'], offered: 'codex', admitted: 'codex' });
   // Going on with no agent empties the stack, rather than leaving rows that would refuse the save.
   expect(await leaveSetup(await workspace(), { claude: false, codex: false }, null)).toEqual({ stack: [], offered: null, admitted: null });
+});
+
+test('setup with no saved stack persists only the first AI the person picks', async () => {
+  const root = await workspace(null);
+  expect(await leaveSetup(root, { claude: true, codex: true }, 'codex'))
+    .toEqual({ stack: ['codex'], offered: 'codex', admitted: 'codex' });
 });

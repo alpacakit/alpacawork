@@ -156,6 +156,7 @@ export const serverSettingsSchema = z.object({
   agentsText: z.string(),
   /** Effective values at the time of the read or save. */
   agents: agentsSchema,
+  /** The saved AI stack, absent until it has been configured. */
   aiStack: aiStackSchema.optional(),
   catalog: adapterCatalogSchema,
   availability: z.record(z.string(), agentAvailabilitySchema).optional(),

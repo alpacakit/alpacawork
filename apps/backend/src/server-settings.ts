@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor, compileAgentSetting, enabledAgents, resolveAgentSelection } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor } from '@alpacawork/contract';
 import type { ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
@@ -35,10 +35,8 @@ function view(bytes: Buffer): ServerSettings {
   const config = parseAgentsSettings(text);
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
-  const first = enabledAgents(config.agents)[0];
-  const selected = config.aiStack ?? (first ? [{ agent: first[0],
-    values: resolveAgentSelection(compileAgentSetting(...first)).values }] : []);
-  return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents, aiStack: selected, catalog: adapterCatalog() };
+  return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
+    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }), catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
   let writer: FileWriter | undefined;
