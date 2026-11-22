@@ -53,6 +53,10 @@ alpacawork setup
 
 Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de instalarlo, sigue [Primeros pasos](docs/es/getting-started.md) para hacer tu primera solicitud.
 
+### Volver a abrir la pantalla
+
+Si cierras la pantalla, pide a Claude Code `/alpacawork abre la pantalla` (en Codex, `$alpacawork abre la pantalla`). La IA abre la pantalla en el navegador o te dice su URL. También puedes ejecutar `alpacawork open` en una terminal.
+
 ## Qué hace
 
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.

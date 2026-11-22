@@ -79,6 +79,10 @@ alpacawork setup
 
 It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installing, follow [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md) to make your first request.
 
+### Reopen the screen
+
+If you close the screen, ask Claude Code `/alpacawork open the screen` (in Codex, `$alpacawork open the screen`). The AI opens the screen in your browser or tells you its URL. You can also run `alpacawork open` in a terminal.
+
 ## What it does
 
 - **Write every request in one chat box.** The coordinator turns each request into a task and hands it to an AI. You never have to switch chats or AIs from one job to the next.

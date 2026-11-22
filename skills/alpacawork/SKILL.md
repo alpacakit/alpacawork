@@ -99,6 +99,7 @@ Besides the file for your role, read the following according to the situation.
 
 - Do not operate alpacawork with the Run mark (environment variables such as `ALPACAWORK_RUN`) removed or rewritten. alpacawork decides who performed an operation from this mark. Remove it for a test only when pointing at a test workspace.
 - Do not reopen, in the desktop app or the agent's CLI, a conversation that alpacawork manages.
+- When the user asks you to open the screen, run `alpacawork open`. It opens the screen in this PC's browser for the user, or prints the URL and what to do where no browser can be opened; tell the user the URL either way.
 - When you open the alpacawork screen yourself to check something, add `?agent=1` to the URL. Without it, the task you open is marked as read for the person, who then misses what is new.
 - Do not put files, worktrees or temporary files in the workspace root. The root is where alpacawork keeps its records, and it is also the launch directory of a Run started without `--cwd` in a project that has no code location. A relative path resolves against the Run's launch directory, so use an absolute path in your work location for writes.
 - Before you return, stop anything long-running that you started temporarily for the work (a server for checking or showing something, a watcher, a check running in the background, a temporary environment and the like), using the PID you recorded yourself. You do not wake by yourself after returning, so if you leave it, no one stops it. Finding it by name and stopping it catches other Runs as well.
