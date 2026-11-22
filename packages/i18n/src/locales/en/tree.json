@@ -12,7 +12,7 @@
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choosing an answer puts it in the box below. Sending it makes it your answer.",
       "apps": "You can also install alpacawork as an app on this computer, or open it from your phone. The steps are in {{settings}}, under “{{apps}}”.",
-      "end": "That's the whole flow. You can also ask in the input to use the app itself, like changing settings or adding models.",
+      "conversation": "The conversation with the front-desk AI is disposable. When it piles up, open it and use “{{clear}}”; ask for anything worth keeping to be made a task.",
       "label": "This label tells the AI which task you mean, as a hint. Without it, the AI works it out from the conversation.",
       "more": "You can keep asking after a report. Try having it make one more version to compare.",
       "question": "Your turn. Press this row to open the question.",
@@ -21,7 +21,7 @@
       "send": "This is the only input.",
       "sendAgain": "Write what you want done here and send it.",
       "sendReady": "Send it with this button.",
-      "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input.",
+      "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input. You can also ask there to change settings or add a model.",
       "unassigned": "No AI is on this task yet. Open the row and ask in the input to start it.",
       "working": "This is a task. The AI on it works on it, and moves it to “{{section}}” when a question or report comes."
     },

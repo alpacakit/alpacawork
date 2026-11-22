@@ -67,11 +67,11 @@ test("with a report and a question both awaiting the person, the question's step
 
 test("once the person has had their turn and nothing is going on, the guide closes in steps read once each", () => {
   expect(shown({ stage: turn, tasks: 1, working: 1 })).toBe("working");
-  expect(shown({ stage: turn, tasks: 1 })).toBe("end");
-  expect(shown({ stage: turn, tasks: 1, seen: read("end") })).toBe("another-repository");
-  expect(shown({ stage: turn, tasks: 1, seen: read("end", "another-repository") })).toBeNull();
+  expect(shown({ stage: turn, tasks: 1 })).toBe("conversation");
+  expect(shown({ stage: turn, tasks: 1, seen: read("conversation") })).toBe("another-repository");
+  expect(shown({ stage: turn, tasks: 1, seen: read("conversation", "another-repository") })).toBeNull();
   // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
-  expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("end", "another-repository") })).toBe("apps");
+  expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("conversation", "another-repository") })).toBe("apps");
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {

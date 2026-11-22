@@ -12,7 +12,7 @@
       "anotherRepository": "Para usar otro repositorio, abre esto, elige «{{create}}» y selecciona ese repositorio como su ubicación del código.",
       "answer": "Al elegir una respuesta, se coloca en el cuadro de abajo. Al enviarla, queda como tu respuesta.",
       "apps": "También puedes instalar alpacawork como aplicación en este ordenador o abrirlo desde tu teléfono. Los pasos están en {{settings}}, en «{{apps}}».",
-      "end": "Ese es todo el recorrido. También puedes pedir en el cuadro de entrada cosas de la propia app, como cambiar la configuración o añadir modelos.",
+      "conversation": "La conversación con la IA de recepción es desechable. Cuando se acumule, ábrela y usa «{{clear}}»; lo que quieras conservar, pide que se convierta en una tarea.",
       "label": "Esta etiqueta orienta a la IA sobre de qué tarea hablas. Sin ella, la IA lo deduce de la conversación.",
       "more": "Después de un informe puedes seguir pidiendo. Prueba a pedir otra versión para comparar.",
       "question": "Te toca. Pulsa esta fila para abrir la pregunta.",
@@ -21,7 +21,7 @@
       "send": "Este es el único cuadro de entrada.",
       "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo.",
       "sendReady": "Envíalo con este botón.",
-      "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada.",
+      "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada. Desde ahí también puedes pedir cambiar la configuración o añadir un modelo.",
       "unassigned": "Esta tarea aún no tiene una IA asignada. Abre la fila y pídelo en el cuadro de entrada para empezar.",
       "working": "Esto es una tarea. La IA asignada avanza y la pasa a «{{section}}» cuando llega una pregunta o un informe."
     },

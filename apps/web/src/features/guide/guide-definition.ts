@@ -160,11 +160,12 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.unassigned") },
   { id: "working", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // Once the person has had their turn and nothing is left going on: the close, where another repository is taken
-  // on, and last alpacawork as an installed app and from a phone (read here, the first screen's pointer to the same
-  // steps is done with).
-  { id: "end", once: true, part: "input", ...AT_INPUT, align: "end", next: true, when: f => f.stage.stage === "turn",
-    say: t => t("tree:guide.say.end") },
+  // Once the person has had their turn and nothing is left going on: the conversation with the coordinator, over its
+  // last reply, is for throwing away (what is to be kept goes into a Task); where another repository is taken on; and
+  // last alpacawork as an installed app and from a phone (read here, the first screen's pointer to the same steps is
+  // done with).
+  { id: "conversation", once: true, part: "coordinator", side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
+    say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
   { id: "another-repository", once: true, part: "project", side: "right", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   { id: "apps", once: true, part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
