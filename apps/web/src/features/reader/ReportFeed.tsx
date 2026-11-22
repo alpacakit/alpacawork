@@ -520,7 +520,7 @@ const HistoryItem = memo(function HistoryItem({ row, pressed, flash, ...props }:
   const pointed = flash || hovered, lit = report.currentWait || pointed;
   const point = (key: string | null) => useTimeView.getState().hover(taskId, key);
   // The existing lit/hover line follows the whole record, including its body while open.
-  const tone = useCarriedOn(report) ? "quiet" : reportTone(report);
+  const tone = reportTone(report);
   const line = lit ? <span aria-hidden data-report-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current ${TONE[tone]}`} />
     : <span aria-hidden data-hover-line className={`${ON_RAIL} -ml-(--gutter) inset-y-0 w-0.5 bg-current invisible group-hover/row:visible ${TONE[tone]}`} />;
   return <li data-report-key={row.key} data-history-keep={pressed ? row.key : undefined} data-motion-key={[row.key, ...row.older.map(each => each.key)].join(" ")} data-lit={pointed || undefined}
@@ -548,10 +548,9 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const galleryKey = report.replyTo ?? report.key;
   const plain = (report.note?.title ?? report.text).replace(/\bR\d+\b/g, "").replace(/\s+/g, " ").trim();
   const kindWord = t(`reportFeed.row.kind.${report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
-  const carried = useCarriedOn(report);
   const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
-    : carried ? carriedOnWords(carried, names, t, ui)
+    : report.carriedOn ? carriedOnWords(report, names, t, ui)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -737,9 +736,9 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
   const { reader: t } = useFeedWords();
   const urgent = row.report.kind === "urgent";
   // A stop the AI stack carried on goes from the AI that stopped to the one that took over, not back to its requester.
-  const carried = useCarriedOn(row.report);
-  const name: HistoryRow["name"] = carried && "ends" in row.name ? carried.next
-    ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: runAgentLabel(carried.next) }] } : { own: row.name.ends[0] } : row.name;
+  const { carriedOn, recipient } = row.report;
+  const name: HistoryRow["name"] = carriedOn && recipient && "ends" in row.name
+    ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
   const words = (end: NameEnd) => [t(`reportFeed.row.party.${end.party}`), end.taskId, end.agent, end.title].filter(Boolean).join(" ");
   const said = "own" in name ? t("reportFeed.row.own", { who: words(name.own) })
     : t("reportFeed.row.between", { from: words(name.ends[0]), to: words(name.ends[1]) });
@@ -846,21 +845,12 @@ function RowEnd({ outcome }: { outcome: RowOutcome }) {
 
 const TaskPeople = createContext<PeopleIndex | null>(null);
 const useTaskPeople = () => useContext(TaskPeople);
-/**
- * A failed Run whose request the AI stack carried on: the Run that stopped, and the one that took its request over
- * (null when it is not among the Runs read). Its row reads as a step of the work, not as the Task's failure.
- */
-type CarriedOn = { stopped: ControlRunDTO; next: ControlRunDTO | null };
-function useCarriedOn(report: Pick<ReportEvent, "kind" | "id">): CarriedOn | null {
-  const people = useTaskPeople();
-  const stopped = report.kind === "error" ? people?.runs.get(report.id) : undefined;
-  if (!stopped?.supersededBy) return null;
-  return { stopped, next: people?.runs.get(stopped.supersededBy) ?? null };
-}
-function carriedOnWords({ stopped, next }: CarriedOn, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {
-  const cause = stopped.availability?.cause ?? stopped.errorCause;
-  const reason = cause ? limitName(cause, ui) : t("reportFeed.row.carriedOn.limit");
-  return next ? t("reportFeed.row.carriedOn.to", { reason, next: `${next.agent} ${modelLabel(runAgentLabel(next), names).short}` })
+const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
+  runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
+function carriedOnWords(report: ReportEvent, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {
+  const reason = report.cause ? limitName(report.cause, ui) : t("reportFeed.row.carriedOn.limit");
+  const next = report.recipient;
+  return next ? t("reportFeed.row.carriedOn.to", { reason, next: `${next.profileKey} ${modelLabel(carriedOnAgent(next), names).short}` })
     : t("reportFeed.row.carriedOn.next", { reason });
 }
 const AgentNames = createContext<readonly ModelName[]>([]);

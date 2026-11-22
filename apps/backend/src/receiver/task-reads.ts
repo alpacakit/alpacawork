@@ -2,7 +2,7 @@ import { questionApplicable, questionSnapshot } from '../control/question-rules.
 
 import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, PROJECT_SCHEMA, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskTimelineDTO, type TaskViewDTO } from '@alpacawork/contract/control';
-import { isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
+import { carrierOf, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
 import { createHash } from 'node:crypto';
@@ -18,12 +18,14 @@ export function currentPlacementRunIds(placements: readonly PlacementDTO[], runs
   const ids = new Set(placements.map(placement => placement.headRunId));
   const placementIds = new Set(placements.map(placement => placement.id));
   const latestMoving = new Map<string, ControlRunDTO>();
+  const running = new Set<string>();
   for (const run of runs) if (placementIds.has(run.placementId) && isRunMoving(run.state)) {
-    if (run.state === 'running') ids.add(run.id);
+    if (run.state === 'running') { ids.add(run.id); running.add(run.id); }
     const prior = latestMoving.get(run.placementId);
     if (!prior || run.createdAt.localeCompare(prior.createdAt) > 0) latestMoving.set(run.placementId, run);
   }
-  for (const run of latestMoving.values()) ids.add(run.id);
+  for (const run of latestMoving.values()) { ids.add(run.id); running.add(run.id); }
+  if (running.size) for (const run of runs) if (run.supersededBy && running.has(run.supersededBy)) ids.add(run.id);
   return ids;
 }
 
@@ -78,16 +80,8 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
     group.push(dialogue); dialoguesByTask.set(dialogue.taskId, group);
   }
   const userQuestions = new Set([...questions.values()].flatMap(branch => branch?.map(question => question.id) ?? []));
-  const actualRun = (run: ControlRunDTO): ControlRunDTO => {
-    const seen = new Set<string>();
-    while (run.state === 'joined' && run.into && !seen.has(run.id)) {
-      seen.add(run.id);
-      const next = allRuns.get(run.into);
-      if (!next) break;
-      run = next;
-    }
-    return run;
-  };
+  const actualRun = (run: ControlRunDTO): ControlRunDTO =>
+    carrierOf(run, key => allRuns.get(key)) ?? run;
   const consumers = new Map<string, Map<string, Set<string>>>();
   /**
    * The one rule for a record's receiving end: the Run that consumed it (took it in and finished its turn), wherever it
@@ -163,7 +157,8 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     const placement = actor?.kind === 'placement' ? placements.get(actor.placementId) : undefined;
     if (!placement) return { kind: 'unknown' };
     const run = runId ? allRuns.get(runId) : undefined;
-    const agent = { profileKey: placement.profileKey, ...choices(run?.placementId === placement.id ? run : undefined) };
+    const own = run?.placementId === placement.id ? run : undefined;
+    const agent = { profileKey: own?.agent ?? placement.profileKey, ...choices(own) };
     if (placement.taskId !== task.id) return { kind: 'parent', taskId: placement.taskId, ...agent };
     const role = (runId && tree.historyFacts.runRoles[runId]) || tree.historyFacts.placementRoles[placement.id];
     return role ? { kind: role, ...agent } : { kind: 'unknown' };
@@ -210,7 +205,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       request.author),
       author: authorOf(request.author, accepted?.caller?.run),
       ...(record?.answers ? { answers: record.answers } : {}),
-      ...(recipient && role ? { recipient: { role, profileKey: recipient.profileKey, ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
+      ...(recipient && role ? { recipient: { role, profileKey: receiving?.agent ?? recipient.profileKey, ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
       ...(result && recipient && role === 'member' ? { result: { runId: result.id, at: result.endedAt! } } : {}) });
   }
   for (const run of runs.values()) {
@@ -219,9 +214,11 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       : run.state === 'cancelled' && run.reason === 'scope_invalidated' ? 'run_end' : null;
     // The Run that stopped is the row's writer: its Task's responsible or member, by what it ran with.
     const placement = placements.get(run.placementId);
+    const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
-      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause } : {}),
-      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: placement.profileKey, ...choices(run) } } : {}) });
+      ...(kind === 'error' && (run.availability?.cause ?? run.errorCause) ? { cause: run.availability?.cause ?? run.errorCause } : {}),
+      ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
+      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: run.agent, ...choices(run) } } : {}) });
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
@@ -384,6 +381,7 @@ function recordedHistory(records: RecordsReader, id: string): ReturnType<typeof 
     runRoles[key] = raw.role === 'owner' ? 'owner' : 'member';
     addPlacement(raw.placementId);
     if (raw.into) addRun(raw.into);
+    if (raw.supersededBy) addRun(raw.supersededBy);
     if (raw.caller) addRun(raw.caller.run);
   };
   const requests = new Map(recordedRequests(records, id).map(request => [request.id, request]));

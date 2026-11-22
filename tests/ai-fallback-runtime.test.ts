@@ -69,6 +69,13 @@ test('an exhausted owner gives the same request to another agent and the parent 
     assert.equal(h.store.readReturns().filter(row => row.requestId === requestId).length, 1);
     assert.deepEqual(h.store.read().filter(run => run.requestId === requestId).map(run => run.agent), ['claude', 'codex']);
     assert.ok(currentTaskLog(h.root, child.id).every(entry => entry.toState !== 'error'));
+    const history = await fetch(new URL(`/api/task/history?task=${child.id}`, app.url));
+    assert.equal(history.status, 200);
+    const row = (await history.json()).events.find((event: { id: string }) => event.id === first);
+    assert.equal(row.carriedOn, true);
+    assert.equal(row.cause, 'session_limit');
+    assert.equal(row.author.profileKey, 'claude');
+    assert.equal(row.recipient.profileKey, 'codex');
     assert.equal(receipts(h.root).filter(item => item.branch === 'agent').length, 3);
   } finally { await app.close(); }
 });
