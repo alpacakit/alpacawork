@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
+import { GUIDE, PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
@@ -130,8 +130,28 @@ export function GuideBalloon() {
   return stage && <GoingBalloon stage={stage} />;
 }
 
+/**
+ * The steps read once that are passed over while what they point at is not seen (`skipped`, guide-definition.ts): one
+ * is passed over when its part has not been seen for a moment (`pass`), and comes back as soon as its part is seen.
+ */
+function useSkipped() {
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
+  const pass = (id: string) => setSkipped(was => was.has(id) ? was : new Set(was).add(id));
+  useEffect(() => {
+    if (!skipped.size) return;
+    const look = () => {
+      const back = [...skipped].filter(id => { const part = GUIDE.find(each => each.id === id)?.part; return !part || shownPart(PARTS[part]); });
+      if (back.length) setSkipped(was => new Set([...was].filter(id => !back.includes(id))));
+    };
+    const timer = setInterval(look, 250);
+    return () => clearInterval(timer);
+  }, [skipped]);
+  return { skipped, pass };
+}
+
 function GoingBalloon({ stage }: { stage: GoingStage }) {
-  const { entry, facts } = useGuide(stage);
+  const { skipped, pass } = useSkipped();
+  const { entry, facts } = useGuide(stage, skipped);
   useGuideStage(stage, entry, facts);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
@@ -146,12 +166,16 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     let broughtIn = false;
     // The box the balloon stands over and scrolls (its room, below).
     let roomed: HTMLElement | null = null;
+    // Looks in a row that did not see the part: a step read once is passed over after two (half a second).
+    let missed = 0;
     const update = () => {
       let target = shownPart(part);
       if (!target && !broughtIn) {
         const away = scrolledAway(part);
         if (away) { broughtIn = true; away.scrollIntoView({ block: "nearest" }); target = shownPart(part); }
       }
+      missed = target ? 0 : missed + 1;
+      if (entry.once && missed >= 2 && !skipped.has(entry.id)) pass(entry.id);
       const own = balloon.current?.getBoundingClientRect();
       // Each part stood clear of is the one holding the part pointed at, else the one of its kind seen beside it.
       const clear = target ? (entry.clear ?? []).flatMap(name => {
@@ -173,7 +197,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true);
       keepRoom(roomed, null);
     };
-  }, [part, entry?.id, entry?.side, entry?.align]);
+  }, [part, entry?.id, entry?.side, entry?.align, skipped]);
   if (!entry || !part) return null;
   return createPortal(<>
     {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-(--layer-guide) rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"

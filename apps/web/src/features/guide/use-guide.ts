@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
@@ -11,6 +12,7 @@ import { hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { useSitting } from "@/features/reader/next-question";
+import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
@@ -76,6 +78,18 @@ export function awaiting(rows: readonly { taskId: string; section: string }[], b
   return { questions, results, open };
 }
 
+/** The Tasks Done was pressed on when this guide began (at `at`), and whether one has been pressed on since. */
+type DoneBefore = { at: number | null; ids: readonly string[]; fresh: boolean } | null;
+/**
+ * Done pressed since the guide began: the reader keeps what was pressed for as long as the page is open, so what it
+ * already held when the guide started (again) is not this guide's. `done` is the Tasks it holds Done on now.
+ */
+export function doneSince(stage: GoingStage, done: readonly string[], before: DoneBefore): NonNullable<DoneBefore> {
+  const at = stage.stage === "started" ? stage.at : before?.at ?? null;
+  const ids = before && before.at === at ? before.ids : stage.stage === "started" ? done : before?.ids ?? [];
+  return { at, ids, fresh: done.some(id => !ids.includes(id)) };
+}
+
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
 export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
 
@@ -99,12 +113,18 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage): { entry: GuideEntry | null; facts: GuideFacts } {
+export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; facts: GuideFacts } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
-  const finished = useWorkspaceInfo((info) => info.counts.closed.root?.finished ?? 0);
+  // Done pressed on a Task here, as the reader keeps it (its next-question deck): kept, not taken back or refused; and
+  // pressed since this guide began (doneSince).
+  const doneIds = useSitting(useShallow(state => Object.entries(state.departures)
+    .filter(([, each]) => each.answer === "done" && readerOutcome(each.status()) === "kept").map(([task]) => task)));
+  const doneBefore = useRef<DoneBefore>(null);
+  doneBefore.current = doneSince(stage, doneIds, doneBefore.current);
+  const doneHere = doneBefore.current.fresh;
   // The Task seen in the detail: open there, and not under the card that says every turn is answered.
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
@@ -144,7 +164,9 @@ export function useGuide(stage: GoingStage): { entry: GuideEntry | null; facts: 
   const apps = !useCoarsePointer();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
-  const facts: GuideFacts = { stage, tasks, finished, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
+  const conversationOpen = useConversation(state => state.expanded);
+  const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
+    narrow, apps, seen, skipped };
   return { entry: guideEntry(facts), facts };
 }
 
@@ -154,7 +176,7 @@ export function useGuide(stage: GoingStage): { entry: GuideEntry | null; facts: 
  * is written by one owner only.
  */
 export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts) {
-  const next = nextStage(stage, entry);
+  const next = nextStage(stage, entry, facts.doneHere);
   const key = next && JSON.stringify(next);
   useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
