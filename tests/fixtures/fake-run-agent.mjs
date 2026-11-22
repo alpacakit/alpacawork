@@ -34,7 +34,7 @@ if (branch) {
   lines.close();
   try { plan = JSON.parse(prompt); } catch {
     // Formal Task requests contain the synthetic plan as the request body's own JSON line.
-    const body = prompt.split('\n## Request\n')[1]?.split('\n\n')[0];
+    const body = prompt.split('\n## Request\n')[1]?.split('\n\n')[0]?.split('\n').find(line => line.startsWith('{'));
     if (body) { try { plan = JSON.parse(body); } catch {} }
   }
   const format = arg('--format'), session = arg('--session') ?? arg('--session-id') ?? arg('--resume') ?? (args.includes('resume') ? args.at(-1) : undefined) ?? plan.session ?? `fake-${process.pid}`;
@@ -58,6 +58,13 @@ if (branch) {
       { type: 'tool_use', id: 'fake-tool', name: 'Bash', input: { command: plan.activityCommand ?? 'private' } }] } });
   }
   if (format !== 'claude' && format !== 'codex') emit({ type: 'input.taken', id: instruction.id });
+  if (plan.sessionLimit && format === 'claude') {
+    await new Promise(resolve => process.stdout.write(JSON.stringify({
+      type: 'result', is_error: true, result: "You've hit your session limit · resets 5pm (Asia/Tokyo)", session_id: session,
+    }) + '\n', resolve));
+    process.exit(1);
+  }
+  if (plan.fallbackGate && format === 'codex') while (!existsSync(plan.fallbackGate)) await delay(20);
   if (plan.gate) while (!existsSync(plan.gate)) await delay(20);
   if (plan.group) await new Promise(() => { setInterval(() => {}, 1000); });
   if (plan.busy) { process.stderr.write(`thread ${session} already has an active writer (code -32600)\n`); process.exit(1); }

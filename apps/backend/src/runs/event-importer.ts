@@ -17,7 +17,8 @@ import { touch } from '@alpacawork/db';
 import type { RoutingTasks } from '../control/routing-work.js';
 import { executionFolder, identityOf, messageName, names, sameIdentity } from './execution-files.js';
 import { captureAnswer, recordEnd, type AnswerCapture } from './ending.js';
-import type { Outcome } from './result-observation.js';
+import { reserveAiFallback } from './ai-fallback.js';
+import type { EndObservation, Outcome } from './result-observation.js';
 import { linkMessage } from '../coordinator/messages.js';
 import { executionImportCandidates, executionReference } from './execution-obligations.js';
 import { runtimeAdapter } from '../agents/registry.js';
@@ -249,10 +250,12 @@ export class RunEventImporter {
       const outcome = { state: observation.outcome.state, ...(observation.outcome.reason ? { reason: observation.outcome.reason } : {}) } as Outcome;
       // Spelled out: the tests' non-strict program reads the protocol's nullable exit fields as optional.
       const exit = observation.exit && { code: observation.exit.code, signal: observation.exit.signal };
-      recordEnd(db, tx, run, { outcome, session: observation.session, measuredUsage: observation.measuredUsage, exit,
-        finalResult: observation.result.state === 'present' ? { state: 'present', text: text! } : { state: observation.result.state, text: null } },
-        event.occurredAt, answer);
+      const end: EndObservation = { outcome, session: observation.session, measuredUsage: observation.measuredUsage, exit,
+        availability: observation.availability,
+        finalResult: observation.result.state === 'present' ? { state: 'present', text: text! } : { state: observation.result.state, text: null } };
       releaseReserved(db, attempt, { evidence: 'completed_without_attempt', completedDigest: digest });
+      const next = reserveAiFallback(this.store, tx, run, end, attempt);
+      recordEnd(db, tx, run, end, event.occurredAt, answer, next);
       db.prepare('UPDATE run_attempts SET completed_digest=? WHERE attempt_id=?').run(digest, attempt);
     }
   }

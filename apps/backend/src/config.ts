@@ -15,6 +15,7 @@ export const projectLocationsSchema = z.record(projectIdSchema,
   z.object({ cwd: z.string().refine(value => value === '' || value.startsWith('/'), 'cwd must be empty or an absolute path') }).strict());
 const sections = z.object({
   agents: z.unknown().optional(),
+  aiStack: z.unknown().optional(),
   limits: z.unknown().optional(),
   projects: projectLocationsSchema.optional(),
   voice: z.unknown().optional(),

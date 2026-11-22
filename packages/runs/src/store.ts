@@ -19,8 +19,11 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
   type StoredReturn, type StoredPlacement, type TransactionReads } from './reads.js';
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
-  Pick<RunRecord, 'placementId' | 'requestId'>;
-export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & { aboutRunId?: RunId | null };
+  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt'>;
+export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
+  aboutRunId?: RunId | null;
+  aiStack?: readonly import('@alpacawork/contract').AiRow[];
+};
 /** A person's message to the coordinator conversation: a Request with no Task or placement, always the person's own. */
 interface StoredConversationRequest {
   id: string; conversationId: string; headRunId: RunId | null; mode: RequestMode; body: string;
@@ -64,7 +67,7 @@ function whileLive(reads: TransactionReads, check: () => void): TransactionReads
   return Object.fromEntries(Object.entries(reads).map(([name, read]) =>
     [name, (...args: never[]) => { check(); return (read as (...args: never[]) => unknown)(...args); }])) as TransactionReads;
 }
-const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at'] as const;
+const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at', 'attempt'] as const;
 /** A coordinator Run's creation fields beyond a Task Run's. */
 const coordinatorOf = (record: RuntimeRunRecord) =>
   record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message, restartArgv: record.restartArgv } : null;
@@ -228,11 +231,11 @@ export class RunStore {
           const author = JSON.stringify(actorSchema.parse(request.author));
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
             (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author,
-              submitted_at, delivery_state, answers_question)
-            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
+              submitted_at, delivery_state, answers_question, ai_stack)
+            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
               WHERE external_id = ? AND kind = 'task'`).run(request.id, request.placementId,
             request.placementRevision, request.taskHash, request.waitCycleId, request.headRunId, request.aboutRunId ?? null, request.mode, request.body,
-            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.taskId).changes);
+            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, request.taskId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Request Task does not exist', undefined, { reason: { kind: 'request_task_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },

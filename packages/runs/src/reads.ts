@@ -64,7 +64,7 @@ const runIdOf = (number: unknown): RunId => runIdSchema.parse(`R${number}`);
 const runNumberSql = (column: string) => `CAST(substr(${column},2) AS INTEGER)`;
 
 /**
- * `runId` is derived from the one Run whose record names this Request; it is never written. `waitCycleId` is the wait
+ * `runId` is the latest trial of this Request; it is never written. `waitCycleId` is the wait
  * cycle of the seat that sent a placement's Request (explicit placement author), and null for a return continuation or a user request.
  */
 export interface StoredRequest {
@@ -132,12 +132,14 @@ type StoredRunText = { record: RuntimeRunRecord; prompt: string | null; result: 
   resultState: RunResultState };
 type StoredRunFile = { record: RuntimeRunRecord; text: string | null; state: RunResultState };
 
-// Every Request read carries its Run, at most one by runs' UNIQUE(request_id). A Request is the only row in FROM, so
+// Every Request read carries its latest trial. A Request is the only row in FROM, so
 // a condition's `task_id` and `conversation_id` are the Request's.
+/** Shared SQL for a request's current Run rather than all its historical trials. */
+export const currentRequestRun = (request: string) => `SELECT id FROM runs WHERE request_id = ${request} ORDER BY attempt DESC LIMIT 1`;
 const REQUEST_IMMUTABLE_COLUMNS = `q.id, q.task_id, q.placement_id, q.placement_revision, q.task_hash,
   q.wait_cycle_id, q.answers_question, q.head_run_id, q.about_run_id, q.mode, q.body, q.purpose, q.author, q.submitted_at`;
 const REQUEST_CURRENT_COLUMNS = `CAST(q.rowid AS TEXT) AS request_row, q.delivery_state,
-  (SELECT id FROM runs WHERE request_id = q.id) AS run_number`;
+  (${currentRequestRun('q.id')}) AS run_number`;
 const REQUEST_SELECT = `SELECT ${REQUEST_IMMUTABLE_COLUMNS}, ${REQUEST_CURRENT_COLUMNS} FROM requests q`;
 const REQUEST_CURRENT_SELECT = `SELECT q.id,q.placement_revision, ${REQUEST_CURRENT_COLUMNS} FROM requests q`;
 /** A conversation is a placement's (`placement_id`) or the coordinator conversation (`conversation_id`). */
@@ -407,7 +409,7 @@ export function closedRequestIds(db: DatabaseSync, ids: readonly string[]): Set<
 function sentFromDatabase(db: DatabaseSync, seats: readonly string[]): Map<string, string[]> {
   const result = new Map(seats.map(seat => [seat, [] as string[]]));
   for (const row of db.prepare(`SELECT caller.task_id,r.request_id FROM runs caller JOIN runs r ON r.caller_run='R'||caller.id
-    JOIN requests q ON q.id=r.request_id WHERE q.purpose<>'return_continuation' AND caller.task_id IN (SELECT value FROM json_each(?))
+    JOIN requests q ON q.id=r.request_id WHERE r.attempt=0 AND q.purpose<>'return_continuation' AND caller.task_id IN (SELECT value FROM json_each(?))
       AND NOT EXISTS (SELECT 1 FROM returns closed WHERE closed.request_id=r.request_id) ORDER BY r.id`).all(JSON.stringify(seats)))
     result.get(String(row.task_id))!.push(String(row.request_id));
   return result;

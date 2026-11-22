@@ -4,6 +4,7 @@ import { conversationContextSchema } from '@alpacawork/raw/conversation-context'
 import { runIdSchema, taskIdSchema, type RunId } from './fields.js';
 import { agentLaunchSchema, coordinatorRestartSchema } from './agent-launch.js';
 import { coordinatorMessageSchema } from './coordinator-contract.js';
+import { runAvailabilitySchema } from './run-failure.js';
 import { answerFileSchema } from './coordinator-files.js';
 
 /** Run IDs are numbered in creation order; every list of runs sorts by this number. */
@@ -116,6 +117,11 @@ const taskRunObject = z.object({
   task: taskIdSchema,
   placementId: z.string().min(1),
   requestId: z.string().min(1),
+  /** The first Run uses index zero; retries have the index of their frozen candidate. */
+  attempt: z.number().int().positive().safe().optional(),
+  /** A failed attempt reserved this next Run in its completion transaction. */
+  supersededBy: runIdSchema.optional(),
+  availability: runAvailabilitySchema.optional(),
   context: conversationContextSchema.optional(),
   agent: agentNameSchema,
   role: runRoleSchema.exclude([RUN_ROLE.coordinator]),
@@ -137,7 +143,7 @@ const taskRunObject = z.object({
   pids: z.object({ manager: z.number().int().nullable(), agent: z.number().int().nullable() }).strict(),
 }).strict();
 /** What every Run record keeps, whoever it answers. */
-function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at'>,
+function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at' | 'supersededBy' | 'availability'>,
   ctx: z.RefinementCtx): void {
   const reasons: readonly (string | null)[] = RUN_STATE_REASONS[record.state];
   if (!reasons.includes(record.reason)) ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Reason does not match state' });
@@ -145,6 +151,8 @@ function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'r
     ctx.addIssue({ code: 'custom', path: ['ended_at'], message: 'Ended run requires an end time' });
   if ((record.state === 'joined') !== (record.into !== null))
     ctx.addIssue({ code: 'custom', path: ['into'], message: 'Only a joined run names the run it joined' });
+  if (record.supersededBy !== undefined && (record.state !== 'failed' || record.availability === undefined))
+    ctx.addIssue({ code: 'custom', path: ['supersededBy'], message: 'A superseded run requires a failed availability observation' });
   if (record.state === 'queued' && record.started_at !== null)
     ctx.addIssue({ code: 'custom', path: ['started_at'], message: 'Queued run cannot have a start time' });
 }

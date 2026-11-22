@@ -2,6 +2,7 @@
 import { join } from 'node:path';
 import { digestBytes, publishImmutable } from '@alpacawork/core';
 import { type TokenCounters } from '@alpacawork/contract/run';
+import type { RunAvailability } from '@alpacawork/contract/run-failure';
 import type { ResultObservation } from '@alpacawork/contract/run-protocol';
 import type { EventJournal } from './execution-files.js';
 import type { InputReceipt } from './input.js';
@@ -11,6 +12,7 @@ export type Outcome = ReaderResult | { state: 'cancelled'; reason: 'stopped' } |
 type FinalResult = { state: 'present'; text: string } | { state: 'missing' | 'too_large' | 'unreadable'; text: null };
 /** How an agent ended, as `readEnd` read it and as a completed event carries it. */
 export type EndObservation = { outcome: Outcome; finalResult: FinalResult; session: string | null;
+  availability?: RunAvailability;
   measuredUsage: { scope: 'conversation' | 'run'; counters: TokenCounters } | null; exit: AgentExit | null };
 /** The result of a run whose reply cannot be read: what a failed reader said of it, else missing. */
 const absentResult = (observed: ReaderResult | undefined): FinalResult =>
@@ -34,7 +36,7 @@ export function publishCompletion(journal: EventJournal, end: EndObservation): v
     result = { state: 'present', digest, size: bytes.length };
   }
   journal.append('completed', { outcome: { state: end.outcome.state, reason: end.outcome.state === 'succeeded' ? null : end.outcome.reason },
-    session: end.session, measuredUsage: end.measuredUsage, exit: end.exit, result });
+    session: end.session, measuredUsage: end.measuredUsage, availability: end.availability, exit: end.exit, result });
 }
 /**
  * Read how an agent ended, from what its manager saw and its output. The manager calls this when its agent
@@ -48,6 +50,9 @@ export function readEnd(ended: { outcome: Outcome;
   if (outcome.state !== 'needs_review' && 'result' in observed && typeof observed.result === 'string')
     finalResult = { state: 'present', text: observed.result };
   if (outcome.state === 'succeeded' && finalResult.state !== 'present') outcome = { state: 'failed', reason: 'output' };
-  return { outcome, finalResult, session: ended.observed.session,
+  const cause = ended.observed.failure?.cause;
+  const availability = ended.measured && cause && outcome.state === 'failed' &&
+    (outcome.reason === 'exit' || outcome.reason === 'output') ? { cause } : undefined;
+  return { outcome, finalResult, session: ended.observed.session, availability,
     measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit };
 }

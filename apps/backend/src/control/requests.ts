@@ -28,6 +28,7 @@ import { assertRotationResolved, continuationSessionUnavailable, conversationFor
 import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
+import { freezeAiStack } from '../runs/ai-fallback.js';
 import { initialPlacementValues } from './placement-launch-values.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
 
@@ -87,7 +88,8 @@ function replayedRun(saved: StoredRequest, input: RequestInput, context: Request
       { reason: { kind: 'request_id_already_has_different_input' } });
   if (!isDeepStrictEqual(saved.author, author))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another author', undefined, { reason: { kind: 'request_id_belongs_another_author' } });
-  const run = saved.runId ? tx.get(saved.runId) : null;
+  const first = db.prepare('SELECT id FROM runs WHERE request_id=? AND attempt=0').get(saved.id);
+  const run = first ? tx.get(`R${first.id}`) : null;
   if (!run) reject(PROBLEM_CODE.saveUnconfirmed, 'Request exists without a confirmed Run', { kind: 'request_exists_without_confirmed_run' }, taskHash, null, null);
   if (input.selected !== undefined && Object.entries(input.selected).some(([key, value]) => run.launch.values[key] !== value))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another launch choice', undefined,
@@ -255,6 +257,7 @@ export class RequestService {
             aboutRunId: review ? reviewTarget(task.meta, head, unfinished) : null,
             mode, body: input.body, purpose: review ? 'review_send_back' : context.purpose, author,
             submittedAt: new Date().toISOString(), deliveryState,
+            aiStack: freezeAiStack(settings.config, { agent: profile, values: launch.launch.values }),
             answersQuestion: context.purpose === 'instruction' ? context.answersQuestion?.id ?? null : null };
           // Project inherited work before inserting this admission: its Request has no Run/caller witness yet.
           const openObligations = placement.responsible ? lifecycle.openObligations(task.id) : undefined;
