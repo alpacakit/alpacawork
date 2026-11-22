@@ -1,4 +1,5 @@
 import { noticeStateSchema, userTurn } from "@alpacawork/contract";
+import { isFinished } from "@alpacawork/contract/branch";
 import type { TaskRowDTO } from "@alpacawork/contract/control";
 
 export type TaskBaseline = {
@@ -27,13 +28,16 @@ export type NoticeEvent = EventBase & (
 );
 
 /**
- * Compare facts only. Report identity does not depend on the task's mutable state.
+ * Compare facts only, for Tasks not finished. Report identity does not depend on the task's mutable state.
  * A report is news when the latest noticed log entry (NOTICED_LOG_KINDS: a report, a question or its answer, a
  * change of the responsible person, a review decision, a move or shelving) came after the baseline. A turn is news
  * when the row's turn key differs from the baseline's: the key is compared as projected, never derived here.
  */
 export function taskEvents(tasks: TaskRowDTO[], baselines: Record<string, TaskBaseline>): NoticeEvent[] {
   return tasks.flatMap((task) => {
+    // A finished Task is read: what ended is seldom looked at again, and a reader who opens Done is not catching up on news.
+    // Work taken up again is news once more, against the baseline read before it finished.
+    if (isFinished(task.state)) return [];
     const baseline = baselines[task.id];
     const current = taskBaseline(task);
     const events: NoticeEvent[] = [];

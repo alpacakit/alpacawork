@@ -10,7 +10,7 @@ import { auditCandidate } from './projection-audit-reader.js';
 import { readPoint } from './workspace-records-sql.js';
 import { deriveTask } from './screen-derive.js';
 import { repairScreenAggregate, type AggregateSnapshot } from './screen-aggregate.js';
-import { aggregateFactsOf, type NoticeBaselines } from './workspace-aggregate-facts.js';
+import { aggregateFactsOf } from './workspace-aggregate-facts.js';
 
 export type ProjectionRepairKind = 'records' | 'derived' | 'aggregate' | 'membership' | 'order';
 export interface ProjectionRepair { readonly task: string; readonly kinds: ReadonlySet<ProjectionRepairKind> }
@@ -25,7 +25,6 @@ export interface ProjectionAuditResult {
 export interface ProjectionAuditOptions {
   /** The caller chooses its tick interval and limit so a complete sweep takes about ten minutes. */
   readonly limit?: number;
-  readonly notices?: NoticeBaselines | null;
   readonly timing?: (facts: Record<string, unknown>) => void;
 }
 export interface AsyncProjectionAuditOptions extends ProjectionAuditOptions {
@@ -150,7 +149,7 @@ export class ProjectionAudit {
       const value = fresh.reader.bundle(id) ? deriveTask(fresh.reader, id) : undefined;
       yield;
       const links = yield* relationSteps(fresh.reader, id);
-      const facts = value ? aggregateFactsOf(fresh.reader, id, value.row, options.notices ?? null) : undefined;
+      const facts = value ? aggregateFactsOf(fresh.reader, id) : undefined;
       const scopes = new Map([id, ...(original.bundle(id) ? original.ancestors(id) : [])].map(target =>
         [target, fresh.reader.bundle(target) ? fresh.reader.scopes(target) : []]));
       return { value, links, facts, scopes };

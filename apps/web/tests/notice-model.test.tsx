@@ -7,7 +7,7 @@ import { NOTICE_VERSION, taskBaseline, taskEvents } from "../src/data/notice-mod
 import { createNoticeStore } from "../src/data/notice-store";
 import { queryClient } from "../src/data/query-client";
 import { receiveFullIndex, indexKey, resources, startRequiredReadSession } from "../src/data/resources";
-import { markRead, markVisibleRead, useReadStore } from "../src/state/read-store";
+import { markRead, useReadStore } from "../src/state/read-store";
 import { mapWorkspace } from "../src/data/map";
 
 import { baselines, dto, indexOf, logEntry, rowOf, taskFixture, tree, userBall, PROJECT_TASK } from "./fixtures";
@@ -28,7 +28,7 @@ const reports = Array.from({ length: 10 }, (_, index) => logEntry({ id: `R${inde
 beforeEach(() => { vi.restoreAllMocks(); queryClient.clear(); receiveFullIndex(queryClient, indexOf(tree({ root: '/one' }))); useConnection.setState({ state: 'live', offline: false }); useReadStore.setState(useReadStore.getInitialState(), true); });
 
 test("new tasks produce one creation plus the latest report, without other differences", () => {
-  const current = row({ state: "done", log: [logEntry({ at: "2026-09-22T10:00:00Z", title: "Task created" }), ...reports] });
+  const current = row({ state: "waiting", log: [logEntry({ at: "2026-09-22T10:00:00Z", title: "Task created" }), ...reports] });
   const events = taskEvents([current], {});
   expect(events).toHaveLength(2);
   expect(events[0]).toMatchObject({ id: "T5|created", kind: "created", at: "2026-09-22T10:00:00Z" });
@@ -37,15 +37,24 @@ test("new tasks produce one creation plus the latest report, without other diffe
 
 test("body, state and ten reports are distinct facts with stable report IDs", () => {
   const baselines = { T5: taskBaseline(task) };
-  const current = { ...doc, state: "done" as const, values: { notes: "Edited" }, log: reports };
+  const current = { ...doc, state: "waiting" as const, values: { notes: "Edited" }, log: reports };
   const events = taskEvents([rowOf(current)], baselines);
   expect(events).toHaveLength(3);
-  expect(events.find((event) => event.kind === "state")).toMatchObject({ from: "doing", to: "done" });
+  expect(events.find((event) => event.kind === "state")).toMatchObject({ from: "doing", to: "waiting" });
   expect(events.filter((event) => event.kind === "body")).toHaveLength(1);
   expect(events.filter((event) => event.kind !== "reported").every((event) => event.at === undefined)).toBe(true);
-  const replay = taskEvents([rowOf({ ...current, version: 20, state: "waiting" })], baselines);
+  const replay = taskEvents([rowOf({ ...current, version: 20, state: "todo" })], baselines);
   expect(replay.filter((event) => event.kind === "reported").map((event) => event.id))
     .toEqual(events.filter((event) => event.kind === "reported").map((event) => event.id));
+});
+
+test("a finished task is never news, whatever changed; work taken up again is news against the old baseline", () => {
+  const finished = { values: { notes: "Edited" }, log: reports };
+  for (const state of ["done", "stopped"] as const) {
+    expect(taskEvents([row({ ...finished, state })], {})).toEqual([]);
+    expect(taskEvents([row({ ...finished, state })], { T5: taskBaseline(task) })).toEqual([]);
+  }
+  expect(taskEvents([row({ ...finished, state: "doing" })], { T5: taskBaseline(task) }).map(event => event.kind)).toEqual(["body", "reported"]);
 });
 
 test("unchanged tasks and shortened logs do not invent reports; only reports, responsibility, review and place changes count", () => {
@@ -148,7 +157,7 @@ test('an initializing checkpoint does not admit an opening read during its first
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-for (const [caller, language] of [['open', 'en'], ['visible', 'ja']] as const) test(`a refused ${caller} read tells the reader honestly in ${language} even when the checkpoint can be reloaded`, async () => {
+for (const language of ['en', 'ja'] as const) test(`a refused read tells the reader honestly in ${language} even when the checkpoint can be reloaded`, async () => {
   startI18n(); await i18n.changeLanguage(language);
   const state = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} };
   seedNotices(useReadStore, { root: '/synthetic', status: 'ready', revision: 'r1',
@@ -160,8 +169,7 @@ for (const [caller, language] of [['open', 'en'], ['visible', 'ja']] as const) t
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => String(url).endsWith('/notices/save')
     ? problemResponse('unavailable')
     : new Response(JSON.stringify({ state, revision: 'r1' })));
-  if (caller === 'open') await markRead(task.id);
-  else { markVisibleRead(task.id); await vi.waitFor(() => expect(notice).toHaveBeenCalled()); }
+  await markRead(task.id);
   expect(useReadStore.getState().status).toBe('ready');
   expect(useReadStore.getState().reads).toEqual({});
   expect(notice).toHaveBeenCalledWith(language === 'ja' ? '既読にできませんでした。再読み込みして確認してください。' : 'Could not mark as read. Reload to check.', { id: 'read-failed' });
@@ -182,9 +190,9 @@ test('opening a task that is already read saves nothing; a changed one saves onc
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
-for (const action of ['read', 'readMany'] as const) {
-  for (const source of [action === 'read' ? 'checkpoint' : 'reads'] as const) {
-    test(`${action} saves turn-only news from ${source} once, then revisits and turn removal save nothing`, async () => {
+{
+  for (const source of ['checkpoint', 'reads'] as const) {
+    test(`a read saves turn-only news from ${source} once, then revisits and turn removal save nothing`, async () => {
       const current = { ...task, notice: { ...task.notice, turnKey: 'RET-current' } };
       const baseline = { ...taskBaseline(current), turnKey: null };
       const store = createNoticeStore();
@@ -193,7 +201,7 @@ for (const action of ['read', 'readMany'] as const) {
         reads: source === 'reads' ? { [task.id]: baseline } : {} });
       const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
         new Response(JSON.stringify({ state: JSON.parse(String(init?.body)).state, revision: 'r2' })));
-      const read = (value: typeof task) => action === 'read' ? store.getState().read(value) : store.getState().readMany([value]);
+      const read = (value: typeof task) => store.getState().read(value);
       expect(taskEvents([current], { [task.id]: baseline }).map(event => event.kind)).toEqual(['turn']);
       expect(await read(current)).toBe(true);
       expect(fetcher).toHaveBeenCalledTimes(1);
@@ -207,7 +215,7 @@ for (const action of ['read', 'readMany'] as const) {
     });
   }
 
-  test(`${action} uses the same news as the display for body, state, reports and unnotified log growth`, async () => {
+  test(`a read uses the same news as the display for body, state, reports and unnotified log growth`, async () => {
     const store = createNoticeStore();
     seedNotices(store, { root: '/synthetic', status: 'ready', revision: 'r1', tasks: [task],
       checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { [task.id]: taskBaseline(task) } } });
@@ -219,17 +227,17 @@ for (const action of ['read', 'readMany'] as const) {
     for (const [index, current] of changes.entries()) {
       const before = { ...store.getState().checkpoint?.tasks, ...store.getState().reads };
       expect(taskEvents([current], before).map(event => event.kind)).toEqual([['body'], ['state'], ['reported']][index]);
-      expect(await (action === 'read' ? store.getState().read(current) : store.getState().readMany([current]))).toBe(true);
+      expect(await store.getState().read(current)).toBe(true);
       expect(fetcher).toHaveBeenCalledTimes(index + 1);
       expect(taskEvents([current], store.getState().reads)).toEqual([]);
     }
     const quiet = row({ values: { notes: 'changed' }, state: 'waiting', log: [...reports, logEntry({ kind: 'retitled' })] });
     expect(taskEvents([quiet], store.getState().reads)).toEqual([]);
-    expect(await (action === 'read' ? store.getState().read(quiet) : store.getState().readMany([quiet]))).toBe(true);
+    expect(await store.getState().read(quiet)).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(3);
   });
 
-  test(`${action} recovers a turn-only save conflict without erasing another task's read`, async () => {
+  test(`a read recovers a turn-only save conflict without erasing another task's read`, async () => {
     const current = { ...task, notice: { ...task.notice, turnKey: 'RET-current' } };
     let saved = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z',
       tasks: { [task.id]: taskBaseline(task) } }, reads: {} as Record<string, ReturnType<typeof taskBaseline>> };
@@ -247,7 +255,7 @@ for (const action of ['read', 'readMany'] as const) {
       saved = input.state; revision = 'r3';
       return new Response(JSON.stringify({ state: saved, revision }));
     });
-    expect(await (action === 'read' ? store.getState().read(current) : store.getState().readMany([current, other]))).toBe(true);
+    expect(await store.getState().read(current)).toBe(true);
     expect(attempts).toEqual(['r1', 'r2']);
     expect(saved.reads[other.id]).toEqual(taskBaseline(other));
     expect(saved.reads[task.id]).toEqual(taskBaseline(current));
@@ -311,7 +319,7 @@ test("a retitle is no notice: the read baseline is unchanged", () => {
   expect(mapped.readIds.has("T1")).toBe(true);
 });
 
-for (const caller of ['open', 'visible'] as const) test(`${caller}: a committed read overtaken by a newer revision is not a failure`, async () => {
+test('a committed read overtaken by a newer revision is not a failure', async () => {
   const state = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} };
   seedNotices(useReadStore, { root: '/synthetic', status: 'ready', revision: 'r1', checkpoint: state.checkpoint, tasks: [task] });
   const snapshot = indexOf(tree({ root: '/synthetic', tasks: [{ ...doc, log: reports }] }));
@@ -327,8 +335,7 @@ for (const caller of ['open', 'visible'] as const) test(`${caller}: a committed 
     fixtureReceipt(resources.notices('/synthetic').queryKey, saved);
     return new Response(JSON.stringify(receipt));
   });
-  if (caller === 'open') await markRead(task.id);
-  else { markVisibleRead(task.id); await vi.waitFor(() => expect(useReadStore.getState().reads.T5).toBeDefined()); }
+  await markRead(task.id);
   expect(taskEvents(snapshot.tasks.filter(each => each.id === task.id), { ...useReadStore.getState().checkpoint?.tasks, ...useReadStore.getState().reads })).toEqual([]);
   expect(notice).not.toHaveBeenCalled();
   expect(useReadStore.getState().status).toBe('ready');
@@ -347,20 +354,14 @@ test('a lost read response is confirmed by its effect even with another task rea
   expect(await store.getState().read(changed)).toBe(true);
 });
 
-for (const caller of ['open', 'visible'] as const) test(`${caller}: a queued read cancelled by a scope change is silent`, async () => {
+test('a queued read cancelled by a scope change is silent', async () => {
   seedNotices(useReadStore, { root: '/synthetic', status: 'ready', revision: 'r1', tasks: [task] });
   const snapshot = indexOf(tree({ root: '/synthetic', tasks: [{ ...doc, log: reports }] }));
   receiveFullIndex(queryClient, { ...snapshot, person: { ...snapshot.person, notices: 'r1' } });
   const notice = vi.spyOn(notify, 'error'), fetcher = vi.spyOn(globalThis, 'fetch');
-  if (caller === 'open') {
-    const reading = markRead(task.id);
-    receiveFullIndex(queryClient, indexOf(tree({ root: '/elsewhere' })));
-    await reading;
-  } else {
-    markVisibleRead(task.id);
-    receiveFullIndex(queryClient, indexOf(tree({ root: '/elsewhere' })));
-    await new Promise(resolve => setTimeout(resolve, 80));
-  }
+  const reading = markRead(task.id);
+  receiveFullIndex(queryClient, indexOf(tree({ root: '/elsewhere' })));
+  await reading;
   expect(fetcher).not.toHaveBeenCalled();
   expect(notice).not.toHaveBeenCalled();
 });
@@ -475,9 +476,9 @@ test('pending reads stay projected during other-device conflict recovery and do 
   expect(store.getState().reads.T5).toBeUndefined();
 });
 
-for (const action of ['read', 'readMany'] as const) test(`${action} never regresses a newer read from another device, including a mixed batch`, async () => {
+test('a read never regresses a newer read from another device', async () => {
   const oldDoc = { ...doc, version: 2, values: { notes: 'opened' } }, newDoc = { ...doc, version: 3, values: { notes: 'later news' } };
-  const old = rowOf(oldDoc), latest = rowOf(newDoc), other = { ...row({ values: { notes: 'other unread' } }), id: 'T6' };
+  const old = rowOf(oldDoc), latest = rowOf(newDoc);
   receiveFullIndex(queryClient, indexOf(tree({ root: '/synthetic', tasks: [oldDoc] })));
   const checkpoint = { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task), T6: taskBaseline(task) } };
   const store = viewedStore();
@@ -495,7 +496,7 @@ for (const action of ['read', 'readMany'] as const) test(`${action} never regres
     }
     return new Response(JSON.stringify({ state: remote, revision: 'r2' }));
   });
-  const reading = action === 'read' ? store.getState().read(old) : store.getState().readMany([old, other]);
+  const reading = store.getState().read(old);
   await vi.waitFor(() => expect(posts).toBe(1));
   const index = indexOf(tree({ root: '/synthetic', tasks: [newDoc] }));
   receiveFullIndex(queryClient, { ...index, person: { ...index.person, notices: 'r2' } });
@@ -505,47 +506,6 @@ for (const action of ['read', 'readMany'] as const) test(`${action} never regres
   release(problemResponse('conflict'));
   expect(await reading).toBe(true);
   expect(written.reads.T5).toEqual(taskBaseline(latest));
-  expect(posts).toBe(action === 'read' ? 1 : 2);
-  if (action === 'readMany') expect((written.reads as Record<string, unknown>).T6).toEqual(taskBaseline(other));
+  expect(posts).toBe(1);
 });
 
-test('retained visible read marks share one owner and an explicit read clears them before its first microtask', async () => {
-  const current = row({ values: { notes: 'visible news' } });
-  const store = viewedStore();
-  seedNotices(store, { root: '/synthetic', status: 'ready', revision: 'r1', tasks: [current],
-    checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} });
-  receiveFullIndex(queryClient, { ...indexOf(tree({ root: '/synthetic', tasks: [{ ...doc, values: { notes: 'visible news' } }] })),
-    person: { ...queryClient.getQueryData<import('@alpacawork/contract/control').ProjectedIndexDTO>(indexKey)!.person, notices: 'r1' } });
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
-    new Response(JSON.stringify({ state: JSON.parse(String(init?.body)).state, revision: 'r2' })));
-  store.getState().hold(['T5']);
-  expect([...store.getState().held]).toEqual(['T5']);
-  await store.getState().readMany([current]);
-  expect([...store.getState().held]).toEqual(['T5']);
-  expect(taskEvents([current], { ...store.getState().checkpoint?.tasks, ...store.getState().reads })).toEqual([]);
-  const reading = store.getState().read(current);
-  expect([...store.getState().held]).toEqual([]);
-  // A delayed visibility delivery cannot restore the same mark while the read is pending or already saved.
-  store.getState().hold(['T5']);
-  expect([...store.getState().held]).toEqual([]);
-  expect(await reading).toBe(true);
-  expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-});
-
-test('held marks cannot cross a generation or a root and do not acknowledge newer news', () => {
-  const currentDoc = { ...doc, values: { notes: 'visible news' } }, current = rowOf(currentDoc);
-  const store = viewedStore();
-  receiveFullIndex(queryClient, indexOf(tree({ root: '/synthetic', tasks: [currentDoc] })));
-  seedNotices(store, { root: '/synthetic', status: 'ready', revision: 'r1', tasks: [current],
-    checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} });
-  store.getState().hold(['T5']);
-  expect([...store.getState().held]).toEqual(['T5']);
-  store.getState().release(['T5']);
-  expect(taskEvents([row({ values: { notes: 'later news' } })], { ...store.getState().checkpoint?.tasks, ...store.getState().reads })).toHaveLength(1);
-  store.getState().hold(['T5']);
-  const index = queryClient.getQueryData<import('@alpacawork/contract/control').ProjectedIndexDTO>(indexKey)!;
-  receiveFullIndex(queryClient, { ...index, generation: 'new-generation' });
-  expect([...store.getState().held]).toEqual([]);
-  store.getState().bind('/another');
-  expect([...store.getState().held]).toEqual([]);
-});

@@ -18,7 +18,7 @@ const baselinesFor = (tasks: TaskRowDTO[]) => Object.fromEntries(tasks.map((task
 /** true: confirmed effect; false: confirmed missing effect. Cancellation and uncertainty are not failure. */
 export type NoticeReadResult = boolean | 'cancelled' | 'unconfirmed';
 
-type NoticeAction = { kind: 'read'; task: TaskRowDTO } | { kind: 'readMany'; tasks: TaskRowDTO[] }
+type NoticeAction = { kind: 'read'; task: TaskRowDTO }
   | { kind: 'confirm'; tasks: TaskRowDTO[] } | { kind: 'undo'; prior: NoticeSaved; revision: string };
 type NoticeStore = {
   root?: string;
@@ -30,10 +30,6 @@ type NoticeStore = {
   reads: Record<string, TaskBaseline>;
   undo?: { prior: NoticeSaved; revision: string };
   firstSeen: ReadonlyMap<string, FirstSeen>;
-  /** Visible news can keep its mark until explicitly opened or its list visit ends. Never persisted. */
-  held: ReadonlySet<string>;
-  hold: (ids: readonly string[]) => void;
-  release: (ids?: readonly string[]) => void;
   tasks: TaskRowDTO[];
   bind: (root: string) => void;
   receive: (root: string, tasks: TaskRowDTO[], revision: string | null) => void;
@@ -41,7 +37,6 @@ type NoticeStore = {
   confirm: (tasks: TaskRowDTO[]) => Promise<NoticeReadResult>;
   undoAllRead: () => Promise<boolean>;
   read: (task: TaskRowDTO) => Promise<NoticeReadResult>;
-  readMany: (tasks: TaskRowDTO[]) => Promise<NoticeReadResult>;
 };
 
 /** The single client projection of the server's per-reader checkpoint. */
@@ -60,7 +55,7 @@ export function createNoticeStore() {
     });
   };
   type PendingRead = { source: Pick<ProjectedIndexDTO, 'root' | 'generation'>; tasks: TaskRowDTO[] };
-  type Control = Omit<NoticeStore, 'checkpoint' | 'reads' | 'revision' | 'fresh'> & { pendingReads?: PendingRead[]; heldScope?: Pick<ProjectedIndexDTO, 'root' | 'generation'> };
+  type Control = Omit<NoticeStore, 'checkpoint' | 'reads' | 'revision' | 'fresh'> & { pendingReads?: PendingRead[] };
   const controls = createStore<Control>((set) => {
     // Persistence and conflict recovery always use confirmed Query data, never the optimistic projection.
     const get = () => snapshot(false);
@@ -125,8 +120,6 @@ export function createNoticeStore() {
     };
     const apply = (state: NoticeSaved, action: NoticeAction): NoticeSaved => {
       if (action.kind === 'read') return { ...state, reads: { ...state.reads, [action.task.id]: taskBaseline(action.task) } };
-      if (action.kind === 'readMany') return { ...state, reads: { ...state.reads,
-        ...baselinesFor(unreadReads(action.tasks, state)) } };
       if (action.kind === 'confirm') return { version: NOTICE_VERSION, checkpoint: { at: new Date().toISOString(), tasks: {
         ...state.checkpoint.tasks, ...state.reads, ...baselinesFor(action.tasks),
       } }, reads: {} };
@@ -135,8 +128,7 @@ export function createNoticeStore() {
     const commit = (action: NoticeAction): Promise<NoticeReadResult> => {
       const satisfied = (state: NoticeSaved | null, target?: NoticeSaved) => {
         if (!state) return false;
-        if (action.kind === 'read' || action.kind === 'readMany')
-          return unreadReads(action.kind === 'read' ? [action.task] : action.tasks, state).length === 0;
+        if (action.kind === 'read') return unreadReads([action.task], state).length === 0;
         return target !== undefined && JSON.stringify(state) === JSON.stringify(target);
       };
       // Admission precedes queue/pause: an offline action cannot turn into a future send.
@@ -144,7 +136,7 @@ export function createNoticeStore() {
       const source = readIndex(queryClient);
       const pending = source && get().status === 'ready' && get().checkpoint && action.kind === 'read'
         ? { source: { root: source.root, generation: source.generation }, tasks: [action.task] } : undefined;
-      // Only explicit opening is optimistic. Visibility saves keep their unread mark until confirmed.
+      // Opening is optimistic.
       // Publish before the first queue microtask, so the click's render already has its read mark.
       if (pending) set(state => ({ pendingReads: [...state.pendingReads ?? [], pending] }));
       const work = async (): Promise<NoticeReadResult> => {
@@ -214,23 +206,10 @@ export function createNoticeStore() {
     };
     // Scope selects the existing personal Query; it never imports Task baselines from display rows.
     const bind = (root: string) => {
-      if (get().root !== root) set({ root, tasks: [], serverRevision: null, undo: undefined, firstSeen: new Map(), status: 'loading', held: new Set(), heldScope: undefined });
+      if (get().root !== root) set({ root, tasks: [], serverRevision: null, undo: undefined, firstSeen: new Map(), status: 'loading' });
     };
     return {
-      status: 'idle', serverRevision: null, firstSeen: new Map(), tasks: [], pendingReads: [], held: new Set(), bind,
-      hold: (ids) => {
-        const state = snapshot(), source = readIndex(queryClient), wanted = new Set(ids);
-        if (!source || !state.fresh || !state.checkpoint) return;
-        const tasks = serverReadFacts(queryClient)?.tasks.filter(task => wanted.has(task.id)) ?? [];
-        const news = taskEvents(tasks, { ...state.checkpoint.tasks, ...state.reads });
-        const held = new Set(state.held);
-        for (const event of news) held.add(event.task.id);
-        if (held.size !== state.held.size) set({ held, heldScope: { root: source.root, generation: source.generation } });
-      },
-      release: (ids) => set(state => {
-        const held = ids ? new Set([...state.held].filter(id => !ids.includes(id))) : new Set<string>();
-        return held.size === state.held.size ? state : { held };
-      }),
+      status: 'idle', serverRevision: null, firstSeen: new Map(), tasks: [], pendingReads: [], bind,
       receive: (root, tasks, revision) => {
         bind(root);
         set({ tasks, serverRevision: revision });
@@ -240,12 +219,10 @@ export function createNoticeStore() {
       reload: () => refresh(),
       confirm: (tasks) => commit({ kind: 'confirm', tasks }),
       undoAllRead: () => { const undo = get().undo; return undo ? commit({ kind: 'undo', ...undo }).then(result => result === true) : Promise.resolve(false); },
-      read: (task) => { get().release([task.id]); return commit({ kind: 'read', task }); },
-      readMany: (tasks) => commit({ kind: 'readMany', tasks }),
+      read: (task) => commit({ kind: 'read', task }),
     };
   });
   const emptyReads: Record<string, TaskBaseline> = {};
-  const emptyHeld: ReadonlySet<string> = new Set();
   type Snapshot = { control: Control; queryState: unknown; indexState: unknown; connection: unknown; view: NoticeStore };
   const snapshots: { confirmed?: Snapshot; projected?: Snapshot } = {};
   function snapshot(project = true): NoticeStore {
@@ -256,7 +233,7 @@ export function createNoticeStore() {
     if (previous?.control === control && previous.queryState === query?.state && previous.indexState === indexState && previous.connection === connection) return previous.view;
     const read = readState<{ state: NoticeSaved | null; revision: string | null; initialBaselines?: Record<string, TaskBaseline> }>(queryClient, resources.notices(control.root ?? '').queryKey);
     const data = read.data;
-    const { pendingReads = [], heldScope, ...display } = control;
+    const { pendingReads = [], ...display } = control;
     let reads = data?.state?.reads ?? emptyReads;
     if (project) for (const pending of pendingReads) {
       // A list/personal refresh may be temporarily stale, but the acknowledged facts stay read in this scope.
@@ -265,7 +242,7 @@ export function createNoticeStore() {
         if (unread.length) reads = { ...reads, ...baselinesFor(unread) };
       }
     }
-    const view: NoticeStore = { ...display, held: heldScope && sameReadScope(queryClient, heldScope) ? control.held : emptyHeld, revision: data?.revision ?? null, checkpoint: data?.state?.checkpoint ?? (data?.initialBaselines && query ? { at: new Date(getReadProof(query)?.acquiredAt ?? 0).toISOString(), tasks: data.initialBaselines } : undefined),
+    const view: NoticeStore = { ...display, revision: data?.revision ?? null, checkpoint: data?.state?.checkpoint ?? (data?.initialBaselines && query ? { at: new Date(getReadProof(query)?.acquiredAt ?? 0).toISOString(), tasks: data.initialBaselines } : undefined),
       reads, status: read.status === 'idle' && control.status !== 'ready' ? control.status : read.status,
       fresh: !!serverReadFacts(queryClient) && read.assessment.project && canSendWrites() };
     // An initial checkpoint is derived anew; share it only with the same time and actual baselines.

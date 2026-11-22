@@ -506,11 +506,11 @@ export const controlIndexSchema = z.object({
   home: z.array(homeRowSchema), ...indexFields,
   counts: z.object({
     /**
-     * The top-level closed Tasks each scope lists: finished, finished since the reader last read them, and shelved.
+     * The top-level closed Tasks each scope lists: finished and shelved.
      * The screen adds none up.
      */
     closed: z.record(countScopeSchema, z.object({ finished: z.number().int().nonnegative(),
-      freshFinished: z.number().int().nonnegative(), shelved: z.number().int().nonnegative() }).strict()),
+      shelved: z.number().int().nonnegative() }).strict()),
     /** The home list's rows each scope lists, by section; the screen adds none up. */
     home: z.record(countScopeSchema, homeCountsSchema),
     /**

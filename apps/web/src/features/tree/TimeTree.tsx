@@ -53,7 +53,6 @@ import { Welcome } from "./Welcome";
 import { scrollMotion, useListMotion, useTint } from "@/lib/motion";
 import { sameDrawingSource, type DrawingSource } from "@/lib/drawing";
 import { useWorkspaceSelector } from "@/data/workspace-store";
-import { markVisibleRead, useReadReady, useReadStore } from "@/state/read-store";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
@@ -127,11 +126,9 @@ type Shared = {
   index: TaskIndex; people: PeopleIndex; timePeople: TimePeopleIndex | null; narrow: boolean; selected: string | null; screen: number; lead: number;
   /** The strips are always beside the rows on a wide sheet; on a narrow one only when asked for (Time). */
   strips: boolean;
-  /** Done's rows that were new when it was opened: they keep their dot while it stays open, though now read. */
-  kept: ReadonlySet<string>;
 };
 /** `open` and `hidden` as sectionFold says. `count` is the server's. */
-type Section = { section: HomeSection; count: number; open: boolean; hidden: number | null; tree: Group; fresh: number };
+type Section = { section: HomeSection; count: number; open: boolean; hidden: number | null; tree: Group };
 /** A wide row's height, its strip's too: a 14px title with room above and below. */
 const WIDE_ROW = 32;
 const NONE: ReadonlySet<string> = new Set();
@@ -209,17 +206,13 @@ export function TimeTree() {
     sectionsOpen.set(storedWith(sectionsOpen.get(), section, !open));
     if (open) setOpened((was) => without(was, section));
   };
-  // The notice owner retains visible read marks; this list owns only their display lifetime.
-  const kept = useReadStore(state => state.held);
-  useEffect(() => () => useReadStore.getState().release(), []);
-  const [keptFreshCount, setKeptFreshCount] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null), markRef = useRef<HTMLDivElement>(null);
   usePageSentinel(finishedSentinel, finished, box);
   // Rows outside the vertical viewport keep their space, but have no time drawing to recompute
   // for each zoom. Keep one small screen margin so ordinary scrolling reveals a finished strip.
   const [visibleRows, setVisibleRows] = useState<ReadonlySet<string> | null>(() => typeof IntersectionObserver === "undefined" ? null : new Set());
-  const { tree, sections, selectedAt, keptHere } = useMemo(() => {
+  const { tree, sections, selectedAt } = useMemo(() => {
     // Each Task the home list lists has its own row, in its section, in the order the server lists them.
     const listed: Record<HomeSection, { task: Task; row: HomeRow | null; dated?: boolean }[]> = { doing: [], error: [], review: [], awaited: [], held: [], todo: [], done: [] };
     for (const row of home.rows) {
@@ -240,9 +233,6 @@ export function TimeTree() {
       const at = listed[section].findIndex(({ task }) => task.id === selectedHere);
       if (at >= 0) { selectedAt = { section, at }; break; }
     }
-    // Only a row still in Done keeps its dot: one that went back to work is read like any other.
-    const keptHere = new Set<string>();
-    for (const { task } of listed.done) if (kept.has(task.id)) keptHere.add(task.id);
     // A section is drawn while it holds something, its heading included: Done holds its finished Tasks and the
     // shelved ones at its end.
     const holds = { ...home.counts, done: closedCounts.finished + closedCounts.shelved };
@@ -250,9 +240,7 @@ export function TimeTree() {
     const sections: Section[] = HOME_SECTIONS.filter((section) => holds[section] > 0).map((section) => {
       const all = listed[section];
       const { open, shown, hidden } = sectionFold(section, all.length, { stored, opened, more });
-      // Done says how many finished since they were last read.
-      const fresh = section === "done" ? Math.max(closedCounts.freshFinished, open ? keptFreshCount : 0) : 0;
-      return { section, count: section === "done" ? closedCounts.finished : home.counts[section], open, fresh, hidden, tree: {
+      return { section, count: section === "done" ? closedCounts.finished : home.counts[section], open, hidden, tree: {
         nodes: all.slice(0, shown).map(({ task, row, dated }) => {
           const up = !!task.parent && !dated;
           const path: string[] = [];
@@ -265,8 +253,8 @@ export function TimeTree() {
           return node;
         }) } };
     });
-    return { tree: { nodes }, sections, selectedAt, keptHere };
-  }, [index, home, stored, opened, more, selectedHere, kept, keptFreshCount, closedCounts, finishedPageIds, finishedDated, openedDone]);
+    return { tree: { nodes }, sections, selectedAt };
+  }, [index, home, stored, opened, more, selectedHere, closedCounts, finishedPageIds, finishedDated, openedDone]);
   const navigation = useMemo(() => ({ ids: drawnTaskIds(tree), open: openDetail }), [tree]);
   useListNavigationSource(navigation);
   // Only a change to the drawn rows/section furniture can rearrange this fixed-height list. Selecting a row
@@ -308,18 +296,6 @@ export function TimeTree() {
     if (!isOpen(section, { stored: sectionsOpen.get(), opened })) setOpened((was) => new Set(was).add(section));
     if (at >= (SECTION_START[section].rows ?? Infinity)) setMore((was) => was.has(section) ? was : new Set(was).add(section));
   }, [selectedHere, selectedAt?.section]);
-  // Opening Done, by its heading or as this device left it, is seeing what finished: its count of those new since last read
-  // stays until it is closed, and rows keep their dot as they are seen; closing it lets them go. Opened for the detail,
-  // the news of its rows is held instead: the notice owner admits only still-unread marks, and an explicitly opened task
-  // never gets its held mark back.
-  const wasDoneOpen = useRef(false);
-  useEffect(() => {
-    if (doneOpen && !wasDoneOpen.current) {
-      if (opened.has("done")) useReadStore.getState().hold(sections.find(({ section }) => section === "done")?.tree.nodes.map(({ task }) => task.id) ?? []);
-      else setKeptFreshCount(closedCounts.freshFinished);
-    } else if (!doneOpen && wasDoneOpen.current) { setKeptFreshCount(0); useReadStore.getState().release(); }
-    wasDoneOpen.current = doneOpen;
-  }, [doneOpen]);
   const strips = !narrow || stripsAsked;
 
   const rowNodes = tree.nodes;
@@ -438,8 +414,8 @@ export function TimeTree() {
   const keys = (event: KeyboardEvent<HTMLDivElement>) => stripKeys(event, strip, showAll,
     (box.current?.getBoundingClientRect().left ?? 0) + lead + strip.screen / 2);
   const shared = useMemo<Shared>(() => ({ drawing, index, people, timePeople, narrow, selected: readerOpen ? selected : null,
-    screen: strip.screen, lead, strips: strips && axisReady, kept: keptHere }),
-    [drawing, index, people, timePeople, narrow, readerOpen, selected, strip.screen, lead, strips, axisReady, keptHere]);
+    screen: strip.screen, lead, strips: strips && axisReady }),
+    [drawing, index, people, timePeople, narrow, readerOpen, selected, strip.screen, lead, strips, axisReady]);
   const stripRef = useRef(strip);
   stripRef.current = strip;
   const showTime = useMemo(() => (start: number, end: number) => stripRef.current.show(start, end), []);
@@ -571,7 +547,6 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           </span>
           <span>{name}</span>
           <span className="font-normal tabular-nums text-muted">{section.count}</span>
-          {section.fresh > 0 && <span data-fresh className="flex items-center gap-1 font-normal text-muted"><i aria-hidden="true" className="size-1.5 rounded-full bg-changed" />{t("home.fresh", { count: section.fresh })}</span>}
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
       </h2>
@@ -590,7 +565,7 @@ const sameRowScope = (a: TaskRowProps, b: TaskRowProps) => {
     a.node.lifted !== b.node.lifted || a.node.row !== b.node.row || a.node.dated !== b.node.dated || !sameRowItems(a.node.path, b.node.path)) return false;
   const x = a.shared, y = b.shared;
   if (!sameDrawingSource(x.drawing, y.drawing) || x.narrow !== y.narrow || x.screen !== y.screen || x.lead !== y.lead || x.strips !== y.strips ||
-    (x.selected === id) !== (y.selected === id) || x.kept.has(id) !== y.kept.has(id) ||
+    (x.selected === id) !== (y.selected === id) ||
     (a.visibleRows?.has(id) ?? true) !== (b.visibleRows?.has(id) ?? true)) return false;
   // Node props and viewport membership live outside Shared and must be checked first.
   // With the same Shared, its subtree, counts and chronology are the same inputs.
@@ -625,7 +600,6 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   useTint(label, `row:${task.id}`, task.hash, shared.drawing);
   const title = useRef<HTMLButtonElement>(null);
   const endId = useId();
-  const rowElement = useRef<HTMLLIElement>(null);
   const enter = useRef<(() => void) | null>(null);
   const look = useTaskLook(task);
   const stateWord = look.word;
@@ -644,19 +618,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   // list's mark line as a heading's square is, so the state icons start on one vertical line whether a row is read or not.
   const readHere = useReadIdsFor(task.id).has(task.id);
   const unreadTask = !node.dated && !readHere;
-  const readReady = useReadReady();
-  useEffect(() => {
-    const element = rowElement.current;
-    if (!element || !readReady || !isFinished(task.state) || !unreadTask || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!element.isConnected || !entry?.isIntersecting) return;
-      markVisibleRead(task.id);
-      observer.disconnect();
-    }, { root: element.closest("[data-time-tree]"), threshold: 0.2 });
-    observer.observe(element.querySelector(":scope > [data-row-head]") ?? element);
-    return () => observer.disconnect();
-  }, [task.id, task.hash, task.state, unreadTask, readReady]);
-  const unread = (unreadTask || !node.dated && shared.kept.has(task.id)) && <i aria-hidden="true" data-unread
+  const unread = unreadTask && <i aria-hidden="true" data-unread
     className={cn("size-1.5 -translate-x-1/2 rounded-full bg-changed", narrow ? "block" : "absolute top-1/2 left-list-mark -translate-y-1/2")} />;
   // The title's press, in either form: it opens the task and carries the row's keys.
   const press = (content: ReactNode, className: string, describedBy?: string) => <button ref={title} type="button" data-read={task.id} onClick={() => openDetail(task.id)}
@@ -667,7 +629,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
     }}
     className={className}>{content}</button>;
   return (
-    <li ref={rowElement} data-row={task.id} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
+    <li data-row={task.id} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
       <div data-row-head data-motion-key={task.id}
         className={cn("group relative flex border-b border-rule", narrow && "flex-col", !narrow && shared.selected === task.id && "bg-row-picked [--row-ground:var(--color-row-picked-solid)]")}>
         <div ref={label} data-row-label style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}

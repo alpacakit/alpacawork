@@ -16,7 +16,7 @@ export async function publicationDriver(root: string, store: ControlStore, obser
   const log = new ChangeLog(2), reads = new ReadResources();
   const ticks: { tasks: number }[] = [], publications: { frame: PublishedFrame; full: boolean }[] = [];
   let pause: Promise<void> | undefined;
-  const personal = (): PersonalProjection => ({ notices: state.fresh ? { checkpoint: { tasks: {} }, reads: {} } : null,
+  const personal = (): PersonalProjection => ({
     person: { settings: null, notices: state.fresh ? 'b'.repeat(64) : null, coordinator: null },
     presence: { state: 'away', until: null }, host: null, coordinatorWork: null });
   const owner = new ProjectionOwner({ root, log, observations, generation: 'publication-replay', locations: () => ({}),

@@ -3,9 +3,6 @@
     "awaited": "En espera",
     "error": "Requiere atención",
     "finished": "Completadas",
-    "fresh_one": "{{count}} recién completada",
-    "fresh_many": "{{count}} recién completadas",
-    "fresh_other": "{{count}} recién completadas",
     "held": "En pausa",
     "less": "Mostrar menos",
     "more_one": "Mostrar {{count}} más",
@@ -127,10 +124,10 @@
         "shows": "Modelos distintos lo crean en paralelo y tú eliges con cuál quedarte.",
         "words": "Quiero crear un juego de la serpiente. ¿Podrías probar a crear 3 en paralelo con modelos distintos? Cuando estén listos, pregúntame con cuál me quedo. Es un tutorial, así que mantén un esfuerzo ligero y que tarde unos 5 minutos. Escribe todo en español, por favor."
       },
-      "triage": {
-        "label": "Divide la apertura de una cafetería en 5 tareas",
-        "shows": "Los resultados quedan por revisar y tú eliges cuáles completar.",
-        "words": "Divide la apertura de una cafetería ficticia en 5 tareas separadas: \"Pedir el café en grano\", \"Encargar el letrero\", \"Imprimir el menú\", \"Contratar personal\" y \"Enviar las invitaciones\", y encarga cada una a un agente. Que cada uno escriba en su informe un resultado ficticio de una línea y espere mi revisión. Cuando estén las 5, elegiré cuáles completar. No hace falta investigar ni crear archivos, y escribe todo en español, por favor."
+      "settings": {
+        "label": "",
+        "shows": "",
+        "words": ""
       }
     },
     "lead": "Elige un ejemplo para probarlo.",

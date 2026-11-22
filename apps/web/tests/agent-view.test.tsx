@@ -3,7 +3,7 @@ import { seedNotices } from './read-fixtures';
 import { afterEach, expect, test, vi } from "vitest";
 import { queryClient } from "../src/data/query-client";
 import { indexKey } from "../src/data/resources";
-import { markRead, markVisibleRead, useReadStore } from "../src/state/read-store";
+import { markRead, useReadStore } from "../src/state/read-store";
 import { useConnection } from "../src/data/connection";
 
 /** Writes can be sent: the feed is live on a snapshot received in this visit that takes writes. */
@@ -45,22 +45,4 @@ test("nothing is read while writes cannot be sent: out of reach, or a list read 
   useConnection.setState({ ...sendable, fresh: false });
   await markRead("T1");
   expect(read).not.toHaveBeenCalled();
-});
-
-test("rows seen just before the connection goes are not sent once it has gone", () => {
-  vi.useFakeTimers();
-  opened("/?task=T1");
-  const readMany = vi.fn(async () => true);
-  useReadStore.setState({ readMany });
-  markVisibleRead("T1");
-  useConnection.setState({ state: "reconnecting", offline: true });
-  vi.advanceTimersByTime(100);
-  expect(readMany).not.toHaveBeenCalled();
-  // Nothing was queued: back in reach, the row is sent only when it is seen again.
-  useConnection.setState(sendable);
-  vi.advanceTimersByTime(100);
-  expect(readMany).not.toHaveBeenCalled();
-  markVisibleRead("T1");
-  vi.advanceTimersByTime(100);
-  expect(readMany).toHaveBeenCalledTimes(1);
 });
