@@ -32,7 +32,7 @@ test("a task made with no AI on it is not said to be the AI's", () => {
 test("from the empty welcome, a request sent moves the guide on to the AI's step and then to the person's turn", () => {
   expect(shown({})).toBe("send");
   expect(shown({ sent: true, busy: true })).toBe("received");
-  expect(shown({ sent: true })).toBe("send");
+  expect(shown({ sent: true })).toBe("send-again");
   expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
   expect(shown({ tasks: 1, questions: 1 })).toBe("question");
   expect(shown({ tasks: 1, results: 1 })).toBe("result");
@@ -112,4 +112,12 @@ test("a balloon told to stand clear of the box its part is in stands outside tha
   const view = { width: 1360, height: 900 };
   const over = placeBalloon(asked, size, view, "left", "start", { left: 0, top: 0, ...view });
   expect(over.x + size.width).toBeLessThanOrEqual(asked.left);
+});
+
+test("shown again from its first screen, the guide points at the input whatever the work, until something is written or sent", () => {
+  const intro = { stage: "started", at: 1, seen: [], intro: true } as const;
+  expect(shown({ stage: intro, tasks: 4, questions: 1, working: 2 })).toBe("send");
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, questions: 1 })))).toBeUndefined();
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, drafting: true })))).toEqual({ stage: "started", at: 1, seen: [] });
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, sent: true, busy: true })))).toEqual({ stage: "started", at: 1, seen: [] });
 });

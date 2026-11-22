@@ -117,5 +117,6 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
  */
 export function useGuideStage(stage: GoingStage, entry: GuideEntry | null) {
   const next = nextStage(stage, entry);
-  useEffect(() => { if (next) moveGuide(stage, next); }, [next?.stage]);
+  const key = next && JSON.stringify(next);
+  useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
 }

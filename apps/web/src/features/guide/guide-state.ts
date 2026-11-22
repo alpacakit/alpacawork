@@ -1,25 +1,35 @@
 import { deviceValue, jsonCodec } from "@/lib/device-storage";
+import { appHintDone } from "@/features/coordinator/app-hint";
+import { useViewStore } from "@/state/view-store";
 
 /**
  * How far this browser is through the getting-started guide: started (at the moment it began, so a request sent
- * afterwards is known as this guide's first one), got as far as the person's turn (with the steps read and put away
+ * afterwards is known as this guide's first one; `intro` while its first screen stands in the list's place whatever
+ * the work, until another step holds), got as far as the person's turn (with the steps read and put away
  * since: `seen`), or over (finished or closed). Nothing stored is a browser that has never seen it.
  */
-export type GuideStage = { stage: "started"; at: number; seen: readonly string[] } | { stage: "turn"; seen: readonly string[] } | { stage: "done" };
+export type GuideStage = { stage: "started"; at: number; seen: readonly string[]; intro?: true } | { stage: "turn"; seen: readonly string[] } | { stage: "done" };
 
 const check = (value: unknown): GuideStage | null => {
   if (typeof value !== "object" || value === null) return null;
-  const { stage, at, seen } = value as { stage?: unknown; at?: unknown; seen?: unknown };
+  const { stage, at, seen, intro } = value as { stage?: unknown; at?: unknown; seen?: unknown; intro?: unknown };
   const read = Array.isArray(seen) ? seen.filter((id): id is string => typeof id === "string") : [];
-  if (stage === "started" && typeof at === "number") return { stage, at, seen: read };
+  if (stage === "started" && typeof at === "number") return { stage, at, seen: read, ...intro === true ? { intro } : {} };
   if (stage === "turn") return { stage, seen: read };
   return stage === "done" ? { stage } : null;
 };
 export const guideStage = deviceValue<GuideStage | null>("alpacawork.guide", jsonCodec<GuideStage | null>(check), null);
 /** Ends the guide for good on this browser: closed by hand, or read to its end. */
 export const closeGuide = () => { guideStage.set({ stage: "done" }); };
-/** Settings' "Show again": the guide goes on again, from the step that holds for the work as it is now. */
-export const restartGuide = () => { guideStage.set({ stage: "started", at: Date.now(), seen: [] }); };
+/**
+ * Settings' "Show again": the guide starts over from its first screen, whatever the work, with nothing it keeps on this
+ * browser read (the steps put away, the pointer to the phone and app guide); the detail closes so that screen is seen.
+ */
+export const restartGuide = () => {
+  appHintDone.remove();
+  guideStage.set({ stage: "started", at: Date.now(), seen: [], intro: true });
+  if (useViewStore.getState().reader.open) useViewStore.getState().closeReader();
+};
 /** A guide going on, or none (never started, or over): what decides whether anything else is read for it. */
 export type GoingStage = Exclude<GuideStage, { stage: "done" }>;
 export const going = (stage: GuideStage | null): GoingStage | null => stage && stage.stage !== "done" ? stage : null;

@@ -191,7 +191,8 @@ export function TimeTree() {
   // Done: the finished rows of the project in view (its nested projects' included), as the index pages and counts them.
   const project = useViewStore((state) => state.project);
   const closedCounts = useClosedCounts();
-  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place.
+  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place; so does
+  // the getting-started guide's first screen, shown again, in place of every section (useListPlace).
   const welcome = useListPlace() === "welcome";
   const finishedOptions = resources.finished(info.root, null, project);
   const finished = useInfiniteQuery({ ...finishedOptions, enabled: doneOpen });
@@ -248,7 +249,7 @@ export function TimeTree() {
     // shelved ones at its end.
     const holds = { ...home.counts, done: closedCounts.finished + closedCounts.shelved };
     const nodes: Node[] = [];
-    const sections: Section[] = HOME_SECTIONS.filter((section) => holds[section] > 0).map((section) => {
+    const sections: Section[] = HOME_SECTIONS.filter((section) => !welcome && holds[section] > 0).map((section) => {
       const all = listed[section];
       const { open, shown, hidden } = sectionFold(section, all.length, { stored, opened, more });
       // Done says how many finished since they were last read.
@@ -267,7 +268,7 @@ export function TimeTree() {
         }) } };
     });
     return { tree: { nodes }, sections, selectedAt, keptHere };
-  }, [index, home, stored, opened, more, selectedHere, kept, keptFreshCount, closedCounts, finishedPageIds, finishedDated, openedDone]);
+  }, [welcome, index, home, stored, opened, more, selectedHere, kept, keptFreshCount, closedCounts, finishedPageIds, finishedDated, openedDone]);
   const navigation = useMemo(() => ({ ids: drawnTaskIds(tree), open: openDetail }), [tree]);
   useListNavigationSource(navigation);
   // Only a change to the drawn rows/section furniture can rearrange this fixed-height list. Selecting a row

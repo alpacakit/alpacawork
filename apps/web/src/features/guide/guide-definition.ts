@@ -118,6 +118,11 @@ const turnSection = (t: TFunction) => t("tree:home.turn");
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 
 export const GUIDE: readonly GuideEntry[] = [
+  // Before anything is sent or written, from the welcome with its picture of how work goes above (or from that first
+  // screen, shown again): the one input there is and where it sends.
+  { id: "send", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top",
+    when: f => f.stage.stage === "started" && !f.drafting && !f.sent && (f.tasks === 0 || !!f.stage.intro),
+    say: t => t("tree:guide.say.send") },
   // What is open in the detail comes first, from the most immediate: an answer ready to send, one sent and on its way,
   // then the person's turn on what is open, or where the AI on it is stopped; then the rows awaiting the person.
   { id: "answer-ready", turn: true, part: "send", clear: ["foot"], side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
@@ -160,10 +165,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // Before any turn, words in the input wait to be sent...
   { id: "send-ready", part: "send", clear: ["foot", "coordinator"], side: "top", align: "end", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
-  // ...or, from the empty welcome with its picture of how work goes above, the one input there is and where it sends...
-  { id: "send", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", when: f => f.stage.stage === "started" && f.tasks === 0,
-    say: t => t("tree:guide.say.send") },
-  // ...or, shown again from settings, over a list with nothing going on.
+  // ...or a request is to be written: over a list with nothing going on, or one sent and answered with no Task.
   { id: "send-again", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", when: f => f.stage.stage === "started",
     say: t => t("tree:guide.say.sendAgain") },
 ];
@@ -178,10 +180,13 @@ export const guideEntry = (facts: GuideFacts): GuideEntry | null => GUIDE.find(e
 export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: number) => stage === null && welcome && tasks === 0;
 
 /**
- * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; over once no
- * step holds. Undefined: nothing to store.
+ * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
+ * screen once another step than that screen's holds (something written or sent); over once no step holds. Undefined:
+ * nothing to store.
  */
 export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null): GuideStage | undefined {
   if (!entry) return { stage: "done" };
-  return stage.stage === "started" && entry.turn ? { stage: "turn", seen: stage.seen } : undefined;
+  if (stage.stage !== "started") return undefined;
+  if (entry.turn) return { stage: "turn", seen: stage.seen };
+  return stage.intro && entry.id !== "send" ? { stage: "started", at: stage.at, seen: stage.seen } : undefined;
 }

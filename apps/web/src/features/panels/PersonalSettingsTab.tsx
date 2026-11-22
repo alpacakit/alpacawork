@@ -99,7 +99,7 @@ function QuietHoursRow() {
   </SettingRow>;
 }
 
-/** The getting-started guide, kept on this browser: shown again, from the step that holds for the work as it is now. */
+/** The getting-started guide, kept on this browser: shown again from its first screen (restartGuide), settings closed. */
 function GuideRow() {
   const { t } = useTranslation('panels');
   return <SettingRow id="setting-guide" label={t('settings.personal.guide')} hint={t('settings.personal.guideHelp')}>

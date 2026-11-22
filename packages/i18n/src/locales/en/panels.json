@@ -386,7 +386,7 @@
       "awayAfter": "Away when idle",
       "display": "Display",
       "guide": "Getting-started guide",
-      "guideHelp": "Shows the first-use guide again, from the step that fits where your work is now.",
+      "guideHelp": "Shows the first-use guide again, from its first screen.",
       "guideShow": "Show again",
       "issue": {
         "conflict": "Changed in another view. Check the latest value.",
