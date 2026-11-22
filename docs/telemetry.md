@@ -17,7 +17,7 @@ A report contains:
 - **Display speed**: How long it took from opening the screen or a task until its contents appeared
 - **About the report itself**: The report's date, its format number, and this PC's ID
 
-Each kind of action has a fixed name. Text you type and task titles never become part of a name. Size, display speed and failure counts are sent as rough ranges such as `10-19`.
+Each kind of action has a fixed name. Text you type and task titles are never included. Size, display speed and failure counts are sent as rough ranges such as `10-19`.
 
 This PC's ID is a random value created when you first choose to send. It is not made from any information about the PC or the user. It is used to count how many days the same PC stays in use, and to let you delete sent data later. If you stop sending and start again, the same ID is used.
 

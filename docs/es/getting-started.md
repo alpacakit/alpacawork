@@ -1,336 +1,83 @@
 # Primeros pasos
 
-Esta guía te lleva desde la instalación de alpacawork hasta su uso diario. Sigue los pasos 1 a 4 en orden para abrir la pantalla, hacer una primera solicitud, responder una pregunta de la IA y revisar un resultado. Lee del paso 5 en adelante cuando lo necesites.
+Los pasos para instalar alpacawork, pedirle una tarea a la IA y revisar el resultado. Contando lo que tarda la IA en trabajar, lleva unos 15 minutos.
 
-**Primero, pruébalo**
+## Antes de empezar
 
-1. [Instalar](#1-instalar)
-2. [Abrir la pantalla](#2-abrir-la-pantalla) (también si no se abrió o para volver a abrirla más tarde)
-3. [Hacer tu primera solicitud](#3-hacer-tu-primera-solicitud)
-4. [Seguir el progreso y responder](#4-seguir-el-progreso-y-responder)
-
-**Úsalo en tu propio trabajo**
-
-5. [Escribir las reglas básicas para la IA](#5-escribir-las-reglas-básicas-para-la-ia)
-6. [Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono)
-7. [Usarlo desde Claude Code o Codex](#7-usarlo-desde-claude-code-o-codex)
-
-**Mantenimiento**
-
-8. [Detener, actualizar o desinstalar](#8-detener-actualizar-o-desinstalar)
-
-Consulta también: [Qué se guarda y qué se envía fuera](#qué-se-guarda-y-qué-se-envía-fuera), [Solución de problemas](#solución-de-problemas). Para saber cómo funciona alpacawork y por qué, consulta [Las ideas detrás de alpacawork](concept.md).
-
-Las imágenes de esta guía muestran la pantalla en inglés. La pantalla se abre en el idioma que usaste con la IA que instaló alpacawork. Lo eliges en el primer paso de la pantalla de configuración inicial y puedes cambiarlo más adelante en Configuración (el engranaje) → Personal → Idioma de la interfaz.
+- Necesitas un PC con macOS (Apple silicon), Linux (x64, con una sesión de usuario de systemd, que tienen la mayoría de las instalaciones de escritorio y servidor) o Windows (WSL2 con systemd activado, lo predeterminado en Ubuntu). En Windows, lee primero [Usarlo en Windows](manage.md#usarlo-en-windows).
+- Ten Claude Code o Codex listo para usar en este PC.
+- La IA modifica archivos sin pedir confirmación. Se ejecuta con los permisos de tu usuario del PC, así que también puede tocar archivos fuera de la carpeta en la que trabaja.
 
 ## 1. Instalar
 
-alpacawork es una herramienta para una sola persona, en su propio PC. Para usarlo desde otros dispositivos, como un teléfono, conéctate a través de una VPN ([Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono)).
+Pega el siguiente texto tal cual en Claude Code o Codex, en tu PC. La IA instala lo que falta y después instala alpacawork. Si te pide permiso para ejecutar comandos, concédeselo.
 
-alpacawork inicia agentes de IA como Claude Code y Codex con permisos completos, sin pedir confirmación. La IA puede hacer todo lo que podría hacer si la ejecutaras tú con permisos completos. Lo que no debe hacer, o lo que debe consultarte antes, puedes escribirlo en la política del proyecto ([cómo escribirla](#5-escribir-las-reglas-básicas-para-la-ia)).
+```text
+Descarga la siguiente guía, léela completa y síguela para instalar alpacawork en este PC.
+https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
+```
 
-La instalación se la pides a una IA.
+Para instalarlo tú desde una terminal, instala Node.js 24.16 o posterior, ejecuta estas dos líneas en orden y presiona Enter cuando te lo pida.
 
-1. **Pega el texto de instalación.** Copia el texto que aparece en la sección [Instalar](https://github.com/alpacakit/alpacawork/blob/main/README.es.md#instalar) del README y pégalo tal cual en un agente de IA de tu PC (como Claude Code o Codex).
-2. **La IA lo instala.** Comprueba que alpacawork puede ejecutarse en este PC, instala lo que falta e inicia alpacawork. No tienes que ejecutar comandos ni responder confirmaciones durante el proceso. Si tu propio agente de IA pide permiso para ejecutar un comando, concédeselo.
-3. **La IA te indica la URL de la pantalla de configuración inicial.** Normalmente también se abre en tu navegador. Si no se abrió, o para volver a abrirla más tarde, consulta [Abrir la pantalla](#2-abrir-la-pantalla).
-
-La pantalla de configuración inicial tiene cuatro pasos: el idioma y el tema de la pantalla, los agentes de IA que vas a usar (y si envías [datos de uso](telemetry.md)), las [skills](#skills) que se instalan y tu primer proyecto. Cada paso se explica por sí mismo, y todo lo que contiene se puede cambiar más adelante en Configuración.
-
-### Requisitos
-
-- macOS (Apple silicon), Linux (x64, glibc, con una sesión de usuario de systemd, que tienen la mayoría de las instalaciones de escritorio y servidor) o Windows (dentro de WSL2 con systemd activado, lo predeterminado en Ubuntu; consulta [En Windows](#en-windows) más abajo)
-- [Node.js](https://nodejs.org/es) 24.16 o posterior
-- Chrome o Edge 111, Safari 16.4 (iOS/iPadOS 16.4 en iPhone y iPad) o Firefox 128, o versiones posteriores. Los navegadores más antiguos muestran una página en blanco
-- Un agente de IA en el que hayas iniciado sesión (como Claude Code o Codex)
-
-Durante la instalación, la IA los comprueba e instala Node.js si falta.
-
-### Agentes de IA compatibles
-
-| Agente de IA | Qué necesita |
-| --- | --- |
-| [Claude Code](https://claude.com/claude-code), [Codex](https://github.com/openai/codex) | Haber iniciado sesión con su propia CLI |
-| [GitHub Copilot](https://github.com/features/copilot) | No hay que instalar nada: viene incluido con alpacawork. Funciona con tu sesión de GitHub CLI (`gh auth login`) |
-| Grok Build (`grok`), pi (`pi`) | Haber iniciado sesión, o una clave de API. alpacawork solo puede saber si están instalados, no si tienen la sesión iniciada. Para usar Gemini, ejecuta `/login` en pi y guarda una clave de API de Google Gemini. Consulta la [configuración de proveedores de pi](https://pi.dev/docs/latest/providers). |
-
-El segundo paso de la pantalla de configuración inicial muestra cuáles de ellos están instalados en este PC y, en el caso de los tres primeros, si tienen la sesión iniciada. Ahí activas los que vas a usar. Más adelante puedes cambiarlo en Configuración → Servidor.
-
-Cuando una empresa de IA lanza un modelo nuevo, puedes añadirlo tú. Pídelo en el chat, por ejemplo “Añade el último modelo a la lista de modelos de Codex”, y la IA lo añade a la configuración. También puedes editar los modelos tú mismo en Configuración → Servidor.
-
-Dentro de una misma solicitud puedes repartir los papeles; por ejemplo, el diseño con Claude Code y la implementación con Codex.
-
-Cada agente de IA funciona con tu plan y tu configuración actuales.
-
-- **Claude Code**: `CLAUDE.md`, las skills, el MCP, los hooks y la memoria se usan desde sus ubicaciones habituales, sin cambios
-- **Codex**: se usan tu configuración habitual, `AGENTS.md`, las skills, el MCP y los hooks. Solo el historial de conversaciones y la memoria se guardan en un lugar aparte para alpacawork (`~/.codex-alpacawork`)
-
-El uso de IA se factura, y se limita, según los planes de tus agentes de IA, y cada IA que se ejecuta al mismo tiempo cuenta para ellos. Al principio se ejecutan hasta 8 a la vez. Puedes cambiarlo con “Máximo de ejecuciones simultáneas” en Configuración → Servidor, en la pantalla.
-
-### En Windows
-
-En Windows, alpacawork, Node.js y los agentes de IA se instalan todos dentro de Ubuntu en WSL2 (una forma de ejecutar Linux dentro de Windows). El texto de instalación también se pega en un agente de IA iniciado dentro de Ubuntu.
-
-Si aún no tienes WSL2 o Ubuntu, pega el mismo texto de instalación en un agente de IA que se ejecute en Windows y te guiará primero para configurarlos. Para instalarlos tú, ejecuta `wsl --install` en PowerShell abierto como administrador ([instrucciones de Microsoft](https://learn.microsoft.com/es-es/windows/wsl/install)).
-
-alpacawork se ejecuta dentro de Ubuntu, y su pantalla la abres en un navegador en Windows. Solo funciona mientras Ubuntu está en ejecución.
-
-- **Mantén abierta una ventana de Ubuntu mientras lo usas.** Esto también vale mientras lo usas desde tu teléfono. Si cierras todas las ventanas de Ubuntu, Ubuntu puede detenerse, y con él alpacawork y cualquier IA que esté trabajando.
-- **Después de reiniciar Windows, abre Ubuntu desde el menú Inicio.** alpacawork se inicia entonces automáticamente, con tus tareas tal como las dejaste. No hace falta volver a instalarlo.
+```sh
+npm install -g alpacawork
+alpacawork setup
+```
 
 ## 2. Abrir la pantalla
 
-La pantalla de alpacawork es una página web que sirve el alpacawork que se ejecuta en tu PC, y se abre en un navegador. Su URL tiene una forma como `http://127.0.0.1:43127/` (también funciona con `localhost` en lugar de `127.0.0.1`). El número del final se elige al instalar, así que cambia de un PC a otro, y no cambia al cerrar el navegador ni al reiniciar el PC.
+Al terminar la instalación, la pantalla se abre en el navegador. Si no se abrió, ejecuta `alpacawork open` en una terminal, o abre en el navegador la URL que aparece al final, con la forma `http://127.0.0.1:43127/`.
 
-### La primera vez
+Esta URL no cambia aunque reinicies el PC. Guárdala en marcadores. alpacawork se inicia solo cuando inicias sesión en el PC, así que no tienes que iniciarlo cada vez.
 
-Cuando termina la configuración inicial, recibes la URL: si se lo pediste a una IA, te la indica la IA; si ejecutaste `alpacawork setup` tú mismo, está en la línea `Abrir:` que muestra (`Open:` si la terminal está en inglés). Normalmente también se abre sola en tu navegador. Si el navegador no se abrió (puede pasar en Windows, y nunca se abre si instalaste por SSH), copia la URL en la barra de direcciones del navegador. En Windows, ábrela en un navegador de Windows.
+Si no se abre, consulta [La pantalla no se abre](troubleshooting.md#la-pantalla-no-se-abre).
 
-Si instalaste en otro PC al que te conectaste por SSH, esa URL solo se abre en un navegador de ese PC. En la sesión SSH, pídele a un agente de IA de ese PC: “Haz que alpacawork se pueda usar desde otro dispositivo”. La IA prepara una entrada a través de una VPN y te dice qué instalar de tu lado ([Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono) lo describe). Luego abre en el navegador que tienes delante la URL `https://` que te indique.
+## 3. Elegir el proyecto
 
-### Volver a abrirla más tarde
+Sigue en orden los cuatro pasos de la pantalla.
 
-- **Después de cerrar el navegador o de reiniciar el PC**, abre la misma URL. Tras reiniciar, inicia sesión en el PC primero (en Windows, abre Ubuntu).
-- **Guárdala en marcadores o instálala como app.** En Chrome o Edge, haz clic en “Instalar”, en el extremo derecho de la barra de direcciones (en Edge, el icono que está en el mismo lugar). A partir de entonces, alpacawork se abre en su propia ventana desde el Dock, la barra de tareas o la lista de apps. Los pasos para cada navegador están en Configuración (el engranaje) → App y teléfono → “Usar como app de escritorio”.
-- **Si olvidas la URL**, ejecuta `alpacawork workspace url` en una terminal (en Windows, en la ventana de Ubuntu). Si alpacawork está en marcha, muestra `"status":"serving"`. Abre la URL que sigue a `"localUrl"` en un navegador de ese PC. Desde otro dispositivo, abre la que sigue a `"publicUrl"`; es `null` hasta que el PC se configura para otros dispositivos ([Usarlo desde tu teléfono](#6-usarlo-desde-tu-teléfono)). También puedes pedírsela a un agente de IA como Claude Code o Codex: “Dime la URL de alpacawork”.
+1. Elige el idioma y el tema de la pantalla, y pulsa “Siguiente”.
+2. Activa las IA que vas a usar y pulsa “Siguiente”.
+3. En el paso siguiente, deja la recomendación como está y pulsa el botón de instalar.
+4. Elige el nombre del proyecto y la “Ubicación del código”, y pulsa “Finalizar configuración”.
 
-### Si la pantalla no se abre
+<img src="../images/setup-project.png" alt="El último paso de la configuración, con los campos “Name” y “Working folder”, y el botón “Choose” junto a Working folder" width="480">
 
-Si no sabes la URL, consulta primero [Volver a abrirla más tarde](#volver-a-abrirla-más-tarde).
+Un proyecto es una carpeta en la que trabaja la IA, junto con las reglas para trabajar en ella (la política del proyecto). Para usarlo con un repositorio existente, elige esa carpeta como ubicación del código. Si solo quieres probar, crea una carpeta vacía con “Elegir” → “Crear una carpeta nueva”. Puedes empezar con la política del proyecto de ejemplo tal como está.
 
-alpacawork se inicia solo cuando inicias sesión en el PC (en Windows, cuando abres Ubuntu). Si el navegador dice que no puede conectarse (por ejemplo, “No se puede acceder a este sitio web” o `ERR_CONNECTION_REFUSED`), o si `alpacawork workspace url` falla con “Server not reached”, comprueba primero que alpacawork esté en marcha: inícialo como se indica abajo y vuelve a cargar la página. Si no sabes la URL, vuelve a ejecutar `alpacawork workspace url`.
+## 4. Enviar una solicitud
 
-- **Windows**: abre Ubuntu desde el menú Inicio y deja su ventana abierta ([En Windows](#en-windows)). Si sigue sin abrirse, ejecuta en esa ventana el comando de Linux de abajo.
-- **Linux**: ejecuta `systemctl --user start alpacawork.service` en una terminal. alpacawork se ejecuta mientras tienes la sesión iniciada en el PC. Para que siga funcionando después de cerrar la sesión, pídele a un agente de IA: “Haz que alpacawork siga funcionando cuando cierre la sesión”.
-- **macOS**: ejecuta `launchctl kickstart gui/$(id -u)/alpacawork.service` en una terminal. Si lo detuviste como en [Detener alpacawork](#detener-alpacawork), ejecuta en su lugar `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/alpacawork.service.plist`.
+Escribe lo que quieres que se haga en el cuadro de texto de la parte inferior de la pantalla y envíalo. Al enviarlo, el comienzo de la respuesta aparece encima del cuadro de texto. Púlsalo para leerla completa.
 
-Si sigue sin abrirse, inicia un agente de IA (como Claude Code o Codex) en una terminal, llama a la skill alpacawork ([cómo](#7-usarlo-desde-claude-code-o-codex)) y pega el error que viste para pedir ayuda.
+<img src="../images/input-reply.png" alt="El cuadro de texto y, encima, el comienzo de la respuesta de la IA que es tu punto de contacto" width="560">
 
-## 3. Hacer tu primera solicitud
-
-La primera vez que abras la pantalla, completa los tres pasos de la pantalla de configuración inicial ([Instalar](#1-instalar)). Después, mientras no tengas tareas, la pantalla muestra solicitudes de ejemplo para probar. Presiona una para ponerla en el cuadro de texto y envíala tal cual. Cada ejemplo muestra un flujo distinto: varias IA con modelos diferentes que crean candidatos en paralelo para que elijas uno, la IA que te pide elegir una idea y luego la construye, y la revisión de un resultado para marcar la tarea como completada. Cada uno es una práctica breve que lleva unos minutos.
-
-<img src="../images/welcome-phone.png" alt="La pantalla en un teléfono la primera vez que se abre, con tres ejemplos para probar de inmediato" width="320">
-
-Al principio, alpacawork usa el agente predeterminado que elegiste en la configuración inicial. Para cambiarlo, presiona “Usar como predeterminado” en la IA que quieras, en Configuración (el engranaje) → Servidor. Si una IA no tiene la sesión iniciada, o no se encuentra su ejecutable, la misma pantalla te indica qué hacer a continuación. Para detalles como indicar la ubicación del ejecutable, consulta la [guía de configuración](../../skills/alpacawork/references/config.md#executable-location-and-sign-in-status) (en inglés).
-
-### Elegir la carpeta de trabajo
-
-La carpeta en la que trabaja la IA la eliges durante la configuración inicial, en “Ubicación del código”, en el cuarto paso. Para cambiarla más adelante, presiona el nombre del proyecto en la parte superior de la pantalla, abre su configuración y escribe la ubicación de la carpeta en “Ubicación del código” (por ejemplo, `/Users/tunombre/shop-site`). Si lo dejas vacío, la IA trabaja en la carpeta de datos (`~/alpacawork`).
-
-La IA también lee los archivos `AGENTS.md` y `CLAUDE.md` de esa carpeta (archivos de instrucciones para esa carpeta, que una IA lee cada vez). Para mantener separados trabajos distintos, añade proyectos con “Nuevo proyecto” en el mismo menú.
-
-### Pedir
-
-Hay un solo cuadro de texto, y todo lo que envías va al coordinador, la IA que es tu punto de contacto. Escribe con palabras sencillas lo que quieres que se haga y envíalo. Los añadidos y cambios al trabajo que ya está en curso van en el mismo cuadro.
+Si es un repositorio existente, empieza con una solicitud que no modifique archivos.
 
 ```text
-Averigua por qué fallan las pruebas y corrígelo.
+Lee el contenido de esta carpeta y resume en tres líneas para qué sirve. No modifiques ningún archivo. Después, propón tres trabajos que podría pedirte a continuación y pregúntame cuál quiero que hagas.
 ```
 
-```text
-Añade un recuadro de “Avisos” en la parte superior de la página principal donde podamos publicar cosas como cierres imprevistos.
-```
+La IA lee la carpeta y escribe en su respuesta un resumen y propuestas de trabajo (a veces crea una tarea y te lo pregunta). Si vienen en la respuesta, envía en el cuadro de texto la propuesta que quieras, por ejemplo “Haz la 1”: se convierte en una tarea y aparece una fila en la lista.
 
-El coordinador convierte tu solicitud en una tarea, se la encarga a una IA responsable de la tarea (el responsable) y redacta las instrucciones concretas para ese responsable. El trabajo lo hacen los responsables, así que puedes seguir haciendo solicitudes sin esperar a que terminen las anteriores. El coordinador resuelve el orden y quién hace qué.
+Si la carpeta está vacía, pulsa el ejemplo de la pantalla “Elige una idea de minijuego y pide que lo creen” y envíalo.
 
-Puedes pedir más cosas además de trabajo. Desde el mismo cuadro de texto puedes pedirle al coordinador que cambie la configuración, que reanude una IA que se detuvo, que cree un proyecto, que actualice alpacawork y más. La mayoría de las cosas se pueden hacer con solo pedirlas, sin tener que buscar el lugar adecuado en la pantalla.
+Mientras la IA trabaja en la tarea, no hace falta que mires la pantalla.
 
-Si tienes dudas sobre cualquier ajuste de la app, pregunta también ahí. La IA puede cambiar la mayoría de los ajustes por ti. Algunos pasos, como iniciar sesión en un agente de IA o introducir claves de API, quedan en tus manos.
+## 5. Revisar cuando es tu turno
 
-<img src="../images/chat-phone.png" alt="Una conversación con el coordinador en un teléfono. Responde que la solicitud se convirtió en una tarea y que se le asignó un responsable" width="320">
+Cuando la IA envía una pregunta o un informe, la tarea pasa a “Por revisar”. Abre la tarea.
 
-**Insignia de tarea**: una etiqueta en el cuadro de texto que muestra el número y el título de una tarea. Se añade cuando abres una tarea, y también puedes elegir una tarea con “#” en el cuadro de texto. La insignia solo le sugiere al coordinador a qué tarea te refieres; no es obligatorio añadirla. El coordinador decide a qué tarea va tu solicitud, según lo que escribiste y el trabajo en curso. También puede repartir una solicitud entre varias tareas.
+<img src="../images/list-waiting.png" alt="El encabezado “Awaiting review” de la lista y la fila de una tarea debajo" width="336">
 
-**Modelo y esfuerzo**: el modelo y el esfuerzo que eliges junto al botón de enviar se aplican solo al coordinador. Su trabajo es organizar las tareas y pasar las solicitudes a los responsables, así que recomendamos un modelo capaz con esfuerzo low o medium; rara vez hace falta un esfuerzo high. Este selector no fija los modelos de los responsables. Esos siguen la política del proyecto o tu solicitud y, si ninguna de las dos indica uno, se usa el predeterminado de la configuración (para ver ejemplos de cómo escribirlo, consulta [Las ideas detrás de alpacawork](concept.md#dilo-con-palabras-no-con-configuración)).
+- Si es una pregunta, pulsa una opción y envíala. Solo con pulsarla no se envía. Cuando respondes, la IA sigue trabajando y, al terminar, envía un informe.
+- Si es un informe, léelo y, si está bien, pulsa “Completar” (la marca de verificación) en la parte inferior de la pantalla. Si quieres que corrija algo, escríbelo en el cuadro de texto y envíalo.
 
-<img src="../images/input-badge-phone.png" alt="El cuadro de texto en un teléfono, con la insignia de tarea, el botón “#” para elegir una tarea y el selector de modelo y esfuerzo del coordinador marcados con recuadros rojos" width="390">
+<img src="../images/action-bar.png" alt="Los botones que aparecen abajo al abrir una tarea: “Auto-swipe”, “Change state” y “Done”" width="338">
 
-## 4. Seguir el progreso y responder
+Cuando la tarea pasa a “Completadas”, has terminado (“Completadas” empieza cerrada; pulsa el encabezado para abrirla). La siguiente solicitud también se envía desde el mismo cuadro de texto.
 
-La lista muestra tus tareas, agrupadas por estado.
+## Qué leer después
 
-![La lista de tareas y el chat](../images/home-desktop.png)
-
-| Grupo | Significado |
-| --- | --- |
-| En curso | Una IA está trabajando en ella |
-| Requiere atención | **Tu turno.** Se detuvo, por ejemplo, porque falló la ejecución de una IA |
-| Por revisar | **Tu turno.** Una pregunta o un resultado por revisar |
-| En espera | Espera otra cosa, como otra respuesta |
-| Sin iniciar | Aún no ha empezado |
-| En pausa | Algo que dejaste para más adelante |
-| Completadas | Ya terminó |
-
-Llega tu turno en uno de estos tres casos.
-
-### Responder una pregunta
-
-Cuando la IA no puede decidir algo por sí sola, te lo pregunta, con opciones, motivos y una recomendación. Elige una opción o escribe tu propia respuesta, y envíala.
-
-<img src="../images/question-phone.png" alt="Respuesta a una pregunta en un teléfono" width="320">
-
-### Revisar un resultado
-
-Cuando una tarea termina, aparece en Por revisar. Lee el informe y, si te parece bien, presiona “Completar” (el botón con la marca de verificación). Si quieres cambios, descríbelos en el cuadro de texto y envíalo.
-
-En un teléfono, desliza una tarjeta hacia la derecha para “Completar” o “Enviar”, o hacia la izquierda para “Pausar”. Después de marcar una como completada, se abre la siguiente tarjeta.
-
-<p>
-  <img src="../images/review-phone.png" alt="Revisión de un resultado en un teléfono" width="320">&nbsp;&nbsp;
-  <img src="../images/phone-swipe.gif" alt="Una grabación en la que se abre un informe en un teléfono y se desliza la tarjeta hacia la derecha para marcarla como completada" width="320">
-</p>
-
-### Decidir cuando algo se detiene
-
-Si, por ejemplo, falla la ejecución de una IA, la tarea aparece en Requiere atención. Ábrela para ver por qué se detuvo. Para continuar, presiona “Reintentar” o envía algo como “continúa” desde el cuadro de texto. Para abandonarla, presiona “Detener”. Si se detuvo por otro motivo, sigue las indicaciones que aparecen junto al motivo y envía una instrucción desde el cuadro de texto.
-
-<img src="../images/needs-attention-phone.png" alt="Una tarea detenida abierta en un teléfono, con el motivo por el que se detuvo y los botones Reintentar y Detener" width="320">
-
-## 5. Escribir las reglas básicas para la IA
-
-En “Política del proyecto”, en la configuración del proyecto, escribe con frases sencillas qué puede decidir la IA por sí sola y qué debe preguntarte. Lo que escribes llega a todos los responsables de ese proyecto. También puedes pedirlo en el chat: “Añade … a la política”.
-
-<img src="../images/project-policy-desktop.png" alt="El cuadro Política del proyecto en la configuración del proyecto, con cuatro líneas de política" width="780">
-
-```text
-Objetivo: hacer que el sitio web de la tienda se lea bien en teléfonos y publicarlo
-Cómo trabajar: para los cambios de aspecto, muéstrame un ejemplo y pregúntame antes de hacerlos
-Qué decides tú: cómo proceder, las pruebas y la limpieza; decide sin preguntar e informa
-Qué no hacer: publicar ni enviar nada fuera sin mi aprobación
-```
-
-Para un trabajo concreto, escribe en la propia solicitud cómo quieres que se lleve (“Haz tres versiones y compáralas”, “Cuando esté listo, que otra IA lo compruebe”). Como siempre, la IA también lee los archivos `AGENTS.md` y `CLAUDE.md` de la carpeta de trabajo y usa tus skills actuales.
-
-La política del proyecto es un conjunto de reglas básicas que se le dan a la IA, no un mecanismo que las imponga. Para limitar de verdad a qué puede acceder la IA, ejecútala en un PC aparte o con otro usuario del sistema operativo (la cuenta con la que inicias sesión en el PC).
-
-No hay una función de memoria específica. El intercambio de cada tarea permanece en sus registros y se le pasa a la IA cuando le pides que continúe. Lo que deba tener siempre presente, ponlo en la política del proyecto. Si necesitas más, instala una skill de memoria; funciona sin cambios.
-
-### Skills
-
-Una skill es un conjunto de instrucciones que les indica a los agentes cómo trabajar. El tercer paso de la configuración inicial ofrece tres que hacen que las tareas sean más fáciles de encargar (askmeclearly, doyourjob y alpacawork-betterquality) y explica para qué sirve cada una. Se instalan en `~/.agents/skills`, en tu carpeta personal, y se enlazan para que Claude Code pueda usarlas. Puedes quitarlas más adelante.
-
-Un proyecto solo usa las skills nombradas en la política del proyecto. La configuración inicial añade a la política una línea por cada skill que instalaste, en la que se indica cuándo se usa. Para empezar a usar una skill más adelante, pídelo en el chat; por ejemplo, “Usa el complemento de calidad en este proyecto”.
-
-Los complementos opcionales majority y try-and-keep se mantienen aparte en un repositorio privado. Las instalaciones existentes y las selecciones hechas en la política del proyecto siguen vigentes. Consulta [Private add-ons](../../skills/alpacawork/references/setup.md#private-add-ons) (en inglés) para conocer los requisitos de acceso e instalación.
-
-## 6. Usarlo desde tu teléfono
-
-En un teléfono abres la pantalla del alpacawork que se ejecuta en tu PC. La IA se ejecuta en el PC, así que mantén el PC encendido y configúralo para que no entre en suspensión mientras usas alpacawork (un equipo portátil se detiene cuando cierras la tapa).
-
-También puedes instalar alpacawork en otro PC que mantengas siempre encendido y usarlo desde tu PC habitual o desde tu teléfono. Los pasos para conectarte desde una conversación de Claude Code o Codex en tu PC habitual están en la [guía de configuración inicial](../../skills/alpacawork/references/setup.md#connect) (en inglés).
-
-<img src="../images/home-phone.png" alt="La pantalla de la lista en un teléfono, con tareas en En curso, Por revisar y Completadas" width="320">
-
-Conecta el PC y el teléfono a través de una VPN (una forma de conectar tus propios dispositivos de manera segura) y abre alpacawork en una URL HTTPS (una URL HTTP no funciona). [Tailscale](https://tailscale.com/) (gratis para uso personal) ofrece ambas cosas.
-
-Estas cinco cosas las haces tú. La IA hace el resto de la configuración en el PC.
-
-1. **Instala Tailscale en el PC y en el teléfono, e inicia sesión con la misma cuenta.** En Windows, instálalo en Windows, no dentro de Ubuntu.
-2. **Pídele a un agente de IA del PC (como Claude Code o Codex): “Haz que alpacawork se pueda usar desde mi teléfono”.** La pantalla del PC tiene la instrucción completa para copiar, en Configuración (el engranaje) → App y teléfono.
-3. **En la pantalla del PC, abre Configuración (el engranaje) → App y teléfono.** En “Usar desde tu teléfono” aparecen un código QR y los pasos; escanea el código con la cámara del teléfono para abrir alpacawork.
-
-   ![La pantalla de configuración App y teléfono, con los pasos para usar alpacawork desde un teléfono y un código QR](../images/phone-setup-desktop.png)
-
-4. **Añádelo a tu pantalla de inicio.** Sigue los pasos que aparecen en la pantalla (usa Safari en iPhone y Chrome en Android). Después se abre como una app.
-5. **Activa las notificaciones.** Ábrelo desde el icono que añadiste a la pantalla de inicio, ve a Configuración → Personal → Notificaciones y presiona “Recibir en este dispositivo”. Recibes una notificación cuando es tu turno. No se envían notificaciones mientras estás usando alpacawork. Empiezan 30 segundos después de que salgas de la pantalla que tocaste por última vez (otra app, otra pestaña o la pantalla bloqueada), o cuando lleves 5 minutos sin actividad con la pantalla abierta (puedes cambiar los 5 minutos con “Ausente tras inactividad” en la misma pantalla).
-
-La pantalla de alpacawork no tiene inicio de sesión. Conecta a la VPN solo tus propios dispositivos.
-
-- No uses configuraciones que lo expongan a internet (Tailscale Funnel, la redirección de puertos de tu router, etc.)
-- No lo uses en un PC compartido ni en un teléfono que prestes a otras personas (lo que lees queda en el navegador de ese dispositivo; para quitarlo, borra los datos del sitio en el navegador)
-- Si pierdes un dispositivo, quítalo de la VPN
-
-### Consejos para dar instrucciones desde un teléfono
-
-Marcar en una captura de pantalla lo que hay que corregir y añadir unas palabras con el dictado por voz es más rápido que escribir una explicación.
-
-<table>
-  <tr>
-    <td align="center" valign="top" width="33%"><b>1. Marca la captura</b><br><img src="../images/phone-tip-1.png" alt="Una captura de pantalla del sitio en construcción, con instrucciones escritas encima con lápiz rojo" width="240"><br><sub>Escribe directamente sobre la captura de pantalla</sub></td>
-    <td align="center" valign="top" width="33%"><b>2. Compártela y habla</b><br><img src="../images/phone-tip-2-dark.png" alt="El cuadro de texto del coordinador, con dos imágenes marcadas adjuntas" width="240"><br><sub>Compártela o pégala en el cuadro de texto. Añade palabras con el dictado por voz del teclado</sub></td>
-    <td align="center" valign="top" width="33%"><b>3. Envíala</b><br><img src="../images/phone-tip-3-dark.png" alt="Después de enviar una solicitud con imágenes, el coordinador ha creado una tarea y ha respondido" width="240"><br><sub>El coordinador la convierte en una tarea y se la encarga a un responsable</sub></td>
-  </tr>
-</table>
-
-En Android, si instalaste alpacawork como app (desde Chrome, por ejemplo), puedes enviar una imagen al cuadro de texto con el botón de compartir. En iPhone, copia la captura de pantalla y pégala en el cuadro de texto, o elígela con “+” en el cuadro de texto.
-
-## 7. Usarlo desde Claude Code o Codex
-
-También puedes hacer solicitudes desde tu conversación habitual de Claude Code o Codex en lugar de la pantalla de alpacawork (estos son los dos agentes cuyas conversaciones pueden actuar como coordinador). Al inicio de la conversación, llama una vez a la skill alpacawork (`/alpacawork` en Claude Code, `$alpacawork` en Codex). A partir de ahí, esa conversación actúa como tu coordinador: solo escribe lo que quieres que se haga, o “Dime cómo van las cosas”.
-
-Si `/alpacawork` no aparece en Claude Code, pídele a Claude Code: “Haz que `~/.agents/skills/alpacawork` se pueda usar como skill de Claude Code”.
-
-## 8. Detener, actualizar o desinstalar
-
-### Detener el trabajo de la IA
-
-Abre la tarea, presiona “Cambiar estado”, elige “Detenida” y presiona “Actualizar”. Se detiene el trabajo en esa tarea y en sus tareas inferiores. También puedes pedirlo en el chat: “Detén la tarea …”.
-
-### Detener alpacawork
-
-Para detener el servidor de alpacawork, ejecuta lo siguiente en una terminal. Vuelve a iniciarse la próxima vez que inicies sesión en el PC (en Windows, cuando abras Ubuntu), o cuando lo inicies como en [Si la pantalla no se abre](#si-la-pantalla-no-se-abre).
-
-- Linux, WSL2: `systemctl --user stop alpacawork.service`
-- macOS: `launchctl bootout gui/$(id -u)/alpacawork.service`
-
-Detener el servidor no detiene el trabajo en curso de la IA. Para detener el trabajo, primero pon la tarea en “Detenida” como se describe arriba.
-
-### Actualizar
-
-Cuando hay una versión nueva disponible, aparece una marca en Configuración (el engranaje). Abre Configuración, presiona “Actualizar” y, cuando termine, presiona “Recargar”. Puedes actualizar aunque haya IA trabajando (algunas versiones te piden que lo intentes de nuevo cuando su trabajo haya terminado).
-
-### Desinstalar
-
-Pídele a un agente de IA (como Claude Code o Codex): “Desinstala alpacawork”. Para hacerlo tú, ejecuta estas dos líneas en una terminal, en orden.
-
-```sh
-alpacawork uninstall
-npm uninstall -g alpacawork
-```
-
-El primer comando muestra lo que quita y lo que conserva. Lee la lista y presiona Enter. alpacawork no se puede desinstalar mientras una IA está trabajando.
-
-- Quita: el inicio automático, el programa alpacawork y las skills que instaló
-- Conserva: la carpeta de datos (`~/alpacawork`; tus tareas y registros). Elimínala tú si no la necesitas
-
-## Qué se guarda y qué se envía fuera
-
-El contenido de tus tareas y conversaciones nunca se envía al desarrollador. La IA intercambia con su proveedor los mismos datos que cuando usas Claude Code, Codex u otro agente directamente.
-
-| Qué | Dónde |
-| --- | --- |
-| El contenido de las tareas, las conversaciones, los archivos de resultados, la salida de la IA | La carpeta de datos de tu PC (`~/alpacawork` de forma predeterminada). Los secretos que la IA leyó mientras trabajaba pueden quedar en su salida. No le entregues esta carpeta a nadie |
-| Las instrucciones a la IA y lo que la IA leyó | El proveedor de tu IA (Anthropic, OpenAI y otros) |
-| Las comprobaciones de si hay una versión nueva y las descargas de actualizaciones | npm (donde se distribuye alpacawork). Se comprueba automáticamente mientras el servidor está en ejecución |
-| Las notificaciones a tu teléfono (el número y el título de la tarea, el título del informe) | El servicio de notificaciones de tu navegador (Google, Apple y otros), cifradas en tránsito |
-| Los datos de uso (solo si eliges enviarlos) | El desarrollador. No contienen conversaciones, contenido de tareas, archivos ni nombres ([Datos de uso](telemetry.md)) |
-
-No pongas claves de API ni otros secretos en el chat, en la política del proyecto ni en las opciones de inicio de la configuración: lo que escribes queda en los registros. Al eliminar una tarea, sus archivos se conservan, así que eso no elimina un secreto.
-
-## Solución de problemas
-
-La forma más rápida de aprender a usar algo o a arreglarlo es preguntarle a la IA. Puede leer en la skill alpacawork los pasos de configuración, actualización y recuperación.
-
-- **Si la pantalla se abre**: simplemente pregunta en el chat; por ejemplo, “¿Por qué no avanza la tarea del formulario de reservas?” o “Configura Codex también”.
-- **Si la pantalla no se abre**: consulta [Si la pantalla no se abre](#si-la-pantalla-no-se-abre). Si no sabes su URL, consulta [Volver a abrirla más tarde](#volver-a-abrirla-más-tarde).
-
-No elimines tú la carpeta de datos (`~/alpacawork`) ni los archivos de registros para empezar de cero; puedes perder datos.
-
-Si encuentras una vulnerabilidad, no la publiques en un issue público; comunícala siguiendo los pasos de [SECURITY.md](https://github.com/alpacakit/alpacawork/blob/main/SECURITY.md) (en inglés).
-
-## Para agentes de IA
-
-A partir de aquí hay indicaciones para una IA que lee esta página para hacer el trabajo. Las personas no necesitan leerlas.
-
-Cuando el usuario te pida hacer alguno de los trabajos de esta página, lee la guía de la tabla siguiente sin resumirla y síguela. Los enlaces a las guías son relativos a esta página. Después de la instalación, los mismos archivos también están en `~/.agents/skills/alpacawork/`. La solicitud del usuario abarca el trabajo de la guía: hazlo tú, y pregunta al usuario solo donde la guía lo indique.
-
-| Trabajo | Guía que debes leer y qué debes respetar |
-| --- | --- |
-| Instalar | Lee “Install” completo en la [guía de configuración inicial](../../skills/alpacawork/references/setup.md#install) y sigue ese orden. Primero comprueba si ya está instalado. Ejecuta tú `alpacawork setup --yes`, sin darle comandos al usuario ni pedirle aprobación paso a paso; la guía reúne en un solo lugar lo que solo el usuario puede hacer |
-| Cuando el usuario te pide crear un proyecto | La pantalla de configuración inicial ya pregunta por la carpeta, la política y las skills del primer proyecto, así que no preguntes por ellas justo después de la instalación. Cuando el usuario te pida crear un proyecto, sigue [What to ask first](../../skills/alpacawork/references/setup.md#what-to-ask-first): pregunta de una en una por las cosas que aún no están decididas, como la carpeta de trabajo, y escribe cada respuesta donde esa tabla indica guardarla |
-| Instalar los complementos | `alpacawork skills update` los instala. Instala alpacawork y alpacawork-betterquality; comprueba el alcance de la aprobación para actualizar antes de ejecutarlo. Los complementos privados existentes se conservan sin cambios. Los responsables solo usan los que están escritos en la política del proyecto. Cómo escribirlo está en [Sync the skills](../../skills/alpacawork/references/setup.md#sync-the-skills) y [What to ask first](../../skills/alpacawork/references/setup.md#what-to-ask-first) |
-| Hacer que se pueda usar desde un teléfono más adelante | Lee [Connect](../../skills/alpacawork/references/setup.md#connect) y [Change the installation](../../skills/alpacawork/references/setup.md#change-the-installation). Hacen falta tres cosas: una ruta del dispositivo al PC (una VPN), un punto de entrada HTTPS (por ejemplo, `tailscale serve`) y `--public-host`, que indica el nombre de ese punto de entrada. Configura `--public-host` ejecutando `alpacawork setup --yes --public-host <nombre>`. No lo configures para que quede expuesto a internet |
-| Una conversación en la que se llamó a la skill alpacawork | Lee `~/.agents/skills/alpacawork/SKILL.md` y actúa como coordinador (el punto de contacto del usuario). Para que Claude Code use las skills que instaló alpacawork, hace falta un enlace en `~/.claude/skills`. Si `/alpacawork` no aparece, lee [Sync the skills](../../skills/alpacawork/references/setup.md#sync-the-skills) y comprueba si el enlace existe |
-| Actualizar, desinstalar | Son operaciones con efectos externos. Desinstala solo cuando el usuario lo pida, con `alpacawork uninstall --yes`. Antes de actualizar, comprueba el alcance de la aprobación en la política del proyecto y luego, si esta no dice nada, en el `AGENTS.md` aplicable; si se requiere aprobación, o ninguno de los dos dice nada, obtén la aprobación del usuario. Los pasos, y las condiciones en las que se rechazan, están en [Update](../../skills/alpacawork/references/setup.md#update) y [Uninstall](../../skills/alpacawork/references/setup.md#uninstall) |
-| Una tarea no avanza, el servidor no se inicia, una actualización se detuvo a medias | Lee [Troubleshooting](../../skills/alpacawork/references/troubleshoot.md). No elimines los registros de instalación ni los datos para empezar de cero |
+- [Cómo usarlo](guide.md) — el uso diario
+- [Adaptarlo a tu trabajo](projects.md) — cómo escribir la política, qué IA usar
+- [Solución de problemas](troubleshooting.md)
