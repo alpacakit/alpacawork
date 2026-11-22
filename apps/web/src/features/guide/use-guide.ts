@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
+import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
@@ -91,6 +94,27 @@ export function doneSince(stage: GoingStage, done: readonly string[], before: Do
   return { at, ids, fresh: done.filter(id => !ids.includes(id)) };
 }
 
+const stateRead = z.object({ task: z.object({ state: z.string() }) });
+/**
+ * Each of `ids`' state as the server says it now: the list's row while it holds one; once the list lets it go (finished,
+ * stopped, or anything else), the Task read again from the server, each time it is let go and on each load. Undefined
+ * while that read is under way or failed: not known.
+ */
+export function useServerState(ids: readonly string[], byId: ReadonlyMap<string, Task>): (id: string) => string | undefined {
+  const root = useWorkspaceInfo((info) => info.root);
+  const reads = useQueries({ queries: ids.map(id => ({
+    queryKey: ["guide-task-state", root, id] as const,
+    queryFn: ({ signal }: { signal: AbortSignal }) => api.request(`task/view?task=${encodeURIComponent(id)}`, stateRead, signal).then(read => read.task.state),
+    enabled: !byId.has(id), staleTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false,
+  })) });
+  return id => {
+    const listed = byId.get(id);
+    if (listed) return listed.state;
+    const read = reads[ids.indexOf(id)];
+    return read && !read.isFetching ? read.data : undefined;
+  };
+}
+
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
 export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
 
@@ -120,7 +144,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
   // Done pressed on a Task here, as the reader keeps it (its next-question deck), since this guide began (doneSince),
-  // with those the stage keeps; counted while the Task stands finished (finishedHere).
+  // with those the stage keeps; counted while the server says the Task is finished (finishedHere).
   const doneIds = useSitting(useShallow(state => Object.entries(state.departures)
     .filter(([, each]) => each.answer === "done" && readerOutcome(each.status()) === "kept").map(([task]) => task)));
   const doneBefore = useRef<DoneBefore>(null);
@@ -166,7 +190,8 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
-  const doneHere = finishedHere([...stage.finished ?? [], ...fresh], index.byId, submitted).length > 0;
+  const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
+  const doneHere = finishedHere(pressed, useServerState(pressed, index.byId)).length > 0;
   const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
     narrow, apps, seen, skipped };
   return { entry: guideEntry(facts), facts, fresh };
@@ -181,7 +206,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
 export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[]) {
   const kept = stage.finished ?? [];
   const adding = fresh.filter(id => !kept.includes(id));
-  const next = adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry);
+  const next = adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, facts.doneHere);
   const key = next && JSON.stringify(next);
   useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing

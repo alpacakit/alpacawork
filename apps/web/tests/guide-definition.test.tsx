@@ -132,12 +132,14 @@ test("the guide starts by itself only for a new person: never stored, on the wel
   expect(startsGuide({ stage: "done" }, true, 0)).toBe(false);
 });
 
-test("the guide reaches the person's turn once a step of theirs holds, and is over when nothing holds", () => {
-  expect(nextStage(started, guideEntry(facts({ tasks: 1, questions: 1 })))).toEqual({ stage: "turn", seen: [] });
-  expect(nextStage(started, guideEntry(facts({ tasks: 1, working: 1 })))).toBeUndefined();
-  expect(nextStage(turn, null)).toEqual({ stage: "done" });
+test("the guide reaches the person's turn once a step of theirs holds, and is over only when nothing holds in the close", () => {
+  expect(nextStage(started, guideEntry(facts({ tasks: 1, questions: 1 })), false)).toEqual({ stage: "turn", seen: [] });
+  expect(nextStage(started, guideEntry(facts({ tasks: 1, working: 1 })), false)).toBeUndefined();
+  expect(nextStage(turn, null, true)).toEqual({ stage: "done" });
+  // Nothing to show before a Task is finished here (its Done taken back, the Task put on hold): the guide waits.
+  expect(nextStage(turn, null, false)).toBeUndefined();
   // What the stage keeps goes along as it moves on.
-  expect(nextStage({ ...started, finished: ["T2"] }, guideEntry(facts({ tasks: 1, questions: 1 })))).toEqual({ stage: "turn", seen: [], finished: ["T2"] });
+  expect(nextStage({ ...started, finished: ["T2"] }, guideEntry(facts({ tasks: 1, questions: 1 })), false)).toEqual({ stage: "turn", seen: [], finished: ["T2"] });
   expect(shown({ stage: turn, tasks: 1, doneHere: true, talked: true })).toBe("conversation");
 });
 
@@ -172,9 +174,9 @@ test("a balloon told to stand clear of the box its part is in stands outside tha
 test("shown again from its first screen, the guide points at the input whatever the work, until something is written or sent", () => {
   const intro = { stage: "started", at: 1, seen: [], intro: true } as const;
   expect(shown({ stage: intro, tasks: 4, questions: 1, working: 2 })).toBe("send");
-  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, questions: 1 })))).toBeUndefined();
-  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, drafting: true })))).toEqual({ stage: "started", at: 1, seen: [] });
-  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, sent: true, busy: true })))).toEqual({ stage: "started", at: 1, seen: [] });
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, questions: 1 })), false)).toBeUndefined();
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, drafting: true })), false)).toEqual({ stage: "started", at: 1, seen: [] });
+  expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, sent: true, busy: true })), false)).toEqual({ stage: "started", at: 1, seen: [] });
 });
 
 test("shown again, what the input already held is not writing; a change to it is", () => {
@@ -212,12 +214,19 @@ test("Done pressed before the guide began (again) is not its own; Done pressed s
   expect(doneSince(turn, ["T1", "T5"], later).fresh).toEqual(["T5"]);
 });
 
-test("a Task pressed Done on here counts while it stands finished; taken back, it does not", () => {
-  const task = (state: string, phase: string) => ({ id: "T2", state, stateLog: [{ id: phase }] }) as unknown as Task;
-  const sent = (each: Task) => (each.stateLog[0] as { id: string }).id === "L1";
-  // Done on its way (the reader's record still on this turn), then let go by the list once finished.
-  expect(finishedHere(["T2"], new Map([["T2", task("review", "L1")]]), sent)).toEqual(["T2"]);
-  expect(finishedHere(["T2"], new Map(), sent)).toEqual(["T2"]);
-  // Taken back: in the list again with its turn open, a new state change, no Done on it.
-  expect(finishedHere(["T2"], new Map([["T2", task("review", "L2")]]), sent)).toEqual([]);
+test("the close holds while the server says a Task pressed Done on here is finished, and nothing else opens it", () => {
+  const states = (each: Record<string, string>) => (id: string) => each[id];
+  // Done, and finished: in the list, or let go by it and read again (the detail closed, the page loaded again).
+  expect(finishedHere(["T2"], states({ T2: "done" }))).toEqual(["T2"]);
+  // An old Task opened again and finished again counts as well, whatever was finished before the guide began.
+  expect(finishedHere(["T1", "T7"], states({ T1: "review", T7: "done" }))).toEqual(["T7"]);
+  // Done on its way or taken back (still awaiting), the Task put on hold, stopped, or not known yet: no close.
+  for (const state of ["review", "held", "stopped", undefined]) expect(finishedHere(["T2"], states(state ? { T2: state } : {}))).toEqual([]);
+  // A Task stopped with no Done pressed on it here is not among those pressed on.
+  expect(finishedHere([], states({ T3: "stopped" }))).toEqual([]);
+  // Taken back and put on hold: no step holds and the guide waits; awaiting again, Done is shown on it again.
+  const held = facts({ stage: turn, tasks: 1, talked: true, doneHere: finishedHere(["T2"], states({ T2: "held" })).length > 0 });
+  expect(guideEntry(held)).toBeNull();
+  expect(nextStage(turn, guideEntry(held), held.doneHere)).toBeUndefined();
+  expect(shown({ stage: turn, tasks: 1, talked: true, results: 1, open: "result", seen: read("more") })).toBe("accept");
 });

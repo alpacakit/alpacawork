@@ -15,11 +15,13 @@ import type { GuideStage } from "./guide-state";
  *   just answered in the conversation itself;
  * - `turn`: the person's turn: what is open in the detail (a question, a report, a Task being worked on), then the rows
  *   awaiting them;
- * - `close`: while a Task they pressed Done on since the guide began stands finished (`closing`; taken back, it does not),
- *   what is left to know;
+ * - `close`: while the server says a Task they pressed Done on since the guide began is finished (`closing`), what is
+ *   left to know;
  * - `work`: other work going on in the list;
  * - `idle`: nothing going on.
- * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read. Words
+ * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read: then, and
+ * only then, nothing holds while closing (nextStage). Otherwise, when nothing holds, nothing is shown and the guide waits.
+ * Words
  * waiting to be sent sit between a question's answer and the label (`turn`) and the rest of `turn`; a message answered
  * in the conversation, after the rows awaiting the person.
  *
@@ -111,7 +113,7 @@ export type GuideFacts = {
   unowned: number;
   /** The input holds a label (a project's or a Task's). */
   labelled: boolean;
-  /** A Task the person pressed Done on since the guide began still stands finished (not taken back). */
+  /** The server says a Task the person pressed Done on since the guide began is finished (finishedHere). */
   doneHere: boolean;
   /** The conversation with the coordinator holds messages (it has not been cleared). */
   talked: boolean;
@@ -164,7 +166,7 @@ const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 const AT_INPUT = { clear: ["foot", "coordinator", "panel"], side: "top" } as const;
 /** Steps at the conversation itself stand clear of the foot and, while it is open, its panel. */
 const AT_CONVERSATION = { clear: ["foot", "panel"], side: "top", align: "start" } as const;
-/** The person has finished a Task here, and it stands finished: the close is what is left. */
+/** The person has finished a Task here, as the server says: the close is what is left. */
 const closing = (f: GuideFacts) => f.doneHere;
 
 export const GUIDE: readonly GuideEntry[] = [
@@ -255,11 +257,11 @@ export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: n
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
- * screen once another step than that screen's holds (something written or sent); over once no step holds. What else it
- * keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
+ * screen once another step than that screen's holds (something written or sent); over once no step holds while
+ * `closing` (the close is read). What else it keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
  */
-export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null): GuideStage | undefined {
-  if (!entry) return { stage: "done" };
+export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null, closing: boolean): GuideStage | undefined {
+  if (!entry) return closing ? { stage: "done" } : undefined;
   if (stage.stage !== "started") return undefined;
   const { at: _at, intro: _intro, ...kept } = stage;
   if (entry.turn) return { ...kept, stage: "turn" };
@@ -267,9 +269,9 @@ export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: 
 }
 
 /**
- * The Tasks pressed Done on since the guide began that still stand finished: let go by the list (a finished Task
- * leaves it), finished there, or Done still on its way (`submitted`). Taken back, a Task is in the list again with its
- * turn open, and does not count.
+ * The Tasks pressed Done on since the guide began that the server says are finished: `state` is a Task's state as the
+ * server says it now (the list's row, or the Task read again once the list lets it go), undefined while not known.
+ * Nothing else counts: Done still on its way, taken back, a Task put on hold or let go by the list for another reason.
  */
-export const finishedHere = (ids: readonly string[], byId: ReadonlyMap<string, Task>, submitted: (task: Task) => boolean) =>
-  ids.filter(id => { const task = byId.get(id); return !task || task.state === "done" || submitted(task); });
+export const finishedHere = (ids: readonly string[], state: (id: string) => string | undefined) =>
+  ids.filter(id => state(id) === "done");
