@@ -6,8 +6,7 @@ import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { serverText } from '@alpacawork/i18n/server';
 import { canonicalLanguageTag } from '@alpacawork/contract';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { setupLog, setupResult, openSetupBrowser } from './setup-output.js';
-import type { DetectedSetupAgent } from './setup-ai.js';
+import { setupLog, setupResult, openSetupBrowser, readSetupAgentReadiness } from './setup-output.js';
 import type { Context } from '../entries.js';
 import { runSetup } from './public-setup.js';
 import { runUninstall } from './uninstall.js';
@@ -29,19 +28,20 @@ export const setupNode = defineEntryNode({ name: 'setup',
     if (language === null) throw new Problem(PROBLEM_CODE.invalidInput, '--lang must be a BCP 47 language tag');
     const env = { ...context.cli.env, ...(language ? { LC_ALL: language } : {}) };
     const locale = uiLocaleFromEnvironment(env);
-    let agents: readonly DetectedSetupAgent[] = [];
+    let readiness: ReturnType<typeof readSetupAgentReadiness> | undefined;
     const log = setupLog(env);
     const terminal = { input: process.stdin, output: process.stdout, env,
       discardPendingInput: () => { while (process.stdin.read() !== null) { /* One terminal reader. */ } } };
     let result: Awaited<ReturnType<typeof runSetup>>;
-    try { result = await runSetup({ ...context.cli, env, language, onFailure: line => { log(line); process.stderr.write(line + '\n'); }, onReady: observed => { agents = observed; }, explicit: context.root,
+    try { result = await runSetup({ ...context.cli, env, language, onFailure: line => { log(line); process.stderr.write(line + '\n'); },
+      onReady: url => { readiness = readSetupAgentReadiness(url); }, explicit: context.root,
       yes: values.yes === true, releases: values.releases, port: values.port === undefined ? undefined : Number(values.port), publicHost: values['public-host'] }, log, terminal);
     } catch (error) {
       if (existsSync(log.path)) process.stderr.write(serverText(locale)('server:setup.log', { path: log.path }) + '\n');
       throw error;
     }
     const browserOpened = result.installed && !!result.url && await openSetupBrowser(result.url, env, { noOpen: values['no-open'] !== undefined });
-    const summary = setupResult(result, agents, locale, browserOpened);
+    const summary = setupResult(result, (await readiness) ?? [], locale, browserOpened);
     if (summary) process.stdout.write(summary + '\n');
     return result;
   } }), () => null)] });

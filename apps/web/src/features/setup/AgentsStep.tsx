@@ -74,12 +74,15 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     recordFailure(error, ["setup", at].join(": "));
     setFailure({ at, detail: problemText(error) });
   };
-  /** Next, or on without an agent (`agents` false): the same saves in the same order. */
-  const next = async (agents: boolean) => {
+  /**
+   * Next, or on without an agent: the same saves in the same order. Either way the step's switches are what config.yaml
+   * keeps, so an agent that cannot take work (switched off here) is not left enabled for requests to go to.
+   */
+  const next = async () => {
     if (busy) return;
     setBusy(true); setFailure(null);
     try {
-      if (agents && drafts && loaded) {
+      if (drafts && loaded) {
         const chosen = chosenAgents(drafts.agents, rows, on, first);
         if (chosen) {
           const yaml = serverAgentsYaml({ limits: loaded.limits, agents: { ok: true, value: { ...drafts, agents: chosen } } });
@@ -133,8 +136,8 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     {asksConsent && <Consent checked={consent} onChange={setConsent} />}
     <StepButtons back={{ onClick: onBack, disabled: busy }} failure={failure?.at === "agents" ? <FailureLine text={t("agents.failed.save")} detail={failure.detail} />
       : failure?.at === "consent" ? <FailureLine text={t("consent.failed")} detail={failure.detail} /> : null}
-      other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next(false)}>{t("agents.continueWithout")}</Button> : null}>
-      <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next(true)}>{t("next")}</Button>
+      other={!usable.length && !signed ? <Button variant="quiet" data-setup-without-agent disabled={busy} onClick={() => void next()}>{t("agents.continueWithout")}</Button> : null}>
+      <Button data-setup-next className="min-h-11 px-6 narrow:w-full" disabled={busy || !usable.length} onClick={() => void next()}>{t("next")}</Button>
     </StepButtons>
   </div>;
 }

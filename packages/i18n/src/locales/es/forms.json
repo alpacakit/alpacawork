@@ -3,6 +3,7 @@
     "brief": {
       "gone": "Elige a otro agente",
       "new_conversation": "Empieza de nuevo con “{{action}}”",
+      "none": "No hay ningún agente activado",
       "select_value": "Vuelve a elegir: {{row}}"
     },
     "next": {
@@ -11,11 +12,13 @@
     },
     "none": "Ninguno",
     "notOffered": "No disponible para este modelo",
+    "openSettings": "Abrir la configuración de agentes",
     "pickerLabel": "{{agent}}. Presiona para cambiar",
     "pickerTitle": "A quién pedírselo",
     "problem": {
       "gone": "{{agent}} no está disponible con la configuración actual. Elige a otro agente",
       "invalid_value": "El valor anterior de {{row}}, {{previous}}, ya no está disponible. Elige de nuevo",
+      "none": "No hay ningún agente activado. En la configuración de agentes, inicia sesión en un agente y luego actívalo.",
       "null_required": "{{row}} ya no puede ser Ninguno. Elige un valor",
       "removed": "{{row}} (antes {{previous}}) se quitó de la configuración, así que esta conversación no se puede continuar. {{next}}",
       "unused": "{{row}} (antes {{previous}}) ya no se usa en las opciones de inicio, así que esta conversación no se puede continuar. {{next}}"

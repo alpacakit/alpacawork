@@ -39,7 +39,7 @@ The setup screen has four steps: the screen's language and theme, the AI agents 
 
 ### Requirements
 
-- macOS (Apple silicon), Linux (x64, glibc), or Windows (inside WSL2; see [On Windows](#on-windows) below)
+- macOS (Apple silicon), Linux (x64, glibc, with a systemd user session, which most desktop and server installs have), or Windows (inside WSL2 with systemd on, the default for Ubuntu; see [On Windows](#on-windows) below)
 - [Node.js](https://nodejs.org/) 24.16 or later
 - Chrome or Edge 111, Safari 16.4 (iOS/iPadOS 16.4 on iPhone and iPad), or Firefox 128, or later. Older browsers show a blank page
 - An AI agent you are signed in to (such as Claude Code or Codex)

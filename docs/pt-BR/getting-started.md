@@ -39,7 +39,7 @@ A tela de configuração inicial tem quatro etapas: o idioma e o tema da tela, o
 
 ### Requisitos
 
-- macOS (Apple silicon), Linux (x64, glibc) ou Windows (dentro do WSL2; veja [No Windows](#no-windows) abaixo)
+- macOS (Apple silicon), Linux (x64, glibc, com uma sessão de usuário do systemd, presente na maioria das instalações de desktop e servidor) ou Windows (dentro do WSL2 com o systemd ativado, o padrão no Ubuntu; veja [No Windows](#no-windows) abaixo)
 - [Node.js](https://nodejs.org/pt-br) 24.16 ou posterior
 - Chrome ou Edge 111, Safari 16.4 (iOS/iPadOS 16.4 no iPhone e no iPad) ou Firefox 128, ou versões posteriores. Navegadores mais antigos mostram uma página em branco
 - Um agente de IA em que você já fez login (como o Claude Code ou o Codex)
