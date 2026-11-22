@@ -279,7 +279,7 @@
       "logical_parent_cannot_read": "无法读取逻辑父级",
       "logical_parent_cycle": "任务的父子关系形成了循环",
       "logical_task_depth_exceeds_32_levels": "任务层级超过了 32 层的上限",
-      "managed_skills_version": "技能 {{skill}} 需要版本 {{expectedVersion}}。请在本地执行以下命令，更新后重新发送：{{command}}",
+      "managed_skills_version": "技能 {{skill}} 需要版本 {{expectedVersion}}。请在运行 alpacawork 服务器的电脑上执行以下命令，更新后重新发送：{{command}}",
       "member_needs_expected_responsible_revision": "成员需要 --expected-responsible-revision",
       "message_already_sent_again": "该消息已重新发送过",
       "message_cannot_reach_working_agent_it_remains_queued": "消息无法送达正在工作的智能体。它仍在排队",
