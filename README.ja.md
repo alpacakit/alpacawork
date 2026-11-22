@@ -61,7 +61,7 @@ alpacawork setup
 /alpacawork 画面開いて
 ```
 
-Codex では `/alpacawork` を `$alpacawork` にします。ターミナルからは次のコマンドでも開けます。
+Codex では `/alpacawork` を `$alpacawork` に変えます。ターミナルからは次のコマンドでも開けます。
 
 ```sh
 alpacawork open
