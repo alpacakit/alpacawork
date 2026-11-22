@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { create } from "zustand";
-import { launchMemoryRequestSchema, launchMemoryResponseSchema, type LaunchMemoryChange } from "@alpacawork/contract/agent-selection";
+import { applyLaunchMemory, launchMemoryRequestSchema, launchMemoryResponseSchema, type LaunchMemory, type LaunchMemoryChange } from "@alpacawork/contract/agent-selection";
 import type { Selection } from "@alpacawork/contract/agent-settings";
 import { useFrameSelector } from "@/data/workspace-store";
 import { workspaceWriteBasis } from "@/data/connection";
@@ -17,20 +16,33 @@ const NO_PROFILES: Profile[] = [];
 const NO_MEMORY: WorkspaceInfo["launchMemory"] = { agent: null, values: {} };
 
 /**
- * Saves a change to the person's launch memory on the server; the index brings it back to every screen. It is where the
- * next new conversation starts, not this send: the input says a failure and does not wait for it (setup does).
+ * Saves a change to the person's launch memory on the server; the index brings it back to every screen. False when
+ * nothing is sent: a `?agent=1` page is an agent checking the screen, not the person, and leaves the memory alone.
  */
-export async function saveLaunchMemory(change: LaunchMemoryChange) {
-  // A `?agent=1` page is an agent checking the screen, not the person: its picks leave the person's memory alone.
-  if (isAgentView()) return;
+async function saveLaunchMemory(change: LaunchMemoryChange): Promise<boolean> {
+  if (isAgentView()) return false;
   await api.request("launch-memory", launchMemoryResponseSchema, undefined, launchMemoryRequestSchema.parse({ change }),
     crypto.randomUUID(), workspaceWriteBasis());
+  return true;
+}
+/**
+ * The changes on their way to the server, laid over the shared memory until each one's answer is back. Answered,
+ * saved or refused, a change goes: then the index's memory is what this screen shows, as it is on every other screen.
+ * A change that was never sent (`?agent=1`) stays for this page.
+ */
+export const usePendingMemory = create<{ changes: { id: string; change: LaunchMemoryChange }[] }>(() => ({ changes: [] }));
+function rememberLaunch(change: LaunchMemoryChange): Promise<void> {
+  const id = crypto.randomUUID();
+  usePendingMemory.setState(state => ({ changes: [...state.changes, { id, change }] }));
+  const settle = () => usePendingMemory.setState(state => ({ changes: state.changes.filter(each => each.id !== id) }));
+  return saveLaunchMemory(change).then(sent => { if (sent) settle(); }, error => { settle(); throw error; });
 }
 const sayUnsaved = (error: unknown) => notify.failure(error, { about: "launch-memory" });
 
 /**
- * The person's own changes to the conversation shown, for this visit: the agent picked for it and the values changed.
- * Shared by every input of the conversation; another conversation starts with none.
+ * The person's own changes to a conversation going on, for this visit: the agent picked for it and the values changed.
+ * Shared by every input of the conversation; another conversation starts with none. A new launch has none: it reads
+ * the memory.
  */
 export const useConversationChanges = create<{ conversation: string | null; agent: string | null; changes: Values }>(() =>
   ({ conversation: null, agent: null, changes: {} }));
@@ -54,47 +66,40 @@ export function selectionBasis(agent: string, conversation: ConversationLaunch |
 }
 
 /**
- * What every prompt input sends with (the agent picker in its send row). A new launch starts from the person's last
- * choices, kept on the server for every device (coordinatorStart fills what was never chosen, or is no longer offered).
- * An input that goes on in a conversation starts from that conversation's previous values and sends only what the
- * person changes here, so a choice made elsewhere never overrides the conversation.
+ * What every prompt input sends with (the agent picker in its send row). Going on in a conversation (one with previous
+ * values), it starts from them and sends only what the person changes here, so a choice made elsewhere never overrides
+ * the conversation. Any other send is a new launch: its agent and values come from the person's memory alone, kept on
+ * the server for every device (with the changes still on their way), and coordinatorStart fills the rest.
  */
 export function useLaunchChoice(conversation?: ConversationLaunch) {
   const offers = agentOffers(useFrameSelector(data => data?.info.profiles) ?? NO_PROFILES);
-  const stored = useFrameSelector(data => data?.info.launchMemory) ?? NO_MEMORY;
-  const own = useConversationChanges(state => state.conversation === (conversation?.id ?? null) ? state : null);
+  const shared = useFrameSelector(data => data?.info.launchMemory) ?? NO_MEMORY;
+  const pending = usePendingMemory(state => state.changes);
+  const memory: LaunchMemory = pending.reduce((before, each) => applyLaunchMemory(before, each.change), shared);
+  const goesOn = conversation?.previous ? conversation : undefined;
+  const own = useConversationChanges(state => goesOn && state.conversation === goesOn.id ? state : null);
   const find = (key: string | null | undefined) => key ? offers.find(item => item.key === key) : undefined;
-  // The agent this send goes to: the person's pick here, else the conversation's. One the settings no longer enable is
-  // never replaced by another: it stays, unavailable, until the person picks again. Only the remembered hint falls back.
-  const current = own?.agent ?? conversation?.agent ?? null;
-  const offer = current ? find(current) : find(stored.agent) ?? offers[0];
+  // Going on, the agent is the person's pick here, else the conversation's. One the settings no longer enable is never
+  // replaced by another: it stays, unavailable, until the person picks again. A new launch's agent is the memory's,
+  // else the first enabled one.
+  const current = goesOn ? own?.agent ?? goesOn.agent : null;
+  const offer = current ? find(current) : find(memory.agent) ?? offers[0];
   const gone = current && !offer ? current : null;
   const profile = offer?.key ?? gone ?? "";
-  const basis = selectionBasis(profile, conversation, offer ? coordinatorStart(offer.offer, stored.values[profile]) : {});
-  // What the person changed here is theirs: checked as chosen, never quietly replaced. Going on in a conversation, it
-  // stays for the conversation; for a new launch, only until the memory holds it (below).
+  const basis = selectionBasis(profile, goesOn, offer ? coordinatorStart(offer.offer, memory.values[profile]) : {});
+  // What the person changed in the conversation is theirs: checked as chosen, never quietly replaced.
   const changes = own?.agent === profile ? own.changes : {};
   const view = offer ? launchSelection(offer.offer, basis, changes) : { choices: [], shown: {}, send: {}, problems: [] };
-  // A new launch starts from the shared memory and the offered values: a change here the memory now holds is let go,
-  // so a later choice on another device, or a config that drops the value, is what it follows. Another agent picked
-  // for a conversation is kept, or the input would go back to the conversation's agent.
-  const newLaunch = basis.kind === "new" && (!conversation?.agent || own?.agent === conversation.agent);
-  useEffect(() => {
-    if (!newLaunch || !own?.agent) return;
-    const kept = stored.values[own.agent] ?? {};
-    const open = Object.fromEntries(Object.entries(own.changes).filter(([key, value]) => !(Object.hasOwn(kept, key) && kept[key] === value)));
-    const agentHeld = stored.agent === own.agent, rest = Object.keys(open).length;
-    if (agentHeld && !rest) useConversationChanges.setState({ conversation: own.conversation, agent: null, changes: {} });
-    else if (rest < Object.keys(own.changes).length) useConversationChanges.setState({ ...own, changes: open });
-  }, [newLaunch, own, stored]);
   const change = (target: AgentOffer, update: Values) => {
-    const key = conversation?.id ?? null, before = changesFor(key);
-    // An unsettled change stays until it is chosen again (launchSelection says it), even when another row changes.
-    useConversationChanges.setState({ conversation: key, agent: target.key,
-      changes: { ...(before.agent === target.key ? before.changes : {}), ...update } });
+    if (goesOn) {
+      const before = changesFor(goesOn.id);
+      // An unsettled change stays until it is chosen again (launchSelection says it), even when another row changes.
+      useConversationChanges.setState({ conversation: goesOn.id, agent: target.key,
+        changes: { ...(before.agent === target.key ? before.changes : {}), ...update } });
+    }
     // The server keeps the last choice for the next new launch, on every device: only the rows chosen now, laid over
     // what it keeps, so a choice made on another device for another row stays.
-    saveLaunchMemory({ kind: "choose", agent: target.key, values: update }).catch(sayUnsaved);
+    rememberLaunch({ kind: "choose", agent: target.key, values: update }).catch(sayUnsaved);
   };
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems,
     /** The agent this send went to, which the settings no longer enable: the person picks another. */
@@ -125,5 +130,5 @@ export function admitLaunch(choice: Pick<LaunchChoice, "ready"> | null): boolean
  */
 export async function forgetLaunchAgent() {
   useConversationChanges.setState({ conversation: null, agent: null, changes: {} });
-  await saveLaunchMemory({ kind: "forget-agent" });
+  await rememberLaunch({ kind: "forget-agent" });
 }
