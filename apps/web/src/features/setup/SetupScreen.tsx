@@ -11,18 +11,11 @@ import { useFirstRun, useFirstRunChange } from "@/data/first-run";
 import { useFrameSelector } from "@/data/workspace-store";
 import { Loading, StepButtons } from "./parts";
 import { leaveSetup } from "./entrance";
-import { deviceValue } from "@/lib/device-storage";
 import { DisplayStep } from "./DisplayStep";
 import { AgentsStep } from "./AgentsStep";
 import { SkillsStep } from "./SkillsStep";
 import { ProjectStep } from "./ProjectStep";
 import logo from "../../../public/icons/icon-192-2c.png?inline";
-
-/**
- * Whether the person has answered about the desktop app after setup in this browser: asked until answered, whichever
- * tab finishes. A tab closed before it was answered (or never looked at) has not asked.
- */
-const desktopAppAsked = deviceValue("alpacawork.desktopAppAsked", { read: (raw) => raw === "1" || null, write: () => "1" }, false);
 
 /**
  * The setup a new workspace opens on, in four steps: the language and theme, the agents, the skills, the project. Each step saves when it is
@@ -69,7 +62,7 @@ function Setup() {
     const url = new URL("/", location.href);
     url.searchParams.set("project", state.project);
     const app = desktopApp();
-    if ((app?.kind === "prompt" || app?.kind === "menu") && !desktopAppAsked.get()) setFinished({ to: url, way: app.kind });
+    if (app?.kind === "prompt" || app?.kind === "menu") setFinished({ to: url, way: app.kind });
     else leaveSetup(url);
   };
   if (finished) return <DesktopAppOffer {...finished} />;
@@ -136,7 +129,7 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
   const app = useDesktopApp();
   const asks = way === "prompt";
   const [asking, setAsking] = useState(false);
-  const open = () => { desktopAppAsked.set(true); leaveSetup(to); };
+  const open = () => leaveSetup(to);
   useEffect(() => { if (!asking && app?.kind !== way) open(); }, [app, asking]);
   const install = async () => {
     if (app?.kind !== "prompt") return;

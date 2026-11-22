@@ -22,7 +22,7 @@ vi.mock("../src/features/setup/ProjectStep", () => ({
 vi.mock("../src/data/mobile-access", () => ({ useMobileAccess: () => ({ data: undefined, isPending: true, isError: false, refetch: () => {} }) }));
 
 beforeAll(() => { startI18n(); watchDesktopApp(window); });
-beforeEach(async () => { await i18n.changeLanguage("en"); run.left = []; run.data = unfinished; run.finished.mockClear(); localStorage.clear(); });
+beforeEach(async () => { await i18n.changeLanguage("en"); run.left = []; run.data = unfinished; run.finished.mockClear(); });
 afterEach(() => { cleanup(); act(() => { window.dispatchEvent(new Event("appinstalled")); }); });
 
 /** The browser offering to install the page, answering its prompt with `outcome`. */
@@ -56,7 +56,7 @@ test("finishing setup without a way to install opens the project at once", async
 
 test("with the browser's offer, finishing asks once; installing or declining both open the project", async () => {
   for (const outcome of ["accepted", "dismissed"] as const) {
-    run.left = []; run.data = unfinished; localStorage.clear();
+    run.left = []; run.data = unfinished;
     const event = offer(outcome);
     const view = render(<SetupScreen />);
     await finish();
@@ -68,7 +68,7 @@ test("with the browser's offer, finishing asks once; installing or declining bot
     view.unmount();
   }
   // While the browser asks, neither way on can be pressed again, and the answer opens the project.
-  run.left = []; run.data = unfinished; localStorage.clear();
+  run.left = []; run.data = unfinished;
   let answer = () => {};
   offer("accepted", new Promise<void>(done => { answer = done; }));
   const asking = render(<SetupScreen />);
@@ -81,30 +81,12 @@ test("with the browser's offer, finishing asks once; installing or declining bot
   expect(run.left).toEqual(["/?project=P1"]);
   asking.unmount();
   // Starting in the browser does not ask.
-  run.left = []; run.data = unfinished; localStorage.clear();
+  run.left = []; run.data = unfinished;
   const event = offer("accepted");
   render(<SetupScreen />);
   await finish();
   fireEvent.click(screen.getByRole("button", { name: "Start in the browser" }));
   expect(event.prompt).not.toHaveBeenCalled();
-  expect(run.left).toEqual(["/?project=P1"]);
-});
-
-test("the person is asked until they answer, once: a tab closed unanswered asks in the next, an answer ends it", async () => {
-  offer("accepted");
-  const closed = render(<SetupScreen />);
-  await finish();
-  expect(screen.getByRole("button", { name: "Install and start" })).toBeTruthy();
-  closed.unmount();
-  run.data = unfinished;
-  const answered = render(<SetupScreen />);
-  await finish();
-  fireEvent.click(screen.getByRole("button", { name: "Start in the browser" }));
-  expect(run.left).toEqual(["/?project=P1"]);
-  answered.unmount();
-  run.left = []; run.data = unfinished;
-  render(<SetupScreen />);
-  await finish();
   expect(run.left).toEqual(["/?project=P1"]);
 });
 
