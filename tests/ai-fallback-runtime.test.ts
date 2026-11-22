@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { stringify } from 'yaml';
+import type { AiStackPrefix } from '@alpacawork/contract';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
@@ -100,8 +101,8 @@ test('a worker uses a named model just for its request and retains the prior con
   try { placement = placements.createAndPlace({ taskId: h.taskId, profileKey: 'claude', responsible: false }).placement; }
   finally { placements.close(); }
   const service = new TaskRequestService(h.root);
-  const ask = async (body: string, aiStack?: [{ agent: string; values: { model: string } }, 'stop']) => {
-    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack,
+  const ask = async (body: string, aiStack?: AiStackPrefix, newConversation?: boolean) => {
+    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation,
       expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
     { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
@@ -131,6 +132,50 @@ test('a worker uses a named model just for its request and retains the prior con
     assert.match(prompt, /Report for Friday/);
     assert.match(prompt, /fixture reply/);
     assert.doesNotMatch(prompt, /Do the important task first\.|continuing the same conversation/);
+    const fresh = await ask('Start a fresh discussion with the same worker.', undefined, true);
+    assert.equal(fresh.agent, 'codex');
+    assert.equal(fresh.resumes, null);
+  } finally { await app.close(); }
+});
+
+test('a waiting worker request keeps its own stack when the preceding request names another model', async t => {
+  const h = await setup(t);
+  h.pauseProjection();
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
+    agents: { ...h.config.agents, claude: { ...h.config.agents.claude, params: { model: ['opus', 'fable'], effort: ['high'] } } },
+    aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'codex', values: {} }],
+  }, { aliasDuplicateObjects: false }));
+  const owner = h.create('claude', { gate: h.gate('owner') });
+  await h.tick();
+  await h.waitState(owner, 'running');
+  const placements = new PlacementStore(h.root);
+  let placement;
+  try { placement = placements.createAndPlace({ taskId: h.taskId, profileKey: 'claude', responsible: false }).placement; }
+  finally { placements.close(); }
+  const service = new TaskRequestService(h.root);
+  const ask = async (plan: object, aiStack?: AiStackPrefix) => {
+    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body: JSON.stringify(plan), aiStack,
+      expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
+    { kind: 'placement', placementId: h.ownerPlacementId },
+    { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
+    if (request.outcome.kind !== 'request_accepted') throw new Error('Worker request must be accepted');
+    return h.store.get(request.outcome.request.runId)!;
+  };
+  const app = await startServer(h.root, 0);
+  try {
+    const first = await ask({ gate: h.gate('start'), sessionLimit: true },
+      [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'claude', values: { model: 'fable' } }, 'stop']);
+    await h.waitState(first, 'running');
+    const pending = await ask({ output: 'Separate result' });
+    assert.equal(pending.resumes, first.id);
+    h.release('start');
+    await h.waitState(pending, 'succeeded');
+    const replacement = h.store.get(h.store.get(first.id)!.supersededBy!)!;
+    assert.equal(replacement.launch.values.model, 'fable');
+    const resumed = h.store.get(pending.id)!;
+    assert.equal(resumed.launch.values.model, 'opus');
+    assert.equal(resumed.resumes, null);
+    assert.notEqual(resumed.session?.id, replacement.session?.id);
   } finally { await app.close(); }
 });
 
@@ -201,5 +246,13 @@ test('a queued coordinator message follows the replacement conversation without 
     assert.equal(following?.resumes, active?.id);
     assert.equal(following?.session?.id, h.store.runtimeGet(active.id)?.session?.id);
     assert.deepEqual(memory.get(), recorded);
+
+    const later = randomUUID();
+    conversation.ask({ id: later, conversationId, agent: 'claude', selected: {}, attachments: [],
+      text: JSON.stringify({ sessionLimit: true, output: 'Second replacement' }) });
+    await until(() => conversation.read().turns.some(turn => turn.id === later && turn.status === 'succeeded'), 'the later turn also switches');
+    const latest = h.store.read().filter(run => run.requestId === later).at(-1)!;
+    const prior = receipts(h.root).find(item => item.pid === latest.pids.agent)!.prompt;
+    assert.match(prior, /An extra instruction/, 'earlier joined instructions follow their answered turn');
   } finally { await app.close(); }
 });

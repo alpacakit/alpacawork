@@ -144,7 +144,7 @@ export function requestedByUser(log: readonly TaskLog[], said: (message: string)
 }
 
 /** The current trial that answered for a message, including a message taken into another turn. */
-const messageCarrier = (request: string) => `SELECT coalesce((${currentRequestRun('host.request_id')}),r.id)
+export const messageCarrier = (request: string) => `SELECT coalesce((${currentRequestRun('host.request_id')}),r.id)
   FROM runs r LEFT JOIN runs host ON host.id=CAST(substr(r.into_id,2) AS INTEGER)
   WHERE r.id=(${currentRequestRun(request)})`;
 

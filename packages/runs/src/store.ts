@@ -49,7 +49,7 @@ interface RunWrites {
   /** Marks a coordinator Run so its Request goes to the coordinator Run working in the conversation (send now). */
   setJoinRequested(runId: RunId): void;
   update(record: RuntimeRunRecord): void;
-  rebindQueued(record: RuntimeRunRecord, aiStack?: readonly AiRow[]): void;
+  rebindQueued(record: RuntimeRunRecord, choices: { aiStack?: readonly AiRow[]; prompt?: string }): void;
   finish(record: RuntimeRunRecord, result: RunResult): void;
 }
 export type RunTransaction = TransactionReads & RunWrites;
@@ -297,7 +297,7 @@ export class RunStore {
             touch(this.db, { kind: 'run', id: record.id });
           });
         },
-        rebindQueued: (input, aiStack) => {
+        rebindQueued: (input, { aiStack, prompt }) => {
           check();
           const record = runtimeRunRecordSchema.parse(input), n = runNumber(record.id);
           storageOperation(() => {
@@ -305,7 +305,7 @@ export class RunStore {
             if (before.state !== 'queued' || record.state !== 'queued' || this.db.prepare(
               "SELECT 1 FROM run_inputs WHERE instruction_run_no=? AND state<>'not_sent'").get(n))
               throw new Error('Only an unsent queued Run can change its binding');
-            this.db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), n);
+            this.db.prepare('UPDATE runs SET record=?,prompt=coalesce(?,prompt) WHERE id=?').run(JSON.stringify(record), prompt ?? null, n);
             touch(this.db, { kind: 'run', id: record.id });
             if (aiStack) {
               this.db.prepare('UPDATE requests SET ai_stack=? WHERE id=?').run(JSON.stringify(aiStack), record.requestId);

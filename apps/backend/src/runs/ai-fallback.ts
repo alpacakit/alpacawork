@@ -7,6 +7,7 @@ import { runNumber, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { Problem } from '@alpacawork/core';
 import { compareRequestOrder, currentRequestRun, type RunStore, type RunTransaction } from '@alpacawork/runs';
 import { assignedSession, coordinatorLaunchSnapshot, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
+import { messageCarrier } from '../coordinator/messages.js';
 import { queuedStart } from './execution-control.js';
 import type { EndObservation } from './result-observation.js';
 
@@ -14,8 +15,10 @@ import type { EndObservation } from './result-observation.js';
 function priorContext(db: DatabaseSync, run: RuntimeRunRecord, first: number) {
   if (run.role === 'coordinator') return db.prepare(`SELECT r.id,q.body,r.result FROM requests q
     JOIN runs first ON first.request_id=q.id AND first.attempt=0
-    JOIN runs r ON r.id=(${currentRequestRun('q.id')}) JOIN coordinator_conversations c ON c.id=q.conversation_id
-    WHERE q.conversation_id=? AND first.id<? AND c.warm_request_id IS NOT q.id AND r.state='succeeded'
+    JOIN runs r ON r.id=(${currentRequestRun('q.id')})
+    JOIN runs answer ON answer.id=(${messageCarrier('q.id')})
+    JOIN coordinator_conversations c ON c.id=q.conversation_id
+    WHERE q.conversation_id=? AND first.id<? AND c.warm_request_id IS NOT q.id AND answer.state='succeeded'
     ORDER BY first.id DESC LIMIT 8`).all(run.conversationId, first);
   // A resumed Run may be an input taken into the conversation or a replacement that inherited its first trial's work.
   return db.prepare(`WITH RECURSIVE earlier(id,depth) AS (
@@ -57,46 +60,48 @@ function nextPrompt(db: DatabaseSync, run: RuntimeRunRecord, cause: string): str
   return [header, history && `Earlier conversation for context:${history}`, required].filter(Boolean).join('\n\n');
 }
 
-type Rebinding = { run: RuntimeRunRecord; rows?: AiRow[] };
+type Rebinding = { run: RuntimeRunRecord; rows?: AiRow[]; prompt?: string };
+type SessionBinding = AiRow & { adapter: string; session: RuntimeRunRecord['session'] };
 
-/** Rebind an undelivered continuation before it can reach the abandoned session. */
+/** Rebind an undelivered continuation, preserving the next request's own admissible selections. */
 function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly RuntimeRunRecord[], previous: RuntimeRunRecord,
-  replacement: AiRow, session: RuntimeRunRecord['session'], adapter: string): Rebinding[] | undefined {
-  const inherited = new Set([previous.id]), bindings: Rebinding[] = [];
+  replacement: SessionBinding): Rebinding[] | undefined {
+  const changed = new Map([[previous.id, replacement]]), bindings: Rebinding[] = [];
   const pending = lane.filter(run => run.state === 'queued').sort(compareRequestOrder);
   for (const run of pending) {
-    if (!run.resumes || !inherited.has(run.resumes)) continue;
-    const row = db.prepare('SELECT ai_stack,ai_explicit FROM requests WHERE id=?').get(run.requestId);
+    const predecessor = run.resumes ? changed.get(run.resumes) : undefined;
+    if (!predecessor) continue;
+    const row = db.prepare('SELECT q.ai_stack,q.ai_explicit,r.prompt FROM runs r JOIN requests q ON q.id=r.request_id WHERE r.id=?')
+      .get(runNumber(run.id));
     if (!row || db.prepare("SELECT 1 FROM run_inputs WHERE instruction_run_no=? AND state<>'not_sent'").get(runNumber(run.id)))
       return undefined;
-    const explicit = row.ai_explicit === 1;
-    const canResume = !explicit || run.agent === replacement.agent && isDeepStrictEqual(run.launch.values, replacement.values);
+    const saved = typeof row.ai_stack === 'string' ? aiStackSchema.parse(JSON.parse(row.ai_stack)) : undefined;
+    const position = saved?.findIndex(item => item.agent === predecessor.agent && isDeepStrictEqual(item.values, predecessor.values)) ?? -1;
+    const matched = run.agent === predecessor.agent && isDeepStrictEqual(run.launch.values, predecessor.values);
+    const canResume = matched || row.ai_explicit !== 1 && position >= 0;
     const mode = canResume ? 'resume' : 'start';
-    const agent = explicit ? run.agent : replacement.agent;
-    const values = explicit ? run.launch.values : replacement.values;
-    const history = canResume ? { adapter, values } : undefined;
+    const { agent } = canResume ? predecessor : run;
+    const values = canResume ? predecessor.values : run.launch.values;
+    const history = canResume ? { adapter: predecessor.adapter, values } : undefined;
     let updated: RuntimeRunRecord;
     try {
       const path = run.launch.path;
-      if (run.role === 'coordinator') {
-        const snapshot = coordinatorLaunchSnapshot(config, agent, mode, path, values, history);
-        if (snapshot.ok === false) return undefined;
-        updated = { ...run, agent, launch: snapshot.launch, restartArgv: snapshot.restartArgv,
-          resumes: canResume ? run.resumes : null, session: canResume ? session : assignedSession(snapshot.launch, agent) };
-      } else {
-        const snapshot = launchSnapshot(config, agent, mode, path, values, history);
-        if (snapshot.ok === false) return undefined;
-        updated = { ...run, agent, launch: snapshot.launch,
-          resumes: canResume ? run.resumes : null, session: canResume ? session : assignedSession(snapshot.launch, agent) };
-      }
+      const coordinator = run.role === 'coordinator' ? coordinatorLaunchSnapshot(config, agent, mode, path, values, history) : undefined;
+      const snapshot = coordinator ?? launchSnapshot(config, agent, mode, path, values, history);
+      if (snapshot.ok === false) return undefined;
+      const launch = snapshot.launch;
+      const session = canResume ? predecessor.session : assignedSession(launch, agent);
+      const resumes = canResume ? run.resumes : null;
+      updated = run.role === 'coordinator' && coordinator?.ok ?
+        { ...run, agent, launch, resumes, session, restartArgv: coordinator.restartArgv } :
+        { ...run, agent, launch, resumes, session };
+      changed.set(run.id, { agent, values: launch.values, session, adapter: launch.adapter });
     } catch (error) {
       if (error instanceof Problem) return undefined;
       throw error;
     }
-    if (!explicit || canResume) inherited.add(run.id);
-    const saved = !explicit && typeof row.ai_stack === 'string' ? aiStackSchema.parse(JSON.parse(row.ai_stack)) : undefined;
-    const position = saved?.findIndex(item => isDeepStrictEqual(item, replacement)) ?? -1;
-    bindings.push({ run: updated, rows: saved && [replacement, ...saved.slice(position < 0 ? 1 : position + 1)] });
+    const prompt = !canResume && typeof row.prompt === 'string' ? newConversationText(row.prompt) : undefined;
+    bindings.push({ run: updated, rows: !matched && canResume ? saved?.slice(position) : undefined, prompt });
   }
   return bindings;
 }
@@ -142,7 +147,7 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     if (prepared.ok === false || !isDeepStrictEqual(prepared.launch.values, values)) continue;
     const launch = prepared.launch;
     const session = assignedSession(launch, agent);
-    const bindings = rebindPending(db, settings.config, lane, run, { agent, values }, session, launch.adapter);
+    const bindings = rebindPending(db, settings.config, lane, run, { agent, values, session, adapter: launch.adapter });
     if (!bindings) continue;
     const common = { requestId: run.requestId, attempt, firstRunId: run.firstRunId ?? run.id, agent, resumes: null,
       session, cwd: run.cwd, launch };
@@ -153,7 +158,7 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     }, prompt);
     for (const binding of bindings) {
       const record = binding.run;
-      tx.rebindQueued(record.resumes === run.id ? { ...record, resumes: next.id } : record, binding.rows);
+      tx.rebindQueued(record.resumes === run.id ? { ...record, resumes: next.id } : record, { aiStack: binding.rows, prompt: binding.prompt });
     }
     return next.id;
   }

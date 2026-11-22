@@ -33,8 +33,9 @@ if (branch) {
   const prompt = instruction.message?.content ?? instruction.text;
   try { plan = JSON.parse(prompt); } catch {
     // Formal Task requests contain the synthetic plan as the request body's own JSON line.
-    const body = (prompt.split('\n## Request\n')[1]?.split('\n\n')[0] ?? prompt)
-      .split('\n').find(line => line.startsWith('{'));
+    const request = prompt.split('\n## Request\n')[1]?.split('\n\n')[0] ??
+      ('\n' + prompt).split('\nRequest ID of this input: ')[1] ?? prompt;
+    const body = request.split('\n').find(line => line.startsWith('{'));
     if (body) { try { plan = JSON.parse(body); } catch {} }
   }
   const format = arg('--format'), session = arg('--session') ?? arg('--session-id') ?? arg('--resume') ?? (args.includes('resume') ? args.at(-1) : undefined) ?? plan.session ?? `fake-${process.pid}`;

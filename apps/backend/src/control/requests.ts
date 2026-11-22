@@ -29,7 +29,7 @@ import { assertRotationResolved, continuationSessionUnavailable, conversationFor
 import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
-import { aiRows, freezeAiStack } from '../ai-stack.js';
+import { aiRows, freezeAiStack, standingAiRows } from '../ai-stack.js';
 import { initialPlacementValues } from './placement-launch-values.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
 
@@ -203,10 +203,13 @@ export class RequestService {
             refuse(PROBLEM_CODE.conflict, 'Conversation head changed; reload before retrying', { kind: 'conversation_head_changed' });
           const storedPrefix = db.prepare('SELECT ai_prefix FROM placements WHERE id=?').get(placement.id)?.ai_prefix;
           const placementPrefix = typeof storedPrefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(storedPrefix)) : undefined;
-          const standing = aiRows(settings.config, placementPrefix);
-          const plan = input.aiStack ? aiRows(settings.config, input.aiStack, placementPrefix) : standing;
+          const plan = aiRows(settings.config, input.aiStack, placementPrefix);
           const requestedRow = input.aiStack?.[0] && input.aiStack[0] !== 'stop' ? plan[0] : undefined;
-          const placedRow = placementPrefix?.[0] && placementPrefix[0] !== 'stop' ? standing[0] : undefined;
+          // An explicit starting row chooses the AI by itself. A stop before the placement's fallbacks leaves only its
+          // configured start and any already adopted valid row relevant to the current session.
+          const standing = !input.aiStack ? plan : requestedRow ? [] : standingAiRows(settings.config, placementPrefix);
+          const placedRow = !requestedRow && placementPrefix?.[0] && placementPrefix[0] !== 'stop' &&
+            standing[0]?.agent === placement.profileKey ? standing[0] : undefined;
           const matchesHead = (row: { agent: string; values: Selection }) =>
             !!head && row.agent === head.agent && isDeepStrictEqual(row.values, head.launch.values);
           const standingPosition = standing.findIndex(matchesHead);
@@ -214,9 +217,9 @@ export class RequestService {
           const requestScopedHead = !!head && standingPosition < 0 &&
             (typeof headRequest?.ai_prefix === 'string' || head.attempt !== undefined ||
               headRequest?.ai_explicit === 1 && settings.config.aiStack !== undefined);
-          const keepHead = !!head && input.mode !== 'new' && !requestScopedHead;
-          const carriesFallback = keepHead && standingPosition >= 0 && runs.some(run => run.attempt !== undefined &&
-            (run.id === head.id || head.session && run.session?.provider === head.session.provider && run.session.id === head.session.id));
+          const carriesFallback = standingPosition >= 0 && runs.some(run => run.attempt !== undefined && matchesHead({ agent: run.agent, values: run.launch.values }) &&
+            (run.id === head?.id || run.started_at !== null));
+          const keepHead = !!head && !requestScopedHead && (input.mode !== 'new' || carriesFallback);
           const profile = requestedRow?.agent ?? (keepHead ? head.agent : placedRow?.agent ?? placement.profileKey);
           const setting = settings.config.agents[profile];
           const resumable = setting?.enabled !== false && !!setting;
