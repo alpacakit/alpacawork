@@ -5,8 +5,8 @@ import { agentObservation, type AgentObservations } from "@/features/panels/agen
 import { withFirstAgent } from "@/features/panels/agent-settings-order";
 
 /**
- * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (a kind it does not list is
- * added there when it is switched on). `command` is the CLI it runs, named when it was not found.
+ * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (leaving the step writes every
+ * kind it does not list, on or off). `command` is the CLI it runs, named when it was not found.
  * ready: signed in, as the check confirmed. found: the CLI is here and nothing says it is signed out (this kind has no
  * sign-in check, or the check did not answer, or there is no answer for it), so it may be enabled and works once the
  * CLI itself is signed in. signedOut: the check saw it signed out. missing: its CLI is not on this PC, so it cannot be

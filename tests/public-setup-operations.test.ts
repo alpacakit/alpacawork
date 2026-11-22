@@ -66,7 +66,7 @@ test('public setup enters once, overwrites an edited basic skill without old cop
   assert.equal(out.confirmations, 1); assert.equal(lstatSync(root).mode & 0o777, 0o777);
   assert.equal(canRestorePreviousApplication(JSON.parse(readFileSync(join(f.releases,'switch.json'),'utf8'))),false,'initial managed skill overwrite also prevents earlier-application recovery');
   assert(out.transcript.includes(skill.replace(f.home, '~')));
-  assert.equal(parse(readFileSync(join(f.home, 'alpacawork/config.yaml'), 'utf8')).agents.codex.enabled, false, 'An uncheckable synthetic CLI stays disabled');
+  assert.equal(parse(readFileSync(join(f.home, 'alpacawork/config.yaml'), 'utf8')).agents.codex, undefined, 'An uncheckable synthetic CLI is left out');
   assert.deepEqual(f.receipt().skills.map((s: { name: string }) => s.name), ['alpacawork']);
   assert.equal(readFileSync(join(addon, 'SKILL.md'), 'utf8'), 'unselected addon');
   assert.deepEqual(saved.request.place, ['alpacawork']); assert.deepEqual(saved.request.remove, []);
@@ -290,7 +290,7 @@ test('public setup confirms and creates the skills folder and link for a detecte
   const cancel = await f.run('cancel', ['setup']); assert.equal(cancel.status, 0, cancel.transcript); assert.equal(existsSync(join(f.home, '.claude')), false);
   assert(cancel.transcript.includes(link.replace(f.home, '~'))); assert(!cancel.transcript.includes(other.replace(f.home, '~'))); assert.equal(existsSync(join(f.home, '.unrelated-agent/skills')), false);
   const made = await f.run('enter', ['setup']); await f.ready(made); assert.equal(made.confirmations, 1);
-  assert.equal(parse(readFileSync(join(f.home, 'alpacawork/config.yaml'), 'utf8')).agents.claude.enabled, false); assert.equal(readlinkSync(link), join(f.home, '.agents/skills/alpacawork')); assert.equal(existsSync(other), false);
+  assert.equal(parse(readFileSync(join(f.home, 'alpacawork/config.yaml'), 'utf8')).agents.claude, undefined); assert.equal(readlinkSync(link), join(f.home, '.agents/skills/alpacawork')); assert.equal(existsSync(other), false);
 
   const inode = lstatSync(link).ino; assert.equal((await f.native('stop', 'alpacawork.service')).status, 0);
   const again = await f.run('enter', ['setup']); await f.ready(again); assert.equal(again.confirmations, 1); assert.equal(lstatSync(link).ino, inode);
