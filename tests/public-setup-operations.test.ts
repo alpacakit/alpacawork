@@ -99,10 +99,10 @@ test('public setup reports the running server\'s agent readiness', { skip: proce
   const response = await fetch(new URL('/api/config/get?check=true', out.payload!.url!), { headers: { Connection: 'close' } });
   assert.equal(response.status, 200);
   const settings = await response.json();
-  assert.notEqual(settings.agents.codex.enabled, false, 'the initial config check found Codex signed in');
-  assert.equal(settings.agents.claude.enabled, false, 'the initial config check found Claude Code signed out');
+  assert.notEqual(settings.agents.codex?.enabled ?? !!settings.agents.codex, false, 'the initial config check found Codex signed in');
+  assert.equal(settings.agents.claude, undefined, 'the initial config check found Claude Code signed out and left it out');
   assert.equal(settings.availability.codex.status, 'signed_out');
-  assert.equal(settings.availability.claude.status, 'ready');
+  assert.equal(settings.detected.claude.status, 'ready');
   const text = serverText('en'), lines = out.transcript.split(/\r?\n/);
   const said = [text('server:setup.agents.ready', { names: setupAgentName('claude') }),
     text('server:setup.agents.signIn', { name: setupAgentName('codex'), action: settings.availability.codex.nextAction })];
