@@ -4,7 +4,7 @@
 
 ## 开始之前
 
-- 电脑须为 macOS（Apple 芯片）、Linux（x64）或 Windows（WSL2）之一。在 Windows 上，请先读[在 Windows 上使用](manage.md#在-windows-上使用)。
+- 电脑须为 macOS（Apple 芯片）、Linux（x64，需要 systemd 用户会话，大多数桌面和服务器安装默认具备）或 Windows（在启用 systemd 的 WSL2 中运行，Ubuntu 默认启用）之一。在 Windows 上，请先读[在 Windows 上使用](manage.md#在-windows-上使用)。
 - 确保这台电脑上已经可以使用 Claude Code 或 Codex。
 - AI 改写文件时不会征求确认。它以你在这台电脑上的用户权限运行，所以也能改动工作文件夹以外的地方。
 

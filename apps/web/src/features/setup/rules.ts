@@ -5,18 +5,19 @@ import { agentObservation, type AgentObservations } from "@/features/panels/agen
 import { withFirstAgent } from "@/features/panels/agent-settings-order";
 
 /**
- * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (a kind it does not list is
- * added there when it is switched on). `command` is the CLI it runs, named when it was not found.
- * ready: signed in, as the check confirmed. found: the CLI is here but this kind has no sign-in check (or the check did
- * not answer), so it may be enabled and works once the CLI itself is signed in. signedOut: the check saw it signed out.
- * missing: its CLI is not on this PC, so it cannot be enabled. checking: no answer yet.
+ * One agent row of the setup, as the last check saw it. `configured`: config.yaml lists it (leaving the step writes every
+ * kind it does not list, on or off). `command` is the CLI it runs, named when it was not found.
+ * ready: signed in, as the check confirmed. found: the CLI is here and nothing says it is signed out (this kind has no
+ * sign-in check, or the check did not answer, or there is no answer for it), so it may be enabled and works once the
+ * CLI itself is signed in. signedOut: the check saw it signed out. missing: its CLI is not on this PC, so it cannot be
+ * enabled. checking: no answer yet.
  */
 export type StartAgent = { name: string; adapter: BuiltinAdapterId | null; status: "ready" | "found" | "signedOut" | "missing" | "checking";
   signIn: string | null; command: string | null; configured: boolean };
 
 const statusOf = (seen: AgentAvailability | undefined, checking: boolean): StartAgent["status"] =>
-  seen?.status === "ready" ? "ready" : seen?.status === "unknown" ? "found" : seen?.status === "not_found" ? "missing"
-    : !seen && checking ? "checking" : "signedOut";
+  !seen && checking ? "checking" : seen?.status === "ready" ? "ready" : seen?.status === "signed_out" ? "signedOut"
+    : seen?.status === "not_found" ? "missing" : "found";
 
 /**
  * Each of `unlisted` placed among `listed` where alpacawork's own order of kinds puts it: before the first listed one of
