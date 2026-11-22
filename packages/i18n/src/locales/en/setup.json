@@ -10,9 +10,9 @@
     },
     "first": "Default agent",
     "firstHint": "The one already selected when you send a request. You can change it for each request.",
-    "found": "Installed. Works if it is signed in",
+    "found": "Installed. Works if signed in or with an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
-    "lead": "alpacawork has the AI agents already on this PC, such as Claude Code and Codex, do the work. The ones you enable become the choices for who to ask.",
+    "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",
     "missing": "The {{command}} command was not found. Install it to use this agent",
     "noneOn": "Enable at least one agent.",
     "noneOnTitle": "No agent is enabled",
@@ -54,12 +54,12 @@
   "language": "Display language",
   "next": "Next",
   "project": {
-    "cwdHint": "Choose a repository folder you already have and the AI works right there. To just try it out, leave this empty ({{path}} is used).",
+    "cwdHint": "Choose a repository you already have and the AI works there. To just try it out, you can leave this empty ({{path}} is used).",
     "failed": "Couldn't finish setup. Try again.",
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
-    "lead": "A project is a folder where AI does the work, together with the rules for working there (the project policy).",
-    "policyNote": "This is given to every AI working in this project. The AI changes files without asking you first, so write here what it should ask you about first (the example already here is fine to start with).",
+    "lead": "A project is a folder where the AI works, together with the rules for working there (the project policy).",
+    "policyNote": "The AI changes files without asking. Write here what it should ask you about first, and it is given to every AI in this project. The example is fine to start with.",
     "policySkillLine": "- {{skill}}: use {{when}}.",
     "policySkills": "## Skills to use",
     "policyStart": "## About this project\n- The code and documents in the working folder are what this project is about. Follow the rules already there (README, AGENTS.md and the like) and the way things are written.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
@@ -87,7 +87,7 @@
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
-        "what": "The AI points to what to look at with images or video, so you can decide or check right away.",
+        "what": "The AI uses images or video to show where to look, so you can decide or check right away.",
         "when": "when asking the user to decide, and when writing a report"
       },
       "doyourjob": {
@@ -96,7 +96,7 @@
         "when": "before asking the user, and before making a choice with large consequences"
       }
     },
-    "lead": "A skill is an extra set of instructions that changes how the AI works. These are picked from the ones the makers of alpacawork publish.",
+    "lead": "A skill is an extra set of instructions that changes how the AI works. These are picked from the ones the developers of alpacawork publish.",
     "reason": {
       "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
       "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",
@@ -106,7 +106,7 @@
     },
     "skip": "Continue without installing",
     "title": "Recommended skills",
-    "where": "Installed in {{place}} and linked so Claude Code can use them too. You can remove them later."
+    "where": "Install location: {{place}} (linked so Claude Code can use them too). You can remove them later."
   },
   "steps": {
     "agents": "Agents",
