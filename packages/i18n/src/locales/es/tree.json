@@ -11,7 +11,7 @@
       "accept": "Si está bien, termina la tarea con este botón ({{finish}}).",
       "anotherRepository": "Para usar otro repositorio, abre esto, elige «{{create}}» y selecciona ese repositorio como su ubicación del código.",
       "answer": "Al elegir una respuesta, se coloca en el cuadro de abajo. Al enviarla, queda como tu respuesta.",
-      "conversation": "La conversación con la recepción es desechable: bórrala con «{{clear}}» cuando se acumule. Lo que quieras guardar, pídelo como tarea.",
+      "conversation": "Esta conversación es desechable: si se acumula, bórrala con «{{clear}}». Para guardar algo, pídelo como tarea.",
       "direct": "La IA de recepción responde aquí las peticiones cortas. Si le encargas un trabajo, se convierte en una tarea de la lista.",
       "label": "Esta etiqueta orienta a la IA sobre de qué tarea o proyecto hablas. Sin ella, la IA lo deduce de la conversación.",
       "more": "Después de un informe puedes seguir pidiendo. Prueba a pedir otra versión para comparar.",
