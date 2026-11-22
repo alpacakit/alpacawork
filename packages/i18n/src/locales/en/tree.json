@@ -23,7 +23,7 @@
       "sendReady": "Send it with this button.",
       "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input.",
       "unassigned": "No AI is on this task yet. Open the row and ask in the input to start it.",
-      "working": "It's a task now. The AI on it works on it, and moves it to “{{section}}” when a question or report comes."
+      "working": "This is a task. The AI on it works on it, and moves it to “{{section}}” when a question or report comes."
     },
     "tryExample": "Insert a demo prompt"
   },

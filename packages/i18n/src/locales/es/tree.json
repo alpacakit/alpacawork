@@ -23,7 +23,7 @@
       "sendReady": "Envíalo con este botón.",
       "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada.",
       "unassigned": "Esta tarea aún no tiene una IA asignada. Abre la fila y pídelo en el cuadro de entrada para empezar.",
-      "working": "Ya es una tarea. La IA asignada avanza y la pasa a «{{section}}» cuando llega una pregunta o un informe."
+      "working": "Esto es una tarea. La IA asignada avanza y la pasa a «{{section}}» cuando llega una pregunta o un informe."
     },
     "tryExample": "Insertar un prompt de demostración"
   },
