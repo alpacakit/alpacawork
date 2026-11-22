@@ -22,7 +22,7 @@ export type RunFolderFacts = { readonly activity: RunActivity | null; readonly e
  * projection passes the facts its records captured (TaskBundle.runFiles); controlRuns reads them from the folder.
  */
 export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): ControlRunDTO {
-  const errorCause = files?.errorCause;
+  const errorCause = run.availability?.cause ?? files?.errorCause;
   return { id: run.id, taskId: run.task, placementId: run.placementId, requestId: run.requestId,
     agent: run.agent, modelId: run.launch.values.model?.trim() || null,
     effort: run.launch.values.effort?.trim() || null,
@@ -31,6 +31,8 @@ export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): 
     cwd: run.cwd, state: run.state, reason: run.reason, into: run.into, takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
     launchValues: { ...run.launch.values },
     ...(errorCause ? { errorCause } : {}),
+    ...(run.availability ? { availability: { ...run.availability } } : {}),
+    ...(run.supersededBy ? { supersededBy: run.supersededBy } : {}),
     activity: run.state === 'running' ? files?.activity ?? null : null,
     createdAt: run.created_at, startedAt: run.started_at, endedAt: run.ended_at,
     usage: run.usage ? { run: run.usage.run ? { ...run.usage.run } : null, includesEarlier: run.usage.includesEarlier } : null };
@@ -56,7 +58,16 @@ export function projectPlacements(root: string, placed: ReturnType<PlacementStor
 
 /** Workspace facts exist independently of any listed project. */
 export function readControlEnvironment(root: string, settings = readAgentsSettings(root)): Pick<ControlTreeDTO, 'root' | 'profiles' | 'attachmentBytes' | 'errors' | 'writable'> {
-  return { root, profiles: settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => agentProfile(key, agent)) : [],
+  const profiles = settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => {
+    const initialValues = settings.config.aiStack?.find(row => row.agent === key)?.values;
+    return { ...agentProfile(key, agent), ...(initialValues ? { initialValues } : {}) };
+  }) : [];
+  if (settings.ok) {
+    const first = settings.config.aiStack?.[0]?.agent;
+    const index = profiles.findIndex(profile => profile.key === first);
+    if (index > 0) profiles.unshift(...profiles.splice(index, 1));
+  }
+  return { root, profiles,
     attachmentBytes: attachmentLimitOf(settings), writable: settings.ok,
     errors: settings.ok === true ? [] : [{ code: settings.error.code, message: settings.error.message,
       ...(settings.error.reason ? { reason: settings.error.reason } : {}), path: CONFIG_FILE }] };

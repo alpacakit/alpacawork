@@ -16,7 +16,7 @@ import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { isSeatContinuation, type RESOLUTION_REASONS } from '@alpacawork/contract';
 import { terminal, TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
-import { compareRunIds, type ReadRunRecord, type RunRecord } from '@alpacawork/contract/run';
+import { carrierOf, compareRunIds, type ReadRunRecord, type RunRecord } from '@alpacawork/contract/run';
 import { questionsOf, speaksForUser, type TaskLog } from '@alpacawork/raw';
 import type { TaskDecisionFacts } from './routing-facts.js';
 import { isUnfinished, PROJECT_REQUESTS_SQL, type ReturnDelivery, type RunTransaction, type StoredPlacement, type StoredRequest,
@@ -62,7 +62,7 @@ export function returnReceipt<Run extends ReadRunRecord>(db: DatabaseSync, recor
 function receiptFrom<Run extends ReadRunRecord>(wake: Run | undefined, states: readonly string[],
   find: (id: string) => Run | undefined): ReturnReceipt<Run> {
   if (!wake) return { received: false, unknown: false, actual: null };
-  const actual = wake.state !== 'joined' ? wake : wake.into === null ? null : find(wake.into) ?? null;
+  const actual = carrierOf(wake, find) ?? null;
   const notSent = states.length > 0 && states.every(state => state === 'not_sent');
   return { received: wake.state === 'joined' ? states.includes('taken') : !!wake.pids.agent && !notSent,
     unknown: states.includes('uncertain'), actual };
@@ -177,14 +177,16 @@ export class ReturnLifecycle {
       WHERE r.task_id IN (SELECT value FROM json_each(?)) AND r.state='queued' AND q.purpose='return_continuation'`)
       .all(JSON.stringify([...this.routing.tasks]))) seeds.add(`R${row.id}` as RunRecord['id']);
     const records = this.tx.decidingMany([...seeds]);
-    const references = new Set<RunRecord['id']>();
-    for (const run of records.values()) {
-      for (const id of [run.caller?.run, run.state === 'joined' ? run.into : null]) {
-        if (!id || records.has(id)) continue;
-        references.add(id);
+    let boundary = [...records.values()];
+    while (boundary.length) {
+      const references = new Set<RunRecord['id']>();
+      for (const run of boundary) {
+        for (const id of [run.caller?.run, run.state === 'joined' ? run.into : null, run.supersededBy])
+          if (id && !records.has(id)) references.add(id);
       }
+      boundary = [...this.tx.decidingMany([...references]).values()];
+      for (const run of boundary) records.set(run.id, run);
     }
-    for (const run of this.tx.decidingMany([...references]).values()) records.set(run.id, run);
     return [...records.values()].sort(compareRunIds);
   }
   private get requests() {

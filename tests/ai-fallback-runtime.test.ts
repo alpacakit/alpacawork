@@ -7,6 +7,8 @@ import { stringify } from 'yaml';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
+import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
+import { createLaunchMemory } from '@alpacawork/backend/test-dist/receiver/person-state.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
 import { assignResponsible, currentTaskHash, currentTaskLog, seedFixtureTask } from './helpers/control-fixture.ts';
 import { receipts, setup, until } from './runs-runtime.fixture.ts';
@@ -68,5 +70,42 @@ test('an exhausted owner gives the same request to another agent and the parent 
     assert.deepEqual(h.store.read().filter(run => run.requestId === requestId).map(run => run.agent), ['claude', 'codex']);
     assert.ok(currentTaskLog(h.root, child.id).every(entry => entry.toState !== 'error'));
     assert.equal(receipts(h.root).filter(item => item.branch === 'agent').length, 3);
+  } finally { await app.close(); }
+});
+
+test('a queued coordinator message follows the replacement conversation without changing the selected AI memory', async t => {
+  const h = await setup(t);
+  h.pauseProjection();
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
+    aiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
+  }, { aliasDuplicateObjects: false }));
+  const memory = createLaunchMemory(h.root);
+  const recorded = await memory.change({ kind: 'choose', agent: 'claude', values: {} });
+  const conversation = new CoordinatorConversation(h.root);
+  const conversationId = conversation.read().id;
+  const first = randomUUID(), pending = randomUUID();
+  const send = (id: string, plan: object) => conversation.ask({
+    id, conversationId, text: JSON.stringify(plan), attachments: [], selected: {},
+  });
+  const app = await startServer(h.root, 0);
+  try {
+    send(first, { gate: h.gate('first'), sessionLimit: true, fallbackGate: h.gate('answer'), output: 'Replacement reply' });
+    await until(() => conversation.read().turns.find(turn => turn.id === first)?.status === 'running', 'first turn starts');
+    send(pending, { output: 'Follow-up reply' });
+    h.release('first');
+    await until(() => conversation.read().turns.some(turn => turn.id === first && turn.attempts?.length === 2), 'replacement trial is visible');
+    assert.deepEqual(conversation.read().turns.map(turn => turn.id), [first, pending]);
+    assert.equal(conversation.read().turns.find(turn => turn.id === pending)?.status, 'queued');
+    h.release('answer');
+    await until(() => conversation.read().turns.every(turn => turn.status === 'succeeded'), 'both replies arrive in order');
+    const turns = conversation.read().turns;
+    assert.deepEqual(turns.map(turn => turn.answer), ['Replacement reply', 'Follow-up reply']);
+    assert.equal(turns[0]?.attempts?.[0]?.availability?.cause, 'session_limit');
+    const active = h.store.read().filter(run => run.requestId === first).at(-1);
+    const following = h.store.read().find(run => run.requestId === pending);
+    assert.equal(following?.agent, 'codex');
+    assert.equal(following?.resumes, active?.id);
+    assert.equal(following?.session?.id, active?.session?.id);
+    assert.deepEqual(memory.get(), recorded);
   } finally { await app.close(); }
 });

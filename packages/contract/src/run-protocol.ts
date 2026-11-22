@@ -49,6 +49,7 @@ export const observationSchema = z.object({
   outcome: z.object({ state: z.enum(['succeeded', 'failed', 'cancelled', 'needs_review']), reason: z.string().nullable() }).strict(),
   session: z.string().nullable(), measuredUsage: z.object({ scope: z.enum(['conversation', 'run']), counters }).strict().nullable(),
   availability: runAvailabilitySchema.optional(),
+  handoffSafe: z.literal(true).optional(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   result: z.object({ state: z.enum(['present', 'missing', 'too_large', 'unreadable']), digest: digest.nullable(), size: z.number().int().nonnegative() }).strict(),
 }).strict();

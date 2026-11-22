@@ -46,18 +46,34 @@ export const isRunEnded = (state: RunState): boolean => (RUN_ENDED_STATES as rea
 /** A finished Run with no session cannot be the head of a continued conversation. */
 export const hasContinuableSession = (run: Pick<RunRecord, 'state' | 'session'>): boolean =>
   !isRunEnded(run.state) || run.session !== null;
+type CarrierRun = Pick<RuntimeRunRecord, 'id' | 'state' | 'into' | 'supersededBy'>;
+/** A joined input and a continued attempt both take their result from the Run doing the same work. */
+export function carrierOf<Run extends CarrierRun>(run: Run, find: (id: RunId) => Run | undefined): Run | undefined {
+  const seen = new Set<RunId>();
+  let current: Run | undefined = run;
+  while (current && !seen.has(current.id)) {
+    const next: RunId | null = current.supersededBy ?? (current.state === 'joined' ? current.into : null);
+    if (next === null) return current;
+    seen.add(current.id);
+    current = find(next);
+  }
+  return undefined;
+}
 export const isRunMoving = (state: RunState): boolean => state === RUN_STATE.queued || state === RUN_STATE.running;
 export const isRunInTrouble = (state: RunState): boolean => state === RUN_STATE.failed || state === RUN_STATE.needs_review;
 /** A failure is current until a later Run in its resumed chain actually starts. */
-export function runFailureResolution<T extends { id: RunId; resumes?: RunId | null; state: RunState; startedAt?: string | null }>(runs: readonly T[]): { run: T; resolvedBy: T | null }[] {
+export function runFailureResolution<T extends { id: RunId; resumes?: RunId | null; supersededBy?: RunId; state: RunState; startedAt?: string | null }>(runs: readonly T[]): { run: T; resolvedBy: T | null }[] {
   const byId = new Map(runs.map((run) => [run.id, run]));
+  const priorAttempt = new Map<RunId, RunId>();
+  for (const run of runs) if (run.supersededBy) priorAttempt.set(run.supersededBy, run.id);
+  const previous = (run: T) => run.resumes ?? priorAttempt.get(run.id);
   const roots = new Map<RunId, T[]>();
   for (const run of runs) {
     let root = run;
     const seen = new Set<RunId>();
-    while (root.resumes && byId.has(root.resumes) && !seen.has(root.id)) {
+    for (let parent = previous(root); parent && byId.has(parent) && !seen.has(root.id); parent = previous(root)) {
       seen.add(root.id);
-      root = byId.get(root.resumes)!;
+      root = byId.get(parent)!;
     }
     const chain = roots.get(root.id) ?? [];
     chain.push(run);
@@ -119,6 +135,7 @@ const taskRunObject = z.object({
   requestId: z.string().min(1),
   /** The first Run uses index zero; retries have the index of their frozen candidate. */
   attempt: z.number().int().positive().safe().optional(),
+  firstRunId: runIdSchema.optional(),
   /** A failed attempt reserved this next Run in its completion transaction. */
   supersededBy: runIdSchema.optional(),
   availability: runAvailabilitySchema.optional(),
@@ -143,7 +160,7 @@ const taskRunObject = z.object({
   pids: z.object({ manager: z.number().int().nullable(), agent: z.number().int().nullable() }).strict(),
 }).strict();
 /** What every Run record keeps, whoever it answers. */
-function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at' | 'supersededBy' | 'availability'>,
+function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at' | 'supersededBy' | 'availability' | 'attempt' | 'firstRunId'>,
   ctx: z.RefinementCtx): void {
   const reasons: readonly (string | null)[] = RUN_STATE_REASONS[record.state];
   if (!reasons.includes(record.reason)) ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Reason does not match state' });
@@ -151,6 +168,8 @@ function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'r
     ctx.addIssue({ code: 'custom', path: ['ended_at'], message: 'Ended run requires an end time' });
   if ((record.state === 'joined') !== (record.into !== null))
     ctx.addIssue({ code: 'custom', path: ['into'], message: 'Only a joined run names the run it joined' });
+  if ((record.attempt === undefined) !== (record.firstRunId === undefined))
+    ctx.addIssue({ code: 'custom', path: ['attempt'], message: 'A retry must name its request’s first Run' });
   if (record.supersededBy !== undefined && (record.state !== 'failed' || record.availability === undefined))
     ctx.addIssue({ code: 'custom', path: ['supersededBy'], message: 'A superseded run requires a failed availability observation' });
   if (record.state === 'queued' && record.started_at !== null)

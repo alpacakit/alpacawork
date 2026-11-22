@@ -1,6 +1,12 @@
 -- Preserve Run IDs and their execution records while allowing several attempts for one Request.
 ALTER TABLE requests ADD COLUMN ai_stack TEXT CHECK(ai_stack IS NULL OR json_valid(ai_stack));
 --> statement-breakpoint
+ALTER TABLE requests ADD COLUMN ai_explicit INTEGER NOT NULL DEFAULT 0 CHECK(ai_explicit IN (0,1));
+--> statement-breakpoint
+ALTER TABLE requests ADD COLUMN ai_prefix TEXT CHECK(ai_prefix IS NULL OR json_valid(ai_prefix));
+--> statement-breakpoint
+ALTER TABLE placements ADD COLUMN ai_prefix TEXT CHECK(ai_prefix IS NULL OR json_valid(ai_prefix));
+--> statement-breakpoint
 CREATE TABLE replacement_runs (
   id INTEGER PRIMARY KEY CHECK(id > 0),
   record TEXT NOT NULL CHECK(json_valid(record)), prompt TEXT NOT NULL DEFAULT '',
@@ -121,7 +127,9 @@ END;
 CREATE TRIGGER runs_witness_update BEFORE UPDATE OF id,record ON runs BEGIN
   SELECT CASE WHEN NEW.id IS NOT OLD.id OR NEW.task_id IS NOT OLD.task_id
     OR NEW.placement_id IS NOT OLD.placement_id OR NEW.request_id IS NOT OLD.request_id
-    OR NEW.attempt IS NOT OLD.attempt OR NEW.resumes_id IS NOT OLD.resumes_id OR NEW.caller_run IS NOT OLD.caller_run
+    OR NEW.attempt IS NOT OLD.attempt
+    OR (NEW.resumes_id IS NOT OLD.resumes_id AND NOT (OLD.state='queued' AND NEW.state='queued'))
+    OR NEW.caller_run IS NOT OLD.caller_run
     OR NEW.conversation_id IS NOT OLD.conversation_id
     THEN RAISE(ABORT,'run ownership is immutable') END;
   SELECT CASE WHEN NEW.placement_id IS NOT NULL AND
@@ -130,6 +138,10 @@ CREATE TRIGGER runs_witness_update BEFORE UPDATE OF id,record ON runs BEGIN
   SELECT CASE WHEN NEW.request_id IS NOT NULL AND
     (SELECT task_id FROM requests WHERE id = NEW.request_id) IS NOT NEW.task_id
     THEN RAISE(ABORT,'run request witness mismatch') END;
+  SELECT CASE WHEN json_extract(NEW.record,'$.supersededBy') IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM runs successor WHERE 'R'||successor.id=json_extract(NEW.record,'$.supersededBy')
+      AND successor.request_id=NEW.request_id AND successor.attempt>NEW.attempt)
+    THEN RAISE(ABORT,'run successor must share its request') END;
   SELECT CASE WHEN NEW.into_id IS NOT NULL AND NOT EXISTS
     (SELECT 1 FROM runs WHERE id = CAST(substr(NEW.into_id,2) AS INTEGER) AND 'R' || id = NEW.into_id)
     THEN RAISE(ABORT,'run joined target missing') END;

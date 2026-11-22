@@ -7,6 +7,23 @@ const eventAt = (row: Record<string, unknown>, received: string) => {
   const date = typeof row.timestamp === 'string' ? new Date(row.timestamp) : null;
   return date && Number.isFinite(date.getTime()) ? date.toISOString() : received;
 };
+/** Track outstanding tool results without the display projection's resets on errors. */
+export class ToolResults {
+  private readonly pending = new Set<string>();
+  private unknown = false;
+
+  observe(events: readonly ActivityEvent[]): void {
+    for (const { id, kind } of events) {
+      if (kind === 'tool_start') {
+        if (typeof id !== 'string' || this.pending.has(id)) this.unknown = true;
+        else this.pending.add(id);
+      } else if (kind === 'tool_end' && typeof id === 'string') this.pending.delete(id);
+    }
+  }
+
+  get complete(): boolean { return !this.unknown && this.pending.size === 0; }
+}
+
 export function claudeActivity(value: unknown, received: string): ActivityEvent[] {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
   const row = object(value), at = eventAt(row, received);

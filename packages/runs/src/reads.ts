@@ -477,7 +477,7 @@ function conversationHeadRow(db: DatabaseSync, key: ConversationKey, id: string,
   return storageOperation(() => db.prepare(`SELECT r.id, r.record FROM runs r
     LEFT JOIN requests q ON q.id = r.request_id
     WHERE ${conversationWhere(key)} AND r.state IS NOT 'joined' AND (? IS NULL OR r.request_id IS NOT ?)
-    ORDER BY r.id DESC LIMIT 1`).get(id, DELIVERY_STATE.aborted, exceptRequestId ?? null, exceptRequestId ?? null));
+    ORDER BY coalesce(CAST(substr(json_extract(r.record,'$.firstRunId'),2) AS INTEGER),r.id) DESC,r.attempt DESC LIMIT 1`).get(id, DELIVERY_STATE.aborted, exceptRequestId ?? null, exceptRequestId ?? null));
 }
 /**
  * One project's returns, or the whole workspace's; optional return or destination narrows the same read. Tasks narrow
@@ -575,6 +575,8 @@ function decisionRecords(db: DatabaseSync, conversationId?: string): RuntimeRunR
         JOIN runs p ON p.id = ${runNumberSql('c.caller_run')}
       UNION SELECT p.id FROM runs c JOIN selected s ON c.id = s.id
         JOIN runs p ON p.id = ${runNumberSql('c.resumes_id')}
+      UNION SELECT next.id FROM runs c JOIN selected s ON c.id=s.id
+        JOIN runs next ON next.id=${runNumberSql("json_extract(c.record,'$.supersededBy')")}
     ) SELECT r.id, r.record FROM runs r JOIN selected s ON r.id = s.id
     ${inConversation ? 'WHERE r.id IN (SELECT id FROM relevant)' : ''}
     ORDER BY r.id

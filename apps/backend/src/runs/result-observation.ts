@@ -13,6 +13,7 @@ type FinalResult = { state: 'present'; text: string } | { state: 'missing' | 'to
 /** How an agent ended, as `readEnd` read it and as a completed event carries it. */
 export type EndObservation = { outcome: Outcome; finalResult: FinalResult; session: string | null;
   availability?: RunAvailability;
+  handoffSafe?: true;
   measuredUsage: { scope: 'conversation' | 'run'; counters: TokenCounters } | null; exit: AgentExit | null };
 /** The result of a run whose reply cannot be read: what a failed reader said of it, else missing. */
 const absentResult = (observed: ReaderResult | undefined): FinalResult =>
@@ -36,7 +37,7 @@ export function publishCompletion(journal: EventJournal, end: EndObservation): v
     result = { state: 'present', digest, size: bytes.length };
   }
   journal.append('completed', { outcome: { state: end.outcome.state, reason: end.outcome.state === 'succeeded' ? null : end.outcome.reason },
-    session: end.session, measuredUsage: end.measuredUsage, availability: end.availability, exit: end.exit, result });
+    session: end.session, measuredUsage: end.measuredUsage, availability: end.availability, handoffSafe: end.handoffSafe, exit: end.exit, result });
 }
 /**
  * Read how an agent ended, from what its manager saw and its output. The manager calls this when its agent
@@ -54,5 +55,6 @@ export function readEnd(ended: { outcome: Outcome;
   const availability = ended.measured && cause && outcome.state === 'failed' &&
     (outcome.reason === 'exit' || outcome.reason === 'output') ? { cause } : undefined;
   return { outcome, finalResult, session: ended.observed.session, availability,
+    ...(availability && ended.observed.toolsSettled && ended.exit?.signal === null ? { handoffSafe: true as const } : {}),
     measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit };
 }

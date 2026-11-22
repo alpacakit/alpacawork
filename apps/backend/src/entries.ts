@@ -390,7 +390,7 @@ const requestNode = writeNode('request', 'Ask a Task\'s responsible to work or a
     optionalText('answers', 'Question ID'),
     optionalText('agent', 'Member placement ID'),
     flag('newConversation', 'Begin a new conversation'), optionalText('cwd', 'Absolute launch directory'),
-    optionalText('selected', 'Launch choices as JSON'), quote, sourceRequest, opId, optionalText('expectedTaskHash', 'Current Task hash'),
+    optionalText('aiStack', 'AI stack as JSON'), optionalText('selected', 'Launch choices as JSON'), quote, sourceRequest, opId, optionalText('expectedTaskHash', 'Current Task hash'),
     expectedPlacementRevision, optionalText('expectedHeadRun', 'Expected conversation head')],
   taskRequestInput, (input, { root, db }) => {
     const answers = input.answers;
@@ -447,7 +447,7 @@ const placementReceipt = async <Agent>(root: string, agent: Agent, task: string)
   ({ agent, task: controlTaskHead(await new ControlTaskStore(root).get(task)) });
 const assignNode = writeNode('assign', 'Assign a responsible agent or a member',
   [taskId, textParameter('role', 'responsible or member'), optionalText('person', 'Existing agent ID for a member'),
-    textParameter('profile', 'Launch profile'), optionalText('selected', 'Initial launch choices as JSON'),
+    optionalText('profile', 'Launch profile'), optionalText('selected', 'Initial launch choices as JSON'), optionalText('aiStack', 'AI stack as JSON'),
     expectedTaskHash, optionalText('replace', 'Responsible placement to replace'),
     optionalNumber('expectedPlacementRevision', 'Replacement revision'),
     optionalNumber('expectedResponsibleRevision', 'Current responsible revision'), quote, sourceRequest], agentAssignInput,
@@ -456,11 +456,11 @@ const assignNode = writeNode('assign', 'Assign a responsible agent or a member',
     const commands = new PlacementCommands(root), actor = requireActor(context);
     const agent = input.role === 'responsible'
       ? await commands.placeNewResponsible({ taskId: input.task, profileKey: input.profile,
-        selected: input.selected,
+        selected: input.selected, aiStack: input.aiStack,
         expectedTaskHash: input.expectedTaskHash, replacePlacementId: input.replace,
         expectedPlacementRevision: input.expectedPlacementRevision }, actor)
       : await commands.placeMember({ taskId: input.task, agentId: input.person, profileKey: input.profile,
-        selected: input.selected,
+        selected: input.selected, aiStack: input.aiStack,
         expectedTaskHash: input.expectedTaskHash,
         expectedResponsibleRevision: responsibleRevision(input.expectedResponsibleRevision) }, actor);
     return placementReceipt(root, agent, input.task);

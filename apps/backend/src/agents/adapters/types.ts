@@ -11,7 +11,7 @@ export type InputProtocol = {
   receipt(value: unknown, session: string | null): { id: string; outcome: 'taken' | 'not_sent' | 'uncertain' } | null;
   turnEnded(value: unknown, session: string | null): boolean;
 };
-export type AdapterObservation = { outcome: ReaderResult; session: string | null; usage: AgentUsage | null; failure?: RunFailure };
+export type AdapterObservation = { outcome: ReaderResult; session: string | null; usage: AgentUsage | null; failure?: RunFailure; toolsSettled?: boolean };
 export type SkillCatalogContext = Pick<CatalogInput, 'env' | 'session'> & { kind: 'claude' | 'codex' };
 export type AgentAdapter = {
   input: InputProtocol;

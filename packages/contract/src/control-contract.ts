@@ -1,5 +1,6 @@
+import { aiStackPrefixSchema } from './ai-stack.js';
 import { agentSettingShapeSchema, selectionSchema } from './agent-settings.js';
-import { runErrorCauseSchema, runFailureSchema } from './run-failure.js';
+import { runAvailabilitySchema, runErrorCauseSchema, runFailureSchema } from './run-failure.js';
 import { restoreIdSchema } from './recovery.js';
 import { answerFilesSchema } from './coordinator-files.js';
 import { projectColorSchema, projectSettingsSchema } from '@alpacawork/raw/project-settings';
@@ -200,6 +201,8 @@ export const controlRunSchema = z.object({
   state: runStateSchema, reason: runReasonSchema.nullable(),
   /** Recognized failure text from this Run's stdout; absent when evidence is insufficient. */
   errorCause: runErrorCauseSchema.optional(),
+  availability: runAvailabilitySchema.optional(),
+  supersededBy: runIdSchema.optional(),
   /** A joined Run names the Run whose work took its instruction in. */
   into: runIdSchema.nullable(),
   /** Whether the agent takes further instructions on its input while it works. */
@@ -267,7 +270,7 @@ export const controlTreeSchema = z.object({
     words: z.string(), answer: z.string().nullable(), answerFiles: answerFilesSchema.optional() }).strict()),
   /** When the user asked for each Task they asked for (its mark's utterance, else its mark's record). */
   requestedByUser: z.record(taskIdSchema, z.object({ at: z.iso.datetime({ offset: true }) }).strict()),
-  profiles: z.array(z.object({ key: z.string().min(1), choices: launchChoicesSchema,
+  profiles: z.array(z.object({ key: z.string().min(1), choices: launchChoicesSchema, initialValues: selectionSchema.optional(),
     without: agentSettingShapeSchema.shape.without.unwrap() }).strict()),
   /** The workspace's fields (task-schema fieldCatalog: the defaults with the stored definitions over them). */
   fieldCatalog: z.array(fieldDefShape),
@@ -649,7 +652,7 @@ export const requestInputSchema = z.object({
   requestId: z.string().min(1), expectedTaskHash: digestSchema,
   expectedPlacementRevision: z.number().int().positive(), expectedHeadRunId: runIdSchema.nullable().optional(),
   targetPlacementId: z.string().min(1).optional(),
-  selected: selectionSchema.optional(),
+  selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
 }).strict().refine(input => input.description === undefined || input.title !== undefined,
   { path: ['title'], message: 'A request description requires a title' });
 export const requestReceiptSchema = z.object({
@@ -692,7 +695,7 @@ export const agentRecordSchema = z.object({
   id: z.string().min(1), createdAt: z.iso.datetime({ offset: true }),
 }).strict();
 export const placeAgentInputSchema = z.object({
-  taskId: taskIdSchema, selected: selectionSchema.optional(), profileKey: z.string().min(1),
+  taskId: taskIdSchema, selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), profileKey: z.string().min(1).optional(),
   expectedTaskHash: digestSchema,
   replacePlacementId: z.string().min(1).optional(), expectedPlacementRevision: z.number().int().positive().optional(),
 }).strict().superRefine((input, ctx) => {
@@ -709,9 +712,9 @@ export const setResponsibleReceiptSchema = z.object({ placement: placementRecord
   previousPlacement: placementRecordSchema.nullable() }).strict();
 export const releaseAgentInputSchema = setResponsibleInputSchema;
 export const releaseAgentReceiptSchema = z.object({ placement: placementRecordSchema }).strict();
-export const placeMemberInputSchema = z.object({ taskId: taskIdSchema, selected: selectionSchema.optional(),
+export const placeMemberInputSchema = z.object({ taskId: taskIdSchema, selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
   agentId: z.string().min(1).optional(),
-  profileKey: z.string().min(1), expectedTaskHash: digestSchema,
+  profileKey: z.string().min(1).optional(), expectedTaskHash: digestSchema,
   expectedResponsibleRevision: z.number().int().positive(),
 }).strict();
 export const placeMemberReceiptSchema = z.object({ agent: agentRecordSchema,

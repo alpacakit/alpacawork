@@ -101,7 +101,7 @@ export const ownerHead = <Run extends ReadRunRecord>(conversation: readonly Run[
  * scheduler's gate and ReturnLifecycle's withdrawal of failed continuations call it.
  */
 export function seatRunBefore(conversation: readonly ReadRunRecord[], run: ReadRunRecord): SeatRun | null {
-  const prior = ownerHead(conversation.filter(other => compareRunIds(other, run) < 0));
+  const prior = ownerHead(conversation.filter(other => other.supersededBy === undefined && compareRunIds(other, run) < 0));
   return prior && { state: prior.state, intoState: null };
 }
 
@@ -249,7 +249,7 @@ export function seatFactsOf(source: SeatSource, taskId: string): SeatFacts {
   return {
     lifecycle: task.meta.lifecycle, state: task.meta.state, baseState: task.meta.baseState, hold: task.meta.hold,
     head: head ? headOf(source, head) : null,
-    profileAvailable: !placement || source.profiles.has(placement.profileKey),
+    profileAvailable: !placement || source.profiles.has(head?.agent ?? placement.profileKey),
     automaticLimitReached: !!placement &&
       source.automatic.reached(placement.id, ancestry(source, taskId), source.automaticLimit),
     uncertain: rows.filter(row => returnDisposition(row) === 'in_flight' && unknown(row)),

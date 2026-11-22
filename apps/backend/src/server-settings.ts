@@ -4,11 +4,12 @@ import type { BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
  * rules as every read (`@alpacawork/contract`), so no writer can leave a config that runs break on. A project's title,
  * body and extracts are its Task's own (task update); its code location is project-settings'.
  */
+import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor, compileAgentSetting, enabledAgents, resolveAgentSelection } from '@alpacawork/contract';
 import type { ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
@@ -34,7 +35,10 @@ function view(bytes: Buffer): ServerSettings {
   const config = parseAgentsSettings(text);
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
-  return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents, catalog: adapterCatalog() };
+  const first = enabledAgents(config.agents)[0];
+  const selected = config.aiStack ?? (first ? [{ agent: first[0],
+    values: resolveAgentSelection(compileAgentSetting(...first)).values }] : []);
+  return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents, aiStack: selected, catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
   let writer: FileWriter | undefined;
@@ -78,6 +82,10 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       let rewrite = false;
       for (const [key, value] of Object.entries(edit.limits))
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
+      if (edit.aiStack !== undefined && !isDeepStrictEqual(edit.aiStack, current.aiStack)) {
+        document.set('aiStack', edit.aiStack);
+        rewrite = true;
+      }
       /* Initial release: Jev settings are not editable.
       if (edit.jev !== undefined && JSON.stringify(edit.jev) !== JSON.stringify(parseJevSettings(parseConfig(before).values.jev))) {
         document.set('jev', edit.jev);

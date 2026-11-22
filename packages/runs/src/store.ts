@@ -11,7 +11,7 @@ import { RUN_ENDED_STATES, RUN_RESULT_LIMIT, RUN_ROLE, coordinatorRunRecordSchem
   runtimeRunRecordSchema, type CoordinatorRunRecord, type RunRecord, type RunResultState, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { runIdSchema, type RunId } from '@alpacawork/contract/fields';
 import { DELIVERY_STATE, actorSchema, requestPurposeSchema, type DeliveryState, type RequestMode } from '@alpacawork/contract/control';
-import { isSeatContinuation } from '@alpacawork/contract';
+import { isSeatContinuation, type AiRow, type AiStackPrefix } from '@alpacawork/contract';
 import type { TaskActor } from '@alpacawork/raw';
 import { canTransition } from './rules.js';
 import { storageOperation } from './record-codec.js';
@@ -19,19 +19,21 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
   type StoredReturn, type StoredPlacement, type TransactionReads } from './reads.js';
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
-  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt'>;
+  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId'>;
 export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
   aboutRunId?: RunId | null;
-  aiStack?: readonly import('@alpacawork/contract').AiRow[];
+  aiStack?: readonly AiRow[];
+  aiExplicit?: boolean;
+  aiPrefix?: AiStackPrefix;
 };
 /** A person's message to the coordinator conversation: a Request with no Task or placement, always the person's own. */
 interface StoredConversationRequest {
   id: string; conversationId: string; headRunId: RunId | null; mode: RequestMode; body: string;
-  submittedAt: string; deliveryState: DeliveryState; replyTo?: string | null;
+  submittedAt: string; deliveryState: DeliveryState; replyTo?: string | null; aiStack?: readonly AiRow[]; aiExplicit?: boolean;
 }
 /** What a coordinator Run is created with; it has no Task, placement or caller and never continues work by itself. */
 export type CreateCoordinatorRunFields = Pick<CoordinatorRunRecord, 'conversationId' | 'requestId' | 'agent' | 'resumes' | 'session' |
-  'cwd' | 'launch' | 'message' | 'restartArgv'>;
+  'cwd' | 'launch' | 'message' | 'restartArgv' | 'attempt' | 'firstRunId'>;
 /** What a write transaction does, beyond its reads (`transactionReads`). */
 interface RunWrites {
   create(fields: CreateRunFields, prompt: string): RunRecord;
@@ -47,6 +49,7 @@ interface RunWrites {
   /** Marks a coordinator Run so its Request goes to the coordinator Run working in the conversation (send now). */
   setJoinRequested(runId: RunId): void;
   update(record: RuntimeRunRecord): void;
+  rebindQueued(record: RuntimeRunRecord, aiStack?: readonly AiRow[]): void;
   finish(record: RuntimeRunRecord, result: RunResult): void;
 }
 export type RunTransaction = TransactionReads & RunWrites;
@@ -67,10 +70,10 @@ function whileLive(reads: TransactionReads, check: () => void): TransactionReads
   return Object.fromEntries(Object.entries(reads).map(([name, read]) =>
     [name, (...args: never[]) => { check(); return (read as (...args: never[]) => unknown)(...args); }])) as TransactionReads;
 }
-const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at', 'attempt'] as const;
+const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at', 'attempt', 'firstRunId'] as const;
 /** A coordinator Run's creation fields beyond a Task Run's. */
-const coordinatorOf = (record: RuntimeRunRecord) =>
-  record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message, restartArgv: record.restartArgv } : null;
+const coordinatorOf = (record: RuntimeRunRecord, rebind: boolean) =>
+  record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message, restartArgv: rebind ? null : record.restartArgv } : null;
 /** The person who writes every Request to the coordinator conversation. */
 const CONVERSATION_AUTHOR = JSON.stringify({ kind: 'human' } satisfies TaskActor);
 export class RunStore {
@@ -231,11 +234,11 @@ export class RunStore {
           const author = JSON.stringify(actorSchema.parse(request.author));
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
             (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author,
-              submitted_at, delivery_state, answers_question, ai_stack)
-            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
+              submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix)
+            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
               WHERE external_id = ? AND kind = 'task'`).run(request.id, request.placementId,
             request.placementRevision, request.taskHash, request.waitCycleId, request.headRunId, request.aboutRunId ?? null, request.mode, request.body,
-            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, request.taskId).changes);
+            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null, request.taskId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Request Task does not exist', undefined, { reason: { kind: 'request_task_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },
@@ -243,10 +246,10 @@ export class RunStore {
           check();
           // CHECK constraints refuse the enumerated columns; triggers refuse a head outside the conversation.
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
-            (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to)
-            SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?`).run(request.id,
+            (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit)
+            SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?`).run(request.id,
             request.headRunId, request.mode, request.body, requestPurposeSchema.enum.instruction, CONVERSATION_AUTHOR,
-            request.submittedAt, request.deliveryState, request.replyTo ?? null, request.conversationId).changes);
+            request.submittedAt, request.deliveryState, request.replyTo ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.conversationId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Coordinator conversation does not exist', undefined, { reason: { kind: 'coordinator_conversation_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },
@@ -294,6 +297,22 @@ export class RunStore {
             touch(this.db, { kind: 'run', id: record.id });
           });
         },
+        rebindQueued: (input, aiStack) => {
+          check();
+          const record = runtimeRunRecordSchema.parse(input), n = runNumber(record.id);
+          storageOperation(() => {
+            const { before } = this.checkUpdate(record, n, true);
+            if (before.state !== 'queued' || record.state !== 'queued' || this.db.prepare(
+              "SELECT 1 FROM run_inputs WHERE instruction_run_no=? AND state<>'not_sent'").get(n))
+              throw new Error('Only an unsent queued Run can change its binding');
+            this.db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), n);
+            touch(this.db, { kind: 'run', id: record.id });
+            if (aiStack) {
+              this.db.prepare('UPDATE requests SET ai_stack=? WHERE id=?').run(JSON.stringify(aiStack), record.requestId);
+              touch(this.db, { kind: 'request', id: record.requestId });
+            }
+          });
+        },
         finish: (input, result) => {
           check();
           const record = runtimeRunRecordSchema.parse(input), n = runNumber(record.id);
@@ -318,11 +337,13 @@ export class RunStore {
     });
   }
   /** Both state-only updates and final reply commits enforce the same Run invariants. */
-  private checkUpdate(record: RuntimeRunRecord, n: number) {
+  private checkUpdate(record: RuntimeRunRecord, n: number, rebind = false) {
     const row = this.db.prepare('SELECT id, record, result_state FROM runs WHERE id = ?').get(n);
     if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', undefined, { reason: { kind: 'run_does_not_exist' } });
     const before = parseRuntimeRow(row);
-    if (immutable.some(key => !isDeepStrictEqual(before[key], record[key])) || !isDeepStrictEqual(coordinatorOf(before), coordinatorOf(record)))
+    const fixed = (key: (typeof immutable)[number]) => !rebind || (key !== 'agent' && key !== 'launch' && key !== 'resumes');
+    if (immutable.some(key => fixed(key) && !isDeepStrictEqual(before[key], record[key])) ||
+      !isDeepStrictEqual(coordinatorOf(before, rebind), coordinatorOf(record, rebind)))
       throw new Problem(PROBLEM_CODE.conflict, 'Run creation fields are immutable', undefined, { reason: { kind: 'run_creation_fields_immutable' } });
     // A queued Run may take a fresh session (its predecessor's first launch failed); a launched Run keeps its own.
     if (before.session !== null && before.state !== 'queued' && !isDeepStrictEqual(before.session, record.session))

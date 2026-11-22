@@ -5,7 +5,7 @@
  */
 import type { Selection } from '@alpacawork/contract/agent-settings';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
-import { isUnfinished } from '@alpacawork/runs';
+import { compareRequestOrder, isUnfinished } from '@alpacawork/runs';
 
 export type Continuation = {
   continued: CoordinatorRunRecord;
@@ -19,7 +19,7 @@ export type Continuation = {
  * admission (conversation.ts) both read this one answer, so the screen offers to go on exactly when serve would.
  */
 export function resumable(runs: readonly CoordinatorRunRecord[]): Continuation | null {
-  const last = runs.filter(run => run.state === 'succeeded' || isUnfinished(run)).at(-1);
+  const last = runs.filter(run => run.state === 'succeeded' || isUnfinished(run)).sort(compareRequestOrder).at(-1);
   if (!last || last.session === null && !isUnfinished(last)) return null;
   const { adapter, values } = last.launch;
   return { continued: last, previous: { adapter, values: { ...values } } };

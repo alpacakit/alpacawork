@@ -29,11 +29,6 @@ export function parseParamValues(input: string): string[] {
 export const agentSettingShapeSchema = z.object({
   adapter: builtinAdapterIdSchema.optional(), enabled: z.boolean().optional(), params: paramsSchema.optional(),
   without: z.record(z.string(), z.array(paramNameSchema)).optional(),
-  /**
-   * The value of each row an owner or member starts on when neither the request nor the placement names one (a
-   * written - is "none"). One no longer among the row's values is not an error: the first value stands in for it.
-   */
-  defaults: z.record(paramNameSchema, z.string().min(1)).optional(),
   env: agentEnvironmentNamesSchema.optional(),
   command: z.string().regex(/^\/(?!.*[\r\n\0])(?!.*\s+-).*\S$/, 'Command must be an absolute executable path without arguments').optional(),
   options: z.object({ base: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/), start: z.string(), resume: z.string() }).strict().optional(),
