@@ -30,11 +30,13 @@ function offeredValues(offer: SelectionOffer, values: Readonly<Record<string, st
 
 /**
  * Where a new coordinator conversation starts for one agent: the values the person last chose for it that the agent
- * still offers, and for a row never chosen or no longer offered, the lightest effort (`low`) when the agent offers it.
- * Anything else is the first candidate, as for every launch; a row the chosen model leaves out is not shown.
+ * still offers, and for a row never chosen or no longer offered, the lightest effort (`low`) when the agent offers it,
+ * else the row's first value. It names every row, so the owners' task defaults (the rows' initial values) never
+ * decide the coordinator's.
  */
 export function coordinatorStart(offer: SelectionOffer, remembered: Readonly<Record<string, string | null>> | undefined): Selection {
-  return offeredValues(offer, { effort: "low", ...offeredValues(offer, remembered ?? {}) });
+  const first = Object.fromEntries(offeredChoices(offer).flatMap(choice => choice.candidates.length ? [[choice.key, choice.candidates[0] ?? null]] : []));
+  return offeredValues(offer, { ...first, effort: "low", ...offeredValues(offer, remembered ?? {}) });
 }
 
 /** A kind's model candidates as the picker names them: written order, no "none". */

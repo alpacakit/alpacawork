@@ -12,11 +12,8 @@
     "cancel": "Cancelar",
     "cannotRun": "Não é possível executar o arquivo neste caminho",
     "choices": "Valores disponíveis ao solicitar trabalho",
+    "choicesHint": "Os valores oferecidos acima e no menu do campo de entrada.",
     "collapse": "Recolher {{name}}",
-    "default": {
-      "explanation": "Quando você delega uma tarefa, este agente é usado, a menos que você escolha outro. Para usar agentes diferentes conforme o tipo de trabalho, escreva isso na política do projeto. Por exemplo: “Use o Opus ao criar designs.”",
-      "label": "Padrão"
-    },
     "defaultsChanged": "As opções de inicialização padrão deste adaptador foram atualizadas",
     "disabled": "Desativado",
     "duplicateName": "{{name}} já existe. Escolha outro nome.",
@@ -57,16 +54,11 @@
     "executable": "Executável",
     "expand": "Expandir {{name}}",
     "fixedEnv": "O alpacawork sempre passa este nome ao iniciar o {{adapter}} (não é possível removê-lo aqui)",
-    "followDefault": {
-      "explanation": "Quando uma atualização muda o padrão integrado, este valor muda junto.",
-      "label": "Padrão integrado"
-    },
     "found": "Encontrado neste PC:",
     "key": "Chave",
     "kind": "Adaptador: {{adapter}}",
     "launchOptions": "Opções de inicialização",
     "locked": "Integrado ao alpacawork; não pode ser alterado aqui",
-    "makeDefault": "Definir como padrão",
     "name": "Nome",
     "notFound": "Executável não encontrado:",
     "notFoundShort": "Não encontrado",
@@ -85,9 +77,14 @@
     "resume": "Continuação de conversa",
     "signedOut": "Você não fez login. Em um terminal, execute",
     "start": "Nova conversa",
-    "taskDefault": {
-      "choose": "Usar {{value}} como padrão para tarefas",
-      "label": "Padrão para tarefas"
+    "taskDefaults": {
+      "agentNote": "O agente marcado é usado quando nenhum é indicado.",
+      "badge": "Padrão",
+      "coordinatorNote": "A IA com quem você fala no campo de entrada começa com o que você escolheu por último ali.",
+      "lead": "Quando um pedido não indica nada, as tarefas usam estes valores.",
+      "missing": "{{row}} “{{value}}” não é mais um valor, então “{{first}}” é usado.",
+      "title": "Padrões das tarefas",
+      "valueFor": "{{row}} de {{agent}}"
     },
     "title": "Agentes",
     "unusedAdapter": "Indisponível para este adaptador",

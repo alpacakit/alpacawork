@@ -12,11 +12,8 @@
     "cancel": "Cancelar",
     "cannotRun": "Esta ruta no se puede ejecutar",
     "choices": "Valores disponibles al pedir trabajo",
+    "choicesHint": "Los valores que se ofrecen arriba y en el menú del campo de entrada.",
     "collapse": "Contraer {{name}}",
-    "default": {
-      "explanation": "Cuando encargas una tarea, se usa este agente salvo que elijas otro. Para usar agentes distintos según el tipo de trabajo, escríbelo en la política del proyecto. Por ejemplo: “Usa Opus para crear diseños.”",
-      "label": "Predeterminado"
-    },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
     "disabled": "Desactivado",
     "duplicateName": "{{name}} ya existe. Elige otro nombre.",
@@ -57,16 +54,11 @@
     "executable": "Ejecutable",
     "expand": "Expandir {{name}}",
     "fixedEnv": "alpacawork siempre pasa este nombre al iniciar {{adapter}} (no se puede quitar aquí)",
-    "followDefault": {
-      "explanation": "Cuando una actualización cambia el valor predeterminado integrado, este cambia con él.",
-      "label": "Predeterminado integrado"
-    },
     "found": "Encontrado en este PC:",
     "key": "Clave",
     "kind": "Adaptador: {{adapter}}",
     "launchOptions": "Opciones de inicio",
     "locked": "Integrado en alpacawork; no se puede cambiar aquí",
-    "makeDefault": "Usar como predeterminado",
     "name": "Nombre",
     "notFound": "No se encontró el ejecutable:",
     "notFoundShort": "No encontrado",
@@ -85,9 +77,14 @@
     "resume": "Al continuar una conversación",
     "signedOut": "Sin sesión iniciada. En una terminal, ejecuta",
     "start": "Conversación nueva",
-    "taskDefault": {
-      "choose": "Usar {{value}} como predeterminado para tareas",
-      "label": "Predeterminado para tareas"
+    "taskDefaults": {
+      "agentNote": "El agente marcado se usa cuando no se indica ninguno.",
+      "badge": "Predeterminado",
+      "coordinatorNote": "La IA con la que hablas en el campo de entrada empieza con lo último que elegiste allí.",
+      "lead": "Cuando una solicitud no indica nada, las tareas usan estos valores.",
+      "missing": "{{row}} «{{value}}» ya no es un valor, así que se usa «{{first}}».",
+      "title": "Valores predeterminados de las tareas",
+      "valueFor": "{{row}} de {{agent}}"
     },
     "title": "Agentes",
     "unusedAdapter": "No disponible para este adaptador",

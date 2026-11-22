@@ -49,6 +49,16 @@ test.each([
   expect(choice.send).toEqual(start);
 });
 
+test("the task defaults do not decide where the coordinator starts", () => {
+  const claude = launchProfile("claude", { model: ["opus", "fable"], effort: ["medium", "high", "low"] });
+  // The tasks start on fable and high (each row's initial value); the coordinator still starts on the first model and low.
+  given.profiles = [{ ...claude, choices: claude.choices.map(choice => ({ ...choice, initial: choice.key === "model" ? "fable" : "high" })) }];
+  let choice!: ReturnType<typeof useLaunchChoice>;
+  function Picker() { choice = useLaunchChoice(); return null; }
+  render(<Picker />);
+  expect(choice.send).toEqual({ model: "opus", effort: "low" });
+});
+
 test("a choice made on another screen is where the next new conversation starts, with the agent last chosen", async () => {
   given.profiles = [codex, pi];
   share({ agent: "pi", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });

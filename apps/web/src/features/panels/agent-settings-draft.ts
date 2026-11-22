@@ -14,6 +14,8 @@ export type AgentOptionsDraft = { base?: string; start: string; resume: string }
 export type AgentDraft = {
   id: string; originalName?: string; name: string; adapter?: BuiltinAdapterId; enabled?: boolean; command?: string;
   params: ParamRowDraft[]; env?: string[]; envWritten?: true; without?: WrittenAgentSetting['without']; options?: AgentOptionsDraft;
+  /** The task defaults (config.yaml `defaults`): the value each row starts on for an owner or member. */
+  defaults?: Record<string, string>;
 };
 /** The source is a snapshot for comment-preserving writes; the entries alone own unsaved input. */
 export type AgentsDraft = { source: string; agents: AgentDraft[]; root?: 'agents' };
@@ -31,7 +33,7 @@ function toDraft(name: string, setting: WrittenAgentSetting, id: string, existin
     params: Object.entries(effective.params ?? {}).map(([key, values], index) => ({ id: `${id}-param-${index}`,
       originalKey: key, key, values: values.join(', '), ...(existing && Object.hasOwn(setting.params ?? {}, key) ? { written: true as const } : {}) })),
     env: effective.env?.slice(), ...(existing && setting.env !== undefined ? { envWritten: true as const } : {}), without: setting.without && structuredClone(setting.without),
-    options: setting.options && { ...setting.options } };
+    options: setting.options && { ...setting.options }, ...(setting.defaults ? { defaults: { ...setting.defaults } } : {}) };
 }
 export function newAgentDraft(name: string, adapter: BuiltinAdapterId, id: string): AgentDraft {
   return toDraft(name, name === adapter ? {} : { adapter }, id, false);
@@ -71,18 +73,23 @@ export function editDraftParam(row: ParamRowDraft, change: Partial<Pick<ParamRow
   return { ...rest, ...change };
 }
 /**
- * The values a row's placements start from, first the one a placement starts on when nothing names another (the
- * contract's first candidate). None for a row that cannot be read, has no values, or starts on "none" (a written -).
+ * A row of the task defaults: the row's values, the one owners and members start on (`value`: the written default,
+ * else the first value), and whether a written default is no longer among the values (the first stands in for it).
+ * Only rows the launch options use and whose values read, with at least one value.
  */
-export function paramStartValues(row: ParamRowDraft): string[] {
-  let values: string[];
-  try { values = parseParamValues(row.values); } catch { return []; }
-  return values[0] === undefined || values[0] === '-' ? [] : values.filter(value => value !== '-');
+export type TaskDefaultRow = { key: string; values: string[]; value: string; missing: boolean };
+export function taskDefaultRows(agent: AgentDraft): TaskDefaultRow[] {
+  return agent.params.flatMap(row => {
+    if (unusedParamReason(agent, row.key)) return [];
+    let values: string[];
+    try { values = parseParamValues(row.values); } catch (error) { if (error instanceof ZodError) return []; throw error; }
+    if (!values.length) return [];
+    const written = agent.defaults?.[row.key], missing = written !== undefined && !values.includes(written);
+    return [{ key: row.key, values, value: written !== undefined && !missing ? written : values[0]!, missing }];
+  });
 }
-/** The row with `value` moved to the front, the rest in their order: placements start on it. */
-export function withFirstParamValue(row: ParamRowDraft, value: string): ParamRowDraft {
-  const values = parseParamValues(row.values);
-  return editDraftParam(row, { values: [value, ...values.filter(each => each !== value)].join(', ') });
+export function withTaskDefault(agent: AgentDraft, key: string, value: string): AgentDraft {
+  return { ...agent, defaults: { ...agent.defaults, [key]: value } };
 }
 export function editDraftEnv(agent: AgentDraft, env: string[]): AgentDraft {
   const { envWritten: _written, ...rest } = agent;
@@ -192,7 +199,8 @@ function draftSettings(draft: AgentsDraft): DraftResult<Record<string, ResolvedA
       ...(agent.enabled === undefined ? {} : { enabled: agent.enabled }),
       ...(agent.command === undefined ? {} : { command: agent.command }), params: Object.fromEntries(params),
       ...(agent.env === undefined ? {} : { env: agent.env }), ...(agent.without === undefined ? {} : { without: agent.without }),
-      ...(agent.options === undefined ? {} : { options: agent.options }) };
+      ...(agent.options === undefined ? {} : { options: agent.options }),
+      ...(agent.defaults === undefined ? {} : { defaults: agent.defaults }) };
     const result = agentSettingSchemaFor(agent.name).safeParse(input);
     if (!result.success) for (const issue of result.error.issues) {
       // Zod reports record-key failures on params.<key>, as invalid_key.

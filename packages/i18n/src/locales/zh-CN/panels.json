@@ -12,11 +12,8 @@
     "cancel": "取消",
     "cannotRun": "此路径无法执行",
     "choices": "委托时可选的值",
+    "choicesHint": "上方默认值和输入框菜单中提供的值。",
     "collapse": "收起 {{name}}",
-    "default": {
-      "explanation": "委托任务时，如果没有另选，就会使用这个智能体。想按工作类型使用不同的智能体，可以写进项目准则。例如：“做设计时请使用 Opus。”",
-      "label": "默认"
-    },
     "defaultsChanged": "此适配器的默认启动选项已更新",
     "disabled": "已停用",
     "duplicateName": "{{name}} 已存在，请换一个名称。",
@@ -57,16 +54,11 @@
     "executable": "可执行文件",
     "expand": "展开 {{name}}",
     "fixedEnv": "alpacawork 启动 {{adapter}} 时始终会传入此名称（无法在这里移除）",
-    "followDefault": {
-      "explanation": "更新改动内置默认值时，这里会随之变化。",
-      "label": "内置默认值"
-    },
     "found": "在这台电脑上找到：",
     "key": "键",
     "kind": "适配器：{{adapter}}",
     "launchOptions": "启动选项",
     "locked": "alpacawork 内置，无法在这里更改",
-    "makeDefault": "设为默认",
     "name": "名称",
     "notFound": "找不到可执行文件：",
     "notFoundShort": "未找到",
@@ -85,9 +77,14 @@
     "resume": "继续对话",
     "signedOut": "尚未登录。请在终端中执行",
     "start": "新对话",
-    "taskDefault": {
-      "choose": "将 {{value}} 设为任务默认",
-      "label": "任务默认"
+    "taskDefaults": {
+      "agentNote": "未指定代理时，使用打勾的代理。",
+      "badge": "默认",
+      "coordinatorNote": "在输入框中对话的 AI 从你上次在那里选择的值开始。",
+      "lead": "请求中未指定时，任务使用这里的值。",
+      "missing": "{{row}}“{{value}}”已不在可选值中，因此使用“{{first}}”。",
+      "title": "任务默认值",
+      "valueFor": "{{agent}} 的{{row}}"
     },
     "title": "智能体",
     "unusedAdapter": "不适用于此适配器",

@@ -12,11 +12,8 @@
     "cancel": "Cancel",
     "cannotRun": "This path cannot be run",
     "choices": "Values available when requesting work",
+    "choicesHint": "The values offered above and in the input's menu.",
     "collapse": "Collapse {{name}}",
-    "default": {
-      "explanation": "When you hand off a task, this agent is used unless you pick another. To use different agents for different kinds of work, write it in the project policy. For example: “Use Opus when creating designs.”",
-      "label": "Default"
-    },
     "defaultsChanged": "This adapter's default launch options have been updated",
     "disabled": "Disabled",
     "duplicateName": "{{name}} already exists. Choose another name.",
@@ -57,16 +54,11 @@
     "executable": "Executable",
     "expand": "Expand {{name}}",
     "fixedEnv": "alpacawork always passes this name when starting {{adapter}} (it cannot be removed here)",
-    "followDefault": {
-      "explanation": "When an update changes the built-in default, this changes with it.",
-      "label": "Built-in default"
-    },
     "found": "Found on this PC:",
     "key": "Key",
     "kind": "Adapter: {{adapter}}",
     "launchOptions": "Launch options",
     "locked": "Built into alpacawork; it cannot be changed here",
-    "makeDefault": "Set as default",
     "name": "Name",
     "notFound": "Executable not found:",
     "notFoundShort": "Not found",
@@ -85,9 +77,14 @@
     "resume": "Continuing a conversation",
     "signedOut": "Not signed in. In a terminal, run",
     "start": "New conversation",
-    "taskDefault": {
-      "choose": "Make {{value}} the default for tasks",
-      "label": "Default for tasks"
+    "taskDefaults": {
+      "agentNote": "The marked agent is used when no agent is named.",
+      "badge": "Default",
+      "coordinatorNote": "The AI you talk to in the input starts with what you last chose there.",
+      "lead": "When a request names nothing, tasks run with these values.",
+      "missing": "{{row}} “{{value}}” is no longer a value, so “{{first}}” is used.",
+      "title": "Task defaults",
+      "valueFor": "{{row}} for {{agent}}"
     },
     "title": "Agents",
     "unusedAdapter": "Unavailable for this adapter",

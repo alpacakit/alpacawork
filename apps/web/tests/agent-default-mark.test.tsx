@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { parse } from 'yaml';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
@@ -16,8 +16,6 @@ test('a changed default value can be restored, and only fields with a default of
   render(<AgentSettings draft={{ source: '{}', agents: [changed, newAgentDraft('copilot', 'copilot', 'copilot')] } satisfies AgentsDraft} onChange={onChange} />);
   fireEvent.click(screen.getByRole('button', { name: 'Expand codex' }));
   fireEvent.click(screen.getByRole('button', { name: 'Expand copilot' }));
-  // effort and fast follow the default; copilot's empty model default and empty variable list have nothing to follow.
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(3);
   expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Restore the default for model' }));
   const model = onChange.mock.lastCall![0].agents[0].params.find((row: { key: string }) => row.key === 'model');
@@ -36,19 +34,20 @@ test('a value written in config.yaml stays until restored, even when it equals t
   }
   render(<Form />);
   fireEvent.click(screen.getByRole('button', { name: 'Expand claude' }));
-  // effort is not written, so it alone follows the default; model and the variables wait for a restore.
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(1);
+  // model and the variables are written, so they wait for a restore; effort is not.
   expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: 'Restore the default for model' }));
-  expect(screen.getAllByRole('button', { name: 'Built-in default' })).toHaveLength(2);
+  expect(screen.getAllByRole('button', { name: /^Restore the default/ })).toHaveLength(1);
   expect(latest).not.toEqual(initial);
   // Saving writes no value equal to its default, so the written variables go too, and are followed when read again.
   const saved = writeAgentsDraft(latest);
   expect(saved.ok && parse(saved.value)).toEqual({ claude: {} });
 });
 
-test('each row marks the value tasks start on, and a pressed value moves to the front; a row starting on none, or unused, offers no change', () => {
-  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: ["-", high]\n    tier: [a, b]\n');
+test('the task defaults: one row per enabled agent, a value from each used row, the marked agent first, and a default no longer offered said', () => {
+  const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: [medium, high]\n    tier: [a, b]\n  defaults:\n    effort: max\n'
+    + 'codex:\n  params:\n    model: [gpt-6.2-sol, gpt-6.1-terra]\n    effort: [medium, high, low]\n    fast: ["-", fast]\n'
+    + 'copilot:\n  enabled: false\n');
   if (!read.ok) throw new Error('unreadable');
   const initial = read.value;
   let latest = initial;
@@ -57,14 +56,16 @@ test('each row marks the value tasks start on, and a pressed value moves to the 
     return <AgentSettings draft={draft} onChange={next => { latest = next; setDraft(next); }} />;
   }
   render(<Form />);
-  fireEvent.click(screen.getByRole('button', { name: 'Expand claude' }));
-  const marks = () => [...document.querySelectorAll('[data-agent-start-values]')].map(row => row.textContent);
-  expect(marks()).toEqual(['opusDefault for tasksfable']);
-  // Chosen from the keyboard, the value keeps the focus as it moves to the front.
-  const fable = screen.getByRole('button', { name: 'Make fable the default for tasks' });
-  fable.focus(); fireEvent.click(fable);
-  expect(marks()).toEqual(['fableDefault for tasksopus']);
-  expect(document.activeElement?.textContent).toBe('fableDefault for tasks');
+  const rows = () => [...document.querySelectorAll<HTMLElement>('[data-task-default]')];
+  // A disabled agent has no row; a row the launch options do not use (tier) has no value to pick.
+  expect(rows().map(row => row.dataset.taskDefault)).toEqual(['claude', 'codex']);
+  expect(screen.queryByLabelText('tier for claude')).toBeNull();
+  // A written default no longer among the values: the first stands in, and the row says so.
+  expect(screen.getByLabelText<HTMLSelectElement>('Effort for claude').value).toBe('medium');
+  expect(rows()[0]!.textContent).toContain('“max” is no longer a value, so “medium” is used');
+  fireEvent.click(within(rows()[1]!).getByRole('radio'));
+  fireEvent.change(screen.getByLabelText('Effort for codex'), { target: { value: 'high' } });
+  expect(latest.agents.map(agent => agent.name)).toEqual(['codex', 'claude', 'copilot']);
   const saved = writeAgentsDraft(latest);
-  expect(saved.ok && parse(saved.value).claude.params).toEqual({ model: ['fable', 'opus'], effort: ['-', 'high'], tier: ['a', 'b'] });
+  expect(saved.ok && parse(saved.value).codex.defaults).toEqual({ effort: 'high' });
 });

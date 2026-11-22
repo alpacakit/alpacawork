@@ -20,7 +20,7 @@ export const useAgentObservations = () => useContext(ObservationsContext);
 const Path = ({ children }: { children: ReactNode }) => <code className="font-mono [overflow-wrap:anywhere]">{children}</code>;
 
 /** Drawn in ink like the switch beside it: an outline when off, a ring with a dot when chosen. */
-const RADIO = 'size-4 shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-soft checked:border-ink checked:bg-[radial-gradient(circle,var(--color-ink)_0_3.5px,transparent_4px)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
+export const RADIO = 'size-4 shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-soft checked:border-ink checked:bg-[radial-gradient(circle,var(--color-ink)_0_3.5px,transparent_4px)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
 /** The line a closed card shows under its name when the agent is known not to start; nothing otherwise. */
 export function AgentNoticeLine({ agent }: { agent: AgentDraft }) {

@@ -12,11 +12,8 @@
     "cancel": "やめる",
     "cannotRun": "このパスは実行できません",
     "choices": "依頼のときに選べる値",
+    "choicesHint": "上の既定と入力欄のメニューに出る候補です。",
     "collapse": "{{name}} を閉じる",
-    "default": {
-      "explanation": "タスクを任せるとき、特に選ばなければこのエージェントになります。仕事の種類で使い分けたいときは、プロジェクトの方針に書いておいてください。例:「デザインの作成時は Opus を使用してください。」",
-      "label": "デフォルト"
-    },
     "defaultsChanged": "この種類の標準の起動オプションが更新されています",
     "disabled": "無効",
     "duplicateName": "{{name}} はもうあります。別の名前を付けてください",
@@ -57,16 +54,11 @@
     "executable": "実行ファイル",
     "expand": "{{name}} を開く",
     "fixedEnv": "alpacawork が {{adapter}} を起動するときに必ず渡す名前です（ここでは消せません）",
-    "followDefault": {
-      "explanation": "アップデートで初期値が変わると、ここも新しい初期値になります。",
-      "label": "初期値"
-    },
     "found": "この PC で見つかりました:",
     "key": "キー",
     "kind": "種類: {{adapter}}",
     "launchOptions": "起動オプション",
     "locked": "alpacawork の組み込みの種類なので、ここは変えられません",
-    "makeDefault": "デフォルトに設定",
     "name": "名前",
     "notFound": "実行ファイルが見つかりません:",
     "notFoundShort": "見つかりません",
@@ -85,9 +77,14 @@
     "resume": "会話の続き",
     "signedOut": "サインインしていません。端末で",
     "start": "新しい会話",
-    "taskDefault": {
-      "choose": "{{value}} を担当の既定にする",
-      "label": "担当の既定"
+    "taskDefaults": {
+      "agentNote": "丸を付けた種類は、種類の指定が無いときに使います。",
+      "badge": "既定",
+      "coordinatorNote": "入力欄で話す AI は、入力欄で最後に選んだ値で始まります。",
+      "lead": "依頼で指定が無いとき、担当はここの値で動きます。",
+      "missing": "{{row}}の「{{value}}」は候補にないため、「{{first}}」を使います。",
+      "title": "担当の既定",
+      "valueFor": "{{agent}} の{{row}}"
     },
     "title": "エージェント",
     "unusedAdapter": "この種類では使えません",

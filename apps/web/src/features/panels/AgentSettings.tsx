@@ -11,12 +11,12 @@ import { SettingRow } from '@/components/settings/SettingRow';
 import { AgentSettingsDisabled } from './agent-settings-editing';
 import { cn } from '@/lib/utils';
 import { AgentSettingsOptions } from './AgentSettingsOptions';
-import { AddAgentControl, AgentDefaultBadge, AgentDefaultMark, AgentExtraFields, AgentStartValues } from './AgentSettingsExtras';
+import { AddAgentControl, AgentDefaultMark, AgentExtraFields } from './AgentSettingsExtras';
+import { TaskDefaults } from './TaskDefaults';
 import { AgentExecutableRow, AgentNoticeLine } from './AgentSettingsExecutable';
 import { agentDraftIssueText } from './agent-settings-issues';
-import { firstEnabledAgent, withFirstAgent } from './agent-settings-order';
 import { agentOptionsVersion } from './agent-options-version';
-import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, paramStartValues, resetDraftParam, unusedParamReason, withFirstParamValue, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
+import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, resetDraftParam, unusedParamReason, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
 
 export type AgentSettingsHandle = { focus: () => void };
 
@@ -28,7 +28,7 @@ function ParamRows({ agent, onChange, issues, nextId }: {
   const adapter = draftAdapter(agent);
   const update = (row: ParamRowDraft) => onChange({ ...agent, params: agent.params.map(was => was.id === row.id ? row : was) });
   const rowErrors = (row: ParamRowDraft, field: 'key' | 'values') => issues.filter(issue => issue.rowId === row.id && issue.field === field).map(issue => agentDraftIssueText(issue, t, agent)).join('\n');
-  return <SettingRow id={id} label={t('agentSettings.choices')} className="grid-cols-[10rem_minmax(0,1fr)] items-start narrow:grid-cols-1 narrow:gap-y-3">
+  return <SettingRow id={id} label={t('agentSettings.choices')} hint={t('agentSettings.choicesHint')} className="grid-cols-[10rem_minmax(0,1fr)] items-start narrow:grid-cols-1 narrow:gap-y-3">
     <div id={id} className="min-w-0">
       <div className="grid grid-cols-[8rem_minmax(0,1fr)_2rem] gap-2 narrow:grid-cols-[fit-content(5.5rem)_minmax(0,1fr)_2rem]">
         <div className="col-span-full grid grid-cols-subgrid text-sm text-muted">
@@ -54,8 +54,6 @@ function ParamRows({ agent, onChange, issues, nextId }: {
               aria-describedby={rowErrors(row, 'values') ? `${rowId}-values-error` : unused ? `${rowId}-unused` : undefined}
               value={row.values} onChange={event => update(editDraftParam(row, { values: event.target.value }))} />
             {rowErrors(row, 'values') && <FieldError id={`${rowId}-values-error`}>{rowErrors(row, 'values')}</FieldError>}
-            {/* A row the launch options do not use starts nothing: no default to mark. */}
-            <AgentStartValues values={unused ? [] : paramStartValues(row)} onChoose={value => update(withFirstParamValue(row, value))} />
             {unused && <FieldHint id={`${rowId}-unused`} className="mt-1">{t(unused === 'adapter' ? 'agentSettings.unusedAdapter' : 'agentSettings.unusedOptions')}</FieldHint>}
             {followable && <AgentDefaultMark isDefault={followsDefaultParam(agent, row)} name={row.key} field={`${rowId}-values`}
               onRestore={() => onChange(resetDraftParam(agent, row.id))} />}
@@ -71,8 +69,8 @@ function ParamRows({ agent, onChange, issues, nextId }: {
   </SettingRow>;
 }
 
-function AgentSettingsCard({ agent, isDefault, onChange, onMakeDefault, onRemove, issues, nextId, environmentFile, ref }: {
-  agent: AgentDraft; isDefault: boolean; onChange: (agent: AgentDraft) => void; onMakeDefault: () => void; onRemove: () => void;
+function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environmentFile, ref }: {
+  agent: AgentDraft; onChange: (agent: AgentDraft) => void; onRemove: () => void;
   issues: AgentDraftIssue[]; nextId: () => string; environmentFile: string | undefined;
   ref?: Ref<AgentSettingsHandle>;
 }) {
@@ -101,7 +99,6 @@ function AgentSettingsCard({ agent, isDefault, onChange, onMakeDefault, onRemove
       <div onClick={() => setExpanded(value => !value)} className={cn('flex min-w-0 cursor-pointer flex-wrap items-center gap-2', agent.enabled === false && 'opacity-50')}>
         <h3 id={`${id}-heading`} className="text-base font-semibold [overflow-wrap:anywhere]">{agent.name}</h3>
         {adapter && adapter !== agent.name && <span className="whitespace-nowrap text-sm text-muted">{t('agentSettings.kind', { adapter })}</span>}
-        {isDefault && <span onClick={event => event.stopPropagation()}><AgentDefaultBadge /></span>}
         {agent.options && <span className="rounded-full border border-warn px-2 py-0.5 text-sm text-warn">{t('agentSettings.edited')}</span>}
       </div>
       <div className="col-span-full row-start-2 min-w-0 empty:hidden"><AgentNoticeLine agent={agent} /></div>
@@ -123,7 +120,6 @@ function AgentSettingsCard({ agent, isDefault, onChange, onMakeDefault, onRemove
       <AgentSettingsOptions agent={agent} onChange={onChange} issues={issues} base={version.base} />
       <AgentExtraFields agent={agent} onChange={onChange} issues={issues} environmentFile={environmentFile} />
       <div className="flex flex-wrap gap-2">
-        {!isDefault && agent.enabled !== false && <Button type="button" variant="outline" onClick={onMakeDefault}>{t('agentSettings.makeDefault')}</Button>}
         <Button type="button" variant="outline" className="text-error" onClick={onRemove}>{t('agentSettings.remove', { name: agent.name })}</Button>
       </div>
     </div>}
@@ -153,17 +149,16 @@ export function AgentSettings({ draft, onChange, issues = [], disabled = false, 
     else fieldset.current?.querySelector<HTMLElement>('[data-slot="field-error"]')?.focus();
   } }), [draft.agents, issues]);
   const nextId = () => `${id}-${sequence.current++}`;
-  const first = firstEnabledAgent(draft.agents);
   const change = (updated: AgentsDraft) => { if (!disabled) onChange(updated); };
   return <AgentSettingsDisabled value={disabled}><fieldset ref={fieldset} disabled={disabled} className="min-w-0 border-0 p-0">
     <div className="flex flex-col gap-4">
-      {/* The order decides only which agent placements start on, so the cards are not reordered: the default is made
-        from its card, which moves it to the top. */}
-      {draft.agents.map(agent => <AgentSettingsCard key={agent.id} agent={agent} isDefault={first === agent.id}
+      {/* Where owners and members start: the default agent (the first enabled one in config order) and each agent's
+        task defaults. The cards keep their order. */}
+      <TaskDefaults draft={draft} onChange={change} />
+      {draft.agents.map(agent => <AgentSettingsCard key={agent.id} agent={agent}
         ref={handle => { if (handle) cards.current.set(agent.id, handle); else cards.current.delete(agent.id); }}
         nextId={nextId} issues={issues.filter(issue => issue.agentId === agent.id)} environmentFile={environmentFile}
         onChange={updated => change({ ...draft, agents: draft.agents.map(was => was.id === agent.id ? updated : was) })}
-        onMakeDefault={() => change({ ...draft, agents: withFirstAgent(draft.agents, agent.id) })}
         onRemove={() => change({ ...draft, agents: draft.agents.filter(was => was.id !== agent.id) })} />)}
       <AddAgentControl names={draft.agents.map(agent => agent.name)} nextId={nextId} environmentFile={environmentFile} onAdd={agent => change({ ...draft, agents: [...draft.agents, agent] })} />
       {issues.filter(issue => !issue.agentId).map((issue, index) => <FieldError key={index} tabIndex={-1}>{agentDraftIssueText(issue, t)}</FieldError>)}

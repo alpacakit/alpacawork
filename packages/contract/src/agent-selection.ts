@@ -36,9 +36,17 @@ export function selectionOffer(compiled: CompiledAgentSetting): SelectionOffer {
     // A leading `-` offers leaving a row out. An optional row with no values offers only that choice.
     const required = compiled.references.required.has(key);
     const candidates = values.length || required ? values.map(value => value === '-' ? null : value) : [null];
-    return { key, candidates, initial: candidates[0] ?? null, required, active: true };
+    return { key, candidates, initial: taskDefault(candidates, compiled.setting.defaults?.[key]), required, active: true };
   });
   return { choices, without: compiled.setting.without, params: Object.keys(compiled.setting.params) };
+}
+/**
+ * What a row starts on for an owner or member when neither the request nor the placement names a value: the agent's
+ * task default (a written - is "none"), else, when there is none or it is no longer offered, the first candidate.
+ */
+export function taskDefault(candidates: readonly (string | null)[], written: string | undefined): string | null {
+  const value = written === undefined ? undefined : written === '-' ? null : written;
+  return value !== undefined && candidates.includes(value) ? value : candidates[0] ?? null;
 }
 /** The offer's rows, each active unless `model` omits it. */
 export function offeredChoices(offer: SelectionOffer, model: string | null = null): AgentChoice[] {
