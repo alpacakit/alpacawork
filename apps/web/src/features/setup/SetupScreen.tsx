@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
-import { useCoarsePointer } from "@/lib/input-capabilities";
 import { desktopApp, useDesktopApp } from "@/lib/desktop-app";
 import { useFirstRun, useFirstRunChange } from "@/data/first-run";
 import { useFrameSelector } from "@/data/workspace-store";
@@ -42,7 +41,6 @@ function Setup() {
   const [finished, setFinished] = useState<{ to: URL; way: "prompt" | "menu" } | null>(null);
   // Finishing here records it too: the read then says finished, and this screen, not the read, decides where to go.
   const finishing = useRef(false);
-  const coarse = useCoarsePointer();
   useEffect(() => {
     if (!read.data) return;
     // Nothing to set up (made before setup existed, or finished on another screen): the page.
@@ -63,9 +61,8 @@ function Setup() {
     try { await change.mutateAsync({ kind: "finish" }); } catch (error) { finishing.current = false; throw error; }
     const url = new URL("/", location.href);
     url.searchParams.set("project", state.project);
-    // A phone or tablet installs from its own menu (Settings has no such tab there either).
     const app = desktopApp();
-    if (!coarse && (app?.kind === "prompt" || app?.kind === "menu")) setFinished({ to: url, way: app.kind });
+    if (app?.kind === "prompt" || app?.kind === "menu") setFinished({ to: url, way: app.kind });
     else leaveSetup(url);
   };
   if (finished) return <DesktopAppOffer {...finished} />;
@@ -141,13 +138,14 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
   };
   return <Frame aside={<>
     <Steps current="done" />
-    <Heading title={t("done.title")} lead={asks ? t("done.lead") : undefined} />
+    <Heading title={t("done.title")} />
   </>}>
     <div data-setup-desktop-app>
-      <img src={logo} alt="" className="size-16 rounded-full" />
-      <h2 className="m-0 mt-4 text-lg font-semibold">{t("done.appTitle")}</h2>
+      <h2 className="m-0 text-lg font-semibold">{t("done.appTitle")}</h2>
       <p className="m-0 mt-2 text-muted [word-break:auto-phrase]">{asks ? t("done.appBody")
         : <Trans t={t} i18nKey="done.menuBody" components={{ ui: <b className="font-semibold text-ink" /> }} />}</p>
+      {asks && <p className="m-0 mt-2 text-sm text-soft [word-break:auto-phrase]">
+        {t("done.later", { settings: t("settings.title", { ns: "panels" }), apps: t("settings.tabs.apps", { ns: "panels" }) })}</p>}
       {asks
         ? <StepButtons other={<Button variant="outline" className="min-h-11 px-4 narrow:w-full" disabled={asking} onClick={open}>{t("done.browser")}</Button>}>
           <Button className="min-h-11 px-6 narrow:w-full" disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>

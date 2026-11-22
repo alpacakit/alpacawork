@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { isInstalledApp, subscribeInstalledApp } from "./input-capabilities";
+import { hasCoarsePointer, isInstalledApp, subscribeInstalledApp } from "./input-capabilities";
 
 /** Chrome's and Edge's offer to install the page (not in TypeScript's DOM types). */
 type InstallPromptEvent = Event & { prompt: () => Promise<unknown>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -10,7 +10,8 @@ type InstallPromptEvent = Event & { prompt: () => Promise<unknown>; userChoice: 
  * - prompt: the browser has offered to install it (Chrome, Edge), so a button of the page's own can ask; `install`
  *   asks once and says whether it was installed.
  * - menu: Safari on a Mac, which installs only from its menu (File → Add to Dock).
- * - null: no way this page knows of (Firefox, a browser that has not offered, or an offer used up).
+ * - null: no way this page knows of (Firefox, a browser that has not offered, or an offer used up), or a touch screen,
+ *   where the page has no Install button of its own and leaves the offer to the browser's own banner.
  */
 export type DesktopApp =
   | { kind: "installed" }
@@ -33,10 +34,11 @@ const listeners = new Set<() => void>();
 const changed = () => listeners.forEach(listener => listener());
 const keep = (next: InstallPromptEvent | null) => { offer = next; changed(); };
 
-/** Starts keeping the browser's offer; called once, as the page starts. */
+/** Starts keeping the browser's offer on a computer; called once, as the page starts. */
 export function watchDesktopApp(at: Window = window) {
   at.addEventListener("beforeinstallprompt", event => {
-    // The page asks from its own button, so the browser's own banner (a phone's) is not shown as well.
+    if (hasCoarsePointer(at)) return;
+    // The page asks from its own button, so the browser's own way to ask is not shown as well.
     event.preventDefault();
     keep(event as InstallPromptEvent);
   });
@@ -58,7 +60,7 @@ const MENU: DesktopApp = { kind: "menu" };
 export const desktopApp = (): DesktopApp =>
   isInstalledApp() ? INSTALLED
     : offer ? PROMPT
-    : isMacSafari(navigator.userAgent, navigator.maxTouchPoints) ? MENU
+    : !hasCoarsePointer() && isMacSafari(navigator.userAgent, navigator.maxTouchPoints) ? MENU
     : null;
 
 const subscribe = (onChange: () => void) => {

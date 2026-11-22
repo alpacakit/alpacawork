@@ -101,3 +101,13 @@ test("Settings shows its Install button only while the offer can be used, and th
   expect(within(part()).queryByRole("button", { name: "Install" })).toBeNull();
   expect(within(part()).getByRole("img")).toBeTruthy();
 });
+
+test("a touch screen leaves the offer to the browser's own banner: nothing is kept and the browser is not stopped", () => {
+  const original = window.matchMedia;
+  vi.spyOn(window, "matchMedia").mockImplementation(media => ({ ...original(media), matches: media === "(pointer: coarse)" }));
+  const event = offer("accepted");
+  expect(event.defaultPrevented).toBe(false);
+  vi.restoreAllMocks();
+  render(<AppGuideTab />);
+  expect(screen.queryByRole("button", { name: "Install" })).toBeNull();
+});

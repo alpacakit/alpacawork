@@ -52,11 +52,11 @@
     "title": "Idioma e tema"
   },
   "done": {
-    "appBody": "Um ícone vai para o Dock ou para a barra de tarefas, e você pode abrir o alpacawork de novo por ele mesmo depois de fechar a aba.",
+    "appBody": "O seu navegador coloca um ícone no Dock ou na barra de tarefas, para você abrir o alpacawork de novo por ele mesmo depois de fechar a aba.",
     "appTitle": "Instalar como app",
     "browser": "Começar no navegador",
     "install": "Instalar e começar",
-    "lead": "Por último, escolha como abrir o alpacawork.",
+    "later": "Você também pode instalar depois em {{settings}} → {{apps}}.",
     "menuBody": "Instale com <ui>Arquivo</ui> → <ui>Adicionar ao Dock</ui> no menu e você poderá abri-lo de novo pelo ícone no Dock.",
     "start": "Começar",
     "title": "A configuração terminou"
