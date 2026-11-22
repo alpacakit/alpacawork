@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
-import { useAppGuideHere } from "@/features/coordinator/app-hint";
+import { useCoarsePointer, useInstalledApp } from "@/lib/input-capabilities";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -128,11 +128,12 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const drafting = hasContent(doc) && !found.current?.same;
   const labelled = inlines(doc).some(node => node.type === "taskLabel");
   const narrow = useNarrow();
-  // Not app-hint's "done": that is set by the first message sent, which everyone at the guide's last step has sent.
-  const apps = useAppGuideHere();
+  // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
+  const apps = !useCoarsePointer();
+  const installed = useInstalledApp();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, installed, seen };
   return guideEntry(facts);
 }
 

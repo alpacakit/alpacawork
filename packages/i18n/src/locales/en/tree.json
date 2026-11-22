@@ -15,6 +15,7 @@
       "conversation": "The conversation with the front-desk AI is disposable. When it piles up, open it and use “{{clear}}”; ask for anything worth keeping to be made a task.",
       "label": "This label tells the AI which task you mean, as a hint. Without it, the AI works it out from the conversation.",
       "more": "You can keep asking after a report. Try having it make one more version to compare.",
+      "phone": "You can answer questions from your phone when you're away from your desk. The steps are in {{settings}}, under “{{apps}}”.",
       "question": "Your turn. Press this row to open the question.",
       "received": "The front-desk AI (the coordinator) has it. It takes a moment to hand it to an AI.",
       "result": "A report came. Press this row to open it.",

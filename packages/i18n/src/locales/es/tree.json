@@ -15,6 +15,7 @@
       "conversation": "La conversación con la IA de recepción es desechable. Cuando se acumule, ábrela y usa «{{clear}}»; lo que quieras conservar, pide que se convierta en una tarea.",
       "label": "Esta etiqueta orienta a la IA sobre de qué tarea hablas. Sin ella, la IA lo deduce de la conversación.",
       "more": "Después de un informe puedes seguir pidiendo. Prueba a pedir otra versión para comparar.",
+      "phone": "Aunque no estés en tu puesto, puedes responder preguntas desde el teléfono. Los pasos están en {{settings}}, en «{{apps}}».",
       "question": "Te toca. Pulsa esta fila para abrir la pregunta.",
       "received": "La IA de recepción (el coordinador) lo recibió. Tarda un momento en pasárselo a una IA.",
       "result": "Llegó un informe. Pulsa esta fila para abrir el detalle.",

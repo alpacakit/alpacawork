@@ -156,8 +156,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
 function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
-  // Read and put away, by "Got it" or by doing what the step offers: the guide goes on, and what the step settles is settled.
-  const read = () => { putAway(entry.id); entry.settle?.(); };
+  // Read and put away, by "Got it" or by doing what the step offers: the guide goes on.
+  const read = () => { putAway(entry.id); };
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };

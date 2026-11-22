@@ -15,6 +15,7 @@
       "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, abra-a e use “{{clear}}”; o que quiser guardar, peça para virar uma tarefa.",
       "label": "Esta etiqueta orienta a IA sobre de qual tarefa você fala. Sem ela, a IA entende pelo contexto da conversa.",
       "more": "Depois de um relatório, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
+      "phone": "Mesmo longe do computador, você pode responder perguntas pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
       "question": "Sua vez. Toque nesta linha para abrir a pergunta.",
       "received": "A IA da recepção (o coordenador) recebeu. Leva um momento para passar a uma IA.",
       "result": "Chegou um relatório. Toque nesta linha para abrir o detalhe.",

@@ -7,7 +7,7 @@ const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
   ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, narrow: false, apps: false, seen: new Set(), ...over });
+    open: null, narrow: false, apps: false, installed: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
@@ -72,6 +72,9 @@ test("once the person has had their turn and nothing is going on, the guide clos
   expect(shown({ stage: turn, tasks: 1, seen: read("conversation", "another-repository") })).toBeNull();
   // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
   expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("conversation", "another-repository") })).toBe("apps");
+  // In the installed app, the same last step says the phone is for answering away from the desk; never on a phone's width.
+  expect(shown({ stage: turn, tasks: 1, apps: true, installed: true, seen: read("conversation", "another-repository") })).toBe("phone");
+  expect(shown({ stage: turn, tasks: 1, apps: true, installed: true, narrow: true, seen: read("conversation", "another-repository") })).toBeNull();
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {

@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { ExampleList } from "@/components/ui/example-list";
 import { TimelineMark } from "@/components/ui/timeline-mark";
 import { cn } from "@/lib/utils";
-import { AppHint } from "./app-hint";
 import { exampleInDraft } from "./editor/draft";
 import { UnreadMark } from "./unread-mark";
 
@@ -38,22 +37,18 @@ function Said({ warm, said, className }: { warm: Warm; said: string; className?:
  * the examples on their own surface (ExampleList), in a column in the middle of the
  * conversation both ways, so a cleared conversation is never a small line in its corner. The rows only fill the input;
  * the person sends. Failed to start, it says so in the same place and offers no examples. The examples are the same
- * whatever the list shows: the conversation opens over the list, so it never leaves them to the list. Under the
- * examples, the first time, the pointer to the phone and app guide (AppHint).
+ * whatever the list shows: the conversation opens over the list, so it never leaves them to the list.
  */
 export function WarmStart({ warm }: { warm: Warm }) {
   const { said, examples } = useWarmWords(warm);
   // 100cqh: the conversation's scrolling area, a size container while this is in it (CoordinatorCard), less its head
   // (--pane-head) and 20px, a little more than the list's own 12px round it, so it fills the area without scrolling.
-  // py-4, not more: with four examples and the phone and app line, more would make the conversation as it first opens
-  // on a computer (frame.ts FIRST) scroll.
+  // py-4, not more: with four examples, more would make the conversation as it first opens on a computer (frame.ts
+  // FIRST) scroll.
   return <li data-coordinator-warm={warm} className="flex min-h-[calc(100cqh-var(--pane-head,1.25rem)-1.25rem)] animate-rise items-center justify-center py-4">
     <div className="w-[min(100%,26rem)]">
       <Said warm={warm} said={said} className="mb-3" />
-      {warm !== "failed" && <>
-        <ExampleList examples={examples} onPick={words => exampleInDraft(words)} />
-        <AppHint />
-      </>}
+      {warm !== "failed" && <ExampleList examples={examples} onPick={words => exampleInDraft(words)} />}
     </div>
   </li>;
 }

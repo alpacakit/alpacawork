@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
-import { finishAppHint } from "@/features/coordinator/app-hint";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
@@ -21,7 +20,6 @@ import type { GuideStage } from "./guide-state";
  * - `next`: it waits for "Got it" before the guide goes on (put away once read);
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
- * - `settle`: what putting the step away also settles elsewhere (a pointer that says the same thing, say);
  * - `say`: its words, by its key, written out so the extractor reads it.
  * Nothing else names a step: the balloon and the stored stage read them from here.
  */
@@ -98,8 +96,10 @@ export type GuideFacts = {
   open: "question" | "result" | "working" | null;
   /** A phone's width. */
   narrow: boolean;
-  /** Settings hold the guide to the installed app and the phone here (not on a touch screen, not in the installed app). */
+  /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
+  /** This window is alpacawork installed as an app. */
+  installed: boolean;
   /** Steps put away (by their button, or left: `once`). */
   seen: ReadonlySet<string>;
 };
@@ -115,12 +115,13 @@ export type GuideEntry = {
   once?: boolean;
   next?: boolean;
   action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
-  settle?: () => void;
   say: (t: TFunction) => string;
 };
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
+/** The steps to alpacawork as an installed app and from a phone, in settings. */
+const OPEN_APPS: GuideEntry["action"] = { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") };
 /** Every input points at the same parts: it stands clear of the foot and the conversation's button beside it. */
 const AT_INPUT = { clear: ["foot", "coordinator"], side: "top" } as const;
 
@@ -162,16 +163,18 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
   // Once the person has had their turn and nothing is left going on: the conversation with the coordinator, over its
   // last reply, is for throwing away (what is to be kept goes into a Task); where another repository is taken on; and
-  // last alpacawork as an installed app and from a phone (read here, the first screen's pointer to the same steps is
-  // done with).
+  // last, where settings hold the steps to alpacawork as an installed app and from a phone: said to someone in the
+  // installed app as answering from a phone, to anyone else as both.
   { id: "conversation", once: true, part: "coordinator", side: "top", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
   { id: "another-repository", once: true, part: "project", side: "right", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  { id: "apps", once: true, part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
-    action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
-    when: f => f.stage.stage === "turn" && f.apps && !f.narrow,
+  { id: "apps", once: true, part: "settings", side: "bottom", align: "end", next: true, action: OPEN_APPS,
+    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && !f.installed,
     say: t => t("tree:guide.say.apps", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
+  { id: "phone", once: true, part: "settings", side: "bottom", align: "end", next: true, action: OPEN_APPS,
+    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && f.installed,
+    say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
   // Before any turn: words in the input wait to be sent, or a request is to be written (over a list with nothing
   // going on, or one sent and answered with no Task).
   { id: "send-ready", part: "send", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && f.drafting,

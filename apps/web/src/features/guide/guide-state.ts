@@ -1,5 +1,4 @@
 import { deviceValue, jsonCodec } from "@/lib/device-storage";
-import { appHintDone } from "@/features/coordinator/app-hint";
 import { useViewStore } from "@/state/view-store";
 
 /**
@@ -23,10 +22,9 @@ export const guideStage = deviceValue<GuideStage | null>("alpacawork.guide", jso
 export const closeGuide = () => { guideStage.set({ stage: "done" }); };
 /**
  * Settings' "Show again": the guide starts over from its first screen, whatever the work, with nothing it keeps on this
- * browser read (the steps put away, the pointer to the phone and app guide); the detail closes so that screen is seen.
+ * browser read (the steps put away); the detail closes so that screen is seen.
  */
 export const restartGuide = () => {
-  appHintDone.remove();
   guideStage.set({ stage: "started", at: Date.now(), seen: [], intro: true });
   if (useViewStore.getState().reader.open) useViewStore.getState().closeReader();
 };

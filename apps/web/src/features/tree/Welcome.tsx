@@ -1,19 +1,15 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
-import { AppHint } from "@/features/coordinator/app-hint";
-import { useGoingGuide } from "@/features/guide/use-guide";
 
 /**
  * The list's place while the scope in view holds no Task at all (counts.tasks; live, finished or shelved): a welcome,
  * one line on how this differs from a chat, and a picture of how work goes (WorkPicture), in one column a little above
  * the middle of the list's place (by the screen's height alone, so it never moves when the input at the foot grows),
- * clear of that input. Under it, once the getting-started guide is over or closed, the line to the phone and app guide
- * (AppHint). This is the first screen a new person sees; the guide's one balloon then points at the input.
+ * clear of that input. This is the first screen a new person sees; the guide's one balloon then points at the input.
  */
 export function Welcome() {
   const { t } = useTranslation("tree");
-  const step = useGoingGuide();
   // It rises into place in three parts, each a little after the one above, every time it is put on the screen
   // (motion.css, animate-welcome).
   return <section data-welcome className="flex justify-center px-5 pt-[clamp(24px,calc(40dvh-190px),160px)] pb-6 narrow:pt-[clamp(20px,calc(100dvh-700px),96px)]">
@@ -22,8 +18,6 @@ export function Welcome() {
       <p className="mx-auto mt-3 mb-0 max-w-md animate-welcome text-center text-balance text-md text-muted [word-break:auto-phrase] [animation-delay:calc(var(--motion-fast)/2)] motion-reduce:[animation-delay:0s]">{t("welcome.lead")}</p>
       <div className="animate-welcome [animation-delay:var(--motion-fast)] motion-reduce:[animation-delay:0s]">
         <WorkPicture />
-        {/* The phone and app guide waits until the getting-started guide is over or closed. */}
-        {!step && <div className="mx-auto mt-6 max-w-md"><AppHint /></div>}
       </div>
     </div>
   </section>;
