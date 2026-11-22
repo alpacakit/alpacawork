@@ -72,6 +72,8 @@ test('an exhausted owner gives the same request to another agent and the parent 
     const history = await fetch(new URL(`/api/task/history?mode=latest&task=${child.id}`, app.url));
     const captured = await history.json();
     assert.equal(history.status, 200, JSON.stringify(captured.error));
+    const requestRow = captured.events.find((event: { id: string }) => event.id === requestId);
+    assert.equal(requestRow.recipient.profileKey, 'claude');
     const row = captured.events.find((event: { id: string }) => event.id === first);
     assert.equal(row.carriedOn, true);
     assert.equal(row.cause, 'session_limit');
