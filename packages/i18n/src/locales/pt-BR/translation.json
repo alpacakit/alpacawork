@@ -279,7 +279,7 @@
       "logical_parent_cannot_read": "Não foi possível ler o pai lógico",
       "logical_parent_cycle": "A relação de pai e filho entre as tarefas forma um ciclo",
       "logical_task_depth_exceeds_32_levels": "A hierarquia de tarefas excede o limite de 32 níveis",
-      "managed_skills_version": "A skill {{skill}} exige a versão {{expectedVersion}}. Execute isto localmente e envie novamente após a atualização: {{command}}",
+      "managed_skills_version": "A skill {{skill}} exige a versão {{expectedVersion}}. Execute isto no computador onde o servidor do alpacawork está rodando e envie novamente após a atualização: {{command}}",
       "member_needs_expected_responsible_revision": "Um membro precisa de --expected-responsible-revision",
       "message_already_sent_again": "A mensagem já foi enviada novamente",
       "message_cannot_reach_working_agent_it_remains_queued": "A mensagem não chega ao agente que está trabalhando. Ela continua na fila",

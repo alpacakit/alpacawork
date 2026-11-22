@@ -279,7 +279,7 @@
       "logical_parent_cannot_read": "論理上の親を読み取れません",
       "logical_parent_cycle": "タスクの親子関係が循環します",
       "logical_task_depth_exceeds_32_levels": "タスクの階層が上限の32段を超えています",
-      "managed_skills_version": "スキル {{skill}} の期待版は {{expectedVersion}} です。ローカルで次を実行し、更新後にもう一度送信してください: {{command}}",
+      "managed_skills_version": "スキル {{skill}} の期待版は {{expectedVersion}} です。alpacawork のサーバーが動いている PC で次を実行し、更新後にもう一度送信してください: {{command}}",
       "member_needs_expected_responsible_revision": "作業者には--expected-responsible-revisionが必要です",
       "message_already_sent_again": "このメッセージはもう送り直されています",
       "message_cannot_reach_working_agent_it_remains_queued": "作業中のエージェントにメッセージが届きません。待ち行列に残しています",
