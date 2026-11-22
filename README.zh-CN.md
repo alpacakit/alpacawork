@@ -67,7 +67,7 @@ alpacawork setup
 alpacawork open
 ```
 
-如果用 Chrome 或 Edge，可以在初始设置的最后，或之后在设置的“应用和手机”中把它安装为应用，然后从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
+如果用 Chrome 或 Edge，可以在界面上初始设置的最后，或之后在设置的“应用和手机”中把它安装为应用，然后从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 
 ## 能做什么
 

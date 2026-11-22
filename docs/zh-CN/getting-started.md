@@ -42,7 +42,7 @@ alpacawork open
 
 这个 URL 在电脑重启后也不会变。请把它加入书签。alpacawork 会在你登录电脑时自动运行，不需要每次启动。
 
-如果用 Chrome 或 Edge，可以在初始设置最后点“安装并开始”，或之后在“设置（齿轮）→ 应用和手机”中点“安装”，把它安装为应用。安装后，就能从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
+安装为应用后，也能从程序坞或任务栏的图标重新打开。安装方法在下一步“3. 确定项目”的最后。
 
 打不开时，请看[界面打不开](troubleshooting.md#界面打不开)。
 
@@ -58,6 +58,8 @@ alpacawork open
 <img src="../images/setup-project.png" alt="Setup's last step, with the Name and Working folder fields and a Choose button next to Working folder" width="480">
 
 项目，是让 AI 工作的一个文件夹，加上在那里要遵守的约定（项目准则）。在已有的仓库中使用时，把那个文件夹设为代码位置。只是试一试的话，代码位置留空即可（AI 会在数据存放位置 `~/alpacawork` 中工作）。项目准则保持示例内容就能开始。
+
+按“完成初始设置”后，Chrome 和 Edge 会询问是否把 alpacawork 安装为应用。按“安装并开始”，之后就能从程序坞或任务栏的图标重新打开。如果选了“继续在浏览器中使用”，之后也可以在“设置（齿轮）→ 应用和手机”中点“安装”来安装。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 
 ## 4. 发送委托
 

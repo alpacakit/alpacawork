@@ -67,7 +67,7 @@ No Codex, escreva `$alpacawork` no lugar de `/alpacawork`. No terminal, este com
 alpacawork open
 ```
 
-No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
+No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial na tela, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
 
 ## O que ele faz
 
