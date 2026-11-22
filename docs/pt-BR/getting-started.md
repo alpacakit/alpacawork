@@ -37,13 +37,13 @@ Se não conseguir abrir, veja [A tela não abre](troubleshooting.md#a-tela-não-
 Siga as quatro etapas da tela, em ordem.
 
 1. Escolha o idioma e o tema da tela e pressione “Avançar”.
-2. Ative (“On”) as IAs que vai usar e pressione “Avançar”.
+2. Deixe as IAs que vai usar em “Ativado” e pressione “Avançar”.
 3. Na etapa seguinte, deixe as recomendações como estão e pressione o botão de instalar.
 4. Defina o nome do projeto e o “Local do código” e pressione “Concluir configuração”.
 
 <img src="../images/setup-project.png" alt="A última etapa da configuração inicial. Há os campos “Name” e “Working folder”, e o botão “Choose” ao lado de “Working folder”" width="480">
 
-Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Local do código”. Se for só para experimentar, crie uma pasta vazia com “Escolher” → “Criar uma nova pasta”. Você pode começar com a política do projeto de exemplo, como está.
+Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Local do código”. Se for só para experimentar, deixe o “Local do código” vazio (será usado `~/alpacawork`). Você pode começar com a política do projeto de exemplo, como está.
 
 ## 4. Enviar uma solicitação
 
@@ -59,7 +59,7 @@ Leia o conteúdo desta pasta e resuma em 3 linhas para que ela serve. Não alter
 
 A IA lê a pasta e escreve na resposta o resumo e as sugestões de trabalho (às vezes ela cria uma tarefa e faz a pergunta por lá). Se vier na resposta, envie pelo campo de mensagem a sugestão que quer seguir, como “Siga com a 1”; ela vira uma tarefa e aparece como uma linha na lista.
 
-Em uma pasta vazia, pressione o exemplo da tela “Escolher uma ideia de minijogo e mandar criar” e envie.
+Se for só para experimentar, pressione o exemplo da tela “Escolher uma ideia de minijogo e mandar criar” e envie.
 
 Enquanto a IA trabalha na tarefa, você não precisa ficar olhando a tela.
 

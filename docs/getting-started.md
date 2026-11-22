@@ -43,7 +43,7 @@ Go through the screen's four steps in order.
 
 <img src="images/setup-project.png" alt="The last step of setup, with the “Name” and “Working folder” fields and a “Choose” button beside the working folder" width="480">
 
-A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, make an empty folder with "Choose" → "Create a new folder". You can start with the example project policy as it is.
+A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (`~/alpacawork` is used). You can start with the example project policy as it is.
 
 ## 4. Send a request
 
@@ -59,7 +59,7 @@ Read the contents of this folder and sum up what it is for in 3 lines. Don't cha
 
 The AI reads the folder and writes the summary and the suggestions in its reply (it may also make a task and ask you in a question). If it answers in a reply, send the one you want in the input box, like "Go ahead with 1", and it becomes a task with a row in the list.
 
-In an empty folder, press the screen's example "Pick a mini game idea, then have it built", then send it.
+If you are only trying it out, press the screen's example "Pick a mini game idea, then have it built", then send it.
 
 While the AI works on a task, you don't need to watch the screen.
 

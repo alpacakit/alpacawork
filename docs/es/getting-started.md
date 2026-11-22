@@ -43,7 +43,7 @@ Sigue en orden los cuatro pasos de la pantalla.
 
 <img src="../images/setup-project.png" alt="El último paso de la configuración, con los campos “Name” y “Working folder”, y el botón “Choose” junto a Working folder" width="480">
 
-Un proyecto es una carpeta en la que trabaja la IA, junto con las reglas para trabajar en ella (la política del proyecto). Para usarlo con un repositorio existente, elige esa carpeta como ubicación del código. Si solo quieres probar, crea una carpeta vacía con “Elegir” → “Crear una carpeta nueva”. Puedes empezar con la política del proyecto de ejemplo tal como está.
+Un proyecto es una carpeta en la que trabaja la IA, junto con las reglas para trabajar en ella (la política del proyecto). Para usarlo con un repositorio existente, elige esa carpeta como ubicación del código. Si solo quieres probar, deja la ubicación del código vacía (se usa `~/alpacawork`). Puedes empezar con la política del proyecto de ejemplo tal como está.
 
 ## 4. Enviar una solicitud
 
@@ -59,7 +59,7 @@ Lee el contenido de esta carpeta y resume en tres líneas para qué sirve. No mo
 
 La IA lee la carpeta y escribe en su respuesta un resumen y propuestas de trabajo (a veces crea una tarea y te lo pregunta). Si vienen en la respuesta, envía en el cuadro de texto la propuesta que quieras, por ejemplo “Haz la 1”: se convierte en una tarea y aparece una fila en la lista.
 
-Si la carpeta está vacía, pulsa el ejemplo de la pantalla “Elige una idea de minijuego y pide que lo creen” y envíalo.
+Si solo quieres probar, pulsa el ejemplo de la pantalla “Elige una idea de minijuego y pide que lo creen” y envíalo.
 
 Mientras la IA trabaja en la tarea, no hace falta que mires la pantalla.
 
