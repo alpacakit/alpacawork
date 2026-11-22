@@ -17,6 +17,7 @@ import type { GuideStage } from "./guide-state";
  * - `clear`: parts the balloon stands clear of, whole (what is read there stays read): the one holding the part pointed
  *   at, or one standing beside it (the first of its kind seen);
  * - `turn`: it is the person's turn (a question or a report awaits them); once one holds, the guide is past sending;
+ * - `once`: it is shown once: put away by its button, or, with none, once the guide moves on from it;
  * - `next`: it waits for "Got it" before the guide goes on (put away once read);
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
@@ -91,17 +92,15 @@ export type GuideFacts = {
   sent: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
   busy: boolean;
-  /** An answer the person sent to a question still open is with the coordinator (about to send, or being worked on). */
-  answered: boolean;
-  /** The input holds something to send; and, among it, an answer to the Task open in the detail. */
-  drafting: boolean; answerDrafted: boolean;
-  /** The Task open in the detail: the person's turn on it (a question, or anything else), or being worked on. */
+  /** The input holds something to send (written since the first screen was shown again, while it is). */
+  drafting: boolean;
+  /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
   /** A phone's width. */
   narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen, not in the installed app). */
   apps: boolean;
-  /** Steps put away with "Got it". */
+  /** Steps put away (by their button, or left: `once`). */
   seen: ReadonlySet<string>;
 };
 
@@ -113,6 +112,7 @@ export type GuideEntry = {
   side?: GuideSide;
   align?: GuideAlign;
   turn?: boolean;
+  once?: boolean;
   next?: boolean;
   action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
   settle?: () => void;
@@ -121,65 +121,74 @@ export type GuideEntry = {
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
+/** Every input points at the same parts: it stands clear of the foot and the conversation's button beside it. */
+const AT_INPUT = { clear: ["foot", "coordinator"], side: "top" } as const;
 
 export const GUIDE: readonly GuideEntry[] = [
-  // Before anything is sent or written, from the welcome with its picture of how work goes above (or from that first
-  // screen, shown again): the one input there is and where it sends.
-  { id: "send", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top",
+  // The first screen (or it shown again), before anything is written or sent: the one input there is, and a request
+  // to try the whole flow with.
+  { id: "send", part: "input", ...AT_INPUT, align: "end",
     when: f => f.stage.stage === "started" && !f.drafting && !f.sent && (f.tasks === 0 || !!f.stage.intro),
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.send") },
-  // What is open in the detail comes first, from the most immediate: an answer ready to send, one sent and on its way,
-  // then the person's turn on what is open, or where the AI on it is stopped; then the rows awaiting the person.
-  { id: "answer-ready", turn: true, part: "send", clear: ["foot"], side: "top", align: "end", when: f => f.open === "question" && f.answerDrafted,
-    say: t => t("tree:guide.say.answerReady") },
-  { id: "answered", turn: true, part: "coordinator", side: "top", when: f => f.answered,
-    say: t => t("tree:guide.say.answered") },
+  // Whatever was sent (a request, an answer, one more), while the coordinator is still on it.
+  { id: "received", part: "coordinator", side: "top", when: f => f.busy,
+    say: t => t("tree:guide.say.received") },
+  // What is open in the detail: a question, until its answer is sent...
   { id: "answer", turn: true, part: "asked", clear: ["detail"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
+  // ...a report: first, that more can be asked after it (with one more to try), then the label that goes with what is
+  // written, then Done.
+  { id: "more", turn: true, once: true, part: "input", ...AT_INPUT, align: "end", next: true, when: f => f.open === "result",
+    action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.moreExample")) },
+    say: t => t("tree:guide.say.more") },
+  { id: "label", turn: true, once: true, part: "label", ...AT_INPUT, align: "start",
+    when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more"),
+    say: t => t("tree:guide.say.label") },
   { id: "accept", turn: true, part: "finish", side: "top", align: "end", when: f => f.open === "result",
-    say: t => t("tree:guide.say.accept", { files: t("reader:entries.files"), finish: finish(t) }) },
-  // A Task being worked on, open in the detail: where the AI on it is stopped, once.
-  { id: "stop", part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working" && !f.seen.has("stop"),
+    say: t => t("tree:guide.say.accept", { finish: finish(t) }) },
+  // ...or a Task being worked on: where the AI on it is stopped.
+  { id: "stop", once: true, part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working",
     say: t => t("tree:guide.say.stop", { stop: t("forms:reportForm.stopTitle") }) },
+  // Then the rows awaiting the person, the question first.
   { id: "question", turn: true, part: "questionRow", side: "bottom", when: f => f.questions > 0,
     say: t => t("tree:guide.say.question") },
   { id: "result", turn: true, part: "resultRow", side: "bottom", when: f => f.results > 0,
     say: t => t("tree:guide.say.result") },
-  // A Task made with no AI on it waits for the person: nothing there is the AI's yet.
+  // Then the rows being worked on; a Task left with no AI on it waits for the person, nothing there is the AI's yet.
   { id: "unassigned", part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
     say: t => t("tree:guide.say.unassigned") },
   { id: "working", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // A request sent and the coordinator still on it, with no Task for it yet. Answered without one, the guide goes back
-  // to sending a request.
-  { id: "received", part: "coordinator", side: "top", when: f => f.sent && f.busy,
-    say: t => t("tree:guide.say.received") },
-  // Once the person has had their turn and nothing is left to bring them a report: what the input's label is for, while
-  // one is there to point at.
-  { id: "label", part: "label", clear: ["foot", "coordinator"], side: "top", align: "start", next: true,
-    when: f => f.stage.stage === "turn" && f.labelled && !f.seen.has("label"),
-    say: t => t("tree:guide.say.label") },
-  // Then where another repository is taken on.
-  { id: "another-repository", part: "project", side: "right", align: "start", next: true,
-    when: f => f.stage.stage === "turn" && !f.seen.has("another-repository"),
+  // Once the person has had their turn and nothing is left going on: the close, where another repository is taken
+  // on, and last alpacawork as an installed app and from a phone (read here, the first screen's pointer to the same
+  // steps is done with).
+  { id: "end", once: true, part: "input", ...AT_INPUT, align: "end", next: true, when: f => f.stage.stage === "turn",
+    say: t => t("tree:guide.say.end") },
+  { id: "another-repository", once: true, part: "project", side: "right", align: "start", next: true, when: f => f.stage.stage === "turn",
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  // Last, once: alpacawork as an installed app and from a phone, where settings hold the steps. Read here, the first
-  // screen's pointer to the same steps is done with.
-  { id: "apps", part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
+  { id: "apps", once: true, part: "settings", side: "bottom", align: "end", next: true, settle: finishAppHint,
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
-    when: f => f.stage.stage === "turn" && f.apps && !f.narrow && !f.seen.has("apps"),
+    when: f => f.stage.stage === "turn" && f.apps && !f.narrow,
     say: t => t("tree:guide.say.apps", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
-  // Before any turn, words in the input wait to be sent...
-  { id: "send-ready", part: "send", clear: ["foot", "coordinator"], side: "top", align: "end", when: f => f.stage.stage === "started" && f.drafting,
+  // Before any turn: words in the input wait to be sent, or a request is to be written (over a list with nothing
+  // going on, or one sent and answered with no Task).
+  { id: "send-ready", part: "send", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && f.drafting,
     say: t => t("tree:guide.say.sendReady") },
-  // ...or a request is to be written: over a list with nothing going on, or one sent and answered with no Task.
-  { id: "send-again", align: "end", part: "input", clear: ["foot", "coordinator"], side: "top", when: f => f.stage.stage === "started",
+  { id: "send-again", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started",
     say: t => t("tree:guide.say.sendAgain") },
 ];
 
-/** The step shown: the first entry from the top whose facts hold; none when none does (the guide is over). */
-export const guideEntry = (facts: GuideFacts): GuideEntry | null => GUIDE.find(entry => entry.when(facts)) ?? null;
+/**
+ * The step shown: the first entry from the top whose facts hold, a step shown once (`once`) only while it is not done;
+ * none when none does (the guide is over).
+ */
+export const guideEntry = (facts: GuideFacts): GuideEntry | null =>
+  GUIDE.find(entry => !(entry.once && facts.seen.has(entry.id)) && entry.when(facts)) ?? null;
+
+/** A step shown once with no button of its own is done when the guide moves on from it to another. */
+export const doneOnLeaving = (left: GuideEntry | null, now: GuideEntry | null) =>
+  !!left && left.id !== now?.id && !!left.once && !left.next && !left.action;
 
 /**
  * Whether the guide starts by itself: on a browser that has never had it, with the welcome on the screen and no Task in

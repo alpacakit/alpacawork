@@ -1,41 +1,60 @@
 import { expect, test } from "vitest";
-import { PARTS, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
-import { coordinatorFacts } from "../src/features/guide/use-guide";
+import { PARTS, doneOnLeaving, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
+import { coordinatorFacts, foundDraft } from "../src/features/guide/use-guide";
 import { placeBalloon } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, answered: false, drafting: false,
-    answerDrafted: false, open: null, narrow: false, apps: false, seen: new Set(), ...over });
+  ({ stage: started, tasks: 0, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
+    open: null, narrow: false, apps: false, seen: new Set(), ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
+const read = (...ids: string[]) => new Set(ids);
 
-test("before anything is sent one balloon points at the input, on a computer or a phone; starting to write points at sending", () => {
+test("the first request goes from the input, on a computer or a phone, to the coordinator and its Task", () => {
   for (const narrow of [false, true]) {
-    expect(guideEntry(facts({ narrow }))?.part).toBe("input");
-    expect(guideEntry(facts({ narrow, drafting: true }))?.part).toBe("send");
-    expect(guideEntry(facts({ narrow, sent: true, busy: true }))?.part).toBe("coordinator");
+    expect(shown({ narrow })).toBe("send");
+    expect(shown({ narrow, drafting: true })).toBe("send-ready");
+    expect(shown({ narrow, sent: true, busy: true })).toBe("received");
   }
+  expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
+  // Answered with no Task, the guide goes back to writing a request.
+  expect(shown({ sent: true })).toBe("send-again");
 });
 
-test("a task being worked on, open in the detail, points once at where it is stopped", () => {
-  expect(shown({ tasks: 1, working: 1, open: "working" })).toBe("stop");
-  expect(shown({ tasks: 1, working: 1, open: "working", seen: new Set(["stop"]) })).toBe("working");
-  expect(nextStage(started, guideEntry(facts({ tasks: 1, working: 1, open: "working" })))).toBeUndefined();
-});
-
-test("a task made with no AI on it is not said to be the AI's", () => {
+test("a Task left with no AI on it is not said to be the AI's, but only once the coordinator is no longer on it", () => {
+  expect(shown({ tasks: 1, working: 1, unowned: 1, sent: true, busy: true })).toBe("received");
   expect(shown({ tasks: 1, working: 1, unowned: 1, sent: true })).toBe("unassigned");
   expect(shown({ tasks: 2, working: 2, unowned: 1, sent: true })).toBe("working");
 });
 
-test("from the empty welcome, a request sent moves the guide on to the AI's step and then to the person's turn", () => {
-  expect(shown({})).toBe("send");
-  expect(shown({ sent: true, busy: true })).toBe("received");
-  expect(shown({ sent: true })).toBe("send-again");
-  expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
+test("a question: its row, then its choices until the answer is sent, then the coordinator on it", () => {
   expect(shown({ tasks: 1, questions: 1 })).toBe("question");
-  expect(shown({ tasks: 1, results: 1 })).toBe("result");
+  expect(shown({ tasks: 1, questions: 1, open: "question", drafting: true })).toBe("answer");
+  expect(shown({ tasks: 1, questions: 1, open: "question", busy: true })).toBe("received");
+});
+
+test("a report open: more can be asked first, then its label once while something is written, then Done", () => {
+  const report = { stage: turn, tasks: 1, results: 1, open: "result" } as const;
+  expect(shown({ stage: turn, tasks: 1, results: 1 })).toBe("result");
+  expect(shown(report)).toBe("more");
+  expect(shown({ ...report, seen: read("more"), drafting: true, labelled: true })).toBe("label");
+  expect(shown({ ...report, seen: read("more"), drafting: true })).toBe("accept");
+  expect(shown({ ...report, seen: read("more", "label"), drafting: true, labelled: true })).toBe("accept");
+});
+
+test("a step shown once with no button is done when the guide moves on from it; one with a button only by it", () => {
+  const entry = (over: Partial<GuideFacts>) => guideEntry(facts(over));
+  const label = entry({ stage: turn, tasks: 1, results: 1, open: "result", seen: read("more"), drafting: true, labelled: true });
+  const accept = entry({ stage: turn, tasks: 1, results: 1, open: "result", seen: read("more") });
+  expect(doneOnLeaving(label, accept)).toBe(true);
+  expect(doneOnLeaving(label, label)).toBe(false);
+  expect(doneOnLeaving(entry({ stage: turn, tasks: 1, results: 1, open: "result" }), accept)).toBe(false);
+});
+
+test("a Task being worked on, seen in the detail, points once at where it is stopped", () => {
+  expect(shown({ tasks: 1, working: 1, open: "working" })).toBe("stop");
+  expect(shown({ tasks: 1, working: 1, open: "working", seen: read("stop") })).toBe("working");
 });
 
 test("with a report and a question both awaiting the person, the question's step points at the question's row", () => {
@@ -46,23 +65,18 @@ test("with a report and a question both awaiting the person, the question's step
   expect(document.querySelector(PARTS.resultRow)?.id).toBe("report");
 });
 
-test("what is open in the detail comes before the list: its choices, or Done", () => {
-  expect(shown({ tasks: 1, questions: 1, open: "question" })).toBe("answer");
-  expect(shown({ tasks: 1, results: 1, open: "result" })).toBe("accept");
-});
-
-test("after the person's turn, work still going on is the AI's step; with none left the guide ends once read", () => {
+test("once the person has had their turn and nothing is going on, the guide closes in steps read once each", () => {
   expect(shown({ stage: turn, tasks: 1, working: 1 })).toBe("working");
-  // The input's label is pointed at once, only while there is one.
-  expect(shown({ stage: turn, tasks: 1, labelled: true })).toBe("label");
-  expect(shown({ stage: turn, tasks: 1 })).toBe("another-repository");
-  expect(shown({ stage: turn, tasks: 1, labelled: true, seen: new Set(["label", "another-repository"]) })).toBeNull();
+  expect(shown({ stage: turn, tasks: 1 })).toBe("end");
+  expect(shown({ stage: turn, tasks: 1, seen: read("end") })).toBe("another-repository");
+  expect(shown({ stage: turn, tasks: 1, seen: read("end", "another-repository") })).toBeNull();
   // Where settings hold the steps to the installed app and the phone, pointing at them once is the last step.
-  expect(shown({ stage: turn, tasks: 1, apps: true, seen: new Set(["another-repository"]) })).toBe("apps");
+  expect(shown({ stage: turn, tasks: 1, apps: true, seen: read("end", "another-repository") })).toBe("apps");
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
   expect(shown({ tasks: 4 })).toBe("send-again");
+  expect(shown({ tasks: 4, sent: true, busy: true })).toBe("received");
 });
 
 test("the guide starts by itself only for a new person: never stored, on the welcome, with no Task in the whole workspace", () => {
@@ -78,26 +92,11 @@ test("the guide reaches the person's turn once a step of theirs holds, and is ov
   expect(nextStage(turn, null)).toEqual({ stage: "done" });
 });
 
-test("words waiting in the input point at sending them; an answer sent and still on its way is not the person's turn", () => {
-  expect(shown({ drafting: true })).toBe("send-ready");
-  expect(shown({ tasks: 1, questions: 1, open: "question", answerDrafted: true, drafting: true })).toBe("answer-ready");
-  expect(shown({ tasks: 1, questions: 1, open: "question", answered: true })).toBe("answered");
-  expect(shown({ tasks: 1, questions: 1, open: "question", busy: true })).toBe("answer");
-});
-
-test("an answer is with the coordinator only when a message carries one to a question still open, not while it works on another request", () => {
-  const questions = new Set(["q1"]);
+test("the coordinator is busy while anything sent is still with it, and a request is the guide's once sent after it began", () => {
   const at = "2026-01-01T00:00:00Z";
-  expect(coordinatorFacts({ since: null, sending: [], questions, turns: [{ id: "a", at, status: "running" }] }))
-    .toEqual({ sent: false, busy: true, answered: false });
-  expect(coordinatorFacts({ since: null, sending: [], questions, turns: [{ id: "a", at, status: "running", answers: [{ question: "q1" }] }] }).answered).toBe(true);
-  expect(coordinatorFacts({ since: null, sending: [], questions, turns: [{ id: "a", at, status: "succeeded", answers: [{ question: "q1" }] }] }).answered).toBe(false);
-  expect(coordinatorFacts({ since: null, turns: [], questions, sending: [{ requestId: "b", answers: [{ question: "q1" }] }] }).answered).toBe(true);
-  expect(coordinatorFacts({ since: null, turns: [], questions, sending: [{ requestId: "b", answers: [{ question: "q2" }] }] }).answered).toBe(false);
-});
-
-test("shown again, a request sent while nothing is listed for it yet is received, not to be written again", () => {
-  expect(shown({ tasks: 4, sent: true, busy: true })).toBe("received");
+  expect(coordinatorFacts({ since: null, sending: [], turns: [{ id: "a", at, status: "running" }] })).toEqual({ sent: false, busy: true });
+  expect(coordinatorFacts({ since: null, sending: ["b"], turns: [] }).busy).toBe(true);
+  expect(coordinatorFacts({ since: Date.parse(at), sending: [], turns: [{ id: "a", at, status: "succeeded" }] })).toEqual({ sent: true, busy: false });
 });
 
 test("a balloon told to stand clear of the box its part is in stands outside that box, its arrow still on the part", () => {
@@ -122,4 +121,13 @@ test("shown again from its first screen, the guide points at the input whatever 
   expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, questions: 1 })))).toBeUndefined();
   expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, drafting: true })))).toEqual({ stage: "started", at: 1, seen: [] });
   expect(nextStage(intro, guideEntry(facts({ stage: intro, tasks: 4, sent: true, busy: true })))).toEqual({ stage: "started", at: 1, seen: [] });
+});
+
+test("shown again, what the input already held is not writing; a change to it is", () => {
+  const intro = { stage: "started", at: 5, seen: [], intro: true } as const;
+  const found = foundDraft(intro, "old words", null);
+  expect(found?.same).toBe(true);
+  expect(foundDraft(intro, "old words", found)?.same).toBe(true);
+  expect(foundDraft(intro, "old words and more", found)?.same).toBe(false);
+  expect(foundDraft(started, "old words", found)).toBeNull();
 });

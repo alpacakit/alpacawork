@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
@@ -7,40 +7,47 @@ import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
 import { useInputDraft } from "@/features/coordinator/editor/draft";
-import { answersIn, hasContent, inlines } from "@/features/coordinator/editor/document";
+import { hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { replaceStep } from "@/lib/history";
-import { going, guideStage, moveGuide, restartGuide, type GoingStage } from "./guide-state";
-import { guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { useSitting } from "@/features/reader/next-question";
+import { going, guideStage, moveGuide, putAway, restartGuide, type GoingStage } from "./guide-state";
+import { doneOnLeaving, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
 const UNDER_WAY = new Set(["queued", "sending", "joined", "running"]);
 
-type Answers = readonly { question: string }[] | undefined;
 /** What the guide reads of one message of the conversation. */
-export type CoordinatorTurn = { id: string; at: string; status: string; answers?: Answers };
-/** What the guide reads of one message sent from this device and not in the conversation yet (its grace included). */
-export type SendingMessage = { requestId: string; answers?: Answers };
+export type CoordinatorTurn = { id: string; at: string; status: string };
 
 /**
- * What the guide knows of the coordinator, from its conversation and what this device is still sending to it:
+ * What the guide knows of the coordinator, from its conversation and what this device is still sending to it (by
+ * request ID, its grace included):
  * - `sent`: a message is in the conversation from after `since` (the guide's start), or is still being sent;
- * - `busy`: a message is still being sent, or one in the conversation is not answered yet;
- * - `answered`: among those, one carries an answer to a question still open (`questions`, by ID); another request
- *   being worked on is not an answer.
+ * - `busy`: a message is still being sent, or one in the conversation is not answered yet (a request, an answer, or
+ *   one more alike).
  */
-export function coordinatorFacts({ since, turns, sending, questions }: {
-  since: number | null; turns: readonly CoordinatorTurn[]; sending: readonly SendingMessage[]; questions: ReadonlySet<string>;
-}): Pick<GuideFacts, "sent" | "busy" | "answered"> {
-  const underWay = turns.filter(turn => UNDER_WAY.has(turn.status));
-  const answers = (list: Answers) => !!list?.some(answer => questions.has(answer.question));
+export function coordinatorFacts({ since, turns, sending }: {
+  since: number | null; turns: readonly CoordinatorTurn[]; sending: readonly string[];
+}): Pick<GuideFacts, "sent" | "busy"> {
   return {
     sent: since !== null && (sending.length > 0 || turns.some(turn => Date.parse(turn.at) >= since)),
-    busy: sending.length > 0 || underWay.length > 0,
-    answered: sending.some(item => answers(item.answers)) || underWay.some(turn => answers(turn.answers)),
+    busy: sending.length > 0 || turns.some(turn => UNDER_WAY.has(turn.status)),
   };
+}
+
+/** What the input held when the first screen was shown again (at `at`), and whether it still holds just that. */
+type FoundDraft = { at: number; written: string; same: boolean } | null;
+/**
+ * While the first screen is shown again, what the input already held then is not the person writing: only a change to
+ * it is, so that screen stays until they write, send or close it. `written` is the input as it is now.
+ */
+export function foundDraft(stage: GoingStage, written: string, before: FoundDraft): FoundDraft {
+  if (stage.stage !== "started" || !stage.intro) return null;
+  const kept = before?.at === stage.at ? before.written : written;
+  return { at: stage.at, written: kept, same: kept === written };
 }
 
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
@@ -85,11 +92,13 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
-  const selected = useViewStore((state) => state.reader.open ? state.selected : null);
-  // The rows awaiting the person, the questions they ask, and which of them is open in the detail: read from the list's
-  // own rows, so the guide never says to open a row that is open already.
+  // The Task seen in the detail: open there, and not under the card that says every turn is answered.
+  const shown = useViewStore((state) => state.reader.open ? state.selected : null);
+  const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
+  const selected = shown === answeredAll ? null : shown;
+  // The rows awaiting the person, and which of them is seen in the detail: read from the list's own rows, so the guide
+  // never says to open a row that is open already.
   let questions = 0, results = 0, unowned = 0, open: GuideFacts["open"] = null;
-  const asked = new Set<string>();
   const people = usePeople();
   for (const row of rows) {
     const task = index.byId.get(row.taskId);
@@ -97,13 +106,12 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
     if (row.section === "todo" && task && beforeWork(task, !!crewOf(task.id, people).responsible) === "unassigned") unowned++;
     if (row.section !== "review") continue;
     const kind = task ? turnKind(task) : "result";
-    if (kind === "question") { questions++; if (task?.ball?.holder === "user" && task.ball.questionId) asked.add(task.ball.questionId); }
-    else results++;
+    if (kind === "question") questions++; else results++;
     if (row.taskId === selected) open = kind;
   }
   const working = (home?.doing ?? 0) + (home?.todo ?? 0) + (home?.awaited ?? 0);
   const opened = selected ? index.byId.get(selected) : undefined;
-  // Open in the detail and not the person's turn: being worked on, where the AI on it can be stopped.
+  // Seen in the detail and not the person's turn: being worked on, where the AI on it can be stopped.
   if (!open && opened?.state === "doing") open = "working";
   // What the coordinator has from the person: sent from here and not in its conversation yet (its grace, "about to
   // send", included), and the conversation's own messages.
@@ -112,27 +120,34 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const entries = useDraftStore(state => state.entries);
   const sending = useMemo(() => outgoing(entries, root)
     .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId))
-    .map(item => ({ requestId: item.requestId, answers: item.fixed.answers })), [entries, root, turns]);
-  // What the input holds now: anything to send, and an answer to the Task open in the detail.
+    .map(item => item.requestId), [entries, root, turns]);
+  // What the input holds now: anything to send (foundDraft), and a label.
   const { doc } = useInputDraft();
-  const drafting = hasContent(doc);
+  const found = useRef<FoundDraft>(null);
+  found.current = foundDraft(stage, JSON.stringify(doc), found.current);
+  const drafting = hasContent(doc) && !found.current?.same;
   const labelled = inlines(doc).some(node => node.type === "taskLabel");
-  const answerDrafted = !!opened && answersIn(doc, opened.id).length > 0;
   const narrow = useNarrow();
   // Not app-hint's "done": that is set by the first message sent, which everyone at the guide's last step has sent.
   const apps = useAppGuideHere();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
-  const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending, questions: asked });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, answerDrafted, open, narrow, apps, seen };
+  const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
+  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
   return guideEntry(facts);
 }
 
 /**
- * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide). Mounted
- * once, beside the balloon, so a stage is written by one owner only.
+ * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide), and puts
+ * away a step shown once with no button as the guide moves on from it (doneOnLeaving). Mounted once, beside the
+ * balloon, so a stage is written by one owner only.
  */
 export function useGuideStage(stage: GoingStage, entry: GuideEntry | null) {
   const next = nextStage(stage, entry);
   const key = next && JSON.stringify(next);
   useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
+  const held = useRef<GuideEntry | null>(null);
+  useEffect(() => {
+    if (doneOnLeaving(held.current, entry)) putAway(held.current!.id);
+    held.current = entry;
+  }, [entry?.id]);
 }
