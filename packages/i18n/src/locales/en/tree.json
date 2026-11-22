@@ -133,11 +133,11 @@
     "yourTurn": "Your turn"
   },
   "welcome": {
-    "lead": "Unlike a chat, replies don't stream in here.",
+    "lead": "A place to hand work to a team of AIs.",
     "picture": {
       "listed": "They're listed. Your turn comes under “{{section}}”",
       "send": "Send a request",
-      "split": "The front-desk AI turns it into tasks and puts an AI on each"
+      "split": "The front-desk AI turns it into tasks, places an AI on each and runs them"
     },
     "title": "Welcome to alpacawork"
   }

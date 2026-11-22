@@ -31,7 +31,7 @@ export function Welcome() {
 
 /**
  * How work goes, in three small line drawings joined by arrows, each with a few words under it: a request is sent from
- * the input; the coordinator makes it Tasks and puts an AI on each; they are listed, and the person's turn comes under
+ * the input; the coordinator makes it Tasks, places an AI on each and runs them; they are listed, and the person's turn comes under
  * Awaiting review. Side by side on a computer, one under another on a phone (the drawing left of its words). The
  * drawings carry no meaning the words do not, so they are hidden from a screen reader; the words are read in order.
  * Drawn in the screen's colours, their stroke at the icon set's 1.5px.

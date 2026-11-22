@@ -141,11 +141,11 @@
     "yourTurn": "Tu turno"
   },
   "welcome": {
-    "lead": "A diferencia de un chat, las respuestas no aparecen aquí al momento.",
+    "lead": "Un lugar para encargar trabajo a un equipo de IA.",
     "picture": {
       "listed": "Se ponen en la lista. Tu turno llega a «{{section}}»",
       "send": "Envías una petición",
-      "split": "La IA de recepción la convierte en tareas y asigna una IA a cada una"
+      "split": "La IA de recepción la convierte en tareas, asigna una IA a cada una y las ejecuta"
     },
     "title": "Te damos la bienvenida a alpacawork"
   }

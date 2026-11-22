@@ -127,11 +127,11 @@
     "yourTurn": "轮到你"
   },
   "welcome": {
-    "lead": "和聊天不同，回复不会当场流出来。",
+    "lead": "这里是把工作交给 AI 团队的地方。",
     "picture": {
       "listed": "排进列表。轮到你时，会出现在“{{section}}”",
       "send": "发送请求",
-      "split": "接待的 AI 把它建成任务，并分配负责的 AI"
+      "split": "接待的 AI 把它建成任务，配置负责的 AI 并执行"
     },
     "title": "欢迎使用 alpacawork"
   }
