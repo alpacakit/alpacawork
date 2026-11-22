@@ -131,8 +131,8 @@ export function GuideBalloon() {
 }
 
 function GoingBalloon({ stage }: { stage: GoingStage }) {
-  const entry = useGuide(stage);
-  useGuideStage(stage, entry);
+  const { entry, facts } = useGuide(stage);
+  useGuideStage(stage, entry, facts);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);

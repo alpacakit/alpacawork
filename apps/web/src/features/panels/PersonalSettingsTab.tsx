@@ -103,7 +103,8 @@ function QuietHoursRow() {
 function GuideRow() {
   const { t } = useTranslation('panels');
   return <SettingRow id="setting-guide" label={t('settings.personal.guide')} hint={t('settings.personal.guideHelp')}>
-    <Button id="setting-guide" variant="outline" onClick={() => { restartGuide(); useDialogStore.getState().close(); }}>
+    {/* Named by its own words ("Show again"), the row's name said after it: the row's label names the setting, not the press. */}
+    <Button variant="outline" aria-describedby="setting-guide-label" onClick={() => { restartGuide(); useDialogStore.getState().close(); }}>
       {t('settings.personal.guideShow')}</Button>
   </SettingRow>;
 }

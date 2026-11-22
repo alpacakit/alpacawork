@@ -20,22 +20,27 @@ const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
 const UNDER_WAY = new Set(["queued", "sending", "joined", "running"]);
 
-/** What the guide reads of one message of the conversation. */
-export type CoordinatorTurn = { id: string; at: string; status: string };
+/** What the guide reads of one message of the conversation: what its answer wrote on Tasks, once it ended. */
+export type CoordinatorTurn = { id: string; at: string; status: string; result?: { writes: readonly unknown[] } | null };
 
 /**
  * What the guide knows of the coordinator, from its conversation and what this device is still sending to it (by
  * request ID, its grace included):
  * - `sent`: a message is in the conversation from after `since` (the guide's start), or is still being sent;
  * - `busy`: a message is still being sent, or one in the conversation is not answered yet (a request, an answer, or
- *   one more alike).
+ *   one more alike);
+ * - `talked`: the conversation holds messages;
+ * - `direct`: nothing is under way and the latest message was answered there, its answer writing to no Task.
  */
 export function coordinatorFacts({ since, turns, sending }: {
   since: number | null; turns: readonly CoordinatorTurn[]; sending: readonly string[];
-}): Pick<GuideFacts, "sent" | "busy"> {
+}): Pick<GuideFacts, "sent" | "busy" | "talked" | "direct"> {
+  const busy = sending.length > 0 || turns.some(turn => UNDER_WAY.has(turn.status));
+  const latest = turns.at(-1);
   return {
     sent: since !== null && (sending.length > 0 || turns.some(turn => Date.parse(turn.at) >= since)),
-    busy: sending.length > 0 || turns.some(turn => UNDER_WAY.has(turn.status)),
+    busy, talked: turns.length > 0,
+    direct: !busy && latest?.status === "succeeded" && !!latest.result && latest.result.writes.length === 0,
   };
 }
 
@@ -94,11 +99,12 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage): GuideEntry | null {
+export function useGuide(stage: GoingStage): { entry: GuideEntry | null; facts: GuideFacts } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
+  const finished = useWorkspaceInfo((info) => info.counts.closed.root?.finished ?? 0);
   // The Task seen in the detail: open there, and not under the card that says every turn is answered.
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
@@ -138,22 +144,26 @@ export function useGuide(stage: GoingStage): GuideEntry | null {
   const apps = !useCoarsePointer();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
-  const facts: GuideFacts = { stage, tasks, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
-  return guideEntry(facts);
+  const facts: GuideFacts = { stage, tasks, finished, questions, results, working, unowned, ...coordinator, labelled, drafting, open, narrow, apps, seen };
+  return { entry: guideEntry(facts), facts };
 }
 
 /**
  * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide), and puts
- * away a step shown once with no button as the guide moves on from it (doneOnLeaving). Mounted once, beside the
- * balloon, so a stage is written by one owner only.
+ * away a step shown once as the guide moves on from it (doneOnLeaving). Mounted once, beside the balloon, so a stage
+ * is written by one owner only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null) {
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts) {
   const next = nextStage(stage, entry);
   const key = next && JSON.stringify(next);
   useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
-  const held = useRef<GuideEntry | null>(null);
+  // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
+  // as done from before it.
+  const held = useRef<{ entry: GuideEntry | null; at: number | null }>({ entry: null, at: null });
+  const at = stage.stage === "started" ? stage.at : null;
   useEffect(() => {
-    if (doneOnLeaving(held.current, entry)) putAway(held.current!.id);
-    held.current = entry;
-  }, [entry?.id]);
+    const restarted = at !== null && held.current.at !== at;
+    if (!restarted && doneOnLeaving(held.current.entry, entry, facts)) putAway(held.current.entry!.id);
+    held.current = { entry, at: at ?? held.current.at };
+  }, [entry?.id, at]);
 }
