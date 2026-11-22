@@ -269,7 +269,7 @@ test('cycles fail without mutating the published snapshot and no-op updates have
   assert.deepEqual([...noop.changed.tasks], []); assert.deepEqual([...noop.changed.pages], []); assert.equal(noop.changed.counts, false);
 });
 
-test('section changes, closed child counts, and freshness follow the same incremental memberships', () => {
+test('section changes, closed child counts, and running facts follow the same incremental memberships', () => {
   const userBall = { holder: 'user' as const, reason: 'review' as const, at: '2026-11-16T00:00:00Z', key: 'review-1',
     questionId: null, aboutRunId: null, count: null, code: null, failure: null };
   const values = [task('P1', null, { kind: 'project' }), task('T1', 'P1', { state: 'done', baseState: 'done' }),

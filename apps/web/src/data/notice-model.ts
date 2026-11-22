@@ -63,6 +63,14 @@ export function taskEvents(tasks: TaskRowDTO[], baselines: Record<string, TaskBa
   });
 }
 
+/**
+ * Whether opening the task records something the saved baseline lacks: its news, or, for a finished task (which has none),
+ * the end itself. Push notifications close an end the reader has seen by this baseline; the list shows no mark for it.
+ */
+export function unseen(task: TaskRowDTO, baselines: Record<string, TaskBaseline>): boolean {
+  return taskEvents([task], baselines).length > 0 || isFinished(task.state) && baselines[task.id]?.state !== task.state;
+}
+
 export type NoticeCheckpoint = { at: string; tasks: Record<string, TaskBaseline> };
 /** The saved read marks' version: the contract's (`noticeStateSchema`), the only one the server takes. */
 export const NOTICE_VERSION = noticeStateSchema.shape.version.value;

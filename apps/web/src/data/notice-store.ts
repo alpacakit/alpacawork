@@ -11,7 +11,7 @@ import { resources, fetchAcceptedResource, acceptPersonalRead, captureResourceRe
 
 import { canSendWrites, useConnection } from './connection';
 import { recordFailure } from '@/lib/notify';
-import { NOTICE_VERSION, taskBaseline, taskEvents, type FirstSeen, type NoticeCheckpoint, type NoticeSaved, type TaskBaseline } from './notice-model';
+import { NOTICE_VERSION, taskBaseline, taskEvents, unseen, type FirstSeen, type NoticeCheckpoint, type NoticeSaved, type TaskBaseline } from './notice-model';
 
 const baselinesFor = (tasks: TaskRowDTO[]) => Object.fromEntries(tasks.map((task) => [task.id, taskBaseline(task)]));
 
@@ -51,7 +51,7 @@ export function createNoticeStore() {
     return tasks.filter(task => {
       const latest = current.get(task.id);
       // A later visit on another device may already have read newer facts. An old queued intent cannot undo it.
-      return taskEvents([task], baselines).length > 0 && !(latest && latest.version > task.version && !taskEvents([latest], baselines).length);
+      return unseen(task, baselines) && !(latest && latest.version > task.version && !unseen(latest, baselines));
     });
   };
   type PendingRead = { source: Pick<ProjectedIndexDTO, 'root' | 'generation'>; tasks: TaskRowDTO[] };

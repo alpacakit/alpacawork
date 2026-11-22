@@ -54,7 +54,8 @@ test("a finished task is never news, whatever changed; work taken up again is ne
     expect(taskEvents([row({ ...finished, state })], {})).toEqual([]);
     expect(taskEvents([row({ ...finished, state })], { T5: taskBaseline(task) })).toEqual([]);
   }
-  expect(taskEvents([row({ ...finished, state: "doing" })], { T5: taskBaseline(task) }).map(event => event.kind)).toEqual(["body", "reported"]);
+  const ended = { T5: taskBaseline(row({ state: "done" })) };
+  expect(taskEvents([row({ ...finished, state: "doing" })], ended).map(event => event.kind)).toEqual(["state", "body", "reported"]);
 });
 
 test("unchanged tasks and shortened logs do not invent reports; only reports, responsibility, review and place changes count", () => {
@@ -176,6 +177,18 @@ for (const language of ['en', 'ja'] as const) test(`a refused read tells the rea
   await i18n.changeLanguage('en');
 });
 
+test('opening a finished task records its end once, so a push for it closes, though it never carried a mark', async () => {
+  const state = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} };
+  seedNotices(useReadStore, { root: '/synthetic', status: 'ready', revision: 'r1', checkpoint: state.checkpoint, reads: {}, tasks: [task] });
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+    new Response(JSON.stringify({ state: JSON.parse(String(init?.body)).state, revision: 'r2' })));
+  const ended = row({ state: 'stopped', log: reports });
+  expect(await useReadStore.getState().read(ended)).toBe(true);
+  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)).state.reads.T5).toEqual(taskBaseline(ended));
+  expect(await useReadStore.getState().read(ended)).toBe(true);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
 test('opening a task that is already read saves nothing; a changed one saves once', async () => {
   const state = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} };
   seedNotices(useReadStore, { root: '/synthetic', status: 'ready', revision: 'r1', checkpoint: state.checkpoint, reads: {}, tasks: [task] });
@@ -190,8 +203,7 @@ test('opening a task that is already read saves nothing; a changed one saves onc
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
-{
-  for (const source of ['checkpoint', 'reads'] as const) {
+for (const source of ['checkpoint', 'reads'] as const) {
     test(`a read saves turn-only news from ${source} once, then revisits and turn removal save nothing`, async () => {
       const current = { ...task, notice: { ...task.notice, turnKey: 'RET-current' } };
       const baseline = { ...taskBaseline(current), turnKey: null };
@@ -261,7 +273,6 @@ test('opening a task that is already read saves nothing; a changed one saves onc
     expect(saved.reads[task.id]).toEqual(taskBaseline(current));
     expect(taskEvents([current, other], saved.reads)).toEqual([]);
   });
-}
 
 test('a reload that finds the same revision leaves the store untouched', async () => {
   const state = { version: NOTICE_VERSION, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } }, reads: {} };
@@ -480,7 +491,7 @@ test('a read never regresses a newer read from another device', async () => {
   const oldDoc = { ...doc, version: 2, values: { notes: 'opened' } }, newDoc = { ...doc, version: 3, values: { notes: 'later news' } };
   const old = rowOf(oldDoc), latest = rowOf(newDoc);
   receiveFullIndex(queryClient, indexOf(tree({ root: '/synthetic', tasks: [oldDoc] })));
-  const checkpoint = { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task), T6: taskBaseline(task) } };
+  const checkpoint = { at: '2026-10-02T00:00:00.000Z', tasks: { T5: taskBaseline(task) } };
   const store = viewedStore();
   seedNotices(store, { root: '/synthetic', status: 'ready', revision: 'r1', checkpoint, reads: {}, tasks: [old] });
   let release!: (response: Response) => void;
