@@ -15,7 +15,8 @@ import type { GuideStage } from "./guide-state";
  *   just answered in the conversation itself;
  * - `turn`: the person's turn: what is open in the detail (a question, a report, a Task being worked on), then the rows
  *   awaiting them;
- * - `close`: once they have finished a Task here (pressed Done since the guide began: `closing`), what is left to know;
+ * - `close`: while a Task they pressed Done on since the guide began stands finished (`closing`; taken back, it does not),
+ *   what is left to know;
  * - `work`: other work going on in the list;
  * - `idle`: nothing going on.
  * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read. Words
@@ -110,11 +111,11 @@ export type GuideFacts = {
   unowned: number;
   /** The input holds a label (a project's or a Task's). */
   labelled: boolean;
-  /** The person pressed Done on a Task of theirs here, just now (the reader's own record of it). */
+  /** A Task the person pressed Done on since the guide began still stands finished (not taken back). */
   doneHere: boolean;
   /** The conversation with the coordinator holds messages (it has not been cleared). */
   talked: boolean;
-  /** The latest message to the coordinator was answered in the conversation itself, writing to no Task. */
+  /** The latest message to the coordinator was answered in the conversation itself, writing to no Task, unread. */
   direct: boolean;
   /** A request went to the coordinator after the guide started. */
   sent: boolean;
@@ -163,8 +164,8 @@ const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 const AT_INPUT = { clear: ["foot", "coordinator", "panel"], side: "top" } as const;
 /** Steps at the conversation itself stand clear of the foot and, while it is open, its panel. */
 const AT_CONVERSATION = { clear: ["foot", "panel"], side: "top", align: "start" } as const;
-/** The person has finished a Task here (just now, or kept in the stage since): the close is what is left. */
-const closing = (f: GuideFacts) => f.doneHere || f.stage.stage === "turn" && !!f.stage.finished;
+/** The person has finished a Task here, and it stands finished: the close is what is left. */
+const closing = (f: GuideFacts) => f.doneHere;
 
 export const GUIDE: readonly GuideEntry[] = [
   // The one input there is, and a request to try the whole flow with.
@@ -254,15 +255,21 @@ export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: n
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
- * screen once another step than that screen's holds (something written or sent); at the close once they press Done
- * on a Task of theirs (`finished`, kept until the guide starts again); over once no step holds. Undefined: nothing to
- * store.
+ * screen once another step than that screen's holds (something written or sent); over once no step holds. What else it
+ * keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
  */
-export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null, doneHere = false): GuideStage | undefined {
-  // Done pressed here is kept first: the close comes next, whatever else holds.
-  if (stage.stage === "turn" && doneHere && !stage.finished) return { ...stage, finished: true };
+export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null): GuideStage | undefined {
   if (!entry) return { stage: "done" };
-  if (stage.stage === "turn") return undefined;
-  if (entry.turn) return { stage: "turn", seen: stage.seen, ...doneHere ? { finished: true as const } : {} };
-  return stage.intro && entry.id !== "send" ? { stage: "started", at: stage.at, seen: stage.seen } : undefined;
+  if (stage.stage !== "started") return undefined;
+  const { at: _at, intro: _intro, ...kept } = stage;
+  if (entry.turn) return { ...kept, stage: "turn" };
+  return stage.intro && entry.id !== "send" ? { ...kept, at: stage.at } : undefined;
 }
+
+/**
+ * The Tasks pressed Done on since the guide began that still stand finished: let go by the list (a finished Task
+ * leaves it), finished there, or Done still on its way (`submitted`). Taken back, a Task is in the list again with its
+ * turn open, and does not count.
+ */
+export const finishedHere = (ids: readonly string[], byId: ReadonlyMap<string, Task>, submitted: (task: Task) => boolean) =>
+  ids.filter(id => { const task = byId.get(id); return !task || task.state === "done" || submitted(task); });

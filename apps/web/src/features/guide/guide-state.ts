@@ -5,16 +5,19 @@ import { useViewStore } from "@/state/view-store";
  * How far this browser is through the getting-started guide: started (at the moment it began, so a request sent
  * afterwards is known as this guide's first one; `intro` while its first screen stands in the list's place whatever
  * the work, until another step holds), got as far as the person's turn (with the steps read and put away
- * since: `seen`, and `finished` once they pressed Done on a Task of theirs), or over (finished or closed). Nothing stored is a browser that has never seen it.
+ * since: `seen`), or over (finished or closed). `finished`: the Tasks the person pressed Done on since it began. Nothing stored is a browser that has never seen it.
  */
-export type GuideStage = { stage: "started"; at: number; seen: readonly string[]; intro?: true } | { stage: "turn"; seen: readonly string[]; finished?: true } | { stage: "done" };
+export type GuideStage = { stage: "started"; at: number; seen: readonly string[]; intro?: true; finished?: readonly string[] }
+  | { stage: "turn"; seen: readonly string[]; finished?: readonly string[] } | { stage: "done" };
 
 const check = (value: unknown): GuideStage | null => {
   if (typeof value !== "object" || value === null) return null;
   const { stage, at, seen, intro, finished } = value as { stage?: unknown; at?: unknown; seen?: unknown; intro?: unknown; finished?: unknown };
-  const read = Array.isArray(seen) ? seen.filter((id): id is string => typeof id === "string") : [];
-  if (stage === "started" && typeof at === "number") return { stage, at, seen: read, ...intro === true ? { intro } : {} };
-  if (stage === "turn") return { stage, seen: read, ...finished === true ? { finished } : {} };
+  const ids = (list: unknown) => Array.isArray(list) ? list.filter((id): id is string => typeof id === "string") : [];
+  const read = ids(seen), done = ids(finished);
+  const kept = done.length ? { finished: done } : {};
+  if (stage === "started" && typeof at === "number") return { stage, at, seen: read, ...intro === true ? { intro } : {}, ...kept };
+  if (stage === "turn") return { stage, seen: read, ...kept };
   return stage === "done" ? { stage } : null;
 };
 export const guideStage = deviceValue<GuideStage | null>("alpacawork.guide", jsonCodec<GuideStage | null>(check), null);

@@ -16,14 +16,14 @@ import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { doneOnLeaving, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { doneOnLeaving, finishedHere, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
 const UNDER_WAY = new Set(["queued", "sending", "joined", "running"]);
 
-/** What the guide reads of one message of the conversation: what its answer wrote on Tasks, once it ended. */
-export type CoordinatorTurn = { id: string; at: string; status: string; result?: { writes: readonly unknown[] } | null };
+/** What the guide reads of one message of the conversation: what its answer wrote on Tasks once it ended, and whether its answer has been read. */
+export type CoordinatorTurn = { id: string; at: string; status: string; result?: { writes: readonly unknown[] } | null; seen?: boolean };
 
 /**
  * What the guide knows of the coordinator, from its conversation and what this device is still sending to it (by
@@ -32,7 +32,8 @@ export type CoordinatorTurn = { id: string; at: string; status: string; result?:
  * - `busy`: a message is still being sent, or one in the conversation is not answered yet (a request, an answer, or
  *   one more alike);
  * - `talked`: the conversation holds messages;
- * - `direct`: nothing is under way and the latest message was answered there, its answer writing to no Task.
+ * - `direct`: nothing is under way and the latest message was answered there, its answer writing to no Task and not
+ *   read yet (read with the conversation open, there is nothing to point at).
  */
 export function coordinatorFacts({ since, turns, sending }: {
   since: number | null; turns: readonly CoordinatorTurn[]; sending: readonly string[];
@@ -42,7 +43,7 @@ export function coordinatorFacts({ since, turns, sending }: {
   return {
     sent: since !== null && (sending.length > 0 || turns.some(turn => Date.parse(turn.at) >= since)),
     busy, talked: turns.length > 0,
-    direct: !busy && latest?.status === "succeeded" && !!latest.result && latest.result.writes.length === 0,
+    direct: !busy && latest?.status === "succeeded" && !!latest.result && latest.result.writes.length === 0 && !latest.seen,
   };
 }
 
@@ -78,8 +79,8 @@ export function awaiting(rows: readonly { taskId: string; section: string }[], b
   return { questions, results, open };
 }
 
-/** The Tasks Done was pressed on when this guide began (at `at`), and whether one has been pressed on since. */
-type DoneBefore = { at: number | null; ids: readonly string[]; fresh: boolean } | null;
+/** The Tasks Done was pressed on when this guide began (at `at`), and those pressed on since (`fresh`). */
+type DoneBefore = { at: number | null; ids: readonly string[]; fresh: readonly string[] } | null;
 /**
  * Done pressed since the guide began: the reader keeps what was pressed for as long as the page is open, so what it
  * already held when the guide started (again) is not this guide's. `done` is the Tasks it holds Done on now.
@@ -87,7 +88,7 @@ type DoneBefore = { at: number | null; ids: readonly string[]; fresh: boolean } 
 export function doneSince(stage: GoingStage, done: readonly string[], before: DoneBefore): NonNullable<DoneBefore> {
   const at = stage.stage === "started" ? stage.at : before?.at ?? null;
   const ids = before && before.at === at ? before.ids : stage.stage === "started" ? done : before?.ids ?? [];
-  return { at, ids, fresh: done.some(id => !ids.includes(id)) };
+  return { at, ids, fresh: done.filter(id => !ids.includes(id)) };
 }
 
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
@@ -113,18 +114,18 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; facts: GuideFacts } {
+export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; facts: GuideFacts; fresh: readonly string[] } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
   const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
-  // Done pressed on a Task here, as the reader keeps it (its next-question deck): kept, not taken back or refused; and
-  // pressed since this guide began (doneSince).
+  // Done pressed on a Task here, as the reader keeps it (its next-question deck), since this guide began (doneSince),
+  // with those the stage keeps; counted while the Task stands finished (finishedHere).
   const doneIds = useSitting(useShallow(state => Object.entries(state.departures)
     .filter(([, each]) => each.answer === "done" && readerOutcome(each.status()) === "kept").map(([task]) => task)));
   const doneBefore = useRef<DoneBefore>(null);
   doneBefore.current = doneSince(stage, doneIds, doneBefore.current);
-  const doneHere = doneBefore.current.fresh;
+  const fresh = doneBefore.current.fresh;
   // The Task seen in the detail: open there, and not under the card that says every turn is answered.
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
@@ -165,18 +166,22 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
+  const doneHere = finishedHere([...stage.finished ?? [], ...fresh], index.byId, submitted).length > 0;
   const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
     narrow, apps, seen, skipped };
-  return { entry: guideEntry(facts), facts };
+  return { entry: guideEntry(facts), facts, fresh };
 }
 
 /**
- * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide), and puts
- * away a step shown once as the guide moves on from it (doneOnLeaving). Mounted once, beside the balloon, so a stage
- * is written by one owner only.
+ * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide): the Tasks
+ * Done was pressed on since it began (`fresh`, kept as `finished` whatever step shows), and puts away a step shown once
+ * as the guide moves on from it (doneOnLeaving). Mounted once, beside the balloon, so a stage is written by one owner
+ * only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts) {
-  const next = nextStage(stage, entry, facts.doneHere);
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[]) {
+  const kept = stage.finished ?? [];
+  const adding = fresh.filter(id => !kept.includes(id));
+  const next = adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry);
   const key = next && JSON.stringify(next);
   useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing

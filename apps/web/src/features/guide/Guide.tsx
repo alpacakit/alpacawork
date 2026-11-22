@@ -151,8 +151,8 @@ function useSkipped() {
 
 function GoingBalloon({ stage }: { stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { entry, facts } = useGuide(stage, skipped);
-  useGuideStage(stage, entry, facts);
+  const { entry, facts, fresh } = useGuide(stage, skipped);
+  useGuideStage(stage, entry, facts, fresh);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
