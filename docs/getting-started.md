@@ -4,7 +4,7 @@ This takes you from installing alpacawork to asking the AI for one thing and che
 
 ## Before you start
 
-- Your PC runs macOS (Apple silicon), Linux (x64) or Windows (WSL2). On Windows, read [On Windows](manage.md#on-windows) first.
+- Your PC needs to run macOS (Apple silicon), Linux (x64) or Windows (WSL2). On Windows, read [On Windows](manage.md#on-windows) first.
 - Have Claude Code or Codex ready to use on this PC.
 - The AI changes files without asking for confirmation. It runs with your user account's permissions on this PC, so it can reach beyond the folder it works in.
 
@@ -59,7 +59,7 @@ Read the contents of this folder and sum up what it is for in 3 lines. Don't cha
 
 The AI reads the folder and writes the summary and the suggestions in its reply (it may also make a task and ask you in a question). If it answers in a reply, send the one you want in the input box, like "Go ahead with 1", and it becomes a task with a row in the list.
 
-In an empty folder, press the screen's example "Pick a mini game idea, then have it built" to send it.
+In an empty folder, press the screen's example "Pick a mini game idea, then have it built", then send it.
 
 While the AI works on a task, you don't need to watch the screen.
 

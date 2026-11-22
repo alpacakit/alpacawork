@@ -21,11 +21,11 @@ Suppose you ask, "Build a booking form for the shop's site." The numbers in the 
 3. The owner splits the work into subtasks such as "Decide the booking fields", "Build the entry screen" and "Check how it looks on phones", and hands each to an owner of its own. When it needs help, it calls in members (AIs that help). Work that doesn't need to wait runs side by side. Each subtask's result goes back to the owner above it.
 4. What the AI can't decide, such as "What fields should the booking form have?", comes to you as a question with options and a recommendation. When the work is finished, a report arrives. Check the report and press "Done", and you're finished.
 
-These role names, such as "Owner", appear in the History on the screen. Every one of these AIs is the Claude Code, Codex or other agent installed on your PC itself.
+These role names, such as "Owner", appear in the History on the screen. Each of these AIs is simply the Claude Code, Codex or other agent installed on your PC.
 
 ## What comes to you
 
-Only what only you can decide comes to you. Tasks with a question or report appear in the list under "Awaiting review", and tasks whose AI run stopped appear under "Needs attention".
+Only the things that only you can decide come to you. Tasks with a question or report appear in the list under "Awaiting review", and tasks whose AI run stopped appear under "Needs attention".
 
 ![On the left, the task list, with "In progress" at the top and "Awaiting review" below. On the right, the report of an open task awaiting review, with a "Done" button below the list](images/home-desktop-dark.png)
 

@@ -12,7 +12,7 @@ Find out why the tests are failing, and fix it.
 
 What you send goes to the coordinator, the AI you talk to. The coordinator turns it into a task and hands it to an AI that takes it on. You can keep making requests without waiting for earlier ones to finish.
 
-Say how you want the work done in the same way ("Make 3 options and compare them", "When it's done, have another AI check it"). What you always want goes in the [project policy](projects.md#project-policy).
+Write how you want the work done in the request, too ("Make 3 options and compare them", "When it's done, have another AI check it"). What you always want goes in the [project policy](projects.md#project-policy).
 
 Attach images or files with the "+" in the input box, or by pasting.
 
@@ -57,7 +57,7 @@ Pressing "Done" opens the next task awaiting review. "Change state", for putting
 
 ## Tasks that stopped
 
-Open a task under "Needs attention" to see why it stopped, with buttons.
+Open a task under "Needs attention" to see why it stopped and the buttons for what to do next.
 
 - Press "Retry" or "Stop".
 - If "Continue" appears, press it if it's fine to continue.

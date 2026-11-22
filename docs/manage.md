@@ -25,7 +25,7 @@ If you are told systemd is off, turn it on in this order.
 
 ## On a PC you connect to over SSH
 
-That PC's URL can't be opened in the browser at hand. Ask the AI on that PC to "Make alpacawork usable from other devices," and open the `https://` URL it gives you.
+That PC's URL can't be opened in the browser at hand. Ask the AI on that PC, "Make alpacawork usable from other devices." Then open the `https://` URL it gives you.
 
 ## Stop and start
 
@@ -46,13 +46,13 @@ When a new version is out, a mark appears on Settings (the gear). Open Settings,
 
 - AIs at work carry on without stopping. You can't go back to the earlier version.
 - For a version that shows "Copy the pause instruction" instead of "Update", install it after the AIs at work have stopped. Send the copied instruction in the input box, update once the AIs have stopped, then ask "Resume the work you paused."
-- If it doesn't move on, press the button in the message shown at the top of Settings ("Try again", "Continue" and so on). If it still doesn't move on, ask an AI for help.
+- If the update gets stuck, press the button in the message shown at the top of Settings ("Try again", "Continue" and so on). If it is still stuck, ask an AI for help.
 
 Without the screen, run `alpacawork deploy npm:alpacawork`. `npm install -g alpacawork` alone doesn't update the alpacawork that is running.
 
 ## Uninstall
 
-Ask Claude Code or Codex started in a terminal to "Uninstall alpacawork," or run these two in order in a terminal. You can't while an AI is working.
+Ask Claude Code or Codex started in a terminal, "Uninstall alpacawork." Or run these two in order in a terminal. You can't while an AI is working.
 
 ```sh
 alpacawork uninstall

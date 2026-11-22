@@ -1,6 +1,6 @@
 # Fit it to your work
 
-How to set up projects, the policy and the AIs to use. The AI changes any of the settings here if you ask in the input box (only signing in to the AIs and API keys you do yourself).
+How to set up projects, the policy and the AIs to use. The AI changes any of the settings here if you ask in the input box (except signing in to the AIs and setting API keys, which you do yourself).
 
 ## Use it with an existing repository
 
@@ -25,7 +25,7 @@ It serves basically the same purpose as `AGENTS.md`. Write in the project policy
 ```text
 Goal: Make the shop's site easy to read on phones, and publish it
 How to work: For changes to how it looks, show me a sample and ask before building
-Decide yourself: How to proceed, testing and cleanup; decide without asking and report
+Leave to the AI: How to proceed, testing and cleanup; decide without asking and report
 Don't: Push to GitHub or publish without my approval
 ```
 
@@ -45,7 +45,7 @@ Your current AI plans and settings are used as they are. Usage is billed under t
 
 ## Choose a model
 
-The model you choose beside the input box is the coordinator's. Write the model for the AIs that take on tasks in your request or the policy ("Do this work with opus").
+The model you choose beside the input box is the coordinator's. For the AIs that take on tasks, name the model in your request or in the policy ("Do this work with opus").
 
 To add a new model, open the AI's card under "Agents" in "Settings (the gear) → Server", add the model name to the `model` row of "Values available when requesting work", and press "Save".
 

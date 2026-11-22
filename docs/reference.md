@@ -17,13 +17,12 @@ Look up the meaning of words you see on the screen. You can ask the AI in the in
 | Word | Meaning |
 | --- | --- |
 | In progress | The AI is working |
-| Awaiting review | Your turn. A question or a report has arrived |
+| Awaiting review | Your turn. A question or a report has arrived. Also shown as a task's state while a report is waiting for you to check |
 | Needs attention | Your turn. An AI's run has stopped |
 | Waiting | Waiting for some other reply. Not your turn |
 | Not started | Hasn't started yet |
 | On hold | Something you put off |
 | Done | Finished. Stopped tasks are here too |
-| Awaiting review (task state) | Waiting for you to check a report. In the list, it is under "Awaiting review" |
 | Error | Stopped. In the list, it is under "Needs attention" |
 
 ## Why a task stopped
