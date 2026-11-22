@@ -110,7 +110,7 @@ describe('leaving the agents step', () => {
     given.status = { data: { availability: { codex: seen('signed_out'), claude: seen('signed_out') } }, isPending: false, isFetching: false } as never;
     given.saved = [];
     const next = vi.fn();
-    const view = render(<QueryClientProvider client={new QueryClient()}><AgentsStep onNext={next} /></QueryClientProvider>);
+    const view = render(<QueryClientProvider client={new QueryClient()}><AgentsStep onBack={vi.fn()} onNext={next} /></QueryClientProvider>);
     // The way on that the step offers when no agent can take work.
     const without = await waitFor(() => view.container.querySelector<HTMLButtonElement>('[data-setup-without-agent]')!);
     fireEvent.click(without);
