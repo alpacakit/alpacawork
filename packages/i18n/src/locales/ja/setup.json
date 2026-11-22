@@ -51,6 +51,16 @@
     "lead": "alpacawork の画面の言語と色を選んでください。",
     "title": "言語とテーマ"
   },
+  "done": {
+    "appBody": "ブラウザの機能で Dock やタスクバーにアイコンを置き、タブを閉じたあともそこから開き直せるようにします。",
+    "appTitle": "アプリとして入れる",
+    "browser": "ブラウザのまま始める",
+    "install": "アプリとして入れて始める",
+    "later": "あとから、{{settings}}の「{{apps}}」でも入れられます。",
+    "menuBody": "メニューの<ui>ファイル</ui> → <ui>Dock に追加</ui>（macOS Sonoma 以降）で入れると、Dock のアイコンから開き直せます。",
+    "start": "始める",
+    "title": "セットアップが終わりました"
+  },
   "language": "表示言語",
   "next": "次へ",
   "project": {

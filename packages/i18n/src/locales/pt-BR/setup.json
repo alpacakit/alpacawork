@@ -51,6 +51,16 @@
     "lead": "Escolha o idioma e as cores da tela do alpacawork.",
     "title": "Idioma e tema"
   },
+  "done": {
+    "appBody": "O seu navegador coloca um ícone no Dock ou na barra de tarefas, e você pode abrir o alpacawork de novo pelo Dock ou pela barra de tarefas depois de fechar a aba.",
+    "appTitle": "Instalar como app",
+    "browser": "Começar no navegador",
+    "install": "Instalar e começar",
+    "later": "Você também pode instalar depois em {{settings}} → {{apps}}.",
+    "menuBody": "Instale com <ui>Arquivo</ui> → <ui>Adicionar ao Dock</ui> no menu (macOS Sonoma ou posterior) e você poderá abri-lo de novo pelo ícone no Dock.",
+    "start": "Começar",
+    "title": "A configuração terminou"
+  },
   "language": "Idioma de exibição",
   "next": "Avançar",
   "project": {

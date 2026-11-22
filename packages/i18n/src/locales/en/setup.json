@@ -51,6 +51,16 @@
     "lead": "Choose the language and colors for the alpacawork screen.",
     "title": "Language and theme"
   },
+  "done": {
+    "appBody": "Your browser puts an icon in the Dock or the taskbar, so you can open alpacawork again from it after closing the tab.",
+    "appTitle": "Install as an app",
+    "browser": "Start in the browser",
+    "install": "Install and start",
+    "later": "You can also install it later in {{settings}} → {{apps}}.",
+    "menuBody": "Install it with <ui>File</ui> → <ui>Add to Dock</ui> in the menu (macOS Sonoma or later), and you can open it again from its icon in the Dock.",
+    "start": "Start",
+    "title": "Setup is done"
+  },
   "language": "Display language",
   "next": "Next",
   "project": {
