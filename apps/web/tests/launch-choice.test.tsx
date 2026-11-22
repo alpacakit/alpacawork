@@ -51,6 +51,18 @@ test("a choice made on another screen is where the next new conversation starts,
   expect(stored()).toEqual({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
 });
 
+test("a pick on a page an agent checks (?agent=1) changes its input but not the person's memory", async () => {
+  history.replaceState(null, "", "/?agent=1");
+  try {
+    let choice!: ReturnType<typeof useLaunchChoice>;
+    function Picker() { choice = useLaunchChoice(); return null; }
+    render(<Picker />);
+    await act(async () => choice.setSelected({ model: "b" }));
+    expect(choice.send).toEqual({ model: "b" });
+    expect(stored()).toEqual({ agent: null, values: {} });
+  } finally { history.replaceState(null, "", "/"); }
+});
+
 test("the picker offers each row's written values, shallow to deep, never a 'none' the settings did not write", async () => {
   given.profiles = [pi, grok];
   let choice!: ReturnType<typeof useLaunchChoice>;

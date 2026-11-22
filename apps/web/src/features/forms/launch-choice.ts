@@ -5,6 +5,7 @@ import { useFrameSelector } from "@/data/workspace-store";
 import { workspaceWriteBasis } from "@/data/connection";
 import { api } from "@/data/resources";
 import { notify } from "@/lib/notify";
+import { isAgentView } from "@/lib/agent-view";
 import type { WorkspaceInfo } from "@/data/types";
 import { agentOffers, type AgentOffer } from "./agent-offers";
 import { coordinatorStart, launchSelection, selectionReady, type SelectionBasis } from "./launch-selection";
@@ -18,8 +19,10 @@ const NO_MEMORY: WorkspaceInfo["launchMemory"] = { agent: null, values: {} };
  * Saves a change to the person's launch memory on the server; the index brings it back to every screen. It is where the
  * next new conversation starts, not this send or this setup, so a failure is said and nothing waits for it.
  */
-export function saveLaunchMemory(change: LaunchMemoryChange) {
-  return api.request("launch-memory", launchMemoryResponseSchema, undefined, launchMemoryRequestSchema.parse({ change }),
+export async function saveLaunchMemory(change: LaunchMemoryChange) {
+  // A `?agent=1` page is an agent checking the screen, not the person: its picks leave the person's memory alone.
+  if (isAgentView()) return;
+  await api.request("launch-memory", launchMemoryResponseSchema, undefined, launchMemoryRequestSchema.parse({ change }),
     crypto.randomUUID(), workspaceWriteBasis());
 }
 const sayUnsaved = (error: unknown) => notify.failure(error, { about: "launch-memory" });
