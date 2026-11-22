@@ -23,8 +23,8 @@ export const useCanHover = () => useSyncExternalStore(subscribeHover, canHoverNo
 
 /** The page runs in its installed app's own window (no address bar), not in a browser tab. */
 const INSTALLED_APP_QUERY = "(display-mode: standalone)";
-const isInstalledApp = () => matchMedia(INSTALLED_APP_QUERY).matches;
-const subscribeInstalledApp = (onChange: () => void) => {
+export const isInstalledApp = () => matchMedia(INSTALLED_APP_QUERY).matches;
+export const subscribeInstalledApp = (onChange: () => void) => {
   const query = matchMedia(INSTALLED_APP_QUERY);
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);
