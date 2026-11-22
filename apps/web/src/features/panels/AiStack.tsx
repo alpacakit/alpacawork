@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -22,13 +22,22 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
   const added = newStackRow(agents, rows);
+  // A row just added is edited from its first choice (its model), which takes the focus.
+  const list = useRef<HTMLOListElement>(null);
+  const [focusRow, setFocusRow] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusRow) return;
+    const row = list.current?.querySelector<HTMLElement>(`[data-ai-stack-row-id="${focusRow}"]`);
+    (row?.querySelector<HTMLElement>('[data-ai-stack-choice] select') ?? row?.querySelector<HTMLElement>('select'))?.focus();
+    setFocusRow(null);
+  }, [focusRow]);
   return <div className="flex flex-col gap-2">
     <section aria-labelledby={`${id}-title`} data-ai-stack className="min-w-0 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         <h3 id={`${id}-title`} className="text-base font-semibold">{t('agentSettings.aiStack.title')}</h3>
         <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.lead')}</p>
       </div>
-      <ol aria-labelledby={`${id}-title`} className="m-0 list-none p-0">
+      <ol ref={list} aria-labelledby={`${id}-title`} className="m-0 list-none p-0">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
@@ -36,7 +45,7 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
           onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
       </ol>
       <div className="border-t border-line px-4 py-3 narrow:px-3">
-        <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => added && onChange([...rows, added])}>
+        <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
           {t('agentSettings.aiStack.add')}</Button>
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
         <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>
@@ -63,7 +72,7 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
   // One line on a PC: its number, its agent (the first marked as the default under it), two choices to a line in
   // columns, and its controls. On a phone the choices go under the agent and its controls, one to a line.
-  return <li data-ai-stack-row={row.agent} data-invalid={issues.length ? '' : undefined}
+  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length ? '' : undefined}
     className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-line px-4 py-3 narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className="flex min-h-control-md items-center justify-end font-mono tabular-nums text-muted">{n}</span>
     <div className="flex min-w-0 items-start gap-x-5 narrow:contents">
@@ -80,7 +89,7 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
         {choices.map((choice, at) => {
           const value = Object.hasOwn(row.values, choice.key) ? row.values[choice.key]! : choice.values[0]!;
           const offered = choice.values.includes(value);
-          return <label key={choice.key} className="contents">
+          return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
             <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
             <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={!offered || undefined}
               aria-label={t('agentSettings.aiStack.valueFor', { n, row: text.row(choice.key) })}

@@ -34,6 +34,17 @@ import { configYaml, serverDraft, type ServerDraft } from "./settings-draft";
 
 type ConfigPayload = { yaml: string; agents: string; expected: string };
 
+/** The first row of the AI stack that keeps a save back: brought into view, its control to fix focused. */
+function focusStackIssue() {
+  const stack = document.querySelector<HTMLElement>('[data-ai-stack]');
+  const target = stack?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? stack?.querySelector<HTMLElement>('[data-ai-stack-row][data-invalid] select')
+    ?? stack?.querySelector<HTMLElement>('[data-slot="field-error"]');
+  if (!target) return;
+  target.scrollIntoView?.({ block: 'center' });
+  if (!target.matches('select, input, button')) target.tabIndex = -1;
+  target.focus({ preventScroll: true });
+}
+
 /** This PC's config.yaml as a draft: what it was last read or saved as (with its hash), saved when changed. */
 export function ServerSettingsTab() {
   const { t } = useTranslation("panels");
@@ -68,10 +79,15 @@ export function ServerSettingsTab() {
       setBase({ hash: saved.hash ?? base.hash, draft });
       form.reset(draft);
     },
-    onInvalid: errors => { if (errors.agents || errors.aiStack) unfold('agents'); if (errors.limits) unfold('advanced'); },
+    onInvalid: errors => {
+      if (errors.agents || errors.aiStack) unfold('agents');
+      if (errors.limits) unfold('advanced');
+      // A refused stack takes the eye to the row to fix, once its fold has opened.
+      if (errors.aiStack && !errors.agents) requestAnimationFrame(() => requestAnimationFrame(focusStackIssue));
+    },
   });
   const capture = useAnswerGuard(form);
-  const { isDirty } = useFormState({ control: form.control });
+  const { isDirty, errors: formErrors } = useFormState({ control: form.control });
   const loaded = server.data && !server.data.error && server.data.hash ? server.data : undefined;
   // The draft starts from a read of config.yaml made for this opening, not a cached one; later reads do not move it.
   useEffect(() => {
@@ -121,6 +137,9 @@ export function ServerSettingsTab() {
       <DialogFooter data-settings-foot className="flex-wrap">
         <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
           <FieldHint role="status">{isDirty ? t("settings.status.dirty") : t("settings.status.saved")}</FieldHint>
+          {/* A save the stack refused says why beside the button, and takes the eye to the row to fix. */}
+          {formErrors.aiStack && <FieldError data-ai-stack-refused className="mt-type-close">{t('agentSettings.aiStack.saveRefused')}{' '}
+            <Button type="button" variant="ref" onClick={focusStackIssue}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>}
           <FieldHint className="mt-type-close">{t("settings.server.effect")}</FieldHint>
         </div>
         <Button variant="outline" disabled={!isDirty} onClick={() => form.reset()}>

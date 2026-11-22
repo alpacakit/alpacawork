@@ -735,10 +735,7 @@ const RECORD_HEAD = "grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] con
 function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; open: boolean }) {
   const { reader: t } = useFeedWords();
   const urgent = row.report.kind === "urgent";
-  // A stop the AI stack carried on goes from the AI that stopped to the one that took over, not back to its requester.
-  const { carriedOn, recipient } = row.report;
-  const name: HistoryRow["name"] = carriedOn && recipient && "ends" in row.name
-    ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
+  const name = rowEnds(row);
   const words = (end: NameEnd) => [t(`reportFeed.row.party.${end.party}`), end.taskId, end.agent, end.title].filter(Boolean).join(" ");
   const said = "own" in name ? t("reportFeed.row.own", { who: words(name.own) })
     : t("reportFeed.row.between", { from: words(name.ends[0]), to: words(name.ends[1]) });
@@ -818,7 +815,7 @@ function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpe
  * the tag); no separate line stands for the link.
  */
 function RowParties({ row, onFollow }: { row: HistoryRow; onFollow: (id: string) => void }) {
-  const name = row.name;
+  const name = rowEnds(row);
   const tag = (end: NameEnd) => <PartyTag end={end} whole onOpen={end.taskId && end.party !== "self"
     ? button => followReference(button, end.taskId!, () => onFollow(end.taskId!)) : undefined} />;
   // From, then the arrow and to: on one line where both fit, else to goes under from with its arrow. Each end whole.
@@ -845,6 +842,15 @@ function RowEnd({ outcome }: { outcome: RowOutcome }) {
 
 const TaskPeople = createContext<PeopleIndex | null>(null);
 const useTaskPeople = () => useContext(TaskPeople);
+/**
+ * Who a row is between, as its head and its open body both say it: a stop the AI stack carried on goes from the AI that
+ * stopped to the one that took over, not back to its requester.
+ */
+function rowEnds(row: HistoryRow): HistoryRow["name"] {
+  const { carriedOn, recipient } = row.report;
+  return carriedOn && recipient && "ends" in row.name
+    ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
+}
 const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
   runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
 function carriedOnWords(report: ReportEvent, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {

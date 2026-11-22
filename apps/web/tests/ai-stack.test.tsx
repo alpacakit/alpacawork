@@ -23,9 +23,11 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   // The first row is the default; it cannot move up, and the only row cannot be removed.
   expect(screen.getByRole('button', { name: 'Move row 1 up' })).toHaveProperty('disabled', true);
   expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', true);
-  // A fallback added is a model not in the stack yet: the same agent's next model first.
+  // A fallback added starts as a copy of the last row, focused to be edited: it never picks a model by itself.
   fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback' }));
-  expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'fable', effort: 'medium' } }]);
+  expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
+  expect(document.activeElement).toBe(screen.getByLabelText('Model in row 2'));
+  expect(document.body.textContent).toContain('Same as row 1, so this row is never used.');
   fireEvent.change(screen.getByLabelText('Agent in row 2'), { target: { value: 'codex' } });
   fireEvent.change(screen.getByLabelText('Effort in row 2'), { target: { value: 'high' } });
   fireEvent.click(screen.getByRole('button', { name: 'Move row 2 up' }));

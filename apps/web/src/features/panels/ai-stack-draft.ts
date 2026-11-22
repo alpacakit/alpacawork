@@ -47,20 +47,15 @@ export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDra
 
 const same = (a: StackRowDraft, b: StackRowDraft) => a.agent === b.agent && JSON.stringify(Object.entries(a.values).sort()) === JSON.stringify(Object.entries(b.values).sort());
 /**
- * The row "Add a fallback" adds: the first enabled agent and model not in the stack yet, so the new row is one that can
- * take over; when every model is in it, the first enabled agent as it starts.
+ * The row "Add a fallback" adds: a copy of the last row, to edit from there, so adding never picks a model the person
+ * did not choose (one kept for important work, say). Until changed it repeats the row above and is said to go unused.
+ * With no row, the first enabled agent as it starts.
  */
 export function newStackRow(agents: readonly AgentDraft[], rows: readonly StackRowDraft[]): StackRowDraft | null {
-  const enabled = agents.filter(agent => agent.enabled !== false);
-  for (const agent of enabled) {
-    const models = rowChoices(agent, {}).find(choice => choice.key === 'model')?.values ?? [undefined];
-    for (const model of models) {
-      const base = firstValues(agent);
-      const row = { id: nextId(), agent: agent.name, values: model === undefined ? base : withRowValue(agent, { id: '', agent: agent.name, values: base }, 'model', model).values };
-      if (!rows.some(each => each.agent === row.agent && each.values.model === row.values.model)) return row;
-    }
-  }
-  return enabled[0] ? { id: nextId(), agent: enabled[0].name, values: firstValues(enabled[0]) } : null;
+  const last = rows.at(-1);
+  if (last) return { id: nextId(), agent: last.agent, values: { ...last.values } };
+  const first = agents.find(agent => agent.enabled !== false);
+  return first ? { id: nextId(), agent: first.name, values: firstValues(first) } : null;
 }
 /** The earlier row a row repeats: launched the same, it never runs, as the one above already stopped. */
 export const repeatedRow = (rows: readonly StackRowDraft[], index: number): number | null => {

@@ -133,6 +133,21 @@ test("invalid agent values in a collapsed card block saving, open and focus the 
   expect(parse(saveBody(fetcher).agents).agents.claude.params.model).toEqual(['sonnet', 'opus']);
 });
 
+test("a save the AI stack refuses says why by the button and takes the eye to the row to fix", async () => {
+  const fetcher = serverFetch([answer(serverSettings(SAVED_1))], [{ ...serverSettings(),
+    aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }, { agent: 'gone', values: {} }] }]);
+  await openServer();
+  fireEvent.change(parallel(), { target: { value: "3" } });
+  fireEvent.click(save());
+  expect(await screen.findByText(/Not saved: AI for tasks has a row that cannot run/)).toBeTruthy();
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Agent in row 2')));
+  expect(saveCalls(fetcher)).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Remove row 2' }));
+  await waitFor(() => expect(screen.queryByText(/Not saved: AI for tasks/)).toBeNull());
+  fireEvent.click(save());
+  await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
+});
+
 test("a broken YAML read and a limit below its minimum block saving without dropping the source", async () => {
   const fetcher = serverFetch([answer(serverSettings())], [{ ...serverSettings(), agentsText: 'agents:\n  codex: *missing\n' }]);
   await openServer();

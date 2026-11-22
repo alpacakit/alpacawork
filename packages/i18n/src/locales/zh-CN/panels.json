@@ -21,6 +21,8 @@
       "notOffered": "{{value}}（不是可选值）",
       "remove": "删除第 {{n}} 行",
       "repeated": "与第 {{n}} 行相同，因此这一行不会被使用。",
+      "saveRefused": "未保存：任务使用的 AI 中有无法使用的行。请修正标红的行后再次保存。",
+      "showRow": "前往该行",
       "title": "任务使用的 AI",
       "up": "将第 {{n}} 行上移",
       "valueFor": "第 {{n}} 行的{{row}}"

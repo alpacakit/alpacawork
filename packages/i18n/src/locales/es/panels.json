@@ -21,6 +21,8 @@
       "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar la fila {{n}}",
       "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
+      "saveRefused": "No se guardó: IA de las tareas tiene una fila que no se puede usar. Corrige la fila marcada en rojo y vuelve a guardar.",
+      "showRow": "Ir a la fila",
       "title": "IA de las tareas",
       "up": "Subir la fila {{n}}",
       "valueFor": "{{row}} de la fila {{n}}"
