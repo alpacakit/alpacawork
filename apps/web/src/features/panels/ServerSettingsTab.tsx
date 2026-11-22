@@ -192,6 +192,11 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
     {/* The stack the agents run in, above the agents whose choices its rows pick from. */}
     {draft.agents.ok && <fieldset disabled={disabled} className="mb-4 min-w-0 border-0 p-0"><Controller name="aiStack" control={control} render={({ field }) =>
       <AiStack rows={field.value} agents={draft.agents.ok ? draft.agents.value.agents : []} onChange={field.onChange} />} /></fieldset>}
+    {/* Under the stack, the agents get their own heading, so their cards do not read as more rows of it. */}
+    {draft.agents.ok && <div className="mb-3">
+      <h3 className="text-base font-semibold">{t('agentSettings.aiStack.agentsTitle')}</h3>
+      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote')}</p>
+    </div>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
         <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}

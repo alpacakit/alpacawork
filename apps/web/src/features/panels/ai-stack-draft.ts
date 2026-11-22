@@ -47,7 +47,7 @@ export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDra
 
 const same = (a: StackRowDraft, b: StackRowDraft) => a.agent === b.agent && JSON.stringify(Object.entries(a.values).sort()) === JSON.stringify(Object.entries(b.values).sort());
 /**
- * The row "Add a fallback" adds: a copy of the last row, to edit from there, so adding never picks a model the person
+ * The row "Add a fallback AI" adds: a copy of the last row, to edit from there, so adding never picks a model the person
  * did not choose (one kept for important work, say). Until changed it repeats the row above and is said to go unused.
  * With no row, the first enabled agent as it starts.
  */

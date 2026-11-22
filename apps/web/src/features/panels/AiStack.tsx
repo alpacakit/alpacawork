@@ -46,7 +46,7 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
       </ol>
       <div className="border-t border-line px-4 py-3 narrow:px-3">
         <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
-          {t('agentSettings.aiStack.add')}</Button>
+          {t(rows.length ? 'agentSettings.aiStack.add' : 'agentSettings.aiStack.addFirst')}</Button>
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
         <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>
       </div>

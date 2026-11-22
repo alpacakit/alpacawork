@@ -24,7 +24,7 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   expect(screen.getByRole('button', { name: 'Move row 1 up' })).toHaveProperty('disabled', true);
   expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', true);
   // A fallback added starts as a copy of the last row, focused to be edited: it never picks a model by itself.
-  fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback' }));
+  fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback AI' }));
   expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   expect(document.activeElement).toBe(screen.getByLabelText('Model in row 2'));
   expect(document.body.textContent).toContain('Same as row 1, so this row is never used.');
