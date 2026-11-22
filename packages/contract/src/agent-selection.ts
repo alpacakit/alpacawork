@@ -101,9 +101,11 @@ export function resolveOfferedSelection(offer: SelectionOffer, explicit: Selecti
  */
 export const launchMemorySchema = z.object({
   agent: z.string().min(1).nullable(), values: z.record(z.string().min(1), selectionSchema),
+  /** One more with each save that changes the record: of two copies (a save's answer, the index), the larger is newer. */
+  version: z.number().int().nonnegative(),
 }).strict();
 export type LaunchMemory = z.infer<typeof launchMemorySchema>;
-export const emptyLaunchMemory: LaunchMemory = { agent: null, values: {} };
+export const emptyLaunchMemory: LaunchMemory = { agent: null, values: {}, version: 0 };
 /**
  * `choose`: the input picked `agent`, and these values for it: only the rows chosen in that act, so a choice made on
  * another device for another row stays, and a row never chosen keeps following the config. `forget-agent`: setup chose
@@ -116,8 +118,14 @@ export const launchMemoryChangeSchema = z.discriminatedUnion('kind', [
 export type LaunchMemoryChange = z.infer<typeof launchMemoryChangeSchema>;
 export const launchMemoryRequestSchema = z.object({ change: launchMemoryChangeSchema }).strict();
 export const launchMemoryResponseSchema = z.object({ memory: launchMemorySchema }).strict();
-/** A choice sets only the rows it names, over what is kept; every other row and agent stays as it was. */
+/**
+ * A choice sets only the rows it names, over what is kept; every other row and agent stays as it was. The version
+ * goes up by one when the record changes, and stays when the change leaves it as it was.
+ */
 export function applyLaunchMemory(memory: LaunchMemory, change: LaunchMemoryChange): LaunchMemory {
-  return change.kind === 'forget-agent' ? { ...memory, agent: null }
-    : { agent: change.agent, values: { ...memory.values, [change.agent]: { ...memory.values[change.agent], ...change.values } } };
+  const agent = change.kind === 'forget-agent' ? null : change.agent;
+  const values = change.kind === 'forget-agent' ? memory.values
+    : { ...memory.values, [change.agent]: { ...memory.values[change.agent], ...change.values } };
+  const same = agent === memory.agent && JSON.stringify(values) === JSON.stringify(memory.values);
+  return same ? memory : { agent, values, version: memory.version + 1 };
 }

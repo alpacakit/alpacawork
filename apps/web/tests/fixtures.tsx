@@ -359,7 +359,7 @@ export function indexOf(value: Served, rev = 1, requiredPv: Partial<RequiredPvDT
     projects: listed.map(project => ({ ...project, counts: menu(project.id) })),
     profiles: value.profiles, attachmentBytes: value.attachmentBytes,
     errors: value.errors, writable: value.writable, staleIds: [],
-    person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {} },
+    person: { settings: null, notices: null, coordinator: null }, presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 },
     counts: { children: value.children ?? {},
       closed: Object.fromEntries(scopes.map(scope => [scope, { finished: listing(scope, "done"), freshFinished: 0,
         shelved: rows.filter(row => row.lifecycle !== "active" && within(scope, row.id)).length }])),

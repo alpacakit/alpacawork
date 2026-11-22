@@ -13,30 +13,42 @@ import { coordinatorStart, launchSelection, selectionReady, type SelectionBasis 
 type Profile = WorkspaceInfo["profiles"][number];
 type Values = Record<string, string | null>;
 const NO_PROFILES: Profile[] = [];
-const NO_MEMORY: WorkspaceInfo["launchMemory"] = { agent: null, values: {} };
+const NO_MEMORY: WorkspaceInfo["launchMemory"] = { agent: null, values: {}, version: 0 };
 
 /**
- * Saves a change to the person's launch memory on the server; the index brings it back to every screen. False when
- * nothing is sent: a `?agent=1` page is an agent checking the screen, not the person, and leaves the memory alone.
+ * Saves a change to the person's launch memory on the server: the answer is the record as saved. Null when nothing is
+ * sent: a `?agent=1` page is an agent checking the screen, not the person, and leaves the memory alone.
  */
-async function saveLaunchMemory(change: LaunchMemoryChange): Promise<boolean> {
-  if (isAgentView()) return false;
-  await api.request("launch-memory", launchMemoryResponseSchema, undefined, launchMemoryRequestSchema.parse({ change }),
-    crypto.randomUUID(), workspaceWriteBasis());
-  return true;
+async function saveLaunchMemory(change: LaunchMemoryChange): Promise<LaunchMemory | null> {
+  if (isAgentView()) return null;
+  return (await api.request("launch-memory", launchMemoryResponseSchema, undefined, launchMemoryRequestSchema.parse({ change }),
+    crypto.randomUUID(), workspaceWriteBasis())).memory;
 }
 /**
- * The changes on their way to the server, laid over the shared memory until each one's answer is back. Answered,
- * saved or refused, a change goes: then the index's memory is what this screen shows, as it is on every other screen.
- * A change that was never sent (`?agent=1`) stays for this page.
+ * This screen's launch memory: `record`, the newest copy it has had from a save's answer (the index brings the rest;
+ * of the two, the larger version is read), and `saving`, the changes in this screen's one line of saves, each shown
+ * until its answer is back. Sends wait while it is not empty, so a send never goes with a value about to change.
  */
-export const usePendingMemory = create<{ changes: { id: string; change: LaunchMemoryChange }[] }>(() => ({ changes: [] }));
-function rememberLaunch(change: LaunchMemoryChange): Promise<void> {
-  const id = crypto.randomUUID();
-  usePendingMemory.setState(state => ({ changes: [...state.changes, { id, change }] }));
-  const settle = () => usePendingMemory.setState(state => ({ changes: state.changes.filter(each => each.id !== id) }));
-  return saveLaunchMemory(change).then(sent => { if (sent) settle(); }, error => { settle(); throw error; });
+export const useLaunchRecord = create<{ record: LaunchMemory | null; saving: LaunchMemoryChange[] }>(() => ({ record: null, saving: [] }));
+let line: Promise<unknown> = Promise.resolve();
+const adopt = (memory: LaunchMemory) => useLaunchRecord.setState(state =>
+  !state.record || memory.version > state.record.version ? { record: memory } : state);
+/** Queues one save behind this screen's earlier ones, so the server takes them in the order they were made. */
+function rememberLaunch(change: LaunchMemoryChange, shared: () => LaunchMemory): Promise<void> {
+  useLaunchRecord.setState(state => ({ saving: [...state.saving, change] }));
+  const done = line.then(async () => {
+    try {
+      const saved = await saveLaunchMemory(change);
+      // Not sent: this page keeps it for itself, over what it read.
+      adopt(saved ?? applyLaunchMemory(newest(shared(), useLaunchRecord.getState().record), change));
+    } finally {
+      useLaunchRecord.setState(state => ({ saving: state.saving.filter(each => each !== change) }));
+    }
+  });
+  line = done.catch(() => {});
+  return done;
 }
+const newest = (shared: LaunchMemory, record: LaunchMemory | null) => record && record.version > shared.version ? record : shared;
 const sayUnsaved = (error: unknown) => notify.failure(error, { about: "launch-memory" });
 
 /**
@@ -69,13 +81,13 @@ export function selectionBasis(agent: string, conversation: ConversationLaunch |
  * What every prompt input sends with (the agent picker in its send row). Going on in a conversation (one with previous
  * values), it starts from them and sends only what the person changes here, so a choice made elsewhere never overrides
  * the conversation. Any other send is a new launch: its agent and values come from the person's memory alone, kept on
- * the server for every device (with the changes still on their way), and coordinatorStart fills the rest.
+ * the server for every device (with this screen's saves under way shown over it), and coordinatorStart fills the rest.
  */
 export function useLaunchChoice(conversation?: ConversationLaunch) {
   const offers = agentOffers(useFrameSelector(data => data?.info.profiles) ?? NO_PROFILES);
   const shared = useFrameSelector(data => data?.info.launchMemory) ?? NO_MEMORY;
-  const pending = usePendingMemory(state => state.changes);
-  const memory: LaunchMemory = pending.reduce((before, each) => applyLaunchMemory(before, each.change), shared);
+  const { record, saving } = useLaunchRecord();
+  const memory: LaunchMemory = saving.reduce(applyLaunchMemory, newest(shared, record));
   const goesOn = conversation?.previous ? conversation : undefined;
   const own = useConversationChanges(state => goesOn && state.conversation === goesOn.id ? state : null);
   const find = (key: string | null | undefined) => key ? offers.find(item => item.key === key) : undefined;
@@ -99,11 +111,13 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
     }
     // The server keeps the last choice for the next new launch, on every device: only the rows chosen now, laid over
     // what it keeps, so a choice made on another device for another row stays.
-    rememberLaunch({ kind: "choose", agent: target.key, values: update }).catch(sayUnsaved);
+    rememberLaunch({ kind: "choose", agent: target.key, values: update }, () => shared).catch(sayUnsaved);
   };
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems,
     /** The agent this send went to, which the settings no longer enable: the person picks another. */
     gone, ready: !gone && selectionReady(view),
+    /** A choice made here is still being saved: a send waits for it. */
+    saving: saving.length > 0,
     /** What the send carries: null is "none" (a written -). */
     send: view.send,
     /** Changes some values; a value the change leaves inactive (the effort of a model without one) is not sent. */
@@ -115,11 +129,14 @@ export type LaunchChoice = ReturnType<typeof useLaunchChoice>;
 /** The launch picker's menu on this screen (the coordinator's input), opened by a new admission that cannot go yet. */
 export const useLaunchPicker = create<{ open: boolean }>(() => ({ open: false }));
 /**
- * The one check every new admission meets before it fixes a request ID and its selection (selectionReady): not ready,
- * the picker opens instead. A request already fixed and sent again keeps its own values and does not come here.
+ * The one check every new admission meets before it fixes a request ID and its selection: not while a choice made here
+ * is being saved (the send waits for it), and not ready (selectionReady), the picker opens instead. A request already
+ * fixed and sent again keeps its own values and does not come here.
  */
-export function admitLaunch(choice: Pick<LaunchChoice, "ready"> | null): boolean {
-  if (!choice || choice.ready) return true;
+export function admitLaunch(choice: Pick<LaunchChoice, "ready" | "saving"> | null): boolean {
+  if (!choice) return true;
+  if (choice.saving) return false;
+  if (choice.ready) return true;
   useLaunchPicker.setState({ open: true });
   return false;
 }
@@ -130,5 +147,5 @@ export function admitLaunch(choice: Pick<LaunchChoice, "ready"> | null): boolean
  */
 export async function forgetLaunchAgent() {
   useConversationChanges.setState({ conversation: null, agent: null, changes: {} });
-  await rememberLaunch({ kind: "forget-agent" });
+  await rememberLaunch({ kind: "forget-agent" }, () => NO_MEMORY);
 }

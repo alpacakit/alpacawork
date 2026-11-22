@@ -13,8 +13,8 @@ import { markCoordinatorSeen, type CoordinatorTurn } from "../src/data/coordinat
 import { rememberWriteIdentity } from "../src/data/write-identity";
 import { useConnection } from "../src/data/connection";
 import type { ControlTreeDTO } from "@alpacawork/contract/control";
-import type { LaunchMemory } from "@alpacawork/contract/agent-selection";
-import { useConversationChanges, useLaunchPicker } from "../src/features/forms/launch-choice";
+import { applyLaunchMemory, type LaunchMemory } from "@alpacawork/contract/agent-selection";
+import { useConversationChanges, useLaunchPicker, useLaunchRecord } from "../src/features/forms/launch-choice";
 import { screenData, TestWorkspace, tree, dto, openReference, launchProfile } from "./fixtures";
 import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
@@ -24,10 +24,16 @@ import { useDialogStore } from '../src/state/dialog-store';
 const empty = { id: "conversation-1", agent: null, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],
   attachments: [], status: "running", waiting: false, answer: null, seen: false, answeredAt: null, error: null, result: null };
+/** The fetches a test answers, and serve's launch memory: a save is answered with the record as saved (seen by `fetcher` too). */
 function stubFetch(fetcher: (...args: any[]) => any) {
-  vi.stubGlobal("fetch", (url: string, ...args: any[]) => url.startsWith("/api/coordinator/skills")
-    ? Promise.resolve(reply({ status: "unavailable", profile: "claude", skills: [], reason: "test profile" }))
-    : fetcher(url, ...args));
+  let memory: LaunchMemory = { agent: null, values: {}, version: 0 };
+  vi.stubGlobal("fetch", (url: string, ...args: any[]) => {
+    if (url.startsWith("/api/coordinator/skills")) return Promise.resolve(reply({ status: "unavailable", profile: "claude", skills: [], reason: "test profile" }));
+    if (url !== "/api/launch-memory") return fetcher(url, ...args);
+    fetcher(url, ...args);
+    memory = applyLaunchMemory(memory, JSON.parse(args[0].body).change);
+    return Promise.resolve(new Response(JSON.stringify({ memory }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  });
 }
 function writeEditor(text: string) {
   const field = screen.getByRole("textbox", { name: "Message the coordinator" }) as HTMLElement & { editor: import('@tiptap/react').Editor };
@@ -43,7 +49,7 @@ beforeEach(() => {
   // Store-only transport cases begin after a new admission has fixed the original epoch.
   for (const id of ["turn-1", "next"]) rememberWriteIdentity("/fixture", id, "initial");
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); useLaunchPicker.setState({ open: false }); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); setConversationState({ conversation: null, open: true, expanded: false, engaged: false, read: true, error: null }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); useLaunchPicker.setState({ open: false }); useLaunchRecord.setState({ record: null, saving: [] }); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); setConversationState({ conversation: null, open: true, expanded: false, engaged: false, read: true, error: null }); });
 
 test('selecting another Task leaves an unengaged conversation thread alone, while new turns and language still redraw it', async () => {
   await i18n.changeLanguage('en');
@@ -369,14 +375,12 @@ test("an answer is drawn by the reports' Markdown and task references open the t
 });
 
 /** The screen's data with the person's launch memory as the index brings it. */
-const remembering = (memory: LaunchMemory) => { const data = screenData(tree({ profiles: launchProfiles })); return { ...data, info: { ...data.info, launchMemory: memory } }; };
+const remembering = (memory: Omit<LaunchMemory, "version">) => { const data = screenData(tree({ profiles: launchProfiles })); return { ...data, info: { ...data.info, launchMemory: { ...memory, version: 0 } } }; };
 const launchProfiles: ControlTreeDTO["profiles"] = [launchProfile("claude", { model: ["opus", "fable"], effort: ["high", "max"] }),
   launchProfile("codex", { model: ["gpt-6.1-sol", "gpt-6-astra"], effort: ["low", "xhigh"] })];
 test("the coordinator input offers every adapter and sends its chosen model and effort", async () => {
   await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockImplementation(async (url: string) => url === "/api/launch-memory"
-    ? new Response(JSON.stringify({ memory: { agent: null, values: {} } }), { status: 200, headers: { "Content-Type": "application/json" } })
-    : reply({ ...empty, turns: [] }));
+  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, turns: [] }));
   stubFetch(fetcher);
   render(<TestWorkspace data={remembering({ agent: "codex", values: { claude: { model: "fable", effort: "low" } } })}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
@@ -392,10 +396,12 @@ test("the coordinator input offers every adapter and sends its chosen model and 
   expect(screen.queryByRole("radio", { name: "max" })).toBeNull();
   fireEvent.click(screen.getByRole("radio", { name: "xhigh" }));
   // Each choice is kept on the server, for the next new conversation on any screen: the row chosen, each time.
-  const saved = fetcher.mock.calls.filter(([url]) => url === "/api/launch-memory").map(([, init]) => JSON.parse(init.body).change);
-  expect(saved.slice(-2)).toEqual([{ kind: "choose", agent: "codex", values: { model: "gpt-6-astra" } },
-    { kind: "choose", agent: "codex", values: { effort: "xhigh" } }]);
+  const saved = () => fetcher.mock.calls.filter(([url]) => url === "/api/launch-memory").map(([, init]) => JSON.parse(init.body).change);
+  await waitFor(() => expect(saved().slice(-2)).toEqual([{ kind: "choose", agent: "codex", values: { model: "gpt-6-astra" } },
+    { kind: "choose", agent: "codex", values: { effort: "xhigh" } }]));
   writeEditor("Continued");
+  // The send waits until the choices are saved.
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled).toBe(false));
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
   const sent = fetcher.mock.calls.find(([url]) => url === "/api/coordinator/messages")!;
@@ -471,6 +477,8 @@ test("a failed turn sent again with a previous model no longer offered does not 
   await waitFor(() => expect(document.querySelector("[data-agent-picker-menu]")).not.toBeNull());
   expect(posts()).toEqual([]);
   fireEvent.click(screen.getByRole("radio", { name: /^fable/ }));
+  // Sent once the choice is saved.
+  await waitFor(() => expect(useLaunchRecord.getState().saving).toEqual([]));
   fireEvent.click(screen.getByRole("button", { name: "Send again" }));
   await waitFor(() => expect(posts()).toHaveLength(1));
   expect(posts()[0]).toMatchObject({ agent: "claude", selected: { model: "fable" } });

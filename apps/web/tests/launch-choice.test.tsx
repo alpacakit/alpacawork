@@ -2,31 +2,40 @@ import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { applyLaunchMemory, type LaunchMemory, type LaunchMemoryChange } from "@alpacawork/contract/agent-selection";
-import { useConversationChanges, useLaunchChoice, usePendingMemory } from "../src/features/forms/launch-choice";
+import { useConversationChanges, useLaunchChoice, useLaunchRecord } from "../src/features/forms/launch-choice";
 import { notify } from "../src/lib/notify";
 import { AgentPicker } from "../src/features/forms/AgentPicker";
 import { agentLabel } from "../src/domain/agent-label";
 import { launchProfile } from "./fixtures";
 
-/** The server's launch memory as the index brings it, and the changes the screen saved to it. */
-const given = vi.hoisted(() => ({ profiles: [] as unknown[], memory: { agent: null, values: {} } as LaunchMemory, refuse: false }));
+/**
+ * The server's launch memory (`server`) and the copy the index brings (`index`), published with the save unless
+ * `lagging`. A save waits for `gate` when one is set, and is refused while `refuse`.
+ */
+const given = vi.hoisted(() => ({ profiles: [] as unknown[], server: null as unknown as LaunchMemory, index: null as unknown as LaunchMemory,
+  refuse: false, lagging: false, gate: null as Promise<void> | null, firstOnly: false, order: [] as unknown[] }));
 vi.mock("../src/data/workspace-store", () => ({ useFrameSelector: (select: (value: unknown) => unknown) => select({ info: {
-  profiles: given.profiles, launchMemory: given.memory,
+  profiles: given.profiles, launchMemory: given.index,
 } }) }));
 vi.mock("../src/data/resources", () => ({ api: { request: vi.fn(async (_path: string, _schema: unknown, _signal: unknown, data: { change: LaunchMemoryChange }) => {
+  given.order.push(data.change);
+  if (given.gate && (!given.firstOnly || given.order.length === 1)) await given.gate;
   if (given.refuse) throw new Error("refused");
-  given.memory = applyLaunchMemory(given.memory, data.change);
-  return { memory: given.memory };
+  given.server = applyLaunchMemory(given.server, data.change);
+  if (!given.lagging) given.index = given.server;
+  return { memory: given.server };
 }) } }));
+/** What another screen left on the server, as the index has it. */
+const share = (memory: Omit<LaunchMemory, "version">, version = given.server.version + 1) => { given.server = given.index = { ...memory, version }; };
 const codex = launchProfile("codex", { model: ["a", "b"] });
 /** The configured Pi profile omits effort for fixed models. The Grok profile requires effort. */
 const pi = launchProfile("pi", { model: ["model-with-effort", "fixed-first", "fixed-second"], effort: ["high", "low", "medium"] }, ["effort"],
   { "fixed-first": ["effort"], "fixed-second": ["effort"] });
 /** A row a setting adds (tier) is offered like effort, with nothing written for it. */
 const grok = launchProfile("grok", { model: ["grok-4.7"], effort: ["high", "low", "medium", "xhigh"], tier: ["standard", "priority"] });
-const stored = () => given.memory;
-beforeEach(() => { given.profiles = [codex]; given.memory = { agent: null, values: {} }; given.refuse = false; });
-afterEach(() => { cleanup(); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); usePendingMemory.setState({ changes: [] }); vi.restoreAllMocks(); });
+const stored = () => given.server;
+beforeEach(() => { given.profiles = [codex]; given.server = given.index = { agent: null, values: {}, version: 0 }; Object.assign(given, { refuse: false, lagging: false, gate: null, firstOnly: false, order: [] }); });
+afterEach(() => { cleanup(); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); useLaunchRecord.setState({ record: null, saving: [] }); vi.restoreAllMocks(); });
 
 test.each([
   ["an agent offering low starts on it", launchProfile("claude", { model: ["opus", "fable"], effort: ["medium", "high", "low"] }), { model: "opus", effort: "low" }],
@@ -42,7 +51,7 @@ test.each([
 
 test("a choice made on another screen is where the next new conversation starts, with the agent last chosen", async () => {
   given.profiles = [codex, pi];
-  given.memory = { agent: "pi", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } };
+  share({ agent: "pi", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return null; }
   render(<Picker />);
@@ -50,7 +59,7 @@ test("a choice made on another screen is where the next new conversation starts,
   // Picking another agent keeps each agent's values and remembers the agent, on the server.
   await act(async () => choice.chooseProfile("codex"));
   expect(choice.send).toEqual({ model: "b" });
-  expect(stored()).toEqual({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
+  expect(stored()).toMatchObject({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
 });
 
 test("a conversation whose launch never got going (no previous values) starts as a new one: the memory's agent and values", () => {
@@ -60,7 +69,7 @@ test("a conversation whose launch never got going (no previous values) starts as
   function Picker() { choice = useLaunchChoice({ id: "c1", agent: "claude", previous: null }); return null; }
   const view = render(<Picker />);
   expect([choice.profile, choice.send]).toEqual(["claude", { model: "opus", effort: "low" }]);
-  given.memory = { agent: "codex", values: { codex: { model: "b" } } };
+  share({ agent: "codex", values: { codex: { model: "b" } } });
   view.rerender(<Picker />);
   expect([choice.profile, choice.send]).toEqual(["codex", { model: "b" }]);
   // The conversation's agent, no longer enabled, does not hold the send back.
@@ -77,7 +86,7 @@ test("a pick on a page an agent checks (?agent=1) changes its input but not the 
     render(<Picker />);
     await act(async () => choice.setSelected({ model: "b" }));
     expect(choice.send).toEqual({ model: "b" });
-    expect(stored()).toEqual({ agent: null, values: {} });
+    expect(stored()).toEqual({ agent: null, values: {}, version: 0 });
   } finally { history.replaceState(null, "", "/"); }
 });
 
@@ -122,7 +131,7 @@ test.each([
   [{ model: "model-with-effort", effort: "low", tier: "old" }, { model: "model-with-effort", effort: "low" }],
 ])("a choice remembered before, %o, is shown and sent as %o", (saved, shown) => {
   given.profiles = [pi];
-  given.memory = { agent: "pi", values: { pi: saved } };
+  share({ agent: "pi", values: { pi: saved } });
   let choice!: ReturnType<typeof useLaunchChoice>;
   function Picker() { choice = useLaunchChoice(); return <AgentPicker choice={choice} />; }
   render(<Picker />);
@@ -169,34 +178,72 @@ test("a conversation whose agent the settings no longer enable does not go to an
   expect([choice.profile, choice.gone, choice.ready]).toEqual(["codex", null, true]);
 });
 
-test("a pick for a new conversation shows until its save is answered; then the shared memory leads, even when another screen's choice comes with it", async () => {
+function newConversation() {
   let choice!: ReturnType<typeof useLaunchChoice>, bump!: () => void;
   function Picker() {
     const [, renderAgain] = useState(0); bump = () => renderAgain(n => n + 1);
     choice = useLaunchChoice({ id: "fresh", agent: null, previous: null }); return null;
   }
   render(<Picker />);
-  act(() => choice.setSelected({ model: "b" }));
-  expect(choice.send).toEqual({ model: "b" });
-  await act(async () => {});
-  // Answered: another screen's later choice arrives with the same index, and is what this screen follows.
-  given.memory = applyLaunchMemory(given.memory, { kind: "choose", agent: "codex", values: { model: "a" } });
-  act(() => bump());
-  expect(choice.send).toEqual({ model: "a" });
+  return { choice: () => choice, bump: () => act(() => bump()) };
+}
+
+test.each([["the save's answer", true], ["the index", false]])("a pick goes with the send whether %s comes first", async (_first, answerFirst) => {
+  const input = newConversation();
+  let open!: () => void;
+  given.gate = new Promise(resolve => { open = resolve; });
+  given.lagging = answerFirst;
+  act(() => input.choice().setSelected({ model: "b" }));
+  // Shown at once; the send waits while it is being saved.
+  expect([input.choice().send, input.choice().saving]).toEqual([{ model: "b" }, true]);
+  if (!answerFirst) { given.server = given.index = applyLaunchMemory(given.server, { kind: "choose", agent: "codex", values: { model: "b" } }); input.bump(); }
+  await act(async () => { open(); await given.gate; });
+  if (answerFirst) {
+    expect([input.choice().send, input.choice().saving]).toEqual([{ model: "b" }, false]);
+    // The index catches up later with the same version: nothing changes.
+    given.index = given.server; input.bump();
+  }
+  expect([input.choice().send, input.choice().saving]).toEqual([{ model: "b" }, false]);
 });
 
-test("a pick whose save is refused is said, and the new conversation goes back to the shared memory", async () => {
-  given.memory = { agent: "codex", values: { codex: { model: "a" } } };
+test("two picks in a row reach the server in order, and the later one stays", async () => {
+  given.profiles = [launchProfile("claude", { model: ["opus"], effort: ["medium", "high", "low"] })];
+  const input = newConversation();
+  // The first save is slow: the second must not overtake it.
+  let open!: () => void;
+  given.gate = new Promise(resolve => { open = resolve; }); given.firstOnly = true;
+  act(() => input.choice().setSelected({ effort: "high" }));
+  act(() => input.choice().setSelected({ effort: "medium" }));
+  await act(async () => {});
+  expect(input.choice().send).toEqual({ model: "opus", effort: "medium" });
+  await act(async () => { open(); await given.gate; });
+  expect(given.order).toEqual([{ kind: "choose", agent: "claude", values: { effort: "high" } }, { kind: "choose", agent: "claude", values: { effort: "medium" } }]);
+  expect(stored().values.claude).toEqual({ effort: "medium" });
+  expect(input.choice().send).toEqual({ model: "opus", effort: "medium" });
+});
+
+test("after a save, a later choice from another screen leads; an older copy does not", async () => {
+  const input = newConversation();
+  given.lagging = true;
+  await act(async () => input.choice().setSelected({ model: "b" }));
+  // An index older than the answer is not read.
+  input.bump();
+  expect(input.choice().send).toEqual({ model: "b" });
+  share({ agent: "codex", values: { codex: { model: "a" } } });
+  input.bump();
+  expect(input.choice().send).toEqual({ model: "a" });
+});
+
+test("a pick whose save is refused is said, and the new conversation keeps what this screen had", async () => {
+  share({ agent: "codex", values: { codex: { model: "a" } } });
   given.refuse = true;
   const failure = vi.spyOn(notify, "failure").mockImplementation(() => undefined as never);
-  let choice!: ReturnType<typeof useLaunchChoice>;
-  function Picker() { choice = useLaunchChoice(); return null; }
-  render(<Picker />);
-  act(() => choice.setSelected({ model: "b" }));
-  expect(choice.send).toEqual({ model: "b" });
+  const input = newConversation();
+  act(() => input.choice().setSelected({ model: "b" }));
+  expect(input.choice().send).toEqual({ model: "b" });
   await act(async () => {});
   expect(failure).toHaveBeenCalledOnce();
-  expect(choice.send).toEqual({ model: "a" });
+  expect([input.choice().send, input.choice().saving]).toEqual([{ model: "a" }, false]);
 });
 
 test("a value chosen here for a row the model leaves out, gone from the settings, can be settled there, then the row is out of sight again", () => {

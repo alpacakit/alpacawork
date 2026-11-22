@@ -62,7 +62,7 @@ function useCoordinatorLaunch() {
   const conversation = useConversation(state => state.conversation);
   const choice = useLaunchChoice(conversation ? { id: conversation.id, agent: conversation.agent, previous: conversationSelection(conversation) } : undefined);
   return { profile: choice.profile, selected: choice.send, picker: choice.profiles.length || choice.gone ? choice : null,
-    ready: read && conversation !== null };
+    saving: choice.saving, ready: read && conversation !== null && !choice.saving };
 }
 const CoordinatorFooter = memo(function CoordinatorFooter() {
   const launch = useCoordinatorLaunch();

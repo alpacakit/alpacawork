@@ -28,19 +28,23 @@ test('the last choice in one screen\'s input is where another screen\'s next new
   await initializeWorkspace(root, []);
   const app = await startServer(root, 0);
   try {
-    assert.deepEqual(await remembered(app.url), { agent: null, values: {} });
+    assert.deepEqual(await remembered(app.url), { agent: null, values: {}, version: 0 });
     await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'opus', effort: 'high' } });
     await change(app.url, { kind: 'choose', agent: 'codex', values: { model: 'gpt-6.2-sol' } });
     // Each agent keeps its own values; the agent last chosen is where a new conversation starts.
     const both: Record<string, Record<string, string>> = { claude: { model: 'opus', effort: 'high' }, codex: { model: 'gpt-6.2-sol' } };
-    assert.deepEqual(await remembered(app.url), { agent: 'codex', values: both });
+    assert.deepEqual(await remembered(app.url), { agent: 'codex', values: both, version: 2 });
     // Two screens on the same agent choose different rows: each keeps the other's.
     await change(app.url, { kind: 'choose', agent: 'claude', values: { effort: 'low' } });
-    await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'fable' } });
+    const answer = await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'fable' } });
     both.claude = { model: 'fable', effort: 'low' };
-    assert.deepEqual(await remembered(app.url), { agent: 'claude', values: both });
+    // The answer is the whole record as saved, with the version the index carries too.
+    assert.deepEqual(answer.memory, { agent: 'claude', values: both, version: 4 });
+    assert.deepEqual(await remembered(app.url), answer.memory);
+    // A choice that changes nothing keeps the version.
+    assert.equal((await change(app.url, { kind: 'choose', agent: 'claude', values: { model: 'fable' } })).memory.version, 4);
     // Setup lets the agent go and keeps the values.
     await change(app.url, { kind: 'forget-agent' });
-    assert.deepEqual(await remembered(app.url), { agent: null, values: both });
+    assert.deepEqual(await remembered(app.url), { agent: null, values: both, version: 5 });
   } finally { await app.close(); }
 });

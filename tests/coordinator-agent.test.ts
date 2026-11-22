@@ -193,3 +193,28 @@ test('literal command paths agree across launch, continuation, coordinator resta
     assert.deepEqual(skills.skills.map(skill => skill.name), ['one']);
   }
 });
+
+test('after another agent fails to launch, the screen and serve both go on from the last Run that got going', t => {
+  const { root, owner, conversation, config, ask } = fixture(t);
+  config({ first: claude(), second: claude() });
+  const store = new RunStore(root, { busyTimeoutMs: 1000 });
+  t.after(() => store.close());
+  const end = (requestId: string, state: 'succeeded' | 'failed') => store.write(tx => {
+    const run = tx.coordinatorRuns(conversation.id).find(each => each.requestId === requestId)!;
+    tx.update({ ...run, state: 'running', started_at: new Date().toISOString() });
+    tx.finish({ ...tx.coordinatorRuns(conversation.id).find(each => each.id === run.id)!, state, ended_at: new Date().toISOString(),
+      reason: state === 'failed' ? 'exit' : null }, state === 'failed' ? { state: 'missing', text: null } : { state: 'present', text: 'Synthetic answer' });
+  });
+  const lastRequest = () => store.coordinatorRuns(conversation.id).at(-1)!;
+  ask('first', { model: 'synthetic-b' });
+  const answered = lastRequest();
+  end(answered.requestId, 'succeeded');
+  ask('second');
+  end(lastRequest().requestId, 'failed');
+  // The failed launch counts for neither: the screen offers to go on with the first agent's values ...
+  const view = owner.read();
+  assert.deepEqual([view.agent, view.previousValues], ['first', { model: 'synthetic-b', effort: null }]);
+  // ... and serve goes on in that session with them.
+  ask();
+  assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values], ['first', answered.id, { model: 'synthetic-b', effort: null }]);
+});

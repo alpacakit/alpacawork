@@ -30,7 +30,7 @@ import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
 import { createCoordinatorReadState, languageLine, savedReplyLanguage } from '../receiver/person-state.js';
 import { coordinatorSkills } from './skills.js';
-import { continuation } from './continuation.js';
+import { continuation, resumable } from './continuation.js';
 import { assertManagedSkillsVersion } from './managed-skills-version.js';
 import { failedRun, handovers, readable, view, type Conversation } from './conversation-view.js';
 import { actedTasks } from './messages.js';
@@ -92,12 +92,12 @@ function launchText(id: string, message: CoordinatorMessage, body: string, files
     ...files.map(([name, file]) => `![${name}](${file})`)].filter(Boolean).join('\n');
 }
 /**
- * The agent a message goes to: the one the screen chose, else the conversation's, else the first enabled one in
- * config order. An unknown name is refused here; a chosen or inherited agent that is disabled is refused at admission,
- * never replaced by another agent.
+ * The agent a message goes to: the one the screen chose, else the one the conversation goes on with (resumable, as
+ * the screen reads it), else the first enabled one in config order. An unknown name is refused here; a chosen or
+ * inherited agent that is disabled is refused at admission, never replaced by another agent.
  */
-function agentFor(config: AgentsSettings, requested: string | undefined, head: CoordinatorRunRecord | null): string | null {
-  const agent = requested ?? head?.agent ?? enabledAgents(config.agents)[0]?.[0] ?? null;
+function agentFor(config: AgentsSettings, requested: string | undefined, runs: readonly CoordinatorRunRecord[]): string | null {
+  const agent = requested ?? resumable(runs)?.continued.agent ?? enabledAgents(config.agents)[0]?.[0] ?? null;
   if (agent !== null && !Object.hasOwn(config.agents, agent))
     throw new Problem(PROBLEM_CODE.invalidInput, `Agent ${agent} is not configured`, undefined,
       { reason: { kind: 'agent_not_configured', agent } });
@@ -186,13 +186,10 @@ export class CoordinatorConversation {
       ?? this.control(true, (db, store) => this.project(db, store, current(db) ?? begin(db)));
   }
   async skills(conversationId: string, requested?: string) {
-    const [head, runs] = this.control(false, (db, store) => {
-      const id = opened(db, conversationId).id;
-      return [store.coordinatorHead(id), store.coordinatorRuns(id)] as const;
-    });
+    const runs = this.control(false, (db, store) => store.coordinatorRuns(opened(db, conversationId).id));
     const settings = readAgentsSettings(this.root);
     if (!settings.ok) return { status: 'unavailable', profile: requested ?? '', skills: [], reason: 'settings' };
-    const profile = agentFor(settings.config, requested, head);
+    const profile = agentFor(settings.config, requested, runs);
     if (profile === null) return { status: 'unavailable', profile: requested ?? '', skills: [], reason: 'launch' };
     // The catalog of the launch the next message would be admitted with: its adapter, argv, environment and session.
     const session = continuation(runs, profile)?.continued.session?.id ?? null;
@@ -211,9 +208,9 @@ export class CoordinatorConversation {
    */
   private queue(tx: RunTransaction, config: AgentsSettings, conversation: Conversation, input: { id: string; body: string;
     message: CoordinatorMessage; replyTo?: string | null; agent?: string; selected: Selection; text: string }) {
-    const head = tx.coordinatorHead(conversation.id), agent = agentFor(config, input.agent, head);
+    const head = tx.coordinatorHead(conversation.id), runs = tx.coordinatorRuns(conversation.id), agent = agentFor(config, input.agent, runs);
     if (agent === null) throw new Problem(PROBLEM_CODE.invalidSettings, 'No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server', undefined, { reason: { kind: 'no_configured_agents' } });
-    const runs = tx.coordinatorRuns(conversation.id), { launch, restartArgv, continued } = admit(config, runs, agent, input.selected);
+    const { launch, restartArgv, continued } = admit(config, runs, agent, input.selected);
     const mode: RequestMode = continued ? 'continue' : 'new', text = input.text;
     if (Buffer.byteLength(text) > PROTOCOL_LIMITS.prompt) throw new Problem(PROBLEM_CODE.tooLarge, 'Coordinator message is too large', undefined, { reason: { kind: 'coordinator_message_too_large' } });
     const session = continued ? continued.session : assignedSession(launch, agent);

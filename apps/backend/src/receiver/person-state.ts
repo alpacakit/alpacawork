@@ -188,7 +188,7 @@ export function createLaunchMemory(root: string, changed: () => void = () => {})
     change: async (change: LaunchMemoryChange): Promise<LaunchMemory> => {
       const stored = await transaction(root, LAUNCH_MEMORY_FILE, parse, (current, put) => {
         const before = current?.value ?? emptyLaunchMemory, next = applyLaunchMemory(before, change);
-        if (current && isDeepStrictEqual(before, next)) return current;
+        if (current && next === before) return current;
         const saved = put(next);
         changed();
         return saved;

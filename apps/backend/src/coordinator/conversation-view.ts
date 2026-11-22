@@ -12,7 +12,7 @@ import { blockedInvocations, queuedInputReservations } from '../runs/execution-c
 import { readRunFailure } from '../runs/error-cause.js';
 import { resultsOf } from './messages.js';
 import { replyView } from './reply.js';
-import { continuation } from './continuation.js';
+import { resumable } from './continuation.js';
 
 export type Conversation = { id: string; warmRequestId: string | null };
 /** The last time a queued message was handed to the agent at work: how far it got, and into whose Run. */
@@ -122,9 +122,10 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
         ...again ? { sentAgain: true as const } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
   }
-  // The values an omitted choice in the next message keeps: null when it would start a new session (or none exists).
-  const agent = store.coordinatorHead(conversation.id)?.agent ?? null;
-  const previousValues = agent === null ? null : continuation(runs, agent)?.previous.values ?? null;
+  // What the next message goes on from (resumable, as admission reads it): its agent and the values an omitted choice
+  // keeps; both null when it would start a new session.
+  const resumed = resumable(runs);
+  const agent = resumed?.continued.agent ?? null, previousValues = resumed?.previous.values ?? null;
   return { id: conversation.id, agent, previousValues,
     warm: !warm ? 'none' : isRunMoving(warm.state) ? 'preparing' : warm.state === 'succeeded' ? 'ready' : 'failed',
     busy: !!laneAhead(decisions, { role: 'coordinator', conversationId: conversation.id }, blocked, reservations), cancelled, turns };

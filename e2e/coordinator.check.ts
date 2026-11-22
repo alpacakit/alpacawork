@@ -20,9 +20,10 @@ const fakeCoordinator = (runtime: { root: string }, rows?: Record<string, string
   writeFixtureConfig(runtime.root, stringify({ agents: { fake: setting, codex: fixtureAgentSetting('codex') } }, { lineWidth: 0 }));
 };
 
-/** The person's launch memory as another screen left it: serve's file watcher brings it to the index. */
+/** The person's launch memory as another screen left it, newer than any save so far: serve's file watcher brings it to the index. */
+let saved = 1_000_000;
 const remember = (runtime: { root: string }, values: Record<string, string>) => writeFileSync(join(runtime.root, '.alpacawork/launch-memory.json'),
-  JSON.stringify({ version: 1, revision: crypto.randomUUID(), value: { agent: 'fake', values: { fake: values } } }));
+  JSON.stringify({ version: 1, revision: crypto.randomUUID(), value: { agent: 'fake', values: { fake: values }, version: ++saved } }));
 
 // On a phone too: the chip is in the send row, and its menu opens over the coordinator's sheet, where a finger reaches it.
 for (const phone of [true]) test.describe(phone ? 'phone' : 'pc', () => {
