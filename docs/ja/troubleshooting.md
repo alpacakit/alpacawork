@@ -39,9 +39,8 @@ PC にログインすると alpacawork は自動で起動し、タスクは元�
 
 「このサイトにアクセスできません」と出るときは、alpacawork が動いていません。起動してから、ページを再読み込みします。
 
-- Windows: スタートメニューから Ubuntu を開くと、alpacawork も起動します。ウィンドウは開いたままにします。それでも開かなければ、そのウィンドウで次の Linux のコマンドを実行します。
-- Linux: `systemctl --user start alpacawork.service`
-- macOS: `launchctl kickstart gui/$(id -u)/alpacawork.service`
+- ターミナルで `alpacawork start` を実行します。
+- Windows: スタートメニューから Ubuntu を開くと、alpacawork も起動します。ウィンドウは開いたままにします。それでも開かなければ、そのウィンドウで `alpacawork start` を実行します。
 
 URL を忘れたときは、[画面を開き直す](manage.md#画面を開き直す) を見ます。
 
