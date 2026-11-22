@@ -51,6 +51,17 @@ test("a choice made on another screen is where the next new conversation starts,
   expect(stored()).toEqual({ agent: "codex", values: { pi: { model: "fixed-first" }, codex: { model: "b" } } });
 });
 
+test("a conversation whose launch never got going (no previous values) starts from the memory, not the first candidates", () => {
+  given.profiles = [launchProfile("claude", { model: ["opus", "fable"], effort: ["medium", "high", "low"] })];
+  let choice!: ReturnType<typeof useLaunchChoice>;
+  function Picker() { choice = useLaunchChoice({ id: "c1", agent: "claude", previous: null }); return null; }
+  const view = render(<Picker />);
+  expect(choice.send).toEqual({ model: "opus", effort: "low" });
+  given.memory = { agent: "claude", values: { claude: { effort: "high" } } };
+  view.rerender(<Picker />);
+  expect(choice.send).toEqual({ model: "opus", effort: "high" });
+});
+
 test("a pick on a page an agent checks (?agent=1) changes its input but not the person's memory", async () => {
   history.replaceState(null, "", "/?agent=1");
   try {

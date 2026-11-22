@@ -478,7 +478,7 @@ test("a failed turn sent again with a previous model no longer offered does not 
 
 test("a message sent again after an unknown result goes with the choice it was first sent with", async () => {
   await i18n.changeLanguage("en");
-  const done = { ...empty, agent: "claude", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] };
+  const done = { ...empty, agent: "claude", previousValues: { model: "opus", effort: "high" }, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] };
   let lost = true;
   const fetcher = vi.fn().mockImplementation(async (url: string) => {
     if (url === "/api/coordinator/messages" && lost) { lost = false; throw new TypeError("network"); }
@@ -508,7 +508,7 @@ test("after changing to a model without effort, the coordinator input sends no e
   await i18n.changeLanguage("en");
   const profiles: ControlTreeDTO["profiles"] = [launchProfile("pi", { model: ["model-with-effort", "fixed-first"], effort: ["high", "low", "medium"] },
     ["effort"], { "fixed-first": ["effort"] })];
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "pi", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
+  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "pi", previousValues: { model: "model-with-effort", effort: "high" }, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
   stubFetch(fetcher);
   render(<TestWorkspace data={screenData(tree({ profiles }))}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);

@@ -42,10 +42,14 @@ const changesFor = (conversation: string | null) => {
 /** A conversation an input goes on with: its agent, and its previous launch values when the server says them. */
 export type ConversationLaunch = { id: string; agent: string | null; previous: Selection | null };
 
-/** The basis a send to `agent` starts from: the conversation's previous values when it goes on in it, else a new launch. */
+/**
+ * The basis a send to `agent` starts from: the conversation's previous values when it goes on in it with them, else a
+ * new launch from the shared memory. A conversation with no previous values (one whose only launch never got going)
+ * has none to go on from, so it starts as a new one does.
+ */
 export function selectionBasis(agent: string, conversation: ConversationLaunch | undefined, hints: Values | undefined): SelectionBasis {
-  return conversation && conversation.agent === agent
-    ? { kind: "continue", previous: conversation.previous ?? {} }
+  return conversation?.previous && conversation.agent === agent
+    ? { kind: "continue", previous: conversation.previous }
     : { kind: "new", hints: hints ?? {} };
 }
 
@@ -71,10 +75,10 @@ export function useLaunchChoice(conversation?: ConversationLaunch) {
   // stays for the conversation; for a new launch, only until the memory holds it (below).
   const changes = own?.agent === profile ? own.changes : {};
   const view = offer ? launchSelection(offer.offer, basis, changes) : { choices: [], shown: {}, send: {}, problems: [] };
-  // A new conversation starts from the shared memory and the offered values: a change here the memory now holds is let
-  // go, so a later choice on another device, or a config that drops the value, is what it follows. A conversation
-  // already under way keeps its own picks (another agent picked for it among them).
-  const newLaunch = !conversation?.agent;
+  // A new launch starts from the shared memory and the offered values: a change here the memory now holds is let go,
+  // so a later choice on another device, or a config that drops the value, is what it follows. Another agent picked
+  // for a conversation is kept, or the input would go back to the conversation's agent.
+  const newLaunch = basis.kind === "new" && (!conversation?.agent || own?.agent === conversation.agent);
   useEffect(() => {
     if (!newLaunch || !own?.agent) return;
     const kept = stored.values[own.agent] ?? {};
