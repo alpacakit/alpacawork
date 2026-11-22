@@ -58,7 +58,7 @@
     "failed": "Couldn't finish setup. Try again.",
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
-    "lead": "A project is a folder where AI does the work, together with the rules for working there (the project policy). Choose its name and working folder.",
+    "lead": "A project is a folder where AI does the work, together with the rules for working there (the project policy).",
     "policyNote": "This is given to every AI working in this project. The AI changes files without asking you first, so write here what it should ask you about first (the example already here is fine to start with).",
     "policySkillLine": "- {{skill}}: use {{when}}.",
     "policySkills": "## Skills to use",
