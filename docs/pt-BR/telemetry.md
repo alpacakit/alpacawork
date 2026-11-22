@@ -6,7 +6,7 @@ O envio é opcional. Nada é enviado até você escolher, e o alpacawork funcion
 
 ## O que é enviado
 
-Para cada dia em que você usa o alpacawork, os dados daquele dia são reunidos em um relatório e enviados no dia seguinte. Os dias são contados em UTC. Nenhum relatório é enviado nos dias em que você não usa o alpacawork. Se um relatório não puder ser enviado, o envio é tentado novamente por 7 dias; depois disso, ele é excluído sem ser enviado.
+Para cada dia em que você usa o alpacawork, os dados daquele dia são reunidos em um relatório e enviados no dia seguinte. O dia vira à meia-noite UTC (21h no horário de Brasília). Nenhum relatório é enviado nos dias em que você não usa o alpacawork. Se um relatório não puder ser enviado, o envio é tentado novamente por 7 dias; depois disso, ele é excluído sem ser enviado.
 
 Um relatório contém:
 
