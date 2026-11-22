@@ -67,6 +67,8 @@ En Codex, escribe `$alpacawork` en lugar de `/alpacawork`. Desde una terminal, t
 alpacawork open
 ```
 
+En Chrome o Edge, puedes instalarla como app al final de la configuración inicial, o más tarde en Configuración → App y teléfono, y volver a abrirla desde su icono en el Dock o la barra de tareas. En Safari en un Mac, instálala con Archivo → Añadir al Dock en el menú (macOS Sonoma o posterior).
+
 ## Qué hace
 
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.

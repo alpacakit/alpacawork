@@ -42,6 +42,8 @@ También puedes abrir en el navegador la URL que mostró la configuración inici
 
 Esta URL no cambia aunque reinicies el PC. Guárdala en marcadores. alpacawork se inicia solo cuando inicias sesión en el PC, así que no tienes que iniciarlo cada vez.
 
+En Chrome o Edge, puedes instalarla como app con “Instalar y empezar” al final de la configuración inicial, o más tarde con “Instalar” en “Configuración (el engranaje) → App y teléfono”. Una vez instalada, puedes volver a abrirla desde su icono en el Dock o la barra de tareas. En Safari en un Mac, instálala con “Archivo → Añadir al Dock” en el menú (macOS Sonoma o posterior).
+
 Si no se abre, consulta [La pantalla no se abre](troubleshooting.md#la-pantalla-no-se-abre).
 
 ## 3. Elegir el proyecto

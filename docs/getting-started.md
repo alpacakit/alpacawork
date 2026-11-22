@@ -42,6 +42,8 @@ You can also open the URL setup printed at the end, such as `http://127.0.0.1:43
 
 This URL stays the same even after you restart the PC. Bookmark it. alpacawork starts by itself when you log in to the PC, so you don't need to start it each time.
 
+In Chrome or Edge, you can install it as an app with "Install and start" at the end of setup, or later with "Install" in "Settings (the gear) → App & phone". Once installed, you can open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with "File → Add to Dock" in the menu (macOS Sonoma or later).
+
 If you can't open it, see [The screen doesn't open](troubleshooting.md#the-screen-doesnt-open).
 
 ## 3. Choose a project

@@ -42,6 +42,8 @@ Você também pode abrir no navegador a URL mostrada no final da configuração 
 
 Essa URL não muda, mesmo que você reinicie o PC. Salve-a nos favoritos. O alpacawork roda automaticamente quando você faz login no PC, então não é preciso iniciá-lo toda vez.
 
+No Chrome ou no Edge, você pode instalá-la como app com “Instalar e começar” no final da configuração inicial, ou depois com “Instalar” em “Configurações (engrenagem) → App e celular”. Depois de instalada, você pode abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com “Arquivo → Adicionar ao Dock” no menu (macOS Sonoma ou posterior).
+
 Se não conseguir abrir, veja [A tela não abre](troubleshooting.md#a-tela-não-abre).
 
 ## 3. Escolher o projeto
