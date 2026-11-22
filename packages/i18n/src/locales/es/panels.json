@@ -78,9 +78,9 @@
     "signedOut": "Sin sesión iniciada. En una terminal, ejecuta",
     "start": "Conversación nueva",
     "taskDefaults": {
-      "agentNote": "El agente marcado se usa cuando no se indica ninguno.",
+      "agentNote": "El agente marcado se usa cuando una solicitud no indica ningún agente.",
       "badge": "Predeterminado",
-      "coordinatorNote": "La IA con la que hablas en el campo de entrada empieza con lo último que elegiste allí.",
+      "coordinatorNote": "La IA con la que hablas en el campo de entrada empieza con lo último que elegiste en el menú del campo.",
       "lead": "Cuando una solicitud no indica nada, las tareas usan estos valores.",
       "missing": "{{row}} «{{value}}» ya no es un valor, así que se usa «{{first}}».",
       "title": "Valores predeterminados de las tareas",

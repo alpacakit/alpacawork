@@ -1,7 +1,7 @@
 import { useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NativeSelect } from '@/components/ui/native-select';
-import { FieldHint } from '@/components/ui/field';
+import { Message } from '@/components/ui/message';
 import { useChoiceText } from '@/features/forms/choice-text';
 import { cn } from '@/lib/utils';
 import { RADIO } from './AgentSettingsExecutable';
@@ -56,8 +56,9 @@ export function TaskDefaults({ draft, onChange }: { draft: AgentsDraft; onChange
               </label>)}
               </div>
             </div>
-            {rows.filter(row => row.missing).map(row => <FieldHint key={row.key} className="mt-2 text-warn">
-              {t('agentSettings.taskDefaults.missing', { row: text.row(row.key), value: agent.defaults![row.key], first: row.value === '-' ? text(null) : row.value })}</FieldHint>)}
+            {/* Nothing failed and nothing is to be done: said in passing, not as an error. */}
+            {rows.filter(row => row.missing).map(row => <Message key={row.key} size="line" tone="info" quiet className="mt-2"
+              title={t('agentSettings.taskDefaults.missing', { row: text.row(row.key), value: agent.defaults![row.key], first: row.value === '-' ? text(null) : row.value })} />)}
           </div>;
         })}
       </div>

@@ -78,9 +78,9 @@
     "signedOut": "Você não fez login. Em um terminal, execute",
     "start": "Nova conversa",
     "taskDefaults": {
-      "agentNote": "O agente marcado é usado quando nenhum é indicado.",
+      "agentNote": "O agente marcado é usado quando um pedido não indica nenhum agente.",
       "badge": "Padrão",
-      "coordinatorNote": "A IA com quem você fala no campo de entrada começa com o que você escolheu por último ali.",
+      "coordinatorNote": "A IA com quem você fala no campo de entrada começa com o que você escolheu por último no menu do campo.",
       "lead": "Quando um pedido não indica nada, as tarefas usam estes valores.",
       "missing": "{{row}} “{{value}}” não é mais um valor, então “{{first}}” é usado.",
       "title": "Padrões das tarefas",

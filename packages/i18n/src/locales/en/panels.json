@@ -78,9 +78,9 @@
     "signedOut": "Not signed in. In a terminal, run",
     "start": "New conversation",
     "taskDefaults": {
-      "agentNote": "The marked agent is used when no agent is named.",
+      "agentNote": "The marked agent is used when a request names no agent.",
       "badge": "Default",
-      "coordinatorNote": "The AI you talk to in the input starts with what you last chose there.",
+      "coordinatorNote": "The AI you talk to in the input starts with what you last chose in the input's menu.",
       "lead": "When a request names nothing, tasks run with these values.",
       "missing": "{{row}} “{{value}}” is no longer a value, so “{{first}}” is used.",
       "title": "Task defaults",

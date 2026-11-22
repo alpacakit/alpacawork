@@ -78,9 +78,9 @@
     "signedOut": "尚未登录。请在终端中执行",
     "start": "新对话",
     "taskDefaults": {
-      "agentNote": "未指定代理时，使用打勾的代理。",
+      "agentNote": "请求未指定代理时，使用打勾的代理。",
       "badge": "默认",
-      "coordinatorNote": "在输入框中对话的 AI 从你上次在那里选择的值开始。",
+      "coordinatorNote": "在输入框中对话的 AI 从你上次在输入框菜单中选择的值开始。",
       "lead": "请求中未指定时，任务使用这里的值。",
       "missing": "{{row}}“{{value}}”已不在可选值中，因此使用“{{first}}”。",
       "title": "任务默认值",
