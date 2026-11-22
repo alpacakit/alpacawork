@@ -53,6 +53,20 @@ alpacawork setup
 
 動作環境は macOS（Apple シリコン）、Linux（x64）、Windows（WSL2）です。入れたあとは [はじめかた](docs/ja/getting-started.md) に沿って、最初の1件を頼みます。
 
+### 画面を開き直す
+
+画面を閉じたあとは、Claude Code か Codex に次のように頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。
+
+```text
+/alpacawork 画面開いて
+```
+
+Codex では `/alpacawork` を `$alpacawork` に変えます。ターミナルからは次のコマンドでも開けます。
+
+```sh
+alpacawork open
+```
+
 ## できること
 
 - **頼みごとは、1つの入力欄に書くだけ。** コーディネーターが依頼をタスクにして、担当の AI に任せます。作業ごとに会話や AI を切り替える必要はありません。

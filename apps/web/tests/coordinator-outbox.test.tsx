@@ -74,7 +74,7 @@ test("a fixed message kept with a choice today's API no longer takes keeps its w
   expect(outgoing(useDraftStore.getState().entries, root, cid).map(item => item.fixed.text)).toEqual(["Keep my words"]);
   const fetcher = vi.fn().mockImplementation(async () => reply({ status: "unavailable", profile: "claude", skills: [] }));
   vi.stubGlobal("fetch", fetcher);
-  render(<TestWorkspace data={screenData(tree())}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={screenData(tree())}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   await act(async () => { await useOutbox.getState().resend?.(id); });
   expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
   const kept = useDraftStore.getState().entries[outgoingKey(root, id)], input = useDraftStore.getState().entries[key];
@@ -91,7 +91,7 @@ test("a posted message kept with a choice today's API no longer takes stays unkn
   const fetcher = vi.fn().mockImplementation(async (url: string) => url.startsWith("/api/coordinator/skills")
     ? reply({ status: "unavailable", profile: "claude", skills: [] }) : reply(conv()));
   vi.stubGlobal("fetch", fetcher);
-  render(<TestWorkspace data={screenData(tree())}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={screenData(tree())}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   await act(async () => { await useOutbox.getState().resend?.(id); });
   expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
   const [item] = outgoing(useDraftStore.getState().entries, root, cid);
@@ -110,7 +110,7 @@ test("an ID conflict from serve still refuses ordinary text in the outbox and th
   vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => url === "/api/coordinator/messages"
     ? reply({ error: { code: "idempotency_conflict", message: "ID belongs to different input", retry: "reread" } }, 409)
     : reply({ status: "unavailable", profile: "claude", skills: [] })));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   fireEvent.click(document.querySelector("[data-ask-send]")!);
   await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.stage).toBe("refused"));
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]!.values.conflict).toBe("1");
@@ -175,7 +175,7 @@ test("a read giving the request's ID to other words does not confirm the answers
   const fetcher = vi.fn().mockImplementation(async (url: string) => url === "/api/coordinator/messages" ? pending
     : url === "/api/coordinator" ? reply(conv(cid, [sentTurn(id, "different answer")])) : reply({ status: "unavailable", profile: "claude", skills: [] }));
   vi.stubGlobal("fetch", fetcher);
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   fireEvent.click(document.querySelector("[data-ask-send]")!);
   await waitFor(() => expect(fetcher.mock.calls.some(call => call[0] === "/api/coordinator/messages")).toBe(true));
   await act(() => useConversation.getState().refresh());
@@ -209,7 +209,7 @@ for (const questions of [["Q1"], ["Q2"], ["Q1", "Q2"]]) test(`a draft choosing $
     return reply({ status: "unavailable", profile: "claude", skills: [] });
   }));
   try {
-    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
     fireEvent.click(document.querySelector("[data-ask-send]")!);
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0]).toMatchObject({ text: `${task.id}（${task.title}） ${questions.map(() => "1-OptionA").join(" ")}`, tasks: [task.id],
@@ -265,7 +265,7 @@ test(`ordinary text (${about}, ${state}) has no expected write or failure toast`
     }
     return reply({ status: 'unavailable', profile: 'claude', skills: [] });
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
   fireEvent.click(document.querySelector('[data-ask-send]')!);
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.status).toBe('succeeded'));
   expect(posted.intent).toBeUndefined(); expect(posted.answers).toBeUndefined();
@@ -369,7 +369,7 @@ for (const replacement of ['all','operation','context-operation','append'] as co
   if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return reply(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]));}
   return reply({status:'unavailable',profile:'claude',skills:[]});
  }));
- render(<TestWorkspace data={data}><CoordinatorInput launch={{selected:{},picker:null}} profile="claude"/></TestWorkspace>);
+ render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude"/></TestWorkspace>);
  if(replacement==='context-operation') await act(async()=>{
   const entry=useDraftStore.getState().entries[key]!;
   updateDraft(key,{values:{...entry.values,doc:JSON.stringify(labelled(markReaderOperation(textDocument(`${task.id} Approve`)),task))}});

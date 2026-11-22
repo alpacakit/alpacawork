@@ -28,7 +28,7 @@ const response = (value: unknown) => new Response(snapshotJson(value));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function Rows() { return <WaitingRows queue={useWaiting()} open={() => {}} />; }
 function mount() { return render(<TestWorkspace><ShownConversationProvider><Rows /></ShownConversationProvider></TestWorkspace>); }
-function mountInput() { return render(<TestWorkspace><ShownConversationProvider><Rows /><CoordinatorThread turns={[]} retry={() => {}} /><CoordinatorInput launch={{ selected: {}, picker: null }} profile="fake" /></ShownConversationProvider></TestWorkspace>); }
+function mountInput() { return render(<TestWorkspace><ShownConversationProvider><Rows /><CoordinatorThread turns={[]} retry={() => {}} /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="fake" /></ShownConversationProvider></TestWorkspace>); }
 function local() {
   const key = draftKey(root, 'coordinator', cid), id = crypto.randomUUID();
   const values = { requestId: id, doc: JSON.stringify(textDocument('Local words')), phase: 'composing' };

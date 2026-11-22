@@ -5,6 +5,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { enabledAgents, type AiStackPrefix } from '@alpacawork/contract';
+import { aiRows } from '../ai-stack.js';
 import type { TaskActor } from '@alpacawork/raw';
 import type { Selection } from '@alpacawork/contract/agent-settings';
 import { TaskRepository } from './task-store.js';
@@ -21,7 +23,7 @@ type Write = {
   store: PlacementStore;
   /** Records a placement change on the Task by the command's actor; returns the record's ID. */
   record(kind: 'responsible_changed' | 'placement_changed', placement: PlacementRecord,
-    effect: 'responsible' | 'member' | 'released', launchValues?: Selection): string;
+    effect: 'responsible' | 'member' | 'released', launchValues?: Selection, prefix?: AiStackPrefix): string;
   /** A replaced or handed-over responsible: a Task at work tells its new one, caused by the record `logId`. */
   handover(logId: string): void;
 };
@@ -29,13 +31,17 @@ type Write = {
 export class PlacementCommands {
   private readonly transition = new TaskTransition();
   constructor(readonly root: string) {}
-  private requireProfile(key: string | null, selected: Selection = {}): void {
+  private requireProfile(requested: string | undefined, selected: Selection = {}, prefix?: AiStackPrefix): string {
     const settings = readAgentsSettings(this.root);
     if (!settings.ok) throw settings.error;
-    if (key === null || !Object.hasOwn(settings.config.agents, key))
+    const rows = prefix ? aiRows(settings.config, prefix) : settings.config.aiStack;
+    const key = (prefix?.[0] && prefix[0] !== 'stop' ? rows?.[0]?.agent : requested) ??
+      rows?.[0]?.agent ?? settings.config.aiStack?.[0]?.agent ?? enabledAgents(settings.config.agents)[0]?.[0];
+    if (key === undefined || !Object.hasOwn(settings.config.agents, key))
       throw new Problem(PROBLEM_CODE.invalidInput, 'Responsible placement requires a configured launch profile', undefined,
         { reason: { kind: 'responsible_placement_requires_configured_launch_profile' }, issues: [{ path: 'profile', code: 'unknown_profile', message: 'A configured launch profile is required' }] });
     validateAgentSelection(settings.config, key, selected);
+    return key;
   }
   /** One write about the active task `id` at `expectedTaskHash`, recorded as `actor`. */
   private async write<T>(id: string, expectedTaskHash: string, actor: TaskActor,
@@ -52,7 +58,8 @@ export class PlacementCommands {
       if (task.hash !== expectedTaskHash)
         throw new Problem(PROBLEM_CODE.conflict, 'Task changed; reload before retrying', { hash: task.hash }, { reason: { kind: 'task_changed' } });
       const store = new PlacementStore(this.root, false, db);
-      const record: Write['record'] = (kind, placement, effect, launchValues) => {
+      const record: Write['record'] = (kind, placement, effect, launchValues, prefix) => {
+        if (prefix) db.prepare('UPDATE placements SET ai_prefix=? WHERE id=?').run(JSON.stringify(prefix), placement.id);
         // After the Task's last record, so its log keeps its order.
         const latestAt = task.meta.log.reduce((latest, entry) => Math.max(latest, Date.parse(entry.at)), 0);
         const logId = `L${randomUUID()}`;
@@ -83,15 +90,15 @@ export class PlacementCommands {
   }
   placeNewResponsible(input: PlaceAgentInput, actor: TaskActor) {
     return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
-      this.requireProfile(input.profileKey, input.selected);
+      const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       return placeAgentReceiptSchema.parse(input.replacePlacementId === undefined
         ? { ...store.createAndPlace({ taskId: input.taskId,
-          profileKey: input.profileKey, responsible: true }, result =>
-          record('responsible_changed', result.placement, 'responsible', input.selected ?? {})), previousPlacement: null }
+          profileKey, responsible: true }, result =>
+          record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack)), previousPlacement: null }
         : store.createAndReplaceResponsible({ taskId: input.taskId,
-          profileKey: input.profileKey, replacePlacementId: input.replacePlacementId,
+          profileKey, replacePlacementId: input.replacePlacementId,
           expectedPlacementRevision: input.expectedPlacementRevision! }, result =>
-          handover(record('responsible_changed', result.placement, 'responsible', input.selected ?? {}))));
+          handover(record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack))));
     });
   }
   setResponsible(input: SetResponsibleInput, actor: TaskActor) {
@@ -113,15 +120,15 @@ export class PlacementCommands {
   }
   placeMember(input: PlaceMemberInput, actor: TaskActor) {
     return this.withResponsibleAt(input, actor, ({ store, record }) => {
-      this.requireProfile(input.profileKey, input.selected);
+      const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       if (input.agentId === undefined)
         return placeMemberReceiptSchema.parse(store.createAndPlace({ taskId: input.taskId,
-          profileKey: input.profileKey, responsible: false }, result =>
-          record('placement_changed', result.placement, 'member', input.selected ?? {})));
+          profileKey, responsible: false }, result =>
+          record('placement_changed', result.placement, 'member', input.selected ?? {}, input.aiStack)));
       const agent = store.agents().find(item => item.id === input.agentId);
       if (!agent) throw new Problem(PROBLEM_CODE.notFound, 'Agent does not exist', undefined, { reason: { kind: 'agent_does_not_exist' } });
       const placement = store.place({ taskId: input.taskId, agentId: agent.id,
-        profileKey: input.profileKey, responsible: false }, result => record('placement_changed', result, 'member', input.selected ?? {}));
+        profileKey, responsible: false }, result => record('placement_changed', result, 'member', input.selected ?? {}, input.aiStack));
       return placeMemberReceiptSchema.parse({ agent, placement });
     });
   }

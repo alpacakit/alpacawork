@@ -61,6 +61,23 @@ test('agent assign decodes selected JSON once and reports malformed selection in
     assert.equal(agentAssignInput.safeParse({ ...input, selected }).success, false);
 });
 
+test('a request stop takes precedence over a now unavailable placement fallback', async t => {
+  const h = await setup(t);
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ agents: { choice: setting, later: setting },
+    aiStack: [{ agent: 'choice', values: { model: 'large' } }] }, { aliasDuplicateObjects: false }));
+  const { placement } = await h.commands.placeNewResponsible({ taskId: h.task.id, expectedTaskHash: h.hash(),
+    aiStack: [{ agent: 'choice', values: { model: 'large' } }, { agent: 'later', values: { model: 'small' } }] }, human);
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ agents: { choice: setting },
+    aiStack: [{ agent: 'choice', values: { model: 'large' } }] }));
+  for (const aiStack of [[{ agent: 'choice', values: { model: 'large' } }, 'stop'], ['stop']] as const) {
+    const result = await new TaskRequestService(h.root).request({ task: h.task.id, body: 'Continue here only', opId: randomUUID(),
+      expectedTaskHash: h.hash(), expectedPlacementRevision: placement.revision, aiStack: [...aiStack] }, human, human);
+    if (result.outcome.kind !== 'request_accepted') throw new Error('Request must be accepted');
+    assert.equal(h.values(result.outcome.request.runId).model, 'large');
+    h.finish(result.outcome.request.runId);
+  }
+});
+
 test('only the immutable placement creation record can carry launchValues', async t => {
   const h = await setup(t), placed = await h.place({ model: 'small' });
   const entry = (await h.logs()).find(log => log.placementId === placed.placement.id)!;

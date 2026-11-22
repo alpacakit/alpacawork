@@ -4,6 +4,32 @@
     "add": "Add",
     "addAgent": "+ Add agent",
     "addRow": "+ Add row",
+    "aiStack": {
+      "add": "+ Add a fallback AI",
+      "addFirst": "+ Add the AI to use normally",
+      "agentFor": "Agent in row {{n}}",
+      "agentsNote": "A disabled agent cannot be used in the order above.",
+      "agentsTitle": "Settings for each agent",
+      "coordinatorNote": "The AI you talk to in the input starts a new conversation with the model you last chose in the input's menu (AI 1 until you choose one). When it stops on a usage limit or capacity, fallbacks carry on in the order above.",
+      "down": "Move row {{n}} down",
+      "first": "Normally used",
+      "issue": {
+        "disabled": "{{agent}} is disabled. Enable it or remove this row.",
+        "empty": "Add the AI to use normally.",
+        "missing": "There is no agent named {{agent}}. Choose another agent or remove this row.",
+        "value": "{{row}} “{{value}}” is not a value of {{agent}}. Choose again."
+      },
+      "lead": "Normally AI 1 runs. Only when it stops on a usage limit or capacity do the fallbacks 2, 3… take over in order; if the last one stops too, the work stops and you are told.",
+      "namedOnly": "A model not listed here is never used as a fallback on its own. It is used only when a request names it.",
+      "notOffered": "{{value}} (not a value)",
+      "remove": "Remove row {{n}}",
+      "repeated": "Same as row {{n}}, so this row is never used.",
+      "saveRefused": "Not saved: “AI for tasks and fallback order” has a row that cannot run. Fix the row marked in red, then save again.",
+      "showRow": "Go to the row",
+      "title": "AI for tasks and fallback order",
+      "up": "Move row {{n}} up",
+      "valueFor": "{{row}} in row {{n}}"
+    },
     "authNeeded": "Authentication required. Sign in to {{adapter}} on the server's PC",
     "authNeededCommand": "Authentication required. On the server's PC, run <code>{{command}}</code>",
     "authNeededCommandEnv": "Authentication required. On the server's PC, run <code>{{command}}</code>, or add the line {{env}}=your-key to {{path}} on the server's PC and restart the server",
@@ -12,11 +38,8 @@
     "cancel": "Cancel",
     "cannotRun": "This path cannot be run",
     "choices": "Values available when requesting work",
+    "choicesHint": "The values offered above and in the input's menu.",
     "collapse": "Collapse {{name}}",
-    "default": {
-      "explanation": "When you hand off a task, this agent is used unless you pick another. To use different agents for different kinds of work, write it in the project policy. For example: “Use Opus when creating designs.”",
-      "label": "Default"
-    },
     "defaultsChanged": "This adapter's default launch options have been updated",
     "disabled": "Disabled",
     "duplicateName": "{{name}} already exists. Choose another name.",
@@ -57,16 +80,11 @@
     "executable": "Executable",
     "expand": "Expand {{name}}",
     "fixedEnv": "alpacawork always passes this name when starting {{adapter}} (it cannot be removed here)",
-    "followDefault": {
-      "explanation": "When an update changes the built-in default, this changes with it.",
-      "label": "Built-in default"
-    },
     "found": "Found on this PC:",
     "key": "Key",
     "kind": "Adapter: {{adapter}}",
     "launchOptions": "Launch options",
     "locked": "Built into alpacawork; it cannot be changed here",
-    "makeDefault": "Set as default",
     "name": "Name",
     "notFound": "Executable not found:",
     "notFoundShort": "Not found",
@@ -89,7 +107,7 @@
     "unusedAdapter": "Unavailable for this adapter",
     "unusedOptions": "Not used in launch options",
     "useAgent": "Enable {{name}}",
-    "values": "Values (comma-separated; the first is preselected)"
+    "values": "Values (comma-separated)"
   },
   "archive": {
     "confirm": {
@@ -349,8 +367,10 @@
       "copyUrl": "Copy URL",
       "desktopBody": "Open this screen in Chrome or Edge and press <ui>Install</ui> at the right end of the address bar (in Edge, the icon in the same place). alpacawork then opens in its own window from the Dock, the taskbar or the app list.",
       "desktopImage": "Chrome’s address bar, with the Install button at its right end marked",
+      "desktopInstall": "Install",
       "desktopInstalled": "You are using the installed app now.",
       "desktopOther": "If the button is not there: in Safari on a Mac (macOS Sonoma or later), choose <ui>File</ui> → <ui>Add to Dock</ui>. If your browser has no way to install, open this screen in Chrome or Edge.",
+      "desktopPromptBody": "Once installed, alpacawork opens in its own window from the Dock, the taskbar or the app list.",
       "desktopTitle": "Use as a desktop app",
       "installAndroid": "Android: Chrome recommended",
       "installAndroidBody": "From Chrome’s menu (⋮), choose <ui>Install and create shortcut</ui> → <ui>Install</ui>.",

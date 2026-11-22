@@ -1,3 +1,4 @@
+import { aiStackPrefixSchema } from './ai-stack.js';
 import { selectionSchema } from './agent-settings.js';
 /** Public entry values. Channels decode transport types; these schemas own input rules. */
 import { z } from 'zod';
@@ -28,6 +29,7 @@ const json = <Value extends z.ZodType>(value: Value, message: string) => z.strin
     return z.NEVER;
   }
 }).pipe(value);
+const aiStack = json(aiStackPrefixSchema, 'Must be a JSON list of AI rows and an optional final stop');
 const selected = json(selectionSchema, 'Must be a JSON object of strings or null');
 const issue = (context: z.RefinementCtx, path: string, code: string, message: string) =>
   context.addIssue({ code: 'custom', path: [path], message, params: { kind: code } });
@@ -208,17 +210,17 @@ export const taskReportCliInput = taskReportShape.extend({ values: valuesText.op
  */
 export const taskRequestShape = z.object({ task: taskIdSchema, body: instructionSchema, answers: logIdSchema.optional(),
   agent: nonempty.optional(), newConversation: z.boolean().optional(),
-  cwd: nonempty.optional(), selected: selected.optional(), ...writeRecordShape, opId: nonempty,
+  cwd: nonempty.optional(), selected: selected.optional(), aiStack: aiStack.optional(), ...writeRecordShape, opId: nonempty,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
   expectedHeadRun: runIdSchema.optional() });
-type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected'> & { selected?: unknown };
+type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 const agentFlag = { key: 'agent', flag: '--agent' } as const;
 const headRunFlag = { key: 'expectedHeadRun', flag: '--expected-head-run' } as const;
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With --answers', applies: value => value.answers !== undefined,
     flags: [agentFlag, { key: 'newConversation', flag: '--new-conversation' },
-      { key: 'cwd', flag: '--cwd' }, { key: 'selected', flag: '--selected' }, headRunFlag,
+      { key: 'cwd', flag: '--cwd' }, { key: 'selected', flag: '--selected' }, { key: 'aiStack', flag: '--ai-stack' }, headRunFlag,
       { key: 'expectedTaskHash', flag: '--expected-task-hash' }, { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
   { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined, flags: [{ key: 'expectedTaskHash', flag: '--expected-task-hash' }] },
   { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined,
@@ -227,7 +229,7 @@ export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
 const checkTaskRequest = (value: RequestChecks, context: z.RefinementCtx) => checkRules(value, context, taskRequestRules);
 export const taskRequestInput = taskRequestShape.strict().superRefine(checkTaskRequest);
 /** CLI flags stay textual; the receiving entry parses selected JSON once. */
-export const taskRequestCliInput = taskRequestShape.extend({ selected: z.string().optional() })
+export const taskRequestCliInput = taskRequestShape.extend({ selected: z.string().optional(), aiStack: z.string().optional() })
   .strict().superRefine(checkTaskRequest);
 /** `urgent` is why the comment goes to the requester now. */
 export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitleSchema,
@@ -235,13 +237,13 @@ export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitl
   expectedTaskHash: digestSchema });
 
 export const agentAssignShape = z.object({ task: taskIdSchema, role: z.enum(['responsible', 'member']),
-  person: nonempty.optional(), profile: nonempty, selected: selected.optional(), ...writeRecordShape,
+  person: nonempty.optional(), profile: nonempty.optional(), selected: selected.optional(), aiStack: aiStack.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema, replace: nonempty.optional(),
   expectedPlacementRevision: revision.optional(), expectedResponsibleRevision: revision.optional() });
 const replaceFlags = [{ key: 'replace', flag: '--replace' },
   { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] as const;
 const responsibleRevisionFlag = { key: 'expectedResponsibleRevision', flag: '--expected-responsible-revision' } as const;
-type AssignChecks = Omit<z.output<typeof agentAssignShape>, 'selected'> & { selected?: unknown };
+type AssignChecks = Omit<z.output<typeof agentAssignShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 export const agentAssignRules: readonly InputRule<AssignChecks>[] = [
   { kind: 'required', scope: 'Replacing a responsible', applies: value => value.role === 'responsible' &&
     (value.replace !== undefined || value.expectedPlacementRevision !== undefined), flags: replaceFlags },
@@ -254,7 +256,7 @@ export const agentAssignRules: readonly InputRule<AssignChecks>[] = [
 export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
   checkRules(value, context, agentAssignRules));
 /** Leave the flag textual until the receiving entry parses its selected JSON. */
-export const agentAssignCliInput = agentAssignShape.extend({ selected: z.string().optional() }).superRefine((value, context) =>
+export const agentAssignCliInput = agentAssignShape.extend({ selected: z.string().optional(), aiStack: z.string().optional() }).superRefine((value, context) =>
   checkRules(value, context, agentAssignRules));
 export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty,
   ...writeRecordShape, expectedTaskHash: digestSchema, expectedPlacementRevision: revision });

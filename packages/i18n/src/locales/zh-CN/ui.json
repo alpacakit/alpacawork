@@ -6,6 +6,11 @@
   },
   "coordinatorCard": {
     "attached": "仅附件",
+    "attempts": {
+      "stopped": "{{agent}} — 因{{reason}}而停止",
+      "title": "尝试过的 AI",
+      "tookOver": "{{agent}} 接手了"
+    },
     "clear": "清空对话",
     "clearConfirm": "再点一次即可清空",
     "clearFailed": "无法清空对话。",
@@ -291,12 +296,20 @@
     "cause": {
       "modelCapacity": "模型容量已满，运行失败。请稍后重试、换一个模型重试，或停止",
       "modelLimit": "智能体已达到所用模型的用量上限，运行失败。请换一个模型或在上限重置后重试，或停止",
+      "sessionLimit": "智能体已达到 5 小时用量上限，运行失败。请在上限重置后重试，或停止",
       "weeklyLimit": "智能体已达到每周用量上限，运行失败。请在上限重置后重试，或停止"
     },
     "causeReason": {
       "modelCapacity": "模型容量已满",
       "modelLimit": "已达到模型用量上限",
+      "sessionLimit": "已达到 5 小时用量上限",
       "weeklyLimit": "已达到每周用量上限"
+    },
+    "limitName": {
+      "modelCapacity": "模型容量不足",
+      "modelLimit": "模型用量上限",
+      "sessionLimit": "5 小时用量上限",
+      "weeklyLimit": "每周用量上限"
     }
   },
   "state": {

@@ -1,3 +1,4 @@
+import { aiStackSchema } from './ai-stack.js';
 import { agentSettingShapeSchema, agentSettingsSchema, paramsSchema } from './agent-settings.js';
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, builtinAdapterIdSchema, optionsBase } from './agent-adapters.js';
 import { problemErrorSchema } from './problem.js';
@@ -40,7 +41,7 @@ export type Limits = { [K in keyof typeof DEFAULT_LIMITS]: number };
 /** The product's name: what the screen is called when no one top project names it. */
 export const DEFAULT_PROJECT_NAME = 'alpacawork';
 /** The part of config.yaml a config/set writes besides the agents block. */
-export const configEditSchema = z.object({ limits: z.object(limitsShape).strict(), /* jev: jevSettingsSchema.optional() */ }).strict();
+export const configEditSchema = z.object({ limits: z.object(limitsShape).strict(), aiStack: aiStackSchema.optional(), /* jev: jevSettingsSchema.optional() */ }).strict();
 
 /** The fields the settings' Server tab edits: config/set saves the limits, Jev and the agents block. */
 export const serverFormSchema = z.object({
@@ -155,6 +156,8 @@ export const serverSettingsSchema = z.object({
   agentsText: z.string(),
   /** Effective values at the time of the read or save. */
   agents: agentsSchema,
+  /** The saved AI stack, absent until it has been configured. */
+  aiStack: aiStackSchema.optional(),
   catalog: adapterCatalogSchema,
   availability: z.record(z.string(), agentAvailabilitySchema).optional(),
   detected: z.record(z.string(), agentAvailabilitySchema).optional(),

@@ -100,7 +100,14 @@ export function migrateDatabase(db: NodeSQLiteDatabase & { $client: DatabaseSync
       if (!dataMigration) throw new ExplicitMigrationRequired(kind);
       dataMigration(String(name), raw); return 0;
     });
-    migrate(db, { migrationsFolder: migrationsFolder(kind) });
+    // SQLite requires foreign keys off while rebuilding a referenced table. The rebuilding migration checks
+    // every foreign key before its transaction commits, and this connection restores enforcement on either exit.
+    const rebuildsRuns = kind === 'control' && migrations.slice(history.length)
+      .some(migration => migration.name === '20261122000000_request_attempts');
+    const foreignKeys = rebuildsRuns && raw.prepare('PRAGMA foreign_keys').get()?.foreign_keys === 1;
+    if (foreignKeys) raw.exec('PRAGMA foreign_keys=OFF');
+    try { migrate(db, { migrationsFolder: migrationsFolder(kind) }); }
+    finally { if (foreignKeys) raw.exec('PRAGMA foreign_keys=ON'); }
     assertCurrentMigrations(raw, kind);
   } catch (error) {
     // A data step's own refusal says why; the migrator wraps it in its failed query.

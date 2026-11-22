@@ -59,6 +59,23 @@ test('unchanged audits stay bounded and do not run the startup loader or mutate 
   assert.equal(h.records.bundle('T5'), held);
 });
 
+test('a consistent handoff does not ask the projection audit for repairs', t => {
+  const h = fixture(t);
+  const { resultHead: _, ...first } = h.records.run('R4')!;
+  h.db.prepare(`INSERT INTO runs(id,record,prompt,result,result_state)
+    SELECT 8,?,prompt,result,result_state FROM runs WHERE id=4`)
+    .run(JSON.stringify({ ...first, id: 'R8', firstRunId: first.id, attempt: 1 }));
+  h.db.prepare(`UPDATE runs SET record=json_set(record,'$.state','failed','$.reason','exit','$.supersededBy','R8') WHERE id=4`).run();
+  const records = emptyWorkspaceRecords(h.root).load(h.db, pv);
+  const values = new Map([...records.taskIds()].map(id => [id, deriveTask(records, id)]));
+  const facts = new Map([...values].map(([id, value]) => [id, aggregateFactsOf(records, id, value.row, null)]));
+  const aggregate = createScreenAggregate([...values.values()].map(value => value.contribution), facts);
+  assert.equal(records.runByRequest(first.requestId), 'R8');
+  const results = sweep(h, { ...h.frame, records, derived: id => values.get(id), aggregate });
+  assert.ok(results.some(result => result.tasks.includes(first.task!)));
+  assert.deepEqual(results.flatMap(result => result.repairs), []);
+});
+
 test('bundle reload discovers new records and removes deleted identities while keeping the old publication', t => {
   const h = fixture(t), held = h.records.bundle('T5')!;
   const taskUuid = String(h.db.prepare("SELECT id FROM tasks WHERE external_id='T5'").get()!.id);

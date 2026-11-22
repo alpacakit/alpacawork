@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
-import { isRunMoving, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { carrierOf, isRunMoving, type CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import type { CoordinatorConversation as ConversationView, CoordinatorError, CoordinatorResult, CoordinatorTurn } from '@alpacawork/contract/coordinator';
 import { isEnded, laneAhead, type RunStore } from '@alpacawork/runs';
@@ -12,7 +12,7 @@ import { blockedInvocations, queuedInputReservations } from '../runs/execution-c
 import { readRunFailure } from '../runs/error-cause.js';
 import { resultsOf } from './messages.js';
 import { replyView } from './reply.js';
-import { continuation } from './continuation.js';
+import { resumable } from './continuation.js';
 
 export type Conversation = { id: string; warmRequestId: string | null };
 /** The last time a queued message was handed to the agent at work: how far it got, and into whose Run. */
@@ -69,9 +69,7 @@ export function failedRun(run: CoordinatorRunRecord): boolean {
  * so what it did is final.
  */
 function answered(run: CoordinatorRunRecord, byId: ReadonlyMap<string, CoordinatorRunRecord>): boolean {
-  const seen = new Set<string>();
-  let head: CoordinatorRunRecord | undefined = run;
-  while (head?.state === 'joined' && head.into !== null && !seen.has(head.id)) { seen.add(head.id); head = byId.get(head.into); }
+  const head = carrierOf(run, id => byId.get(id));
   return head === undefined || isEnded(head);
 }
 /** An answer the person can have read. */
@@ -90,7 +88,13 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
   const decisions = store.readForSettle(conversation.id);
   const runIds = decisions.map(run => run.id);
   const blocked = blockedInvocations(store, runIds), reservations = queuedInputReservations(store, runIds);
-  const byRequest = new Map(runs.map(run => [run.requestId, run])), messageOf = new Map(runs.map(run => [run.id, run.requestId]));
+  const trialsByRequest = new Map<string, CoordinatorRunRecord[]>();
+  for (const run of runs) {
+    const trials = trialsByRequest.get(run.requestId) ?? [];
+    trials.push(run);
+    trialsByRequest.set(run.requestId, trials);
+  }
+  const byRequest = new Map([...trialsByRequest].map(([id, trials]) => [id, trials.at(-1)!])), messageOf = new Map(runs.map(run => [run.id, run.requestId]));
   const results = new Map(db.prepare('SELECT id, result, result_state FROM runs WHERE conversation_id = ?').all(conversation.id)
     .map(row => [`R${row.id}`, { text: row.result === null ? null : String(row.result), state: String(row.result_state) }]));
   const warm = conversation.warmRequestId === null ? undefined : byRequest.get(conversation.warmRequestId);
@@ -106,7 +110,7 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
     return replies.get(id)!;
   };
   for (const request of db.prepare(`SELECT q.id, q.body, q.submitted_at, q.delivery_state, q.reply_to FROM requests q
-    LEFT JOIN runs r ON r.request_id = q.id WHERE q.conversation_id = ? ORDER BY r.id, q.rowid`).all(conversation.id)) {
+    LEFT JOIN runs r ON r.request_id = q.id AND r.attempt=0 WHERE q.conversation_id = ? ORDER BY r.id, q.rowid`).all(conversation.id)) {
     const id = String(request.id), run = byRequest.get(id);
     if (id === conversation.warmRequestId) continue;
     if (request.delivery_state === DELIVERY_STATE.aborted) cancelled.push(id);
@@ -114,17 +118,22 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
       const handover = inputs.get(run.id);
       const waiting = run.state === 'queued' && (!!handover && inputUnsettled(handover.state) || !!laneAhead(decisions, run, blocked, reservations));
       const turn = drawnTurn(request, run, results.get(run.id), handover, messageOf, done.get(id) ?? null, waiting);
+      const trials = trialsByRequest.get(id)!;
+      const attempts = trials.length < 2 && !run.availability ? undefined : trials.map(trial => ({
+        agent: trial.agent, values: trial.launch.values, ...(trial.availability ? { availability: trial.availability } : {}),
+      }));
       const failure = turn.status === 'failed' ? readRunFailure(store.root, run) : undefined;
       // The message sent in its place carries what is left to read, while this one stays failed: one that answers after
       // all (a Run back from review) is shown with its answer.
       const again = sentAgain.has(id) && turn.status === 'failed';
-      turns.push({ ...turn, ...failure ? { failure } : {}, ...(typeof request.reply_to === 'string' ? { replyTo: reply(request.reply_to) } : {}),
+      turns.push({ ...turn, ...attempts ? { attempts } : {}, ...failure ? { failure } : {}, ...(typeof request.reply_to === 'string' ? { replyTo: reply(request.reply_to) } : {}),
         ...again ? { sentAgain: true as const } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
   }
-  // The values an omitted choice in the next message keeps: null when it would start a new session (or none exists).
-  const agent = store.coordinatorHead(conversation.id)?.agent ?? null;
-  const previousValues = agent === null ? null : continuation(runs, agent)?.previous.values ?? null;
+  // What the next message goes on from (resumable, as admission reads it): its agent and the values an omitted choice
+  // keeps; both null when it would start a new session.
+  const resumed = resumable(runs);
+  const agent = resumed?.continued.agent ?? null, previousValues = resumed?.previous.values ?? null;
   return { id: conversation.id, agent, previousValues,
     warm: !warm ? 'none' : isRunMoving(warm.state) ? 'preparing' : warm.state === 'succeeded' ? 'ready' : 'failed',
     busy: !!laneAhead(decisions, { role: 'coordinator', conversationId: conversation.id }, blocked, reservations), cancelled, turns };

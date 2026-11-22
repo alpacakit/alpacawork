@@ -4,6 +4,32 @@
     "add": "Añadir",
     "addAgent": "+ Añadir agente",
     "addRow": "+ Añadir fila",
+    "aiStack": {
+      "add": "+ Añadir una IA alternativa",
+      "addFirst": "+ Añadir la IA de uso normal",
+      "agentFor": "Agente de la fila {{n}}",
+      "agentsNote": "Un agente desactivado no se puede usar en el orden de arriba.",
+      "agentsTitle": "Ajustes de cada agente",
+      "coordinatorNote": "La IA con la que hablas en el cuadro de entrada empieza cada conversación nueva con el modelo que elegiste por última vez en su menú (la IA 1 hasta que elijas uno). Si se detiene por un límite de uso o de capacidad, las alternativas siguen en el orden de arriba.",
+      "down": "Bajar la fila {{n}}",
+      "first": "De uso normal",
+      "issue": {
+        "disabled": "{{agent}} está desactivado. Actívalo o quita esta fila.",
+        "empty": "Añade la IA de uso normal.",
+        "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
+        "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
+      },
+      "lead": "Normalmente funciona la IA 1. Solo si se detiene por un límite de uso o de capacidad, las alternativas 2, 3… siguen en orden; si también se detiene la última, el trabajo se detiene y se te avisa.",
+      "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
+      "notOffered": "{{value}} (no es un valor)",
+      "remove": "Quitar la fila {{n}}",
+      "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
+      "saveRefused": "No se guardó: “IA de las tareas y orden de alternativas” tiene una fila que no se puede usar. Corrige la fila marcada en rojo y vuelve a guardar.",
+      "showRow": "Ir a la fila",
+      "title": "IA de las tareas y orden de alternativas",
+      "up": "Subir la fila {{n}}",
+      "valueFor": "{{row}} de la fila {{n}}"
+    },
     "authNeeded": "Se requiere autenticación. Inicia sesión en {{adapter}} en el PC del servidor",
     "authNeededCommand": "Se requiere autenticación. En el PC del servidor, ejecuta <code>{{command}}</code>",
     "authNeededCommandEnv": "Se requiere autenticación. En el PC del servidor, ejecuta <code>{{command}}</code>, o añade la línea {{env}}=tu-clave a {{path}} en el PC del servidor y reinicia el servidor",
@@ -12,11 +38,8 @@
     "cancel": "Cancelar",
     "cannotRun": "Esta ruta no se puede ejecutar",
     "choices": "Valores disponibles al pedir trabajo",
+    "choicesHint": "Los valores que se ofrecen arriba y en el menú del campo de entrada.",
     "collapse": "Contraer {{name}}",
-    "default": {
-      "explanation": "Cuando encargas una tarea, se usa este agente salvo que elijas otro. Para usar agentes distintos según el tipo de trabajo, escríbelo en la política del proyecto. Por ejemplo: “Usa Opus para crear diseños.”",
-      "label": "Predeterminado"
-    },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
     "disabled": "Desactivado",
     "duplicateName": "{{name}} ya existe. Elige otro nombre.",
@@ -57,16 +80,11 @@
     "executable": "Ejecutable",
     "expand": "Expandir {{name}}",
     "fixedEnv": "alpacawork siempre pasa este nombre al iniciar {{adapter}} (no se puede quitar aquí)",
-    "followDefault": {
-      "explanation": "Cuando una actualización cambia el valor predeterminado integrado, este cambia con él.",
-      "label": "Predeterminado integrado"
-    },
     "found": "Encontrado en este PC:",
     "key": "Clave",
     "kind": "Adaptador: {{adapter}}",
     "launchOptions": "Opciones de inicio",
     "locked": "Integrado en alpacawork; no se puede cambiar aquí",
-    "makeDefault": "Usar como predeterminado",
     "name": "Nombre",
     "notFound": "No se encontró el ejecutable:",
     "notFoundShort": "No encontrado",
@@ -89,7 +107,7 @@
     "unusedAdapter": "No disponible para este adaptador",
     "unusedOptions": "No se usa en las opciones de inicio",
     "useAgent": "Activar {{name}}",
-    "values": "Valores (separados por comas; el primero viene preseleccionado)"
+    "values": "Valores (separados por comas)"
   },
   "archive": {
     "confirm": {
@@ -356,8 +374,10 @@
       "copyUrl": "Copiar URL",
       "desktopBody": "Abre esta pantalla en Chrome o Edge y haz clic en <ui>Instalar</ui>, en el extremo derecho de la barra de direcciones (en Edge, el icono que está en el mismo lugar). A partir de entonces, alpacawork se abre en su propia ventana desde el Dock, la barra de tareas o la lista de apps.",
       "desktopImage": "La barra de direcciones de Chrome, con el botón Instalar marcado en su extremo derecho",
+      "desktopInstall": "Instalar",
       "desktopInstalled": "Ahora estás usando la app instalada.",
       "desktopOther": "Si el botón no aparece: en Safari en un Mac (macOS Sonoma o posterior), elige <ui>Archivo</ui> → <ui>Añadir al Dock</ui>. Si tu navegador no permite instalar, abre esta pantalla en Chrome o Edge.",
+      "desktopPromptBody": "Una vez instalada, alpacawork se abre en su propia ventana desde el Dock, la barra de tareas o la lista de apps.",
       "desktopTitle": "Usar como app de escritorio",
       "installAndroid": "Android: se recomienda Chrome",
       "installAndroidBody": "En el menú de Chrome (⋮), elige <ui>Instalar y crear acceso directo</ui> → <ui>Instalar</ui>.",

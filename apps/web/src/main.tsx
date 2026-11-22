@@ -15,6 +15,7 @@ import { useEntrance } from "@/features/setup/entrance";
 import { registerServiceWorker } from "@/data/push";
 import { takeInitialShared } from "@/features/coordinator/shared";
 import { guardPinchZoom } from "@/lib/pinch-zoom";
+import { watchDesktopApp } from "@/lib/desktop-app";
 import "./styles.css";
 
 // index.html is written in English; the document follows the running language.
@@ -25,6 +26,8 @@ startI18n();
 watchUndoOffers();
 registerServiceWorker();
 guardPinchZoom(window);
+// Before anything is awaited: the browser offers to install the page soon after it loads.
+watchDesktopApp();
 void takeInitialShared();
 
 // The setup is its own chunk, fetched only on its address, before the data provider that draws it mounts.

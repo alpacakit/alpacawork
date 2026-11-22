@@ -1,7 +1,7 @@
 import { agentUsageSchema, type AgentUsage } from '@alpacawork/contract/agent-bridge';
 import { RUN_RESULT_LIMIT } from '@alpacawork/contract/run';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
-import { claudeActivity } from './activity.js';
+import { claudeActivity, ToolResults } from './activity.js';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
@@ -41,12 +41,15 @@ export const claudeAdapter: AgentAdapter = {
   read(invocation, folder, exit) {
     let completion: { result: string; is_error: boolean } | null = null;
     let usage: AgentUsage | null = null, failure: RunFailure | undefined;
+    const tools = new ToolResults();
     const { rejection, outcomeRejection } = scanOutput(folder, value => {
       const row = object(value);
       if (row.type === 'command_lifecycle' && row.state === 'started' && row.parent_tool_use_id == null &&
         (row.session_id == null || row.session_id === invocation.session)) {
         completion = null; usage = null; failure = undefined;
       }
+      if (invocation.session !== null && (row.session_id == null || row.session_id === invocation.session))
+        tools.observe(claudeActivity(row, ''));
       if (!ownSession(row, invocation.session)) return;
       if (row.type === 'system' && row.subtype === 'init') { completion = null; usage = null; failure = undefined; }
       if (row.type === 'assistant' && row.is_api_error_message === true) {
@@ -64,7 +67,7 @@ export const claudeAdapter: AgentAdapter = {
       }
     });
     const result = completion as { result: string; is_error: boolean } | null;
-    const base = { session: invocation.session, usage, ...(!rejection && failure ? { failure } : {}) };
+    const base = { session: invocation.session, usage, ...(!rejection && failure ? { failure, toolsSettled: tools.complete } : {}) };
     const text = result?.result;
     const tooLarge = text !== undefined && Buffer.byteLength(text) > RUN_RESULT_LIMIT;
     if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit',

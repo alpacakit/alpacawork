@@ -5,6 +5,7 @@ import { RunStore, type ReadRunSnapshot } from '@alpacawork/runs';
 import { runFolder, type ReadRunRecord, type RunActivity, type RunRecord } from '@alpacawork/contract/run';
 import type { PlacementStore } from './placements.js';
 import { projectPlacementRuntimes } from './runtime.js';
+import { recordedRun } from '../runs/run-view.js';
 import { readRunActivity } from '../runs/activity.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
@@ -22,18 +23,10 @@ export type RunFolderFacts = { readonly activity: RunActivity | null; readonly e
  * projection passes the facts its records captured (TaskBundle.runFiles); controlRuns reads them from the folder.
  */
 export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): ControlRunDTO {
-  const errorCause = files?.errorCause;
-  return { id: run.id, taskId: run.task, placementId: run.placementId, requestId: run.requestId,
-    agent: run.agent, modelId: run.launch.values.model?.trim() || null,
-    effort: run.launch.values.effort?.trim() || null,
-    caller: run.caller ? { ...run.caller } : null, resumes: run.resumes, continues: run.continues,
-    session: run.session ? { ...run.session } : null,
-    cwd: run.cwd, state: run.state, reason: run.reason, into: run.into, takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
-    launchValues: { ...run.launch.values },
+  const errorCause = run.availability?.cause ?? files?.errorCause;
+  return { ...recordedRun(run), takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
     ...(errorCause ? { errorCause } : {}),
-    activity: run.state === 'running' ? files?.activity ?? null : null,
-    createdAt: run.created_at, startedAt: run.started_at, endedAt: run.ended_at,
-    usage: run.usage ? { run: run.usage.run ? { ...run.usage.run } : null, includesEarlier: run.usage.includesEarlier } : null };
+    activity: run.state === 'running' ? files?.activity ?? null : null };
 }
 /** The screen's Runs of `records`, their folder facts read now. */
 export function controlRuns(root: string, records: readonly ReadRunRecord[]): ControlRunDTO[] {
@@ -56,7 +49,16 @@ export function projectPlacements(root: string, placed: ReturnType<PlacementStor
 
 /** Workspace facts exist independently of any listed project. */
 export function readControlEnvironment(root: string, settings = readAgentsSettings(root)): Pick<ControlTreeDTO, 'root' | 'profiles' | 'attachmentBytes' | 'errors' | 'writable'> {
-  return { root, profiles: settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => agentProfile(key, agent)) : [],
+  const profiles = settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => {
+    const initialValues = settings.config.aiStack?.find(row => row.agent === key)?.values;
+    return { ...agentProfile(key, agent), ...(initialValues ? { initialValues } : {}) };
+  }) : [];
+  if (settings.ok) {
+    const first = settings.config.aiStack?.[0]?.agent;
+    const index = profiles.findIndex(profile => profile.key === first);
+    if (index > 0) profiles.unshift(...profiles.splice(index, 1));
+  }
+  return { root, profiles,
     attachmentBytes: attachmentLimitOf(settings), writable: settings.ok,
     errors: settings.ok === true ? [] : [{ code: settings.error.code, message: settings.error.message,
       ...(settings.error.reason ? { reason: settings.error.reason } : {}), path: CONFIG_FILE }] };

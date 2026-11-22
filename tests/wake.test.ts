@@ -254,6 +254,15 @@ test('the owner Run before a queued one is the seat\'s head of the Runs before i
   assert.equal(seatRunBefore(conversation, failed), null, 'the worker Run R1 is not the seat\'s turn');
 });
 
+test('an automatic wake sees the earlier request fail even if its final attempt has a greater Run number', () => {
+  const original = record('R2', { placementId: 'P2', state: 'failed', ended_at: time, supersededBy: 'R4' });
+  const waiting = record('R3', { placementId: 'P2' });
+  const final = record('R4', { placementId: 'P2', requestId: original.requestId,
+    firstRunId: original.id, attempt: 1, state: 'failed', ended_at: time });
+  const before = seatRunBefore([original, waiting, final], waiting);
+  assert.equal(seatFailed({ baseState: 'doing' }, before), true, 'block before Task state has caught up');
+});
+
 test("a seat's profile and automatic limit are the workspace's settings, and the user's Request counts again from zero", () => {
   const facts = seatFactsOf(source({}, { profiles: new Set(['other']), automaticLimit: 1 }), 'T2');
   assert.deepEqual([facts.profileAvailable, facts.automaticLimitReached], [false, true]);

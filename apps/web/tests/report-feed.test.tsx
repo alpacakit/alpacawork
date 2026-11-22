@@ -1216,3 +1216,17 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "run_end" })).toBe("quiet");
   expect(tone({ kind: "dialogue" })).toBe("quiet");
 });
+
+test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {
+  await inEnglish();
+  const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([{ id: "R1", kind: "error", title: "exit",
+    cause: "session_limit", carriedOn: true, author: { kind: "owner", profileKey: "claude", modelId: "opus", effort: "high" },
+    recipient: { role: "owner", profileKey: "codex", modelId: "gpt-6.2-sol", effort: "high" } }]) } }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const row = await waitFor(() => document.querySelector<HTMLElement>('[data-row-words]')!.closest<HTMLElement>("li")!);
+  expect(row.querySelector("[data-row-ends]")?.textContent).toContain("gpt-6.2-sol");
+  fireEvent.click(row.querySelector<HTMLElement>("button[aria-expanded]")!);
+  const parties = await waitFor(() => row.querySelector<HTMLElement>("[data-row-parties]")!);
+  expect(parties.textContent).toContain("gpt-6.2-sol");
+  expect(parties.textContent).not.toContain("You");
+});

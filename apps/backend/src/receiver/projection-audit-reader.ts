@@ -1,6 +1,7 @@
 /** Discover a finite audit read set, then refresh it in batches at the caller's SQLite read point. */
 import type { DatabaseSync } from 'node:sqlite';
 import type { ChangeKey } from '@alpacawork/db';
+import { currentRequestRun } from '@alpacawork/runs';
 import type { RunId } from '@alpacawork/contract';
 import type { RecordsReader, TaskBundle } from './projection-contract.js';
 import { DatabaseWorkspaceRecords, ownerLookup } from './workspace-records.js';
@@ -28,7 +29,7 @@ export function auditCandidate(db: DatabaseSync, original: DatabaseWorkspaceReco
   const awaitingBundle = Symbol('audit bundle has not been refreshed');
   const childRows = db.prepare('SELECT external_id FROM tasks WHERE parent_id=(SELECT id FROM tasks WHERE external_id=?)');
   const inputRows = db.prepare('SELECT input_id FROM run_inputs WHERE instruction_run_no=?');
-  const requestRun = db.prepare('SELECT id,into_id FROM runs WHERE request_id=?');
+  const requestRun = db.prepare(`SELECT id,into_id FROM runs WHERE id=(${currentRequestRun('?')})`);
   const callerRuns = db.prepare('SELECT id,task_id FROM runs WHERE caller_run=?');
   const closingReturns = db.prepare('SELECT id FROM returns WHERE request_id=? AND request_id IS NOT NULL');
   const callers = new Map<RunId, ReturnType<typeof callerRuns.all>>();

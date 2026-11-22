@@ -9,7 +9,7 @@ import { PROSE_MEASURE } from "@/components/ui/prose";
 import { QrCode } from "@/components/ui/qr-code";
 import { textClip } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
-import { useInstalledApp } from "@/lib/input-capabilities";
+import { useDesktopApp } from "@/lib/desktop-app";
 import { useMobileAccess } from "@/data/mobile-access";
 import { useDialogStore } from "@/state/dialog-store";
 import installEnDark from "./app-guide/install-en-dark.png";
@@ -41,13 +41,19 @@ const installCaptures = new Map([
   ["ja", { light: installJaLight, dark: installJaDark }],
 ]);
 
-/** The browser's own Install is the way in, so the page only shows where it is; an installed window has no address bar to point at. */
+/**
+ * While the browser offers to install the page, the page's own button asks it; otherwise the browser's own Install is
+ * the way in, so the page only shows where it is. An installed window has no address bar to point at.
+ */
 function DesktopApp() {
   const { t, i18n } = useTranslation("panels");
-  const installed = useInstalledApp();
+  const app = useDesktopApp();
   const capture = installCaptures.get(i18n.language) ?? defaultInstallCapture;
   return <Part id="app-guide-desktop" title={t("settings.apps.desktopTitle")}>
-    {installed ? <p>{t("settings.apps.desktopInstalled")}</p> : <>
+    {app?.kind === "installed" ? <p>{t("settings.apps.desktopInstalled")}</p> : app?.kind === "prompt" ? <>
+      <p>{t("settings.apps.desktopPromptBody")}</p>
+      <Button variant="outline" className="mt-3" onClick={() => void app.install()}>{t("settings.apps.desktopInstall")}</Button>
+    </> : <>
       <p><Trans t={t} i18nKey="settings.apps.desktopBody" components={{ ui: <UiName /> }} /></p>
       {/* Drawn at half its pixels (a capture at twice the scale), and never wider than the tab. */}
       <div role="img" aria-label={t("settings.apps.desktopImage")} className="mt-3 w-fit max-w-full overflow-hidden rounded-sm border border-line">

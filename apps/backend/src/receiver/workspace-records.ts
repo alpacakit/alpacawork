@@ -16,7 +16,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { deepFreeze } from '@alpacawork/core';
 import { DEFAULT_SCHEMA, fieldCatalog, fieldDefSchema, hasRequesterSeat, isSeatContinuation, RESULT_HEAD_LENGTH, resultHead,
   type FieldCatalog, type FieldDef, type ReadRunRecord, type RunId, type RunResultState } from '@alpacawork/contract';
-import { runFolder, runNumber, runResultStateSchema, type RuntimeRunRecord } from '@alpacawork/contract/run';
+import { carrierOf, runFolder, runNumber, runResultStateSchema, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import type { ControlTreeDTO, ProjectionVersion } from '@alpacawork/contract/control';
 import { UNSETTLED_INPUT_STATES } from '@alpacawork/contract/run-protocol';
 import type { ChangeKey } from '@alpacawork/db';
@@ -645,7 +645,10 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
   placementOwner(placement: string): TaskId | undefined { return this.values('placementOwner', placement)[0]; }
   returnOwner(id: string): TaskId | undefined { return this.values('returnOwner', id)[0]; }
   dependents(task: TaskId): readonly TaskId[] { return this.values('dependents', task); }
-  runByRequest(request: string): RunId | undefined { return this.values('runByRequest', request)[0] as RunId | undefined; }
+  runByRequest(request: string): RunId | undefined {
+    return (this.values('runByRequest', request) as readonly RunId[]).reduce<RunId | undefined>((last, id) =>
+      last === undefined || runNumber(id) > runNumber(last) ? id : last, undefined);
+  }
   runReferrers(run: RunId): readonly RunId[] { return this.values('runReferrers', run) as readonly RunId[]; }
   closedRequest(request: string): boolean { return this.values('closedRequests', request).length > 0; }
   /** The stored identities let a bounded audit remove a missing closing return without scanning other bundles. */
@@ -675,7 +678,12 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
   deliveriesByWakeRequest(request: string): readonly string[] { return this.values('deliveriesByWakeRequest', request); }
   questionsByDestination(task: TaskId): readonly TaskId[] { return this.values('questionsByDestination', task); }
   dialogueTasks(request: string): readonly TaskId[] { return this.values('dialogueTasks', request); }
-  joinedMessages(run: RunId): readonly string[] { return this.values('joinedMessages', run); }
+  joinedMessages(run: RunId): readonly string[] {
+    const trial = this.runs.get(run)?.record;
+    if (trial?.role !== 'coordinator' || trial.attempt === undefined) return this.values('joinedMessages', run);
+    return unique(this.values('runByRequest', trial.requestId).filter(id => runNumber(id as RunId) <= runNumber(run))
+      .flatMap(id => this.values('joinedMessages', id)));
+  }
   messageTasks(message: string): readonly TaskId[] { return this.values('messageTasks', message); }
   placementWritesTo(placement: string): readonly TaskId[] {
     return this.values('placementWritesTo', placement).filter(task => task !== this.placementOwner(placement));
@@ -697,8 +705,9 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
   }
   coordinatorRun(message: string): CoordinatorRunFact | undefined {
     const id = this.runByRequest(message), run = id ? this.runs.get(id)?.record : undefined;
-    const actual = run?.into ? this.runs.get(run.into)?.record : run;
-    if (run?.role !== 'coordinator' || !actual) return undefined;
+    if (run?.role !== 'coordinator') return undefined;
+    const actual = carrierOf(run, key => this.runs.get(key)?.record);
+    if (!actual) return undefined;
     return { agent: actual.agent, modelId: actual.launch.values.model?.trim() || null, effort: actual.launch.values.effort?.trim() || null };
   }
   catalog(): FieldCatalog { return this.fields; }

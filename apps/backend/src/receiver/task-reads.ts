@@ -2,7 +2,7 @@ import { questionApplicable, questionSnapshot } from '../control/question-rules.
 
 import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, PROJECT_SCHEMA, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskTimelineDTO, type TaskViewDTO } from '@alpacawork/contract/control';
-import { isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
+import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
 import { createHash } from 'node:crypto';
@@ -18,12 +18,14 @@ export function currentPlacementRunIds(placements: readonly PlacementDTO[], runs
   const ids = new Set(placements.map(placement => placement.headRunId));
   const placementIds = new Set(placements.map(placement => placement.id));
   const latestMoving = new Map<string, ControlRunDTO>();
+  const running = new Set<string>();
   for (const run of runs) if (placementIds.has(run.placementId) && isRunMoving(run.state)) {
-    if (run.state === 'running') ids.add(run.id);
+    if (run.state === 'running') { ids.add(run.id); running.add(run.id); }
     const prior = latestMoving.get(run.placementId);
     if (!prior || run.createdAt.localeCompare(prior.createdAt) > 0) latestMoving.set(run.placementId, run);
   }
-  for (const run of latestMoving.values()) ids.add(run.id);
+  for (const run of latestMoving.values()) { ids.add(run.id); running.add(run.id); }
+  if (running.size) for (const run of runs) if (run.supersededBy && running.has(run.supersededBy)) ids.add(run.id);
   return ids;
 }
 
@@ -60,10 +62,14 @@ type HistoryTree = Pick<ControlTreeDTO, 'tasks' | 'runs' | 'requests' | 'dialogu
 function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskViewDTO['userQuestions']>) {
   const placements = new Map(tree.placements.map(placement => [placement.id, placement]));
   const allRuns = new Map(tree.runs.map(run => [run.id, run]));
-  const byRequest = new Map(tree.runs.filter(run => run.requestId).map(run => [run.requestId!, run]));
+  const firstByRequest = new Map<string, ControlRunDTO>();
   const logs = new Map(tree.tasks.flatMap(task => task.log.map(entry => [entry.id, { taskId: task.id, entry }] as const)));
   const runsByTask = new Map<string, Map<string, ControlRunDTO>>();
   for (const run of tree.runs) {
+    if (run.requestId) {
+      const earlier = firstByRequest.get(run.requestId);
+      if (!earlier || compareRunIds(run, earlier) < 0) firstByRequest.set(run.requestId, run);
+    }
     const group = runsByTask.get(run.taskId) ?? new Map();
     group.set(run.id, run); runsByTask.set(run.taskId, group);
   }
@@ -78,16 +84,8 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
     group.push(dialogue); dialoguesByTask.set(dialogue.taskId, group);
   }
   const userQuestions = new Set([...questions.values()].flatMap(branch => branch?.map(question => question.id) ?? []));
-  const actualRun = (run: ControlRunDTO): ControlRunDTO => {
-    const seen = new Set<string>();
-    while (run.state === 'joined' && run.into && !seen.has(run.id)) {
-      seen.add(run.id);
-      const next = allRuns.get(run.into);
-      if (!next) break;
-      run = next;
-    }
-    return run;
-  };
+  const actualRun = (run: ControlRunDTO): ControlRunDTO =>
+    carrierOf(run, key => allRuns.get(key)) ?? run;
   const consumers = new Map<string, Map<string, Set<string>>>();
   /**
    * The one rule for a record's receiving end: the Run that consumed it (took it in and finished its turn), wherever it
@@ -96,7 +94,7 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
   const receivedBy = new Map<string, ControlRunDTO>();
   const causesByRun = new Map<string, Map<string, NonNullable<HistoryEvent['causes']>[number]>>();
   for (const delivery of tree.historyFacts.deliveries) {
-    const receiving = byRequest.get(delivery.requestId);
+    const receiving = firstByRequest.get(delivery.requestId);
     if (!receiving) continue;
     const run = actualRun(receiving).id;
     if (delivery.consumed && !receivedBy.has(delivery.logId)) {
@@ -114,10 +112,8 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
   /** A Request's recipient as it was when the Request created its Run, else its placement's role. */
   const requestRole = (request: ControlTreeDTO['requests'][number]) => request.recipientRole === 'owner' ? 'owner'
     : request.recipientRole === 'worker' ? 'member' : tree.historyFacts.placementRoles[request.placementId];
-  const receivingRun = (request: ControlTreeDTO['requests'][number]) => {
-    const accepted = request.runId ? allRuns.get(request.runId) : byRequest.get(request.id);
-    return accepted ? actualRun(accepted) : undefined;
-  };
+  const firstRun = (request: ControlTreeDTO['requests'][number]) =>
+    firstByRequest.get(request.id) ?? (request.runId ? allRuns.get(request.runId) : undefined);
   /**
    * The one rule for a member's result: the Run that took a member Request in ended normally, so its final reply is
    * the result, and the newest Request that Run took in carries it (a Request joined into a Run that was working
@@ -127,14 +123,15 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
   const resultOf = new Map<string, string>();
   for (const request of [...tree.requests].sort((a, b) => a.submittedAt.localeCompare(b.submittedAt) || a.id.localeCompare(b.id))) {
     if (request.purpose === 'return_continuation' || requestRole(request) !== 'member') continue;
-    const run = receivingRun(request);
+    const accepted = firstRun(request);
+    const run = accepted ? actualRun(accepted) : undefined;
     if (run?.state !== 'succeeded' || run.taskId !== request.taskId || !run.endedAt) continue;
     const earlier = resultOf.get(run.id);
     if (earlier) results.delete(earlier);
     results.set(request.id, run); resultOf.set(run.id, request.id);
   }
-  return { tree, placements, allRuns, byRequest, runsByTask, requestsByTask, dialoguesByTask, userQuestions, actualRun, consumers, receivedBy, causesByRun,
-    requestRole, receivingRun, results };
+  return { tree, placements, allRuns, runsByTask, requestsByTask, dialoguesByTask, userQuestions, actualRun, consumers, receivedBy, causesByRun,
+    requestRole, firstRun, results };
 }
 
 /**
@@ -146,9 +143,10 @@ function prepareHistory(tree: HistoryTree, questions: ReadonlyMap<string, TaskVi
  */
 export function recordEvents(context: ReturnType<typeof prepareHistory>, task: ControlTaskDTO, fromChild: boolean,
   viewId = fromChild ? task.parentId ?? task.id : task.id, withRequests = false): HistoryEvent[] {
-  const { tree, placements, allRuns, byRequest, actualRun, receivedBy, causesByRun } = context;
+  const { tree, placements, allRuns, actualRun, receivedBy, causesByRun } = context;
   const choices = (run: ControlRunDTO | undefined) => run ? { modelId: run.modelId, effort: run.effort } : {};
   const roleOf = (run: ControlRunDTO) => tree.historyFacts.runRoles[run.id] ?? tree.historyFacts.placementRoles[run.placementId] ?? 'owner';
+  const profileOf = (placement: HistoryPlacement, run: ControlRunDTO | undefined) => run?.agent ?? placement.profileKey;
   /** The Coordinator Run that took a screen message, as a record's Coordinator end. */
   const coordinatorOf = (message: string | null | undefined) => {
     const run = message ? tree.historyFacts.coordinatorRuns[message] : undefined;
@@ -163,7 +161,8 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     const placement = actor?.kind === 'placement' ? placements.get(actor.placementId) : undefined;
     if (!placement) return { kind: 'unknown' };
     const run = runId ? allRuns.get(runId) : undefined;
-    const agent = { profileKey: placement.profileKey, ...choices(run?.placementId === placement.id ? run : undefined) };
+    const own = run?.placementId === placement.id ? run : undefined;
+    const agent = { profileKey: profileOf(placement, own), ...choices(own) };
     if (placement.taskId !== task.id) return { kind: 'parent', taskId: placement.taskId, ...agent };
     const role = (runId && tree.historyFacts.runRoles[runId]) || tree.historyFacts.placementRoles[placement.id];
     return role ? { kind: role, ...agent } : { kind: 'unknown' };
@@ -202,15 +201,16 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   for (const request of context.requestsByTask.get(task.id) ?? []) if (request.purpose !== 'return_continuation') {
     const record = references.get(request.id);
     const recipient = placements.get(request.placementId);
-    const accepted = request.runId ? allRuns.get(request.runId) : byRequest.get(request.id);
-    const receiving = context.receivingRun(request);
+    const accepted = context.firstRun(request);
+    // The request row shows the original recipient. The handoff row shows the replacement.
+    const receiving = accepted?.state === 'joined' && accepted.into ? allRuns.get(accepted.into) ?? accepted : accepted;
     const role = context.requestRole(request);
     const result = context.results.get(request.id);
     events.push({ ...event(request.id, 'request', request.submittedAt, headline(request.body), request.body, null,
       request.author),
       author: authorOf(request.author, accepted?.caller?.run),
       ...(record?.answers ? { answers: record.answers } : {}),
-      ...(recipient && role ? { recipient: { role, profileKey: recipient.profileKey, ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
+      ...(recipient && role ? { recipient: { role, profileKey: profileOf(recipient, receiving), ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
       ...(result && recipient && role === 'member' ? { result: { runId: result.id, at: result.endedAt! } } : {}) });
   }
   for (const run of runs.values()) {
@@ -219,9 +219,11 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       : run.state === 'cancelled' && run.reason === 'scope_invalidated' ? 'run_end' : null;
     // The Run that stopped is the row's writer: its Task's responsible or member, by what it ran with.
     const placement = placements.get(run.placementId);
+    const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
-      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause } : {}),
-      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: placement.profileKey, ...choices(run) } } : {}) });
+      ...(kind === 'error' && (run.availability?.cause ?? run.errorCause) ? { cause: run.availability?.cause ?? run.errorCause } : {}),
+      ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
+      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
@@ -384,6 +386,7 @@ function recordedHistory(records: RecordsReader, id: string): ReturnType<typeof 
     runRoles[key] = raw.role === 'owner' ? 'owner' : 'member';
     addPlacement(raw.placementId);
     if (raw.into) addRun(raw.into);
+    if (raw.supersededBy) addRun(raw.supersededBy);
     if (raw.caller) addRun(raw.caller.run);
   };
   const requests = new Map(recordedRequests(records, id).map(request => [request.id, request]));

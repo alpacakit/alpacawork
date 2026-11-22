@@ -12,24 +12,16 @@ import { draftAdapter, editDraftEnv, followsDefaultEnv, newAgentDraft, resetDraf
 import { agentDraftIssueText } from './agent-settings-issues';
 import { AgentSettingsExplained, AgentSettingsLock } from './AgentSettingsLock';
 
-/** The default agent's badge: the one placements start on. Hover or tap explains it. */
-export function AgentDefaultBadge() {
-  const { t } = useTranslation('panels');
-  return <AgentSettingsExplained explanation={t('agentSettings.default.explanation')}
-    className="rounded-full border border-line px-2 py-0.5 text-sm text-muted">{t('agentSettings.default.label')}</AgentSettingsExplained>;
-}
-/** Whether a field still follows the adapter's default, or a way back to it. Both share one line, so typing that
- * switches between them leaves the field where it is; the restore returns focus to the field it changed. */
+/** A way back to the adapter's default for a field that no longer follows it; the restore returns focus to the field. */
 export function AgentDefaultMark({ isDefault, name, field, onRestore }: {
   isDefault: boolean; name: string; field: string; onRestore: () => void;
 }) {
   const { t } = useTranslation('panels');
+  if (isDefault) return null;
   // On a phone the restore is a fingertip's height and stands clear of the fields around it.
   return <div className="mt-1 flex min-h-6 items-center narrow:mt-2 narrow:mb-1 narrow:min-h-control-sm">
-    {isDefault ? <AgentSettingsExplained explanation={t('agentSettings.followDefault.explanation')}
-      className="rounded-full border border-line px-2 text-sm text-muted">{t('agentSettings.followDefault.label')}</AgentSettingsExplained>
-      : <Button type="button" variant="ref" className="text-sm narrow:min-h-control-sm narrow:pr-4" aria-label={t('agentSettings.restoreDefaultFor', { name })}
-        onClick={() => { onRestore(); document.getElementById(field)?.focus(); }}>{t('agentSettings.restoreDefault')}</Button>}
+    <Button type="button" variant="ref" className="text-sm narrow:min-h-control-sm narrow:pr-4" aria-label={t('agentSettings.restoreDefaultFor', { name })}
+      onClick={() => { onRestore(); document.getElementById(field)?.focus(); }}>{t('agentSettings.restoreDefault')}</Button>
   </div>;
 }
 export function AgentExtraFields({ agent, onChange, issues, environmentFile }: {

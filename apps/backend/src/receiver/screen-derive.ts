@@ -263,7 +263,7 @@ export function withoutActivity(derived: Pick<TaskDerived, 'placements' | 'runs'
 
 /** The Task's reply: its last owner Run that ended its own work, and that Run's result state. */
 export function replyOf(bundle: TaskBundle) {
-  const run = [...bundle.runs].sort(compareRunIds).filter(item => item.role === 'owner' && endedOwnWork(item.state)).at(-1);
+  const run = [...bundle.runs].sort(compareRunIds).filter(item => item.role === 'owner' && item.supersededBy === undefined && endedOwnWork(item.state)).at(-1);
   if (!run) return null;
   const state = bundle.resultStates.get(run.id) ?? 'missing';
   return controlReplySchema.parse({ runId: run.id, state: state === 'pending' ? 'missing' : state });

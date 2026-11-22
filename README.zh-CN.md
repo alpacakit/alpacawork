@@ -53,6 +53,20 @@ alpacawork setup
 
 运行环境为 macOS（Apple 芯片）、Linux（x64）或 Windows（WSL2）。安装之后，按照[入门指南](docs/zh-CN/getting-started.md)发出第一个委托。
 
+### 重新打开界面
+
+关闭界面后，像下面这样请 Claude Code 或 Codex 打开。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+
+```text
+/alpacawork 打开界面
+```
+
+在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`。也可以在终端执行下面的命令打开。
+
+```sh
+alpacawork open
+```
+
 ## 能做什么
 
 - **所有委托，都写在同一个聊天框里。** 协调员把每个委托变成任务，交给负责处理的 AI。不必为每件工作分别切换聊天或 AI。

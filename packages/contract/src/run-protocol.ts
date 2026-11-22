@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { agentInvocationSchema } from './agent-launch.js';
+import { runAvailabilitySchema } from './run-failure.js';
 import { CLI_CONTRACT } from './client-contract.js';
 
 export const PROTOCOL = 1;
@@ -47,6 +48,8 @@ const counters = z.object({ input: z.number().int().nonnegative().safe(), cacheR
 export const observationSchema = z.object({
   outcome: z.object({ state: z.enum(['succeeded', 'failed', 'cancelled', 'needs_review']), reason: z.string().nullable() }).strict(),
   session: z.string().nullable(), measuredUsage: z.object({ scope: z.enum(['conversation', 'run']), counters }).strict().nullable(),
+  availability: runAvailabilitySchema.optional(),
+  handoffSafe: z.literal(true).optional(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   result: z.object({ state: z.enum(['present', 'missing', 'too_large', 'unreadable']), digest: digest.nullable(), size: z.number().int().nonnegative() }).strict(),
 }).strict();

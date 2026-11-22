@@ -473,11 +473,11 @@ test('History projects authors, recipients, answer words and causal delivery lin
     { id: 'Qcoord', taskId: parent.id, placementId: own.id, runId: null, recipientRole: null,
       purpose: 'instruction', mode: 'new', author: main, body: 'Choose A for the user', submittedAt: at(4), deliveryState: 'queued' }];
   const runs = [runOf('R10', parent.id, 'succeeded', at(1), at(5),
-    { placementId: own.id, requestId: 'Q10', launch: inertFixtureLaunch('codex', { model: 'sonnet', effort: 'medium' }) }),
+    { placementId: own.id, requestId: 'Q10', agent: 'fake', launch: inertFixtureLaunch('codex', { model: 'sonnet', effort: 'medium' }) }),
     runOf('R11', parent.id, 'joined', at(3), at(6), { into: 'R10', placementId: own.id, requestId: 'Q11' }),
     runOf('R12', parent.id, 'succeeded', at(3), at(5),
-      { placementId: member.id, requestId: 'Q12', launch: inertFixtureLaunch('codex', { model: 'opus', effort: 'high' }) }),
-    runOf('R20', child.id, 'succeeded', at(1), at(2), { placementId: childOwner.id, requestId: 'Q20' }),
+      { placementId: member.id, requestId: 'Q12', agent: 'codex', launch: inertFixtureLaunch('codex', { model: 'opus', effort: 'high' }) }),
+    runOf('R20', child.id, 'succeeded', at(1), at(2), { placementId: childOwner.id, requestId: 'Q20', agent: 'fake' }),
     runOf('R13', parent.id, 'joined', at(4), at(5), { into: 'R12', placementId: member.id,
       requestId: 'Qmember', caller: { run: 'R10' }, launch: inertFixtureLaunch('codex', { model: 'ignored-joined', effort: 'low' }) }),
     runOf('R14', parent.id, 'succeeded', at(7), at(8),
@@ -595,10 +595,13 @@ test('History names each end by its own Run: the Run that took a record in, the 
     { placementId: owner.id, agent: 'claude', launch: inertFixtureLaunch('claude', { model: 'opus', effort: 'high' }) });
   const stopped = runOf('R9102', h.parent.id, 'failed', '2026-10-24T12:03:00Z', '2026-10-24T12:04:00Z',
     { placementId: owner.id, agent: 'claude', launch: inertFixtureLaunch('claude', { model: 'sonnet' }) });
+  const named: RequestDTO = { id: stopped.requestId!, taskId: h.parent.id, placementId: owner.id, runId: stopped.id,
+    recipientRole: 'owner', purpose: 'instruction', mode: 'new', author: { kind: 'human' }, body: 'Use Claude for this request',
+    submittedAt: '2026-10-24T12:03:00Z', deliveryState: 'queued' };
   const report = entry('Ltaken', '2026-10-24T11:59:00Z', { actor: placement, title: 'Done', toState: 'done' });
   const coordinator = entry('Lmain', '2026-10-24T12:05:00Z', { kind: 'reported', actor: { kind: 'main', provider: 'claude', conversationId: 'c1', message: 'M1' }, title: 'Noted' });
   const outside = entry('Loutside', '2026-10-24T12:06:00Z', { kind: 'reported', actor: { kind: 'main', provider: 'codex', conversationId: 'c2' }, title: 'From outside' });
-  const working = { ...tree, runs: [...tree.runs, took, stopped], tasks: tree.tasks.map(task => task.id === child.id
+  const working = { ...tree, runs: [...tree.runs, took, stopped], requests: [...tree.requests, named], tasks: tree.tasks.map(task => task.id === child.id
     ? { ...task, log: [...task.log, report] } : task.id === h.parent.id ? { ...task, log: [...task.log, coordinator, outside] } : task),
     historyFacts: { ...tree.historyFacts, runRoles: { ...tree.historyFacts.runRoles, [took.id]: 'owner' as const, [stopped.id]: 'owner' as const },
       deliveries: [...tree.historyFacts.deliveries, { logId: report.id, toTaskId: h.parent.id, requestId: took.requestId!, outcome: 'succeeded' as const, consumed: true }],
@@ -611,7 +614,9 @@ test('History names each end by its own Run: the Run that took a record in, the 
   assert.deepEqual(of(coordinator.id).coordinator, { profileKey: 'claude', modelId: 'opus', effort: 'max' }, 'the Coordinator Run of the message');
   assert.equal(of(outside.id).coordinator, undefined, 'an outside Coordinator has no Run to name');
   assert.equal(of(outside.id).recipient, undefined, 'a record no Run took in names none');
-  assert.deepEqual(of(stopped.id).author, { kind: 'owner', profileKey: owner.profileKey, modelId: 'sonnet', effort: null }, 'the stopped Run writes its row');
+  assert.deepEqual(of(stopped.id).author, { kind: 'owner', profileKey: 'claude', modelId: 'sonnet', effort: null }, 'the stopped Run writes its row');
+  assert.deepEqual(of(named.id).recipient, { role: 'owner', profileKey: 'claude', modelId: 'sonnet', effort: null },
+    'the request names the AI from its launch even without fallback');
 });
 
 test('a record\'s receiving end is the Run that consumed it, not a wake that never reached its agent', async t => {

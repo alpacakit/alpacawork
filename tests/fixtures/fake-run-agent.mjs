@@ -31,10 +31,11 @@ if (branch) {
   const lines = createInterface({ input: process.stdin });
   const instruction = await new Promise(done => lines.once('line', line => done(JSON.parse(line))));
   const prompt = instruction.message?.content ?? instruction.text;
-  lines.close();
   try { plan = JSON.parse(prompt); } catch {
     // Formal Task requests contain the synthetic plan as the request body's own JSON line.
-    const body = prompt.split('\n## Request\n')[1]?.split('\n\n')[0];
+    const request = prompt.split('\n## Request\n')[1]?.split('\n\n')[0] ??
+      ('\n' + prompt).split('\nRequest ID of this input: ')[1] ?? prompt;
+    const body = request.split('\n').find(line => line.startsWith('{'));
     if (body) { try { plan = JSON.parse(body); } catch {} }
   }
   const format = arg('--format'), session = arg('--session') ?? arg('--session-id') ?? arg('--resume') ?? (args.includes('resume') ? args.at(-1) : undefined) ?? plan.session ?? `fake-${process.pid}`;
@@ -46,6 +47,12 @@ if (branch) {
     if (plan.invalidUtf8 && value.type === 'result') bytes[bytes.indexOf('"result":"') + 10] = 0xff;
     process.stdout.write(bytes);
   };
+  if (plan.receiveJoined && format === 'claude') {
+    lines.on('line', line => {
+      const input = JSON.parse(line);
+      emit({ type: 'command_lifecycle', state: 'started', command_uuid: input.uuid });
+    });
+  } else lines.close();
   if (format === 'codex' && !plan.busy) {
     emit({ type: 'thread.started', thread_id: session });
     emit({ type: 'input.taken', id: instruction.id });
@@ -59,6 +66,14 @@ if (branch) {
   }
   if (format !== 'claude' && format !== 'codex') emit({ type: 'input.taken', id: instruction.id });
   if (plan.gate) while (!existsSync(plan.gate)) await delay(20);
+  if (plan.receiveJoined) lines.close();
+  if (plan.sessionLimit && format === 'claude') {
+    await new Promise(resolve => process.stdout.write(JSON.stringify({
+      type: 'result', is_error: true, result: "You've hit your session limit · resets 5pm (Asia/Tokyo)", session_id: session,
+    }) + '\n', resolve));
+    process.exit(1);
+  }
+  if (plan.fallbackGate && format === 'codex') while (!existsSync(plan.fallbackGate)) await delay(20);
   if (plan.group) await new Promise(() => { setInterval(() => {}, 1000); });
   if (plan.busy) { process.stderr.write(`thread ${session} already has an active writer (code -32600)\n`); process.exit(1); }
   if (plan.exit) { process.stderr.write('fake failure\n'); process.exit(plan.exit); }

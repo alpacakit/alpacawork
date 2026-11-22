@@ -7,8 +7,8 @@ import { ProjectedPages } from '@alpacawork/backend/test-dist/receiver/index-pag
 
 export async function readWorkspaceProjection(root: string) {
   const owner = new ProjectionOwner({ root, generation: 'synthetic-projection', log: new ChangeLog(), locations: () => ({}),
-    personal: async () => ({ person: { settings: null, notices: null, coordinator: null },
-      presence: { state: 'away', until: null }, host: null, coordinatorWork: null }), published: () => {} });
+    personal: async () => ({ person: { settings: null, coordinator: null },
+      presence: { state: 'away', until: null }, host: null, coordinatorWork: null, launchMemory: { agent: null, values: {}, version: 0 } }), published: () => {} });
   try {
     await owner.start();
     const frame = owner.current!, index = projectedIndexSchema.parse(JSON.parse(owner.index()));

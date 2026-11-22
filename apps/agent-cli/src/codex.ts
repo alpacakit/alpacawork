@@ -212,7 +212,11 @@ export class CodexRuntime implements Runtime {
         this.io.emit({ type: 'turn.completed', usage: this.usage });
       } else {
         this.lastFailed = true;
-        this.io.emit({ type: 'turn.failed', error: { message: turn.error?.message ?? `turn ${turn.status}` } });
+        this.io.emit({ type: 'turn.failed', error: {
+          message: turn.error?.message ?? `turn ${turn.status}`,
+          ...turn.error?.codexErrorInfo === 'usageLimitExceeded' || turn.error?.codexErrorInfo === 'serverOverloaded'
+            ? { codexErrorInfo: turn.error.codexErrorInfo } : {},
+        } });
       }
       this.io.idle();
     } else if (message.method === 'error') {

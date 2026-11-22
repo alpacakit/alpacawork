@@ -5,7 +5,7 @@ import { defaultAgentSetting } from '@alpacawork/contract/agent-settings';
 import { agentOptionsVersion } from '../src/features/panels/agent-options-version';
 import { optionPartText } from '../src/features/panels/agent-options-display';
 import { parseLaunchOptions } from '@alpacawork/contract/launch-options';
-import { firstEnabledAgent, withFirstAgent } from '../src/features/panels/agent-settings-order';
+import { withFirstAgent } from '../src/features/panels/agent-settings-order';
 import { beginDraftOptionsEdit, followsDefaultEnv, followsDefaultParam, newAgentDraft, readAgentsDraft,
   resetDraftEnv, resetDraftOptions, resetDraftParam, unusedParamReason,
   updateDraftOptions, isOptionalDraftParam, validateAgentsDraft, writeAgentsDraft, type AgentsDraft, type DraftResult } from '../src/features/panels/agent-settings-draft';
@@ -235,10 +235,8 @@ describe('agent form YAML boundary', () => {
       { ...newAgentDraft('grok', 'grok', 'off'), enabled: false },
       newAgentDraft('claude', 'claude', 'first'), newAgentDraft('codex', 'codex', 'last'),
     ];
-    expect(firstEnabledAgent(agents)).toBe('first');
     const next = withFirstAgent(agents, 'last');
     expect(next.map(agent => agent.id)).toEqual(['last', 'off', 'first']);
-    expect(firstEnabledAgent(next)).toBe('last');
     expect(next.find(agent => agent.id === 'off')!.enabled).toBe(false);
     expect(agents.map(agent => agent.id)).toEqual(['off', 'first', 'last']);
   });
