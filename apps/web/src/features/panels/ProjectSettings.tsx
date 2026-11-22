@@ -102,14 +102,16 @@ export function ProjectNameRow() {
 }
 
 /** Where its agents start on this PC; empty, where the nearest project above names, else the workspace. */
-export function ProjectLocationRow({ project, projects }: { project: Project; projects: WorkspaceInfo["projects"] }) {
+export function ProjectLocationRow({ project, projects, rootHint }: { project: Project; projects: WorkspaceInfo["projects"];
+  /** Where it is read before the person has chosen a folder (setup), a hint for the folder it falls back to. */
+  rootHint?: (path: string) => string }) {
   const { t } = useTranslation("panels");
   const root = useWorkspaceInfo((info) => info.root);
   const { control, setValue, formState: { errors } } = useFormContext<ProjectDraft>();
   const cwd = useWatch({ control, name: "cwd" });
   const inherited = inheritedLocation(projects, project);
   return <SettingRow id="project-location" label={t("project.cwd")} className="narrow:grid-cols-1 narrow:gap-y-2"
-    hint={inherited ? t("project.locationInherits", { path: inherited }) : t("project.locationRoot", { path: root })} error={errors.cwd?.message}>
+    hint={inherited ? t("project.locationInherits", { path: inherited }) : (rootHint?.(root) ?? t("project.locationRoot", { path: root }))} error={errors.cwd?.message}>
     <div className="w-110 max-w-full min-w-0 narrow:w-full">
       <FolderInput id="project-location" value={cwd} onChange={(value) => setValue("cwd", value, { shouldDirty: true })} />
     </div>

@@ -54,15 +54,15 @@ function Setup() {
     url.searchParams.set("project", state.project);
     leaveSetup(url);
   };
-  const lead = { display: [t("display.lead")], agents: [t("agents.lead"), t("agents.later")], skills: [t("skills.lead")],
-    project: [t("project.lead"), t("project.policyLead")] }[step];
+  const lead = { display: t("display.lead"), agents: t("agents.lead"), skills: t("skills.lead"), project: t("project.lead") }[step];
   // The step's name is the page's heading: it rises in again whenever the step changes, so a move is seen at once.
   return <Frame aside={<>
     <Steps current={step} onPick={go} />
     <div key={step} className="animate-welcome">
       {/* Beside the settings the column is narrow: a step down keeps a short name such as "First project" on one line. */}
       <h1 className="m-0 mt-8 text-display font-semibold [word-break:auto-phrase] min-[60rem]:text-[1.875rem] narrow:mt-6">{{ display: t("display.title"), agents: t("agents.title"), skills: t("skills.title"), project: t("project.title") }[step]}</h1>
-      {lead.map((line, at) => <p key={at} className={cn("m-0 mt-3 text-md text-muted [word-break:auto-phrase]", at > 0 && "narrow:hidden")}>{line}</p>)}
+      {/* Phrase breaks with lines of even length: filled line by line, the narrow column left a run of short lines. */}
+      <p className="m-0 mt-3 text-md text-muted text-balance [word-break:auto-phrase]">{lead}</p>
     </div>
   </>}>
     {step === "display" && <DisplayStep onNext={() => go("agents")} />}

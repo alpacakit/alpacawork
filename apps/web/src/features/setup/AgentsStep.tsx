@@ -69,6 +69,7 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   const [consent, setConsent] = useState(true);
   const [failure, setFailure] = useState<Failure>(null);
   const [busy, setBusy] = useState(false);
+  const firstHintId = useId();
 
   const fail = (at: NonNullable<Failure>["at"], error: unknown) => {
     recordFailure(error, ["setup", at].join(": "));
@@ -123,13 +124,15 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
       <Button variant="quiet" data-setup-recheck disabled={status.isFetching} onClick={() => void recheck()}>{t("agents.recheck")}</Button>
     </div>}
     {failure?.at === "check" && <FailureLine text={t("agents.failed.check")} detail={failure.detail} />}
-    {usable.length > 1 && <div role="radiogroup" aria-label={t("agents.first")}
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3 text-sm text-muted">
-      <span>{t("agents.first")}</span>
-      {usable.map(name => <button key={name} type="button" role="radio" aria-checked={first === name} onClick={() => setPicked(name)}
-        className="inline-flex min-h-8 items-center gap-1.5 text-ink pointer-coarse:min-h-11">
-        <span className={cn("size-4 flex-none rounded-full border-[1.5px] border-muted", first === name && "border-[5px] border-ink")} />
-        {agentDisplayName(name)}</button>)}
+    {usable.length > 1 && <div className="border-t border-line py-3 text-sm">
+      <div role="radiogroup" aria-label={t("agents.first")} aria-describedby={firstHintId} className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted">
+        <span>{t("agents.first")}</span>
+        {usable.map(name => <button key={name} type="button" role="radio" aria-checked={first === name} onClick={() => setPicked(name)}
+          className="inline-flex min-h-8 items-center gap-1.5 text-ink pointer-coarse:min-h-11">
+          <span className={cn("size-4 flex-none rounded-full border-[1.5px] border-muted", first === name && "border-[5px] border-ink")} />
+          {agentDisplayName(name)}</button>)}
+      </div>
+      <p id={firstHintId} className="m-0 mt-1 text-xs text-soft">{t("agents.firstHint")}</p>
     </div>}
     {!usable.length && <Message tone="caution" size="line" className="mt-4" data-setup-no-agent
       title={t(signed ? "agents.noneOnTitle" : "agents.noneReadyTitle")} description={t(signed ? "agents.noneOn" : "agents.noneReady")} />}
