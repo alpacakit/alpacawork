@@ -5,7 +5,7 @@
 ## 开始之前
 
 - 电脑须为 macOS（Apple 芯片）、Linux（x64）或 Windows（WSL2）之一。在 Windows 上，请先读[在 Windows 上使用](manage.md#在-windows-上使用)。
-- 让 Claude Code 或 Codex 在这台电脑上处于可用状态。
+- 确保这台电脑上已经可以使用 Claude Code 或 Codex。
 - AI 改写文件时不会征求确认。它以你在这台电脑上的用户权限运行，所以也能改动工作文件夹以外的地方。
 
 ## 1. 安装
@@ -38,7 +38,7 @@ alpacawork setup
 
 1. 选择界面的语言和主题，按“下一步”。
 2. 启用要使用的 AI，按“下一步”。
-3. 下一步保持推荐的选择，按安装按钮。
+3. 在这一步保持推荐的选择，按安装按钮。
 4. 确定项目的名称和“代码位置”，按“完成初始设置”。
 
 <img src="../images/setup-project.png" alt="Setup's last step, with the Name and Working folder fields and a Choose button next to Working folder" width="480">
