@@ -75,6 +75,7 @@ export interface Context {
   opId?: string;
   /** A person's CLI working directory (its real path, `X-Alpacawork-Cwd`; null when not sent), for the cwd rule (`projectAtCwd`). */
   cwd?: string | null;
+  client?: 'cli' | 'screen';
 }
 
 /**
@@ -554,7 +555,8 @@ const configSetNode = writeNode('set', `Save the screen's part of ${CONFIG_FILE}
   [textParameter('config', 'limits as YAML'), textParameter('agents', 'The agents block as written'),
     textParameter('expectedConfigHash', `Current ${CONFIG_FILE} hash`)], configSetInput,
   () => ({ action: { name: 'config.set' }, task: null }),
-  (root, input, context) => saveServerSettings(root, input, context.opId, requireActor(context)), DOCUMENT_REQUEST_LIMIT);
+  (root, input, context) => saveServerSettings(root, input, context.opId, requireActor(context),
+    context.client === 'screen' ? 'screen' : 'yaml'), DOCUMENT_REQUEST_LIMIT);
 
 /** The local CLI's: it makes the workspace a server runs in. */
 const initEntry = defineEntry({ name: 'init', parameters: [], project: () => ({}) });

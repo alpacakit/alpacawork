@@ -125,6 +125,30 @@ test('AI stacks round-trip the same editable values as the upcoming coordinator 
   } finally { store.close(); }
 });
 
+test('a screen save keeps hidden values of matching rows in both stacks, including repeated rows', async t => {
+  const low = { agent: 'claude', values: { model: 'opus', effort: 'low' } };
+  const high = { agent: 'claude', values: { model: 'opus', effort: 'high' } };
+  const pi = { agent: 'pi', values: {} };
+  const previous = [low, high, pi];
+  const { root } = setup(t, stringify({
+    agents: { claude: { without: { opus: ['effort'] } }, pi: {} },
+    aiStack: previous, coordinatorAiStack: previous,
+  }, { aliasDuplicateObjects: false }));
+  const before = await readServerSettings(root);
+  const changed = { agent: 'claude', values: { model: 'fable', effort: 'medium' } };
+  const reorder = (rows: NonNullable<typeof before.aiStack>) => [rows[1]!, rows[2]!, rows[0]!, changed];
+  const edit = { aiStack: reorder(before.aiStack!), coordinatorAiStack: reorder(before.coordinatorAiStack!) };
+  const saved = await saveServerSettings(root, parseInput(configSetInput, {
+    config: stringify({ limits: before.limits, ...edit }, { aliasDuplicateObjects: false }),
+    agents: before.agentsText, expectedConfigHash: before.hash,
+  }), undefined, undefined, 'screen');
+  assert.deepEqual(saved.aiStack, edit.aiStack);
+  assert.deepEqual(saved.coordinatorAiStack, edit.coordinatorAiStack);
+  const stored = parse(file(root));
+  assert.deepEqual(stored.aiStack, [low, pi, high, changed]);
+  assert.deepEqual(stored.coordinatorAiStack, [low, pi, high, changed]);
+});
+
 test('a project\'s name, values and fields are its Task\'s; config.yaml and its hash stay', async t => {
   const { root, project } = setup(t);
   const before = await readServerSettings(root);

@@ -566,7 +566,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   httpRoutes.forEach(route => routeActs.set(`${route.method} /api${route.path}`,
     ordinary.has(`${route.method} /api${route.path}`) ? null : entryActFor(route.handler)));
   /** Each request's claim and working directory, read before any route; its caller, once resolved (`callerOf`). */
-  const scopes = new WeakMap<Request, { claim: CallerClaim; cwd: string | null; caller?: Caller }>();
+  const scopes = new WeakMap<Request, ReturnType<typeof requestScope> & { caller?: Caller }>();
   const scopeOf = (request: Request) => scopes.get(request)!;
   /** Who calls (resolveCaller): resolved when first asked, and kept for the rest of the request. */
   const callerOf = (request: Request): Caller => {
@@ -694,7 +694,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     const spec = ordinary.get(`${route.method} /api${route.path}`), act = spec ? null : entryActFor(route.handler);
     if (act === undefined) throw new Error(`An HTTP entry that is no CLI command declares its act: ${route.method} /api${route.path}`);
     api.on(route.method, '/api' + route.path, async (c) => {
-      const { claim, cwd } = scopeOf(c.req.raw);
+      const { claim, cwd, client } = scopeOf(c.req.raw);
       // An entry that is no command is authorized by the act it declares, before its request is read.
       preflightEntryClaim(root, act, claim);
       if (act) authorizeRead(callerOf(c.req.raw), act);
@@ -722,7 +722,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
             });
           }
           const values = route.method === 'GET' ? route.input.parseQuery(c.req.queries()) : route.input.parse(rawValues!);
-          const requestContext = { ...context, caller: () => callerOf(c.req.raw), cwd,
+          const requestContext = { ...context, caller: () => callerOf(c.req.raw), cwd, client,
             requestLanguage: c.req.header('accept-language'),
             readFrame: context.readFrame,
             readLive: async () => {

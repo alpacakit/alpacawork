@@ -9,8 +9,8 @@ import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor, compileAgentSetting, resolveAgentSelection, stackRowValues } from '@alpacawork/contract';
-import type { ServerSettings } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor, aiStackSchema, compileAgentSetting, resolveAgentSelection, stackRowValues,
+  type AiRow, type ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
 import { parseAgentsSettings } from './agents-settings.js';
@@ -55,15 +55,29 @@ export async function readServerSettings(root: string): Promise<ServerSettings> 
   } finally { writer?.close(); }
 }
 
+/** Match the screen's rows against the view of the same saved rows, consuming the first match each time. */
+function restoreStackRows(stored: readonly AiRow[], visible: readonly AiRow[], edited: readonly AiRow[]): AiRow[] {
+  const keyOf = (row: AiRow) => JSON.stringify([row.agent, Object.entries(row.values).sort()]);
+  const originals = new Map<string, AiRow[]>();
+  // Store matching rows in reverse so each pop takes the next saved row in order.
+  for (let index = visible.length - 1; index >= 0; index--) {
+    const key = keyOf(visible[index]!);
+    const rows = originals.get(key) ?? [];
+    rows.push(stored[index]!);
+    originals.set(key, rows);
+  }
+  return edited.map(row => originals.get(keyOf(row))?.pop() ?? row);
+}
+
 /**
  * Saves the limits and the agents block at once against the screen's hash. The agents block replaces its own lines as
  * typed; limits are written only where they changed. The publication receipt retains the authorized actor and time;
  * its old/new digests and saved view identify what changed. Retries retain that first receipt.
  */
 export async function saveServerSettings(root: string, input: ConfigSetValues, opId: string = randomUUID(),
-  actor: TaskActor = { kind: 'human' }): Promise<ServerSettings> {
+  actor: TaskActor = { kind: 'human' }, source: 'screen' | 'yaml' = 'yaml'): Promise<ServerSettings> {
   const edit = input.edit;
-  const key = [input.expectedConfigHash, input.agents, edit, actor];
+  const key = [input.expectedConfigHash, input.agents, edit, actor, ...(source === 'screen' ? [source] : [])];
   const journal = new FileJournal(root);
   const replay = journal.replayConfig<ServerSettings>(opId, key);
   if (replay) {
@@ -87,9 +101,13 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       for (const [key, value] of Object.entries(edit.limits))
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
       for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
-        const currentRows = key === 'aiStack' ? current.aiStack : values.coordinatorAiStack;
-        if (edit[key] === undefined || isDeepStrictEqual(edit[key], currentRows)) continue;
-        document.set(key, edit[key]);
+        const edited = edit[key];
+        if (edited === undefined) continue;
+        const stored = aiStackSchema.optional().parse(values[key]);
+        const rows = source === 'screen' && stored !== undefined ? restoreStackRows(stored, current[key]!, edited) : edited;
+        const baseline = source === 'yaml' && key === 'aiStack' ? current.aiStack : stored;
+        if (isDeepStrictEqual(rows, baseline)) continue;
+        document.set(key, rows);
         rewrite = true;
       }
       /* Initial release: Jev settings are not editable.
@@ -106,7 +124,7 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       let output = render(rewrite ? document.toString({ lineWidth: 0 }) : before);
       let saved = view(output);
       // The new agents block decides which coordinator values are active.
-      if (edit.coordinatorAiStack !== undefined && !isDeepStrictEqual(edit.coordinatorAiStack, saved.coordinatorAiStack)) {
+      if (source === 'yaml' && edit.coordinatorAiStack !== undefined && !isDeepStrictEqual(edit.coordinatorAiStack, saved.coordinatorAiStack)) {
         document.set('coordinatorAiStack', saved.coordinatorAiStack);
         output = render(document.toString({ lineWidth: 0 }));
         saved = { ...saved, hash: digest(output) };

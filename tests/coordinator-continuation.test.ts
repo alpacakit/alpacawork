@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import type { AiRow } from '@alpacawork/contract';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { optionsBase } from '@alpacawork/contract/agent-adapters';
+import { resolveAgentLaunchArgv } from '@alpacawork/contract/agent-launch';
 import { stringify } from 'yaml';
 import { parseAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { coordinatorNextLaunch } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
@@ -23,12 +24,18 @@ test('the next coordinator turn follows the saved order and the latest observed 
   const priorEffort = run(3, { agent: 'second', values: { model: 'two', effort: 'low' } });
   const withoutEffort = { ...agents, second: { ...setting, params: { model: ['one', 'two'] },
     options: { base: optionsBase('claude'), start: '--model {model} --session-id {session}', resume: '--model {model} --resume {session}' } } };
+  const startModelOnly = { ...withoutEffort, second: { ...withoutEffort.second,
+    options: { ...withoutEffort.second.options, resume: '--resume {session}' } } };
   const cases = [
     { name: 'new conversation', rows: [first, second, last], runs: [], selected: first, continued: null, following: [second, last] },
     { name: 'current fallback', rows: [first, second, last], runs: [limited, resumed], selected: second, continued: resumed, following: [last] },
     { name: 'new row above the exhausted one', rows: [last, first, second], runs: [limited, resumed], selected: last, continued: null, following: [second] },
     { name: 'moving an untried row first', rows: [last, second], runs: [resumed], selected: last, continued: null, following: [second] },
-    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: resumed, following: [last] },
+    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: resumed, following: [last], modelArg: 'one' },
+    { name: 'a changed model that resume cannot pass starts a new session', profiles: startModelOnly, rows: [second, last],
+      runs: [run(3, revised)], selected: second, continued: null, following: [last], modelArg: 'two' },
+    { name: 'resume can keep the same model without an option for it', profiles: startModelOnly, rows: [second, last],
+      runs: [resumed], selected: second, continued: resumed, following: [last] },
     { name: 'a duplicate exhausted row below the replacement', rows: [first, second, first], runs: [limited, resumed], selected: second, continued: resumed, following: [] },
     { name: 'all rows exhausted', rows: [first, second], runs: [limited, run(4, second, 'model_capacity')], selected: first, continued: null, following: [second] },
     { name: 'a more recent success clears a recorded limit', rows: [first, second], runs: [limited, run(5, first)], selected: first, continued: run(5, first), following: [second] },
@@ -39,7 +46,7 @@ test('the next coordinator turn follows the saved order and the latest observed 
     { name: 'empty stack', rows: [], runs: [resumed], selected: null, continued: null, following: [] },
     { name: 'no stack', rows: undefined, runs: [], selected: null, continued: null, following: [] },
   ];
-  for (const { name, profiles, rows, runs, selected, continued, following } of cases) {
+  for (const { name, profiles, rows, runs, selected, continued, following, modelArg } of cases) {
     const settings = parseAgentsSettings(stringify({ agents: profiles ?? agents, aiStack: [task], coordinatorAiStack: rows }, { aliasDuplicateObjects: false }));
     const next = coordinatorNextLaunch(settings, runs, '/bin');
     assert.deepEqual(next.row, selected, name);
@@ -47,5 +54,9 @@ test('the next coordinator turn follows the saved order and the latest observed 
     assert.deepEqual(next.continued, continued, name);
     assert.deepEqual(next.launch.values, selected?.values, name);
     assert.deepEqual(next.following, following, name);
+    if (modelArg) {
+      const argv = resolveAgentLaunchArgv(next.launch, { session: 'fixture-session' });
+      assert.equal(argv[argv.indexOf('--model') + 1], modelArg, name);
+    }
   }
 });

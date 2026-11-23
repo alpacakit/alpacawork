@@ -1,6 +1,7 @@
 import { parse, stringify } from 'yaml';
 /** Real coordinator HTTP core cases; independent private fixtures. */
 import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
+import { AGENT_ADAPTERS, optionsBase } from '@alpacawork/contract/agent-adapters';
 import { stopGroup } from './helpers/process-groups.ts';
 import { cliRun, httpStatus } from './helpers/http-cli.ts';
 import { test } from 'node:test';
@@ -276,6 +277,16 @@ test('warm-up and messages use the saved coordinator row, including a setting ch
   assert.equal((await h.post('/api/coordinator/messages', first.input)).status, 200, 'an admitted message can be replayed after a settings change');
   assert.equal((await h.post('/api/coordinator/messages', { ...first.input, id: crypto.randomUUID(), selected: firstRow.values })).status, 400);
   assert.equal((await h.get()).turns.length, 2);
+
+  const options = AGENT_ADAPTERS.claude.options;
+  config.agents.fake.options = { base: optionsBase('claude'), start: options.start,
+    resume: options.resume.replace('[--model {model}] ', '') };
+  const newSessionRow = choose('fable', 'high');
+  assert.deepEqual((await h.get()).nextLaunch, newSessionRow);
+  const third = await send('third');
+  assert.equal(third.answer.mode, 'start');
+  assert.notEqual(third.answer.session, next.answer.session);
+  assert.deepEqual(third.answer.args, ['fable', 'high']);
 });
 
 test('run and direct conversation callers cannot use coordinator API', async t => {

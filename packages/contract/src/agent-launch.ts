@@ -9,7 +9,8 @@ import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId } from './agent-ada
 import { selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
 import { prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
 import type { SystemVariableName } from './agent-variables.js';
-import { resolveAgentSelection, stackRowValues, type AgentChoice, type ResolvedAgentSelection } from './agent-selection.js';
+import { resolveAgentSelection, SelectionRequired, stackRowValues, type AgentChoice, type ResolvedAgentSelection,
+  type SelectionProblem } from './agent-selection.js';
 import { agentEnvironmentNamesSchema } from './agent-environment.js';
 export const launchModeSchema = z.enum(LAUNCH_MODES);
 export const launchArgvSchema = z.array(z.string()).min(1).refine(argv => argv.length === 0 || argv[0]!.length > 0, 'Executable must not be empty');
@@ -100,6 +101,18 @@ export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admissi
   const launch = snapshot(compiled, valid.admission, valid.resolved);
   launch.values = stackRowValues(compiled, valid.resolved);
   const adapter = AGENT_ADAPTERS[compiled.adapter];
+  if (valid.admission.mode === 'resume') {
+    const previous = valid.admission.previous.values;
+    // Optional groups are already resolved here. A reference in a group that was dropped cannot apply the change.
+    const args = launch.argv.slice(adapter.prefix.length);
+    const problems: SelectionProblem[] = [];
+    for (const { key, candidates } of valid.resolved.choices) {
+      if (!Object.hasOwn(launch.values, key) || launch.values[key] === (previous[key] ?? null) ||
+          args.some(arg => arg.includes(`{${key}}`))) continue;
+      problems.push({ key, previous: previous[key] ?? null, candidates, reason: 'unused', recovery: 'new_conversation' });
+    }
+    if (problems.length) throw new SelectionRequired(problems);
+  }
   const restartArgv = valid.admission.mode === 'start' ? null : [...adapter.prefix,
     ...prepareLaunchOptions(compiled.options.start, valid.resolved.effective, adapter.system.start)];
   return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, restartArgv });

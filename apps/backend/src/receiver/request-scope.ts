@@ -33,10 +33,10 @@ export function claimOf(headers: Headers, report = false): CallerClaim {
 }
 /** What one request claims about its caller and the working directory its CLI sent (`X-Alpacawork-Cwd`). */
 export function requestScope(headers: Headers, cli: boolean, spec: CliCommand | undefined):
-  { claim: CallerClaim; cwd: string | null } {
+  { claim: CallerClaim; cwd: string | null; client: 'cli' | 'screen' } {
   const claim = claimOf(headers, spec?.group === 'task' && spec.name === 'report');
   const sent = cli ? headers.get('x-alpacawork-cwd') : null;
-  try { return { claim, cwd: sent === null ? null : decodeURIComponent(sent) }; }
+  try { return { claim, cwd: sent === null ? null : decodeURIComponent(sent), client: cli ? 'cli' : 'screen' }; }
   catch { throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid X-Alpacawork-Cwd', undefined, { reason: { kind: 'invalid_x_alpacawork_cwd' } }); }
 }
 /**

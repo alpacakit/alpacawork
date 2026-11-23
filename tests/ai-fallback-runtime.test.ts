@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { stringify } from 'yaml';
-import type { AiStackPrefix } from '@alpacawork/contract';
+import { serverSettingsSchema, type AiStackPrefix } from '@alpacawork/contract';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
@@ -12,7 +12,9 @@ import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.
 import { sourceMessage } from '@alpacawork/backend/test-dist/coordinator/messages.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
+import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { assignResponsible, currentTaskHash, currentTaskLog, seedFixtureTask } from './helpers/control-fixture.ts';
+import { commandFetch } from './helpers/command-fetch.ts';
 import { receipts, setup, until } from './runs-runtime.fixture.ts';
 
 test('an exhausted owner gives the same request to another agent and the parent gets one return', async t => {
@@ -89,8 +91,11 @@ test('a worker uses a named model just for its request and retains the prior con
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    agents: { ...h.config.agents, claude: { ...h.config.agents.claude, params: { model: ['opus', 'fable'], effort: ['high'] } } },
-    aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'codex', values: {} }],
+    agents: { ...h.config.agents, claude: { ...h.config.agents.claude, params: { model: ['opus', 'fable'], effort: ['high'] } },
+      codex: { ...h.config.agents.codex, params: { ...h.config.agents.codex.params, effort: ['medium', 'low'] },
+        without: { 'gpt-6.2-sol': ['effort'] } } },
+    aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'codex', values: { effort: 'low' } },
+      { agent: 'plain', values: {} }, { agent: 'own', values: {} }],
   }, { aliasDuplicateObjects: false }));
   const owner = h.create('claude', { gate: h.gate('owner') });
   await h.tick();
@@ -131,6 +136,25 @@ test('a worker uses a named model just for its request and retains the prior con
     assert.match(prompt, /Report for Friday/);
     assert.match(prompt, /fixture reply/);
     assert.doesNotMatch(prompt, /Do the important task first\.|continuing the same conversation/);
+
+    const settings = serverSettingsSchema.parse(await (await fetch(new URL('/api/config/get', app.url))).json());
+    const [primary, replacement, third, fourth] = settings.aiStack!;
+    assert.equal(next.launch.values.effort, 'low');
+    assert.equal(replacement!.values.effort, undefined);
+    const saved = await commandFetch(new URL('/api/config/set', app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedConfigHash: settings.hash, agents: settings.agentsText,
+        config: stringify({ limits: settings.limits, aiStack: [primary, replacement, fourth, third] }) }) });
+    assert.equal(saved.status, 200, await saved.text());
+    const reloaded = readAgentsSettings(h.root);
+    assert.ok(reloaded.ok);
+    assert.deepEqual(reloaded.config.aiStack?.map(row => row.agent), ['claude', 'codex', 'own', 'plain']);
+    assert.deepEqual(reloaded.config.aiStack?.[1]?.values, next.launch.values);
+    const continued = await ask('Continue with the same worker.');
+    assert.equal(continued.agent, 'codex');
+    assert.equal(continued.resumes, next.id);
+    assert.deepEqual(continued.launch.values, next.launch.values);
+    await until(() => h.store.get(continued.id)?.state === 'succeeded', 'the worker continues in the fallback session');
+
     const fresh = await ask('Start a fresh discussion with the same worker.', undefined, true);
     assert.equal(fresh.agent, 'codex');
     assert.equal(fresh.resumes, null);
