@@ -11,7 +11,7 @@
       "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}). Se quiser pedir outra coisa em seguida, você pode enviar mais instruções em vez de encerrar.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
       "answer": "Escolha uma opção e ela vai para o campo de mensagem. Envie como está para responder. Você também pode enviar outra mensagem sem escolher nenhuma.",
-      "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, abra a conversa em um bom momento e limpe com “{{clear}}”. Antes disso, peça que o que quiser guardar vire uma tarefa.",
+      "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, em um bom momento, toque na linha que mostra a última resposta para abrir a conversa e limpe com “{{clear}}”. Antes disso, peça que o que quiser guardar vire uma tarefa.",
       "direct": "A IA da recepção responde aqui os pedidos curtos. Se você confiar um trabalho a ela, ele vira uma tarefa na lista.",
       "label": "Esta etiqueta indica à IA de qual tarefa ou projeto você está falando. Sem ela, a IA entende pelo contexto da conversa.",
       "more": "Depois de um relatório, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
