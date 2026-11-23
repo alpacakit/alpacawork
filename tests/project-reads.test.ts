@@ -8,7 +8,7 @@ import { readControl } from '@alpacawork/backend/test-dist/control/task-store.js
 import { readTaskView } from '@alpacawork/backend/test-dist/control/task-views.js';
 import { taskFlow } from './task-flow.fixture.ts';
 
-test('field get at a project answers with the fields its Tasks write, not the project\'s own policy', async t => {
+test('field get at a project answers with the fields its Tasks write', async t => {
   const f = await taskFlow(t);
   assert.deepEqual([readSchema(f.root, f.project).fields, readSchema(f.root, f.project).from], [[...DEFAULT_SCHEMA], null]);
   const reordered = [...DEFAULT_SCHEMA].reverse();

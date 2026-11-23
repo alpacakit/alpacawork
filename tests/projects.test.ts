@@ -224,6 +224,22 @@ test('task list --kind project lists the project Tasks; --kind task keeps the pr
     [work.id, 'task', nested.id]]);
 });
 
+test('task list includes a summary on the project that owns it, in both project and mixed lists', async t => {
+  const h = await served(t);
+  const summary = 'Issues and releases for the mobile apps.';
+  const file = join(h.base, 'summary.json');
+  writeFileSync(file, JSON.stringify({ project_summary: summary }));
+  const mobile = (await h.ok(['task', 'new', '--kind', 'project', '--title', 'Mobile', '--parent', 'P1',
+    '--color', '#39659b', '--values-file', file])).task;
+  const work = (await h.ok(['task', 'new', '--title', 'Work', '--parent', mobile.id])).task;
+  for (const args of [[], ['--kind', 'project'], ['--kind', 'task']]) {
+    const { tasks } = await h.ok(['task', 'list', ...args]);
+    assert.deepEqual(tasks.filter((row: object) => Object.hasOwn(row, 'summary'))
+      .map((row: { id: string; summary: string }) => [row.id, row.summary]), [[mobile.id, summary]]);
+    if (!args.length) assert.ok(tasks.some((row: { id: string }) => row.id === work.id));
+  }
+});
+
 test('a folder\'s folders are listed by name for choosing a project\'s code location: no files, hidden ones on request', async t => {
   const h = await served(t);
   const code = join(h.base, 'code');

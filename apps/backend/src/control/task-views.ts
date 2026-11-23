@@ -11,7 +11,7 @@ import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from 
  * A read takes the scope authorize gave its caller (readScope: a Run's project) and compares no membership itself.
  */
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
-import { questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
+import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
 import { taskFileRoute } from '@alpacawork/contract/cli-commands';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
@@ -145,7 +145,8 @@ function questionHistories(db: DatabaseSync, id: string): string[] {
 }
 
 export async function readTaskListView(root: string, options: TaskListOptions, scope: string | null) {
-  const snapshot = await new ControlTaskStore(root).viewSnapshot(options.text ? 'all' : 'none', scope ?? undefined, undefined, 'none');
+  const values = options.text ? 'all' : { projectField: PROJECT_SUMMARY };
+  const snapshot = await new ControlTaskStore(root).viewSnapshot(values, scope ?? undefined, undefined, 'none');
   // The default list reads no historical Requests, inputs, returns or Run results.
   // Extra search places are read only after visibility and list filters are applied.
   const view = controlSnapshotView(snapshot);
@@ -323,9 +324,12 @@ export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'err
   const visible = scope.filter(task => selected.has(task.id))
     .sort((a, b) => a.id === options.under ? -1 : b.id === options.under ? 1 : byTaskNumber(a, b));
   return {
-    tasks: visible.map(task => ({ id: task.id, kind: task.kind, parentId: task.parentId, lifecycle: task.lifecycle,
-      title: task.title, state: task.state,
-      ...(found && direct.has(task.id) ? { match: found.matches.get(task.id)! } : {}) })),
+    tasks: visible.map(task => {
+      const summary = task.kind === 'project' ? task.values?.[PROJECT_SUMMARY] : undefined;
+      return { id: task.id, kind: task.kind, parentId: task.parentId, lifecycle: task.lifecycle, title: task.title, state: task.state,
+        ...(typeof summary === 'string' && summary ? { summary } : {}),
+        ...(found && direct.has(task.id) ? { match: found.matches.get(task.id)! } : {}) };
+    }),
     ...(found ? { omitted: Math.max(0, matching.length - bounded.length) } : {}),
     errors,
   };

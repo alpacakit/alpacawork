@@ -166,6 +166,7 @@ export const cliCommands: readonly CliCommand[] = [
     boolean('all', 'Include archived and deleted Tasks'),
     text('kind', `Only Tasks of this kind (${taskKindSchema.options.join(' or ')}); their ancestors still lead the path`),
   ], { help: help(...ruleHelp(taskListRules),
+    'Project rows include their summary when one has been set.',
     'ID, title and values are always searched. Without --in no History, Requests, Runs or files are read.',
     'files/work: md, txt, json, csv, html up to 1 MiB each; node_modules is excluded.',
     'Each match shows one excerpt (about 80 characters), its source and other match count; ancestors have none.',

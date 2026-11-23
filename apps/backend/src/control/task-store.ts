@@ -25,9 +25,10 @@ export type ControlSnapshot<Values extends TaskValues | undefined = TaskValues> 
   fields: TaskFields;
 };
 /** A view independently selects Task values and immutable history. */
-type TaskValuesSelection = { task: string } | 'all' | 'none';
+type TaskValuesSelection = 'all' | { task: string } | { projectField: string };
 /** A Task's values (task_values) as one JSON object column, `{}` without any. */
-const VALUES_COLUMN = `(SELECT json_group_object(v.field_id, json(v.value)) FROM task_values v WHERE v.task_id = t.id)`;
+const valuesColumn = (fieldFilter = '') =>
+  `(SELECT json_group_object(v.field_id, json(v.value)) FROM task_values v WHERE v.task_id = t.id${fieldFilter})`;
 const decodeValues = (column: unknown): TaskValues => JSON.parse(String(column)) as TaskValues;
 const MAX_TASK_DEPTH = 32;
 /** The logical parentId graph in one Task snapshot. Physical folders are unrelated. */
@@ -147,12 +148,11 @@ function readTasks(db: DatabaseSync, root: string, project: string | undefined,
       parameters: [JSON.stringify(taskIds), ...(project === undefined ? [] : [project])] };
   // Keep every metadata column: SQLite-to-JS conversion failures (for example
   // an unsafe integer number) are part of the existing whole-read failure.
-  const columns = values === 'all' ? `${TASK_METADATA_COLUMNS}, ${VALUES_COLUMN} AS task_values`
-    : `${TASK_METADATA_COLUMNS}, CASE WHEN t.external_id = ? THEN ${VALUES_COLUMN} END AS task_values`;
-  const parameters = values === 'all' ? scope.parameters
-    : [typeof values === 'object' ? values.task : null, ...scope.parameters];
-  const rows = db.prepare(`SELECT ${columns}, parent.external_id AS parent_external_id FROM tasks t
-    LEFT JOIN tasks parent ON parent.id = t.parent_id ${scope.where} ORDER BY t.number`).all(...parameters);
+  const [body, ...bodyParameters] = values === 'all' ? [valuesColumn()]
+    : 'task' in values ? [`CASE WHEN t.external_id = ? THEN ${valuesColumn()} END`, values.task]
+    : [`CASE WHEN t.kind = 'project' THEN ${valuesColumn(' AND v.field_id = ?')} END`, values.projectField];
+  const rows = db.prepare(`SELECT ${TASK_METADATA_COLUMNS}, ${body} AS task_values, parent.external_id AS parent_external_id FROM tasks t
+    LEFT JOIN tasks parent ON parent.id = t.parent_id ${scope.where} ORDER BY t.number`).all(...bodyParameters, ...scope.parameters);
   const selectedHistory = history === 'all' ? rows.map(row => String(row.id)) : history === 'none' ? []
     : rows.filter(row => history.includes(String(row.external_id))).map(row => String(row.id));
   const logs = taskLogs(db, root, selectedHistory);
@@ -290,7 +290,7 @@ function readTaskDocuments(db: DatabaseSync, ids: readonly string[], values: 'al
   (Omit<ControlTask, 'values'> & { values: TaskValues | undefined })[] {
   const selected = JSON.stringify(ids);
   const rows = [...readTaskMetadataRows(db, ids).values()];
-  const taskValues = values === 'all' ? new Map(db.prepare(`SELECT t.external_id,${VALUES_COLUMN} AS task_values
+  const taskValues = values === 'all' ? new Map(db.prepare(`SELECT t.external_id,${valuesColumn()} AS task_values
     FROM tasks t WHERE t.external_id IN (SELECT value FROM json_each(?))`).all(selected)
     .map(row => [String(row.external_id), row.task_values])) : undefined;
   const logs = taskLogs(db, root, rows.map(row => String(row.id)));
