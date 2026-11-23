@@ -77,16 +77,15 @@ export function StatusTime({ task, className }: { task: Task; className?: string
 }
 
 /**
- * How many Runs run now on a Working row and under it, a square and its number just before the row's working time and
- * in its colour, as the two say the same work. The server counts them, so a child no page has loaded counts too. Out of
- * reach it is what was last received, in grey, as the time beside it is. A reader hears it in words.
+ * How many Runs run now on a Working row and under it, a square and its number just before the row's working time, in
+ * grey: the time beside it is the one word of the row in the working colour. The server counts them, so a child no page
+ * has loaded counts too. Out of reach it is what was last received. A reader hears it in words.
  */
 export function RunningRuns({ task, className }: { task: Task; className?: string }) {
   const { t } = useTranslation("tree");
-  const offline = useOfflineShown();
   const count = runningRunsSaid(task);
   if (!count) return null;
-  return <span data-row-running-runs={count} className={cn("flex-none whitespace-nowrap tabular-nums", offline ? "text-muted" : "text-working", className)}>
+  return <span data-row-running-runs={count} className={cn("flex-none whitespace-nowrap tabular-nums text-muted", className)}>
     <span aria-hidden="true"><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{count}</span>
     <span className="sr-only">{t("status.runningRuns", { count })}</span>
   </span>;

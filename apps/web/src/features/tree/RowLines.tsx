@@ -68,13 +68,14 @@ export function RowLines({ task, people, lifted, counts, title, unread }: {
       {/* What is so of its state is cut with "…" rather than dropped: it is the reason to look at the row. */}
       <WaitedNote task={task} />
       <StatusNotes task={task} className="shrink" />
-      {/* The time's step keeps the line's height on a row with no time, so every row is as high; it puts the end's words
+      {/* A strut a step over the line's words keeps the line's height, so every row is as high; it puts the end's words
           at the line's end. */}
       <span aria-hidden="true" className="ml-auto w-0 text-sm">{"\u200b"}</span>
-      {/* The expected report, then the row's one time: each a short time whose press says what it is. */}
+      {/* The expected report, then the row's one time: each a short time whose press says what it is, in the line's
+          one size; the working time alone takes a colour. */}
       <ReportTime task={task} people={people} />
-      <RunningRuns task={task} className="text-sm" />
-      <StatusTime task={task} className="text-sm" />
+      <RunningRuns task={task} />
+      <StatusTime task={task} />
     </span>
   </div>;
 }
