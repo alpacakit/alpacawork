@@ -17,6 +17,8 @@ The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages
 larger than a heading can; its alt text carries the name.
 The pictures show made-up data. This file and its translations use the dark-theme pictures
 (*-dark.png); README.ja.md shows the Japanese screen (*-dark-ja.png), the others the English one.
+The diagram at the top (hero.gif, hero-dark.gif; hero-ja.gif, hero-dark-ja.gif for README.ja.md)
+switches with the page theme in a <picture>; its first and last frames are the finished picture.
 README.ja.md, README.zh-CN.md, README.es.md and README.pt-BR.md are translations: keep all five with
 the same sections and content, and change them in the same commit. Each links to the guides in its
 own language (this file to docs/, the others to docs/ja/, docs/zh-CN/, docs/es/, docs/pt-BR/).
