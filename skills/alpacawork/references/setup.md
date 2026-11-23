@@ -143,6 +143,16 @@ Everything else in this file is yours to do. Give the user one of these only whe
 - The steps for the phone are shown under "Settings → App & phone" on the screen (with a QR code too, once the entry point's URL is set). Point the user there. The current URL can be read with `alpacawork workspace url`. Adding the screen to the home screen and registering for notifications ("Settings → Notifications") are done by the user on that device. A phone can register for notifications only when the screen was opened through the HTTPS entry point, and on an iPhone it has to be opened from the icon added to the home screen.
 - None of the three is authentication. The screen and the API have no login, and anyone who can reach the entry point can do everything the user can. Keep the entry point within reach of the user's own devices only, and do not configure anything that exposes it to the internet (such as Tailscale Funnel or opening a port).
 
+### Connect an MCP client
+
+On the server, run `alpacawork setup --mcp on` and read the permissions in the confirmation. For another device, use the Tailscale Serve address from the steps above. If setup cannot read the Tailscale configuration, check on the host that the alpacawork port is private before adding `--confirm-private-tailnet`. To disable the endpoint, run `alpacawork setup --mcp off`.
+
+- In a client with Streamable HTTP, such as Cursor, register `https://<your-tailnet-host>/mcp`. For example, in the client's `mcpServers` object add `"alpacawork": { "url": "https://<your-tailnet-host>/mcp" }`.
+- With stdio, such as Claude Desktop, add `"alpacawork": { "command": "/absolute/path/to/alpacawork", "args": ["--server", "https://<your-tailnet-host>", "mcp"] }` to `mcpServers`. On the alpacawork PC you can omit the server option to use the CLI's existing server selection.
+- When the client lets you set approvals per tool, require approval for `alpacawork_write`. It can accept results, answer as you, launch AIs, change their future launch settings and run a program to inspect it.
+
+Keep coordinator registrations scoped to the clients you use for that role. Avoid a global Claude Code or Codex registration that alpacawork's launched agents also load. If you register MCP for an alpacawork Run, use `alpacawork mcp --run` and pass `ALPACAWORK_RUN` and `ALPACAWORK_RUN_TOKEN` from that Run's environment. A coordinator registration that receives neither value uses coordinator permissions.
+
 ## What to ask first
 
 When creating a new project at the user's request, ask only about what is not yet decided, one item at a time, and write each answer where the table below says. First ask which folder to work in, then ask the rest in a way that also lets the user choose "decide later" or "leave it to you". For anything the user leaves to you, go on with the default. Do not ask for the project's summary; write it yourself from the answers (["Turning a request into a task" in Coordinator](coordinator.md#turning-a-request-into-a-task)).

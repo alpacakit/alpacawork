@@ -13,7 +13,7 @@ const absolute = z.string().refine(value => {
 }, 'Expected an absolute path');
 export const installationVersion = 4 as const;
 const serviceSettingsSchema = z.object({ name: z.string().min(1), port: z.number().int().min(1).max(65535),
-  publicHost: z.string().regex(PUBLIC_HOST_PATTERN).nullable(), environmentPath: z.string() }).strict();
+  publicHost: z.string().regex(PUBLIC_HOST_PATTERN).nullable(), environmentPath: z.string(), mcp: z.literal(true).optional() }).strict();
 const installationSchema = z.object({
   version: z.literal(installationVersion), home: absolute,
   uid: z.number().int().nonnegative(), nodeExecutable: absolute, releases: absolute.nullable(),

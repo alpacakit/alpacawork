@@ -94,7 +94,7 @@ function forms(line: ReturnLine): { full: string; short: string } {
     case 'handover': {
       const head = `- Task ${line.taskId}: ${words}: you are now its owner. Current state: ${line.state}. `;
       return one(`${head}Read the open work in the launch prompt's "Open work" section and with alpacawork task get --task ${line.taskId} --include openObligations, ` +
-        `the questions and values with alpacawork task get --task ${line.taskId}, and the returns and notices with alpacawork task returns --task ${line.taskId}.`);
+        `the questions and values with alpacawork task get --task ${line.taskId} --include closedQuestions, and the returns and notices with alpacawork task returns --task ${line.taskId}.`);
     }
     case 'work_changed': return one(`- Task ${line.taskId}: ${words} (cause ${line.causeId}) — alpacawork task get --task ${line.taskId} --log 5`);
     case 'child_added':

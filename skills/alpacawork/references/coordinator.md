@@ -27,6 +27,14 @@
 - Attach the user's words to an action as a record with `--quote`. For what to ask before acting, follow this skill and the project policy.
 - The full text of what is said in an outside conversation, and its final answer, are not saved automatically. The record of an action carrying a quote stays in the task's History. The agent leaves any result that is needed in the task's values, reports and result files.
 
+### Using MCP
+
+Use `alpacawork_read` with `command: "guide"` and `input.name` to read a skill file, and `command: "help"` with `input.commands` to look up the commands you need. Leaving out `commands` lists them. Read `SKILL.md` before your first write.
+
+CLI flags become input keys. `--foo-bar` is `fooBar`, `--no-foo` is `false`, and `--x null` is `null`. Replace `--x-file` with `x` and put the contents there. Use a string for instructions or Markdown and a JSON object or array for values or a plan. For a saved write, send `opId` and the last `restoreId` alongside `command` and `input`. To check a write with `operation get`, use `alpacawork_read` with `input.opId`. If the write's result is unknown, reuse the same IDs and input. An inspection with an unknown result may already have run, so leave any new execution to your explicit decision.
+
+Installation and local shell operations such as `setup`, `start`, `stop`, `deploy` and `server set` need the shell. MCP has no working directory for selecting a project or automatically attaching a Git diff. Send the Task or project ID when you need to name one, and attach files explicitly.
+
 ## Language for the user
 
 - On the screen and in an outside conversation alike, read the settings with `alpacawork settings get` before your first reply to the user. `ai.language` is the language you reply in; `language` is the screen's display language.

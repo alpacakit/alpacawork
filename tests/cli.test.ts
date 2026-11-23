@@ -186,7 +186,7 @@ test('serve defaults to the shared CLI port and reserves port 0 for explicit sel
 });
 
 test('every command\'s -h says what it does, its options and its rules; removed flags, commands and groups are unknown', async () => {
-  await Promise.all(commandCatalog.commands.map(async spec => {
+  await Promise.all(commandCatalog.cliCommands.map(async spec => {
     const help = await run([...commandWords(spec), '-h']);
     const name = commandWords(spec).join(' ');
     assert.equal(help.code, 0, `${name}: ${help.stderr}`);

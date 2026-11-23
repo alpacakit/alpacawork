@@ -62,7 +62,7 @@ export interface Context {
   caller?: () => Caller;
   /** The actor authorize decided for a write, on what its node says it is to authorize (server.ts, the command’s act). */
   actor?: TaskActor;
-  serve?: (root: string, port: number, options: { publicHost?: string; timing?: boolean }) => Promise<void>;
+  serve?: (root: string, port: number, options: { publicHost?: string; timing?: boolean; mcp?: boolean }) => Promise<void>;
   /**
    * The request's idempotency key: `config set` keeps its own operation record under it, a comment's record takes it,
    * and a project's code location is published under one derived from it (`locationOperation`).
@@ -312,7 +312,7 @@ export type ServerCommand<Input, C extends Context = Context> = {
   inputEvidence?: (query: (name: string) => string | undefined) => { replyTo?: string };
   readThread?: (input: Input) => boolean;
 };
-type LocalCommands = Exclude<JsonCommandName, `settings/${string}` | 'project/shelf' | 'workspace/url' | 'operation/get'>;
+type LocalCommands = Exclude<JsonCommandName, `settings/${string}` | 'project/shelf' | 'workspace/url' | 'operation/get' | 'help' | 'guide'>;
 
 function lifecycleCommand(action: 'archive' | 'delete' | 'restore'): ServerCommand<CommandInput<'task/archive'>> {
   return {

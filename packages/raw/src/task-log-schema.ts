@@ -27,7 +27,7 @@ export const dependencyChangeSchema = z.object({
 export const MAX_QUOTE_LENGTH = 1000;
 export const taskActorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('human') }).strict(),
-  z.object({ kind: z.literal('main'), provider: z.enum(['claude', 'codex']),
+  z.object({ kind: z.literal('main'), provider: z.enum(['claude', 'codex', 'mcp']),
     conversationId: nonempty(200), quote: nonempty(MAX_QUOTE_LENGTH).optional(), message: nonempty(128).optional() }).strict(),
   z.object({ kind: z.literal('placement'), placementId: nonempty(128) }).strict(),
 ]);

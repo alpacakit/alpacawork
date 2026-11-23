@@ -6,7 +6,8 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { TASK_POLICY, evaluate } from './task-policy.js';
 import { speaksForUser, type TaskActor, type TaskKind, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 
-type Provider = Extract<TaskActor, { kind: 'main' }>['provider'];
+type CoordinatorSource = Extract<TaskActor, { kind: 'main' }>['provider'];
+type Provider = Exclude<CoordinatorSource, 'mcp'>;
 /** Optional words recorded with a coordinator write; never an authorization input. */
 export type Quote = NonNullable<Extract<TaskActor, { kind: 'main' }>['quote']>;
 /**
@@ -17,7 +18,7 @@ export type Quote = NonNullable<Extract<TaskActor, { kind: 'main' }>['quote']>;
 export type Caller =
   | { kind: 'run'; runId: string; placementId: string; taskId: string; role: 'owner' | 'worker'; responsible: boolean }
   | ({ kind: 'coordinator'; conversation: string } &
-    ({ source: 'screen'; provider: Provider; runId: string } | { source: Provider }))
+    ({ source: 'screen'; provider: Provider; runId: string } | { source: CoordinatorSource }))
   | { kind: 'human' };
 
 /** One Task as the table reads it. */

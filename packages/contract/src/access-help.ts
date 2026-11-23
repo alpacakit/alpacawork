@@ -147,7 +147,7 @@ function permissionText(item: Example): string {
   return text + (allowedHeld.length === runs.length ? ' [own Task held: allowed]' :
     !allowedHeld.length ? ' [own Task held: unavailable]' : ` [own Task held: ${peopleText(allowedHeld, item)}]`);
 }
-const unrestricted = new Set(['config.get', 'workspace.url']);
+const unrestricted = new Set(['config.get', 'workspace.url', 'help', 'guide']);
 const clientOnly = new Set(['server.show', 'server.set', 'server.unset']);
 export const accessHelpPointer = 'Before executing, read Access in <group> <command> -h (roles, targets and options).';
 export function accessHelp(command: string): string {

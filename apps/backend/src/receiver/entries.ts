@@ -1,3 +1,4 @@
+import { mcpCommandHelp, mcpSkill } from './mcp-help.js';
 import { codecs, defineEntry, defineEntryEndpoint, defineEntryNode, defineEntryTree, defineParameter, optional, required, } from '@alpacakit/channels';
 import { bindHttpEntry } from '@alpacakit/channels/http';
 import { bindCliOptions } from '@alpacawork/cli-kit';
@@ -63,19 +64,20 @@ const serveEntry = defineEntry({
       codec: codecs.string(),
       requirement: optional(),
     }),
+    defineParameter({ name: 'mcp', description: 'Enable the MCP endpoint', codec: codecs.boolean(), requirement: optional() }),
     defineParameter({ name: 'timing', description: 'Log the duration of each reconciliation step to stderr as JSON lines',
       codec: codecs.boolean(), requirement: optional() }),
   ],
   project: ({ values }) => values,
 });
-export type ServeOptions = { publicHost?: string; timing?: boolean };
+export type ServeOptions = { publicHost?: string; timing?: boolean; mcp?: boolean };
 export const serve = defineEntryEndpoint(serveEntry, {
   handler: (input: ReturnType<typeof serveEntry.project>, context: Context) => {
     const values = parseInput(serveInput, input);
     if (!context.serve) throw new Problem(PROBLEM_CODE.forbidden, 'serve is only available from the local CLI', undefined, { reason: { kind: 'serve_only_available_from_local_cli' } });
     const root = requireRoot(context, 'existing');
     requireAdmin(context, () => root);
-    return context.serve(root, values.port, { publicHost: values['public-host'], timing: values.timing === true });
+    return context.serve(root, values.port, { publicHost: values['public-host'], timing: values.timing === true, mcp: values.mcp === true });
   },
   channels: [bindCliOptions(serveEntry.parameters)],
 });
@@ -356,6 +358,8 @@ export const screenTree = defineEntryTree(
 );
 
 const implementations = {
+  'help': { run: (_root, input) => mcpCommandHelp(input.commands) },
+  'guide': { run: (_root, input) => mcpSkill(input.name) },
   ...taskCommands,
   'project/shelf': {
     run: (root, _input, context) => {

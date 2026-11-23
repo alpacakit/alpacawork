@@ -3,14 +3,14 @@ import { pinRestore } from './restore-pin.js';
 import { accessHelp, accessHelpPointer } from '@alpacawork/contract/access-help';
 import { createHash } from 'node:crypto';
 import { CLI_CONTRACT, CONTRACT_HEADER } from '@alpacawork/contract/client-contract';
-import { open, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { appRoot } from '../../../scripts/app-root.mjs';
 import { Command, CommanderError } from 'commander';
 import {
-  commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
+  byteRequest, commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
 } from '@alpacawork/contract/commands';
 import { commandPath } from '@alpacawork/contract/command-path';
 import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
@@ -21,14 +21,13 @@ import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { operationId, writeAttempt } from './write-attempt.js';
 import { actorHeaders, LostAnswer, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
 import { saveServer, selectServer, unsetServer, verifyServer } from './endpoint.js';
-import { MAX_FILE_BYTES } from '@alpacawork/contract';
+import { boundedFile, tooLarge, prepareByteUpload } from './byte-upload.js';
+import { relayMcp } from './mcp.js';
 import { stopLocal } from '@alpacawork/contract/local-stop';
 import { findDiffCommands } from '@alpacawork/contract/report-diff';
 import { controlRunFilesSchema } from '@alpacawork/contract/control';
 import { taskIdSchema } from '@alpacawork/contract/fields';
 import { prepareReportDiffs, diffUploadId, type DiffSummary } from './report-diffs.js';
-
-const tooLarge = (name: string, max: number) => new Problem(PROBLEM_CODE.tooLarge, `${name} exceeds ${max} bytes`);
 
 /** A file option's text: the UTF-8 file at its absolute path, or stdin for `-`, at most the option's `max` bytes. */
 async function document(path: string, option: CommandOption): Promise<unknown> {
@@ -55,33 +54,6 @@ function jsonInput(option: CommandOption, text: string): unknown {
     throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
       { issues: [{ path: option.key, code: 'invalid_json', message }] });
   }
-}
-
-/** A regular file's bytes; more than `max` is too large for the option `name` that names it. */
-async function boundedFile(path: string, max: number, name: string): Promise<Uint8Array> {
-  const handle = await open(path, 'r');
-  try {
-    const stat = await handle.stat();
-    if (!stat.isFile()) throw new Problem(PROBLEM_CODE.invalidInput, 'Expected a regular file');
-    if (stat.size > max) throw tooLarge(name, max);
-    // Allocate for the observed size first, then grow up to the limit if the file grows during this read.
-    const limit = max + 1;
-    let buffer = Buffer.alloc(Math.min(limit, stat.size + 1));
-    let offset = 0;
-    for (;;) {
-      if (offset === buffer.length) {
-        if (buffer.length === limit) break;
-        const grown = Buffer.alloc(limit);
-        buffer.copy(grown, 0, 0, offset);
-        buffer = grown;
-      }
-      const result = await handle.read(buffer, offset, buffer.length - offset, null);
-      if (result.bytesRead === 0) break;
-      offset += result.bytesRead;
-    }
-    if (offset > max) throw tooLarge(name, max);
-    return buffer.subarray(0, offset);
-  } finally { await handle.close(); }
 }
 
 async function readStdin(max: number, name: string): Promise<Uint8Array> {
@@ -120,20 +92,6 @@ function sendWorkingDirectory(headers: Headers): void {
   headers.set('X-Alpacawork-Cwd', encodeURIComponent(here));
 }
 
-/** The bytes of --file to upload, with the headers that describe them set on `headers`. */
-async function uploadBytes(options: Record<string, unknown>, headers: Headers, contentDigest?: string): Promise<Uint8Array> {
-  if (typeof options.file !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, '--file is required');
-  let bytes: Uint8Array;
-  try { bytes = await boundedFile(options.file, MAX_FILE_BYTES, '--file'); }
-  catch (error) {
-    if (error instanceof Problem) throw error;
-    throw new Problem(PROBLEM_CODE.invalidInput, 'Cannot read --file');
-  }
-  if (contentDigest) headers.set(contentDigest, createHash('sha256').update(bytes).digest('hex'));
-  headers.set('Content-Type', 'application/octet-stream');
-  return bytes;
-}
-
 type CommandContext = { origin: string; options: Record<string, unknown>; opId?: string };
 
 async function execute(spec: RemoteCommand, input: Record<string, unknown>, { origin, options, opId }: CommandContext): Promise<unknown> {
@@ -146,13 +104,14 @@ async function execute(spec: RemoteCommand, input: Record<string, unknown>, { or
     opId ? writeAttempt(prepareRequest(origin, path, method, input, headers), opId, origin, undefined, undefined, pinRestore)
       : request(origin, path, method, input, headers);
   if (spec.file) {
-    const { path, method, query, headers: inputHeaders, contentDigest, body, response } = spec.file;
-    const route = path.replace(/:([^/]+)/g, (_match, key: string) => encodeURIComponent(String(input[key])));
-    const search = new URLSearchParams(query?.map(key => [key, String(input[key])]));
-    const target = search.size > 0 ? `${route}?${search}` : route;
-    for (const [key, name] of Object.entries(inputHeaders ?? {})) {
-      if (input[key] !== undefined) headers.set(name, String(input[key]));
+    const { method, body, response } = spec.file;
+    if (body === 'bytes') {
+      const upload = await prepareByteUpload(spec.file, input, options.file);
+      upload.headers.forEach((value, name) => headers.set(name, value));
+      return send(upload.path, method, upload.bytes);
     }
+    const { path: target, headers: byteHeaders } = byteRequest(spec.file, input);
+    byteHeaders.forEach((value, name) => headers.set(name, value));
     if (response === 'bytes') {
       if (typeof options.output !== 'string' || options.output === '-')
         throw new Problem(PROBLEM_CODE.invalidInput, '--output file path is required');
@@ -160,7 +119,6 @@ async function execute(spec: RemoteCommand, input: Record<string, unknown>, { or
       await writeFile(options.output, bytes, { flag: 'wx' });
       return { path: options.output, bytes: bytes.length };
     }
-    if (body === 'bytes') return send(target, method, await uploadBytes(options, headers, contentDigest));
     return send(target, method, undefined);
   }
   if (spec.kind === 'run') {
@@ -251,6 +209,10 @@ async function runMain(args: string[], installedServer?: string): Promise<number
   program.option('--server <url>', 'Use this server for one command (overrides environment and saved server)');
   const bound = commandTree<CommandContext>(spec => (input, context) => execute(spec, input, context));
   const selectedServer = () => selectServer(program.opts().server as string | undefined, process.env, installedServer);
+  program.command('mcp').description('Relay a stdio MCP client to the selected server')
+    .exitOverride().allowExcessArguments(false)
+    .option('--run', 'Use this Run’s credential from the environment')
+    .action(async ({ run }: { run?: boolean }) => relayMcp((await selectedServer()).server, run === true));
   // Local removal delegates to the backend, which owns installation records and deletion policy.
   program.command('uninstall', { hidden: true }).helpOption(false).allowUnknownOption().allowExcessArguments()
     .action(async () => {
@@ -303,7 +265,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     }
   };
   registerGroups(bound.cliRoot, program, []);
-  for (const spec of bound.commands) {
+  for (const spec of bound.cliCommands) {
     const words = spec.words;
     const group = groups.get(words.slice(0, -1).join('/'))!;
     const command = group.command(words.at(-1)!).description(spec.description).allowExcessArguments(false);

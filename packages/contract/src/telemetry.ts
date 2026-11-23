@@ -101,7 +101,7 @@ export const TELEMETRY_EVENT_ATTRIBUTES = [
     'coord.chat.goose', 'coord.chat.qwen', 'coord.chat.amp', 'coord.chat.deepseek', 'coord.chat.pi', 'coord.chat.other',
     'run.claude', 'run.codex', 'run.grok', 'run.agy', 'run.copilot', 'run.opencode', 'run.hermes',
     'run.goose', 'run.qwen', 'run.amp', 'run.deepseek', 'run.pi', 'run.other',
-    'cli'], ['screen', 'agent']),
+    'cli', 'coord.chat.mcp'], ['screen', 'agent']),
   // The screen's language, and the theme chosen in its settings (`system` follows the OS).
   attribute('lang', [TELEMETRY_NONE, 'ja', 'en', 'other'], ['ja', 'en', 'other']),
   attribute('theme', [TELEMETRY_NONE, 'light', 'dark', 'system'], ['light', 'dark', 'system']),

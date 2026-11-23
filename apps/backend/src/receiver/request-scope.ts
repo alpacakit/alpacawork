@@ -1,4 +1,5 @@
 /** What a request says about its caller and how its JSON answers, shared by the server and its read thread. */
+import { mcpRelayHeader, mcpSourceHeader } from '@alpacawork/contract/mcp';
 import { DIGEST_PATTERN, RUN_ID_PATTERN } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { RunStore } from '@alpacawork/runs';
@@ -11,7 +12,10 @@ const RUN_CREDENTIAL = new RegExp(`^Alpacawork-Run (${RUN_ID_PATTERN}):(${DIGEST
  * conversation it comes from (`X-Alpacawork-Provider` with `X-Alpacawork-Conversation`), never both. A CLI `task report`
  * also names its operation (`X-Alpacawork-Op-Id`), so that a report sent again after its Run ended goes through.
  */
-export function claimOf(headers: Headers, report = false): CallerClaim {
+export function claimOf(headers: Headers, report = false, internalMcp = false): CallerClaim {
+  if ((!internalMcp && headers.has(mcpSourceHeader)) || headers.has(mcpRelayHeader))
+    throw new Problem(PROBLEM_CODE.forbidden, 'Invalid direct conversation headers', undefined,
+      { reason: { kind: 'invalid_direct_conversation_headers' } });
   const authorization = headers.get('authorization');
   const credential = authorization ? RUN_CREDENTIAL.exec(authorization) : null;
   if (authorization && !credential)
@@ -25,15 +29,16 @@ export function claimOf(headers: Headers, report = false): CallerClaim {
     throw new Problem(PROBLEM_CODE.forbidden, 'Invalid direct conversation headers', undefined, { reason: { kind: 'invalid_direct_conversation_headers' } });
   const replayOpId = report ? headers.get('x-alpacawork-op-id') : null;
   return {
+    ...(internalMcp ? { mcp: true as const } : {}),
     ...(credential ? { run: { runId: credential[1]!, token: credential[2]! } } : {}),
     ...((provider === 'claude' || provider === 'codex') && conversationId ? { direct: { provider, conversationId } } : {}),
     ...(replayOpId ? { replayOpId } : {}),
   };
 }
 /** What one request claims about its caller and the working directory its CLI sent (`X-Alpacawork-Cwd`). */
-export function requestScope(headers: Headers, cli: boolean, replayFromRun = false):
+export function requestScope(headers: Headers, cli: boolean, replayFromRun = false, internalMcp = false):
   { claim: CallerClaim; cwd: string | null } {
-  const claim = claimOf(headers, replayFromRun);
+  const claim = claimOf(headers, replayFromRun, internalMcp);
   const sent = cli ? headers.get('x-alpacawork-cwd') : null;
   try { return { claim, cwd: sent === null ? null : decodeURIComponent(sent) }; }
   catch { throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid X-Alpacawork-Cwd', undefined, { reason: { kind: 'invalid_x_alpacawork_cwd' } }); }

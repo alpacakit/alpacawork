@@ -97,12 +97,25 @@
       "new": "nuevo"
     },
     "fact": {
+      "mcp": "Acceso MCP",
       "node": "Node.js",
       "path": "PATH",
       "port": "Puerto",
       "publicHost": "Host público"
     },
     "listSeparator": ", ",
+    "mcp": {
+      "access": "Todo dispositivo que pueda acceder a /mcp y toda IA que tenga registrado este servidor MCP pueden aceptar resultados, responder en tu nombre, solicitar trabajo e iniciar las IA configuradas.",
+      "confirmed": "Has confirmado que el acceso es privado. Mantén /mcp dentro de tu tailnet.",
+      "funnel": "Tailscale Funnel reenvía al puerto {{port}}. Elimina ese reenvío público antes de activar MCP.",
+      "inspect": "MCP puede ejecutar un archivo de inmediato para inspeccionarlo.",
+      "off": "Desactivado",
+      "on": "Activado",
+      "private": "Usa Tailscale Serve para limitar el acceso a tu tailnet.",
+      "runs": "Registra los agentes iniciados con alpacawork mcp --run. Un registro global en Claude Code o Codex puede dar a los agentes sin credenciales de Run el mismo acceso que a tu coordinador.",
+      "settings": "MCP puede guardar ajustes que afectan a futuros inicios de IA.",
+      "verify": "No se ha podido verificar el reenvío de Tailscale. Confirma que /mcp solo es accesible desde tu tailnet y añade --confirm-private-tailnet."
+    },
     "open": "Abrir: {{url}}",
     "overwriteSkill": "Sobrescribir la skill distribuida {{path}}, incluidos los cambios locales. No se guarda ninguna copia de seguridad.",
     "portWayBack": "Para volver al puerto anterior: alpacawork setup --port {{port}}",

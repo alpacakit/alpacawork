@@ -65,6 +65,10 @@
       "types": "./dist/problem.d.ts",
       "default": "./dist/problem.js"
     },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
+    },
     "./command-path": {
       "types": "./dist/command-path.d.ts",
       "default": "./dist/command-path.js"

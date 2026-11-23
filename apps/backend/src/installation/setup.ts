@@ -112,7 +112,7 @@ export function installationService(releases: string, workspace: string, name: s
  * keeps its name, and its port and public host unless the caller names others; Node and PATH are this terminal's.
  * A result that differs from the recorded definition is a change only setup's re-approval may confirm. */
 export async function inspectInstallationService(releases: string, workspace: string,
-  env: Readonly<Record<string, string | undefined>> = process.env, name?: string, options: {port?: number; publicHost?: string} = {}): Promise<ServiceDefinition> {
+  env: Readonly<Record<string, string | undefined>> = process.env, name?: string, options: {port?: number; publicHost?: string; mcp?: boolean} = {}): Promise<ServiceDefinition> {
   const environment = facts({ env }), store = new InstallationStore(installationPath(env)), record = store.read();
   if (record && (record.workspace !== workspace || record.home !== environment.home ||
       record.releases !== null && record.releases !== releases)) throw new Error('Installation management facts differ; retained');
@@ -122,8 +122,9 @@ export async function inspectInstallationService(releases: string, workspace: st
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Service port must be 1..65535');
   const publicHost = options.publicHost ?? saved?.publicHost ?? undefined;
   if (publicHost !== undefined && !PUBLIC_HOST_PATTERN.test(publicHost)) throw new Error('public-host must be host[:port] in lower case');
+  const mcp = options.mcp ?? saved?.mcp ?? false;
   return serviceDefinition({ ...environment, releases, workspace, service: { name: saved?.name ?? name ?? DEFAULT_SERVICE_NAME, port,
-    publicHost: publicHost ?? null, environmentPath: servicePath(env) } }, store.path);
+    publicHost: publicHost ?? null, environmentPath: servicePath(env), ...(mcp ? { mcp: true } : {}) } }, store.path);
 }
 
 /** Explicit setup saves its approved definition before any registration/start. Does not claim OS success.
@@ -143,7 +144,7 @@ export async function recordInstallationService(releases: string, workspace: str
     const environmentPath = approved.environment.PATH;
     if (typeof environmentPath !== 'string') throw new Error('Approved service PATH is missing');
     const installation: Installation = { ...record, nodeExecutable, service: {
-      name: approved.name, port, publicHost: servicePublicHost(approved) ?? null, environmentPath,
+      name: approved.name, port, publicHost: servicePublicHost(approved) ?? null, environmentPath, ...(serviceMcp(approved) ? { mcp: true } : {}),
     } };
     const expected = serviceDefinition(installation, store.path);
     if (!isDeepStrictEqual(approved, expected) || (saved ? saved.name !== approved.name || !isDeepStrictEqual(saved, replaces ?? approved) : replaces !== null))
@@ -197,10 +198,10 @@ export async function probeServicePort(port = 0): Promise<number> {
 export function serviceDefinition(record: Pick<Installation, 'home' | 'nodeExecutable' | 'releases' | 'workspace' | 'service'>, path: string): ServiceDefinition {
   const { releases, workspace, service } = record;
   if (!releases || !service) throw new Error('Service installation settings are missing');
-  const { name, port, publicHost, environmentPath } = service;
+  const { name, port, publicHost, environmentPath, mcp } = service;
   const config = dirname(dirname(path));
   const definition: ServiceDefinition = { name, executable: record.nodeExecutable,
-    args: ['--', backendEntry('backend', join(releases, 'current')), '--workspace', workspace, 'workspace', 'serve', ...(publicHost ? ['--public-host', publicHost] : []), '--port', String(port)],
+    args: ['--', backendEntry('backend', join(releases, 'current')), '--workspace', workspace, 'workspace', 'serve', ...(publicHost ? ['--public-host', publicHost] : []), ...(mcp ? ['--mcp'] : []), '--port', String(port)],
     workingDirectory: record.home,
     environment: { HOME: record.home, XDG_CONFIG_HOME: config, XDG_DATA_HOME: join(record.home, '.local/share'),
       XDG_STATE_HOME: join(record.home, '.local/state'), XDG_CACHE_HOME: join(record.home, '.cache'),
@@ -221,6 +222,10 @@ export function managedInstallation(env: Readonly<Record<string, string | undefi
 /** One destination rule shared by public setup and the thin skills-only CLI. */
 export function installationSkillsRoot(env: Readonly<Record<string, string | undefined>> = process.env): string {
   return managedSkillsRoot(userHome(env));
+}
+
+export function serviceMcp(definition: ServiceDefinition): boolean {
+  return definition.args.includes('--mcp');
 }
 
 export function servicePublicHost(definition: ServiceDefinition): string | undefined {
