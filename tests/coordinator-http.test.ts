@@ -208,7 +208,7 @@ test('clearing repeatedly warms and sends with an omitted launch option, without
     const records = h.records(conversation.id), warms = records.filter(record => record.warm);
     assert.equal(warms.length, 1, 'duplicate warm requests admit one preparation');
     assert.equal(warms[0]!.run?.state, 'succeeded');
-    assert.equal(warms[0]!.run?.launch.values.fast, undefined);
+    assert.equal(warms[0]!.run?.launch.values.fast, null);
     assert.equal((await h.get()).warm, 'ready');
     assert.equal((await h.post('/api/coordinator/warm', {
       ...warm, selected: { fast: false },
@@ -287,6 +287,32 @@ test('warm-up and messages use the saved coordinator row, including a setting ch
   assert.equal(third.answer.mode, 'start');
   assert.notEqual(third.answer.session, next.answer.session);
   assert.deepEqual(third.answer.args, ['fable', 'high']);
+});
+
+test('the next launch displays only the options used after switching to a fresh session', async t => {
+  const h = await fixture(t, true), config = parse(h.config), path = join(h.root, 'config.yaml');
+  const options = AGENT_ADAPTERS.claude.options;
+  config.agents.fake.params.effort = ['-', 'low'];
+  config.agents.fake.options = { base: optionsBase('claude'),
+    start: options.start.replace('[--model {model}] [--effort {effort}]', '--model opus'),
+    resume: options.resume.replace('[--model {model}] [--effort {effort}]', '[--model {model} --effort {effort}]') };
+  config.coordinatorAiStack = [{ agent: 'fake', values: { model: 'opus', effort: 'low' } }];
+  writeFileSync(path, stringify(config));
+  const { id: conversationId } = await h.get();
+  const send = async (text: string) => {
+    const id = crypto.randomUUID();
+    const response = await h.post('/api/coordinator/messages', { conversationId, id, text, attachments: [] });
+    assert.equal(response.status, 200, await response.text());
+    return JSON.parse((await h.done(id)).answer!);
+  };
+  const first = await send('First message');
+  config.coordinatorAiStack[0].values = { model: 'fable', effort: null };
+  writeFileSync(path, stringify(config));
+  assert.deepEqual((await h.get()).nextLaunch, { agent: 'fake', values: {} });
+  const next = await send('Next message');
+  assert.equal(next.mode, 'start');
+  assert.notEqual(next.session, first.session);
+  assert.deepEqual(next.args, ['opus']);
 });
 
 test('run and direct conversation callers cannot use coordinator API', async t => {

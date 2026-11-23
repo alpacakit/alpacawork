@@ -126,7 +126,7 @@ export const coordinatorTurnSchema = z.object({
 /**
  * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
  * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
- * `nextLaunch`: the configured row the next message would use, or null if no row can run.
+ * `nextLaunch`: the agent and values passed in the next message's launch arguments, or null if no row can run.
  * `cancelled`: the messages withdrawn before they went.
  */
 export const coordinatorConversationSchema = z.object({

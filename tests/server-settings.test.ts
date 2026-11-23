@@ -18,7 +18,6 @@ import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { readSchema } from '@alpacawork/backend/test-dist/control/field-commands.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { RunStore } from '@alpacawork/runs';
 
 const AGENTS = stringify({ agents: { claude: {
@@ -91,15 +90,15 @@ test('the settings screen saves limits.attachment_mib from 1 to 500 MiB', async 
       (error: any) => error.code === 'invalid_input' && error.issues?.some((issue: { path: string }) => issue.path === 'limits.attachment_mib'));
 });
 
-test('AI stacks round-trip the same editable values as the upcoming coordinator launch', async t => {
+test('both AI stacks round-trip every selected value while the next launch displays applied values', async t => {
   const agents = stringify({ agents: {
     claude: { command: process.execPath, without: { opus: ['effort'] } }, copilot: {}, pi: {},
   } });
   const { root } = setup(t, agents);
   const written = [{ agent: 'claude', values: { model: 'opus', effort: 'low' } },
     { agent: 'copilot', values: {} }, { agent: 'pi', values: {} }];
-  const expected = [{ agent: 'claude', values: { model: 'opus' } },
-    { agent: 'copilot', values: {} }, { agent: 'pi', values: { effort: 'high' } }];
+  const expected = [written[0], { agent: 'copilot', values: { model: null } },
+    { agent: 'pi', values: { model: null, effort: 'high' } }];
   const writeStacks = (hash: string | null, aiStack: unknown, coordinatorAiStack: unknown) =>
     save(root, { config: stringify({ limits: DEFAULT_LIMITS, aiStack, coordinatorAiStack }, { aliasDuplicateObjects: false }), agents, expectedConfigHash: hash });
   const before = await readServerSettings(root);
@@ -108,14 +107,12 @@ test('AI stacks round-trip the same editable values as the upcoming coordinator 
   assert.deepEqual(read, saved);
   assert.deepEqual(read.aiStack, expected);
   assert.deepEqual(read.coordinatorAiStack, expected);
-  assert.deepEqual(parse(file(root)).coordinatorAiStack, expected, 'the coordinator stack is written in its resolved shape');
+  assert.deepEqual(parse(file(root)).aiStack, written);
+  assert.deepEqual(parse(file(root)).coordinatorAiStack, written);
   assert.deepEqual(await writeStacks(read.hash, read.aiStack, read.coordinatorAiStack), saved);
-  const settings = readAgentsSettings(root);
-  assert.ok(settings.ok);
-  assert.equal(settings.config.aiStack?.[0]?.values.effort, 'low', 'task launch defaults keep their existing representation');
 
   const owner = new CoordinatorConversation(root), conversation = owner.read();
-  assert.deepEqual(conversation.nextLaunch, expected[0]);
+  assert.deepEqual(conversation.nextLaunch, { agent: 'claude', values: { model: 'opus' } });
   owner.ask({ conversationId: conversation.id, id: crypto.randomUUID(), text: 'Synthetic message', attachments: [] });
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   try {
@@ -125,28 +122,26 @@ test('AI stacks round-trip the same editable values as the upcoming coordinator 
   } finally { store.close(); }
 });
 
-test('a screen save keeps hidden values of matching rows in both stacks, including repeated rows', async t => {
+test('removing a candidate is refused at the row that still selects it, even if the model omits it', async t => {
   const low = { agent: 'claude', values: { model: 'opus', effort: 'low' } };
-  const high = { agent: 'claude', values: { model: 'opus', effort: 'high' } };
-  const pi = { agent: 'pi', values: {} };
-  const previous = [low, high, pi];
-  const { root } = setup(t, stringify({
-    agents: { claude: { without: { opus: ['effort'] } }, pi: {} },
-    aiStack: previous, coordinatorAiStack: previous,
-  }, { aliasDuplicateObjects: false }));
-  const before = await readServerSettings(root);
-  const changed = { agent: 'claude', values: { model: 'fable', effort: 'medium' } };
-  const reorder = (rows: NonNullable<typeof before.aiStack>) => [rows[1]!, rows[2]!, rows[0]!, changed];
-  const edit = { aiStack: reorder(before.aiStack!), coordinatorAiStack: reorder(before.coordinatorAiStack!) };
-  const saved = await saveServerSettings(root, parseInput(configSetInput, {
-    config: stringify({ limits: before.limits, ...edit }, { aliasDuplicateObjects: false }),
-    agents: before.agentsText, expectedConfigHash: before.hash,
-  }), undefined, undefined, 'screen');
-  assert.deepEqual(saved.aiStack, edit.aiStack);
-  assert.deepEqual(saved.coordinatorAiStack, edit.coordinatorAiStack);
-  const stored = parse(file(root));
-  assert.deepEqual(stored.aiStack, [low, pi, high, changed]);
-  assert.deepEqual(stored.coordinatorAiStack, [low, pi, high, changed]);
+  const agents = { claude: { without: { opus: ['effort'] } }, pi: {} };
+  const edited = stringify({ agents: { ...agents, claude: { ...agents.claude, params: { effort: ['medium', 'high'] } } } });
+  for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
+    const original = stringify({ agents, [key]: [{ agent: 'pi', values: {} }, low] });
+    const { root } = setup(t, original);
+    const before = await readServerSettings(root);
+    assert.deepEqual(before[key]?.[1], low);
+    const config = stringify({ limits: before.limits, [key]: before[key] });
+    await assert.rejects(save(root, { config, agents: edited, expectedConfigHash: before.hash }), (error: unknown) => {
+      const { code, reason } = errorBody(error).error;
+      assert.equal(code, 'invalid_settings');
+      assert.equal(reason?.kind, 'config_invalid');
+      assert.equal(reason.path, 'config.yaml');
+      assert.deepEqual(reason.issues.map(issue => [issue.code, issue.path]), [['invalid_selection', `${key}.1.values.effort`]]);
+      return true;
+    });
+    assert.equal(file(root), original);
+  }
 });
 
 test('a project\'s name, values and fields are its Task\'s; config.yaml and its hash stay', async t => {

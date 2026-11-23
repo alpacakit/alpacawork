@@ -39,7 +39,7 @@ export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly Coo
     const previous = resumable?.agent === row.agent ? resumable : null;
     try {
       const snapshot = preferResume(config, row, path, previous);
-      if (snapshot.ok) return { row, launch: snapshot.launch, restartArgv: snapshot.restartArgv,
+      if (snapshot.ok) return { row, launch: snapshot.launch, restartArgv: snapshot.restartArgv, appliedValues: snapshot.appliedValues,
         continued: snapshot.mode === 'resume' ? previous : null, following: candidates.slice(index + 1) };
     } catch (error) {
       if (!(error instanceof Problem)) throw error;

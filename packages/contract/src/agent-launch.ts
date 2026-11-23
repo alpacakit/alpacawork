@@ -7,9 +7,9 @@
 import { z } from 'zod';
 import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId } from './agent-adapters.js';
 import { selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
-import { prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
+import { appliedLaunchValues, prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
 import type { SystemVariableName } from './agent-variables.js';
-import { resolveAgentSelection, SelectionRequired, stackRowValues, type AgentChoice, type ResolvedAgentSelection,
+import { resolveAgentSelection, SelectionRequired, type AgentChoice, type ResolvedAgentSelection,
   type SelectionProblem } from './agent-selection.js';
 import { agentEnvironmentNamesSchema } from './agent-environment.js';
 export const launchModeSchema = z.enum(LAUNCH_MODES);
@@ -91,29 +91,28 @@ export function prepareAgentLaunch(compiled: CompiledAgentSetting, admission: La
 /** Live coordinator admission: a resume must capture its fresh-start alternative now.
  * The saved-record extension above also accepts null for migrated ended records.
  */
+const coordinatorAdmissionFields = { launch: agentLaunchSchema, appliedValues: selectionSchema };
 export const coordinatorLaunchAdmissionSchema = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('start'), launch: agentLaunchSchema, restartArgv: z.null() }).strict(),
-  z.object({ mode: z.literal('resume'), launch: agentLaunchSchema, restartArgv: launchArgvSchema }).strict(),
+  z.object({ ...coordinatorAdmissionFields, mode: z.literal('start'), restartArgv: z.null() }).strict(),
+  z.object({ ...coordinatorAdmissionFields, mode: z.literal('resume'), restartArgv: launchArgvSchema }).strict(),
 ]);
 export type CoordinatorLaunchAdmission = z.infer<typeof coordinatorLaunchAdmissionSchema>;
 export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admission: LaunchAdmission): CoordinatorLaunchAdmission {
   const valid = resolveAdmission(compiled, admission);
   const launch = snapshot(compiled, valid.admission, valid.resolved);
-  launch.values = stackRowValues(compiled, valid.resolved);
   const adapter = AGENT_ADAPTERS[compiled.adapter];
+  const appliedValues = appliedLaunchValues(launch.argv.slice(adapter.prefix.length), valid.resolved.effective);
   if (valid.admission.mode === 'resume') {
     const previous = valid.admission.previous.values;
-    // Optional groups are already resolved here. A reference in a group that was dropped cannot apply the change.
-    const args = launch.argv.slice(adapter.prefix.length);
     const problems: SelectionProblem[] = [];
-    for (const { key, candidates } of valid.resolved.choices) {
-      if (!Object.hasOwn(launch.values, key) || launch.values[key] === (previous[key] ?? null) ||
-          args.some(arg => arg.includes(`{${key}}`))) continue;
-      problems.push({ key, previous: previous[key] ?? null, candidates, reason: 'unused', recovery: 'new_conversation' });
+    for (const { key, candidates, active } of valid.resolved.choices) {
+      const former = Object.hasOwn(previous, key) ? previous[key]! : null;
+      if (!active || launch.values[key] === former || Object.hasOwn(appliedValues, key)) continue;
+      problems.push({ key, previous: former, candidates, reason: 'unused', recovery: 'new_conversation' });
     }
     if (problems.length) throw new SelectionRequired(problems);
   }
   const restartArgv = valid.admission.mode === 'start' ? null : [...adapter.prefix,
     ...prepareLaunchOptions(compiled.options.start, valid.resolved.effective, adapter.system.start)];
-  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, restartArgv });
+  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, appliedValues, restartArgv });
 }

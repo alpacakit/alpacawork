@@ -9,8 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor, aiStackSchema, compileAgentSetting, resolveAgentSelection, stackRowValues,
-  type AiRow, type ServerSettings } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor, type ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
 import { parseAgentsSettings } from './agents-settings.js';
@@ -35,13 +34,8 @@ function view(bytes: Buffer): ServerSettings {
   const config = parseAgentsSettings(text);
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
-  // A task's launch can still carry latent defaults. The editable rows only expose choices that apply.
-  const aiStack = config.aiStack?.map(row => {
-    const compiled = compileAgentSetting(row.agent, config.agents[row.agent]!);
-    return { agent: row.agent, values: stackRowValues(compiled, resolveAgentSelection(compiled, row.values)) };
-  });
   return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
-    ...(aiStack === undefined ? {} : { aiStack }),
+    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }),
     ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
@@ -55,29 +49,15 @@ export async function readServerSettings(root: string): Promise<ServerSettings> 
   } finally { writer?.close(); }
 }
 
-/** Match the screen's rows against the view of the same saved rows, consuming the first match each time. */
-function restoreStackRows(stored: readonly AiRow[], visible: readonly AiRow[], edited: readonly AiRow[]): AiRow[] {
-  const keyOf = (row: AiRow) => JSON.stringify([row.agent, Object.entries(row.values).sort()]);
-  const originals = new Map<string, AiRow[]>();
-  // Store matching rows in reverse so each pop takes the next saved row in order.
-  for (let index = visible.length - 1; index >= 0; index--) {
-    const key = keyOf(visible[index]!);
-    const rows = originals.get(key) ?? [];
-    rows.push(stored[index]!);
-    originals.set(key, rows);
-  }
-  return edited.map(row => originals.get(keyOf(row))?.pop() ?? row);
-}
-
 /**
  * Saves the limits and the agents block at once against the screen's hash. The agents block replaces its own lines as
  * typed; limits are written only where they changed. The publication receipt retains the authorized actor and time;
  * its old/new digests and saved view identify what changed. Retries retain that first receipt.
  */
 export async function saveServerSettings(root: string, input: ConfigSetValues, opId: string = randomUUID(),
-  actor: TaskActor = { kind: 'human' }, source: 'screen' | 'yaml' = 'yaml'): Promise<ServerSettings> {
+  actor: TaskActor = { kind: 'human' }): Promise<ServerSettings> {
   const edit = input.edit;
-  const key = [input.expectedConfigHash, input.agents, edit, actor, ...(source === 'screen' ? [source] : [])];
+  const key = [input.expectedConfigHash, input.agents, edit, actor];
   const journal = new FileJournal(root);
   const replay = journal.replayConfig<ServerSettings>(opId, key);
   if (replay) {
@@ -93,8 +73,8 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       const beforeBytes = writer!.read(CONFIG_FILE) ?? Buffer.alloc(0);
       // A config.yaml the screen cannot read is refused as such, before any staleness.
       const before = decode(beforeBytes);
-      const current = view(beforeBytes);
-      const { document, values } = parseConfig(before);
+      const current = parseAgentsSettings(before);
+      const { document } = parseConfig(before);
       if (digest(beforeBytes) !== input.expectedConfigHash)
         throw new Problem(PROBLEM_CODE.conflict, 'Settings changed; reload before retrying', { path: CONFIG_FILE }, { reason: { kind: 'settings_changed' } });
       let rewrite = false;
@@ -102,12 +82,8 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
       for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
         const edited = edit[key];
-        if (edited === undefined) continue;
-        const stored = aiStackSchema.optional().parse(values[key]);
-        const rows = source === 'screen' && stored !== undefined ? restoreStackRows(stored, current[key]!, edited) : edited;
-        const baseline = source === 'yaml' && key === 'aiStack' ? current.aiStack : stored;
-        if (isDeepStrictEqual(rows, baseline)) continue;
-        document.set(key, rows);
+        if (edited === undefined || isDeepStrictEqual(edited, current[key])) continue;
+        document.set(key, edited);
         rewrite = true;
       }
       /* Initial release: Jev settings are not editable.
@@ -117,18 +93,10 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       }
       */
       // The agents block goes in as typed, even when serializing the other edits.
-      const render = (base: string) => {
-        const block = agentsBlock(base);
-        return Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));
-      };
-      let output = render(rewrite ? document.toString({ lineWidth: 0 }) : before);
-      let saved = view(output);
-      // The new agents block decides which coordinator values are active.
-      if (source === 'yaml' && edit.coordinatorAiStack !== undefined && !isDeepStrictEqual(edit.coordinatorAiStack, saved.coordinatorAiStack)) {
-        document.set('coordinatorAiStack', saved.coordinatorAiStack);
-        output = render(document.toString({ lineWidth: 0 }));
-        saved = { ...saved, hash: digest(output) };
-      }
+      const base = rewrite ? document.toString({ lineWidth: 0 }) : before;
+      const block = agentsBlock(base);
+      const output = Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));
+      const saved = view(output);
       // An unchanged file still answers this operation once, by a receipt that changes nothing else.
       if (output.equals(Buffer.from(before))) {
         const store = new ControlStore(root, { busyTimeoutMs: 10_000 });

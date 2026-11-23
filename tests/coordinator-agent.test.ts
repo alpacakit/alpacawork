@@ -169,5 +169,6 @@ test('after another agent fails to launch, the screen and serve both go on from 
   config(agents, [first, { agent: 'second', values: {} }]);
   assert.deepEqual(owner.read().nextLaunch, first);
   ask();
-  assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values], ['first', answered.id, first.values]);
+  assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values],
+    ['first', answered.id, { ...first.values, effort: null }]);
 });

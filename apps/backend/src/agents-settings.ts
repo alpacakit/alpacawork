@@ -8,7 +8,7 @@ import type { AgentLaunch } from '@alpacawork/contract/agent-launch';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { attachmentBytes, checkAgentsConfigText, DEFAULT_LIMITS, limitsShape,
   compileAgentSetting, prepareAgentLaunch, prepareCoordinatorLaunch,
-  aiStackSchema, agentChoices, stackRowValues, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
+  aiStackSchema, agentChoices, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
   type AiRow, type AgentSetting, type ResolvedAgentSetting, type Selection, type LaunchAdmission } from '@alpacawork/contract';
 import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
 import { stringify } from 'yaml';
@@ -57,13 +57,20 @@ export function parseAgentsSettings(text: string): AgentsSettings {
       `${issue.line === null ? '?' : issue.line}: ${issue.path}: ${issue.message}`).join('; '), undefined,
       { reason: { kind: 'config_invalid', path: CONFIG_FILE, issues: checked.issues.map(issue => ({
         code: issue.kind, path: issue.path, line: issue.line ?? undefined, diagnostic: redactSecrets(issue.message) })) } });
-    const stack = (key: 'aiStack' | 'coordinatorAiStack') => aiStackSchema.optional().parse(values[key])?.map(row => {
+    const stack = (key: 'aiStack' | 'coordinatorAiStack') => aiStackSchema.optional().parse(values[key])?.map((row, index) => {
       const setting = Object.hasOwn(checked.agents, row.agent) ? checked.agents[row.agent] : undefined;
       if (!setting) throw new Error(`${key} names an undefined agent: ${row.agent}`);
       const compiled = compileAgentSetting(row.agent, setting);
-      const { launch, choices } = prepareAgentLaunch(compiled, { mode: 'start', path: '/bin', explicit: row.values });
-      const resolved = key === 'coordinatorAiStack' ? stackRowValues(compiled, { choices, values: launch.values }) : launch.values;
-      return { agent: row.agent, values: resolved };
+      try {
+        const { launch } = prepareAgentLaunch(compiled, { mode: 'start', path: '/bin', explicit: row.values });
+        return { agent: row.agent, values: launch.values };
+      } catch (error) {
+        if (!(error instanceof InvalidAgentSelection)) throw error;
+        const path = `${key}.${index}.values.${error.key}`;
+        throw new Problem(PROBLEM_CODE.invalidSettings, `${path}: ${error.message}`, undefined,
+          { cause: error, reason: { kind: 'config_invalid', path: CONFIG_FILE,
+            issues: [{ code: error.code, path, diagnostic: redactSecrets(error.message) }] } });
+      }
     });
     return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents,
       aiStack: stack('aiStack'), coordinatorAiStack: stack('coordinatorAiStack') };

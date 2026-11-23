@@ -57,11 +57,6 @@ export type ResolvedAgentSelection = {
   choices: AgentChoice[];
 };
 
-/** Values an AI stack row can edit and actually use. An explicit dash is still a choice. */
-export function stackRowValues(compiled: CompiledAgentSetting, selection: Pick<ResolvedAgentSelection, 'choices' | 'values'>): Selection {
-  return Object.fromEntries(selection.choices.filter(choice => choice.active && compiled.setting.params[choice.key]!.length > 0)
-    .map(choice => [choice.key, selection.values[choice.key]!]));
-}
 /** Explicit commands → conversation's previous values → defaults for newly introduced keys.
  * A removed/unused old key requires a new conversation; never silently discard it.
  */

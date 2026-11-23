@@ -131,7 +131,8 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
         ...again ? { sentAgain: true as const } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
   }
-  const nextLaunch = settings?.ok ? coordinatorNextLaunch(settings.config, runs).row : null;
+  const next = settings?.ok ? coordinatorNextLaunch(settings.config, runs) : null;
+  const nextLaunch = next?.row ? { agent: next.row.agent, values: next.appliedValues } : null;
   return { id: conversation.id, nextLaunch,
     warm: !warm ? 'none' : isRunMoving(warm.state) ? 'preparing' : warm.state === 'succeeded' ? 'ready' : 'failed',
     busy: !!laneAhead(decisions, { role: 'coordinator', conversationId: conversation.id }, blocked, reservations), cancelled, turns };

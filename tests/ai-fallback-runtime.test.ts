@@ -140,7 +140,7 @@ test('a worker uses a named model just for its request and retains the prior con
     const settings = serverSettingsSchema.parse(await (await fetch(new URL('/api/config/get', app.url))).json());
     const [primary, replacement, third, fourth] = settings.aiStack!;
     assert.equal(next.launch.values.effort, 'low');
-    assert.equal(replacement!.values.effort, undefined);
+    assert.deepEqual(replacement!.values, next.launch.values);
     const saved = await commandFetch(new URL('/api/config/set', app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expectedConfigHash: settings.hash, agents: settings.agentsText,
         config: stringify({ limits: settings.limits, aiStack: [primary, replacement, fourth, third] }) }) });
