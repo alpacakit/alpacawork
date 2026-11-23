@@ -209,8 +209,9 @@ export const GUIDE: readonly GuideEntry[] = [
   // where the detail lies over the page, clear of it (what is read over the questions stays read).
   { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer"), again: t => t("tree:guide.again.answer") },
-  // A report open with nothing written yet: more can be asked after it, with one more to try (the one way on the step
-  // offers; Done stays there to press); then, with words written, the label that goes with them (OVER_INPUT).
+  // A report open with nothing written yet: it is there to look over, and more can be asked after it, with one more
+  // to try (the one way on the step offers; Done stays there to press); then, with words written, the label that goes
+  // with them, and that they are sent as they are (OVER_INPUT).
   { id: "more", phase: "turn", turn: true, passable: true, part: "input", ...OVER_INPUT,
     when: f => f.open === "result" && !f.drafting,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.moreExample")) },
@@ -222,10 +223,14 @@ export const GUIDE: readonly GuideEntry[] = [
   // over the buttons at its foot (never over the words written).
   { id: "send-ready", phase: "now", part: "send", clear: ["words", "overInput", "panel"], side: "right", when: f => f.drafting,
     say: t => t("tree:guide.say.sendReady"), again: t => t("tree:guide.say.sendReady") },
-  // Done on an open report, or where the AI on a Task being worked on is stopped.
+  // Done on an open report.
   { id: "accept", phase: "turn", turn: true, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { finish: finish(t) }), again: t => t("tree:guide.again.accept", { finish: finish(t) }) },
-  { id: "stop", phase: "turn", passable: true, part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working",
+  // A Task being worked on, opened before anything has come back from it (the person looking round during their
+  // first wait): where the AI on it is stopped. Once they have had a turn, the detail stays open on the Task they
+  // answered, and what is said there is that its work goes on (`working`), not this.
+  { id: "stop", phase: "turn", passable: true, part: "taskState", side: "top", align: "end", next: true,
+    when: f => f.open === "working" && f.stage.stage === "started",
     say: t => t("tree:guide.say.stop", { stop: t("forms:reportForm.stopTitle") }) },
   // The rows awaiting the person, the question first: said while none of their kind is open in the detail already.
   { id: "question", phase: "turn", turn: true, part: "questionRow", side: "bottom", when: f => f.questions > 0 && f.open !== "question",

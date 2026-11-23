@@ -136,9 +136,11 @@ test("an answer given in the conversation itself is pointed at while it is folde
   expect(doneOnShowing(guideEntry(facts(answered))!, true)).toBe(true);
 });
 
-test("a Task being worked on, seen in the detail, points once at where it is stopped", () => {
+test("a Task being worked on, opened before anything has come back from it, points once at where it is stopped", () => {
   expect(shown({ tasks: 1, working: 1, open: "working" })).toBe("stop");
   expect(shown({ tasks: 1, working: 1, open: "working", seen: read("stop") })).toBe("working");
+  // Once the person has had a turn, the detail stays open on the Task they answered: its work going on is what is said.
+  expect(shown({ stage: turn, tasks: 1, working: 1, open: "working", seen: read("working") })).toBe("working");
 });
 
 test("with a report and a question both awaiting the person, the question's step points at the question's row", () => {
