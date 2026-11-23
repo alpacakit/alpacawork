@@ -15,6 +15,7 @@ import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
+import { formatNoticeTime } from "@/domain/time";
 import { useNow } from "@/state/clock";
 import { useOfflineShown } from "@/data/reach";
 import { cn } from "@/lib/utils";
@@ -303,8 +304,11 @@ export function RowKindWord({ task }: { task: Task }) {
 function CauseWord({ cause }: { cause: ErrorCause }) {
   const { t, i18n } = useTranslation("ui");
   const now = useNow();
+  const name = t(`tree:status.cause.${CAUSE_WORD[cause.cause]}`);
+  // A limit still in force says when it lifts, shortly ("11/29 10:00"), so the list alone tells whether to wait.
+  const until = cause.resetsAt && Date.parse(cause.resetsAt) > now ? formatNoticeTime(cause.resetsAt, i18n.language, new Date(now)) : null;
   return <span data-row-kind="stopped" data-row-cause={cause.cause} title={causeSentence(cause, t, now, i18n.language)}
-    className="min-w-0 shrink-[0.0001] truncate">{t(`tree:status.cause.${CAUSE_WORD[cause.cause]}`)}</span>;
+    className="min-w-0 shrink-[0.0001] truncate">{until ? t("tree:status.causeUntil", { cause: name, when: until }) : name}</span>;
 }
 const CAUSE_WORD: Record<ErrorCause["cause"], string> = { model_capacity: "modelCapacity", weekly_limit: "weeklyLimit", session_limit: "sessionLimit", model_limit: "modelLimit" };
 

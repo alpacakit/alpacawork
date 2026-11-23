@@ -54,5 +54,10 @@ export function limitWindow(input: { minutes?: number | null; kind?: LimitWindow
 export function resetTime(value: unknown): string | null {
   const ms = typeof value === 'number' && Number.isFinite(value) ? value * 1000
     : typeof value === 'string' ? Date.parse(value) : NaN;
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  if (!Number.isFinite(ms) || Math.abs(ms) > MAX_DATE_MS) return null;
+  const iso = new Date(ms).toISOString();
+  // A year past 9999 prints with a sign, which no reader takes as a time: drop the time, not what it came with.
+  return isoTime.safeParse(iso).success ? iso : null;
 }
+const MAX_DATE_MS = 8.64e15;
+const isoTime = z.iso.datetime({ offset: true });

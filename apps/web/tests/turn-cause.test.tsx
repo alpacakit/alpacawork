@@ -56,7 +56,8 @@ test("a limit whose reset is still ahead says when it lifts, on the opened task 
   const stopped = { ...task, rowFacts: { ...task.rowFacts, kind: { kind: "stopped" as const, failure: "exit", errorCause: { cause: "model_limit" as const, resetsAt } } } };
   const row = render(<TestWorkspace data={data}><RowKindWord task={stopped} /></TestWorkspace>);
   const word = row.container.querySelector<HTMLElement>('[data-row-kind="stopped"]')!;
-  expect(word.textContent).toBe(i18n.t("tree:status.cause.modelLimit"));
+  expect(word.textContent).toContain(i18n.t("tree:status.cause.modelLimit"));
+  expect(word.textContent).not.toBe(i18n.t("tree:status.cause.modelLimit"));
   expect(word.title).toBe(words);
   cleanup();
 });

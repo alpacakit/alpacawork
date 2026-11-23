@@ -67,6 +67,7 @@
       "sessionLimit": "5 小时用量上限",
       "weeklyLimit": "每周用量上限"
     },
+    "causeUntil": "{{cause}}（至 {{when}}）",
     "children": "子任务 {{progress}}",
     "failure": {
       "conversationBusy": "对话被占用",

@@ -3,10 +3,10 @@ import { redactSecrets } from '@alpacawork/core';
 type Cause = NonNullable<RunFailure['cause']>;
 /**
  * Claude says a usage limit as "You've hit your <scope> limit · resets <when>. …" (earlier "You've reached your <scope>
- * limit. Switch to another model, …"): a weekly or 5-hour session scope is named, any other (a model, "Fable") is the
- * model's own limit.
+ * limit. Switch to another model, …"): a weekly or 5-hour session scope, or a model by its name ("Fable"). Other limits
+ * ("context window", lowercase) and other endings are not a usage limit.
  */
-const LIMIT = /^You've (?:hit|reached) your ([^\r\n·.]+?) limit\b[^\r\n]*$/;
+const LIMIT = /^You've (?:hit|reached) your (weekly|session|[A-Z][\w.\- ]{0,40}?) limit(?: · resets [^\r\n]+|\. Switch to another model\b[^\r\n]*)?$/;
 function causeOf(message: unknown): Cause | undefined {
   if (message === 'Selected model is at capacity. Please try a different model.' ||
     message === 'Error running remote compact task: Selected model is at capacity. Please try a different model.')
@@ -23,6 +23,15 @@ export function diagnosticFailure(value: unknown, resetsAt?: string): RunFailure
   // Redact the complete diagnostic before bounding it; truncation must not cut a credential before recognition.
   const message = redactSecrets(value).trim().slice(0, RUN_FAILURE_MESSAGE_LIMIT);
   return { ...cause ? { cause } : {}, ...cause && cause !== 'model_capacity' && resetsAt ? { resetsAt } : {}, message };
+}
+
+/**
+ * A Run's recognized failure for the screen: what its end recorded (`availability`), with the reset its own output says
+ * when the record has the same cause without one; else what its output says.
+ */
+export function runErrorCause(recorded: RunAvailability | undefined, read: RunAvailability | undefined): RunAvailability | undefined {
+  if (!recorded) return read;
+  return !recorded.resetsAt && read?.cause === recorded.cause && read.resetsAt ? { ...recorded, resetsAt: read.resetsAt } : recorded;
 }
 
 /** The recognized part of a failure: its cause and, for a limit, when it lifts; undefined when the cause is not known. */

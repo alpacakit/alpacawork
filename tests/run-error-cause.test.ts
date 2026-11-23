@@ -126,6 +126,10 @@ test('bounded reads and ordinary Run file access preserve diagnostic evidence', 
   rmSync(stdout);
   mkdirSync(stdout);
   assert.equal(Object.hasOwn(controlRuns(h.root, [record()])[0]!, 'errorCause'), false, 'directory');
+  rmSync(h.folder, { recursive: true, force: true });
+  mkdirSync(h.folder, { recursive: true });
+  assert.deepEqual(h.project(claude, { launch: claudeLaunch, session: { provider: null, id: session }, availability: { cause: 'weekly_limit' } }).errorCause,
+    weeklyCause, 'a recorded cause without a reset takes the reset its own output says');
 });
 
 test('synthetic fixture logs reach the live index while opened views carry durable facts', async t => {
@@ -199,7 +203,9 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
   assert.deepEqual(project(jsonl({ type: 'result', session_id: session, is_error: true, result: modelLimit }),
     { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: modelLimit }, 'a model limit without a period is still a known cause');
   assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've reached your weekly limit. Try again later." }),
-    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, 'weekly_limit', 'a named period is that period, not a model limit');
+    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'another ending is not a usage limit');
+  assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've hit your context window limit. Compact the conversation to continue." }),
+    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'a context window is not a usage limit');
   // Claude's wording since late 2026, with the reset it reported in its own rejected limit event.
   const hit = "You've hit your Fable limit · resets Nov 30, 12am (Asia/Tokyo). Switch to another model, or manage usage credits at https://claude.ai/settings/usage?from=cc_cli_limit_message, to continue.";
   const rejected = { type: 'rate_limit_event', session_id: session, rate_limit_info: { status: 'rejected', resetsAt: 1795964400 } };
@@ -208,6 +214,11 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
   { cause: 'model_limit', resetsAt: '2026-11-29T15:00:00.000Z', message: hit }, 'a model limit says when it lifts');
   assert.deepEqual(project(jsonl({ ...rejected, rate_limit_info: { status: 'allowed_warning', resetsAt: 1795964400 } }, { type: 'result', session_id: session, is_error: true, result: hit }),
     { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: hit }, 'a warning is not the limit that refused the turn');
+  assert.deepEqual(project(jsonl({ ...rejected, rate_limit_info: { status: 'rejected', resetsAt: 1e300 } }, { type: 'result', session_id: session, is_error: true, result: hit }),
+    { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: hit }, 'an impossible reset is dropped, the cause kept');
+  assert.deepEqual(project(jsonl(rejected, { type: 'assistant', session_id: session, is_api_error_message: true, message: { content: [{ type: 'text', text: hit }] } },
+    { type: 'result', session_id: session, is_error: true, result: 'Request failed.' }), { launch: claudeLaunch, session: { provider: null, id: session } }),
+  { cause: 'model_limit', resetsAt: '2026-11-29T15:00:00.000Z', message: hit }, 'a general terminal keeps the recognized error of its turn');
   assert.deepEqual(project(codex + jsonl({ type: 'turn.failed' })), { cause: 'model_capacity', message: capacity }, 'terminal without words retains this turn’s explicit error');
   const secret = 'sk-syntheticSecret123456';
   const general = project(prefix + jsonl({ type: 'turn.failed', error: { message: `Service unavailable. token=${secret}` } }));

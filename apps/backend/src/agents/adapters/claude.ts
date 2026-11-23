@@ -78,29 +78,34 @@ export const claudeAdapter: AgentAdapter = {
     let usage: AgentUsage | null = null, failure: RunFailure | undefined;
     // When the limit that refused the turn lifts: its own event comes just before the error words.
     let resetsAt: string | undefined;
+    // The API error said in the turn now open; a turn's result ends it.
+    let said: RunFailure | undefined;
     const tools = new ToolResults();
     const { rejection, outcomeRejection } = scanOutput(folder, value => {
       const row = object(value);
       if (row.type === 'command_lifecycle' && row.state === 'started' && row.parent_tool_use_id == null &&
         (row.session_id == null || row.session_id === invocation.session)) {
-        completion = null; usage = null; failure = undefined; resetsAt = undefined;
+        completion = null; usage = null; failure = undefined; resetsAt = undefined; said = undefined;
       }
       if (invocation.session !== null && (row.session_id == null || row.session_id === invocation.session))
         tools.observe(claudeActivity(row, ''));
       if (!ownSession(row, invocation.session)) return;
-      if (row.type === 'system' && row.subtype === 'init') { completion = null; usage = null; failure = undefined; resetsAt = undefined; }
+      if (row.type === 'system' && row.subtype === 'init') { completion = null; usage = null; failure = undefined; resetsAt = undefined; said = undefined; }
       if (row.type === 'rate_limit_event' && object(row.rate_limit_info).status === 'rejected') resetsAt = resetTime(object(row.rate_limit_info).resetsAt) ?? undefined;
       if (row.type === 'assistant' && row.is_api_error_message === true) {
         completion = null;
         const content = object(row.message).content;
-        failure = diagnosticFailure(Array.isArray(content) ? content.filter(part => object(part).type === 'text')
+        failure = said = diagnosticFailure(Array.isArray(content) ? content.filter(part => object(part).type === 'text')
           .map(part => object(part).text).join('\n') : undefined, resetsAt);
       }
       if (row.type !== 'result') return;
       usage = claudeUsage(row.modelUsage);
       if (typeof row.result === 'string' && typeof row.is_error === 'boolean') {
         completion = { result: row.result, is_error: row.is_error };
-        failure = row.is_error ? diagnosticFailure(row.result, resetsAt) ?? failure : undefined;
+        // A general terminal ("Request failed.") does not hide the recognized error its own turn already said.
+        const read = row.is_error ? diagnosticFailure(row.result, resetsAt) ?? failure : undefined;
+        failure = read && !read.cause && said?.cause ? said : read;
+        said = undefined;
         return true;
       }
     });

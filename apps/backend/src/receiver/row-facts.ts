@@ -43,7 +43,7 @@ function kindOf(task: RowTask, runs: readonly ControlRunDTO[], error: StateEntry
   switch (result.code) {
     case 'failure': {
       const run = runs.find(run => run.id === error?.runId);
-      const errorCause = run?.availability ?? run?.errorCause;
+      const errorCause = run?.errorCause;
       return { kind: 'stopped', failure: errorRunReason(run), ...errorCause ? { errorCause } : {} };
     }
     case 'question': return { kind: 'question' };
