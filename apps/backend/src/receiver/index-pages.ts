@@ -14,6 +14,7 @@ import { controlTaskView } from '../control/task-dto.js';
 import type { PublishedFrame } from './projection-contract.js';
 import { aggregateRowFacts } from './row-facts.js';
 import { readsRow } from './screen-derive.js';
+import { liveRow } from './index-rows.js';
 
 /** What rows' strips and axis read: the rows' ancestors and subtrees, from one published frame. */
 type PageReadState = {
@@ -299,9 +300,9 @@ export class ProjectedPages {
     }
     const missing = asked.filter(id => held(id) && !values.has(id));
     if (missing.length) for (const [id, lane] of timelineLanes(this.readState(frame, missing), missing, from, to)) {
-      const derived = frame.derived(id);
-      if (!derived) continue;
-      const value = { ...lane, row: derived.row, generation: frame.generation, sourcePv: frame.pv };
+      // The row as the list holds it: what its current state is drawn from (a held row has derived facts, readsRow). Its
+      // chronology is the strip's own events.
+      const value = { ...lane, row: liveRow(frame.derived(id)!.row), generation: frame.generation, sourcePv: frame.pv };
       values.set(id, value);
       this.lanes.set(key(id), { lane: id, version: lanesVersion(frame, [id]), value });
     }

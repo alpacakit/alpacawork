@@ -37,7 +37,7 @@ export function composeRow(derived: TaskDerived, aggregate: ScreenAggregate): Ta
     rowFacts: aggregateRowFacts(derived, aggregate) };
 }
 /** The row the live index carries: only the log entries its current state is drawn from. */
-export const liveRow = (row: TaskRowDTO): TaskRowDTO => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });
+export const liveRow = <R extends Pick<TaskRowDTO, 'stateLog' | 'state' | 'baseState'>>(row: R): R => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });
 
 /** The resources the aggregates changed: the closed pages whose rows or order moved, and the search scopes of their Tasks. */
 export type AggregateResources = { readonly page: ReadonlySet<string>; readonly search: ReadonlySet<string> };

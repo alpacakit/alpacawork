@@ -67,6 +67,9 @@ test('a strip and the axis expire with their rows\' versions and read only those
   const query = { lanes: 'T1,T2', from: at(0), to: at(10) };
   const answer = taskTimelineLanesSchema.parse(reads.timeline(first, query));
   assert.deepEqual(answer.lanes.map(lane => [lane.lane, lane.row.id, lane.sourcePv]), [['T1', 'T1', 1], ['T2', 'T2', 1]]);
+  // The row carries only what its current state is drawn from; its chronology is the strip's events.
+  assert.deepEqual(answer.lanes[0]!.row.stateLog.map(log => log.id), ['L2']);
+  assert.deepEqual(answer.lanes[0]!.events.flatMap(event => event.kind === 'note' ? [event.event.id] : []), ['L1', 'L2']);
   assert.deepEqual(reads.timeline(first, { ...query, limit: 1 }).lanes.map(lane => lane.lane), ['T1'], 'a row is never cut: at least one, whole');
   assert.deepEqual(reads.timeline(first, { ...query, lanes: 'T1,T404' }).gone, ['T404']);
   const held = reads.timeline({ ...first, pv: pv(2) }, query).lanes;
