@@ -17,6 +17,8 @@ The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages
 larger than a heading can; its alt text carries the name.
 The pictures show made-up data. This file and its translations use the dark-theme pictures
 (*-dark.png); README.ja.md shows the Japanese screen (*-dark-ja.png), the others the English one.
+The diagram at the top (hero.gif, hero-dark.gif; hero-ja.gif, hero-dark-ja.gif for README.ja.md)
+switches with the page theme in a <picture>; its first and last frames are the finished picture.
 README.ja.md, README.zh-CN.md, README.es.md and README.pt-BR.md are translations: keep all five with
 the same sections and content, and change them in the same commit. Each links to the guides in its
 own language (this file to docs/, the others to docs/ja/, docs/zh-CN/, docs/es/, docs/pt-BR/).
@@ -53,13 +55,18 @@ to README.md#install): keep those headings, or change the links with them.
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
+    <img src="docs/images/hero.gif" alt="A request typed into one input box goes to the coordinator, which adds tasks to three projects (Website, Mobile app, Marketing) and places an AI such as opus · high or gpt-5 · high on each; one task asks a question, you answer, and every task finishes" width="640">
+  </picture>
+</p>
+
+alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="alpacawork in a PC browser, with a list of ten tasks in progress and three awaiting review beside an open task's report, and a phone on the right showing the same report" width="820">
 </p>
-
-alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 ## Install
 
