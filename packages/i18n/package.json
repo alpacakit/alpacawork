@@ -27,6 +27,6 @@
     "react-i18next": "17.0.15"
   },
   "devDependencies": {
-    "i18next-cli": "1.74.1"
+    "i18next-cli": "1.83.0"
   }
 }

@@ -74,15 +74,15 @@
     "@vitejs/plugin-react": "6.1.1",
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",
-    "i18next-cli": "1.74.1",
+    "i18next-cli": "1.83.0",
     "jsdom": "30.1.1",
-    "shadcn": "4.21.0",
+    "shadcn": "4.22.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
-    "vite": "8.3.0",
-    "vitest": "5.0.1",
+    "vite": "8.3.3",
+    "vitest": "5.0.3",
     "yaml": "2.9.1",
-    "zod": "4.3.6"
+    "zod": "4.6.6"
   },
   "packageManager": "pnpm@11.6.0"
 }

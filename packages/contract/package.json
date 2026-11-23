@@ -157,8 +157,8 @@
     "@alpacawork/core": "workspace:*",
     "@alpacawork/raw": "workspace:*",
     "get-east-asian-width": "1.7.0",
-    "re2js": "2.8.6",
+    "re2js": "2.8.7",
     "yaml": "2.9.1",
-    "zod": "4.3.6"
+    "zod": "4.6.6"
   }
 }
