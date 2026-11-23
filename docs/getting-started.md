@@ -51,21 +51,25 @@ If you can't open it, see [The screen doesn't open](troubleshooting.md#the-scree
 Go through the screen's four steps in order.
 
 1. Choose the screen's language and theme, and press "Next".
-2. Check that the AIs you will use are "On", and press "Next".
-3. In the next step, keep the recommended choices and press the install button.
-4. Name the project, choose your repository's folder as the "Working folder" if you use an existing one, and press "Finish setup".
+2. Check that the AIs you will use are "On", and press "Next". Here you can also choose whether to send usage data to the developers ([what is sent](telemetry.md)).
+3. In the next step, keep the selections as they are and press "Install (number) skills".
+4. Name the project, choose your repository's folder as the "Working folder" if you use an existing one (find it with "Choose", or type the path in the field), and press "Finish setup".
 
 <img src="images/setup-project.png" alt="The last step of setup, with the “Name” and “Working folder” fields and a “Choose” button beside the working folder" width="480">
 
-A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start without writing a project policy.
+A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start without writing a project policy. Write here what you don't want the AI to do ([how to write it](projects.md#project-policy)).
 
 After you press "Finish setup", Chrome and Edge ask whether to install alpacawork as an app. Press "Install and start" to be able to open it again from its icon in the Dock or the taskbar. If you choose "Start in the browser", you can install it later with "Install" in "Settings (the gear) → App & phone". In Safari on a Mac, install it with "File → Add to Dock" in the menu (macOS Sonoma or later).
 
 ## 4. Send a request
 
-Write what you want done in the input box at the bottom of the screen, and send it. Once sent, the start of the reply appears above the input box. Press it to read the whole reply.
+When setup is finished, you see "Welcome to alpacawork" and a picture of how a request becomes tasks and moves along. Until your first request is done, guide balloons appear at the key places on the screen.
 
-<img src="images/input-reply.png" alt="The input box, with the start of the coordinator's reply above it" width="560">
+<img src="images/welcome.png" alt="The “Welcome to alpacawork” screen: a four-step picture of a request becoming tasks that are listed, and a balloon pointing at the input box at the bottom, “This is the only input box. All your instructions go here.”, with an “Insert a demo prompt” button" width="560">
+
+Write what you want done in the input box at the bottom of the screen, and send it.
+
+If you are only trying it out, press "Insert a demo prompt" in the balloon, and send the text it puts in as is. It asks for an HTML page that shows "Hello" in two fonts, and for the AI to then ask you which one is better. The HTML is made in the working folder.
 
 In an existing repository, make your first request one that doesn't change any files.
 
@@ -73,24 +77,28 @@ In an existing repository, make your first request one that doesn't change any f
 Read the contents of this folder and sum up what it is for in 3 lines. Don't change any files. Then suggest 3 pieces of work I could ask for next, and ask me which one to go ahead with.
 ```
 
-The AI reads the folder and writes the summary and the suggestions in its reply (it may also make a task and ask you in a question). If it answers in a reply, send the one you want in the input box, like "Go ahead with 1", and it becomes a task with a row in the list.
+Once sent, the start of the reply from the front-desk AI (the coordinator) appears above the input box. Press it to read the whole reply.
 
-If you are only trying it out, press the screen's example "Pick a mini game idea, then have it built", then send it.
+<img src="images/input-reply.png" alt="The input box, with the start of the coordinator's reply above it" width="560">
+
+A request you hand over as a job shows up after a moment as a task, with a row under "In progress" in the list. A request that only needs a reply doesn't become a task. If the reply in the repository example has suggestions, send the one you want in the input box, like "Go ahead with 1", and it becomes a task. If you send the repository request first, the demo button goes away; to try the demo later, show the guide again (at the end of "5. Check when it's your turn").
 
 While the AI works on a task, you don't need to watch the screen.
 
 ## 5. Check when it's your turn
 
-When a question or a report arrives from the AI, the task moves to "Awaiting review". Open the task.
+When a question or a report arrives from the AI, the task moves to "Awaiting review". Press the row to open it.
 
 <img src="images/list-waiting.png" alt="The “Awaiting review” heading in the list, with a task row under it" width="336">
 
-- For a question, press one option, then send it. Pressing alone doesn't deliver it. Once you answer, the AI carries on, and a report arrives when it is finished.
-- For a report, read it, and if it is good, press "Done" (the check mark) at the bottom of the screen. If you want changes, write them in the input box and send.
+- For a question, press one option, and the answer goes into the input box. Send it as is to answer (pressing alone doesn't deliver it). You can also send a different message without choosing an option. Once you answer, the AI carries on, and a report arrives when it is finished.
+- For a report, read it, and if it is good, press "Done" (the check mark) at the bottom of the screen. If you want changes or want to ask for more, keep the task open, write it in the input box and send (for the demo, "Make one more version so I can compare them.").
 
 <img src="images/action-bar.png" alt="The buttons along the bottom of an open task: “Auto-swipe”, “Change state” and “Done”" width="338">
 
 Once the task moves to "Done", you are finished ("Done" starts collapsed; press the heading to open it). Send your next request from the same input box.
+
+When you mark your first task done, the balloons finish by telling you how to clear the conversation with the front-desk AI, what to do to use another repository, and where to find the steps for using alpacawork from your phone. To see the guide again, press "Show again" under "Getting-started guide" in "Settings (the gear) → Personal".
 
 ## What to read next
 
