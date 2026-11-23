@@ -57,7 +57,7 @@ test('a handover carries state and retrieval commands; the common open-work draw
   assert.deepEqual(notice.ids, ['RETh']);
   assert.match(notice.body, /Current state: doing/);
   assert.ok(notice.body.includes('alpacawork task get --task T2 --include openObligations'));
-  assert.ok(notice.body.includes('alpacawork task get --task T2, '));
+  assert.ok(notice.body.includes('alpacawork task get --task T2 --include closedQuestions, '));
   assert.ok(notice.body.includes('alpacawork task returns --task T2'));
   assert.doesNotMatch(notice.body, /Open requests|[Rr]eturns and notices not yet handled/);
   const requests = [sent('work', 'T2', 'W1', 'Fix the build\nwith the new flags'), sent('ask', 'T3', 'P3', 'Write the docs')];
