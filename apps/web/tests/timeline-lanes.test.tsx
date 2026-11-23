@@ -36,15 +36,23 @@ test('coverage survives a row not read yet for another range; removal and refusa
   await waitFor(() => expect(named(view.result.current)).toEqual(['T1@3']));
 });
 
-test('a row\'s strip over a range the clock moved on replaces those before it; a range zoomed to stays', async () => {
+test('a row\'s strip over a range the clock moved on replaces those before it; a range zoomed or panned to stays', async () => {
   fixtureReceipt(['index'], indexOf(value));
-  const range = (from: string, to: string) => resources.timelineLane('/fixture', 'T1', from, to).queryKey;
+  // One clock reading for every range: a range ends later only where the test says so.
+  const base = Date.now(), at = (minutes: number) => new Date(base + minutes * 60_000).toISOString();
+  const range = (from: number, to: number) => resources.timelineLane('/fixture', 'T1', at(from), at(to)).queryKey;
   const view = renderHook(() => useTimelineLanes('/fixture'), { wrapper });
-  act(() => { fixtureReceipt(range('2026-01-01T00:00', '2026-01-02T00:00'), strip('T1', 1)); });
-  act(() => { fixtureReceipt(range('2026-01-01T23:00', '2026-01-02T00:00'), strip('T1', 2)); });
-  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T1@2']));
-  act(() => { fixtureReceipt(range('2026-01-01T00:05', '2026-01-02T00:05'), strip('T1', 3)); });
-  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@3']));
+  // Following now, then zoomed in to its last hour, and a past day looked at.
+  act(() => { fixtureReceipt(range(-1440, 5), strip('T1', 1)); });
+  act(() => { fixtureReceipt(range(-60, 5), strip('T1', 2)); });
+  act(() => { fixtureReceipt(range(-2880, -1440), strip('T1', 3)); });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T1@2', 'T1@3']));
+  // The past panned to the right ends later but did not follow the clock: what was read of it stays.
+  act(() => { fixtureReceipt(range(-2820, -1380), strip('T1', 4)); });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T1@2', 'T1@3', 'T1@4']));
+  // The clock moved on: the ranges that followed it give way.
+  act(() => { fixtureReceipt(range(-1430, 15), strip('T1', 5)); });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@3', 'T1@4', 'T1@5']));
 });
 
 test('root and generation qualify every cached strip', async () => {

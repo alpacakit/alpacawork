@@ -14,14 +14,17 @@ export function representedReadIds(key: QueryKey, data: unknown): string[] {
 const isTimelineLane = (key: QueryKey) => key[0] === 'task-timeline' && key[2] === 'lane' && key.length === 6;
 /**
  * Whether a row's strip read for an earlier range gives way to `later`: the same row's strip, read no earlier, over a range
- * the clock has moved on (it ends later and still overlaps). The range's end moves with the clock, so without this each
- * turn of it would keep one more copy of each row to project, sweep and prove on every restart. A range zoomed or panned
- * to (ending no later) adds what it does not share and stays; one held for a reader now (active) is the caller's to keep.
+ * the clock has moved on: the earlier range reached the moment it was read, and the later one ends later and still
+ * overlaps it. The range's end moves with the clock, so without this each turn of it would keep one more copy of each
+ * row to project, sweep and prove on every restart. A range zoomed or panned to (a past looked at, or one ending no later)
+ * adds what it does not share and stays; one held for a reader now (active) is the caller's to keep.
  */
 export function coversTimelineWindow(later: { key: QueryKey; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
   // [kind, root, 'lane', lane, from, to]: the same row of the same list.
   return later.key !== earlier.key && isTimelineLane(later.key) && isTimelineLane(earlier.key)
     && later.key.slice(0, 4).every((part, at) => part === earlier.key[at]) && later.acquiredAt >= earlier.acquiredAt
+    // The earlier range reached the moment it was read (it followed the clock), not a past the reader looked at.
+    && (!Number.isFinite(earlier.acquiredAt) || String(earlier.key[5]) >= new Date(earlier.acquiredAt).toISOString())
     && String(later.key[5]) > String(earlier.key[5]) && String(later.key[4]) <= String(earlier.key[5]);
 }
 type RetentionItem<T> = { value: T; key: QueryKey; hash: string; data: unknown; usedAt: number; bytes: number; required: boolean; protected: boolean };

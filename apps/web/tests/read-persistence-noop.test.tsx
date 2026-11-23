@@ -245,7 +245,7 @@ describe('chronology windows', () => {
   }
 
   test('a turn of the window end leaves one stored copy, and a restart restores that one', async () => {
-    const h = await fixture();
+    const h = await fixture(Date.parse(FROM));
     await saveWindow(h, FROM, LATER);
     expect(windows(h.storage.read())).toEqual([`${FROM}..${LATER}`]);
     h.writer.stop();
@@ -256,7 +256,7 @@ describe('chronology windows', () => {
   });
 
   test('a checkpoint already holding both windows restores only the later one', async () => {
-    const h = await fixture(), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
+    const h = await fixture(Date.parse(FROM)), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
     const key = [...stored.key.slice(0, 5), LATER], hash = JSON.stringify(key);
     raw.slots.push({ ...stored, key, hash, slotId: 'later-slot', query: { ...stored.query, queryKey: key, queryHash: hash } });
     h.writer.stop(); h.storage.replaceRaw(raw);
@@ -266,7 +266,7 @@ describe('chronology windows', () => {
   });
 
   test('a later window acquired before the earlier one proves nothing about it: both are restored', async () => {
-    const h = await fixture(), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
+    const h = await fixture(Date.parse(FROM)), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
     const key = [...stored.key.slice(0, 5), LATER], hash = JSON.stringify(key), acquiredAt = stored.acquiredAt - 5000;
     raw.slots.push({ ...stored, key, hash, slotId: 'later-slot', acquiredAt, qualification: { ...stored.qualification, proof: { ...stored.qualification.proof, acquiredAt } },
       query: { ...stored.query, queryKey: key, queryHash: hash } });
@@ -277,7 +277,7 @@ describe('chronology windows', () => {
   });
 
   test('a window that adds something stays: another start, or one still shown', async () => {
-    const h = await fixture();
+    const h = await fixture(Date.parse(FROM));
     await saveWindow(h, '2025-12-01T00:00:00.000Z', TO);
     expect(windows(h.storage.read())).toEqual(['2025-12-01T00:00:00.000Z..' + TO, `${FROM}..${TO}`]);
 
