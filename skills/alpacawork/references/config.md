@@ -6,6 +6,7 @@ The coordinator reads this when asked to read or change settings, when adding or
 
 | What you want to change | Where it lives | How to change it |
 |---|---|---|
+| The AI and model that tasks normally use, and the fallback order | `aiStack` in `config.yaml`; its first row is the one normally used. `config get` returns it once it has been saved | `config set --config` with `limits` and `aiStack` together, or "Settings → Server → AI for tasks and fallback order" on the screen |
 | The number of Runs running at once, time limits, the attachment limit | `limits` in the server's `config.yaml` | `config set`, or "Settings → Server" on the screen |
 | The AIs in use, the models and other values selectable in a request, launch options | `agents` in `config.yaml` | Same as above |
 | Which AI starts a task request or a coordinator conversation, and what takes over | `aiStack` and `coordinatorAiStack` in `config.yaml` | Same as above |

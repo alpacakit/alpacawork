@@ -37,7 +37,7 @@
         "short": "Completed"
       },
       "failed": {
-        "body": "Stopped by an error. Decide whether to retry",
+        "body": "Stopped by an error. Decide whether to continue or stop",
         "short": "Error"
       },
       "limit": {

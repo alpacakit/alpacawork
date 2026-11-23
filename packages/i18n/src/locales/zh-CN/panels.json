@@ -326,7 +326,7 @@
     "parent": "父项目",
     "policy": "项目准则",
     "policyCount_other": "{{count}} 字",
-    "policyExample": "例如：\n目的：按时完成 9 月结账\n工作方式：更改前先核对原始单据\n禁止：未经批准联系供应商",
+    "policyExample": "例如：\n工作方式：修改界面前，先展示样例并询问\n禁止：未经批准发布到正式环境",
     "policyNote": "这里写的内容会原样交给此项目及其中各项目的每个智能体。",
     "policyVsAgentsMd": {
       "detail": "区别在于：只有通过 alpacawork 工作时，智能体才会收到这些内容。在 alpacawork 之外也要遵守的指示，仍然写在 AGENTS.md 或 CLAUDE.md 中。",

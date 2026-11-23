@@ -1,5 +1,6 @@
 import type { Tone } from "@/components/ui/tone";
 import { isFinished } from "@alpacawork/contract/branch";
+import type { HomeSection } from "@alpacawork/contract";
 import type { TaskState } from "@/data/types";
 import type { TaskEstimate } from "./estimate";
 import { dayClock, roundEnd } from "./day-clock";
@@ -14,6 +15,11 @@ export type FinishFacts =
   | { kind: "estimate"; estimate: TaskEstimate } | { kind: "unknown"; working: boolean } | { kind: "pending" }
   | { kind: "reported"; at: number | null; turn: boolean } | { kind: "stopped" } | { kind: "done"; at: number }
   | { kind: "subtree"; at: number; count: number; open: number };
+/**
+ * What one task's own state and records say of its end (finishFacts): the words above, or that it has not started, which
+ * says nothing of its own and only counts in the tasks above it (finishOf).
+ */
+export type OwnFinish = Exclude<FinishFacts, { kind: "subtree" }> | { kind: "unstarted" };
 /** Said quietly, as your turn (a report waits for your review), past its estimate, or stopped by an error. */
 type FinishTone = Extract<Tone, "quiet" | "turn" | "late" | "error">;
 /**
@@ -49,78 +55,78 @@ function overBy(at: number, now: number, t: T): string {
 }
 
 /**
- * What is known about a task's end, from its state and records. A wait is for a review of its report. A task not yet
- * marked started but with someone working on it is said as working. Null when there is nothing to say (not started,
- * stopped by hand).
+ * Whether a task's end is its agents' to say: it is at work, or not started (the responsible above starts it), by its
+ * position (the server's taskPosition), whatever any one placement's Run says. Any other task (awaiting review or an
+ * answer, an error to handle, held, idle) waits on the user to go on, so its own estimate does not count.
  */
-export function finishFacts({ state, interrupted, working, estimate, since, turn = false }: {
-  state: TaskState; interrupted: boolean; working: boolean; estimate: TaskEstimate | null; since: number | null; turn?: boolean;
-}): FinishFacts | null {
+const countsEstimate = (position: HomeSection | null) => position === "doing" || position === "todo";
+
+/**
+ * What is known about a task's end, from its state, position and records. A task whose end is its agents'
+ * (countsEstimate) says its estimate, or that it has none (`working`: a Run of its own runs), or, not started, only that;
+ * a Run that needs attention does not stop it. Any other unfinished task says only its review or a stop, else nothing
+ * (null), and is a wait on the user.
+ */
+export function finishFacts({ state, position, interrupted, working, estimate, since, turn = false }: {
+  state: TaskState; position: HomeSection | null; interrupted: boolean; working: boolean; estimate: TaskEstimate | null;
+  since: number | null; turn?: boolean;
+}): OwnFinish | null {
   if (state === "done") return since === null ? null : { kind: "done", at: since };
+  if (countsEstimate(position)) {
+    if (position === "todo") return { kind: "unstarted" };
+    if (!estimate) return { kind: "unknown", working };
+    return estimate.pending ? { kind: "pending" } : { kind: "estimate", estimate };
+  }
   if (interrupted) return { kind: "stopped" };
   if (state === "waiting") return { kind: "reported", at: since, turn };
-  if (state !== "doing" && !(state === "todo" && working)) return null;
-  if (!estimate) return { kind: "unknown", working };
-  if (estimate.pending) return { kind: "pending" };
-  return { kind: "estimate", estimate };
+  return null;
 }
 
-/**
- * Says nothing of a task's end beyond what the tasks under it say: it waits for them, or nobody is placed on it to do
- * work of its own (not started or working without an estimate). A person's work without an estimate, or an estimate
- * that waits for an update, is an end left unsaid.
- */
-const defers = (facts: FinishFacts | null) => facts === null || facts.kind === "unknown" && !facts.working;
+/** A task the user lets go on, by its facts (finishFacts): an end left unsaid that no estimate above it covers. */
+const waitsOnUser = (facts: OwnFinish | null): facts is Extract<OwnFinish, { kind: "reported" | "stopped" }> | null =>
+  facts === null || facts.kind === "reported" || facts.kind === "stopped";
 
 /**
- * When a task reports, from its own facts (`factsOf`, finishFacts) and those of the unfinished tasks under it. A task with unfinished children ends with them unless
- * its own review, stop or end speaks first: past an estimate when any is past (the earliest), else the latest
- * expected report, said as "not before" while a task, the parent included, leaves its end unsaid (`open`). A task's
- * own valid estimate is its responsible's word for all of it, so it covers the tasks under it that have none, and a
- * later child still counts. With no time under it, a parent says only that its estimate waits for an update; its
- * working or waiting state is its icon's.
+ * Says nothing of a task's end beyond what the tasks under it say: its end is its agents', but it has no estimate and
+ * no Run of its own runs, or it has not started.
+ */
+const defers = (facts: OwnFinish) => facts.kind === "unstarted" || facts.kind === "unknown" && !facts.working;
+
+/**
+ * When a task reports, from its own facts (`factsOf`, finishFacts) and those of the unfinished tasks under it. A task done,
+ * or whose review or stop speaks, says that; one with nothing unfinished under it says its own facts, if any. Otherwise
+ * every unfinished task, itself included, is one of three: an estimate, counted as a time; a wait on the user, an end left
+ * unsaid; or one whose end is its agents' without an estimate, an end left unsaid unless an estimate above it covers it,
+ * and said by the tasks under it when no Run of its own runs. It says the latest time: past only once that latest one has
+ * passed too, else "not before" while an end is left unsaid (`open`, how many are). So an estimate of work under a held,
+ * failed or unstarted task is read on every row above it. With no time under it, it says only that its own estimate waits
+ * for an update; its working or waiting state is its icon's.
  */
 export function finishOf(id: string, { index, factsOf, now }: {
-  index: TaskIndex; factsOf: (id: string) => FinishFacts | null; now: number;
+  index: TaskIndex; factsOf: (id: string) => OwnFinish | null; now: number;
 }): FinishFacts | null {
   const own = factsOf(id);
-  const speaksForItself = own !== null && (own.kind === "reported" || own.kind === "stopped" || own.kind === "done");
-  // Nothing unfinished is under a finished task (the finished-branch rule), so it speaks for itself.
-  if (speaksForItself) return own;
-  const kids = childrenOf(id, index);
-  if (!kids.length) return own;
-  let count = 0;
-  let past: number | undefined, ahead: number | undefined;
-  const addEnd = (at: number) => {
-    count++;
-    if (at <= now) past = past === undefined ? at : Math.min(past, at);
-    if (at > now) ahead = ahead === undefined ? at : Math.max(ahead, at);
+  // Nothing unfinished is under a finished task (the finished-branch rule).
+  if (own !== null && (own.kind === "done" || own.kind === "reported" || own.kind === "stopped")) return own;
+  const unfinished = (taskId: string) => childrenOf(taskId, index).filter(kid => !isFinished(kid.state));
+  const kids = unfinished(id);
+  // A task not started says nothing of its own.
+  if (!kids.length) return own?.kind === "unstarted" ? null : own;
+  // The expected report times, and the ends left unsaid; they are gathered apart, so a time never hides an unsaid end.
+  let count = 0, latest: number | undefined, open = 0;
+  // An invalid time is counted but names no time.
+  const addEnd = (at: number) => { count++; if (at > (latest ?? -Infinity)) latest = at; };
+  /** One task's end; `covered` while an estimate above it speaks for its work. Every task is walked so every estimate counts. */
+  const visit = (facts: OwnFinish | null, below: { id: string }[], covered: boolean) => {
+    if (facts?.kind === "estimate") addEnd(expectedReport(facts.estimate, now));
+    else if (waitsOnUser(facts)) open++;
+    else if (!covered && !(defers(facts) && below.length)) open++;
+    for (const kid of below) visit(factsOf(kid.id), unfinished(kid.id), covered || facts?.kind === "estimate");
   };
-  // Whether a task under the parent leaves its end unsaid; every task is walked so every estimate counts.
-  const open = (taskId: string): boolean => {
-    const facts = factsOf(taskId), below = childrenOf(taskId, index);
-    let hasBelow = false, openBelow = false;
-    // Keep visiting after an open end: later descendants may still contribute estimates.
-    for (const kid of below) {
-      if (isFinished(kid.state)) continue;
-      hasBelow = true;
-      if (open(kid.id)) openBelow = true;
-    }
-    if (facts?.kind === "estimate") { addEnd(expectedReport(facts.estimate, now)); return false; }
-    return !hasBelow || !defers(facts) || openBelow;
-  };
-  let hasKids = false, opens = 0;
-  for (const kid of kids) {
-    if (isFinished(kid.state)) continue;
-    hasKids = true;
-    if (open(kid.id)) opens++;
-  }
-  if (!hasKids) return own;
-  if (own?.kind === "estimate") addEnd(expectedReport(own.estimate, now));
-  if (past !== undefined) return { kind: "subtree", at: past, count, open: 0 };
-  if (ahead !== undefined) return { kind: "subtree", at: ahead, count,
-    open: own?.kind === "estimate" ? 0 : opens + (defers(own) ? 0 : 1) };
-  return own?.kind === "pending" ? own : null;
+  visit(own, kids, false);
+  if (latest === undefined) return own?.kind === "pending" ? own : null;
+  if (latest <= now) return { kind: "subtree", at: latest, count, open: 0 };
+  return { kind: "subtree", at: latest, count, open };
 }
 
 export function finishWords(facts: FinishFacts, now: number, t: T, locale: string): FinishWords {

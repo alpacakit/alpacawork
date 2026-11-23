@@ -340,7 +340,7 @@
     "policyCount_one": "{{count}} carácter",
     "policyCount_many": "{{count}} caracteres",
     "policyCount_other": "{{count}} caracteres",
-    "policyExample": "Por ejemplo:\nPropósito: cerrar septiembre a tiempo\nCómo trabajamos: revisar los documentos de origen antes de cambiar nada\nNunca: contactar a un proveedor sin aprobación",
+    "policyExample": "Por ejemplo:\nCómo trabajamos: antes de cambiar una pantalla, mostrar una muestra y preguntar\nNunca: publicar en producción sin aprobación",
     "policyNote": "Lo que escribas aquí se entrega tal cual a todos los agentes de este proyecto y de los proyectos que contiene.",
     "policyVsAgentsMd": {
       "detail": "La diferencia: los agentes lo reciben solo cuando trabajan con alpacawork. Las instrucciones que deban seguir también fuera de alpacawork siguen en AGENTS.md o CLAUDE.md.",

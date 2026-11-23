@@ -60,7 +60,7 @@
       "subtree_one": "Com base em {{count}} previsão. Relatório previsto {{time}}",
       "subtree_many": "A mais tardia de {{count}} previsões. Relatório previsto {{time}}",
       "subtree_other": "A mais tardia de {{count}} previsões. Relatório previsto {{time}}",
-      "subtreeOver": "Uma tarefa abaixo dela passou {{length}} da previsão de {{time}}"
+      "subtreeOver": "Passou {{length}} da previsão mais tardia desta tarefa e das tarefas abaixo dela ({{time}})"
     },
     "over": "{{length}} após {{time}}",
     "overBy": {

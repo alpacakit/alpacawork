@@ -33,17 +33,8 @@ export function representedWork(task: Pick<RowTask, "homeRow" | "rowFacts">): "r
 /** How many Runs a Working row says are running on it and under it; any other row, or none running, says nothing. */
 export const runningRunsSaid = (task: Pick<RowTask, "homeRow" | "rowFacts">) => rowSection(task) === "doing" ? task.rowFacts.runningRuns : 0;
 
-/** A review row says no Run status, work time, state time or expectation. */
+/** A review row says no Run status, work time, state time or end words: its icon says the review. */
 export const saysRuns = (task: RowSource) => rowSection(task) !== "review";
-
-/**
- * Whether a row says its end words (when its work is expected to report): not in Awaiting review, nor in
- * Idle, which waits on others' work and so expects nothing of its own.
- */
-export const saysFinish = (task: RowSource) => saysRuns(task) && rowSection(task) !== "awaited";
-
-/** Whether a row says when its work is expected to report. */
-export const saysExpectation = (task: Pick<RowTask, "state" | "homeRow">) => task.state === "doing" && saysFinish(task);
 
 /** An awaited row does not repeat that it is idle. */
 export function saysStatus(task: RowSource, kind: NonNullable<RowTask["rowFacts"]["status"]>["kind"]): boolean {

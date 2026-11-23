@@ -8,7 +8,7 @@ Não apague por conta própria a pasta de dados (`~/alpacawork`) nem os arquivos
 
 Em uma tarefa em “Requer atenção”, a execução da IA parou. Ao abrir, o motivo aparece abaixo do título.
 
-- “Falhou”: pressione “Tentar novamente” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o motivo for o limite de uso ou o modelo congestionado, pressione “Tentar novamente” quando o limite de uso for renovado, ou peça no campo de mensagem: “Tente de novo com outro modelo”. Mesmo depois que o limite é renovado, o trabalho não é retomado sozinho.
+- “Falhou”: pressione “Continuar com a mesma IA”, “Continuar com outra IA” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o modelo estava congestionado, pressione “Continuar com a mesma IA” mais tarde; se o limite de uso foi atingido, pressione depois que o limite for renovado. Para continuar sem esperar, pressione “Continuar com outra IA”, acrescente qual IA usar à frase que aparece no campo de mensagem e envie. Mesmo depois que o limite é renovado, o trabalho não é retomado sozinho.
 - “Limite atingido”: a troca automática entre as IAs chegou ao número fixo de vezes (no início, 20). Se quiser que continue, pressione “Continuar”.
 - Motivos sem botões (“Recebimento não confirmado”, “Sem perfil de inicialização” e outros): leia o texto mostrado e dê uma instrução no campo de mensagem, como “Continue”. O significado de cada um está em [Motivos de parada](reference.md#motivos-de-parada).
 
@@ -31,7 +31,7 @@ A situação do envio aparece acima do campo de mensagem. Pressione-a para abrir
 
 ## Reiniciei o PC ou ele entrou em suspensão
 
-Quando você faz login no PC, o alpacawork inicia sozinho, e as tarefas continuam como estavam. O trabalho que estava rodando antes de reiniciar para. Abra as tarefas que passaram para “Requer atenção” e pressione “Tentar novamente”. Elas não são retomadas sozinhas.
+Quando você faz login no PC, o alpacawork inicia sozinho, e as tarefas continuam como estavam. O trabalho que estava rodando antes de reiniciar para. Abra as tarefas que passaram para “Requer atenção” e pressione “Continuar com a mesma IA”. Elas não são retomadas sozinhas.
 
 Durante a suspensão, o trabalho não avança. Em um notebook, fechar a tampa faz parar.
 
@@ -69,7 +69,7 @@ O estado aparece em “Agentes”, em “Configurações (engrenagem) → Servid
 - “Não encontrado”: se não estiver instalado, instale. Se estiver, indique o local em “Executável”, no cartão.
 - “Nenhum agente está ativado”: ative as IAs que vai usar.
 
-Depois de corrigir, use “Tentar novamente” nas tarefas que tinham parado.
+Depois de corrigir, use “Continuar com a mesma IA” nas tarefas que tinham parado.
 
 ## A instalação para
 

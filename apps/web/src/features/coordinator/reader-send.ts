@@ -135,10 +135,10 @@ function submissionFacts(fixed: Pick<Fixed, 'intent' | 'answers'>, doc: Document
   if (intent && intentTask) bindings.push({
     task: intentTask, binding: {
       ...readerTurn(intentTask), ...(intent.question ? { turn: intent.question } : {}), kind: 'intent', title: intentTask.title,
-      // What carries the press out: a request; for Retry also a new responsible, whose handover restarts the work.
+      // What carries the press out: a request; for a failure's Continue (same or another AI) also a new responsible, whose handover restarts the work.
       // (A release followed by a separate placement records the same kind without a handover; the coordinator's reply,
       // which holds any words written with the press, is where that shows.)
-      answer: 'send', expectedWrites: intent.action === 'retry' ? [{ kind: 'request_accepted' }, { kind: 'responsible_changed' }] : [{ kind: 'request_accepted' }],
+      answer: 'send', expectedWrites: intent.action === 'retry' || intent.action === 'switch' ? [{ kind: 'request_accepted' }, { kind: 'responsible_changed' }] : [{ kind: 'request_accepted' }],
     }
   });
   for (const answer of fixed.answers ?? []) {
@@ -205,6 +205,7 @@ function intentLine(action: SentIntent['action'], id: string) {
     case 'sendback': return i18n.t('reader:intent.sendback', { id });
     case 'continue': return i18n.t('reader:intent.continue', { id });
     case 'retry': return i18n.t('reader:intent.retry', { id });
+    case 'switch': return i18n.t('reader:intent.switch');
   }
 }
 /**

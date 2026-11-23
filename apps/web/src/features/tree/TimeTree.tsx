@@ -36,7 +36,7 @@ import { RowProjectTile } from "./RowProjectTile";
 import { RowEnd } from "./RowStatus";
 import { capitalized, dayClock } from "@/domain/day-clock";
 import type { FinishWords } from "@/domain/finish-words";
-import { saysFinish } from "@/domain/row-status";
+import { saysRuns } from "@/domain/row-status";
 import { advanceNow, useNow } from "@/state/clock";
 import { useTimeView } from "@/state/time-view";
 import { useNarrow, useViewStore } from "@/state/view-store";
@@ -688,8 +688,8 @@ function openDetail(id: string, key?: string, returnTo?: HTMLElement) {
 /** A node's task as its row in the home list is drawn: with the section the row is listed in. */
 const listedTask = (node: Node): Task => node.row ? { ...node.task, homeRow: node.row } : node.task;
 
-/** A row's end words on its strip: none where the row says no expectation either (saysFinish: Awaiting review, Idle). */
-const stripFinish = (node: Node, finish: FinishWords | null) => saysFinish(listedTask(node)) ? finish : null;
+/** A row's end words on its strip: none on an Awaiting review row (saysRuns), whose icon says the review. */
+const stripFinish = (node: Node, finish: FinishWords | null) => saysRuns(listedTask(node)) ? finish : null;
 
 /** The clock and moving scale reach only the strip; the row's controls keep their identity. */
 function RowStrip({ node, shared, height, title, enter }: { node: Node; shared: Shared; height: number;

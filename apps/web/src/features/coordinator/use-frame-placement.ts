@@ -5,7 +5,7 @@ import { readerEdgeHeld } from "@/state/screen-settings";
 import { shownInReader, useViewStore } from "@/state/view-store";
 import { useConversation } from "./coordinator";
 import { leastHeight } from "./foot";
-import { atLargest, atRight, besidePanel, BETWEEN, pushedAcross, pushingPanel, ceilingOf, EDGE, FIRST, keptAt, keptFrame, keptWithin, placeFrame, placeMaximized, pulledOut, smallerFrame, type Frame, type Pull, type Room } from "./frame";
+import { atLargest, atRight, besidePanel, BETWEEN, clearlySmaller, pushedAcross, pushingPanel, ceilingOf, EDGE, FIRST, keptAt, keptFrame, keptWithin, placeFrame, placeMaximized, pulledOut, restoredFrame, smallerFrame, type Frame, type Pull, type Room } from "./frame";
 import { cancelFrameGesture, groundPress, moveFrame, type FrameHand } from "./frame-hand";
 import { conversationExtent } from "./PhoneSheet";
 
@@ -349,13 +349,13 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
     // Whatever the hand does next ends a landing under way: it holds, keeps or gives up the frame as it is.
     hold: (next, pull = null) => { endLanding(); holding.current = true; frameNow.current = next; pullNow.current = pull; setHeld(next); },
     // Kept never past its widest as the room has it now (what it was asked for may be from before: a frame kept wider, a
-    // type size changed while it was held). The frame it had, if smaller than its largest (drawn open), is what ↙↗ puts
-    // back.
+    // type size changed while it was held). The frame it had, if clearly smaller than its largest (drawn open), is what
+    // ↙↗ puts back (restoredFrame).
     keep: next => {
       const at = drawnAt.current, kept = next && at ? keptWithin(next, at.room) : next, was = keptFrame.get();
       endLanding(); holding.current = false;
       if (!was) smallerFrame.remove();
-      else if (!at || !atLargest(placeFrame(was, at.room, at.input, true), at.room)) smallerFrame.set(was);
+      else if (!at || clearlySmaller(placeFrame(was, at.room, at.input, true), at.room)) smallerFrame.set(was);
       if (kept) keptFrame.set(kept); else keptFrame.remove();
       frameNow.current = kept ?? FIRST; pullNow.current = null; setHeld(null);
     },
@@ -364,12 +364,12 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
     expanded: () => useConversation.getState().expanded, setExpanded: next => useConversation.getState().setExpanded(next),
   }), []);
   // The head's ↗↙: kept as large as the hand could size it from where it is drawn, as if the hand had pulled it so;
-  // ↙↗: the last frame the hand left smaller (or where it first stands). Either glides there.
+  // ↙↗: always clearly smaller (restoredFrame). Either glides there.
   const toggleMaximized = () => {
     const at = drawnAt.current, element = card.current;
     if (!at || !element) return;
     glide.current = true;
-    hand.keep(maximized ? smallerFrame.get() : keptAt(placeMaximized(at.placed, at.room, inputAt(element)), at.room, frameNow.current));
+    hand.keep(maximized ? restoredFrame(frameNow.current, smallerFrame.get(), at.room, at.input) : keptAt(placeMaximized(at.placed, at.room, inputAt(element)), at.room, frameNow.current));
   };
   // A press on the ground of either surface (frame-hand.tsx's groundPress) moves it; on a phone it stays at the foot.
   useEffect(() => {

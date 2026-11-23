@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">Deixe a gestão das suas IAs com a IA.</h3>
+<h3 align="center">Rode agentes de IA em todos os projetos com um só campo de mensagem.</h3>
 
 <p align="center">
-  Ela atribui trabalho ao Claude Code e ao Codex<br/>e acompanha o andamento deles.<br/>
-  Você não precisa mais ficar na frente do PC para trabalhar.
+  Faça um pedido. O Claude Code e o Codex no seu PC o dividem em tarefas e as rodam em paralelo.<br/>
+  Você responde às perguntas da IA e revisa os resultados. Também pelo celular.
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
+    <img src="docs/images/hero.gif" alt="Um pedido escrito em um só campo chega ao coordenador, que cria tarefas em três projetos (site, app, marketing) e atribui a cada uma uma IA como opus · high ou gpt-5 · high; uma tarefa faz uma pergunta, você responde e todas terminam" width="640">
+  </picture>
+</p>
+
+O alpacawork é uma ferramenta (um harness de IA) que executa os agentes Claude Code e Codex já instalados no seu PC e atribui trabalho a eles. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas, atribui as tarefas a outras IAs e acompanha o andamento. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="O alpacawork no navegador de um PC, com uma lista de dez tarefas em andamento e três aguardando revisão ao lado do relatório aberto de uma tarefa, e à direita um celular que mostra o mesmo relatório" width="820">
 </p>
-
-O alpacawork é uma ferramenta (um harness de IA) que executa os agentes Claude Code e Codex já instalados no seu PC e atribui trabalho a eles. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas, atribui as tarefas a outras IAs e acompanha o andamento. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
 
 ## Instalar
 
@@ -53,19 +58,25 @@ alpacawork setup
 
 Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois de instalar, siga os [Primeiros passos](docs/pt-BR/getting-started.md) para fazer a sua primeira solicitação.
 
-### Abrir a tela de novo
+### Operações comuns
 
-Se você fechar a tela, peça assim ao Claude Code ou ao Codex. A IA abre a tela no navegador ou informa a URL dela.
+As tarefas são pedidas na caixa de entrada da tela. Para abrir a tela, mudar configurações e coisas assim, peça ao Claude Code ou ao Codex aberto no terminal ou no app, e a IA faz isso (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). No terminal, os comandos da tabela fazem o mesmo.
 
-```text
-/alpacawork abra a tela
-```
+| Para | Peça à IA | Comando |
+| --- | --- | --- |
+| Abrir a tela | `/alpacawork abra a tela` | `alpacawork open` |
+| Ver se está rodando | `/alpacawork veja se está rodando` | `alpacawork status` |
+| Mudar uma configuração | `/alpacawork rode no máximo 4 IAs ao mesmo tempo` | — |
+| Mudar o modelo de uso normal | `/alpacawork use o opus normalmente nas tarefas` | — |
+| Disponibilizar um modelo novo | `/alpacawork saiu um modelo novo do Codex; adicione nas configurações de modelos para eu poder escolher` | — |
+| Mudar a política do projeto | `/alpacawork acrescente "use o opus para o design" à política do projeto` | — |
+| Atualizar para a versão mais recente | `/alpacawork atualize para a versão mais recente` | `alpacawork deploy npm:alpacawork` |
+| Parar, iniciar ou reiniciar | `/alpacawork reinicie o alpacawork` | `alpacawork stop`, `start`, `restart` |
+| Desinstalar | `/alpacawork desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |
 
-No Codex, escreva `$alpacawork` no lugar de `/alpacawork`. No terminal, este comando também abre a tela.
+Configurações e modelos também podem ser mudados na caixa de entrada ou em Configurações na tela, e a atualização também pode ser feita em Configurações. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md)).
 
-```sh
-alpacawork open
-```
+Pedir tarefas, procurá-las, responder perguntas e coisas assim também funciona numa conversa do Claude Code ou do Codex. Como pedir está em [Usar pelo Claude Code ou Codex](docs/pt-BR/chat.md).
 
 No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial na tela, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
 
