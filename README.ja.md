@@ -49,7 +49,7 @@ PC の Claude Code や Codex に、次の文を貼り付けます。AI が alpac
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-コマンドで入れるときは、ターミナル（Windows では Ubuntu の中）で次の2行を順に実行します。セットアップは、設定する内容を表示し、Enter を押すと始まります。終わると、画面の URL を `開く:` の行（ターミナルが英語のときは `Open:`）に出し、ふつうはブラウザでも開きます。
+コマンドで入れるときは、ターミナル（Windows では Ubuntu の中）で次の2行を順に実行します。セットアップは、設定する内容を表示し、Enter を押すと始まります。
 
 ```sh
 npm install -g alpacawork
