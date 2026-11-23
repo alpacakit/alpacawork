@@ -253,6 +253,14 @@ test("a part reaching under the input at a detail's foot is pointed at where it 
   expect(seenPart({ ...question, height: 200 }, { top: 282, bottom: 682 })).toEqual({ ...question, height: 200 });
 });
 
+test("with nothing going on after a reply in the conversation, the step at the input stays until it is used: a reload shows it again", () => {
+  const idle = facts({ sent: true, talked: true, seen: read("send", "received", "direct") });
+  const step = guideEntry(idle)!;
+  expect(step.id).toBe("send-again");
+  expect(doneOnShowing(step, true)).toBe(false);
+  expect(shown({ ...idle, standing: null })).toBe("send-again");
+});
+
 test("a row whose turn the person has already answered from here is not theirs, while it still stands in the list", () => {
   const rows = [{ taskId: "T1", section: "review" }, { taskId: "T2", section: "review" }];
   const task = (id: string) => ({ id, ball: { holder: "user", reason: "result" } }) as unknown as Task;

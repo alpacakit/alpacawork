@@ -245,8 +245,10 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.unassigned") },
   { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // Nothing going on and nothing written: a request is to be written.
+  // Nothing going on and nothing written: a request is to be written, with the request to try the whole flow with (as
+  // on the first screen). It waits for its button or for words, so a reload never leaves the guide showing nothing.
   { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && !f.drafting,
+    action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain") },
 ];
 
