@@ -575,6 +575,7 @@
     "not_directory": "Esto es un archivo, no una carpeta.",
     "required": "Escribe un valor en este campo.",
     "too_big": "Escribe {{maximum}} como máximo.",
+    "too_long": "Escribe {{maximum}} caracteres como máximo.",
     "too_small": "Escribe {{minimum}} como mínimo.",
     "unreadable_directory": "Esta carpeta no se puede leer.",
     "unwritable_directory": "No se puede crear aquí (no hay permiso de escritura en esta carpeta)."

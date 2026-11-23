@@ -14,6 +14,8 @@ La IA modifica archivos sin pedir confirmación. Si haces un commit antes de emp
 
 Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la carpeta de trabajo, y pulsa “Crear”.
 
+Cada proyecto tiene un “Resumen”, una frase que dice para qué sirve. La IA lo lee para elegir el proyecto de una solicitud que no dice a cuál corresponde, y todas las IA que trabajan en el proyecto lo reciben. Mientras el resumen esté vacío, la IA lo escribe la próxima vez que coloca una solicitud en el proyecto. Puedes cambiarlo en la configuración del proyecto.
+
 Los proyectos que ya no uses se pueden archivar desde el final de la configuración del proyecto.
 
 ## Política del proyecto
@@ -23,7 +25,6 @@ Escribe con frases normales, en “Política del proyecto” de la configuració
 Sirve básicamente para lo mismo que `AGENTS.md`. En la política del proyecto, escribe las instrucciones que quieres que la IA lea solo cuando usa alpacawork.
 
 ```text
-Objetivo: que la web de la tienda se vea bien en el teléfono y publicarla
 Cómo trabajar: antes de hacer un cambio que afecte al aspecto, muestra un ejemplo y pregunta
 Lo que dejo en tus manos: decide sin preguntar cómo trabajar, las pruebas y la limpieza, e informa
 Lo que no debes hacer: hacer push a GitHub o publicar sin aprobación

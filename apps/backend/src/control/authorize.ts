@@ -4,7 +4,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { TaskActor, TaskKind, TaskState, TaskBaseState } from '@alpacawork/raw';
 import { decide, type Caller, type Action, type Decision, type Quote, type TaskFacts } from '@alpacawork/contract/command-access';
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
-import { readTask } from './task-store.js';
+import { projectsAbove, readTask } from './task-store.js';
 export * from '@alpacawork/contract/command-access';
 
 /**
@@ -14,14 +14,6 @@ export type Target = { task: string | null; quote: Quote | null; message?: strin
 /** A file write's grant: the actor decided for it and the Task whose files it may write. */
 export type AuthorizedWriter = { actor: TaskActor; task: string };
 
-/** The projects above `project`, nearest first. */
-function projectsAbove(db: DatabaseSync, project: string): string[] {
-  return db.prepare(`WITH RECURSIVE up(id, depth) AS (
-      SELECT parent_id, 1 FROM tasks WHERE external_id = ? AND parent_id IS NOT NULL
-      UNION ALL SELECT t.parent_id, up.depth + 1 FROM tasks t JOIN up ON t.id = up.id WHERE t.parent_id IS NOT NULL AND up.depth < 32)
-    SELECT t.external_id FROM up JOIN tasks t ON t.id = up.id WHERE t.kind = 'project' ORDER BY up.depth`).all(project)
-    .map(row => String(row.external_id));
-}
 /** One Task's facts as the table reads them, on the entry's connection. */
 function taskFacts(db: DatabaseSync, id: string): TaskFacts {
   const row = db.prepare(`SELECT t.id, t.kind, t.state, t.base_state, t.hold, t.user_requested, parent.external_id AS parent_id,

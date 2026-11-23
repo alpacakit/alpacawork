@@ -45,7 +45,7 @@
       "finished_branch": "終わったタスクの下に、終わっていないタスクは置けません。",
       "forbidden": "この操作を行う権限がありません。",
       "handoff_pending": "受け渡しの完了を待っています。",
-      "handover_required": "この責任者は単独では外せません。別の人に引き継ぐか、替えてください。",
+      "handover_required": "この責任者は単独では外せません。別のエージェントに引き継ぐか、替えてください。",
       "invalid_input": "入力を確認してください。",
       "not_found": "見つかりません。",
       "publication_needs_review": "ファイルの反映は要確認です",
@@ -573,6 +573,7 @@
     "not_directory": "フォルダではなくファイルです。",
     "required": "この欄を入力してください。",
     "too_big": "{{maximum}} 以下で入力してください。",
+    "too_long": "{{maximum}} 文字以内で入力してください。",
     "too_small": "{{minimum}} 以上で入力してください。",
     "unreadable_directory": "このフォルダは読めません。",
     "unwritable_directory": "ここには作れません（このフォルダに書き込む権限がありません）。"

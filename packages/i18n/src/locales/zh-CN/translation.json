@@ -45,7 +45,7 @@
       "finished_branch": "已结束的任务下面不能有未结束的任务。",
       "forbidden": "你没有执行此操作的权限。",
       "handoff_pending": "正在等待交接完成。",
-      "handover_required": "无法单独解除这位负责人的指派。请将任务交接给其他人，或更换负责人。",
+      "handover_required": "无法单独解除这位负责人的指派。请将任务交接给其他智能体，或更换负责人。",
       "invalid_input": "请检查输入内容。",
       "not_found": "未找到。",
       "publication_needs_review": "文件更改是否生效需要确认",
@@ -573,6 +573,7 @@
     "not_directory": "这是文件，不是文件夹。",
     "required": "请填写此项。",
     "too_big": "请输入不超过 {{maximum}} 的值。",
+    "too_long": "请输入不超过 {{maximum}} 个字符。",
     "too_small": "请输入不小于 {{minimum}} 的值。",
     "unreadable_directory": "无法读取此文件夹。",
     "unwritable_directory": "无法在此处创建（没有此文件夹的写入权限）。"

@@ -62,7 +62,7 @@ export function deleteField(root: string, field: string) {
 /**
  * field get: the fields Tasks use (tasksSchema) at the Task named (none named: the default schema), where they come
  * from, and the JSON Schema of a write's values; `version` is that JSON Schema's digest, and a matching `held` version
- * leaves it out. A project named answers for the Tasks below it: its own value is its policy, one free text.
+ * leaves it out. A project named answers for the Tasks below it.
  */
 export function readSchema(root: string, task: string | null, held?: string) {
   return readControl(root, db => {

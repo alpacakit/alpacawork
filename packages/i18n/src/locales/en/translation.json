@@ -45,7 +45,7 @@
       "finished_branch": "A finished task cannot have unfinished tasks below it.",
       "forbidden": "You do not have permission for this operation.",
       "handoff_pending": "Waiting for the handover to finish.",
-      "handover_required": "This owner can't be released alone. Hand the task over to someone else or replace the owner.",
+      "handover_required": "This owner can't be released alone. Hand the task over to another agent or replace the owner.",
       "invalid_input": "Check the input.",
       "not_found": "Not found.",
       "publication_needs_review": "Applying the file changes needs review",
@@ -574,6 +574,7 @@
     "not_directory": "This is a file, not a folder.",
     "required": "Enter a value in this field.",
     "too_big": "Enter at most {{maximum}}.",
+    "too_long": "Enter at most {{maximum}} characters.",
     "too_small": "Enter at least {{minimum}}.",
     "unreadable_directory": "This folder cannot be read.",
     "unwritable_directory": "Cannot create here (no permission to write to this folder)."

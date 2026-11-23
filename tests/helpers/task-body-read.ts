@@ -13,9 +13,10 @@ export async function taskBodyRead<T>(work: () => Promise<T>) {
     const all = statement.all;
     statement.all = function(...args: Parameters<typeof all>) {
       const rows = all.apply(this, args);
-      if (scope.getStore()) for (const row of rows) if ('external_id' in row && 'task_values' in row) {
+      if (scope.getStore()) for (const row of rows) if ('external_id' in row && ('task_values' in row || 'project_summary' in row)) {
         reads.rows++;
-        if (typeof row.task_values === 'string') reads.bytes += Buffer.byteLength(row.task_values);
+        const content = row.task_values ?? row.project_summary;
+        if (typeof content === 'string') reads.bytes += Buffer.byteLength(content);
       }
       return rows;
     };

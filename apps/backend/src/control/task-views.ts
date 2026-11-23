@@ -11,7 +11,7 @@ import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from 
  * A read takes the scope authorize gave its caller (readScope: a Run's project) and compares no membership itself.
  */
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
-import { questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
+import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
 import { taskFileRoute } from '@alpacawork/contract/cli-commands';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
@@ -20,7 +20,8 @@ import { openQuestions, questionsOf, type AskedLog, type TaskKind, type TaskLog,
   type TaskState, type TaskValues } from '@alpacawork/raw';
 import { valuesText } from '@alpacawork/contract';
 import { schemaFor, type TaskFields } from './task-values-store.js';
-import { ControlTaskStore, TaskRepository, TaskTree, controlSnapshotView, readControl, type ControlSnapshot } from './task-store.js';
+import { ControlTaskStore, TaskRepository, TaskTree, controlSnapshotView, readControl, type ControlSnapshot, type TaskListContents } from './task-store.js';
+import { projectSummary } from './project-settings.js';
 import { controlRuns, projectPlacements, readControlRecords } from './tree.js';
 import { taskFiles } from './task-files.js';
 import { estimateExamples, databaseEstimateExamples, type EstimateCondition } from './estimate-examples.js';
@@ -145,12 +146,12 @@ function questionHistories(db: DatabaseSync, id: string): string[] {
 }
 
 export async function readTaskListView(root: string, options: TaskListOptions, scope: string | null) {
-  const snapshot = await new ControlTaskStore(root).viewSnapshot(options.text ? 'all' : 'none', scope ?? undefined, undefined, 'none');
+  const snapshot = await new ControlTaskStore(root).listSnapshot(options.text ? 'search' : 'summary', scope ?? undefined);
   // The default list reads no historical Requests, inputs, returns or Run results.
   // Extra search places are read only after visibility and list filters are applied.
   const view = controlSnapshotView(snapshot);
   const tree = new TaskTree(snapshot.tasks);
-  return taskListView({ tasks: view.tasks, tree, errors: [] }, options, (tasks, found, errors) =>
+  return taskListView({ tasks: view.tasks, tree, errors: [], contents: snapshot.contents }, options, (tasks, found, errors) =>
       // Other projects' rows lead the tree; their additional content is outside a Run's read grant.
       readTaskSearch(root, tasks.filter(task => scope === null || tree.owningProject(task.id) === scope),
         options.in ?? [], found, errors));
@@ -267,7 +268,7 @@ export function lineWithText(text: string, values: TaskValues): string {
   return `${from > 0 ? '…' : ''}${line.slice(from, from + 80)}${from + 80 < line.length ? '…' : ''}`;
 }
 
-export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'errors'>, options: TaskListOptions = {},
+export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'errors'> & { contents?: TaskListContents }, options: TaskListOptions = {},
   readExtra?: (tasks: SearchTask[], found: TaskTextMatches, errors: SearchError[]) => void) {
   if (options.under !== undefined && !source.tree.byId.has(options.under))
     throw new Problem(PROBLEM_CODE.notFound, 'Subtree root does not exist', undefined, { reason: { kind: 'subtree_root_does_not_exist' } });
@@ -302,11 +303,14 @@ export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'err
       ? (Boolean(options.text) || task.state !== 'done')
       : (options.state.includes('all') || options.state.includes(task.state))));
   const errors = [...source.errors];
+  const { contents } = source;
+  const searchValues = (task: SourceTask) => contents?.mode === 'search' ? contents.values.get(task.id) : taskValues(task);
   const found = options.text ? new TaskTextMatches(options.text) : null;
   if (found) {
     for (const task of candidates) {
       found.add(task.id, { kind: 'title' }, task.title);
-      found.add(task.id, { kind: 'values' }, valuesText(taskValues(task)));
+      const values = searchValues(task);
+      if (values !== undefined) found.add(task.id, { kind: 'values' }, valuesText(values));
       found.add(task.id, { kind: 'id' }, task.id);
     }
     readExtra?.(candidates, found, errors);
@@ -323,9 +327,13 @@ export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'err
   const visible = scope.filter(task => selected.has(task.id))
     .sort((a, b) => a.id === options.under ? -1 : b.id === options.under ? 1 : byTaskNumber(a, b));
   return {
-    tasks: visible.map(task => ({ id: task.id, kind: task.kind, parentId: task.parentId, lifecycle: task.lifecycle,
-      title: task.title, state: task.state,
-      ...(found && direct.has(task.id) ? { match: found.matches.get(task.id)! } : {}) })),
+    tasks: visible.map(task => {
+      const summary = task.kind !== 'project' ? '' : projectSummary(contents?.mode === 'summary' ? contents.summaries.get(task.id)
+        : (contents?.mode === 'search' ? contents.values.get(task.id) : task.values)?.[PROJECT_SUMMARY]);
+      return { id: task.id, kind: task.kind, parentId: task.parentId, lifecycle: task.lifecycle, title: task.title, state: task.state,
+        ...(summary ? { summary } : {}),
+        ...(found && direct.has(task.id) ? { match: found.matches.get(task.id)! } : {}) };
+    }),
     ...(found ? { omitted: Math.max(0, matching.length - bounded.length) } : {}),
     errors,
   };

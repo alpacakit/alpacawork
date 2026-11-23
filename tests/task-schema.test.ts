@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyValues, canonicalValues, catalogProblems, DEFAULT_SCHEMA, fieldCatalog, hardLimit, OTHER_WORD, questionText, renderContext, renderItems, schemaOf,
-  schemaProblems, sizeNote, STOP_WORD, SYSTEM_FIELDS, PROJECT_POLICY, PROJECT_SCHEMA, valuesJsonSchema, type FieldDef, type TaskValues,
+  schemaProblems, sizeNote, STOP_WORD, SYSTEM_FIELDS, PROJECT_SCHEMA, valuesJsonSchema, type FieldDef, type TaskValues,
 } from '@alpacawork/contract';
 import { toIssues } from '@alpacawork/core';
 
@@ -13,9 +13,10 @@ test('the defaults are a sound catalog and the default schema holds every system
   assert.deepEqual(catalogProblems(catalog), []);
   assert.deepEqual(schemaProblems(DEFAULT_SCHEMA, catalog), []);
   assert.deepEqual(schemaProblems(DEFAULT_SCHEMA.filter(id => id !== 'decide'), catalog).map(problem => problem.path), ['fields']);
-  // A project's policy is its own value, never a Task's field; it takes text of any length.
-  assert.equal(DEFAULT_SCHEMA.includes(PROJECT_POLICY), false);
-  assert.deepEqual(schemaProblems([...DEFAULT_SCHEMA, PROJECT_POLICY], catalog).map(problem => problem.path), [`fields.${DEFAULT_SCHEMA.length}`]);
+  for (const id of PROJECT_SCHEMA) {
+    assert.equal(DEFAULT_SCHEMA.includes(id), false);
+    assert.deepEqual(schemaProblems([...DEFAULT_SCHEMA, id], catalog).map(problem => problem.path), [`fields.${DEFAULT_SCHEMA.length}`]);
+  }
   assert.equal(schemaOf(PROJECT_SCHEMA, catalog).safeParse({ project_policy: 'x'.repeat(100_000) }).success, true);
   for (const id of SYSTEM_FIELDS) assert.ok(DEFAULT_SCHEMA.includes(id));
 });

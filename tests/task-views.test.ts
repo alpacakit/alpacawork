@@ -230,7 +230,7 @@ test('task get --usage adds own and all descendant Run totals only on request', 
     assert.deepEqual([result.json.usage.own.tokens.input, result.json.usage.subtree.tokens.input], [10, 30]);
     assert.deepEqual([result.json.usage.own.runMs, result.json.usage.subtree.runMs], [60000, 120000]);
 });
-test('task list returns IDs, kinds, titles and states only, under the projects that lead to them, with depth, all and text', async (t) => {
+test('task list keeps the project path to each row, with depth, all and text', async (t) => {
     const h = await setup(t);
     const projects = ['P1', h.project];
     await h.commands.lifecycle({ id: h.sibling.id, action: 'archive', expectedTaskHash: h.sibling.hash });
@@ -366,8 +366,12 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
     // What SQLite returns of a Task's values: their JSON text.
     const valueBytes = async (id: string) => Buffer.byteLength(JSON.stringify((await new ControlTaskStore(h.root).get(id)).values));
     const childBytes = await valueBytes(h.child.id);
-    // The two projects have no values: `{}` each.
-    let allBytes = 2 * Buffer.byteLength('{}');
+    const summary = { project_summary: 'Work tracked by this project' };
+    await h.commands.update({ id: h.project, values: { ...summary, project_policy: 'Track work here.\n'.repeat(20) },
+        expectedTaskHash: (await new ControlTaskStore(h.root).get(h.project)).hash });
+    // The root project has no values.
+    const listBytes = Buffer.byteLength(JSON.stringify(summary.project_summary));
+    let allBytes = Buffer.byteLength('{}') + await valueBytes(h.project);
     for (const task of notes.keys()) allBytes += await valueBytes(task.id);
     const full = await readControlSource(h.root);
     for (const options of [{}, { log: 2, runs: 1 }, { usage: true },
@@ -394,7 +398,7 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
         assert.equal(result.code, 0, result.stderr);
         const { reads } = await taskBodyRead(() => readTaskListView(h.root, view, null));
         assert.equal(reads.rows, 6);
-        assert.equal(reads.bytes, 0, 'a list without text search does not read body values');
+        assert.equal(reads.bytes, listBytes, 'a list without text search reads only project summaries');
     }
     const search = await taskBodyRead(() => readTaskListView(h.root, { text: 'search' }, null));
     assert.equal(search.reads.bytes, allBytes);

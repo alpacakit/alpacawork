@@ -51,14 +51,24 @@ const QUESTION_PARTS = ['decide_question', 'decide_choices', 'decide_choice', 'd
   'decide_note', 'decide_stop'];
 export const isSystemField = (id: string) => (SYSTEM_FIELDS as readonly string[]).includes(id);
 /**
- * A project's policy: the one value a project has, free text the user writes as they like, carried whole to every
- * launch below the project. No Task's schema names it; it never changes.
+ * A project's policy: free text the user writes as they like, carried whole to every launch below the project. No
+ * Task's schema names it; it never changes.
  */
 export const PROJECT_POLICY = 'project_policy';
+/**
+ * A project's summary: one sentence on what the project is for. It is listed beside the project's name (`task list`)
+ * so that whoever places a request can choose the project without opening it, and it heads the project's policy in
+ * every launch below the project.
+ */
+export const PROJECT_SUMMARY = 'project_summary';
+/** The size a summary aims for: the most a write may hold (`hardLimit`) comes to 128 characters. */
+const PROJECT_SUMMARY_SIZE = 98;
 /** The fields of a project's own values, whatever schema its Tasks use. */
-export const PROJECT_SCHEMA: readonly string[] = [PROJECT_POLICY];
-/** Whether a project's schema offers to place the field: not a question part, not the project policy. */
-export const isPlaceableField = (id: string) => id !== PROJECT_POLICY && !QUESTION_PARTS.includes(id);
+export const PROJECT_SCHEMA: readonly string[] = [PROJECT_SUMMARY, PROJECT_POLICY];
+/** Whether a field is a project's own value, which no Task's schema names. */
+export const isProjectValue = (id: string) => PROJECT_SCHEMA.includes(id);
+/** Whether a project's schema offers to place the field: not a question part, not a project's own value. */
+export const isPlaceableField = (id: string) => !isProjectValue(id) && !QUESTION_PARTS.includes(id);
 
 const text = (id: string, title: string, maxChars: number, hint = '', maxItems: number | null = null, required = false): FieldDef =>
   ({ id, title, type: 'text', many: maxItems !== null, maxChars, maxItems, hint, members: [], required });
@@ -88,8 +98,9 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('decide_choice_recommended', 'Recommended', 80, 'Only on the one choice you recommend: why, in one sentence. The screen marks that choice as recommended.'),
   text('decide_note', 'Note', 250, 'Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.'),
   text('decide_stop', 'Stop', 180, 'Only when stopping the task is one of the options: what stopping means here, in 3 lines. It is offered as a choice of its own (`<number>-stop`), and whoever picks it stops the task instead of answering. Do not write it as one of the choices.'),
+  text(PROJECT_SUMMARY, 'Project summary', PROJECT_SUMMARY_SIZE, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.'),
   { id: PROJECT_POLICY, title: 'Project policy', type: 'text', many: false, required: false, maxChars: null, maxItems: null, members: [],
-    hint: 'What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.' },
+    hint: 'What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.' },
   text('notes', 'Notes', 600, 'What the next agent needs to carry on: the decisions in effect and why, one line on how a decision changed (rejected options and why), unchecked points that could change a decision, and the next step and where. Commands, test counts and work steps go in files in the task folder, linked from the deliverables.'),
 ];
 /**
@@ -149,8 +160,8 @@ export type FieldProblem = { path: string; message: string };
 export function catalogProblems(catalog: FieldCatalog): FieldProblem[] {
   const problems: FieldProblem[] = [];
   for (const def of catalog.values()) {
-    if (def.members.includes(PROJECT_POLICY))
-      problems.push({ path: `${def.id}.members`, message: `${PROJECT_POLICY} is a project's own value, not a member` });
+    for (const member of def.members.filter(isProjectValue))
+      problems.push({ path: `${def.id}.members`, message: `${member} is a project's own value, not a member` });
     for (const member of def.members) if (!catalog.has(member))
       problems.push({ path: `${def.id}.members`, message: `Unknown field ${member}` });
     const first = catalog.get(def.members[0] ?? '');
@@ -177,7 +188,7 @@ export function schemaProblems(ids: readonly string[], catalog: FieldCatalog): F
   ids.forEach((id, index) => {
     if (!catalog.has(id)) problems.push({ path: `fields.${index}`, message: `Unknown field ${id}` });
     if (ids.indexOf(id) !== index) problems.push({ path: `fields.${index}`, message: `Duplicate field ${id}` });
-    if (id === PROJECT_POLICY) problems.push({ path: `fields.${index}`, message: `${id} is a project's own value, not a Task's field` });
+    if (isProjectValue(id)) problems.push({ path: `fields.${index}`, message: `${id} is a project's own value, not a Task's field` });
   });
   for (const id of SYSTEM_FIELDS) if (!ids.includes(id))
     problems.push({ path: 'fields', message: `The system field ${id} cannot be left out` });
