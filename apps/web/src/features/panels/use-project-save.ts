@@ -10,8 +10,7 @@ import type { WorkspaceInfo } from "@/data/types";
 import { intentKey, useWriteIntent } from "@/data/write-intent";
 import { useAnswerGuard } from "@/features/forms/answer-guard";
 import { useServerForm } from "@/features/forms/server-form";
-import { PROJECT_POLICY } from "@alpacawork/contract";
-import { draftAfterResend, projectChange, projectDraftSchema, saveProject, schemaChanged, type ProjectDraft, type ProjectUpdate } from "./settings-draft";
+import { draftAfterResend, draftValues, projectChange, projectDraftSchema, saveProject, schemaChanged, type ProjectDraft, type ProjectUpdate } from "./settings-draft";
 
 export type Project = WorkspaceInfo["projects"][number];
 /** What the draft was last read or saved as, and the project Task's hash a save expects. */
@@ -23,7 +22,7 @@ type Base = { hash: string; draft: ProjectDraft };
  *
  * Saving writes, each only when it changed: config.yaml's code location first (it leaves the Task's hash as it was
  * read), then the project's own fields (field use, so a field just added takes its value), then the Task once
- * (title, colour, the policy when it changed). Each says its own failure, so one may be saved while another is not.
+ * (title, colour, its own values that changed). Each says its own failure, so one may be saved while another is not.
  */
 export function useProjectSave(project: Project) {
   const { t } = useTranslation("panels");
@@ -32,7 +31,7 @@ export function useProjectSave(project: Project) {
   const writeDisabled = useWriteDisabled(project.id);
   const task = useEveryTaskIndex().byId.get(project.id);
   const { detail, query } = useTaskDetail(task);
-  // The fields the project's Tasks use (field get at the project): its own value is its policy alone.
+  // The fields the project's Tasks use (field get at the project): its own values (summary, policy) are not among them.
   const tasksSchema = useTaskSchema(project.id);
   const [base, setBase] = useState<Base | null>(null);
   const send = (input: ProjectUpdate, opId: string, basis?: WriteBasis) => saveProject(client, input, opId, basis);
@@ -120,7 +119,7 @@ export function useProjectSave(project: Project) {
     if (base !== null || !read || query.isFetching || !detail?.settings || !schema || tasksSchema.isFetching) return;
     const start: ProjectDraft = { title: detail.title, color: detail.settings.color, cwd: project.cwd ?? "",
       fields: [...schema.fields], ownFields: schema.from === project.id,
-      policy: typeof detail.values.values[PROJECT_POLICY] === "string" ? detail.values.values[PROJECT_POLICY] as string : "" };
+      ...draftValues(detail.values.values) };
     form.reset(start);
     setBase({ hash: detail.hash, draft: start });
   }, [base, read, query.isFetching, detail, tasksSchema.data, tasksSchema.isFetching, project.cwd, form]);

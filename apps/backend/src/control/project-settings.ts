@@ -1,7 +1,7 @@
 /**
  * The rules of project-type Tasks' settings. A Task inherits its code location on this PC from the nearest project that
- * sets one ('' is set on purpose and turns it off), naming the project it came from. Its launches carry the policy chain: each project's policy from the
- * root down, as written. A Task created without a parent goes under the project whose code location holds the
+ * sets one ('' is set on purpose and turns it off), naming the project it came from. Its launches carry each project's
+ * summary and policy from the root down. A Task created without a parent goes under the project whose code location holds the
  * caller's cwd. A project's title, values and settings column are its Task's own; this PC's code locations are
  * config.yaml's `projects` section, which only `writeProjectLocation` writes.
  */
@@ -12,7 +12,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, validateTaskSettings, type ProjectSettings, type TaskKind } from '@alpacawork/raw';
-import { DEFAULT_PROJECT_NAME, PROJECT_POLICY } from '@alpacawork/contract';
+import { DEFAULT_PROJECT_NAME, PROJECT_POLICY, PROJECT_SUMMARY, type FieldValue } from '@alpacawork/contract';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import { parseConfig, projectLocationsSchema } from '../config.js';
 import { FileWriter } from '../raw/storage.js';
@@ -142,16 +142,22 @@ export function defaultParentAt(root: string, db: DatabaseSync, cwd: string | nu
     { reason: (active ? { kind: 'several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project', option: String(option) } : { kind: 'no_project_active_use_id', option: String(option) }), issues: [{ path: option, code: 'required', message: `--${option} is required` }] });
 }
 
-/** One project's part of the policy chain: its title and its policy (the project_policy value) as written. */
-type PolicyLink = { project: string; title: string; policy: string };
+/** The summary as one line for the project list and launch text. */
+export function projectSummary(value: FieldValue | undefined): string {
+  return typeof value === 'string' ? value.replace(/\s*[\r\n\u2028\u2029]\s*/gu, ' ').trim() : '';
+}
+
+/** One project's part of the policy chain: its title, summary and policy. */
+type PolicyLink = { project: string; title: string; summary: string; policy: string };
 /**
- * The policy chain of `taskId`: for each project it is in, from the root down, its policy whole. Nothing is picked out
- * of it and nothing is added; a project without a policy is left out.
+ * The policy chain of `taskId`: its projects from the root down that have a summary or a policy.
  */
 export function policyChain<T extends ChainTask>(tree: TaskTree<T>, contexts: TaskContexts, taskId: string): PolicyLink[] {
   return tree.projects(taskId).flatMap(project => {
-    const policy = contexts.value(project.id, PROJECT_POLICY);
-    return typeof policy === 'string' && policy ? [{ project: project.id, title: project.meta.title, policy }] : [];
+    const values = contexts.valuesOf(project.id);
+    const summary = projectSummary(values[PROJECT_SUMMARY]);
+    const policy = typeof values[PROJECT_POLICY] === 'string' ? values[PROJECT_POLICY] : '';
+    return summary || policy ? [{ project: project.id, title: project.meta.title, summary, policy }] : [];
   });
 }
 

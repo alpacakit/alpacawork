@@ -250,8 +250,12 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: o propósito (para que serve o projeto), como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
+      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
       "title": "Política do projeto"
+    },
+    "project_summary": {
+      "hint": "Uma frase sobre para que serve este projeto: o tipo de trabalho que cabe nele. Aparece ao lado do nome do projeto na lista, onde é lido para escolher em qual projeto um novo pedido entra, e vai acima da política do projeto nas instruções de todo trabalho deste projeto. Como o trabalho é feito vai na política do projeto.",
+      "title": "Resumo do projeto"
     },
     "remaining": {
       "hint": "Uma linha por trabalho que falta: `<o quê> — <quem / aguardando o quê>` (a condição para retomar). Passos e comandos vão em arquivos na pasta da tarefa. Remova o que já foi feito.",

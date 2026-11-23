@@ -313,7 +313,7 @@
     "description": "把任务、目标和智能体归在一起。",
     "fieldsNote": "任务中填写的字段。智能体会按此顺序收到它们。",
     "gone": "此项目已不在列表中。",
-    "inherited": "上级项目的准则（有冲突时以上级为准）",
+    "inherited": "上级项目的简介和准则（准则有冲突时以上级为准）",
     "locationInherits": "智能体工作的文件夹。留空时使用父项目的 {{path}}。",
     "locationNotSaved": "工作文件夹未能保存。其他字段已保存。",
     "locationRoot": "智能体工作的文件夹。留空时使用 {{path}}。",
@@ -330,6 +330,9 @@
       "title": "用法与 AGENTS.md 或 CLAUDE.md 相同"
     },
     "settingsTitle": "项目设置",
+    "summary": "简介",
+    "summaryEmpty": "留空时，协调员会在下次请求时写好",
+    "summaryHint": "用一句话说明这个项目做什么。协调员选择请求放在哪里时会读它，智能体在这里工作时也会读它。",
     "target": "项目",
     "targetHeld": "保存或放弃更改后，才能选择其他项目。",
     "title": "新建项目"

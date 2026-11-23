@@ -10,6 +10,7 @@ The coordinator reads this when asked to read or change settings, when adding or
 | The number of Runs running at once, time limits, the attachment limit | `limits` in the server's `config.yaml` | `config set`, or "Settings → Server" on the screen |
 | The AIs in use, the models and other values selectable in a request, launch options | `agents` in `config.yaml` | Same as above |
 | The folder agents work in | The project's code location | `task update --task <P number> --cwd`, or the project's settings on the screen |
+| A project's summary (what the project is for, in one sentence) | The project | `task update --task <P number> --values-file` with `project_summary`, or the project's settings on the screen (["Turning a request into a task" in Coordinator](coordinator.md#turning-a-request-into-a-task)) |
 | The project policy, the fields tasks write | The project | For the project policy, ["Authority" in Coordinator](coordinator.md#authority); for the fields the project uses, `field use`; for field definitions, `field set` |
 | The screen's language, theme and notifications; the reply language | Personal settings | `settings set`, or "Settings → Personal" on the screen |
 | The port, the name for opening the screen from other devices | Decided at installation | [Setup](setup.md#install) |

@@ -76,15 +76,19 @@ function parentOf(tree: LaunchSource['tree'], task: LaunchTask): LaunchTask | nu
 }
 
 /**
- * The policy of each project from the root to the task's own, as written, under the project's name, as they are at
- * this launch. Nothing is cut out of a policy; when they do not fit, the commands that read them.
+ * Each project's summary and full policy under its name, from the root to the Task's own project.
+ * If the chain does not fit, include the command that reads its projects.
  */
 function policyPart(source: LaunchSource, taskId: string): Part | null {
   const chain = policyChain(source.tree, source.contexts, taskId);
   if (!chain.length) return null;
   const heading = 'Project policy';
   return { full: () => section(heading, ['Listed from the root project down.',
-    ...chain.map(link => `\n### ${link.title} (${link.project})\n${link.policy}`)]),
+    ...chain.map(link => {
+      const summary = link.summary && `Summary: ${link.summary}`;
+      const body = [summary, link.policy].filter(Boolean).join('\n\n');
+      return `\n### ${link.title} (${link.project})\n${body}`;
+    })]),
   short: section(heading, [`Too large to include. Read the policies of ${chain.map(link => link.project).join(', ')} with ` +
     'alpacawork task get --task <project ID>.']) };
 }

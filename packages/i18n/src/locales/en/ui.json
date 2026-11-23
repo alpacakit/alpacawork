@@ -242,8 +242,12 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
+      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
       "title": "Project policy"
+    },
+    "project_summary": {
+      "hint": "One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.",
+      "title": "Project summary"
     },
     "remaining": {
       "hint": "One per piece of work left: `<what> — <who / waiting for what>` (the condition to resume). Steps and commands go in files in the task folder. Remove what is done.",

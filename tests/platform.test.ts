@@ -35,7 +35,7 @@ test('a project\'s fields save to the project and leave config.yaml as written; 
   const original = '# Launch settings\n' + readFileSync(file, 'utf8');
   writeFileSync(file, original);
   const app = await start();
-  // A project's own value is its policy; the fields it chooses, and field get at it, are those of its Tasks.
+  // The fields a project chooses and field get at it reads are those of its Tasks.
   const task = (await request(app, 'task/new', { title: 'Uses the project fields', parent: 'P1' })).body.task.id;
   assert.deepEqual((await request(app, 'field/get?task=P1')).body.fields, [...DEFAULT_SCHEMA]);
   const initial = (await request(app, `field/get?task=${task}`)).body;

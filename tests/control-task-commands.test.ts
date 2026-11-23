@@ -227,18 +227,17 @@ test('project rows require settings.color on creation and decode, for every life
   } finally { db.close(); }
 });
 
-test('a project\'s own value is its policy alone, whatever schema its Tasks use', async t => {
+test('a project\'s own values are independent of the fields its Tasks use', async t => {
   const f = await taskFlow(t);
   const long = 'Ask before pushing.\n'.repeat(2000);
-  await f.commands.update({ id: f.project, values: { project_policy: long }, expectedTaskHash: (await f.get(f.project)).hash });
-  // A task's field is not a project's value, and the policy is not a task's.
+  const values = { project_summary: 'Release planning', project_policy: long };
+  await f.commands.update({ id: f.project, values, expectedTaskHash: (await f.get(f.project)).hash });
   await assert.rejects(f.commands.update({ id: f.project, values: { goal: 'g' }, expectedTaskHash: (await f.get(f.project)).hash }),
     (error: { reason?: { kind: string }; issues?: { path: string }[] }) => error.reason?.kind === 'values_invalid' && error.issues?.[0]?.path === 'goal');
   const owner = await f.task('Owner');
-  await assert.rejects(f.commands.update({ id: owner.id, values: { project_policy: 'p' }, expectedTaskHash: (await f.get(owner.id)).hash }),
+  await assert.rejects(f.commands.update({ id: owner.id, values, expectedTaskHash: (await f.get(owner.id)).hash }),
     (error: { reason?: { kind: string } }) => error.reason?.kind === 'values_invalid');
-  // A Run may reorder its project's schema; the policy is not in it, so nothing hides it.
   const run = new ControlTaskCommands(f.root, { kind: 'placement', placementId: owner.placementId });
   await run.setSchema({ task: f.project, fields: DEFAULT_SCHEMA.filter(id => id !== 'policy'), expectedTaskHash: (await f.get(f.project)).hash });
-  assert.deepEqual((await f.get(f.project)).values, { project_policy: long.trim() });
+  assert.deepEqual((await f.get(f.project)).values, { ...values, project_policy: long.trim() });
 });

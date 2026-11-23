@@ -1,6 +1,6 @@
 import { questionApplicable, questionSnapshot } from '../control/question-rules.js';
 
-import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, PROJECT_SCHEMA, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
+import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskTimelineDTO, type TaskViewDTO } from '@alpacawork/contract/control';
 import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
@@ -8,6 +8,7 @@ import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawo
 import { createHash } from 'node:crypto';
 import { errorRunReason } from './row-facts.js';
 import { controlTaskView } from '../control/task-dto.js';
+import { PROJECT_VALUES } from '../control/task-values-store.js';
 import type { PublishedFrame, RecordsReader } from './projection-contract.js';
 import { replyOf, withoutActivity } from './screen-derive.js';
 import { resultHeadOf } from './workspace-records.js';
@@ -332,7 +333,7 @@ export function projectedView(frame: PublishedFrame, id: string): TaskProjectedV
     ? currentReview(task, bundle.runs.some(run => !isRunEnded(run.state))) : null;
   const placements = [...derived.placements];
   const ids = currentPlacementRunIds(placements, derived.runs);
-  const schema = task.kind === 'project' ? { fields: [...PROJECT_SCHEMA], from: null }
+  const schema = task.kind === 'project' ? PROJECT_VALUES
     : records.schemaOf(records.projectOf(id));
   return { generation: frame.generation, sourcePv: frame.pv,
     task: { ...task, log: viewReportLog(task.log, new Set(placements.filter(item => item.responsible).map(item => item.id))) },

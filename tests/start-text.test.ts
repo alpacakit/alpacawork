@@ -92,18 +92,20 @@ const contextOf = (values: TaskValues) => renderContext(DEFAULT_SCHEMA, values, 
 /** `section`'s heading and lines, then a blank line, as the start text writes a section. */
 const section = (heading: string, lines: readonly string[]) => `${heading}\n${lines.join('\n')}\n\n`;
 
-test('the project policy goes as written, from the root, under each project\'s name; a project without one is left out', async t => {
+test('the project policy section gives each project\'s summary and full policy, from the root down', async t => {
   const w = await workspace(t);
-  const quiet = await w.create('Quiet', w.project, 'project');
+  const mobile = await w.create('Mobile', w.project, 'project');
+  const quiet = await w.create('Quiet', mobile, 'project');
   const work = await w.create('Work', quiet);
-  // No project has a policy yet: there is nothing to send.
   assert.equal(headings(await launch(w, work)).includes(POLICY.slice(3)), false);
-  // A project's policy is free text, carried whole: nothing is picked out of it.
   const root = 'Goal: ship the product.\n- Delegated scope: research and implementation are delegated\n- Do not touch production';
   await w.write('P1', { project_policy: root });
-  await w.write(w.project, { project_policy: 'Ship a small increment' });
+  await w.write(w.project, { project_policy: 'Ship a small increment', project_summary: 'Accounting and monthly close' });
+  await w.write(mobile, { project_summary: 'Mobile releases\n and maintenance' });
   const chain = section(POLICY, ['Listed from the root project down.',
-    `\n### alpacawork (P1)\n${root}`, `\n### Test project (${w.project})\nShip a small increment`]);
+    `\n### alpacawork (P1)\n${root}`,
+    `\n### Test project (${w.project})\nSummary: Accounting and monthly close\n\nShip a small increment`,
+    `\n### Mobile (${mobile})\nSummary: Mobile releases and maintenance`]);
   const prompt = await launch(w, work);
   assert.ok(prompt.includes(chain), prompt);
   assert.equal(prompt.includes(`(${quiet})`), false);
@@ -132,10 +134,11 @@ test('a continuation repeats the project policy only when a project of the chain
   const continued = await launch(w, work, { mode: 'continue', since });
   assert.deepEqual(headings(continued), ['Request']);
   assert.match(continued.split('\n')[0]!, /continuing the same conversation/);
-  await w.write(w.project, { project_policy: 'Ship an even smaller increment' });
+  await w.commands.update({ id: w.project, values: { project_summary: 'Accounting releases' },
+    expectedTaskHash: (await w.tasks.get(w.project)).hash });
   const changed = await launch(w, work, { mode: 'continue', since });
   assert.deepEqual(headings(changed), [POLICY.slice(3), 'Request']);
-  assert.ok(changed.includes('Ship an even smaller increment'));
+  assert.ok(changed.includes('Summary: Accounting releases\n\nShip a small increment'));
 });
 
 test('what changed below since the previous request is one line per child with a record its parent sees', async t => {
