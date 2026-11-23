@@ -1,6 +1,6 @@
 import { answerTask } from './fixtures';
 import { expect, test } from 'vitest';
-import { decideOf, offeredChoices } from '../src/domain/questions';
+import { decideOf, offeredChoices, readAnswer } from '../src/domain/questions';
 import { choiceAnswer, serialize } from '../src/features/coordinator/editor/document';
 import { splitMessage } from '../src/features/coordinator/editor/wire';
 import { completionQuestion, descriptiveQuestion } from '../../../tests/fixtures/descriptive-question';
@@ -30,3 +30,10 @@ for (const [values, expected] of [
     }
   });
 }
+
+test('a sent answer reads as its question number and word, the app\'s own words by their names on the screen', () => {
+  const names = { stop: '中止', other: 'それ以外' };
+  expect(readAnswer('1-other', names)).toEqual({ n: '1', word: 'それ以外' });
+  expect(readAnswer('2-stop', names)).toEqual({ n: '2', word: '中止' });
+  expect(readAnswer('1-B', names)).toEqual({ n: '1', word: 'B' });
+});

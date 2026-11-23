@@ -20,18 +20,14 @@ type Box = { top: number; bottom: number; left: number; right: number };
  * anywhere on a computer), the conversation's notice over it, and the notices.
  */
 const OVER_READER = "[data-coordinator-card] > *, [data-coordinator-capsule], [data-composer-frame], [data-coordinator-panel], [data-coordinator-pill], [data-toast]";
-/** The section a refused swipe rings: its choices, from the Recommended label over them down to the line under them. */
+/** The section a refused swipe rings: its choices, down to the line under them. */
 function sectionOf(question: HTMLElement, group: HTMLElement): Box {
   const box = group.getBoundingClientRect(), hint = question.querySelector("[data-ask-hint]")?.getBoundingClientRect();
-  const labels = [...group.querySelectorAll("[data-recommended]")].map(each => each.getBoundingClientRect().top);
-  return { top: Math.min(box.top, ...labels), bottom: Math.max(box.bottom, hint?.bottom ?? box.bottom), left: box.left, right: box.right };
+  return { top: box.top, bottom: Math.max(box.bottom, hint?.bottom ?? box.bottom), left: box.left, right: box.right };
 }
-/** What a refused swipe brings into sight: each choice of `group` (with the Recommended label over it), and the line under them when it says why. */
+/** What a refused swipe brings into sight: each choice of `group`, and the line under them when it says why. */
 function choicesOf(question: HTMLElement, group: HTMLElement): Box[] {
-  const boxes = [...group.children].filter(each => each.getClientRects().length).map(each => {
-    const box = each.getBoundingClientRect(), label = each.querySelector("[data-recommended]")?.getBoundingClientRect();
-    return { top: Math.min(box.top, label?.top ?? box.top), bottom: box.bottom, left: box.left, right: box.right };
-  });
+  const boxes: Box[] = [...group.children].filter(each => each.getClientRects().length).map(each => each.getBoundingClientRect());
   const hint = question.querySelector("[data-ask-hint]");
   if (hint?.textContent?.trim()) boxes.push(hint.getBoundingClientRect());
   return boxes;

@@ -1,3 +1,4 @@
+import { OTHER_WORD } from '@alpacawork/contract';
 import { recordedAgent, type EndAgent } from './end-agent';
 import { reportFlow, type Flow, type FlowEnd, type OpenTask, type Party, type TaskLookup } from './flow';
 import { displayKind, reportTone, type Released, type ReportEvent } from './report-events';
@@ -191,7 +192,8 @@ export function historyRows(reports: readonly ReportEvent[], open: OpenTask, tas
   const outcomeOf = ({ report, flow }: Said): RowOutcome | null => {
     if (report.kind !== 'question' && report.kind !== 'review') return null;
     const answer = report.kind === 'question' ? answers.get(`${report.taskId}:${report.id}`) : undefined;
-    if (answer) return { kind: 'answered', who: nameEnd(answer.flow.from).party, at: answer.report.at };
+    // A question asked of the person is answered by them, whoever carried their words to it (the coordinator does).
+    if (answer) return { kind: 'answered', who: report.askedTo === 'user' ? 'you' : nameEnd(answer.flow.from).party, at: answer.report.at };
     if (report.released) {
       const after = afterWait.get(report.key)!;
       return closedBy(report, report.released, after.next, after.closing);
@@ -233,5 +235,8 @@ export function sameRow(a: HistoryRow, b: HistoryRow): boolean {
     && a.older.length === b.older.length && a.older.every((each, at) => fields(each, b.older[at]!)) && fields(a.report, b.report) && same(a.flow, b.flow);
 }
 
-/** An answer as a sentence: the choice's words, without the number a choice is answered with. */
-export const answerLine = (words: string) => firstReportLine(words).replace(/^\d+-(?=\S)/, '');
+/**
+ * An answer as a sentence: the choice's words, without the number a choice is answered with. Other is said by the
+ * person's own words after it, so its word (kept by the app, never the person's) goes too.
+ */
+export const answerLine = (words: string) => firstReportLine(words).replace(new RegExp(`^\\d+-(?:${OTHER_WORD}(?:\\s+|$))?`), '');
