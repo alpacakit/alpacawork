@@ -39,7 +39,7 @@ test('skill invocations must match the first admission even when the client retr
   for (const text of [retry.text, `$demo-skill-extra ${retry.text}`]) {
     const refusal = await post({ ...retry, text });
     assert.equal(refusal.status, 409);
-    assert.deepEqual((await refusal.json()).error.reason, { kind: 'coordinator_ai_changed' });
+    assert.deepEqual((await refusal.json()).error.reason, { kind: 'skill_invocation_mismatch' });
     assert.ok(!owner.read().turns.some(turn => turn.id === retry.id));
   }
 

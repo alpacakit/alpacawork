@@ -39,7 +39,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
   } finally { writer.close(); }
   process.env.PATH = installAgentStub(root, adapter === 'claude' ? 'claude' : 'alpacawork-agent', [process.execPath, agent, ...(adapter === 'claude' ? ['--fixture-native'] : [])]);
   let server = await startServer(root, 0, options);
-  const get = async () => coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', server.url))).json()).conversation as { id: string; nextLaunch: import('@alpacawork/contract').AiRow | null; turns: Turn[] };
+  const get = async () => coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', server.url))).json()).conversation as { id: string; nextLaunch: import('@alpacawork/contract/coordinator').CoordinatorNextLaunch | null; turns: Turn[] };
   const conversationId = (await get()).id;
   const post = async (path: string, body: unknown) => {
     const response = await fetch(new URL(`/api/coordinator/${path}`, server.url), { method: 'POST',

@@ -22,7 +22,7 @@ export function assertSkillInvocations(adapter: string, text: string, skills: re
   const words = new Set(text.split(/\s+/u));
   if (!invocation || skills.some(name => !words.has(invocation + name)))
     throw new Problem(PROBLEM_CODE.conflict, 'The message uses a different skill invocation than the selected coordinator. Check the skills and send it again.',
-      undefined, { reason: { kind: 'coordinator_ai_changed' } });
+      undefined, { reason: { kind: 'skill_invocation_mismatch' } });
 }
 
 /**

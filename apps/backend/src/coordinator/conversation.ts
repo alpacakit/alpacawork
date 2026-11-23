@@ -99,7 +99,11 @@ export class CoordinatorConversation {
   seenRevision(): string | null { return this.observations.revision(); }
   private project(db: DatabaseSync, store: RunStore, conversation: Conversation, settings = readAgentsSettings(this.root)): ConversationView {
     const observed = this.observations.get()?.value;
-    return view(db, store, conversation, settings, new Set(observed?.conversationId === conversation.id ? observed.seen : []), run => { this.running = run; });
+    const runs = store.coordinatorRuns(conversation.id);
+    const history = view(db, store, conversation, runs, new Set(observed?.conversationId === conversation.id ? observed.seen : []),
+      run => { this.running = run; });
+    const next = settings.ok ? coordinatorNextLaunch(settings.config, runs) : null;
+    return { ...history, nextLaunch: next?.row ? { agent: next.row.agent, values: next.appliedValues } : null };
   }
   /** Only this small projection is sampled for stdout changes; no conversation digest or transcript changes. */
   work(): ControlIndexDTO['coordinatorWork'] {

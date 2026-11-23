@@ -270,7 +270,7 @@ export const controlTreeSchema = z.object({
     words: z.string(), answer: z.string().nullable(), answerFiles: answerFilesSchema.optional() }).strict()),
   /** When the user asked for each Task they asked for (its mark's utterance, else its mark's record). */
   requestedByUser: z.record(taskIdSchema, z.object({ at: z.iso.datetime({ offset: true }) }).strict()),
-  profiles: z.array(z.object({ key: z.string().min(1), choices: launchChoicesSchema, initialValues: selectionSchema.optional(),
+  profiles: z.array(z.object({ key: z.string().min(1), choices: launchChoicesSchema,
     without: agentSettingShapeSchema.shape.without.unwrap() }).strict()),
   /** The workspace's fields (task-schema fieldCatalog: the defaults with the stored definitions over them). */
   fieldCatalog: z.array(fieldDefShape),
@@ -497,7 +497,6 @@ const indexFields = {
   person: z.object({ settings: z.string().nullable(), notices: z.string().nullable(), coordinator: coordinatorMarkerSchema.nullable() }).strict(),
   /** Ephemeral work from stdout; changing it does not invalidate the conversation's persistent read. */
   coordinatorWork: coordinatorWorkSchema,
-  /** Where the person's next new coordinator conversation starts (a small record, carried whole). */
   presence: z.object({ state: z.enum(['present', 'away', 'muted']), until: z.string().nullable() }).strict(),
   /** Set while this machine is tight (Machine status); null otherwise and where it is not measured. */
   host: hostNoticeSchema.nullable(),

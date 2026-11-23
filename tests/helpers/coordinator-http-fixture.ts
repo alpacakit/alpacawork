@@ -22,7 +22,7 @@ export const WARM = 'Load the alpacawork skill and its coordinator reference, an
 
 export type Turn = { id: string; status: string; ask: string; intent?: unknown; answers?: unknown; answer: string | null; error: string | null };
 
-export type View = { id: string; nextLaunch: import('@alpacawork/contract').AiRow | null; warm: string; cancelled: string[]; turns: Turn[] };
+export type View = { id: string; nextLaunch: import('@alpacawork/contract/coordinator').CoordinatorNextLaunch | null; warm: string; cancelled: string[]; turns: Turn[] };
 
 export async function eventually<T>(check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   message: string, timeout = 20_000): Promise<T> {

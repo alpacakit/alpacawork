@@ -1,8 +1,8 @@
 import { z } from 'zod';
+export const selectedCandidateSchema =
+  z.string().refine(value => value.trim().length > 0 && value !== '-', 'Use null for unspecified, never empty or -');
 /** A selected value is a candidate or explicit omission. */
-export const selectedValueSchema = z.union([
-  z.string().refine(value => value.trim().length > 0 && value !== '-', 'Use null for unspecified, never empty or -'), z.null(),
-]);
+export const selectedValueSchema = z.union([selectedCandidateSchema, z.null()]);
 export const selectedValuesSchema = z.record(z.string(), selectedValueSchema);
 const fields = { key: z.string(), previous: z.string().nullable(), candidates: z.array(z.string().nullable()) };
 export const selectionProblemSchema = z.discriminatedUnion('reason', [

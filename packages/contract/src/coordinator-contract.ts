@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { aiRowSchema } from './ai-stack.js';
+import { launchArgumentValuesSchema } from './agent-settings.js';
 import { runAvailabilitySchema, runFailureSchema } from './run-failure.js';
 import { recordedProblemSchema } from './problem.js';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
@@ -123,6 +124,9 @@ export const coordinatorTurnSchema = z.object({
   answerFiles: z.array(answerFileSchema).optional(),
   result: coordinatorResultSchema.nullable(),
 });
+/** The agent and selected values actually passed in the next message's launch arguments. */
+export const coordinatorNextLaunchSchema = z.object({ agent: aiRowSchema.shape.agent, values: launchArgumentValuesSchema }).strict();
+export type CoordinatorNextLaunch = z.infer<typeof coordinatorNextLaunchSchema>;
 /**
  * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
  * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
@@ -130,7 +134,7 @@ export const coordinatorTurnSchema = z.object({
  * `cancelled`: the messages withdrawn before they went.
  */
 export const coordinatorConversationSchema = z.object({
-  id: z.string().min(1), nextLaunch: aiRowSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
+  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
   /** A message admitted at the end of this conversation now would wait behind its work or delivery. */
   busy: z.boolean(),
   cancelled: z.array(z.string()), turns: z.array(coordinatorTurnSchema),

@@ -12,8 +12,6 @@ import { blockedInvocations, queuedInputReservations } from '../runs/execution-c
 import { readRunFailure } from '../runs/error-cause.js';
 import { resultsOf } from './messages.js';
 import { replyView } from './reply.js';
-import type { AgentsSettingsResult } from '../agents-settings.js';
-import { coordinatorNextLaunch } from './continuation.js';
 
 export type Conversation = { id: string; warmRequestId: string | null };
 /** The last time a queued message was handed to the agent at work: how far it got, and into whose Run. */
@@ -81,9 +79,10 @@ export function readable(turn: CoordinatorTurn): boolean {
  * The conversation as the screen shows it, from its Requests, their coordinator Runs and those Runs' inputs: the
  * messages in the order they were sent, the warm-up apart.
  */
-export function view(db: DatabaseSync, store: RunStore, conversation: Conversation, settings?: AgentsSettingsResult, seen: ReadonlySet<string> = new Set(),
-  running: (run: CoordinatorRunRecord | null) => void = () => {}): ConversationView {
-  const runs = store.coordinatorRuns(conversation.id), inputs = handovers(db, conversation.id);
+export function view(db: DatabaseSync, store: RunStore, conversation: Conversation,
+  runs: readonly CoordinatorRunRecord[] = store.coordinatorRuns(conversation.id), seen: ReadonlySet<string> = new Set(),
+  running: (run: CoordinatorRunRecord | null) => void = () => {}): Omit<ConversationView, 'nextLaunch'> {
+  const inputs = handovers(db, conversation.id);
   running(runs.filter(run => run.state === 'running' && run.requestId !== conversation.warmRequestId).at(-1) ?? null);
   // The same decision snapshot and turn-order rule as the scheduler, including hidden warm-up and delivery holds.
   const decisions = store.readForSettle(conversation.id);
@@ -131,9 +130,7 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
         ...again ? { sentAgain: true as const } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
   }
-  const next = settings?.ok ? coordinatorNextLaunch(settings.config, runs) : null;
-  const nextLaunch = next?.row ? { agent: next.row.agent, values: next.appliedValues } : null;
-  return { id: conversation.id, nextLaunch,
+  return { id: conversation.id,
     warm: !warm ? 'none' : isRunMoving(warm.state) ? 'preparing' : warm.state === 'succeeded' ? 'ready' : 'failed',
     busy: !!laneAhead(decisions, { role: 'coordinator', conversationId: conversation.id }, blocked, reservations), cancelled, turns };
 }

@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId } from './agent-adapters.js';
-import { selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
+import { launchArgumentValuesSchema, selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
 import { appliedLaunchValues, prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
 import type { SystemVariableName } from './agent-variables.js';
 import { resolveAgentSelection, SelectionRequired, type AgentChoice, type ResolvedAgentSelection,
@@ -91,7 +91,7 @@ export function prepareAgentLaunch(compiled: CompiledAgentSetting, admission: La
 /** Live coordinator admission: a resume must capture its fresh-start alternative now.
  * The saved-record extension above also accepts null for migrated ended records.
  */
-const coordinatorAdmissionFields = { launch: agentLaunchSchema, appliedValues: selectionSchema };
+const coordinatorAdmissionFields = { launch: agentLaunchSchema, appliedValues: launchArgumentValuesSchema };
 export const coordinatorLaunchAdmissionSchema = z.discriminatedUnion('mode', [
   z.object({ ...coordinatorAdmissionFields, mode: z.literal('start'), restartArgv: z.null() }).strict(),
   z.object({ ...coordinatorAdmissionFields, mode: z.literal('resume'), restartArgv: launchArgvSchema }).strict(),
