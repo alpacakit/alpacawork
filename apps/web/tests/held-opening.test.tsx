@@ -72,7 +72,7 @@ function serve() {
   setConversationState({ root: fixture.asked.root, conversation: conversation(), open: false, expanded: false, engaged: false, read: true, error: null });
   return sent;
 }
-const contents = <><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></>;
+const contents = <><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></>;
 const hold = () => fireEvent.keyDown(document.body, { key: 'h' });
 
 // A manual opening uses the list then at hand and keeps its shelf for that card.

@@ -36,7 +36,7 @@ function StateWord({ state }: { state: TaskState }) {
   return <span className="min-w-0 flex-1 truncate">{useStateLook(state).word}</span>;
 }
 
-/** The choices as the model picker's rows (components/ui/menu-rows): the picked one ticked and filled; ↑ ↓ move it. */
+/** The choices as a menu's rows (components/ui/menu-rows): the picked one ticked and filled; ↑ ↓ move it. */
 function StateChoices({ task, choices, value, onChange, disabled }: {
   task: Task; choices: StateChoice[]; value: StateChoice; onChange: (choice: StateChoice) => void; disabled: boolean;
 }) {

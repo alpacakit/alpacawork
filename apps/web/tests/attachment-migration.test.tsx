@@ -48,7 +48,7 @@ afterEach(async ({ task }) => {
 function Surface() {
   const turns = useConversation(state => state.conversation?.turns ?? []);
   return <ShownConversationProvider><CoordinatorThread turns={turns} retry={() => {}} />
-    <CoordinatorInput launch={{ next: { agent: 'fake', values: {} }, ready: false }} profile="fake" /></ShownConversationProvider>;
+    <CoordinatorInput launch={{ next: { agent: 'fake', values: {} }, ready: false }} /></ShownConversationProvider>;
 }
 async function fixture() {
   faults = [];

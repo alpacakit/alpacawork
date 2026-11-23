@@ -143,7 +143,6 @@
       "conversation_belongs_alpacawork_run": "Esta conversa pertence a uma execução do alpacawork",
       "conversation_has_changed": "A conversa foi alterada",
       "conversation_head_changed": "A execução mais recente da conversa mudou. Recarregue e tente novamente",
-      "conversation_id_required": "O ID da conversa é obrigatório",
       "conversation_requires_review_before_another_request": "A conversa precisa de revisão antes da próxima solicitação",
       "conversation_session_unavailable": "A sessão da conversa não está disponível",
       "coordinator_attachment_not_conversation": "O anexo do coordenador não está nesta conversa",

@@ -32,7 +32,7 @@ function queued(text = 'words', posted = true) {
   return id;
 }
 function Rows() { const shown = useShownConversation(), queue = useWaiting(); return <><output data-testid="local">{JSON.stringify(shown.local)}</output>{shown.localThread.map(turn => <LocalOutcome key={turn.id} turn={turn} />)}<WaitingRows queue={queue} open={() => {}} /></>; }
-function mount(input = true) { return render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><Rows />{input && <CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" />}</ShownConversationProvider></TestWorkspace>); }
+function mount(input = true) { return render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><Rows />{input && <CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} />}</ShownConversationProvider></TestWorkspace>); }
 // Keep Rows and the actual input inside the same projection/provider.
 beforeAll(async () => { await startI18n(); });
 beforeEach(async () => { await i18n.changeLanguage('ja'); useOutbox.setState({ live: new Set(), resend: null }); });

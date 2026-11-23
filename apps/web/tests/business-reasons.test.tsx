@@ -128,11 +128,9 @@ test('a refused automatic wake says the business reason serve kept with it', asy
   expect(turnSentence(ball, i18n.getFixedT(null, 'ui'))).toBe(problemReasonText(businessReasonSchema.parse(problemReason)));
 });
 
-test("a Task's agent refused for a removed row is told it needs a new conversation, not the coordinator's clear button, which its picker keeps", async () => {
+test("a Task's agent refused for a removed row is told it needs a new conversation, not the coordinator's clear button", async () => {
   const { ballSchema } = await import('@alpacawork/contract');
   const { turnSentence } = await import('../src/features/reader/TurnReason');
-  const { renderHook } = await import('@testing-library/react');
-  const { useChoiceText } = await import('../src/features/forms/choice-text');
   const removed: SelectionProblem = { key: 'verbosity', previous: 'low', candidates: [], reason: 'removed', recovery: 'new_conversation' };
   const ball = ballSchema.parse({ holder: 'user', reason: 'blocked', at: '2026-11-05T00:00:00Z', key: 'K1', questionId: null, aboutRunId: null,
     count: null, code: 'selection_required', problemReason: { kind: 'selection_required', problems: [removed] }, failure: null });
@@ -142,6 +140,5 @@ test("a Task's agent refused for a removed row is told it needs a new conversati
     const said = turnSentence(ball, i18n.getFixedT(null, 'ui'));
     expect(said).toContain(i18n.t('forms:agentPicker.next.anew'));
     expect(said).not.toContain(i18n.t('ui:coordinatorCard.clear'));
-    expect(renderHook(() => useChoiceText()).result.current.problem(removed)).toContain(i18n.t('ui:coordinatorCard.clear'));
   }
 });

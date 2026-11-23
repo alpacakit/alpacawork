@@ -6,11 +6,11 @@ const row = (key: string) => key === "model" ? i18n.t("forms:responsibleForm.mod
 const value = (choice: string | null) => choice ?? i18n.t("forms:agentPicker.none");
 /**
  * One previous value to choose again, in full (why, and the value): a launch choice and a refusal's reason
- * (selection_required) both say it. A conversation that cannot go on ends with `next`, what starts it anew where it is
- * said: by default only that it needs a new conversation, since a refusal may be about any conversation.
+ * (selection_required) both say it. A conversation that cannot go on ends saying it needs a new conversation, since a
+ * refusal may be about any conversation.
  */
-export function selectionProblemText(problem: SelectionProblem, next = i18n.t("forms:agentPicker.next.anew")): string {
-  const words = { row: row(problem.key), previous: value(problem.previous), next };
+export function selectionProblemText(problem: SelectionProblem): string {
+  const words = { row: row(problem.key), previous: value(problem.previous), next: i18n.t("forms:agentPicker.next.anew") };
   // Literal keys, so the extractor keeps each one.
   switch (problem.reason) {
     case "invalid_value": return i18n.t("forms:agentPicker.problem.invalid_value", words);
@@ -24,8 +24,7 @@ export function selectionProblemText(problem: SelectionProblem, next = i18n.t("f
  * `problem` says all (why, and the previous value). */
 const choiceText = Object.assign((choice: string | null) => value(choice), {
   row,
-  problem: (problem: SelectionProblem) => selectionProblemText(problem,
-    i18n.t("forms:agentPicker.next.clear", { action: i18n.t("ui:coordinatorCard.clear") })),
+  problem: selectionProblemText,
 });
 export function useChoiceText() {
   useTranslation("forms"); // Drawn again when the language changes.

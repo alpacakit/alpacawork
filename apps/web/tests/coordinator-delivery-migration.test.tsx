@@ -33,7 +33,7 @@ function Surface() {
   const area = useRef<HTMLDivElement>(null);
   return <TestWorkspace><ShownConversationProvider><div ref={area}>
     <CoordinatorThread turns={turns} retry={() => {}} />
-  </div><ThreadQueue area={area} /><Toaster /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></ShownConversationProvider></TestWorkspace>;
+  </div><ThreadQueue area={area} /><Toaster /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></ShownConversationProvider></TestWorkspace>;
 }
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 beforeEach(() => {

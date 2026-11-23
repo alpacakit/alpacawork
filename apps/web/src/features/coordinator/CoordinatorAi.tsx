@@ -2,7 +2,7 @@
  * states: default · hover · focus · active · disabled · warning (none can run)
  */
 import { useTranslation } from "react-i18next";
-import type { AiRow } from "@alpacawork/contract";
+import type { CoordinatorNextLaunch } from "@alpacawork/contract/coordinator";
 import { Icon } from "@/components/ui/icon";
 import { launchName, modelLabel } from "@/domain/agent-label";
 import { AgentLabel } from "@/features/people/AgentLabel";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  * can run (`next` null), the same place says so in the warning colour and leads there too; the send waits meanwhile.
  * `className`: the row's own look for it (one of its quiet tools).
  */
-export function CoordinatorAi({ next, className }: { next: AiRow | null; className?: string }) {
+export function CoordinatorAi({ next, className }: { next: CoordinatorNextLaunch | null; className?: string }) {
   const { t } = useTranslation("ui");
   const label = next ? modelLabel(launchName(next.agent, next.values).full) : null;
   // Its name in full for a reader and a pointer's tip; what is shown is the model alone (where a role name would go).

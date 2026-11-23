@@ -1,8 +1,7 @@
 {
   "agentPicker": {
     "next": {
-      "anew": "É preciso uma nova conversa",
-      "clear": "Recomece com “{{action}}”"
+      "anew": "É preciso uma nova conversa"
     },
     "none": "Nenhum",
     "problem": {

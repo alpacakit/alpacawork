@@ -102,7 +102,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
     return problemResponse("not_found");
   });
   setConversationState({ conversation: conversation(), open: true, expanded: false, engaged: false, read: true, error: null });
-  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /><Toaster /></TestWorkspace>);
+  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></TestWorkspace>);
   // The coordinator's Run ends, and the server says what its messages did (`outcome`).
   return { view, asked, reports, fetcher, finish: async (outcome: CoordinatorResult) => { status = "succeeded"; result = outcome; await act(async () => { pending.splice(0).forEach(resolve => resolve(outcome)); }); await act(async () => { await useConversation.getState().refresh(); }); } };
 }

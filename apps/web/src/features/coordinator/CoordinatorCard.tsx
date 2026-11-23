@@ -61,7 +61,7 @@ function useCoordinatorLaunch() {
   const read = useFrameSelector(data => data !== null);
   const conversation = useConversation(state => state.conversation);
   const next = conversation?.nextLaunch ?? null;
-  return { next, profile: next?.agent ?? "", ready: read && conversation !== null };
+  return { next, ready: read && conversation !== null };
 }
 const CoordinatorFooter = memo(function CoordinatorFooter() {
   const launch = useCoordinatorLaunch();
@@ -106,7 +106,7 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   }, [ready, panel, project, index, serverTasks, presentation, root, draft.key, draft.locked, draft.entry.values.phase, draft.entry.values.seen,
     draft.entry.values.seenProject, emptied(draft.entry.values), revision, live, conversation?.id]);
 
-  return <CoordinatorInput launch={launch} profile={launch.profile} />;
+  return <CoordinatorInput launch={launch} />;
 });
 
 /**
@@ -310,7 +310,7 @@ function Card() {
   const disabled = useWriteDisabled();
   const launch = useCoordinatorLaunch();
   const engaged = useConversation(state => state.engaged);
-  const catalog = useCoordinatorSkills(launch.profile);
+  const catalog = useCoordinatorSkills(launch.next?.agent ?? '');
   const card = useRef<HTMLDivElement>(null), panel = useRef<HTMLDivElement>(null), outline = useRef<HTMLDivElement>(null), entrance = useRef<HTMLDivElement>(null);
   const [own, setOwn] = useState<Window | null>(null);
   const opening = useRef(false);

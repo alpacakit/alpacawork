@@ -40,7 +40,7 @@ test('consecutive fixed-question answers reach HTTP despite Task changes and una
     }
     return new Response(snapshotJson(url.includes('/skills') ? { status: 'unavailable', profile: 'claude', skills: [] } : conversation()));
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   const input = document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input.editor).toBeTruthy());
   for (const [i, question] of ['Q1', 'Q2'].entries()) {
@@ -69,7 +69,7 @@ test('a failed pre-send read returns the unsent draft without asking to fix its 
     return new Response(snapshotJson(conversation()));
   }));
   const notice = vi.spyOn(notify, 'error');
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   const input = document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input.editor).toBeTruthy());
   act(() => input.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [

@@ -112,7 +112,7 @@ function serve() {
   });
   setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false }, open: false, expanded: false, error: null });
 }
-const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /><Toaster /></>;
+const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></>;
 let shownData: ReturnType<typeof screenOf>;
 function show(tasks: TaskFixture[], open: string) {
   serve();

@@ -143,7 +143,6 @@
       "conversation_belongs_alpacawork_run": "This conversation belongs to an alpacawork run",
       "conversation_has_changed": "The conversation has changed",
       "conversation_head_changed": "The conversation's latest run changed. Reload and try again",
-      "conversation_id_required": "Conversation ID is required",
       "conversation_requires_review_before_another_request": "The conversation needs review before the next request",
       "conversation_session_unavailable": "The conversation session is unavailable",
       "coordinator_attachment_not_conversation": "The coordinator attachment is not in this conversation",

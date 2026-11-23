@@ -54,7 +54,7 @@ test('a send whose checks a new read session ended, its conversation already rea
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -88,7 +88,7 @@ test('an attempt that could not save its checkpoint keeps the notice saying so w
     if (url.includes('task/view')) return reply(viewsOf(served).find(v => v.task.id === new URL(url, 'http://fixture').searchParams.get('task')));
     return reply(conv());
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -129,7 +129,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       ...(submitted.tasks ? { tasks: submitted.tasks } : {}), ...(submitted.answers ? { answers: submitted.answers } : {}), attachments: [],
       status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null }]);
     vi.stubGlobal('fetch', fetcher);
-    render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+    render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
     act(() => receiveFullIndex(queryClient, index));
     const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
     await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -185,44 +185,6 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
     }
   });
 
-test('a message written with a skill for Claude, whose settings turned to Codex while it waited, goes back, and sent again unchanged goes with the Codex mark', async () => {
-  const served = tree({ tasks: [dto({ id: 'T1' })] });
-  const gate = deferred<Response>();
-  const codex = { status: 'ready', profile: 'codex-team', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] };
-  let switched = false, preflighting = false;
-  const posts: any[] = [];
-  const fetcher = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-    if (url.startsWith('/api/coordinator/skills') && !switched && useOutbox.getState().live.size > 0) { preflighting = true; return gate.promise; }
-    if (url.startsWith('/api/coordinator/skills')) return reply(switched ? codex : catalog);
-    if (url === '/api/coordinator/messages') posts.push(JSON.parse(String(init?.body)));
-    return reply(conv());
-  });
-  vi.stubGlobal('fetch', fetcher);
-  const said = vi.spyOn(notify, 'error');
-  const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} profile={agent} /></TestWorkspace>;
-  const view = render(input('claude'));
-  const editor = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
-  await waitFor(() => expect(editor?.editor).toBeTruthy());
-  await tick();
-  act(() => editor.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'use it ' }, { type: 'skillLabel', attrs: skill }] }] }));
-  fireEvent.click(window.document.querySelector('[data-ask-send]')!);
-  await waitFor(() => expect(preflighting).toBe(true));
-  // Meanwhile the input's AI became a Codex profile under another name: the same skill is called with `$` now.
-  switched = true;
-  await act(async () => { gate.resolve(reply(codex)); });
-  await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); await tick();
-  expect(posts).toHaveLength(0);
-  expect(JSON.stringify(editor.editor.getJSON())).toContain('use it');
-  expect(said.mock.calls.map(([text]) => String(text)).join('\n')).toContain('changed');
-  // The input now shows the Codex AI; pressed again with nothing changed, the words go with its mark.
-  view.rerender(input('codex-team'));
-  await tick();
-  await waitFor(() => expect(window.document.querySelector<HTMLButtonElement>('[data-ask-send]')!.disabled).toBe(false));
-  fireEvent.click(window.document.querySelector('[data-ask-send]')!);
-  await waitFor(() => expect(posts).toHaveLength(1));
-  expect(posts[0].text).toBe('use it $fixture-skill');
-});
-
 test.each(['the first send', 'a resend of the same ID after an unknown answer'])('a message serve refuses because the settings turned its AI to a Codex row (%s) goes back, and the next send goes with the Codex mark', async way => {
   const served = tree({ tasks: [dto({ id: 'T1' })] });
   const codex = { status: 'ready', profile: 'codex-team', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] };
@@ -235,13 +197,13 @@ test.each(['the first send', 'a resend of the same ID after an unknown answer'])
       posts.push(body);
       if (lost) { lost = false; throw new TypeError('network'); }
       if (!body.text.includes('$')) return new Response(JSON.stringify({ error: { code: 'conflict', message: 'Coordinator AI changed', retry: 'fix',
-        reason: { kind: 'coordinator_ai_changed' } } }), { status: 409 });
+        reason: { kind: 'skill_invocation_mismatch' } } }), { status: 409 });
       return reply(conv([{ id: body.id, at: new Date().toISOString(), ask: body.text, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }]));
     }
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} profile={agent} /></TestWorkspace>;
+  const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} /></TestWorkspace>;
   const view = render(input('claude'));
   const editor = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(editor?.editor).toBeTruthy());

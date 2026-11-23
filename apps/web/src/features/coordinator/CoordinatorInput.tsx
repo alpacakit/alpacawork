@@ -1,4 +1,4 @@
-import type { AiRow } from "@alpacawork/contract";
+import type { CoordinatorNextLaunch } from "@alpacawork/contract/coordinator";
 import { mutateInput } from './editor/draft';
 import { useSendGrace } from '@/data/send-grace';
 import { useQueryClient } from '@tanstack/react-query';
@@ -62,9 +62,7 @@ const EXPAND_ROOM = cn('[&[data-input-long]_[data-one-input]]:pr-11 narrow:[&[da
  * `launch.next`: the AI the next message goes to (the conversation's `nextLaunch`); null when none can run, and nothing
  * goes. `launch.ready`: the screen has read its workspace and conversation, so `next` is the server's word.
  */
-export function CoordinatorInput({ launch, profile }: {
-  launch: { next: AiRow | null; ready: boolean }; profile: string;
-}) {
+export function CoordinatorInput({ launch }: { launch: { next: CoordinatorNextLaunch | null; ready: boolean } }) {
   const { t } = useTranslation('ui');
   const conversation = useConversation(state => state.conversation);
   const open = useConversation(state => state.open);
@@ -117,6 +115,8 @@ export function CoordinatorInput({ launch, profile }: {
   }, [listen, voice.enabled, conversation, unreachable]);
 
   const files = useComposerFiles(draft.key, { kind: 'coordinator', conversationId: conversation?.id ?? '' }, !writing, inputDraftFiles(root, draft.entry.values.requestId!));
+  // The agent the next message goes to: its skills are the ones the input offers and checks.
+  const profile = launch.next?.agent ?? '';
   const catalog = useCoordinatorSkills(profile);
   const shared = useShared(state => state.shared);
   useEffect(() => {
@@ -295,8 +295,8 @@ export function CoordinatorInput({ launch, profile }: {
   // frame's bottom as from its side; the frame's rounding is that action's own plus those 8px (FRAME_ROUND), one curve
   // round the other, as the folded capsule's is. The words above start where the row's first mark does (LabelEditor).
   const row = 'flex min-h-10 flex-none flex-wrap items-center gap-1 px-2 pb-2 narrow:min-h-13 narrow:gap-0 narrow:px-2 narrow:pb-2 pointer-coarse:min-h-13 pointer-coarse:gap-0 pointer-coarse:px-2 pointer-coarse:pb-2';
-  // The model is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at or open.
-  const picker = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink data-[state=open]:border-transparent data-[state=open]:bg-hover narrow:h-11 pointer-coarse:h-11';
+  // The input's AI is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at.
+  const ai = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink narrow:h-11 pointer-coarse:h-11';
   const tool = inputTool;
   return <div data-one-input-area data-input-tall={tall || undefined} className="flex min-h-0 shrink flex-col border-t border-rule bg-raised p-2">
     {/* What stands over the words is what lasts about them (a draft that cannot be kept, notify.ts); a send that did not
@@ -329,7 +329,7 @@ export function CoordinatorInput({ launch, profile }: {
           <span className={cn("min-w-0 flex-1 self-stretch", !own && !narrow && "cursor-grab touch-none [[data-coordinator-held]_&]:cursor-grabbing")} />
           {/* The AI takes the room it needs before the ground does (grow-9), and keeps at least a finger's width (basis-11):
               narrower than that, it goes to the next line instead. */}
-          {launch.ready && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11"><CoordinatorAi next={launch.next} className={picker} /></span>}
+          {launch.ready && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11"><CoordinatorAi next={launch.next} className={ai} /></span>}
           <span className="ml-auto flex flex-none">
           {/* Initial release: voice.enabled && !content ? <VoiceInput voice={voice} disabled={unreachable} round className={cn(inputSpeak, inputFinger)} /> : */}<Button type="submit" data-ask-send className={action}
             aria-label={t('coordinatorCard.send')} title={closing ? t('coordinatorCard.clearingHint') : undefined} disabled={steady.disabled || !content} onClick={steady.press()}><Icon name="plane" className="size-4" /></Button>
