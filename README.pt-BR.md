@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">Deixe a gestão das suas IAs com a IA.</h3>
+<h3 align="center">Rode agentes de IA em todos os projetos com um só campo de mensagem.</h3>
 
 <p align="center">
-  Ela atribui trabalho ao Claude Code e ao Codex<br/>e acompanha o andamento deles.<br/>
-  Você não precisa mais ficar na frente do PC para trabalhar.
+  Faça um pedido. O Claude Code e o Codex no seu PC o dividem em tarefas e as rodam em paralelo.<br/>
+  Você responde às perguntas da IA e revisa os resultados. Também pelo celular.
 </p>
 
 <p align="center">

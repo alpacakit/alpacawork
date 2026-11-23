@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">AI の管理は、AI に任せる。</h3>
+<h3 align="center">ひとつの入力欄から、すべてのプロジェクトの AI を動かす。</h3>
 
 <p align="center">
-  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
-  PC の前に座って働くことから、解放されます。
+  頼みごとを書くと、PC の Claude Code や Codex が仕事を分けて同時に進めます。<br/>
+  あなたは AI からの質問に答えて、できあがりを確かめます。スマートフォンからも使えます。
 </p>
 
 <p align="center">

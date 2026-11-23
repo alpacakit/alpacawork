@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">让 AI 来管理你的 AI。</h3>
+<h3 align="center">用一个输入框，运行所有项目中的 AI 智能体。</h3>
 
 <p align="center">
-  为 Claude Code 和 Codex 指派工作，<br/>并跟进它们的进度。<br/>
-  你不必再坐在电脑前工作。
+  写下想做的事，你电脑上的 Claude Code 和 Codex 就会拆成多个任务，同时推进。<br/>
+  你来回答 AI 的提问、验收结果。在手机上也能使用。
 </p>
 
 <p align="center">
