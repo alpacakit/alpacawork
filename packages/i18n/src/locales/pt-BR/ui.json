@@ -10,11 +10,6 @@
       "none": "Não há IA para falar no campo de mensagem, então nada pode ser enviado. Toque para abrir as configurações",
       "setUp": "Configurar IA"
     },
-    "appHint": {
-      "close": "Fechar esta dica",
-      "detail": "Instale no PC ou abra pelo celular",
-      "open": "Usar no celular ou como app"
-    },
     "attached": "Somente anexos",
     "attempts": {
       "stopped": "{{agent}} — parou por {{reason}}",

@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { afterSend, closed, composing, edited, observed, restored } from '../src/features/coordinator/editor/lifecycle';
+import { afterSend, closed, composing, edited, observed, offered, restored } from '../src/features/coordinator/editor/lifecycle';
 import { documentSchema, draftDocument, emptyDocument, taskLabel, taskReferencesIn, textDocument, toggleAnswer, type Document, type Inline } from '../src/features/coordinator/editor/document';
 import { screenData, taskFixture, tree } from './fixtures';
 
@@ -219,4 +219,13 @@ test('editing compares normalized documents, retaining a prepared draft when onl
   const values = { ...fresh(), doc: ' { "content": [{"type":"paragraph"}], "type": "doc" } ' };
   expect(edited(values, current => current)).toBeNull();
   expect(values.phase).toBe('prepared');
+});
+
+test('an example takes an untouched draft\'s place after the label the screen put there, and still gives way to the next', () => {
+  const seeded = observed(fresh(), { panel: null, project: T253 })!;
+  const example = (text: string) => words(text).content[0]!;
+  const first = offered(seeded, example('Try this'))!;
+  expect(labels(first)).toEqual(['T253']);
+  expect(first.phase).toBe('prepared');
+  expect(labels(offered(first, example('Or this'))!)).toEqual(['T253']);
 });

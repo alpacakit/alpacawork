@@ -1,4 +1,33 @@
 {
+  "guide": {
+    "close": "Encerrar o guia",
+    "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
+    "example": "Esta é uma demonstração para experimentar o fluxo do alpacawork.\nCrie um HTML que mostre \"Hello\" em duas fontes e me pergunte qual é melhor.",
+    "moreExample": "Faça mais uma versão para eu poder comparar.",
+    "next": "Entendi",
+    "openSteps": "Abrir os passos",
+    "reopen": "Desfazer",
+    "say": {
+      "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}). Se quiser pedir outra coisa em seguida, você pode enviar mais instruções em vez de encerrar.",
+      "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
+      "answer": "Escolha uma opção e ela vai para o campo de mensagem. Envie como está para responder. Você também pode enviar outra mensagem sem escolher nenhuma.",
+      "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, abra a conversa em um bom momento e limpe com “{{clear}}”. Antes disso, peça que o que quiser guardar vire uma tarefa.",
+      "direct": "A IA da recepção responde aqui os pedidos curtos. Se você confiar um trabalho a ela, ele vira uma tarefa na lista.",
+      "label": "Esta etiqueta indica à IA de qual tarefa ou projeto você está falando. Sem ela, a IA entende pelo contexto da conversa.",
+      "more": "Depois de um relatório, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
+      "phone": "Mesmo longe do computador, você pode responder perguntas pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
+      "question": "Sua vez. Abra esta linha para ver a pergunta.",
+      "received": "A IA da recepção (o coordenador) recebeu o pedido. Leva um momento para passá-lo a uma IA.",
+      "result": "Chegou um relatório. Abra esta linha para ver o detalhe.",
+      "send": "Este é o único campo de mensagem. Todas as instruções são dadas por aqui.",
+      "sendAgain": "Escreva aqui o que você quer que seja feito e envie.",
+      "sendReady": "Envie com este botão.",
+      "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
+      "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça no campo de mensagem para começar.",
+      "working": "Isto é uma tarefa. A IA responsável faz o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa passa para “{{section}}”."
+    },
+    "tryExample": "Inserir um prompt de demonstração"
+  },
   "home": {
     "awaited": "Aguardando",
     "error": "Requer atenção",
@@ -113,24 +142,13 @@
     "yourTurn": "Sua vez"
   },
   "welcome": {
-    "examples": {
-      "decide": {
-        "label": "Escolher uma ideia de minijogo e mandar criar",
-        "shows": "A IA sugere ideias; escolha uma e ela cria esse jogo.",
-        "words": "Quero um minijogo que eu possa jogar no navegador. Sugira 3 ideias e me pergunte qual criar. Depois, crie a que eu escolher em cerca de 5 minutos. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
-      },
-      "models": {
-        "label": "Pedir um jogo da cobrinha a 3 modelos e comparar",
-        "shows": "Modelos diferentes criam em paralelo e, no fim, você escolhe qual manter.",
-        "words": "Por favor, crie um jogo da cobrinha que rode no navegador, 3 vezes em paralelo, cada uma com um modelo diferente; se não houver modelos suficientes, varie o esforço. Quando ficarem prontos, me pergunte qual manter. Isto é um teste, então use configurações leves e leve cerca de 5 minutos. Por favor, escreva tudo em português."
-      },
-      "settings": {
-        "label": "Definir uma regra de trabalho e quantos agentes rodam ao mesmo tempo",
-        "shows": "Uma regra entra na política do projeto, e no máximo 4 agentes rodam ao mesmo tempo.",
-        "words": "Por favor, adicione esta regra à política deste projeto: \"Ao terminar, relate o que você mudou em até 3 linhas.\" Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
-      }
+    "lead": "Um lugar para entregar trabalho a uma equipe de IAs.",
+    "picture": {
+      "listed": "Elas entram na lista. O que precisa de você aparece em “{{section}}”",
+      "own": "Uma IA assume cada tarefa como responsável e a divide em subtarefas quando preciso",
+      "send": "Você envia um pedido",
+      "split": "A IA da recepção (o coordenador) transforma em tarefas"
     },
-    "lead": "Escolha um exemplo para experimentar.",
     "title": "Boas-vindas ao alpacawork"
   }
 }

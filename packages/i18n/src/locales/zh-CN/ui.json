@@ -10,11 +10,6 @@
       "none": "没有可在输入框对话的 AI，无法发送。点按打开设置",
       "setUp": "设置 AI"
     },
-    "appHint": {
-      "close": "关闭此提示",
-      "detail": "安装为电脑应用，或在手机上打开",
-      "open": "在手机上或作为应用使用"
-    },
     "attached": "仅附件",
     "attempts": {
       "stopped": "{{agent}} — 因{{reason}}而停止",

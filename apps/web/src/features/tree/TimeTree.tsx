@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
 import { HOME_SECTIONS, userTurn } from "@alpacawork/contract";
+import { turnKind } from "@/features/guide/guide-definition";
 import type { TaskProjectedPageDTO, TaskPageRowDTO, TaskProjectedTimelineDTO } from "@alpacawork/contract/control";
 import { StateIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
@@ -187,7 +188,8 @@ export function TimeTree() {
   // Done: the finished rows of the project in view (its nested projects' included), as the index pages and counts them.
   const project = useViewStore((state) => state.project);
   const closedCounts = useClosedCounts();
-  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place.
+  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place; so does
+  // the getting-started guide's first screen, shown again, in place of every section (useListPlace).
   const welcome = useListPlace() === "welcome";
   const finishedOptions = resources.finished(info.root, null, project);
   const finished = useInfiniteQuery({ ...finishedOptions, enabled: doneOpen });
@@ -237,7 +239,7 @@ export function TimeTree() {
     // shelved ones at its end.
     const holds = { ...home.counts, done: closedCounts.finished + closedCounts.shelved };
     const nodes: Node[] = [];
-    const sections: Section[] = HOME_SECTIONS.filter((section) => holds[section] > 0).map((section) => {
+    const sections: Section[] = HOME_SECTIONS.filter((section) => !welcome && holds[section] > 0).map((section) => {
       const all = listed[section];
       const { open, shown, hidden } = sectionFold(section, all.length, { stored, opened, more });
       return { section, count: section === "done" ? closedCounts.finished : home.counts[section], open, hidden, tree: {
@@ -254,7 +256,7 @@ export function TimeTree() {
         }) } };
     });
     return { tree: { nodes }, sections, selectedAt };
-  }, [index, home, stored, opened, more, selectedHere, closedCounts, finishedPageIds, finishedDated, openedDone]);
+  }, [welcome, index, home, stored, opened, more, selectedHere, closedCounts, finishedPageIds, finishedDated, openedDone]);
   const navigation = useMemo(() => ({ ids: drawnTaskIds(tree), open: openDetail }), [tree]);
   useListNavigationSource(navigation);
   // Only a change to the drawn rows/section furniture can rearrange this fixed-height list. Selecting a row
@@ -629,7 +631,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
     }}
     className={className}>{content}</button>;
   return (
-    <li data-row={task.id} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
+    <li data-row={task.id} data-row-section={node.row?.section} data-row-turn={node.row?.section === "review" ? turnKind(task) : undefined} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
       <div data-row-head data-motion-key={task.id}
         className={cn("group relative flex border-b border-rule", narrow && "flex-col", !narrow && shared.selected === task.id && "bg-row-picked [--row-ground:var(--color-row-picked-solid)]")}>
         <div ref={label} data-row-label style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}

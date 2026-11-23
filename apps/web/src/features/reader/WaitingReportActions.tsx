@@ -119,7 +119,7 @@ export function WaitingReportActions({ task, question, onFollow }: { task: TaskD
   const refused = useAskedChoice(state => state.asked);
   if (!asked) return null;
   const { questions } = asked, count = questions.length;
-  return <div data-waiting-report-actions className="mt-4 rounded-lg bg-well px-4 py-3 narrow:px-3">
+  return <div data-waiting-report-actions className="mt-4 scroll-my-20 rounded-lg bg-well px-4 py-3 narrow:px-3">
     {questions.map((question, at) => <section key={question.n} data-question={question.n} data-written={question.choices.length ? undefined : ""}
       className={cn("scroll-my-20 py-2", at > 0 && "mt-1 border-t border-rule pt-3")}>
       <p data-question-number className="m-0 text-xs text-muted tabular-nums">{t("answer.question", { total: count, n: at + 1 })}</p>

@@ -10,11 +10,6 @@
       "none": "No hay una IA con la que hablar en el cuadro de texto, así que no se puede enviar. Púlsalo para abrir la configuración",
       "setUp": "Configurar IA"
     },
-    "appHint": {
-      "close": "Cerrar esta sugerencia",
-      "detail": "Instálala en tu PC o ábrela desde el teléfono",
-      "open": "Usar en el teléfono o como app"
-    },
     "attached": "Solo archivos adjuntos",
     "attempts": {
       "stopped": "{{agent}} — se detuvo por {{reason}}",

@@ -1,4 +1,33 @@
 {
+  "guide": {
+    "close": "End the getting-started guide",
+    "closed": "The guide has ended. You can show it again from {{settings}}, under “{{guide}}”.",
+    "example": "This is a demo to try the alpacawork flow.\nCreate an HTML page that shows \"Hello\" in two fonts, then ask me which one is better.",
+    "moreExample": "Make one more version so I can compare them.",
+    "next": "Got it",
+    "openSteps": "Open the steps",
+    "reopen": "Undo",
+    "say": {
+      "accept": "If you're happy with it, finish the task with this button ({{finish}}). If you'd like something else done next, you can send more instructions instead.",
+      "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
+      "answer": "Choose an option and it goes into the input box. Send it as is to answer. You can also send a different message without choosing one.",
+      "conversation": "Chats with the front-desk AI are disposable. Once they pile up, open the conversation at a good stopping point and clear it with “{{clear}}”. Before that, ask for anything worth keeping to be made a task.",
+      "direct": "The front-desk AI answers short requests right here. Hand it a job, and it becomes a task in the list.",
+      "label": "This label hints to the AI which task or project you mean. Without it, the AI works it out from the conversation.",
+      "more": "You can keep asking after a report. Try having it make one more version to compare.",
+      "phone": "You can answer questions from your phone when you're away from your desk. The steps are in {{settings}}, under “{{apps}}”.",
+      "question": "Your turn. Press this row to open the question.",
+      "received": "The front-desk AI (the coordinator) has it. It takes a moment to pass it to an AI to work on.",
+      "result": "A report came. Press this row to open it.",
+      "send": "This is the only input box. All your instructions go here.",
+      "sendAgain": "Write what you want done here and send it.",
+      "sendReady": "Send it with this button.",
+      "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input box. You can also ask there to change settings or add a model.",
+      "unassigned": "No AI is on this task yet. Open the row and ask in the input box to start it.",
+      "working": "This is a task. The AI on it does the work. When it has a question or a report for you, the task moves to “{{section}}”."
+    },
+    "tryExample": "Insert a demo prompt"
+  },
   "home": {
     "awaited": "Waiting",
     "error": "Needs attention",
@@ -106,24 +135,13 @@
     "yourTurn": "Your turn"
   },
   "welcome": {
-    "examples": {
-      "decide": {
-        "label": "Pick a mini game idea, then have it built",
-        "shows": "AI offers ideas; pick one and it builds that game.",
-        "words": "I'd like one mini game I can play in the browser. Suggest 3 ideas and ask me which to build. Then build the one I pick in about 5 minutes. This is a trial run, so keep the effort light. Please write everything in English."
-      },
-      "models": {
-        "label": "Have 3 models build a snake game, then compare",
-        "shows": "Different models build in parallel, then you're asked which to keep.",
-        "words": "Please build a snake game that runs in the browser, 3 times in parallel, each with a different model; if there aren't enough models, vary the effort instead. When they're done, ask me which one to keep. This is a trial run, so keep the settings light and take about 5 minutes. Please write everything in English."
-      },
-      "settings": {
-        "label": "Set a working rule and how many agents run at once",
-        "shows": "A rule joins the project policy, and at most 4 agents run at once.",
-        "words": "Please add this rule to this project's policy: \"When you finish, report what you changed in 3 lines or fewer.\" Also, set this environment to run at most 4 agents at once. Please write everything in English."
-      }
+    "lead": "A place to hand work to a team of AIs.",
+    "picture": {
+      "listed": "They're listed. What needs you shows up under “{{section}}”",
+      "own": "An AI takes each task as its owner, splitting it into subtasks when needed",
+      "send": "Send a request",
+      "split": "The front-desk AI (the coordinator) turns it into tasks"
     },
-    "lead": "Choose an example to try it out.",
     "title": "Welcome to alpacawork"
   }
 }

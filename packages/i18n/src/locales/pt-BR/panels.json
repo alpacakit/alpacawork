@@ -422,6 +422,9 @@
       "aiLanguage": "Idioma das conversas com a IA",
       "awayAfter": "Ausente por inatividade",
       "display": "Exibição",
+      "guide": "Guia de primeiros passos",
+      "guideHelp": "Mostra de novo o guia do primeiro uso, a partir da primeira tela.",
+      "guideShow": "Mostrar de novo",
       "issue": {
         "conflict": "Alterado em outra tela. Verifique o valor mais recente.",
         "error": "Não foi possível salvar. Tente novamente.",

@@ -15,7 +15,6 @@ import { useConnection } from "../src/data/connection";
 import { screenData, TestWorkspace, tree, dto, openReference } from "./fixtures";
 import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
-import { appHintDone } from '../src/features/coordinator/app-hint';
 import { useDialogStore } from '../src/state/dialog-store';
 
 const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
@@ -268,34 +267,6 @@ test("a cleared conversation says how far the coordinator has got ready, offers 
   act(() => setConversationState({ conversation: { ...empty, warm: "ready", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] } }));
   await waitFor(() => expect(document.querySelector("[data-ask-answer]")?.textContent).toBe("Done"));
   expect(row()).toBeNull();
-});
-
-test("a first conversation points to the phone and app guide until it is pressed, closed or the conversation has a message", async () => {
-  await i18n.changeLanguage("en");
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(empty)));
-  const hint = () => document.querySelector<HTMLElement>("[data-app-hint]");
-  const fresh = () => { appHintDone.remove(); useDialogStore.setState({ dialog: null }); };
-  fresh();
-  setConversationState({ conversation: { ...empty, warm: "ready" }, open: true, expanded: true, read: true });
-  const view = render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  // Pressed: the settings open on the apps tab, and the line is gone for good.
-  fireEvent.click(screen.getByRole("button", { name: "Use on your phone or as an app" }));
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "apps" });
-  expect(hint()).toBeNull();
-  // Closed: gone too, and the settings stay shut.
-  fresh(); view.rerender(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  await waitFor(() => expect(hint()).not.toBeNull());
-  fireEvent.click(screen.getByRole("button", { name: "Close this tip" }));
-  expect(hint()).toBeNull();
-  expect(useDialogStore.getState().dialog).toBeNull();
-  // A conversation with a message: the person has started, so a later empty conversation shows no line either.
-  fresh();
-  act(() => setConversationState({ conversation: { ...empty, warm: "ready", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] } }));
-  await waitFor(() => expect(appHintDone.get()).toBe(true));
-  act(() => setConversationState({ conversation: { ...empty, warm: "ready" } }));
-  expect(document.querySelector("[data-coordinator-warm]")).not.toBeNull();
-  expect(hint()).toBeNull();
-  appHintDone.remove();
 });
 
 test("a first message sent while the coordinator is still getting ready takes the getting-ready line's place", async () => {

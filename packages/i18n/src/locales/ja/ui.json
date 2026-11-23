@@ -10,11 +10,6 @@
       "none": "入力欄で話す AI がないため、送れません。押すと設定を開きます",
       "setUp": "AI を設定"
     },
-    "appHint": {
-      "close": "この案内を閉じる",
-      "detail": "PC にアプリとして入れる・スマホから開く",
-      "open": "スマホやアプリで使う"
-    },
     "attached": "添付だけ",
     "attempts": {
       "stopped": "{{agent}} — {{reason}}で止まりました",
