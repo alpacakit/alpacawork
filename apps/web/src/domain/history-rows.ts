@@ -237,14 +237,15 @@ export function sameRow(a: HistoryRow, b: HistoryRow): boolean {
 
 /**
  * An answer as a sentence: each chosen choice's word, without the number a choice is answered with, then the person's
- * own words. Other is said by those words alone (its word is the app's, never the person's), so they are read from the
- * next line when nothing else stands on its line; after a chosen choice, only its line is the sentence.
+ * own words. Other is said by those words alone (its word is the app's, never the person's), so with Other they are its
+ * first line of words, on the answers' line or below it; with chosen choices only, only their line is the sentence (what
+ * follows is their reason).
  */
 export function answerLine(words: string) {
   const chosen: string[] = [];
-  let rest = words.trim();
+  let rest = words.trim(), other = false;
   for (let token; (token = /^[1-9]\d*-(\S+)[ \t]*/.exec(rest)); rest = rest.slice(token[0].length))
-    if (token[1] !== OTHER_WORD) chosen.push(token[1]!);
-  const said = firstReportLine(chosen.length ? rest.split('\n')[0]! : rest);
+    if (token[1] === OTHER_WORD) other = true; else chosen.push(token[1]!);
+  const said = firstReportLine(other || !chosen.length ? rest : rest.split('\n')[0]!);
   return [...chosen, said].filter(Boolean).join(' ');
 }

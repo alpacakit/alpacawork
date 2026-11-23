@@ -3,7 +3,7 @@ export function coordinatorInput(prompt) {
   const match = [...prompt.matchAll(/^Request ID of this input: ([^.\n]+).*$/gm)].at(-1);
   if (!match) return null;
   // The server puts its reply-language line right after this one (coordinator/conversation.ts launchText); it is not the person's.
-  const text = prompt.slice(match.index + match[0].length).trim().replace(/^Language: [^\n]*\n?/, '');
+  const text = prompt.slice(match.index + match[0].length).trim().replace(/^Language: [^\n]*Write your replies[^\n]*\n?/, '');
   const answers = /^Questions being answered: (.+)$/m.exec(text);
   const intent = /^Screen action: (.+)$/m.exec(text);
   return { source: match[1], answers: answers ? JSON.parse(answers[1]) : null,

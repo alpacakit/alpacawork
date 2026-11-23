@@ -142,7 +142,7 @@
     "yourTurn": "Tu turno"
   },
   "welcome": {
-    "guideOnComputer": "La guía de primeros pasos se muestra en la pantalla de un ordenador.",
+    "guideOnComputer": "La guía de primeros pasos se muestra en una pantalla más ancha, como la de un ordenador.",
     "lead": "Un lugar para encargar trabajo a un equipo de IA.",
     "picture": {
       "listed": "Se ponen en la lista. Lo que te toca aparece en «{{section}}»",

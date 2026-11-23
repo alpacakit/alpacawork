@@ -129,7 +129,7 @@
     "yourTurn": "轮到你"
   },
   "welcome": {
-    "guideOnComputer": "入门指引会在电脑屏幕上显示。",
+    "guideOnComputer": "入门指引会在电脑等较宽的屏幕上显示。",
     "lead": "这里是把工作交给 AI 团队的地方。",
     "picture": {
       "listed": "排进列表。轮到你时，会出现在“{{section}}”",
