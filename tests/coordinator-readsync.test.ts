@@ -18,7 +18,7 @@ import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-impor
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 import { openIndexStream } from './index-stream.ts';
 
-const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') } });
 
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-readsync-')));

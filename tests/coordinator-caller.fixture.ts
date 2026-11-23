@@ -42,7 +42,7 @@ import { reconcileLinks } from './return-handling.fixture.ts';
 /** Agents whose launch fails at once: a Request the server launches runs nothing. */
 export const NO_AGENT_CONFIG = stringify({ agents: {
   claude: fixtureAgentSetting('claude'), codex: fixtureAgentSetting('codex'),
-}, coordinatorAiStack: [{ agent: 'claude', values: {} }] });
+} });
 /** A process ID no system gives out: a Run's recorded manager and agent, which nothing may signal. */
 const NO_PROCESS = 4_194_305;
 const person = { kind: 'human' } as const;

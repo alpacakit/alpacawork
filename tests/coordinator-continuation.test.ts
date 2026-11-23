@@ -52,19 +52,52 @@ test('the next coordinator turn follows the saved order and the latest observed 
     { name: 'removed effort starts a new session on the same agent', profiles: withoutEffort, rows: [noEffort, last],
       runs: [priorEffort], selected: noEffort, continued: null, following: [last] },
     { name: 'empty stack', rows: [], runs: [resumed], selected: null, continued: null, following: [] },
-    { name: 'no stack', rows: undefined, runs: [], selected: null, continued: null, following: [] },
   ];
   for (const { name, profiles, rows, runs, selected, continued, following, modelArg } of cases) {
     const settings = parseAgentsSettings(stringify({ agents: profiles ?? agents, aiStack: [task], coordinatorAiStack: rows }, { aliasDuplicateObjects: false }));
     const next = coordinatorNextLaunch(settings, runs, '/bin');
     assert.deepEqual(next.row, selected, name);
-    if (next.row === null) continue;
+    if (next.row === null) {
+      assert.equal(next.error.reason?.kind, 'no_configured_agents', name);
+      continue;
+    }
     assert.deepEqual(next.continued, continued, name);
     assert.deepEqual(next.launch.values, selected?.values, name);
     assert.deepEqual(next.following, following, name);
     if (modelArg) {
       const argv = resolveAgentLaunchArgv(next.launch, { session: 'fixture-session' });
       assert.equal(argv[argv.indexOf('--model') + 1], modelArg, name);
+    }
+  }
+});
+
+test('an unsaved coordinator stack uses one row with the default agent starting values', () => {
+  const claude = { command: process.execPath };
+  const codex = { command: process.execPath };
+  const agents = { skipped: { adapter: 'claude', enabled: false }, claude, codex };
+  const aiStack = [{ agent: 'codex', values: { model: 'gpt-6.2-astra', effort: 'medium', fast: 'fast' } }];
+  const codexStart = { agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'low', fast: null } };
+  const claudeStart = { agent: 'claude', values: { model: 'opus', effort: 'low' } };
+  const claudeMedium = { agent: 'claude', values: { model: 'opus', effort: 'medium' } };
+  const cases = [
+    { name: 'uses the agent from the task stack with its own starting values', config: { agents, aiStack }, selected: codexStart },
+    { name: 'uses the first enabled agent without a task stack', config: { agents }, selected: claudeStart },
+    { name: 'uses the first enabled agent with an empty task stack', config: { agents, aiStack: [] }, selected: claudeStart },
+    { name: 'keeps the starting effort when low is not offered',
+      config: { agents: { claude: { ...claude, params: { effort: ['medium', 'high'] } } } }, selected: claudeMedium },
+    { name: 'keeps the latent starting value when the first model does not use effort',
+      config: { agents: { claude: { ...claude, without: { opus: ['effort'] } } } }, selected: claudeMedium },
+    { name: 'no enabled agents', config: { agents: { skipped: agents.skipped } }, selected: null },
+  ];
+  for (const { name, config, selected } of cases) {
+    const settings = parseAgentsSettings(stringify(config));
+    const next = coordinatorNextLaunch(settings, [], '/bin');
+    assert.deepEqual(next.row, selected, name);
+    if (next.row === null) {
+      assert.equal(next.error.reason?.kind, 'no_configured_agents', name);
+    } else {
+      assert.deepEqual(next.launch.values, selected?.values, name);
+      assert.deepEqual(next.following, [], name);
     }
   }
 });

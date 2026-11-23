@@ -52,6 +52,12 @@ export function offeredChoices(offer: SelectionOffer, model: string | null = nul
 export function agentChoices(compiled: CompiledAgentSetting, model: string | null = null): AgentChoice[] {
   return offeredChoices(selectionOffer(compiled), model);
 }
+/** The coordinator starts on the agent's initial values, with low effort where the first model supports it. */
+export function coordinatorStartValues(offer: SelectionOffer): Selection {
+  const { values, choices } = resolveOfferedSelection(offer);
+  const effort = choices.find(choice => choice.key === 'effort');
+  return effort?.active && effort.candidates.includes('low') ? { ...values, effort: 'low' } : values;
+}
 export type ResolvedAgentSelection = {
   /** Preserve latent values even when without makes them inactive. */
   values: Selection;

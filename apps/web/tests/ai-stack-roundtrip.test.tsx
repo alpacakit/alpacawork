@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { configSetInput } from '@alpacawork/contract/inputs';
 import { initializeControlFixture } from '../../../tests/helpers/control-fixture.ts';
+import { installAgentStub } from '../../../tests/helpers/agent-stub.ts';
 import { readServerSettings, saveServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
+import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
+import { coordinatorNextLaunch } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
 import { serverAgentDraftSchema, serverAgentsYaml } from '../src/features/panels/server-agent-draft';
 import { configYaml, serverDraft } from '../src/features/panels/settings-draft';
 import { moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
@@ -101,23 +104,31 @@ test('the last agent can be switched off: with none enabled, both lists save emp
   expect(saved.coordinatorAiStack ?? []).toEqual([]);
 });
 
-test('with no tasks\' list saved, editing only the input\'s list saves, for agents without a model row and a model that leaves effort out', async () => {
-  const claude = { params: { model: ['opus', 'sonnet'], effort: ['low', 'high'] }, without: { opus: ['effort'] } };
-  for (const agents of [{ copilot: {} }, { pi: {} }, { claude }]) {
+test('with no input\'s list saved, it shows the row the input runs on, and a save as read writes that row', async () => {
+  const claude = { params: { model: ['opus', 'sonnet'], effort: ['high', 'low'] } };
+  const codex = { params: { model: ['gpt-6.2-sol'], effort: ['high', 'low'] } };
+  const cases = [
+    // The tasks' row 1 names codex: codex's first values at low.
+    { config: { agents: { claude, codex }, aiStack: [{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high' } }] },
+      row: { agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'low', fast: null } } },
+    // No tasks' list either: the first enabled agent, at low.
+    { config: { agents: { claude, codex } }, row: { agent: 'claude', values: { model: 'opus', effort: 'low' } } },
+    // A saved empty list stays empty: the input runs on nothing.
+    { config: { agents: { claude }, coordinatorAiStack: [] }, row: null },
+  ];
+  for (const { config, row } of cases) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-unsaved-')));
     roots.push(root);
     initializeControlFixture(root);
-    writeFileSync(join(root, 'config.yaml'), stringify({ agents }));
-    const read = await readServerSettings(root);
-    const draft = serverDraft(read);
-    // The input's list gets its first row, as its own "Add" does; the tasks' list is the one the editor started.
-    const edited = { ...draft, coordinatorAiStack: [{ ...draft.aiStack[0]!, id: 'input-row' }] };
-    const checked = serverAgentDraftSchema.safeParse(edited);
-    expect(checked.success, `${Object.keys(agents)[0]}: ${JSON.stringify(checked.error?.issues)}`).toBe(true);
-    const yaml = serverAgentsYaml(edited);
-    if (!yaml.ok) throw new Error('unwritable agents');
-    const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash }));
-    expect(saved.coordinatorAiStack).toEqual(saved.aiStack);
+    const path = installAgentStub(root, 'alpacawork-agent');
+    writeFileSync(join(root, 'config.yaml'), stringify(config));
+    const settings = readAgentsSettings(root);
+    if (!settings.ok) throw settings.error;
+    expect(coordinatorNextLaunch(settings.config, [], path).row).toEqual(row);
+    const shown = serverDraft(await readServerSettings(root)).coordinatorAiStack.map(({ agent, values }) => ({ agent, values }));
+    expect(shown).toEqual(row ? [row] : []);
+    // An empty list saved stays empty here, held back until a row is added, as before.
+    if (row) expect((await saveAsRead(root)).coordinatorAiStack).toEqual([row]);
   }
 });
 

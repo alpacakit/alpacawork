@@ -32,11 +32,13 @@ coordinatorAiStack:
   - { agent: codex, values: {} }
 ```
 
-Each stack lists named, enabled agents and their launch values in order. The first row is the default. The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends. The coordinator uses its own stack. A missing or empty `coordinatorAiStack` leaves it unconfigured.
+Each stack lists named, enabled agents and their launch values in order. The first row is the default. The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends.
+
+When `coordinatorAiStack` is missing, the coordinator uses one default row from the first agent in `aiStack`, or the first enabled agent in configuration order if the task stack has no rows. The row uses the agent's starting values, with `low` effort when its starting model uses effort and offers `low`. With an explicit `coordinatorAiStack: []` or no enabled agents, the coordinator has no AI to launch.
 
 Coordinator stack changes apply when the next message is accepted. The coordinator checks the rows in order, skips duplicate launches, and skips rows whose latest run in this conversation hit a usage or capacity limit. If every row hit a limit, it checks again from the top. Only rows below the chosen row can take over.
 
-`config get` returns each saved stack with the values its rows use. Include either stack in the YAML passed to `config set --config` along with the full limits. Omitting a stack from the edit leaves it as saved. Use `[]` to clear it.
+`config get` returns each saved stack with the values its rows use. The server derives the coordinator's default row when choosing a launch, so the row stays out of `config.yaml` and `config get`. Include either stack in the YAML passed to `config set --config` along with the full limits. Omitting a stack from the edit leaves it as saved. Use `[]` to clear it.
 
 ## Run limits (limits)
 

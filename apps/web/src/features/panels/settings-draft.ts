@@ -3,9 +3,9 @@ import type { QueryClient } from "@tanstack/react-query";
 import { stringify } from "yaml";
 import { z } from "zod";
 import { DEFAULT_FIELDS, PROJECT_POLICY, PROJECT_SUMMARY, hardLimit, projectColorSchema, titleSchema,
-  type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
+  coordinatorDefaultAgent, type AiRow, type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
 import { readServerAgents, serverAgentDraftSchema } from './server-agent-draft';
-import { newStackRow, readStack, writeStack } from './ai-stack-draft';
+import { coordinatorStart, newStackRow, readStack, writeStack } from './ai-stack-draft';
 import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/contract/control";
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
@@ -17,9 +17,18 @@ export function serverDraft(settings: ServerSettings): ServerDraft {
   const agents = readServerAgents(settings.agentsText);
   // With no saved tasks' stack, the editor starts it as its own "Add" does: the first enabled agent on its start values.
   const added = settings.aiStack === undefined && agents.ok ? newStackRow(agents.value.agents, []) : null;
-  // The input's stack is shown as saved: none saved is none set, which the input says until one is added here.
   return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents,
-    aiStack: added ? [added] : readStack(settings.aiStack), coordinatorAiStack: readStack(settings.coordinatorAiStack) };
+    aiStack: added ? [added] : readStack(settings.aiStack), coordinatorAiStack: readStack(coordinatorRows(settings, agents)) };
+}
+/**
+ * The input's stack as the editor starts it. None saved: the one row the server runs the input on meanwhile (the
+ * contract's default agent on its coordinator start), so the row shown is the row that runs, and a save writes it.
+ */
+function coordinatorRows(settings: ServerSettings, agents: ServerDraft['agents']): readonly AiRow[] | undefined {
+  if (settings.coordinatorAiStack !== undefined || !agents.ok) return settings.coordinatorAiStack;
+  const cards = Object.fromEntries(agents.value.agents.map(agent => [agent.name, agent]));
+  const first = coordinatorDefaultAgent(cards, settings.aiStack);
+  return first ? [{ agent: first[0], values: coordinatorStart(first[1]) }] : [];
 }
 /**
  * The limits, the AI stacks and Jev config/set writes beside the agents block; the YAML example shows the same text.

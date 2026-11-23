@@ -14,7 +14,7 @@ import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinat
 import { reserveAttempt, blockedInvocations, queuedInputReservations } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 // The fixture never starts a process, so the admission supplies the session.
-const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') } });
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-waiting-')));
   initializeControlFixture(root); writeFileSync(join(root, 'config.yaml'), config);

@@ -28,7 +28,7 @@ export async function runningRuns() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-running-runs-')));
   const project = initializeControlFixture(root);
   // initializeControlFixture installs the claude stub as /usr/bin/false on its isolated PATH.
-  writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 1, automatic_per_placement: 2000 }, agents: { fake: fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] }));
+  writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 1, automatic_per_placement: 2000 }, agents: { fake: fixtureAgentSetting('claude') } }));
   const commands = new ControlTaskCommands(root, { kind: 'human' });
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   const requests = new TaskRequestService(root), reports = new TaskReportService(root);

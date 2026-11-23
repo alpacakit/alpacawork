@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { selectionSchema } from './agent-settings.js';
+import { enabledAgents, selectionSchema } from './agent-settings.js';
 
 export const aiRowSchema = z.object({
   agent: z.string().regex(/^[a-z][a-z0-9_-]*$(?![\s\S])/),
@@ -7,6 +7,15 @@ export const aiRowSchema = z.object({
 }).strict();
 export type AiRow = z.infer<typeof aiRowSchema>;
 export const aiStackSchema = z.array(aiRowSchema);
+
+/** Use the task stack's first agent, or the first enabled profile when the task stack has no rows. */
+export function coordinatorDefaultAgent<T extends { enabled?: boolean }>(agents: Readonly<Record<string, T>>,
+  aiStack: readonly Pick<AiRow, 'agent'>[] | undefined): [string, T] | undefined {
+  const agent = aiStack?.[0]?.agent;
+  if (agent === undefined) return enabledAgents(agents)[0];
+  const setting = Object.hasOwn(agents, agent) ? agents[agent] : undefined;
+  return setting && setting.enabled !== false ? [agent, setting] : undefined;
+}
 
 const explicitAiRowSchema = aiRowSchema.partial({ values: true });
 export const aiStackPrefixSchema = z.array(z.union([explicitAiRowSchema, z.literal('stop')])).min(1)

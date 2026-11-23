@@ -28,7 +28,7 @@ import { test } from '../fixtures.ts';
 export async function reviewTimes() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-review-times-')));
   const project = initializeControlFixture(root);
-  writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 8, automatic_per_placement: 2000 }, agents: { fake: fixtureAgentSetting('codex') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] }));
+  writeFileSync(join(root, 'config.yaml'), stringify({ limits: { parallel: 8, automatic_per_placement: 2000 }, agents: { fake: fixtureAgentSetting('codex') } }));
   const commands = new ControlTaskCommands(root, { kind: 'human' });
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   const requests = new TaskRequestService(root), reports = new TaskReportService(root);

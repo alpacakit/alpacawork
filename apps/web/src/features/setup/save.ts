@@ -27,15 +27,17 @@ export function setupStack(stack: readonly AiRow[], agents: readonly AgentDraft[
 
 /**
  * What leaving the agents step writes with config/set, or null when config.yaml already holds the choice: the agents
- * (the switches and their order, chosenAgents) and both AI stacks, read and written as the server settings do, so the
- * first AI chosen here is the one a request starts on (tasks' stack) and the input's AI (its own, at `low`).
+ * (the switches and their order, chosenAgents) and the AI stacks, read and written as the server settings do, so the
+ * first AI chosen here is the one a request starts on (tasks' stack). The input's stack, none saved, stays unsaved: the
+ * server runs the input on that same agent at `low`. A saved one is kept in step, since a row naming an agent switched
+ * off here would leave config.yaml unreadable.
  */
 export function setupSave(loaded: ServerSettings, drafts: AgentsDraft, rows: readonly StartAgent[], on: AgentSwitches,
   first: string | null): { config: string; agents: string } | null {
   const chosen = chosenAgents(drafts.agents, rows, on, first);
   const agents = chosen ?? drafts.agents;
   const stack = setupStack(loaded.aiStack ?? [], agents, first);
-  const coordinator = setupStack(loaded.coordinatorAiStack ?? [], agents, first, coordinatorStart);
+  const coordinator = loaded.coordinatorAiStack && setupStack(loaded.coordinatorAiStack, agents, first, coordinatorStart);
   if (!chosen && !stack && !coordinator) return null;
   const yaml = serverAgentsYaml({ agents: { ok: true, value: { ...drafts, agents } } });
   if (!yaml.ok) throw new Error("Invalid agent settings");

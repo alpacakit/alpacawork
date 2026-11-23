@@ -66,7 +66,7 @@ export async function fixture(t: { name?: string; after: (fn: () => void | Promi
   setting.params.model = choices ? ['opus', 'fable'] : [];
   setting.params.effort = choices ? ['high', 'max'] : [];
   if (adapter === 'codex') setting.params.fast = [];
-  const config = stringify({ ...parse(limits), agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
+  const config = stringify({ ...parse(limits), agents: { fake: setting } });
   const writer = new FileWriter(root);
   let project: string;
   try { writer.save('config.yaml', null, Buffer.from(config)); project = initializeControlFixture(root); }

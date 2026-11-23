@@ -72,15 +72,14 @@ async function leaveSetup(root: string, on: Record<string, boolean>, picked: str
 
 const codexRow = { agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } };
 
-test('the first AI chosen in setup is row 1 of both stacks and the agent a new conversation is admitted to', async () => {
-  // codex offers no low effort: the input's row is its first values.
+test('the first AI chosen in setup is row 1 of the tasks\' stack and the agent a new conversation is admitted to', async () => {
+  // The input's stack stays unsaved and runs on that agent; codex offers no low effort, so on its first values.
   expect(await leaveSetup(await workspace(), { claude: true, codex: true }, 'codex'))
-    .toEqual({ stack: ['codex', 'claude'], coordinator: [codexRow], offered: 'codex', admitted: codexRow });
+    .toEqual({ stack: ['codex', 'claude'], coordinator: undefined, offered: 'codex', admitted: codexRow });
   // Switching the old first one off saves too: its rows leave the stack rather than holding the save back.
   expect(await leaveSetup(await workspace(), { claude: false, codex: true }, 'codex'))
-    .toMatchObject({ stack: ['codex'], coordinator: [codexRow], offered: 'codex', admitted: { agent: 'codex' } });
-  // Going on with no agent empties the tasks' stack, rather than leaving rows that would refuse the save; the input's
-  // stays unset (none saved is none set).
+    .toMatchObject({ stack: ['codex'], coordinator: undefined, offered: 'codex', admitted: { agent: 'codex' } });
+  // Going on with no agent empties the tasks' stack, rather than leaving rows that would refuse the save.
   expect(await leaveSetup(await workspace(), { claude: false, codex: false }, null)).toEqual({ stack: [], coordinator: undefined, offered: null, admitted: null });
 });
 
@@ -88,6 +87,6 @@ test("the input's AI starts on the chosen agent's first model at low effort wher
   const root = await workspace(null);
   const left = await leaveSetup(root, { claude: true, codex: true }, 'claude');
   expect(left.stack).toEqual(['claude']);
-  expect(left.coordinator).toMatchObject([{ agent: 'claude', values: { model: 'fable', effort: 'low' } }]);
+  expect(left.coordinator).toBeUndefined();
   expect(left.admitted).toMatchObject({ agent: 'claude', values: { model: 'fable', effort: 'low' } });
 });
