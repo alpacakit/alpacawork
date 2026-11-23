@@ -8,12 +8,34 @@ import { Sentences } from "@/components/ui/sentences";
 import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
-import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
+import { useDeviceValue } from "@/lib/device-storage";
+import { closeGuide, going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } from "./use-guide";
 
 /** Where settings show the guide again: named in the notice that it is over, however it ended. */
 const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
+
+/** The close mark was pressed on this screen and its notice is the one to stand: the guide being over is not said over it. */
+let closedByHand = false;
+
+/**
+ * Says that the guide is over when it is read to its end: it never just stops showing. Said on the screen that saw it
+ * going and then over, whichever tab stored that, while the person is looking at it; not when it was closed by hand
+ * here (the close mark says so itself).
+ */
+function useOverNotice() {
+  const { t } = useTranslation("tree");
+  const stage = useDeviceValue(guideStage);
+  const was = useRef(stage);
+  useEffect(() => {
+    const before = was.current;
+    was.current = stage;
+    if (stage?.stage !== "done" || !going(before)) return;
+    if (closedByHand) { closedByHand = false; return; }
+    if (document.visibilityState === "visible") notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" });
+  }, [stage]);
+}
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -21,6 +43,7 @@ function CloseGuide({ className }: { className?: string }) {
   const close = () => {
     // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
     const before = guideStage.get();
+    closedByHand = going(before) !== null;
     closeGuide();
     notify.info(t("guide.closed", shownAgainAt(t as TFunction)),
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
@@ -210,11 +233,12 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  * names, with an arrow to it and a quiet ring round it. Nothing covers the page and nothing is held: only its buttons
  * take a press, so what is under the balloon stays pressable. It follows the part as the window is resized, scrolled or
  * redrawn, and is not drawn while that part is not seen or a dialog is over the page. Read out as a status; it never
- * takes the focus. It also starts the guide (useGuideStart) and stores the stage as it moves (useGuideStage); while no
- * guide goes on, nothing else is read for it.
+ * takes the focus. It also starts the guide (useGuideStart), stores the stage as it moves (useGuideStage) and says when
+ * it is over (useOverNotice); while no guide goes on, nothing else is read for it.
  */
 export function GuideBalloon() {
   useGuideStart();
+  useOverNotice();
   const stage = useGoingGuide();
   // Started on a phone too (its stage kept for a computer), it is drawn on a computer's screen alone (useGuideShown).
   const shown = useGuideShown();
@@ -242,15 +266,13 @@ function useSkipped() {
 
 function GoingBalloon({ stage }: { stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { t } = useTranslation("tree");
   const { entry, again, facts, fresh, ready } = useGuide(stage, skipped);
   // The steps whose balloon has stood on this page, in this guide (begun again, none has): one stands once it has been
   // on the screen for a moment without a break (STOOD_MS).
   const began = stage.stage === "started" ? stage.at : null;
   const stood = useRef({ began, ids: new Set<string>() });
   if (began !== null && stood.current.began !== began) stood.current = { began, ids: new Set() };
-  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id),
-    () => notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" }));
+  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id));
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);

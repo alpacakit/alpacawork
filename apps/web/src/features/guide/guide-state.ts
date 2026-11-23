@@ -36,12 +36,10 @@ export type GoingStage = Exclude<GuideStage, { stage: "done" }>;
 export const going = (stage: GuideStage | null): GoingStage | null => stage && stage.stage !== "done" ? stage : null;
 /**
  * The guide moved on from `from` to `to`: stored only while `from` is still what is stored, so a stage decided on what
- * this tab saw never overwrites what another tab stored meanwhile (closed there, say). Returns whether it was stored.
+ * this tab saw never overwrites what another tab stored meanwhile (closed there, say).
  */
-export function moveGuide(from: GuideStage | null, to: GuideStage): boolean {
-  if (JSON.stringify(guideStage.get()) !== JSON.stringify(from)) return false;
-  guideStage.set(to);
-  return true;
+export function moveGuide(from: GuideStage | null, to: GuideStage) {
+  if (JSON.stringify(guideStage.get()) === JSON.stringify(from)) guideStage.set(to);
 }
 /** A step read and put away ("Got it"): the guide goes on to the next one that holds. */
 export const putAway = (id: string) => {

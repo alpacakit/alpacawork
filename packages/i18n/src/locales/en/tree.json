@@ -2,7 +2,7 @@
   "guide": {
     "again": {
       "accept": "A report came. If you're happy with it, finish the task with “{{finish}}”.",
-      "answer": "The AI carried on and has a question for you. As before, choose an option and send it.",
+      "answer": "The AI carried on and has a question for you. Answer it as before.",
       "question": "The AI on the task has a question for you. Press this row to open it.",
       "received": "The front-desk AI has it, and is passing it to the AI on the task.",
       "result": "The AI on the task sent a report. Press this row to open it.",

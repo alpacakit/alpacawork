@@ -67,20 +67,20 @@ export function foundDraft(stage: GoingStage, written: string, before: FoundDraf
  * The rows awaiting the person, as the list's own rows have them (so the guide never says to open a row that is open
  * already), and which of them is `selected` in the detail. A row whose turn the person has already answered from here
  * (an answer sent, Done pressed: `submitted`, as the reader's own next-question deck counts them) is not theirs any
- * more, while it still stands in the list for the moment it can be taken back.
+ * more, while it still stands in the list for the moment it can be taken back (`answered` counts those).
  */
 export function awaiting(rows: readonly { taskId: string; section: string }[], byId: ReadonlyMap<string, Task>, submitted: (task: Task) => boolean,
-  selected: string | null): Pick<GuideFacts, "questions" | "results" | "open"> {
-  let questions = 0, results = 0, open: GuideFacts["open"] = null;
+  selected: string | null): Pick<GuideFacts, "questions" | "results" | "open"> & { answered: number } {
+  let questions = 0, results = 0, answered = 0, open: GuideFacts["open"] = null;
   for (const row of rows) {
     if (row.section !== "review") continue;
     const task = byId.get(row.taskId);
-    if (task && submitted(task)) continue;
+    if (task && submitted(task)) { answered++; continue; }
     const kind = task ? turnKind(task) : "result";
     if (kind === "question") questions++; else results++;
     if (row.taskId === selected) open = kind;
   }
-  return { questions, results, open };
+  return { questions, results, open, answered };
 }
 
 /** One press of Done the reader holds: which press it was (its send), and the Task it was pressed on. */
@@ -205,11 +205,12 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
   const finished = finishedHere(pressed, useServerState(pressed, index.byId));
   const doneHere = finished.length > 0;
-  // Done pressed on this page and kept, on a Task the server does not say is finished yet: on its way.
-  const finishing = fresh.some(id => !finished.includes(id));
+  // What the person answered or pressed Done on from here, as this device keeps it (a load of the page does not lose
+  // it), is on its way: its row still awaits them in the list, or the Task pressed Done on is not finished yet.
+  const settling = awaited.answered > 0 || pressed.some(id => { const task = index.byId.get(id); return !!task && submitted(task) && !finished.includes(id); });
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
-  const facts: GuideFacts = { stage, tasks, doneHere, finishing, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
+  const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
     apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
@@ -223,15 +224,17 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
  * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide): the Tasks
  * Done was pressed on since it began (`fresh`, kept as `finished` whatever step shows), and puts away a step with a
  * button as the guide moves on from it (doneOnLeaving; `stood`: its balloon has stood on this page). Nothing is stored
- * while the guide is not `ready`. `over` is called once the guide is stored as read to its end. Mounted once, beside the balloon, so a stage is written by one owner only.
+ * while the guide is not `ready`. Mounted once, beside the balloon, so a stage is written by one owner only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean, over: () => void) {
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean) {
   const kept = stage.finished ?? [];
   const adding = fresh.filter(id => !kept.includes(id));
   const next = !ready ? undefined : adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, closing(facts));
   const key = next && JSON.stringify(next);
-  // Read to its end, the guide says that it is over (`over`): it never just stops showing.
-  useEffect(() => { if (next && moveGuide(stage, next) && next.stage === "done") over(); }, [key]);
+  // Tried again whenever what is stored changes: a move refused because another tab stored something meanwhile is
+  // made over what that tab stored.
+  const from = JSON.stringify(stage);
+  useEffect(() => { if (next) moveGuide(stage, next); }, [key, from]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
   // as done from before it.
   const held = useRef<{ entry: GuideEntry | null; at: number | null }>({ entry: null, at: null });

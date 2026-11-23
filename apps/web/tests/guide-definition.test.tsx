@@ -7,7 +7,7 @@ import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/gu
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, doneHere: false, finishing: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
+  ({ stage: started, tasks: 0, doneHere: false, settling: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
     open: null, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
@@ -93,9 +93,13 @@ test("through a first Task the guide always has a step: each explained once, the
   expect(round({ questions: 1 })).toEqual(["question", true]);
   expect(round({ results: 1 })).toEqual(["result", true]);
   expect(round({ results: 1, open: "result" })).toEqual(["accept", true]);
-  // Nothing going on: a request is to be written. Not while Done pressed here is on its way (the close follows).
+  // Nothing going on: a request is to be written. Not while what was just answered or finished is on its way.
   expect(round({})).toEqual(["send-again", true]);
-  expect(round({ finishing: true })).toEqual([undefined, false]);
+  expect(round({ settling: true })).toEqual([undefined, false]);
+  // Once a Task is finished here, nothing is said again: the close is read whatever else awaits the person (another
+  // Task's question), and the guide is over with it.
+  expect(round({ doneHere: true, questions: 1, seen: read("working", "question", "answer", "received") })).toEqual(["conversation", false]);
+  expect(round({ doneHere: true, questions: 1 })).toEqual([undefined, false]);
   // What only explains is never the step again: the request to try after a report, the label, where an AI is stopped,
   // a reply in the conversation itself, and the close.
   for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone"].includes(entry.id)]);
@@ -282,8 +286,8 @@ test("a row whose turn the person has already answered from here is not theirs, 
   const rows = [{ taskId: "T1", section: "review" }, { taskId: "T2", section: "review" }];
   const task = (id: string) => ({ id, ball: { holder: "user", reason: "result" } }) as unknown as Task;
   const byId = new Map([["T1", task("T1")], ["T2", task("T2")]]);
-  expect(awaiting(rows, byId, () => false, "T1")).toEqual({ questions: 0, results: 2, open: "result" });
-  expect(awaiting(rows, byId, each => each.id === "T1", "T1")).toEqual({ questions: 0, results: 1, open: null });
+  expect(awaiting(rows, byId, () => false, "T1")).toEqual({ questions: 0, results: 2, open: "result", answered: 0 });
+  expect(awaiting(rows, byId, each => each.id === "T1", "T1")).toEqual({ questions: 0, results: 1, open: null, answered: 1 });
 });
 
 test("Done pressed before the guide began (again) is not its own; Done pressed since is, on the same Task too", () => {

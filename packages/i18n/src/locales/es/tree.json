@@ -2,7 +2,7 @@
   "guide": {
     "again": {
       "accept": "Llegó un informe. Si está bien, termina la tarea con «{{finish}}».",
-      "answer": "La IA siguió con el trabajo y tiene una pregunta para ti. Como antes, elige una opción y envíala.",
+      "answer": "La IA siguió con el trabajo y tiene una pregunta para ti. Respóndela como antes.",
       "question": "La IA asignada tiene una pregunta para ti. Pulsa esta fila para abrirla.",
       "received": "La IA de recepción lo recibió y se lo está pasando a la IA asignada.",
       "result": "La IA asignada envió un informe. Pulsa esta fila para abrirlo.",
