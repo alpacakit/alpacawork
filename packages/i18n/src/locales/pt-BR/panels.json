@@ -345,7 +345,8 @@
     },
     "settingsTitle": "Configurações do projeto",
     "summary": "Resumo",
-    "summaryHint": "Uma frase sobre o que este projeto trata. O coordenador a lê para escolher onde um pedido entra, e os agentes ao trabalhar aqui. Se ficar vazio, o coordenador o escreve no próximo pedido.",
+    "summaryEmpty": "Se ficar vazio, o coordenador o escreve no próximo pedido",
+    "summaryHint": "Uma frase sobre o que este projeto trata. O coordenador a lê para escolher onde um pedido entra, e os agentes ao trabalhar aqui.",
     "target": "Projeto",
     "targetHeld": "Salve ou descarte as alterações para escolher outro projeto.",
     "title": "Novo projeto"

@@ -345,7 +345,8 @@
     },
     "settingsTitle": "Configuración del proyecto",
     "summary": "Resumen",
-    "summaryHint": "Una frase sobre de qué trata este proyecto. El coordinador la lee para elegir dónde va una petición, y los agentes al trabajar aquí. Si queda vacía, el coordinador la escribe con la próxima petición.",
+    "summaryEmpty": "Si queda vacío, el coordinador lo escribe con la próxima petición",
+    "summaryHint": "Una frase sobre de qué trata este proyecto. El coordinador la lee para elegir dónde va una petición, y los agentes al trabajar aquí.",
     "target": "Proyecto",
     "targetHeld": "Guarda o descarta los cambios para elegir otro proyecto.",
     "title": "Nuevo proyecto"

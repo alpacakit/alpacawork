@@ -111,7 +111,7 @@ function ProjectSummaryRow() {
   return <SettingRow id="project-summary" label={t("project.summary")} hint={t("project.summaryHint")} error={errors.summary?.message}
     className="narrow:grid-cols-1 narrow:gap-y-2">
     <Textarea id="project-summary" dir="auto" rows={2} aria-invalid={!!errors.summary} className="min-h-0 w-110 max-w-full min-w-0 narrow:w-full"
-      {...register("summary")} />
+      placeholder={t("project.summaryEmpty")} {...register("summary")} />
   </SettingRow>;
 }
 

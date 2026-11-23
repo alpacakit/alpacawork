@@ -338,7 +338,8 @@
     },
     "settingsTitle": "Project settings",
     "summary": "Summary",
-    "summaryHint": "One sentence on what this project is for. The coordinator reads it to choose where a request goes, and agents read it when they work here. Left empty, the coordinator writes it with the next request.",
+    "summaryEmpty": "Left empty, the coordinator writes it with the next request",
+    "summaryHint": "One sentence on what this project is for. The coordinator reads it to choose where a request goes, and agents read it when they work here.",
     "target": "Project",
     "targetHeld": "Save or discard the changes to choose another project.",
     "title": "New project"
