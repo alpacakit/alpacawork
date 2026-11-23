@@ -196,12 +196,12 @@
     "allAnswered": "You've answered everything awaiting review",
     "allAnsweredHeld": "You've answered everything on hold",
     "autoSwipe": {
-      "hint": "On: sending a message on a task awaiting review or on hold swipes the card away and moves on to the next task. Off: sending stays on this task with the chat open.",
+      "hint": "On: sending a message on a task awaiting review swipes the card away and moves on to the next task. Off: sending stays on this task with the chat open.",
       "label": "Auto-swipe",
       "toastOff": "Auto-swipe off",
       "toastOffDetail": "Sending a message stays on this task",
       "toastOn": "Auto-swipe on",
-      "toastOnDetail": "Sending a message on a task awaiting review or on hold moves on to the next task"
+      "toastOnDetail": "Sending a message on a task awaiting review moves on to the next task"
     },
     "close": "Close",
     "countPart": "{{n}} {{word}}",
