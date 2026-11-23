@@ -145,7 +145,7 @@ Everything else in this file is yours to do. Give the user one of these only whe
 
 ## What to ask first
 
-When creating a new project at the user's request, ask only about what is not yet decided, one item at a time, and write each answer where the table below says. First ask which folder to work in, then ask the rest in a way that also lets the user choose "decide later" or "leave it to you". For anything the user leaves to you, go on with the default.
+When creating a new project at the user's request, ask only about what is not yet decided, one item at a time, and write each answer where the table below says. First ask which folder to work in, then ask the rest in a way that also lets the user choose "decide later" or "leave it to you". For anything the user leaves to you, go on with the default. Do not ask for the project's summary; write it yourself from the answers (["Turning a request into a task" in Coordinator](coordinator.md#turning-a-request-into-a-task)).
 
 | What to ask | Where to save it |
 |---|---|
