@@ -30,6 +30,7 @@ export default defineConfig({
       "ui:turn.reason.*", // A turn's reason is selected from the server's reason code.
       "ui:defaultField.*", // A shipped field's title and hint, chosen by its field ID (domain/field-display.ts).
       "tree:status.turn.*", // Its short word on a row, by the same code.
+      "tree:status.cause.*", // A stopped row's word for a recognized failure cause (contract runErrorCauseSchema).
       "tree:status.tokens.*", // A token counter's name, by the counter's key (contract TOKEN_COUNTER_KEYS).
       "chrome:limits.window.*", // A limit window's name, by its kind (contract LIMIT_KINDS).
       "panels:settings.personal.*",

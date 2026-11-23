@@ -26,6 +26,7 @@ import { dialoguesOf, requestedByUser, saidAt, markMessages } from '../coordinat
 import { readProjectionTask } from '../control/task-store.js';
 import { readRunActivity } from '../runs/activity.js';
 import { readRunFailure } from '../runs/error-cause.js';
+import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
 import { readAgentsSettings } from '../agents-settings.js';
 import { readControlEnvironment } from '../control/tree.js';
 import { ProjectShelf } from '../control/project-shelf.js';
@@ -233,7 +234,7 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
     const observed = this.observations.runFiles?.(run);
     return observed ? structuredClone(observed) : {
       activity: run.state === 'running' ? readRunActivity(runFolder(this.root, run.id)) : null,
-      errorCause: readRunFailure(this.root, run)?.cause,
+      errorCause: failureAvailability(readRunFailure(this.root, run)),
     };
   }
   private readRunFact(db: DatabaseSync, store: RunStore, id: RunId): RunFact | undefined {

@@ -61,6 +61,12 @@
     "restore": "恢复"
   },
   "status": {
+    "cause": {
+      "modelCapacity": "模型容量不足",
+      "modelLimit": "模型用量上限",
+      "sessionLimit": "5 小时用量上限",
+      "weeklyLimit": "每周用量上限"
+    },
     "children": "子任务 {{progress}}",
     "failure": {
       "conversationBusy": "对话被占用",

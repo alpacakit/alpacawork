@@ -61,6 +61,12 @@
     "restore": "元に戻す"
   },
   "status": {
+    "cause": {
+      "modelCapacity": "モデルが混雑",
+      "modelLimit": "モデルの利用上限",
+      "sessionLimit": "5時間の利用上限",
+      "weeklyLimit": "週の利用上限"
+    },
     "children": "子{{progress}}",
     "failure": {
       "conversationBusy": "会話が使用中",

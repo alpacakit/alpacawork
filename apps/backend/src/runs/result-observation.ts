@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { digestBytes, publishImmutable } from '@alpacawork/core';
 import { type TokenCounters } from '@alpacawork/contract/run';
 import type { RunAvailability } from '@alpacawork/contract/run-failure';
+import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
 import type { ResultObservation } from '@alpacawork/contract/run-protocol';
 import type { EventJournal } from './execution-files.js';
 import type { InputReceipt } from './input.js';
@@ -51,9 +52,9 @@ export function readEnd(ended: { outcome: Outcome;
   if (outcome.state !== 'needs_review' && 'result' in observed && typeof observed.result === 'string')
     finalResult = { state: 'present', text: observed.result };
   if (outcome.state === 'succeeded' && finalResult.state !== 'present') outcome = { state: 'failed', reason: 'output' };
-  const cause = ended.observed.failure?.cause;
-  const availability = ended.measured && cause && outcome.state === 'failed' &&
-    (outcome.reason === 'exit' || outcome.reason === 'output') ? { cause } : undefined;
+  const known = failureAvailability(ended.observed.failure);
+  const availability = ended.measured && known && outcome.state === 'failed' &&
+    (outcome.reason === 'exit' || outcome.reason === 'output') ? known : undefined;
   return { outcome, finalResult, session: ended.observed.session, availability,
     ...(availability && !ended.interrupted && ended.observed.toolsSettled && ended.exit?.signal === null ? { handoffSafe: true as const } : {}),
     measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit };

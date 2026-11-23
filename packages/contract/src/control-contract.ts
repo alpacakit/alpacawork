@@ -204,8 +204,8 @@ export const controlRunSchema = z.object({
   resumes: runIdSchema.nullable(), continues: z.boolean(),
   session: z.object({ provider: agentNameSchema.nullable(), id: z.string().min(1) }).strict().nullable(),
   state: runStateSchema, reason: runReasonSchema.nullable(),
-  /** Recognized failure text from this Run's stdout; absent when evidence is insufficient. */
-  errorCause: runErrorCauseSchema.optional(),
+  /** What this Run's own failure words were recognized as, and when a limit lifts; absent when evidence is insufficient. */
+  errorCause: runAvailabilitySchema.optional(),
   availability: runAvailabilitySchema.optional(),
   supersededBy: runIdSchema.optional(),
   /** A joined Run names the Run whose work took its instruction in. */
@@ -354,7 +354,7 @@ export const rowFactsSchema = z.object({
   kind: z.discriminatedUnion('kind', [
     z.object({ kind: z.enum(['question', 'review']) }).strict(),
     z.object({ kind: z.literal('followup'), turn: ballSchema.options[0] }).strict(),
-    z.object({ kind: z.literal('stopped'), failure: z.string() }).strict(),
+    z.object({ kind: z.literal('stopped'), failure: z.string(), errorCause: runAvailabilitySchema.optional() }).strict(),
   ]).nullable(),
   /** The active Task's position (home's taskPosition), which every screen says it by; null for any other row. */
   position: z.enum(HOME_SECTIONS).nullable(),

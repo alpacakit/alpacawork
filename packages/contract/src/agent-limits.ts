@@ -51,7 +51,7 @@ export function limitWindow(input: { minutes?: number | null; kind?: LimitWindow
 }
 
 /** Providers give a reset as epoch seconds or as an ISO time. */
-function resetTime(value: unknown): string | null {
+export function resetTime(value: unknown): string | null {
   const ms = typeof value === 'number' && Number.isFinite(value) ? value * 1000
     : typeof value === 'string' ? Date.parse(value) : NaN;
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;

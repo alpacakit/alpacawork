@@ -313,6 +313,7 @@
       "sessionLimit": "已达到 5 小时用量上限",
       "weeklyLimit": "已达到每周用量上限"
     },
+    "causeWithReset": "{{reason}}（{{reset}}）。请在上限重置后用同一 AI 继续、换一个 AI 继续，或停止",
     "limitName": {
       "modelCapacity": "模型容量不足",
       "modelLimit": "模型用量上限",

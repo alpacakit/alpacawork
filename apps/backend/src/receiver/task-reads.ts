@@ -222,7 +222,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     const placement = placements.get(run.placementId);
     const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
-      ...(kind === 'error' && (run.availability?.cause ?? run.errorCause) ? { cause: run.availability?.cause ?? run.errorCause } : {}),
+      ...(kind === 'error' && (run.availability ?? run.errorCause) ? { cause: (run.availability ?? run.errorCause)!.cause } : {}),
       ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
       ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
   }

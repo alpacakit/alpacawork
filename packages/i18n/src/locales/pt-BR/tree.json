@@ -65,6 +65,12 @@
     "restore": "Restaurar"
   },
   "status": {
+    "cause": {
+      "modelCapacity": "Modelo sobrecarregado",
+      "modelLimit": "Limite de uso do modelo",
+      "sessionLimit": "Limite de uso de 5 horas",
+      "weeklyLimit": "Limite semanal de uso"
+    },
     "children": "Subtarefas {{progress}}",
     "failure": {
       "conversationBusy": "Conversa em uso",

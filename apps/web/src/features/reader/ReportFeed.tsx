@@ -976,7 +976,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const { t: ui } = useTranslation("ui");
   // The Run it took the request over from, when the one before stopped on a limit.
   const before = people ? [...people.runsByTask.get(run.taskId) ?? []].find(each => each.supersededBy === run.id) : undefined;
-  const beforeCause = before?.availability?.cause ?? before?.errorCause;
+  const beforeCause = before?.availability?.cause ?? before?.errorCause?.cause;
   const cell = "col-start-2 min-w-0 narrow:col-span-2 narrow:col-start-1";
   // These words can wrap: share their first baseline with the time, rather than centring it on all their lines.
   return <div data-working-person={run.placementId} className={`${RECORD_HEAD} items-baseline !p-0`}>
