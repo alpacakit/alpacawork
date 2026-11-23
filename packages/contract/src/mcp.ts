@@ -8,9 +8,8 @@ export const mcpReadTool = 'alpacawork_read';
 export const mcpWriteTool = 'alpacawork_write';
 export const mcpInlineFileBytes = 8 * 1024 * 1024;
 export const mcpRequestBytes = Math.ceil(mcpInlineFileBytes / 3) * 4 + 64 * 1024;
-export const mcpFlagGuide = 'CLI flags are input keys: --foo-bar is fooBar, --no-foo is false, and --foo null is null. ' +
-  'For --x-file use x with the file contents, a string for text or a JSON value for values and plan. ' +
-  'For writes use the tool’s opId and restoreId. For operation get use input.opId.';
+export const mcpFlagGuide = 'CLI flags become input keys: --foo-bar is fooBar, --no-foo is foo: false, and --foo null is null. ' +
+  'For --x-file pass x as contents (JSON for values or plan). Send restoreId with writes and opId with saves. Check a save with operation get, input.opId.';
 
 export const mcpGuideName = z.enum([
   'SKILL.md', 'references/coordinator.md', 'references/owner.md', 'references/member.md',

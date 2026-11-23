@@ -124,9 +124,9 @@ test('skill routes execution to generated Access instead of another permission t
 test('help owns the cwd rule, the exit codes and the default server; options that rely on the rule say where it is', () => {
   const top = cli([]);
   assert.equal(top.match(/cwd rule:/g)?.length, 1);
-  const relying = commandCatalog.commands.flatMap(spec => spec.options).filter(option => option.description.includes('cwd rule'));
+  const relying = commandCatalog.cliCommands.filter(spec => spec.options.some(option => option.cliDetail?.includes('cwd rule')));
   assert.ok(relying.length > 0);
-  for (const option of relying) assert.ok(option.description.includes('cwd rule (alpacawork -h)'), option.key);
+  for (const spec of relying) assert.match(cli([...spec.words]), /cwd rule in\s+alpacawork -h/);
   const exitCodes = top.split('\n').find(line => line.startsWith('Exit codes:'));
   for (const code of Object.values(CLI_EXIT_CODE)) assert.match(exitCodes!, new RegExp(`\\b${code}\\b`));
   assert.ok(cli(['server']).includes(DEFAULT_SERVER_ORIGIN));

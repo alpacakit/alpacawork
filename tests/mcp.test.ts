@@ -142,8 +142,8 @@ test('HTTP and stdio MCP share authorization, restore fencing, receipts and file
   assert.equal(denied.result.isError, true);
   assert.equal(text(denied).error.code, PROBLEM_CODE.forbidden);
   const help = text(await call(read('help', { commands: ['task get', 'config inspect', 'task file get'] })));
-  assert.equal(help.commands[0].inputs.find((input: { key: string }) => input.key === 'task').schema.type, 'string');
-  assert.equal(help.commands[2].inputs.some((input: { key: string }) => input.key === 'output'), false);
+  assert.equal(help.commands[0].inputs.task.type, 'string');
+  assert.equal(Object.hasOwn(help.commands[2].inputs, 'output'), false);
   assert.match(help.commands[1].notes.join(' '), /unknown/);
   assert.match(text(await call(read('guide', { name: 'SKILL.md' }))).text, /# alpacawork/);
   const malformed = await call(read('guide', { name: '../package.json' }));
