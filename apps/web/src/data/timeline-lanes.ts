@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useQueries, useQueryClient, type Query } from '@tanstack/react-query';
 import type { TaskTimelineLaneDTO } from '@alpacawork/contract/control';
 import { isDatedRead, subscribeReads } from './read-model';
-import { assessRead, recoverReads, resources } from './resources';
+import { assessRead, newestHeldRead, recoverReads, resources } from './resources';
 
 const sameItems = <T,>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((item, at) => item === b[at]);
 const isLane = (query: Query) => query.queryKey.length === 6 && query.queryKey[2] === 'lane';
@@ -33,9 +33,7 @@ export function useTimelineLanes(root: string) {
  */
 export function useLaneReads(root: string, lanes: readonly string[], range: { from: string; to: string }, offline: boolean, enabled: boolean) {
   const client = useQueryClient();
-  const retained = offline ? client.getQueryCache().findAll({ queryKey: ['task-timeline', root, 'lane'] })
-    .filter(query => isLane(query) && lanes.includes(String(query.queryKey[3])) && assessRead(client, query).display)
-    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0] : undefined;
+  const retained = offline ? newestHeldRead(client, ['task-timeline', root, 'lane'], query => isLane(query) && lanes.includes(String(query.queryKey[3]))) : undefined;
   const from = retained ? String(retained.queryKey[4]) : range.from, to = retained ? String(retained.queryKey[5]) : range.to;
   // Rows not read while the strips are off: leaving their reads gives up what is still being read.
   const queries = useMemo(() => enabled ? lanes.map(lane => resources.timelineLane(root, lane, from, to)) : [], [root, lanes, from, to, enabled]);

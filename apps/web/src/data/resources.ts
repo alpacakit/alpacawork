@@ -338,6 +338,15 @@ export function assessRead(client: QueryClient, query: Query) {
   }
   return base;
 }
+/**
+ * The newest read under `prefix` that can be shown, among those `accept` takes: what stands in for the read of what is in
+ * view while that one has not arrived (a restart out of reach, a range or a set of rows not read yet).
+ */
+export function newestHeldRead(client: QueryClient, prefix: QueryKey, accept: (query: Query) => boolean = () => true) {
+  return client.getQueryCache().findAll({ queryKey: prefix })
+    .filter(query => query.state.data !== undefined && accept(query) && assessRead(client, query).display)
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0];
+}
 const writtenRows = new WeakMap<object, TaskRowDTO>();
 /** Reader-only row; never enters serverReadFacts, counts, people or the current index. */
 export function readerTaskRow(client: QueryClient, root: string, id: string) {
