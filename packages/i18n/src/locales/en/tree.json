@@ -22,7 +22,7 @@
       "answer": "Choose an option and it goes into the input box. Send it as is to answer. You can also send a different message without choosing one.",
       "conversation": "Chats with the front-desk AI are disposable. Once they pile up, at a good stopping point, press the line showing its last reply to open the conversation, and clear it with “{{clear}}”. Before that, ask for anything worth keeping to be made a task.",
       "direct": "The front-desk AI answers short requests right here. Hand it a job, and it becomes a task in the list.",
-      "label": "This label tells the AI which task you mean; without it, the AI goes by the conversation. Send with the button at the right end.",
+      "label": "This label tells the AI which task or project you mean; without it, it goes by the conversation. Send with the right-end button.",
       "more": "Once you've looked over the report that came, you can keep asking. Try having it make one more version to compare.",
       "phone": "You can answer questions from your phone when you're away from your desk. The steps are in {{settings}}, under “{{apps}}”.",
       "question": "Your turn. Press this row to open the question.",
