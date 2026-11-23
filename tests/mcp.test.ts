@@ -132,7 +132,10 @@ test('HTTP and stdio MCP share authorization, restore fencing, receipts and file
   assert.deepEqual((await call(rpc('tools/list'))).result.tools.map((tool: { name: string }) => tool.name), [mcpReadTool, mcpWriteTool]);
 
   const get = (log?: number) => read('task get', { task: task!.id, log });
-  const viewed = text(await call(get()));
+  const viewed = text(await call(rpc('tools/call', {
+    name: mcpReadTool, arguments: { command: 'task get', input: { task: task!.id } },
+    _meta: { progressToken: 1, 'example.org/context': { origin: 'test client' } },
+  })));
   assert.equal(viewed.task.title, 'MCP fixture');
   const identity: string = viewed.restoreId;
   const denied = await call(read('project shelf'));

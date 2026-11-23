@@ -21,8 +21,11 @@ const callSchema = z.object({ name: z.enum([mcpReadTool, mcpWriteTool]), argumen
 const selection = { command: z.string(), input: inputSchema.optional() };
 const writeArgs = z.object({ ...selection, restoreId: restoreIdSchema, opId: z.string().min(1).max(256).refine(value => /^[!-~]+$/.test(value), 'Use visible ASCII characters').optional() }).strict();
 const readArgs = z.object(selection).strict();
+// MCP metadata belongs to the request envelope. Keep method parameters for their own validation.
+const requestParams = z.looseObject({ _meta: z.record(z.string(), z.unknown()).optional() })
+  .transform(({ _meta, ...params }) => params);
 const envelope = z.object({ jsonrpc: z.literal('2.0'), id: z.union([z.string(), z.number().int()]).optional(),
-  method: z.string(), params: z.unknown().optional() });
+  method: z.string(), params: requestParams.optional() });
 const inline = z.object({ content: z.string().optional(), contentBase64: z.string().optional(), file: z.string().optional() })
   .superRefine((value, ctx) => {
     if (Object.values(value).filter(item => item !== undefined).length !== 1)
