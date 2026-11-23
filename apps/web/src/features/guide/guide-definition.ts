@@ -18,15 +18,16 @@ import type { GuideStage } from "./guide-state";
  * - `close`: while the server says a Task they pressed Done on since the guide began is finished and no words wait to
  *   be sent (`closing`), what is left to know;
  * - `work`: other work going on in the list;
- * - `idle`: nothing going on.
+ * - `idle`: nothing going on. What the guide falls back to while it goes on: its step is shown whenever it holds,
+ *   done or not, so the guide never stands showing nothing between the person's messages.
  * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read: then, and
  * only then, nothing holds while closing (nextStage). Otherwise, when nothing holds, nothing is shown and the guide waits.
  * Words
  * waiting to be sent sit between a question's answer and the label (`turn`) and the rest of `turn`; a message answered
  * in the conversation, after the rows awaiting the person.
  *
- * Every step is shown once. One with no button is done as soon as its balloon has stood on the screen: it goes on
- * standing while it stays the step on this page (`standing`), and is never the step again once the guide has moved on
+ * Every step but the `idle` one is shown once. One with no button is done as soon as its balloon has stood on the
+ * screen: it goes on standing while it stays the step on this page (`standing`), and is never the step again once the guide has moved on
  * from it or the page is loaded again. One with a button is done when its button is pressed, or when the guide moves on
  * from it after its balloon stood because its own facts no longer hold (doneOnLeaving); pushed aside while it still
  * holds, it comes back. A step that holds while its part is not on the screen shows nothing and the guide waits for
@@ -246,7 +247,7 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
   // Nothing going on and nothing written: a request is to be written, with the request to try the whole flow with (as
-  // on the first screen). It waits for its button or for words, so a reload never leaves the guide showing nothing.
+  // on the first step). Shown whenever nothing else holds (the `idle` phase).
   { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && !f.drafting,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain") },
@@ -264,7 +265,7 @@ const stays = (entry: GuideEntry, facts: GuideFacts) => entry.id === facts.stand
  * none when none holds (the guide waits, or is over while closing: nextStage).
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!facts.seen.has(entry.id) || stays(entry, facts)) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (entry.phase === "idle" || !facts.seen.has(entry.id) || stays(entry, facts)) && entry.when(facts));
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 
