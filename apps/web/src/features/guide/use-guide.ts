@@ -119,6 +119,13 @@ export function useServerState(ids: readonly string[], byId: ReadonlyMap<string,
   };
 }
 
+/**
+ * Whether the guide is shown on this screen: on a computer's, never at a phone's width (useNarrow, the app's one rule
+ * for a phone's layout). On a phone it keeps its stage as it is, so it goes on once the screen is opened on a computer;
+ * the welcome says so (Welcome).
+ */
+export const useGuideShown = () => !useNarrow();
+
 /** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
 export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
 
@@ -190,7 +197,6 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   found.current = foundDraft(stage, JSON.stringify(doc), found.current);
   const drafting = hasContent(doc) && !found.current?.same;
   const labelled = inlines(doc).some(node => node.type === "taskLabel");
-  const narrow = useNarrow();
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
@@ -201,7 +207,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   // The step standing on this page as it was last chosen: it stays the step while it holds, done or not.
   const standing = useRef<string | null>(null);
   const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
-    narrow, apps, seen, skipped, standing: standing.current };
+    apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;

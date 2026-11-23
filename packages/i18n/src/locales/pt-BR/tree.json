@@ -142,6 +142,7 @@
     "yourTurn": "Sua vez"
   },
   "welcome": {
+    "guideOnComputer": "O guia de primeiros passos aparece na tela de um computador.",
     "lead": "Um lugar para entregar trabalho a uma equipe de IAs.",
     "picture": {
       "listed": "Elas entram na lista. O que precisa de você aparece em “{{section}}”",

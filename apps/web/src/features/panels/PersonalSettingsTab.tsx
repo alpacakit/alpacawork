@@ -18,6 +18,7 @@ import { resources } from '@/data/resources';
 import { useConnection } from '@/data/connection';
 import { useDialogStore } from '@/state/dialog-store';
 import { restartGuide } from '@/features/guide/guide-state';
+import { useGuideShown } from '@/features/guide/use-guide';
 
 /**
  * What one row says and allows while its values are saved, a row of three as a row of one. A change made elsewhere or a
@@ -100,9 +101,13 @@ function QuietHoursRow() {
   </SettingRow>;
 }
 
-/** The getting-started guide, kept on this browser: shown again from its first screen (restartGuide), settings closed. */
+/**
+ * The getting-started guide, kept on this browser: shown again from its first screen (restartGuide), settings closed.
+ * Not offered where the guide is not shown (useGuideShown: a phone).
+ */
 function GuideRow() {
   const { t } = useTranslation('panels');
+  if (!useGuideShown()) return null;
   return <SettingRow id="setting-guide" label={t('settings.personal.guide')} hint={t('settings.personal.guideHelp')}>
     {/* Named by its own words ("Show again"), the row's name said after it: the row's label names the setting, not the press. */}
     <Button variant="outline" aria-describedby="setting-guide-label" onClick={() => { restartGuide(); useDialogStore.getState().close(); }}>

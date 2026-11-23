@@ -85,9 +85,9 @@ export const PARTS = {
   detail: "aside[data-reader-mode]",
   /** The open questions in the detail, in their box: each one's number, what it asks and its choices. */
   asked: "[data-waiting-report-actions]",
-  /** The detail while it lies over the page (a phone's sheet, or taking the whole screen), not beside the list. */
+  /** The detail while it lies over the page (over the list, or taking the whole screen), not beside the list. */
   detailOver: 'aside[data-reader-mode]:not([data-reader-mode="docked"])',
-  /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
+  /** Done, which accepts a report, once it can be pressed. */
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
   project: "[data-project-trigger]",
@@ -139,8 +139,6 @@ export type GuideFacts = {
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
-  /** A phone's width. */
-  narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps done: put away by their button, shown (with no button), or left after their balloon stood on the screen. */
@@ -203,14 +201,13 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   // A report open with nothing written yet: more can be asked after it, with one more to try; then, with words
-  // written, the label that goes with them (OVER_INPUT). Not on a phone's width, where a balloon over the input stands
-  // over the report itself.
+  // written, the label that goes with them (OVER_INPUT).
   { id: "more", phase: "turn", turn: true, passable: true, part: "input", ...OVER_INPUT, next: true,
-    when: f => f.open === "result" && !f.drafting && !f.narrow,
+    when: f => f.open === "result" && !f.drafting,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.moreExample")) },
     say: t => t("tree:guide.say.more") },
   { id: "label", phase: "turn", turn: true, passable: true, part: "label", ...OVER_INPUT,
-    when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more") && !f.narrow,
+    when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more"),
     say: t => t("tree:guide.say.label") },
   // Words in the input: they wait to be sent. Right by the send button: beside the input where there is room, else
   // over the buttons at its foot (never over the words written).
@@ -239,7 +236,7 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   { id: "phone", phase: "close", passable: true, part: "settings", side: "bottom", align: "end", next: true,
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
-    when: f => f.apps && !f.narrow,
+    when: f => f.apps,
     say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
   // Other work: a Task left with no AI on it waits for the person, nothing there is the AI's yet.
   { id: "unassigned", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,

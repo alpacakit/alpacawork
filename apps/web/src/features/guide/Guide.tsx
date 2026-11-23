@@ -10,7 +10,7 @@ import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
+import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -23,7 +23,7 @@ function CloseGuide({ className }: { className?: string }) {
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
-    className={cn("flex-none narrow:size-11 narrow:min-h-11", className)}>
+    className={cn("flex-none", className)}>
     <Icon name="close" className="size-4" />
   </Button>;
 }
@@ -213,7 +213,9 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
 export function GuideBalloon() {
   useGuideStart();
   const stage = useGoingGuide();
-  return stage && <GoingBalloon stage={stage} />;
+  // Started on a phone too (its stage kept for a computer), it is drawn on a computer's screen alone (useGuideShown).
+  const shown = useGuideShown();
+  return stage && shown && <GoingBalloon stage={stage} />;
 }
 
 /**
@@ -369,11 +371,11 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };
-  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float narrow:py-1">
+  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     <div className="flex items-start gap-1">
-      <p ref={words} className="m-0 flex-1 py-1.5 text-sm narrow:py-2.5">
+      <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
         <Sentences words={say} />
       </p>
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />

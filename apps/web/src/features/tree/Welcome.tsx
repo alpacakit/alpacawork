@@ -2,15 +2,20 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { Sentences } from "@/components/ui/sentences";
+import { useGoingGuide, useGuideShown } from "@/features/guide/use-guide";
 
 /**
  * The list's place while the scope in view holds no Task at all (counts.tasks; live, finished or shelved): a welcome,
  * one line on what this place is for, and a picture of how work goes (WorkPicture), in one column a little above
  * the middle of the list's place (by the screen's height alone, so it never moves when the input at the foot grows),
- * clear of that input; on a phone it starts near the top, so the picture ends above the balloon over the input. This is the first screen a new person sees; the guide's one balloon then points at the input.
+ * clear of that input; on a phone it starts near the top, so the picture ends above the input. This is the first screen
+ * a new person sees; on a computer the guide's one balloon then points at the input, and on a phone, where the guide is
+ * not shown (useGuideShown), one line under the picture says where it is.
  */
 export function Welcome() {
   const { t } = useTranslation("tree");
+  const going = !!useGoingGuide(), shown = useGuideShown();
+  const elsewhere = going && !shown;
   // It rises into place in three parts, each a little after the one above, every time it is put on the screen
   // (motion.css, animate-welcome).
   return <section data-welcome className="flex justify-center px-5 pt-[clamp(24px,calc(40dvh-190px),160px)] pb-6 narrow:pt-[clamp(8px,calc(100dvh-836px),96px)]">
@@ -20,6 +25,7 @@ export function Welcome() {
       <div className="animate-welcome [animation-delay:var(--motion-fast)] motion-reduce:[animation-delay:0s]">
         <WorkPicture />
       </div>
+      {elsewhere && <p data-guide-elsewhere className="mx-auto mt-6 mb-0 max-w-md text-center text-balance text-sm text-muted [word-break:auto-phrase]">{t("welcome.guideOnComputer")}</p>}
     </div>
   </section>;
 }

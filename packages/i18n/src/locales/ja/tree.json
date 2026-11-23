@@ -129,6 +129,7 @@
     "yourTurn": "あなたの番"
   },
   "welcome": {
+    "guideOnComputer": "はじめかたの案内は、パソコンの画面で表示されます。",
     "lead": "AI のチームに、仕事を任せる場所です。",
     "picture": {
       "listed": "一覧に並ぶ。あなたの番になると「{{section}}」に出る",

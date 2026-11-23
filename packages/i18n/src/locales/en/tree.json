@@ -135,6 +135,7 @@
     "yourTurn": "Your turn"
   },
   "welcome": {
+    "guideOnComputer": "The getting-started guide is shown on a computer's screen.",
     "lead": "A place to hand work to a team of AIs.",
     "picture": {
       "listed": "They're listed. What needs you shows up under “{{section}}”",

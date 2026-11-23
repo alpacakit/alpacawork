@@ -8,16 +8,14 @@ const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
   ({ stage: started, tasks: 0, doneHere: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, narrow: false, apps: false, seen: new Set(), standing: null, ...over });
+    open: null, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
-test("the first request goes from the input, on a computer or a phone, to the coordinator and its Task", () => {
-  for (const narrow of [false, true]) {
-    expect(shown({ narrow })).toBe("send");
-    expect(shown({ narrow, drafting: true })).toBe("send-ready");
-    expect(shown({ narrow, sent: true, busy: true })).toBe("received");
-  }
+test("the first request goes from the input to the coordinator and its Task", () => {
+  expect(shown({})).toBe("send");
+  expect(shown({ drafting: true })).toBe("send-ready");
+  expect(shown({ sent: true, busy: true })).toBe("received");
   expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
   // Answered in the conversation with no Task, the guide says once that that is where the reply is; then back to writing.
   expect(shown({ sent: true, talked: true, direct: true })).toBe("direct");
@@ -44,8 +42,6 @@ test("a report open: more can be asked first, then its label once while somethin
   expect(shown({ ...report, drafting: true })).toBe("send-ready");
   expect(shown({ ...report, seen: read("more"), drafting: true, labelled: true })).toBe("label");
   expect(shown({ ...report, seen: read("more") })).toBe("accept");
-  // On a phone's width the balloon over the input would stand over the report: straight to Done.
-  expect(shown({ ...report, narrow: true })).toBe("accept");
 });
 
 test("words in the input point at sending them wherever the guide is, but for a question's answer and the label", () => {
@@ -154,9 +150,8 @@ test("once Done is pressed here the guide closes in steps read once each, before
   const read_ = facts({ ...done, working: 1, unowned: 1, seen: read("conversation", "another-repository") });
   expect(guideEntry(read_)).toBeNull();
   expect(nextStage(turn, null, closing(read_))).toEqual({ stage: "done" });
-  // Where settings hold the steps to answering from a phone, pointing at them once is the last step; never on a phone.
+  // Where settings hold the steps to answering from a phone, pointing at them once is the last step.
   expect(shown({ ...done, apps: true, seen: read("conversation", "another-repository") })).toBe("phone");
-  expect(shown({ ...done, apps: true, narrow: true, seen: read("conversation", "another-repository") })).toBeNull();
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
