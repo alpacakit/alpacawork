@@ -383,7 +383,7 @@
     "sendBack": "差し戻しを書く",
     "sentBody": "エージェントに送った本文",
     "working": {
-      "others_other": "ほか{{count}}人",
+      "others_other": "ほか{{count}}体",
       "tookOver": "{{agent}} が{{reason}}で止まったため引き継ぎ"
     }
   },

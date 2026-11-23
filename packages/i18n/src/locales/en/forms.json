@@ -1,7 +1,7 @@
 {
   "agentPicker": {
     "brief": {
-      "gone": "Choose someone else to ask",
+      "gone": "Choose another agent to ask",
       "new_conversation": "Start over with “{{action}}”",
       "none": "No agent is enabled",
       "select_value": "Choose the {{row}} again"
@@ -16,7 +16,7 @@
     "pickerLabel": "{{agent}}. Press to change",
     "pickerTitle": "Who to ask",
     "problem": {
-      "gone": "{{agent}} isn't available with the current settings. Choose someone else to ask",
+      "gone": "{{agent}} isn't available with the current settings. Choose another agent to ask",
       "invalid_value": "The previous {{row}}, {{previous}}, is no longer offered. Choose again",
       "none": "No agent is enabled. In the agent settings, sign in to an agent, then enable it.",
       "null_required": "{{row}} can no longer be None. Choose a value",
