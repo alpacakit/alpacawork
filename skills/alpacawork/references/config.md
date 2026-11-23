@@ -32,9 +32,9 @@ coordinatorAiStack:
 
 Each stack lists named, enabled agents and their launch values in order. The first row is the default. The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends. The coordinator uses its own stack. A missing or empty `coordinatorAiStack` leaves it unconfigured.
 
-Coordinator stack changes apply when the next message is accepted. If the conversation's current row is still in the stack and can run, the conversation continues there with only the rows below it as alternatives. Otherwise the first usable row starts the next turn.
+Coordinator stack changes apply when the next message is accepted. The coordinator checks the rows in order, skips duplicate launches, and skips rows whose latest run in this conversation hit a usage or capacity limit. If every row hit a limit, it checks again from the top. Only rows below the chosen row can take over.
 
-`config get` returns the saved stacks when present. Include either stack in the YAML passed to `config set --config` along with the full limits. Omitting a stack from the edit leaves it as saved. Use `[]` to clear it.
+`config get` returns each saved stack with the values its rows use. Include either stack in the YAML passed to `config set --config` along with the full limits. Omitting a stack from the edit leaves it as saved. Use `[]` to clear it.
 
 ## Run limits (limits)
 

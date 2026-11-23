@@ -207,7 +207,7 @@ test('clearing repeatedly warms and sends with an omitted launch option, without
     const records = h.records(conversation.id), warms = records.filter(record => record.warm);
     assert.equal(warms.length, 1, 'duplicate warm requests admit one preparation');
     assert.equal(warms[0]!.run?.state, 'succeeded');
-    assert.equal(warms[0]!.run?.launch.values.fast, null);
+    assert.equal(warms[0]!.run?.launch.values.fast, undefined);
     assert.equal((await h.get()).warm, 'ready');
     assert.equal((await h.post('/api/coordinator/warm', {
       ...warm, selected: { fast: false },

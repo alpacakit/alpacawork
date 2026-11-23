@@ -26,7 +26,6 @@ import { assertQuestionReplyApplicable, questionSnapshot, replyQuestion } from '
 import { assignedSession, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
 import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
-import { freezeAiStack } from '../ai-stack.js';
 import { createCoordinatorReadState, languageLine, savedReplyLanguage } from '../receiver/person-state.js';
 import { coordinatorSkills } from './skills.js';
 import { coordinatorNextLaunch } from './continuation.js';
@@ -185,7 +184,7 @@ export class CoordinatorConversation {
     tx.insertConversationRequest({ id: input.id, conversationId: conversation.id, headRunId: head?.id ?? null, mode,
       body: input.body, replyTo: input.replyTo, submittedAt: new Date().toISOString(),
       deliveryState: admittedDelivery(!!continued, session, runs),
-      aiStack: input.warm ? undefined : freezeAiStack(config, next.row, next.following) });
+      aiStack: input.warm || !next.following.length ? undefined : [next.row, ...next.following] });
     tx.createCoordinatorRun({ conversationId: conversation.id, requestId: input.id, agent, resumes: continued?.id ?? null,
       session, cwd: coordinatorCwd(this.root), launch, restartArgv, message: input.message }, text);
   }

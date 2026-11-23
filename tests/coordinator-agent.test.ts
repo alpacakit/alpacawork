@@ -148,7 +148,7 @@ test('literal command paths agree across launch, continuation, coordinator resta
 test('after another agent fails to launch, the screen and serve both go on from the last Run that got going', t => {
   const { root, owner, conversation, config, ask } = fixture(t);
   const agents = { first: claude(), second: claude() };
-  const first = { agent: 'first', values: { model: 'synthetic-b', effort: null } };
+  const first = { agent: 'first', values: { model: 'synthetic-b' } };
   config(agents, [first]);
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
@@ -165,10 +165,9 @@ test('after another agent fails to launch, the screen and serve both go on from 
   config(agents, [{ agent: 'second', values: {} }]);
   ask();
   end(lastRequest().requestId, 'failed');
-  // The failed launch counts for neither: the screen offers to go on with the first agent's values ...
-  config(agents, [{ agent: 'second', values: {} }, first]);
+  // A later failed Run for another agent does not replace the first agent's session.
+  config(agents, [first, { agent: 'second', values: {} }]);
   assert.deepEqual(owner.read().nextLaunch, first);
-  // ... and serve goes on in that session with them.
   ask();
-  assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values], ['first', answered.id, { model: 'synthetic-b', effort: null }]);
+  assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values], ['first', answered.id, first.values]);
 });

@@ -44,13 +44,22 @@ export function standingAiRows(config: AgentsSettings, placement: AiStackPrefix 
 /** Snapshot the first launch and following rows, ignoring duplicated effective selections. */
 export function freezeAiStack(config: AgentsSettings, first: AiRow, following = config.aiStack ?? []): AiRow[] | undefined {
   if (!following.length) return undefined;
+  return distinctSelections(config, [first, ...following]).map(({ row, selection }) => ({ agent: row.agent, values: selection.values }));
+}
+
+/** Keep the first row for each effective launch, preserving the input representation. */
+export function distinctAiRows(config: AgentsSettings, rows: readonly AiRow[]): AiRow[] {
+  return distinctSelections(config, rows).map(({ row }) => row);
+}
+
+function distinctSelections(config: AgentsSettings, rows: readonly AiRow[]) {
   const seen = new Map<string, object[]>();
-  return [first, ...following].flatMap(row => {
+  return rows.flatMap(row => {
     const compiled = compileAgentSetting(row.agent, config.agents[row.agent]);
     const selection = resolveAgentSelection(compiled, row.values);
     const previous = seen.get(row.agent) ?? [];
     if (previous.some(values => isDeepStrictEqual(values, selection.effective))) return [];
     seen.set(row.agent, [...previous, selection.effective]);
-    return [{ agent: row.agent, values: selection.values }];
+    return [{ row, selection }];
   });
 }

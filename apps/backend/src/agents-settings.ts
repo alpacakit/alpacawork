@@ -8,7 +8,7 @@ import type { AgentLaunch } from '@alpacawork/contract/agent-launch';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { attachmentBytes, checkAgentsConfigText, DEFAULT_LIMITS, limitsShape,
   compileAgentSetting, prepareAgentLaunch, prepareCoordinatorLaunch,
-  aiStackSchema, agentChoices, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
+  aiStackSchema, agentChoices, stackRowValues, SelectionRequired, InvalidAgentSelection, AgentUnavailable, ConversationAdapterMismatch,
   type AiRow, type AgentSetting, type ResolvedAgentSetting, type Selection, type LaunchAdmission } from '@alpacawork/contract';
 import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
 import { stringify } from 'yaml';
@@ -60,8 +60,10 @@ export function parseAgentsSettings(text: string): AgentsSettings {
     const stack = (key: 'aiStack' | 'coordinatorAiStack') => aiStackSchema.optional().parse(values[key])?.map(row => {
       const setting = Object.hasOwn(checked.agents, row.agent) ? checked.agents[row.agent] : undefined;
       if (!setting) throw new Error(`${key} names an undefined agent: ${row.agent}`);
-      const prepared = prepareAgentLaunch(compileAgentSetting(row.agent, setting), { mode: 'start', path: '/bin', explicit: row.values });
-      return { agent: row.agent, values: prepared.launch.values };
+      const compiled = compileAgentSetting(row.agent, setting);
+      const { launch, choices } = prepareAgentLaunch(compiled, { mode: 'start', path: '/bin', explicit: row.values });
+      const resolved = key === 'coordinatorAiStack' ? stackRowValues(compiled, { choices, values: launch.values }) : launch.values;
+      return { agent: row.agent, values: resolved };
     });
     return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents,
       aiStack: stack('aiStack'), coordinatorAiStack: stack('coordinatorAiStack') };

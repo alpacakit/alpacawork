@@ -246,8 +246,8 @@ test('a queued coordinator message follows the replacement conversation using th
 
     const later = randomUUID();
     writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-      agents: { ...h.config.agents, replacement: h.config.agents.codex },
-      coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'replacement', values: {} }],
+      agents: { ...h.config.agents, retry: h.config.agents.claude, replacement: h.config.agents.codex },
+      coordinatorAiStack: [{ agent: 'retry', values: {} }, { agent: 'replacement', values: {} }],
     }, { aliasDuplicateObjects: false }));
     conversation.ask({ id: later, conversationId, attachments: [],
       text: JSON.stringify({ sessionLimit: true, output: 'Second replacement' }) });

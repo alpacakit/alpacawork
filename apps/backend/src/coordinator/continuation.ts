@@ -1,26 +1,46 @@
 import { isDeepStrictEqual } from 'node:util';
-import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
+import type { AiRow } from '@alpacawork/contract';
+import { compareRunIds, type CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { compareRequestOrder, isUnfinished } from '@alpacawork/runs';
 import { coordinatorLaunchSnapshot, type AgentsSettings } from '../agents-settings.js';
+import { distinctAiRows } from '../ai-stack.js';
+
+function preferResume(config: AgentsSettings, row: AiRow, path: string, previous: CoordinatorRunRecord | null) {
+  if (previous) {
+    try {
+      const snapshot = coordinatorLaunchSnapshot(config, row.agent, 'resume', path, row.values, previous.launch);
+      if (snapshot.ok) return snapshot;
+    } catch (error) {
+      if (!(error instanceof Problem) ||
+        (error.reason?.kind !== 'selection_required' && error.reason?.kind !== 'new_conversation_required')) throw error;
+    }
+  }
+  return coordinatorLaunchSnapshot(config, row.agent, 'start', path, row.values);
+}
 
 /** Choose the same row for admission, warm-up, the skill catalog and the projected conversation. */
 export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly CoordinatorRunRecord[], path = process.env.PATH ?? '') {
-  const rows = config.coordinatorAiStack ?? [];
+  const rows = distinctAiRows(config, config.coordinatorAiStack ?? []);
   const last = runs.filter(run => run.state === 'succeeded' || isUnfinished(run)).sort(compareRequestOrder).at(-1);
-  // A sessionless Run can still establish the conversation's current row.
   const resumable = last && (last.session !== null || isUnfinished(last)) ? last : null;
-  const current = rows.findIndex(row => row.agent === last?.agent && isDeepStrictEqual(row.values, last.launch.values));
-  const order = rows.map((_, index) => index);
-  if (current > 0) order.unshift(...order.splice(current, 1));
+
+  // A queued or joined turn didn't execute. Availability is the same observed stop cause the Run fallback uses.
+  const executed = runs.filter(run => run.started_at !== null && run.state !== 'joined')
+    .sort((a, b) => b.started_at!.localeCompare(a.started_at!) || compareRunIds(b, a));
+  const remaining = rows.filter(row => {
+    const latest = executed.find(run => run.agent === row.agent && isDeepStrictEqual(run.launch.values, row.values));
+    return !(latest?.state === 'failed' && latest.availability);
+  });
+  const candidates = remaining.length ? remaining : rows;
 
   let refusal: Problem | undefined;
-  for (const index of order) {
-    const row = rows[index]!;
-    const continued = resumable?.agent === row.agent ? resumable : null;
+  for (const [index, row] of candidates.entries()) {
+    const previous = resumable?.agent === row.agent ? resumable : null;
     try {
-      const snapshot = coordinatorLaunchSnapshot(config, row.agent, continued ? 'resume' : 'start', path, row.values, continued?.launch);
-      if (snapshot.ok) return { row, launch: snapshot.launch, restartArgv: snapshot.restartArgv, continued, following: rows.slice(index + 1) };
+      const snapshot = preferResume(config, row, path, previous);
+      if (snapshot.ok) return { row, launch: snapshot.launch, restartArgv: snapshot.restartArgv,
+        continued: snapshot.mode === 'resume' ? previous : null, following: candidates.slice(index + 1) };
     } catch (error) {
       if (!(error instanceof Problem)) throw error;
       refusal ??= error;

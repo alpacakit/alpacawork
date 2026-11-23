@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor, compileAgentSetting, resolveAgentSelection, stackRowValues } from '@alpacawork/contract';
 import type { ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
@@ -35,8 +35,13 @@ function view(bytes: Buffer): ServerSettings {
   const config = parseAgentsSettings(text);
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
+  // A task's launch can still carry latent defaults. The editable rows only expose choices that apply.
+  const aiStack = config.aiStack?.map(row => {
+    const compiled = compileAgentSetting(row.agent, config.agents[row.agent]!);
+    return { agent: row.agent, values: stackRowValues(compiled, resolveAgentSelection(compiled, row.values)) };
+  });
   return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
-    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }),
+    ...(aiStack === undefined ? {} : { aiStack }),
     ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
@@ -74,15 +79,16 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       const beforeBytes = writer!.read(CONFIG_FILE) ?? Buffer.alloc(0);
       // A config.yaml the screen cannot read is refused as such, before any staleness.
       const before = decode(beforeBytes);
-      const current = parseAgentsSettings(before);
-      const { document } = parseConfig(before);
+      const current = view(beforeBytes);
+      const { document, values } = parseConfig(before);
       if (digest(beforeBytes) !== input.expectedConfigHash)
         throw new Problem(PROBLEM_CODE.conflict, 'Settings changed; reload before retrying', { path: CONFIG_FILE }, { reason: { kind: 'settings_changed' } });
       let rewrite = false;
       for (const [key, value] of Object.entries(edit.limits))
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
       for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
-        if (edit[key] === undefined || isDeepStrictEqual(edit[key], current[key])) continue;
+        const currentRows = key === 'aiStack' ? current.aiStack : values.coordinatorAiStack;
+        if (edit[key] === undefined || isDeepStrictEqual(edit[key], currentRows)) continue;
         document.set(key, edit[key]);
         rewrite = true;
       }
@@ -92,12 +98,19 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
         rewrite = true;
       }
       */
-      // Rewriting may respace flow lists across the file, so only a limits or Jev change rewrites it;
-      // the agents block then goes in as typed, comments and spacing included.
-      const base = rewrite ? document.toString({ lineWidth: 0 }) : before;
-      const block = agentsBlock(base);
-      const output = Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));
-      const saved = view(output);
+      // The agents block goes in as typed, even when serializing the other edits.
+      const render = (base: string) => {
+        const block = agentsBlock(base);
+        return Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));
+      };
+      let output = render(rewrite ? document.toString({ lineWidth: 0 }) : before);
+      let saved = view(output);
+      // The new agents block decides which coordinator values are active.
+      if (edit.coordinatorAiStack !== undefined && !isDeepStrictEqual(edit.coordinatorAiStack, saved.coordinatorAiStack)) {
+        document.set('coordinatorAiStack', saved.coordinatorAiStack);
+        output = render(document.toString({ lineWidth: 0 }));
+        saved = { ...saved, hash: digest(output) };
+      }
       // An unchanged file still answers this operation once, by a receipt that changes nothing else.
       if (output.equals(Buffer.from(before))) {
         const store = new ControlStore(root, { busyTimeoutMs: 10_000 });

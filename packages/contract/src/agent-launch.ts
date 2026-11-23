@@ -9,7 +9,7 @@ import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId } from './agent-ada
 import { selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
 import { prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
 import type { SystemVariableName } from './agent-variables.js';
-import { resolveAgentSelection, type AgentChoice, type ResolvedAgentSelection } from './agent-selection.js';
+import { resolveAgentSelection, stackRowValues, type AgentChoice, type ResolvedAgentSelection } from './agent-selection.js';
 import { agentEnvironmentNamesSchema } from './agent-environment.js';
 export const launchModeSchema = z.enum(LAUNCH_MODES);
 export const launchArgvSchema = z.array(z.string()).min(1).refine(argv => argv.length === 0 || argv[0]!.length > 0, 'Executable must not be empty');
@@ -98,6 +98,7 @@ export type CoordinatorLaunchAdmission = z.infer<typeof coordinatorLaunchAdmissi
 export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admission: LaunchAdmission): CoordinatorLaunchAdmission {
   const valid = resolveAdmission(compiled, admission);
   const launch = snapshot(compiled, valid.admission, valid.resolved);
+  launch.values = stackRowValues(compiled, valid.resolved);
   const adapter = AGENT_ADAPTERS[compiled.adapter];
   const restartArgv = valid.admission.mode === 'start' ? null : [...adapter.prefix,
     ...prepareLaunchOptions(compiled.options.start, valid.resolved.effective, adapter.system.start)];

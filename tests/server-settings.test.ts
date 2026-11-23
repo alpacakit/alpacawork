@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { checkAgentsText, DEFAULT_LIMITS, DEFAULT_SCHEMA, type Limits } from '@alpacawork/contract';
 import { configSetInput } from '@alpacawork/contract/inputs';
 import { Problem, errorBody, parseInput } from '@alpacawork/core';
@@ -17,6 +17,9 @@ import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { readSchema } from '@alpacawork/backend/test-dist/control/field-commands.js';
+import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
+import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
+import { RunStore } from '@alpacawork/runs';
 
 const AGENTS = stringify({ agents: { claude: {
   ...fixtureAgentSetting('claude'), params: { model: ['opus', 'sonnet'], effort: [] },
@@ -86,6 +89,40 @@ test('the settings screen saves limits.attachment_mib from 1 to 500 MiB', async 
   for (const value of [0, 501, 2.5])
     await assert.rejects(async () => save(root, { config: rest({ attachment_mib: value }), agents: saved.agentsText, expectedConfigHash: saved.hash! }),
       (error: any) => error.code === 'invalid_input' && error.issues?.some((issue: { path: string }) => issue.path === 'limits.attachment_mib'));
+});
+
+test('AI stacks round-trip the same editable values as the upcoming coordinator launch', async t => {
+  const agents = stringify({ agents: {
+    claude: { command: process.execPath, without: { opus: ['effort'] } }, copilot: {}, pi: {},
+  } });
+  const { root } = setup(t, agents);
+  const written = [{ agent: 'claude', values: { model: 'opus', effort: 'low' } },
+    { agent: 'copilot', values: {} }, { agent: 'pi', values: {} }];
+  const expected = [{ agent: 'claude', values: { model: 'opus' } },
+    { agent: 'copilot', values: {} }, { agent: 'pi', values: { effort: 'high' } }];
+  const writeStacks = (hash: string | null, aiStack: unknown, coordinatorAiStack: unknown) =>
+    save(root, { config: stringify({ limits: DEFAULT_LIMITS, aiStack, coordinatorAiStack }, { aliasDuplicateObjects: false }), agents, expectedConfigHash: hash });
+  const before = await readServerSettings(root);
+  const saved = await writeStacks(before.hash, written, written);
+  const read = await readServerSettings(root);
+  assert.deepEqual(read, saved);
+  assert.deepEqual(read.aiStack, expected);
+  assert.deepEqual(read.coordinatorAiStack, expected);
+  assert.deepEqual(parse(file(root)).coordinatorAiStack, expected, 'the coordinator stack is written in its resolved shape');
+  assert.deepEqual(await writeStacks(read.hash, read.aiStack, read.coordinatorAiStack), saved);
+  const settings = readAgentsSettings(root);
+  assert.ok(settings.ok);
+  assert.equal(settings.config.aiStack?.[0]?.values.effort, 'low', 'task launch defaults keep their existing representation');
+
+  const owner = new CoordinatorConversation(root), conversation = owner.read();
+  assert.deepEqual(conversation.nextLaunch, expected[0]);
+  owner.ask({ conversationId: conversation.id, id: crypto.randomUUID(), text: 'Synthetic message', attachments: [] });
+  const store = new RunStore(root, { busyTimeoutMs: 1000 });
+  try {
+    const launch = store.coordinatorRuns(conversation.id)[0]!.launch;
+    assert.deepEqual(launch.values, expected[0]!.values);
+    assert.ok(!launch.argv.includes('--effort'));
+  } finally { store.close(); }
 });
 
 test('a project\'s name, values and fields are its Task\'s; config.yaml and its hash stay', async t => {

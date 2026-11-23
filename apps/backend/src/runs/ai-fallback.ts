@@ -139,7 +139,8 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     const { agent, values } = rows[attempt]!;
     let prepared;
     try {
-      prepared = launchSnapshot(settings.config, agent, 'start', run.launch.path, values);
+      const prepare = run.role === 'coordinator' ? coordinatorLaunchSnapshot : launchSnapshot;
+      prepared = prepare(settings.config, agent, 'start', run.launch.path, values);
     } catch (error) {
       if (error instanceof Problem) continue;
       throw error;
