@@ -1,14 +1,14 @@
 import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
-import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, saidBefore, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
+import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
 import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, doneHere: false, settling: false, soon: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, apps: false, seen: new Set(), standing: null, ...over });
+  ({ screen: "computer", stage: started, tasks: 0, doneHere: false, settling: false, soon: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
+    open: null, pushOff: false, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
@@ -104,7 +104,7 @@ test("through a first Task the guide always has a step: each explained once, the
   expect(round({ doneHere: true, questions: 1 })).toEqual([undefined, false]);
   // What only explains is never the step again: the request to try after a report, the label, where an AI is stopped,
   // a reply in the conversation itself, and the close.
-  for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone"].includes(entry.id)]);
+  for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone", "phone-card", "phone-notify"].includes(entry.id)]);
 });
 
 test("a request to try is the one way on its step offers: no \"Got it\" stands beside it", () => {
@@ -180,10 +180,42 @@ test("shown again over a list with nothing going on, the guide begins at sending
 });
 
 test("the guide starts by itself only for a new person: never stored, on the welcome, with no Task in the whole workspace", () => {
-  expect(startsGuide(null, true, 0)).toBe(true);
-  expect(startsGuide(null, true, 3)).toBe(false);
-  expect(startsGuide(null, false, 0)).toBe(false);
-  expect(startsGuide({ stage: "done" }, true, 0)).toBe(false);
+  const at = (welcome: boolean, tasks: number) => ({ screen: "computer", welcome, tasks }) as const;
+  expect(startsGuide("computer", null, at(true, 0))).toBe(true);
+  expect(startsGuide("computer", null, at(true, 3))).toBe(false);
+  expect(startsGuide("computer", null, at(false, 0))).toBe(false);
+  expect(startsGuide("computer", { stage: "done" }, at(true, 0))).toBe(false);
+});
+
+test("a phone has a guide of its own: started on a phone's first look whatever the work, and kept apart from the computer's", () => {
+  expect([guideScreen(false, true), guideScreen(true, true), guideScreen(true, false)]).toEqual(["computer", "phone", null]);
+  expect(startsGuide("phone", null, { screen: "phone", welcome: false, tasks: 12 })).toBe(true);
+  expect(startsGuide("phone", null, { screen: "computer", welcome: true, tasks: 0 })).toBe(false);
+  expect(startsGuide("phone", { stage: "done" }, { screen: "phone", welcome: false, tasks: 12 })).toBe(false);
+});
+
+test("on a phone: an open question or report says its buttons and swipes once, and notifications are pointed at only while they could be on and are not", () => {
+  const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, ...over });
+  // A card open: its buttons and swipes, in the words for its kind, before notifications; once read, nothing more on it.
+  expect(phone({ open: "result" })).toBe("phone-card");
+  expect(phone({ open: "question", pushOff: true })).toBe("phone-card");
+  const say = (open: GuideFacts["open"]) => { const f = facts({ screen: "phone", open }); return guideEntry(f)!.say(((key: string) => key) as never, f); };
+  expect([say("question"), say("result")]).toEqual(["tree:guide.say.phoneQuestion", "tree:guide.say.phoneResult"]);
+  expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
+  // Notifications, while this browser could have them and does not, until read; put aside by a card's step, not done.
+  const notify = guideEntry(facts({ screen: "phone", pushOff: true }));
+  expect(notify?.id).toBe("phone-notify");
+  expect(phone({ pushOff: false })).toBeNull();
+  expect(phone({ pushOff: true, seen: read("phone-notify") })).toBeNull();
+  const card = facts({ screen: "phone", open: "question", pushOff: true });
+  expect(doneOnLeaving(notify, guideEntry(card), card, true)).toBe(false);
+  expect(doneOnLeaving(notify, null, facts({ screen: "phone", pushOff: false }), true)).toBe(true);
+  // None of the computer's steps is shown on a phone, and neither of these on a computer.
+  expect(phone({ tasks: 0, questions: 0, results: 0 })).toBeNull();
+  expect(shown({ tasks: 1, results: 1, open: "result", pushOff: true, seen: read("more", "accept") })).toBe("accept");
+  // A Task finished on a phone does not end its guide: only a computer's has a close.
+  const finished = facts({ screen: "phone", doneHere: true });
+  expect([closing(finished), nextStage(started, guideEntry(finished), closing(finished))]).toEqual([false, undefined]);
 });
 
 test("the guide reaches the person's turn once a step of theirs holds, and is over only when nothing holds in the close", () => {

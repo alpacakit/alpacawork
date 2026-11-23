@@ -8,6 +8,7 @@ import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
+import { usePushOff } from "@/data/push";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -20,8 +21,9 @@ import { useSitting } from "@/features/reader/next-question";
 import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
-import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { closing, doneOnLeaving, finishedHere, guideEntry, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
+import { closing, doneOnLeaving, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
+  type GuideScreen } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
@@ -121,26 +123,26 @@ export function useServerState(ids: readonly string[], byId: ReadonlyMap<string,
 }
 
 /**
- * Whether the guide is shown on this screen: on a computer's, never at a phone's width (useNarrow, the app's one rule
- * for a phone's layout). On a phone it keeps its stage as it is, so it goes on once the screen is opened on a computer;
- * the welcome says so (Welcome).
+ * Whose guide this screen shows (guideScreen): a computer's on a wide screen, a phone's on a narrow one touched (useNarrow,
+ * the app's one rule for a phone's layout), none on a narrow one with a pointer. A computer's guide begun elsewhere keeps
+ * its stage as it is, so it goes on once the screen is opened on a computer; on a phone the welcome says so (Welcome).
  */
-export const useGuideShown = () => !useNarrow();
+export const useGuideScreen = (): GuideScreen | null => guideScreen(useNarrow(), useCoarsePointer());
 
-/** This browser's guide while it goes on; null when it never started or is over (then nothing else is read for it). */
-export const useGoingGuide = (): GoingStage | null => going(useDeviceValue(guideStage));
+/** This browser's guide of a screen while it goes on; null when it never started or is over (then nothing else is read for it). */
+export const useGoingGuide = (screen: GuideScreen): GoingStage | null => going(useDeviceValue(guideStages[screen]));
 
 /**
- * Starts the guide on a new person's first look (startsGuide): read from the stored stage and the workspace's counts
- * alone, so a browser whose guide is over, or never starts, opens no draft and reads no conversation for it. Mounted
- * once, beside the balloon, so a stage is written by one owner only.
+ * Starts each screen's guide by its own rule (startsGuide): read from the stored stages, the screen and the workspace's
+ * counts alone, so a browser whose guide is over, or never starts, opens no draft and reads no conversation for it.
+ * Mounted once, beside the balloon, so a stage is written by one owner only.
  */
 export function useGuideStart() {
-  const stage = useDeviceValue(guideStage);
-  const welcome = useListPlace() === "welcome";
-  const tasks = useWorkspaceInfo((info) => info.counts.tasks.root ?? 0);
-  const starts = startsGuide(stage, welcome, tasks);
-  useEffect(() => { if (starts) moveGuide(null, { stage: "started", at: Date.now(), seen: [] }); }, [starts]);
+  const computer = useDeviceValue(guideStages.computer), phone = useDeviceValue(guideStages.phone);
+  const opening = { screen: useGuideScreen(), welcome: useListPlace() === "welcome", tasks: useWorkspaceInfo((info) => info.counts.tasks.root ?? 0) };
+  const starts = { computer: startsGuide("computer", computer, opening), phone: startsGuide("phone", phone, opening) };
+  useEffect(() => { for (const screen of ["computer", "phone"] as const) if (starts[screen]) moveGuide(screen, null, { stage: "started", at: Date.now(), seen: [] }); },
+    [starts.computer, starts.phone]);
 }
 
 /**
@@ -150,7 +152,7 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
+export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
@@ -202,6 +204,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const labelled = inlines(doc).some(node => node.type === "taskLabel");
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
+  const pushOff = usePushOff();
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
@@ -213,8 +216,8 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const settling = rows.some(row => { const task = row.section === "review" ? index.byId.get(row.taskId) : undefined; return !!task && finishing(task); });
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
-  const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
-    apps, seen, skipped, standing: standing.current };
+  const facts: GuideFacts = { screen, stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
+    pushOff, apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;
@@ -229,7 +232,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
  * button as the guide moves on from it (doneOnLeaving; `stood`: its balloon has stood on this page). Nothing is stored
  * while the guide is not `ready`. Mounted once, beside the balloon, so a stage is written by one owner only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean) {
+export function useGuideStage(screen: GuideScreen, stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean) {
   const kept = stage.finished ?? [];
   const adding = fresh.filter(id => !kept.includes(id));
   const next = !ready ? undefined : adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, closing(facts));
@@ -237,7 +240,7 @@ export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts
   // Tried again whenever what is stored changes: a move refused because another tab stored something meanwhile is
   // made over what that tab stored.
   const from = JSON.stringify(stage);
-  useEffect(() => { if (next) moveGuide(stage, next); }, [key, from]);
+  useEffect(() => { if (next) moveGuide(screen, stage, next); }, [key, from]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
   // as done from before it.
   const held = useRef<{ entry: GuideEntry | null; at: number | null }>({ entry: null, at: null });
@@ -246,7 +249,7 @@ export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts
     if (!ready) return;
     const restarted = at !== null && held.current.at !== at;
     const left = held.current.entry;
-    if (!restarted && left && doneOnLeaving(left, entry, facts, stood(left.id))) putAway(left.id);
+    if (!restarted && left && doneOnLeaving(left, entry, facts, stood(left.id))) putAway(screen, left.id);
     held.current = { entry, at: at ?? held.current.at };
   }, [entry?.id, at, ready]);
 }

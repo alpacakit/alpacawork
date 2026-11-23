@@ -1,5 +1,5 @@
 import { workspaceWriteBasis } from './connection';
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { pushSubscribeResponseSchema, pushUnsubscribeResponseSchema, type PushDevice } from "@alpacawork/contract";
 import { taskAtAddress, type TaskIndex } from "@/domain/tasks";
@@ -83,6 +83,24 @@ function applicationServerKey(key: string): Uint8Array<ArrayBuffer> {
 export async function currentSubscription(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.ready;
   return registration.pushManager.getSubscription();
+}
+/**
+ * Whether this browser could receive notifications but does not: it can (pushSupported), the person has not blocked
+ * them, and it holds no subscription. Read as the screen opens and again as each dialog closes (Settings is where they
+ * are turned on); false until it is read, and where the read fails.
+ */
+export function usePushOff(): boolean {
+  const dialog = useDialogStore((state) => state.dialog?.kind ?? null);
+  const [off, setOff] = useState(false);
+  useEffect(() => {
+    if (dialog !== null) return;
+    if (!pushSupported() || Notification.permission === "denied") { setOff(false); return; }
+    let live = true;
+    currentSubscription().then((subscription) => { if (live) setOff(subscription === null); },
+      (error: unknown) => { recordFailure(error, "push subscription read"); if (live) setOff(false); });
+    return () => { live = false; };
+  }, [dialog]);
+  return off;
 }
 /** Ask permission, subscribe with serve's key, and register the subscription. */
 export function useSubscribePush() {
