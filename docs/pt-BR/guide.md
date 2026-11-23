@@ -59,7 +59,7 @@ Ao pressionar “Concluir”, a próxima tarefa aguardando revisão se abre. “
 
 Ao abrir uma tarefa em “Requer atenção”, aparecem o motivo da parada e alguns botões.
 
-- Pressione “Tentar novamente” ou “Parar”.
+- Pressione “Continuar com a mesma IA”, “Continuar com outra IA” ou “Parar”. “Continuar com outra IA” coloca uma frase no campo de mensagem; acrescente qual IA usar e envie.
 - Se aparecer “Continuar”, pressione se quiser que continue.
 - Se não houver botões, dê a instrução no campo de mensagem, seguindo o aviso mostrado.
 

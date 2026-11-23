@@ -171,8 +171,9 @@
   },
   "intent": {
     "continue": "继续 {{id}}",
-    "retry": "重试 {{id}}",
-    "sendback": "退回 {{id}}"
+    "retry": "请继续 {{id}}。",
+    "sendback": "退回 {{id}}",
+    "switch": "请选择另一个模型或智能体，继续进行。"
   },
   "markdownBody": {
     "copyCode": "复制代码",

@@ -59,7 +59,7 @@ Al pulsar “Completar”, se abre la siguiente tarea por revisar. “Cambiar es
 
 Al abrir una tarea de “Requiere atención”, verás el motivo por el que se detuvo y unos botones.
 
-- Pulsa “Reintentar” o “Detener”.
+- Pulsa “Seguir con la misma IA”, “Seguir con otra IA” o “Detener”. “Seguir con otra IA” pone una frase en el cuadro de texto; añade qué IA usar y envíala.
 - Si aparece “Continuar”, púlsalo si te parece bien que siga.
 - Si no hay botones, sigue la indicación que aparece y da la instrucción en el cuadro de texto.
 
