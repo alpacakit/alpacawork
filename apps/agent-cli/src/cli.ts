@@ -36,7 +36,7 @@ if (!module) {
       }
       const command = definition.command ? resolveExecutable(definition.command, explicit, process.env.PATH ?? '') : '';
       if (args.length === 1 && args[0] === '--limits') {
-        if (!module.limits) throw new Error(`${agent} reports no limits`);
+        if (!definition.limits || !module.limits) throw new Error(`${agent} reports no limits`);
         // One JSON line (bridgeLimitsSchema); a failure exits 2, as the other model-free checks do.
         try { process.stdout.write(`${JSON.stringify({ windows: await module.limits(command) })}\n`); }
         catch (error) {

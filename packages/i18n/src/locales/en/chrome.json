@@ -19,12 +19,12 @@
     "markAllRead": "Mark all read"
   },
   "limits": {
-    "barLabel": "AI plan limits: {{agent}} has used {{percent}} of its {{window}} limit",
+    "barLabel": "AI plan limits: {{agent}}, {{window}}: {{percent}} used",
     "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
     "none": "No limits apply now",
-    "readAgo_one": "Read {{count}} min ago",
-    "readAgo_other": "Read {{count}} min ago",
-    "readNow": "Read just now",
+    "readAgo_one": "Updated {{count}} min ago",
+    "readAgo_other": "Updated {{count}} min ago",
+    "readNow": "Updated just now",
     "reset": {
       "at": "Resets {{when}}",
       "inHours": "Resets in {{hours}}h {{minutes}}m",
@@ -33,13 +33,14 @@
     },
     "title": "AI plan limits",
     "unavailable": "Could not be read. Check that it is signed in",
-    "unsupported": "This AI does not report limits",
+    "unsupported": "This AI does not provide its limits",
     "window": {
       "allModels": "{{period}} (all models)",
       "hours_one": "{{count}} hour",
       "hours_other": "{{count}} hours",
       "model": "{{period}} ({{model}})",
       "monthly": "This month",
+      "other": "Other period",
       "session": "5 hours",
       "weekly": "Weekly"
     }

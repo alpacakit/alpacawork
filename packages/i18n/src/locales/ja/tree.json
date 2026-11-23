@@ -101,11 +101,11 @@
     "tokens": {
       "cacheRead": "キャッシュ読み",
       "cacheWrite": "キャッシュ書き",
-      "heading": "使ったトークン",
+      "heading": "使ったトークン（配下のタスクも含めて）",
       "input": "入力",
       "output": "出力",
-      "scope": "配下のタスクを含め、終わった実行の分です。",
-      "unknown_other": "ほか{{count}}回は記録なし。"
+      "scope": "終わった実行の分です。",
+      "unknown_other": "ほか{{count}}回の実行は数が取れていません。"
     },
     "turn": {
       "children": "依頼上限",

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { AGENT_NAMES, barLimit, limitTone, readWords, resetWords, windowLabel, type LimitTone } from "@/domain/limits";
+import { barLimit, limitTone, readWords, resetWords, windowLabel, type LimitTone } from "@/domain/limits";
+import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,7 @@ function WindowRow({ window, now, scoped }: { window: LimitWindow; now: number; 
 
 function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
   const { t } = useTranslation("chrome");
-  const name = AGENT_NAMES[agent.adapter];
+  const name = AGENT_NAMES[agent.adapter].short;
   // Beside a model's own window, the account's says it covers every model.
   const scoped = agent.windows.some(window => window.model !== null);
   const note = agent.state === "unsupported" ? t("limits.unsupported") : agent.state === "unavailable" ? t("limits.unavailable")
@@ -57,8 +58,8 @@ function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
 }
 
 /**
- * The bar's plan limits: the first agent tasks use, its fullest window as a ring and a percent (only the ring on a
- * phone); "—" while its own are unknown. A press opens every agent's windows with when each resets. Nothing shows until
+ * The bar's plan limits: the first agent tasks use, its fullest window (the one that stops it first) as a ring, its name
+ * and a percent (the ring and the percent on a phone); "—" while its own are unknown. A press opens every agent's windows with when each resets. Nothing shows until
  * some agent's limits are known.
  */
 export function LimitsMenu() {
@@ -75,16 +76,18 @@ export function LimitsMenu() {
   if (!shown) return null;
   const percent = shown.window?.usedPercent ?? 0;
   const tone = limitTone(percent);
-  const name = AGENT_NAMES[shown.agent.adapter];
+  const name = AGENT_NAMES[shown.agent.adapter].short;
   const label = shown.window ? t("limits.barLabel", { agent: name, window: windowLabel(shown.window, t), percent: percentText(percent) })
     : t("limits.barUnknown", { agent: name });
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
-      aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-11 narrow:px-0">
+      aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-1.5">
       <Ring percent={percent} tone={tone} />
+      {/* Which agent and which of its windows the figure is: a computer has the room; a phone keeps the figure. */}
       <span className="text-sm narrow:hidden">{name}</span>
-      <span className={cn("text-sm font-medium tabular-nums narrow:hidden", shown.window ? TONE_TEXT[tone] : "text-muted")}>
+      {shown.window && <span className="text-sm text-muted narrow:hidden">{windowLabel(shown.window, t)}</span>}
+      <span className={cn("text-sm font-medium tabular-nums", shown.window ? TONE_TEXT[tone] : "text-muted")}>
         {shown.window ? percentText(percent) : "—"}</span>
     </Button>
     {open && <Popup open onOpenChange={setOpen} label={t("limits.title")} align="end" className="w-80 p-3" anchorRef={trigger}

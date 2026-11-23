@@ -18,11 +18,11 @@
     "markAllRead": "全部标为已读"
   },
   "limits": {
-    "barLabel": "AI 用量上限：{{agent}} 已用 {{window}} 的 {{percent}}",
+    "barLabel": "AI 用量上限：{{agent}}，{{window}} 已用 {{percent}}",
     "barUnknown": "AI 用量上限：无法读取 {{agent}} 的上限",
     "none": "当前没有上限",
-    "readAgo_other": "{{count}} 分钟前读取",
-    "readNow": "刚刚读取",
+    "readAgo_other": "{{count}} 分钟前更新",
+    "readNow": "刚刚更新",
     "reset": {
       "at": "{{when}} 重置",
       "inHours": "{{hours}} 小时 {{minutes}} 分后重置",
@@ -30,12 +30,13 @@
     },
     "title": "AI 用量上限",
     "unavailable": "无法读取。请确认已登录",
-    "unsupported": "此 AI 不提供上限",
+    "unsupported": "无法从此 AI 获取上限",
     "window": {
       "allModels": "{{period}}（全部模型）",
       "hours_other": "{{count}} 小时",
-      "model": "{{model}} {{period}}",
+      "model": "{{period}}（{{model}}）",
       "monthly": "本月",
+      "other": "其他周期",
       "session": "5 小时",
       "weekly": "每周"
     }

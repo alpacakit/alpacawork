@@ -63,7 +63,8 @@ export const claudeLimits: LimitsProbe = {
       const response = object(row.response);
       if (row.type !== 'control_response' || response.request_id !== 'limits') continue;
       const usage = object(response.response);
-      return response.subtype === 'success' && usage.rate_limits_available === true ? claudeLimitWindows(usage.rate_limits) : null;
+      // An API key has no plan, so no limits: an answer, not a failure.
+      return response.subtype !== 'success' ? null : usage.rate_limits_available === true ? claudeLimitWindows(usage.rate_limits) : [];
     }
     return null;
   },

@@ -126,7 +126,7 @@ function WorkTime({ task, at, className }: { task: Task; at?: number | null; cla
 
 /**
  * The tokens the finished Runs used, on this task and under it: input and output first, the cache's reads and writes
- * after (reads run to many times the rest and would drown them). Runs still going count once they end.
+ * after and quieter (reads run to many times the rest and would read as the cost). Runs still going count once they end.
  */
 function TokenLines({ task }: { task: Task }) {
   const { t, i18n } = useTranslation("tree");
@@ -136,9 +136,12 @@ function TokenLines({ task }: { task: Task }) {
   const lines = (["input", "output", "cacheRead", "cacheWrite"] as const).map(key => ({ key, label: t(`status.tokens.${key}`), value: count.format(tokens[key]) }));
   return <section data-work-tokens className="mt-3 border-t border-line pt-2">
     <p className="m-0 text-xs font-medium text-muted">{t("status.tokens.heading")}</p>
-    <dl className="m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{lines.map(line => <div key={line.key} data-work-token={line.key} className="contents">
-      <dt className="text-muted">{line.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{line.value}</dd></div>)}</dl>
-    <p className="m-0 mt-1 text-xs text-muted">{t("status.tokens.scope")}{unknown > 0 && ` ${t("status.tokens.unknown", { count: unknown })}`}</p>
+    <dl className="m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{lines.map(line => <div key={line.key} data-work-token={line.key}
+      className={cn("contents", line.key.startsWith("cache") && "text-muted")}>
+      <dt className={line.key.startsWith("cache") ? undefined : "text-muted"}>{line.label}</dt>
+      <dd className={cn("m-0 text-right tabular-nums", !line.key.startsWith("cache") && "font-medium")}>{line.value}</dd></div>)}</dl>
+    <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.scope")}</p>
+    {unknown > 0 && <p className="m-0 text-xs text-muted">{t("status.tokens.unknown", { count: unknown })}</p>}
   </section>;
 }
 

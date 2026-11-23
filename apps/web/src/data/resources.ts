@@ -161,10 +161,11 @@ export const resources = {
     queryFn: ({ signal }) => api.request(`workspace/folders?${new URLSearchParams({ ...(path === null ? {} : { path }),
       ...(prefix ? { prefix } : {}), ...(prefix.startsWith(".") ? { hidden: "true" } : {}) })}`, foldersSchema, signal),
     staleTime: 10_000, retry: false }),
-  /** Each kind of agent's plan limits. The server asks an agent at most every 5 minutes; reading each minute while the
-   * screen is shown brings a fresh answer within a minute of it. */
+  /** Each kind of agent's plan limits. The server asks an agent at most every 5 minutes, within the agents' check
+   * deadline (a first read waits for it); reading each minute while the screen is shown brings a fresh answer within a minute of it. */
   agentLimits: (root: string) => queryOptions({ queryKey: ["agent-limits", root] as const,
-    queryFn: ({ signal }) => api.request("limits", agentLimitsResponseSchema, signal), staleTime: 60_000, refetchInterval: 60_000 }),
+    queryFn: ({ signal }) => api.readWithin("limits", agentLimitsResponseSchema, AGENT_CHECK_READ_MS, signal),
+    staleTime: 60_000, refetchInterval: 60_000 }),
   /** Host status: read again every sample (10 s) while the tab is open. */
   hostStatus: (root: string) => queryOptions({ queryKey: ["host-status", root] as const,
     queryFn: ({ signal }) => api.request("host/status", hostStatusSchema, signal), staleTime: 0, refetchInterval: 10_000 }),

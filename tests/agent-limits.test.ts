@@ -19,7 +19,7 @@ test('Claude: the week, the 5-hour session and each model\'s own week, from the 
     { kind: 'weekly', minutes: 10_080, model: null, usedPercent: 63, resetsAt: reset },
     { kind: 'weekly', minutes: 10_080, model: 'Fable', usedPercent: 77, resetsAt: reset }]);
   // An API key has no plan limits to read.
-  assert.equal(claudeLimits.read(JSON.stringify({ ...answer, response: { ...answer.response, response: { rate_limits_available: false } } })), null);
+  assert.deepEqual(claudeLimits.read(JSON.stringify({ ...answer, response: { ...answer.response, response: { rate_limits_available: false } } })), []);
 });
 
 test('Codex: each window says its own length; a missing secondary is no window', () => {
@@ -83,7 +83,8 @@ test('a failed read keeps the last windows and their time; an agent never read s
   writeFileSync(join(f.root, 'fail'), '');
   f.advance(2000);
   await f.monitor.read(); // Returns what it knows and asks again behind it.
-  await new Promise(resolve => setTimeout(resolve, 500));
+  while (f.calls().filter(call => call.startsWith('codex')).length < 2) await new Promise(resolve => setTimeout(resolve, 20));
+  await new Promise(resolve => setTimeout(resolve, 100)); // The failed answer is in.
   assert.deepEqual((await f.monitor.read()).agents.find(agent => agent.adapter === 'codex'), before);
   const fresh = fixture(t);
   appendFileSync(join(fresh.root, 'fail'), '');

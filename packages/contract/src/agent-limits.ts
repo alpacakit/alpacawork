@@ -22,7 +22,7 @@ export const bridgeLimitsSchema = z.object({ windows: z.array(limitWindowSchema)
 
 export const agentLimitsSchema = z.object({
   adapter: builtinAdapterIdSchema,
-  /** ok: read at `observedAt`; unsupported: the agent reports no limits; unavailable: the last read failed (signed out, no executable…). */
+  /** ok: read at `observedAt` (a later failed read keeps it); unsupported: the agent reports no limits; unavailable: never read (signed out, no executable…). */
   state: z.enum(['ok', 'unsupported', 'unavailable']),
   windows: z.array(limitWindowSchema),
   observedAt: z.iso.datetime({ offset: true }).nullable(),

@@ -112,13 +112,13 @@
     "tokens": {
       "cacheRead": "Lecturas de caché",
       "cacheWrite": "Escrituras de caché",
-      "heading": "Tokens usados",
+      "heading": "Tokens usados (con las tareas inferiores)",
       "input": "Entrada",
       "output": "Salida",
-      "scope": "Incluye las tareas inferiores; solo ejecuciones terminadas.",
-      "unknown_one": "{{count}} ejecución más sin registro.",
-      "unknown_many": "{{count}} ejecuciones más sin registro.",
-      "unknown_other": "{{count}} ejecuciones más sin registro."
+      "scope": "Solo ejecuciones terminadas.",
+      "unknown_one": "{{count}} ejecución más no tiene recuento.",
+      "unknown_many": "{{count}} ejecuciones más no tienen recuento.",
+      "unknown_other": "{{count}} ejecuciones más no tienen recuento."
     },
     "turn": {
       "children": "Límite de solicitudes",

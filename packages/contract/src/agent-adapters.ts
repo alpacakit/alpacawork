@@ -28,19 +28,21 @@ export type AdapterDescription = {
   /** Executable on the server PATH; null means the runtime is bundled. */
   command: string | null;
   auth: { args: readonly string[]; ready: number; signedOut: number; nextAction: string } | null;
+  /** Whether it reports its account's plan limits without a conversation (the backend adapter's `limits`; a bridge's `--limits`). */
+  limits: boolean;
   referenceUrl: string;
 };
 const bridge = <Id extends BridgeAdapterId>(id: Id, defaultParams: AdapterDescription['defaultParams'], start: string, resume: string,
   referenceUrl: string, defaultEnv: readonly string[] = [], fixedEnv: readonly string[] = [],
-  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth'>> = {}): AdapterDescription & { id: Id } =>
-  ({ id, command: id, auth: null, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
+  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits'>> = {}): AdapterDescription & { id: Id } =>
+  ({ id, command: id, auth: null, limits: false, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
     system: { start: ['result'], resume: ['result', 'session'] }, fixedEnv, defaultEnv, referenceUrl });
 const me = '[--model {model}] [--effort {effort}]';
 const result = '-o {result}';
 
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
-    id: 'claude', command: 'claude', auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
+    id: 'claude', command: 'claude', limits: true, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
     defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
@@ -54,12 +56,12 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
   }, '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access -o {result}',
   '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access resume -o {result} -- {session}',
   'https://learn.chatgpt.com/docs/cli/reference', ['OPENAI_API_KEY'], ['CODEX_HOME'],
-  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' } }),
+  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' }, limits: true }),
   grok: bridge('grok', { model: ['grok-4.7'], effort: ['high', 'low', 'medium', 'xhigh'] },
     `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME']),
   copilot: bridge('copilot', { model: [] }, `[-m {model}] ${result}`, `[-m {model}] ${result} resume {session}`,
     'https://docs.github.com/en/copilot/reference/copilot-cli-reference', [], [],
-    { command: null, auth: { args: ['--auth-status'], ready: 0, signedOut: 1, nextAction: 'gh auth login' } }),
+    { command: null, auth: { args: ['--auth-status'], ready: 0, signedOut: 1, nextAction: 'gh auth login' }, limits: true }),
   pi: bridge('pi', { model: [], effort: ['high', 'low', 'medium', 'xhigh', 'max', 'minimal', 'off'] },
     '[--model {model}] [--thinking {effort}] -o {result}',
     '[--model {model}] [--thinking {effort}] -o {result} --session {session}',

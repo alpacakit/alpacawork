@@ -119,14 +119,15 @@ test('resume continues the session, a refused steer is reported, and an instruct
   assert.deepEqual(b.events().find(event => event.type === 'input.uncertain'), { type: 'input.uncertain', id: 'in-2', message: 'steer refused' });
   writeFileSync(h.gate('one'), 'go');
   await b.until(events => events.some(event => event.type === 'turn.completed'), 'first turn completed');
-  b.send('in-3', JSON.stringify({ fail: true }));
+  b.send('in-3', JSON.stringify({ fail: 'usageLimitExceeded' }));
   await b.until(events => events.some(event => event.type === 'turn.failed'), 'second turn failed');
   b.child.stdin.end();
   // The last turn decides the exit, as `codex exec` fails with a failed turn.
   assert.equal(await b.exited, 1);
   assertInputOutcomes(b.events(), { 'in-1': 'taken', 'in-2': 'uncertain', 'in-3': 'taken' });
   assert.equal(h.server().find(item => item.method === 'thread/resume').params.threadId, 'thread-old');
-  assert.deepEqual(b.events().find(event => event.type === 'turn.failed'), { type: 'turn.failed', error: { message: 'fake failure' } });
+  // A spent plan is told as the cause the next AI takes over on.
+  assert.deepEqual(b.events().find(event => event.type === 'turn.failed'), { type: 'turn.failed', error: { message: 'fake failure', cause: 'session_limit' } });
   assert.deepEqual(b.events().filter(event => event.type === 'thread.started'), [{ type: 'thread.started', thread_id: 'thread-old' }]);
 });
 

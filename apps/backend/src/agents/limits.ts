@@ -1,20 +1,21 @@
 /**
  * What the screen knows of each agent's plan limits. The one place they are read, kept and ordered: each adapter only
  * says how its agent reports them (`AgentAdapter.limits`). An agent is asked only while someone reads, at most once per
- * `freshMs`; a read returns what is known at once and refreshes behind it, and waits only for an agent never read yet.
+ * `freshMs`, within the agents' check deadline; a read returns what is known at once and refreshes behind it, and waits
+ * only for an agent never read yet.
  * Accounts are per kind of agent (profiles share the server's sign-in), so the first profile of each kind is asked.
  */
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 import type { AgentLimits, AgentLimitsResponse } from '@alpacawork/contract/agent-limits';
+import { AGENT_CHECK_MS } from '@alpacawork/contract';
 import { enabledAgents, settingAdapter, type AgentSetting } from '@alpacawork/contract/agent-settings';
 import type { AiRow } from '@alpacawork/contract';
 import { runtimeAdapter } from './registry.js';
 import type { LimitsProbe } from './adapters/types.js';
-import { launchCommand } from './availability.js';
+import { commandPrefix, launchCommand } from './availability.js';
 import { probe, probeArgv, type InspectionEnvironment } from './probe.js';
 
 export const LIMITS_FRESH_MS = 5 * 60_000;
-const LIMITS_TIMEOUT_MS = 30_000;
 /** Claude's first stream lines list its tools and skills before the answer. */
 const LIMITS_OUTPUT = 1024 * 1024;
 
@@ -54,9 +55,9 @@ export class AgentLimitsMonitor {
     let command: string | undefined;
     try { command = launchCommand(id, setting, environment.env.PATH ?? ''); }
     catch { return { adapter: id, state: 'unavailable', windows: [], observedAt: null }; }
-    // The launch prefix the agent runs under: its own executable, or the bridge told where it is.
-    const argv = description.prefix.length === 1 ? [command ?? description.prefix[0]!]
-      : [...probeArgv(id, null, environment), ...command ? ['--command', command] : []];
+    // The launch prefix the agent runs under, with the bundled bridge in place of its name.
+    const prefix = commandPrefix(id, command);
+    const argv = description.prefix.length === 1 ? prefix : [...probeArgv(id, null, environment), ...prefix.slice(2)];
     const names = [...description.fixedEnv, ...(setting.env ?? description.defaultEnv)].sort();
     const key = JSON.stringify([argv, names]);
     const now = this.now(), known = this.known.get(key);
@@ -72,7 +73,7 @@ export class AgentLimitsMonitor {
 
   private async ask(key: string, id: BuiltinAdapterId, argv: string[], names: string[], environment: InspectionEnvironment,
     reader: LimitsProbe, known: Known | undefined): Promise<Known> {
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), LIMITS_TIMEOUT_MS);
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), AGENT_CHECK_MS);
     try {
       const result = await probe(argv, environment, names, controller.signal, { input: reader.input, limit: LIMITS_OUTPUT });
       const windows = !result.failed && result.status === 0 ? reader.read(result.stdout) : null;

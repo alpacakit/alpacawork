@@ -1,4 +1,4 @@
-import type { BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
+import { AGENT_ADAPTERS, type BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
 import { agentUsageSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
 import { bridgeLimitsSchema } from '@alpacawork/contract/agent-limits';
 import { RUN_FILES } from '@alpacawork/contract/run';
@@ -27,8 +27,7 @@ export const bridgeInput: InputProtocol = {
   },
   turnEnded: value => ['turn.completed', 'turn.failed'].includes(String(object(value).type)),
 };
-/** Bridges that can read their account's limits print them already translated (agent-cli `--limits`). */
-const LIMITS_BRIDGES = new Set<BridgeAdapterId>(['codex', 'copilot']);
+/** A bridge prints its account's limits already translated (agent-cli `--limits`). */
 export const bridgeLimits: LimitsProbe = {
   args: ['--limits'], input: null,
   read(stdout) {
@@ -41,7 +40,7 @@ export const bridgeLimits: LimitsProbe = {
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
 export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
   return {
-    input: bridgeInput, activity: bridgeActivity, limits: LIMITS_BRIDGES.has(id) ? bridgeLimits : null,
+    input: bridgeInput, activity: bridgeActivity, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
     skillCatalogContext: input => catalogContext(id, input),
     earlySession(invocation, folder) {
       try {

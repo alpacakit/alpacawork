@@ -31,7 +31,8 @@ async function run(id, plan) {
   notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true' } });
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
-  notify('turn/completed', { turn: plan.fail ? { id, status: 'failed', error: { message: 'fake failure' } } : { id, status: 'completed' } });
+  // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.
+  notify('turn/completed', { turn: plan.fail ? { id, status: 'failed', error: { message: 'fake failure', ...typeof plan.fail === 'string' ? { codexErrorInfo: plan.fail } : {} } } : { id, status: 'completed' } });
   turn = null;
 }
 createInterface({ input: process.stdin }).on('line', line => {

@@ -1,9 +1,5 @@
 /** How the bar and its menu say an agent's plan limits (contract: agent-limits). */
 import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
-import type { BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
-
-/** The services' own short names, untranslated. */
-export const AGENT_NAMES: Record<BuiltinAdapterId, string> = { claude: "Claude", codex: "Codex", copilot: "Copilot", grok: "Grok", pi: "pi" };
 
 /** From here a window is close to its limit, and at 100 it is spent. */
 export const LIMIT_NEAR = 80;
@@ -20,7 +16,8 @@ export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | n
  * no bar, until some agent's limits are known.
  */
 export function barLimit(agents: readonly AgentLimits[]): { agent: AgentLimits; window: LimitWindow | null } | null {
-  const agent = agents.find(entry => entry.state !== "unsupported");
+  // An agent with no limits at all (one used with an API key) has nothing to warn of: the next one tasks use stands first.
+  const agent = agents.find(entry => entry.state === "unavailable" || entry.state === "ok" && entry.windows.length > 0);
   if (!agent || !agents.some(entry => entry.state === "ok")) return null;
   return { agent, window: agent.state === "ok" ? tightestWindow(agent.windows) : null };
 }
@@ -29,7 +26,7 @@ type T = (key: string, options?: Record<string, unknown>) => string;
 
 /** "5 hours", "Weekly", "Weekly (Fable)"; `scoped`: beside a model's own window, the account's says "all models". */
 export function windowLabel(window: LimitWindow, t: T, scoped = false): string {
-  const period = window.kind === "other" && window.minutes !== null
+  const period = window.kind === "other" && window.minutes !== null && window.minutes >= 60
     ? t("limits.window.hours", { count: Math.round(window.minutes / 60) }) : t(`limits.window.${window.kind}`);
   return window.model ? t("limits.window.model", { model: window.model, period })
     : scoped ? t("limits.window.allModels", { period }) : period;
@@ -50,7 +47,7 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   return t("limits.reset.at", { when });
 }
 
-/** "Read 3 min ago", or "Read just now". */
+/** "Updated 3 min ago", or "Updated just now". */
 export function readWords(observedAt: string | null, now: number, t: T): string | null {
   if (!observedAt) return null;
   const minutes = Math.floor((now - Date.parse(observedAt)) / 60_000);

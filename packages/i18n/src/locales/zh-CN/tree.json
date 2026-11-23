@@ -101,11 +101,11 @@
     "tokens": {
       "cacheRead": "缓存读取",
       "cacheWrite": "缓存写入",
-      "heading": "已用令牌",
+      "heading": "已用令牌（含下级任务）",
       "input": "输入",
       "output": "输出",
-      "scope": "含下级任务，仅计已结束的运行。",
-      "unknown_other": "另有 {{count}} 次未记录。"
+      "scope": "仅计已结束的运行。",
+      "unknown_other": "另有 {{count}} 次运行没有计数。"
     },
     "turn": {
       "children": "委托数上限",
