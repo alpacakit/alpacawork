@@ -4,15 +4,15 @@ Cómo decidir los proyectos, la política y las IA que usas. Todos los ajustes d
 
 ## Usarlo con un repositorio existente
 
-Elige la carpeta de ese repositorio como “Ubicación del código” del proyecto. No hace falta mover nada. La IA sigue leyendo los `AGENTS.md` y `CLAUDE.md` de la carpeta como siempre.
+Elige la carpeta de ese repositorio como “Carpeta de trabajo” del proyecto. No hace falta mover nada. La IA sigue leyendo los `AGENTS.md` y `CLAUDE.md` de la carpeta como siempre.
 
-Para cambiarla después: nombre del proyecto arriba a la izquierda → “Configuración de (nombre del proyecto)…” → “Elegir” en “Ubicación del código” → “Guardar”.
+Para cambiarla después: nombre del proyecto arriba a la izquierda → “Configuración de (nombre del proyecto)…” → “Elegir” en “Carpeta de trabajo” → “Guardar”.
 
 La IA modifica archivos sin pedir confirmación. Si haces un commit antes de empezar, podrás distinguir los cambios de la IA y deshacerlos.
 
 ## Añadir proyectos
 
-Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la ubicación del código, y pulsa “Crear”.
+Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la carpeta de trabajo, y pulsa “Crear”.
 
 Los proyectos que ya no uses se pueden archivar desde el final de la configuración del proyecto.
 

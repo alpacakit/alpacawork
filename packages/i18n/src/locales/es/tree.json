@@ -116,18 +116,18 @@
     "examples": {
       "decide": {
         "label": "Elige una idea de minijuego y pide que lo creen",
-        "shows": "La IA compara ideas y te hace una pregunta. Con tu respuesta empieza la creación.",
-        "words": "Quiero crear un minijuego para jugar en el navegador. Conviértelo en una tarea: propón 3 ideas y pregúntame cuál crear, con una tabla comparativa y tu recomendación en la pregunta. Cuando responda, crea el que elegí en unos 5 minutos sin preguntar nada más y envíame un informe. Es un tutorial, así que mantén un esfuerzo ligero: prioriza la rapidez, no lo pienses demasiado y no te compliques. Escribe todo en español, por favor."
+        "shows": "La IA propone ideas; elige una y crea ese juego.",
+        "words": "Quiero un minijuego para jugar en el navegador. Propón 3 ideas y pregúntame cuál crear. Después crea el que elija en unos 5 minutos. Es una prueba, así que mantén un esfuerzo ligero. Escribe todo en español, por favor."
       },
       "models": {
-        "label": "Pide a 3 modelos un juego de la serpiente y elige uno",
-        "shows": "Modelos distintos lo crean en paralelo y tú eliges con cuál quedarte.",
-        "words": "Quiero crear un juego de la serpiente. ¿Podrías probar a crear 3 en paralelo con modelos distintos? Cuando estén listos, pregúntame con cuál me quedo. Es un tutorial, así que mantén un esfuerzo ligero y que tarde unos 5 minutos. Escribe todo en español, por favor."
+        "label": "Pide a 3 modelos un juego de la serpiente y compáralos",
+        "shows": "Modelos distintos lo crean en paralelo y después se te pregunta con cuál quedarte.",
+        "words": "Crea un juego de la serpiente que funcione en el navegador, 3 veces en paralelo, cada una con un modelo distinto; si no hay suficientes modelos, varía el esfuerzo. Cuando estén listos, pregúntame con cuál me quedo. Es una prueba, así que usa ajustes ligeros y que tarde unos 5 minutos. Escribe todo en español, por favor."
       },
-      "triage": {
-        "label": "Divide la apertura de una cafetería en 5 tareas",
-        "shows": "Los resultados quedan por revisar y tú eliges cuáles completar.",
-        "words": "Divide la apertura de una cafetería ficticia en 5 tareas separadas: \"Pedir el café en grano\", \"Encargar el letrero\", \"Imprimir el menú\", \"Contratar personal\" y \"Enviar las invitaciones\", y encarga cada una a un agente. Que cada uno escriba en su informe un resultado ficticio de una línea y espere mi revisión. Cuando estén las 5, elegiré cuáles completar. No hace falta investigar ni crear archivos, y escribe todo en español, por favor."
+      "settings": {
+        "label": "Define una regla de trabajo y cuántos agentes trabajan a la vez",
+        "shows": "Se añade una regla a la política del proyecto y trabajan como máximo 4 agentes a la vez.",
+        "words": "Añade esta regla a la política de este proyecto: \"Cuando termines, informa de lo que cambiaste en 3 líneas o menos\". Además, configura este entorno para que trabajen como máximo 4 agentes a la vez. Escribe todo en español, por favor."
       }
     },
     "lead": "Elige un ejemplo para probarlo.",

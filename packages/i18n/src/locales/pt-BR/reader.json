@@ -456,7 +456,7 @@
     "inGitFolder": "Fica dentro da pasta do próprio git, por isso não pode ser aberto",
     "label": "Diff e arquivos",
     "missing": "Arquivo não encontrado",
-    "outside": "Fica fora do local do código registrado no projeto, por isso não pode ser aberto",
+    "outside": "Fica fora da pasta de trabalho registrada no projeto, por isso não pode ser aberto",
     "rendered": "Formatado",
     "shared": "Compartilha o conteúdo com outro local, por isso não pode ser aberto",
     "source": "Código-fonte",
