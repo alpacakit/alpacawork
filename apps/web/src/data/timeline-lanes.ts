@@ -43,11 +43,12 @@ export function useLaneReads(root: string, lanes: readonly string[], range: { fr
   const results = useQueries({ queries });
   const shown = results.flatMap(result => result.data ? [result.data] : []);
   if (!sameItems(shown, held.current)) held.current = shown;
-  const failed = queries.flatMap(({ queryKey }) => {
+  const failed = () => queries.flatMap(({ queryKey }) => {
     const query = client.getQueryCache().find({ queryKey, exact: true });
     return query?.state.status === 'error' && !isDatedRead(assessRead(client, query)) ? [query] : [];
   });
-  return { shown: held.current, error: failed[0]?.state.error ?? null,
+  // Retry reads again every row failed when it is pressed, not only those failed when it was drawn.
+  return { shown: held.current, error: failed()[0]?.state.error ?? null,
     absent: offline && enabled && !results.some(result => result.data !== undefined || result.isFetching),
-    retry: () => void recoverReads(client, failed.map(query => query.queryKey)) };
+    retry: () => void recoverReads(client, failed().map(query => query.queryKey)) };
 }
