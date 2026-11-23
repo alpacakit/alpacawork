@@ -13,7 +13,7 @@ export function Welcome() {
   const { t } = useTranslation("tree");
   // It rises into place in three parts, each a little after the one above, every time it is put on the screen
   // (motion.css, animate-welcome).
-  return <section data-welcome className="flex justify-center px-5 pt-[clamp(24px,calc(40dvh-190px),160px)] pb-6 narrow:pt-[clamp(12px,calc(100dvh-820px),96px)]">
+  return <section data-welcome className="flex justify-center px-5 pt-[clamp(24px,calc(40dvh-190px),160px)] pb-6 narrow:pt-[clamp(8px,calc(100dvh-836px),96px)]">
     <div className="w-[min(100%,52rem)] text-ink">
       <h2 className="m-0 animate-welcome text-center text-balance text-display font-semibold [word-break:auto-phrase]">{t("welcome.title")}</h2>
       <p className="mx-auto mt-3 mb-0 max-w-md animate-welcome text-center text-balance text-md text-muted [word-break:auto-phrase] [animation-delay:calc(var(--motion-fast)/2)] motion-reduce:[animation-delay:0s]">{t("welcome.lead")}</p>
@@ -40,7 +40,7 @@ function WorkPicture() {
     { name: "own", picture: <OwnPicture />, words: t("welcome.picture.own") },
     { name: "listed", picture: <ListedPicture />, words: t("welcome.picture.listed", { section: t("home.turn") }) },
   ];
-  return <ol data-welcome-picture className="m-0 mt-9 flex list-none items-start justify-center gap-2 p-0 narrow:mt-6 narrow:flex-col narrow:items-stretch narrow:gap-1">
+  return <ol data-welcome-picture className="m-0 mt-9 flex list-none items-start justify-center gap-2 p-0 narrow:mt-4 narrow:flex-col narrow:items-stretch narrow:gap-1">
     {parts.map((part, at) => <li key={part.name} data-welcome-picture-part={part.name} className="contents">
       {at > 0 && <Icon name="arrowRight" aria-hidden="true" className="mt-6 size-4 flex-none text-soft narrow:mt-0 narrow:ml-[3.25rem] narrow:rotate-90" />}
       <div className="flex max-w-56 flex-1 flex-col items-center gap-2 text-center narrow:max-w-none narrow:flex-row narrow:gap-4 narrow:text-left">

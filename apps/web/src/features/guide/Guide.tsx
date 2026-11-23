@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { GUIDE, PARTS, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
+import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
@@ -31,6 +31,8 @@ function CloseGuide({ className }: { className?: string }) {
 type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
+/** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
+const STOOD_MS = 300;
 /** How much of a part's top counts as its head: where a tall part is looked for when its middle is out of sight. */
 const HEAD = 40;
 const OPPOSITE: Record<GuideSide, GuideSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
@@ -198,13 +200,13 @@ function useSkipped() {
 
 function GoingBalloon({ stage }: { stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { entry, facts, fresh } = useGuide(stage, skipped);
-  // Since when each step's balloon has stood on the screen, in this guide (begun again, none has): useGuideStage reads it
-  // as the guide moves on from a step.
+  const { entry, facts, fresh, ready } = useGuide(stage, skipped);
+  // The steps whose balloon has stood on this page, in this guide (begun again, none has): one stands once it has been
+  // on the screen for a moment without a break (STOOD_MS).
   const began = stage.stage === "started" ? stage.at : null;
-  const drawn = useRef({ began, since: new Map<string, number>() });
-  if (began !== null && drawn.current.began !== began) drawn.current = { began, since: new Map() };
-  useGuideStage(stage, entry, facts, fresh, drawn.current.since);
+  const stood = useRef({ began, ids: new Set<string>() });
+  if (began !== null && stood.current.began !== began) stood.current = { began, ids: new Set() };
+  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id));
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
@@ -221,6 +223,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     let roomed: HTMLElement | null = null;
     // Looks in a row that did not see the part: a passable step is passed over after two (half a second).
     let missed = 0;
+    // Since when the balloon has stood on the screen without a break.
+    let since: number | null = null;
     const update = () => {
       let target = shownPart(part);
       if (!settled) {
@@ -238,7 +242,11 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       }) : [];
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear) : null;
-      if (next && !drawn.current.since.has(entry.id)) drawn.current.since.set(entry.id, Date.now());
+      since = next ? since ?? Date.now() : null;
+      if (since !== null && Date.now() - since >= STOOD_MS && !stood.current.ids.has(entry.id)) {
+        stood.current.ids.add(entry.id);
+        if (doneOnShowing(entry, true)) putAway(entry.id);
+      }
       if (!same(last, next)) { last = next; setPlaced(next); }
       roomed = keepRoom(roomed, next && own ? own : null);
     };
