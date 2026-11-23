@@ -32,7 +32,7 @@ export default defineConfig({
       "tree:status.turn.*", // Its short word on a row, by the same code.
       "panels:settings.personal.*",
       "panels:telemetry.blocked.*", // Eligibility reasons come from telemetryGate.
-      "setup:skills.items.*", // An offered skill's description and use, by its name (contract SKILL_OFFERS).
+      "setup:skills.items.*", // An offered skill's name and description, looked up by its ID (contract SKILL_OFFERS).
       "setup:skills.reason.*", // Why a skill was not installed, by the server's reason code.
       "panels:settings.show.*", "panels:settings.showShort.*",
       "panels:settings.server.limit.*", "panels:settings.server.agentIssue.*",

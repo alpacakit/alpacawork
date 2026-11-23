@@ -70,8 +70,6 @@
     "gone": "O projeto criado durante a configuração inicial não existe mais. Conclua a configuração e depois crie um projeto pelo menu de projetos.",
     "lead": "Um projeto reúne a pasta em que a IA trabalha e as regras para trabalhar nela (a política do projeto).",
     "policyNote": "Escreva aqui as regras deste projeto. Pode deixar em branco.",
-    "policySkillLine": "- {{skill}}: use {{when}}.",
-    "policySkills": "## Skills para usar",
     "reread": "Carregar dados atuais",
     "title": "Primeiro projeto"
   },
@@ -93,18 +91,15 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Conferido por outra IA antes de você ver",
-        "what": "Exceto em trabalhos leves, antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere o resultado, e o que ela aponta é corrigido. Isso consome mais tempo e mais tokens.",
-        "when": "ao planejar, ao pedir uma revisão e ao receber apontamentos"
+        "what": "Exceto em trabalhos leves, antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere o resultado, e o que ela aponta é corrigido. Isso consome mais tempo e mais tokens."
       },
       "askmeclearly": {
         "title": "Perguntas e relatórios mais curtos e fáceis de ler",
-        "what": "Quando a IA pede que você decida algo ou relata um resultado, ela mostra com imagens ou vídeos onde olhar.",
-        "when": "ao pedir uma decisão ao usuário e ao escrever um relatório"
+        "what": "Quando a IA pede que você decida algo ou relata um resultado, ela mostra com imagens ou vídeos onde olhar."
       },
       "doyourjob": {
         "title": "Menos perguntas para você",
-        "what": "A IA pergunta a você só o que apenas você pode decidir, e descobre o resto sozinha.",
-        "when": "antes de perguntar ao usuário e antes de fazer uma escolha com grandes consequências"
+        "what": "A IA pergunta a você só o que apenas você pode decidir, e descobre o resto sozinha."
       }
     },
     "lead": "As skills mudam o jeito de a IA trabalhar.",
