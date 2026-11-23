@@ -175,6 +175,26 @@ test("jumping to an older report scrolls after the open card has finished shrink
   }
 });
 
+test("a new report that is the user's turn, arriving while the column is read below its top, is brought to its start", async () => {
+  const asked = { id: "Lask", kind: "question" as const, open: false, at: "2026-10-10T10:00:00Z", title: "Which font?", summary: "A or B" };
+  const reported = { id: "Lreport", kind: "review" as const, at: "2026-10-10T11:00:00Z", state: "waiting" as const, title: "Done", summary: "A long body" };
+  const feed = (events: Parameters<typeof historyFixture>[0], ball: ReturnType<typeof userBall> | null) => {
+    const data = screenData(tree({ tasks: [taskFixture({ state: ball ? "waiting" : "doing", ball })], placements: [idle()], history: { T1: historyFixture(events) } }));
+    return <TestWorkspace data={data}><div data-reader-content ref={area => { if (area) Object.defineProperty(area, "scrollTop", { value: 400, configurable: true }); }}>
+      <ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></div></TestWorkspace>;
+  };
+  const scroll = vi.fn();
+  jump.to = scroll;
+  try {
+    const view = render(feed([asked], null));
+    await waitFor(() => expect(document.querySelector('[data-report-key="log:T1:Lask"]')).not.toBeNull());
+    view.rerender(feed([reported, asked], userBall("review", "Lreport", at)));
+    await waitFor(() => expect(scroll).toHaveBeenCalledWith(document.querySelector('li[data-report-key="log:T1:Lreport"]')));
+  } finally {
+    jump.to = () => {};
+  }
+});
+
 test("a collapsed report thumbnail uses the same image path rule as the description", () => {
   expect(firstReportMedia("![Image](my image.png)")).toBe("my image.png");
   expect(firstReportMedia("```\n![Hidden](missing.png)\n```\n![Image](my image.png)")).toBe("my image.png");
