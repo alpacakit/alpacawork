@@ -56,8 +56,9 @@ export const isSystemField = (id: string) => (SYSTEM_FIELDS as readonly string[]
  */
 export const PROJECT_POLICY = 'project_policy';
 /**
- * A project's summary: one sentence on what the project is for, listed beside its name (`task list`) so that whoever
- * places a request can choose the project without opening it. It goes into no launch.
+ * A project's summary: one sentence on what the project is for. It is listed beside the project's name (`task list`)
+ * so that whoever places a request can choose the project without opening it, and it heads the project's policy in
+ * every launch below the project.
  */
 export const PROJECT_SUMMARY = 'project_summary';
 /** The fields of a project's own values, whatever schema its Tasks use. */
@@ -95,7 +96,7 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('decide_choice_recommended', 'Recommended', 80, 'Only on the one choice you recommend: why, in one sentence. The screen marks that choice as recommended.'),
   text('decide_note', 'Note', 250, 'Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.'),
   text('decide_stop', 'Stop', 180, 'Only when stopping the task is one of the options: what stopping means here, in 3 lines. It is offered as a choice of its own (`<number>-stop`), and whoever picks it stops the task instead of answering. Do not write it as one of the choices.'),
-  text(PROJECT_SUMMARY, 'Project summary', 100, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name and read to choose the project a new request goes under. How the work is done goes in the project policy.'),
+  text(PROJECT_SUMMARY, 'Project summary', 100, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.'),
   { id: PROJECT_POLICY, title: 'Project policy', type: 'text', many: false, required: false, maxChars: null, maxItems: null, members: [],
     hint: 'What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.' },
   text('notes', 'Notes', 600, 'What the next agent needs to carry on: the decisions in effect and why, one line on how a decision changed (rejected options and why), unchecked points that could change a decision, and the next step and where. Commands, test counts and work steps go in files in the task folder, linked from the deliverables.'),

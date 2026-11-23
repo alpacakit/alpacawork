@@ -14,7 +14,7 @@ La IA modifica archivos sin pedir confirmación. Si haces un commit antes de emp
 
 Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la carpeta de trabajo, y pulsa “Crear”.
 
-Cuando una solicitud no dice a qué proyecto corresponde, la IA elige uno por el nombre y el “Resumen” de cada proyecto, una frase que dice para qué sirve. La IA escribe el resumen la primera vez que coloca una solicitud en el proyecto. Puedes cambiarlo en la configuración del proyecto.
+Cada proyecto tiene un “Resumen”, una frase que dice para qué sirve. La IA lo lee para elegir el proyecto de una solicitud que no dice a cuál corresponde, y todas las IA que trabajan en el proyecto lo reciben. La IA escribe el resumen la primera vez que coloca una solicitud en el proyecto. Puedes cambiarlo en la configuración del proyecto.
 
 Los proyectos que ya no uses se pueden archivar desde el final de la configuración del proyecto.
 
