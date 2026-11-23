@@ -370,7 +370,7 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
     await h.commands.update({ id: h.project, values: { ...summary, project_policy: 'Track work here.\n'.repeat(20) },
         expectedTaskHash: (await new ControlTaskStore(h.root).get(h.project)).hash });
     // The root project has no values.
-    const listBytes = Buffer.byteLength('{}') + Buffer.byteLength(JSON.stringify(summary));
+    const listBytes = Buffer.byteLength(JSON.stringify(summary.project_summary));
     let allBytes = Buffer.byteLength('{}') + await valueBytes(h.project);
     for (const task of notes.keys()) allBytes += await valueBytes(task.id);
     const full = await readControlSource(h.root);

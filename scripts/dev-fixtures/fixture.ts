@@ -92,7 +92,6 @@ function generate(root: string, spec: Spec) {
         project ? 'Synthetic development project' : `Synthetic task ${n}`,
         n > 10 && n % 19 === 0 ? 'archived' : 'active', state, !project && n % 13 === 0 ? 1 : 0,
         !project && (state === 'waiting' || n === 2) ? 1 : 0, project ? json({ color: '#39659b' }) : null, fixedTime, fixedTime);
-      // A project's own value is its policy, free text written as the user likes.
       const values: Record<string, unknown> = project ? {
         project_policy: 'Goal: ship the synthetic app in a shape its users can work with unaided.\n\n' +
           '- Tests guard only what users would miss if it broke\n- The agent decides and goes on; it asks only what it must\n' +

@@ -212,6 +212,45 @@ test('a Run works in its own project: it reads and lists that project\'s Tasks, 
   assert.deepEqual([project.code, project.body.error.code], [2, 'forbidden'], 'a Run creates no project');
 });
 
+test('task list gives a Run project values only where it may read the project', async t => {
+  const h = await served(t);
+  const create = async (title: string, parent: string, summary: string, policy: string) => {
+    const file = join(h.base, title + '.json');
+    writeFileSync(file, JSON.stringify({ project_summary: summary, project_policy: policy }));
+    return (await h.ok(['task', 'new', '--kind', 'project', '--title', title, '--parent', parent,
+      '--color', '#39659b', '--values-file', file])).task.id;
+  };
+  const parent = await create('Engineering', 'P1', 'Engineering overview', 'Release checklist applies to all teams.');
+  const mobile = await create('Mobile', parent, 'Mobile overview', 'Release checklist for mobile apps.');
+  const other = await create('Finance', parent, 'Quarterly accounts', 'CONFIDENTIAL budget plan.');
+  const child = await create('Android', mobile, 'Android overview', 'CONFIDENTIAL device plan.');
+  const { id } = (await h.ok(['task', 'new', '--title', 'Mobile work', '--parent', mobile])).task;
+  const run = startRun(t, h.root, 'R1', id, place(h.root, id).id, 'owner');
+  const env = { ALPACAWORK_RUN: run.id, ALPACAWORK_RUN_TOKEN: issueRunCredential(h.root, run.id) };
+  const known = [parent, mobile, other, child];
+  type Row = { id: string; summary?: string; match?: { kind: string; excerpt: string } };
+  for (const args of [[], ['--kind', 'project'], ['--all']]) {
+    const { tasks } = await h.ok(['task', 'list', ...args], { env });
+    assert.deepEqual(tasks.filter((row: Row) => known.includes(row.id)).map(({ id, summary }: Row) => [id, summary]),
+      [[parent, 'Engineering overview'], [mobile, 'Mobile overview'], [other, undefined], [child, undefined]]);
+  }
+  for (const project of [other, child]) {
+    const refused = await h.cli(['task', 'get', '--task', project], { env });
+    assert.deepEqual([refused.code, refused.body.error.code], [2, 'forbidden']);
+  }
+  assert.deepEqual((await h.ok(['task', 'list', '--text', 'CONFIDENTIAL'], { env })).tasks, []);
+  assert.deepEqual((await h.ok(['task', 'list', '--text', 'Quarterly accounts'], { env })).tasks, []);
+  const matches = (await h.ok(['task', 'list', '--text', 'Release checklist'], { env })).tasks;
+  assert.deepEqual(matches.filter((row: Row) => row.match).map(({ id, match }: Row) => [id, match?.kind]),
+    [[parent, 'values'], [mobile, 'values']]);
+  const metadataMatch: Row = (await h.ok(['task', 'list', '--text', 'Finance'], { env })).tasks.find((row: Row) => row.id === other);
+  assert.deepEqual([metadataMatch.summary, metadataMatch.match?.excerpt], [undefined, 'Finance']);
+  const anyone = (await h.ok(['task', 'list', '--text', 'CONFIDENTIAL'])).tasks;
+  assert.deepEqual(anyone.filter((row: Row) => row.match).map(({ id, summary, match }: Row) =>
+    [id, summary, match?.kind, match?.excerpt.includes('CONFIDENTIAL')]),
+  [[other, 'Quarterly accounts', 'values', true], [child, 'Android overview', 'values', true]]);
+});
+
 test('task list --kind project lists the project Tasks; --kind task keeps the projects above each Task as its path', async t => {
   const h = await served(t);
   const mobile = await h.newProject('Mobile', 'P1'), nested = await h.newProject('Nested', mobile.id);
@@ -228,11 +267,11 @@ test('task list includes a summary on the project that owns it, in both project 
   const h = await served(t);
   const summary = 'Issues and releases for the mobile apps.';
   const file = join(h.base, 'summary.json');
-  writeFileSync(file, JSON.stringify({ project_summary: summary }));
+  writeFileSync(file, JSON.stringify({ project_summary: 'Issues and releases\n for the mobile apps.' }));
   const mobile = (await h.ok(['task', 'new', '--kind', 'project', '--title', 'Mobile', '--parent', 'P1',
     '--color', '#39659b', '--values-file', file])).task;
   const work = (await h.ok(['task', 'new', '--title', 'Work', '--parent', mobile.id])).task;
-  for (const args of [[], ['--kind', 'project'], ['--kind', 'task']]) {
+  for (const args of [[], ['--kind', 'project'], ['--kind', 'task'], ['--text', 'Mobile']]) {
     const { tasks } = await h.ok(['task', 'list', ...args]);
     assert.deepEqual(tasks.filter((row: object) => Object.hasOwn(row, 'summary'))
       .map((row: { id: string; summary: string }) => [row.id, row.summary]), [[mobile.id, summary]]);

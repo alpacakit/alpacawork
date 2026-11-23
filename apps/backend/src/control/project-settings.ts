@@ -12,7 +12,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, validateTaskSettings, type ProjectSettings, type TaskKind } from '@alpacawork/raw';
-import { DEFAULT_PROJECT_NAME, PROJECT_POLICY, PROJECT_SUMMARY } from '@alpacawork/contract';
+import { DEFAULT_PROJECT_NAME, PROJECT_POLICY, PROJECT_SUMMARY, type FieldValue } from '@alpacawork/contract';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import { parseConfig, projectLocationsSchema } from '../config.js';
 import { FileWriter } from '../raw/storage.js';
@@ -142,6 +142,11 @@ export function defaultParentAt(root: string, db: DatabaseSync, cwd: string | nu
     { reason: (active ? { kind: 'several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project', option: String(option) } : { kind: 'no_project_active_use_id', option: String(option) }), issues: [{ path: option, code: 'required', message: `--${option} is required` }] });
 }
 
+/** The summary as one line for the project list and launch text. */
+export function projectSummary(value: FieldValue | undefined): string {
+  return typeof value === 'string' ? value.replace(/\s*[\r\n\u2028\u2029]\s*/gu, ' ').trim() : '';
+}
+
 /** One project's part of the policy chain: its title, summary and policy. */
 type PolicyLink = { project: string; title: string; summary: string; policy: string };
 /**
@@ -150,7 +155,7 @@ type PolicyLink = { project: string; title: string; summary: string; policy: str
 export function policyChain<T extends ChainTask>(tree: TaskTree<T>, contexts: TaskContexts, taskId: string): PolicyLink[] {
   return tree.projects(taskId).flatMap(project => {
     const values = contexts.valuesOf(project.id);
-    const summary = typeof values[PROJECT_SUMMARY] === 'string' ? values[PROJECT_SUMMARY] : '';
+    const summary = projectSummary(values[PROJECT_SUMMARY]);
     const policy = typeof values[PROJECT_POLICY] === 'string' ? values[PROJECT_POLICY] : '';
     return summary || policy ? [{ project: project.id, title: project.meta.title, summary, policy }] : [];
   });

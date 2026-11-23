@@ -85,7 +85,7 @@ function policyPart(source: LaunchSource, taskId: string): Part | null {
   const heading = 'Project policy';
   return { full: () => section(heading, ['Listed from the root project down.',
     ...chain.map(link => {
-      const summary = link.summary && `Summary: ${link.summary.replace(/\s*[\r\n\u2028\u2029]\s*/gu, ' ')}`;
+      const summary = link.summary && `Summary: ${link.summary}`;
       const body = [summary, link.policy].filter(Boolean).join('\n\n');
       return `\n### ${link.title} (${link.project})\n${body}`;
     })]),

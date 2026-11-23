@@ -9,6 +9,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { deliveryStateSchema, requestPurposeSchema } from '@alpacawork/contract/control';
 import { storedTaskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { ControlStore, taskHash, touch } from '@alpacawork/db';
+import { PROJECT_SUMMARY, type FieldValue } from '@alpacawork/contract';
 import { CONTROL_TASK_FORMAT, MAX_TASK_NUMBER, publicTaskId, validateControlMetadata, validateControlHead, validateAppendedLog, validateTaskSettings, userRequestedOf,
   taskMetadata, type ControlMetadata, type ControlTask, type ProjectSettings, type TaskKind, type TaskLog, type TaskValues } from '@alpacawork/raw';
 import { readTaskFields, writeTaskValues, type TaskFields } from './task-values-store.js';
@@ -25,11 +26,13 @@ export type ControlSnapshot<Values extends TaskValues | undefined = TaskValues> 
   fields: TaskFields;
 };
 /** A view independently selects Task values and immutable history. */
-type TaskValuesSelection = 'all' | { task: string } | { projectField: string };
+type TaskValuesSelection = 'all' | { task: string };
 /** A Task's values (task_values) as one JSON object column, `{}` without any. */
-const valuesColumn = (fieldFilter = '') =>
-  `(SELECT json_group_object(v.field_id, json(v.value)) FROM task_values v WHERE v.task_id = t.id${fieldFilter})`;
+const VALUES_COLUMN = `(SELECT json_group_object(v.field_id, json(v.value)) FROM task_values v WHERE v.task_id = t.id)`;
 const decodeValues = (column: unknown): TaskValues => JSON.parse(String(column)) as TaskValues;
+export type TaskListContents =
+  | { mode: 'search'; values: ReadonlyMap<string, TaskValues> }
+  | { mode: 'summary'; summaries: ReadonlyMap<string, FieldValue> };
 const MAX_TASK_DEPTH = 32;
 /** The logical parentId graph in one Task snapshot. Physical folders are unrelated. */
 export class TaskTree<T extends { id: string; meta: BranchTask & { kind: TaskKind } } = ControlTask> {
@@ -126,6 +129,44 @@ const scoped = (project: string | undefined): { where: string; parameters: strin
   project === undefined ? { where: '', parameters: [] } : { where: `WHERE ${PROJECT_READ}`, parameters: [project] };
 const TASK_METADATA_COLUMNS = `t.id,t.kind,t.number,t.external_id,t.parent_id,t.project_task_id,t.title,
   t.lifecycle,t.base_state,t.hold,t.state,t.user_requested,t.settings,t.revision,t.created_at,t.updated_at`;
+
+/** The projects above `project`, nearest first. */
+export function projectsAbove(db: DatabaseSync, project: string): string[] {
+  return db.prepare(`WITH RECURSIVE up(id, depth) AS (
+      SELECT parent_id, 1 FROM tasks WHERE external_id = ? AND parent_id IS NOT NULL
+      UNION ALL SELECT t.parent_id, up.depth + 1 FROM tasks t JOIN up ON t.id = up.id WHERE t.parent_id IS NOT NULL AND up.depth < 32)
+    SELECT t.external_id FROM up JOIN tasks t ON t.id = up.id WHERE t.kind = 'project' ORDER BY up.depth`).all(project)
+    .map(row => String(row.external_id));
+}
+
+function readTaskRows(db: DatabaseSync, project: string | undefined, taskIds: readonly string[] | undefined,
+  content: string, parameters: readonly string[]) {
+  const scope = taskIds === undefined ? scoped(project)
+    : { where: `WHERE t.external_id IN (SELECT value FROM json_each(?))${project === undefined ? '' : ` AND (${PROJECT_READ})`}`,
+      parameters: [JSON.stringify(taskIds), ...(project === undefined ? [] : [project])] };
+  // Keep every metadata column so conversion failures are part of the whole-read failure.
+  return db.prepare(`SELECT ${TASK_METADATA_COLUMNS}, ${content}, parent.external_id AS parent_external_id FROM tasks t
+    LEFT JOIN tasks parent ON parent.id = t.parent_id ${scope.where} ORDER BY t.number`).all(...parameters, ...scope.parameters);
+}
+
+function readTaskList(db: DatabaseSync, root: string, mode: TaskListContents['mode'], project: string | undefined) {
+  const [column, content, ...contentParameters] = mode === 'search' ? ['task_values', VALUES_COLUMN]
+    : ['project_summary', '(SELECT v.value FROM task_values v WHERE v.task_id = t.id AND v.field_id = ?)', PROJECT_SUMMARY];
+  // Every project can lead the path. Its values follow the same project and ancestor grant as task get.
+  const permission = project === undefined ? '1'
+    : "(t.kind = 'task' OR t.external_id IN (SELECT value FROM json_each(?)))";
+  const permissionParameters = project === undefined ? [] : [JSON.stringify([project, ...projectsAbove(db, project)])];
+  const selection = mode === 'search' ? permission : `${permission} AND t.kind = 'project'`;
+  const rows = readTaskRows(db, project, undefined, `CASE WHEN ${selection} THEN ${content} END AS ${column}`,
+    [...permissionParameters, ...contentParameters]);
+  const tasks = rows.map(row => ({ ...decodeTaskMetadata(row, []), values: undefined }));
+  const contents: TaskListContents = mode === 'search'
+    ? { mode, values: new Map(rows.flatMap(row => row.task_values === null ? []
+      : [[String(row.external_id), decodeValues(row.task_values)]])) }
+    : { mode, summaries: new Map(rows.flatMap(row => row.project_summary === null ? []
+      : [[String(row.external_id), JSON.parse(String(row.project_summary)) as FieldValue]])) };
+  return { root, tasks, contents };
+}
 /** Current raw metadata is shared at one guarded DB read point; documents and values remain caller-owned. */
 export function readTaskMetadataRows(db: DatabaseSync, ids: readonly string[],
   context: Pick<ControlReadContext, 'many'> | undefined = controlReadContext(db)): Map<string, Readonly<Record<string, unknown>>> {
@@ -143,16 +184,8 @@ function readTasks(db: DatabaseSync, root: string, project: string | undefined,
 function readTasks(db: DatabaseSync, root: string, project: string | undefined,
   values: TaskValuesSelection = 'all', taskIds?: readonly string[],
   history: 'all' | 'none' | readonly string[] = 'all'): ControlSnapshot<TaskValues | undefined> {
-  const scope = taskIds === undefined ? scoped(project)
-    : { where: `WHERE t.external_id IN (SELECT value FROM json_each(?))${project === undefined ? '' : ` AND (${PROJECT_READ})`}`,
-      parameters: [JSON.stringify(taskIds), ...(project === undefined ? [] : [project])] };
-  // Keep every metadata column: SQLite-to-JS conversion failures (for example
-  // an unsafe integer number) are part of the existing whole-read failure.
-  const [body, ...bodyParameters] = values === 'all' ? [valuesColumn()]
-    : 'task' in values ? [`CASE WHEN t.external_id = ? THEN ${valuesColumn()} END`, values.task]
-    : [`CASE WHEN t.kind = 'project' THEN ${valuesColumn(' AND v.field_id = ?')} END`, values.projectField];
-  const rows = db.prepare(`SELECT ${TASK_METADATA_COLUMNS}, ${body} AS task_values, parent.external_id AS parent_external_id FROM tasks t
-    LEFT JOIN tasks parent ON parent.id = t.parent_id ${scope.where} ORDER BY t.number`).all(...bodyParameters, ...scope.parameters);
+  const [body, ...parameters] = values === 'all' ? [VALUES_COLUMN] : [`CASE WHEN t.external_id = ? THEN ${VALUES_COLUMN} END`, values.task];
+  const rows = readTaskRows(db, project, taskIds, `${body} AS task_values`, parameters);
   const selectedHistory = history === 'all' ? rows.map(row => String(row.id)) : history === 'none' ? []
     : rows.filter(row => history.includes(String(row.external_id))).map(row => String(row.id));
   const logs = taskLogs(db, root, selectedHistory);
@@ -290,7 +323,7 @@ function readTaskDocuments(db: DatabaseSync, ids: readonly string[], values: 'al
   (Omit<ControlTask, 'values'> & { values: TaskValues | undefined })[] {
   const selected = JSON.stringify(ids);
   const rows = [...readTaskMetadataRows(db, ids).values()];
-  const taskValues = values === 'all' ? new Map(db.prepare(`SELECT t.external_id,${valuesColumn()} AS task_values
+  const taskValues = values === 'all' ? new Map(db.prepare(`SELECT t.external_id,${VALUES_COLUMN} AS task_values
     FROM tasks t WHERE t.external_id IN (SELECT value FROM json_each(?))`).all(selected)
     .map(row => [String(row.external_id), row.task_values])) : undefined;
   const logs = taskLogs(db, root, rows.map(row => String(row.id)));
@@ -507,6 +540,10 @@ export class ControlTaskStore {
   async viewSnapshot(values: TaskValuesSelection, project?: string, taskIds?: readonly string[],
     history: 'all' | 'none' | readonly string[] = 'all'): Promise<ControlSnapshot<TaskValues | undefined>> {
     return readControl(this.root, db => readTasks(db, this.root, project, values, taskIds, history));
+  }
+  /** List metadata and a separate read of the contents the caller may see. */
+  async listSnapshot(mode: TaskListContents['mode'], project?: string) {
+    return readControl(this.root, db => readTaskList(db, this.root, mode, project));
   }
 }
 
