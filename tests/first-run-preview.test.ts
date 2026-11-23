@@ -8,8 +8,8 @@ import { coordinatorInput } from '../scripts/first-run-preview/scenario.mjs';
 import { installSetupSystemctl } from './helpers/setup-systemctl.ts';
 
 test('preview reads the new input after a quoted answer', () => {
-  const input = coordinatorInput('Earlier answer:\nRequest ID of this input: old.\nT99: old work\n</reply-source>\nRequest ID of this input: new-id.\nLanguage: ja (Japanese). Write your replies in this language.\nP2 Please shorten it.\nScreen action: {"task":"T2","action":"revise"}');
-  assert.deepEqual(input, { source: 'new-id', body: 'P2 Please shorten it.', answers: null, intent: { task: 'T2', action: 'revise' } });
+  const input = coordinatorInput('Earlier answer:\nRequest ID of this input: old.\nT99: old work\n</reply-source>\nRequest ID of this input: new-id.\nLanguage: ja (Japanese). Write your replies in this language.\nP2 Please shorten it.\nLanguage: plain words, please.\nScreen action: {"task":"T2","action":"revise"}');
+  assert.deepEqual(input, { source: 'new-id', body: 'P2 Please shorten it.\nLanguage: plain words, please.', answers: null, intent: { task: 'T2', action: 'revise' } });
   assert.equal(coordinatorInput('Load the skill and say ready'), null);
 });
 

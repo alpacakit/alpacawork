@@ -245,4 +245,6 @@ test('a question asked of the person is answered by them, though the coordinator
   expect(rows(answer, asked)[1]!.outcome).toEqual({ kind: 'answered', who: 'you', at: answer.at });
   // Other is answered by the person's own words, not by the word the app keeps for it.
   expect(answerLine('1-other B のままで')).toBe('B のままで');
+  expect(answerLine('1-other\nB のままで')).toBe('B のままで');
+  expect(answerLine('1-A 2-other 太くする')).toBe('A 太くする');
 });

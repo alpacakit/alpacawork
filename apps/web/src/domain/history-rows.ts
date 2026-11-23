@@ -236,7 +236,15 @@ export function sameRow(a: HistoryRow, b: HistoryRow): boolean {
 }
 
 /**
- * An answer as a sentence: the choice's words, without the number a choice is answered with. Other is said by the
- * person's own words after it, so its word (kept by the app, never the person's) goes too.
+ * An answer as a sentence: each chosen choice's word, without the number a choice is answered with, then the person's
+ * own words. Other is said by those words alone (its word is the app's, never the person's), so they are read from the
+ * next line when nothing else stands on its line; after a chosen choice, only its line is the sentence.
  */
-export const answerLine = (words: string) => firstReportLine(words).replace(new RegExp(`^\\d+-(?:${OTHER_WORD}(?:\\s+|$))?`), '');
+export function answerLine(words: string) {
+  const chosen: string[] = [];
+  let rest = words.trim();
+  for (let token; (token = /^[1-9]\d*-(\S+)[ \t]*/.exec(rest)); rest = rest.slice(token[0].length))
+    if (token[1] !== OTHER_WORD) chosen.push(token[1]!);
+  const said = firstReportLine(chosen.length ? rest.split('\n')[0]! : rest);
+  return [...chosen, said].filter(Boolean).join(' ');
+}
