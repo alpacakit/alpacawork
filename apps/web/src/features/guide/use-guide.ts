@@ -14,13 +14,14 @@ import { useConversation } from "@/features/coordinator/coordinator";
 import { useInputDraft } from "@/features/coordinator/editor/draft";
 import { hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
+import { graceReady } from "@/data/send-grace";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { useSitting } from "@/features/reader/next-question";
 import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { closing, doneOnLeaving, finishedHere, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { closing, doneOnLeaving, finishedHere, guideEntry, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
@@ -149,7 +150,7 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
+export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
@@ -168,7 +169,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
   const selected = shown === answeredAll ? null : shown;
   // The rows awaiting the person, and which of them is seen in the detail (awaiting).
-  const { submitted } = useSubmittedTurns();
+  const { submitted, finishing } = useSubmittedTurns();
   const awaited = awaiting(rows, index.byId, submitted, selected);
   const { questions, results } = awaited;
   let { open } = awaited;
@@ -188,9 +189,11 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const root = useConversation(state => state.root);
   const turns = useConversation(state => state.conversation?.turns) ?? NO_TURNS;
   const entries = useDraftStore(state => state.entries);
-  const sending = useMemo(() => outgoing(entries, root)
-    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId))
-    .map(item => item.requestId), [entries, root, turns]);
+  const leaving = useMemo(() => outgoing(entries, root)
+    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId)), [entries, root, turns]);
+  const sending = useMemo(() => leaving.map(item => item.requestId), [leaving]);
+  // Still within the moment it can be taken back in (it leaves that stage as the moment ends, which redraws this).
+  const soon = leaving.some(item => item.stage === "queued" && !graceReady(item.due));
   // What the input holds now: anything to send (foundDraft), and a label.
   const { doc } = useInputDraft();
   const found = useRef<FoundDraft>(null);
@@ -203,16 +206,21 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
   const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
-  const doneHere = finishedHere(pressed, useServerState(pressed, index.byId)).length > 0;
-  // The step standing on this page as it was last chosen: it stays the step while it holds, done or not.
+  const finished = finishedHere(pressed, useServerState(pressed, index.byId));
+  const doneHere = finished.length > 0;
+  // Done pressed on a row still awaiting the person, as this device keeps that press (a load of the page does not lose
+  // it; taken back, it is no longer kept): on its way until the server says the Task is finished.
+  const settling = rows.some(row => { const task = row.section === "review" ? index.byId.get(row.taskId) : undefined; return !!task && finishing(task); });
+  // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
-  const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
+  const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
     apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;
-  if (ready) standing.current = entry?.id ?? null;
-  return { entry, facts, fresh, ready };
+  const again = !!entry && saidBefore(entry, facts);
+  if (ready) standing.current = entry && !again ? entry.id : null;
+  return { entry, again, facts, fresh, ready };
 }
 
 /**
@@ -226,7 +234,10 @@ export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts
   const adding = fresh.filter(id => !kept.includes(id));
   const next = !ready ? undefined : adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, closing(facts));
   const key = next && JSON.stringify(next);
-  useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
+  // Tried again whenever what is stored changes: a move refused because another tab stored something meanwhile is
+  // made over what that tab stored.
+  const from = JSON.stringify(stage);
+  useEffect(() => { if (next) moveGuide(stage, next); }, [key, from]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
   // as done from before it.
   const held = useRef<{ entry: GuideEntry | null; at: number | null }>({ entry: null, at: null });

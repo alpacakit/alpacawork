@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
-import { PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
+import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, saidBefore, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
 import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
-  ({ stage: started, tasks: 0, doneHere: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
+  ({ stage: started, tasks: 0, doneHere: false, settling: false, soon: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
     open: null, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
@@ -61,11 +61,11 @@ test("a step with no button is done once its balloon has stood; one with a butto
   expect(doneOnShowing(accept!, true)).toBe(true);
   // Not on the screen yet (its part in another project, under a dialog, or gone within a blink): still to be shown.
   expect(doneOnShowing(accept!, false)).toBe(false);
-  // Done, it goes on standing while it stays the step on this page; moved on from, or the page loaded again, it is gone.
-  expect(shown({ ...report, seen: read("more", "accept"), standing: "accept" })).toBe("accept");
-  expect(shown({ ...report, seen: read("more", "accept") })).toBeNull();
-  // Nor is the open report's row said to be pressed, or the open question's.
-  expect(shown({ stage: turn, tasks: 1, questions: 1, open: "question", seen: read("answer") })).toBeNull();
+  // Done, it goes on standing in its first words while it stays the step on this page; moved on from, or the page
+  // loaded again, it is the step in its words for coming round again.
+  const standing = facts({ ...report, seen: read("more", "accept"), standing: "accept" }), back = facts({ ...report, seen: read("more", "accept") });
+  expect([guideEntry(standing)?.id, saidBefore(accept!, standing)]).toEqual(["accept", false]);
+  expect([guideEntry(back)?.id, saidBefore(accept!, back)]).toEqual(["accept", true]);
   // Put away by its button, a step is gone at once, standing or not.
   expect(shown({ ...report, seen: read("more"), standing: "more" })).toBe("accept");
   expect(shown({ stage: turn, doneHere: true, tasks: 1, talked: true, seen: read("conversation"), standing: "conversation" })).toBe("another-repository");
@@ -81,27 +81,45 @@ test("a step with no button is done once its balloon has stood; one with a butto
   expect(doneOnLeaving(conversation, null, facts({ stage: turn, doneHere: true, tasks: 1, talked: false }), false)).toBe(false);
 });
 
-test("a step shown is not shown again: the Task's row is said once, however often work starts or the page is loaded", () => {
-  const working = guideEntry(facts({ stage: turn, tasks: 1, working: 1 }));
-  expect(working?.id).toBe("working");
-  expect(doneOnShowing(working!, true)).toBe(true);
-  // One more request on the same Task: it is worked on again, and its row, its question and its report are not
-  // introduced again.
-  expect(shown({ stage: turn, tasks: 1, working: 1, seen: read("working") })).toBeNull();
-  expect(shown({ stage: turn, tasks: 1, questions: 1, seen: read("working", "question") })).toBeNull();
-  expect(shown({ stage: turn, tasks: 1, results: 1, seen: read("working", "question", "result") })).toBeNull();
+test("through a first Task the guide always has a step: each explained once, then said in short as it comes round again", () => {
+  const all = read(...GUIDE.map(entry => entry.id));
+  const round = (over: Partial<GuideFacts>) => { const f = facts({ stage: turn, tasks: 1, talked: true, seen: all, ...over }), entry = guideEntry(f); return [entry?.id, !!entry && saidBefore(entry, f)]; };
+  // One more request on the same Task, sent from its open report: the coordinator has it, the Task is worked on again,
+  // its next question comes (seen in the detail, or as a row), its answer is sent, and its report comes to Done.
+  expect(round({ results: 1, open: "result", drafting: true, labelled: true })).toEqual(["send-ready", true]);
+  expect(round({ busy: true })).toEqual(["received", true]);
+  expect(round({ working: 1, open: "working" })).toEqual(["working", true]);
+  expect(round({ questions: 1, open: "question" })).toEqual(["answer", true]);
+  expect(round({ questions: 1 })).toEqual(["question", true]);
+  expect(round({ results: 1 })).toEqual(["result", true]);
+  expect(round({ results: 1, open: "result" })).toEqual(["accept", true]);
+  // Nothing going on: a request is to be written. Not while what was just answered or finished is on its way.
+  expect(round({})).toEqual(["send-again", true]);
+  expect(round({ settling: true })).toEqual([undefined, false]);
+  // Nor is the coordinator said to have a message that can still be taken back, the conversation open or not.
+  expect(round({ busy: true, soon: true })).toEqual([undefined, false]);
+  // Once a Task is finished here, nothing is said again: the close is read whatever else awaits the person (another
+  // Task's question), and the guide is over with it.
+  expect(round({ doneHere: true, questions: 1, seen: read("working", "question", "answer", "received") })).toEqual(["conversation", false]);
+  expect(round({ doneHere: true, questions: 1 })).toEqual([undefined, false]);
+  // What only explains is never the step again: the request to try after a report, the label, where an AI is stopped,
+  // a reply in the conversation itself, and the close.
+  for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone"].includes(entry.id)]);
+});
+
+test("a request to try is the one way on its step offers: no \"Got it\" stands beside it", () => {
+  for (const id of ["send", "more", "send-again"]) expect(GUIDE.find(entry => entry.id === id)).toMatchObject({ action: expect.anything() });
+  for (const id of ["send", "more", "send-again"]) expect(GUIDE.find(entry => entry.id === id)?.next).toBeUndefined();
 });
 
 test("words waiting in the input come before the close, shown or not: the close waits and the guide is not over", () => {
   const done = { stage: turn, doneHere: true, tasks: 1, talked: true } as const;
   expect(shown({ ...done, drafting: true })).toBe("send-ready");
-  // Sending was shown before: nothing is said, and the guide waits for the words to be sent or taken away.
+  // Sending was shown before: it is said again, and the guide waits for the words to be sent or taken away.
   const waiting = facts({ ...done, drafting: true, seen: read("send-ready") });
-  expect(guideEntry(waiting)).toBeNull();
-  expect(nextStage(turn, null, closing(waiting))).toBeUndefined();
+  expect(guideEntry(waiting)?.id).toBe("send-ready");
+  expect(nextStage(turn, guideEntry(waiting), closing(waiting))).toBeUndefined();
   expect(shown({ ...done, seen: read("send-ready") })).toBe("conversation");
-  // Nor are words waiting said to be written, before anything is finished here.
-  expect(shown({ tasks: 4, drafting: true, seen: read("send-ready") })).toBeNull();
 });
 
 test("a passable step is passed over, not done, while what it points at is not seen; with only it left, the guide waits", () => {
@@ -124,9 +142,11 @@ test("an answer given in the conversation itself is pointed at while it is folde
   expect(doneOnShowing(guideEntry(facts(answered))!, true)).toBe(true);
 });
 
-test("a Task being worked on, seen in the detail, points once at where it is stopped", () => {
+test("a Task being worked on, opened before anything has come back from it, points once at where it is stopped", () => {
   expect(shown({ tasks: 1, working: 1, open: "working" })).toBe("stop");
   expect(shown({ tasks: 1, working: 1, open: "working", seen: read("stop") })).toBe("working");
+  // Once the person has had a turn, the detail stays open on the Task they answered: its work going on is what is said.
+  expect(shown({ stage: turn, tasks: 1, working: 1, open: "working", seen: read("working") })).toBe("working");
 });
 
 test("with a report and a question both awaiting the person, the question's step points at the question's row", () => {
@@ -149,7 +169,7 @@ test("once Done is pressed here the guide closes in steps read once each, before
   // Read to the end, other work going on or not, the guide is over.
   const read_ = facts({ ...done, working: 1, unowned: 1, seen: read("conversation", "another-repository") });
   expect(guideEntry(read_)).toBeNull();
-  expect(nextStage(turn, null, closing(read_))).toEqual({ stage: "done" });
+  expect(nextStage(turn, null, closing(read_))).toEqual({ stage: "done", read: true });
   // Where settings hold the steps to answering from a phone, pointing at them once is the last step.
   expect(shown({ ...done, apps: true, seen: read("conversation", "another-repository") })).toBe("phone");
 });
@@ -169,7 +189,7 @@ test("the guide starts by itself only for a new person: never stored, on the wel
 test("the guide reaches the person's turn once a step of theirs holds, and is over only when nothing holds in the close", () => {
   expect(nextStage(started, guideEntry(facts({ tasks: 1, questions: 1 })), false)).toEqual({ stage: "turn", seen: [] });
   expect(nextStage(started, guideEntry(facts({ tasks: 1, working: 1 })), false)).toBeUndefined();
-  expect(nextStage(turn, null, true)).toEqual({ stage: "done" });
+  expect(nextStage(turn, null, true)).toEqual({ stage: "done", read: true });
   // Nothing to show before a Task is finished here (its Done taken back, the Task put on hold): the guide waits.
   expect(nextStage(turn, null, false)).toBeUndefined();
   // What the stage keeps goes along as it moves on.
@@ -296,10 +316,10 @@ test("the close holds while the server says a Task pressed Done on here is finis
   for (const state of ["review", "held", "stopped", undefined]) expect(finishedHere(["T2"], states(state ? { T2: state } : {}))).toEqual([]);
   // A Task stopped with no Done pressed on it here is not among those pressed on.
   expect(finishedHere([], states({ T3: "stopped" }))).toEqual([]);
-  // Taken back and put on hold: no step holds and the guide waits; awaiting again, Done is what holds on it (its
-  // balloon, shown once already, is not shown again: pressing Done again goes on to the close).
+  // Taken back and put on hold: nothing goes on, so a request is to be written, and the guide is not over; awaiting
+  // again, Done is what holds on it (pressing Done again goes on to the close).
   const held = facts({ stage: turn, tasks: 1, talked: true, doneHere: finishedHere(["T2"], states({ T2: "held" })).length > 0 });
-  expect(guideEntry(held)).toBeNull();
+  expect(guideEntry(held)?.id).toBe("send-again");
   expect(nextStage(turn, guideEntry(held), closing(held))).toBeUndefined();
-  expect(shown({ stage: turn, tasks: 1, talked: true, results: 1, open: "result", seen: read("more") })).toBe("accept");
+  expect(shown({ stage: turn, tasks: 1, talked: true, results: 1, open: "result", seen: read("more", "accept") })).toBe("accept");
 });
