@@ -313,9 +313,7 @@ export const taskFinishedInput = z.object({ parent: z.union([taskIdSchema, z.lit
   after: z.string().min(1).max(1024).optional(), limit: pageLimit.optional() });
 export const taskShelvedInput = z.object({ scope: projectScope,
   after: z.string().min(1).max(1024).optional(), limit: pageLimit.optional() });
-export const taskTimelineAxisInput = z.object({
-  scope: z.union([taskIdSchema, z.literal('root')]), lanes: z.string().max(8192), folded: z.string().max(8192),
-});
+export const taskTimelineAxisInput = z.object({ lanes: z.string().max(8192) });
 export const taskTimelineInput = z.object({
   lanes: z.string().max(8192),
   from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }),

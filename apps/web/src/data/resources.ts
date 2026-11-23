@@ -108,10 +108,11 @@ export const resources = {
     getNextPageParam: (page) => page.nextAfter ?? undefined,
     staleTime: Infinity,
   }),
-  timelineAxis: (root: string, scope: string | null, lanes: string[], folded: string[]) => queryOptions({
-    queryKey: ["task-timeline", root, "axis", scope ?? "root", lanes.join(","), folded.join(",")] as const,
-    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, scope, lanes, () => api.request(`task/timeline-axis?scope=${encodeURIComponent(scope ?? "root")}`
-      + `&lanes=${encodeURIComponent(lanes.join(","))}&folded=${encodeURIComponent(folded.join(","))}`, taskProjectedTimelineAxisSchema, signal)),
+  /** The rows' full-lifetime activity (the axis): read again when any of its rows' versions moves. */
+  timelineAxis: (root: string, lanes: string[]) => queryOptions({
+    queryKey: ["task-timeline", root, "axis", lanes.join(",")] as const,
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, lanes, () => api.request(`task/timeline-axis?lanes=${encodeURIComponent(lanes.join(","))}`,
+      taskProjectedTimelineAxisSchema, signal)),
     staleTime: Infinity,
   }),
   /**
@@ -120,7 +121,7 @@ export const resources = {
    */
   timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
     queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
-    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, null, [lane], () => readTimelineLane(lane, from, to, signal)),
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => readTimelineLane(lane, from, to, signal)),
     staleTime: Infinity,
   }),
   notices: (root: string) => queryOptions({
@@ -394,11 +395,11 @@ export function admitResourceRead(client: QueryClient, started: ReturnType<typeo
 }
 /** A lane selection belongs to the server's current rows. An index can retire it before React replaces the
  * observer's key; refreshing that old selection would ask the server for IDs it has already removed. */
-function readTimeline<T>(client: QueryClient, key: QueryKey, scope: string | null, lanes: readonly string[], fetch: () => Promise<T>) {
+function readTimeline<T>(client: QueryClient, key: QueryKey, lanes: readonly string[], fetch: () => Promise<T>) {
   const facts = serverReadFacts(client);
   if (facts && facts.root === key[1]) {
     const rows = new Set(facts.tasks.map(row => row.id));
-    if (scope !== null && !rows.has(scope) || lanes.some(id => !rows.has(id))) return discardResourceRead(readQuery(client, key));
+    if (lanes.some(id => !rows.has(id))) return discardResourceRead(readQuery(client, key));
   }
   return readResource(client, key, fetch);
 }

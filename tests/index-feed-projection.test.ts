@@ -388,7 +388,7 @@ test('axis activity is complete and independent of drawing windows, pages and re
   const feed = snapshotReads();
   feed.update(h.screen({ ...tree, tasks: tree.tasks.map(row => row.id === task.id ? task : row),
     runs: [runOf('R99999', task.id, 'running', iso(-2 * day))] }));
-  const input = { scope: 'root', lanes: task.id, folded: '' };
+  const input = { lanes: task.id };
   const before = feed.timelineAxis(input);
   assert.equal(before.earliest, base - 10 * day);
   assert.ok(before.busy.some(([from, to]) => from === base - 2 * day && to === null));
@@ -401,10 +401,9 @@ test('axis activity is complete and independent of drawing windows, pages and re
     feed.timeline({ lanes: task.id, from: iso(range[0]!), to: iso(range[1]!), limit: 10 });
     assert.deepEqual(feed.timelineAxis(input), before);
   }
-  const folded = feed.timelineAxis({ scope: 'root', lanes: h.parent.id, folded: h.parent.id });
-  assert.ok(folded.earliest! <= before.earliest!, 'a closed child older than the parent still determines the axis start');
-  assert.throws(() => feed.timelineAxis({ scope: 'root', lanes: Array(201).fill(task.id).join(','), folded: '' }));
-  assert.throws(() => feed.timelineAxis({ scope: task.id, lanes: h.parent.id, folded: '' }));
+  const rows = feed.timelineAxis({ lanes: `${h.parent.id},${task.id}` });
+  assert.ok(rows.earliest! <= before.earliest!, 'a closed child older than the parent still determines the axis start');
+  assert.throws(() => feed.timelineAxis({ lanes: Array(201).fill(0).map((_, n) => `T${n + 1}`).join(',') }));
 });
 
 test('History projects authors, recipients, answer words and causal delivery links from the tree, including joined Runs', async t => {

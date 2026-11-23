@@ -133,7 +133,7 @@ export function recordHistory(taskId: string, entries: readonly (Pick<TaskLog, "
 }
 /**
  * The server's answer to the time view's reads (GET /api/task/timeline), for the tree a test made, put in the cache as
- * each read is made (so the screen reads it at once): each Task it asks for (listed or below a folded one) with its
+ * each read is made (so the screen reads it at once): each row it asks for with its
  * notes, the History events the test stated (`history`). It answers until the test ends.
  */
 export const fixtureHistory = new WeakMap<PeopleIndex, Record<string, HistoryEvent[]>>();
@@ -146,10 +146,6 @@ function lanesAbove(value: AxisFixture, listed: string[], id: string) {
   for (let parent = value.tasks.find(task => task.id === id)?.parentId; parent; parent = value.tasks.find(task => task.id === parent)?.parentId)
     if (listed.includes(parent)) above.push(parent);
   return above;
-}
-function timelineIds(value: AxisFixture, listed: string[], folded: string[]) {
-  const below = (id: string): boolean => { const parent = value.tasks.find(task => task.id === id)?.parentId; return !!parent && (folded.includes(parent) || below(parent)); };
-  return value.tasks.map(task => task.id).filter(id => listed.includes(id) || below(id));
 }
 /** One row's strip, the same for cached component fixtures and mock HTTP callers: its notes, the History events the
  * test stated (`history`), and the ended Runs below it. */
@@ -168,8 +164,8 @@ export function timelineLaneAnswer(value: AxisFixture, lane: string) {
 export const timelineAnswer = (value: AxisFixture, lanes: string[]) => ({
   lanes: lanes.filter(lane => value.tasks.some(task => task.id === lane)).map(lane => timelineLaneAnswer(value, lane)),
   gone: lanes.filter(lane => !value.tasks.some(task => task.id === lane)) });
-export function timelineAxisAnswer(value: AxisFixture, listed: string[], folded: string[]) {
-  const ids = timelineIds(value, listed, folded);
+export function timelineAxisAnswer(value: AxisFixture, listed: string[]) {
+  const ids = value.tasks.map(task => task.id).filter(id => listed.includes(id));
   const spans: [number, number | null][] = [];
   const starts: number[] = [];
   for (const task of value.tasks.filter(task => ids.includes(task.id))) {
@@ -197,7 +193,7 @@ export function serveTimeline(value: Served) {
     if (event.type !== "added" || key[0] !== "task-timeline" || key[1] !== value.root) return;
     const split = (ids: unknown) => String(ids).split(",").filter(Boolean);
     if (key[2] === "axis") {
-      queryClient.setQueryData(key, timelineAxisAnswer(value, split(key[4]), split(key[5])));
+      queryClient.setQueryData(key, timelineAxisAnswer(value, split(key[3])));
       return;
     }
     // A row of another tree served meanwhile is that tree's to answer.

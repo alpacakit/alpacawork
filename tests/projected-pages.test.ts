@@ -71,11 +71,11 @@ test('a strip and the axis expire with their rows\' versions and read only those
   assert.deepEqual(reads.timeline(first, { ...query, lanes: 'T1,T404' }).gone, ['T404']);
   const held = reads.timeline({ ...first, pv: pv(2) }, query).lanes;
   assert.equal(held[0], reads.timeline(first, query).lanes[0], 'a strip whose row version holds is not made again');
-  const axis = taskProjectedTimelineAxisSchema.parse(reads.timelineAxis(first, { scope: 'root', lanes: 'T1', folded: '' }));
+  const axis = taskProjectedTimelineAxisSchema.parse(reads.timelineAxis(first, { lanes: 'T1' }));
   assert.equal(axis.earliest, Date.parse(at(1)));
   const updated = { ...task, task: { ...task.task, meta: { ...task.task.meta, title: 'New title', log: [entry('L0', -1), ...task.task.meta.log] } } };
   const latest = frame(new FakeRecords([project, updated, other], pv(3)), { requiredPv: { ...first.requiredPv, timeline: { T1: pv(3), T2: pv(1) } } });
-  const changedAxis = reads.timelineAxis(latest, { scope: 'root', lanes: 'T1', folded: '' });
+  const changedAxis = reads.timelineAxis(latest, { lanes: 'T1' });
   assert.equal(changedAxis.earliest, Date.parse(at(-1)));
   assert.equal(changedAxis.sourcePv, 3);
   const [changedStrip, otherStrip] = reads.timeline(latest, { ...query, from: at(-2) }).lanes;

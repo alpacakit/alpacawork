@@ -113,7 +113,7 @@ function serve() {
     if (target.pathname === "/api/task/timeline") return new Response(snapshotJson(timelineAnswer(served,
       (target.searchParams.get("lanes") ?? "").split(",").filter(Boolean))));
     if (target.pathname === "/api/task/timeline-axis") return new Response(snapshotJson(timelineAxisAnswer(served,
-      target.searchParams.get("lanes")!.split(","), target.searchParams.get("folded")!.split(",").filter(Boolean))));
+      target.searchParams.get("lanes")!.split(","))));
     return problemResponse("unavailable");
   });
 }

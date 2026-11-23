@@ -65,7 +65,7 @@ export class ReadResources {
       if (!shelf.listed.has(frame.records.projectOf(id))) continue;
       put('timeline', id, (point, readers) => readers.pages.timeline(point, { lanes: id,
         from: '2026-01-01T00:00:00Z', to: '2027-01-01T00:00:00Z' }).lanes[0] ?? null);
-      put('axis', id, (point, readers) => readers.pages.timelineAxis(point, { scope: 'root', lanes: id, folded: '' }));
+      put('axis', id, (point, readers) => readers.pages.timelineAxis(point, { lanes: id }));
     }
     for (const id of frame.records.taskIds()) put('page', closedPageScope('finished', id, null), (point, readers) => readers.pages.finished(point, id, null, undefined, 3));
     return resources;

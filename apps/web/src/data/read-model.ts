@@ -103,7 +103,7 @@ export function readCodec(key: QueryKey): z.ZodType | undefined {
   if (kind === 'task-history' && key.length === 3 && typeof id === 'string') return historyPages;
   if (kind === 'task-finished' && key.length === 4 && typeof id === 'string' && (scope === null || typeof scope === 'string')) return taskPages;
   if (kind === 'task-search' && key.length === 4 && typeof id === 'string' && (scope === null || typeof scope === 'string')) return searchPages;
-  if (kind === 'task-timeline' && key.length === 6 && id === 'axis' && key.slice(3).every(value => typeof value === 'string')) return taskProjectedTimelineAxisSchema;
+  if (kind === 'task-timeline' && key.length === 4 && id === 'axis' && typeof scope === 'string') return taskProjectedTimelineAxisSchema;
   if (kind === 'task-timeline' && key.length === 6 && id === 'lane' && key.slice(3).every(value => typeof value === 'string'))
     return taskTimelineLaneSchema.refine(lane => lane.lane === scope);
   if (kind === 'task-shelved' && key.length === 3 && (id === null || typeof id === 'string')) return taskPages;
@@ -298,7 +298,8 @@ export function projectionResource(key: QueryKey): { kind: ProjectionResourceKin
   if (kind === 'task-finished') return { kind: 'page', ids: [closedPageScope('finished', id === 'root' ? null : String(id), scope as string | null)] };
   if (kind === 'task-shelved') return { kind: 'page', ids: [closedPageScope('shelved', null, id as string | null)] };
   if (kind === 'task-search') return { kind: 'search', ids: [typeof scope === 'string' ? scope : 'root'] };
-  if (kind === 'task-timeline') return { kind: 'timeline', ids: id === 'axis' ? String(key[4]).split(',').filter(Boolean) : [String(scope)] };
+  // The axis's key holds its rows; a strip's, its row.
+  if (kind === 'task-timeline') return { kind: 'timeline', ids: String(scope).split(',').filter(Boolean) };
 }
 /**
  * The version a read must come from to be current: the newest of its resources'. A resource the index does not name has

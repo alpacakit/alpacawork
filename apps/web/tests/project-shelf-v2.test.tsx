@@ -260,7 +260,7 @@ test('a shelving refusal about a different Task is invalid and cannot withdraw t
 test('an active timeline selection retired by the shelf is not sent again; a later valid selection recovers', async () => {
   const base = indexOf(source()); receiveFullIndex(client, base);
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => jsonAnswer({busy: [], earliest: null, generation: 'a', sourcePv: readIndex(client)!.sourcePv}));
-  const options = resources.timelineAxis(base.root, null, ['T9'], []);
+  const options = resources.timelineAxis(base.root, ['T9']);
   await client.fetchQuery(options);
   const observer = new QueryObserver(client, options), stop = observer.subscribe(() => {});
   try {

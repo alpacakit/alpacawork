@@ -114,7 +114,7 @@ const serveSettings = () => {
       (target.searchParams.get("lanes") ?? "").split(",").filter(Boolean))));
     if (String(url).startsWith('/api/task/timeline-axis?')) {
       const params = new URL(String(url), 'http://fixture/').searchParams;
-      return new Response(snapshotJson(timelineAxisAnswer(served, params.get('lanes')!.split(','), params.get('folded')!.split(',').filter(Boolean))));
+      return new Response(snapshotJson(timelineAxisAnswer(served, params.get('lanes')!.split(','))));
     }
     return problemResponse("not_found", "Not found");
   });

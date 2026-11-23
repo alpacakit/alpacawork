@@ -9,27 +9,21 @@ import { byMoved } from '@alpacawork/contract/moved';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { lineWithText, matchesTaskText } from '../control/task-views.js';
 import { current, lanesAbove as lanesAboveFor, pageRow, recordEvents, recordedEvents,
-  type ChildCounts, type Kept } from './task-reads.js';
+  type Kept } from './task-reads.js';
 import { controlTaskView } from '../control/task-dto.js';
 import type { PublishedFrame } from './projection-contract.js';
 import { aggregateRowFacts } from './row-facts.js';
 
-/** The common inputs of search and time rendering; a published reader supplies only its scope's records. */
+/** What rows' strips and axis read: the rows' ancestors and subtrees, from one published frame. */
 type PageReadState = {
-  generation: string;
-  rev: number;
-  children: Record<string, ChildCounts>;
-  pageMoved: ReadonlyMap<string, number>;
   runs: Kept<ControlRunDTO>;
   placements: Kept<PlacementDTO>;
-  axisPrepared: Map<string, TaskTimelineAxisDTO>;
   tree?: { tasks: ControlTreeDTO['tasks'] };
   rows: ReadonlyMap<string, { value: TaskRowDTO }>;
   resourceVersion: string;
-  historyEvents: (id: string, fromChild: boolean) => ReturnType<typeof recordEvents>;
+  historyEvents: (id: string) => ReturnType<typeof recordEvents>;
 };
-const eventsFor = (state: PageReadState, task: ControlTreeDTO['tasks'][number], fromChild: boolean) =>
-  state.historyEvents(task.id, fromChild);
+const eventsFor = (state: PageReadState, task: ControlTreeDTO['tasks'][number]) => state.historyEvents(task.id);
 
 /** An opaque page cursor's encoding. What it must hold, and the reason each reader refuses it, stay with that reader. */
 const writeCursor = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -46,51 +40,17 @@ const invalidPageCursor = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid 
 
 const invalidSearchCursor = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid search cursor', undefined, { reason: { kind: 'invalid_search_cursor' } });
 
-/** The axis's lanes: the requested rows and, below a folded one, the Tasks drawn in it. */
-function axisLanes(state: PageReadState, input: { scope: string; visible: string; folded: string }) {
-  const requested = (text: string) => text ? text.split(',').filter(Boolean) : [];
-  const visible = requested(input.visible), folded = requested(input.folded);
-  if (visible.length > 200 || folded.some(id => !visible.includes(id)) || visible.some(id => !state.rows.has(id)) || folded.some(id => !state.rows.has(id)))
-    throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid visible Task IDs', undefined, { reason: { kind: 'invalid_visible_task_ids' } });
-  const scopeId = input.scope === 'root' ? null : input.scope;
-  if (scopeId && !state.rows.has(scopeId)) throw new Problem(PROBLEM_CODE.notFound, 'Scope Task does not exist', undefined, { reason: { kind: 'scope_task_does_not_exist' } });
-  const underScope = (id: string) => {
-    if (!scopeId) return true;
-    let parent: string | null = id;
-    while (parent) {
-      if (parent === scopeId) return true;
-      parent = state.rows.get(parent)?.value.parentId ?? null;
-    }
-    return false;
-  };
-  if ([...visible, ...folded].some(id => !underScope(id)))
-    throw new Problem(PROBLEM_CODE.invalidInput, 'Task is outside scope', undefined, { reason: { kind: 'task_outside_scope' } });
-  const own = new Set(visible), candidates = new Set(visible);
-  for (const row of state.rows.values()) {
-    let parent = row.value.parentId;
-    while (parent) {
-      if (folded.includes(parent)) { candidates.add(row.value.id); break; }
-      parent = state.rows.get(parent)?.value.parentId ?? null;
-    }
-  }
-  return { own, candidates };
-}
-
-
-export function timelineAxis(state: PageReadState, input: { scope: string; lanes: string; folded: string }): TaskTimelineAxisDTO {
-  const { own, candidates } = axisLanes(state, { ...input, visible: input.lanes });
-  const key = JSON.stringify([state.rev, input.scope, [...own].sort(), input.folded]);
-  const cached = state.axisPrepared.get(key);
-  if (cached) return cached;
+/** The rows' full-lifetime activity: their own records' marks and the Runs of their subtrees. */
+export function timelineAxis(state: PageReadState, lanes: readonly string[]): TaskTimelineAxisDTO {
+  const own = new Set(lanes);
   const spans: [number, number | null][] = [];
   let earliest = Number.POSITIVE_INFINITY;
-  const tree = current(state);
-  for (const task of tree.tasks) {
-    if (!candidates.has(task.id)) continue;
+  for (const task of current(state).tasks) {
+    if (!own.has(task.id)) continue;
     const logs = new Map(task.log.map(log => [log.id, log]));
     const standing = standingRecord({ state: task.state, stateLog: task.log, ball: state.rows.get(task.id)?.value.ball ?? null });
     for (const log of task.log) earliest = Math.min(earliest, Date.parse(log.causeAt ?? log.at));
-    for (const event of eventsFor(state, task, !own.has(task.id))) {
+    for (const event of eventsFor(state, task)) {
       const at = Date.parse(timeMarkAt(event, logs));
       earliest = Math.min(earliest, at);
       if (standing(event.id)) spans.push([at, at]);
@@ -99,17 +59,12 @@ export function timelineAxis(state: PageReadState, input: { scope: string; lanes
   const lanesAbove = lanesAboveFor(state, own);
   for (const { value: run } of state.runs.values()) {
     const span = runSpan(run, null);
-    if (candidates.has(run.taskId)) earliest = Math.min(earliest, Date.parse(run.createdAt));
+    if (own.has(run.taskId)) earliest = Math.min(earliest, Date.parse(run.createdAt));
     else if (!span || !lanesAbove(run.taskId).length) continue;
     else earliest = Math.min(earliest, span.from);
     if (span) spans.push([span.from, span.to]);
   }
-  const busy = joinBusy(spans);
-  const result = { busy, earliest: Number.isFinite(earliest) ? earliest : null,
-    version: state.resourceVersion };
-  state.axisPrepared.set(key, result);
-  if (state.axisPrepared.size > 16) state.axisPrepared.delete(state.axisPrepared.keys().next().value!);
-  return result;
+  return { busy: joinBusy(spans), earliest: Number.isFinite(earliest) ? earliest : null, version: state.resourceVersion };
 }
 
 type TimelineEvent = TaskTimelineLaneDTO['events'][number];
@@ -128,7 +83,7 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     const stamped: { at: number; id: string; value: TimelineEvent }[] = [];
     // The notes are the Task's History events; a note made from a log entry comes with that entry.
     const logs = new Map(task.log.map(log => [log.id, log]));
-    const notes = eventsFor(state, task, false).map(event => ({ ...event, at: timeMarkAt(event, logs) })).filter(event => {
+    const notes = eventsFor(state, task).map(event => ({ ...event, at: timeMarkAt(event, logs) })).filter(event => {
       const at = Date.parse(event.at);
       return at >= from && at <= to;
     });
@@ -136,7 +91,7 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     // Layout links remain in detail History. The list receives only the shared rule's compact decision.
     const shown = new Set([...reportDisplay(notes.map(event => ({ ...event, key: historyEventKey(event), text: event.title,
       description: event.summary || null, mark: event.by ? null : reportMark(event), wroteIn: event.runId,
-      ...(event.fromChild ? { sourceTaskId: event.taskId } : {}), pinned: event.open === true, finish: event.id === finishing,
+      pinned: event.open === true, finish: event.id === finishing,
       ...(event.by && event.state ? { changed: event.state } : {}) }))).targets].filter(([key, target]) => key === target).map(([key]) => key));
     for (const event of notes) {
       const note = timelineNoteOf(event);
@@ -186,23 +141,23 @@ function projectedPageRow(frame: PublishedFrame, id: string): TaskPageRowDTO {
 const resourceVersion = (frame: PublishedFrame, kind: ProjectionResourceKind, scope: string) =>
   `${frame.generation}:${frame.requiredPv[kind][scope] ?? 0}`;
 /** What is read from rows (a strip, the axis) is as new as the newest of their versions. */
-const lanesRev = (frame: PublishedFrame, lanes: readonly string[]) => Math.max(0, ...lanes.map(id => frame.requiredPv.timeline[id] ?? 0));
-const lanesVersion = (frame: PublishedFrame, lanes: readonly string[]) => `${frame.generation}:${lanesRev(frame, lanes)}`;
+const lanesVersion = (frame: PublishedFrame, lanes: readonly string[]) =>
+  `${frame.generation}:${Math.max(0, ...lanes.map(id => frame.requiredPv.timeline[id] ?? 0))}`;
 const invalidLanes = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid visible Task IDs', undefined, { reason: { kind: 'invalid_visible_task_ids' } });
 
 /** Server-prepared time and search resources expire only when their rows' or scope's requiredPv changes. */
 export class ProjectedPages {
   private generation: string | undefined;
-  private readonly prepared = new Map<string, { lanes: string[]; version: string; sourcePv: ProjectionVersion; state: PageReadState }>();
+  private readonly axes = new Map<string, { lanes: string[]; version: string; value: TaskProjectedTimelineAxisDTO }>();
   private readonly lanes = new Map<string, { lane: string; version: string; value: TaskTimelineLaneDTO }>();
   private readonly searches = new Map<string, { scope: string; version: string; sourcePv: ProjectionVersion; ids: string[] }>();
 
   private invalidate(frame: PublishedFrame): void {
     if (this.generation !== frame.generation) {
-      this.prepared.clear(); this.lanes.clear(); this.searches.clear(); this.generation = frame.generation;
+      this.axes.clear(); this.lanes.clear(); this.searches.clear(); this.generation = frame.generation;
     }
-    for (const [key, cached] of this.prepared)
-      if (cached.version !== lanesVersion(frame, cached.lanes)) this.prepared.delete(key);
+    for (const [key, cached] of this.axes)
+      if (cached.version !== lanesVersion(frame, cached.lanes)) this.axes.delete(key);
     for (const [key, cached] of this.lanes)
       if (cached.version !== lanesVersion(frame, [cached.lane])) this.lanes.delete(key);
     for (const [key, cached] of this.searches)
@@ -250,43 +205,23 @@ export class ProjectedPages {
     const rows = new Map<string, { value: TaskRowDTO; json: string }>();
     const tasks: ControlTreeDTO['tasks'] = [];
     const runs: Kept<ControlRunDTO> = new Map(), placements: Kept<PlacementDTO> = new Map();
-    const children: Record<string, ChildCounts> = {}, moved = new Map<string, number>();
-    const records = frame.records, shelf = records.shelf();
-    const ids = new Set(lanes.flatMap(id => [...records.ancestors(id), ...records.subtree(id)]));
-    for (const id of ids) {
+    const records = frame.records;
+    for (const id of new Set(lanes.flatMap(id => [...records.ancestors(id), ...records.subtree(id)]))) {
       const bundle = records.bundle(id);
-      if (!bundle || !shelf.listed.has(records.projectOf(id))) continue;
-      const row = projectedRow(frame, id), derived = frame.derived(id)!;
-      rows.set(id, { value: row, json: '' });
+      if (!bundle || !this.held(frame, id)) continue;
+      const derived = frame.derived(id)!;
+      rows.set(id, { value: projectedRow(frame, id), json: '' });
       tasks.push({ ...controlTaskView(bundle.task), files: [...bundle.files ?? []] });
       for (const run of derived.runs) runs.set(run.id, { value: run, json: '' });
       for (const placement of derived.placements) placements.set(placement.id, { value: placement, json: '' });
-      const counts = frame.aggregate.children(id);
-      if (counts) children[id] = counts;
-      moved.set(id, frame.aggregate.movedAt(id));
     }
-    return { generation: frame.generation, rev: lanesRev(frame, lanes), resourceVersion: lanesVersion(frame, lanes),
-      tree: { tasks }, rows, children, pageMoved: moved, runs, placements,
-      historyEvents: (id, fromChild) => recordedEvents(records, id, fromChild, fromChild ? records.parent(id) ?? id : id),
-      axisPrepared: new Map() };
+    return { resourceVersion: lanesVersion(frame, lanes), tree: { tasks }, rows, runs, placements,
+      historyEvents: id => recordedEvents(records, id) };
   }
 
-  private prepare(frame: PublishedFrame, scope: string, lanes: { visible: string; folded: string }): { sourcePv: ProjectionVersion; state: PageReadState } {
-    this.invalidate(frame);
-    const key = JSON.stringify([scope, lanes.visible, lanes.folded]);
-    const held = this.prepared.get(key);
-    if (held) return held;
-    const records = frame.records;
-    const visible = lanes.visible.split(',').filter(Boolean), folded = lanes.folded.split(',').filter(Boolean);
-    if (visible.length > 200 || folded.some(id => !visible.includes(id)) || visible.some(id => !records.bundle(id))) throw invalidLanes();
-    if (scope !== 'root' && !records.bundle(scope))
-      throw new Problem(PROBLEM_CODE.notFound, 'Scope Task does not exist', undefined, { reason: { kind: 'scope_task_does_not_exist' } });
-    if (scope !== 'root' && visible.some(id => id !== scope && !records.ancestors(id).includes(scope)))
-      throw new Problem(PROBLEM_CODE.invalidInput, 'Task is outside scope', undefined, { reason: { kind: 'task_outside_scope' } });
-    const prepared = { lanes: visible, version: lanesVersion(frame, visible), sourcePv: frame.pv, state: this.readState(frame, visible) };
-    this.prepared.set(key, prepared);
-    if (this.prepared.size > 16) this.prepared.delete(this.prepared.keys().next().value!);
-    return prepared;
+  /** A Task rows are read for: one in a listed project. */
+  private held(frame: PublishedFrame, id: string) {
+    return !!frame.records.bundle(id) && frame.records.shelf().listed.has(frame.records.projectOf(id));
   }
 
   /** Search only indexes matching IDs and their order; rows and ancestor facts are made for the returned page. */
@@ -332,10 +267,18 @@ export class ProjectedPages {
         ? writeCursor({ generation: frame.generation, version, id: ids.at(-1)! }) : null };
   }
 
-  timelineAxis(frame: PublishedFrame, input: Parameters<typeof timelineAxis>[1]): TaskProjectedTimelineAxisDTO {
-    const prepared = this.prepare(frame, input.scope, { visible: input.lanes, folded: input.folded });
-    const { version: _version, ...result } = timelineAxis(prepared.state, input);
-    return { ...result, generation: frame.generation, sourcePv: prepared.sourcePv };
+  /** The axis of up to 200 rows, as new as the newest of their versions. */
+  timelineAxis(frame: PublishedFrame, input: { lanes: string }): TaskProjectedTimelineAxisDTO {
+    this.invalidate(frame);
+    const lanes = [...new Set(input.lanes.split(',').filter(Boolean))].sort(), key = lanes.join(',');
+    if (lanes.length > 200 || lanes.some(id => !this.held(frame, id))) throw invalidLanes();
+    const held = this.axes.get(key);
+    if (held) return held.value;
+    const { version: _version, ...axis } = timelineAxis(this.readState(frame, lanes), lanes);
+    const value = { ...axis, generation: frame.generation, sourcePv: frame.pv };
+    this.axes.set(key, { lanes, version: lanesVersion(frame, lanes), value });
+    if (this.axes.size > 16) this.axes.delete(this.axes.keys().next().value!);
+    return value;
   }
 
   /**
@@ -346,8 +289,7 @@ export class ProjectedPages {
     this.invalidate(frame);
     const asked = [...new Set(input.lanes.split(',').filter(Boolean))];
     if (asked.length > 200) throw invalidLanes();
-    const records = frame.records, shelf = records.shelf();
-    const held = (id: string) => !!records.bundle(id) && shelf.listed.has(records.projectOf(id));
+    const held = (id: string) => this.held(frame, id);
     const from = Date.parse(input.from), to = Date.parse(input.to), key = (id: string) => JSON.stringify([id, from, to]);
     const values = new Map<string, TaskTimelineLaneDTO>();
     for (const id of asked) {

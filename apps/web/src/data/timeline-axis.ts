@@ -23,7 +23,7 @@ export function useTimelineAxis(root: string, lanes: string[], enabled: boolean)
     const ids = [...new Set(lanes)].sort();
     return Array.from({ length: Math.ceil(ids.length / 200) }, (_, at) => {
       const chunk = ids.slice(at * 200, (at + 1) * 200);
-      return resources.timelineAxis(root, null, chunk, []);
+      return resources.timelineAxis(root, chunk);
     });
   }, [root, lanes, enabled]);
   const result = useQueries({ queries, combine });

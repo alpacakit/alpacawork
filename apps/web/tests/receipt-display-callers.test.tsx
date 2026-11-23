@@ -117,7 +117,7 @@ function serve() {
     }
     if (path.startsWith('/api/task/timeline-axis?')) {
       const params = new URL(path, 'http://fixture/').searchParams;
-      return new Response(snapshotJson(timelineAxisAnswer(current, params.get('lanes')!.split(','), params.get('folded')!.split(',').filter(Boolean))));
+      return new Response(snapshotJson(timelineAxisAnswer(current, params.get('lanes')!.split(','))));
     }
     return problemResponse('not_found', 'Not found');
   });

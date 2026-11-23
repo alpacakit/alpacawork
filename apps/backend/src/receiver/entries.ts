@@ -167,8 +167,7 @@ const shelved = withAct(defineEntryEndpoint(shelvedEntry, {
   }, channels: [bindHttpEntry({ method: 'GET' })],
 }), SCREEN);
 const timelineAxisEntry = defineEntry({ name: 'timeline-axis', parameters: [
-  query('scope', 'Scope Task or root'), query('lanes', 'All drawn lane Task IDs'),
-  defineParameter({ name: 'folded', description: 'Folded Task IDs', requirement: optional({ default: '' }), codec: codecs.string() }),
+  query('lanes', 'Row Task IDs'),
 ], project: ({ values }) => values });
 const timelineAxis = withAct(defineEntryEndpoint(timelineAxisEntry, {
   handler: (input: ReturnType<typeof timelineAxisEntry.project>, context: Context) =>
@@ -310,7 +309,7 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'search', description: 'Find Tasks', endpoints: [search] }),
     defineEntryNode({ name: 'finished', description: 'Finished direct children', endpoints: [finished] }),
     defineEntryNode({ name: 'shelved', description: 'Archived and deleted Tasks', endpoints: [shelved] }),
-    defineEntryNode({ name: 'timeline-axis', description: 'Full-lifetime time axis activity', endpoints: [timelineAxis] }),
+    defineEntryNode({ name: 'timeline-axis', description: 'Rows\' full-lifetime time axis activity', endpoints: [timelineAxis] }),
     defineEntryNode({ name: 'timeline', description: 'Rows\' time strips over a range', endpoints: [timeline] }),
   ] }),
   defineEntryNode({ name: 'person', description: 'Personal state', children: [
