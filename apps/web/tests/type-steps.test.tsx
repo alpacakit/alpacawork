@@ -6,7 +6,8 @@ import { stylesheet } from "./stylesheet";
 const src = fileURLToPath(new URL("../src/", `file://${__filename}`));
 const sources = readdirSync(src, { recursive: true, encoding: "utf8" }).filter(name => /\.tsx?$/.test(name))
   .map(file => [file, readFileSync(src + file, "utf8")] as const);
-const STEPS = ["micro", "xs", "sm", "base", "md", "lg", "xl", "seal"];
+const STEPS = ["micro", "xs", "sm", "base", "md", "lg", "xl", "seal", "display", "display-compact"];
+const steppedLineHeight = new RegExp(`(?<![\\w-])(?:[\\w-]+:)*(text-(?:${STEPS.join("|")})/[^\\s"'\\x60]+)`, "g");
 
 /**
  * What in a part's source sets a size, a line height or a letter spacing other than by choosing a step: a named or
@@ -17,7 +18,7 @@ const STEPS = ["micro", "xs", "sm", "base", "md", "lg", "xl", "seal"];
 export function ownType(text: string): string[] {
   const found = [
     ...text.matchAll(/(?<![\w-])(?:[\w-]+:)*((?:leading|tracking)-[^\s"'`]+)/g),
-    ...text.matchAll(/(?<![\w-])(?:[\w-]+:)*(text-(?:xs|sm|base|md|lg|xl|seal)\/[^\s"'`]+)/g),
+    ...text.matchAll(steppedLineHeight),
     ...text.matchAll(/(?<![\w-])(?:[\w-]+:)*(text-\[[^\]]*\])/g),
     ...text.matchAll(/(\[(?:font-size|line-height|letter-spacing|font):[^\]]*\])/g),
     ...text.matchAll(/\b((?:fontSize|lineHeight|letterSpacing|font)\s*:\s*(?:["'`]|\d))/g),
@@ -67,7 +68,7 @@ describe("type steps", () => {
   });
 
   it("finds each way a part could set its own", () => {
-    for (const written of ["leading-tight", "narrow:leading-[1.7]", "tracking-wide", "text-base/7", "text-[15px]", "text-[length:15px]",
+    for (const written of ["leading-tight", "narrow:leading-[1.7]", "tracking-wide", "text-base/7", "text-display-compact/7", "text-[15px]", "text-[length:15px]",
       "[line-height:1.7]", "[letter-spacing:0.02em]", "fontSize: 13", "lineHeight: \"20px\"", "el.style.letterSpacing = \"1px\"",
       "style.setProperty(\"line-height\", \"2\")", "font: \"15px/2 sans-serif\"", "@apply leading-none;"])
       expect(ownType(`<p className="m-0 ${written}" />`), written).not.toEqual([]);

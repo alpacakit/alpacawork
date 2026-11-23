@@ -483,11 +483,12 @@ export async function fetchAcceptedResource<T, K extends QueryKey>(client: Query
  * The one order of a manual receipt, against a GET in flight: its transport is cancelled first, so it cannot write over
  * the value; then the value, its acquisition, and last the proof, whose publication sees all of them.
  */
-function publishReadReceipt(client: QueryClient, key: QueryKey, value: object, proofOf: (query: Query) => import('./read-model').ReadProof) {
+function publishReadReceipt(client: QueryClient, key: QueryKey, value: object, proofOf: (query: Query) => import('./read-model').ReadProof,
+  receipt: Parameters<typeof deriveReadAcquisition>[1] = 'other') {
   const query = client.getQueryCache().build(client, { queryKey: key });
   beginReadReceipt(query);
   client.setQueryData(key, value);
-  deriveReadAcquisition(query);
+  deriveReadAcquisition(query, receipt);
   recordReadProof(query, proofOf(query));
 }
 /** A full coordinator receipt replaces only this session's current Query. */
@@ -504,7 +505,8 @@ export function acceptPersonalRead<T extends { revision: string | null }>(client
     || !started.index || !admitResourceRead(client, started)) return false;
   // Admission above has just held the index this read started under.
   const index = readIndex(client)!;
-  publishReadReceipt(client, key, value, query => ({ ...captureReadProof(index, key), marker: value.revision, precedingMarker: readMarker(index, key), acquiredAt: getReadProof(query)?.acquiredAt ?? Date.now() }));
+  publishReadReceipt(client, key, value, query => ({ ...captureReadProof(index, key), marker: value.revision, precedingMarker: readMarker(index, key),
+    acquiredAt: getReadProof(query)?.acquiredAt ?? Date.now() }), 'personal');
   return true;
 }
 /** A deliberate reconciliation after a refused/uncertain write certifies this actual GET, if no newer feed overtook it. */

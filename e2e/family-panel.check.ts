@@ -10,7 +10,8 @@ const row = (page: Page, id: string) => panel(page).locator(`[data-family-row="$
 const shown = async (page: Page, id: string) => {
   await expect(reader(page).locator('[data-reader-task-id]')).toHaveText(id);
   await expect.poll(() => new URL(page.url()).searchParams.get('task')).toBe(id);
-  await settleMotion(page);
+  // The reader's live run marker keeps pulsing through navigation.
+  await settleMotion(page, undefined, true);
 };
 
 /** The computer's panel stands clear of the reader's window, or, in the reader's own margin, of its reading column. */
@@ -44,7 +45,7 @@ for (const [name, width, height] of [['pc', 1440, 1000]] as const) {
       await content.evaluate((el) => { el.scrollTop = 24; });
       await entry(page).click();
       await expect(panel(page)).toBeVisible();
-      await settleMotion(page);
+      await settleMotion(page, undefined, true);
       const reading = await content.evaluate((el) => el.scrollTop);
       // The grandchild's page fits a computer's window; on a phone it scrolls, and the position read must be kept.
       if (await content.evaluate((el) => el.scrollHeight > el.clientHeight)) expect(reading).toBeGreaterThan(0);

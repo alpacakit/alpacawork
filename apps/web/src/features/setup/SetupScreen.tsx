@@ -109,7 +109,7 @@ function Steps({ current, onPick }: { current: SetupStep | "done"; onPick?: (ste
 function Heading({ title, lead }: { title: string; lead?: string }) {
   return <div className="animate-welcome">
     {/* Beside the settings the column is narrow: a step down keeps a short name such as "First project" on one line. */}
-    <h1 className="m-0 mt-8 text-display font-semibold [word-break:auto-phrase] min-[60rem]:text-[1.875rem] narrow:mt-6">{title}</h1>
+    <h1 className="m-0 mt-8 text-display font-semibold [word-break:auto-phrase] min-[60rem]:text-display-compact narrow:mt-6">{title}</h1>
     {/* Phrase breaks with lines of even length: filled line by line, the narrow column left a run of short lines. A
         phrase longer than the line still breaks inside it: the column's width (the settings take 37rem) avoids that beside
         the settings, and a phone, whose full-width lines are long enough, fills them instead of narrowing them to balance. */}

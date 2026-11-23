@@ -1,7 +1,8 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
-import { onReadEvent, receiveFullIndex, resources } from '../src/data/resources';
+import { acceptPersonalRead, captureResourceRead, onReadEvent, receiveFullIndex, resources } from '../src/data/resources';
+import { NOTICE_VERSION, taskBaseline } from '../src/data/notice-model';
 import { restoreReadPersistence, startReadPersistence, useReadPersistence } from '../src/data/read-persistence';
 import { readQuery, readRefused, refuseRead } from '../src/data/read-model';
 import { checkpointFixture } from './checkpoint-fixture';
@@ -40,6 +41,25 @@ async function firstVisit(storage: ReturnType<typeof checkpointFixture>) {
   await waitFor(() => expect(storage.read().slots.some((slot: any) => slot.key[0] === 'task')).toBe(true));
   stop();
 }
+
+test('marking a task read before the first checkpoint still saves an offline copy', async () => {
+  const storage = checkpointFixture(); vi.stubGlobal('indexedDB', storage.factory); serve();
+  const visit = client(); await restoreReadPersistence(visit); receiveFullIndex(visit, index);
+  await visit.fetchQuery(resources.personalSettings(index.root));
+  await visit.fetchQuery(resources.notices(index.root));
+  await visit.fetchQuery(resources.taskView(index.root, 'T1'));
+  const key = resources.notices(index.root).queryKey;
+  const baseline = taskBaseline(index.tasks.find(task => task.id === 'T1')!);
+  const saved = { revision: 'marked-read', state: { version: NOTICE_VERSION,
+    checkpoint: { at: new Date().toISOString(), tasks: {} }, reads: { T1: baseline } } };
+  expect(acceptPersonalRead(visit, key, saved, captureResourceRead(visit, key))).toBe(true);
+  cleanup.push(startReadPersistence(visit, listener => onReadEvent(visit, listener)));
+  await waitFor(() => {
+    const slots = storage.read().slots;
+    expect(slots.find((slot: any) => slot.key[0] === 'person-notices')?.query.state.data).toEqual(saved);
+    expect(slots.find((slot: any) => slot.key[0] === 'task')?.query.state.data.task.id).toBe('T1');
+  });
+});
 
 test('a restore that lands after this visit was refused a Task does not bring the stored copy back', async () => {
   const storage = checkpointFixture(); vi.stubGlobal('indexedDB', storage.factory); serve();

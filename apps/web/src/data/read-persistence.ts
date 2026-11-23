@@ -7,7 +7,7 @@ import type { ProjectedIndexDTO } from '@alpacawork/contract/control';
 import { minimumTaskVersion, readGetTicket, readAcquisition, readGetCoveredByBasis, recordCheckpointAcquisition, readRefusalSequence, readIssuedSequence, readRefused, readRefusalCovers,
   readIndex, readScope, restoreReadScope, cutReadScope, readEntry, losesReadProtection, configureReadRetention, evaluateRead, reuseReadPayload, readCheckpointIndex,
   getReadProof, READ_BUNDLE_AGE, READ_DAY, READ_MAX_BYTES, readCodec, readOrigin, readProofSchema, readUsedAt,
-  recordReadProof, requiredReadKeys, readLifetime } from './read-model';
+  recordReadProof, requiredReadKeys, readLifetime, type Acquisition } from './read-model';
 import { coversTimelineWindow, protectReadRefusals, readDataSize, readSize, selectGroups } from './read-retention';
 import { later } from '@/lib/later';
 
@@ -66,7 +66,7 @@ function recall(written: Written | undefined, control: Control, raw: unknown): S
 type Binding = { slotId?: string; acquisitionId?: string; target?: WeakRef<object>; initialPresent?: boolean; committedRefusalSerial: number };
 const bindings = new WeakMap<Query, Binding>();
 const storageBinding = (query: Query) => { let binding = bindings.get(query); if (!binding) { binding = { committedRefusalSerial: 0 }; bindings.set(query, binding); } return binding; };
-type Candidate = { query: Query; target: unknown; slot: Slot; source: string; issued: number; binding: Binding };
+type Candidate = { query: Query; target: unknown; slot: Slot; acquisition: Acquisition; binding: Binding };
 type ReadEvents = (changed: (event: { kind: 'live'; scopeChanged: boolean } | { kind: 'clear' | 'remove' }) => void) => () => void;
 type Session = { db?: IDBDatabase; expectedEpoch?: string; basisFloor: number; restore?: Promise<void>;
   stopped: boolean; terminal: boolean; pinsActive: boolean; generation: number; localEpoch: number; intent: number; writing: boolean;
@@ -277,7 +277,7 @@ function candidates(client: QueryClient, leaving = false): Candidate[] {
       fetchFailureCount: 0 as const, fetchFailureReason: null, fetchMeta: null, status: 'success' as const, fetchStatus: 'idle' as const, isInvalidated: true } };
     const slot: Slot = { key: query.queryKey as unknown[], hash: query.queryHash, slotId: binding.slotId ?? crypto.randomUUID(), acquisitionId: acquisition.id,
       acquiredAt: proof.acquiredAt, usedAt: query.isActive() ? Date.now() : readUsedAt(query), qualification: { proof, cut: !readScope(client)?.anchored }, query: { ...queryValue, queryKey: [...queryValue.queryKey] } };
-    return [{ query, target: query.state.data, slot, source: acquisition.source, issued: acquisition.issued, binding }];
+    return [{ query, target: query.state.data, slot, acquisition, binding }];
   });
 }
 /** How far a stored read's use clock may lag its use: a tenth of its lifetime, and at most ten minutes. */
@@ -298,13 +298,12 @@ function composeCheckpoint(client: QueryClient, state: Session, held: Checkpoint
   if (sameScope && previousIndex && previousIndex.rev > index.rev) return;
   const rows = new Map((sameScope ? held.slots : []).filter(slot => !negative(slot.key) && validSlot(slot, index, now)).map(slot => [slot.hash, slot]));
   for (const candidate of current) {
-    const { slot, binding } = candidate;
+    const { slot, acquisition, binding } = candidate;
     if (negative(slot.key) || !validSlot(slot, index, now)) continue;
     const floor = Math.max(0, ...revocations.filter(source => readRefusalCovers(source.queryKey, slot.key)).map(readRefusalSequence));
-    if (candidate.issued <= floor && floor > 0 || candidate.source !== 'index-publication' && binding.initialPresent === false && candidate.issued <= state.basisFloor) continue;
+    if (acquisition.issued <= floor && floor > 0 || acquisition.source !== 'index-publication' && binding.initialPresent === false && acquisition.issued <= state.basisFloor) continue;
     const old = rows.get(slot.hash), inherited = binding.slotId !== undefined && binding.acquisitionId === slot.acquisitionId;
-    const newGet = candidate.source === 'get' || candidate.source === 'index-publication';
-    if (!inherited && !newGet) continue;
+    if (!inherited && !acquisition.canStartCheckpointSlot) continue;
     if (!old) {
       // Absence at the same epoch is a legal selection result, not a permanent tombstone.
       rows.set(slot.hash, { ...slot, slotId: crypto.randomUUID() }); continue;

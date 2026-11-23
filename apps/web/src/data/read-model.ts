@@ -221,7 +221,8 @@ function readShape(read: ReadEntry): boolean {
 export const readProofSchema = z.object({ origin: z.string(), root: z.string(), generation: z.string(), rev: z.number().int().nonnegative(),
   acquiredAt: z.number().finite().nonnegative(), marker: z.string().nullable(), sourcePv: z.number().int().nonnegative(), demandPending: z.boolean().optional(), uncertain: z.boolean().optional(), precedingMarker: z.string().nullable().optional(), startedMarker: z.string().nullable().optional(), era: z.number().int().nonnegative().optional(), receiptAwaitingIndex: z.boolean().optional(), minimumVersion: z.number().int().nonnegative().optional(), shelfVersion: z.string().optional() }).strict();
 export type ReadProof = z.infer<typeof readProofSchema>;
-export type Acquisition = { source: 'get' | 'index-publication' | 'checkpoint' | 'derived'; id: string; issued: number; target: WeakRef<object> };
+export type Acquisition = { source: 'get' | 'index-publication' | 'checkpoint' | 'derived'; id: string; issued: number;
+  target: WeakRef<object>; canStartCheckpointSlot: boolean };
 type GetTicket = { query: Query; client: QueryClient; issued: number; serial: number; boundary: ReturnType<typeof captureReadBoundary>;
   proof?: ReadProof; execution: ReadExecution; receivedAt?: number; accepted?: WeakRef<object>; settled: boolean; started?: boolean; failureAccepted?: boolean;
   cancelled?: { serial: number; errorRef: unknown } };
@@ -243,11 +244,14 @@ export function readAcquisition(query: Query) {
   return acquisition?.target.deref() === query.state.data ? acquisition : undefined;
 }
 export function recordCheckpointAcquisition(query: Query, id: string) {
-  if (object(query.state.data)) stateFor(query).acquisition = { source: 'checkpoint', id, issued: 0, target: new WeakRef(query.state.data) };
+  if (object(query.state.data)) stateFor(query).acquisition = { source: 'checkpoint', id, issued: 0, target: new WeakRef(query.state.data), canStartCheckpointSlot: false };
 }
-export function deriveReadAcquisition(query: Query) {
+/** A complete personal receipt can carry forward this session's checkpoint basis. */
+export function deriveReadAcquisition(query: Query, receipt: 'personal' | 'other') {
   const state = stateFor(query), previous = state.acquisition;
-  if (previous && object(query.state.data)) state.acquisition = { ...previous, source: 'derived', target: new WeakRef(query.state.data) };
+  if (!previous || !object(query.state.data)) return;
+  state.acquisition = { ...previous, source: 'derived', target: new WeakRef(query.state.data),
+    canStartCheckpointSlot: receipt === 'personal' && previous.canStartCheckpointSlot };
 }
 // Monotonic transport causality. Restore, receipts and live publication cannot invent a GET.
 let issuedSequence = 0;
@@ -375,7 +379,8 @@ export function recordReadProof(query: Query, proof: ReadProof, usedAt = Date.no
 export function recordIndexProof(client: QueryClient, index: ProjectedIndexDTO) {
   const indexQuery = readQuery(client, ['index'])!;
   recordReadProof(indexQuery, captureReadProof(index, ['index']));
-  if (object(indexQuery.state.data)) stateFor(indexQuery).acquisition = { source: 'index-publication', id: crypto.randomUUID(), issued: ++issuedSequence, target: new WeakRef(indexQuery.state.data) };
+  if (object(indexQuery.state.data)) stateFor(indexQuery).acquisition = { source: 'index-publication', id: crypto.randomUUID(),
+    issued: ++issuedSequence, target: new WeakRef(indexQuery.state.data), canStartCheckpointSlot: true };
   for (const query of client.getQueryCache().getAll()) {
     if (query.queryKey[0] !== 'task' || query.queryKey[1] !== index.root) continue;
     const state = stateFor(query), proof = state.proof, value = query.state.data as TaskRead | undefined;
@@ -521,7 +526,8 @@ function acceptGet(client: QueryClient, raw: unknown, query: Query) {
   if (source) { if (source.generation !== proof.generation) return; proof.sourcePv = source.sourcePv; }
   ticket.accepted = new WeakRef(target);
   if (query.queryKey[0] !== 'index' || state.acquisition?.source !== 'index-publication')
-    state.acquisition = { source: query.queryKey[0] === 'index' ? 'index-publication' : 'get', id: crypto.randomUUID(), issued: ticket.issued, target: new WeakRef(target) };
+    state.acquisition = { source: query.queryKey[0] === 'index' ? 'index-publication' : 'get', id: crypto.randomUUID(),
+      issued: ticket.issued, target: new WeakRef(target), canStartCheckpointSlot: true };
   recordReadProof(query, proof);
   // Completion is deliberately later than the reducer's synchronous success listener window.
   queueMicrotask(() => {
