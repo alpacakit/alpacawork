@@ -84,3 +84,15 @@ test('a strip and the axis expire with their rows\' versions and read only those
   assert.equal(reads.timeline(latest, query).lanes[1], held[1], 'a row whose version holds keeps its strip');
   assert.equal(otherStrip?.sourcePv, 3);
 });
+
+test('a row the server does not read is left out of strips and the axis, never failing the read of the others', () => {
+  const records = new FakeRecords([bundle('P1'), bundle('T1', 'P1', [entry('L1', 1)]), bundle('T2', 'P1', [entry('L2', 2)])]);
+  const base = frame(records);
+  // T2 has no derived facts (its derivation never succeeded); T404 does not exist.
+  const point = { ...base, derived: (id: string) => id === 'T2' ? undefined : base.derived(id) };
+  const reads = new ProjectedPages();
+  const strips = taskTimelineLanesSchema.parse(reads.timeline(point, { lanes: 'T1,T2,T404', from: at(0), to: at(10) }));
+  assert.deepEqual([strips.lanes.map(lane => lane.lane), strips.gone], [['T1'], ['T2', 'T404']]);
+  const axis = taskProjectedTimelineAxisSchema.parse(reads.timelineAxis(point, { lanes: 'T1,T2,T404' }));
+  assert.equal(axis.earliest, Date.parse(at(1)));
+});
