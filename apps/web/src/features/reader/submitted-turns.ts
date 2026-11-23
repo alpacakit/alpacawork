@@ -11,11 +11,12 @@ export function submittedReaderTurn(drafts: Record<string, DraftEntry>, writes: 
   current: ReturnType<typeof readerTurn>) {
   return hasReaderSubmission(drafts, root, current) || directSubmittedTurn(writes, root, current);
 }
-export function directSubmittedTurn(writes: Record<string, WriteIntent>, root: string, current: ReturnType<typeof readerTurn>) {
+export function directSubmittedTurn(writes: Record<string, WriteIntent>, root: string, current: ReturnType<typeof readerTurn>,
+  answer?: NonNullable<WriteIntent['reader']>['answer']) {
   return Object.entries(writes).some(([key, entry]) => {
     const binding = entry.reader;
     return intentKeyParts(key).root === root && binding && readerOutcome(entry.status === 'waiting' ? 'pending' : entry.status) === 'kept'
-      && sameTurn(binding, current);
+      && sameTurn(binding, current) && (answer === undefined || binding.answer === answer);
   });
 }
 /** Stable subscription identity: unrelated direct settings writes do not repaint the reader. */
@@ -28,5 +29,7 @@ export function useSubmittedTurns() {
   const root = useWorkspaceInfo(info => info.root), entries = useDraftStore(useShallow(state => readerTurnEntries(state.entries, root)));
   useWriteIntentStore(state => directSubmissionVersion(state.entries, root));
   const writes = useWriteIntentStore.getState().entries;
-  return { root, entries, submitted: (task: Task) => submittedReaderTurn(entries, writes, root, readerTurn(task)) };
+  return { root, entries, submitted: (task: Task) => submittedReaderTurn(entries, writes, root, readerTurn(task)),
+    /** Done pressed on the turn the Task stands in, and kept: on its way until the Task leaves that turn. */
+    finishing: (task: Task) => directSubmittedTurn(writes, root, readerTurn(task), 'done') };
 }

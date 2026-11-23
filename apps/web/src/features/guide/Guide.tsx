@@ -17,9 +17,9 @@ import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } 
 const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
 
 /**
- * Says that the guide is over when it is read to its end: it never just stops showing. Said where the person was
- * following it: on a screen that shows the guide (`shown`) and saw it going and then read to its end, whichever tab
- * stored that, while the person is looking at it. Closed by hand, the close mark says so itself, there alone.
+ * Says that the guide is over when it is read to its end: it never just stops showing. Said once, where the person
+ * read its last step: on the screen that shows the guide (`shown`), saw it going and then read to its end (whichever
+ * tab stored that), and is the window they are working in. Closed by hand, the close mark says so itself, there alone.
  */
 function useOverNotice(shown: boolean) {
   const { t } = useTranslation("tree");
@@ -28,7 +28,7 @@ function useOverNotice(shown: boolean) {
   useEffect(() => {
     const before = was.current;
     was.current = stage;
-    if (stage?.stage === "done" && stage.read && going(before) && shown && document.visibilityState === "visible")
+    if (stage?.stage === "done" && stage.read && going(before) && shown && document.hasFocus())
       notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" });
   }, [stage]);
 }

@@ -169,7 +169,7 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
   const selected = shown === answeredAll ? null : shown;
   // The rows awaiting the person, and which of them is seen in the detail (awaiting).
-  const { submitted } = useSubmittedTurns();
+  const { submitted, finishing } = useSubmittedTurns();
   const awaited = awaiting(rows, index.byId, submitted, selected);
   const { questions, results } = awaited;
   let { open } = awaited;
@@ -208,9 +208,9 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
   const finished = finishedHere(pressed, useServerState(pressed, index.byId));
   const doneHere = finished.length > 0;
-  // Done pressed here and sent, as this device keeps it (a load of the page does not lose it), on a Task the server
-  // does not say is finished yet: on its way.
-  const settling = pressed.some(id => { const task = index.byId.get(id); return !!task && submitted(task) && !finished.includes(id); });
+  // Done pressed on a row still awaiting the person, as this device keeps that press (a load of the page does not lose
+  // it; taken back, it is no longer kept): on its way until the server says the Task is finished.
+  const settling = rows.some(row => { const task = row.section === "review" ? index.byId.get(row.taskId) : undefined; return !!task && finishing(task); });
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
   const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,

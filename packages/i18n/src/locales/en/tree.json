@@ -6,7 +6,7 @@
       "question": "The AI on the task has a question for you. Press this row to open it.",
       "received": "The front-desk AI has it, and is passing it to the AI on the task.",
       "result": "The AI on the task sent a report. Press this row to open it.",
-      "working": "The AI on the task has your instructions and is carrying on. When it has a question or a report for you, the task moves back to “{{section}}”."
+      "working": "The AI has your instructions and is carrying on. A question or report for you moves the task back to “{{section}}”."
     },
     "close": "End the getting-started guide",
     "closed": "The guide has ended. You can show it again from {{settings}} → {{tab}}, under “{{guide}}”.",
@@ -22,7 +22,7 @@
       "answer": "Choose an option and it goes into the input box. Send it as is to answer. You can also send a different message without choosing one.",
       "conversation": "Chats with the front-desk AI are disposable. Once they pile up, at a good stopping point, press the line showing its last reply to open the conversation, and clear it with “{{clear}}”. Before that, ask for anything worth keeping to be made a task.",
       "direct": "The front-desk AI answers short requests right here. Hand it a job, and it becomes a task in the list.",
-      "label": "This label hints to the AI which task or project you mean. Without it, the AI works it out from the conversation. Leave it as it is, and send with the button at the right end of the input box.",
+      "label": "This label tells the AI which task you mean; without it, the AI goes by the conversation. Send with the button at the right end.",
       "more": "Once you've looked over the report that came, you can keep asking. Try having it make one more version to compare.",
       "phone": "You can answer questions from your phone when you're away from your desk. The steps are in {{settings}}, under “{{apps}}”.",
       "question": "Your turn. Press this row to open the question.",
@@ -33,7 +33,7 @@
       "sendReady": "Send it with this button.",
       "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input box. You can also ask there to change settings or add a model.",
       "unassigned": "No AI is on this task yet. Open the row and ask in the input box to start it.",
-      "working": "This is a task. The AI on it has your instructions and does the work. When it has a question or a report for you, the task moves to “{{section}}”."
+      "working": "This is a task. An AI has your instructions and works on it. A question or report for you moves it to “{{section}}”."
     },
     "tryExample": "Insert a demo prompt"
   },

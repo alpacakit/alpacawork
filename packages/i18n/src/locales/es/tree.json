@@ -6,7 +6,7 @@
       "question": "La IA asignada tiene una pregunta para ti. Pulsa esta fila para abrirla.",
       "received": "La IA de recepción lo recibió y se lo está pasando a la IA asignada.",
       "result": "La IA asignada envió un informe. Pulsa esta fila para abrirlo.",
-      "working": "La IA asignada recibió tus instrucciones y sigue con el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea vuelve a «{{section}}»."
+      "working": "La IA recibió tus instrucciones y sigue trabajando. Si tiene una pregunta o un informe, la tarea vuelve a «{{section}}»."
     },
     "close": "Terminar la guía",
     "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}} → {{tab}}, en «{{guide}}».",
@@ -22,7 +22,7 @@
       "answer": "Elige una opción y pasa al cuadro de entrada. Envíala tal cual para responder. También puedes enviar otro mensaje sin elegir ninguna.",
       "conversation": "La conversación con la IA de recepción es desechable. Cuando se acumule, en un buen momento, pulsa la línea que muestra su última respuesta para abrirla y bórrala con «{{clear}}». Antes, pide que lo que quieras conservar se convierta en tarea.",
       "direct": "La IA de recepción responde aquí las peticiones cortas. Si le encargas un trabajo, se convierte en una tarea de la lista.",
-      "label": "Esta etiqueta le indica a la IA de qué tarea o proyecto hablas. Sin ella, la IA lo deduce de la conversación. Déjala así y envía con el botón del extremo derecho del cuadro de entrada.",
+      "label": "Esta etiqueta indica a la IA de qué tarea hablas; sin ella, lo deduce de la conversación. Envía con el botón del extremo derecho.",
       "more": "Cuando hayas revisado el informe que llegó, puedes seguir pidiendo. Prueba a pedir otra versión para comparar.",
       "phone": "Aunque no estés en tu puesto, puedes responder preguntas desde el teléfono. Los pasos están en {{settings}}, en «{{apps}}».",
       "question": "Te toca. Pulsa esta fila para abrir la pregunta.",
@@ -33,7 +33,7 @@
       "sendReady": "Envíalo con este botón.",
       "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada, donde también puedes pedir cambios en la configuración o añadir modelos.",
       "unassigned": "Esta tarea aún no tiene una IA asignada. Abre la fila y pide en el cuadro de entrada que empiece.",
-      "working": "Esto es una tarea. La IA asignada recibe tus instrucciones y hace el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea pasa a «{{section}}»."
+      "working": "Esto es una tarea. Una IA recibe tus instrucciones y trabaja en ella. Si tiene una pregunta o un informe, pasa a «{{section}}»."
     },
     "tryExample": "Insertar un prompt de demostración"
   },

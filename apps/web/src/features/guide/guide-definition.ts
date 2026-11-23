@@ -133,7 +133,7 @@ export type GuideFacts = {
   labelled: boolean;
   /** The server says a Task the person pressed Done on since the guide began is finished (finishedHere). */
   doneHere: boolean;
-  /** Done pressed here is on its way: sent, and the server does not say yet that the Task is finished (the screen itself says it was pressed). */
+  /** Done pressed on a row is on its way: the row still awaits the person, the server not saying yet that the Task is finished (the screen itself says it was pressed). */
   settling: boolean;
   /** The conversation with the coordinator holds messages (it has not been cleared). */
   talked: boolean;
