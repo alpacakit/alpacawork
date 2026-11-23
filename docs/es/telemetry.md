@@ -36,7 +36,7 @@ Las direcciones IP no se incluyen en el informe, y el receptor tampoco las conse
 
 Se elige en el segundo paso de la pantalla de configuración que se abre al instalarlo por primera vez. No se envía nada hasta que eliges. Si no has elegido (por ejemplo, en un espacio de trabajo creado antes de que existiera la pantalla de configuración), tampoco se envía nada, y la pantalla no te lo pregunta.
 
-Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a mejorar alpacawork”, al final de Configuración → Servidor. Al desactivarlo se deja de enviar, y al activarlo se empieza. Si solo quieres dejar de enviar, también puedes usar el comando `alpacawork telemetry off`.
+Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a mejorar alpacawork”, en Configuración → General. Al desactivarlo se deja de enviar, y al activarlo se empieza. Si solo quieres dejar de enviar, también puedes usar el comando `alpacawork telemetry off`.
 
 Al dejar de enviar, lo que aún no se ha enviado se elimina sin enviarlo. Lo ya enviado no se elimina solo por dejar de enviar (“Eliminar los datos enviados”, más abajo).
 
@@ -48,14 +48,14 @@ Mientras la variable de entorno `ALPACAWORK_TELEMETRY_DISABLED=1` o `DO_NOT_TRAC
 
 ## Ver lo que se envía
 
-- Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso al final de Configuración → Servidor, puedes ver el informe de hoy hasta el momento (el que se enviará mañana) tal como se enviará. Solo aparece mientras el envío está activado. Lo que se muestra ahí aún no se ha enviado, así que, si dejas de enviar, no se enviará.
+- Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el informe de hoy hasta el momento (el que se enviará mañana) tal como se enviará. Solo aparece mientras el envío está activado. Lo que se muestra ahí aún no se ha enviado, así que, si dejas de enviar, no se enviará.
 - Comando: con `alpacawork telemetry show` puedes ver lo de hoy hasta el momento, los informes de días anteriores aún no enviados, las copias de los informes enviados y la lista de nombres y valores que se pueden enviar. La lista se puede ver incluso antes de elegir enviar.
 
 Ambos se muestran en formato JSON. Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
 
 ## Eliminar los datos enviados
 
-- Pantalla: usa “Eliminar datos enviados”, debajo del interruptor de datos de uso al final de Configuración → Servidor. Funciona incluso después de dejar de enviar. Lo que aún no se ha enviado desde el PC también se elimina.
+- Pantalla: usa “Eliminar datos enviados”, debajo del interruptor de datos de uso en Configuración → General. Funciona incluso después de dejar de enviar. Lo que aún no se ha enviado desde el PC también se elimina.
 - Página de eliminación: escribe el ID de este PC en <https://alpacakit-telemetry.alpacakit.workers.dev/delete>. Úsala cuando no puedas abrir la pantalla de alpacawork o para eliminar los datos de un PC que ya no usas. El ID aparece en la pantalla que abre “Eliminar datos enviados” o como `id` en `alpacawork telemetry status`.
 
 Se eliminan los informes enviados con ese ID y el registro de ese ID (los días del primer y del último envío). Los datos no se pueden eliminar de los recuentos que no distinguen entre PC (como el número de operaciones o de equipos por día).

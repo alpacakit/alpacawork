@@ -8,7 +8,7 @@
       "add": "+ Adicionar uma IA alternativa",
       "addFirst": "+ Adicionar a IA de uso normal",
       "agentFor": "Agente da linha {{n}}",
-      "agentsNote": "Um agente desativado não pode ser escolhido nas duas listas acima.",
+      "agentsNote": "Um agente desativado não pode ser escolhido em “{{tasks}}” nem em “{{input}}”.",
       "agentsTitle": "Configurações de cada agente",
       "down": "Descer a linha {{n}}",
       "first": "Uso normal",
@@ -37,7 +37,7 @@
     "cancel": "Cancelar",
     "cannotRun": "Não é possível executar o arquivo neste caminho",
     "choices": "Valores disponíveis ao solicitar trabalho",
-    "choicesHint": "Os valores oferecidos nas listas de IA acima e nas solicitações.",
+    "choicesHint": "Os valores oferecidos nas listas de IA e nas solicitações.",
     "collapse": "Recolher {{name}}",
     "coordinatorStack": {
       "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Normalmente a IA 1 recebe; só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem.",
@@ -106,7 +106,6 @@
     "resume": "Continuação de conversa",
     "signedOut": "Você não fez login. Em um terminal, execute",
     "start": "Nova conversa",
-    "title": "Agentes",
     "unusedAdapter": "Indisponível para este adaptador",
     "unusedOptions": "Não usado nas opções de inicialização",
     "useAgent": "Ativar {{name}}",
@@ -288,7 +287,7 @@
     "limitPercent": "Carga alta em {{value}}%",
     "lineCpu": "CPU · linha de 90%",
     "lineMemory": "Memória livre · linha de 10%",
-    "loadError": "Não foi possível ler o status desta máquina.",
+    "loadError": "Não foi possível ler o status deste PC.",
     "memory": "Memória livre",
     "memoryNote": "Swap {{swap}} · {{free}} livres",
     "moreRuns_one": "Mais {{count}} execução · {{cpu}} · {{memory}} no total",
@@ -311,7 +310,7 @@
     "span": "{{from}} – {{to}} · {{minutes}} min",
     "tight": "Sob carga alta",
     "today": "Hoje",
-    "unsupported": "Ainda não é possível medir esta máquina ({{platform}}).",
+    "unsupported": "Ainda não é possível medir este PC ({{platform}}).",
     "unsupportedHint": "Funciona no Linux.",
     "updated": "Atualiza a cada 10 segundos · {{time}}",
     "whole": "durante os {{minutes}} min",
@@ -357,7 +356,7 @@
   "push": {
     "denied": "As notificações estão bloqueadas para este site. Permita-as nas configurações do navegador e tente novamente.",
     "devices": "Dispositivos registrados",
-    "hint": "Avisa você sobre os tipos de mudança nas tarefas escolhidos aqui, mesmo com a tela fechada.",
+    "hint": "Avisa você sobre as mudanças escolhidas em “{{events}}”, mesmo com a tela fechada.",
     "noDevices": "Nenhum dispositivo registrado.",
     "remove": "Remover",
     "subscribe": "Receber neste dispositivo",
@@ -397,7 +396,7 @@
       "manualLink": "Como configurar o Tailscale Serve",
       "manualTitle": "Configurar por conta própria",
       "notifyAway": "As notificações ficam pausadas enquanto você usa o app no PC ou no celular.",
-      "notifyBody": "As notificações são ativadas em cada dispositivo. Em cada PC e celular que deva recebê-las, abra <ui>{{settings}}</ui> → <ui>{{personal}}</ui> → <ui>{{notifications}}</ui>, selecione <ui>{{subscribe}}</ui> e permita as notificações.",
+      "notifyBody": "As notificações são ativadas em cada dispositivo. Em cada PC e celular que deva recebê-las, abra <ui>{{settings}}</ui> → <ui>{{notifications}}</ui>, selecione <ui>{{subscribe}}</ui> e permita as notificações.",
       "notifyIos": "No iPhone ou no iPad, faça isso no app aberto pelo ícone da Tela de Início. É necessário o iOS / iPadOS 16.4 ou posterior.",
       "notifyOpen": "Configurar notificações neste dispositivo",
       "notifyTitle": "Receber notificações",
@@ -421,7 +420,7 @@
     "personal": {
       "aiLanguage": "Idioma das conversas com a IA",
       "awayAfter": "Ausente por inatividade",
-      "display": "Exibição",
+      "awayAfterHelp": "As notificações só são enviadas enquanto você está ausente.",
       "guide": "Guia de primeiros passos",
       "guideHelp": "Mostra de novo o guia do primeiro uso, a partir da primeira tela.",
       "guideShow": "Mostrar de novo",
@@ -434,7 +433,6 @@
       "loadError": "Não foi possível carregar as configurações.",
       "loading": "Carregando configurações…",
       "mutedUntil": "Notificações pausadas até",
-      "notifications": "Notificações",
       "option": {
         "away10": "Após 10 minutos",
         "away15": "Após 15 minutos",
@@ -450,13 +448,16 @@
         "zh-CN": "简体中文"
       },
       "previousShown": "Mostrando as configurações anteriores.",
+      "pushDevices": "Dispositivos que recebem",
       "pushDone": "Quando uma tarefa é concluída",
-      "pushFollowup": "Respostas que precisam da sua atenção",
-      "pushHost": "Quando esta máquina está sob carga alta",
+      "pushEvents": "Quando avisar",
+      "pushFollowup": "Quando chega uma resposta que precisa da sua atenção",
+      "pushHost": "Quando este PC está com carga alta",
       "pushQuestion": "Quando uma tarefa faz uma pergunta a você",
       "pushReview": "Quando uma tarefa aguarda revisão",
       "pushScope": "Estas opções valem para todos os dispositivos registrados.",
       "pushStopped": "Quando uma tarefa é parada",
+      "pushTiming": "Não perturbe",
       "quiet": "Horário de silêncio diário",
       "quietFrom": "Pausar às",
       "quietHelp": "Ao fim do horário de silêncio, os avisos pendentes são enviados em uma única notificação.",
@@ -472,13 +473,11 @@
       "updateConfirm": "Confirmar antes de atualizar"
     },
     "scope": {
-      "personal": "No momento, as configurações são compartilhadas por todos que usam este servidor. As alterações são salvas na hora. O registro para receber notificações é feito por dispositivo.",
       "server": "Vale para todos que usam este servidor."
     },
     "server": {
       "advanced": "Opções avançadas",
       "advancedNote": "Destinadas a quem administra o servidor. Normalmente ficam como estão.",
-      "agentsInUse": "Ativados: {{names}}",
       "attachmentHint": "{{min}}–{{max}} · padrão {{value}} · vale a partir do próximo anexo",
       "commandSecondsHint": "Os comandos que passam desse tempo são interrompidos. As execuções de responsável e de membro não são afetadas · padrão {{value}}",
       "defaultHint": "Padrão {{value}}",
@@ -504,8 +503,8 @@
         "attachment_mib": "Tamanho máx. por anexo (MiB)",
         "automatic_per_placement": "Máx. de solicitações automáticas a um agente em uma tarefa",
         "children_per_run": "Máx. de solicitações por execução",
-        "coordinator_command_seconds": "Limite de comando do coordenador (segundos)",
-        "coordinator_run_minutes": "Limite de execução do coordenador no app (minutos)",
+        "coordinator_command_seconds": "Limite de comando da IA com quem você fala no campo de mensagem (segundos)",
+        "coordinator_run_minutes": "Limite de execução da IA com quem você fala no campo de mensagem (minutos)",
         "depth": "Profundidade máx. de solicitações",
         "parallel": "Máx. de execuções simultâneas",
         "run_minutes": "Limite de tempo por execução (minutos)"
@@ -515,7 +514,7 @@
         "minimum": "Use um número inteiro igual ou maior que {{value}}",
         "range": "Use um número inteiro de {{min}} a {{max}}"
       },
-      "readError": "Não foi possível ler o config.yaml. Corrija-o manualmente: {{error}}",
+      "readError": "Não foi possível ler o config.yaml. Corrija-o manualmente.",
       "reload": "Carregar dados atuais",
       "runMinutesHint": "0 significa sem limite · padrão {{value}}",
       "save": "Salvar",
@@ -523,15 +522,18 @@
     },
     "status": {
       "dirty": "Alterações não salvas",
+      "dirtyIn": "Alterações não salvas ({{places}})",
+      "placeSeparator": ", ",
       "saved": "Salvo"
     },
     "tabs": {
+      "ai": "IA",
       "apps": "App e celular",
       "fields": "Campos",
+      "general": "Geral",
       "host": "Status do PC",
-      "personal": "Pessoal",
-      "projects": "Projetos",
-      "server": "Servidor"
+      "notifications": "Notificações",
+      "projects": "Projetos"
     },
     "title": "Configurações",
     "up": "Subir"
@@ -627,7 +629,7 @@
     "retry": "Tentar novamente",
     "settingNotSaved": {
       "off": "Não foi possível salvar a desativação de “Mostrar esta confirmação na próxima vez”. Verifique o salvamento anterior e desative a opção novamente na próxima vez que a confirmação aparecer.",
-      "on": "Não foi possível salvar a ativação de “Mostrar esta confirmação na próxima vez”. Verifique o salvamento anterior e ative “Confirmar antes de atualizar” na aba Pessoal."
+      "on": "Não foi possível salvar a ativação de “Mostrar esta confirmação na próxima vez”. Verifique o salvamento anterior e ative “Confirmar antes de atualizar” na aba Geral."
     },
     "start": "Atualizar",
     "unavailable": "Não é possível iniciar a atualização agora. Tente novamente em alguns instantes."

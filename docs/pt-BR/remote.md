@@ -21,7 +21,7 @@ Para mostrar o que quer corrigir, marque em uma captura de tela, cole no campo d
 
 Quando chega a sua vez (uma pergunta, um relatório ou uma IA que parou), você recebe uma notificação. Registre cada dispositivo em que quer receber.
 
-1. Abra “Configurações (engrenagem) → Pessoal”.
+1. Abra “Configurações (engrenagem) → Notificações”.
 2. Em “Notificações push”, pressione “Receber neste dispositivo” e, se o navegador pedir permissão, permita.
 
 No iPhone, faça isso abrindo pelo ícone que você adicionou à tela inicial.
@@ -34,8 +34,8 @@ Enquanto você está usando o alpacawork, as notificações não chegam. Elas co
 
   <img src="../images/header-icons.png" alt="O canto superior direito da tela. O botão em forma de pessoa e o botão de engrenagem" width="90">
 
-- Pausar toda noite: ative “Horário de silêncio diário” em “Configurações (engrenagem) → Pessoal”. Quando o horário termina, os avisos que ainda estão esperando chegam juntos em uma só notificação.
-- Escolher os tipos: no mesmo lugar, em “Notificações”, você ativa ou desativa cada tipo de aviso. “Quando uma tarefa é concluída” começa desativado.
+- Pausar toda noite: ative “Horário de silêncio diário” em “Configurações (engrenagem) → Notificações”. Quando o horário termina, os avisos que ainda estão esperando chegam juntos em uma só notificação.
+- Escolher os tipos: em “Quando avisar”, na mesma aba “Notificações”, você ativa ou desativa cada tipo de aviso. “Quando uma tarefa é concluída” começa desativado.
 
 ## Quando algo não funciona
 

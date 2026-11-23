@@ -73,5 +73,5 @@ test("while the URL is being checked, the steps stay and no QR is drawn", () => 
 test("the notifications part opens this device's notification settings", () => {
   render(<AppGuideTab />);
   fireEvent.click(within(part("Get notifications")).getByRole("button"));
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "personal", focus: "notifications" });
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "notifications", focus: "notifications" });
 });

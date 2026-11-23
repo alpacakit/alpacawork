@@ -74,7 +74,7 @@ function DeleteDialog({ id, sending, onClose }: { id: string; sending: boolean; 
 }
 
 /**
- * One row at the end of the Server tab, as settings lists usually keep it: the switch, why it is safe, and the links to
+ * One row at the end of the General tab, as settings lists usually keep it: the switch, why it is safe, and the links to
  * see, delete and read more. Separate from the config.yaml draft: this switch takes effect as soon as it is pressed.
  */
 export function TelemetrySection() {

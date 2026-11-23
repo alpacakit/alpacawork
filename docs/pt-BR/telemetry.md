@@ -36,7 +36,7 @@ Os endereços IP não são incluídos nos relatórios, e o serviço de recebimen
 
 Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um espaço de trabalho criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
 
-Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a melhorar o alpacawork”, no final de Configurações → Servidor. Desativá-la interrompe o envio; ativá-la o inicia. Se você só quer parar, também pode executar `alpacawork telemetry off`.
+Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a melhorar o alpacawork”, em Configurações → Geral. Desativá-la interrompe o envio; ativá-la o inicia. Se você só quer parar, também pode executar `alpacawork telemetry off`.
 
 Quando você para, os dados ainda não enviados são excluídos sem serem enviados. Os dados já enviados não são excluídos só por você parar (“Excluir o que foi enviado”, abaixo).
 
@@ -48,14 +48,14 @@ Também não é enviado nada enquanto a variável de ambiente `ALPACAWORK_TELEME
 
 ## Ver o que é enviado
 
-- Tela: “Ver o que é enviado”, abaixo da chave de dados de uso no final de Configurações → Servidor, mostra o relatório de hoje até o momento (o que será enviado amanhã), exatamente como ele será enviado. Só há conteúdo ali enquanto o envio está ativado. O que aparece ali ainda não foi enviado; portanto, se você parar o envio, não será enviado.
+- Tela: “Ver o que é enviado”, abaixo da chave de dados de uso em Configurações → Geral, mostra o relatório de hoje até o momento (o que será enviado amanhã), exatamente como ele será enviado. Só há conteúdo ali enquanto o envio está ativado. O que aparece ali ainda não foi enviado; portanto, se você parar o envio, não será enviado.
 - Comando: `alpacawork telemetry show` mostra os dados de hoje até o momento, os relatórios de dias anteriores ainda não enviados, as suas cópias dos relatórios já enviados e a lista de nomes e valores que podem ser enviados. A lista é mostrada mesmo antes de você escolher enviar.
 
 Os dois mostram JSON. Os comandos `alpacawork telemetry` só funcionam quando uma pessoa os digita em um terminal neste PC.
 
 ## Excluir o que foi enviado
 
-- Tela: use “Excluir dados enviados”, abaixo da chave de dados de uso no final de Configurações → Servidor. Isso funciona mesmo depois de você ter parado de enviar. Os dados que estão no PC e ainda não foram enviados também são excluídos.
+- Tela: use “Excluir dados enviados”, abaixo da chave de dados de uso em Configurações → Geral. Isso funciona mesmo depois de você ter parado de enviar. Os dados que estão no PC e ainda não foram enviados também são excluídos.
 - Página de exclusão: informe o ID deste PC em <https://alpacakit-telemetry.alpacakit.workers.dev/delete>. Use-a quando não conseguir abrir a tela do alpacawork ou para excluir dados de um PC que você não usa mais. Você encontra o ID na janela que “Excluir dados enviados” abre, ou como `id` em `alpacawork telemetry status`.
 
 A exclusão remove os relatórios enviados com esse ID e o registro desse ID (o primeiro e o último dia em que ele enviou). Não é possível remover dados de totais que não distinguem um PC do outro (como o número de ações ou de PCs por dia).

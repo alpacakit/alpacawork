@@ -46,7 +46,7 @@ export const configEditSchema = z.object({
   /* jev: jevSettingsSchema.optional() */
 }).strict();
 
-/** The fields the settings' Server tab edits: config/set saves the limits, Jev and the agents block. */
+/** The fields the settings' AI tab edits: config/set saves the limits, Jev and the agents block. */
 export const serverFormSchema = z.object({
   // jev: jevFormSettingsSchema, // Initial release.
   limits: z.object(limitsShape).strict(),

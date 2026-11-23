@@ -290,7 +290,7 @@
       "new_conversation_required": "Inicie uma nova conversa para mudar o adaptador",
       "new_workspace_file_invalid": "Arquivo do novo workspace inválido",
       "new_workspace_file_save_unconfirmed": "O arquivo do novo workspace pode ter sido salvo. Verifique e tente novamente",
-      "no_configured_agents": "Nenhum agente está ativado. Instale uma IA e faça login nela; depois, ative-a em Configurações → Servidor",
+      "no_configured_agents": "Nenhum agente está ativado. Instale uma IA e faça login nela; depois, ative-a em Configurações → IA",
       "no_migrations_packaged": "Nenhuma migração está incluída. O banco de dados existente foi mantido",
       "no_project_active_use_id": "Nenhum projeto ativo. Especifique um com --{{option}} <ID>",
       "no_question_in_decide_value_write_full_question_before_asking": "O campo “Perguntas” (decide) da tarefa está vazio. Escreva nele a pergunta completa antes de enviar",

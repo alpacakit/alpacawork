@@ -71,7 +71,7 @@ function read(path: string): { state: 'read'; text: string } | { state: Exclude<
 export const environmentFileHelp = 'Environment file: as it starts, serve reads NAME=VALUE lines from ${XDG_CONFIG_HOME:-~/.config}/alpacawork/env ' +
   'into its environment, replacing what it inherited. It must be a regular file of this user that no one else can read or write (chmod 600), ' +
   `or none of it is read. ${[...RESERVED_NAMES, ...RESERVED_PREFIXES.map(prefix => `${prefix}*`)].join(', ')} (except ${SETTABLE}) are never set from it. ` +
-  'Settings > Server shows what was read; a line that set nothing is logged to stderr by its number.';
+  'Settings > AI shows what was read; a line that set nothing is logged to stderr by its number.';
 
 /** Sets the file's variables in `env` and says what was done. No file sets nothing and is no problem. */
 export function applyEnvironmentFile(env: NodeJS.ProcessEnv): EnvironmentFile {

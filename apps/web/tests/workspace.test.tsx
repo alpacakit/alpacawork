@@ -90,7 +90,7 @@ const serveSettings = () => {
   const values = defaultSettings();
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const path = String(url);
-    // The server tab reads this PC's config.yaml: its limits and agents.
+    // The AI tab reads this PC's config.yaml: its limits and agents.
     if (path === "/api/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
     const target = new URL(path, "http://screen");
     if (target.pathname === "/api/task/view") {

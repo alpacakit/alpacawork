@@ -102,8 +102,8 @@ test("a tight machine is the lowest notice and opens Host status", () => {
 test("asking for Host status while settings are open moves there and keeps the other tabs mounted", async () => {
   vi.spyOn(api, "request").mockImplementation(async (path: string) => path === "host/status" ? status : { error: "unused" });
   const { SettingsBody } = await import("../src/features/panels/SettingsDialog");
-  const view = render(<TestWorkspace data={screenData(tree())}><SettingsBody initialTab="server" request={1} /></TestWorkspace>);
-  expect(screen.getByRole("tab", { name: i18n.t("panels:settings.tabs.server") }).getAttribute("data-state")).toBe("active");
+  const view = render(<TestWorkspace data={screenData(tree())}><SettingsBody initialTab="ai" request={1} /></TestWorkspace>);
+  expect(screen.getByRole("tab", { name: i18n.t("panels:settings.tabs.ai") }).getAttribute("data-state")).toBe("active");
   view.rerender(<TestWorkspace data={screenData(tree())}><SettingsBody initialTab="host" request={2} /></TestWorkspace>);
   expect(screen.getByRole("tab", { name: i18n.t("panels:settings.tabs.host") }).getAttribute("data-state")).toBe("active");
   expect(document.querySelector('[role="tabpanel"][hidden]'), "the server draft stays mounted while hidden").toBeTruthy();

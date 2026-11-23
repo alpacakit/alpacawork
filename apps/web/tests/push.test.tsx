@@ -99,14 +99,14 @@ test("the device label names the browser and the platform", () => {
 });
 
 
-test("the settings' own tab shows the existing subscription without disturbing the server settings' draft", async () => {
+test("the notifications tab shows the existing subscription without disturbing the AI tab's draft", async () => {
   const browser = pushBrowser({ permission: "granted", subscribed: true });
   render(<TestWorkspace><SettingsDialog /></TestWorkspace>);
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "Server" }), { button: 0, ctrlKey: false });
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "AI" }), { button: 0, ctrlKey: false });
   fireEvent.change(await screen.findByLabelText("Max concurrent runs"), { target: { value: "5" } });
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "Personal" }), { button: 0, ctrlKey: false });
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Notifications" }), { button: 0, ctrlKey: false });
   expect(await screen.findByRole("button", { name: "Stop receiving on this device" })).toBeTruthy();
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "Server" }), { button: 0, ctrlKey: false });
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "AI" }), { button: 0, ctrlKey: false });
   expect(within(document.querySelector<HTMLElement>("[data-settings-foot]")!).getByRole("button", { name: "Save" })).toBeTruthy();
   expect((screen.getByLabelText("Max concurrent runs") as HTMLInputElement).value).toBe("5");
   expect(browser.requestPermission).not.toHaveBeenCalled();

@@ -192,7 +192,7 @@ export async function openReference(reference: Locator, { tap = false }: { tap?:
 export async function openDiagnostics(page: Page) {
   if (await page.getByRole("dialog").count()) await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("tab", { name: "Server", exact: true }).click();
+  await page.getByRole("tab", { name: "General", exact: true }).click();
   await page.getByRole("button", { name: "Loading and connection status…", exact: true }).click();
 }
 

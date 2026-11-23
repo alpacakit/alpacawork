@@ -36,17 +36,19 @@ const goalView = (body: string, hash: string) => viewsOf(tree({ tasks: [dto(), g
 const serverSettings = (hash = OPEN) => ({ hash, agentsText: AGENTS, agents: checkAgentsText(AGENTS).agents!, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS },
   aiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'high' } }], coordinatorAiStack: [{ agent: 'claude', values: { model: 'opus', effort: 'low' } }] });
 
-function serverFetch(saves: (Response | Error)[], reads: unknown[] = [serverSettings()]) {
+function serverFetch(saves: (Response | Error | Promise<Response>)[], reads: unknown[] = [serverSettings()]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
     const next = <T,>(list: T[]) => (list.length > 1 ? list.shift() : list[0]) as T;
-    if (String(url).includes("/api/config/get")) return answer(next(reads));
+    // The agents' checks read config/get too; only the settings' own reads take from the list.
+    if (String(url).includes("/api/config/get?check")) return answer(serverSettings());
+    if (String(url).includes("/api/config/get")) { const read = next(reads); return read instanceof Response ? read.clone() : answer(read); }
     if (String(url).includes("/api/task/view")) return answer(goalView("# Goal\n", OPEN));
     // Settings read the update status; it is no save.
     if (String(url).includes("/api/update/status")) return answer({ kind: "none" });
     if (String(url).includes("/api/telemetry/status")) return answer({ state: "blocked", blockedBy: "test", digest: null });
     if (String(url).includes("/api/environment-file")) return answer({ path: "/fixture-home/.config/alpacawork/env", state: "absent", applied: 0, skipped: [] });
     if (!String(url).includes("/api/config/set")) throw new Error(`Unexpected settings request: ${String(url)}`);
-    const value = next(saves);
+    const value = await next(saves);
     if (value instanceof Error) throw value;
     return value.clone();
   });
@@ -63,30 +65,31 @@ const updateCalls = (fetcher: ReturnType<typeof vi.spyOn>) =>
 
 const updateBody = (fetcher: ReturnType<typeof vi.spyOn>, index = 0) => JSON.parse(String((updateCalls(fetcher)[index]?.[1] as RequestInit).body));
 
-/** The tab's save, in its foot. */
-const save = () => within(document.querySelector<HTMLElement>("[data-settings-foot]")!).getByRole("button", { name: "Save" }) as HTMLButtonElement;
+/** The save in the foot of the tab shown (AI's, or the one in General's Advanced options). */
+const save = () => within(document.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden]) [data-settings-foot]')!).getByRole("button", { name: "Save" }) as HTMLButtonElement;
 
 /** The screen with the fixture's project holding this goal at the `OPEN` hash. */
 const openServer = async () => {
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), goal("# Goal\n", OPEN)] }))}><SettingsDialog initialTab="server" /><Toaster /></TestWorkspace>);
-  await waitFor(() => expect(document.getElementById("server-advanced")).toBeTruthy());
-  // The agents fold and its cards open closed; the tests edit claude's values where there is a claude.
-  agentsFold().open = true;
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), goal("# Goal\n", OPEN)] }))}><SettingsDialog initialTab="ai" /><Toaster /></TestWorkspace>);
+  await waitFor(() => expect(document.getElementById("server-limits")).toBeTruthy());
+  // The agents' cards open closed; the tests edit claude's values where there is a claude.
   const expand = screen.queryByRole("button", { name: "Expand claude" });
   if (expand) fireEvent.click(expand);
 };
 
 const parallel = () => screen.getByLabelText("Max concurrent runs") as HTMLInputElement;
 
-const advanced = () => document.getElementById("server-advanced") as HTMLDetailsElement;
-const agentsFold = () => document.getElementById("server-agents") as HTMLDetailsElement;
+/** General's Advanced options, where the limits stand. */
+const limitsFold = () => document.getElementById("server-advanced") as HTMLDetailsElement;
+/** The tab shown: a save row's messages stand in both tabs that show the draft. */
+const shown = () => within(document.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden])')!);
 
 const agentsField = () => screen.getByRole("textbox", { name: "Available values for model" }) as HTMLTextAreaElement;
 
 test("a server save sends edited agent values with comments and limits, and the next save uses the returned hash", async () => {
   const fetcher = serverFetch([answer(serverSettings(SAVED_1)), answer(serverSettings(SAVED_2))]);
   await openServer();
-  expect(advanced().open).toBe(false);
+  expect(limitsFold().open).toBe(false);
   expect(agentsField().value).toBe("opus, sonnet");
   expect(save().disabled).toBe(true);
   fireEvent.change(agentsField(), { target: { value: 'temporary-model' } });
@@ -117,12 +120,7 @@ test("invalid agent values in a collapsed card block saving, open and focus the 
   await openServer();
   fireEvent.change(agentsField(), { target: { value: 'opus,,sonnet' } });
   fireEvent.click(screen.getByRole('button', { name: 'Collapse claude' }));
-  // Closed, and its toggle delivered, before the save, as a person's close would be.
-  const closed = new Promise(resolve => agentsFold().addEventListener('toggle', resolve, { once: true }));
-  agentsFold().open = false;
-  await closed;
   fireEvent.click(save());
-  await waitFor(() => expect(agentsFold().open).toBe(true));
   await waitFor(() => expect(document.activeElement).toBe(agentsField()));
   expect(agentsField().getAttribute('aria-invalid')).toBe('true');
   expect(saveCalls(fetcher)).toHaveLength(0);
@@ -164,7 +162,7 @@ test("a server 409 saves nothing, blocks the save, and loading the latest shows 
   await openServer();
   fireEvent.change(parallel(), { target: { value: "3" } });
   fireEvent.click(save());
-  await screen.findByText(/Another change conflicts with this one/);
+  await shown().findByText(/Another change conflicts with this one/);
   expect(save().disabled).toBe(true);
   expect(errorToasts()).toEqual([]);
   fireEvent.click(screen.getByRole("button", { name: "Load the latest" }));
@@ -180,7 +178,7 @@ test.each([503, 0] as const)("a server save with an unconfirmed answer (%s) keep
   await openServer();
   fireEvent.change(parallel(), { target: { value: "3" } });
   fireEvent.click(save());
-  await screen.findByText(/Check whether the change was saved/);
+  await shown().findByText(/Check whether the change was saved/);
   expect(useWriteIntentStore.getState().entries[intentKey("/fixture", "server-settings", null)]?.status).toBe("unconfirmed");
   expect(save().disabled).toBe(true);
   expect(parallel().value).toBe("3");
@@ -194,8 +192,8 @@ test("other server refusals appear in the form and can resend", async () => {
   await openServer();
   fireEvent.change(parallel(), { target: { value: "3" } });
   fireEvent.click(save());
-  await screen.findByText("Check the input.");
-  expect(screen.queryByText(/Server refusal/)).toBeNull();
+  await shown().findByText("Check the input.");
+  expect(shown().queryByText(/Server refusal/)).toBeNull();
   expect(errorToasts()).toEqual([]);
   expect(save().disabled).toBe(false);
   fireEvent.click(save());
@@ -206,16 +204,82 @@ test("other server refusals appear in the form and can resend", async () => {
 test('attachment limit: default, invalid 501 and save 80 MiB', async () => {
   const fetcher = serverFetch([answer({ ...serverSettings(SAVED_1), limits: { ...DEFAULT_LIMITS, attachment_mib: 80 } })]);
   await openServer();
-  advanced().open = true;
   const field = document.getElementById('limit-attachment_mib') as HTMLInputElement;
   expect(field.value).toBe('50');
+  // Saved from the AI tab, the refused limit is shown where it stands: General, its fold open, the field focused.
+  fireEvent.click(screen.getByRole('tab', { name: 'AI' }));
   fireEvent.change(field, { target: { value: '501' } }); fireEvent.click(save());
   await screen.findByText('Use a whole number from 1 to 500');
+  expect(screen.getByRole('tab', { name: 'General', selected: true })).toBeTruthy();
+  expect(limitsFold().open).toBe(true);
+  await waitFor(() => expect(document.activeElement).toBe(field));
   expect(saveCalls(fetcher)).toHaveLength(0);
   fireEvent.change(field, { target: { value: '80' } }); fireEvent.click(save());
   await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
   expect(parse(saveBody(fetcher).config).limits.attachment_mib).toBe(80);
   await waitFor(() => expect(document.querySelector('[data-settings-foot] [role=status]')?.textContent).toBe('Saved'));
+});
+
+/** The foot of the tab shown, and a tab chosen as a person would. */
+const shownFoot = () => within(document.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden]) [data-settings-foot]')!);
+const showTab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0, ctrlKey: false });
+const openAdvanced = () => { fireEvent.click(limitsFold().querySelector('summary')!); if (!limitsFold().open) { limitsFold().open = true; fireEvent(limitsFold(), new Event('toggle')); } };
+/** serve refusing a save for the field it names. */
+const issueRefusal = (path: string) => new Response(JSON.stringify({ error: { code: 'invalid_input', message: 'Server refusal', retry: 'fix',
+  issues: [{ path, code: 'custom', message: 'Refused by the server' }] } }), { status: 400 });
+
+test('one draft, two save rows: each says where the unsaved changes stand, and either saves them all', async () => {
+  const fetcher = serverFetch([answer(serverSettings(SAVED_1))]);
+  await openServer();
+  fireEvent.change(agentsField(), { target: { value: 'opus, sonnet, new-model' } });
+  expect(shownFoot().getByRole('status').textContent).toBe('Unsaved changes (AI)');
+  showTab('General');
+  openAdvanced();
+  expect(shownFoot().getByRole('status').textContent).toBe('Unsaved changes (AI)');
+  fireEvent.change(parallel(), { target: { value: '3' } });
+  expect(shownFoot().getByRole('status').textContent).toBe('Unsaved changes (AI, General → Advanced options)');
+  fireEvent.click(save());
+  await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
+  const body = saveBody(fetcher);
+  expect(parse(body.config).limits.parallel).toBe(3);
+  expect(parse(body.agents).agents.claude.params.model).toEqual(['opus', 'sonnet', 'new-model']);
+  await waitFor(() => expect(shownFoot().getByRole('status').textContent).toBe('Saved'));
+});
+
+test('while a save is out, the other place holds still too, and the next save sends the hash it returned', async () => {
+  let answerFirst!: (response: Response) => void;
+  const fetcher = serverFetch([new Promise<Response>(resolve => { answerFirst = resolve; }), answer(serverSettings(SAVED_2))]);
+  await openServer();
+  fireEvent.change(agentsField(), { target: { value: 'opus, sonnet, new-model' } });
+  fireEvent.click(save());
+  await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(1));
+  showTab('General');
+  openAdvanced();
+  expect(parallel().matches(':disabled')).toBe(true);
+  expect((shownFoot().getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(true);
+  answerFirst(answer(serverSettings(SAVED_1)));
+  await waitFor(() => expect(shownFoot().getByRole('status').textContent).toBe('Saved'));
+  expect(parallel().matches(':disabled')).toBe(false);
+  fireEvent.change(parallel(), { target: { value: '3' } });
+  // After a save the form checks a change before it counts it.
+  await waitFor(() => expect(save().disabled).toBe(false));
+  fireEvent.click(save());
+  await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(2));
+  expect(saveBody(fetcher, 1).expectedConfigHash).toBe(SAVED_1);
+});
+
+test("a field of the AI tab serve refuses is shown there, its row marked and focused, though saved from General", async () => {
+  serverFetch([issueRefusal('coordinatorAiStack.0.values.model')]);
+  await openServer();
+  showTab('General');
+  openAdvanced();
+  fireEvent.change(parallel(), { target: { value: '3' } });
+  fireEvent.click(save());
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'AI', selected: true })).toBeTruthy());
+  const row = document.querySelector<HTMLElement>('[data-ai-stack="coordinator"] [data-ai-stack-row]')!;
+  expect(row.hasAttribute('data-invalid')).toBe(true);
+  expect(row.querySelector('[data-slot="field-error"]')).toBeTruthy();
+  await waitFor(() => expect(row.contains(document.activeElement)).toBe(true));
 });
 
 test('loading latest after a lost server save preserves an actual restore refusal and the typed draft, then permits a distinct new save', async () => {
@@ -230,7 +294,7 @@ test('loading latest after a lost server save preserves an actual restore refusa
   await waitFor(() => expect(useWriteIntentStore.getState().entries[key]?.status).toBe('refused'));
   expect(useWriteIntentStore.getState().entries[key]).toMatchObject({ operationId: original.operationId, payload: original.payload, failure: { code: 'restore_changed' } });
   expect(parallel().value).toBe('3');
-  await screen.findByText(/This earlier operation is no longer available after a recovery or update/);
+  await shown().findByText(/This earlier operation is no longer available after a recovery or update/);
   await waitFor(() => expect(save().disabled).toBe(false));
   fireEvent.click(save());
   await waitFor(() => expect(saveCalls(fetcher)).toHaveLength(3));

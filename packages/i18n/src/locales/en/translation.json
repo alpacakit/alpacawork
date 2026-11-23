@@ -290,7 +290,7 @@
       "new_conversation_required": "Start a new conversation to change the adapter",
       "new_workspace_file_invalid": "Invalid new workspace file",
       "new_workspace_file_save_unconfirmed": "The new workspace file may have been saved. Check it and try again",
-      "no_configured_agents": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server",
+      "no_configured_agents": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → AI",
       "no_migrations_packaged": "No migrations are included. The existing database is kept",
       "no_project_active_use_id": "No active project. Specify one with --{{option}} <ID>",
       "no_question_in_decide_value_write_full_question_before_asking": "The task's “Question” (decide) value is empty. Write the full question there before sending",

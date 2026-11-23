@@ -21,7 +21,7 @@ To point out what you want fixed, draw on a screenshot and paste it into the inp
 
 You get a notification when it's your turn (a question, a report, or an AI that stopped). Register each device you want them on.
 
-1. Open "Settings (the gear) → Personal".
+1. Open "Settings (the gear) → Notifications".
 2. Under "Push notifications", press "Receive on this device", and allow it if the browser asks.
 
 On an iPhone, do this after opening the screen from the icon you added to the Home Screen.
@@ -34,8 +34,8 @@ Notifications don't arrive while you are using alpacawork. They start 30 seconds
 
   <img src="images/header-icons.png" alt="The top right of the screen, with the person-shaped button and the gear button" width="90">
 
-- Every night: Turn on "Daily quiet hours" in "Settings (the gear) → Personal". When they end, anything still waiting arrives in one notification.
-- By kind: In the same "Notifications" section, you can turn each kind of notification on or off. "When a task is done" starts off.
+- Every night: Turn on "Daily quiet hours" in "Settings (the gear) → Notifications". When they end, anything still waiting arrives in one notification.
+- By kind: Under "When to notify" in the same "Notifications" tab, you can turn each kind of notification on or off. "When a task is done" starts off.
 
 ## When it doesn't work
 

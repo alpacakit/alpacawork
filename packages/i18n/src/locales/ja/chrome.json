@@ -25,7 +25,7 @@
     "hostMemory": "メモリの空き {{value}}",
     "hostMinutes_other": "{{count}}分",
     "hostOpen": "見る",
-    "hostTight": "端末の負荷が厳しい",
+    "hostTight": "PC の負荷が厳しい",
     "previousBoth": "前回の設定と状態を使っています。",
     "previousReads": "前回の状態で表示しています。",
     "previousSettings": "前回の設定を使っています。",

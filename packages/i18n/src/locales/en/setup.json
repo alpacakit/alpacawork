@@ -43,7 +43,7 @@
       "notSentKey": "Never sent",
       "sent": "The alpacawork version, OS and device type, feature usage counts, screen load times, error types, the kinds of agents used, and approximate task counts",
       "sentKey": "Sent",
-      "stop": "In Settings → Server → Usage data, you can stop sending and delete the data already sent",
+      "stop": "In Settings → General → Usage data, you can stop sending and delete the data already sent",
       "stopKey": "Stop and delete"
     }
   },

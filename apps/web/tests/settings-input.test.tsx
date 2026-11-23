@@ -27,51 +27,53 @@ beforeEach(() => {
 const changePointer = (value: boolean) => act(() => { coarse = value; for (const listener of listeners) listener(); });
 const active = () => screen.getByRole("tab", { selected: true }).textContent;
 
-test("a remembered phone guide on coarse input opens Yours with no guide entry or body", () => {
+test("a remembered phone guide on coarse input opens the first tab with no guide entry or body", () => {
   coarse = true;
   render(<TestWorkspace><SettingsBody initialTab="apps" /></TestWorkspace>);
   expect(screen.queryByRole("tab", { name: "App & phone" })).toBeNull();
   expect(document.querySelector("[data-app-guide]")).toBeNull();
-  expect(active()).toBe("Personal");
-  expect(useDialogStore.getState().settingsTab).toBe("personal");
+  expect(active()).toBe("AI");
+  expect(useDialogStore.getState().settingsTab).toBe("ai");
 });
 
 test("changing the primary pointer replaces an open guide and does not resurrect it on PC or reopening", () => {
   const view = render(<TestWorkspace><SettingsBody initialTab="apps" /></TestWorkspace>);
   expect(document.querySelector("[data-app-guide]")).toBeTruthy();
   changePointer(true);
-  expect(active()).toBe("Personal");
+  expect(active()).toBe("AI");
   expect(document.querySelector("[data-app-guide]")).toBeNull();
   changePointer(false);
   expect(screen.getByRole("tab", { name: "App & phone" })).toBeTruthy();
-  expect(active()).toBe("Personal");
-  expect(useDialogStore.getState().settingsTab).toBe("personal");
+  expect(active()).toBe("AI");
+  expect(useDialogStore.getState().settingsTab).toBe("ai");
   view.unmount();
   expect(listeners.size).toBe(0);
   render(<TestWorkspace><SettingsBody initialTab={useDialogStore.getState().settingsTab} /></TestWorkspace>);
-  expect(active()).toBe("Personal");
+  expect(active()).toBe("AI");
 });
 
 test("later tab requests follow availability and retain the server draft", () => {
   coarse = true;
   const data = screenData();
-  const view = render(<TestWorkspace data={data}><SettingsBody initialTab="server" request={1} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={data}><SettingsBody initialTab="ai" request={1} /></TestWorkspace>);
   const draft = document.querySelector('[role="tabpanel"][data-state="active"]');
-  expect(active()).toBe("Server");
+  expect(active()).toBe("AI");
   view.rerender(<TestWorkspace data={data}><SettingsBody initialTab="apps" request={2} /></TestWorkspace>);
-  expect(active()).toBe("Personal");
+  expect(active()).toBe("AI");
   expect(document.querySelector("[data-app-guide]")).toBeNull();
+  view.rerender(<TestWorkspace data={data}><SettingsBody initialTab="notifications" request={3} /></TestWorkspace>);
+  expect(active()).toBe("Notifications");
   expect(draft?.isConnected).toBe(true);
   changePointer(false);
-  view.rerender(<TestWorkspace data={data}><SettingsBody initialTab="apps" request={3} /></TestWorkspace>);
+  view.rerender(<TestWorkspace data={data}><SettingsBody initialTab="apps" request={4} /></TestWorkspace>);
   expect(active()).toBe("App & phone");
   expect(document.querySelector("[data-app-guide]")).toBeTruthy();
 });
 
 test("a change in input preserves another selected tab", () => {
-  render(<TestWorkspace><SettingsBody initialTab="server" /></TestWorkspace>);
+  render(<TestWorkspace><SettingsBody initialTab="notifications" /></TestWorkspace>);
   changePointer(true);
-  expect(active()).toBe("Server");
+  expect(active()).toBe("Notifications");
   changePointer(false);
-  expect(active()).toBe("Server");
+  expect(active()).toBe("Notifications");
 });

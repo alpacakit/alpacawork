@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { uiLocales } from '@alpacawork/core/ui-language';
 import { defaultSettings, personalSettings, uiLanguageOptions, type SettingDefinition } from '@alpacawork/contract';
-import { PersonalSettingsTab } from '../src/features/panels/PersonalSettingsTab';
+import { GeneralSettingsTab, NotificationSettingsTab } from '../src/features/panels/PersonalSettingsTab';
 import { usePersonalSettings } from '../src/data/personal-settings';
 import { intentKey, useWriteIntentStore } from '../src/data/write-intent';
 import { useConnection } from '../src/data/connection';
@@ -60,14 +60,16 @@ test('one extra registration draws a row and uses the same generic save path', a
       labelKey: 'settings.personal.theme' }];
   const values = { ...defaultSettings(definitions), testExtra: false };
   seedPersonal({ root: '/fixture', status: 'ready', fresh: true, values, revision: 'r1' });
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+    // General also reads usage data; only the settings saves matter here.
+    if (!String(url).endsWith('/settings/set')) return problemResponse('unavailable');
     const input = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ values: { ...values, [input.key]: input.value }, revision: 'r2' }));
   });
-  render(<TestWorkspace><PersonalSettingsTab definitions={definitions} /></TestWorkspace>);
+  render(<TestWorkspace><GeneralSettingsTab definitions={definitions} /></TestWorkspace>);
   fireEvent.click(screen.getByRole('switch', { name: 'Theme' }));
   await waitFor(() => expect(usePersonalSettings.getState().values.testExtra).toBe(true));
-  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ key: 'testExtra', value: true });
+  expect(JSON.parse(String(fetcher.mock.calls.find(([url]) => String(url).endsWith('/settings/set'))?.[1]?.body))).toMatchObject({ key: 'testExtra', value: true });
 });
 
 test('task notification switches show the defaults and save the chosen state', async () => {
@@ -77,7 +79,7 @@ test('task notification switches show the defaults and save the chosen state', a
     const input = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ values: { ...values, [input.key]: input.value }, revision: 'r2' }));
   });
-  render(<TestWorkspace><PersonalSettingsTab /></TestWorkspace>);
+  render(<TestWorkspace><NotificationSettingsTab /></TestWorkspace>);
   expect(screen.getByRole('switch', { name: 'When a task is awaiting review' }).getAttribute('aria-checked')).toBe('true');
   expect(screen.getByRole('switch', { name: 'When a task asks you a question' }).getAttribute('aria-checked')).toBe('true');
   expect(screen.getByRole('switch', { name: 'When a task is stopped' }).getAttribute('aria-checked')).toBe('true');
@@ -161,7 +163,7 @@ test('an unconfirmed save keeps its control disabled and explains how to recover
     status: 'unconfirmed', operationId: 'op1', transport: 'receipt', payload: { key: 'theme', value: 'dark', expectedRevision: 'r1' },
     attempt: 'attempt1', at: new Date().toISOString(),
   } } });
-  render(<TestWorkspace><PersonalSettingsTab /></TestWorkspace>);
+  render(<TestWorkspace><GeneralSettingsTab /></TestWorkspace>);
   expect(screen.getByText('Couldn\'t confirm the save. Reload the page.')).toBeTruthy();
   expect((screen.getByRole('combobox', { name: 'Theme' }) as HTMLSelectElement).disabled).toBe(true);
   expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
@@ -198,22 +200,24 @@ for (const language of ['ja', 'en'] as const) test(`required-read observer appli
 
 test('the update confirmation row is hidden while confirmation is on', () => {
   seedPersonal({ root: '/fixture', status: 'ready', fresh: true, values: defaultSettings(), revision: 'r1' });
-  render(<TestWorkspace><PersonalSettingsTab /></TestWorkspace>);
+  render(<TestWorkspace><GeneralSettingsTab /></TestWorkspace>);
   expect(screen.queryByRole('switch', { name: 'Confirm before updating' })).toBeNull();
 });
 
 test('once confirmation is off its row is shown, turns it back on, and stays for this opening', async () => {
   const off = { ...defaultSettings(), 'update.confirm': false };
   seedPersonal({ root: '/fixture', status: 'ready', fresh: true, values: off, revision: 'r1' });
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+    // General also reads usage data; only the settings saves matter here.
+    if (!String(url).endsWith('/settings/set')) return problemResponse('unavailable');
     const input = JSON.parse(String(init?.body));
     return new Response(JSON.stringify({ values: { ...off, [input.key]: input.value }, revision: 'r2' }));
   });
-  render(<TestWorkspace><PersonalSettingsTab /></TestWorkspace>);
+  render(<TestWorkspace><GeneralSettingsTab /></TestWorkspace>);
   const row = screen.getByRole('switch', { name: 'Confirm before updating' });
   expect(row.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(row);
   await waitFor(() => expect(usePersonalSettings.getState().values['update.confirm']).toBe(true));
-  expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ key: 'update.confirm', value: true });
+  expect(JSON.parse(String(fetcher.mock.calls.find(([url]) => String(url).endsWith('/settings/set'))?.[1]?.body))).toMatchObject({ key: 'update.confirm', value: true });
   expect(screen.getByRole('switch', { name: 'Confirm before updating' }).getAttribute('aria-checked')).toBe('true');
 });

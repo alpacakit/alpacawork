@@ -266,8 +266,14 @@ try {
       // One empty project added to the copy permits a real all-to-P1 filter switch. Base perf data stays intact.
       await custom(`project-select-${i}`,()=>tap(page.locator('[data-project-item=P1]')),`!document.querySelector('[data-project-item]') && new URL(location.href).searchParams.get('project')==='P1' && !!document.querySelector('[data-time-tree]')`);
       await custom(`settings-open-${i}`,()=>tap(page.getByRole('button',{name:'Settings',exact:true})),`!!document.querySelector('[role=dialog]') && !!document.querySelector('[role=tab]')`);
-      const tabs=page.locator('[role=dialog] [role=tab]'); await tap(tabs.first()); await settle();
-      await custom(`settings-server-tab-${i}`,()=>tap(tabs.nth(1)),`[...document.querySelectorAll('[role=tab]')][1]?.getAttribute('aria-selected')==='true' && !!document.querySelector('[data-settings-foot]')`);
+      // The first tab holding the config.yaml draft is found by its first save row, not by its place, so a run before and after the
+      // tabs were reordered measures the same move: another tab shown, then the draft's tab opened. Its panel stays
+      // mounted while hidden, so the row is there to find once config.yaml has been read.
+      await page.waitForSelector('[role=dialog] [data-settings-foot]',{state:'attached'});
+      const draft=await page.evaluate(()=>{const panel=document.querySelector('[data-settings-foot]')!.closest('[role=tabpanel]')!;return [...document.querySelectorAll('[role=dialog] [role=tab]')].findIndex(tab=>tab.getAttribute('aria-controls')===panel.id);});
+      if(draft<0) throw new Error('No tab for the settings draft');
+      const tabs=page.locator('[role=dialog] [role=tab]'); await tap(tabs.nth(draft===0?1:0)); await settle();
+      await custom(`settings-draft-tab-${i}`,()=>tap(tabs.nth(draft)),`[...document.querySelectorAll('[role=dialog] [role=tab]')][${draft}]?.getAttribute('aria-selected')==='true' && !!document.querySelector('[data-settings-foot]')?.checkVisibility()`);
       await page.screenshot({path:join(out,`settings-${i}.png`)});
       await custom(`settings-close-${i}`,()=>page.keyboard.press('Escape'),`!document.querySelector('[role=dialog]')`);
       const done=page.locator('[data-section=done] button'); await done.scrollIntoViewIfNeeded();await settle();

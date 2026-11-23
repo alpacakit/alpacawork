@@ -40,25 +40,25 @@ La política es algo que la IA se compromete a cumplir, no un mecanismo que la f
 | GitHub Copilot | Haber iniciado sesión en GitHub CLI (`gh auth login`). El agente viene incluido |
 | Grok Build, pi | Haber iniciado sesión o una clave de API |
 
-Activa las IA que vas a usar en “Agentes” de “Configuración (el engranaje) → Servidor” y pulsa “Guardar”. Si quieres repartirlas según el trabajo, escríbelo en la política (“Implementación con Codex, revisión con Claude Code”).
+Activa las IA que vas a usar en “Ajustes de cada agente” de “Configuración (el engranaje) → IA” y pulsa “Guardar”. Si quieres repartirlas según el trabajo, escríbelo en la política (“Implementación con Codex, revisión con Claude Code”).
 
 Se usan tus suscripciones y configuraciones actuales de las IA tal como están. El coste también es el de tu plan.
 
 ## Elegir el modelo
 
-Junto al botón de enviar del cuadro de texto ves el modelo que usa la IA que es tu punto de contacto (por ejemplo `opus(low)`). Al pulsarlo se abre “IA con la que hablas en el cuadro de texto (coordinador)” en “Configuración (el engranaje) → Servidor”, donde eliges esa IA y las IA alternativas que siguen cuando se detiene. Las IA que hacen las tareas se eligen en “IA de las tareas”, en la misma pantalla. Para usar otro modelo en un trabajo concreto, indícalo en la solicitud o en la política (“Haz este trabajo con opus”). Una conversación que pasó a una IA alternativa por un límite de uso o de capacidad sigue con esa IA. Para volver a la IA 1, pulsa “Borrar conversación” o cambia esa fila en la configuración.
+Junto al botón de enviar del cuadro de texto ves el modelo que usa la IA que es tu punto de contacto (por ejemplo `opus(low)`). Al pulsarlo se abre “IA con la que hablas en el cuadro de texto (coordinador)” en “Configuración (el engranaje) → IA”, donde eliges esa IA y las IA alternativas que siguen cuando se detiene. Las IA que hacen las tareas se eligen en “IA de las tareas”, en la misma pantalla. Para usar otro modelo en un trabajo concreto, indícalo en la solicitud o en la política (“Haz este trabajo con opus”). Una conversación que pasó a una IA alternativa por un límite de uso o de capacidad sigue con esa IA. Para volver a la IA 1, pulsa “Borrar conversación” o cambia esa fila en la configuración.
 
-Para añadir un modelo nuevo, abre su tarjeta en “Agentes” de “Configuración (el engranaje) → Servidor”, añade el nombre del modelo en la fila `model` de “Valores disponibles al pedir trabajo” y pulsa “Guardar”.
+Para añadir un modelo nuevo, abre su tarjeta en “Ajustes de cada agente” de “Configuración (el engranaje) → IA”, añade el nombre del modelo en la fila `model` de “Valores disponibles al pedir trabajo” y pulsa “Guardar”.
 
 ## Pasar claves de API
 
 No escribas las claves en el cuadro de texto ni en la pantalla; escríbelas tú en un archivo.
 
-1. Comprueba la ruta en “Archivo de entorno”, al final de “Configuración (el engranaje) → Servidor” (normalmente `~/.config/alpacawork/env`).
+1. Comprueba la ruta en “Archivo de entorno”, al final de “Configuración (el engranaje) → General” (normalmente `~/.config/alpacawork/env`).
 2. Escribe una por línea, como `ANTHROPIC_API_KEY=...`, y haz que otros usuarios no puedan leer el archivo: `chmod 600 ~/.config/alpacawork/env`
 3. Reinicia alpacawork ([Detener e iniciar](manage.md#detener-e-iniciar)).
 4. Comprueba que el nombre está en “Variables de entorno adicionales” de la tarjeta de la IA. Si no está, añádelo y pulsa “Guardar”.
 
 ## Cuántas se ejecutan a la vez
 
-Al principio se ejecutan hasta 8 IA a la vez. Si consumes demasiado de tu cuota de uso, reduce “Máximo de ejecuciones simultáneas” en “Configuración (el engranaje) → Servidor” → “Opciones avanzadas” y pulsa “Guardar”.
+Al principio se ejecutan hasta 8 IA a la vez. Si consumes demasiado de tu cuota de uso, reduce “Máximo de ejecuciones simultáneas” en “Configuración (el engranaje) → General” → “Opciones avanzadas” y pulsa “Guardar”.

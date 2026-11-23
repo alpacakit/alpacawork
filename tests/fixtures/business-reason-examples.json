@@ -588,7 +588,7 @@
     "reason": {
       "kind": "no_configured_agents"
     },
-    "en": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server"
+    "en": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → AI"
   },
   {
     "reason": {

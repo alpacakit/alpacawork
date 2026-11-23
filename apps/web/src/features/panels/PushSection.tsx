@@ -58,7 +58,7 @@ export function PushSection({ focusHeading = false }: { focusHeading?: boolean }
           ? <Button variant="outline" disabled={busy} onClick={() => removeDevice(ownDevice)} className="row-span-2 narrow:row-span-1">{t("push.unsubscribe")}</Button>
           : <Button disabled={busy} onClick={start} className="row-span-2 narrow:row-span-1">{t("push.subscribe")}</Button>)}
         <FieldHint className="col-start-1 narrow:col-span-2">
-          {!supported ? t("push.unsupported") : permission === "denied" ? t("push.denied") : ownDevice ? t("push.subscribed") : t("push.hint")}
+          {!supported ? t("push.unsupported") : permission === "denied" ? t("push.denied") : ownDevice ? t("push.subscribed") : t("push.hint", { events: t("settings.personal.pushEvents") })}
         </FieldHint>
       </div>
       {supported && devices.data && (

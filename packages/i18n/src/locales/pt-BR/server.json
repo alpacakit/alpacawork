@@ -24,7 +24,7 @@
     "noRuns": "Nenhuma execução em andamento",
     "partSeparator": "; ",
     "taskSeparator": ", ",
-    "title": "Esta máquina está com carga alta"
+    "title": "Este PC está com carga alta"
   },
   "push": {
     "groupTitle": "{{updateCount}} atualizações",

@@ -1,7 +1,7 @@
 {
   "guide": {
     "close": "Terminar la guía",
-    "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}}, en «{{guide}}».",
+    "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}} → {{tab}}, en «{{guide}}».",
     "example": "Esta es una demostración para probar el recorrido de alpacawork.\nCrea un HTML que muestre \"Hello\" con dos fuentes y pregúntame cuál es mejor.",
     "moreExample": "Haz una versión más para que pueda compararlas.",
     "next": "Entendido",

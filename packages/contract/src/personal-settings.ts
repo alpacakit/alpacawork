@@ -55,7 +55,7 @@ export const personalSettings = [
   { key: 'push.host', group: 'notifications', owner: 'person', kind: 'checkbox', defaultValue: true,
     labelKey: 'settings.personal.pushHost' },
   { key: 'push.awayAfter', group: 'notifications', owner: 'person', kind: 'select', defaultValue: '5',
-    labelKey: 'settings.personal.awayAfter', options: [2, 5, 10, 15].map(value =>
+    labelKey: 'settings.personal.awayAfter', helpKey: 'settings.personal.awayAfterHelp', options: [2, 5, 10, 15].map(value =>
       ({ value: String(value), labelKey: `settings.personal.option.away${value}` })) },
   { key: 'push.quiet', group: 'notifications', owner: 'person', kind: 'toggle', defaultValue: false,
     labelKey: 'settings.personal.quiet', helpKey: 'settings.personal.quietHelp' },

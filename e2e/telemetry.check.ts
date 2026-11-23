@@ -60,7 +60,7 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
   const switcher = page.locator('#telemetry-switch');
   const openSettings = async () => {
     await page.keyboard.press('Control+,');
-    await page.getByRole('tab', { name: 'サーバー', exact: true }).click();
+    await page.getByRole('tab', { name: '一般', exact: true }).click();
     await expect(switcher).toBeVisible();
   };
   try {

@@ -105,7 +105,7 @@
     "legend": "Responsable de esta tarea",
     "model": "Modelo",
     "newPerson": "Nuevo agente",
-    "noProfiles": "No hay ningún agente activado. Instala una IA, inicia sesión en ella y actívala en Configuración → Servidor",
+    "noProfiles": "No hay ningún agente activado. Instala una IA, inicia sesión en ella y actívala en Configuración → IA",
     "promote": "{{name}} toma el relevo",
     "replaceNote": "{{name}} deja de ser responsable y queda en el Historial sin pasar a ser miembro",
     "taskUnavailable": "Esta tarea ya no está disponible. Este formulario se cerró.",

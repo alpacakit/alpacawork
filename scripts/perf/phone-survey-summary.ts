@@ -22,7 +22,7 @@ const labels: Record<string, string> = {
   'timeline-show': 'Show the timeline', 'timeline-hide': 'Hide the timeline', 'search-open': 'Open search',
   'search-query': 'Type a search query and show results', 'search-close': 'Close search and return to the list',
   'project-menu': 'Open the project menu', 'project-select': 'Switch from all projects to the sample project',
-  'settings-open': 'Open settings', 'settings-server-tab': 'Open the server settings tab',
+  'settings-open': 'Open settings', 'settings-draft-tab': 'Open the settings tab with the config.yaml draft',
   'settings-close': 'Close settings (Escape)', 'finished-expand': 'Expand Done',
   'finished-collapse': 'Collapse Done', 'list-more': 'Expand the question list with More',
   'list-scroll': 'Touch-scroll the expanded list', 'list-less': 'Collapse the question list',

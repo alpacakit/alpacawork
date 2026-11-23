@@ -19,7 +19,7 @@ function CloseGuide({ className }: { className?: string }) {
     // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
     const before = guideStage.get();
     closeGuide();
-    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), guide: t("panels:settings.personal.guide") }),
+    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") }),
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}

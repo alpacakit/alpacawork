@@ -36,7 +36,7 @@ IP addresses are not included in reports, and the receiver doesn't keep them. Ho
 
 You choose in the second step of the setup screen, which a new installation opens on. Nothing is sent until you choose; without a choice (for example in a workspace made before the setup screen existed), nothing is sent and the screen does not ask.
 
-To change your choice later, use the "Send usage data to help improve alpacawork" switch at the end of Settings → Server. Turning it off stops sending; turning it on starts it. If you only want to stop, you can also run `alpacawork telemetry off`.
+To change your choice later, use the "Send usage data to help improve alpacawork" switch in Settings → General. Turning it off stops sending; turning it on starts it. If you only want to stop, you can also run `alpacawork telemetry off`.
 
 When you stop, data not yet sent is deleted without being sent. Data already sent isn't deleted just by stopping ("Delete what was sent" below).
 
@@ -48,14 +48,14 @@ Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISA
 
 ## See what is sent
 
-- Screen: "See what's sent" under the usage data switch at the end of Settings → Server shows today's report so far (the one sent tomorrow), exactly as it will be sent. It shows content only while sending is on. What appears there hasn't been sent yet, so if you stop sending, it won't be.
+- Screen: "See what's sent" under the usage data switch in Settings → General shows today's report so far (the one sent tomorrow), exactly as it will be sent. It shows content only while sending is on. What appears there hasn't been sent yet, so if you stop sending, it won't be.
 - Command: `alpacawork telemetry show` shows today's data so far, earlier days' reports not yet sent, your copies of reports already sent, and the list of names and values that can be sent. The list is shown even before you choose to send.
 
 Both show JSON. The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
 
 ## Delete what was sent
 
-- Screen: Use "Delete sent data" under the usage data switch at the end of Settings → Server. This works even after you have stopped sending. Data on the PC not yet sent is deleted too.
+- Screen: Use "Delete sent data" under the usage data switch in Settings → General. This works even after you have stopped sending. Data on the PC not yet sent is deleted too.
 - Deletion page: Enter this PC's ID at <https://alpacakit-telemetry.alpacakit.workers.dev/delete>. Use it when you can't open the alpacawork screen, or to delete data from a PC you no longer use. You can find the ID in the window that "Delete sent data" opens, or as `id` in `alpacawork telemetry status`.
 
 Deleting removes the reports sent with that ID and the record of that ID (the first and last days it sent). Data can't be removed from totals that don't tell PCs apart (such as the number of actions or of PCs per day).

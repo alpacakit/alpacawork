@@ -27,7 +27,7 @@ async function openServer(file: EnvironmentFile, language: "en" | "ja") {
     if (String(url).includes("/api/telemetry/status")) return answer({ state: "blocked", blockedBy: "test", digest: null });
     throw new Error(`Unexpected settings request: ${String(url)}`);
   });
-  render(<TestWorkspace data={screenData()}><SettingsBody initialTab="server" /></TestWorkspace>);
+  render(<TestWorkspace data={screenData()}><SettingsBody initialTab="ai" /></TestWorkspace>);
   await waitFor(() => expect(document.querySelector("[data-environment-file]")).toBeTruthy());
   return { line: document.querySelector<HTMLElement>("[data-environment-file]")!, problems: document.querySelector<HTMLElement>("[data-environment-file-problems]") };
 }
