@@ -114,8 +114,8 @@ test.each([
     says: `After ${clock(100)}` },
   { combination: "a child's own estimate covers its grandchildren at work without one",
     specs: [parent(), kid("T11", { estimate: 60 }), kid("T111", { parentId: "T11" })], says: `Expected report ${clock(60)}` },
-  { combination: "the parent's own estimate covers its children at work without one",
-    specs: [parent({ state: "doing", estimate: 150 }), kid("T11")], people: { T1: "running" }, says: `Expected report ${clock(150)}` },
+  { combination: "the parent's own estimate covers its children without one",
+    specs: [parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people: { T1: "running" }, says: `Expected report ${clock(150)}` },
   { combination: "a child later than the parent's own estimate is the end",
     specs: [parent({ state: "doing", estimate: 30 }), kid("T11", { estimate: 90 })], people: { T1: "running" }, says: `Expected report ${clock(90)}` },
   { combination: "the parent's responsible working without an estimate leaves its own end unsaid",
@@ -130,14 +130,14 @@ test.each([
   expect(cardSays(specs, people).short).toBe(says.replace(/^Expected report /, ""));
 });
 
-test("a doing parent keeps its estimate while its child has not started, as a not-before time: the child is not at work", () => {
+test("a doing parent keeps its estimate while its child has not started", () => {
   for (const people of [{}, { T1: "idle" }] as People[]) {
-    expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people).short).toBe(`After ${clock(150)}`);
+    expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people).short).toBe(clock(150));
     expect(document.querySelector('[data-row="T1"] [data-idle-doing]')).toBeNull();
     cleanup();
   }
   // A run going under it is work going on.
-  expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], { T11: "running" }).short).toBe(`After ${clock(150)}`);
+  expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], { T11: "running" }).short).toBe(clock(150));
 });
 
 test("the long words say how many estimates count, how many have none, or that one is past", () => {

@@ -82,8 +82,10 @@ const defers = (facts: FinishFacts) => facts.kind === "unknown" && !facts.workin
 /**
  * Whether a task that leaves its end unsaid waits on the user rather than on work: a task not at work (no facts) or one
  * whose review or stop speaks for itself. It cannot end before the user lets it go on, so no estimate above it covers it.
+ * A task not started is not one: the responsible above starts it, and its estimate is for that work too.
  */
-const waitsOnUser = (facts: FinishFacts | null) => facts === null || facts.kind === "reported" || facts.kind === "stopped";
+const waitsOnUser = (facts: FinishFacts | null, state: TaskState) =>
+  state !== "todo" && (facts === null || facts.kind === "reported" || facts.kind === "stopped");
 
 /**
  * When a task reports, from its own facts (`factsOf`, finishFacts) and those of the unfinished tasks under it. A task with
@@ -91,7 +93,7 @@ const waitsOnUser = (facts: FinishFacts | null) => facts === null || facts.kind 
  * work. Otherwise it is the latest counted expected report of the task and the tasks under it: past only once that latest
  * one has passed too, and said as "not before" while a task, the parent included, leaves its end unsaid (`open`, how many
  * do). A responsible's valid estimate is its word for the work under it, so it covers the tasks at work under it that have
- * none; a task waiting on the user is never covered, at any depth. With no time under it, a parent says only that its
+ * none or have not started; a task waiting on the user is never covered, at any depth. With no time under it, a parent says only that its
  * estimate waits for an update; its working or waiting state is its icon's.
  */
 export function finishOf(id: string, { index, factsOf, now }: {
@@ -109,12 +111,13 @@ export function finishOf(id: string, { index, factsOf, now }: {
   // An invalid time is counted but names no time.
   const addEnd = (at: number) => { count++; if (at > (latest ?? -Infinity)) latest = at; };
   /** One task's end; `covered` while an estimate above it speaks for its work. Every task is walked so every estimate counts. */
-  const visit = (facts: FinishFacts | null, below: { id: string }[], covered: boolean) => {
+  const visit = (facts: FinishFacts | null, state: TaskState, below: { id: string; state: TaskState }[], covered: boolean) => {
     if (facts?.kind === "estimate") addEnd(expectedReport(facts.estimate, now));
-    else if (waitsOnUser(facts) || !covered && !(defers(facts!) && below.length)) open++;
-    for (const kid of below) visit(factsOf(kid.id), unfinished(kid.id), covered || facts?.kind === "estimate");
+    else if (waitsOnUser(facts, state) || !covered && !(facts !== null && defers(facts) && below.length)) open++;
+    for (const kid of below) visit(factsOf(kid.id), kid.state, unfinished(kid.id), covered || facts?.kind === "estimate");
   };
-  visit(own, kids, false);
+  // The task itself is at work (its own facts say so), so it never waits on the user.
+  visit(own, "doing", kids, false);
   if (latest === undefined) return own.kind === "pending" ? own : null;
   if (latest <= now) return { kind: "subtree", at: latest, count, open: 0 };
   return { kind: "subtree", at: latest, count, open };
