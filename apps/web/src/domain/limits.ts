@@ -31,9 +31,9 @@ export const besideModelWindow = (window: LimitWindow, windows: readonly LimitWi
 /** "5 hours", "Weekly", "Weekly (Fable)"; `scoped` (`besideModelWindow`): "Weekly (all models)". */
 export function windowLabel(window: LimitWindow, t: T, scoped = false): string {
   const period = window.kind === "other" && window.minutes !== null && window.minutes >= 60
-    ? t("limits.window.hours", { count: Math.round(window.minutes / 60) }) : t(`limits.window.${window.kind}`);
-  return window.model ? t("limits.window.model", { model: window.model, period })
-    : scoped ? t("limits.window.allModels", { period }) : period;
+    ? t("chrome:limits.window.hours", { count: Math.round(window.minutes / 60) }) : t(`chrome:limits.window.${window.kind}`);
+  return window.model ? t("chrome:limits.window.model", { model: window.model, period })
+    : scoped ? t("chrome:limits.window.allModels", { period }) : period;
 }
 
 /** Within a day, how long until it resets; further off, the day and time it does. */
@@ -45,16 +45,16 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   if (left < 86_400_000) {
     const minutes = Math.max(1, Math.ceil(left / 60_000));
     const hours = Math.floor(minutes / 60);
-    return minutes < 60 ? t("limits.reset.inMinutes", { count: minutes })
-      : minutes % 60 === 0 ? t("limits.reset.inWholeHours", { hours }) : t("limits.reset.inHours", { hours, minutes: minutes % 60 });
+    return minutes < 60 ? t("chrome:limits.reset.inMinutes", { count: minutes })
+      : minutes % 60 === 0 ? t("chrome:limits.reset.inWholeHours", { hours }) : t("chrome:limits.reset.inHours", { hours, minutes: minutes % 60 });
   }
   const when = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at);
-  return t("limits.reset.at", { when });
+  return t("chrome:limits.reset.at", { when });
 }
 
 /** "Updated 3 min ago", or "Updated just now". */
 export function readWords(observedAt: string | null, now: number, t: T): string | null {
   if (!observedAt) return null;
   const minutes = Math.floor((now - Date.parse(observedAt)) / 60_000);
-  return minutes < 1 ? t("limits.readNow") : t("limits.readAgo", { count: minutes });
+  return minutes < 1 ? t("chrome:limits.readNow") : t("chrome:limits.readAgo", { count: minutes });
 }

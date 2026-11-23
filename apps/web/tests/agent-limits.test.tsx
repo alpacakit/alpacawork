@@ -4,7 +4,7 @@ import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits
 import { barLimit, besideModelWindow, limitTone, resetWords, windowLabel } from "../src/domain/limits";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("en"); });
-const t = (key: string, options?: Record<string, unknown>) => i18n.t(`chrome:${key}`, options);
+const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options);
 const week = (usedPercent: number, model: string | null = null): LimitWindow =>
   ({ kind: "weekly", minutes: 10_080, model, usedPercent, resetsAt: null });
 const agent = (adapter: AgentLimits["adapter"], state: AgentLimits["state"], windows: LimitWindow[] = []): AgentLimits =>
