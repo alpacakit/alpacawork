@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
-import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, stepsLeft, type GuideFacts } from "../src/features/guide/guide-definition";
+import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, stepsLeft, stillReads, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft, pushOff } from "../src/features/guide/use-guide";
 import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
@@ -370,6 +370,12 @@ test("a step stood and then not to be told now is not put away; one whose facts 
   expect(doneOnLeaving(notify, guideEntry(card), card, true)).toBe(false);
   const conversation = guideEntry(facts({ stage: turn, doneHere: true, tasks: 1, talked: true }));
   expect(doneOnLeaving(conversation, null, facts({ stage: turn, doneHere: true, tasks: 1, talked: false }), true)).toBe(true);
+});
+
+test("just before reading, what is stored now says whether a step left still reads it: none once put away or ended", () => {
+  expect(stillReads("phone", { stage: "started", at: 1, seen: ["phone-card"] }, "push")).toBe(true);
+  expect(stillReads("phone", { stage: "started", at: 1, seen: ["phone-notify"] }, "push")).toBe(false);
+  expect([stillReads("phone", { stage: "done" }, "push"), stillReads("phone", null, "push"), stillReads("computer", started, "push")]).toEqual([false, false, false]);
 });
 
 test("notifications are off only when this browser made sure: it can have them, they are not blocked, and its subscription was read and there is none", () => {

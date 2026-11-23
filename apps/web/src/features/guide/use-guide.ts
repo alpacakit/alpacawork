@@ -24,7 +24,7 @@ import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { closing, doneOnLeaving, hasClose, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
+import { closing, doneOnLeaving, hasClose, stillReads, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
   type GuideRead, type GuideScreen } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
@@ -74,7 +74,7 @@ export const pushOff = (supported: boolean, read: SubscriptionRead) =>
  * from not made sure (false), and only the read begun last is used: one made moot while the Service Worker is awaited
  * reads no subscription.
  */
-function usePushOff(enabled: boolean): boolean {
+function usePushOff(screen: GuideScreen, enabled: boolean): boolean {
   const dialog = useDialogStore((state) => state.dialog !== null);
   const changing = useIsMutating({ mutationKey: PUSH_CHANGE }) > 0;
   const [read, setRead] = useState<SubscriptionRead>("reading");
@@ -89,13 +89,14 @@ function usePushOff(enabled: boolean): boolean {
   useEffect(() => {
     setRead("reading");
     if (!enabled || dialog || changing || !pushSupported()) return;
-    // A read begun after this one, or the step put away, makes this one moot: then nothing more is read for it.
+    // A read begun after this one, or the step put away (here, or in another tab as stored now: stillReads), makes this
+    // one moot: then nothing more is read for it.
     let latest = true;
-    navigator.serviceWorker.ready.then((registration) => latest ? registration.pushManager.getSubscription().then((subscription) => {
+    navigator.serviceWorker.ready.then((registration) => latest && stillReads(screen, guideStages[screen].get(), "push") ? registration.pushManager.getSubscription().then((subscription) => {
       if (latest) setRead({ permission: Notification.permission, subscribed: subscription !== null });
     }) : undefined).catch((error: unknown) => { recordFailure(error, "push subscription read"); if (latest) setRead("failed"); });
     return () => { latest = false; };
-  }, [enabled, dialog, changing, looked]);
+  }, [screen, enabled, dialog, changing, looked]);
   return enabled && pushOff(pushSupported(), read);
 }
 
@@ -252,7 +253,7 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
   // Read only while a step left reads it (stepsLeft).
-  const pushOffHere = usePushOff(reads.has("push"));
+  const pushOffHere = usePushOff(screen, reads.has("push"));
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);

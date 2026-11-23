@@ -358,6 +358,13 @@ const looked = (phase: GuidePhase, f: GuideFacts) => SCREENS[f.screen].phases.in
 export const stepsLeft = (screen: GuideScreen, seen: readonly string[]) =>
   GUIDE.filter(entry => SCREENS[screen].phases.includes(entry.phase) && (!seen.includes(entry.id) || !!entry.again));
 
+/**
+ * Whether a screen's guide, as `stage` stores it, still has a step left that reads `read` (stepsLeft): asked again just
+ * before reading, against what is stored now, so a step put away in another tab, or the guide ended, reads nothing more.
+ */
+export const stillReads = (screen: GuideScreen, stage: GuideStage | null, read: GuideRead) =>
+  !!stage && stage.stage !== "done" && stepsLeft(screen, stage.seen).some(entry => entry.reads?.includes(read));
+
 /** A step with no button, done by being shown, stays the step in its first words while its balloon stands on this page; one put away by its button does not. */
 const stays = (entry: GuideEntry, facts: Pick<GuideFacts, "standing">) => entry.id === facts.standing && !hasButton(entry);
 
