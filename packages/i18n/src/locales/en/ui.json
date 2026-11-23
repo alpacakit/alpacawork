@@ -324,6 +324,7 @@
       "sessionLimit": "5-hour usage limit reached",
       "weeklyLimit": "Weekly usage limit reached"
     },
+    "causeWithReset": "{{reason}} ({{reset}}). Continue with the same AI after the limit resets, continue with another AI, or stop",
     "limitName": {
       "modelCapacity": "model capacity",
       "modelLimit": "the model's usage limit",

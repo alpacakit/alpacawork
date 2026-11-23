@@ -532,7 +532,7 @@ function keyRelations(key: ChangeKey, change: RecordsChange, gather: Gather, own
         const owner = reader.runOwner(run);
         return owner === null ? undefined : reader.bundle(owner)?.runFiles?.get(run)?.errorCause;
       };
-      if (causeOf(before) !== causeOf(after)) for (const owner of owners)
+      if (causeOf(before)?.cause !== causeOf(after)?.cause) for (const owner of owners)
         gather.addAll([owner, ...gather.each(reader => [reader.parent(owner)].filter((id): id is string => id !== null)),
           ...gather.each(reader => reader.historyReferrers(owner))], ['history']);
       return;

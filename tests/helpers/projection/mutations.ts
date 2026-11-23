@@ -230,7 +230,7 @@ export function mutate(store: ControlStore, before: RecordsReader, operation: Op
         store.write(db => db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify({ ...raw(failed), session: { provider: null, id: `synthetic-session-${operation.step}` } }), Number(failed.id.slice(1))));
         keys.push({ kind: 'run', id: failed.id });
       }
-      state.causes.set(failed.id, operation.variant % 2 ? 'weekly_limit' : 'model_capacity'); keys.push({ kind: 'activity', id: failed.id }); break;
+      state.causes.set(failed.id, { cause: operation.variant % 2 ? 'weekly_limit' : 'model_capacity' }); keys.push({ kind: 'activity', id: failed.id }); break;
     }
     case 'schema': {
       const custom = { ...before.catalog().get('notes')!, id: 'synthetic_field', title: `Synthetic field ${operation.step}`, required: false };

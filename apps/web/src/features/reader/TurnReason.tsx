@@ -12,6 +12,7 @@ import { focusCoordinator, useInputDraft } from "@/features/coordinator/editor/d
 import { hasReaderOperation } from "@/features/coordinator/editor/document";
 import { Icon } from "@/components/ui/icon";
 import { useReaderCard } from "./next-question";
+import { useNow } from "@/state/clock";
 
 /** A refused wake's code (wakeBlock's), as its words are named; another code is a refusal said in general. */
 const blockKeys: Record<string, string> = {
@@ -24,13 +25,13 @@ export const turnReasonKey = (turn: ReasonedTurn) => turn.reason === "blocked" ?
 
 /**
  * A turn's reason in a sentence; only the limit says a count (how many wait behind it), a failure whose cause is
- * known (failureCause) says that cause instead, and a refused wake says the business reason serve kept with it.
+ * known (failureCause) says that cause's sentence (causeWords) instead, and a refused wake says the business reason serve kept with it.
  */
-export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, cause?: ErrorCause | null) => turn.reason === "limit"
+export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, causeWords?: string | null) => turn.reason === "limit"
   ? t("turn.reason.limit", { count: turn.count ?? 0 })
   // A refused wake whose business reason serve kept (selection_required and the rest) is said as any refusal's reason is.
   : turn.reason === "blocked" && turn.problemReason ? problemReasonText(turn.problemReason)
-  : turn.reason === "failed" && cause ? causeSentence(cause, t) : t(`turn.reason.${turnReasonKey(turn)}`);
+  : turn.reason === "failed" && causeWords ? causeWords : t(`turn.reason.${turnReasonKey(turn)}`);
 
 /**
  * Why the user's turn came when it is not a review or a question (the ball's reason): automatic wakes stopped at their
@@ -40,11 +41,12 @@ export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, cause?: Err
  * known `cause` names what it was.
  */
 export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTurn; task?: Task; cause?: ErrorCause | null; className?: string }) {
-  const { t } = useTranslation("ui");
-  const words = turnSentence(turn, t, cause);
+  const { t, i18n } = useTranslation("ui");
+  const now = useNow();
+  const words = turnSentence(turn, t, cause ? causeSentence(cause, t, now, i18n.language) : null);
   const actions = task ? turnActions(turn) : [];
   // The buttons stand on their own row under the sentence, so the sentence keeps its line height to its last line.
-  return <span data-turn-reason={turn.reason} data-turn-cause={turn.reason === "failed" && cause ? cause : undefined} className={className}>
+  return <span data-turn-reason={turn.reason} data-turn-cause={turn.reason === "failed" && cause ? cause.cause : undefined} className={className}>
     {actions.length ? <><span className="block">{words}</span><TurnActions actions={actions} task={task!} /></> : words}
   </span>;
 }

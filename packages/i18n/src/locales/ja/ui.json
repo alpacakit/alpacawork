@@ -313,6 +313,7 @@
       "sessionLimit": "5時間の利用上限に達しました",
       "weeklyLimit": "週の利用上限に達しました"
     },
+    "causeWithReset": "{{reason}}（{{reset}}）。上限が戻ってから同じAIで続けるか、別のAIで続けるか、止めるかを選んでください",
     "limitName": {
       "modelCapacity": "モデルの混雑",
       "modelLimit": "モデルの利用上限",

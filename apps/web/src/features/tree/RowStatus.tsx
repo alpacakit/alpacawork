@@ -14,6 +14,9 @@ import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, wo
 import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
+import { causeSentence, type ErrorCause } from "@/domain/run-labels";
+import { formatNoticeTime } from "@/domain/time";
+import { resetMinute } from "@/domain/limits";
 import { useNow } from "@/state/clock";
 import { useOfflineShown } from "@/data/reach";
 import { cn } from "@/lib/utils";
@@ -286,6 +289,7 @@ export function RowKindWord({ task }: { task: Task }) {
   const { t: ut } = useTranslation("ui");
   const kind = task.rowFacts.kind;
   if (!kind) return null;
+  if (kind.kind === "stopped" && kind.errorCause) return <CauseWord cause={kind.errorCause} />;
   const [word, long] = (() => {
     switch (kind.kind) {
       case "question": return [ut("turn.question")];
@@ -296,6 +300,23 @@ export function RowKindWord({ task }: { task: Task }) {
   })();
   return <span data-row-kind={kind.kind} title={long} className="min-w-0 shrink-[0.0001] truncate">{word}</span>;
 }
+
+/** A stopped run's recognized cause (a usage limit, a busy model) by its name; hover says it in full, with when a limit lifts. */
+function CauseWord({ cause }: { cause: ErrorCause }) {
+  const { t, i18n } = useTranslation("ui");
+  const now = useNow();
+  const name = t(`tree:status.cause.${CAUSE_WORD[cause.cause]}`);
+  // A limit still in force says when it lifts, shortly ("11/29 10:00"), so the list alone tells whether to wait. The
+  // name gives way with "…" on a narrow row; the time does not, as it is what the row is read for.
+  const at = cause.resetsAt ? resetMinute(cause.resetsAt) : NaN;
+  const until = at > now ? formatNoticeTime(new Date(at).toISOString(), i18n.language, new Date(now)) : null;
+  return <span data-row-kind="stopped" data-row-cause={cause.cause} title={causeSentence(cause, t, now, i18n.language)}
+    className="flex min-w-0 shrink-[0.0001] items-baseline gap-x-1">
+    <span className="min-w-0 truncate">{name}</span>
+    {until && <span data-row-until className="flex-none whitespace-nowrap">{t("tree:status.causeUntil", { when: until })}</span>}
+  </span>;
+}
+const CAUSE_WORD: Record<ErrorCause["cause"], string> = { model_capacity: "modelCapacity", weekly_limit: "weeklyLimit", session_limit: "sessionLimit", model_limit: "modelLimit" };
 
 /** A stopped run's reason in a word or two; the reader's history says it in full. */
 function failureWord(failure: string, t: T): string {

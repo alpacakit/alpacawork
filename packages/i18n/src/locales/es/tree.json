@@ -65,6 +65,13 @@
     "restore": "Restaurar"
   },
   "status": {
+    "cause": {
+      "modelCapacity": "Modelo saturado",
+      "modelLimit": "Límite de modelo",
+      "sessionLimit": "Límite de 5 h",
+      "weeklyLimit": "Límite semanal"
+    },
+    "causeUntil": "hasta {{when}}",
     "children": "Subtareas {{progress}}",
     "failure": {
       "conversationBusy": "Conversación ocupada",

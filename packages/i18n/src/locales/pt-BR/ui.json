@@ -335,6 +335,7 @@
       "sessionLimit": "Limite de uso de 5 horas atingido",
       "weeklyLimit": "Limite semanal de uso atingido"
     },
+    "causeWithReset": "{{reason}} ({{reset}}). Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare",
     "limitName": {
       "modelCapacity": "a capacidade do modelo",
       "modelLimit": "o limite de uso do modelo",

@@ -19,6 +19,8 @@ const codex = fixture('codex-stdout.jsonl'), claude = fixture('claude-stdout.jso
 const thread = '00000000-0000-4000-8000-000000000102', session = '00000000-0000-4000-8000-000000000101';
 const capacity = 'Selected model is at capacity. Please try a different model.';
 const weekly = "You've hit your weekly limit · resets Feb 4, 12am (UTC)";
+const capacityCause = { cause: 'model_capacity' } as const;
+const weeklyCause = { cause: 'weekly_limit', resetsAt: '2001-02-04T00:00:00.000Z' } as const;
 const jsonl = (...events: unknown[]) => events.map(event => JSON.stringify(event)).join('\n') + '\n';
 const prefix = jsonl({ type: 'thread.started', thread_id: thread }, { type: 'turn.started' });
 const compact = prefix + jsonl(...JSON.parse(fixture('codex-events.json')));
@@ -44,10 +46,11 @@ function setup(t: TestContext) {
 
 test('native error signatures reach the control projection as closed display keys', t => {
   const h = setup(t);
-  assert.equal(h.project(codex).errorCause, 'model_capacity');
-  assert.equal(h.project(compact, { reason: 'output' }).errorCause, 'model_capacity');
-  assert.equal(h.project(claude, { launch: claudeLaunch, session: { provider: null, id: session } }).errorCause, 'weekly_limit');
-  assert.equal(h.project(codex, { agent: 'claude', session: { provider: 'claude', id: thread } }).errorCause, 'model_capacity',
+  assert.deepEqual(h.project(codex).errorCause, capacityCause);
+  assert.deepEqual(h.project(compact, { reason: 'output' }).errorCause, capacityCause);
+  assert.deepEqual(h.project(claude, { launch: claudeLaunch, session: { provider: null, id: session } }).errorCause, weeklyCause,
+    'the reset comes from the rejected limit event before the words');
+  assert.deepEqual(h.project(codex, { agent: 'claude', session: { provider: 'claude', id: thread } }).errorCause, capacityCause,
     'event shape and session identity matter, not the configured provider label');
   assert.equal(JSON.stringify(h.project(codex)).includes(capacity), false);
 });
@@ -102,7 +105,7 @@ test('bounded reads and ordinary Run file access preserve diagnostic evidence', 
   const h = setup(t), stdout = join(h.folder, RUN_FILES.stdout);
   const working = jsonl({ type: 'item.completed', item: { type: 'command_execution', aggregated_output: 'x'.repeat(256 * 1024) } });
   assert.equal(Object.hasOwn(controlRuns(h.root, [record()])[0]!, 'errorCause'), false, 'absent log');
-  assert.equal(h.project(prefix + working + jsonl({ type: 'turn.failed', error: { message: capacity } })).errorCause, 'model_capacity',
+  assert.deepEqual(h.project(prefix + working + jsonl({ type: 'turn.failed', error: { message: capacity } })).errorCause, capacityCause,
     'a failure at the end of a log longer than the old 256KiB bound is still read');
   assert.equal(Object.hasOwn(h.project(jsonl({ type: 'x', item: 'y'.repeat(2 * 1024 * 1024 + 1) }) + codex), 'errorCause'), false,
     'a line over the line bound');
@@ -113,16 +116,20 @@ test('bounded reads and ordinary Run file access preserve diagnostic evidence', 
   const target = join(h.root, 'outside.jsonl');
   writeFileSync(target, codex);
   symlinkSync(target, stdout);
-  assert.equal(controlRuns(h.root, [record()])[0]!.errorCause, 'model_capacity', 'ordinary symlink access reads the same failure');
+  assert.deepEqual(controlRuns(h.root, [record()])[0]!.errorCause, capacityCause, 'ordinary symlink access reads the same failure');
   writeFileSync(target, prefix + jsonl({ type: 'turn.failed', error: { message: 'changed target' } }));
   assert.equal(Object.hasOwn(controlRuns(h.root, [record()])[0]!, 'errorCause'), false, 'target changes invalidate cached classification');
   writeFileSync(target, codex);
   rmSync(stdout);
   linkSync(target, stdout);
-  assert.equal(controlRuns(h.root, [record()])[0]!.errorCause, 'model_capacity', 'ordinary hard-link access reads the same failure');
+  assert.deepEqual(controlRuns(h.root, [record()])[0]!.errorCause, capacityCause, 'ordinary hard-link access reads the same failure');
   rmSync(stdout);
   mkdirSync(stdout);
   assert.equal(Object.hasOwn(controlRuns(h.root, [record()])[0]!, 'errorCause'), false, 'directory');
+  rmSync(h.folder, { recursive: true, force: true });
+  mkdirSync(h.folder, { recursive: true });
+  assert.deepEqual(h.project(claude, { launch: claudeLaunch, session: { provider: null, id: session }, availability: { cause: 'weekly_limit' } }).errorCause,
+    weeklyCause, 'a recorded cause without a reset takes the reset its own output says');
 });
 
 test('synthetic fixture logs reach the live index while opened views carry durable facts', async t => {
@@ -136,9 +143,9 @@ test('synthetic fixture logs reach the live index while opened views carry durab
   const task = (await commands.create({ parentId: project, userRequested: false, tasks: [{ title: 'Failure display' }] })).tasks[0]!;
   const store = new RunStore(h.root, { busyTimeoutMs: 0 });
   t.after(() => store.close());
-  const seeded: { id: string; expected?: string }[] = [];
-  for (const [log, sid, expected, state] of [[codex, thread, 'model_capacity', 'failed'], [compact, thread, 'model_capacity', 'failed'],
-    [claude, session, 'weekly_limit', 'failed'], [prefix + jsonl({ type: 'error', message: 'unknown' }), thread, undefined, 'failed'],
+  const seeded: { id: string; expected?: { cause: string; resetsAt?: string } }[] = [];
+  for (const [log, sid, expected, state] of [[codex, thread, capacityCause, 'failed'], [compact, thread, capacityCause, 'failed'],
+    [claude, session, weeklyCause, 'failed'], [prefix + jsonl({ type: 'error', message: 'unknown' }), thread, undefined, 'failed'],
     [codex + jsonl({ type: 'turn.completed' }), thread, undefined, 'failed'],
     [prefix + jsonl({ type: 'item.completed', item: { type: 'agent_message', text: 'Done.' } }, { type: 'turn.completed' }), thread, undefined, 'succeeded'],
     [jsonl({ type: 'result', session_id: session, is_error: false, result: 'Done.' }), session, undefined, 'succeeded']] as const) {
@@ -164,7 +171,7 @@ test('synthetic fixture logs reach the live index while opened views carry durab
   for (const { id, expected } of seeded) {
     const run = index.runs.find(run => run.id === id);
     assert.ok(run, id);
-    assert.equal(run.errorCause, expected, id);
+    assert.deepEqual(run.errorCause, expected, id);
     assert.equal(Object.hasOwn(run, 'errorCause'), expected !== undefined, id);
     assert.equal(Object.hasOwn(store.get(id)!, 'errorCause'), false, 'derived value never saved');
   }
@@ -173,7 +180,7 @@ test('synthetic fixture logs reach the live index while opened views carry durab
   // History's row for each failed Run says the same cause, and a failure without one keeps its general reason.
   const history = taskHistoryWindowSchema.parse(await (await commandFetch(new URL(`/api/task/history?task=${task.id}&mode=latest`, server.url))).json());
   const rows = new Map(history.events.filter(event => event.kind === 'error').map(event => [event.id, event.cause]));
-  for (const { id, expected } of seeded) if (rows.has(id)) assert.equal(rows.get(id), expected, `history ${id}`);
+  for (const { id, expected } of seeded) if (rows.has(id)) assert.equal(rows.get(id), expected?.cause, `history ${id}`);
   assert.equal([...rows.values()].filter(Boolean).length, seeded.filter(each => each.expected).length);
   assert.equal(JSON.stringify(body).includes(capacity), false);
   assert.equal(JSON.stringify(body).includes(weekly), false);
@@ -196,7 +203,26 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
   assert.deepEqual(project(jsonl({ type: 'result', session_id: session, is_error: true, result: modelLimit }),
     { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: modelLimit }, 'a model limit without a period is still a known cause');
   assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've reached your weekly limit. Try again later." }),
-    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'another limit is not said as a model limit');
+    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'another ending is not a usage limit');
+  assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've hit your context window limit. Compact the conversation to continue." }),
+    { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'a context window is not a usage limit');
+  for (const other of ["You've hit your MCP tool call limit", "You've hit your Context Window limit · resets Nov 30, 12am (UTC)",
+    "You've hit your Context Window limit. Switch to another model with a larger context window."])
+    assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: other }),
+      { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, `${other} is not a model's usage limit`);
+  // Claude's wording since late 2026, with the reset it reported in its own rejected limit event.
+  const hit = "You've hit your Fable limit · resets Nov 30, 12am (Asia/Tokyo). Switch to another model, or manage usage credits at https://claude.ai/settings/usage?from=cc_cli_limit_message, to continue.";
+  const rejected = { type: 'rate_limit_event', session_id: session, rate_limit_info: { status: 'rejected', resetsAt: 1795964400 } };
+  assert.deepEqual(project(jsonl(rejected, { type: 'assistant', session_id: session, is_api_error_message: true, message: { content: [{ type: 'text', text: hit }] } },
+    { type: 'result', session_id: session, is_error: true, result: hit }), { launch: claudeLaunch, session: { provider: null, id: session } }),
+  { cause: 'model_limit', resetsAt: '2026-11-29T15:00:00.000Z', message: hit }, 'a model limit says when it lifts');
+  assert.deepEqual(project(jsonl({ ...rejected, rate_limit_info: { status: 'allowed_warning', resetsAt: 1795964400 } }, { type: 'result', session_id: session, is_error: true, result: hit }),
+    { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: hit }, 'a warning is not the limit that refused the turn');
+  assert.deepEqual(project(jsonl({ ...rejected, rate_limit_info: { status: 'rejected', resetsAt: 1e300 } }, { type: 'result', session_id: session, is_error: true, result: hit }),
+    { launch: claudeLaunch, session: { provider: null, id: session } }), { cause: 'model_limit', message: hit }, 'an impossible reset is dropped, the cause kept');
+  assert.deepEqual(project(jsonl(rejected, { type: 'assistant', session_id: session, is_api_error_message: true, message: { content: [{ type: 'text', text: hit }] } },
+    { type: 'result', session_id: session, is_error: true, result: 'Request failed.' }), { launch: claudeLaunch, session: { provider: null, id: session } }),
+  { cause: 'model_limit', resetsAt: '2026-11-29T15:00:00.000Z', message: hit }, 'a general terminal keeps the recognized error of its turn');
   assert.deepEqual(project(codex + jsonl({ type: 'turn.failed' })), { cause: 'model_capacity', message: capacity }, 'terminal without words retains this turn’s explicit error');
   const secret = 'sk-syntheticSecret123456';
   const general = project(prefix + jsonl({ type: 'turn.failed', error: { message: `Service unavailable. token=${secret}` } }));

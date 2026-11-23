@@ -63,6 +63,13 @@
     "restore": "Restore"
   },
   "status": {
+    "cause": {
+      "modelCapacity": "Model busy",
+      "modelLimit": "Model limit",
+      "sessionLimit": "5-hour limit",
+      "weeklyLimit": "Weekly limit"
+    },
+    "causeUntil": "until {{when}}",
     "children": "Subtasks {{progress}}",
     "failure": {
       "conversationBusy": "Conversation busy",

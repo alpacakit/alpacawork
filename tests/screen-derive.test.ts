@@ -189,7 +189,7 @@ test('settings, files, activity and the coordinator reach what they name, and no
   lacks(activity, 'T2', 'view', 'timeline', 'history', 'seat');
   assert.equal(activity.scopes.timeline.size, 0, 'the timeline carries no activity');
   // A failure's cause read later from the Run's folder is said in History, so that History is old again.
-  const caused = bundles.map(item => item.runs.some(run => run.id === 'R2') ? { ...item, runFiles: new Map([['R2' as never, { activity: null, errorCause: 'model_limit' as const }]]) } : item);
+  const caused = bundles.map(item => item.runs.some(run => run.id === 'R2') ? { ...item, runFiles: new Map([['R2' as never, { activity: null, errorCause: { cause: 'model_limit' as const } }]]) } : item);
   has(change(bundles, caused, [], [{ kind: 'activity', id: 'R2' }]), 'T2', 'row', 'history');
   const coordinator = change(bundles, bundles, [], [{ kind: 'run', id: 'R90' }], { joinedMessages: { R90: ['Q-said'] }, dialogueTasks: { 'Q-said': ['T4'] } });
   has(coordinator, 'T4', 'history');

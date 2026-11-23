@@ -3,6 +3,7 @@ import { questionApplicable, questionSnapshot } from '../control/question-rules.
 import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskTimelineDTO, type TaskViewDTO } from '@alpacawork/contract/control';
 import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
+import { runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
 import { createHash } from 'node:crypto';
@@ -222,7 +223,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     const placement = placements.get(run.placementId);
     const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
-      ...(kind === 'error' && (run.availability?.cause ?? run.errorCause) ? { cause: run.availability?.cause ?? run.errorCause } : {}),
+      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause.cause } : {}),
       ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
       ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
   }
@@ -382,7 +383,7 @@ function recordedHistory(records: RecordsReader, id: string): ReturnType<typeof 
     const raw = records.run(key);
     if (!raw) return;
     // The folder facts its owner's records captured say a failure's cause; History never rereads the folder.
-    const owner = records.runOwner(key), errorCause = owner ? records.bundle(owner)?.runFiles?.get(key)?.errorCause : undefined;
+    const owner = records.runOwner(key), errorCause = runErrorCause(raw.availability, owner ? records.bundle(owner)?.runFiles?.get(key)?.errorCause : undefined);
     runs.set(key, { ...recordedRun(raw), ...errorCause ? { errorCause } : {} });
     runRoles[key] = raw.role === 'owner' ? 'owner' : 'member';
     addPlacement(raw.placementId);

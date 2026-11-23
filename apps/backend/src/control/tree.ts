@@ -8,6 +8,7 @@ import { projectPlacementRuntimes } from './runtime.js';
 import { recordedRun } from '../runs/run-view.js';
 import { readRunActivity } from '../runs/activity.js';
 import { readRunFailure } from '../runs/error-cause.js';
+import { failureAvailability, runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
 import { agentProfile, attachmentLimitOf, readAgentsSettings } from '../agents-settings.js';
 import { runtimeAdapter } from '../agents/registry.js';
@@ -23,14 +24,14 @@ export type RunFolderFacts = { readonly activity: RunActivity | null; readonly e
  * projection passes the facts its records captured (TaskBundle.runFiles); controlRuns reads them from the folder.
  */
 export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): ControlRunDTO {
-  const errorCause = run.availability?.cause ?? files?.errorCause;
+  const errorCause = runErrorCause(run.availability, files?.errorCause);
   return { ...recordedRun(run), takesInput: !!runtimeAdapter(run.launch.adapter)?.input,
     ...(errorCause ? { errorCause } : {}),
     activity: run.state === 'running' ? files?.activity ?? null : null };
 }
 /** The screen's Runs of `records`, their folder facts read now. */
 export function controlRuns(root: string, records: readonly ReadRunRecord[]): ControlRunDTO[] {
-  return records.map(run => runView(run, { errorCause: readRunFailure(root, run)?.cause,
+  return records.map(run => runView(run, { errorCause: failureAvailability(readRunFailure(root, run)),
     activity: run.state === 'running' ? readRunActivity(runFolder(root, run.id)) : null }));
 }
 /** What a placement's runtime reads of its Task: the wire type leaves out a toState the record holds as null. */
