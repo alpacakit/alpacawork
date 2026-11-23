@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 import type { Page } from "@playwright/test";
-import { controlIndexSchema } from "@alpacawork/contract/control";
+import { projectedIndexSchema } from "@alpacawork/contract/control";
 import { test, expect, open } from "./fixtures.ts";
 import { SAMPLE_PROJECT } from "./fixture/sample.ts";
 import { placeResponsible } from "./fixture/responsible.ts";
@@ -58,7 +58,7 @@ async function addProject(page: Page, runtime: Runtime, parent = "none") {
 }
 /** The projects as the server lists them for the menu. */
 const listed = async (page: Page, runtime: Runtime) =>
-  controlIndexSchema.parse(await (await page.request.get(`${runtime.origin}/api/workspace/live`)).json()).projects;
+  projectedIndexSchema.parse(await (await page.request.get(`${runtime.origin}/api/workspace/live`)).json()).projects;
 /** Where this PC keeps a project's code, as config.yaml holds it. */
 const location = (runtime: Runtime, project: string): unknown =>
   parse(readFileSync(join(runtime.root, "config.yaml"), "utf8"))?.projects?.[project]?.cwd;

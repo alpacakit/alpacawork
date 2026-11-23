@@ -47,7 +47,8 @@ for (const width of [1440]) {
 }
 
 test.describe('native resume read failure', () => {
-  test.use({ retainRuntime:true, captureScreenshots:false });
+  // Both pages must agree on the age of the checkpoint when the second one starts.
+  test.use({ retainRuntime:true, captureScreenshots:false, fixedTime:false });
   test('an in-flight resume GET lost to native offline resumes from a fresh accepted GET', async ({page,context,runtime}) => {
     await page.setViewportSize({width:1440,height:900});
     await open(page,runtime,'?task=T111&tab=files');

@@ -16,17 +16,20 @@ test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true
  */
 test("a row's time opens its words, and the title under it still opens the task", async ({ page, runtime }) => {
   await open(page, runtime);
-  const time = page.locator("button[data-row-status='since']").first();
+  await page.locator('[data-section="held"] button[aria-expanded="false"]').click();
+  const time = page.locator('[data-row="T117"] button[data-row-status="since"]');
   await expect(time).toBeVisible();
   const list = await page.evaluate(() => location.pathname + location.search);
   const box = (await time.boundingBox())!;
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator("[data-time-tip]")).toBeVisible();
+  const tip = page.locator("[data-time-tip]");
+  await expect(tip).toBeVisible();
   expect(await page.evaluate(() => location.pathname + location.search)).toBe(list);
   await page.keyboard.press("Escape");
-  await expect(page.locator("[data-time-tip]")).toHaveCount(0);
+  await expect(tip).toHaveCount(0);
   const titleTop = await time.evaluate((element) => element.closest("[data-row-lines]")!.querySelector("[data-row-title-line]")!.getBoundingClientRect().top);
   await page.touchscreen.tap(box.x + box.width / 2, titleTop);
-  await expect.poll(() => page.evaluate(() => location.pathname + location.search)).not.toBe(list);
-  await expect(page.locator("[data-time-tip]")).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).searchParams.get("task")).toBe("T117");
+  await expect(page.locator("[data-reader-task-id]")).toHaveText("T117");
+  await expect(tip).toHaveCount(0);
 });

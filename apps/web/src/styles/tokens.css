@@ -298,6 +298,8 @@
                          longest fits a phone's card)
                     display 28–36 / 1.25 · -0.01em  the welcome heading
                          of an empty project (26px on a phone)
+                    display-compact 30 / 1.25 · -0.01em  the setup heading
+                         beside its form on a wide screen
                   Sizes are rem (the table's px at the browser's 16px), so
                   they follow the reader's own text size; a line height is
                   a bare ratio (line ÷ size, `calc(22 / 14)`) and a letter
@@ -380,8 +382,11 @@
   --text-seal--line-height: 1;
   --text-seal--letter-spacing: 0.025em;
   --text-display: clamp(1.75rem, 2.6vw, 2.25rem);
-  --text-display--line-height: 1.25;
+  --text-display--line-height: calc(5 / 4);
   --text-display--letter-spacing: -0.01em;
+  --text-display-compact: 1.875rem;
+  --text-display-compact--line-height: calc(5 / 4);
+  --text-display-compact--letter-spacing: -0.01em;
 
   /* No line heights or letter spacings of their own (Type steps, above). */
   --leading-*: initial;

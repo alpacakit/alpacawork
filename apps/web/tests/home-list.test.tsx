@@ -88,11 +88,11 @@ test("a project's list is the rows of Tasks in it, nested projects included, wit
   expect(heading(nested, "doing")).toBe("In progress1");
 });
 
-test("why the user's turn came is the ball's reason, said in the reader with the move it offers: Continue at the limit, Retry and Stop on a failure", () => {
+test("the reader shows the ball's reason and the actions available for that turn", () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async () => problemResponse("not_found"));
   for (const [ball, words, moves] of [
     [userBall("limit", "K1", at, { count: 3 }), i18n.t("ui:turn.reason.limit", { count: 3 }), [i18n.t("ui:turn.continue")]],
-    [userBall("failed", "F1", at), i18n.t("ui:turn.reason.failed"), [i18n.t("ui:turn.retry"), i18n.t("ui:turn.stop")]],
+    [userBall("failed", "F1", at), i18n.t("ui:turn.reason.failed"), [i18n.t("ui:turn.retry"), i18n.t("ui:turn.switch"), i18n.t("ui:turn.stop")]],
     [userBall("unconfirmed", "U1", at), i18n.t("ui:turn.reason.unconfirmed"), []],
     [userBall("blocked", "B1", at, { code: "no_profile" }), i18n.t("ui:turn.reason.noProfile"), []],
   ] as const) {

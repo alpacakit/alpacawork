@@ -37,19 +37,35 @@ function detailFields(value: unknown, path = ""): string[] {
 
 test("list responses carry no hover details and hovering or focusing titles and marks fetches no detail", async ({ page, runtime }) => {
   const details: string[] = [];
+  const completed: string[] = [];
   const payloads: Promise<{ path: string; body: unknown }>[] = [];
+  const detailKey = (url: string) => {
+    const { pathname, searchParams } = new URL(url);
+    return ["/api/task/view", "/api/task/history", "/api/task/request-body"].includes(pathname)
+      ? `${pathname}:${searchParams.get("task")}` : null;
+  };
   page.on("request", request => {
-    const path = new URL(request.url()).pathname;
-    if (["/api/task/view", "/api/task/history", "/api/task/request-body"].includes(path)) details.push(path);
+    const key = detailKey(request.url());
+    if (key) details.push(key);
   });
   const collect = (response: import("@playwright/test").Response) => {
     const path = new URL(response.url()).pathname;
+    const key = detailKey(response.url());
+    if (key && response.ok()) completed.push(key);
     if (["/api/workspace/live", "/api/task/timeline", "/api/task/finished", "/api/task/shelved"].includes(path))
       payloads.push(response.json().then(body => ({ path, body })));
   };
   page.on("response", collect);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await open(page, runtime, "?agent=1&zoom=21600000");
+  // Your turn rows warm their detail and history on startup, independently of hover or focus.
+  const reviewTitles = page.locator('[data-row-section="review"] [data-read]');
+  await expect(reviewTitles.first()).toBeVisible();
+  const startupReads = await reviewTitles.evaluateAll(titles => titles.flatMap(title => {
+    const id = title.getAttribute("data-read");
+    return [`/api/task/view:${id}`, `/api/task/history:${id}`];
+  }).sort());
+  await expect.poll(() => [...completed].sort()).toEqual(startupReads);
   // Bootstrap may arrive through SSE without a workspace/live browser request. Check the same public list response directly.
   const live = await page.request.get(`${runtime.origin}/api/workspace/live`);
   expect(live.ok()).toBe(true);
@@ -60,7 +76,8 @@ test("list responses carry no hover details and hovering or focusing titles and 
     await expect(page.locator(`[data-row="${id}"] [data-read="${id}"]`)).toBeVisible();
   const marks = page.locator('[data-row="T112"] [data-mark]');
   await expect(marks.first()).toBeVisible();
-  for (const title of await page.locator("[data-row] [data-read]").all()) {
+  const titles = page.locator("[data-row] [data-read]");
+  for (const title of await titles.all()) {
     await title.hover();
     await title.focus();
     await page.clock.runFor(700);
@@ -75,7 +92,7 @@ test("list responses carry no hover details and hovering or focusing titles and 
     await page.clock.runFor(700);
     await expect(page.locator("[data-reading-note], [data-task-peek]")).toHaveCount(0);
   }
-  expect(details).toEqual([]);
+  expect([...details].sort()).toEqual(startupReads);
   page.off("response", collect);
   const replies = await Promise.all(payloads);
   expect(replies.some(reply => reply.path === "/api/workspace/live")).toBe(true);
@@ -86,10 +103,13 @@ test("list responses carry no hover details and hovering or focusing titles and 
       if (item.kind === "note") expect(Object.keys(item.event!).filter(key =>
         !["id", "kind", "taskId", "at", "state", "mark", "displayed"].includes(key)), "list notes contain no detail links").toEqual([]);
   }
-  const fetched = page.waitForResponse(response => new URL(response.url()).pathname === "/api/task/view");
-  await page.locator('[data-read="T111"]').click();
+  const ids = await titles.evaluateAll(rows => rows.map(row => row.getAttribute("data-read")!));
+  const coldId = ids.find(id => !details.includes(`/api/task/view:${id}`));
+  expect(coldId, "a listed task has no prefetched detail").toBeDefined();
+  const fetched = page.waitForResponse(response => detailKey(response.url()) === `/api/task/view:${coldId}`);
+  await page.locator(`[data-row] [data-read="${coldId}"]`).click();
   expect((await fetched).ok()).toBe(true);
-  await expect(page.getByRole("complementary").locator('[data-reader-title="T111"]')).toBeVisible();
+  await expect(page.getByRole("complementary").locator(`[data-reader-title="${coldId}"]`)).toBeVisible();
 });
 
 for (const input of ["keyboard", "touch"] as const) test(`a report mark opens its matching reader report with ${input}`, async ({ page, browser, runtime }) => {

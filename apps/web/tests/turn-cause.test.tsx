@@ -25,7 +25,7 @@ function failedTask(runs: ControlRunDTO[], log = failedBy(runs.at(-1)!.id)) {
 const failedRun = (id: string, overrides: Partial<ControlRunDTO> = {}) =>
   run(id, { state: "failed", reason: "exit", endedAt: "2026-09-24T09:04:00Z", ...overrides });
 
-test("a failure the backend read a cause for says that cause where the failure is answered, its Retry and Stop kept", () => {
+test("a diagnosed failure shows its cause with both ways to continue and the option to stop", () => {
   for (const [cause, key] of [["model_capacity", "ui:run.cause.modelCapacity"], ["weekly_limit", "ui:run.cause.weeklyLimit"], ["model_limit", "ui:run.cause.modelLimit"]] as const) {
     const { data, task } = failedTask([failedRun("R2", { errorCause: cause })]);
     expect(failureCause(task, data.people)).toBe(cause);
@@ -34,7 +34,7 @@ test("a failure the backend read a cause for says that cause where the failure i
     expect(reason.dataset.turnCause).toBe(cause);
     expect(reason.firstChild?.textContent).toBe(i18n.t(key));
     expect(i18n.t(key)).not.toBe(i18n.t("ui:turn.reason.failed"));
-    expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "stop"]);
+    expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "switch", "stop"]);
     cleanup();
     // The list's brief of the same task says the same.
     const brief = render(<TestWorkspace data={data}><BriefLine task={task} people={data.people} /></TestWorkspace>);
@@ -80,7 +80,7 @@ test("a turn that is not a failure never says a failure's cause", () => {
   }
 });
 
-test("a failed task whose user's turn is a question still says its failure with Retry and Stop under the title", () => {
+test("an open question leaves the failure cause and recovery actions under the reader title", () => {
   const capacity = failedRun("R2", { errorCause: "model_capacity" });
   /** The server's ball: the question is the user's; it carries the failure only when the user decides it, and only while failed. */
   const asked = (failure: boolean) => userBall("question", "Q1", "2026-09-24T08:00:00Z",
@@ -97,7 +97,7 @@ test("a failed task whose user's turn is a question still says its failure with 
   const head = render(<TestWorkspace data={data}><TurnReason turn={titleTurn(task)!} task={task} cause={failureCause(task, data.people)} /></TestWorkspace>);
   const reason = head.container.querySelector<HTMLElement>('[data-turn-reason="failed"]')!;
   expect(reason.firstChild?.textContent).toBe(i18n.t("ui:run.cause.modelCapacity"));
-  expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "stop"]);
+  expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "switch", "stop"]);
   cleanup();
   // The list's brief still says the question; a question on a task that is not failed says no failure.
   const brief = render(<TestWorkspace data={data}><BriefLine task={task} people={data.people} /></TestWorkspace>);

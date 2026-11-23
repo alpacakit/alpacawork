@@ -504,7 +504,8 @@ export function acceptPersonalRead<T extends { revision: string | null }>(client
     || !started.index || !admitResourceRead(client, started)) return false;
   // Admission above has just held the index this read started under.
   const index = readIndex(client)!;
-  publishReadReceipt(client, key, value, query => ({ ...captureReadProof(index, key), marker: value.revision, precedingMarker: readMarker(index, key), acquiredAt: getReadProof(query)?.acquiredAt ?? Date.now() }));
+  publishReadReceipt(client, key, value, query => ({ ...captureReadProof(index, key), marker: value.revision, precedingMarker: readMarker(index, key),
+    acquiredAt: getReadProof(query)?.acquiredAt ?? Date.now() }));
   return true;
 }
 /** A deliberate reconciliation after a refused/uncertain write certifies this actual GET, if no newer feed overtook it. */
