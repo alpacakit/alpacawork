@@ -482,17 +482,19 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
   // A new turn of the person's on this Task (a report or a question its ball now waits on) is read from its start. At the
   // column's top it arrives there in view; read below, the reading position holds the row in view (reading-position),
   // so the new record would come in above the screen and only its end might show: the column goes to its start. The
-  // turn the feed was drawn with is not new: opening the Task places the column by its own rules.
+  // turn the feed was first drawn with is not new: opening the Task places the column by its own rules. The turn is
+  // followed as its rows are drawn, whatever else History is still reading.
   const turnKey = rows.find(row => row.report.currentWait)?.key ?? null;
   const drawnTurn = useRef<string | null | undefined>(undefined);
+  const rowsDrawn = !!pages && !catchingUp;
   useEffect(() => {
-    if (!historyReady) return;
+    if (!rowsDrawn) return;
     const before = drawnTurn.current;
     drawnTurn.current = turnKey;
     if (before === undefined || turnKey === null || turnKey === before) return;
     const row = feedList.current?.querySelector<HTMLElement>(`li[data-report-key="${CSS.escape(turnKey)}"]`);
     if (row && (row.closest<HTMLElement>("[data-reader-content]")?.scrollTop ?? 0) > 0) scrollReport(row, "start");
-  }, [turnKey, historyReady]);
+  }, [turnKey, rowsDrawn]);
   // Read whole and holding no row; a refresh of it in flight does not take that back (the note would blink with each one).
   const historyEmpty = !!pages && !catchingUp && history.isSuccess && !history.hasNextPage && !rows.length;
   const feed = <div data-report-feed data-history-ready={historyReady} data-history-exhausted={history.isSuccess && historyReady && !history.hasNextPage} aria-busy={history.isPending || history.isFetchingNextPage} className="pb-6">
