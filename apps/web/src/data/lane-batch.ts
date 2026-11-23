@@ -4,14 +4,12 @@ import { ApiError, READ_RETRIES, readDeadlinePassed, readRetryDelay } from './cl
 type Waiter = { lane: string; signal?: AbortSignal; resolve: (lane: TaskTimelineLaneDTO) => void; reject: (error: unknown) => void };
 /** The most rows one answer is asked for (the server's bound). */
 const LANES_PER_READ = 200;
-
 /**
- * Transport only: the rows' strips asked for in the same turn over the same range go out as one read, and each row's
- * own read (its Query) receives its row. A row the answer leaves out for its size is asked again; a row the server does
- * not hold is refused as a missing Task. A read the server stayed silent on is asked again as the same one read (its
- * rows' Queries do not retry on their own), so a busy server is not met with one read per row. Nothing here touches the
- * cache.
+ * The least time between a row's strip arriving and its being read again. A row written to in a burst (many records in
+ * a second) is read once for the burst, not once per record; a long row costs its whole strip each time.
  */
+export const LANE_READ_GAP = 2000;
+
 /**
  * Each row's own failure of a read they shared, with the read's failure as its cause: a failure is recorded by its
  * object (read-model's failed GETs), so rows sharing one object would leave only the last row's record.
@@ -22,6 +20,13 @@ function rowError(error: unknown): Error {
   own.cause = error;
   return own;
 }
+/**
+ * Transport only: the rows' strips asked for in the same turn over the same range go out as one read, and each row's
+ * own read (its Query) receives its row. A row the answer leaves out for its size is asked again; a row the server does
+ * not hold is refused as a missing Task. A read the server stayed silent on is asked again as the same one read (its
+ * rows' Queries do not retry on their own), so a busy server is not met with one read per row. Nothing here touches the
+ * cache.
+ */
 export function laneBatches(request: (path: string, signal: AbortSignal) => Promise<TaskTimelineLanesDTO>) {
   const queued = new Map<string, Waiter[]>();
   const live = (waiters: Waiter[]) => waiters.filter(waiter => !waiter.signal?.aborted);
@@ -61,6 +66,11 @@ export function laneBatches(request: (path: string, signal: AbortSignal) => Prom
       })
       .finally(() => { for (const waiter of waiters) waiter.signal?.removeEventListener('abort', dropped); });
   };
-  return (lane: string, from: string, to: string, signal?: AbortSignal) =>
-    new Promise<TaskTimelineLaneDTO>((resolve, reject) => enqueue(JSON.stringify([from, to]), { lane, signal, resolve, reject }));
+  // `notBefore`: a row read again goes no earlier (LANE_READ_GAP); what changes meanwhile comes in the one read.
+  return (lane: string, from: string, to: string, signal?: AbortSignal, notBefore = 0) =>
+    new Promise<TaskTimelineLaneDTO>((resolve, reject) => {
+      const waiter = { lane, signal, resolve, reject }, wait = notBefore - Date.now();
+      if (wait > 0) setTimeout(() => { if (!signal?.aborted) enqueue(JSON.stringify([from, to]), waiter); }, wait);
+      else enqueue(JSON.stringify([from, to]), waiter);
+    });
 }

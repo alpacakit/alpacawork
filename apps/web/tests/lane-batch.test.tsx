@@ -3,7 +3,7 @@ import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { TaskTimelineLaneDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
-import { laneBatches } from '../src/data/lane-batch';
+import { LANE_READ_GAP, laneBatches } from '../src/data/lane-batch';
 import { ApiError, DeadlinePassed } from '../src/data/client';
 import { useConnection } from '../src/data/connection';
 import { queryClient } from '../src/data/query-client';
@@ -93,4 +93,16 @@ test('an answer holding none of the rows asked for is asked no further; a shared
   const [first, second] = failures.map(result => result.status === 'rejected' ? result.reason as ApiError : undefined);
   expect([first?.code, second?.code, first?.cause, second?.cause]).toEqual(['unavailable', 'unavailable', shared, shared]);
   expect(first).not.toBe(second);
+});
+
+test('a row read again waits out the gap from its last arrival, while a row not read yet goes at once', async () => {
+  vi.useFakeTimers();
+  const request = vi.fn(async (path: string): Promise<TaskTimelineLanesDTO> => ({ lanes: asked(path).map(strip), gone: [] }));
+  const read = laneBatches(request);
+  const again = read('T1', 'from', 'to', undefined, Date.now() + LANE_READ_GAP), fresh = read('T2', 'from', 'to');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(request.mock.calls.map(([path]) => asked(path))).toEqual([['T2']]);
+  await vi.advanceTimersByTimeAsync(LANE_READ_GAP);
+  await Promise.all([again, fresh]);
+  expect(request.mock.calls.map(([path]) => asked(path))).toEqual([['T2'], ['T1']]);
 });

@@ -13,7 +13,7 @@ import { decodeText } from "@/domain/text-bytes";
 import { DIFF_LIMITS } from "@alpacawork/contract/report-diff";
 import { z } from "zod";
 import { taskCodeUrl, taskFileUrl } from "./task-file-url";
-import { laneBatches } from "./lane-batch";
+import { LANE_READ_GAP, laneBatches } from "./lane-batch";
 
 const codeRootsSchema = z.object({ roots: z.array(z.string()) });
 
@@ -121,7 +121,11 @@ export const resources = {
    */
   timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
     queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
-    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => readTimelineLane(lane, from, to, signal)),
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => {
+      // A strip read again waits out the gap from its last arrival (lane-batch).
+      const held = readQuery(client, queryKey)?.state;
+      return readTimelineLane(lane, from, to, signal, held?.data === undefined ? 0 : held.dataUpdatedAt + LANE_READ_GAP);
+    }),
     // The batch the row is read in retries as one read (lane-batch).
     staleTime: Infinity, retry: false,
   }),
