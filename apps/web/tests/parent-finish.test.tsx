@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { controlTreeSchema, type ControlTaskDTO } from "@alpacawork/contract/control";
 import { queryClient } from "../src/data/query-client";
 import { formatClock } from "../src/domain/time";
-import { finishFacts, finishOf, finishWords, type FinishFacts } from "../src/domain/finish-words";
+import { finishFacts, finishOf, finishWords, type OwnFinish } from "../src/domain/finish-words";
 import { indexTasks } from "../src/domain/tasks";
 import { TimeTree } from "../src/features/tree/TimeTree";
 import { useTimeView } from "../src/state/time-view";
@@ -186,7 +186,7 @@ test("a parent's future band says its children's end, or a not-before time", () 
 });
 
 /** A parent at work whose responsible is not working on it: it waits for the tasks under it. */
-const atWork: FinishFacts = { kind: "unknown", working: false };
+const atWork: OwnFinish = { kind: "unknown", working: false };
 
 test.each([
   { minutes: [NaN], expected: null },
@@ -195,7 +195,7 @@ test.each([
 ])("subtree aggregation retains invalid and repeated times: $minutes", ({ minutes, expected }) => {
   const children = minutes.map((remaining, i) => ({ id: `T${i + 11}`, remaining }));
   const index = indexTasks(data([parent(), ...children.map(({ id }) => kid(id))]).tasks);
-  const facts = new Map<string, FinishFacts>(children.map(({ id, remaining }) => [id, {
+  const facts = new Map<string, OwnFinish>(children.map(({ id, remaining }) => [id, {
     kind: "estimate", estimate: { minutes: remaining, usedMinutes: 0, remainingMinutes: remaining, pending: false },
   }]));
   expect(finishOf("T1", { index, now, factsOf: id => facts.get(id) ?? atWork })).toEqual(expected);
@@ -206,7 +206,7 @@ test("open children do not hide later estimates at either depth", () => {
     parent(), kid("T11", { state: "todo" }), kid("T12"),
     kid("T121", { parentId: "T12", state: "todo" }), kid("T122", { parentId: "T12" }),
   ]).tasks);
-  const estimate: FinishFacts = { kind: "estimate", estimate: {
+  const estimate: OwnFinish = { kind: "estimate", estimate: {
     minutes: 100, usedMinutes: 0, remainingMinutes: 100, pending: false,
   } };
   expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : id === "T1" ? atWork : null }))
@@ -242,14 +242,20 @@ test("the position alone says whether a task's end is its agents': a Run needing
   expect(stopped("doing")).toEqual({ kind: "estimate", estimate });
   // An error to handle is a wait on the user: it says it stopped, and no estimate above covers it.
   expect(stopped("error")).toEqual({ kind: "stopped" });
-  const own = new Map<string, FinishFacts | null>([["T1", { kind: "estimate", estimate: { ...estimate, remainingMinutes: 60 } }], ["T11", stopped("doing")], ["T12", stopped("error")]]);
+  const own = new Map<string, OwnFinish | null>([["T1", { kind: "estimate", estimate: { ...estimate, remainingMinutes: 60 } }], ["T11", stopped("doing")], ["T12", stopped("error")]]);
   expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 60 * minute, count: 2, open: 1 });
 });
 
-test("a row not started says what the tasks under it say, as one at work with nobody working on it does", () => {
+test("a row not started says what the tasks under it say, and nothing of its own", () => {
   const index = indexTasks(data([parent({ state: "todo" }), kid("T11")]).tasks);
   const own = new Map([["T1", finishFacts({ state: "todo", position: "todo", interrupted: false, working: false, estimate: null, since: null })],
     ["T11", finishFacts({ state: "doing", position: "doing", interrupted: false, working: true,
       estimate: { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false }, since: null })]]);
   expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 0 });
+  // Alone, or with nothing timed under it, it says nothing: no word of a task at work, whatever is placed on it.
+  for (const working of [false, true]) {
+    const unstarted = finishFacts({ state: "todo", position: "todo", interrupted: false, working, estimate: null, since: null });
+    expect(finishOf("T11", { index, now, factsOf: () => unstarted })).toBeNull();
+    expect(finishOf("T1", { index, now, factsOf: () => unstarted })).toBeNull();
+  }
 });

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { userTurn } from "@alpacawork/contract";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
 import { estimateOf } from "@/domain/estimate";
-import { finishFacts, finishOf, finishWords, type FinishFacts, type FinishWords } from "@/domain/finish-words";
+import { finishFacts, finishOf, finishWords, type FinishFacts, type FinishWords, type OwnFinish } from "@/domain/finish-words";
 import { placedOn, type PeopleIndex } from "@/domain/people";
 import type { RunActivity } from "@alpacawork/contract/run";
 import { minutesSince } from "@/domain/time";
@@ -13,7 +13,7 @@ import { workWords } from '@/domain/work-words';
 import { outputIsQuiet } from '@/domain/run-activity';
 
 /** What one task's own state and records say of its end (domain/finish-words). */
-function ownFinishFacts(taskId: string, people: PeopleIndex, now: number): FinishFacts | null {
+function ownFinishFacts(taskId: string, people: PeopleIndex, now: number): OwnFinish | null {
   const control = people.tasks.get(taskId);
   if (!control) return null;
   const since = stateSince(control);
