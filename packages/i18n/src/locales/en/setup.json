@@ -9,7 +9,7 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "First AI to use",
-    "firstHint": "It becomes AI 1 in “AI for tasks and fallback order” in the settings, and new conversations start with it too. You can change the fallback order in the settings later.",
+    "firstHint": "Both the AI you talk to in the input box and the AI that works on tasks start with this one. You can add AIs to take over when it hits a usage limit later in the settings.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",
@@ -69,13 +69,14 @@
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
     "lead": "A project is a folder where the AI works, together with the rules for working there (the project policy).",
-    "policyNote": "The AI changes files without asking. Write here what it should ask you about first, and every AI in this project receives it. The example is fine to start with.",
+    "policyNote": "Write the rules for this project here. You can leave it empty.",
     "policySkillLine": "- {{skill}}: use {{when}}.",
     "policySkills": "## Skills to use",
     "policyStart": "## About this project\n- The code and documents in the working folder are what this project is about. Follow the rules already there (README, AGENTS.md and the like) and the way things are written.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
     "reread": "Load the latest",
     "title": "First project"
   },
+  "recommended": "Recommended",
   "skills": {
     "done_one": "Installed {{count}} skill",
     "done_other": "Installed {{count}} skills",
@@ -83,7 +84,7 @@
     "failedRequest": "Couldn't start the installation.",
     "from": {
       "bundled": "Included with alpacawork",
-      "repo": "From GitHub ({{repo}})"
+      "repo": "From GitHub (<repo>{{repo}}</repo>)"
     },
     "install_one": "Install {{count}} skill",
     "install_other": "Install {{count}} skills",
@@ -97,7 +98,7 @@
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
-        "what": "The AI uses images or video to show where to look, so you can decide or check right away.",
+        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video, so you can decide or check right away.",
         "when": "when asking the user to decide, and when writing a report"
       },
       "doyourjob": {
@@ -115,7 +116,7 @@
       "unreachable": "Couldn't reach the download source. Check your network connection, then try again."
     },
     "skip": "Continue without installing",
-    "title": "Recommended skills",
+    "title": "Skills to install",
     "where": "Install location: {{place}} (linked so Claude Code can use them too). You can remove them later."
   },
   "steps": {

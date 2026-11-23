@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { desktopApp, useDesktopApp } from "@/lib/desktop-app";
 import { useFirstRun, useFirstRunChange } from "@/data/first-run";
 import { useFrameSelector } from "@/data/workspace-store";
-import { Loading, StepButtons } from "./parts";
+import { Loading, RecommendedMark, StepButtons } from "./parts";
 import { leaveSetup } from "./entrance";
 import { DisplayStep } from "./DisplayStep";
 import { AgentsStep } from "./AgentsStep";
@@ -148,7 +148,10 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
         {t("done.later", { settings: t("settings.title", { ns: "panels" }), apps: t("settings.tabs.apps", { ns: "panels" }) })}</p>}
       {asks
         ? <StepButtons other={<Button variant="outline" className="min-h-11 px-4 narrow:w-full" disabled={asking} onClick={open}>{t("done.browser")}</Button>}>
-          <Button className="min-h-11 px-6 narrow:w-full" disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
+          <span className="relative inline-flex narrow:w-full">
+            <RecommendedMark className="pointer-events-none absolute -top-2.5 left-2" />
+            <Button className="min-h-11 px-6 narrow:w-full" disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
+          </span>
         </StepButtons>
         : <StepButtons><Button className="min-h-11 px-6 narrow:w-full" onClick={open}>{t("done.start")}</Button></StepButtons>}
     </div>

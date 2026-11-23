@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { Message } from "@/components/ui/message";
+import { cn } from "@/lib/utils";
 
 /** The buttons under a step's settings: Back on the left, then the other way on, then the step's own. A phone stacks
  * them, its own first, at the end of the content (never fixed over a field being typed in). */
@@ -17,6 +18,12 @@ export function StepButtons({ back, other, children, failure }: { back?: { onCli
       <div className="ml-auto flex items-center gap-3 narrow:contents">{other}{children}</div>
     </div>
   </div>;
+}
+
+/** The mark on what the setup recommends: the same pill as a recommended answer to a question. */
+export function RecommendedMark({ className }: { className?: string }) {
+  const { t } = useTranslation("setup");
+  return <span data-setup-recommended className={cn("rounded-full border border-turn bg-lit px-1.5 text-xs font-normal whitespace-nowrap text-turn", className)}>{t("recommended")}</span>;
 }
 
 export function FailureLine({ text, detail }: { text: string; detail: string }) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { SKILL_OFFERS, canSelectSkill, type SkillJob, type SkillName } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { problemText } from "@/features/forms/problem-text";
 import { useSkillInstall, useSkills } from "@/data/skills";
-import { FailureLine, Loading, StepButtons } from "./parts";
+import { FailureLine, Loading, RecommendedMark, StepButtons } from "./parts";
 
 /**
- * Step 3: the offered skills, each by what it changes, the recommended ones ticked. The button names what it installs, and pressing it is the
+ * Step 3: the offered skills, each by what it changes, the recommended ones ticked and those without a cost marked. The button names what it installs, and pressing it is the
  * approval; once every ticked skill is installed the setup goes on by itself. A skill that failed says why on its row
  * and stays ticked, so the same button tries it again. Listing never contacts where a skill comes from.
  */
@@ -58,13 +58,18 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
                   leaves no room for it (a phone), it drops under the heading rather than squeeze it. */}
               <span className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
+                {/* Marked only where nothing is given up for it: one that costs time and tokens is ticked, not urged. */}
+                {offer.recommended && !offer.cost && <RecommendedMark className="self-center" />}
                 {done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
                   : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null}
               </span>
               <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>
               <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-soft">
                 <code className="font-mono text-muted [overflow-wrap:anywhere]">{offer.name}</code>
-                <span className="[word-break:auto-phrase]">{offer.from.kind === "repo" ? t("skills.from.repo", { repo: offer.from.repo }) : t("skills.from.bundled")}</span>
+                <span className="[word-break:auto-phrase]">{offer.from.kind === "repo"
+                  ? <Trans t={t} i18nKey="skills.from.repo" values={{ repo: offer.from.repo }}
+                    components={{ repo: <a className="inline-link" href={`https://github.com/${offer.from.repo}`} target="_blank" rel="noreferrer" /> }} />
+                  : t("skills.from.bundled")}</span>
               </span>
             </span>
           </label>
