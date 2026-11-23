@@ -52,7 +52,7 @@
       "end": "見込み{{total}}分のうち{{used}}分作業。報告見込み {{time}}",
       "over": "見込み{{total}}分に対し{{used}}分作業。{{time}}の見込みを{{length}}超過",
       "subtree_other": "見込み{{count}}件のうち一番遅い時刻。報告見込み {{time}}",
-      "subtreeOver": "下のタスクが{{time}}の見込みを{{length}}超過"
+      "subtreeOver": "このタスクと下のタスクで一番遅い{{time}}の見込みを{{length}}超過"
     },
     "over": "{{time}}から{{length}}超過",
     "overBy": {

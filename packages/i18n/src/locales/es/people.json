@@ -60,7 +60,7 @@
       "subtree_one": "Según {{count}} estimación. Informe previsto {{time}}",
       "subtree_many": "La más tardía de {{count}} estimaciones. Informe previsto {{time}}",
       "subtree_other": "La más tardía de {{count}} estimaciones. Informe previsto {{time}}",
-      "subtreeOver": "Una tarea inferior superó la estimación ({{time}}) en {{length}}"
+      "subtreeOver": "Superó en {{length}} la estimación más tardía de esta tarea y las inferiores ({{time}})"
     },
     "over": "{{length}} de retraso ({{time}})",
     "overBy": {

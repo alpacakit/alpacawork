@@ -578,7 +578,7 @@
     "unwritable_directory": "ここには作れません（このフォルダに書き込む権限がありません）。"
   },
   "voice": {
-    "providerFailed": "Speech recognition failed"
+    "providerFailed": "音声認識に失敗しました"
   },
   "workspace": {
     "connecting": "接続しています",

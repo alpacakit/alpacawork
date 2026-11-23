@@ -53,11 +53,11 @@ Siga as quatro etapas da tela, em ordem.
 1. Escolha o idioma e o tema da tela e pressione “Avançar”.
 2. Confira se as IAs que vai usar estão em “Ativado” e pressione “Avançar”.
 3. Na etapa seguinte, deixe as recomendações como estão e pressione o botão de instalar.
-4. Dê um nome ao projeto, escolha a pasta do seu repositório como “Local do código” se for usar um que já existe, e pressione “Concluir configuração”.
+4. Dê um nome ao projeto, escolha a pasta do seu repositório como “Pasta de trabalho” se for usar um que já existe, e pressione “Concluir configuração”.
 
 <img src="../images/setup-project.png" alt="A última etapa da configuração inicial. Há os campos “Name” e “Working folder”, e o botão “Choose” ao lado de “Working folder”" width="480">
 
-Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Local do código”. Se for só para experimentar, deixe o “Local do código” vazio (a IA trabalha na pasta de dados, `~/alpacawork`). Você pode começar sem escrever uma política do projeto.
+Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Pasta de trabalho”. Se for só para experimentar, deixe a “Pasta de trabalho” vazia (a IA trabalha na pasta de dados, `~/alpacawork`). Você pode começar sem escrever uma política do projeto.
 
 Ao pressionar “Concluir configuração”, o Chrome e o Edge perguntam se você quer instalar o alpacawork como app. Pressione “Instalar e começar” para poder abri-lo de novo pelo ícone no Dock ou na barra de tarefas. Se escolher “Começar no navegador”, você pode instalar depois com “Instalar” em “Configurações (engrenagem) → App e celular”. No Safari do Mac, instale com “Arquivo → Adicionar ao Dock” no menu (macOS Sonoma ou posterior).
 

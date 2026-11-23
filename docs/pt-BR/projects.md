@@ -4,15 +4,15 @@ Como definir os projetos, a política do projeto e as IAs que você usa. A IA mu
 
 ## Usar em um repositório existente
 
-Escolha a pasta do repositório como “Local do código” do projeto. Não é preciso mover nada. A IA também lê, como sempre, o `AGENTS.md` e o `CLAUDE.md` da pasta.
+Escolha a pasta do repositório como “Pasta de trabalho” do projeto. Não é preciso mover nada. A IA também lê, como sempre, o `AGENTS.md` e o `CLAUDE.md` da pasta.
 
-Para mudar depois: nome do projeto, no canto superior esquerdo da tela → “Configurações de (nome do projeto)…” → “Escolher” em “Local do código” → “Salvar”.
+Para mudar depois: nome do projeto, no canto superior esquerdo da tela → “(nome do projeto) – configurações…” → “Escolher” em “Pasta de trabalho” → “Salvar”.
 
 A IA altera arquivos sem pedir confirmação. Se você fizer um commit antes de começar, vai conseguir distinguir e desfazer as mudanças da IA.
 
 ## Criar mais projetos
 
-Crie um projeto para cada repositório. Pressione o nome do projeto, no canto superior esquerdo → “Novo projeto”, informe o nome e o local do código e pressione “Criar”.
+Crie um projeto para cada repositório. Pressione o nome do projeto, no canto superior esquerdo → “Novo projeto”, informe o nome e a pasta de trabalho e pressione “Criar”.
 
 Um projeto que você não usa mais pode ser arquivado no final das configurações do projeto.
 

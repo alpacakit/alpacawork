@@ -53,11 +53,11 @@ alpacawork open
 1. 选择界面的语言和主题，按“下一步”。
 2. 确认要使用的 AI 显示为“已启用”，按“下一步”。
 3. 在这一步保持推荐的选择，按安装按钮。
-4. 确定项目的名称；在已有的仓库中使用时，把那个文件夹选为“代码位置”，然后按“完成初始设置”。
+4. 确定项目的名称；在已有的仓库中使用时，把那个文件夹选为“工作文件夹”，然后按“完成初始设置”。
 
-<img src="../images/setup-project.png" alt="Setup's last step, with the Name and Working folder fields and a Choose button next to Working folder" width="480">
+<img src="../images/setup-project.png" alt="初始设置的最后一步，有“Name”（名称）和“Working folder”（工作文件夹）两个字段，工作文件夹旁边有“Choose”（选择）按钮" width="480">
 
-项目，是让 AI 工作的一个文件夹，加上在那里要遵守的约定（项目准则）。在已有的仓库中使用时，把那个文件夹设为代码位置。只是试一试的话，代码位置留空即可（AI 会在数据存放位置 `~/alpacawork` 中工作）。不写项目准则也能开始。
+项目，是让 AI 工作的一个文件夹，加上在那里要遵守的约定（项目准则）。在已有的仓库中使用时，把那个文件夹设为工作文件夹。只是试一试的话，工作文件夹留空即可（AI 会在数据存放位置 `~/alpacawork` 中工作）。不写项目准则也能开始。
 
 按“完成初始设置”后，Chrome 和 Edge 会询问是否把 alpacawork 安装为应用。按“安装并开始”，之后就能从程序坞或任务栏的图标重新打开。如果选了“继续在浏览器中使用”，之后也可以在“设置（齿轮）→ 应用和手机”中点“安装”来安装。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 
@@ -65,7 +65,7 @@ alpacawork open
 
 在界面下方的输入框里写下想做的事并发送。发送后，输入框上方会出现回复的开头。点它即可阅读全文。
 
-<img src="../images/input-reply.png" alt="The input box, with the start of the coordinator's reply shown above it" width="560">
+<img src="../images/input-reply.png" alt="输入框，以及显示在它上方的协调员回复的开头" width="560">
 
 如果是已有的仓库，第一次请委托一件不改写文件的事。
 
@@ -83,12 +83,12 @@ AI 推进任务期间，你不必盯着界面。
 
 AI 发来提问或报告后，任务会移到“待验收”。打开这个任务。
 
-<img src="../images/list-waiting.png" alt="The Awaiting review heading in the list, with a task row under it" width="336">
+<img src="../images/list-waiting.png" alt="列表中的“Awaiting review”（待验收）标题，以及它下面的一行任务" width="336">
 
 - 如果是提问，先点一个选项，再发送。只点选项不会送达。回答后 AI 会继续推进，完成后会发来报告。
 - 如果是报告，读过没问题，就按界面下方的“完成”（对勾图标）。想让它修改时，把要改的地方写在输入框里发送。
 
-<img src="../images/action-bar.png" alt="The buttons along the bottom when a task is open: Auto-swipe, Change state, and Done" width="338">
+<img src="../images/action-bar.png" alt="打开任务时排在下方的按钮：“Auto-swipe”（自动滑动）、“Change state”（更改状态）和“Done”（完成）" width="338">
 
 任务移到“已完成”就结束了（“已完成”起初是收起的，点标题即可展开）。下一个委托也从同一个输入框发送。
 

@@ -122,18 +122,6 @@ test("a Working row whose own Run does not run stands for the work below it: run
   }
 });
 
-test("a row says when its work is expected to report only where it waits on its own work: not in Awaiting review or Idle", async () => {
-  const { saysExpectation, saysFinish } = await import("../src/domain/row-status");
-  const task = screenData(tree({ tasks: [dto({ state: "doing" })] })).tasks[0]!;
-  // A task drawn outside the home list (a dated Done row) says its end words.
-  expect(saysFinish(task)).toBe(true);
-  for (const [section, says] of [["doing", true], ["review", false], ["awaited", false]] as const) {
-    task.homeRow = { taskId: task.id, section, summary: { done: 0, total: 9 } };
-    expect(saysFinish(task)).toBe(says);
-    expect(saysExpectation(task)).toBe(says);
-  }
-});
-
 test('the error record selects this failure, not an older failure or a worker with a later Run number', () => {
   for (const [state, reason, expected] of [['succeeded', null, 'no_report'], ['cancelled', 'stopped', 'stopped'], ['failed', 'timeout', 'timeout']] as const) {
     const task = dto({state:'error', log:[logEntry(),logEntry({id:'Lerror',kind:'linked',toState:'error',runId:'R2'})]});

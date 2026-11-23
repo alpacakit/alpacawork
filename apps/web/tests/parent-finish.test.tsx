@@ -8,12 +8,13 @@ import { join } from "node:path";
 import { controlTreeSchema, type ControlTaskDTO } from "@alpacawork/contract/control";
 import { queryClient } from "../src/data/query-client";
 import { formatClock } from "../src/domain/time";
-import { finishOf, finishWords, type FinishFacts } from "../src/domain/finish-words";
+import { finishFacts, finishOf, finishWords, type OwnFinish } from "../src/domain/finish-words";
 import { indexTasks } from "../src/domain/tasks";
+import { finishFactsFor } from "../src/features/people/labels";
 import { TimeTree } from "../src/features/tree/TimeTree";
 import { useTimeView } from "../src/state/time-view";
 import { useViewStore } from "../src/state/view-store";
-import { TestWorkspace, dto, logEntry, screenData, serveTimeline, tree, homeFixture } from "./fixtures";
+import { TestWorkspace, dto, logEntry, run, screenData, serveTimeline, tree, homeFixture } from "./fixtures";
 
 /**
  * A parent's finish is what the unfinished tasks under it say (domain/finish-words `finishOf`), on its row in
@@ -27,7 +28,12 @@ const iso = (at: number) => new Date(at).toISOString();
 const clock = (minutes: number) => formatClock(iso(now + minutes * minute));
 
 type Spec = { id: string; parentId?: string; state?: ControlTaskDTO["state"]; asks?: boolean;
-  /** An estimate in minutes, reported `ago` minutes before now. */ estimate?: number; ago?: number; sentBack?: boolean };
+  /** An estimate in minutes, reported `ago` minutes before now. */ estimate?: number; ago?: number; sentBack?: boolean;
+  /**
+   * A Working task's own Run goes on it while no Working task under it does the work, or its person is running; else it is
+   * at work through the tasks under it. An `idle` one has none, and nothing under it at work.
+   */ idle?: boolean;
+  /** A Run of its own goes on it whatever is under it. */ ownRun?: boolean };
 const task = ({ id, parentId, state = "doing", asks, estimate, ago = 0, sentBack }: Spec) => dto({ id, parentId: parentId ?? null,
   path: `tasks/${id}`, title: id, state, log: [
     logEntry({ id: "L1", kind: "created", at: iso(now - 120 * minute), toState: "todo" }),
@@ -44,7 +50,10 @@ const canonical = controlTreeSchema.parse(JSON.parse(readFileSync(join(import.me
 /** A person on each task named in `people`: its responsible, idle, running or with its work stopped in an error. */
 type People = Record<string, "idle" | "running" | "attention">;
 const data = (specs: Spec[], people: People = {}) => {
-  const value = tree({ tasks: specs.map(task), home: homeFixture(specs.filter(spec => !spec.parentId).map(spec => ({ taskId: spec.id, section: "doing" as const }))),
+  const value = tree({ tasks: specs.map(task),
+  runs: specs.filter(spec => (spec.state ?? "doing") === "doing" && !spec.idle && (spec.ownRun || people[spec.id] === "running"
+    || !specs.some(each => each.parentId === spec.id && (each.state ?? "doing") === "doing"))).map(spec => run(`R${spec.id.slice(1)}`, { taskId: spec.id,
+    placementId: `P9${spec.id.slice(1)}`, state: "running", startedAt: iso(now - 10 * minute), endedAt: null })), home: homeFixture(specs.filter(spec => !spec.parentId).map(spec => ({ taskId: spec.id, section: "doing" as const }))),
   placements: Object.entries(people).map(([taskId, kind], index) => {
     const displayState = kind === "attention" ? "attention" as const : kind === "running" ? "running" as const : "idle" as const;
     return { ...canonical.placements[0]!, id: `P${index + 10}`, taskId, responsible: true,
@@ -84,11 +93,13 @@ test.each([
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { asks: true })], says: `After ${clock(40)}` },
   { combination: "a child whose estimate waits for an update makes it not before",
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90, ago: 5, sentBack: true })], says: `After ${clock(40)}` },
-  { combination: "a child whose person's work stopped makes it not before",
-    specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90 })], people: { T12: "attention" }, says: `After ${clock(40)}` },
-  { combination: "a past estimate leads, the earliest one, before later and unknown ends",
+  { combination: "a past estimate does not lead while a later one is ahead",
     specs: [parent(), kid("T11", { estimate: 30, ago: 60 }), kid("T12", { estimate: 20, ago: 30 }), kid("T13", { estimate: 120 }), kid("T14")],
-    says: `~30 min overdue` },
+    says: `After ${clock(120)}` },
+  { combination: "once every estimate is past, it is overdue from the latest",
+    specs: [parent(), kid("T11", { estimate: 30, ago: 60 }), kid("T12", { estimate: 20, ago: 30 })], says: `~10 min overdue` },
+  { combination: "an idle child's estimate does not count, and makes it not before",
+    specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90, idle: true })], says: `After ${clock(40)}` },
   { combination: "grandchildren count through a child that waits for them",
     specs: [parent(), kid("T11", { state: "doing" }), kid("T111", { parentId: "T11", estimate: 30 }),
       kid("T112", { parentId: "T11", estimate: 100 }), kid("T12", { estimate: 50 })], says: `Expected report ${clock(100)}` },
@@ -105,8 +116,8 @@ test.each([
   { combination: "a child whose estimate waits for an update leaves its own end unsaid, whatever its grandchildren say",
     specs: [parent(), kid("T11", { estimate: 60, ago: 5, sentBack: true }), kid("T111", { parentId: "T11", estimate: 100 })],
     says: `After ${clock(100)}` },
-  { combination: "a child's own estimate covers its grandchildren without one",
-    specs: [parent(), kid("T11", { estimate: 60 }), kid("T111", { parentId: "T11", state: "todo" })], says: `Expected report ${clock(60)}` },
+  { combination: "a child's own estimate covers its grandchildren at work without one",
+    specs: [parent(), kid("T11", { estimate: 60 }), kid("T111", { parentId: "T11" })], says: `Expected report ${clock(60)}` },
   { combination: "the parent's own estimate covers its children without one",
     specs: [parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people: { T1: "running" }, says: `Expected report ${clock(150)}` },
   { combination: "a child later than the parent's own estimate is the end",
@@ -139,7 +150,7 @@ test("the long words say how many estimates count, how many have none, or that o
   expect(cardSays([parent(), kid("T11", { estimate: 40 }), kid("T12"), kid("T13", { state: "todo" })]).long)
     .toBe(`Excluding 2 tasks without an estimate, the latest expected report is ${clock(40)}. Not all reports will be in before then`);
   cleanup();
-  expect(cardSays([parent(), kid("T11", { estimate: 30, ago: 60 })]).long).toBe(`A task under it is past the ${clock(-30)} estimate by ~30 min`);
+  expect(cardSays([parent(), kid("T11", { estimate: 30, ago: 60 })]).long).toBe(`Past the latest estimate of this task and the tasks under it (${clock(-30)}) by ~30 min`);
 });
 
 test("an overrun says how far past the estimate it is, no finer than the estimate is said", async () => {
@@ -150,11 +161,11 @@ test("an overrun says how far past the estimate it is, no finer than the estimat
   expect(past(58).short).toBe(`${clock(-58)}から約1時間超過`);
   expect(past(6 * 60 + 10).short).toBe(`${clock(-370)}から約6時間超過`);
   // The long words say it is the estimate that was passed.
-  expect(past(6 * 60 + 10).long).toBe(`下のタスクが${clock(-370)}の見込みを約6時間超過`);
+  expect(past(6 * 60 + 10).long).toBe(`このタスクと下のタスクで一番遅い${clock(-370)}の見込みを約6時間超過`);
   expect(past(3 * 24 * 60 + 100).short).toMatch(/から約3日超過$/);
   await i18n.changeLanguage("en");
   expect(past(6 * 60 + 10).short).toBe(`~6 hours past ${clock(-370)}`);
-  expect(past(6 * 60 + 10).long).toBe(`A task under it is past the ${clock(-370)} estimate by ~6 hours`);
+  expect(past(6 * 60 + 10).long).toBe(`Past the latest estimate of this task and the tasks under it (${clock(-370)}) by ~6 hours`);
   expect(past(24 * 60).short).toMatch(/^~1 day past /);
 });
 
@@ -180,17 +191,20 @@ test("a parent's future band says its children's end, or a not-before time", () 
   expect(document.querySelector('[data-row="T1"] svg[data-time-strip] text')?.textContent?.endsWith(`After ${clock(40)}`)).toBe(true);
 });
 
+/** A parent at work whose responsible is not working on it: it waits for the tasks under it. */
+const atWork: OwnFinish = { kind: "unknown", working: false };
+
 test.each([
   { minutes: [NaN], expected: null },
-  { minutes: [NaN, 0, 0, 10], expected: { kind: "subtree", at: now, count: 4, open: 0 } },
+  { minutes: [NaN, 0, 0, 10], expected: { kind: "subtree", at: now + 10 * minute, count: 4, open: 0 } },
   { minutes: [NaN, 10, 10], expected: { kind: "subtree", at: now + 10 * minute, count: 3, open: 0 } },
 ])("subtree aggregation retains invalid and repeated times: $minutes", ({ minutes, expected }) => {
   const children = minutes.map((remaining, i) => ({ id: `T${i + 11}`, remaining }));
   const index = indexTasks(data([parent(), ...children.map(({ id }) => kid(id))]).tasks);
-  const facts = new Map<string, FinishFacts>(children.map(({ id, remaining }) => [id, {
+  const facts = new Map<string, OwnFinish>(children.map(({ id, remaining }) => [id, {
     kind: "estimate", estimate: { minutes: remaining, usedMinutes: 0, remainingMinutes: remaining, pending: false },
   }]));
-  expect(finishOf("T1", { index, now, factsOf: id => facts.get(id) ?? null })).toEqual(expected);
+  expect(finishOf("T1", { index, now, factsOf: id => facts.get(id) ?? atWork })).toEqual(expected);
 });
 
 test("open children do not hide later estimates at either depth", () => {
@@ -198,9 +212,77 @@ test("open children do not hide later estimates at either depth", () => {
     parent(), kid("T11", { state: "todo" }), kid("T12"),
     kid("T121", { parentId: "T12", state: "todo" }), kid("T122", { parentId: "T12" }),
   ]).tasks);
-  const estimate: FinishFacts = { kind: "estimate", estimate: {
+  const estimate: OwnFinish = { kind: "estimate", estimate: {
     minutes: 100, usedMinutes: 0, remainingMinutes: 100, pending: false,
   } };
-  expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : null }))
-    .toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 2 });
+  expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : id === "T1" ? atWork : null }))
+    .toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 3 });
+});
+
+test("a child awaiting the user's answer adds no estimate, even a past one: the parent says the latest at-work estimate, not before", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T12")]).tasks);
+  const estimate = (remainingMinutes: number) => ({ minutes: 30, usedMinutes: 0, remainingMinutes, pending: false });
+  const facts = (position: "doing" | "review" | "held", remaining: number | null) => finishFacts({ state: "doing", position, interrupted: false,
+    working: false, estimate: remaining === null ? null : estimate(remaining), since: null });
+  const own = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T12", facts("review", -3 * 24 * 60)]]);
+  expect(own.get("T12")).toBeNull();
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // A child awaiting an answer cannot end before it, whatever is under it: a working grandchild's estimate still counts.
+  const deep = indexTasks(data([parent(), kid("T11"), kid("T111", { parentId: "T11" })]).tasks);
+  const below = new Map([["T1", facts("doing", null)], ["T11", facts("review", null)], ["T111", facts("doing", 40)]]);
+  expect(finishOf("T1", { index: deep, now, factsOf: id => below.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // An estimate covers no task waiting on the user under it, at any depth: the parent's own, or a child's.
+  const held = new Map([["T1", facts("doing", 60)], ["T11", facts("doing", 40)], ["T12", facts("held", null)]]);
+  expect(finishOf("T1", { index, now, factsOf: id => held.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 60 * minute, count: 2, open: 1 });
+  const heldBelow = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T111", facts("held", null)]]);
+  expect(finishOf("T1", { index: deep, now, factsOf: id => heldBelow.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // Its own row says no report time either.
+  expect(finishOf("T12", { index, now, factsOf: id => own.get(id) ?? null })).toBeNull();
+});
+
+test("the position alone says whether a task's end is its agents': a Run needing attention stops only a task waiting on the user", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T12")]).tasks);
+  const estimate = { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false };
+  const stopped = (position: "doing" | "error") => finishFacts({ state: "doing", position, interrupted: true, working: true, estimate, since: null });
+  // A member's Run needs attention while the task is at work: its estimate still counts.
+  expect(stopped("doing")).toEqual({ kind: "estimate", estimate });
+  // An error to handle is a wait on the user: it says it stopped, and no estimate above covers it.
+  expect(stopped("error")).toEqual({ kind: "stopped" });
+  const own = new Map<string, OwnFinish | null>([["T1", { kind: "estimate", estimate: { ...estimate, remainingMinutes: 60 } }], ["T11", stopped("doing")], ["T12", stopped("error")]]);
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 60 * minute, count: 2, open: 1 });
+});
+
+test("a row not started says what the tasks under it say, and nothing of its own", () => {
+  const index = indexTasks(data([parent({ state: "todo" }), kid("T11")]).tasks);
+  const own = new Map([["T1", finishFacts({ state: "todo", position: "todo", interrupted: false, working: false, estimate: null, since: null })],
+    ["T11", finishFacts({ state: "doing", position: "doing", interrupted: false, working: true,
+      estimate: { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false }, since: null })]]);
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 0 });
+  // Alone, or with nothing timed under it, it says nothing: no word of a task at work, whatever is placed on it.
+  for (const working of [false, true]) {
+    const unstarted = finishFacts({ state: "todo", position: "todo", interrupted: false, working, estimate: null, since: null });
+    expect(finishOf("T11", { index, now, factsOf: () => unstarted })).toBeNull();
+    expect(finishOf("T1", { index, now, factsOf: () => unstarted })).toBeNull();
+  }
+});
+
+test("work under a task waiting on the user is read on every row above it, the waiting task an end left unsaid", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T111", { parentId: "T11" })]).tasks);
+  const estimate = { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false };
+  const atWork = finishFacts({ state: "doing", position: "doing", interrupted: false, working: true, estimate, since: null });
+  const held = finishFacts({ state: "held", position: "held", interrupted: false, working: false, estimate: null, since: null });
+  const failed = finishFacts({ state: "doing", position: "error", interrupted: true, working: false, estimate: null, since: null });
+  // A held row says the time of the work under it, not before.
+  expect(finishOf("T11", { index, now, factsOf: id => id === "T111" ? atWork : held })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // A failed child says it stopped; its parent reads the time of the work under it.
+  const own = new Map([["T1", held], ["T11", failed], ["T111", atWork]]);
+  expect(finishOf("T11", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "stopped" });
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 2 });
+  // With no time under it, a waiting row says nothing.
+  expect(finishOf("T1", { index, now, factsOf: id => id === "T111" ? held : own.get(id) ?? null })).toBeNull();
+});
+
+test("a task whose own Run runs is working, though a Run of its person needs attention", () => {
+  const value = data([parent(), kid("T11", { ownRun: true }), kid("T111", { parentId: "T11", estimate: 100 })], { T11: "attention" });
+  expect(finishFactsFor("T1", indexTasks(value.tasks), value.people, now)).toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 1 });
 });

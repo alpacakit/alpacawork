@@ -95,6 +95,26 @@ export function atLargest(placed: Placed, room: Room) {
   return Math.abs(most.width - placed.width) <= 1 && Math.abs(most.height - placed.height) <= 1;
 }
 
+/** At most this share of its largest, across or up and down, a frame reads at a glance as smaller than its largest. */
+const SMALLER = 3 / 4;
+/** Whether `placed` is clearly smaller than its largest in `room` (placeMaximized): what the head's ↙↗ may put back. */
+export function clearlySmaller(placed: Placed, room: Room) {
+  const most = placeMaximized(placed, room);
+  return placed.width <= SMALLER * most.width || placed.height <= SMALLER * most.height;
+}
+/**
+ * What the head's ↙↗ puts back from `frame` in `room` (the input `input` tall): the last frame the hand left clearly
+ * smaller (`smaller`; unset, where it first stands), where it is still so in this room. Otherwise (sized nearly as large
+ * by the hand, or kept in a larger room) `frame` where it stands at the first size, held clearly smaller: so the press
+ * always visibly makes it smaller.
+ */
+export function restoredFrame(frame: Frame, smaller: Frame | null, room: Room, input: number): Frame {
+  const back = smaller ?? FIRST;
+  if (clearlySmaller(placeFrame(back, room, input, true), room)) return back;
+  const most = placeMaximized(placeFrame(frame, room, input, true), room);
+  return { ...frame, width: FIRST.width, height: Math.max(LEAST_HEIGHT, Math.min(FIRST.height, Math.floor(SMALLER * most.height))) };
+}
+
 const frameCodec = jsonCodec<Frame | null>((value) => {
   const frame = value as Frame | null;
   if (!frame || !["left", "center", "right"].includes(frame.side) || (frame.edge !== "top" && frame.edge !== "bottom")) return null;
@@ -103,7 +123,7 @@ const frameCodec = jsonCodec<Frame | null>((value) => {
   return frame.height < LEAST_HEIGHT ? { ...frame, height: LEAST_HEIGHT } : frame;
 });
 export const keptFrame = deviceValue<Frame | null>("alpacawork.coordinatorFrame", frameCodec, null);
-/** The last frame kept smaller than its largest: what the head's ↙↗ puts back (unset: where it first stands). */
+/** The last frame kept clearly smaller than its largest: what the head's ↙↗ puts back (restoredFrame; unset: where it first stands). */
 export const smallerFrame = deviceValue<Frame | null>("alpacawork.coordinatorFrameSmaller", frameCodec, null);
 
 const clamp = (value: number, least: number, most: number) => Math.max(least, Math.min(value, most));

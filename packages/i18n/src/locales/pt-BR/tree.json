@@ -116,18 +116,18 @@
     "examples": {
       "decide": {
         "label": "Escolher uma ideia de minijogo e mandar criar",
-        "shows": "A IA compara ideias e faz uma pergunta a você. Sua resposta dá início à criação.",
-        "words": "Quero fazer um minijogo que eu possa jogar no navegador. Transforme isso em uma tarefa: liste 3 ideias e me pergunte qual criar, com uma tabela comparativa e a sua recomendação na pergunta. Depois que eu responder, crie a que eu escolhi em cerca de 5 minutos, sem perguntar mais nada, e me envie o relatório. Isto é um tutorial, então pegue leve no esforço: priorize a velocidade, não pense demais e faça sem complicar. Por favor, escreva tudo em português."
+        "shows": "A IA sugere ideias; escolha uma e ela cria esse jogo.",
+        "words": "Quero um minijogo que eu possa jogar no navegador. Sugira 3 ideias e me pergunte qual criar. Depois, crie a que eu escolher em cerca de 5 minutos. Isto é um teste, então pegue leve no esforço. Por favor, escreva tudo em português."
       },
       "models": {
-        "label": "Pedir um jogo da cobrinha a 3 modelos e escolher um",
-        "shows": "Modelos diferentes criam em paralelo, e depois você escolhe com qual ficar.",
-        "words": "Quero fazer um jogo da cobrinha. Você pode tentar criar 3 em paralelo, com modelos diferentes? Quando ficarem prontos, me pergunte com qual seguir. Isto é um tutorial, então, por favor, pegue leve no esforço e leve cerca de 5 minutos. Por favor, escreva tudo em português."
+        "label": "Pedir um jogo da cobrinha a 3 modelos e comparar",
+        "shows": "Modelos diferentes criam em paralelo e, no fim, você escolhe qual manter.",
+        "words": "Por favor, crie um jogo da cobrinha que rode no navegador, 3 vezes em paralelo, cada uma com um modelo diferente; se não houver modelos suficientes, varie o esforço. Quando ficarem prontos, me pergunte qual manter. Isto é um teste, então use configurações leves e leve cerca de 5 minutos. Por favor, escreva tudo em português."
       },
-      "triage": {
-        "label": "Dividir a abertura de um café em 5 tarefas",
-        "shows": "Os resultados ficam em fila para a sua revisão, e você escolhe quais concluir.",
-        "words": "Por favor, divida a abertura de um café fictício em 5 tarefas separadas: \"Encomendar os grãos\", \"Providenciar a placa\", \"Imprimir o cardápio\", \"Contratar a equipe\" e \"Enviar os convites\", e delegue cada uma a um agente. Peça que cada um escreva um resultado fictício de uma linha no relatório e aguarde a minha revisão. Quando as 5 chegarem, eu escolho quais concluir. Não precisa de pesquisa nem de arquivos e, por favor, escreva tudo em português."
+      "settings": {
+        "label": "Definir uma regra de trabalho e quantos agentes rodam ao mesmo tempo",
+        "shows": "Uma regra entra na política do projeto, e no máximo 4 agentes rodam ao mesmo tempo.",
+        "words": "Por favor, adicione esta regra à política deste projeto: \"Ao terminar, relate o que você mudou em até 3 linhas.\" Além disso, configure este ambiente para rodar no máximo 4 agentes ao mesmo tempo. Por favor, escreva tudo em português."
       }
     },
     "lead": "Escolha um exemplo para experimentar.",

@@ -265,7 +265,7 @@ test("the future band says a time's width, never the state the row's icon says; 
   expect(band({ kind: "done", at: ahead })).toEqual([clock, `Done ${clock}`]);
   expect(band({ kind: "subtree", at: ahead, count: 2, open: 0 })[0]).toBe(clock);
   expect(band({ kind: "subtree", at: ahead, count: 2, open: 1 })[0]).toBe(`After ${clock}`);
-  expect(band({ kind: "subtree", at: now - 10 * minute, count: 2, open: 0 })).toEqual(["~10 min overdue", `A task under it is past the ${past} estimate by ~10 min`]);
+  expect(band({ kind: "subtree", at: now - 10 * minute, count: 2, open: 0 })).toEqual(["~10 min overdue", `Past the latest estimate of this task and the tasks under it (${past}) by ~10 min`]);
   // A task's own estimate: the expected report alone, or how far past it is.
   const estimate = (minutes: number, used: number) => ({ kind: "estimate" as const, estimate: { minutes, usedMinutes: used,
     remainingMinutes: minutes - used, pending: false } });

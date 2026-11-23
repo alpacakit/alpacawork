@@ -250,18 +250,14 @@ test("a result says a task asking the user as every screen does, not by its stat
   const asking = taskFixture({ id: "T2", parentId: "T1", state: "doing",
     ball: userBall("question", "Lask", at, { questionId: "Lask" }) });
   const finished = taskFixture({ id: "T3", state: "done", log: [logEntry({ id: "Ldone", kind: "reported", toState: "done", fromState: "doing" })] });
-  // A held parent says when the work below it is expected to report, as it is said by its own state's word.
-  const held = dto({ id: "T4", state: "held" });
-  const below = taskFixture({ id: "T5", parentId: "T4", state: "doing",
-    log: [logEntry({ id: "Lplan", kind: "reported", fromState: "todo", toState: "doing", estimateMinutes: 60 })] });
   // A member's Run failed while its owner asks the user: still a question, as the list says, not the member's error.
   const memberFailed = taskFixture({ id: "T6", state: "doing", ball: userBall("question", "Lask6", at, { questionId: "Lask6" }) });
   const member = { id: "P6", taskId: "T6", agentId: "A-P6", profileKey: "codex", responsible: false, active: true, revision: 1,
     startedAt: at, endedAt: null, headRunId: null,
     runtime: { displayState: "attention" as const, reason: "exit" as const, sourceRunIds: [], runningCount: 0, queuedCount: 0, since: null,
       lastOutputAt: null, activityKind: null, toolName: null } };
-  const value = tree({ tasks: [dto({ id: "T1" }), asking, finished, held, below, memberFailed], placements: [member] });
-  seedSearch(value.root, "x", ["T2", "T3", "T4", "T6"]);
+  const value = tree({ tasks: [dto({ id: "T1" }), asking, finished, memberFailed], placements: [member] });
+  seedSearch(value.root, "x", ["T2", "T3", "T6"]);
   useViewStore.setState({ query: "x" });
   render(<TestWorkspace data={screenData(value)}><SearchResults /></TestWorkspace>);
   const row = document.querySelector<HTMLElement>('[data-result="T2"]')!;
@@ -272,6 +268,5 @@ test("a result says a task asking the user as every screen does, not by its stat
   // An end it reached still says when: a done task's result keeps its time.
   const done = document.querySelector<HTMLElement>('[data-result="T3"] span span span')!.textContent!;
   expect(done).toMatch(new RegExp(`^${i18n.t("ui:state.done")}\\s*\\S`));
-  expect(document.querySelector<HTMLElement>('[data-result="T4"] span span span')!.textContent).toMatch(/\d{1,2}:\d{2}/);
   expect(document.querySelector<HTMLElement>('[data-result="T6"] span span span')!.textContent).toBe(i18n.t("ui:turn.question"));
 });
