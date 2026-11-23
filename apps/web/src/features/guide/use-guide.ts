@@ -14,6 +14,7 @@ import { useConversation } from "@/features/coordinator/coordinator";
 import { useInputDraft } from "@/features/coordinator/editor/draft";
 import { hasContent, inlines } from "@/features/coordinator/editor/document";
 import { outgoing } from "@/features/coordinator/editor/outbox";
+import { graceReady } from "@/data/send-grace";
 import { useDraftStore } from "@/features/forms/draft-store";
 import { useSitting } from "@/features/reader/next-question";
 import { readerOutcome } from "@/features/reader/submission";
@@ -67,20 +68,20 @@ export function foundDraft(stage: GoingStage, written: string, before: FoundDraf
  * The rows awaiting the person, as the list's own rows have them (so the guide never says to open a row that is open
  * already), and which of them is `selected` in the detail. A row whose turn the person has already answered from here
  * (an answer sent, Done pressed: `submitted`, as the reader's own next-question deck counts them) is not theirs any
- * more, while it still stands in the list for the moment it can be taken back (`answered` counts those).
+ * more, while it still stands in the list for the moment it can be taken back.
  */
 export function awaiting(rows: readonly { taskId: string; section: string }[], byId: ReadonlyMap<string, Task>, submitted: (task: Task) => boolean,
-  selected: string | null): Pick<GuideFacts, "questions" | "results" | "open"> & { answered: number } {
-  let questions = 0, results = 0, answered = 0, open: GuideFacts["open"] = null;
+  selected: string | null): Pick<GuideFacts, "questions" | "results" | "open"> {
+  let questions = 0, results = 0, open: GuideFacts["open"] = null;
   for (const row of rows) {
     if (row.section !== "review") continue;
     const task = byId.get(row.taskId);
-    if (task && submitted(task)) { answered++; continue; }
+    if (task && submitted(task)) continue;
     const kind = task ? turnKind(task) : "result";
     if (kind === "question") questions++; else results++;
     if (row.taskId === selected) open = kind;
   }
-  return { questions, results, open, answered };
+  return { questions, results, open };
 }
 
 /** One press of Done the reader holds: which press it was (its send), and the Task it was pressed on. */
@@ -188,9 +189,11 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const root = useConversation(state => state.root);
   const turns = useConversation(state => state.conversation?.turns) ?? NO_TURNS;
   const entries = useDraftStore(state => state.entries);
-  const sending = useMemo(() => outgoing(entries, root)
-    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId))
-    .map(item => item.requestId), [entries, root, turns]);
+  const leaving = useMemo(() => outgoing(entries, root)
+    .filter(item => !item.taken && !item.cancelled && item.stage !== "refused" && !turns.some(turn => turn.id === item.requestId)), [entries, root, turns]);
+  const sending = useMemo(() => leaving.map(item => item.requestId), [leaving]);
+  // Still within the moment it can be taken back in (it leaves that stage as the moment ends, which redraws this).
+  const soon = leaving.some(item => item.stage === "queued" && !graceReady(item.due));
   // What the input holds now: anything to send (foundDraft), and a label.
   const { doc } = useInputDraft();
   const found = useRef<FoundDraft>(null);
@@ -205,12 +208,12 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
   const finished = finishedHere(pressed, useServerState(pressed, index.byId));
   const doneHere = finished.length > 0;
-  // What the person answered or pressed Done on from here, as this device keeps it (a load of the page does not lose
-  // it), is on its way: its row still awaits them in the list, or the Task pressed Done on is not finished yet.
-  const settling = awaited.answered > 0 || pressed.some(id => { const task = index.byId.get(id); return !!task && submitted(task) && !finished.includes(id); });
+  // Done pressed here and sent, as this device keeps it (a load of the page does not lose it), on a Task the server
+  // does not say is finished yet: on its way.
+  const settling = pressed.some(id => { const task = index.byId.get(id); return !!task && submitted(task) && !finished.includes(id); });
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
-  const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
+  const facts: GuideFacts = { stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
     apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);

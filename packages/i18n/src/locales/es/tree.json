@@ -33,7 +33,7 @@
       "sendReady": "Envíalo con este botón.",
       "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada, donde también puedes pedir cambios en la configuración o añadir modelos.",
       "unassigned": "Esta tarea aún no tiene una IA asignada. Abre la fila y pide en el cuadro de entrada que empiece.",
-      "working": "Esto es una tarea. La IA asignada hace el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea pasa a «{{section}}»."
+      "working": "Esto es una tarea. La IA asignada recibe tus instrucciones y hace el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea pasa a «{{section}}»."
     },
     "tryExample": "Insertar un prompt de demostración"
   },

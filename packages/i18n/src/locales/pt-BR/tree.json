@@ -33,7 +33,7 @@
       "sendReady": "Envie com este botão.",
       "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
       "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça no campo de mensagem para começar.",
-      "working": "Isto é uma tarefa. A IA responsável faz o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa passa para “{{section}}”."
+      "working": "Isto é uma tarefa. A IA responsável recebe suas instruções e faz o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa passa para “{{section}}”."
     },
     "tryExample": "Inserir um prompt de demonstração"
   },

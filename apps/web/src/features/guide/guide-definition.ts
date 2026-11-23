@@ -74,8 +74,7 @@ export const PARTS = {
   send: "[data-ask-send]:not(:disabled)",
   /**
    * Where the coordinator is seen at work: "Open conversation" over that box, which says what it is doing (pressed, it
-   * opens the conversation), or the open conversation's head. Not what stands over the box while a message can still
-   * be taken back ("about to send"): it says the message is not sent yet.
+   * opens the conversation), or the open conversation's head.
    */
   coordinator: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-panel-head]",
   /** What stands in the row over that box: the conversation's button, and the buttons of the Task open in the detail. */
@@ -134,10 +133,7 @@ export type GuideFacts = {
   labelled: boolean;
   /** The server says a Task the person pressed Done on since the guide began is finished (finishedHere). */
   doneHere: boolean;
-  /**
-   * What the person answered or pressed Done on from here is still on its way: its row still stands as awaiting them,
-   * or the server does not say yet that the Task pressed Done on is finished (the screen itself says what was pressed).
-   */
+  /** Done pressed here is on its way: sent, and the server does not say yet that the Task is finished (the screen itself says it was pressed). */
   settling: boolean;
   /** The conversation with the coordinator holds messages (it has not been cleared). */
   talked: boolean;
@@ -149,6 +145,8 @@ export type GuideFacts = {
   conversationOpen: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
   busy: boolean;
+  /** What the person sent can still be taken back ("about to send"): the coordinator does not have it yet. */
+  soon: boolean;
   /** The input holds something to send (written since the first step was shown again, while it is). */
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
@@ -208,8 +206,9 @@ export const GUIDE: readonly GuideEntry[] = [
     when: f => f.stage.stage === "started" && !f.drafting && !f.sent && (f.tasks === 0 || !!f.stage.intro),
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.send") },
-  // Whatever was sent (a request, an answer, one more), while the coordinator is still on it.
-  { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy,
+  // Whatever was sent (a request, an answer, one more), while the coordinator is on it: not while it can still be
+  // taken back, which the screen says itself.
+  { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy && !f.soon,
     say: t => t("tree:guide.say.received"), again: t => t("tree:guide.again.received") },
   // A question open in the detail, until its answer is sent: right beside the questions' box, over the detail's margin;
   // where the detail lies over the page, clear of it (what is read over the questions stays read).
@@ -265,9 +264,9 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }), again: t => t("tree:guide.again.working", { section: turnSection(t) }) },
   // Nothing going on and nothing written: a request is to be written, with the request to try the whole flow with (as
-  // on the first step). Not while what the person just answered or finished is on its way: the screen says so itself,
-  // and what follows it is said next.
-  { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => !f.drafting && !f.settling,
+  // on the first step). Not while what the person just sent or finished is on its way: the screen says so itself, and
+  // what follows it is said next.
+  { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => !f.drafting && !f.busy && !f.settling,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain"), again: t => t("tree:guide.say.sendAgain") },
 ];
@@ -313,11 +312,11 @@ export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: n
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
- * step once another step than that one holds (something written or sent); over once no step holds while
- * `closing` (the close is read). What else it keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
+ * step once another step than that one holds (something written or sent); over, as read to its end, once no step
+ * holds while `closing` (the close is read). What else it keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
  */
 export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null, closing: boolean): GuideStage | undefined {
-  if (!entry) return closing ? { stage: "done" } : undefined;
+  if (!entry) return closing ? { stage: "done", read: true } : undefined;
   if (stage.stage !== "started") return undefined;
   const { at: _at, intro: _intro, ...kept } = stage;
   if (entry.turn) return { ...kept, stage: "turn" };

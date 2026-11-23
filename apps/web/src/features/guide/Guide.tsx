@@ -16,24 +16,20 @@ import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } 
 /** Where settings show the guide again: named in the notice that it is over, however it ended. */
 const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
 
-/** The close mark was pressed on this screen and its notice is the one to stand: the guide being over is not said over it. */
-let closedByHand = false;
-
 /**
- * Says that the guide is over when it is read to its end: it never just stops showing. Said on the screen that saw it
- * going and then over, whichever tab stored that, while the person is looking at it; not when it was closed by hand
- * here (the close mark says so itself).
+ * Says that the guide is over when it is read to its end: it never just stops showing. Said where the person was
+ * following it: on a screen that shows the guide (`shown`) and saw it going and then read to its end, whichever tab
+ * stored that, while the person is looking at it. Closed by hand, the close mark says so itself, there alone.
  */
-function useOverNotice() {
+function useOverNotice(shown: boolean) {
   const { t } = useTranslation("tree");
   const stage = useDeviceValue(guideStage);
   const was = useRef(stage);
   useEffect(() => {
     const before = was.current;
     was.current = stage;
-    if (stage?.stage !== "done" || !going(before)) return;
-    if (closedByHand) { closedByHand = false; return; }
-    if (document.visibilityState === "visible") notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" });
+    if (stage?.stage === "done" && stage.read && going(before) && shown && document.visibilityState === "visible")
+      notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" });
   }, [stage]);
 }
 
@@ -43,7 +39,6 @@ function CloseGuide({ className }: { className?: string }) {
   const close = () => {
     // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
     const before = guideStage.get();
-    closedByHand = going(before) !== null;
     closeGuide();
     notify.info(t("guide.closed", shownAgainAt(t as TFunction)),
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
@@ -238,10 +233,10 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  */
 export function GuideBalloon() {
   useGuideStart();
-  useOverNotice();
   const stage = useGoingGuide();
   // Started on a phone too (its stage kept for a computer), it is drawn on a computer's screen alone (useGuideShown).
   const shown = useGuideShown();
+  useOverNotice(shown);
   return stage && shown && <GoingBalloon stage={stage} />;
 }
 
