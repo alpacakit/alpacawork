@@ -68,10 +68,6 @@ alpacawork setup
 
 ターミナルからは `alpacawork open` でも開けます。
 
-`/alpacawork` は、Claude Code・Codex の会話で最初に頼むときに1回付け、AI に alpacawork のスキルを読ませます。2回目からと、alpacawork の画面の入力欄では付けません。更新や再起動など、ほかの操作の頼み方は [Claude Code・Codex から使う](docs/ja/chat.md) にあります。
-
-Chrome か Edge なら、画面でのセットアップの終わりか、あとから設定の「アプリ・スマホ」でアプリとして入れられ、Dock やタスクバーのアイコンから開き直せます。Mac の Safari では、メニューの「ファイル → Dock に追加」（macOS Sonoma 以降）で入れます。
-
 ## できること
 
 - **頼みごとは、1つの入力欄に書くだけ。** コーディネーターが依頼をタスクにして、担当の AI に任せます。作業ごとに会話や AI を切り替える必要はありません。
