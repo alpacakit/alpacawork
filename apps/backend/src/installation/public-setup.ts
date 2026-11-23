@@ -21,7 +21,7 @@ import { saveJournal, loadJournal, terminal as ended, recovering } from '../rele
 import { parseTargets } from '../release/package-closure.js';
 import { absolutePath, assertProductDirectory } from './files.js';
 import { InstallationStore, installationPath } from './store.js';
-import { initializeInstallation, registerInstallation, validateNewWorkspace, inspectInstallationService, recordInstallationService, readInstallationService, installationSkillsRoot, probeServicePort, serviceDefinition, servicePort, servicePublicHost, defaultReleases } from './setup.js';
+import { initializeInstallation, registerInstallation, validateNewWorkspace, inspectInstallationService, recordInstallationService, readInstallationService, installationSkillsRoot, probeServicePort, serviceDefinition, servicePort, servicePublicHost, serviceMcp, defaultReleases } from './setup.js';
 import { skillLinkConflicts, confirmInstallation, displayInstallationPath, type InstallationChange, type InstallationConfirmationRequest, type InstallationTerminal } from './confirmation.js';
 import { ManagedSkillsWriter, SkillWriteFailure, equal, type SkillWriteRequest } from './skills.js';
 import { completeSetup, finishSetupSkills, newSetupSkills, readSetupSkills, saveSetupSkills } from './setup-skills.js';
@@ -29,6 +29,7 @@ import { detectSetupAgents } from './setup-ai.js';
 import { inspectAgentSkillLinks } from './agent-skill-links.js';
 import { canonicalLanguageTag } from '@alpacawork/contract';
 import { localCaller } from '@alpacawork/contract/access-boundaries';
+import { inspectMcpTailnet } from './tailnet-mcp.js';
 import { setupAgentName } from './setup-output.js';
 import { switchTo, ServiceStartRequired, ServiceNotReady, assertWorkspaceStopped, assertPortChangeable, replaceService } from '../release/switch.js';
 import { readUpdateRecord, completedUpdate } from '../release/update-record.js';
@@ -38,7 +39,7 @@ export type InstallationResult = {installed:false;reason:string;plan?:unknown;co
 export type SetupArtifact = {facts: {name: string; version: string; source: string; edition: import('../release/layout.js').ReleaseKind; targets: string[]};
   publish: (releases: string, say: (line: string) => void) => Promise<string>};
 export type SetupRequest = Omit<WorkspaceRequest, 'record' | 'intent'> & { releases?: string; service?: string; port?: number; publicHost?: string; artifact?: SetupArtifact;
-  language?: string; yes?: boolean; onFailure?: (line: string) => void; onReady?: (url: string) => void };
+  mcp?: boolean; confirmPrivateTailnet?: boolean; language?: string; yes?: boolean; onFailure?: (line: string) => void; onReady?: (url: string) => void };
 /** Read-only selection. The workspace Owner enforces all existing/explicit/default conflicts. */
 export function inspectSetup(request: SetupRequest) {
   if (request.language !== undefined && !canonicalLanguageTag(request.language)) throw new Problem(PROBLEM_CODE.invalidInput, '--lang must be a BCP 47 language tag');
@@ -62,7 +63,7 @@ export function inspectSetup(request: SetupRequest) {
 export type SetupPlan = ReturnType<typeof inspectSetup>;
 /** Confirmation takes workspace state from inspection, never a separately assembled display flag. */
 export function confirmSetup(plan: SetupPlan,
-  observations: Pick<InstallationConfirmationRequest, 'service' | 'agents' | 'skills' | 'links' | 'overwrite' | 'resuming'>, terminal?: InstallationTerminal, options: { yes?: boolean; showReleases?: boolean } = {}) {
+  observations: Pick<InstallationConfirmationRequest, 'service' | 'agents' | 'skills' | 'links' | 'overwrite' | 'resuming' | 'notes'>, terminal?: InstallationTerminal, options: { yes?: boolean; showReleases?: boolean } = {}) {
   return confirmInstallation({ ...observations, showReleases: options.showReleases, workspace: plan.workspace, releases: plan.releases, existing: plan.existing, application:{current:plan.installation?.releases ? importCurrent(plan.releases) : null,target:plan.facts.version} }, terminal, options);
 }
 
@@ -80,21 +81,33 @@ function observeService(definition: ServiceDefinition) {
   return observation;
 }
 /** Every caller but setup's re-approval uses a recorded service as recorded, and is told the fix when it names another. */
-export function requestedInstallationService(plan: Pick<SetupPlan, 'workspace' | 'releases'>, request: Pick<SetupRequest, 'env' | 'service' | 'port' | 'publicHost'>) {
+export function requestedInstallationService(plan: Pick<SetupPlan, 'workspace' | 'releases'>, request: Pick<SetupRequest, 'env' | 'service' | 'port' | 'publicHost' | 'mcp'>) {
   const managed = readInstallationService({ workspace: plan.workspace, releases: plan.releases, env: request.env });
   if (request.service !== undefined && request.service !== managed.definition.name)
     throw new Problem(PROBLEM_CODE.conflict, 'Requested service differs from the recorded service; the service name of an installation cannot be changed');
   if (request.port !== undefined && request.port !== managed.port || request.publicHost !== undefined && request.publicHost !== servicePublicHost(managed.definition))
     throw new Problem(PROBLEM_CODE.conflict, 'Requested port or public host differs from the recorded installation; run alpacawork setup --port/--public-host from a terminal to change it');
+  if (request.mcp !== undefined && request.mcp !== serviceMcp(managed.definition))
+    throw new Problem(PROBLEM_CODE.conflict, 'Requested MCP setting differs from the installation; change it with alpacawork setup --mcp from a terminal');
   return managed;
 }
 /** A first approval proposes this terminal's definition; a recorded service is shown and resumed as recorded. */
 async function servicePreview(plan: SetupPlan, request: SetupRequest) {
   const definition = plan.installation?.service ? requestedInstallationService(plan, request).definition
-    : await inspectInstallationService(plan.releases, plan.workspace, request.env, request.service, {port:request.port,publicHost:request.publicHost});
+    : await inspectInstallationService(plan.releases, plan.workspace, request.env, request.service, {port:request.port,publicHost:request.publicHost,mcp:request.mcp});
   observeService(definition);
   return { definition, description: serviceDescription(definition, serverText(uiLocaleFromEnvironment(request.env))) };
 }
+async function mcpSetupNotes(port: number, request: SetupRequest, t: ServerText) {
+  const exposure = await inspectMcpTailnet(port, request.env);
+  if (exposure === 'funnel')
+    throw new Problem(PROBLEM_CODE.forbidden, t('server:setup.mcp.funnel', { port }));
+  if (exposure === 'unknown' && !request.confirmPrivateTailnet)
+    throw new Problem(PROBLEM_CODE.invalidInput, t('server:setup.mcp.verify'));
+  return [t('server:setup.mcp.access'), t('server:setup.mcp.settings'), t('server:setup.mcp.inspect'),
+    t('server:setup.mcp.runs'), t(exposure === 'unknown' ? 'server:setup.mcp.confirmed' : 'server:setup.mcp.private')];
+}
+
 /** What must finish before setup may change the service, read from the saved state alone: between two controllers
  * of one update no process is alive, and the journal still says the switch is under way. */
 function pendingOperation(plan: SetupPlan): { what: string; finish: string } | null {
@@ -116,9 +129,13 @@ function pendingOperation(plan: SetupPlan): { what: string; finish: string } | n
 async function reapproveService(plan: SetupPlan, request: SetupRequest, say: (line: string) => void, terminal?: InstallationTerminal): Promise<InstallationResult | null> {
   if (!plan.installation?.service) return null;
   const recorded = serviceDefinition(plan.installation, installationPath(request.env));
-  const approved = await inspectInstallationService(plan.releases, plan.workspace, request.env, request.service, {port:request.port,publicHost:request.publicHost});
+  const approved = await inspectInstallationService(plan.releases, plan.workspace, request.env, request.service, {port:request.port,publicHost:request.publicHost,mcp:request.mcp});
   const port = servicePort(approved), old = servicePort(recorded), portChanges = old !== port;
+  const language = uiLocaleFromEnvironment(request.env), t = serverText(language);
+  const mcp = serviceMcp(approved), mcpChanged = mcp !== serviceMcp(recorded);
   const facts: InstallationChange[] = [
+    ...(mcpChanged ? [{ fact: 'mcp' as const, from: t(mcp ? 'server:setup.mcp.off' : 'server:setup.mcp.on'),
+      to: t(mcp ? 'server:setup.mcp.on' : 'server:setup.mcp.off') }] : []),
     ...(portChanges ? [{ fact: 'port' as const, from: String(old), to: String(port) }] : []),
     ...(servicePublicHost(recorded) !== servicePublicHost(approved) ? [{ fact: 'publicHost' as const, from: servicePublicHost(recorded) ?? null, to: servicePublicHost(approved)! }] : []),
     ...(recorded.executable !== approved.executable ? [{ fact: 'node' as const, from: recorded.executable, to: approved.executable }] : []),
@@ -129,7 +146,7 @@ async function reapproveService(plan: SetupPlan, request: SetupRequest, say: (li
   const refusePending = () => {
     const pending = pendingOperation(plan);
     if (pending) throw new Problem(PROBLEM_CODE.conflict, recorded.executable === approved.executable
-      ? `${pending.what} is in progress, so setup does not change the port or public host now. First ${pending.finish}; then run this command again. Nothing was changed`
+      ? `${pending.what} is in progress, so setup does not change the service now. First ${pending.finish}; then run this command again. Nothing was changed`
       : `${pending.what} is in progress and can finish only under the Node.js it was approved with, ${recorded.executable}. Node.js is now ${approved.executable}, which setup approves only when nothing is in progress. Install Node.js at ${recorded.executable} again and, running under it, ${pending.finish}; then run alpacawork setup again to approve the new path. Nothing was changed`);
   };
   refusePending(); observeService(recorded);
@@ -142,16 +159,18 @@ async function reapproveService(plan: SetupPlan, request: SetupRequest, say: (li
     await probeServicePort(port).catch(cause => { throw new Problem(PROBLEM_CODE.conflict, `Port ${port} cannot be used (${hasCode(cause, 'EADDRINUSE') ? 'another process is using it' : cause instanceof Error ? cause.message : String(cause)}); choose another --port. Nothing was changed`, undefined, { cause }); });
   };
   await assertPortMoves(null);
-  const language = uiLocaleFromEnvironment(request.env), t = serverText(language);
+  const notes = mcp && (mcpChanged || portChanges || servicePublicHost(recorded) !== servicePublicHost(approved))
+    ? await mcpSetupNotes(port, request, t) : [];
   const approval = await confirmInstallation({ workspace: plan.workspace, releases: plan.releases, showReleases: request.releases !== undefined, existing: true, agents: [], skills: [],
     application: { current: readPackageVersion(release).version, target: readPackageVersion(release).version },
     changes: replaces && recorded.environment.PATH !== approved.environment.PATH ? [...facts, { fact: 'path', from: recorded.environment.PATH ?? null, to: approved.environment.PATH! }] : facts,
-    service: serviceDescription(approved, t) }, terminal, { yes: request.yes });
+    service: serviceDescription(approved, t), notes }, terminal, { yes: request.yes });
   if (!approval.approved) return { installed: false, reason: approval.reason };
   const unlock = holdReleases(plan.releases);
   try {
     // Read again under the release lock: the confirmation took time, and a stopped serve can now be read for its Runs.
     refusePending(); await assertPortMoves(release);
+    if (notes.length) await mcpSetupNotes(port, request, t);
     const ready = await replaceService(place, replaces, async () => {
       // With serve stopped no Run can start any more; one that started just before it keeps the old port.
       if (portChanges) await assertPortChangeable(place, release);
@@ -227,7 +246,9 @@ async function performSetup(plan: SetupPlan, request: SetupRequest, say: (line: 
   const receipt = statSync(root, { throwIfNoEntry: false }) ? new InstalledSkillsStore(root).read()?.receipt : null;
   const alreadyComplete = receipt?.state === 'complete' && receipt.operationId === writeRequest.operationId;
   const language = uiLocaleFromEnvironment(request.env), t = serverText(language);
-  const approval = await confirmSetup(plan, { service: service.description, agents: agents.map(setupAgentName), links: inspectAgentSkillLinks(root, writeRequest.intent.place, agents),
+  const notes = serviceMcp(service.definition) && !plan.installation?.service
+    ? await mcpSetupNotes(servicePort(service.definition), request, t) : [];
+  const approval = await confirmSetup(plan, { notes, service: service.description, agents: agents.map(setupAgentName), links: inspectAgentSkillLinks(root, writeRequest.intent.place, agents),
     skills: [
       { name: 'alpacawork', destination: join(root, 'alpacawork'), action: alreadyComplete ? 'keep' : statSync(join(root, 'alpacawork'), { throwIfNoEntry: false }) ? 'replace' : 'install' },
       ...(receipt?.state === 'complete' ? receipt.skills : []).filter(s => s.name !== 'alpacawork').map(s => ({ name: s.name, destination: join(root, s.name), action: 'keep' as const })),

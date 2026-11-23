@@ -57,6 +57,7 @@ type FileRouteOptions = {
    * again where it is reserved.
    */
   authorizeWrite: (request: Request, task: string) => WriteGrant | Promise<WriteGrant>;
+  mcpRead?: (request: Request, task: string, path: string) => Promise<unknown> | undefined;
   changed: (task: string) => void | Promise<void>;
   mutate?: Mutate;
   links?: (request: Request, value: unknown) => unknown;
@@ -74,6 +75,8 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
     const { task, name } = parseInput(taskFileInput,
       { task: c.req.param('task'), name: query.get('path') ?? '' });
     await options.authorizeRead(c.req.raw, task);
+    const mcpRead = options.mcpRead?.(c.req.raw, task, name);
+    if (mcpRead) return c.json(await mcpRead, 200);
     const download = query.get('download');
     if (download !== null && (download !== '1' || query.has('frame') || query.has('part')))
       throw new Problem(PROBLEM_CODE.invalidInput, 'download=1 reads the original file without frame or part');

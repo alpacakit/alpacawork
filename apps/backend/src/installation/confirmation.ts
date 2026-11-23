@@ -7,7 +7,7 @@ import type { AgentSkillLink } from './agent-skill-links.js';
 import type { SetupPlan } from './public-setup.js';
 
 /** One recorded installation fact the terminal is asked to replace; `from` is null where none was recorded. */
-export type InstallationChange = { fact: 'port' | 'publicHost' | 'node' | 'path'; from: string | null; to: string };
+export type InstallationChange = { fact: 'port' | 'publicHost' | 'node' | 'path' | 'mcp'; from: string | null; to: string };
 /** With `changes`, the request re-approves a recorded service and installs nothing: the array may be empty when only the registration is missing. */
 export type InstallationConfirmationRequest = Pick<SetupPlan, 'workspace' | 'releases' | 'existing'> & { service: string; agents: readonly string[]; skills: readonly { name: string; destination: string; action: 'install' | 'replace' | 'keep' }[]; links?: readonly AgentSkillLink[]; notes?: readonly string[]; overwrite?: readonly string[]; resuming?: boolean; application?: {current: string | null; target: string}; changes?: readonly InstallationChange[]; showReleases?: boolean };
 export type ApprovedInstallation = { approved: true; request: InstallationConfirmationRequest };
@@ -31,7 +31,7 @@ const labelWidth = (text: string) => Array.from(text).reduce((width, c) => width
 function installationRows(request: InstallationConfirmationRequest, t: ServerText, home?: string): string[] {
   const labels = { data: t('server:setup.row.data'), releases: t('server:setup.row.releases'), service: t('server:setup.row.service'),
     agents: t('server:setup.row.agents'), skill: t('server:setup.row.skill'), overwrite: t('server:setup.row.overwrite'), resume: t('server:setup.row.resume'), warning: t('server:setup.row.warning') };
-  const facts = { port: t('server:setup.fact.port'), publicHost: t('server:setup.fact.publicHost'), node: t('server:setup.fact.node'), path: t('server:setup.fact.path') };
+  const facts = { mcp: t('server:setup.fact.mcp'), port: t('server:setup.fact.port'), publicHost: t('server:setup.fact.publicHost'), node: t('server:setup.fact.node'), path: t('server:setup.fact.path') };
   const path = (value: string) => setupPath(value, home);
   const rows: [string, string][] = [
     [labels.data, t('server:setup.value.data', { path: path(request.workspace), state: request.existing ? t('server:setup.data.existing') : t('server:setup.data.new') })],

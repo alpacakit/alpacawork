@@ -97,7 +97,7 @@ export const TELEMETRY_EVENT_ATTRIBUTES = [
   // Who did it: a person on the screen, an agent checking the screen (`?agent=1`), the coordinator in the screen's
   // window or in an outside conversation (by agent), an AI Run (by agent), or a person at a terminal.
   attribute('via', ['screen', 'agent', 'coord.screen',
-    'coord.chat.claude', 'coord.chat.codex', 'coord.chat.grok', 'coord.chat.agy', 'coord.chat.copilot', 'coord.chat.opencode', 'coord.chat.hermes',
+    'coord.chat.claude', 'coord.chat.codex', 'coord.chat.mcp', 'coord.chat.grok', 'coord.chat.agy', 'coord.chat.copilot', 'coord.chat.opencode', 'coord.chat.hermes',
     'coord.chat.goose', 'coord.chat.qwen', 'coord.chat.amp', 'coord.chat.deepseek', 'coord.chat.pi', 'coord.chat.other',
     'run.claude', 'run.codex', 'run.grok', 'run.agy', 'run.copilot', 'run.opencode', 'run.hermes',
     'run.goose', 'run.qwen', 'run.amp', 'run.deepseek', 'run.pi', 'run.other',

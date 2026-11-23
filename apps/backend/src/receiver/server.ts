@@ -1,3 +1,7 @@
+import { mcpRequestBytes, type McpFileReadOptions } from '@alpacawork/contract/mcp';
+import { installMcpRoute } from './mcp-route.js';
+import { readMcpFile } from './mcp-file.js';
+import { appRoot } from '../app-paths.js';
 import { uiLocaleOrDefault } from '@alpacawork/core/ui-language';
 import { resumeKnownUpdates } from '../release/update-controller.js';
 import { TelemetryService } from '../telemetry/service.js';
@@ -19,6 +23,7 @@ import { publishedProjectLocations } from '../control/project-settings.js';
 import { createServer, type IncomingHttpHeaders, type ServerResponse } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  readFileSync,
   writeFileSync,
   renameSync,
   openSync,
@@ -559,6 +564,18 @@ export async function startServer(root: string, port: number, options: ServerOpt
   // Hono owns API routing and JSON replies. Host/Origin checks, static assets and SSE stay
   // on the raw Node response below.
   const api = new Hono();
+  const mcpRequests = new WeakSet<Request>();
+  const mcpReads = new WeakMap<Request, McpFileReadOptions>();
+  installMcpRoute(api, { root, enabled: options.mcp === true, publicHost, version: options.mcp ? z.object({ version: z.string() }).parse(
+      JSON.parse(readFileSync(join(appRoot(import.meta.url), 'package.json'), 'utf8'))).version : '',
+    readJson: request => body(request, mcpRequestBytes),
+    forward: (request, fileRead) => {
+      mcpRequests.add(request);
+      if (fileRead) mcpReads.set(request, fileRead);
+      return api.fetch(request);
+    },
+    authorizeUpload: (claim, task) => { authorizeRead(identify(root, claim), { name: 'file.write' }, task); },
+  });
   // JSON answers are compressed when the browser accepts it; the index is mostly repeated keys.
   api.use('/api/*', compress({ encoding: 'gzip' }));
   const commandRoutes = collectHttpRoutes(serverCommandTree.tree);
@@ -581,7 +598,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     const url = new URL(c.req.url);
     const cli = c.req.header('x-alpacawork-client') === 'cli';
     const command = serverCommands.get(`${c.req.method} ${url.pathname}`);
-    scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli, cli && command?.implementation.replayFromRun === true));
+    scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli, cli && command?.implementation.replayFromRun === true, mcpRequests.has(c.req.raw)));
     const mutation = !['GET','HEAD','OPTIONS'].includes(c.req.method) && url.pathname !== '/api/runtime/quiesce';
     if (mutation) {
       lifecycle.admit();
@@ -642,6 +659,10 @@ export async function startServer(root: string, port: number, options: ServerOpt
       const { claim } = scopeOf(request);
       return (db: DatabaseSync) =>
         authorize(db, identifyIn(root, db, claim), { name: 'file.write' }, { task, quote: null });
+    },
+    mcpRead: (request: Request, task: string, path: string) => {
+      const read = mcpReads.get(request);
+      return read ? readMcpFile(root, task, path, commandOrigin(request, publicHost), read) : undefined;
     },
     changed: attachmentChanged,
     links: (request: Request, value: unknown) => commandLinks(value, commandOrigin(request, publicHost)),

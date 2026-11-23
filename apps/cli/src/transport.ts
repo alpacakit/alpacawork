@@ -1,7 +1,7 @@
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { problemSchema } from '@alpacawork/contract/problem';
 
-export function actorHeaders(env: NodeJS.ProcessEnv): Headers {
+export function runCredentialHeaders(env: NodeJS.ProcessEnv, required = false): Headers {
   const headers = new Headers();
   const run = env.ALPACAWORK_RUN, token = env.ALPACAWORK_RUN_TOKEN;
   if ((run === undefined) !== (token === undefined))
@@ -12,6 +12,13 @@ export function actorHeaders(env: NodeJS.ProcessEnv): Headers {
     headers.set('Authorization', `Alpacawork-Run ${run}:${token}`);
     return headers;
   }
+  if (required) throw new Problem(PROBLEM_CODE.invalidInput, '--run requires ALPACAWORK_RUN and ALPACAWORK_RUN_TOKEN');
+  return headers;
+}
+
+export function actorHeaders(env: NodeJS.ProcessEnv): Headers {
+  const headers = runCredentialHeaders(env);
+  if (headers.has('Authorization')) return headers;
   const claude = env.CLAUDE_CODE_SESSION_ID;
   const codex = env.CODEX_THREAD_ID || env.CODEX_SESSION_ID;
   if (claude && codex) throw new Problem(PROBLEM_CODE.invalidInput, 'Ambiguous direct conversation identity');

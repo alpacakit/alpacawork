@@ -3,6 +3,7 @@ import { AGENT_CHECK_MS, agentInspectionInput } from './server-settings.js';
 import { codecs, createOutputContract, defineEntry, defineEntryEndpoint, defineEntryNode, defineEntryTree, optional, required, verifyEntryOutput,
   type EntryChannelBinding, type EntryTreeDefinition, type EntryTreeEndpoint, type ErasedEntryDefinition, type ParameterSet } from '@alpacakit/channels';
 import { bindHttpEntry, type HttpEntryBinding } from '@alpacakit/channels/http';
+import { mcpGuideName } from './mcp.js';
 import { attachmentsPath, taskFilePath } from './task-file-route.js';
 import { parseInput } from '@alpacawork/core';
 import { commandPath, commandPrefix } from './command-path.js';
@@ -100,10 +101,12 @@ export type FileBinding = {
   query?: readonly string[];
   headers?: Readonly<Record<string, string>>;
   contentDigest?: string;
+  attachmentRoot?: 'attachments';
   body?: 'bytes';
   response?: 'bytes';
 };
 type CommandDetails = {
+  cli?: false;
   help?: string;
   attachesDiffs?: 'description';
   rules?: readonly InputRule<never>[];
@@ -205,6 +208,13 @@ const taskListResultSchema = z.object({
 }).strict();
 
 const definitions = {
+  'help': command('read', 'List commands or read the full inputs and access for selected commands',
+    z.object({ commands: z.array(z.string()).max(45).optional() }).strict(),
+    [list('commands', 'Command names, e.g. task get')], { cli: false,
+      output: z.object({ guide: z.string(), commands: z.array(z.looseObject({ command: z.string(), kind: z.string(), description: z.string() })) }).strict() }),
+  'guide': command('read', 'Read a bundled alpacawork skill document',
+    z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
+    { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [
     text('under', 'Subtree root Task ID, listed first'),
@@ -337,7 +347,7 @@ const definitions = {
   'task/attachment/put': command('write', 'Attach a file to a request, for its instruction to link',
     attachmentInput, [taskId, text('requestId', 'The request (its op-id) the file goes with'),
       text('name', 'File name'), text('file', 'Local file to attach', { local: true })],
-    { output: attachmentResultSchema, file: { method: 'POST', path: attachmentsPath, query: ['requestId', 'name'], body: 'bytes' } }),
+    { output: attachmentResultSchema, file: { method: 'POST', path: attachmentsPath, query: ['requestId', 'name'], attachmentRoot: 'attachments', body: 'bytes' } }),
   'task/attachment/remove': command('write', 'Remove a file attached to a request', attachmentInput,
     [taskId, text('requestId', 'The request (its op-id) the file goes with'), text('name', 'File name')],
     { output: z.object({ removed: z.literal(true) }).strict() }),
@@ -539,3 +549,26 @@ export function commandTree<Context>(implement: (command: Command, verify: (valu
 export const commandCatalog = commandTree<never>(() => () => {
   throw new Error('The command catalog does not execute commands');
 });
+
+/** Format a byte route using the binding's path, query and headers. */
+export function byteRequest(binding: FileBinding, input: Record<string, unknown>) {
+  const path = binding.path.replace(/:([^/]+)/g, (_match, key: string) => encodeURIComponent(String(input[key])));
+  const query = new URLSearchParams(binding.query?.map(key => [key, String(input[key])]));
+  const headers = new Headers();
+  for (const [key, name] of Object.entries(binding.headers ?? {})) {
+    if (input[key] !== undefined) headers.set(name, String(input[key]));
+  }
+  return { path: query.size ? `${path}?${query}` : path, headers };
+}
+
+/** A Task-relative attachment destination supplies the two keys of the attachment byte route. */
+export function byteInputFromMcp(command: Command, input: Record<string, unknown>) {
+  if (!command.file?.attachmentRoot) return input;
+  const { path, ...rest } = input;
+  const parts = typeof path === 'string' ? path.split('/') : [];
+  const [root, requestId, name] = parts;
+  if (parts.length !== 3 || root !== command.file.attachmentRoot || !requestId || !name ||
+      Object.hasOwn(rest, 'requestId') || Object.hasOwn(rest, 'name'))
+    return parseInput(z.object({ path: z.never({ error: 'path must be attachments/<requestId>/<name>' }) }), { path });
+  return { ...rest, requestId, name };
+}

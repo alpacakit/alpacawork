@@ -287,7 +287,7 @@ export const taskFileInput = z.object({ task: taskIdSchema,
 /** Browser-facing host[:port], without a scheme or path. */
 export const PUBLIC_HOST_PATTERN = /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9][0-9]{0,4})?$/;
 export const serveInput = z.object({ port: z.string().transform(Number).pipe(z.number().int().min(0).max(65535)),
-  'public-host': z.string().regex(PUBLIC_HOST_PATTERN).optional(), timing: z.boolean().optional() });
+  'public-host': z.string().regex(PUBLIC_HOST_PATTERN).optional(), timing: z.boolean().optional(), mcp: z.boolean().optional() });
 export const pushSubscribeInput = z.object({ subscription: pushSubscriptionSchema,
   label: z.string().min(1).max(80) });
 export const pushUnsubscribeInput = z.object({ id: z.string().min(1).max(64) });

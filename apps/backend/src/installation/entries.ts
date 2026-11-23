@@ -5,7 +5,8 @@ import { existsSync } from 'node:fs';
 import { uiLocaleFromEnvironment } from '@alpacawork/core/ui-language';
 import { serverText } from '@alpacawork/i18n/server';
 import { canonicalLanguageTag } from '@alpacawork/contract';
-import { Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { z } from 'zod';
+import { parseInput, Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { setupLog, setupResult, openSetupBrowser, readSetupAgentReadiness } from './setup-output.js';
 import type { Context } from '../entries.js';
 import { runSetup } from './public-setup.js';
@@ -16,16 +17,19 @@ const entry = defineEntry({ name: 'setup', parameters: [defineParameter({ name: 
   codec: codecs.string(), requirement: optional() }),
   defineParameter({ name: 'port', description: 'Loopback port, 1..65535 (default: the recorded port; an available port when new). Another free port replaces the recorded one after confirmation, while no agent is running', codec: codecs.string(), requirement: optional() }),
   defineParameter({ name: 'public-host', description: 'Public host[:port] behind a reverse proxy (default: the recorded host). Another value replaces the recorded one after confirmation', codec: codecs.string(), requirement: optional() }),
+  defineParameter({ name: 'mcp', description: 'Enable (on) or disable (off) MCP for the private tailnet', codec: codecs.string(), requirement: optional() }),
+  defineParameter({ name: 'confirm-private-tailnet', description: 'Confirm private access when setup cannot read Tailscale settings', codec: codecs.boolean(), requirement: optional() }),
   defineParameter({ name: 'lang', description: 'Initial screen and AI reply language for a new workspace (BCP 47, for example ja-JP)', codec: codecs.string(), requirement: optional() }),
   defineParameter({ name: 'yes', description: 'Skip confirmation and apply setup', codec: codecs.boolean(), requirement: optional() }),
   defineParameter({ name: 'no-open', description: 'Do not open a browser after setup', codec: codecs.boolean(), requirement: optional() }),
 ], project: ({ values }) => values });
 export const setupNode = defineEntryNode({ name: 'setup',
-  description: 'Confirm installation, install managed skills and start the local server. On an installed PC, run it again to approve a changed port, public host or Node.js path; the service then also takes this terminal PATH',
-  endpoints: [withCliOutput(defineEntryEndpoint(entry, { channels: [bindCliOptions(entry.parameters, { yes: ['-y', '--yes'] })], handler: async (values: { releases?: string; port?: string; 'public-host'?: string; lang?: string; yes?: boolean; 'no-open'?: boolean }, context: Context) => {
+  description: 'Confirm installation, install managed skills and start the local server. On an installed PC, run it again to approve a changed port, public host, MCP setting or Node.js path; the service then also takes this terminal PATH',
+  endpoints: [withCliOutput(defineEntryEndpoint(entry, { channels: [bindCliOptions(entry.parameters, { yes: ['-y', '--yes'] })], handler: async (values: { releases?: string; port?: string; 'public-host'?: string; mcp?: string; 'confirm-private-tailnet'?: boolean; lang?: string; yes?: boolean; 'no-open'?: boolean }, context: Context) => {
     if (!context.cli) throw new Error('Setup requires a local CLI');
     const language = values.lang === undefined ? undefined : canonicalLanguageTag(values.lang);
     if (language === null) throw new Problem(PROBLEM_CODE.invalidInput, '--lang must be a BCP 47 language tag');
+    const mcp = parseInput(z.object({ mcp: z.enum(['on', 'off']).optional() }), { mcp: values.mcp }).mcp;
     const env = { ...context.cli.env, ...(language ? { LC_ALL: language } : {}) };
     const locale = uiLocaleFromEnvironment(env);
     let readiness: ReturnType<typeof readSetupAgentReadiness> | undefined;
@@ -35,7 +39,8 @@ export const setupNode = defineEntryNode({ name: 'setup',
     let result: Awaited<ReturnType<typeof runSetup>>;
     try { result = await runSetup({ ...context.cli, env, language, onFailure: line => { log(line); process.stderr.write(line + '\n'); },
       onReady: url => { readiness = readSetupAgentReadiness(url); }, explicit: context.root,
-      yes: values.yes === true, releases: values.releases, port: values.port === undefined ? undefined : Number(values.port), publicHost: values['public-host'] }, log, terminal);
+      yes: values.yes === true, releases: values.releases, port: values.port === undefined ? undefined : Number(values.port), publicHost: values['public-host'],
+      mcp: mcp === undefined ? undefined : mcp === 'on', confirmPrivateTailnet: values['confirm-private-tailnet'] === true }, log, terminal);
     } catch (error) {
       if (existsSync(log.path)) process.stderr.write(serverText(locale)('server:setup.log', { path: log.path }) + '\n');
       throw error;

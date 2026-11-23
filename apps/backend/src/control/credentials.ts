@@ -73,7 +73,7 @@ export function verifyRunCredential(root: string, runId: string, token: string):
   return timingSafeEqual(expected, Buffer.from(token, 'hex'));
 }
 
-type Provider = Extract<TaskActor, { kind: 'main' }>['provider'];
+type Provider = Exclude<Extract<TaskActor, { kind: 'main' }>['provider'], 'mcp'>;
 /**
  * What a request says about its caller, for resolveCaller to decide: a Run's credential, or the agent conversation it
  * comes from (HTTP sends them as headers; the local CLI has them in its environment). `replayOpId` names a `task report`
@@ -83,6 +83,7 @@ export type CallerClaim = {
   run?: { runId: string; token: string };
   direct?: { provider: Provider; conversationId: string };
   replayOpId?: string;
+  mcp?: true;
 };
 
 /** What resolveCaller's refusal of a Task Run's own conversation carries as its detail. */
@@ -102,6 +103,7 @@ const TASK_RUN_CONVERSATION = { conversation: 'task_run' } as const;
  */
 export function resolveCaller(root: string, claim: CallerClaim, store: RunStore | null, importing = true): Caller {
   if (claim.run) return runCaller(root, claim.run, claim.replayOpId, store);
+  if (claim.mcp) return { kind: 'coordinator', source: 'mcp', conversation: 'mcp' };
   if (!claim.direct) return { kind: 'human' };
   const { provider, conversationId } = claim.direct;
   if (!store) return { kind: 'coordinator', source: provider, conversation: conversationId };
