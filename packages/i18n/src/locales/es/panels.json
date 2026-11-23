@@ -345,7 +345,7 @@
     },
     "settingsTitle": "Configuración del proyecto",
     "summary": "Resumen",
-    "summaryHint": "Una frase sobre de qué trata este proyecto. La IA la lee al elegir en qué proyecto va una petición y al trabajar en este proyecto. Si se deja vacía, la IA la escribe con la primera petición.",
+    "summaryHint": "Una frase sobre de qué trata este proyecto. El coordinador la lee al elegir en qué proyecto va una petición, y los agentes al trabajar en este proyecto. Si se deja vacía, el coordinador la escribe la próxima vez que ponga una petición en este proyecto.",
     "target": "Proyecto",
     "targetHeld": "Guarda o descarta los cambios para elegir otro proyecto.",
     "title": "Nuevo proyecto"

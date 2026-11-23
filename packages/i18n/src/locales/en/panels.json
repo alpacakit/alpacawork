@@ -338,7 +338,7 @@
     },
     "settingsTitle": "Project settings",
     "summary": "Summary",
-    "summaryHint": "One sentence on what this project is for. AI reads it when choosing the project a request goes under and when working in this project. If left empty, AI writes it with the first request.",
+    "summaryHint": "One sentence on what this project is for. The coordinator reads it when choosing the project a request goes under, and agents read it when working in this project. If left empty, the coordinator writes it the next time it puts a request in this project.",
     "target": "Project",
     "targetHeld": "Save or discard the changes to choose another project.",
     "title": "New project"

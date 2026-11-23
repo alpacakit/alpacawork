@@ -22,8 +22,7 @@ import { ProjectColorField } from "@/features/forms/ProjectColorField";
 import { FormError, SubmitButton } from "@/features/forms/server-form";
 import { SaveUnconfirmed } from "./SaveUnconfirmed";
 import { SchemaFields } from "./SchemaFields";
-import { PROJECT_POLICY } from "@alpacawork/contract";
-import type { ProjectDraft } from "./settings-draft";
+import { draftValues, type ProjectDraft } from "./settings-draft";
 import { useProjectSave, type Project } from "./use-project-save";
 
 /**
@@ -176,13 +175,15 @@ function InheritedLines({ project, projects }: { project: Project; projects: Wor
   </details>;
 }
 
-/** The policy one project above passes on, as its agents are given it. */
+/** What one project above passes on, as its agents are given it: its summary on one line, then its policy. */
 function AncestorContext({ project }: { project: Project }) {
   const task = useEveryTaskIndex().byId.get(project.id);
   const { detail, query } = useTaskDetail(task);
   if (!detail) return query.isError ? <ReadFailure error={query.error} className="mt-2" retry={() => void query.refetch()} /> : <RegionSkeleton shape="text" />;
+  const { summary, policy } = draftValues(detail.values.values);
   return <div className="mt-2" data-project-inherited-from={project.id}>
     <p className="m-0 font-semibold">{project.title}<span className="ml-2 font-normal text-soft tabular-nums">{project.id}</span></p>
-    <p dir="auto" className="m-0 mt-1 whitespace-pre-wrap text-muted [overflow-wrap:anywhere]">{String(detail.values.values[PROJECT_POLICY] ?? "")}</p>
+    {summary.trim() && <p dir="auto" data-project-inherited-summary className="m-0 mt-1 text-muted [overflow-wrap:anywhere]">{summary}</p>}
+    {policy.trim() && <p dir="auto" className="m-0 mt-1 whitespace-pre-wrap text-muted [overflow-wrap:anywhere]">{policy}</p>}
   </div>;
 }

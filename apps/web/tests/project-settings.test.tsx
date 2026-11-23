@@ -107,7 +107,7 @@ test("the summary is saved as a value of its own, cleared when emptied, and one 
   const field = document.getElementById("project-summary") as HTMLTextAreaElement;
   fireEvent.change(field, { target: { value: "x".repeat(131) } });
   fireEvent.click(save());
-  await screen.findByText("130 characters at most.");
+  await waitFor(() => expect(field.getAttribute("aria-invalid")).toBe("true"));
   expect(updateCalls(fetcher)).toHaveLength(0);
   fireEvent.change(field, { target: { value: "Monthly closing" } });
   fireEvent.click(save());

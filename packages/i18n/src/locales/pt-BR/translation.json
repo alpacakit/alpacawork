@@ -575,7 +575,7 @@
     "not_directory": "Isto é um arquivo, não uma pasta.",
     "required": "Preencha este campo.",
     "too_big": "Informe no máximo {{maximum}}.",
-    "too_long": "Escreva no máximo {{maximum}} caracteres.",
+    "too_long": "Informe no máximo {{maximum}} caracteres.",
     "too_small": "Informe no mínimo {{minimum}}.",
     "unreadable_directory": "Não é possível ler esta pasta.",
     "unwritable_directory": "Não é possível criar aqui (sem permissão de gravação nesta pasta)."
