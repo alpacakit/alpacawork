@@ -48,7 +48,8 @@ export function StatusTime({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const now = useNow();
   const offline = useOfflineShown();
-  const receivedAt = useConnection((state) => state.lastReceivedAt);
+  // The time a running line ends at offline; online it runs to now, so the feed's arrivals change nothing here.
+  const receivedAt = useConnection((state) => offline ? state.lastReceivedAt : null);
   const { status } = task.rowFacts;
   const order = useOrderWord(task);
   if (!saysRuns(task)) return null;

@@ -7,7 +7,7 @@ import { coordinatorWriteBasis } from '@/data/coordinator';
 import { canSendWrites } from '@/data/connection';
 import { readerTurn, sameTurn } from '@/features/reader/submission';
 import { swipesOnSend, useSitting, useReaderTurnUnadmitted, type ReaderAdmission, type ReaderCard } from '@/features/reader/next-question';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/ui/icon';
@@ -62,7 +62,7 @@ const EXPAND_ROOM = cn('[&[data-input-long]_[data-one-input]]:pr-11 narrow:[&[da
  * `launch.next`: the AI the next message goes to (the conversation's `nextLaunch`); null when none can run, and nothing
  * goes. `launch.ready`: the screen has read its workspace and conversation, so `next` is the server's word.
  */
-export function CoordinatorInput({ launch }: { launch: { next: CoordinatorNextLaunch | null; ready: boolean } }) {
+export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { launch: { next: CoordinatorNextLaunch | null; ready: boolean } }) {
   const { t } = useTranslation('ui');
   const conversation = useConversation(state => state.conversation);
   const open = useConversation(state => state.open);
@@ -339,4 +339,4 @@ export function CoordinatorInput({ launch }: { launch: { next: CoordinatorNextLa
       </div>
     </form>
   </div>;
-}
+});
