@@ -13,14 +13,16 @@ export function representedReadIds(key: QueryKey, data: unknown): string[] {
 }
 const isTimelineLane = (key: QueryKey) => key[0] === 'task-timeline' && key[2] === 'lane' && key.length === 6;
 /**
- * Whether a stored strip adds nothing to `later`: the same row and start, read after it, ending no earlier. The range's
- * end moves with the clock, so without this each turn of it leaves one more whole copy for every restart to prove.
+ * Whether a row's strip read for an earlier range gives way to `later`: the same row's strip read after it (at the same
+ * moment, the one reaching later). The range
+ * moves with the clock and the zoom, so without this every turn of it would keep one more copy of each row to project,
+ * sweep and prove on every restart; one held for a reader now (active) is the caller's to keep.
  */
 export function coversTimelineWindow(later: { key: QueryKey; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
-  // [kind, root, 'lane', lane, from, to]: everything but the end names the same row and start.
+  // [kind, root, 'lane', lane, from, to]: the same row of the same list.
   return later.key !== earlier.key && isTimelineLane(later.key) && isTimelineLane(earlier.key)
-    && later.key.every((part, at) => at === 5 || part === earlier.key[at])
-    && String(later.key[5]) >= String(earlier.key[5]) && later.acquiredAt >= earlier.acquiredAt;
+    && later.key.slice(0, 4).every((part, at) => part === earlier.key[at])
+    && (later.acquiredAt > earlier.acquiredAt || later.acquiredAt === earlier.acquiredAt && String(later.key[5]) > String(earlier.key[5]));
 }
 type RetentionItem<T> = { value: T; key: QueryKey; hash: string; data: unknown; usedAt: number; bytes: number; required: boolean; protected: boolean };
 /** One group/deadline/rank/budget policy. Adapters decide which values are eligible and what protection means. */
@@ -59,7 +61,18 @@ export function startReadRetention(client: QueryClient) {
     if (running) return;
     running = true;
     try {
-      const queries = client.getQueryCache().getAll().filter(query => readLifetime(query.queryKey) !== undefined);
+      const all = client.getQueryCache().getAll().filter(query => readLifetime(query.queryKey) !== undefined);
+      // Each row's newest acquired strip; an idle one of the same row acquired before it gives way (coversTimelineWindow).
+      const window = (query: Query) => ({ key: query.queryKey, acquiredAt: query.state.data === undefined ? 0 : query.state.dataUpdatedAt });
+      const newest = new Map<string, Query>();
+      for (const query of all) if (isTimelineLane(query.queryKey) && query.state.data !== undefined) {
+        const row = JSON.stringify(query.queryKey.slice(0, 4)), held = newest.get(row);
+        if (!held || held.state.dataUpdatedAt < query.state.dataUpdatedAt) newest.set(row, query);
+      }
+      const superseded = new Set(all.filter(query => !query.isActive() && query.state.fetchStatus === 'idle' && isTimelineLane(query.queryKey)
+        && (row => !!row && coversTimelineWindow(window(row), window(query)))(newest.get(JSON.stringify(query.queryKey.slice(0, 4))))));
+      for (const query of superseded) client.removeQueries({ queryKey: query.queryKey, exact: true });
+      const queries = all.filter(query => !superseded.has(query));
       const selection = selectGroups(queries.map(query => ({ value: query, key: query.queryKey, hash: query.queryHash, data: query.state.data,
         // The selector keeps protected groups outside the memory budget. Size a
         // payload only when that same policy actually needs its byte count.
