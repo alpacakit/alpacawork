@@ -153,6 +153,12 @@ export function showZoom(first: number, last: number, screen: number, layout: nu
   const sight = Math.max(60, layout - futureWidth) / Math.max(60, screen - futureWidth);
   return { viewMs: Math.max(MIN_VIEW, last - first + 2 * air) * sight, at: first - air };
 }
+/**
+ * The zoom the strip is drawn at: the one chosen; all of time (`allMs`, showZoom's) when that is chosen; with none
+ * chosen, the last 24 hours, or all of time when the history is shorter, so a new workspace's strip starts at its first
+ * record rather than a day before it.
+ */
+export const zoomFor = (chosen: number | "all" | null, allMs: number) => chosen === "all" ? allMs : chosen ?? Math.min(allMs, 24 * 3_600_000);
 /** A time kept `offset` px from the strip's left edge of the screen: what a zoom holds still. */
 export type Hold = { at: number; offset: number };
 

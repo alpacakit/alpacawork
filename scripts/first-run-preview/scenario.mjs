@@ -7,6 +7,7 @@ export function coordinatorInput(prompt) {
   const intent = /^Screen action: (.+)$/m.exec(text);
   return { source: match[1], answers: answers ? JSON.parse(answers[1]) : null,
     intent: intent ? JSON.parse(intent[1]) : null,
-    body: text.split('\n').filter(line => !/^(Screen action:|Questions being answered:)/.test(line)).join('\n') };
+    // The server's own lines (the reply language, what a press meant, the questions answered) are not the person's words.
+    body: text.split('\n').filter(line => !/^(Language:|Screen action:|Questions being answered:)/.test(line)).join('\n') };
 }
 

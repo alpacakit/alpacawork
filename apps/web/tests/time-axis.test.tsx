@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { AXIS_JOIN_MS, joinBusy, type Busy } from '@alpacawork/contract';
-import { atOf, buildAxis, shownScaleMs, xOf } from '../src/features/tree/time-line';
+import { atOf, buildAxis, shownScaleMs, xOf, zoomFor } from '../src/features/tree/time-line';
 
 const minute = 60_000, hour = 60 * minute, now = Date.parse('2026-10-20T10:00:00Z');
 test('activity compaction respects the exact fold threshold and keeps open work bounded by now', () => {
@@ -30,4 +30,12 @@ test('full-lifetime compaction preserves axis geometry across clips, zooms and o
         expect(atOf(joined, x)).toBeCloseTo(atOf(raw, x), 0);
     }
   }
+});
+
+test('with no zoom chosen, a history shorter than a day is shown whole, not from a day back', () => {
+  const day = 24 * 3_600_000, hour = 3_600_000;
+  expect(zoomFor(null, hour)).toBe(hour);
+  expect(zoomFor(null, 3 * day)).toBe(day);
+  expect(zoomFor('all', 3 * day)).toBe(3 * day);
+  expect(zoomFor(2 * hour, 3 * day)).toBe(2 * hour);
 });

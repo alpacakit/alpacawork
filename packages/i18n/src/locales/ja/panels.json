@@ -440,7 +440,7 @@
       "pushFollowup": "対応が要る返事が届いたとき",
       "pushHost": "PC の負荷が厳しいとき",
       "pushQuestion": "タスクがあなたに質問したとき",
-      "pushReview": "タスクがレビュー待ちになったとき",
+      "pushReview": "タスクが確認待ちになったとき",
       "pushScope": "この選択は登録したすべての端末に適用されます。",
       "pushStopped": "タスクが中止になったとき",
       "pushTiming": "送らない時間",
