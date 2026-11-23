@@ -145,9 +145,10 @@ const inFront = (element: Element, across: number, down: number) => {
 };
 /**
  * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there: its
- * head not in front (scrolled out of the box, or under a heading that stays at its top), or, where it would fit in
- * that box whole, reaching past its edge. A part to bring into view; one taller than the box is left where the person
- * has it while its head is seen.
+ * head scrolled out of the box, within the room the part keeps clear at the box's top for what stays there (its
+ * scroll margin: a heading that stays at the top takes no press, so it is not seen by what stands in front), or not in
+ * front; or, where it would fit in that box whole, reaching past its edge. A part to bring into view; one taller than
+ * the box is left where the person has it while its head is seen.
  */
 function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
@@ -155,8 +156,10 @@ function outOfPane(selector: string): HTMLElement | null {
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
     const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
     if (!pane) continue;
-    const head = inFront(element, box.left + box.width / 2, box.top + Math.min(box.height, HEAD) / 2);
-    if (!head || box.height <= pane.height && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
+    const kept = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
+    const head = box.top + Math.min(box.height, HEAD) / 2;
+    const seen = box.top >= pane.top + kept - 1 && head <= pane.bottom && inFront(element, box.left + box.width / 2, head);
+    if (!seen || box.height <= pane.height && box.bottom > pane.bottom + 1) return element;
   }
   return null;
 }
