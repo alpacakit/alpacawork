@@ -45,7 +45,7 @@ As IAs usam os planos e as configurações que você já tem. A cobrança també
 
 ## Escolher o modelo
 
-Ao lado do botão de enviar do campo de mensagem aparece o modelo que a IA que é seu ponto de contato usa (por exemplo `opus(low)`). Ao tocar nele, abre “IA com quem você fala no campo de mensagem (coordenador)” em “Configurações (engrenagem) → Servidor”, onde você escolhe essa IA e as IAs alternativas que continuam quando ela para. As IAs responsáveis são escolhidas em “IA das tarefas”, na mesma tela. Para usar outro modelo em um trabalho específico, escreva-o na solicitação ou na política (“Faça este trabalho com o opus”).
+Ao lado do botão de enviar do campo de mensagem aparece o modelo que a IA que é seu ponto de contato usa (por exemplo `opus(low)`). Ao tocar nele, abre “IA com quem você fala no campo de mensagem (coordenador)” em “Configurações (engrenagem) → Servidor”, onde você escolhe essa IA e as IAs alternativas que continuam quando ela para. As IAs responsáveis são escolhidas em “IA das tarefas”, na mesma tela. Para usar outro modelo em um trabalho específico, escreva-o na solicitação ou na política (“Faça este trabalho com o opus”). Uma conversa que passou para uma IA alternativa por limite de uso ou de capacidade continua com essa IA. Para voltar à IA 1, pressione “Limpar conversa” ou mude essa linha nas configurações.
 
 Para adicionar um modelo novo, abra o cartão da IA em “Agentes”, em “Configurações (engrenagem) → Servidor”, acrescente o nome do modelo na linha `model` de “Valores disponíveis ao solicitar trabalho” e pressione “Salvar”.
 

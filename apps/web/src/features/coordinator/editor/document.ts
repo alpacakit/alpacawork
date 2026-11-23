@@ -192,8 +192,11 @@ export function answeredQuestions(doc: Document): { answers?: CoordinatorAnswers
 export const choiceAnswer = (task: Pick<TaskDetail, 'id' | 'hash' | 'responsibleRevision'>, asked: string, question: Question, choice: Choice): Answer => ({
   question: asked, task: task.id,
   n: question.n, name: choice.name, answer: choice.answer });
-/** The words a message carries; a skill is called by the mark its chip was chosen with (the catalog's `invocation`). */
-export function serialize(doc: Document): string {
+/**
+ * The words a message carries. A skill is called by `mark`: the catalog of the agent the message goes to, when it says
+ * (skillMark); else the mark the chip was chosen with.
+ */
+export function serialize(doc: Document, mark: (name: string) => '/' | '$' | undefined = () => undefined): string {
   return doc.content.map(block => {
     let text = '', task: string | null = null;
     const badge = (label: string) => { if (text && !/\s$/.test(text)) text += ' '; text += label + ' '; };
@@ -202,7 +205,7 @@ export function serialize(doc: Document): string {
       else if (node.type === 'hardBreak') { text += '\n'; task = null; }
       else if (node.type === 'taskLabel') { badge(formatTask(node.attrs.id, node.attrs.title)); task = node.attrs.id; }
       else if (node.type === 'answerLabel') { badge(`${task === node.attrs.task ? '' : node.attrs.task + ' '}${node.attrs.answer}`); task = node.attrs.task; }
-      else if (node.type === 'skillLabel') { badge(`${node.attrs.invocation}${node.attrs.name}`); task = null; }
+      else if (node.type === 'skillLabel') { badge(`${mark(node.attrs.name) ?? node.attrs.invocation}${node.attrs.name}`); task = null; }
     }
     return text.trimEnd();
   }).join('\n').trim();

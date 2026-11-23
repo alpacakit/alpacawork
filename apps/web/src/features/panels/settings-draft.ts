@@ -2,10 +2,10 @@ import { detailWriteBasis, type WriteBasis } from "@/data/connection";
 import type { QueryClient } from "@tanstack/react-query";
 import { stringify } from "yaml";
 import { z } from "zod";
-import { PROJECT_POLICY, compileAgentSetting, enabledAgents, projectColorSchema, resolveAgentSelection, titleSchema,
+import { PROJECT_POLICY, projectColorSchema, titleSchema,
   type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
 import { readServerAgents, serverAgentDraftSchema } from './server-agent-draft';
-import { readStack, writeStack } from './ai-stack-draft';
+import { newStackRow, readStack, writeStack } from './ai-stack-draft';
 import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/contract/control";
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
@@ -14,12 +14,12 @@ import { markRead } from "@/state/read-store";
 export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {
-  // When there is no saved stack, the settings editor starts with the agent the server uses by default.
-  const first = settings.aiStack === undefined ? enabledAgents(settings.agents)[0] : undefined;
-  const rows = first ? [{ agent: first[0], values: resolveAgentSelection(compileAgentSetting(...first)).values }] : settings.aiStack;
+  const agents = readServerAgents(settings.agentsText);
+  // With no saved tasks' stack, the editor starts it as its own "Add" does: the first enabled agent on its first values.
+  const added = settings.aiStack === undefined && agents.ok ? newStackRow(agents.value.agents, []) : null;
   // The input's stack is shown as saved: none saved is none set, which the input says until one is added here.
-  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents: readServerAgents(settings.agentsText),
-    aiStack: readStack(rows), coordinatorAiStack: readStack(settings.coordinatorAiStack) };
+  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents,
+    aiStack: added ? [added] : readStack(settings.aiStack), coordinatorAiStack: readStack(settings.coordinatorAiStack) };
 }
 /**
  * The limits, the AI stacks and Jev config/set writes beside the agents block; the YAML example shows the same text.

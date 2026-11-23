@@ -23,7 +23,7 @@
       "notOffered": "{{value}} (not a value)",
       "remove": "Remove row {{n}}",
       "repeated": "Same as row {{n}}, so this row is never used.",
-      "saveRefused": "Not saved: “{{list}}” has a row that cannot run. Fix the row marked in red, then save again.",
+      "saveRefused": "Not saved: “{{list}}” has something to fix. Fix what is marked in red, then save again.",
       "showRow": "Go to the row",
       "title": "AI for tasks",
       "up": "Move row {{n}} up",

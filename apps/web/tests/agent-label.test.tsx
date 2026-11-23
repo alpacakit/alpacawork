@@ -99,4 +99,3 @@ test("selection labels add only enough placement ID to distinguish identical vis
   const withRoles = selectionAgentLabels([original, other], people, (placement) => placement.id === original.id ? " · Owner" : " · Member");
   expect([...withRoles.values()].map(label => label.short)).toEqual(["gpt-6-sol(high) · Owner", "gpt-6-sol(high) · Member"]);
 });
-

@@ -23,7 +23,7 @@
       "notOffered": "{{value}} (não é um valor)",
       "remove": "Remover a linha {{n}}",
       "repeated": "Igual à linha {{n}}, por isso esta linha nunca é usada.",
-      "saveRefused": "Não foi salvo: “{{list}}” tem uma linha que não pode ser usada. Corrija a linha marcada em vermelho e salve de novo.",
+      "saveRefused": "Não foi salvo: “{{list}}” tem algo a corrigir. Corrija o que está marcado em vermelho e salve de novo.",
       "showRow": "Ir para a linha",
       "title": "IA das tarefas",
       "up": "Subir a linha {{n}}",

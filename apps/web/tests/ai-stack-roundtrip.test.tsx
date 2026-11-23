@@ -63,3 +63,23 @@ test('the last agent can be switched off: with none enabled, both lists save emp
   expect(saved.aiStack ?? []).toEqual([]);
   expect(saved.coordinatorAiStack ?? []).toEqual([]);
 });
+
+test('with no tasks\' list saved, editing only the input\'s list saves, for agents without a model row and a model that leaves effort out', async () => {
+  const claude = { params: { model: ['opus', 'sonnet'], effort: ['low', 'high'] }, without: { opus: ['effort'] } };
+  for (const agents of [{ copilot: {} }, { pi: {} }, { claude }]) {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-unsaved-')));
+    roots.push(root);
+    initializeControlFixture(root);
+    writeFileSync(join(root, 'config.yaml'), stringify({ agents }));
+    const read = await readServerSettings(root);
+    const draft = serverDraft(read);
+    // The input's list gets its first row, as its own "Add" does; the tasks' list is the one the editor started.
+    const edited = { ...draft, coordinatorAiStack: [{ ...draft.aiStack[0]!, id: 'input-row' }] };
+    const checked = serverAgentDraftSchema.safeParse(edited);
+    expect(checked.success, `${Object.keys(agents)[0]}: ${JSON.stringify(checked.error?.issues)}`).toBe(true);
+    const yaml = serverAgentsYaml(edited);
+    if (!yaml.ok) throw new Error('unwritable agents');
+    const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash }));
+    expect(saved.coordinatorAiStack).toEqual(saved.aiStack);
+  }
+});

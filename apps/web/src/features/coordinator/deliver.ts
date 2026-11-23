@@ -10,10 +10,10 @@ import type { ReaderAdmission } from '@/features/reader/next-question';
 import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
 import { useConversation, readConversationSnapshot } from './coordinator';
-import { replyIn, inlines } from './editor/document';
+import { replyIn, inlines, serialize } from './editor/document';
 import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
-import { skillStanding, skillsUnverified } from './editor/skills';
+import { skillMark, skillStanding, skillsUnverified } from './editor/skills';
 import { readSkillCatalog, resources } from '@/data/resources';
 import type { LocalTurn } from './shown';
 
@@ -82,18 +82,18 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       if (attempt.checked && useDraftStore.getState().entries[attempt.key]?.values.conflict)
         return refuse(i18n.t('ui:coordinatorCard.conflict'), new ApiError('Message ID belongs to different input', 'idempotency_conflict', 'fix'), true);
       if (!attempt.checked) {
-        const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs] : []);
+        const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []);
         if (skills.length) {
           const live = await readSkillCatalog(fixed.conversationId);
           if (!sameSession()) return 'rejected';
           // What this read found is what the list and the chips then say, for the AI it was read for.
           client.setQueryData(resources.skills(root, live.profile, fixed.conversationId).queryKey, live);
-          const standings = skills.map(skill => skillStanding(live, skill));
-          // The words were fixed with each skill's mark for the AI they were written to; the server now sends to one that
-          // calls it otherwise (its settings changed): the words go back, to be checked and sent again.
-          if (standings.includes('changed')) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
+          const standings = skills.map(name => skillStanding(live, name));
           if (standings.includes('gone')) return refuse(i18n.t('ui:input.skillsChanged'));
           if (standings.includes('unknown')) return refuse(skillsUnverified(i18n.t, live));
+          // The words were fixed with each skill's mark for the AI they were written to; the server now sends to one that
+          // calls it otherwise (its settings changed): the words go back, and sent again they are fixed with its marks.
+          if (serialize(attempt.doc, skillMark(live)) !== fixed.text) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
         }
         if (useConversation.getState().conversation?.id !== fixed.conversationId) return refuse(i18n.t('ui:coordinatorCard.conversationChanged'));
         const original = useDraftStore.getState().entries[outgoingKey(root, requestId)];
@@ -132,6 +132,10 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       }
       if (outcome === 'cancelled' || useDraftStore.getState().entries[attempt.key]?.values.last === 'withdraw') return 'retained';
       if (outcome === 'accepted') return acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';
+      // Serve, sending to an AI that calls a skill otherwise than the words do, refused it before taking it, a resend of the
+      // same ID included: the words go back, and sent again they are fixed with that AI's marks.
+      if (error instanceof ApiError && error.reason?.kind === 'coordinator_ai_changed')
+        return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'), error);
       if (outcome === 'conflict' || certainRefusal && error instanceof ApiError && error.code === 'idempotency_conflict')
         return refuse(i18n.t('ui:coordinatorCard.conflict'), error, true);
       if (certainRefusal) {

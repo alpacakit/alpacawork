@@ -30,7 +30,7 @@ import { focusCoordinator, useInputDraft } from './editor/draft';
 import { writtenIn } from './editor/document';
 import { inlines, answeredQuestions, replyIn, hasContent, taskReferencesIn, serialize, draftDocument, textDocument, type Document } from './editor/document';
 import { LabelEditor, typeTrigger } from './editor/LabelEditor';
-import { useCoordinatorSkills } from './editor/skills';
+import { skillMark, useCoordinatorSkills } from './editor/skills';
 import { deliverOutgoing, SEND_ERROR, sendError } from './deliver';
 import { availableInput, pendingInput, inputDraftFiles, freeze, offerOutgoingUndo, flushLeavingOutbox, holdsReaderTurn, nextDelivery, outgoingKey, useOutbox, type Fixed } from './editor/outbox';
 import { useShownConversation } from './shown';
@@ -168,7 +168,7 @@ export function CoordinatorInput({ launch, profile }: {
     meaning: Pick<Fixed, 'intent' | 'answers'>,
     values: Record<string, string>, input?: { from: string }, card: ReaderCard | null = useSitting.getState().card) => {
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
-    const fixed: Fixed = { conversationId, text: serialize(doc), ...(tasks.length ? { tasks } : {}),
+    const fixed: Fixed = { conversationId, text: serialize(doc, skillMark(catalog)), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
       attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };

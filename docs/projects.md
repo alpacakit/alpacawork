@@ -45,7 +45,7 @@ Your current AI plans and settings are used as they are. Usage is billed under t
 
 ## Choose a model
 
-Beside the input box's send button you see the model the coordinator uses (for example `opus(low)`). Press it to open "AI you talk to in the input (coordinator)" in "Settings (the gear) → Server", where you choose that AI and the fallback AIs that take over when it stops. The AIs that take on tasks are chosen in "AI for tasks" on the same screen. To use another model for one piece of work, name it in your request or in the policy ("Do this work with opus").
+Beside the input box's send button you see the model the coordinator uses (for example `opus(low)`). Press it to open "AI you talk to in the input (coordinator)" in "Settings (the gear) → Server", where you choose that AI and the fallback AIs that take over when it stops. The AIs that take on tasks are chosen in "AI for tasks" on the same screen. To use another model for one piece of work, name it in your request or in the policy ("Do this work with opus"). A conversation that moved to a fallback AI because of a usage limit or capacity goes on with that AI. To go back to AI 1, press "Clear conversation" or change that row in the settings.
 
 To add a new model, open the AI's card under "Agents" in "Settings (the gear) → Server", add the model name to the `model` row of "Values available when requesting work", and press "Save".
 
