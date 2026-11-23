@@ -46,7 +46,7 @@ test('lost-response CLI POST stays pinned across DB restore; old op cannot execu
  const forbidden=await fetch(new URL('/api/task/new',target),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Alpacawork-Run R999:'+ 'a'.repeat(64),'X-Alpacawork-Restore-Id':id},body:'{}'});assert.equal(forbidden.status,403);
  const absent=await h.cli(origin,['operation','get','--op-id',randomUUID()]);assert.equal(absent.code,0,absent.stderr);assert.equal(JSON.parse(absent.stdout).state,'unknown_after_restore');
  const read=new ControlStore(h.workspace,{busyTimeoutMs:1000},true);try{assert.equal(read.read(db=>db.prepare('SELECT count(*) n FROM task_log WHERE id=?').get(opId)!.n),0);}finally{read.close();}
- const fresh=await h.cli(origin,['task','new','--parent','P1','--title','Fresh after recovery','--internal']);assert.equal(fresh.code,0,fresh.stderr);assert(Number(JSON.parse(fresh.stdout).task.id.slice(1))>=15);
+ const fresh=await h.cli(origin,['task','new','--parent','P1','--title','Fresh after recovery','--no-from-user']);assert.equal(fresh.code,0,fresh.stderr);assert(Number(JSON.parse(fresh.stdout).task.id.slice(1))>=15);
  const repeat=await h.exec([],{cli:true});assert.equal(repeat.code,0,repeat.stderr);assert.equal(restoreId(h.workspace),id);
  // A later switch journal and a second DB restore must not erase the first diagnostic or old-op guard.
  h.stop();const next={...h.journal,opId:randomUUID(),old:h.images.a,target:h.images.c,phase:'old_stopped' as const};
@@ -79,7 +79,7 @@ test('waiting restart continues an existing Run report and import while fresh Ru
   const current=await h.cli(url,['task','get','--task','T2']);assert.equal(current.code,0,current.stderr);
   const report=await h.cli(url,['task','comment','--task','T2','--title','Existing Run reports during waiting','--expected-task-hash',JSON.parse(current.stdout).task.hash],credentials);assert.equal(report.code,0,report.stderr);
   h.stop();const restarted=await h.start();const currentAgain=await h.cli(restarted,['task','get','--task','T2']);assert.equal(currentAgain.code,0,currentAgain.stderr);
-  const requestId=randomUUID();const blocked=await fetch(new URL('/api/task/request',restarted),{method:'POST',headers:{'Content-Type':'application/json','X-Alpacawork-Op-Id':requestId,'X-Alpacawork-Restore-Id':'initial'},body:JSON.stringify({task:'T2',body:'New work while waiting',expectedTaskHash:JSON.parse(currentAgain.stdout).task.hash,expectedPlacementRevision:1,opId:requestId})});
+  const requestId=randomUUID();const blocked=await fetch(new URL('/api/task/request',restarted),{method:'POST',headers:{'Content-Type':'application/json','X-Alpacawork-Op-Id':requestId,'X-Alpacawork-Restore-Id':'initial'},body:JSON.stringify({task:'T2',instruction:'New work while waiting',expectedTaskHash:JSON.parse(currentAgain.stdout).task.hash,expectedPlacementRevision:1,opId:requestId})});
   // Header/body operation IDs must agree before the domain reservation is reached.
   if(blocked.status!==409)throw Error(await blocked.text());
   assert.equal((await blocked.json()).error.code,'busy');

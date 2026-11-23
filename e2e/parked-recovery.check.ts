@@ -92,7 +92,7 @@ for (const width of [1440]) test.describe(`${width}`, () => {
       expect((await conversation(page, runtime)).turns).toHaveLength(0);
       admission.pass();
       // A's question is answered elsewhere: the saved answer belongs to a past turn.
-      await post(runtime, 'task/request', { task: a, answers: question, body: 'Answered elsewhere after park', opId: crypto.randomUUID() });
+      await post(runtime, 'task/request', { task: a, answers: question, instruction: 'Answered elsewhere after park', opId: crypto.randomUUID() });
       await empty(page); await page.keyboard.insertText('Bの続きは不要'); await page.locator('[data-ask-send]').click();
       await expect.poll(async () => (await conversation(page, runtime)).turns.at(-1)?.status, { timeout: 30_000 }).toBe('succeeded');
       await goto(page, a); await ensureOpen(page); await page.waitForTimeout(400);

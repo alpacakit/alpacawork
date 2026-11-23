@@ -86,9 +86,9 @@ test('HTTP receipt fault rolls back the Request, Run, reference and Task revisio
   const server = await h.start(), db = new DatabaseSync(controlDatabasePath(h.root));
   console.log('LEASE', JSON.stringify({ pid: process.pid, root: h.root, url: server.url, deadline: new Date(Date.now() + 60000).toISOString() }));
   const timer = setTimeout(() => void server.close(), 60000);
-  const post = async (body: typeof input) => {
+  const post = async ({ body, ...input }: typeof input) => {
     const r = await commandFetch(new URL('/api/task/request', server.url), { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input, instruction: body }) });
     return { status: r.status, body: await r.json() };
   };
   try {
@@ -103,8 +103,9 @@ test('HTTP receipt fault rolls back the Request, Run, reference and Task revisio
       expectedTaskHash: (await new ControlTaskStore(h.root).get(h.task.id)).hash });
     assert.deepEqual(await post(input), accepted);
     assert.equal((await post({ ...input, body: 'Different input' })).status, 409);
-    assert.equal((await post({ ...input, title: 'Not a public instruction field' } as any)).status,409);
-    assert.equal((await post({ ...input, description: 'Changed summary' } as any)).status, 409);
+    // Unknown fields are rejected at the shared entry before reaching the operation journal.
+    assert.equal((await post({ ...input, title: 'Not a public instruction field' } as any)).status, 400);
+    assert.equal((await post({ ...input, description: 'Changed summary' } as any)).status, 400);
     const history = await historyWindow(server.url, h.task.id, { mode: 'latest' });
     assert.deepEqual(history.events.filter((event: { id: string }) => event.id === input.opId)
       .map((event: { kind: string; summary: string; note?: object }) => [event.kind, event.summary, event.note]),

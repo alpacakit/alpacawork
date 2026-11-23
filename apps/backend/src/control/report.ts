@@ -83,7 +83,7 @@ export class TaskReportService {
     const intent = reportIntent({ ...task.meta, openUserQuestion: hasOpenUserQuestion(task.meta.log) }, state, caller, input.aboutRun !== undefined);
     const unholds = intent.code === 'unhold';
     if (!unholds && state === 'waiting' && caller.kind !== 'run' && input.estimateMinutes !== undefined)
-      return invalid('estimateMinutes', 'A review submission carries no --estimate', { kind: 'review_submission_carries_no_estimate' });
+      return invalid('estimateMinutes', 'A review submission carries no --estimate-minutes', { kind: 'review_submission_carries_no_estimate' });
     if (intent.code === 'confirm') {
       if (input.urgent !== undefined) return invalid('urgent', 'A confirmation is not urgent: --urgent is for a done report', { kind: 'confirmation_not_urgent_urgent_for_done_report' });
       new ReviewService(this.root).approve(tx, { taskId: task.id, operationId: input.opId,
@@ -99,7 +99,7 @@ export class TaskReportService {
     }
     // Only a Run reporting on its own Task asks; management waiting may restore a held review.
     if (intent.code === 'ask') {
-      if (input.estimateMinutes !== undefined) return invalid('estimateMinutes', 'A question carries no --estimate', { kind: 'question_carries_no_estimate' });
+      if (input.estimateMinutes !== undefined) return invalid('estimateMinutes', 'A question carries no --estimate-minutes', { kind: 'question_carries_no_estimate' });
       if (input.askTo === undefined)
         invalid('askTo', 'A question requires --ask-to <ancestor Task ID>|user', { kind: 'question_requires_ask_to' });
       ask(tx, { ...report, askTo: input.askTo, runId: reportingRun(caller), title: input.title!, description: input.description!,

@@ -65,9 +65,13 @@
       "types": "./dist/problem.d.ts",
       "default": "./dist/problem.js"
     },
-    "./cli-commands": {
-      "types": "./dist/cli-commands.d.ts",
-      "default": "./dist/cli-commands.js"
+    "./commands": {
+      "types": "./dist/commands.d.ts",
+      "default": "./dist/commands.js"
+    },
+    "./task-file-route": {
+      "types": "./dist/task-file-route.d.ts",
+      "default": "./dist/task-file-route.js"
     },
     "./branch": {
       "types": "./dist/finished-branch.d.ts",
@@ -160,6 +164,7 @@
   "dependencies": {
     "@alpacawork/core": "workspace:*",
     "@alpacawork/raw": "workspace:*",
+    "@alpacakit/channels": "0.2.0-beta.5",
     "get-east-asian-width": "1.7.0",
     "re2js": "2.8.7",
     "yaml": "2.9.1",

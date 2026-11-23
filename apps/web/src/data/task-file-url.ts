@@ -1,4 +1,4 @@
-import { taskFileRoute } from "@alpacawork/contract/cli-commands";
+import { taskFileRoute } from "@alpacawork/contract/task-file-route";
 import { screenLink } from "@/state/screen-settings";
 import { fileOpening, showsInTab } from "@/domain/task-files";
 

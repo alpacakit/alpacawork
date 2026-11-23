@@ -37,7 +37,7 @@ test('a responsible retitles through CLI: persistence, history, conflicts, quest
   const tree = await call(server.url, ['task', 'list']);
   assert.ok(JSON.stringify(tree).includes('Implementation and isolated prototype'));
   await assert.rejects(update('Stale overwrite', before.task.hash), { code: 'conflict' });
-  await assert.rejects(update('Mixed forbidden update', renamed.task.hash, ['--internal']), { code: 'forbidden' });
+  await assert.rejects(update('Mixed forbidden update', renamed.task.hash, ['--no-from-user']), { code: 'forbidden' });
   assert.equal((await current()).task.hash, renamed.task.hash, 'a denied mixed update writes nothing');
   // The old question, including its frozen full text and recipient, survives a new title.
   const question = await f.ask(owner, 'user');

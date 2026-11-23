@@ -33,14 +33,14 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'task.list': [{ label: 'Read tree', action: { name: 'task.list' } }],
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [
-    example('task.new', '--internal (Task here means --parent)', { userRequested: false }),
-    example('task.new', '--internal --parent <project>', { userRequested: false }, {}, { kind: 'project', id: 'P1', parentId: null, project: 'P1' }),
-    example('task.new', '--from-user --parent <project>', { userRequested: true }, {}, { kind: 'project', id: 'P1', parentId: null, project: 'P1' }),
+    example('task.new', '--no-from-user (Task here means --parent)', { fromUser: false }),
+    example('task.new', '--no-from-user --parent <project>', { fromUser: false }, {}, { kind: 'project', id: 'P1', parentId: null, project: 'P1' }),
+    example('task.new', '--from-user --parent <project>', { fromUser: true }, {}, { kind: 'project', id: 'P1', parentId: null, project: 'P1' }),
     example('task.new', '--kind project', { kind: 'project' }),
   ],
   'task.update': [
     example('task.update', '--title / --values-file', { title: 'Title', values: {} }),
-    example('task.update', '--cwd / --color / --from-user / --internal', { cwd: '', color: '#39659b', userRequested: false }),
+    example('task.update', '--cwd / --color / --from-user / --no-from-user', { cwd: '', color: '#39659b', fromUser: false }),
   ],
   'task.report': [
     example('task.report', '--withdraw <id> (question\'s Task)', { withdraw: 'Q1' }),

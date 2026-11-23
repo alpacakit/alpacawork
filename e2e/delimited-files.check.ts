@@ -210,7 +210,7 @@ test.describe("from a report", () => {
       "", "```csv", "名前,コード", "```"].join("\n") });
     const current = await (await page.request.get(`${runtime.origin}/api/task/get?task=${id}`)).json();
     const sent = await commandPost(page.request, `${runtime.origin}/api/task/request`, { data: { task: id, opId: crypto.randomUUID(),
-      body: `添付の表です\n\n[sent.tsv](/api/tasks/${id}/file?path=${encodeURIComponent("attachments/sent.tsv")})`,
+      instruction: `添付の表です\n\n[sent.tsv](/api/tasks/${id}/file?path=${encodeURIComponent("attachments/sent.tsv")})`,
       expectedTaskHash: current.task.hash, expectedPlacementRevision: current.agents.find((agent: { active: boolean; responsible: boolean }) => agent.active && agent.responsible).revision } });
     expect(sent.ok(), await sent.text()).toBe(true);
     const feed = reader(page).locator("[data-report-feed]");

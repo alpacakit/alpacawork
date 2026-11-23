@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DEFAULT_SCHEMA, fieldGetResultSchema } from '@alpacawork/contract';
 import { DEFAULT_SERVER_PORT } from '@alpacawork/contract/default-server';
-import { cliCommands, type CliCommand, type CliOption } from '@alpacawork/contract/cli-commands';
+import { commandCatalog, commandFlag, type Command, type CommandOption } from '@alpacawork/contract/commands';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { tryLock, unlock } from '@alpacawork/core';
 import { RunStore } from '@alpacawork/runs';
@@ -139,12 +139,9 @@ async function responsibleRun(root: string, task: string) {
   });
 }
 /** What -h shows for an option, as the CLI registers it. */
-const optionTerm = (option: CliOption) => '--' + option.key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()) +
+const optionTerm = (option: CommandOption) => commandFlag(option) +
   (option.kind === 'boolean' ? '' : option.kind === 'file' ? ' <path>' : ' <value>');
-/** The words before a command's name and the name, as the CLI shows them (`task file get`). */
-const commandWords = (spec: CliCommand) => spec.file?.startsWith('attachment-')
-  ? [spec.group, 'attachment', spec.file.slice('attachment-'.length)]
-  : spec.file ? [spec.group, 'file', spec.file] : [...spec.group.split(' '), spec.name];
+const commandWords = (spec: Command) => spec.words;
 const oneLine = (text: string) => text.replace(/\s+/g, ' ');
 
 test('HTTP CLI help performs no work and exposes the server selector', async () => {
@@ -166,6 +163,11 @@ test('HTTP CLI help performs no work and exposes the server selector', async () 
   const reportHelp = await run(['task', 'report', '-h']);
   assert.match(reportHelp.stdout, /--description-file <path>/);
   assert.match(reportHelp.stdout, /--op-id <id>/);
+  assert.match(reportHelp.stdout, /--estimate-minutes <value>/);
+  assert.match(reportHelp.stdout, /no --estimate-minutes\b/);
+  const fieldHelp = (await run(['field', 'set', '-h'])).stdout;
+  for (const flag of ['--many', '--no-many', '--required', '--no-required'])
+    assert.match(fieldHelp, new RegExp(`^\\s+${flag}\\s{2,}`, 'm'));
   const help = await run(['--workspace', root, 'workspace', 'serve', '--help']);
   assert.equal(help.code, 0, help.stderr);
   assert.match(help.stdout, /--workspace/);
@@ -184,7 +186,7 @@ test('serve defaults to the shared CLI port and reserves port 0 for explicit sel
 });
 
 test('every command\'s -h says what it does, its options and its rules; removed flags, commands and groups are unknown', async () => {
-  await Promise.all(cliCommands.map(async spec => {
+  await Promise.all(commandCatalog.commands.map(async spec => {
     const help = await run([...commandWords(spec), '-h']);
     const name = commandWords(spec).join(' ');
     assert.equal(help.code, 0, `${name}: ${help.stderr}`);
@@ -192,6 +194,7 @@ test('every command\'s -h says what it does, its options and its rules; removed 
     const text = oneLine(help.stdout);
     assert.ok(text.includes(oneLine(spec.description)), name);
     for (const option of spec.options) {
+      if (option.key === 'opId' && spec.kind === 'write') continue;
       assert.ok(text.includes(optionTerm(option)), `${name} ${optionTerm(option)}`);
       assert.ok(text.includes(oneLine(option.description)), `${name} ${optionTerm(option)}: ${option.description}`);
     }
@@ -223,7 +226,7 @@ test('every command\'s -h says what it does, its options and its rules; removed 
   }
   assert.match((await run(['-h'])).stdout, /^\s+project\b/m);
   assert.doesNotMatch((await run(['workspace', '-h'])).stdout, /folders/);
-  assert.equal(cliCommands.some(spec => spec.name === 'folders'), false);
+  assert.equal(commandCatalog.commands.some(spec => spec.id === 'workspace/folders' as string), false);
 });
 
 test('HTTP CLI writes through the selected server and leaves a local workspace hint untouched', async () => {

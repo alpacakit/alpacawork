@@ -67,7 +67,7 @@ for (const [width, height] of [[1440, 900]] as const) {
     await expect(welcome).toBeVisible();
 
     // A Task an agent made is a Task too: no welcome, and as a top Task it is a row like the user's.
-    await post(page, runtime, "task/new", { parent: project.id, title: "Agent's own", userRequested: false });
+    await post(page, runtime, "task/new", { parent: project.id, title: "Agent's own", fromUser: false });
     await expect(welcome).toHaveCount(0);
     await expect.poll(() => sections(page)).toEqual(["todo"]);
     await expect(page.locator("[data-time-corner]")).toHaveCount(1);

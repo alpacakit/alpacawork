@@ -1,8 +1,8 @@
 /** Recognize one literal invocation, never execute or guess a shell program. */
-import { cliCommands, cliCommandWords } from '@alpacawork/contract/cli-commands';
+import { commandCatalog } from '@alpacawork/contract/commands';
 import { workCommandSchema, type WorkCommand } from '@alpacawork/contract/run';
 
-const commands = cliCommands.map(spec => ({ words: cliCommandWords(spec), key: `${spec.group}.${spec.name}` }));
+const commands = commandCatalog.commands.map(spec => ({ words: spec.words, key: spec.access }));
 
 /** Literal words only. Expansion, control flow, pipelines and redirection are deliberately unknown. */
 function literalWords(text: string): string[] | null {

@@ -12,7 +12,7 @@ import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from 
  */
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
 import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
-import { taskFileRoute } from '@alpacawork/contract/cli-commands';
+import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
 import { byTaskNumber } from '@alpacawork/contract/moved';

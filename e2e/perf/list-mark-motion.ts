@@ -12,7 +12,7 @@ try{for(const width of [1440,390]){
  const runtime=await start(undefined,undefined,resolve('.local/list-motion-runtime',basename(output)+'-'+width+'-'+Date.now()));
  try{for(let round=0;round<3;round++){
   const post=async(path:string,data:object)=>{const r=await fetch(runtime.origin+'/api/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});assert.equal(r.status,200,await r.clone().text());return r.json();};
-  const made=await post('task/new',{parent:'P1',title:'Visible new report '+round,userRequested:true});
+  const made=await post('task/new',{parent:'P1',title:'Visible new report '+round,fromUser:true});
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:true,isMobile:width<700,locale:'en-US',timezoneId:'Asia/Tokyo',serviceWorkers:'block'});
   try{const page=await context.newPage();await installProbe(page);await page.goto(runtime.origin+'/?agent=1&zoom=1800000');await page.locator('[data-time-tree]').waitFor();
    if(width<700&&await page.locator('header [data-strips]').getAttribute('aria-pressed')!=='true')await page.locator('header [data-strips]').click();

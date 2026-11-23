@@ -77,14 +77,14 @@ test('new conversations choose cwd; continuations keep it; invalid cwd is reject
   assert.equal(h.records().length, before);
 
   const httpNew = await http(app.url, 'task/request', {
-    task: h.task.id, expectedTaskHash: (await settled()).hash, body: 'HTTP new conversation', opId: randomUUID(),
+    task: h.task.id, expectedTaskHash: (await settled()).hash, instruction: 'HTTP new conversation', opId: randomUUID(),
     expectedPlacementRevision: h.placement.revision,
     newConversation: true, cwd: other });
   assert.equal(httpNew.status, 200, JSON.stringify(httpNew.body));
   const httpRun = await h.waitState(httpNew.body.outcome.request.runId, 'succeeded');
   assert.equal(httpRun.cwd, other);
   const rootAgain = await http(app.url, 'task/request', {
-    task: h.task.id, expectedTaskHash: (await settled()).hash, body: 'Explicit root', opId: randomUUID(),
+    task: h.task.id, expectedTaskHash: (await settled()).hash, instruction: 'Explicit root', opId: randomUUID(),
     expectedPlacementRevision: h.placement.revision,
     newConversation: true, cwd: h.root });
   assert.equal(rootAgain.status, 200, JSON.stringify(rootAgain.body));
@@ -94,7 +94,7 @@ test('new conversations choose cwd; continuations keep it; invalid cwd is reject
   const nested = join(h.root, 'nested'); mkdirSync(nested);
   for (const cwd of ['relative', join(worktree, 'missing'), bodyFile, nested]) {
     const rejected = await http(app.url, 'task/request', {
-      task: h.task.id, expectedTaskHash: (await settled()).hash, body: 'Invalid directory', opId: randomUUID(),
+      task: h.task.id, expectedTaskHash: (await settled()).hash, instruction: 'Invalid directory', opId: randomUUID(),
       expectedPlacementRevision: h.placement.revision,
       newConversation: true, cwd });
     assert.equal(rejected.status, 400, JSON.stringify(rejected.body));

@@ -55,7 +55,7 @@ function enrich(url: string, home: string, children: string, project: string, fi
   const plan = join(home, 'children.json');
   writeFileSync(plan, JSON.stringify(Array.from({ length: 40 }, (_, n) => ({ title: `Measured child ${n + 1}` }))));
   // Only a Task's responsible makes its children: a person makes them beside it and moves them under it.
-  const made = JSON.stringify(JSON.parse(cli('task', 'new', '--parent', project, '--internal', '--plan-file', plan)));
+  const made = JSON.stringify(JSON.parse(cli('task', 'new', '--parent', project, '--no-from-user', '--plan-file', plan)));
   const ids = [...new Set(made.match(/"T\d+"/g)!.map(each => JSON.parse(each) as string))].filter(id => id !== children).slice(-40);
   for (const id of ids) {
     const hash = (JSON.parse(cli('task', 'get', '--task', id)) as { task: { hash: string } }).task.hash;

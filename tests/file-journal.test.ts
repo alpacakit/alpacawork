@@ -10,7 +10,7 @@ import { ControlStore } from '@alpacawork/db';
 import { initializeWorkspace } from '@alpacawork/backend/test-dist/control/initialize.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { FileJournal, fileDigest } from '@alpacawork/backend/test-dist/control/file-journal.js';
-import { taskFileRoute } from '@alpacawork/contract/cli-commands';
+import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 
 /** A new workspace (its root project P1) with one Task below the root project, whose files the test writes. */
 async function fixture(run: (root: string, task: string) => void | Promise<void>) {

@@ -209,14 +209,24 @@ test('an instruction goes by task request and keeps its op-id during shared vali
   assert.equal(result.code, 0, result.stderr);
   assert.equal(requests.at(-1)?.url, '/api/task/request');
   assert.equal(requests.at(-1)?.headers['x-alpacawork-op-id'], 'request-1');
-  assert.deepEqual([sent().body, sent().opId], ['Start now', 'request-1']);
+  assert.deepEqual([sent().instruction, sent().opId], ['Start now', 'request-1']);
+});
+
+test('negative and nullable CLI flags send their JSON values under the shared command keys', async () => {
+  const field = await run(['field', 'set', '--field', 'notes', '--no-many', '--no-required',
+    '--max-chars', 'null', '--max-items', 'null']);
+  assert.equal(field.code, 0, field.stderr);
+  assert.deepEqual(sent(), { field: 'notes', many: false, required: false, maxChars: null, maxItems: null });
+  const task = await run(['task', 'new', '--title', 'Internal task', '--no-from-user']);
+  assert.equal(task.code, 0, task.stderr);
+  assert.deepEqual(sent(), { title: 'Internal task', fromUser: false });
 });
 
 test('values, an instruction and a description each read stdin for -, and two options cannot both read it', async () => {
   const hash = ['--expected-task-hash', 'a'.repeat(64)];
   for (const [args, field] of [
     [['task', 'request', '--task', 'T1', '--instruction-file', '-', ...hash, '--expected-placement-revision', '1',
-      '--op-id', 'stdin-instruction'], 'body'],
+      '--op-id', 'stdin-instruction'], 'instruction'],
     [['task', 'report', '--task', 'T1', '--state', 'doing', '--title', 'Progress', '--description-file', '-', ...hash,
       '--op-id', 'stdin-description'], 'description'],
   ] as const) {

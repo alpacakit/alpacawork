@@ -21,7 +21,7 @@ test('formal HTTP switches the same FORMAT and DB while an existing Run keeps wo
  const act=(path:string,body:any)=>f.call(path,body,{'X-Alpacawork-Op-Id':body.opId??randomUUID(),'X-Alpacawork-Restore-Id':'initial'});
  const task=ok(await act('/api/task/new',{parent:'P1',title:'Synthetic update wait',userRequested:false})).task;
  const assigned=ok(await act('/api/agent/assign',{task:task.id,role:'responsible',profile:'synthetic',expectedTaskHash:task.hash}));
- ok(await act('/api/task/request',{task:task.id,body:'Wait for the local fixture gate',opId:randomUUID(),expectedTaskHash:assigned.task.hash,expectedPlacementRevision:assigned.agent.placement.revision}));
+ ok(await act('/api/task/request',{task:task.id,instruction:'Wait for the local fixture gate',opId:randomUUID(),expectedTaskHash:assigned.task.hash,expectedPlacementRevision:assigned.agent.placement.revision}));
  await until(async()=>existsSync(started),Boolean);
  const status=async()=>ok(await f.call('/api/update/status')),available=await until(status,s=>s.kind==='available');
  const review=ok(await f.call('/api/update/review?candidateId='+available.candidateId)),input={opId:randomUUID(),candidateId:available.candidateId,reviewDigest:review.reviewDigest};

@@ -1,4 +1,4 @@
-import { parseTaskFileRoute } from "@alpacawork/contract/cli-commands";
+import { parseTaskFileRoute } from "@alpacawork/contract/task-file-route";
 import { viewerTarget } from "./viewer-target";
 
 /**

@@ -210,7 +210,7 @@ test('request HTTP rejects an arbitrary placement target before admission', asyn
   const h = await setup(t);
   const response = await fetch(new URL('/api/task/request', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.child.id,
-      body: 'Draft', opId: 'Q1', expectedTaskHash: h.child.hash,
+      instruction: 'Draft', opId: 'Q1', expectedTaskHash: h.child.hash,
       expectedPlacementRevision: 1, agent: 'P1' }) });
   assert.equal(response.status, 404);
   assert.equal(problemSchema.parse(await response.json()).error.code, 'not_found');
@@ -221,7 +221,7 @@ test('an unassigned Task refuses HTTP request without creating a Run', async t =
   const h = await setup(t);
   const response = await fetch(new URL('/api/task/request', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.child.id,
-      body: 'Draft', opId: 'Q-unassigned', expectedTaskHash: h.child.hash,
+      instruction: 'Draft', opId: 'Q-unassigned', expectedTaskHash: h.child.hash,
       expectedPlacementRevision: 1 }) });
   assert.equal(response.status, 409);
   assert.equal(requestRejectionSchema.parse(await response.json()).error.code, 'responsible_missing');

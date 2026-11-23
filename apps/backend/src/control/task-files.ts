@@ -3,7 +3,7 @@ import { closeSync, fstatSync, readFileSync, openSync, constants } from 'node:fs
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE, hasCode } from '@alpacawork/core';
 import { validTaskFileName } from '@alpacawork/contract/inputs';
-import { taskFileRoute } from '@alpacawork/contract/cli-commands';
+import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import { FileWriter } from '../raw/storage.js';
 import { requirePublished, FileJournal, fileDigest, isReserved, reservedPaths, type WriteGrant } from './file-journal.js';
 import { attachmentLimit, fileTooLarge } from '../agents-settings.js';
