@@ -37,7 +37,7 @@ describe("one order of the surfaces", () => {
   });
 
   it("gives the coordinator and what opens from it no number of their own", () => {
-    for (const file of ["features/coordinator/CoordinatorCard.tsx", "features/coordinator/editor/LabelEditor.tsx", "features/forms/AgentPicker.tsx"])
+    for (const file of ["features/coordinator/CoordinatorCard.tsx", "features/coordinator/editor/LabelEditor.tsx", "features/coordinator/CoordinatorAi.tsx"])
       expect(tag(readFileSync(fileURLToPath(new URL(`../src/${file}`, `file://${__filename}`)), "utf8")).filter(z => !/^z-(1|10)$/.test(z)), file).toEqual([]);
   });
 });

@@ -1,104 +1,49 @@
 
 import { coordinatorMessage, coordinatorCompleted } from './coordinator-completion.ts';
 import { stringify } from 'yaml';
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { writeFixtureConfig } from './fixture-writes.ts';
 import { fixtureAgentSetting, installAgentStub } from '../tests/helpers/agent-stub.ts';
-import { test, expect, open, openCoordinator, settleMotion } from './fixtures.ts';
+import { test, expect, open, openCoordinator } from './fixtures.ts';
 
 const fake = new URL('../tests/fixtures/fake-coordinator-agent.mjs', import.meta.url).pathname;
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==', 'base64');
 
 test.use({ isolated: true });
 /** The isolated coordinator is the claude adapter run through a local stub (never a provider CLI): it reports its launch. */
-const fakeCoordinator = (runtime: { root: string }, rows?: Record<string, string[]>) => {
+const fakeCoordinator = (runtime: { root: string }, rows?: Record<string, string[]>, input?: Record<string, string>) => {
   installAgentStub(runtime.root, 'claude', [process.execPath, fake]);
   const setting = fixtureAgentSetting('claude');
   if (rows) Object.assign(setting.params, rows);
-  // A second kind with one more row at the menu's foot (codex's fast).
-  writeFixtureConfig(runtime.root, stringify({ agents: { fake: setting, codex: fixtureAgentSetting('codex') } }, { lineWidth: 0 }));
+  writeFixtureConfig(runtime.root, stringify({ agents: { fake: setting, codex: fixtureAgentSetting('codex') },
+    ...input ? { coordinatorAiStack: [{ agent: 'fake', values: input }] } : {} }, { lineWidth: 0 }));
 };
 
-/** The person's launch memory as another screen left it, newer than any save so far: serve's file watcher brings it to the index. */
-let saved = 1_000_000;
-const remember = (runtime: { root: string }, values: Record<string, string>) => writeFileSync(join(runtime.root, '.alpacawork/launch-memory.json'),
-  JSON.stringify({ version: 1, revision: crypto.randomUUID(), value: { agent: 'fake', values: { fake: values }, version: ++saved } }));
-
-// On a phone too: the chip is in the send row, and its menu opens over the coordinator's sheet, where a finger reaches it.
+// On a phone too: the AI stands in the send row, and the settings open over the coordinator's sheet.
 for (const phone of [true]) test.describe(phone ? 'phone' : 'pc', () => {
   if (phone) test.use({ viewport: { width: 412, height: 846 }, hasTouch: true, isMobile: true });
-  test(`the model and effort chosen in the card start the next message and come back after the screen is opened again${phone ? ' (phone)' : ''}`, async ({ page, runtime }) => {
+  test(`the input shows the AI its messages run on, offers no menu, and opens the settings onto that AI${phone ? ' (phone)' : ''}`, async ({ page, runtime }) => {
     test.setTimeout(120_000);
     // The fake agent reports the --model and --effort it was launched with.
-    // More models than the menu shows at once: only its list scrolls.
-    fakeCoordinator(runtime, { model: ['opus', ...Array.from({ length: 12 }, (_, at) => `model-${at + 1}`), 'fable'], effort: ['high', 'max'] });
-    const openCard = async () => {
-      await openCoordinator(page);
-      const card = page.locator('[data-coordinator-card], [data-coordinator-panel]');
-      await expect(card.getByRole('button', { name: 'Attach', exact: true })).toBeEnabled();
-      return card;
-    };
-    const send = async (card: ReturnType<typeof page.locator>, text: string, count: number) => {
-      await card.getByRole('textbox', { name: 'Message the coordinator' }).fill(text);
-      await card.locator('[data-ask-send]').click();
-      // Opened again, the exchanges before the one it opened on fold into one row: this one is answered, and shown.
-      await expect.poll(async () => ((await (await page.request.get(`${runtime.origin}/api/coordinator`)).json()).conversation.turns as { status: string }[])
-        .filter(turn => turn.status === 'succeeded').length).toBe(count);
-      await expect(card.locator('[data-coordinator-turn]').last()).toHaveAttribute('data-coordinator-turn', 'succeeded');
-      return JSON.parse((await card.locator('[data-coordinator-turn]').last().locator('[data-ask-answer]').textContent())!).args as string[];
-    };
+    fakeCoordinator(runtime, { model: ['opus', 'fable'], effort: ['high', 'low'] }, { model: 'opus', effort: 'low' });
     await open(page, runtime);
-    let card = await openCard();
-    const picker = card.locator('[data-agent-picker]');
-    await expect(picker).toBeVisible();
-    // The whole chip is in the card's width, beside the send button.
-    const chip = (await picker.boundingBox())!, row = (await card.locator('[data-ask-send]').boundingBox())!;
-    expect(chip.x + chip.width).toBeLessThanOrEqual(row.x);
-    if (phone) await picker.tap(); else await picker.click();
-    const menu = page.locator('[data-agent-picker-menu]');
-    await expect(menu).toBeVisible();
-    // On a phone it comes up as a sheet.
-    await settleMotion(page);
-    // What a press there lands on is the menu, not the card under it.
-    const box = (await menu.boundingBox())!;
-    expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-agent-picker-menu]'), { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
-    // Opened, the chosen model has the focus.
-    await expect(menu.getByRole('radio', { name: 'opus', exact: true })).toBeFocused();
-    // Choosing far down the list leaves the menu where it stood: a kind with one more row at the foot takes that row's
-    // room from the list, the chosen row stays in sight over the list's fading foot, and nothing in the menu reaches
-    // past the list to make its surface scroll.
-    const surface = page.locator('[data-slot=sheet], [data-slot=popover-content]').filter({ has: menu });
-    const stood = await surface.boundingBox();
-    const other = menu.locator('[data-agent-kind-rows=codex] label').first();
-    await other.click();
-    await expect(menu.getByText('fast', { exact: true })).toHaveCount(2);
-    expect(await surface.boundingBox()).toEqual(stood);
-    expect(await other.evaluate(row => { const list = row.closest('[role=radiogroup]')!, fade = parseFloat(getComputedStyle(list).getPropertyValue('--fade'));
-      return row.getBoundingClientRect().bottom <= list.getBoundingClientRect().bottom - fade; })).toBe(true);
-    await menu.getByText('fable', { exact: true }).click();
-    await menu.getByText('max', { exact: true }).click();
-    expect(await menu.evaluate(el => { const surface = el.closest('[data-slot=sheet], [data-slot=popover-content]')!; return surface.scrollTop === 0 && surface.scrollHeight <= surface.clientHeight; })).toBe(true);
-    await page.keyboard.press('Escape');
-    await expect(card.locator('[data-agent-picker]')).toHaveText('fable(max)');
-    expect(await send(card, 'Select and send', 1)).toEqual(['fable', 'max']);
-    // Opened again, a message going on in the conversation carries none of the remembered choices: the last choice
-    // changes elsewhere, the conversation's model and effort stay.
-    remember(runtime, { model: 'opus', effort: 'high' });
-    await page.reload();
-    card = await openCard();
-    await expect(card.locator('[data-agent-picker]')).toHaveText('fable(max)');
-    expect(await send(card, 'Reopen and send', 2)).toEqual(['fable', 'max']);
-    // A new conversation starts from the remembered choice; a kept model the config no longer offers goes back to
-    // the first one, the kept effort stays.
-    remember(runtime, { model: 'sonnet', effort: 'max' });
-    await page.reload();
-    card = await openCard();
-    await card.locator('[data-coordinator-clear]').click();
-    await card.locator('[data-coordinator-clear]').click();
-    await expect(card.locator('[data-ask-answer]')).toHaveCount(0);
-    await expect(card.locator('[data-agent-picker]')).toHaveText('opus(max)');
-    expect(await send(card, 'New conversation', 1)).toEqual(['opus', 'max']);
+    await openCoordinator(page);
+    const card = page.locator('[data-coordinator-card], [data-coordinator-panel]');
+    await expect(card.getByRole('button', { name: 'Attach', exact: true })).toBeEnabled();
+    const shown = card.locator('[data-coordinator-ai]');
+    await expect(shown).toHaveText('opus(low)');
+    await expect(page.locator('[data-agent-picker]')).toHaveCount(0);
+    // The whole of it is in the card's width, beside the send button.
+    const chip = (await shown.boundingBox())!, send = (await card.locator('[data-ask-send]').boundingBox())!;
+    expect(chip.x + chip.width).toBeLessThanOrEqual(send.x);
+    // A message runs on what it shows.
+    await card.getByRole('textbox', { name: 'Message the coordinator' }).fill('Say how you were launched');
+    await card.locator('[data-ask-send]').click();
+    await expect(card.locator('[data-coordinator-turn]').last()).toHaveAttribute('data-coordinator-turn', 'succeeded');
+    expect(JSON.parse((await card.locator('[data-coordinator-turn]').last().locator('[data-ask-answer]').textContent())!).args).toEqual(['opus', 'low']);
+    if (phone) await shown.tap(); else await shown.click();
+    const heading = page.getByRole('heading', { name: 'AI you talk to in the input (coordinator)' });
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
   });
 });
 

@@ -19,7 +19,7 @@ import { receiveFullIndex } from '../src/data/resources';
 import { TestWorkspace, tree, dto, decideItem, questionFixture, indexOf, screenData, viewsOf } from './fixtures';
 
 const cid = 'aba-conversation';
-const conv = (turns: any[] = []) => ({ id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conv = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 const reply = (value: unknown) => new Response(snapshotJson(value));
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { resolve, promise }; };
 const tick = async () => { await act(async () => { await new Promise(done => setTimeout(done, 10)); }); };
@@ -54,7 +54,7 @@ test('a send whose checks a new read session ended, its conversation already rea
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -88,7 +88,7 @@ test('an attempt that could not save its checkpoint keeps the notice saying so w
     if (url.includes('task/view')) return reply(viewsOf(served).find(v => v.task.id === new URL(url, 'http://fixture').searchParams.get('task')));
     return reply(conv());
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -129,7 +129,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       ...(submitted.tasks ? { tasks: submitted.tasks } : {}), ...(submitted.answers ? { answers: submitted.answers } : {}), attachments: [],
       status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null }]);
     vi.stubGlobal('fetch', fetcher);
-    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+    render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
     act(() => receiveFullIndex(queryClient, index));
     const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
     await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -138,7 +138,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
     let refreshing: Promise<void> | undefined;
     if (stage === 'refresh/draw') {
       submitted = { id: crypto.randomUUID(), text: 'old accepted request', attachments: [] };
-      const fixed = { conversationId: cid, text: submitted.text, attachments: [], selected: {} };
+      const fixed = { conversationId: cid, text: submitted.text, attachments: [] };
       freeze(index.root, fixed, { requestId: submitted.id, doc: JSON.stringify(textDocument(submitted.text)) });
       const attempt = begin(index.root, submitted.id)!; expect(attempt.check()).toBe('posted'); attempt.finish();
       act(() => { refreshing = useConversation.getState().refresh(); });

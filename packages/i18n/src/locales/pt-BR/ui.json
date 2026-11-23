@@ -5,6 +5,11 @@
     "undo": "Desfazer"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "IA com quem você fala no campo de mensagem: {{ai}}. Toque para mudar nas configurações",
+      "none": "Não há IA para falar no campo de mensagem, então nada pode ser enviado. Toque para abrir as configurações",
+      "setUp": "Configurar IA"
+    },
     "appHint": {
       "close": "Fechar esta dica",
       "detail": "Instale no PC ou abra pelo celular",
@@ -26,6 +31,7 @@
     "completeHint": "Marcar {{id}} como concluída",
     "conflict": "já chegou um conteúdo diferente com o mesmo ID",
     "conversationChanged": "A conversa mudou",
+    "coordinatorAiChanged": "Não foi enviado: a IA com quem você fala no campo de mensagem mudou. Confira as skills e envie de novo.",
     "copyAnswer": "Copiar resposta",
     "deliveryRefused": "O agente não pôde receber a mensagem. Ela continua na fila.",
     "done": "Concluir",
@@ -65,8 +71,6 @@
     "joinedCount_one": "mais {{count}}",
     "joinedCount_many": "mais {{count}}",
     "joinedCount_other": "mais {{count}}",
-    "launchChoiceChanged": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados agora. Escolha de novo e envie",
-    "launchChoiceUnresendable": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados para reenviar agora. Você verá se ela chegou assim que isso for confirmado",
     "loadFailed": "Não foi possível carregar a conversa",
     "loading": "Carregando a conversa…",
     "loadingWanted": "Abre assim que terminar de carregar…",

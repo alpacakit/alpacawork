@@ -11,7 +11,7 @@ import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
 import { useConversation, readConversationSnapshot } from './coordinator';
 import { replyIn, inlines } from './editor/document';
-import { begin, sendableSelection, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
+import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
 import { skillStanding, skillsUnverified } from './editor/skills';
 import { readSkillCatalog, resources } from '@/data/resources';
@@ -79,19 +79,18 @@ export function deliverOutgoing({ root, client, surface, profile, draw }: Delive
           return sameSession() && acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';
       }
       if (!sameSession()) return 'rejected';
-      // Kept from an earlier version, a choice today's API no longer takes is not sent. Unsent, its words go back to be
-      // sent anew; posted, this cannot prove it did not arrive: it stays unknown under its own ID (outgoingDisplay says why)
-      // until a read settles it (deliveryOutcome).
-      if (!sendableSelection(fixed)) return attempt.checked ? 'retained' : refuse(i18n.t('ui:coordinatorCard.launchChoiceChanged'));
       if (attempt.checked && useDraftStore.getState().entries[attempt.key]?.values.conflict)
         return refuse(i18n.t('ui:coordinatorCard.conflict'), new ApiError('Message ID belongs to different input', 'idempotency_conflict', 'fix'), true);
       if (!attempt.checked) {
         const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []);
         if (skills.length) {
-          const agent = fixed.agent ?? profile, live = await readSkillCatalog(agent, fixed.conversationId);
+          const live = await readSkillCatalog(fixed.conversationId);
           if (!sameSession()) return 'rejected';
-          // What this read found is what the list and the chips then say.
-          client.setQueryData(resources.skills(root, agent, fixed.conversationId).queryKey, live);
+          // What this read found is what the list and the chips then say, for the AI it was read for.
+          client.setQueryData(resources.skills(root, live.profile, fixed.conversationId).queryKey, live);
+          // The chips were checked for the AI the input showed; the server now sends to another (its settings changed):
+          // the words go back, to be checked and sent again.
+          if (live.profile !== profile) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
           const standings = skills.map(name => skillStanding(live, name));
           if (standings.includes('gone')) return refuse(i18n.t('ui:input.skillsChanged'));
           if (standings.includes('unknown')) return refuse(skillsUnverified(i18n.t, live));

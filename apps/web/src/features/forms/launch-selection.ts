@@ -28,18 +28,6 @@ function offeredValues(offer: SelectionOffer, values: Readonly<Record<string, st
   return Object.fromEntries(Object.entries(values).filter(([key, value]) => choices.get(key)?.candidates.includes(value)));
 }
 
-/**
- * Where a new coordinator conversation starts for one agent: the values the person last chose for it that the agent
- * still offers; for a row never chosen or no longer offered, the value the agent's first row in the AI stack names
- * (`initial`); else the lightest effort (`low`) when the agent offers it, else the row's first value. It names every
- * row, so the coordinator starts on what the person sees.
- */
-export function coordinatorStart(offer: SelectionOffer, remembered: Readonly<Record<string, string | null>> | undefined,
-  initial: Readonly<Record<string, string | null>> = {}): Selection {
-  const first = Object.fromEntries(offeredChoices(offer).flatMap(choice => choice.candidates.length ? [[choice.key, choice.candidates[0] ?? null]] : []));
-  return offeredValues(offer, { ...first, effort: "low", ...offeredValues(offer, initial), ...offeredValues(offer, remembered ?? {}) });
-}
-
 /** A kind's model candidates as the picker names them: written order, no "none". */
 export function modelCandidates(offer: SelectionOffer): string[] {
   return offeredChoices(offer).find(choice => choice.key === "model")?.candidates.filter((value): value is string => value !== null) ?? [];

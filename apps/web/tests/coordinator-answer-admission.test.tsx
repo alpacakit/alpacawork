@@ -15,7 +15,7 @@ import { setConversationState, snapshotJson } from './conversation-fixture';
 import { TestWorkspace, tree, dto, screenData, decideItem, questionFixture } from './fixtures';
 
 const cid = 'fixed-answer-admission';
-const conversation = (turns: any[] = []) => ({ id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 const doc = (question: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [
   { type: 'answerLabel', attrs: { task: 'T1', question, n: '1', name: 'Yes', answer: '1-Yes' } },
 ] }] });
@@ -40,7 +40,7 @@ test('consecutive fixed-question answers reach HTTP despite Task changes and una
     }
     return new Response(snapshotJson(url.includes('/skills') ? { status: 'unavailable', profile: 'claude', skills: [] } : conversation()));
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
   const input = document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input.editor).toBeTruthy());
   for (const [i, question] of ['Q1', 'Q2'].entries()) {
@@ -69,7 +69,7 @@ test('a failed pre-send read returns the unsent draft without asking to fix its 
     return new Response(snapshotJson(conversation()));
   }));
   const notice = vi.spyOn(notify, 'error');
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
   const input = document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input.editor).toBeTruthy());
   act(() => input.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [

@@ -107,12 +107,12 @@ function serve() {
         ? new Response(snapshotJson({ task: { ...headOf(dto({ id: input.task })), state: input.state }, outcome: { kind: 'recorded' } }))
         : problemResponse('conflict', 'Task changed'))));
     }
-    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], cancelled: [], agent: null, warm: 'none' as const, busy: false }));
+    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false }));
     return problemResponse('not_found');
   });
-  setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], agent: null, warm: 'none' as const, busy: false }, open: false, expanded: false, error: null });
+  setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false }, open: false, expanded: false, error: null });
 }
-const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /><Toaster /></>;
+const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /><Toaster /></>;
 let shownData: ReturnType<typeof screenOf>;
 function show(tasks: TaskFixture[], open: string) {
   serve();
@@ -167,17 +167,17 @@ for (const hook of ['waiting', 'shown'] as const) test(`${hook} reader ignores e
   act(() => { updateDraft(key, { values: { ...values, doc: JSON.stringify(textDocument('typing more words')) } }); });
   expect(renders).toBe(initial);
   // An outgoing answer in another workspace is also outside the shown reader.
-  act(() => { freeze('/other-workspace', { conversationId: 'c1', text: 'other', selected: {}, attachments: [] },
+  act(() => { freeze('/other-workspace', { conversationId: 'c1', text: 'other', attachments: [] },
     { ...values, requestId: crypto.randomUUID() }, undefined,
     [{ ...readerTurn(data.tasks[0]!), title: 'Other', kind: 'answer', answer: 'send', expectedWrites: null }]); });
   expect(renders).toBe(initial);
   const requestId = crypto.randomUUID();
-  act(() => { freeze(root, { conversationId: 'c1', text: 'answer', selected: {}, attachments: [] },
+  act(() => { freeze(root, { conversationId: 'c1', text: 'answer', attachments: [] },
     { ...values, requestId }, undefined,
     [{ ...readerTurn(data.tasks[0]!), title: 'Question', kind: 'answer', answer: 'send', expectedWrites: null }]); });
   expect(renders).toBeGreaterThan(initial);
   if (hook === 'waiting') expect(waiting).toEqual([]);
-  act(() => { reconcileOutbox({ id:'c1',agent:null,warm: 'none' as const,busy:false,cancelled:[],turns:[{
+  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[{
     id:requestId,at:new Date().toISOString(),ask:'answer',attachments:[],status:'succeeded',waiting:false,
     answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[]}
   }] },root, null,true); });

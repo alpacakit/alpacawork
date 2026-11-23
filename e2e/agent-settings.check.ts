@@ -36,14 +36,14 @@ test('a model added in the settings is kept, offered when asking, and given to t
   await page.reload();
   agent = await openAgent(page);
   await expect(agent.getByRole('textbox', { name: 'Available values for model' })).toHaveValue(/, my-model$/);
+  // It is offered for the input's AI, and the launch carries it.
+  await page.locator('[data-ai-stack="coordinator"]').getByLabel('Model in row 1').selectOption('my-model');
+  await save(page).click();
+  await saved(page);
   await page.keyboard.press('Escape');
-
-  // It is offered where work is asked for, and the launch carries it.
   await openCoordinator(page);
   const card = page.locator('[data-coordinator-card], [data-coordinator-panel]');
-  await card.locator('[data-agent-picker]').click();
-  await page.locator('[data-agent-picker-menu]').getByText('my-model', { exact: true }).click();
-  await page.keyboard.press('Escape');
+  await expect(card.locator('[data-coordinator-ai]')).toContainText('my-model');
   await card.getByRole('textbox', { name: 'Message the coordinator' }).fill('Use the added model');
   await card.locator('[data-ask-send]').click();
   await expect(card.locator('[data-coordinator-turn]').last()).toHaveAttribute('data-coordinator-turn', 'succeeded');

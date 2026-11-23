@@ -18,7 +18,7 @@ const turn: CoordinatorTurn = { id: 'turn', at: new Date(0).toISOString(), ask: 
 test('every place shows one paced work name and the seconds since sending: held 2 s from the DOM, latest after, released at once', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   vi.setSystemTime(0);
-  const conversation = { id: 'conversation', agent: 'fake', warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
+  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
   setConversationState({ conversation });
   useConnection.setState({ offline: false });
   const base = screenData();
@@ -87,7 +87,7 @@ test('every place shows one paced work name and the seconds since sending: held 
 test('each message counts from its own sending, also when drawn again', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   vi.setSystemTime(32_400);
-  const conversation = { id: 'conversation', agent: 'fake', warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
+  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
   setConversationState({ conversation });
   useConnection.setState({ offline: false });
   const page = (running: CoordinatorTurn) => <TestWorkspace data={screenData()}><LastWordsPill style={{}} /><Thinking turn={running} /></TestWorkspace>;
@@ -118,7 +118,7 @@ test('operation and work-name wording is available in Japanese and English', asy
 });
 
 test('folded words follow the last active turn before a later finished reply', () => {
-  setConversationState({ conversation: { id: 'conversation', agent: 'fake', warm: 'none', busy: false, cancelled: [], turns: [
+  setConversationState({ conversation: { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [
     turn,
     { ...turn, id: 'queued', status: 'queued' },
     { ...turn, id: 'finished', status: 'succeeded', answer: 'Finished reply', answeredAt: turn.at },

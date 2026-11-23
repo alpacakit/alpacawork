@@ -21,7 +21,7 @@ for(const leave of ["stays", "task", "filter", "project"] as const) test(`the se
   vi.spyOn(globalThis,'fetch').mockImplementation(async (input)=>{
     const url=String(input);
     if(url.startsWith('/api/task/search?')&&url.includes('after=cursor')){received=true;await gate;return new Response(JSON.stringify(searchAnswer(['T2'],{},null,2)));}
-    return new Response(JSON.stringify({id:'fixture',agent:'claude',warm: 'none' as const, busy: false,cancelled:[],turns:[]}));
+    return new Response(JSON.stringify({id:'fixture',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const, busy: false,cancelled:[],turns:[]}));
   });
   render(<TestWorkspace data={data}><Workbench/></TestWorkspace>);await flush();
   const next=document.querySelector('[data-reader-mode] [data-gathered-pager] button:last-child')!;

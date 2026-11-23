@@ -22,7 +22,7 @@ function setup() {
   const data=screenData(tree({tasks:[dto(),dto({id:'T13'})]}));
   const at='2026-11-03T00:15:00Z';
   const turn={id:'stable-turn',at,ask:'T13',tasks:['T13'],attachments:[],status:'succeeded' as const,waiting:false,answer:'Stable answer',seen:true,answeredAt:at,error:null,result:null};
-  const conversation={id:'consumer-test',agent:null,warm:'none' as const,busy:false,cancelled:[],turns:[turn]};
+  const conversation={id:'consumer-test',nextLaunch: { agent: 'claude', values: {} },warm:'none' as const,busy:false,cancelled:[],turns:[turn]};
   setConversationState({conversation,open:false,expanded:false,engaged:false,read:true});
   vi.spyOn(globalThis,'fetch').mockImplementation(async()=>new Response(snapshotJson(conversation)));
   return {data,turn};

@@ -1,4 +1,3 @@
-import type { Selection } from "@alpacawork/contract/agent-settings";
 import { isAgentView } from '@/lib/agent-view';
 import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { useSyncExternalStore } from 'react';
@@ -88,14 +87,14 @@ type View = {
    */
   follow: () => void;
   /**
-   * `selected`: the launch choices (model, effort…) the turn starts with; `intent`: a press's meaning (reader-send);
-   * `answers`: the questions a draft's choices answer.
+   * `intent`: a press's meaning (reader-send); `answers`: the questions a draft's choices answer. The server decides
+   * which AI the turn starts with (the conversation's `nextLaunch`).
    */
-  ask: (input: { conversationId: string; id: string; text: string; tasks?: string[]; skills?: string[]; attachments: string[]; agent?: string;
-    selected: Selection; intent?: CoordinatorIntent; answers?: CoordinatorAnswers; replyTo?: string | null; retryOf?: string }, basis?: WriteBasis, keepalive?: boolean) => Promise<boolean>;
+  ask: (input: { conversationId: string; id: string; text: string; tasks?: string[]; skills?: string[]; attachments: string[];
+    intent?: CoordinatorIntent; answers?: CoordinatorAnswers; replyTo?: string | null; retryOf?: string }, basis?: WriteBasis, keepalive?: boolean) => Promise<boolean>;
   messageAction: (action: "withdraw" | "send-now", id: string) => Promise<void>;
   clear: () => Promise<void>;
-  warm: (selected: Selection, agent?: string) => Promise<void>;
+  warm: () => Promise<void>;
 };
 let revision = 0;
 /**
@@ -395,12 +394,12 @@ const useConversationUi = create<Ui>((set) => {
    * Opened on a conversation with no message yet, the server loads the coordinator's instructions in the background.
    * Only a speed-up: when it cannot start, the first message loads them itself.
    */
-  warm: async (selected, agent) => {
+  warm: async () => {
     const { conversation, open } = get();
     if (!open || !conversation || conversation.turns.length || conversation.warm !== "none") return;
     const origin = sending();
     try {
-      const next = await warmCoordinator(conversation.id, selected, agent);
+      const next = await warmCoordinator(conversation.id);
       // A message sent meanwhile is newer than this answer; the next read brings both.
       takeSnapshot(next, origin);
       if (get().warmRefused === conversation.id) set({ warmRefused: null });

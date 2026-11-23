@@ -1,4 +1,3 @@
-import { selectionSchema } from "@alpacawork/contract/agent-settings";
 import { writeRestoreId } from '@/data/connection';
 import { rememberWriteIdentity, provenWriteIdentity } from '@/data/write-identity';
 import { acceptDeliveryNotice, deliveryNoticeId, endDeliveryNotice } from '../delivery-notice';
@@ -44,15 +43,8 @@ import { clearingConversation } from '../press';
  * accepts them in the order they were written. An accepted or refused one does not hold the next.
  */
 type Stage = 'queued' | 'checking' | 'posted' | 'accepted' | 'refused';
-/**
- * The launch values as a fixed request keeps them: whatever this device stored, an earlier version's included. Reading
- * them never loses the words; whether today's API takes them is delivery's check (deliver.ts), not this read's.
- */
-const storedSelectionSchema = z.record(z.string(), z.string().nullable());
-/** Whether today's API still takes the launch values a request was fixed with (an earlier version's may not). */
-export const sendableSelection = (fixed: Pick<Fixed, 'selected'>): boolean => selectionSchema.safeParse(fixed.selected).success;
-const fixedSchema = z.object({ conversationId: z.string(), text: z.string(), tasks: z.array(z.string()).optional(), agent: z.string().optional(),
-  skills: z.array(z.string()).optional(), selected: storedSelectionSchema, attachments: z.array(z.string()), intent: coordinatorIntentSchema.optional(),
+const fixedSchema = z.object({ conversationId: z.string(), text: z.string(), tasks: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(), attachments: z.array(z.string()), intent: coordinatorIntentSchema.optional(),
   answers: coordinatorAnswersInputSchema.optional(), replyTo: z.string().nullable().optional() });
 export type Fixed = z.infer<typeof fixedSchema>;
 /** The fixed request and the reader's bindings as this owner stores them in a record's values. */
@@ -80,9 +72,6 @@ export function outgoingBlock(root: string, requestId: string): OutgoingBlock | 
 export function outgoingDisplay(item: Outgoing, live: boolean): OutgoingDisplay {
   const blocked = outgoingBlock(draftIdentity(item.key)[0], item.requestId);
   if (item.last === 'ask' && blocked && ['queued', 'checking', 'posted'].includes(item.stage)) return { stage: 'unknown', last: item.last, cancelled: item.cancelled, refusal: outgoingBlockText(blocked), blocked: true };
-  // Posted with a choice today's API no longer takes: it cannot go again, and whether it arrived is still the read's to say.
-  if (item.last === 'ask' && item.stage === 'posted' && !sendableSelection(item.fixed))
-    return { stage: 'unknown', last: item.last, cancelled: item.cancelled, refusal: i18n.t('ui:coordinatorCard.launchChoiceUnresendable'), blocked: true };
   const stage = item.stage === 'refused' ? item.last === 'withdraw' && !item.cancelled ? 'cancelled' : 'refused'
     : live || item.stage === 'accepted' ? 'sending'
     : item.stage === 'queued' ? graceReady(item.due) ? 'queued' : 'waiting' : 'unknown';
@@ -701,7 +690,7 @@ export function beginWithdrawal(root: string, requestId: string, conversation?: 
     const turn = conversation.turns.find(turn => turn.id === requestId);
     if (turn && turn.status !== 'queued') return null;
     // A server row has no recoverable original document. Retain only this withdrawal's intent; never resend it.
-    const fixed: Fixed = { conversationId: conversation.id, text: turn?.ask ?? '', selected: {}, attachments: turn?.attachments ?? [],
+    const fixed: Fixed = { conversationId: conversation.id, text: turn?.ask ?? '', attachments: turn?.attachments ?? [],
       ...turn?.tasks ? { tasks: turn.tasks } : {}, ...turn?.replyTo ? { replyTo: turn.replyTo.id } : {} };
     entry = { status: 'editing', values: { requestId, doc: JSON.stringify(emptyDocument()), submitted: JSON.stringify(fixed), stage: 'posted', at: turn?.at ?? new Date().toISOString() } };
   }

@@ -17,7 +17,7 @@ import { indexOf, screenData, TestWorkspace, tree } from './fixtures';
 
 const root = '/fixture', generation = 'independent-index-generation', cid = 'independent-index-cid';
 const revision = 'a'.repeat(64), at = '2026-10-24T10:00:00Z', words = 'Acquired through actual coordinator GET';
-const conversation: CoordinatorConversation = { id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [
+const conversation: CoordinatorConversation = { id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [
   { id: 'independent-turn', at, ask: words, attachments: [], status: 'succeeded', waiting: false,
     answer: 'Actual acquired answer', answeredAt: at, seen: true, error: null, result: null },
 ] };

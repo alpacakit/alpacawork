@@ -10,7 +10,6 @@
       "agentFor": "Agente de la fila {{n}}",
       "agentsNote": "Un agente desactivado no se puede usar en el orden de arriba.",
       "agentsTitle": "Ajustes de cada agente",
-      "coordinatorNote": "La IA con la que hablas en el cuadro de entrada empieza cada conversación nueva con el modelo que elegiste por última vez en su menú (la IA 1 hasta que elijas uno). Si se detiene por un límite de uso o de capacidad, las alternativas siguen en el orden de arriba.",
       "down": "Bajar la fila {{n}}",
       "first": "De uso normal",
       "issue": {
@@ -19,14 +18,14 @@
         "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
         "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
       },
-      "lead": "Normalmente funciona la IA 1. Solo si se detiene por un límite de uso o de capacidad, las alternativas 2, 3… siguen en orden; si también se detiene la última, el trabajo se detiene y se te avisa.",
+      "lead": "Normalmente la IA 1 hace las tareas. Solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden. Si también se detiene la última, el trabajo se detiene y se te avisa.",
       "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
       "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar la fila {{n}}",
       "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
-      "saveRefused": "No se guardó: “IA de las tareas y orden de alternativas” tiene una fila que no se puede usar. Corrige la fila marcada en rojo y vuelve a guardar.",
+      "saveRefused": "No se guardó: “{{list}}” tiene una fila que no se puede usar. Corrige la fila marcada en rojo y vuelve a guardar.",
       "showRow": "Ir a la fila",
-      "title": "IA de las tareas y orden de alternativas",
+      "title": "IA de las tareas",
       "up": "Subir la fila {{n}}",
       "valueFor": "{{row}} de la fila {{n}}"
     },
@@ -38,8 +37,12 @@
     "cancel": "Cancelar",
     "cannotRun": "Esta ruta no se puede ejecutar",
     "choices": "Valores disponibles al pedir trabajo",
-    "choicesHint": "Los valores que se ofrecen arriba y en el menú del campo de entrada.",
+    "choicesHint": "Los valores que se ofrecen en las listas de IA de arriba y en las solicitudes.",
     "collapse": "Contraer {{name}}",
+    "coordinatorStack": {
+      "lead": "Recibe lo que envías desde el campo de entrada, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
+      "title": "IA con la que hablas en el campo de entrada (coordinadora)"
+    },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
     "disabled": "Desactivado",
     "duplicateName": "{{name}} ya existe. Elige otro nombre.",

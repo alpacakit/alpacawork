@@ -38,7 +38,7 @@ function feed(value = fixture()) {
 const card = (key = 'log:T1:Qown') => document.querySelector<HTMLElement>(`[data-report-key="${key}"]`)!;
 
 test('the Task’s own human question appears without History, and answers its original ID and what it fixed', async () => {
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(snapshotJson({ id: 'projection-choice', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(snapshotJson({ id: 'projection-choice', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
   onTestFinished(() => fetcher.mockRestore());
   render(feed().node);
   expect(within(card()).getByText('Where to save?')).toBeTruthy();

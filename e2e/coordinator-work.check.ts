@@ -16,7 +16,8 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   installAgentStub(runtime.root, 'claude', [process.execPath, agent]);
   const setting = fixtureAgentSetting('claude');
   setting.params.model = ['opus', 'sonnet']; setting.params.effort = ['medium', 'high'];
-  writeFixtureConfig(runtime.root, stringify({ ...existing, agents: { fake: setting, ...existing.agents } }));
+  const { coordinatorAiStack: _input, ...kept } = existing;
+  writeFixtureConfig(runtime.root, stringify({ ...kept, agents: { fake: setting, ...existing.agents } }));
   let reads = 0;
   page.on('request', request => { if (request.method() === 'GET' && new URL(request.url()).pathname === '/api/coordinator') reads++; });
   await open(page, runtime);

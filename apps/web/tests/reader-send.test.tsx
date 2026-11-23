@@ -53,7 +53,7 @@ const wrote = (kind: Write['kind'], more: Partial<Write> = {}): Write => ({ task
 /** The answer that closed `question` on T3. */
 const answered = (question: string) => result([wrote('answered', { question })]);
 const conversation = (id: string, status: CoordinatorTurn['status'] = 'running', outcome: CoordinatorResult | null = null) =>
-  ({ id: 'c', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
+  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
 const receiptOf = (id: string) => [...useReaderSend.getState().receipts.values()].find(receipt=>receipt.root===scope.root&&receipt.conversationId===scope.conversationId&&receipt.id===id);
 /** The Run that answers the message ended, and the server says it wrote the answer that closed Q1. */
 const confirm = (id: string) => reconcileReaderSends(conversation(id, 'succeeded', answered('Q1')));
@@ -178,9 +178,9 @@ for (const move of ['close', 'reopen', 'other', 'other-and-back'] as const) test
 });
 test('cancellation releases only its pending receipt and cannot be rewound by a later queued snapshot', () => {
   captureReaderSend(doc, tasks, 'r1')();
-  reconcileReaderSends({ id: 'c', agent: null, warm: 'none' as const, busy: false, cancelled: ['old'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['old'], turns: [] });
   expect(useSitting.getState().departures[task.id]).toBeDefined();
-  reconcileReaderSends({ id: 'c', agent: null, warm: 'none' as const, busy: false, cancelled: ['r1'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['r1'], turns: [] });
   reconcileReaderSends(conversation('r1', 'queued'));
   expect(useSitting.getState().departures[task.id]?.status()).toBe('refused');
   expect(confirmedAnswers()).toEqual([]); expect(useSitting.getState().sent).toBeNull();
@@ -697,7 +697,7 @@ for (const end of ['cancelled', 'closed', 'closed elsewhere', 'refused'] as cons
   const binding = end === 'refused'
     ? captureReaderIntent(intent, null, [reviewing], 'reloaded', scope, () => {}).reader!
     : captureReaderSend(doc,tasks,'reloaded').reader!;
-  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'',selected:{},attachments:[],...(end === 'refused' ? { intent } : {})},{requestId:'reloaded',doc:JSON.stringify(doc)},undefined,binding)).toBe('reloaded');
+  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'',attachments:[],...(end === 'refused' ? { intent } : {})},{requestId:'reloaded',doc:JSON.stringify(doc)},undefined,binding)).toBe('reloaded');
   const error=vi.spyOn(notify,'error');
   const snapshot=conversation('reloaded','succeeded',end==='refused'?result([],[{task:task.id,code:'conflict',message:'Task changed',retry:'reread'}]):null);
   if(end==='closed elsewhere') observeReaderConversation({...scope,conversationId:'new-conversation'});
@@ -712,7 +712,7 @@ test('a restored answer reference never promises a Task write, even if its saved
   onTestFinished(() => error.mockRestore());
   const binding = captureReaderSend(doc, tasks, 'restored-answer').reader!.map(reader => ({ ...reader,
     expectedWrites: [{ kind: 'answered' as const, question: 'Q1' }] }));
-  freeze(scope.root, { conversationId: scope.conversationId, text: '', selected: {}, attachments: [] },
+  freeze(scope.root, { conversationId: scope.conversationId, text: '', attachments: [] },
     { requestId: 'restored-answer', doc: JSON.stringify(doc) }, undefined, binding);
   useReaderSend.setState({ receipts: new Map() });
   reconcileReaderSends(conversation('restored-answer', 'succeeded', result()));
@@ -720,7 +720,7 @@ test('a restored answer reference never promises a Task write, even if its saved
   expect(receiptOf('restored-answer')?.status).toBe('confirmed');
   expect(holdsReaderTurn(useDraftStore.getState().entries, scope.root, readerTurn(task))).toBe(false);
   const follow = captureReaderSend(doc, tasks, 'follow-up');
-  expect(freeze(scope.root, { conversationId: scope.conversationId, text: serialize(doc, 'codex'), selected: {}, attachments: [] },
+  expect(freeze(scope.root, { conversationId: scope.conversationId, text: serialize(doc, 'codex'), attachments: [] },
     { requestId: 'follow-up', doc: JSON.stringify(doc) }, undefined, follow.reader)).toBe('follow-up');
   expect(error).not.toHaveBeenCalled();
 });
@@ -729,11 +729,11 @@ for (const action of ['continue','retry'] as const) test(`a free-text retry afte
   useDraftStore.setState({entries:{},unavailable:false});
   onTestFinished(()=>useDraftStore.setState({entries:{},unavailable:false}));
   const intent=intentAbout(reviewing,action,people),first=captureReaderIntent(intent,useSitting.getState().card,[reviewing],'earlier',scope,()=>{});
-  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'earlier',selected:{},attachments:[],intent},{requestId:'earlier',doc:JSON.stringify(textDocument('earlier'))},undefined,first.reader)).toBe('earlier');
+  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'earlier',attachments:[],intent},{requestId:'earlier',doc:JSON.stringify(textDocument('earlier'))},undefined,first.reader)).toBe('earlier');
   expect(first()).toBe(true);failReaderSend('earlier',scope,new ApiError('refused','conflict','reread'));
   const words=labelled(textDocument('この内容で進めてください'),reviewing),next=captureReaderSend(words,[reviewing],'later');
   expect(readerSendReadiness(words,[reviewing],null).ready).toBe(true);
-  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'words',selected:{},attachments:[]},{requestId:'later',doc:JSON.stringify(words)},undefined,next.reader)).toBe('later');
+  expect(freeze(scope.root,{conversationId:scope.conversationId,text:'words',attachments:[]},{requestId:'later',doc:JSON.stringify(words)},undefined,next.reader)).toBe('later');
   expect(next()).toBe(true);moveOn([]);expect(submittedAnswers()?.map(each=>each.answer)).toEqual(['send']);
 });
 
@@ -742,7 +742,7 @@ test('fixed answer payload records every named task even when another card is sh
   const other={...task,id:'T4',title:'Second question'};
   const doc=toggleAnswer(choose('Q1',1),other,choiceAnswer(answerTask(other),'Q1',decideOf(twoAsked)[0]!,decideOf(twoAsked)[0]!.choices[0]!));
   const accept=captureReaderSend(doc,[task,other],'multiple');
-  freeze(scope.root,{conversationId:scope.conversationId,text:serialize(doc,'codex'),selected:{},attachments:[],...answeredQuestions(doc)},{requestId:'multiple',doc:JSON.stringify(doc)},undefined,accept.reader);
+  freeze(scope.root,{conversationId:scope.conversationId,text:serialize(doc,'codex'),attachments:[],...answeredQuestions(doc)},{requestId:'multiple',doc:JSON.stringify(doc)},undefined,accept.reader);
   accept();
   expect(holdsReaderTurn(useDraftStore.getState().entries,scope.root,readerTurn(task))).toBe(true);
   expect(holdsReaderTurn(useDraftStore.getState().entries,scope.root,readerTurn(other))).toBe(true);
@@ -751,7 +751,7 @@ test('fixed answer payload records every named task even when another card is sh
 test('an offscreen intent still has its fixed task submission identity', () => {
   const intent={task:task.id,action:'continue' as const,expectedTaskHash:task.hash};
   const accept=captureReaderIntent(intent,null,[task],'offscreen',scope,()=>{});
-  freeze(scope.root,{conversationId:scope.conversationId,text:'continue',selected:{},attachments:[],intent},{requestId:'offscreen',doc:JSON.stringify(textDocument('continue'))},undefined,accept.reader);
+  freeze(scope.root,{conversationId:scope.conversationId,text:'continue',attachments:[],intent},{requestId:'offscreen',doc:JSON.stringify(textDocument('continue'))},undefined,accept.reader);
   expect(holdsReaderTurn(useDraftStore.getState().entries,scope.root,readerTurn(task))).toBe(true);
 });
 
@@ -778,7 +778,7 @@ test('Open after closing a conversation restores into the current input, rather 
   const intent = intentAbout(reviewing, 'continue', people), doc = textDocument('original review words');
   const binding = { ...readerTurn(reviewing), title: reviewing.title, kind: 'intent' as const, answer: 'done' as const,
     expectedWrites: [{ kind: 'review_approved' as const, runId: 'R1' }] };
-  freeze(scope.root, { conversationId: scope.conversationId, text: 'original review words', selected: {}, attachments: [], intent },
+  freeze(scope.root, { conversationId: scope.conversationId, text: 'original review words', attachments: [], intent },
     { doc: JSON.stringify(doc), requestId: id }, undefined, [binding]);
   captureReaderIntent(intent, null, [reviewing], id, scope, () => {})();
   closeReaderConversation(scope);
@@ -855,7 +855,7 @@ for (const language of ['ja', 'en']) for (const proof of ['HTTP', 'queued', 'sen
 test(`reader delivery names its Task and confirms the explicit check in the same slot; ${language}/${proof}`, async () => {
   await i18n.changeLanguage(language); useToasts.setState({ toasts: [], hidden: new Set() });
   const retry = vi.fn(), id = 'named-reader-delivery', accept = captureSend(doc, tasks, id, scope, retry);
-  freeze(scope.root, { conversationId: scope.conversationId, text: '', selected: {}, attachments: [] },
+  freeze(scope.root, { conversationId: scope.conversationId, text: '', attachments: [] },
     { requestId: id, doc: JSON.stringify(doc) }, undefined, accept.reader); accept();
   failReaderSend(id, scope, new ApiError('reply lost'));
   const notice = useToasts.getState().toasts[0]!;

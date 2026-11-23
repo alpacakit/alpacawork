@@ -17,7 +17,7 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   let latest: StackRowDraft[] = [];
   function Form() {
     const [rows, setRows] = useState(readStack([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }]));
-    return <AiStack rows={rows} agents={agents} onChange={next => { latest = next; setRows(next); }} />;
+    return <AiStack kind="tasks" rows={rows} agents={agents} onChange={next => { latest = next; setRows(next); }} />;
   }
   render(<Form />);
   // The first row is the default; it cannot move up, and the only row cannot be removed.
@@ -44,7 +44,7 @@ test('a row the agents no longer run is said on the row and keeps the stack from
   const issues = stackIssues([...rows, ...readStack([{ agent: 'codex', values: { model: 'gpt-6.2-sol' } }])], disabled);
   expect(issues.map(issue => issue.kind)).toEqual(['value', 'missing', 'disabled']);
   expect(stackIssues([], agents).map(issue => issue.kind)).toEqual(['empty']);
-  render(<AiStack rows={rows} agents={agents} onChange={() => {}} />);
+  render(<AiStack kind="tasks" rows={rows} agents={agents} onChange={() => {}} />);
   // Each row the agents no longer run is marked, with its reason under it.
   const shown = [...document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')];
   expect(shown.map(row => row.hasAttribute('data-invalid'))).toEqual([true, true]);

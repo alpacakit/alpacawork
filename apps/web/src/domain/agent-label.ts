@@ -167,3 +167,13 @@ export function selectionAgentLabels(placements: readonly PlacementDTO[], people
       short: prefix + text, full: prefix + agent.full + tail }];
   }));
 }
+
+/**
+ * What a launch's values are called: the model and its effort, or the agent's name where it has no model. An effort
+ * left out (`-`) is not asked for, so it is left out with its brackets, never said "unknown" as a Run record says of an
+ * effort nobody knows.
+ */
+export function launchName(agent: string, values: Readonly<Record<string, string | null>>): Exclude<ModelName, string> {
+  const model = values.model ?? agent;
+  return values.effort == null ? { model, full: model } : agentModelName(values.model, values.effort, agent);
+}

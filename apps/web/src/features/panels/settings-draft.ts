@@ -10,23 +10,25 @@ import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/cont
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
 
-/** The Server tab owns limits, Jev, typed agents and the AI stack; config/set receives one derived agents: block. */
+/** The Server tab owns limits, Jev, typed agents and the AI stacks; config/set receives one derived agents: block. */
 export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {
   // When there is no saved stack, the settings editor starts with the agent the server uses by default.
   const first = settings.aiStack === undefined ? enabledAgents(settings.agents)[0] : undefined;
   const rows = first ? [{ agent: first[0], values: resolveAgentSelection(compileAgentSetting(...first)).values }] : settings.aiStack;
+  // The input's stack is shown as saved: none saved is none set, which the input says until one is added here.
   return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents: readServerAgents(settings.agentsText),
-    aiStack: readStack(rows) };
+    aiStack: readStack(rows), coordinatorAiStack: readStack(settings.coordinatorAiStack) };
 }
 /**
- * The limits, the AI stack and Jev config/set writes beside the agents block; the YAML example shows the same text.
- * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. `aiStack` absent leaves the
- * stack in config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
+ * The limits, the AI stacks and Jev config/set writes beside the agents block; the YAML example shows the same text.
+ * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. A stack absent leaves it in
+ * config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
  */
-export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack'>>) {
-  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
+export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack' | 'coordinatorAiStack'>>) {
+  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {},
+    ...draft.coordinatorAiStack ? { coordinatorAiStack: writeStack(draft.coordinatorAiStack) } : {}, /* jev: draft.jev */ },
     { lineWidth: 0, aliasDuplicateObjects: false });
 }
 /**

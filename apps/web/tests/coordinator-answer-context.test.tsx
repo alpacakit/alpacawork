@@ -10,7 +10,7 @@ import { observed } from '../src/features/coordinator/editor/lifecycle';
 import { setConversationState } from './conversation-fixture';
 
 const root = '/fixture', cid = 'answer-context', key = draftKey(root, 'coordinator', cid);
-const conversation = (turns: any[] = []) => ({ id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 beforeEach(() => {
   useDraftStore.setState({ entries: {}, unavailable: false });
@@ -24,7 +24,7 @@ for (const shared of [false, true]) test(`an admitted reader answer retains its 
   // A shared recipient precedes the reader-owned answer.
   if (shared) doc.content[0]!.content!.unshift({ type: 'taskLabel', attrs: { id: 'T5', title: 'Shared task' } });
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values: { doc: JSON.stringify(doc), requestId: id } } } });
-  freeze(root, { conversationId: cid, text: '1-Yes', agent: 'claude', selected: {}, attachments: [] },
+  freeze(root, { conversationId: cid, text: '1-Yes', attachments: [] },
     useDraftStore.getState().entries[key]!.values, { from: key },
     [{ taskId: 'T1', title: 'First task', turn: 'Q1', phase: 'doing', kind: 'answer', answer: 'send', expectedWrites: null }]);
   reconcileOutbox(conversation([{ id, at: '2026-11-05T00:00:00Z', ask: '1-Yes', attachments: [],
@@ -43,7 +43,7 @@ test('a reader send follows the next Task without resurrecting its recipient on 
   const doc = toggleAnswer(emptyDocument(), original,
     { task: original.id, question: 'Q1', n: '1', name: 'Yes', answer: '1-Yes' });
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values: { doc: JSON.stringify(doc), phase: 'composing', seen: original.id, requestId: id } } } });
-  freeze(root, { conversationId: cid, text: 'T1 1-Yes', agent: 'claude', selected: {}, attachments: [] },
+  freeze(root, { conversationId: cid, text: 'T1 1-Yes', attachments: [] },
     useDraftStore.getState().entries[key]!.values, { from: key },
     [{ taskId: 'T1', title: original.title, turn: 'Q1', phase: 'doing', kind: 'answer', answer: 'send', expectedWrites: null }]);
   mutateInput(key, values => observed(values, { panel: next, project: null }));
@@ -65,7 +65,7 @@ for (const answer of [true, false]) test(`a refused reader ${answer ? 'choice' :
   if (!answer) doc.content[0]!.content!.unshift(taskLabel(original));
   const values = { doc: JSON.stringify(doc), phase: 'composing', seen: original.id, requestId: id };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
-  freeze(root, { conversationId: cid, text: 'Original answer', agent: 'claude', selected: {}, attachments: [] }, values, { from: key },
+  freeze(root, { conversationId: cid, text: 'Original answer', attachments: [] }, values, { from: key },
     [{ taskId: original.id, title: original.title, turn: 'Q1', phase: 'doing', kind: 'answer', answer: 'send', expectedWrites: null }]);
   mutateInput(key, values => observed(values, { panel: next, project: null }));
   returnReaderSubmission(root, id, 'refused');

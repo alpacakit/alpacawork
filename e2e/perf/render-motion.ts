@@ -23,7 +23,7 @@ type Probe = { phase: Phase; frames: number[]; long: number[]; last: number; ani
 declare global { interface Window { renderMotion: Probe } }
 const output = resolve(process.argv[2] ?? '/tmp/render-motion.json'), counts = process.argv[3] === 'counts';
 mkdirSync(dirname(output), { recursive: true });
-const conversation = coordinatorConversationSchema.parse({ id: 'render-motion', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'render-motion', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
   turns: [...Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
 

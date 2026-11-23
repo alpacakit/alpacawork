@@ -5,6 +5,11 @@
     "undo": "撤销"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "在输入框对话的 AI：{{ai}}。点按可在设置中更改",
+      "none": "没有可在输入框对话的 AI，无法发送。点按打开设置",
+      "setUp": "设置 AI"
+    },
     "appHint": {
       "close": "关闭此提示",
       "detail": "安装为电脑应用，或在手机上打开",
@@ -26,6 +31,7 @@
     "completeHint": "将 {{id}} 标记为已完成",
     "conflict": "同一 ID 下已收到不同的内容",
     "conversationChanged": "对话已切换",
+    "coordinatorAiChanged": "未发送：在输入框对话的 AI 已变更。请确认技能后再次发送。",
     "copyAnswer": "复制回复",
     "deliveryRefused": "智能体未能接收这条消息，消息仍在排队。",
     "done": "完成",
@@ -59,8 +65,6 @@
     "heightHint": "上下拖动可调整高度（向上快速滑动为全屏，向下为关闭）",
     "interrupted": "发送前已中断",
     "joinedCount_other": "还有 {{count}} 条",
-    "launchChoiceChanged": "发送时所选的模型等选项现在无法使用。请重新选择后发送",
-    "launchChoiceUnresendable": "发送时所选的模型等选项现在无法重新发送。是否送达将在确认后显示",
     "loadFailed": "无法加载对话",
     "loading": "正在加载对话…",
     "loadingWanted": "加载完成后打开…",

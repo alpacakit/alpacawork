@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCoarsePointer } from "@/lib/input-capabilities";
 import { FieldHint } from "@/components/ui/field";
-import { useDialogStore, type SettingsTab } from "@/state/dialog-store";
+import { useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
 import { HostTab } from "./HostTab";
 import { DialogBody } from "@/components/ui/dialog";
 import { PanelDialog } from "./PanelDialog";
@@ -20,11 +20,11 @@ import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/up
  * opening its own settings, which are the project dialog's, not here. Updates have no tab: their one status line (with
  * its one action) above the tabs and the running version at the foot.
  */
-export function SettingsDialog({ initialTab = "personal", request, focusNotifications = false }: { initialTab?: SettingsTab; request?: number; focusNotifications?: boolean } = {}) {
+export function SettingsDialog({ initialTab = "personal", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
   const { t } = useTranslation("panels");
   return (
     <PanelDialog title={t("settings.title")} size="large" ownBody>
-      <SettingsBody initialTab={initialTab} request={request} focusNotifications={focusNotifications} />
+      <SettingsBody initialTab={initialTab} request={request} focus={focus} />
       <UpdateConfirmDialog />
     </PanelDialog>
   );
@@ -32,7 +32,8 @@ export function SettingsDialog({ initialTab = "personal", request, focusNotifica
 
 const TABS = ["personal", "server", "apps", "host", "projects"] as const satisfies readonly SettingsTab[];
 
-export function SettingsBody({ initialTab = "personal", request, focusNotifications = false }: { initialTab?: SettingsTab; request?: number; focusNotifications?: boolean }) {
+export function SettingsBody({ initialTab = "personal", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
+  const focusNotifications = focus === "notifications";
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
   // The guide is read at a computer: a phone that opens this is past every step of it.
@@ -88,7 +89,7 @@ export function SettingsBody({ initialTab = "personal", request, focusNotificati
       </TabsContent>
       {/* Mounted while hidden so the draft survives switching tabs. */}
       <TabsContent value="server" forceMount hidden={tab !== "server"}>
-        <ServerSettingsTab />
+        <ServerSettingsTab focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined} />
       </TabsContent>
       <TabsContent value="host">
         <HostTab />

@@ -19,7 +19,7 @@ export function DialogHost() {
     case "run":
       return <RunFormDialog key={dialog.runId} target={dialog} />;
     case "settings":
-      return <SettingsDialog initialTab={dialog.tab} request={dialog.request} focusNotifications={dialog.focusNotifications} />;
+      return <SettingsDialog initialTab={dialog.tab} request={dialog.request} focus={dialog.focus} />;
     case "diagnostics":
       return <DiagnosticsDialog />;
     case "project":

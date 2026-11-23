@@ -18,9 +18,9 @@ import { useUndoOffers } from '../src/data/undo-offers';
 import { useReaderSend } from '../src/features/coordinator/reader-send';
 const root = '/fixture', cid = 'cancel-conversation', key = draftKey(root, 'coordinator', cid);
 const values = (text = '', requestId: string = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument(text)), requestId });
-const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', selected: {}, attachments: [] });
+const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', attachments: [] });
 const turn = (id: string, ask = 'words') => ({ id, ask, at: '2026-10-28T08:00:00Z', attachments: [], status: 'queued' as const, waiting: false, seen: false, answer: null, answeredAt: null, error: null, result: null });
-const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, agent: 'claude', warm: 'none' as const, busy: false, turns, cancelled });
+const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns, cancelled });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 function setup(text = 'words') {
   setConversationState({ root, conversation: conv(), open: true, expanded: true, engaged: false, error: null });
@@ -32,7 +32,7 @@ function queued(text = 'words', posted = true) {
   return id;
 }
 function Rows() { const shown = useShownConversation(), queue = useWaiting(); return <><output data-testid="local">{JSON.stringify(shown.local)}</output>{shown.localThread.map(turn => <LocalOutcome key={turn.id} turn={turn} />)}<WaitingRows queue={queue} open={() => {}} /></>; }
-function mount(input = true) { return render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><Rows />{input && <CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" />}</ShownConversationProvider></TestWorkspace>); }
+function mount(input = true) { return render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><Rows />{input && <CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" />}</ShownConversationProvider></TestWorkspace>); }
 // Keep Rows and the actual input inside the same projection/provider.
 beforeAll(async () => { await startI18n(); });
 beforeEach(async () => { await i18n.changeLanguage('ja'); useOutbox.setState({ live: new Set(), resend: null }); });

@@ -17,7 +17,7 @@ const data = screenData(tree({ tasks: [taskFixture({ id: 'T3', state: 'waiting',
 const { tasks, people } = data;
 const task = tasks[0]!;
 const scope = { root: '/fixture', conversationId: 'c' };
-const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => ({ id, cancelled, turns, agent: null, warm: 'none' as const, busy: false });
+const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => ({ id, cancelled, turns, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false });
 const queued = { id: 'message', at: '', ask: 'Fix T3', attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The Run that answered the message ended, and it wrote on T3 (the review the message answers). */
 const carried = { ...queued, status: 'succeeded', waiting: false, result: { writes: [{ task: 'T3', record: 'L9', kind: 'request_accepted' }], refused: [] } };
@@ -63,13 +63,13 @@ test('a terminal fact survives a newer displayed snapshot and a later queued ask
   await useConversation.getState().refresh(); // A later request wins the display race.
   cancel.resolve(response(snapshot('c', ['message']))); await pending;
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
-  await useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [], selected: {} });
+  await useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] });
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
 });
 test('another device cancellation read settles even with an older ask response in flight', async () => {
   admit(); const ask = deferred<Response>();
   vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(ask.promise).mockResolvedValue(response(snapshot('c', ['message']))));
-  const pending = useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [], selected: {} });
+  const pending = useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] });
   await useConversation.getState().refresh();
   ask.resolve(response(snapshot('c', [], [queued]))); await pending;
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
@@ -94,7 +94,7 @@ test('clear reply loss closes its scope after formal GET; delayed old snapshots 
   expect(useConversation.getState().conversation?.id).toBe('new');
   expect(receipt()?.status).toBe('closed'); expect(keptDepartures()).toEqual([]);
   const calls = fetcher.mock.calls.length;
-  await expect(useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [], selected: {} })).rejects.toThrow('changed');
+  await expect(useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] })).rejects.toThrow('changed');
   expect(fetcher.mock.calls.length).toBe(calls);
 });
 test('scope closure preserves a carried-out message and a later separate operation', async () => {
@@ -124,7 +124,7 @@ test('a carried-out message stays confirmed under delayed queued errors and canc
 });
 for (const next of [snapshot('another', ['message']), snapshot('c')]) test(`ask cannot complete from another scope or absent message: ${next.id}`, async () => {
   admit(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(next)));
-  await expect(useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [], selected: {} })).rejects.toMatchObject({ retry: 'check' });
+  await expect(useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] })).rejects.toMatchObject({ retry: 'check' });
   expect(receipt()?.status).toBe('pending'); expect(useConversation.getState().conversation?.id).toBe('c');
 });
 

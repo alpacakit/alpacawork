@@ -40,7 +40,6 @@ const sameInfo = (a: WorkspaceInfo, b: WorkspaceInfo) =>
   a.presence.state === b.presence.state && a.presence.until === b.presence.until &&
   JSON.stringify(a.host) === JSON.stringify(b.host) &&
   JSON.stringify(a.coordinatorWork) === JSON.stringify(b.coordinatorWork) &&
-  JSON.stringify(a.launchMemory) === JSON.stringify(b.launchMemory) &&
   JSON.stringify(a.counts) === JSON.stringify(b.counts) && JSON.stringify(a.projects) === JSON.stringify(b.projects) &&
   JSON.stringify(a.errors) === JSON.stringify(b.errors) && JSON.stringify(a.profiles) === JSON.stringify(b.profiles);
 
