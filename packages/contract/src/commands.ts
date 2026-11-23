@@ -6,18 +6,19 @@ import { bindHttpEntry, type HttpEntryBinding } from '@alpacakit/channels/http';
 import { attachmentsPath, taskFilePath } from './task-file-route.js';
 import { parseInput } from '@alpacawork/core';
 import { commandPath, commandPrefix } from './command-path.js';
-import { errorEntrySchema } from './problem.js';
+import { errorEntrySchema, problemReasonSchema } from './problem.js';
 import { personalSettingsResponseSchema } from './personal-settings.js';
+import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
 import { stopResponseSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
-  taskRequestResultSchema, taskPlacementResultSchema, controlRunFilesSchema } from './control-contract.js';
+  taskRequestResultSchema, taskPlacementResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
 import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
-import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, taskIdSchema,
+import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
@@ -106,13 +107,13 @@ type CommandDetails = {
   help?: string;
   attachesDiffs?: 'description';
   rules?: readonly InputRule<never>[];
-  output?: z.ZodType;
+  output: z.ZodType;
   file?: FileBinding;
 };
 type Input = z.ZodObject;
 
 function command<Schema extends Input>(kind: CommandKind, description: string, schema: Schema,
-  options: CommandOption[], details: CommandDetails = {}) {
+  options: CommandOption[], details: CommandDetails) {
   return { kind, description, schema, options, ...details };
 }
 const filePath = z.string().min(1).max(1024).refine(value =>
@@ -164,6 +165,32 @@ const operationResultSchema = z.discriminatedUnion('state', [
   z.object({ state: z.enum(['not_found', 'needs_review', 'pending']) }).strict(),
   beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema,
 ]);
+
+const returnDeliverySchema = z.object({
+  wakeRequestId: z.string(), reservedAt: z.string(), receivedAt: z.string().nullable(),
+  consumedAt: z.string().nullable(), releasedAt: z.string().nullable(), releaseReason: z.string().nullable(),
+}).strict();
+const taskReturnsResultSchema = z.object({
+  returns: z.array(z.object({
+    id: z.string(), requestId: z.string().nullable(), outcome: z.enum(RETURN_OUTCOMES), toTaskId: taskIdSchema,
+    boundaryRunId: runIdSchema.nullable(), causeLogId: z.string().nullable(), holdReason: z.string().nullable(),
+    holdProblemReason: problemReasonSchema.nullable(), createdAt: z.string(),
+    deliveries: z.array(returnDeliverySchema),
+    resolution: z.object({ at: z.string(), reason: z.enum(RESOLUTION_REASONS) }).strict().nullable(),
+    disposition: z.enum(['pending', 'carried', 'in_flight', 'disposed']),
+    urgentReason: z.string().nullable(), receiptUnknown: z.boolean(),
+  }).strict()),
+  nextAfter: z.string().nullable(),
+}).strict();
+const workspaceReturnsSchema = z.object({
+  acceptedRequestIds: z.array(z.string()),
+  held: z.array(z.object({ taskId: taskIdSchema, reason: z.string(), project: taskIdSchema.optional() }).strict()),
+}).strict();
+const replyPageSchema = z.object({
+  id: z.string(), answeredAt: z.string(), from: z.number().int().positive(), to: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(), text: z.string(), next: z.number().int().positive().nullable(),
+}).strict();
+const fileResultSchema = z.object({ path: z.string(), bytes: z.number().int().nonnegative() }).strict();
 
 const taskListResultSchema = z.object({
   tasks: z.array(z.object({
@@ -237,7 +264,7 @@ const definitions = {
     '--quote records the user’s words; permission to carry out their decision is governed by the skill.',
     'A Task awaiting review turns internal only after it is confirmed or sent back.') }),
   'task/returns': command('read', 'Read returns and their full identities without acknowledging them',
-    taskReturnsInput, [taskId, text('after', 'Previous return ID'), number('limit', 'Page size (1–200)')]),
+    taskReturnsInput, [taskId, text('after', 'Previous return ID'), number('limit', 'Page size (1–200)')], { output: taskReturnsResultSchema }),
   'task/request': command('write', 'Ask a Task\'s responsible to work: an instruction (to a member with --agent), ' +
     'or an answer to its question (--answers)', taskRequestInput, [
     taskId,
@@ -302,15 +329,15 @@ const definitions = {
   'task/restore': command('write', 'Restore an archived or deleted Task', taskLifecycleInput, [taskId, quote, sourceRequest, expectedTaskHash], { output: taskWriteResultSchema }),
   'task/file/get': command('read', 'Download a file of the Task folder', taskFileGetInput, [
     taskId, text('path', 'File path in the Task folder'), text('output', 'File to write; it must not exist yet', { local: true }),
-  ], { file: { method: 'GET', path: taskFilePath, query: ['path'], response: 'bytes' } }),
+  ], { output: fileResultSchema, file: { method: 'GET', path: taskFilePath, query: ['path'], response: 'bytes' } }),
   'task/file/put': command('write', 'Upload a file into the Task folder', taskFilePutInput, [
     taskId, text('path', 'File path in the Task folder'), text('file', 'Local file to upload', { local: true }),
     text('expectedDigest', 'SHA-256 of the file it replaces; left out, the path must be new'),
-  ], { file: { method: 'PUT', path: taskFilePath, query: ['path'], headers: { expectedDigest: 'X-Alpacawork-Expected-Digest' }, contentDigest: 'X-Alpacawork-Content-Digest', body: 'bytes' } }),
+  ], { output: fileResultSchema.extend({ digest: digestSchema }), file: { method: 'PUT', path: taskFilePath, query: ['path'], headers: { expectedDigest: 'X-Alpacawork-Expected-Digest' }, contentDigest: 'X-Alpacawork-Content-Digest', body: 'bytes' } }),
   'task/attachment/put': command('write', 'Attach a file to a request, for its instruction to link',
     attachmentInput, [taskId, text('requestId', 'The request (its op-id) the file goes with'),
       text('name', 'File name'), text('file', 'Local file to attach', { local: true })],
-    { file: { method: 'POST', path: attachmentsPath, query: ['requestId', 'name'], body: 'bytes' } }),
+    { output: attachmentResultSchema, file: { method: 'POST', path: attachmentsPath, query: ['requestId', 'name'], body: 'bytes' } }),
   'task/attachment/remove': command('write', 'Remove a file attached to a request', attachmentInput,
     [taskId, text('requestId', 'The request (its op-id) the file goes with'), text('name', 'File name')],
     { output: z.object({ removed: z.literal(true) }).strict() }),
@@ -369,8 +396,8 @@ const definitions = {
   'field/delete': command('write', 'Delete a field definition the workspace added, with its stored values', fieldDeleteInput,
     [text('field', 'Field ID'), quote, sourceRequest], {
       output: fieldDeleteResultSchema, help: help('A default field, or one a project or another field still uses, is refused.') }),
-  'workspace/returns': command('write', 'Retry returns and wakes now', emptyInput, []),
-  'workspace/url': command('read', 'Read the running workspace UI URL', emptyInput, []),
+  'workspace/returns': command('write', 'Retry returns and wakes now', emptyInput, [], { output: workspaceReturnsSchema }),
+  'workspace/url': command('read', 'Read the running workspace UI URL', emptyInput, [], { output: workspaceUrlSchema }),
   'config/get': command('read', 'Read saved limits, agents and AI stacks', emptyInput, [],
     { output: serverSettingsSchema, help: help(agentsHelp,
       'agentsText gives the YAML as written, agents gives effective values, and catalog gives adapter defaults.') }),
@@ -396,7 +423,7 @@ const definitions = {
   ], { output: personalSettingsResponseSchema, help: help(settingsHelp,
     'The values the server keeps itself (push.mutedUntil, push.quietResumedUntil) are refused. The screen shows a saved change at once.') }),
   'coordinator/reply/get': command('read', 'Read an answer referenced by a message delivered to the current screen Run (1,200 characters)', coordinatorReplyGetInput,
-    [text('message', 'Reply source Request ID'), number('from', 'First character, starting at 1')]),
+    [text('message', 'Reply source Request ID'), number('from', 'First character, starting at 1')], { output: replyPageSchema }),
   'operation/get': command('read', 'Read what a write saved, by its op-id', z.object({ opId: z.string().min(1) }),
     [text('opId', 'The --op-id the write was sent with')], { output: operationResultSchema }),
 };
@@ -478,7 +505,7 @@ export function commandTree<Context>(implement: (command: Command, verify: (valu
       name: command.words.at(-1)!,
       parameters: parametersOf(command),
       project: ({ values }) => parse(values),
-      output: createOutputContract((command.output ?? z.record(z.string(), z.unknown())) as z.ZodType<JsonValue>),
+      output: createOutputContract(command.output as z.ZodType<JsonValue>),
     });
     const handler = implement(command, value => verifyEntryOutput(entry, value as JsonValue));
     const endpoint = defineEntryEndpoint(entry, {

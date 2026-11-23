@@ -140,7 +140,7 @@ test('task get uses the latest Run of the active responsible placement when plac
       { id: 'Powner', taskId: 'T3', responsible: true, active: true },
       { id: 'Pworker', taskId: 'T3', responsible: false, active: true },
     ] } as unknown as ControlSource;
-  assert.deepEqual(taskView(source, 'T3', { estimateExamples: true }).estimateExamples?.examples
+  assert.deepEqual(taskView(source, 'T3', { include: ['estimateExamples'] as const }).estimateExamples?.examples
     .map(item => item.taskId), ['T1']);
-  assert.equal(taskView(source, 'T1', { estimateExamples: true }).estimateExamples, null);
+  assert.equal(taskView(source, 'T1', { include: ['estimateExamples'] as const }).estimateExamples, null);
 });

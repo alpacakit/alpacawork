@@ -69,7 +69,7 @@ const read = async (url: string, path: string) => {
 
 test('Q3: old assets without a fixed ID cannot execute a DB mutation or create a receipt', async t => {
   const h = await fixture(t);
-  const response = await fetch(new URL('/api/commands/task/update', h.app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  const response = await globalThis.fetch(new URL('/api/commands/task/update', h.app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ task: h.task.id, title: 'Must not save', expectedTaskHash: h.task.hash }) });
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.retry, 'check');

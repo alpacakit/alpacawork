@@ -127,7 +127,7 @@ test('indexed estimate candidates match full scoring across offsets and project 
   }
   const { databaseEstimateExamples, estimateExamples } = await import('@alpacawork/backend/test-dist/control/estimate-examples.js');
   const { readControlSource } = await import('@alpacawork/backend/test-dist/control/task-views.js');
-  const condition = { agent: 'fake', values: {} };
+  const condition = { agent: 'fake', values: { model: null, effort: null } };
   const full = await readControlSource(f.root);
   transaction(f.root, db => {
     assert.deepEqual(databaseEstimateExamples(f.root, db, condition), estimateExamples(full, condition));
@@ -137,9 +137,9 @@ test('indexed estimate candidates match full scoring across offsets and project 
         runRecords: full.runRecords.filter(run => scope.has(run.task)), errors: [] }, condition));
   });
   const sample = full.tasks.find(task => task.title === 'Sample 0')!;
-  assert.deepEqual((await readTaskView(f.root, sample.id, { estimateExamples: condition }, null)).estimateExamples,
+  assert.deepEqual((await readTaskView(f.root, sample.id, { include: ['estimateExamples'] }, null)).estimateExamples,
     estimateExamples(full, condition), 'a direct connection keeps workspace-wide reference outcomes');
-  const projectUsage = await readTaskView(f.root, f.project, { usage: true }, null);
+  const projectUsage = await readTaskView(f.root, f.project, { include: ['usage'] as const }, null);
   assert.equal(projectUsage.usage!.subtree.runs, full.runRecords.length, 'nested project Runs remain in subtree usage');
   const prepare = DatabaseSync.prototype.prepare, fetchedBodies: number[] = [];
   const hook = t.mock.method(DatabaseSync.prototype, 'prepare', function(this: DatabaseSync, sql: string) {

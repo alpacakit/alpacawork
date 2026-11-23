@@ -30,11 +30,11 @@ test('current HTTP errors keep their status and retry advice', async () => {
       assert.equal(error.retry, retry);
     }
 
-    await expectProblem('task/update', { task: 'T999', title: 'Missing', expectedTaskHash: '0'.repeat(64) },
+    await expectProblem('commands/task/update', { task: 'T999', title: 'Missing', expectedTaskHash: '0'.repeat(64) },
       'not_found', 404, 'fix');
-    await expectProblem('task/new', { title: 'Oversized body', parent: 'P1', body: 'x'.repeat(7 * 1024 * 1024) },
+    await expectProblem('commands/task/new', { title: 'Oversized body', parent: 'P1', body: 'x'.repeat(7 * 1024 * 1024) },
       'too_large', 413, 'fix');
-    await expectProblem('task/new', { title: 'One level too far', parent },
+    await expectProblem('commands/task/new', { title: 'One level too far', parent },
       'forbidden', 403, 'fix');
     const invalidInput = await request(app, 'commands/settings/set', { key: 4, value: 'x', expectedRevision: 'r' });
     assert.equal(invalidInput.status, 400);
@@ -47,7 +47,7 @@ test('current HTTP errors keep their status and retry advice', async () => {
     const writer = new DatabaseSync(controlDatabasePath(root));
     try {
       writer.exec('BEGIN IMMEDIATE');
-      await expectProblem('task/new', { title: 'While locked', parent: 'P1' },
+      await expectProblem('commands/task/new', { title: 'While locked', parent: 'P1' },
         'busy', 409, 'later');
       writer.exec('ROLLBACK');
     } finally { writer.close(); }

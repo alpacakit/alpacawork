@@ -104,9 +104,7 @@ function sourceFromSnapshot(root: string, snapshot: ControlSnapshot<TaskValues |
     errors: error ? [error] : [] };
 }
 
-type TaskViewOptions = { log?: number; runs?: number; include?: readonly TaskGetInclude[]; files?: boolean; usage?: boolean;
-  openObligations?: boolean;
-  estimateExamples?: boolean | EstimateCondition;
+type TaskViewOptions = { log?: number; runs?: number; include?: readonly TaskGetInclude[];
   /** A question of the Task (its asking log's ID) to include with its full text and state. */
   question?: string };
 
@@ -116,8 +114,8 @@ export async function readTaskView(root: string, id: string, options: TaskViewOp
   // Usage and open obligations add up other Tasks' Runs and Requests. Any other read of one Task shows its own Runs, and
   // of other Tasks' histories only the questions that concern it, so it reads no more than those.
   const includes = new Set(options.include);
-  const usage = options.usage || includes.has('usage');
-  const own = !usage && !options.openObligations && !includes.has('openObligations');
+  const usage = includes.has('usage');
+  const own = !usage && !includes.has('openObligations');
   let histories: string[] | undefined;
   const project = readControl(root, db => {
     const repository = new TaskRepository(root, db);
@@ -206,7 +204,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   const shelf = new ProjectShelf(source.tree.tasks.filter(item => item.meta.kind === 'project')).of(source.tree.owningProject(id));
   const values = taskValues(task);
   const include = new Set(options.include);
-  const usage = options.usage || include.has('usage') ? (() => {
+  const usage = include.has('usage') ? (() => {
     const now = Date.now();
     const ownRuns = source.runs.filter(run => run.taskId === id);
     const subtreeIds = new Set([id, ...source.tree.descendants(id).map(child => child.id)]);
@@ -214,11 +212,10 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
       subtree: sumUsage(source.runs.filter(run => subtreeIds.has(run.taskId)), now) };
   })() : undefined;
   const responsible = source.placements.find(item => item.taskId === id && item.responsible && item.active);
-  const reference = responsible && source.runRecords.filter(run =>
+  const wantsEstimates = include.has('estimateExamples');
+  const reference = wantsEstimates && responsible && source.runRecords.filter(run =>
     run.task === id && run.placementId === responsible.id).sort(compareRunIds).at(-1);
-  const wantsEstimates = options.estimateExamples || include.has('estimateExamples');
-  const estimateCondition = typeof options.estimateExamples === 'object' ? options.estimateExamples
-    : wantsEstimates && reference ? { agent: reference.agent, values: reference.launch.values } : null;
+  const estimateCondition = reference ? { agent: reference.agent, values: reference.launch.values } : null;
   const questionTasks = source.questions;
   const head = responsible ? source.heads.get(responsible.id) ?? null : null;
   const candidates = source.placements.filter(item => item.taskId === task.id && (item.active || include.has('agents')));
@@ -240,7 +237,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
       // Its values, and the fields of the schema it uses in order with where that comes from (field get reads them).
       ...(Object.keys(values).length ? { values } : {}), ...(include.has('fields') ? { fields: schemaFor(source.tree, source.fields.schemas, task.id) } : {}),
       ...(options.log === undefined ? {} : { log: latest(task.log, options.log) }),
-      ...(options.files || include.has('files') ? { files: folderFiles(source, task) } : {}) },
+      ...(include.has('files') ? { files: folderFiles(source, task) } : {}) },
     questions,
     incomingQuestions: source.errors.length ? null : incomingQuestions(task.id, questionTasks),
     decisionsMade: source.errors.length ? null : decisionsMade(task.id, questionTasks),
@@ -250,7 +247,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     requestedByUser: requestedByUser(task.log, message => source.said.get(message)),
     ...(options.question === undefined ? {} : { question: questionDetail(source, task, options.question) }),
     agents,
-    ...(options.openObligations || include.has('openObligations') ? { openObligations: source.openObligations(task.id) } : {}),
+    ...(include.has('openObligations') ? { openObligations: source.openObligations(task.id) } : {}),
     ...(usage ? { usage } : {}),
     ...(wantsEstimates ? { estimateExamples: estimateCondition
       ? (source.estimates?.(estimateCondition) ?? estimateExamples(source, estimateCondition)) : null } : {}),

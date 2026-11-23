@@ -207,7 +207,7 @@ test('task get lists open questions and --question gives one\'s full text as fix
     assert.equal(other.error.error.code, 'not_found');
     assert.equal((await fetch(new URL(`/api/commands/task/get?task=${h.child.id}&question=${questionId}`, await url(h.root)))).status, 404);
 });
-test('task get --usage adds own and all descendant Run totals only on request', async (t) => {
+test('task get --include usage adds own and all descendant Run totals only on request', async (t) => {
     const h = await setup(t);
     const counters = (input: number) => ({ input, cacheRead: 0, cacheWrite: 0, output: 1 });
     const placements = new Map([h.child.id, h.grandchild.id].map(taskId => [taskId, responsibleOf(h.root, taskId).id]));
@@ -377,8 +377,8 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
     let allBytes = Buffer.byteLength('{}') + await valueBytes(h.project);
     for (const task of notes.keys()) allBytes += await valueBytes(task.id);
     const full = await readControlSource(h.root);
-    for (const options of [{}, { log: 2, runs: 1 }, { usage: true },
-        { files: true }, { estimateExamples: true }, { openObligations: true }])
+    for (const options of [{}, { log: 2, runs: 1 }, { include: ['usage'] as const },
+        { include: ['files'] as const }, { include: ['estimateExamples'] as const }, { include: ['openObligations'] as const }])
         assert.deepEqual(await readTaskView(h.root, h.child.id, options, null), {
             ...taskView(full, h.child.id, options), dependencies: { after: [], started: false, waiting: false },
         });
@@ -387,8 +387,8 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
         assert.deepEqual(await readTaskListView(h.root, options, null), taskListView(full, options));
     // A person reads the whole workspace: the two projects and the four Tasks. The bytes are counted on the thread that reads.
     for (const [options, view] of [[[], {}], [['--log', '0', '--runs', '0'], { log: 0, runs: 0 }],
-        [['--include', 'usage'], { usage: true }], [['--include', 'files'], { files: true }], [['--include', 'estimateExamples'], { estimateExamples: true }],
-        [['--include', 'openObligations'], { openObligations: true }]] as const) {
+        [['--include', 'usage'], { include: ['usage'] as const }], [['--include', 'files'], { include: ['files'] as const }], [['--include', 'estimateExamples'], { include: ['estimateExamples'] as const }],
+        [['--include', 'openObligations'], { include: ['openObligations'] as const }]] as const) {
         const result = await cli(h.root, ['task', 'get', '--task', h.child.id, ...options]);
         assert.equal(result.code, 0, result.stderr);
         assert.equal(result.json.task.values.notes, notes.get(h.child)!.trim());
@@ -424,7 +424,7 @@ test('task get retains project Run diagnostics while metadata lists avoid unrela
     runs.close();
     const db = new DatabaseSync(controlDatabasePath(h.root));
     t.after(() => db.close());
-    const read = () => readTaskView(h.root, h.child.id, { openObligations: true }, null);
+    const read = () => readTaskView(h.root, h.child.id, { include: ['openObligations'] as const }, null);
     assert.deepEqual((await read()).errors, []);
     assert.equal((await cli(h.root, ['task', 'get', '--task', h.child.id])).code, 0, 'read once before the sibling\'s corruption');
     db.prepare("UPDATE runs SET record=json_set(record,'$.agent','Invalid Agent') WHERE id=?").run(Number(records[1]!.id.slice(1)));

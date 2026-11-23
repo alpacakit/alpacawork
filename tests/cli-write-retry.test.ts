@@ -117,7 +117,7 @@ for(const kind of ['file','attachment']as const)test(`${kind} upload keeps exact
   const args=kind==='file'?['file','put','--path','work/result.bin']:['attachment','put','--request-id','draft','--name','result.bin'];
   const result=await cliRun(p.url,['task',...args,'--task',task.id,'--file',path]);
   assert.equal(result.code,0,result.stderr);assertSame(p.sent,2);assert.deepEqual(p.sent[0].body,original);
-  assert.equal(p.sent[0].headers['x-alpacawork-content-digest'],hash(original));
+  assert.equal(p.sent[0].headers['x-alpacawork-content-digest'],kind==='file'?hash(original):undefined);
   assert.equal(new FileJournal(w.root).operationGet(String(p.sent[0].headers['x-alpacawork-op-id'])).state,'committed');
 });
 

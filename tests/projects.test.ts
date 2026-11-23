@@ -109,7 +109,7 @@ test('Task numbers are one sequence across projects, and each Task keeps its fil
   writeFileSync(file, 'mobile note');
   await h.ok(['task', 'file', 'put', '--task', second.id, '--path', 'note.txt', '--file', file]);
   assert.equal(readFileSync(join(h.root, 'tasks', second.id, 'note.txt'), 'utf8'), 'mobile note');
-  const got = (await h.ok(['task', 'get', '--task', second.id, '--files'])).task;
+  const got = (await h.ok(['task', 'get', '--task', second.id, '--include', 'files'])).task;
   assert.deepEqual([got.kind, got.projectId], ['task', mobile.id]);
   assert.equal(got.folder, new URL(taskFileRoute(second.id), h.server.url).href);
   assert.equal(await (await fetch(got.files[0].path)).text(), 'mobile note');

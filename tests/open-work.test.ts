@@ -20,7 +20,7 @@ type Placement = { id: string; revision: number };
 const human = { purpose: 'instruction', actor: { kind: 'human' } } as const;
 const count = (text: string, value: string) => text.split(value).length - 1;
 const promptOf = (h: Fixture, receipt: RequestReceipt) => h.store.getText(receipt.runId)!.prompt;
-const readOpen = (h: Fixture) => readTaskView(h.root, h.task.id, { openObligations: true }, null);
+const readOpen = (h: Fixture) => readTaskView(h.root, h.task.id, { include: ['openObligations'] as const }, null);
 const instruction = (h: Fixture, placement: Placement, mode: 'new' | 'continue') => new RequestService(h.root).request({
   taskId: h.task.id, targetPlacementId: placement.id, body: 'Resume the assigned work', requestId: randomUUID(), mode,
   expectedTaskHash: currentTaskHash(h.root, h.task.id), expectedPlacementRevision: placement.revision,
