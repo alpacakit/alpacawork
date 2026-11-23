@@ -132,7 +132,7 @@ export function ProjectLocationRow({ project, projects, rootHint }: { project: P
   </SettingRow>;
 }
 
-/** One free text: what to write is the person's own; the example only suggests what helps (purpose, policy, what not to do). */
+/** One free text: what to write is the person's own; the example only suggests what helps (how to work, what not to do). */
 export function ProjectPolicySection({ project, projects, note }: { project: Project; projects: WorkspaceInfo["projects"];
   /** Where it is read before the project has any inside it (setup), a note that names only this project's agents. */
   note?: string }) {

@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">AI の管理は、AI に任せる。</h3>
+<h3 align="center">ひとつの入力欄から、すべてのプロジェクトの AI を動かす。</h3>
 
 <p align="center">
-  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
-  PC の前に座って働くことから、解放されます。
+  頼みごとを書くと、PC の Claude Code や Codex が仕事を分けて同時に進めます。<br/>
+  あなたは AI からの質問に答えて、できあがりを確かめます。スマートフォンからも使えます。
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark-ja.gif">
+    <img src="docs/images/hero-ja.gif" alt="1つの入力欄に書いた依頼を窓口の AI が受け、自社サイト・アプリ開発・マーケティングの3つのプロジェクトにタスクを作り、それぞれに opus · high や gpt-5 · high などの AI を付けて進める。1つのタスクが質問し、答えるとすべて終わる" width="640">
+  </picture>
+</p>
+
+alpacawork は、あなたの PC に入っている Claude Code や Codex に仕事を割り振って動かす道具（AI ハーネス）です。やりたいことを1つの入力欄に書くと、窓口の AI（コーディネーター）がタスクにして担当の AI に割り振り、進み具合を管理します。あなたがするのは、頼む、質問に答える、できあがりを確かめる、の3つです。スマートフォンからも同じように使えます。
 
 <p align="center">
   <img src="docs/images/pc-phone-dark-ja.png" alt="PC のブラウザで、作業中の10件と確認待ちの3件が並ぶ一覧と、開いたタスクの報告を横に並べた alpacawork。右に、同じ報告を開いたスマートフォン" width="820">
 </p>
-
-alpacawork は、あなたの PC に入っている Claude Code や Codex に仕事を割り振って動かす道具（AI ハーネス）です。やりたいことを1つの入力欄に書くと、窓口の AI（コーディネーター）がタスクにして担当の AI に割り振り、進み具合を管理します。あなたがするのは、頼む、質問に答える、できあがりを確かめる、の3つです。スマートフォンからも同じように使えます。
 
 ## インストール
 

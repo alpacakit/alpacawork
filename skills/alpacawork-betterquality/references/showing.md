@@ -34,7 +34,7 @@ Only how the stand-in meets the result changes with its kind. A result can fit m
 Word them for the audience's situation, and keep them the same across rounds unless the checks change.
 
 1. For each check, an open question whose answer shows whether it passed — for example "What would you do next, and why?" when the purpose is an action, or "Would this suit your case? Why?" when it is a judgement. Do not put the result's own terms or the expected answer into a question: "how does this differ from a chat?" already tells them it differs, and "what would you use this for?" assumes they would use it.
-2. "Where did you stop, hesitate, misread, or give up? For each: where exactly, what you thought at that moment, and why."
+2. "Where did you stop, hesitate, feel uneasy, misread, or give up? For each: where exactly, what you thought at that moment, and why."
 3. For something people read: "What did you read on the way that you did not need for this?" (a hint for the builder, not the judgement)
 
 Tell the stand-in to answer from the result alone and to say "I don't know" rather than guess. Scores such as "interest 1 to 5" vary between stand-ins; ask for one only as a note, never as a check. The stand-in cannot tell whether what it inferred is true; checking that against the facts is the builder's job.

@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">Deja que la IA gestione tus IA.</h3>
+<h3 align="center">Ejecuta agentes de IA en todos tus proyectos desde un solo cuadro de texto.</h3>
 
 <p align="center">
-  Asigna trabajo a Claude Code y Codex<br/>y hace el seguimiento de su progreso.<br/>
-  Ya no tienes que sentarte frente al PC para trabajar.
+  Escribe lo que quieres. Claude Code y Codex en tu PC lo dividen en tareas y las ejecutan a la vez.<br/>
+  Tú respondes las preguntas de la IA y revisas los resultados. También desde tu teléfono.
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
+    <img src="docs/images/hero.gif" alt="Una petición escrita en un solo cuadro llega al coordinador, que crea tareas en tres proyectos (sitio web, app móvil, marketing) y asigna a cada una una IA como opus · high o gpt-5 · high; una tarea hace una pregunta, la respondes y todas terminan" width="640">
+  </picture>
+</p>
+
+alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude Code y Codex que ya tienes instalados en tu PC y les asigna trabajo. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y sigue el progreso. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="alpacawork en el navegador de un PC, con una lista de diez tareas en curso y tres por revisar junto al informe abierto de una tarea, y a la derecha un teléfono que muestra el mismo informe" width="820">
 </p>
-
-alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude Code y Codex que ya tienes instalados en tu PC y les asigna trabajo. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y sigue el progreso. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
 
 ## Instalar
 

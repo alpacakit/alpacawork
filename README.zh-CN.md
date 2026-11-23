@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">让 AI 来管理你的 AI。</h3>
+<h3 align="center">用一个输入框，运行所有项目中的 AI 智能体。</h3>
 
 <p align="center">
-  为 Claude Code 和 Codex 指派工作，<br/>并跟进它们的进度。<br/>
-  你不必再坐在电脑前工作。
+  写下想做的事，你电脑上的 Claude Code 和 Codex 就会拆成多个任务，同时推进。<br/>
+  你来回答 AI 的提问、验收结果。在手机上也能使用。
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
+    <img src="docs/images/hero.gif" alt="在一个输入框写下的请求交给协调员，它在三个项目（网站、移动应用、市场营销）中创建任务，并为每个任务分配 opus · high、gpt-5 · high 等 AI；其中一个任务提出问题，回答后所有任务完成" width="640">
+  </picture>
+</p>
+
+alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="电脑浏览器中的 alpacawork，列表里有 10 个进行中和 3 个待验收的任务，旁边并排显示打开的任务报告；右侧的手机上打开着同一份报告" width="820">
 </p>
-
-alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 ## 安装
 
