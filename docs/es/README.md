@@ -12,6 +12,7 @@ Si es tu primera vez, empieza por “Primeros pasos”, más abajo. En unos 15 m
 - [Teléfono y notificaciones](remote.md)
 - [Solución de problemas](troubleshooting.md) — una tarea se detuvo, la pantalla no se abre
 - [Volver a abrir, detener y actualizar](manage.md) — la URL, actualizar, desinstalar, dónde están los datos
+- [Usarlo desde Claude Code o Codex](chat.md) — pedir y revisar tareas y responder preguntas desde una conversación
 - [Términos y comandos](reference.md)
 - [Las ideas detrás de alpacawork](concept.md)
 - [Datos de uso](telemetry.md)

@@ -53,19 +53,25 @@ alpacawork setup
 
 動作環境は macOS（Apple シリコン）、Linux（x64）、Windows（WSL2）です。入れたあとは [はじめかた](docs/ja/getting-started.md) に沿って、最初の1件を頼みます。
 
-### 画面を開き直す
+### よく使う操作
 
-画面を閉じたあとは、Claude Code か Codex に次のように頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。
+タスクは画面の入力欄で頼みます。画面を開く、設定を変えるといった操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
 
-```text
-/alpacawork 画面開いて
-```
+| すること | AI に頼む文 | コマンド |
+| --- | --- | --- |
+| 画面を開く | `/alpacawork 画面開いて` | `alpacawork open` |
+| 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
+| 設定を変える | `/alpacawork 同時に動かす AI を4つまでにして` | — |
+| ふだん使うモデルを変える | `/alpacawork タスクをふだん opus で進めるようにして` | — |
+| 新しいモデルを使えるようにする | `/alpacawork Codex の新しいモデルが出たので、選べるようにモデルの設定に足して` | — |
+| プロジェクト方針を変える | `/alpacawork プロジェクト方針に「デザインの作成は opus で」と書き足して` | — |
+| 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
+| 止める・起動する・再起動する | `/alpacawork 再起動して` | `alpacawork stop`・`start`・`restart` |
+| アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |
 
-Codex では `/alpacawork` を `$alpacawork` に変えます。ターミナルからは次のコマンドでも開けます。
+設定とモデルは画面の入力欄や設定でも変えられ、更新も画面の設定からできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
 
-```sh
-alpacawork open
-```
+タスクを頼む・探す・質問に答えるといった操作も、Claude Code・Codex の会話からできます。頼み方は [Claude Code・Codex から使う](docs/ja/chat.md) にあります。
 
 Chrome か Edge なら、画面でのセットアップの終わりか、あとから設定の「アプリ・スマホ」でアプリとして入れられ、Dock やタスクバーのアイコンから開き直せます。Mac の Safari では、メニューの「ファイル → Dock に追加」（macOS Sonoma 以降）で入れます。
 

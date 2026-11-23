@@ -79,19 +79,25 @@ alpacawork setup
 
 It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installing, follow [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md) to make your first request.
 
-### Reopen the screen
+### Common operations
 
-If you close the screen, ask Claude Code or Codex like this. The AI opens the screen in your browser or tells you its URL.
+You request tasks in the input box on the screen. To open the screen, change settings and the like, ask Claude Code or Codex opened in a terminal or its app, and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
 
-```text
-/alpacawork open the screen
-```
+| To | Ask the AI | Command |
+| --- | --- | --- |
+| Open the screen | `/alpacawork open the screen` | `alpacawork open` |
+| Check whether it is running | `/alpacawork check whether it is running` | `alpacawork status` |
+| Change a setting | `/alpacawork run at most 4 AIs at once` | — |
+| Change the model normally used | `/alpacawork use opus for tasks normally` | — |
+| Make a new model available | `/alpacawork a new Codex model is out; add it to the model settings so I can choose it` | — |
+| Change the project policy | `/alpacawork add "use opus for design work" to the project policy` | — |
+| Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
+| Stop, start or restart | `/alpacawork restart alpacawork` | `alpacawork stop`, `start`, `restart` |
+| Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
 
-In Codex, write `$alpacawork` instead of `/alpacawork`. From a terminal, this command opens it too.
+You can also change settings and models in the input box or in Settings on the screen, and update from Settings. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md)).
 
-```sh
-alpacawork open
-```
+Requesting tasks, finding them, answering questions and the like also work from a Claude Code or Codex conversation. See [Use it from Claude Code or Codex](https://github.com/alpacakit/alpacawork/blob/main/docs/chat.md) for how to ask.
 
 In Chrome or Edge, you can install it as an app at the end of setup on the screen, or later in Settings → App & phone, and open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with File → Add to Dock in the menu (macOS Sonoma or later).
 
