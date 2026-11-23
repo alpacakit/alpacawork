@@ -164,6 +164,8 @@ test('one failed derivation retains only that Task and its contribution while fr
   const now = Date.now(); t.mock.method(Date, 'now', () => now + 250);
   await owner.catchUp();
   assert.equal(owner.current!.derived('T5')!.row.title, 'Failed derived title');
+  // The retry publishes the Task's own row again: its time strip, which carries that row, is read again too.
+  assert.equal(owner.current!.requiredPv.timeline.T5, owner.current!.pv, 'the retried Task\'s strip is made old');
   assert.deepEqual(JSON.parse(owner.index()).staleIds, []);
   assert.deepEqual(JSON.parse(owner.index()).errors, []);
 });

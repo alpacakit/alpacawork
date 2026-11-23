@@ -593,10 +593,23 @@ const runSpans = (derived: TaskDerived | undefined) =>
  * facts moved.
  */
 function finish(gather: Gather, before: RecordsReader, after: RecordsReader, rows: DerivedRows): AffectedSet {
-  const page = new Set<string>(), search = new Set<string>(), timeline = new Set<string>();
-  for (const [task, facets] of gather.tasks) {
-    // A view shows its Task's derived facts: whatever reached them made the view old when they moved.
+  // A view shows its Task's derived facts: whatever reached them made the view old when they moved.
+  for (const [task, facets] of gather.tasks)
     if (facets.has('row') && !facets.has('view') && viewFacts(rows.before(task)) !== viewFacts(rows.after(task))) gather.add(task, ['view']);
+  return rescope({ tasks: gather.tasks, scopes: { page: new Set(), search: new Set(), timeline: new Set() }, meta: gather.meta },
+    gather.tasks.keys(), before, after, rows);
+}
+
+/**
+ * The scopes `tasks`' facets reach by the rule above, added to the set's own. A publication that gives Tasks facets of
+ * its own after `affected` (a records repair, a retried or failed derivation, run records becoming readable or not)
+ * reaches their scopes through it too.
+ */
+export function rescope(set: AffectedSet, tasks: Iterable<TaskId>, before: RecordsReader, after: RecordsReader, rows: DerivedRows): AffectedSet {
+  const page = new Set(set.scopes.page), search = new Set(set.scopes.search), timeline = new Set(set.scopes.timeline);
+  for (const task of tasks) {
+    const facets = set.tasks.get(task);
+    if (!facets) continue;
     const rowChanged = facets.has('row') && listedRow(rows.before(task)) !== listedRow(rows.after(task));
     const own = rowChanged || facets.has('timeline') || facets.has('history');
     const below = runSpans(rows.before(task)) !== runSpans(rows.after(task)) || !!before.bundle(task) !== !!after.bundle(task)
@@ -612,6 +625,6 @@ function finish(gather: Gather, before: RecordsReader, after: RecordsReader, row
       if (below) for (const lane of reader.ancestors(task)) timeline.add(lane);
     }
   }
-  return { tasks: gather.tasks, scopes: { page, search, timeline }, meta: gather.meta };
+  return { ...set, scopes: { page, search, timeline } };
 }
 
