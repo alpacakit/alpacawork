@@ -14,7 +14,7 @@ The AI changes files without asking for confirmation. If you commit before you s
 
 Make one project per repository. Press the project name at the top left → "New project", enter a name and a working folder, and press "Create".
 
-Each project has a "Summary", one sentence on what the project is for. The AI reads it to choose the project for a request that does not say which one, and every AI working in the project is given it. The AI writes the summary itself the first time it puts a request in the project. You can change it in the project's settings.
+Each project has a "Summary", one sentence on what the project is for. The AI reads it to choose the project for a request that does not say which one, and every AI working in the project is given it. While the summary is empty, the AI writes it itself when it next puts a request in the project. You can change it in the project's settings.
 
 You can archive a project you no longer use from the bottom of the project's settings.
 
