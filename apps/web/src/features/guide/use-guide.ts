@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useIsMutating, useQueries } from "@tanstack/react-query";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 import { useEveryTaskIndex, useListPlace, usePeople, useWorkspaceInfo } from "@/data/queries";
@@ -8,7 +8,7 @@ import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
-import { currentSubscription, pushSupported } from "@/data/push";
+import { PUSH_CHANGE, pushSupported } from "@/data/push";
 import { recordFailure } from "@/lib/notify";
 import { useDialogStore } from "@/state/dialog-store";
 import { useDeviceValue } from "@/lib/device-storage";
@@ -69,11 +69,14 @@ export const pushOff = (supported: boolean, read: SubscriptionRead) =>
 
 /**
  * pushOff, read only while `enabled` (a step left reads it): as the screen opens, as each dialog closes (Settings is where
- * notifications are turned on), and as the page comes back into view or into focus (changed in another tab or in the
- * browser's settings). Each read starts from not made sure (false), and only the read begun last is used.
+ * notifications are turned on), as starting or stopping them there ends (PUSH_CHANGE; not read while it runs), and as
+ * the page comes back into view or into focus (changed in another tab or in the browser's settings). Each read starts
+ * from not made sure (false), and only the read begun last is used: one made moot while the Service Worker is awaited
+ * reads no subscription.
  */
 function usePushOff(enabled: boolean): boolean {
   const dialog = useDialogStore((state) => state.dialog !== null);
+  const changing = useIsMutating({ mutationKey: PUSH_CHANGE }) > 0;
   const [read, setRead] = useState<SubscriptionRead>("reading");
   const [looked, setLooked] = useState(0);
   useEffect(() => {
@@ -85,13 +88,14 @@ function usePushOff(enabled: boolean): boolean {
   }, [enabled]);
   useEffect(() => {
     setRead("reading");
-    if (!enabled || dialog || !pushSupported()) return;
-    // A read begun after this one makes this one's answer moot.
+    if (!enabled || dialog || changing || !pushSupported()) return;
+    // A read begun after this one, or the step put away, makes this one moot: then nothing more is read for it.
     let latest = true;
-    currentSubscription().then((subscription) => { if (latest) setRead({ permission: Notification.permission, subscribed: subscription !== null }); },
-      (error: unknown) => { recordFailure(error, "push subscription read"); if (latest) setRead("failed"); });
+    navigator.serviceWorker.ready.then((registration) => latest ? registration.pushManager.getSubscription().then((subscription) => {
+      if (latest) setRead({ permission: Notification.permission, subscribed: subscription !== null });
+    }) : undefined).catch((error: unknown) => { recordFailure(error, "push subscription read"); if (latest) setRead("failed"); });
     return () => { latest = false; };
-  }, [enabled, dialog, looked]);
+  }, [enabled, dialog, changing, looked]);
   return enabled && pushOff(pushSupported(), read);
 }
 
