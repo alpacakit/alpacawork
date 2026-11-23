@@ -35,11 +35,11 @@ to README.md#install): keep those headings, or change the links with them.
   </picture>
 </h1>
 
-<h3 align="center">Let AI manage your AI.</h3>
+<h3 align="center">Run AI agents across all your projects from one input box.</h3>
 
 <p align="center">
-  It assigns work to Claude Code and Codex<br/>and tracks their progress.<br/>
-  You no longer have to sit at your PC to work.
+  Write a request. Claude Code and Codex on your machine split it into tasks and run them in parallel.<br/>
+  You answer their questions and check the results. It works from your phone too.
 </p>
 
 <p align="center">
