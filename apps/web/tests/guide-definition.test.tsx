@@ -104,7 +104,7 @@ test("through a first Task the guide always has a step: each explained once, the
   expect(round({ doneHere: true, questions: 1 })).toEqual([undefined, false]);
   // What only explains is never the step again: the request to try after a report, the label, where an AI is stopped,
   // a reply in the conversation itself, and the close.
-  for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone", "phone-card", "phone-notify"].includes(entry.id)]);
+  for (const entry of GUIDE) expect([entry.id, !!entry.again]).toEqual([entry.id, !["send", "more", "label", "stop", "direct", "conversation", "another-repository", "phone", "phone-grip", "phone-swipe", "phone-notify"].includes(entry.id)]);
 });
 
 test("a request to try is the one way on its step offers: no \"Got it\" stands beside it", () => {
@@ -194,12 +194,14 @@ test("a phone has a guide of its own: started on a phone's first look whatever t
   expect(startsGuide("phone", { stage: "done" }, { screen: "phone", welcome: false, tasks: 12 })).toBe(false);
 });
 
-test("on a phone: an open question or report says its buttons and swipes once, and notifications are pointed at once", () => {
+test("on a phone: an open question or report says its grip, then its swipes, once each, and notifications are pointed at once", () => {
   const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, ...over });
-  // A card open: its buttons and swipes, in the words for its kind, before notifications; once read, nothing more on it.
-  expect(phone({ open: "result" })).toBe("phone-card");
-  expect(phone({ open: "question", pushOff: true })).toBe("phone-card");
-  expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
+  // A card open: its grip first, then its swipes (before notifications); once each read, nothing more on it.
+  expect(phone({ open: "result" })).toBe("phone-grip");
+  expect(phone({ open: "question", pushOff: true })).toBe("phone-grip");
+  expect(phone({ open: "question", seen: read("phone-grip") })).toBe("phone-swipe");
+  expect(phone({ open: "result", seen: read("phone-grip", "phone-swipe") })).toBeNull();
+  expect(GUIDE.filter(entry => entry.id.startsWith("phone-") && entry.id !== "phone-notify").map(entry => entry.show)).toEqual(["sheet", "swipe"]);
   // Notifications, while made sure to be off, until put away.
   expect(phone({ pushOff: true })).toBe("phone-notify");
   expect(phone({ pushOff: true, seen: read("phone-notify") })).toBeNull();
@@ -208,8 +210,8 @@ test("on a phone: an open question or report says its buttons and swipes once, a
   expect(shown({ tasks: 1, results: 1, open: "result", pushOff: true, seen: read("more", "accept") })).toBe("accept");
   // Once both are read, nothing is left to say or to read for it; a computer's guide always has a step left, and never
   // reads this browser's push state.
-  expect(stepsLeft("phone", ["phone-card"]).map(entry => entry.id)).toEqual(["phone-notify"]);
-  expect(stepsLeft("phone", ["phone-card", "phone-notify"])).toEqual([]);
+  expect(stepsLeft("phone", ["phone-grip", "phone-swipe"]).map(entry => entry.id)).toEqual(["phone-notify"]);
+  expect(stepsLeft("phone", ["phone-grip", "phone-swipe", "phone-notify"])).toEqual([]);
   expect(stepsLeft("computer", GUIDE.map(entry => entry.id)).length).toBeGreaterThan(0);
   expect(stepsLeft("computer", []).some(entry => entry.reads?.length)).toBe(false);
   // A Task finished on a phone does not end its guide: only a computer's has a close.
@@ -358,8 +360,8 @@ test("the close holds while the server says a Task pressed Done on here is finis
 test("while notifications cannot be told to be off, their step is not chosen and an open card's step is", () => {
   const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, pushOff: false, ...over });
   expect(phone({})).toBeNull();
-  expect(phone({ open: "question" })).toBe("phone-card");
-  expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
+  expect(phone({ open: "question" })).toBe("phone-grip");
+  expect(phone({ open: "result", seen: read("phone-grip", "phone-swipe") })).toBeNull();
 });
 
 test("a step stood and then not to be told now is not put away; one whose facts no longer hold is, as on a computer", () => {
@@ -373,7 +375,7 @@ test("a step stood and then not to be told now is not put away; one whose facts 
 });
 
 test("just before reading, what is stored now says whether a step left still reads it: none once put away or ended", () => {
-  expect(stillReads("phone", { stage: "started", at: 1, seen: ["phone-card"] }, "push")).toBe(true);
+  expect(stillReads("phone", { stage: "started", at: 1, seen: ["phone-grip"] }, "push")).toBe(true);
   expect(stillReads("phone", { stage: "started", at: 1, seen: ["phone-notify"] }, "push")).toBe(false);
   expect([stillReads("phone", { stage: "done" }, "push"), stillReads("phone", null, "push"), stillReads("computer", started, "push")]).toEqual([false, false, false]);
 });

@@ -3,6 +3,7 @@ import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
+import type { ShowHowKind } from "@/lib/show-how";
 import type { GuideStage } from "./guide-state";
 
 /**
@@ -63,7 +64,9 @@ import type { GuideStage } from "./guide-state";
  *   the step away;
  * - `say`: its words, by its key, written out so the extractor reads it;
  * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next;
- * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft).
+ * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft);
+ * - `show`: a motion that shows how its part is used (show-how), played by that part's owner a moment after the
+ *   balloon stands, each time it stands; the balloon stays still meanwhile and stands clear of where it takes the part.
  * Nothing else names a step: the balloon and the stored stage read them from here.
  */
 
@@ -117,6 +120,8 @@ export const PARTS = {
   settingsOverList: 'body:not(:has(aside[data-reader-mode])) [data-guide-part="settings"]',
   /** The open Task's own buttons in the row over the input (auto-swipe, Change state, Done), while the conversation is folded. */
   taskButtons: "[data-coordinator-fold-row] [data-task-action-slot]",
+  /** A phone's Task sheet's grip: the short bar at its top. */
+  grip: '[data-guide-part="grip"]',
   /** A phone's button that closes the Task's sheet, over the end of that row. */
   sheetClose: "[data-reader-sheet-close]",
 } as const;
@@ -231,6 +236,7 @@ export type GuideEntry = {
   say: (t: TFunction, facts: GuideFacts) => string;
   again?: (t: TFunction) => string;
   reads?: readonly GuideRead[];
+  show?: ShowHowKind;
 };
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
@@ -254,9 +260,8 @@ const AT_CONVERSATION = { clear: ["foot"], side: "top", align: "start" } as cons
 export const closing = (f: Pick<GuideFacts, "screen" | "doneHere" | "drafting">) => hasClose(f.screen) && f.doneHere && !f.drafting;
 /** Whether a screen's guide has a close: only there are the Tasks Done is pressed on kept and read (finishedHere). */
 export const hasClose = (screen: GuideScreen) => SCREENS[screen].phases.includes("close");
-/** The open Task's buttons and what a swipe of its card does: the buttons' words and the hold swipe's, as the screen has them. */
-const phoneButtons = (t: TFunction) => ({ auto: t("reader:nextQuestion.autoSwipe.label"), state: t("forms:reportForm.statePick"), finish: finish(t),
-  hold: t("reader:swipe.hold") });
+/** What a swipe of the open card does, in the screen's own words: Done, and the hold swipe's. */
+const swipeWords = (t: TFunction) => ({ finish: finish(t), hold: t("reader:swipe.hold") });
 
 export const GUIDE: readonly GuideEntry[] = [
   // The one input there is, and a request to try the whole flow with: the one way on from here.
@@ -327,12 +332,16 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => !f.drafting && !f.busy && !f.settling,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain"), again: t => t("tree:guide.say.sendAgain") },
-  // A phone: a question or a report open in its sheet, the first time: what its buttons (marks alone there) are, and
-  // what a swipe of its card does. Above the buttons, clear of the input, the conversation's button, what closes the
-  // sheet and a question's choices (what is pressed there stays seen).
-  { id: "phone-card", phase: "phone", part: "taskButtons", clear: ["foot", "coordinator", "sheetClose", "asked"], side: "top", align: "end", next: true,
+  // A phone: a question or a report open in its sheet, the first time: its grip sets its height, shown by the sheet
+  // growing and coming back; then what a swipe of the card does, shown by the card going right and left. The swipe's
+  // stands over the buttons, clear of the input, the conversation's button, what closes the sheet and a question's
+  // choices (what is pressed there stays seen).
+  { id: "phone-grip", phase: "phone", part: "grip", side: "top", next: true, show: "sheet",
     when: f => f.open === "question" || f.open === "result",
-    say: (t, f) => t(f.open === "question" ? "tree:guide.say.phoneQuestion" : "tree:guide.say.phoneResult", phoneButtons(t)) },
+    say: t => t("tree:guide.say.phoneGrip") },
+  { id: "phone-swipe", phase: "phone", part: "taskButtons", clear: ["foot", "coordinator", "sheetClose", "asked"], side: "top", align: "end", next: true,
+    show: "swipe", when: f => f.open === "question" || f.open === "result",
+    say: (t, f) => t(f.open === "question" ? "tree:guide.say.phoneQuestion" : "tree:guide.say.phoneResult", swipeWords(t)) },
   // A phone that could receive notifications but does not: where they are turned on. Pointed at over the list alone,
   // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes. Only made
   // sure of off holds; anything else cannot be told (turned on, it may be turned off again), so it is put away by its

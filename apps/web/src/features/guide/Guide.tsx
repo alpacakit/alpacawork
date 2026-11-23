@@ -7,6 +7,9 @@ import { Icon } from "@/components/ui/icon";
 import { Sentences } from "@/components/ui/sentences";
 import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
+import { useViewStore } from "@/state/view-store";
+import { reducedMotion } from "@/lib/motion";
+import { showHowRise, useShowHow } from "@/lib/show-how";
 import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
@@ -52,6 +55,8 @@ type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: numbe
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
 /** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
 const STOOD_MS = 150;
+/** How long a balloon stands before the motion of its step (`show`) begins: its words are read first. */
+const SHOW_AFTER_MS = 1000;
 /** How much of a part's top counts as its head: where a tall part is looked for when its middle is out of sight. */
 const HEAD = 40;
 const OPPOSITE: Record<GuideSide, GuideSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
@@ -273,6 +278,8 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
+  // While the step's motion plays (useShowStep), the balloon and its ring stay where they stood.
+  const showing = useShowStep(entry, placed !== null);
   useLayoutEffect(() => {
     if (!part || !entry) { setPlaced(null); return; }
     // Not looked at yet for this step: its first look is always kept, so a step whose part is not on the screen never
@@ -294,6 +301,7 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
       if (doneOnShowing(entry, true)) putAway(screen, entry.id);
     };
     const update = () => {
+      if (showing.current) return;
       let target = shownPart(part);
       if (!settled) {
         const away = outOfPane(part);
@@ -308,8 +316,10 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
         const holder = target.closest(PARTS[name]);
         return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
-      const next = target && own ? placeBalloon(seenBoxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
-        entry.align, clear) : null;
+      // It stands clear of all the step's motion takes its part through (as far up as the sheet grows), its ring on the part.
+      const seen = target ? seenBoxOf(target) : null, rise = entry.show ? showHowRise(entry.show) : 0;
+      const next = seen && own ? { ...placeBalloon({ ...seen, top: seen.top - rise, height: seen.height + rise }, { width: own.width, height: own.height },
+        { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align, clear), target: seen } : null;
       const looked = !!next && document.visibilityState === "visible";
       if (!looked && standing) { clearTimeout(standing); standing = null; }
       if (looked && !standing && !stood.current.ids.has(entry.id)) standing = setTimeout(stoodNow, STOOD_MS);
@@ -340,6 +350,29 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
       <BalloonBody screen={screen} entry={entry} facts={facts} again={again} placed={placed} />
     </div>
   </>, document.body);
+}
+
+/**
+ * The motion of a step with one (`show`), played by its part's owner (show-how) a moment after its balloon stands, once
+ * each time it stands and on each card; not where motion is reduced. Stopped when the balloon goes, the step changes or
+ * another card is opened. Returns whether it plays now.
+ */
+function useShowStep(entry: GuideEntry | null, standing: boolean) {
+  const showing = useRef(false);
+  const card = useViewStore((state) => state.selected);
+  const kind = entry?.show;
+  useEffect(() => {
+    if (!kind || !standing || reducedMotion()) return;
+    let stop: (() => void) | undefined;
+    const timer = setTimeout(() => {
+      const play = useShowHow.getState()[kind];
+      if (!play) return;
+      showing.current = true;
+      stop = play(() => { showing.current = false; });
+    }, SHOW_AFTER_MS);
+    return () => { clearTimeout(timer); stop?.(); showing.current = false; };
+  }, [entry?.id, kind, standing, card]);
+  return showing;
 }
 
 /**
