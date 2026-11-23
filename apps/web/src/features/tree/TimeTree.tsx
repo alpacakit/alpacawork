@@ -434,8 +434,9 @@ export function TimeTree() {
           </div>}
           {strips && <div className="flex-none narrow:flex narrow:h-11 narrow:items-center"><TimeClock place="list" pieces={pieces} width={strip.width} now={now} onShowAll={showAll} seen={seen} inset={narrow && !nowSeen ? 72 * k : 0} insetStart={narrow ? MOBILE_PERIOD_W * k : 0} /></div>}
         </div>}
-        {/* The time axis is read, never kept on this device: out of reach it says so, not the failure again. */}
-        {axis.error && (!axisReady || axis.standIn) && <div style={frozen(shared)}>{offline ? <ReadNote kind="absent" className="px-1 py-1.5">{t("timeView.axisAbsent")}</ReadNote>
+        {/* Only when no axis is drawn. Out of reach with none read here it says the axis is not on this device, not the
+            failure again; an axis drawn in its stead (one read earlier, out of reach only) needs no note. */}
+        {axis.error && !axisReady && <div style={frozen(shared)}>{offline ? <ReadNote kind="absent" className="px-1 py-1.5">{t("timeView.axisAbsent")}</ReadNote>
           : <ReadFailure error={axis.error} retry={axis.retry} />}</div>}
         {/* A failed strip read must not move its rows and thereby change which rows are read. */}
         {needsTimeline && windowRange !== null && <div data-timeline-read
