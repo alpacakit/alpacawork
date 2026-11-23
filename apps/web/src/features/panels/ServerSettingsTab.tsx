@@ -14,7 +14,7 @@ import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
 import { AgentSettings } from './AgentSettings';
 import { AiStack, stackHeadingId, stackTitleKey } from './AiStack';
-import { followRenames } from './ai-stack-draft';
+import { followAgents } from './ai-stack-draft';
 import { AgentObservationsProvider } from './AgentSettingsExecutable';
 import { EnvironmentFileLine, EnvironmentFileProblems, useEnvironmentFile } from './EnvironmentFile';
 import { validateAgentsDraft } from './agent-settings-draft';
@@ -218,10 +218,10 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
         <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
           onChange={value => {
-            // A row of either stack follows its agent's new name.
+            // The rows of either stack follow the agent edited here (followAgents).
             const before = field.value;
             for (const stack of STACK_FIELDS) {
-              const rows = getValues(stack), followed = before.ok ? followRenames(rows, before.value, value) : rows;
+              const rows = getValues(stack), followed = before.ok ? followAgents(rows, before.value, value) : rows;
               if (followed !== rows) setValue(stack, followed, { shouldDirty: true });
             }
             field.onChange({ ok: true, value });

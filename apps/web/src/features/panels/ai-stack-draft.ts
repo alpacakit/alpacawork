@@ -101,13 +101,28 @@ export function moveRow(rows: readonly StackRowDraft[], index: number, by: -1 | 
   [next[index], next[to]] = [next[to]!, next[index]!];
   return next;
 }
-/** Agents renamed in their cards keep their rows: each row follows its agent's new name. No rename: `rows` itself. */
-export function followRenames(rows: StackRowDraft[], before: AgentsDraft, after: AgentsDraft): StackRowDraft[] {
-  const renamed = new Map(before.agents.flatMap(was => {
+/**
+ * Rows follow their agents as the cards edit them: a row of a renamed agent takes its new name, and a row of an agent
+ * whose settings changed keeps only the values of what that agent still has to choose (a choice its launch options
+ * no longer name leaves the row too; a value its choice no longer offers stays, to be chosen again). Nothing to
+ * follow: `rows` itself.
+ */
+export function followAgents(rows: StackRowDraft[], before: AgentsDraft, after: AgentsDraft): StackRowDraft[] {
+  const edited = new Map(before.agents.flatMap(was => {
     const now = after.agents.find(agent => agent.id === was.id);
-    return now && now.name !== was.name ? [[was.name, now.name] as const] : [];
+    return now && now !== was ? [[was.name, now] as const] : [];
   }));
-  return renamed.size ? rows.map(row => renamed.has(row.agent) ? { ...row, agent: renamed.get(row.agent)! } : row) : rows;
+  let changed = false;
+  const followed = rows.map(row => {
+    const agent = edited.get(row.agent), offer = agent && agentOffer(agent);
+    if (!agent) return row;
+    const keys = offer ? new Set(offer.choices.map(choice => choice.key)) : null;
+    const values = keys ? Object.fromEntries(Object.entries(row.values).filter(([key]) => keys.has(key))) : row.values;
+    if (agent.name === row.agent && Object.keys(values).length === Object.keys(row.values).length) return row;
+    changed = true;
+    return { ...row, agent: agent.name, values };
+  });
+  return changed ? followed : rows;
 }
 
 /** What keeps the stack from being saved: no row while an agent is enabled, or a row the agents' settings no longer run. */

@@ -8,7 +8,9 @@ import { initializeControlFixture } from '../../../tests/helpers/control-fixture
 import { readServerSettings, saveServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
 import { serverAgentDraftSchema, serverAgentsYaml } from '../src/features/panels/server-agent-draft';
 import { configYaml, serverDraft } from '../src/features/panels/settings-draft';
-import { moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
+import { followAgents, moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
+import { beginDraftOptionsEdit, updateDraftOptions } from '../src/features/panels/agent-settings-draft';
+import { optionsBase } from '@alpacawork/contract/agent-adapters';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -117,4 +119,28 @@ test('with no tasks\' list saved, editing only the input\'s list saves, for agen
     const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash }));
     expect(saved.coordinatorAiStack).toEqual(saved.aiStack);
   }
+});
+
+test('a choice taken out of an agent\'s launch options leaves its rows too, and the lists save as they then are', async () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-follow-')));
+  roots.push(root);
+  initializeControlFixture(root);
+  const copilot = [{ agent: 'copilot', values: {} }];
+  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { copilot: {} }, aiStack: copilot, coordinatorAiStack: copilot }, { aliasDuplicateObjects: false }));
+  const read = await readServerSettings(root);
+  const draft = serverDraft(read);
+  if (!draft.agents.ok) throw new Error('unreadable agents');
+  expect(draft.coordinatorAiStack[0]!.values).toHaveProperty('model', null);
+  // The options stop naming the model.
+  const before = draft.agents.value, card = before.agents[0]!;
+  const editing = beginDraftOptionsEdit(card, optionsBase('copilot'));
+  const after = { ...before, agents: [updateDraftOptions(editing, { ...editing.options!, start: '-o {result}', resume: '-o {result} resume {session}' })] };
+  const edited = { ...draft, agents: { ok: true as const, value: after },
+    aiStack: followAgents(draft.aiStack, before, after), coordinatorAiStack: followAgents(draft.coordinatorAiStack, before, after) };
+  expect(edited.coordinatorAiStack[0]!.values).not.toHaveProperty('model');
+  expect(serverAgentDraftSchema.safeParse(edited).success).toBe(true);
+  const yaml = serverAgentsYaml(edited);
+  if (!yaml.ok) throw new Error('unwritable agents');
+  const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash }));
+  expect(saved.coordinatorAiStack).toEqual([{ agent: 'copilot', values: {} }]);
 });
