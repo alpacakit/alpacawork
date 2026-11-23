@@ -52,7 +52,7 @@
       "end": "已工作 {{used}}/{{total}} 分钟。预计 {{time}} 报告",
       "over": "已工作 {{used}}/{{total}} 分钟。已超过预计的 {{time}} {{length}}",
       "subtree_other": "{{count}} 个预计时间中最晚的一个。预计 {{time}} 报告",
-      "subtreeOver": "其下有任务已超过预计的 {{time}} {{length}}"
+      "subtreeOver": "已超过本任务及其下任务中最晚的预计时间 {{time}} {{length}}"
     },
     "over": "已超过 {{time}} {{length}}",
     "overBy": {

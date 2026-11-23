@@ -56,7 +56,7 @@
       "over": "{{used}} of {{total}} min worked. Past the {{time}} estimate by {{length}}",
       "subtree_one": "Based on {{count}} estimate. Expected report {{time}}",
       "subtree_other": "The latest of {{count}} estimates. Expected report {{time}}",
-      "subtreeOver": "A task under it is past the {{time}} estimate by {{length}}"
+      "subtreeOver": "Past the latest estimate of this task and the tasks under it ({{time}}) by {{length}}"
     },
     "over": "{{length}} past {{time}}",
     "overBy": {
