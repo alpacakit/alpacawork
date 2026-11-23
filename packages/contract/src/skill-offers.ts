@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * The skills setup offers, most recommended first. The recommended ones are marked and ticked at first; names and
- * origins are authoritative here, and what each is for belongs to i18n.
+ * The skills setup offers, most recommended first. The recommended ones are ticked at first, and marked unless they
+ * cost time and tokens; names and origins are authoritative here, and what each is for belongs to i18n.
  */
 export const SKILL_OFFERS = [
   { name: 'askmeclearly', from: { kind: 'repo', repo: 'alpacakit/pocket-skills' }, recommended: true, cost: false },

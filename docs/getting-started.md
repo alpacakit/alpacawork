@@ -57,7 +57,7 @@ Go through the screen's four steps in order.
 
 <img src="images/setup-project.png" alt="The last step of setup, with the “Name” and “Working folder” fields and a “Choose” button beside the working folder" width="480">
 
-A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start with the example project policy as it is.
+A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start without writing a project policy.
 
 After you press "Finish setup", Chrome and Edge ask whether to install alpacawork as an app. Press "Install and start" to be able to open it again from its icon in the Dock or the taskbar. If you choose "Start in the browser", you can install it later with "Install" in "Settings (the gear) → App & phone". In Safari on a Mac, install it with "File → Add to Dock" in the menu (macOS Sonoma or later).
 
