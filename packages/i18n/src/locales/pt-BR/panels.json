@@ -422,7 +422,7 @@
       "awayAfter": "Ausente por inatividade",
       "awayAfterHelp": "As notificações só são enviadas enquanto você está ausente.",
       "guide": "Guia de primeiros passos",
-      "guideHelp": "Mostra de novo o guia do primeiro uso, a partir da primeira tela.",
+      "guideHelp": "Mostra de novo o guia do primeiro uso, a partir do primeiro passo.",
       "guideShow": "Mostrar de novo",
       "issue": {
         "conflict": "Alterado em outra tela. Verifique o valor mais recente.",
