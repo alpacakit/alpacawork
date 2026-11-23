@@ -26,6 +26,55 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.6
+
+This version is about the first hour and about which AI runs: a guide walks a new person through their first request, setup explains each choice, and Settings holds an ordered AI list in which the next AI takes over when one hits a usage limit.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.6`. The database schema and Run execution format changed from 0.1.5, so read "Check before updating" first. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.6` in step 4.
+
+### Check before updating
+- **Update while no agent is working.** While agents are working, Settings shows "Copy the pause instruction" instead of "Update", and `alpacawork deploy` stops and asks you to retry later. Send the copied instruction in the input, update once the agents have stopped, then ask the coordinator to resume the work it paused.
+- **If you had picked a model in the input, choose it again in Settings.** The model menu beside the send button is gone, and its choice is not carried over. After the update, the AI you talk to in the input is your first enabled agent on its first model, at `low` effort where the model offers it. To use another, open Settings → AI → "AI you talk to in the input (coordinator)". The AI that runs tasks stays as it was. ([#62](https://github.com/alpacakit/alpacawork/pull/62), [#71](https://github.com/alpacakit/alpacawork/pull/71))
+
+### Highlights
+- **A guide for your first request.** A new workspace opens on one picture of how alpacawork works: you send a request, the coordinator makes it a task and places an AI on it, and your turn comes when the AI asks or reports. On a computer, short balloons then point at each part of the screen at the moment it matters, from your first request to Done. Settings can show the guide again. ([#30](https://github.com/alpacakit/alpacawork/pull/30), [#72](https://github.com/alpacakit/alpacawork/pull/72))
+- **Setup you can finish from the screen alone.** Setup starts with the language and theme. Each later step says when a choice takes effect and what it changes, and marks what is recommended. An agent you are signed in to starts switched on, and the terminal and the screen report the same agents as ready. ([#26](https://github.com/alpacakit/alpacawork/pull/26), [#33](https://github.com/alpacakit/alpacawork/pull/33), [#34](https://github.com/alpacakit/alpacawork/pull/34), [#46](https://github.com/alpacakit/alpacawork/pull/46), [#55](https://github.com/alpacakit/alpacawork/pull/55))
+- **An AI order for tasks.** Settings → AI → "AI for tasks" is a numbered list. AI 1 normally runs. When it stops on a usage limit or because the model is at capacity, the same request continues on the next AI in a new conversation, and History shows each stop and which AI took over. ([#49](https://github.com/alpacakit/alpacawork/pull/49))
+- **The input shows its AI, and Settings chooses it.** The input shows the model and effort your next message runs on. Press it to open that AI's own list in Settings, which falls back in order the same way. A new workspace starts this AI on `low` effort. ([#62](https://github.com/alpacakit/alpacawork/pull/62), [#71](https://github.com/alpacakit/alpacawork/pull/71))
+- **Continue a failed task with the same AI or another.** A failed task offers "Continue with the same AI", "Continue with another AI" and "Stop". When a model's usage limit caused the failure, the task and its History say so. ([#27](https://github.com/alpacakit/alpacawork/pull/27), [#63](https://github.com/alpacakit/alpacawork/pull/63))
+
+### Setup
+- `alpacawork open` opens the screen in your browser on Linux, macOS and WSL, or prints the URL where no browser can be opened. `alpacawork start`, `stop`, `restart` and `status` control the server on this PC. ([#38](https://github.com/alpacakit/alpacawork/pull/38), [#41](https://github.com/alpacakit/alpacawork/pull/41))
+- Right after setup, a computer whose browser supports it asks once whether to install alpacawork as a desktop app. Settings → App & phone has the same Install button. ([#50](https://github.com/alpacakit/alpacawork/pull/50))
+- "Continue without an agent" switches off the agents that cannot run, so a first request no longer goes to an agent that needs a sign-in. ([#26](https://github.com/alpacakit/alpacawork/pull/26))
+- A note beside the project policy says how it differs from `AGENTS.md` and `CLAUDE.md`. The first project's policy starts empty: setup no longer writes default lines into it, and agents still use the skills you installed. ([#40](https://github.com/alpacakit/alpacawork/pull/40), [#61](https://github.com/alpacakit/alpacawork/pull/61))
+- The guides are ten short pages in all five languages, written so a first-time user reads less. They add a page on using alpacawork from a Claude Code or Codex conversation, how to reopen the screen, and installing it as an app. The Linux requirements say that setup needs a systemd user session. ([#26](https://github.com/alpacakit/alpacawork/pull/26), [#28](https://github.com/alpacakit/alpacawork/pull/28), [#42](https://github.com/alpacakit/alpacawork/pull/42), [#44](https://github.com/alpacakit/alpacawork/pull/44), [#47](https://github.com/alpacakit/alpacawork/pull/47), [#48](https://github.com/alpacakit/alpacawork/pull/48), [#51](https://github.com/alpacakit/alpacawork/pull/51), [#53](https://github.com/alpacakit/alpacawork/pull/53), [#54](https://github.com/alpacakit/alpacawork/pull/54), [#70](https://github.com/alpacakit/alpacawork/pull/70))
+- The README opens with "Run all your AI agents from one chat." and an animated diagram of how alpacawork works, drawn in each README's language. It names the permission mode agents run in and lists the operations you do yourself. ([#25](https://github.com/alpacakit/alpacawork/pull/25), [#53](https://github.com/alpacakit/alpacawork/pull/53), [#57](https://github.com/alpacakit/alpacawork/pull/57), [#60](https://github.com/alpacakit/alpacawork/pull/60), [#66](https://github.com/alpacakit/alpacawork/pull/66), [#69](https://github.com/alpacakit/alpacawork/pull/69))
+- In the alpacawork skill, the coordinator passes your words to the task's owner as you wrote them instead of restating them. ([#24](https://github.com/alpacakit/alpacawork/pull/24))
+- With the alpacawork-betterquality skill, agents read only the parts their work needs and show you a checked rough version before polishing it. ([#52](https://github.com/alpacakit/alpacawork/pull/52), [#55](https://github.com/alpacakit/alpacawork/pull/55))
+
+### Screens
+- Settings tabs are named for what they hold: AI, Notifications, Projects, General, App & phone and Machine status. No setting is added or removed. ([#68](https://github.com/alpacakit/alpacawork/pull/68))
+- A project has a one-sentence summary, shown beside its name and editable in the project's settings. The coordinator reads it to choose where a request goes and writes it when it is empty. ([#64](https://github.com/alpacakit/alpacawork/pull/64))
+- Before a task's first report, History says whether an AI is on the task: not started yet and what starts it, or its owner at work. ([#32](https://github.com/alpacakit/alpacawork/pull/32))
+- The project label in the input follows the project you open or switch to. ([#29](https://github.com/alpacakit/alpacawork/pull/29))
+- A row's expected report time comes from the tasks at work under it. A task waiting for your answer or review no longer makes the row read as overdue. ([#58](https://github.com/alpacakit/alpacawork/pull/58))
+- An image in a coordinator answer shows in the task's History as it does in the conversation. ([#35](https://github.com/alpacakit/alpacawork/pull/35))
+- The auto-swipe hint says that sending moves on only from a task in "Awaiting review". ([#59](https://github.com/alpacakit/alpacawork/pull/59))
+- Screen text counts and names agents as agents, not people. ([#65](https://github.com/alpacakit/alpacawork/pull/65))
+
+### Fixes
+- A task's History no longer keeps showing its owner as working after the Run has ended and a question is waiting for you. ([#37](https://github.com/alpacakit/alpacawork/pull/37))
+- A subtask you put on hold is listed under Held even when it has a question open for you. ([#39](https://github.com/alpacakit/alpacawork/pull/39))
+- Opening Done with hundreds of finished tasks no longer makes the list flicker. Finished tasks always count as read. ([#45](https://github.com/alpacakit/alpacawork/pull/45))
+- On a computer, the conversation's restore button makes it visibly smaller after you drag it to full height. ([#56](https://github.com/alpacakit/alpacawork/pull/56))
+- On a phone, History no longer shows through gaps around the input at the foot of the screen. ([#31](https://github.com/alpacakit/alpacawork/pull/31))
+- A message that uses a bundled skill you placed by hand is no longer refused for its version. ([#43](https://github.com/alpacakit/alpacawork/pull/43))
+- Wording, marks and guide balloons that confused people on their first task are corrected, and coordinator replies leave out internal details. ([#72](https://github.com/alpacakit/alpacawork/pull/72))
+
+### License and security
+- Dependencies with known security advisories are updated. ([#67](https://github.com/alpacakit/alpacawork/pull/67))
+
 ## 0.1.5
 
 Copilot can find your skills directly, and the coordinator shows the same message status whether its conversation is open or folded.
