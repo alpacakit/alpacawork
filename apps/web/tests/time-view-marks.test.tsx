@@ -1,3 +1,4 @@
+import { titleColumnWidth } from "@/state/screen-settings";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { recordNotes } from "./time-history-fixture";
 import { expect, onTestFinished, test, vi } from "vitest";
@@ -192,7 +193,7 @@ test("the whole of it, chosen at the strip's left end, follows new work", () => 
 function laidOutSheet() {
   const sheet = document.querySelector<HTMLElement>("[data-time-tree]")!;
   const strip = () => Number(document.querySelector("[data-time-clock]")!.getAttribute("width"));
-  Object.defineProperty(sheet, "scrollWidth", { configurable: true, get: () => 360 + strip() });
+  Object.defineProperty(sheet, "scrollWidth", { configurable: true, get: () => titleColumnWidth(1200) + strip() });
   const nowOnScreen = () => Number(document.querySelector("[data-time-clock] line.stroke-ink")!.getAttribute("x1")) - sheet.scrollLeft;
   return { sheet, end: () => sheet.scrollWidth - 1200, nowOnScreen };
 }
@@ -222,7 +223,7 @@ test("just short of the strip's end, new work keeps now where it was on screen",
   fireEvent.scroll(sheet);
   const was = nowOnScreen();
   expect(was).toBeGreaterThan(0);
-  expect(was).toBeLessThan(840);
+  expect(was).toBeLessThan(1200 - titleColumnWidth(1200));
   view.rerender(<TestWorkspace data={later}><TimeTree /></TestWorkspace>);
   expect(nowOnScreen()).toBeCloseTo(was, 0);
 });

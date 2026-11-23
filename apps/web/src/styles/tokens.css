@@ -238,16 +238,21 @@
   --color-future: color-mix(in oklab, var(--line) 45%, transparent);
   /* Where the axis folds away time in which nothing happened (the gap between two stretches drawn on the list): one
      dotted hairline down the sheet, faint enough not to read as a rule between rows or as now. */
-  --color-fold: color-mix(in oklab, var(--ink) 22%, transparent);
+  --color-fold: color-mix(in oklab, var(--ink) 16%, transparent);
   /* The row whose task the reader shows: one ground under its title and its time alike. `-solid` is the same colour
-     where the frozen title column must hide the strip passing under it. */
-  --color-row-picked: color-mix(in oklab, var(--ink) 7%, transparent);
-  --color-row-picked-solid: color-mix(in oklab, var(--ink) 7%, var(--bg));
+     where the frozen title column must hide the strip passing under it: both are mixed in sRGB, as a see-through ground
+     is laid over the screen, so the title's side and the time's side come out one colour. */
+  --color-row-picked: color-mix(in srgb, var(--ink) 10%, transparent);
+  --color-row-picked-solid: color-mix(in srgb, var(--ink) 10%, var(--bg));
+  /* The row the pointer is on (a computer's list): the same ground at half its strength, under its title and its time
+     alike, so the row pointed at is read from anywhere along it and the row picked beside it still stands over it. */
+  --color-row-hover: color-mix(in srgb, var(--ink) 5%, transparent);
+  --color-row-hover-solid: color-mix(in srgb, var(--ink) 5%, var(--bg));
   /* The wait on the reader, from its mark to now: the mark says it, so the line only carries it on. */
   --color-turn-line: color-mix(in oklab, var(--turn) 45%, transparent);
   /* Where a task's line has no one at work and waits on no one: a trace that the task was there, the quietest stroke on
      the sheet, so the rows where something is so stand out. */
-  --color-idle-line: color-mix(in oklab, var(--ink) 16%, transparent);
+  --color-idle-line: color-mix(in oklab, var(--ink) 11%, transparent);
   --color-work-area: color-mix(in oklab, var(--working) 16%, transparent);
   --color-overdue-area: color-mix(in oklab, var(--muted) 30%, transparent);
   --color-overdue: color-mix(in oklab, var(--ink) 65%, transparent);

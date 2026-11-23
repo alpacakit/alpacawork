@@ -272,34 +272,19 @@ test.each([false, true])('a Working row with no Run of its own or below running 
 const runningRow=(section:'doing'|'review'|'awaited',count:number)=>served(tree({tasks:[dto({id:'T1',state:section==='review'?'waiting':'doing'})],
   runningRuns:{T1:count},home:homeFixture([{taskId:'T1',section}])}));
 
-test.each([false,true])('a Working row says how many agents run, in the working colour, and in words to a reader, phone=%s',async narrow=>{
+test.each([false,true])('a Working row says how many agents run, in grey beside its time, and in words to a reader, phone=%s',async narrow=>{
   await i18n.changeLanguage('ja');
   const phone=narrowScreen(narrow);
   try {
     render(<TestWorkspace data={runningRow('doing',2)}><TimeTree/></TestWorkspace>);
     const mark=row('T1').querySelector<HTMLElement>('[data-row-running-runs]')!;
     expect(mark.dataset.rowRunningRuns).toBe('2');
-    expect(mark.className).toContain('text-working');
+    // The working colour is the time's alone on the row.
+    expect(mark.className).toContain('text-muted');
     expect(mark.querySelector('[aria-hidden="true"]')?.textContent).toBe('2');
     expect(mark.querySelector('.sr-only')?.textContent).toBe('稼働中のエージェント 2（配下を含む）');
     expect(mark.nextElementSibling?.getAttribute('data-row-status')).toBeTruthy();
   } finally {phone.restore();}
-});
-
-test('out of reach the count stands at what was last received, in grey, as the time beside it',async()=>{
-  const phone=narrowScreen(false);
-  const before=useConnection.getState();
-  vi.useFakeTimers({toFake:['setTimeout','clearTimeout']});
-  try {
-    render(<TestWorkspace data={runningRow('doing',2)}><TimeTree/></TestWorkspace>);
-    const mark=()=>row('T1').querySelector<HTMLElement>('[data-row-running-runs]')!;
-    expect(mark().classList.contains('text-working')).toBe(true);
-    act(()=>useConnection.setState({offline:true,state:'reconnecting',failures:1,lastReceivedAt:now}));
-    act(()=>vi.advanceTimersByTime(OFFLINE_SHOWN_AFTER_MS));
-    expect(mark().dataset.rowRunningRuns).toBe('2');
-    expect(mark().classList.contains('text-muted')).toBe(true);
-    expect(mark().classList.contains('text-working')).toBe(false);
-  } finally { act(()=>useConnection.setState(before)); vi.useRealTimers(); phone.restore(); }
 });
 
 test.each([['doing',0],['review',2],['awaited',2]] as const)('a row in %s with %i running says no count',async(section,count)=>{

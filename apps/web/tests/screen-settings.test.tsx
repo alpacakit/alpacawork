@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { readerWidth, readSetting, writeSetting } from "../src/state/screen-settings";
+import { readerWidth, readSetting, titleColumnWidth, writeSetting } from "../src/state/screen-settings";
 
 beforeEach(() => { localStorage.clear(); history.replaceState(null, "", "/"); });
 afterEach(() => vi.restoreAllMocks());
@@ -60,4 +60,11 @@ test("partial widths decode only safe px values; mode is never a device value", 
     expect(localStorage.getItem("alpacawork.screen.width")).toBe(String(width));
     expect(new URL(location.href).searchParams.get("width")).toBeNull();
   }
+});
+
+test("the list's title column is a third of a wide list between its least and its most, and tight beside the reader", () => {
+  expect(titleColumnWidth(780)).toBe(330);
+  expect(titleColumnWidth(900)).toBe(360);
+  expect(titleColumnWidth(1392)).toBe(473);
+  expect(titleColumnWidth(1900)).toBe(480);
 });

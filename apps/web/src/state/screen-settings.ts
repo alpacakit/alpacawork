@@ -24,6 +24,12 @@ export function fitReaderWidth(width: number | null, viewport: number): number {
 }
 /** The list's title column where the list is narrow (TimeTree), kept as it is however wide the reader grows. */
 export const TITLE_COLUMN_TIGHT = 330;
+/**
+ * The list's title column for a list `sheet` wide: tight under 900px; past it a third of the list, so a title of
+ * everyday length is read whole, never under 360px and never over 480px, where the time would lose its room to a title.
+ */
+export const titleColumnWidth = (sheet: number) =>
+  sheet < 900 ? TITLE_COLUMN_TIGHT : Math.min(480, Math.max(360, Math.round(sheet * 0.34)));
 /** The least of the time strip the list keeps beside its titles: now, the reports expected after it and a little before. */
 const LEAST_STRIP_WIDTH = 200;
 /** The list's insets around them: 24px at its left, 36px between it and the reader (Workbench). */
