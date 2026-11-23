@@ -276,7 +276,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     if (spec.cliHelp) command.addHelpText('after', spec.cliHelp);
     for (const option of spec.options) {
       const syntax = commandFlag(option);
-      const description = option.cliDetail ? `${option.description} ${option.cliDetail}` : option.description;
+      const ending = /[.!?]$/.test(option.description) ? ' ' : '. ';
+      const description = option.cliDetail ? option.description + ending + option.cliDetail : option.description;
       if (option.kind === 'boolean') {
         const negative = syntax.replace(/^--/, '--no-');
         const positiveOption = syntax.slice(2), negativeOption = negative.slice(2);

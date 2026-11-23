@@ -287,7 +287,7 @@ const definitions = {
     boolean('newConversation', 'Begin a new conversation'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),
-    json('selected', 'Launch choices by key. Use a candidate or null when choices permit omission. Unset keys keep the conversation value. ' +
+    json('selected', 'Launch choices by key. Use a candidate, or null when candidates are absent or start with -. Unset keys keep the conversation value. ' +
       'A placement with no Run uses its initial choices unless --new-conversation is set. Other new conversations use first candidates.'),
     json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
@@ -312,7 +312,7 @@ const definitions = {
       help: help(
         'An owner’s done report needs --title and a nonblank --description-file. User-requested Tasks go to review; internal Tasks become done.',
         'A Run asks with --state waiting, --ask-to, --title and --description-file. Put the full question in values.decide. Outside a Run, waiting submits a done user-requested Task for snapshot review.',
-        'One reply can be awaited. A new question replaces the old one or closes review. An owner’s doing resumes work and closes either; use task update to save values only. A done report closes its own question but waits for incoming questions.',
+        'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
         'Stopped stops the Task, its subtree and their Runs.'),
@@ -456,7 +456,7 @@ function compileCommand(id: CommandName): Command {
   const { options } = definition;
   const access = id.startsWith('task/file/') || id.startsWith('task/attachment/')
     ? `task.${words.slice(1).join('-')}`
-    : words.length === 2 ? words.join('.') : `${words.slice(0, -1).join(' ')}.${words.at(-1)}`;
+    : words.length <= 2 ? words.join('.') : `${words.slice(0, -1).join(' ')}.${words.at(-1)}`;
   return { ...definition, id, words, options, access,
     path: definition.file?.path ?? commandPath(id),
     method: definition.file?.method ?? (definition.kind === 'read' ? 'GET' : 'POST') };
