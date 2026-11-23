@@ -9,7 +9,7 @@
       "save": "无法保存智能体设置。"
     },
     "first": "首先使用的 AI",
-    "firstHint": "和你对话、处理任务时，都先使用这个 AI。达到使用上限时接替它的 AI，以后可以在设置中添加。",
+    "firstHint": "和你对话、处理任务时，都先使用这个 AI。",
     "found": "已安装。已登录或有 API 密钥即可使用",
     "how": "在终端中运行此命令，并按提示登录。",
     "lead": "alpacawork 让这台电脑上已有的 AI 智能体（如 Claude Code 和 Codex）来完成工作。启用的智能体会成为委托对象的候选。",
@@ -52,7 +52,7 @@
     "title": "语言和主题"
   },
   "done": {
-    "appBody": "浏览器会在程序坞或任务栏中放一个图标，关闭标签页后也能从那里重新打开 alpacawork。",
+    "appBody": "关闭标签页后，也能从程序坞或任务栏的图标打开 alpacawork。",
     "appTitle": "安装为应用",
     "browser": "继续在浏览器中使用",
     "install": "安装并开始",
@@ -81,7 +81,6 @@
     "failed": "无法安装。{{reason}}",
     "failedRequest": "无法开始安装。",
     "from": {
-      "bundled": "随 alpacawork 附带",
       "repo": "从 GitHub（<repo>{{repo}}</repo>）获取"
     },
     "install_other": "安装 {{count}} 个技能",
@@ -89,22 +88,22 @@
     "installing": "正在安装…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "先定标准，再由另一个 AI 检查",
-        "what": "动手前先定好合格标准，影响大的决定会比较几个方案。做完后，由另一个 AI（不是做出它的那个）检查实物，修改后再请你确认。因此会多花时间和 token（轻量的工作只做自查）。",
+        "title": "先由另一个 AI 检查，再给你看",
+        "what": "在请你确认之前，由另一个 AI（不是做出它的那个）检查并修改。因此会多花时间和 token。",
         "when": "在制定计划、请求检查和收到检查意见时"
       },
       "askmeclearly": {
         "title": "提问和报告更简短、更易读",
-        "what": "AI 请你做判断或汇报结果时，会用图片或视频标出该看的地方，让你能马上做判断或确认。",
+        "what": "AI 请你做判断或汇报结果时，会用图片或视频标出该看的地方。",
         "when": "在请用户做决定和写报告时"
       },
       "doyourjob": {
         "title": "向你提的问题更少",
-        "what": "能查到的、可以自行决定的，AI 都自己推进，只把必须由你决定的事拿来问你。",
+        "what": "只问必须由你决定的事，其余由 AI 自行决定并推进。",
         "when": "在询问用户之前和做出影响重大的选择之前"
       }
     },
-    "lead": "技能是一套额外的指示，用来改变 AI 的工作方式。这里的技能选自 alpacawork 开发者发布的技能。",
+    "lead": "安装技能后，AI 的工作方式会改变。",
     "reason": {
       "link_conflict": "Claude Code 的技能文件夹（~/.claude/skills）中已有同名的其他内容。它保持原样，未作更改。",
       "npm": "安装程序失败。请确认 npm 可用且能访问 GitHub，然后重试。",
@@ -114,7 +113,7 @@
     },
     "skip": "不安装，继续",
     "title": "要安装的技能",
-    "where": "安装位置：{{place}}（会建立链接，让 Claude Code 也能使用）。之后可以删除。"
+    "where": "安装位置：{{place}}。Claude Code 也会使用。"
   },
   "steps": {
     "agents": "智能体",

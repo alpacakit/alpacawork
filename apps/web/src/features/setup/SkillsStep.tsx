@@ -66,10 +66,10 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
               <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>
               <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-soft">
                 <code className="font-mono text-muted [overflow-wrap:anywhere]">{offer.name}</code>
-                <span className="[word-break:auto-phrase]">{offer.from.kind === "repo"
-                  ? <Trans t={t} i18nKey="skills.from.repo" values={{ repo: offer.from.repo }}
-                    components={{ repo: <a className="inline-link" href={`https://github.com/${offer.from.repo}`} target="_blank" rel="noreferrer" /> }} />
-                  : t("skills.from.bundled")}</span>
+                {/* Only a skill fetched from elsewhere says where from; one that comes with alpacawork needs no word. */}
+                {offer.from.kind === "repo" && <span className="[word-break:auto-phrase]">
+                  <Trans t={t} i18nKey="skills.from.repo" values={{ repo: offer.from.repo }}
+                    components={{ repo: <a className="inline-link" href={`https://github.com/${offer.from.repo}`} target="_blank" rel="noreferrer" /> }} /></span>}
               </span>
             </span>
           </label>

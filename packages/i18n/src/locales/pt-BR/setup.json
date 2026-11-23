@@ -9,7 +9,7 @@
       "save": "Não foi possível salvar as configurações dos agentes."
     },
     "first": "Primeira IA a usar",
-    "firstHint": "Tanto a IA com quem você conversa na caixa de entrada quanto a IA que trabalha nas tarefas começam com esta. Depois, nas configurações, você pode adicionar IAs que assumem quando ela atinge um limite de uso.",
+    "firstHint": "Esta IA é usada primeiro, tanto quando você conversa na caixa de entrada quanto quando as tarefas são feitas.",
     "found": "Instalado. Funciona com login feito ou chave de API",
     "how": "Execute este comando em um terminal e siga as instruções para fazer login.",
     "lead": "O alpacawork entrega o trabalho aos agentes de IA que já estão neste PC, como o Claude Code e o Codex. Os que você ativar serão as opções ao escolher a quem pedir.",
@@ -52,7 +52,7 @@
     "title": "Idioma e tema"
   },
   "done": {
-    "appBody": "O seu navegador coloca um ícone no Dock ou na barra de tarefas, e você pode abrir o alpacawork de novo pelo Dock ou pela barra de tarefas depois de fechar a aba.",
+    "appBody": "Mesmo depois de fechar a aba, você pode abrir o alpacawork pelo ícone no Dock ou na barra de tarefas.",
     "appTitle": "Instalar como app",
     "browser": "Começar no navegador",
     "install": "Instalar e começar",
@@ -83,7 +83,6 @@
     "failed": "Não foi possível instalar. {{reason}}",
     "failedRequest": "Não foi possível iniciar a instalação.",
     "from": {
-      "bundled": "Incluída no alpacawork",
       "repo": "Do GitHub (<repo>{{repo}}</repo>)"
     },
     "install_one": "Instalar {{count}} skill",
@@ -93,22 +92,22 @@
     "installing": "Instalando…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Critérios primeiro, revisão por outra IA",
-        "what": "Antes de construir, a IA define os critérios de aprovação e compara opções nas decisões de maior impacto. Uma IA diferente da que fez o trabalho confere o resultado real, e ele é corrigido antes de pedirem a sua revisão. Isso consome mais tempo e mais tokens (trabalhos leves são conferidos só pela própria IA).",
+        "title": "Conferido por outra IA antes de você ver",
+        "what": "Antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere e corrige o resultado. Isso consome mais tempo e mais tokens.",
         "when": "ao planejar, ao pedir uma revisão e ao receber apontamentos"
       },
       "askmeclearly": {
         "title": "Perguntas e relatórios mais curtos e fáceis de ler",
-        "what": "Quando a IA pede que você decida algo ou relata um resultado, ela mostra com imagens ou vídeos onde olhar, para você decidir ou conferir na hora.",
+        "what": "Quando a IA pede que você decida algo ou relata um resultado, ela mostra com imagens ou vídeos onde olhar.",
         "when": "ao pedir uma decisão ao usuário e ao escrever um relatório"
       },
       "doyourjob": {
         "title": "Menos perguntas para você",
-        "what": "A IA segue sozinha com o que dá para descobrir e o que ela pode decidir, e pergunta a você só o que apenas você pode decidir.",
+        "what": "A IA pergunta a você só o que apenas você pode decidir, e decide o resto sozinha.",
         "when": "antes de perguntar ao usuário e antes de fazer uma escolha com grandes consequências"
       }
     },
-    "lead": "Uma skill é um conjunto extra de instruções que muda o jeito de a IA trabalhar. Estas foram escolhidas entre as que os desenvolvedores do alpacawork publicam.",
+    "lead": "As skills mudam o jeito de a IA trabalhar.",
     "reason": {
       "link_conflict": "Já existe outro item com o mesmo nome na pasta de skills do Claude Code (~/.claude/skills). Ele foi mantido como estava.",
       "npm": "O instalador falhou. Verifique se o npm funciona e se o GitHub está acessível e tente novamente.",
@@ -118,7 +117,7 @@
     },
     "skip": "Continuar sem instalar",
     "title": "Skills para instalar",
-    "where": "Local de instalação: {{place}} (com um link para que o Claude Code também possa usá-las). Você pode removê-las depois."
+    "where": "Instaladas em {{place}}. O Claude Code também as usa."
   },
   "steps": {
     "agents": "Agentes",

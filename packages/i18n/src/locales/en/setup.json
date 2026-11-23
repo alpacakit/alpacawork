@@ -9,7 +9,7 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "First AI to use",
-    "firstHint": "This AI is used first, both when you talk in the input box and when tasks are worked on. Later, in the settings, you can add AIs that take over when it hits a usage limit.",
+    "firstHint": "This AI is used first, both when you talk in the input box and when tasks are worked on.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",
@@ -52,7 +52,7 @@
     "title": "Language and theme"
   },
   "done": {
-    "appBody": "Your browser puts an icon in the Dock or the taskbar, so you can open alpacawork again from it after closing the tab.",
+    "appBody": "Even after you close the tab, you can open alpacawork from its icon in the Dock or the taskbar.",
     "appTitle": "Install as an app",
     "browser": "Start in the browser",
     "install": "Install and start",
@@ -82,7 +82,6 @@
     "failed": "Couldn't install. {{reason}}",
     "failedRequest": "Couldn't start the installation.",
     "from": {
-      "bundled": "Included with alpacawork",
       "repo": "From GitHub (<repo>{{repo}}</repo>)"
     },
     "install_one": "Install {{count}} skill",
@@ -91,22 +90,22 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Criteria set first, then another AI checks",
-        "what": "Before building, the AI sets the criteria for passing and compares options for decisions with a large impact. An AI other than the one that built the result checks the real thing, and it is fixed before you are asked to review it. This takes more time and tokens (light work is only checked by the AI itself).",
+        "title": "Checked by another AI before you see it",
+        "what": "Before you are asked to review a result, an AI other than the one that built it checks and fixes it. This takes more time and tokens.",
         "when": "when planning, when asking for a review, and when receiving findings"
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
-        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video, so you can decide or check right away.",
+        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video.",
         "when": "when asking the user to decide, and when writing a report"
       },
       "doyourjob": {
         "title": "Fewer questions for you",
-        "what": "The AI goes ahead on its own with what it can find out and what it may decide, and asks you only what you alone can decide.",
+        "what": "The AI asks you only what you alone can decide, and decides the rest on its own.",
         "when": "before asking the user, and before making a choice with large consequences"
       }
     },
-    "lead": "A skill is an extra set of instructions that changes how the AI works. These are picked from the ones the developers of alpacawork publish.",
+    "lead": "Skills change how the AI works.",
     "reason": {
       "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
       "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",
@@ -116,7 +115,7 @@
     },
     "skip": "Continue without installing",
     "title": "Skills to install",
-    "where": "Install location: {{place}} (linked so Claude Code can use them too). You can remove them later."
+    "where": "Installed in {{place}}. Claude Code uses them too."
   },
   "steps": {
     "agents": "Agents",
