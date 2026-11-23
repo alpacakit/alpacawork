@@ -41,7 +41,7 @@ const length = (ms: number, t: T) => {
  * still opening), a running task's time stands still at what was last received, in grey: it neither counts minutes it
  * cannot see nor says so on every row (the bar's one mark does).
  */
-export function StatusTime({ task, className }: { task: Task; className?: string }) {
+export function StatusTime({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const now = useNow();
   const offline = useOfflineShown();
@@ -52,8 +52,8 @@ export function StatusTime({ task, className }: { task: Task; className?: string
   // A task that waits for others to finish says which, in place of "Queued" (or of nothing, before it is asked to
   // work); a Run running, here or below it, an unclear state or a stop's time keep their place. Its press lists them by title.
   if (order && !representedWork(task) && (!status || status.kind === "queued")) return <TimeTip data={{ "data-row-status": "order" }} shown={order.shown} heading={t("reader:order.tip")}
-    long={order.shown} body={close => <OrderTipBody items={order.items} onFollow={id => followOrder(close, id)} />} className={cn("text-ink", className)} />;
-  if (representedWork(task) || status?.kind === "running") return <WorkTime task={task} at={offline ? receivedAt ?? null : undefined} className={className} />;
+    long={order.shown} body={close => <OrderTipBody items={order.items} onFollow={id => followOrder(close, id)} />} className="text-ink" />;
+  if (representedWork(task) || status?.kind === "running") return <WorkTime task={task} at={offline ? receivedAt ?? null : undefined} />;
   if (!status || !saysStatus(task, status.kind)) return null;
   const [shown, long, quiet] = (() => {
     switch (status.kind) {
@@ -73,7 +73,7 @@ export function StatusTime({ task, className }: { task: Task; className?: string
     }
   })();
   return <TimeTip data={{ "data-row-status": status.kind }} shown={shown} heading={status.kind === "since" ? t("status.tip.elapsed") : null}
-    long={long} className={cn(quiet ? "text-muted" : "text-ink", className)} />;
+    long={long} className={quiet ? "text-muted" : "text-ink"} />;
 }
 
 /**
@@ -81,11 +81,11 @@ export function StatusTime({ task, className }: { task: Task; className?: string
  * grey: the time beside it is the one word of the row in the working colour. The server counts them, so a child no page
  * has loaded counts too. Out of reach it is what was last received. A reader hears it in words.
  */
-export function RunningRuns({ task, className }: { task: Task; className?: string }) {
+export function RunningRuns({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const count = runningRunsSaid(task);
   if (!count) return null;
-  return <span data-row-running-runs={count} className={cn("flex-none whitespace-nowrap tabular-nums text-muted", className)}>
+  return <span data-row-running-runs={count} className="flex-none whitespace-nowrap tabular-nums text-muted">
     <span aria-hidden="true"><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{count}</span>
     <span className="sr-only">{t("status.runningRuns", { count })}</span>
   </span>;
@@ -98,7 +98,7 @@ export function RunningRuns({ task, className }: { task: Task; className?: strin
  * time to it, so a tick never walks the tree. Before any Run has started there is no time yet, and the row says it runs.
  */
 /** `at`: out of reach, the time the work time stands at (the last receipt), or null when nothing was received. */
-function WorkTime({ task, at, className }: { task: Task; at?: number | null; className?: string }) {
+function WorkTime({ task, at }: { task: Task; at?: number | null }) {
   const { t } = useTranslation("tree");
   const index = useTaskIndexFor(task.id);
   const people = usePeopleFor(task.id, true);
@@ -108,7 +108,7 @@ function WorkTime({ task, at, className }: { task: Task; at?: number | null; cla
   if ((!times.subtree.doneMs && !times.subtree.runningSince.length) || at === null) {
     const empty = representedWork(task) ?? "running";
     const shown = t(`status.${empty}`);
-    return <TimeTip data={{ "data-row-status": empty }} shown={shown} heading={null} long={shown} className={cn(empty === "queued" && !still ? "text-ink" : "text-muted", className)} />;
+    return <TimeTip data={{ "data-row-status": empty }} shown={shown} heading={null} long={shown} className={empty === "queued" && !still ? "text-ink" : "text-muted"} />;
   }
   const subtree = workTimeMs(times.subtree, now), own = workTimeMs(times.own, now);
   const parts = [{ key: "subtree", label: t("status.work.subtree"), value: workWords(subtree, t) },
@@ -120,7 +120,7 @@ function WorkTime({ task, at, className }: { task: Task; at?: number | null; cla
         <dt className="text-muted">{part.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{part.value}</dd></div>)}</dl>
       <TokenLines task={task} />
     </>}
-    className={cn(still ? "text-muted" : "text-working", className)} />;
+    className={still ? "text-muted" : "text-working"} />;
 }
 
 /**
