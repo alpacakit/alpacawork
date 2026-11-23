@@ -112,10 +112,10 @@ test.each([
   { combination: "a child whose estimate waits for an update leaves its own end unsaid, whatever its grandchildren say",
     specs: [parent(), kid("T11", { estimate: 60, ago: 5, sentBack: true }), kid("T111", { parentId: "T11", estimate: 100 })],
     says: `After ${clock(100)}` },
-  { combination: "a child's own estimate covers its grandchildren without one",
-    specs: [parent(), kid("T11", { estimate: 60 }), kid("T111", { parentId: "T11", state: "todo" })], says: `Expected report ${clock(60)}` },
-  { combination: "the parent's own estimate covers its children without one",
-    specs: [parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people: { T1: "running" }, says: `Expected report ${clock(150)}` },
+  { combination: "a child's own estimate covers its grandchildren at work without one",
+    specs: [parent(), kid("T11", { estimate: 60 }), kid("T111", { parentId: "T11" })], says: `Expected report ${clock(60)}` },
+  { combination: "the parent's own estimate covers its children at work without one",
+    specs: [parent({ state: "doing", estimate: 150 }), kid("T11")], people: { T1: "running" }, says: `Expected report ${clock(150)}` },
   { combination: "a child later than the parent's own estimate is the end",
     specs: [parent({ state: "doing", estimate: 30 }), kid("T11", { estimate: 90 })], people: { T1: "running" }, says: `Expected report ${clock(90)}` },
   { combination: "the parent's responsible working without an estimate leaves its own end unsaid",
@@ -130,14 +130,14 @@ test.each([
   expect(cardSays(specs, people).short).toBe(says.replace(/^Expected report /, ""));
 });
 
-test("a doing parent keeps its estimate while its child has not started", () => {
+test("a doing parent keeps its estimate while its child has not started, as a not-before time: the child is not at work", () => {
   for (const people of [{}, { T1: "idle" }] as People[]) {
-    expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people).short).toBe(clock(150));
+    expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], people).short).toBe(`After ${clock(150)}`);
     expect(document.querySelector('[data-row="T1"] [data-idle-doing]')).toBeNull();
     cleanup();
   }
   // A run going under it is work going on.
-  expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], { T11: "running" }).short).toBe(clock(150));
+  expect(cardSays([parent({ state: "doing", estimate: 150 }), kid("T11", { state: "todo" })], { T11: "running" }).short).toBe(`After ${clock(150)}`);
 });
 
 test("the long words say how many estimates count, how many have none, or that one is past", () => {
@@ -212,13 +212,13 @@ test("open children do not hide later estimates at either depth", () => {
     minutes: 100, usedMinutes: 0, remainingMinutes: 100, pending: false,
   } };
   expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : id === "T1" ? atWork : null }))
-    .toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 2 });
+    .toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 3 });
 });
 
 test("a child awaiting the user's answer adds no estimate, even a past one: the parent says the latest at-work estimate, not before", () => {
   const index = indexTasks(data([parent(), kid("T11"), kid("T12")]).tasks);
   const estimate = (remainingMinutes: number) => ({ minutes: 30, usedMinutes: 0, remainingMinutes, pending: false });
-  const facts = (position: "doing" | "review", remaining: number | null) => finishFacts({ state: "doing", position, interrupted: false,
+  const facts = (position: "doing" | "review" | "held", remaining: number | null) => finishFacts({ state: "doing", position, interrupted: false,
     working: false, estimate: remaining === null ? null : estimate(remaining), since: null });
   const own = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T12", facts("review", -3 * 24 * 60)]]);
   expect(own.get("T12")).toBeNull();
@@ -227,6 +227,11 @@ test("a child awaiting the user's answer adds no estimate, even a past one: the 
   const deep = indexTasks(data([parent(), kid("T11"), kid("T111", { parentId: "T11" })]).tasks);
   const below = new Map([["T1", facts("doing", null)], ["T11", facts("review", null)], ["T111", facts("doing", 40)]]);
   expect(finishOf("T1", { index: deep, now, factsOf: id => below.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // An estimate covers no task waiting on the user under it, at any depth: the parent's own, or a child's.
+  const held = new Map([["T1", facts("doing", 60)], ["T11", facts("doing", 40)], ["T12", facts("held", null)]]);
+  expect(finishOf("T1", { index, now, factsOf: id => held.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 60 * minute, count: 2, open: 1 });
+  const heldBelow = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T111", facts("held", null)]]);
+  expect(finishOf("T1", { index: deep, now, factsOf: id => heldBelow.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
   // Its own row says no report time either.
   expect(finishOf("T12", { index, now, factsOf: id => own.get(id) ?? null })).toBeNull();
 });
