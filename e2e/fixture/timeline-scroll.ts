@@ -28,6 +28,9 @@ export function seedTimelineScroll(root: string) {
         const id = `timeline-scroll-${n}`, number = 2000 + n;
         const created = '2026-09-25T01:00:00.000Z', working = '2026-09-25T02:00:00.000Z';
         const reported = new Date(Date.parse('2026-09-25T04:00:00.000Z') + n * 60_000).toISOString();
+        // The Run ends just before its last report, so its end is already on record: the server has nothing to settle
+        // in the background, which would otherwise move these rows to the top of their section while a test runs.
+        const ended = new Date(Date.parse(reported) - 1000).toISOString();
         insert.run(id, number, project, project, `Scroll review ${String(n).padStart(2, '0')}`, created, reported);
         value.run(id, JSON.stringify('Review the result.'));
         const placementId = `Pscroll-${n}`, taskId = `T${number}`;
@@ -36,7 +39,7 @@ export function seedTimelineScroll(root: string) {
         request.run(requestId, taskId, placementId, taskHash(id, 1), 'Produce the review result.', JSON.stringify({ kind: 'human' }), working);
         run.run(number, JSON.stringify(record(`R${number}`, { task: taskId, placementId, requestId,
           agent: String(person.profile_key), role: 'owner', cwd: root, state: 'succeeded', created_at: working,
-          started_at: working, ended_at: reported, exit: { code: 0, signal: null },
+          started_at: working, ended_at: ended, exit: { code: 0, signal: null },
           launch: inertFixtureLaunch('codex') })),
           'Produce the review result.', 'Fixture result.', 'present');
         const entries = [
