@@ -37,7 +37,7 @@ for (const [width, height] of [[1440, 900]] as const) {
     const welcome = page.locator("[data-welcome]");
     await expect(welcome).toBeVisible();
     await expect(welcome.getByRole("heading", { name: "Welcome to alpacawork" })).toBeVisible();
-    await expect(welcome.locator("[data-welcome-picture-part]")).toHaveCount(3);
+    await expect(welcome.locator("[data-welcome-picture-part]")).toHaveCount(4);
     await expect(page.locator("[data-section]")).toHaveCount(0);
     await expect(page.locator("[data-time-corner]")).toHaveCount(0);
 

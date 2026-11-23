@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Sentences } from "@/components/ui/sentences";
 import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
@@ -30,57 +31,104 @@ function CloseGuide({ className }: { className?: string }) {
 type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
+/** How much of a part's top counts as its head: where a tall part is looked for when its middle is out of sight. */
+const HEAD = 40;
 const OPPOSITE: Record<GuideSide, GuideSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
 const ACROSS: Record<GuideSide, GuideSide[]> = { top: ["right", "left"], bottom: ["right", "left"], left: ["top", "bottom"], right: ["top", "bottom"] };
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), Math.max(low, high));
 
+/** Where a balloon stands on one side of its part, and how far it had to move away from it (`away`) to stand clear. */
+type Standing = { x: number; y: number; side: GuideSide; away: number; inView: boolean };
+const overlaps = (x: number, y: number, size: { width: number; height: number }, box: Box) =>
+  x < box.left + box.width && x + size.width > box.left && y < box.top + box.height && y + size.height > box.top;
 /**
- * Where a balloon of `size` stands in a view of `view`, pointing at `target`: outside `by` (the target itself, or the
- * box round it and the parts the balloon stands clear of), on the side asked for if it fits there, else the opposite one,
- * else either side across; lined up with the target as `align` says, kept inside the view whatever happens, its arrow
- * on the target's middle. With no room on any side of `by` (a detail taking the whole screen), it stands by the target
- * alone: never pushed back over the very part it points at.
+ * A balloon of `size` on `side` of `target`, lined up with it as `align` says and kept inside the view along that side:
+ * right by the target, then moved off each box of `clear` it would stand over, along the target where its arrow still
+ * lands on it, else away from it, until it stands over none.
  */
-export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
-  align: GuideAlign = "middle", by: Box = target): Placed {
-  const room: Record<GuideSide, boolean> = {
-    top: by.top - GAP - size.height >= MARGIN,
-    bottom: by.top + by.height + GAP + size.height <= view.height - MARGIN,
-    left: by.left - GAP - size.width >= MARGIN,
-    right: by.left + by.width + GAP + size.width <= view.width - MARGIN,
-  };
-  const fits = [asked, OPPOSITE[asked], ...ACROSS[asked]].find(each => room[each]);
-  if (!fits && by !== target) return placeBalloon(target, size, view, asked, align);
-  const side = fits ?? asked;
+function standing(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, side: GuideSide, align: GuideAlign,
+  clear: readonly Box[]): Standing {
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
-  if (side === "top" || side === "bottom") {
+  const upright = side === "top" || side === "bottom";
+  let x: number, y: number;
+  if (upright) {
     const along = align === "start" ? target.left : align === "end" ? target.left + target.width - size.width : middleX - size.width / 2;
-    const x = clamp(along, MARGIN, view.width - size.width - MARGIN);
-    const y = clamp(side === "top" ? by.top - GAP - size.height : by.top + by.height + GAP, MARGIN, view.height - size.height - MARGIN);
-    return { target, x, y, side, arrow: clamp(middleX - x, ARROW_ROOM, size.width - ARROW_ROOM) };
+    x = clamp(along, MARGIN, view.width - size.width - MARGIN);
+    y = side === "top" ? target.top - GAP - size.height : target.top + target.height + GAP;
+  } else {
+    const down = align === "start" ? target.top : align === "end" ? target.top + target.height - size.height : middleY - size.height / 2;
+    y = clamp(down, MARGIN, view.height - size.height - MARGIN);
+    x = side === "left" ? target.left - GAP - size.width : target.left + target.width + GAP;
   }
-  const down = align === "start" ? target.top : align === "end" ? target.top + target.height - size.height : middleY - size.height / 2;
-  const y = clamp(down, MARGIN, view.height - size.height - MARGIN);
-  const x = clamp(side === "left" ? by.left - GAP - size.width : by.left + by.width + GAP, MARGIN, view.width - size.width - MARGIN);
-  return { target, x, y, side, arrow: clamp(middleY - y, ARROW_ROOM, size.height - ARROW_ROOM) };
+  const from = upright ? y : x;
+  const over = (atX: number, atY: number) => clear.find(box => overlaps(atX, atY, size, box));
+  // Along the target, as far as its arrow still lands on it: to one end of the box in its way or the other, the nearer.
+  const along = (box: Box): number | null => {
+    const [at, length, low, span, start, end, room] = upright
+      ? [x, size.width, box.left, box.width, target.left, target.left + target.width, view.width]
+      : [y, size.height, box.top, box.height, target.top, target.top + target.height, view.height];
+    const reach = Math.min(2 * ARROW_ROOM, end - start);
+    return [low - GAP - length, low + span + GAP]
+      .filter(each => each >= MARGIN && each + length <= room - MARGIN && Math.min(each + length, end) - Math.max(each, start) >= reach)
+      .filter(each => !(upright ? over(each, y) : over(x, each)))
+      .sort((a, b) => Math.abs(a - at) - Math.abs(b - at))[0] ?? null;
+  };
+  // Each move takes it clear of one box it stood over: along the target where that is enough, else away from it, past
+  // that box; so it is clear of them all within as many moves as there are boxes.
+  for (let moves = 0; moves <= clear.length; moves++) {
+    const box = over(x, y);
+    if (!box) break;
+    const slid = along(box);
+    if (slid !== null) { if (upright) x = slid; else y = slid; break; }
+    if (side === "top") y = box.top - GAP - size.height;
+    else if (side === "bottom") y = box.top + box.height + GAP;
+    else if (side === "left") x = box.left - GAP - size.width;
+    else x = box.left + box.width + GAP;
+  }
+  const inView = side === "top" ? y >= MARGIN : side === "bottom" ? y + size.height <= view.height - MARGIN
+    : side === "left" ? x >= MARGIN : x + size.width <= view.width - MARGIN;
+  return { x, y, side, away: Math.abs((upright ? y : x) - from), inView: inView && !clear.some(box => overlaps(x, y, size, box)) };
 }
 
 /**
- * The first element marked as `selector` that is seen: laid out and shown, and at its middle it (or what is in it) is
- * what stands in front, so not scrolled out of its pane, under a fixed heading or under another surface. The balloon and
- * its ring take no press, so they never stand in front.
+ * Where a balloon of `size` stands in a view of `view`, pointing at `target`: beside it, clear of every box of `clear`
+ * (the parts whose content stays read), on the side where it stands nearest the target; the side asked for when it is
+ * as near there as anywhere, then the opposite one, then either side across. Lined up with the target as `align` says,
+ * kept inside the view whatever happens, its arrow on the target's middle. With no side to stand clear on (a detail
+ * taking the whole screen), it stands by the target alone: never pushed back over the very part it points at.
  */
-function shownPart(selector: string): HTMLElement | null {
-  for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-    if (element.closest("[inert], [aria-hidden=true]")) continue;
-    if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
+  align: GuideAlign = "middle", clear: readonly Box[] = []): Placed {
+  const sides = [asked, OPPOSITE[asked], ...ACROSS[asked]];
+  const stands = (boxes: readonly Box[]) => sides.map(side => standing(target, size, view, side, align, boxes)).filter(each => each.inView)
+    .reduce<Standing | null>((best, each) => best && best.away <= each.away ? best : each, null);
+  const stood = stands(clear) ?? stands([]) ?? standing(target, size, view, asked, align, []);
+  const x = clamp(stood.x, MARGIN, view.width - size.width - MARGIN), y = clamp(stood.y, MARGIN, view.height - size.height - MARGIN);
+  const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
+  return stood.side === "top" || stood.side === "bottom"
+    ? { target, x, y, side: stood.side, arrow: clamp(middleX - x, ARROW_ROOM, size.width - ARROW_ROOM) }
+    : { target, x, y, side: stood.side, arrow: clamp(middleY - y, ARROW_ROOM, size.height - ARROW_ROOM) };
+}
+
+/**
+ * The first element marked as `selector` that is seen: laid out and shown, and at its middle or at its head (a tall part
+ * whose middle is below the fold) it (or what is in it) is what stands in front, so not scrolled out of its pane, under
+ * a fixed heading or under another surface. The balloon and its ring take no press, so they never stand in front.
+ */
+const shownPart = (selector: string): HTMLElement | null => shownParts(selector)[0] ?? null;
+/** Every element marked as `selector` that is seen (shownPart). */
+function shownParts(selector: string): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>(selector)].filter(element => {
+    if (element.closest("[inert], [aria-hidden=true]")) return false;
+    if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) return false;
     const box = element.getBoundingClientRect();
-    if (box.width < 4 || box.height < 4) continue;
-    const front = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-    if (!front || !element.contains(front)) continue;
-    return element;
-  }
-  return null;
+    if (box.width < 4 || box.height < 4) return false;
+    const across = box.left + box.width / 2;
+    return [box.top + box.height / 2, box.top + Math.min(box.height, HEAD) / 2].some(down => {
+      const front = document.elementFromPoint(across, down);
+      return !!front && element.contains(front);
+    });
+  });
 }
 /** The nearest box `element` (itself included) scrolls in: one that lets its content overflow and scroll. */
 function scrollerOf(element: Element | null): HTMLElement | null {
@@ -91,27 +139,26 @@ function scrollerOf(element: Element | null): HTMLElement | null {
   return null;
 }
 /**
- * The first element marked as `selector` that is laid out and shown but scrolled out of the box it scrolls in (its
- * middle outside that box): a part to bring into view.
+ * The first element marked as `selector` that is laid out and shown but not wholly inside the box it scrolls in
+ * (scrolled out of it, or reaching past its edge): a part to bring into view.
  */
-function scrolledAway(selector: string): HTMLElement | null {
+function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
     const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
-    const middle = box.top + Math.min(box.height, 40) / 2;
-    if (pane && (middle < pane.top || middle > pane.bottom)) return element;
+    if (pane && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
   }
   return null;
+}
+/** Brings `element` into the box it scrolls in: whole where it fits, else from its head. */
+function bringIn(element: HTMLElement) {
+  const pane = scrollerOf(element.parentElement);
+  element.scrollIntoView({ block: pane && element.getBoundingClientRect().height > pane.clientHeight ? "start" : "nearest" });
 }
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
   return { left: box.left, top: box.top, width: box.width, height: box.height };
-};
-/** The smallest box round all of `boxes`. */
-const around = (boxes: Box[]): Box => {
-  const left = Math.min(...boxes.map(box => box.left)), top = Math.min(...boxes.map(box => box.top));
-  return { left, top, width: Math.max(...boxes.map(box => box.left + box.width)) - left, height: Math.max(...boxes.map(box => box.top + box.height)) - top };
 };
 const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a && !!b && a.x === b.x && a.y === b.y && a.side === b.side && a.arrow === b.arrow
   && a.target.left === b.target.left && a.target.top === b.target.top && a.target.width === b.target.width && a.target.height === b.target.height;
@@ -131,8 +178,8 @@ export function GuideBalloon() {
 }
 
 /**
- * The steps read once that are passed over while what they point at is not seen (`skipped`, guide-definition.ts): one
- * is passed over when its part has not been seen for a moment (`pass`), and comes back as soon as its part is seen.
+ * The steps passed over while what they point at is not seen (`passable` and `skipped`, guide-definition.ts): one is
+ * passed over when its part has not been seen for a moment (`pass`), and comes back as soon as its part is seen.
  */
 function useSkipped() {
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
@@ -152,7 +199,12 @@ function useSkipped() {
 function GoingBalloon({ stage }: { stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
   const { entry, facts, fresh } = useGuide(stage, skipped);
-  useGuideStage(stage, entry, facts, fresh);
+  // Since when each step's balloon has stood on the screen, in this guide (begun again, none has): useGuideStage reads it
+  // as the guide moves on from a step.
+  const began = stage.stage === "started" ? stage.at : null;
+  const drawn = useRef({ began, since: new Map<string, number>() });
+  if (began !== null && drawn.current.began !== began) drawn.current = { began, since: new Map() };
+  useGuideStage(stage, entry, facts, fresh, drawn.current.since);
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
@@ -162,28 +214,31 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     // Not looked at yet for this step: its first look is always kept, so a step whose part is not on the screen never
     // stands where the step before it stood.
     let last: Placed | null | undefined;
-    // A part scrolled out of its pane is brought into view once, when its step begins; after that the person scrolls.
-    let broughtIn = false;
+    // A part not wholly in its pane is brought into view once, when its step begins and the part is there; after that
+    // the person scrolls.
+    let settled = false;
     // The box the balloon stands over and scrolls (its room, below).
     let roomed: HTMLElement | null = null;
-    // Looks in a row that did not see the part: a step read once is passed over after two (half a second).
+    // Looks in a row that did not see the part: a passable step is passed over after two (half a second).
     let missed = 0;
     const update = () => {
       let target = shownPart(part);
-      if (!target && !broughtIn) {
-        const away = scrolledAway(part);
-        if (away) { broughtIn = true; away.scrollIntoView({ block: "nearest" }); target = shownPart(part); }
+      if (!settled) {
+        const away = outOfPane(part);
+        if (away) { bringIn(away); target = shownPart(part); }
+        settled = !!away || !!target;
       }
       missed = target ? 0 : missed + 1;
-      if (entry.once && missed >= 2 && !skipped.has(entry.id)) pass(entry.id);
+      if (entry.passable && missed >= 2 && !skipped.has(entry.id)) pass(entry.id);
       const own = balloon.current?.getBoundingClientRect();
-      // Each part stood clear of is the one holding the part pointed at, else the one of its kind seen beside it.
+      // Each part stood clear of is the one holding the part pointed at, else those of its kind seen beside it.
       const clear = target ? (entry.clear ?? []).flatMap(name => {
-        const element = target.closest(PARTS[name]) ?? shownPart(PARTS[name]);
-        return element ? [boxOf(element)] : [];
+        const holder = target.closest(PARTS[name]);
+        return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
-        entry.align, clear.length ? around([boxOf(target), ...clear]) : undefined) : null;
+        entry.align, clear) : null;
+      if (next && !drawn.current.since.has(entry.id)) drawn.current.since.set(entry.id, Date.now());
       if (!same(last, next)) { last = next; setPlaced(next); }
       roomed = keepRoom(roomed, next && own ? own : null);
     };
@@ -234,6 +289,29 @@ export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DO
 function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
+  const say = entry.say(t as TFunction);
+  // The balloon is as wide as its longest line: words broken at a sentence's or a phrase's end (Sentences) leave no
+  // empty room at their right.
+  const words = useRef<HTMLParagraphElement>(null);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const lines = words.current;
+      if (!lines) return;
+      lines.style.maxWidth = "";
+      const boxes = [...lines.querySelectorAll("span")].flatMap(sentence => {
+        const range = document.createRange();
+        range.selectNodeContents(sentence);
+        return [...range.getClientRects()];
+      });
+      if (boxes.length) lines.style.maxWidth = `${Math.ceil(Math.max(...boxes.map(box => box.right)) - Math.min(...boxes.map(box => box.left)))}px`;
+    };
+    fit();
+    // The lines break anew when the window's width or the font changes.
+    let live = true;
+    void document.fonts?.ready.then(() => { if (live) fit(); });
+    addEventListener("resize", fit);
+    return () => { live = false; removeEventListener("resize", fit); };
+  }, [say]);
   // Read and put away, by "Got it" or by doing what the step offers: the guide goes on.
   const read = () => { putAway(entry.id); };
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
@@ -243,7 +321,9 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     <div className="flex items-start gap-1">
-      <p className="m-0 flex-1 py-1.5 text-sm text-pretty [word-break:auto-phrase] narrow:py-2.5">{entry.say(t as TFunction)}</p>
+      <p ref={words} className="m-0 flex-1 py-1.5 text-sm narrow:py-2.5">
+        <Sentences words={say} />
+      </p>
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
     {(entry.next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">

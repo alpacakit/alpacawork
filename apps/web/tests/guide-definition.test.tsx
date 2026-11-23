@@ -56,27 +56,42 @@ test("words in the input point at sending them wherever the guide is, but for a 
   expect(shown({ tasks: 1, questions: 1, open: "question", drafting: true })).toBe("answer");
 });
 
-test("a step shown once with no button is done when the guide moves on from it; one with a button only by it", () => {
+test("a step is done when the guide moves on from it after its balloon stood on the screen; one with a button only by it", () => {
   const entry = (over: Partial<GuideFacts>) => guideEntry(facts(over));
   const label = entry({ stage: turn, tasks: 1, results: 1, open: "result", seen: read("more"), drafting: true, labelled: true });
   const accept = entry({ stage: turn, tasks: 1, results: 1, open: "result", seen: read("more") });
-  expect(doneOnLeaving(label, accept, facts({}))).toBe(true);
-  expect(doneOnLeaving(label, label, facts({}))).toBe(false);
+  expect(doneOnLeaving(accept, null, facts({}), true)).toBe(true);
+  expect(doneOnLeaving(accept, accept, facts({}), true)).toBe(false);
   // With a button: pushed aside while it still holds, it waits; left because it no longer holds (the conversation
   // cleared, say), it is done.
   const more = entry({ stage: turn, tasks: 1, results: 1, open: "result" });
-  expect(doneOnLeaving(more, accept, facts({ stage: turn, tasks: 1, results: 1, open: "result" }))).toBe(false);
+  expect(more?.id).toBe("more");
+  expect(label?.id).toBe("label");
+  expect(doneOnLeaving(label, accept, facts({}), true)).toBe(true);
+  expect(doneOnLeaving(more, accept, facts({ stage: turn, tasks: 1, results: 1, open: "result" }), true)).toBe(false);
   const conversation = entry({ stage: turn, doneHere: true, tasks: 1, talked: true });
   expect(conversation?.id).toBe("conversation");
-  expect(doneOnLeaving(conversation, null, facts({ stage: turn, doneHere: true, tasks: 1, talked: false }))).toBe(true);
+  expect(doneOnLeaving(conversation, null, facts({ stage: turn, doneHere: true, tasks: 1, talked: false }), true)).toBe(true);
 });
 
-test("a step read once is passed over, not done, while what it points at is not seen; with only it left, the guide waits", () => {
+test("a step shown is not shown again: the Task's row is said once, however often work starts; one never on the screen is not done", () => {
+  const working = guideEntry(facts({ stage: turn, tasks: 1, working: 1 }));
+  expect(working?.id).toBe("working");
+  const asked = facts({ stage: turn, tasks: 1, questions: 1 });
+  expect(doneOnLeaving(working, guideEntry(asked), asked, true)).toBe(true);
+  // One more request on the same Task: it is worked on again, and its row is not introduced again.
+  expect(shown({ stage: turn, tasks: 1, working: 1, seen: read("working") })).toBeNull();
+  expect(shown({ stage: turn, tasks: 1, questions: 1, seen: read("working", "question") })).toBeNull();
+  // Its row was in another project, or under a dialog: never shown, so it is still to be said.
+  expect(doneOnLeaving(working, guideEntry(asked), asked, false)).toBe(false);
+});
+
+test("a passable step is passed over, not done, while what it points at is not seen; with only it left, the guide waits", () => {
   const close = { stage: turn, doneHere: true, tasks: 1, apps: true, seen: read("conversation") } as const;
   expect(shown(close)).toBe("another-repository");
   const hidden = { ...close, skipped: read("another-repository") };
   expect(shown(hidden)).toBe("phone");
-  expect(doneOnLeaving(guideEntry(facts(close)), guideEntry(facts(hidden)), facts(hidden))).toBe(false);
+  expect(doneOnLeaving(guideEntry(facts(close)), guideEntry(facts(hidden)), facts(hidden), true)).toBe(false);
   // Nothing else holds: it stays the step (showing nothing) rather than the guide ending.
   expect(shown({ ...hidden, seen: read("conversation", "phone") })).toBe("another-repository");
 });
@@ -88,7 +103,7 @@ test("an answer given in the conversation itself is pointed at while it is folde
   expect(shown({ ...answered, tasks: 1, working: 1, unowned: 1 })).toBe("direct");
   expect(shown({ ...answered, tasks: 1, questions: 1 })).toBe("question");
   expect(shown({ ...answered, conversationOpen: true })).toBe("send-again");
-  expect(doneOnLeaving(guideEntry(facts(answered)), guideEntry(facts({ ...answered, conversationOpen: true })), facts({ ...answered, conversationOpen: true }))).toBe(true);
+  expect(doneOnLeaving(guideEntry(facts(answered)), guideEntry(facts({ ...answered, conversationOpen: true })), facts({ ...answered, conversationOpen: true }), true)).toBe(true);
 });
 
 test("a Task being worked on, seen in the detail, points once at where it is stopped", () => {
@@ -155,20 +170,31 @@ test("the coordinator is busy while anything sent is still with it, and a reques
   expect(coordinatorFacts({ since: null, sending: [], turns: [{ id: "a", at, status: "succeeded", result: { writes: [] }, seen: true }] }).direct).toBe(false);
 });
 
-test("a balloon told to stand clear of the box its part is in stands outside that box, its arrow still on the part", () => {
-  const send = { left: 940, top: 846, width: 32, height: 32 }, foot = { left: 380, top: 655, width: 600, height: 235 };
-  const size = { width: 496, height: 68 };
-  const placed = placeBalloon(send, size, { width: 1360, height: 900 }, "top", "end", foot);
-  expect(placed.y + size.height).toBeLessThanOrEqual(foot.top);
-  expect(placed.x + placed.arrow).toBe(send.left + send.width / 2);
-  const asked = { left: 887, top: 424, width: 432, height: 404 }, detail = { left: 832, top: 12, width: 516, height: 876 };
-  const beside = placeBalloon(asked, size, { width: 1360, height: 900 }, "left", "start", detail);
-  expect(beside.x + size.width).toBeLessThanOrEqual(detail.left);
-  expect(beside.y).toBe(asked.top);
-  // A detail taking the whole screen leaves no room round it: the balloon stands by the question, not over it.
+test("a balloon stands right by its part, clear of the boxes it is told to, on the side where that is nearest", () => {
   const view = { width: 1360, height: 900 };
-  const over = placeBalloon(asked, size, view, "left", "start", { left: 0, top: 0, ...view });
-  expect(over.x + size.width).toBeLessThanOrEqual(asked.left);
+  const send = { left: 940, top: 846, width: 32, height: 32 }, foot = { left: 380, top: 655, width: 600, height: 235 };
+  const button = { left: 380, top: 607, width: 120, height: 36 };
+  const size = { width: 200, height: 48 };
+  // Beside the foot, at the send button's own height: nearer than over the foot.
+  const beside = placeBalloon(send, size, view, "right", "middle", [foot, button]);
+  expect(beside).toMatchObject({ side: "right", x: send.left + send.width + 12 });
+  expect(beside.x).toBeGreaterThanOrEqual(foot.left + foot.width);
+  expect(beside.y + beside.arrow).toBe(send.top + send.height / 2);
+  // No room beside it (the foot as wide as the view): over the foot, not over the button standing clear of its left end.
+  const wide = { ...foot, left: 8, width: 1344 }, far = { ...send, left: 1300 };
+  const over = placeBalloon(far, size, view, "right", "middle", [wide, button]);
+  expect(over).toMatchObject({ side: "top", y: wide.top - 12 - size.height });
+  expect(over.x + over.arrow).toBe(far.left + far.width / 2);
+  // A box in its way there is stood clear of as well.
+  const panel = { left: 8, top: 200, width: 1344, height: 443 };
+  expect(placeBalloon(far, size, view, "right", "middle", [wide, panel]).y).toBe(panel.top - 12 - size.height);
+  const asked = { left: 887, top: 424, width: 432, height: 404 }, detail = { left: 832, top: 12, width: 516, height: 876 };
+  const left = placeBalloon(asked, { width: 496, height: 68 }, view, "left", "start", [detail]);
+  expect(left.x + 496).toBeLessThanOrEqual(detail.left);
+  expect(left.y).toBe(asked.top);
+  // A detail taking the whole screen leaves no room round it: the balloon stands by the question, not over it.
+  const whole = placeBalloon(asked, { width: 496, height: 68 }, view, "left", "start", [{ left: 0, top: 0, ...view }]);
+  expect(whole.x + 496).toBeLessThanOrEqual(asked.left);
 });
 
 test("shown again from its first screen, the guide points at the input whatever the work, until something is written or sent", () => {
@@ -227,7 +253,7 @@ test("the close holds while the server says a Task pressed Done on here is finis
   for (const state of ["review", "held", "stopped", undefined]) expect(finishedHere(["T2"], states(state ? { T2: state } : {}))).toEqual([]);
   // A Task stopped with no Done pressed on it here is not among those pressed on.
   expect(finishedHere([], states({ T3: "stopped" }))).toEqual([]);
-  // Taken back and put on hold: no step holds and the guide waits; awaiting again, Done is shown on it again.
+  // Taken back and put on hold: no step holds and the guide waits; awaiting again, Done is what holds on it.
   const held = facts({ stage: turn, tasks: 1, talked: true, doneHere: finishedHere(["T2"], states({ T2: "held" })).length > 0 });
   expect(guideEntry(held)).toBeNull();
   expect(nextStage(turn, guideEntry(held), held.doneHere)).toBeUndefined();

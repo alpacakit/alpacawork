@@ -2,29 +2,29 @@
   "guide": {
     "close": "Encerrar o guia",
     "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}}, em “{{guide}}”.",
-    "example": "Quero experimentar o fluxo completo de trabalho com o alpacawork.\nFaça um HTML escrito \"Hello\" em duas fontes diferentes e me pergunte qual é melhor.",
-    "moreExample": "Na verdade, quero mais uma versão para comparar.",
+    "example": "Esta é uma demonstração para experimentar o fluxo do alpacawork.\nCrie um HTML que mostre \"Hello\" em duas fontes e me pergunte qual é melhor.",
+    "moreExample": "Faça mais uma versão para eu poder comparar.",
     "next": "Entendi",
     "openSteps": "Abrir os passos",
     "reopen": "Desfazer",
     "say": {
-      "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}).",
+      "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}). Se quiser pedir outra coisa em seguida, você pode enviar mais instruções em vez de encerrar.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
-      "answer": "Ao escolher uma resposta, ela vai para a caixa abaixo. Ao enviar, ela vira a sua resposta.",
-      "conversation": "A conversa com a recepção é descartável: limpe com “{{clear}}” quando acumular. O que quiser guardar, peça como tarefa.",
+      "answer": "Escolha uma opção e ela vai para o campo de mensagem. Envie como está para responder. Você também pode enviar outra mensagem sem escolher nenhuma.",
+      "conversation": "A conversa com a IA da recepção é descartável. Quando acumular, abra a conversa em um bom momento e limpe com “{{clear}}”. Antes disso, peça que o que quiser guardar vire uma tarefa.",
       "direct": "A IA da recepção responde aqui os pedidos curtos. Se você confiar um trabalho a ela, ele vira uma tarefa na lista.",
-      "label": "Esta etiqueta orienta a IA sobre de qual tarefa ou projeto você fala. Sem ela, a IA entende pelo contexto da conversa.",
+      "label": "Esta etiqueta indica à IA de qual tarefa ou projeto você está falando. Sem ela, a IA entende pelo contexto da conversa.",
       "more": "Depois de um relatório, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
       "phone": "Mesmo longe do computador, você pode responder perguntas pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
-      "question": "Sua vez. Toque nesta linha para abrir a pergunta.",
-      "received": "A IA da recepção (o coordenador) recebeu. Leva um momento para passar a uma IA.",
-      "result": "Chegou um relatório. Toque nesta linha para abrir o detalhe.",
-      "send": "Esta é a única caixa de entrada.",
+      "question": "Sua vez. Abra esta linha para ver a pergunta.",
+      "received": "A IA da recepção (o coordenador) recebeu o pedido. Leva um momento para passá-lo a uma IA.",
+      "result": "Chegou um relatório. Abra esta linha para ver o detalhe.",
+      "send": "Este é o único campo de mensagem. Todas as instruções são dadas por aqui.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie.",
       "sendReady": "Envie com este botão.",
-      "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça na caixa de entrada, onde também dá para pedir ajustes ou novos modelos.",
-      "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça na caixa de entrada para começar.",
-      "working": "Isto é uma tarefa. A IA responsável avança e a move para “{{section}}” quando chega uma pergunta ou um relatório."
+      "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
+      "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça no campo de mensagem para começar.",
+      "working": "Isto é uma tarefa. A IA responsável faz o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa passa para “{{section}}”."
     },
     "tryExample": "Inserir um prompt de demonstração"
   },
@@ -144,9 +144,10 @@
   "welcome": {
     "lead": "Um lugar para entregar trabalho a uma equipe de IAs.",
     "picture": {
-      "listed": "Elas entram na lista. Sua vez chega em “{{section}}”",
+      "listed": "Elas entram na lista. O que precisa de você aparece em “{{section}}”",
+      "own": "Uma IA assume cada tarefa como responsável e a divide em subtarefas quando preciso",
       "send": "Você envia um pedido",
-      "split": "A IA da recepção transforma em tarefas, coloca uma IA em cada e as executa"
+      "split": "A IA da recepção (o coordenador) transforma em tarefas"
     },
     "title": "Boas-vindas ao alpacawork"
   }

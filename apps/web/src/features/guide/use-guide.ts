@@ -203,13 +203,16 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   return { entry: guideEntry(facts), facts, fresh };
 }
 
+/** How long a balloon stands before it counts as shown: one that came and went within a moment (as the page loads, say) was not read. */
+const READ_MS = 1000;
 /**
  * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide): the Tasks
- * Done was pressed on since it began (`fresh`, kept as `finished` whatever step shows), and puts away a step shown once
- * as the guide moves on from it (doneOnLeaving). Mounted once, beside the balloon, so a stage is written by one owner
- * only.
+ * Done was pressed on since it began (`fresh`, kept as `finished` whatever step shows), and puts away a step as the
+ * guide moves on from it (doneOnLeaving), when its balloon stood on the screen long enough to be read (`drawn`: since
+ * when each step's has stood; a step left starts anew). Mounted once, beside the balloon, so a stage is written by one
+ * owner only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[]) {
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], drawn: Map<string, number>) {
   const kept = stage.finished ?? [];
   const adding = fresh.filter(id => !kept.includes(id));
   const next = adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, facts.doneHere);
@@ -221,7 +224,12 @@ export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts
   const at = stage.stage === "started" ? stage.at : null;
   useEffect(() => {
     const restarted = at !== null && held.current.at !== at;
-    if (!restarted && doneOnLeaving(held.current.entry, entry, facts)) putAway(held.current.entry!.id);
+    const left = held.current.entry;
+    if (left && left.id !== entry?.id) {
+      const since = drawn.get(left.id);
+      drawn.delete(left.id);
+      if (!restarted && doneOnLeaving(left, entry, facts, since !== undefined && Date.now() - since >= READ_MS)) putAway(left.id);
+    }
     held.current = { entry, at: at ?? held.current.at };
   }, [entry?.id, at]);
 }

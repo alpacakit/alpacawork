@@ -25,10 +25,11 @@ import type { GuideStage } from "./guide-state";
  * waiting to be sent sit between a question's answer and the label (`turn`) and the rest of `turn`; a message answered
  * in the conversation, after the rows awaiting the person.
  *
- * Two kinds of step: one that says what is so (shown while its facts hold) and one read once (`once`). A step read
- * once is done when its button is pressed, or when the guide moves on from it: always with no button, with one only
- * when its own facts no longer hold (doneOnLeaving). While what it points at is not seen it is passed over, not done
- * (`skipped`): the next step that holds is shown, and it comes back when its part is seen again.
+ * Every step is read once: it is done when its button is pressed, or when the guide moves on from it after its balloon
+ * has stood on the screen (always with no button; with one, only when its own facts no longer hold: doneOnLeaving). A
+ * step done is never shown again, whatever happens later. A step that holds while its part is not on the screen shows
+ * nothing and the guide waits for that part; one marked `passable` is passed over instead (`skipped`): the next step
+ * that holds is shown, and it comes back when its part is seen again.
  *
  * To add a step, add one entry to GUIDE where it belongs in the order and its words to tree.json (every language):
  * - `id`: its name (also what "Got it" remembers);
@@ -36,10 +37,10 @@ import type { GuideStage } from "./guide-state";
  * - `when`: the facts under which it holds;
  * - `part`, `side` and `align`: the part it points at (a name from PARTS), the side of that part its balloon stands on,
  *   and where along that side (middle unless said);
- * - `clear`: parts the balloon stands clear of, whole (what is read there stays read): the one holding the part pointed
- *   at, or one standing beside it (the first of its kind seen);
+ * - `clear`: parts the balloon never stands over (what is read there stays read): the one holding the part pointed at,
+ *   or those of its kind seen beside it; it stands by its part on the side where they let it nearest;
  * - `turn`: it is the person's turn (a question or a report awaits them); once one holds, the guide is past sending;
- * - `once`: it is read once (above);
+ * - `passable`: it is passed over while its part is not seen (above);
  * - `next`: it waits for "Got it";
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
@@ -63,6 +64,8 @@ export const PARTS = {
    * Not what stands there while a message can still be taken back ("about to send"): it says the message is not sent yet.
    */
   coordinator: "[data-coordinator-pill][data-coordinator-expand]",
+  /** What stands in the row over that box: the conversation's button, and the buttons of the Task open in the detail. */
+  overInput: "[data-coordinator-fold-row] > *",
   /** The conversation with the coordinator: that button while it is folded, its "Clear conversation" while it is open. */
   conversation: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-clear]",
   /** The open conversation's own panel, over the foot. */
@@ -133,9 +136,9 @@ export type GuideFacts = {
   narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
-  /** Steps put away (by their button, or left: `once`). */
+  /** Steps done: put away by their button, or left after their balloon stood on the screen. */
   seen: ReadonlySet<string>;
-  /** Steps read once passed over while what they point at is not seen. */
+  /** Steps passed over while what they point at is not seen (`passable`). */
   skipped: ReadonlySet<string>;
 };
 
@@ -151,7 +154,7 @@ export type GuideEntry = {
   side?: GuideSide;
   align?: GuideAlign;
   turn?: boolean;
-  once?: boolean;
+  passable?: boolean;
   next?: boolean;
   action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
   say: (t: TFunction) => string;
@@ -160,12 +163,12 @@ export type GuideEntry = {
 const turnSection = (t: TFunction) => t("tree:home.turn");
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 /**
- * Every step at the input stands clear of the foot, the conversation's button beside it and, while it is open, the
- * conversation's panel: what is read there stays read.
+ * Every step at the input stands clear of the foot, what stands in the row over it, the conversation's panel while it is
+ * open, and the detail: what is read and pressed there stays seen.
  */
-const AT_INPUT = { clear: ["foot", "coordinator", "panel"], side: "top" } as const;
-/** Steps at the conversation itself stand clear of the foot and, while it is open, its panel. */
-const AT_CONVERSATION = { clear: ["foot", "panel"], side: "top", align: "start" } as const;
+const AT_INPUT = { clear: ["foot", "overInput", "panel", "detail"], side: "top" } as const;
+/** The step at the conversation itself stands right by its button, clear of the foot. */
+const AT_CONVERSATION = { clear: ["foot"], side: "top", align: "start" } as const;
 /** The person has finished a Task here, as the server says: the close is what is left. */
 const closing = (f: GuideFacts) => f.doneHere;
 
@@ -179,25 +182,26 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy,
     say: t => t("tree:guide.say.received") },
   // A question open in the detail, until its answer is sent.
-  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detail"], side: "left", align: "start", when: f => f.open === "question",
+  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detail", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   // A report open with nothing written yet: more can be asked after it, with one more to try; then, with words
   // written, the label that goes with them. Not on a phone's width, where a balloon over the input stands over the
   // report itself.
-  { id: "more", phase: "turn", turn: true, once: true, part: "input", ...AT_INPUT, align: "end", next: true,
+  { id: "more", phase: "turn", turn: true, passable: true, part: "input", ...AT_INPUT, align: "end", next: true,
     when: f => f.open === "result" && !f.drafting && !f.narrow,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.moreExample")) },
     say: t => t("tree:guide.say.more") },
-  { id: "label", phase: "turn", turn: true, once: true, part: "label", ...AT_INPUT, align: "start",
+  // The label's balloon stands right over the input, so its arrow lands on the label and on nothing between.
+  { id: "label", phase: "turn", turn: true, passable: true, part: "label", clear: ["foot", "detail"], side: "top", align: "start",
     when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more") && !f.narrow,
     say: t => t("tree:guide.say.label") },
-  // Words in the input: they wait to be sent.
-  { id: "send-ready", phase: "now", part: "send", ...AT_INPUT, align: "end", when: f => f.drafting,
+  // Words in the input: they wait to be sent. Right by the send button: beside the foot where there is room, else over it.
+  { id: "send-ready", phase: "now", part: "send", clear: ["foot", "overInput", "panel"], side: "right", when: f => f.drafting,
     say: t => t("tree:guide.say.sendReady") },
   // Done on an open report, or where the AI on a Task being worked on is stopped.
   { id: "accept", phase: "turn", turn: true, part: "finish", side: "top", align: "end", when: f => f.open === "result",
     say: t => t("tree:guide.say.accept", { finish: finish(t) }) },
-  { id: "stop", phase: "turn", once: true, part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working",
+  { id: "stop", phase: "turn", passable: true, part: "taskState", side: "top", align: "end", next: true, when: f => f.open === "working",
     say: t => t("tree:guide.say.stop", { stop: t("forms:reportForm.stopTitle") }) },
   // The rows awaiting the person, the question first.
   { id: "question", phase: "turn", turn: true, part: "questionRow", side: "bottom", when: f => f.questions > 0,
@@ -206,16 +210,16 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.result") },
   // A message just answered in the conversation itself, with no Task for it: where its reply is, while the
   // conversation is folded (opened, the reply is there to read, and the step is done).
-  { id: "direct", phase: "now", once: true, part: "coordinator", side: "top", align: "start", when: f => f.direct && !f.conversationOpen,
+  { id: "direct", phase: "now", passable: true, part: "coordinator", side: "top", align: "start", when: f => f.direct && !f.conversationOpen,
     say: t => t("tree:guide.say.direct") },
   // The close: the conversation with the coordinator is for throwing away (what is to be kept goes into a Task;
   // pointed at by its button folded, by Clear conversation open, and done once cleared); where another repository is
   // taken on; and where settings hold the steps to answering from a phone (installing the app is asked as setup ends).
-  { id: "conversation", phase: "close", once: true, part: "conversation", ...AT_CONVERSATION, next: true, when: f => f.talked,
+  { id: "conversation", phase: "close", passable: true, part: "conversation", ...AT_CONVERSATION, next: true, when: f => f.talked,
     say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
-  { id: "another-repository", phase: "close", once: true, part: "project", side: "right", align: "start", next: true, when: () => true,
+  { id: "another-repository", phase: "close", passable: true, part: "project", side: "right", align: "start", next: true, when: () => true,
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  { id: "phone", phase: "close", once: true, part: "settings", side: "bottom", align: "end", next: true,
+  { id: "phone", phase: "close", passable: true, part: "settings", side: "bottom", align: "end", next: true,
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
     when: f => f.apps && !f.narrow,
     say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
@@ -235,19 +239,20 @@ const looked = (phase: GuidePhase, f: GuideFacts) => phase === "close" ? closing
 /**
  * The step shown (see the top): the first entry looked at that holds and is not done, past those passed over while
  * their part is not seen; with only those holding, the first of them (nothing is shown, and the guide waits for it);
- * none when none holds (the guide is over).
+ * none when none holds (the guide waits, or is over while closing: nextStage).
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && !(entry.once && facts.seen.has(entry.id)) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && !facts.seen.has(entry.id) && entry.when(facts));
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 
 /**
- * A step shown once is done when the guide moves on from it to another: always, with no button of its own; with one,
- * only when its own facts no longer hold (it was not merely pushed aside by a step above it).
+ * A step is done when the guide moves on from it to another after its balloon stood on the screen (`shown`): always,
+ * with no button of its own; with one, only when its own facts no longer hold (it was not merely pushed aside by a step
+ * above it). One never shown, or passed over while its part is not seen, is not done.
  */
-export const doneOnLeaving = (left: GuideEntry | null, now: GuideEntry | null, facts: GuideFacts) =>
-  !!left && left.id !== now?.id && !!left.once && !facts.skipped.has(left.id) && (!left.next && !left.action || !left.when(facts));
+export const doneOnLeaving = (left: GuideEntry | null, now: GuideEntry | null, facts: GuideFacts, shown: boolean) =>
+  !!left && left.id !== now?.id && shown && !facts.skipped.has(left.id) && (!left.next && !left.action || !left.when(facts));
 
 /**
  * Whether the guide starts by itself: on a browser that has never had it, with the welcome on the screen and no Task in

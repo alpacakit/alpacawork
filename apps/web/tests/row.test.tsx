@@ -358,7 +358,7 @@ test("a list holding nothing draws no section, no clock and no time ground; its 
   expect(document.querySelector("[data-section]")).toBeNull();
   expect(document.querySelector("[data-time-corner]")).toBeNull();
   expect(document.querySelector("[data-time-ground]")).toBeNull();
-  expect(document.querySelectorAll("[data-welcome] [data-welcome-picture-part]")).toHaveLength(3);
+  expect(document.querySelectorAll("[data-welcome] [data-welcome-picture-part]")).toHaveLength(4);
 });
 
 test("an unread row has a dot at its start, in the one colour for not yet read; a read row has none", () => {
