@@ -223,26 +223,26 @@ test('a message written with a skill for Claude, whose settings turned to Codex 
   expect(posts[0].text).toBe('use it $fixture-skill');
 });
 
-test.each(['the first send', 'a resend of the same ID after an unknown answer'])('a message serve refuses because the AI now calls its skill otherwise (%s) goes back, and the next send goes with the new mark', async way => {
+test.each(['the first send', 'a resend of the same ID after an unknown answer'])('a message serve refuses because the settings turned its AI to a Codex row (%s) goes back, and the next send goes with the Codex mark', async way => {
   const served = tree({ tasks: [dto({ id: 'T1' })] });
-  // The profile keeps its name and model; only its kind turns from Claude to Codex, on serve.
-  const codex = { status: 'ready', profile: 'claude', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] };
-  let switched = false, lost = way !== 'the first send';
+  const codex = { status: 'ready', profile: 'codex-team', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] };
+  let lost = way !== 'the first send';
   const posts: any[] = [];
   const fetcher = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-    if (url.startsWith('/api/coordinator/skills')) return reply(switched ? codex : catalog);
+    if (url.startsWith('/api/coordinator/skills')) return reply(posts.length ? codex : catalog);
     if (url === '/api/coordinator/messages') {
       const body = JSON.parse(String(init?.body));
       posts.push(body);
       if (lost) { lost = false; throw new TypeError('network'); }
-      if (!body.text.includes('$')) { switched = true;
-        return new Response(JSON.stringify({ error: { code: 'conflict', message: 'Coordinator AI changed', retry: 'fix', reason: { kind: 'coordinator_ai_changed' } } }), { status: 409 }); }
+      if (!body.text.includes('$')) return new Response(JSON.stringify({ error: { code: 'conflict', message: 'Coordinator AI changed', retry: 'fix',
+        reason: { kind: 'coordinator_ai_changed' } } }), { status: 409 });
       return reply(conv([{ id: body.id, at: new Date().toISOString(), ask: body.text, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }]));
     }
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} profile={agent} /></TestWorkspace>;
+  const view = render(input('claude'));
   const editor = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(editor?.editor).toBeTruthy());
   await tick();
@@ -260,7 +260,11 @@ test.each(['the first send', 'a resend of the same ID after an unknown answer'])
   // Refused: the words and the skill's chip are back in the input.
   await waitFor(() => expect(JSON.stringify(editor.editor.getJSON())).toContain('use it'));
   expect(window.document.querySelectorAll('[data-one-input-area] [data-label=skill]')).toHaveLength(1);
+  // The conversation now goes to the Codex row; pressed once with nothing changed, the words go with its mark.
+  view.rerender(input('codex-team'));
+  await tick();
   const before = posts.length;
+  await waitFor(() => expect(window.document.querySelector<HTMLButtonElement>('[data-ask-send]')!.disabled).toBe(false));
   fireEvent.click(window.document.querySelector('[data-ask-send]')!);
   await waitFor(() => expect(posts).toHaveLength(before + 1));
   expect(posts.at(-1).text).toBe('use it $fixture-skill');
