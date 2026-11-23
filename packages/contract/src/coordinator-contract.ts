@@ -1,4 +1,3 @@
-import { selectionSchema } from './agent-settings.js';
 /**
  * Browser-safe: the screen's coordinator conversation as serve shows it, and a message the screen sends to it. Serve
  * builds the one, the screen parses it; the screen builds the other, serve parses it.
@@ -56,8 +55,7 @@ export const coordinatorMessageSchema = z.object({
 }).strict();
 export type CoordinatorMessage = z.infer<typeof coordinatorMessageSchema>;
 /**
- * POST /api/coordinator/messages. `id` is the message's Request ID; `selected` and `agent` choose its launch. Its size
- * is bounded by what a Run is given (serve refuses one that would not fit).
+ * POST /api/coordinator/messages. `id` is the message's Request ID. Its size is bounded by what a Run is given.
  */
 export const coordinatorMessageInputSchema = z.object({
   conversationId: z.string(), id: z.string(), text: z.string(),
@@ -66,13 +64,12 @@ export const coordinatorMessageInputSchema = z.object({
   attachments: coordinatorMessageSchema.shape.attachments,
   intent: coordinatorIntentSchema.optional(),
   answers: coordinatorAnswersInputSchema.optional(),
-  selected: selectionSchema.default({}),
-  agent: z.string().optional(),
   replyTo: z.string().min(1).max(256).nullable().optional(),
   retryOf: coordinatorMessageSchema.shape.retryOf,
 }).strict().refine(input => input.text.trim() !== '' || input.attachments.length > 0,
   { message: 'A message needs words or a file', path: ['text'] });
 export type CoordinatorMessageInput = z.input<typeof coordinatorMessageInputSchema>;
+export const coordinatorConversationInputSchema = z.object({ conversationId: z.string().min(1) }).strict();
 
 /** Completed replies acknowledged by reading or explicitly opening history, scoped to the conversation; set union makes retries idempotent. */
 export const coordinatorReadInputSchema = z.object({
@@ -129,15 +126,13 @@ export const coordinatorTurnSchema = z.object({
 /**
  * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
  * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
- * `agent`: the agent the conversation goes on with; null for a new one, which starts with the first that can coordinate.
+ * `nextLaunch`: the configured row the next message would use, or null if no row can run.
  * `cancelled`: the messages withdrawn before they went.
  */
 export const coordinatorConversationSchema = z.object({
-  id: z.string().min(1), agent: z.string().nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
+  id: z.string().min(1), nextLaunch: aiRowSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
   /** A message admitted at the end of this conversation now would wait behind its work or delivery. */
   busy: z.boolean(),
-  /** Values used for fields omitted on the next message; null if no conversation can be continued, absent if unreadable. */
-  previousValues: selectionSchema.nullable().optional(),
   cancelled: z.array(z.string()), turns: z.array(coordinatorTurnSchema),
 });
 /** One server snapshot, with the scope and digest of that exact conversation object. */

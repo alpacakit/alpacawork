@@ -144,9 +144,12 @@ test('HTTP reads and saves the server settings against the config.yaml hash', as
   const server = await startServer(root, 0);
   try {
     const got = await (await fetch(new URL('/api/config/get', server.url))).json() as { hash: string; agentsText: string };
-    const post = (expectedConfigHash: string) => httpStatus(new URL('/api/config/set', server.url), { method: 'POST',
+    const post = (expectedConfigHash: string, stacks = {}) => httpStatus(new URL('/api/config/set', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ config: rest({ parallel: 5 }), agents: got.agentsText, expectedConfigHash }) });
+      body: JSON.stringify({ config: stringify({ limits: { ...limits, parallel: 5 }, ...stacks }), agents: got.agentsText, expectedConfigHash }) });
+    for (const key of ['aiStack', 'coordinatorAiStack']) {
+      assert.equal(await post(got.hash, { [key]: [{ agent: 'claude', values: { model: 'unoffered' } }] }), 400);
+    }
     assert.equal(await post(got.hash), 200);
     assert.equal(await post(got.hash), 409);
   } finally { await server.close(); }

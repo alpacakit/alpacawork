@@ -1,11 +1,8 @@
-/**
- * The setup screen's reads and writes: its own state, and the offered skills with their installation; and the
- * coordinator input's launch memory, which setup also lets go of. The index carries the memory; this only changes it.
- */
+/** The setup screen's state and offered skills with their installation. */
 import { codecs, defineEntry, defineEntryEndpoint, defineEntryNode, defineParameter, required } from '@alpacakit/channels';
 import { bindHttpEntry } from '@alpacakit/channels/http';
 import { z } from 'zod';
-import { firstRunRequestSchema, firstRunResponseSchema, launchMemoryRequestSchema, launchMemoryResponseSchema, skillsResponseSchema, skillInstallResponseSchema } from '@alpacawork/contract';
+import { firstRunRequestSchema, firstRunResponseSchema, skillsResponseSchema, skillInstallResponseSchema } from '@alpacawork/contract';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
 import { SCREEN, withAct } from '../entries.js';
 import type { Context } from './entries.js';
@@ -24,10 +21,6 @@ export const firstRunNodes = [
     screenEndpoint('first-run', 'GET', [], (_input, context) => firstRunResponseSchema.parse(need(context.firstRun).get())),
     screenEndpoint('first-run', 'POST', ['change'], async (input, context) =>
       firstRunResponseSchema.parse(await need(context.firstRun).change(parseInput(firstRunRequestSchema, input).change))),
-  ] }),
-  defineEntryNode({ name: 'launch-memory', description: 'Where a new coordinator conversation starts', endpoints: [
-    screenEndpoint('launch-memory', 'POST', ['change'], async (input, context) => launchMemoryResponseSchema.parse({
-      memory: await need(context.launchMemory).change(parseInput(launchMemoryRequestSchema, input).change) })),
   ] }),
   defineEntryNode({ name: 'skills', description: 'Offered skills and installation progress', endpoints: [
     screenEndpoint('skills', 'GET', [], async (_input, context) => skillsResponseSchema.parse(await need(context.skills).status())),

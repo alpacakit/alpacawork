@@ -1,4 +1,4 @@
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { fixtureAgentSetting, installAgentStub } from './helpers/agent-stub.ts';
 import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
 /**
@@ -29,16 +29,17 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-coordinator-input-')));
   const writer = new FileWriter(root);
   let project: string;
+  const configPath = join(root, 'config.yaml');
   try {
     const setting = fixtureAgentSetting(adapter);
     setting.params.model = ['one', 'two']; setting.params.effort = ['low', 'high'];
     if (adapter === 'codex') setting.params.fast = [];
-    writer.save('config.yaml', null, Buffer.from(stringify({ agents: { fake: setting } })));
+    writer.save('config.yaml', null, Buffer.from(stringify({ agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] })));
     project = initializeControlFixture(root);
   } finally { writer.close(); }
   process.env.PATH = installAgentStub(root, adapter === 'claude' ? 'claude' : 'alpacawork-agent', [process.execPath, agent, ...(adapter === 'claude' ? ['--fixture-native'] : [])]);
   let server = await startServer(root, 0, options);
-  const get = async () => coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', server.url))).json()).conversation as { id: string; agent: string | null; turns: Turn[] };
+  const get = async () => coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', server.url))).json()).conversation as { id: string; nextLaunch: import('@alpacawork/contract').AiRow | null; turns: Turn[] };
   const conversationId = (await get()).id;
   const post = async (path: string, body: unknown) => {
     const response = await fetch(new URL(`/api/coordinator/${path}`, server.url), { method: 'POST',
@@ -58,8 +59,14 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
     }
     assert.fail(`Timed out: ${JSON.stringify(await get())}`);
   };
-  const ask = async (text: string, selected: Record<string, string> = {}, id = crypto.randomUUID(), attachments: string[] = []) => {
-    assert.equal((await post('messages', { id, text, attachments, selected })).status, 200); return id;
+  const ask = async (text: string, id = crypto.randomUUID(), attachments: string[] = []) => {
+    assert.equal((await post('messages', { id, text, attachments })).status, 200); return id;
+  };
+  const choose = (agent: string, values: Record<string, string> = {}) => {
+    const config = parse(readFileSync(configPath, 'utf8'));
+    if (agent === 'other') config.agents.other = config.agents.fake;
+    config.coordinatorAiStack = [{ agent, values }];
+    writeFileSync(configPath, stringify(config, { aliasDuplicateObjects: false }));
   };
   const begin = async () => {
     const id = await ask(`hold:${join(root, 'release')}`);
@@ -86,7 +93,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
       WHERE i.initial = 0 AND i.instruction_run_no = (SELECT id FROM runs WHERE request_id = ?)`).get(id);
     return row ? { id: String(row.input_id), state: String(row.state) } : null;
   });
-  return { root, project, get, post, ask, begin, until, conversationId, url: () => server.url, run, input,
+  return { root, project, get, post, ask, choose, begin, until, conversationId, url: () => server.url, run, input,
     release: () => writeFileSync(join(root, 'release'), ''),
     stop: () => server.close(),
     restart: async () => { await server.close(); server = await startServer(root); },
@@ -152,7 +159,7 @@ test('withdraw removes only queued work, retains attachments for recovery, and r
   const file = new URL(`/api/coordinator/attachments?conversationId=${h.conversationId}&requestId=${id}&name=sample.png`, h.url());
   assert.equal(await httpStatus(file, { method: 'POST', headers: { 'X-Alpacawork-Op-Id': crypto.randomUUID() },
     body: Buffer.from([137, 80, 78, 71, 1]) }), 200);
-  await h.ask('cancel me', {}, id, ['sample.png']);
+  await h.ask('cancel me', id, ['sample.png']);
   assert.equal((await h.post('messages/withdraw', { id: parent })).status, 409);
   assert.equal((await h.post('messages/withdraw', { id, conversationId: 'old' })).status, 409);
   assert.equal((await h.post('messages/withdraw', { id })).status, 200);
@@ -181,7 +188,7 @@ test('send now writes once to the same live process, exposes sending, then joins
   writeFileSync(gate, '');
   await h.until(state => state.turns.find(turn => turn.id === waiting)?.status === 'joined');
   assert.equal((await h.get()).turns.find(turn => turn.id === waiting)?.into, parent);
-  await h.ask('look', {}, id, ['sample.png']);
+  await h.ask('look', id, ['sample.png']);
   await h.post('messages/send-now', { id });
   await h.until(state => state.turns.find(turn => turn.id === id)?.status === 'joined');
   assert.equal(h.run(parent).pids.agent, pid);
@@ -240,12 +247,13 @@ test('a message the working agent cannot take, for its model or effort, answers 
   const h = await fixture(t), parent = await h.begin();
   const different: string[] = [];
   for (const selected of [{ model: 'two' }, { effort: 'high' }]) {
-    const id = await h.ask('different', selected);
+    h.choose('fake', selected);
+    const id = await h.ask('different');
     assert.equal((await h.post('messages/send-now', { id })).status, 200);
     different.push(id);
   }
-  // Omitted selections inherit the latest submitted choices; pin the working launch's defaults.
-  const same = await h.ask('same choices', { model: 'one', effort: 'low' });
+  h.choose('fake', { model: 'one', effort: 'low' });
+  const same = await h.ask('same choices');
   assert.equal((await h.post('messages/send-now', { id: same })).status, 200);
   await h.until(state => state.turns.find(turn => turn.id === same)?.status === 'joined');
   for (const id of different) {
@@ -377,31 +385,30 @@ test('an asynchronous EPIPE holds the input reservation while the parent keeps w
 
 test('a different adapter cannot join a live input, even when all launch choices match', async t => {
   const h = await fixture(t);
-  const path = join(h.root, 'config.yaml'), config = readFileSync(path, 'utf8');
-  writeFileSync(path, config + config.slice(config.indexOf('  fake:')).replace('  fake:', '  other:'));
   const parent = await h.begin(), id = crypto.randomUUID();
-  assert.equal((await h.post('messages', { id, text: 'other adapter', attachments: [], agent: 'other' })).status, 200);
+  h.choose('other');
+  assert.equal((await h.post('messages', { id, text: 'other adapter', attachments: [] })).status, 200);
   assert.equal((await h.post('messages/send-now', {id})).status, 200);
   await delay(300);
   assert.equal((await h.get()).turns.find(turn => turn.id === id)?.status, 'queued');
   assert.equal(h.input(id), null);
   h.release();
   await h.until(state => state.turns.find(turn => turn.id === id)?.status === 'succeeded');
-  assert.equal((await h.get()).agent, 'other');
+  assert.equal((await h.get()).nextLaunch?.agent, 'other');
   assert.equal(h.run(id).agent, 'other');
   assert.deepEqual(JSON.parse((await h.get()).turns.find(turn => turn.id === parent)!.answer!).prompts.length, 1);
 });
 
 test('send now inherits the live adapter launch rather than the last completed adapter', async t => {
   const h = await fixture(t);
-  const path = join(h.root, 'config.yaml'), config = readFileSync(path, 'utf8');
-  writeFileSync(path, config + config.slice(config.indexOf('  fake:')).replace('  fake:', '  other:'));
-  const first = await h.ask('first', {model: 'two', effort: 'high'});
+  h.choose('fake', { model: 'two', effort: 'high' });
+  const first = await h.ask('first');
   await h.until(state => state.turns.find(turn => turn.id === first)?.status === 'succeeded');
   const parent = crypto.randomUUID(), id = crypto.randomUUID();
-  assert.equal((await h.post('messages', { id: parent, agent: 'other', text: `hold:${join(h.root, 'release')}`, attachments: [] })).status, 200);
+  h.choose('other');
+  assert.equal((await h.post('messages', { id: parent, text: `hold:${join(h.root, 'release')}`, attachments: [] })).status, 200);
   await h.until(state => state.turns.find(turn => turn.id === parent)?.status === 'running');
-  assert.equal((await h.post('messages', { id, agent: 'other', text: 'same choices', attachments: [] })).status, 200);
+  assert.equal((await h.post('messages', { id, text: 'same choices', attachments: [] })).status, 200);
   assert.equal((await h.post('messages/send-now', { id })).status, 200);
   await h.until(state => state.turns.find(turn => turn.id === id)?.status === 'joined');
   h.release();

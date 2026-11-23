@@ -36,7 +36,8 @@ function view(bytes: Buffer): ServerSettings {
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
   return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
-    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }), catalog: adapterCatalog() };
+    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }),
+    ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
   let writer: FileWriter | undefined;
@@ -80,8 +81,9 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       let rewrite = false;
       for (const [key, value] of Object.entries(edit.limits))
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
-      if (edit.aiStack !== undefined && !isDeepStrictEqual(edit.aiStack, current.aiStack)) {
-        document.set('aiStack', edit.aiStack);
+      for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
+        if (edit[key] === undefined || isDeepStrictEqual(edit[key], current[key])) continue;
+        document.set(key, edit[key]);
         rewrite = true;
       }
       /* Initial release: Jev settings are not editable.

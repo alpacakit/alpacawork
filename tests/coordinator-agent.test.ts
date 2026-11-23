@@ -1,7 +1,3 @@
-/**
- * Agent selection has one rule: explicit choice, conversation head, then the first enabled agent. A continued session
- * goes through the shared resolver with the conversation's values; nothing is silently replaced. No process starts.
- */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -9,6 +5,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
+import type { AiRow } from '@alpacawork/contract';
 import { optionsBase } from '@alpacawork/contract/agent-adapters';
 import { RunStore } from '@alpacawork/runs';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
@@ -18,18 +15,16 @@ import { parseAgentsSettings, launchSnapshot, coordinatorLaunchSnapshot } from '
 import { launchArgv } from '@alpacawork/backend/test-dist/runs/launch-agent.js';
 import { createPersonSettings, languageLine } from '@alpacawork/backend/test-dist/receiver/person-state.js';
 
-/** The refusal's kind; its other fields belong to the shared admission reason. */
-const refused = (kind: string) => (error: any) => error?.reason?.kind === kind;
 const claude = (extra: object = {}) => ({ adapter: 'claude', params: { model: ['synthetic-a', 'synthetic-b'], effort: [] }, ...extra });
 function fixture(t: any) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-agent-selection-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   initializeControlFixture(root);
-  const config = (agents: object) => writeFileSync(join(root, 'config.yaml'), stringify({ agents }, { aliasDuplicateObjects: false }), { mode: 0o600 });
+  const config = (agents: object, coordinatorAiStack: AiRow[] = Object.keys(agents).map(agent => ({ agent, values: {} }))) =>
+    writeFileSync(join(root, 'config.yaml'), stringify({ agents, coordinatorAiStack }, { aliasDuplicateObjects: false }), { mode: 0o600 });
   const owner = new CoordinatorConversation(root);
   const conversation = { id: owner.read().id };
-  const ask = (agent?: string, selected: Record<string, string | null> = {}) => owner.ask({ conversationId: conversation.id, id: randomUUID(),
-    text: 'Synthetic message', attachments: [], selected, ...agent === undefined ? {} : { agent } });
+  const ask = () => owner.ask({ conversationId: conversation.id, id: randomUUID(), text: 'Synthetic message', attachments: [] });
   return { root, owner, conversation, config, ask };
 }
 
@@ -41,7 +36,7 @@ test('each coordinator input snapshots the saved reply language at admission, le
   t.after(() => store.close());
   const prompt = (id: string) => store.getText(store.coordinatorRuns(f.conversation.id).find(run => run.requestId === id)!.id)!.prompt!;
   const send = () => {
-    const input = { conversationId: f.conversation.id, id: randomUUID(), text: 'Synthetic message', attachments: [], selected: {} };
+    const input = { conversationId: f.conversation.id, id: randomUUID(), text: 'Synthetic message', attachments: [] };
     f.owner.ask(input);
     return input;
   };
@@ -60,54 +55,6 @@ test('each coordinator input snapshots the saved reply language at admission, le
   assert.equal(prompt(send().id).split('\n').slice(1).join('\n'), unset.text);
 });
 
-test('every enabled agent can coordinate; explicit, inherited, absent and unknown names have distinct results', t => {
-  const { owner, conversation, config, ask } = fixture(t);
-  config({ first: claude(), second: claude() });
-  assert.equal(ask().agent, 'first');
-  assert.equal(ask('second').agent, 'second');
-  assert.equal(ask().agent, 'second');
-  assert.throws(() => ask('missing'), { code: 'invalid_input', reason: { kind: 'agent_not_configured', agent: 'missing' } });
-  config({ first: claude() });
-  assert.throws(() => ask(), { code: 'invalid_input', reason: { kind: 'agent_not_configured', agent: 'second' } });
-  assert.equal(ask('first').agent, 'first', 'An explicit selection overrides a removed head agent');
-  conversation.id = owner.clear(conversation.id).id;
-  config({});
-  assert.throws(() => ask(), { code: 'invalid_settings', reason: { kind: 'no_configured_agents' } });
-});
-
-test('the default is the first enabled agent; a disabled chosen or inherited agent is refused, never replaced', t => {
-  const { owner, conversation, config, ask } = fixture(t);
-  config({ first: claude({ enabled: false }), second: claude() });
-  assert.equal(ask().agent, 'second', 'A disabled first agent is not the default');
-  assert.throws(() => ask('first'), refused('agent_unavailable'));
-  config({ first: claude(), second: claude({ enabled: false }) });
-  assert.throws(() => ask(), refused('agent_unavailable'), 'The conversation agent is not swapped for the first enabled one');
-  assert.equal(ask('first').agent, 'first');
-  conversation.id = owner.clear(conversation.id).id;
-  config({ first: claude({ enabled: false }) });
-  assert.throws(() => ask(), { code: 'invalid_settings', reason: { kind: 'no_configured_agents' } });
-});
-
-test('a continued session keeps its values and asks again instead of defaulting a removed value', t => {
-  const { owner, conversation, config, ask } = fixture(t);
-  config({ first: claude() });
-  assert.equal(owner.read().previousValues, null, 'No Run yet: the screen starts from the defaults');
-  const first = ask(undefined, { model: 'synthetic-b' });
-  assert.equal(first.agent, 'first');
-  assert.deepEqual(first.previousValues, { model: 'synthetic-b', effort: null }, 'The screen shows what an omitted choice keeps');
-  // The next message continues that session; only its previous synthetic-b, not the default synthetic-a, is now gone.
-  config({ first: claude({ params: { model: ['synthetic-a'], effort: [] } }) });
-  assert.throws(() => ask(), refused('selection_required'), 'A removed previous value is not replaced by the default');
-  const chosen = ask(undefined, { model: 'synthetic-a' });
-  assert.equal(chosen.agent, 'first', 'An explicit choice of a current value continues');
-  assert.deepEqual(chosen.previousValues, { model: 'synthetic-a', effort: null }, 'A waiting message\'s choice is the next one\'s previous value');
-  assert.throws(() => ask(undefined, { model: null }), refused('invalid_selection'), 'Leaving a row out is offered only by a written -');
-  config({ first: { adapter: 'codex', params: { model: [], effort: [], fast: [] } } });
-  assert.throws(() => ask(), refused('new_conversation_required'), 'A session never continues on another adapter');
-  conversation.id = owner.clear(conversation.id).id;
-  assert.equal(ask().agent, 'first', 'The refusal\'s recovery: a cleared conversation starts anew on the new adapter');
-});
-
 test('skill discovery reads the admitted toolset value, not the argv reference', async t => {
   const f = fixture(t), directory = join(f.root, 'synthetic-claude');
   const original = process.env.CLAUDE_CONFIG_DIR;
@@ -119,11 +66,11 @@ test('skill discovery reads the admitted toolset value, not the argv reference',
     base: 'a'.repeat(64), start: '--tools {toolset}', resume: '--tools {toolset} --resume {session}',
   } });
   f.config({ first: setting('default') });
-  const visible = await f.owner.skills(f.conversation.id, 'first');
+  const visible = await f.owner.skills(f.conversation.id);
   assert.equal(visible.status, 'ready');
   assert.ok(visible.skills.some(skill => skill.name === 'synthetic-skill'));
   f.config({ first: setting('Bash') });
-  assert.equal((await f.owner.skills(f.conversation.id, 'first')).status, 'unavailable');
+  assert.equal((await f.owner.skills(f.conversation.id)).status, 'unavailable');
 });
 
 test('a queued sessionless Codex catalog keeps the conversation selection instead of its default', async t => {
@@ -137,25 +84,29 @@ test('a queued sessionless Codex catalog keeps the conversation selection instea
   writeFileSync(join(directory, 'skills/.system/.codex-system-skills.marker'), 'synthetic-system');
   mkdirSync(join(directory, 'skills/one'));
   writeFileSync(join(directory, 'skills/one/SKILL.md'), '---\nname: synthetic-skill\ndescription: Synthetic\n---\nBody');
-  f.config({ first: { adapter: 'codex', params: { model: [], effort: [], fast: [],
+  const agents = { first: { adapter: 'codex', params: { model: [], effort: [], fast: [],
     cfg: ['model_verbosity=low', 'skills.config=[]', 'model_verbosity=high'] }, options: { base: optionsBase('codex'),
     start: '-c {cfg} -s danger-full-access -o {result}',
     resume: '-c {cfg} -s danger-full-access resume -o {result} -- {session}',
-  } } });
-  assert.equal((await f.owner.skills(f.conversation.id, 'first')).status, 'ready');
-  f.ask('first', { cfg: 'skills.config=[]' });
+  } } };
+  const choose = (cfg: string) => f.config(agents, [{ agent: 'first', values: { cfg } }]);
+  choose('model_verbosity=low');
+  assert.equal((await f.owner.skills(f.conversation.id)).status, 'ready');
+  choose('skills.config=[]');
+  f.ask();
   const store = new RunStore(f.root, { busyTimeoutMs: 0 });
   try {
     const queued = store.read()[0]!;
     assert.equal(queued.state, 'queued'); assert.equal(queued.session, null);
     assert.equal(queued.launch.values.cfg, 'skills.config=[]');
   } finally { store.close(); }
-  assert.deepEqual(await f.owner.skills(f.conversation.id, 'first'),
+  assert.deepEqual(await f.owner.skills(f.conversation.id),
     { status: 'unavailable', profile: 'first', skills: [], reason: 'launch' });
-  const continued = f.ask('first');
-  assert.equal(continued.previousValues?.cfg, 'skills.config=[]');
-  f.ask('first', { cfg: 'model_verbosity=high' });
-  assert.equal((await f.owner.skills(f.conversation.id, 'first')).status, 'ready');
+  const continued = f.ask();
+  assert.equal(continued.nextLaunch?.values.cfg, 'skills.config=[]');
+  choose('model_verbosity=high');
+  f.ask();
+  assert.equal((await f.owner.skills(f.conversation.id)).status, 'ready');
 });
 
 test('literal command paths agree across launch, continuation, coordinator restart and skill discovery', async t => {
@@ -188,7 +139,7 @@ test('literal command paths agree across launch, continuation, coordinator resta
       assert.ok(argv.includes('synthetic-model'), 'editable option references still resolve');
       assert.ok(!argv.includes('{result}') && !argv.includes('{session}'), 'system option references still resolve');
     }
-    const skills = await f.owner.skills(f.conversation.id, 'chosen');
+    const skills = await f.owner.skills(f.conversation.id);
     assert.equal(skills.status, 'ready', `${adapter}, command ${explicit ? 'explicit' : 'from PATH'}`);
     assert.deepEqual(skills.skills.map(skill => skill.name), ['one']);
   }
@@ -196,7 +147,9 @@ test('literal command paths agree across launch, continuation, coordinator resta
 
 test('after another agent fails to launch, the screen and serve both go on from the last Run that got going', t => {
   const { root, owner, conversation, config, ask } = fixture(t);
-  config({ first: claude(), second: claude() });
+  const agents = { first: claude(), second: claude() };
+  const first = { agent: 'first', values: { model: 'synthetic-b', effort: null } };
+  config(agents, [first]);
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
   const end = (requestId: string, state: 'succeeded' | 'failed') => store.write(tx => {
@@ -206,14 +159,15 @@ test('after another agent fails to launch, the screen and serve both go on from 
       reason: state === 'failed' ? 'exit' : null }, state === 'failed' ? { state: 'missing', text: null } : { state: 'present', text: 'Synthetic answer' });
   });
   const lastRequest = () => store.coordinatorRuns(conversation.id).at(-1)!;
-  ask('first', { model: 'synthetic-b' });
+  ask();
   const answered = lastRequest();
   end(answered.requestId, 'succeeded');
-  ask('second');
+  config(agents, [{ agent: 'second', values: {} }]);
+  ask();
   end(lastRequest().requestId, 'failed');
   // The failed launch counts for neither: the screen offers to go on with the first agent's values ...
-  const view = owner.read();
-  assert.deepEqual([view.agent, view.previousValues], ['first', { model: 'synthetic-b', effort: null }]);
+  config(agents, [{ agent: 'second', values: {} }, first]);
+  assert.deepEqual(owner.read().nextLaunch, first);
   // ... and serve goes on in that session with them.
   ask();
   assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values], ['first', answered.id, { model: 'synthetic-b', effort: null }]);

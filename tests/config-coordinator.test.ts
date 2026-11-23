@@ -32,12 +32,16 @@ for (const identity of ['claude', 'codex', 'screen'] as const) {
       start: AGENT_ADAPTERS.codex.options.start + ' --fixture-option',
       resume: AGENT_ADAPTERS.codex.options.resume + ' --fixture-option' };
     const agents = stringify(definitions);
+    const aiStack = [{ agent: 'codex', values: { model: 'gpt-6.1-sol', effort: 'medium', fast: null } }];
+    const coordinatorAiStack = [{ agent: 'codex', values: { model: 'gpt-6.1-terra', effort: 'low', fast: null } }];
     const opId = randomUUID(), began = new Date().toISOString();
-    const args = ['config', 'set', '--config', stringify({ limits }), '--agents', agents,
+    const args = ['config', 'set', '--config', stringify({ limits, aiStack, coordinatorAiStack }), '--agents', agents,
       '--expected-config-hash', before.hash, '--op-id', opId];
     const saved = await call(url, args, env);
     assert.deepEqual(saved.limits, limits);
     assert.equal(saved.agentsText, agents);
+    assert.deepEqual(saved.aiStack, aiStack);
+    assert.deepEqual(saved.coordinatorAiStack, coordinatorAiStack);
     const { availability, detected, ...reread } = await call(url, ['config', 'get'], env);
     assert.deepEqual(reread, saved);
     assert.equal(availability, undefined); assert.equal(detected, undefined);

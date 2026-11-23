@@ -11,7 +11,6 @@ import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-r
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { sourceMessage } from '@alpacawork/backend/test-dist/coordinator/messages.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { createLaunchMemory } from '@alpacawork/backend/test-dist/receiver/person-state.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
 import { assignResponsible, currentTaskHash, currentTaskLog, seedFixtureTask } from './helpers/control-fixture.ts';
 import { receipts, setup, until } from './runs-runtime.fixture.ts';
@@ -183,13 +182,13 @@ test('terminating a remaining tool process prevents an otherwise eligible fallba
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    aiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
+    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
   }, { aliasDuplicateObjects: false }));
   const conversation = new CoordinatorConversation(h.root), id = randomUUID(), conversationId = conversation.read().id;
   const app = await startServer(h.root, 0);
   try {
     conversation.ask({ id, conversationId, text: JSON.stringify({ group: true, gate: h.gate('ready'), sessionLimit: true }),
-      attachments: [], selected: {} });
+      attachments: [] });
     await until(() => receipts(h.root).some(entry => entry.branch === 'child'), 'the agent leaves a child process');
     h.release('ready');
     await until(() => conversation.read().turns.find(turn => turn.id === id)?.status === 'failed', 'the exhausted turn ends');
@@ -199,19 +198,17 @@ test('terminating a remaining tool process prevents an otherwise eligible fallba
   } finally { await app.close(); }
 });
 
-test('a queued coordinator message follows the replacement conversation without changing the selected AI memory', async t => {
+test('a queued coordinator message follows the replacement conversation using the coordinator stack', async t => {
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    aiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
+    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
   }, { aliasDuplicateObjects: false }));
-  const memory = createLaunchMemory(h.root);
-  const recorded = await memory.change({ kind: 'choose', agent: 'claude', values: {} });
   const conversation = new CoordinatorConversation(h.root);
   const conversationId = conversation.read().id;
   const first = randomUUID(), joined = randomUUID(), pending = randomUUID();
   const send = (id: string, plan: object, tasks?: string[]) => conversation.ask({
-    id, conversationId, text: JSON.stringify(plan), attachments: [], selected: {}, tasks,
+    id, conversationId, text: JSON.stringify(plan), attachments: [], tasks,
   });
   const app = await startServer(h.root, 0);
   try {
@@ -245,10 +242,14 @@ test('a queued coordinator message follows the replacement conversation without 
     assert.equal(following?.agent, 'codex');
     assert.equal(following?.resumes, active?.id);
     assert.equal(following?.session?.id, h.store.runtimeGet(active.id)?.session?.id);
-    assert.deepEqual(memory.get(), recorded);
+    assert.equal(conversation.read().nextLaunch?.agent, 'codex');
 
     const later = randomUUID();
-    conversation.ask({ id: later, conversationId, agent: 'claude', selected: {}, attachments: [],
+    writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
+      agents: { ...h.config.agents, replacement: h.config.agents.codex },
+      coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'replacement', values: {} }],
+    }, { aliasDuplicateObjects: false }));
+    conversation.ask({ id: later, conversationId, attachments: [],
       text: JSON.stringify({ sessionLimit: true, output: 'Second replacement' }) });
     await until(() => conversation.read().turns.some(turn => turn.id === later && turn.status === 'succeeded'), 'the later turn also switches');
     const latest = h.store.read().filter(run => run.requestId === later).at(-1)!;

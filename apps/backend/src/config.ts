@@ -16,6 +16,7 @@ export const projectLocationsSchema = z.record(projectIdSchema,
 const sections = z.object({
   agents: z.unknown().optional(),
   aiStack: z.unknown().optional(),
+  coordinatorAiStack: z.unknown().optional(),
   limits: z.unknown().optional(),
   projects: projectLocationsSchema.optional(),
   voice: z.unknown().optional(),

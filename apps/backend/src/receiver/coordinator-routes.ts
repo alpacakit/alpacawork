@@ -1,7 +1,6 @@
 /** Coordinator HTTP mutation admission starts after bounded input parsing. */
 import type { Hono } from 'hono';
-import { coordinatorMessageInputSchema, coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
-import { selectionSchema } from '@alpacawork/contract/agent-settings';
+import { coordinatorConversationInputSchema, coordinatorMessageInputSchema, coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
 import { fileBytesResponse } from './file-response.js';
 import type { Mutate } from './lifecycle.js';
 import { parseInput, Problem, PROBLEM_CODE } from '@alpacawork/core';
@@ -17,13 +16,16 @@ export function installCoordinatorRoutes(api: Hono, root: string, generation: st
     try { return JSON.parse((await boundedBytes(request, 256 * 1024)).toString('utf8')) as Record<string, unknown>; }
     catch (error) { if (error instanceof SyntaxError) throw new Problem(PROBLEM_CODE.invalidInput, 'Expected JSON', undefined, { reason: { kind: 'expected_json' } }); throw error; }
   };
-  const selected = (value: unknown) => parseInput(selectionSchema.default({}), value);
   api.get('/api/coordinator', c => { authorize(c.req.raw); return c.json(conversation.snapshot(generation)); });
   api.post('/api/coordinator/read', async c => {
     authorize(c.req.raw); const input = parseInput(coordinatorReadInputSchema, await json(c.req.raw));
     return c.json(await mutate(() => conversation.markSeen(input.conversationId, input.seen)));
   });
-  api.get('/api/coordinator/skills', async c => { authorize(c.req.raw); return c.json(await conversation.skills(c.req.query('conversationId') ?? '', c.req.query('agent'))); });
+  api.get('/api/coordinator/skills', async c => {
+    authorize(c.req.raw);
+    const { conversationId } = parseInput(coordinatorConversationInputSchema, c.req.query());
+    return c.json(await conversation.skills(conversationId));
+  });
   api.post('/api/coordinator/messages', async c => {
     authorize(c.req.raw); const input = parseInput(coordinatorMessageInputSchema, await json(c.req.raw));
     return c.json(conversation.snapshot(generation, await mutate(() => conversation.ask(input))));
@@ -35,10 +37,9 @@ export function installCoordinatorRoutes(api: Hono, root: string, generation: st
     return c.json(conversation.snapshot(generation, await mutate(() => action === 'withdraw' ? conversation.withdraw(conversationId, id) : conversation.sendNow(conversationId, id))));
   });
   for (const action of ['warm','clear'] as const) api.post(`/api/coordinator/${action}`, async c => {
-    authorize(c.req.raw); const input = await json(c.req.raw);
-    if (typeof input.conversationId !== 'string' || input.agent !== undefined && typeof input.agent !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, 'Conversation ID is required', undefined, { reason: { kind: 'conversation_id_required' } });
-    const id = input.conversationId;
-    return c.json(conversation.snapshot(generation, await mutate(() => action === 'warm' ? conversation.warm(id, selected(input.selected), input.agent as string | undefined) : conversation.clear(id))));
+    authorize(c.req.raw);
+    const { conversationId } = parseInput(coordinatorConversationInputSchema, await json(c.req.raw));
+    return c.json(conversation.snapshot(generation, await mutate(() => action === 'warm' ? conversation.warm(conversationId) : conversation.clear(conversationId))));
   });
   api.post('/api/coordinator/attachments', async c => {
     authorize(c.req.raw); const id = c.req.query('requestId') ?? '';

@@ -4,7 +4,7 @@ import { runAvailabilitySchema, runErrorCauseSchema, runFailureSchema } from './
 import { restoreIdSchema } from './recovery.js';
 import { answerFilesSchema } from './coordinator-files.js';
 import { projectColorSchema, projectSettingsSchema } from '@alpacawork/raw/project-settings';
-import { launchChoicesSchema, launchMemorySchema } from './agent-selection.js';
+import { launchChoicesSchema } from './agent-selection.js';
 import { coordinatorMarkerSchema } from './coordinator-contract.js';
 import { coordinatorWorkSchema } from './work-contract.js';
 /** The idle screen stream cadence; clients allow two missed beats before reconnecting. */
@@ -498,7 +498,6 @@ const indexFields = {
   /** Ephemeral work from stdout; changing it does not invalidate the conversation's persistent read. */
   coordinatorWork: coordinatorWorkSchema,
   /** Where the person's next new coordinator conversation starts (a small record, carried whole). */
-  launchMemory: launchMemorySchema,
   presence: z.object({ state: z.enum(['present', 'away', 'muted']), until: z.string().nullable() }).strict(),
   /** Set while this machine is tight (Machine status); null otherwise and where it is not measured. */
   host: hostNoticeSchema.nullable(),

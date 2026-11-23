@@ -31,7 +31,11 @@ const settingsSchema = z.object({
     [key, rule.default(DEFAULT_LIMITS[key as keyof typeof DEFAULT_LIMITS])])) as
     { [K in keyof typeof limitsShape]: z.ZodDefault<z.ZodNumber> }).strict().prefault({}),
 }).strict();
-export type AgentsSettings = z.infer<typeof settingsSchema> & { agents: Record<string, ResolvedAgentSetting>; aiStack?: AiRow[] };
+export type AgentsSettings = z.infer<typeof settingsSchema> & {
+  agents: Record<string, ResolvedAgentSetting>;
+  aiStack?: AiRow[];
+  coordinatorAiStack?: AiRow[];
+};
 export const agentFields = (key: string, agent: AgentSetting) => agentChoices(compileAgentSetting(key, agent));
 /** The selection data is one projection of the validated setting, in its original order. */
 export function agentProfile(key: string, agent: AgentSetting) {
@@ -53,13 +57,14 @@ export function parseAgentsSettings(text: string): AgentsSettings {
       `${issue.line === null ? '?' : issue.line}: ${issue.path}: ${issue.message}`).join('; '), undefined,
       { reason: { kind: 'config_invalid', path: CONFIG_FILE, issues: checked.issues.map(issue => ({
         code: issue.kind, path: issue.path, line: issue.line ?? undefined, diagnostic: redactSecrets(issue.message) })) } });
-    const aiStack = values.aiStack === undefined ? undefined : aiStackSchema.parse(values.aiStack).map(row => {
+    const stack = (key: 'aiStack' | 'coordinatorAiStack') => aiStackSchema.optional().parse(values[key])?.map(row => {
       const setting = Object.hasOwn(checked.agents, row.agent) ? checked.agents[row.agent] : undefined;
-      if (!setting) throw new Error(`The AI stack names an undefined agent: ${row.agent}`);
+      if (!setting) throw new Error(`${key} names an undefined agent: ${row.agent}`);
       const prepared = prepareAgentLaunch(compileAgentSetting(row.agent, setting), { mode: 'start', path: '/bin', explicit: row.values });
       return { agent: row.agent, values: prepared.launch.values };
     });
-    return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents, aiStack };
+    return { ...settingsSchema.parse({ limits: values.limits }), agents: checked.agents,
+      aiStack: stack('aiStack'), coordinatorAiStack: stack('coordinatorAiStack') };
   } catch (error) { throw invalid(error); }
 }
 /**
