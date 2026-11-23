@@ -45,7 +45,7 @@
       "finished_branch": "A finished task cannot have unfinished tasks below it.",
       "forbidden": "You do not have permission for this operation.",
       "handoff_pending": "Waiting for the handover to finish.",
-      "handover_required": "This owner can't be released alone. Hand the task over to someone else or replace the owner.",
+      "handover_required": "This owner can't be released alone. Hand the task over to another agent or replace the owner.",
       "invalid_input": "Check the input.",
       "not_found": "Not found.",
       "publication_needs_review": "Applying the file changes needs review",
