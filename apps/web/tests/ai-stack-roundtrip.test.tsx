@@ -8,7 +8,7 @@ import { initializeControlFixture } from '../../../tests/helpers/control-fixture
 import { readServerSettings, saveServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
 import { serverAgentDraftSchema, serverAgentsYaml } from '../src/features/panels/server-agent-draft';
 import { configYaml, serverDraft } from '../src/features/panels/settings-draft';
-import { launchName } from '../src/domain/agent-label';
+import { moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -25,21 +25,56 @@ async function saveAsRead(root: string) {
   return readServerSettings(root);
 }
 
-test('both AI stacks read back and save again unchanged, for agents without a model row and a model that leaves effort out', async () => {
+/** Copilot and Pi at their defaults, and opus, whose launch leaves effort out, chosen with an effort it does not use. */
+const claude = { params: { model: ['opus', 'sonnet'], effort: ['low', 'high'] }, without: { opus: ['effort'] } };
+const rows = () => [{ agent: 'claude', values: { model: 'opus', effort: 'low' } }, { agent: 'copilot', values: {} }, { agent: 'pi', values: {} }];
+function workspace() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-roundtrip-')));
   roots.push(root);
   initializeControlFixture(root);
-  // Copilot and Pi at their defaults, and opus, whose launch leaves effort out, saved with an effort it never uses.
-  const claude = { params: { model: ['opus', 'sonnet'], effort: ['low', 'high'] }, without: { opus: ['effort'] } };
-  const rows = [{ agent: 'copilot', values: {} }, { agent: 'pi', values: {} }, { agent: 'claude', values: { model: 'opus', effort: 'low' } }];
-  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { copilot: {}, pi: {}, claude }, aiStack: rows, coordinatorAiStack: rows }, { aliasDuplicateObjects: false }));
-  const first = await saveAsRead(root);
+  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { copilot: {}, pi: {}, claude }, aiStack: rows(), coordinatorAiStack: rows() }));
+  return root;
+}
+/** What the Server tab sends of a draft: its two AI stacks, as config/set receives them. */
+const sent = (draft: ReturnType<typeof serverDraft>) => parse(configYaml(draft)) as { aiStack: unknown; coordinatorAiStack: unknown };
+
+test('both AI stacks are sent back as they were read, values a model leaves unused included, and a reorder below leaves a row untouched', async () => {
+  const root = workspace();
+  const read = await readServerSettings(root);
+  expect(sent(serverDraft(read))).toMatchObject({ aiStack: read.aiStack, coordinatorAiStack: read.coordinatorAiStack });
+  expect(read.coordinatorAiStack![0]).toEqual({ agent: 'claude', values: { model: 'opus', effort: 'low' } });
   const again = await saveAsRead(root);
-  expect(again.aiStack).toEqual(first.aiStack);
-  expect(again.coordinatorAiStack).toEqual(first.coordinatorAiStack);
-  // What the input shows of a row is what it launches with: opus, without an effort.
-  const opus = again.coordinatorAiStack!.find(row => row.agent === 'claude')!;
-  expect(launchName(opus.agent, opus.values).full).toBe('opus');
+  expect(again.aiStack).toEqual(read.aiStack);
+  expect(again.coordinatorAiStack).toEqual(read.coordinatorAiStack);
+  // Only the rows below move: the first is sent as it came.
+  const draft = serverDraft(again);
+  const moved = { ...draft, coordinatorAiStack: moveRow(draft.coordinatorAiStack, 1, 1) };
+  expect((sent(moved).coordinatorAiStack as unknown[])[0]).toEqual(again.coordinatorAiStack![0]);
+});
+
+test('a value the agent stops offering, one its model leaves unused, is shown to choose again and keeps the save back, on the screen as on serve', async () => {
+  const root = workspace();
+  const read = await readServerSettings(root);
+  const draft = serverDraft(read);
+  if (!draft.agents.ok) throw new Error('unreadable agents');
+  // `low` leaves claude's efforts.
+  const agents = { ...draft.agents.value, agents: draft.agents.value.agents.map(agent => agent.name !== 'claude' ? agent
+    : { ...agent, params: agent.params.map(row => row.key === 'effort' ? { ...row, values: 'high' } : row) }) };
+  const edited = { ...draft, agents: { ok: true as const, value: agents } };
+  const claudeDraft = agents.agents.find(agent => agent.name === 'claude')!;
+  const row = edited.coordinatorAiStack[0]!;
+  expect(rowChoices(claudeDraft, row.values).find(choice => choice.key === 'effort')).toMatchObject({ refused: true, value: 'low', candidates: ['high'] });
+  expect(serverAgentDraftSchema.safeParse(edited).success).toBe(false);
+  const yaml = serverAgentsYaml(edited);
+  if (!yaml.ok) throw new Error('unwritable agents');
+  await expect(saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash })))
+    .rejects.toMatchObject({ code: 'invalid_settings' });
+  // Chosen again in both lists, it saves.
+  const chosen = { ...edited, aiStack: edited.aiStack.map((each, at) => at ? each : withRowValue(each, 'effort', 'high')),
+    coordinatorAiStack: edited.coordinatorAiStack.map((each, at) => at ? each : withRowValue(each, 'effort', 'high')) };
+  expect(serverAgentDraftSchema.safeParse(chosen).success).toBe(true);
+  const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(chosen), agents: yaml.value, expectedConfigHash: read.hash }));
+  expect(saved.coordinatorAiStack![0]).toEqual({ agent: 'claude', values: { model: 'opus', effort: 'high' } });
 });
 
 test('the last agent can be switched off: with none enabled, both lists save empty, and an enabled agent needs a row again', async () => {

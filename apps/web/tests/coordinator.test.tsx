@@ -385,6 +385,15 @@ test("the input shows the AI its next message goes to, chooses nothing itself, a
   expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server", focus: "coordinatorAi" });
 });
 
+test("the input shows the values its next launch is given as they are, and the agent's name where no model is", async () => {
+  await i18n.changeLanguage("en");
+  stubFetch(vi.fn().mockImplementation(async () => reply({ ...empty, nextLaunch: { agent: "copilot", values: {} } })));
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
+  useConversation.getState().setOpen(true);
+  await act(() => useConversation.getState().refresh());
+  await waitFor(() => expect(document.querySelector("[data-coordinator-ai]")?.textContent).toBe("copilot"));
+});
+
 test("with no coordinator AI that can run, the input says so where the AI stands, sends nothing and leads to the settings", async () => {
   await i18n.changeLanguage("en");
   const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, nextLaunch: null }));

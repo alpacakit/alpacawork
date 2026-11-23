@@ -15,7 +15,7 @@ export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {
   const agents = readServerAgents(settings.agentsText);
-  // With no saved tasks' stack, the editor starts it as its own "Add" does: the first enabled agent on its first values.
+  // With no saved tasks' stack, the editor starts it as its own "Add" does: the first enabled agent on its start values.
   const added = settings.aiStack === undefined && agents.ok ? newStackRow(agents.value.agents, []) : null;
   // The input's stack is shown as saved: none saved is none set, which the input says until one is added here.
   return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents,

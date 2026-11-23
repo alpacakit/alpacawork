@@ -1,9 +1,10 @@
 import { isMap, isNode, isScalar, isSeq, parseDocument, type Document, type Pair, type YAMLMap } from 'yaml';
 import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId, type LaunchMode } from '@alpacawork/contract/agent-adapters';
 import { agentSettingsSchema, agentSettingSchemaFor, agentSettingShapeSchema, agentSettingOverrides,
-  parseParamValues, resolveAgentSetting, sameSettingValues, settingAdapter, type ResolvedAgentSetting,
+  compileAgentSetting, parseParamValues, resolveAgentSetting, sameSettingValues, settingAdapter, type ResolvedAgentSetting,
   type WrittenAgentSetting } from '@alpacawork/contract/agent-settings';
 import { completeOptionReferences, missingOptionParams, parseLaunchOptions, optionReferences, InvalidLaunchOptions } from '@alpacawork/contract/launch-options';
+import { selectionOffer, type SelectionOffer } from '@alpacawork/contract/agent-selection';
 import { ZodError } from 'zod';
 import { agentDraftIssueDependsOnUnreadableParam } from './agent-settings-issues';
 
@@ -71,17 +72,12 @@ export function editDraftParam(row: ParamRowDraft, change: Partial<Pick<ParamRow
   return { ...rest, ...change };
 }
 /**
- * The choices a launch of the agent offers: each row the launch options use whose values read, with at least one
- * value, in the agent's order. The AI stack picks one value of each.
+ * What a launch of the agent offers to choose, as the contract reads it (`SelectionOffer`): the AI stacks' rows are read
+ * and checked against it by the contract's own rules, as serve checks them. Null while the agent's settings do not read.
  */
-export type AgentChoiceRow = { key: string; values: string[] };
-export function agentChoiceRows(agent: AgentDraft): AgentChoiceRow[] {
-  return agent.params.flatMap(row => {
-    if (unusedParamReason(agent, row.key)) return [];
-    let values: string[];
-    try { values = parseParamValues(row.values); } catch (error) { if (error instanceof ZodError) return []; throw error; }
-    return values.length ? [{ key: row.key, values }] : [];
-  });
+export function agentOffer(agent: AgentDraft): SelectionOffer | null {
+  const read = agentSettingSchemaFor(agent.name).safeParse(settingInput(agent).input);
+  return read.success ? selectionOffer(compileAgentSetting(agent.name, read.data)) : null;
 }
 export function editDraftEnv(agent: AgentDraft, env: string[]): AgentDraft {
   const { envWritten: _written, ...rest } = agent;
@@ -162,6 +158,32 @@ export function readAgentsDraft(source: string, root?: 'agents'): DraftResult<Ag
   return { ok: true, value: { source, agents, ...(root ? { root } : {}) } };
 }
 
+/** One agent's setting as its draft writes it, and the issues of its rows that do not read (their values left empty). */
+function settingInput(agent: AgentDraft) {
+  const issues: AgentDraftIssue[] = [];
+  const params: [string, string[]][] = [];
+  const keys = new Set<string>();
+  const unreadable = new Set<string>();
+  for (const row of agent.params) {
+    if (keys.has(row.key)) issues.push({ agentId: agent.id, rowId: row.id, field: 'key', message: 'Duplicate param name' });
+    keys.add(row.key);
+    try { params.push([row.key, parseParamValues(row.values)]); }
+    catch (error) {
+      if (!(error instanceof ZodError)) throw error;
+      unreadable.add(row.key);
+      // Retain the row for contextual validation; its candidate errors are already attached below.
+      params.push([row.key, []]);
+      error.issues.forEach(issue => issues.push({ agentId: agent.id, rowId: row.id, field: 'values', message: issue.message,
+        ...(typeof issue.path[0] === 'number' ? { index: issue.path[0] } : {}) }));
+    }
+  }
+  const input = { ...(agent.adapter === undefined ? {} : { adapter: agent.adapter }),
+    ...(agent.enabled === undefined ? {} : { enabled: agent.enabled }),
+    ...(agent.command === undefined ? {} : { command: agent.command }), params: Object.fromEntries(params),
+    ...(agent.env === undefined ? {} : { env: agent.env }), ...(agent.without === undefined ? {} : { without: agent.without }),
+    ...(agent.options === undefined ? {} : { options: agent.options }) };
+  return { input, unreadable, issues };
+}
 /** Only representation errors live here (duplicate rows/names cannot be represented by a record).
  * All domain validation belongs to the shared schemas and parseParamValues. */
 function draftSettings(draft: AgentsDraft): DraftResult<Record<string, ResolvedAgentSetting>> {
@@ -171,27 +193,8 @@ function draftSettings(draft: AgentsDraft): DraftResult<Record<string, ResolvedA
   for (const agent of draft.agents) {
     if (names.has(agent.name)) issues.push({ agentId: agent.id, field: 'name', message: 'Duplicate agent name' });
     names.add(agent.name);
-    const params: [string, string[]][] = [];
-    const keys = new Set<string>();
-    const unreadable = new Set<string>();
-    for (const row of agent.params) {
-      if (keys.has(row.key)) issues.push({ agentId: agent.id, rowId: row.id, field: 'key', message: 'Duplicate param name' });
-      keys.add(row.key);
-      try { params.push([row.key, parseParamValues(row.values)]); }
-      catch (error) {
-        if (!(error instanceof ZodError)) throw error;
-        unreadable.add(row.key);
-        // Retain the row for contextual validation; its candidate errors are already attached below.
-        params.push([row.key, []]);
-        error.issues.forEach(issue => issues.push({ agentId: agent.id, rowId: row.id, field: 'values', message: issue.message,
-          ...(typeof issue.path[0] === 'number' ? { index: issue.path[0] } : {}) }));
-      }
-    }
-    const input = { ...(agent.adapter === undefined ? {} : { adapter: agent.adapter }),
-      ...(agent.enabled === undefined ? {} : { enabled: agent.enabled }),
-      ...(agent.command === undefined ? {} : { command: agent.command }), params: Object.fromEntries(params),
-      ...(agent.env === undefined ? {} : { env: agent.env }), ...(agent.without === undefined ? {} : { without: agent.without }),
-      ...(agent.options === undefined ? {} : { options: agent.options }) };
+    const { input, unreadable, issues: rows } = settingInput(agent);
+    issues.push(...rows);
     const result = agentSettingSchemaFor(agent.name).safeParse(input);
     if (!result.success) for (const issue of result.error.issues) {
       // Zod reports record-key failures on params.<key>, as invalid_key.

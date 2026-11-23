@@ -2,8 +2,8 @@ import { InvalidAgentSelection, offeredChoices, resolveOfferedSelection, Selecti
 import type { Selection } from "@alpacawork/contract/agent-settings";
 
 /**
- * Where a send's values start from. `new`: a launch with no conversation behind it; `hints` are the person's last
- * choices for the agent (coordinatorStart), a convenience that the config may have outgrown. `continue`: the
+ * Where a send's values start from. `new`: a launch with no conversation behind it; `hints` are
+ * values to start from, a convenience that the config may have outgrown. `continue`: the
  * conversation's previous launch values (its Run's launch.values). Hints never stand in for them.
  */
 export type SelectionBasis = { kind: "new"; hints: Readonly<Record<string, string | null>> }

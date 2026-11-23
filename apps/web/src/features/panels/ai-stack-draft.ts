@@ -1,5 +1,6 @@
 import type { AiRow } from '@alpacawork/contract';
-import { agentChoiceRows, type AgentDraft, type AgentsDraft } from './agent-settings-draft';
+import { InvalidAgentSelection, offeredChoices, resolveOfferedSelection, type SelectionOffer } from '@alpacawork/contract/agent-selection';
+import { agentOffer, type AgentDraft, type AgentsDraft } from './agent-settings-draft';
 
 /**
  * One row of the AI stack as the settings edit it: an agent and the value of each of its choices (null is "none", a
@@ -21,58 +22,78 @@ export const readStack = (rows: readonly AiRow[] | undefined): StackRowDraft[] =
   (rows ?? []).map(row => ({ id: nextId(), agent: row.agent, values: { ...row.values } }));
 export const writeStack = (rows: readonly StackRowDraft[]): AiRow[] => rows.map(row => ({ agent: row.agent, values: { ...row.values } }));
 
-const asValue = (candidate: string) => candidate === '-' ? null : candidate;
-/** The choices a row of `agent` shows: those the launch uses, less the ones its chosen model leaves out. */
-export function rowChoices(agent: AgentDraft, values: Readonly<Record<string, string | null>>) {
-  const omitted = new Set(agent.without?.[values.model ?? ''] ?? []);
-  return agentChoiceRows(agent).filter(choice => !omitted.has(choice.key))
-    .map(choice => ({ key: choice.key, values: choice.values.map(asValue) }));
-}
-/** A row of `agent` on each choice's first value: what a newly added row, or a row switched to the agent, starts on. */
-export function firstValues(agent: AgentDraft): Record<string, string | null> {
-  const values: Record<string, string | null> = {};
-  for (const choice of rowChoices(agent, values)) values[choice.key] = choice.values[0]!;
-  // The first model may leave rows out, which were filled above before it was known.
-  const kept = new Set(rowChoices(agent, values).map(choice => choice.key));
-  return Object.fromEntries(Object.entries(values).filter(([key]) => kept.has(key)));
-}
-/** Sets one choice of a row; a model that leaves other choices out drops their values, and fills those it brings in. */
-export function withRowValue(agent: AgentDraft, row: StackRowDraft, key: string, value: string | null): StackRowDraft {
-  const values = { ...row.values, [key]: value };
-  const choices = rowChoices(agent, values);
-  return { ...row, values: Object.fromEntries(choices.map(choice => [choice.key,
-    Object.hasOwn(values, choice.key) ? values[choice.key]! : choice.values[0]!])) };
-}
-export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDraft => ({ ...row, agent: agent.name, values: firstValues(agent) });
+type Values = Record<string, string | null>;
+/** The contract's refusal of a value, or nothing: the one check serve makes of a row's values. */
+const refuses = (offer: SelectionOffer, values: Readonly<Values>): boolean => {
+  try { resolveOfferedSelection(offer, values); return false; }
+  catch (error) { if (error instanceof InvalidAgentSelection) return true; throw error; }
+};
+/** The row's values the contract refuses (a value its agent no longer offers, or a row it no longer has), by key. */
+const refusedKeys = (offer: SelectionOffer, values: Readonly<Values>): string[] =>
+  Object.entries(values).filter(([key, value]) => refuses(offer, { [key]: value })).map(([key]) => key);
+
 /**
- * Where the input's AI starts when its first row is added (in setup, or in its empty list): the agent's first values at
- * the lightest effort (`low`), where the agent offers it, since what the input does is short. This is the one place that
- * lightness is decided.
+ * One choice a row shows: those its model uses that have something to choose, and any whose value the contract refuses
+ * (to be chosen again, even one the model leaves out). `value`: the row's, else the choice's first.
  */
-export function coordinatorStart(agent: AgentDraft): Record<string, string | null> {
-  const values = firstValues(agent);
-  const effort = rowChoices(agent, values).find(choice => choice.key === 'effort');
-  return effort?.values.includes('low') ? withRowValue(agent, { id: '', agent: agent.name, values }, 'effort', 'low').values : values;
+export type RowChoice = { key: string; candidates: (string | null)[]; value: string | null; refused: boolean };
+export function rowChoices(agent: AgentDraft, values: Readonly<Values>): RowChoice[] {
+  const offer = agentOffer(agent);
+  if (!offer) return [];
+  const refused = new Set(refusedKeys(offer, values));
+  const model = offer.choices.find(choice => choice.key === 'model');
+  const chosen = refused.has('model') || !model ? null : Object.hasOwn(values, 'model') ? values.model! : model.initial;
+  return offeredChoices(offer, chosen)
+    .filter(choice => refused.has(choice.key) || choice.active && choice.candidates.some(value => value !== null))
+    .map(choice => ({ key: choice.key, candidates: choice.candidates, refused: refused.has(choice.key),
+      value: Object.hasOwn(values, choice.key) ? values[choice.key]! : choice.initial }));
+}
+/** Where a new row of `agent`, or a row switched to it, starts: every value the contract starts a launch of it on. */
+export function startValues(agent: AgentDraft): Values {
+  const offer = agentOffer(agent);
+  return offer ? resolveOfferedSelection(offer).values : {};
+}
+/** Sets one choice of a row. The others stay, those the chosen model leaves out too, as the contract keeps them. */
+export const withRowValue = (row: StackRowDraft, key: string, value: string | null): StackRowDraft => ({ ...row, values: { ...row.values, [key]: value } });
+export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDraft => ({ ...row, agent: agent.name, values: startValues(agent) });
+/**
+ * Where the input's AI starts when its first row is added (in setup, or in its empty list): the agent's start, at the
+ * lightest effort (`low`) where its first model uses an effort that offers it, since what the input does is short. This
+ * is the one place that lightness is decided.
+ */
+export function coordinatorStart(agent: AgentDraft): Values {
+  const offer = agentOffer(agent), values = startValues(agent);
+  const effort = offer && offeredChoices(offer, values.model ?? null).find(choice => choice.key === 'effort');
+  return effort?.active && effort.candidates.includes('low') ? { ...values, effort: 'low' } : values;
+}
+const sameValues = (a: Values | null, b: Values) => !!a && Object.keys(a).length === Object.keys(b).length
+  && Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && b[key] === value);
+/** What a row launches with (the contract's effective values); null while the contract refuses the row. */
+function launched(agents: readonly AgentDraft[], row: StackRowDraft): Values | null {
+  const agent = agents.find(each => each.name === row.agent), offer = agent && agentOffer(agent);
+  if (!offer || refuses(offer, row.values)) return null;
+  return resolveOfferedSelection(offer, row.values).effective;
 }
 
-const same = (a: StackRowDraft, b: StackRowDraft) => a.agent === b.agent && JSON.stringify(Object.entries(a.values).sort()) === JSON.stringify(Object.entries(b.values).sort());
 /**
  * The row "Add a fallback AI" adds: a copy of the last row, to edit from there, so adding never picks a model the person
  * did not choose (one kept for important work, say). Until changed it repeats the row above and is said to go unused.
- * With no row, the first enabled agent on `start`'s values (the list's own first values).
+ * With no row, the first enabled agent on `start`'s values (the list's own start).
  */
 export function newStackRow(agents: readonly AgentDraft[], rows: readonly StackRowDraft[],
-  start: (agent: AgentDraft) => Record<string, string | null> = firstValues): StackRowDraft | null {
+  start: (agent: AgentDraft) => Values = startValues): StackRowDraft | null {
   const last = rows.at(-1);
   if (last) return { id: nextId(), agent: last.agent, values: { ...last.values } };
   const first = agents.find(agent => agent.enabled !== false);
   return first ? { id: nextId(), agent: first.name, values: start(first) } : null;
 }
-/** The earlier row a row repeats: launched the same, it never runs, as the one above already stopped. */
-export const repeatedRow = (rows: readonly StackRowDraft[], index: number): number | null => {
-  const found = rows.slice(0, index).findIndex(row => same(row, rows[index]!));
+/** The earlier row a row repeats: launched with the same values, it never runs, as the one above already stopped. */
+export function repeatedRow(rows: readonly StackRowDraft[], index: number, agents: readonly AgentDraft[]): number | null {
+  const row = rows[index]!, launch = launched(agents, row);
+  if (!launch) return null;
+  const found = rows.slice(0, index).findIndex(earlier => earlier.agent === row.agent && sameValues(launched(agents, earlier), launch));
   return found === -1 ? null : found;
-};
+}
 export function moveRow(rows: readonly StackRowDraft[], index: number, by: -1 | 1): StackRowDraft[] {
   const to = index + by;
   if (to < 0 || to >= rows.length) return [...rows];
@@ -97,10 +118,7 @@ export function stackIssues(rows: readonly StackRowDraft[], agents: readonly Age
     const agent = agents.find(each => each.name === row.agent);
     if (!agent) return [{ rowId: row.id, kind: 'missing' }];
     if (agent.enabled === false) return [{ rowId: row.id, kind: 'disabled' }];
-    const choices = rowChoices(agent, row.values);
-    return Object.entries(row.values).flatMap(([key, value]) => {
-      const choice = choices.find(each => each.key === key);
-      return choice?.values.includes(value) ? [] : [{ rowId: row.id, kind: 'value' as const, key, value }];
-    });
+    const offer = agentOffer(agent);
+    return offer ? refusedKeys(offer, row.values).map(key => ({ rowId: row.id, kind: 'value' as const, key, value: row.values[key]! })) : [];
   });
 }

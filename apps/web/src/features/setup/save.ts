@@ -1,6 +1,6 @@
 import type { AiRow, ServerSettings } from "@alpacawork/contract";
 import type { AgentDraft, AgentsDraft } from "@/features/panels/agent-settings-draft";
-import { coordinatorStart, firstValues, readStack } from "@/features/panels/ai-stack-draft";
+import { coordinatorStart, readStack, startValues } from "@/features/panels/ai-stack-draft";
 import { serverAgentsYaml } from "@/features/panels/server-agent-draft";
 import { configYaml } from "@/features/panels/settings-draft";
 import { chosenAgents, type AgentSwitches, type StartAgent } from "./rules";
@@ -13,7 +13,7 @@ type Values = Record<string, string | null>;
  * end up disabled go, since a stack row naming one cannot be saved. The other rows keep their order.
  */
 export function setupStack(stack: readonly AiRow[], agents: readonly AgentDraft[], first: string | null,
-  start: (agent: AgentDraft) => Values = firstValues): AiRow[] | null {
+  start: (agent: AgentDraft) => Values = startValues): AiRow[] | null {
   const enabled = new Set(agents.filter(agent => agent.enabled !== false).map(agent => agent.name));
   let rows = stack.filter(row => enabled.has(row.agent));
   const firstAgent = first ? agents.find(agent => agent.name === first) : undefined;

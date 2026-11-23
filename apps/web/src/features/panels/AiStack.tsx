@@ -8,7 +8,7 @@ import { FieldError } from '@/components/ui/field';
 import { useChoiceText } from '@/features/forms/choice-text';
 import { cn } from '@/lib/utils';
 import type { AgentDraft } from './agent-settings-draft';
-import { coordinatorStart, firstValues, moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
+import { coordinatorStart, startValues, moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
 
 /** Which of config.yaml's two AI stacks a list edits: the one tasks run on (`aiStack`), or the input's (`coordinatorAiStack`). */
 export type StackKind = 'tasks' | 'coordinator';
@@ -27,7 +27,7 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
   const { t } = useTranslation('panels');
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
-  const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : firstValues);
+  const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : startValues);
   // A row just added is edited from its first choice (its model), which takes the focus.
   const list = useRef<HTMLOListElement>(null);
   const [focusRow, setFocusRow] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
       </div>
       <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
-          issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index)}
+          issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
           onMove={by => onChange(moveRow(rows, index, by))}
           onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
@@ -95,15 +95,14 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
       </div>
       {choices.length > 0 && <div className="grid min-w-0 flex-1 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-center gap-x-3 gap-y-2 narrow:col-span-2 narrow:col-start-2 narrow:row-start-2 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
         {choices.map((choice, at) => {
-          const value = Object.hasOwn(row.values, choice.key) ? row.values[choice.key]! : choice.values[0]!;
-          const offered = choice.values.includes(value);
+          const { value, refused } = choice;
           return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
             <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
-            <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={!offered || undefined}
+            <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
               aria-label={t('agentSettings.aiStack.valueFor', { n, row: text.row(choice.key) })}
-              onChange={event => agent && onChange(withRowValue(agent, row, choice.key, event.target.value === '-' ? null : event.target.value))}>
-              {!offered && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
-              {choice.values.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
+              onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
+              {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
+              {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
             </NativeSelect>
           </label>;
         })}
