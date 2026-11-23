@@ -58,7 +58,7 @@ alpacawork setup
 
 Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois de instalar, siga os [Primeiros passos](docs/pt-BR/getting-started.md) para fazer a sua primeira solicitação.
 
-### Abrir a tela de novo
+### Abrir a tela
 
 Para abrir a tela no navegador, peça assim no Claude Code ou no Codex (`$alpacawork` no Codex).
 

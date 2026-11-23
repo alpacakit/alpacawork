@@ -88,7 +88,7 @@ alpacawork setup
 
 It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installing, follow [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md) to make your first request.
 
-### Reopen the screen
+### Open the screen
 
 To open the screen in your browser, ask Claude Code or Codex like this (`$alpacawork` in Codex).
 

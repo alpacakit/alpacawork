@@ -58,7 +58,7 @@ alpacawork setup
 
 Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de instalarlo, sigue [Primeros pasos](docs/es/getting-started.md) para hacer tu primera solicitud.
 
-### Volver a abrir la pantalla
+### Abrir la pantalla
 
 Para abrir la pantalla en el navegador, pídelo así en Claude Code o Codex (`$alpacawork` en Codex).
 
