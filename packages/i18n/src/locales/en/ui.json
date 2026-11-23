@@ -242,7 +242,7 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
+      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
       "title": "Project policy"
     },
     "project_summary": {

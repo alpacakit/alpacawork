@@ -250,7 +250,7 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: o propósito (para que serve o projeto), como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
+      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
       "title": "Política do projeto"
     },
     "project_summary": {

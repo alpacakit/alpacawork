@@ -25,7 +25,6 @@ In "Project policy" in the project's settings, write in plain sentences what the
 It serves basically the same purpose as `AGENTS.md`. Write in the project policy the instructions you want the AI to read only when it works through alpacawork.
 
 ```text
-Goal: Make the shop's site easy to read on phones, and publish it
 How to work: For changes to how it looks, show me a sample and ask before building
 Leave to the AI: How to proceed, testing and cleanup; decide without asking and report
 Don't: Push to GitHub or publish without my approval

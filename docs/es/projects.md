@@ -25,7 +25,6 @@ Escribe con frases normales, en “Política del proyecto” de la configuració
 Sirve básicamente para lo mismo que `AGENTS.md`. En la política del proyecto, escribe las instrucciones que quieres que la IA lea solo cuando usa alpacawork.
 
 ```text
-Objetivo: que la web de la tienda se vea bien en el teléfono y publicarla
 Cómo trabajar: antes de hacer un cambio que afecte al aspecto, muestra un ejemplo y pregunta
 Lo que dejo en tus manos: decide sin preguntar cómo trabajar, las pruebas y la limpieza, e informa
 Lo que no debes hacer: hacer push a GitHub o publicar sin aprobación

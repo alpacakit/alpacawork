@@ -250,7 +250,7 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "Lo que escribas aquí pasa tal cual a las instrucciones de cada trabajo de este proyecto. Por ejemplo: el propósito (para qué es el proyecto), cómo te gusta que se trabaje (qué se puede dejar a los agentes y qué hay que preguntarte) y lo que no se debe hacer.",
+      "hint": "Lo que escribas aquí pasa tal cual a las instrucciones de cada trabajo de este proyecto. Por ejemplo: cómo te gusta que se trabaje (qué se puede dejar a los agentes y qué hay que preguntarte) y lo que no se debe hacer.",
       "title": "Política del proyecto"
     },
     "project_summary": {
