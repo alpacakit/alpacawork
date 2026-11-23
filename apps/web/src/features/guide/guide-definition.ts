@@ -82,8 +82,10 @@ export const PARTS = {
   resultRow: '[data-row-turn="result"]',
   /** The detail beside the list, where an open Task is read. */
   detail: "aside[data-reader-mode]",
-  /** An open question in the detail: its number, what it asks and its choices (the first, when several are asked). */
-  asked: "[data-waiting-report-actions] [data-question]",
+  /** The open questions in the detail, in their box: each one's number, what it asks and its choices. */
+  asked: "[data-waiting-report-actions]",
+  /** The detail while it lies over the page (a phone's sheet, or taking the whole screen), not beside the list. */
+  detailOver: 'aside[data-reader-mode]:not([data-reader-mode="docked"])',
   /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
@@ -195,8 +197,9 @@ export const GUIDE: readonly GuideEntry[] = [
   // Whatever was sent (a request, an answer, one more), while the coordinator is still on it.
   { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy,
     say: t => t("tree:guide.say.received") },
-  // A question open in the detail, until its answer is sent.
-  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detail", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
+  // A question open in the detail, until its answer is sent: right beside the questions' box, over the detail's margin;
+  // where the detail lies over the page, clear of it (what is read over the questions stays read).
+  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   // A report open with nothing written yet: more can be asked after it, with one more to try; then, with words
   // written, the label that goes with them (OVER_INPUT). Not on a phone's width, where a balloon over the input stands
@@ -242,13 +245,16 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.unassigned") },
   { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // Nothing going on: a request is to be written.
-  { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started",
+  // Nothing going on and nothing written: a request is to be written.
+  { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && !f.drafting,
     say: t => t("tree:guide.say.sendAgain") },
 ];
 
 /** Whether a phase is looked at: once `closing`, the close takes the place of other work and of nothing going on. */
 const looked = (phase: GuidePhase, f: GuideFacts) => phase === "close" ? closing(f) : phase === "work" || phase === "idle" ? !closing(f) : true;
+
+/** A step with no button, done by being shown, stays the step while its balloon stands on this page; one put away by its button does not. */
+const stays = (entry: GuideEntry, facts: GuideFacts) => entry.id === facts.standing && !hasButton(entry);
 
 /**
  * The step shown (see the top): the first entry looked at that holds and is not done, past those passed over while
@@ -256,7 +262,7 @@ const looked = (phase: GuidePhase, f: GuideFacts) => phase === "close" ? closing
  * none when none holds (the guide waits, or is over while closing: nextStage).
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!facts.seen.has(entry.id) || entry.id === facts.standing) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!facts.seen.has(entry.id) || stays(entry, facts)) && entry.when(facts));
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 

@@ -70,6 +70,9 @@ test("a step with no button is done once its balloon has stood; one with a butto
   expect(shown({ ...report, seen: read("more", "accept") })).toBeNull();
   // Nor is the open report's row said to be pressed, or the open question's.
   expect(shown({ stage: turn, tasks: 1, questions: 1, open: "question", seen: read("answer") })).toBeNull();
+  // Put away by its button, a step is gone at once, standing or not.
+  expect(shown({ ...report, seen: read("more"), standing: "more" })).toBe("accept");
+  expect(shown({ stage: turn, doneHere: true, tasks: 1, talked: true, seen: read("conversation"), standing: "conversation" })).toBe("another-repository");
   // With a button: showing it does not put it away; pushed aside while it still holds, it waits; left because it no
   // longer holds (the conversation cleared, say), it is done.
   const more = entry(report);
@@ -101,6 +104,8 @@ test("words waiting in the input come before the close, shown or not: the close 
   expect(guideEntry(waiting)).toBeNull();
   expect(nextStage(turn, null, closing(waiting))).toBeUndefined();
   expect(shown({ ...done, seen: read("send-ready") })).toBe("conversation");
+  // Nor are words waiting said to be written, before anything is finished here.
+  expect(shown({ tasks: 4, drafting: true, seen: read("send-ready") })).toBeNull();
 });
 
 test("a passable step is passed over, not done, while what it points at is not seen; with only it left, the guide waits", () => {

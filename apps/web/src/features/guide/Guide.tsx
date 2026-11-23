@@ -32,7 +32,7 @@ type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
 /** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
-const STOOD_MS = 300;
+const STOOD_MS = 150;
 /** How much of a part's top counts as its head: where a tall part is looked for when its middle is out of sight. */
 const HEAD = 40;
 const OPPOSITE: Record<GuideSide, GuideSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
@@ -70,10 +70,11 @@ function standing(target: Box, size: { width: number; height: number }, view: { 
       ? [x, size.width, box.left, box.width, target.left, target.left + target.width, view.width]
       : [y, size.height, box.top, box.height, target.top, target.top + target.height, view.height];
     const reach = Math.min(2 * ARROW_ROOM, end - start);
-    return [low - GAP - length, low + span + GAP]
-      .filter(each => each >= MARGIN && each + length <= room - MARGIN && Math.min(each + length, end) - Math.max(each, start) >= reach)
-      .filter(each => !(upright ? over(each, y) : over(x, each)))
-      .sort((a, b) => Math.abs(a - at) - Math.abs(b - at))[0] ?? null;
+    const fits = (each: number) => each >= MARGIN && each + length <= room - MARGIN && Math.min(each + length, end) - Math.max(each, start) >= reach
+      && !(upright ? over(each, y) : over(x, each));
+    const nearest = (places: number[]) => places.filter(fits).sort((a, b) => Math.abs(a - at) - Math.abs(b - at))[0] ?? null;
+    // A gap from the box where there is room for one, else right against it.
+    return nearest([low - GAP - length, low + span + GAP]) ?? nearest([low - length, low + span]);
   };
   // Each move takes it clear of one box it stood over: along the target where that is enough, else away from it, past
   // that box; so it is clear of them all within as many moves as there are boxes.
@@ -141,22 +142,21 @@ function scrollerOf(element: Element | null): HTMLElement | null {
   return null;
 }
 /**
- * The first element marked as `selector` that is laid out and shown but not wholly inside the box it scrolls in
- * (scrolled out of it, or reaching past its edge): a part to bring into view.
+ * The first element marked as `selector` that is laid out and shown but out of the box it scrolls in: its head scrolled
+ * out of it, or, where it would fit in that box whole, reaching past its edge. A part to bring into view; one taller
+ * than the box is left where the person has it while its head is seen.
  */
 function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
     const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
-    if (pane && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
+    if (!pane) continue;
+    const head = box.top + Math.min(box.height, HEAD) / 2;
+    const fits = box.height <= pane.height;
+    if (head < pane.top || head > pane.bottom || fits && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
   }
   return null;
-}
-/** Brings `element` into the box it scrolls in: whole where it fits, else from its head. */
-function bringIn(element: HTMLElement) {
-  const pane = scrollerOf(element.parentElement);
-  element.scrollIntoView({ block: pane && element.getBoundingClientRect().height > pane.clientHeight ? "start" : "nearest" });
 }
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
@@ -223,13 +223,18 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     let roomed: HTMLElement | null = null;
     // Looks in a row that did not see the part: a passable step is passed over after two (half a second).
     let missed = 0;
-    // Since when the balloon has stood on the screen without a break.
-    let since: number | null = null;
+    // Counts the balloon as having stood once it has been on the screen for a moment without a break.
+    let standing: ReturnType<typeof setTimeout> | null = null;
+    const stoodNow = () => {
+      standing = null;
+      stood.current.ids.add(entry.id);
+      if (doneOnShowing(entry, true)) putAway(entry.id);
+    };
     const update = () => {
       let target = shownPart(part);
       if (!settled) {
         const away = outOfPane(part);
-        if (away) { bringIn(away); target = shownPart(part); }
+        if (away) { away.scrollIntoView({ block: "nearest" }); target = shownPart(part); }
         settled = !!away || !!target;
       }
       missed = target ? 0 : missed + 1;
@@ -242,11 +247,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       }) : [];
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear) : null;
-      since = next ? since ?? Date.now() : null;
-      if (since !== null && Date.now() - since >= STOOD_MS && !stood.current.ids.has(entry.id)) {
-        stood.current.ids.add(entry.id);
-        if (doneOnShowing(entry, true)) putAway(entry.id);
-      }
+      if (!next && standing) { clearTimeout(standing); standing = null; }
+      if (next && !standing && !stood.current.ids.has(entry.id)) standing = setTimeout(stoodNow, STOOD_MS);
       if (!same(last, next)) { last = next; setPlaced(next); }
       roomed = keepRoom(roomed, next && own ? own : null);
     };
@@ -258,6 +260,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     addEventListener("scroll", update, true);
     return () => {
       clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true);
+      if (standing) clearTimeout(standing);
       keepRoom(roomed, null);
     };
   }, [part, entry?.id, entry?.side, entry?.align, skipped]);
@@ -325,7 +328,7 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };
-  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
+  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float narrow:py-1">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     <div className="flex items-start gap-1">
