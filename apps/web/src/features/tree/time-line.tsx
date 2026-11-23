@@ -902,7 +902,7 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
     </g>}
     <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
     {label && <text data-future-label x={labelX} y={level.base + 4} textAnchor="start"
-      className={cn("text-xs tabular-nums", passed !== null ? "fill-ink font-medium" : finish!.ends ? "fill-working font-semibold" : "fill-muted")}>
+      className={cn("text-xs tabular-nums", passed !== null ? "fill-ink font-medium" : "fill-muted")}>
       <title>{finish!.long}</title><FutureText words={label} /></text>}
   </g>;
 }

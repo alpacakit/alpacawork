@@ -19,8 +19,13 @@ type ProjectTileSize = 16 | 18 | 20 | 24 | 28 | 32;
  * is set 0.03em lower (measured on the screen at 16, 18, 20, 24, 28 and 32 px: within 0.5 px of the middle). A browser
  * without `text-box` draws them on the line box's middle, about 1–2 px high.
  */
-export const ProjectTile = memo(function ProjectTile({ name, color, size, label, className }: {
+export const ProjectTile = memo(function ProjectTile({ name, color, size, label, quiet, className }: {
   name: string; color: string; size: ProjectTileSize;
+  /**
+   * Where the square repeats down a list (a row's): the project's colour laid thin over the ground, its letters in ink,
+   * so the hue still tells the projects apart and the row's state mark and title lead.
+   */
+  quiet?: boolean;
   /** What a reader hears and a pointer shows, where nothing beside the square names the project. */
   label?: string;
   className?: string;
@@ -29,7 +34,8 @@ export const ProjectTile = memo(function ProjectTile({ name, color, size, label,
   const letters = markLetters(name);
   const latin = /^[A-Z0-9]+$/.test(letters);
   const style: CSSProperties = {
-    width: size, height: size, borderRadius: Math.round(size / 4), background: color, color: ink,
+    width: size, height: size, borderRadius: Math.round(size / 4),
+    ...quiet ? { background: `color-mix(in oklab, ${color} 50%, var(--bg))`, color: "var(--ink)" } : { background: color, color: ink },
     fontSize: latin && letters.length > 1 ? Math.max(9, size * 0.55) : size * 0.64,
   };
   return <span data-project-tile={letters} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}

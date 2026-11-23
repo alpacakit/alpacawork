@@ -44,7 +44,7 @@ import { useNarrow, useViewStore } from "@/state/view-store";
 import { UNDER_BAR } from "@/state/bar";
 import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
-import { TITLE_COLUMN_TIGHT } from "@/state/screen-settings";
+import { titleColumnWidth } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
 import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
@@ -64,8 +64,6 @@ import { useOfflineShown } from "@/data/reach";
 
 
 /** The flat home list and its time strips. */
-/** The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room. Wide enough to carry the question or report line. */
-const LABEL_W = 360, LABEL_TIGHT = TITLE_COLUMN_TIGHT, TIGHT_UNDER = 900;
 const MINUTE = 60_000, HOUR = 60 * MINUTE, DAY = 24 * HOUR;
 const PERIODS = [30 * MINUTE, HOUR, 6 * HOUR, DAY, 7 * DAY] as const;
 const MOBILE_PERIOD_W = 72;
@@ -364,7 +362,8 @@ export function TimeTree() {
   /** The strip reaches back to 5 minutes before the oldest history, or before a screen at the zoom if that is further. */
   const startAt = (ms: number) => Math.min(earliest, now - ms) - 5 * MINUTE;
   const list = useListWidth(box, 1200), { width: sheet, zoomWidth } = list;
-  const lead = narrow ? 0 : Math.min(sheet < TIGHT_UNDER ? LABEL_TIGHT : LABEL_W, Math.max(0, sheet - 120));
+  // The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room.
+  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet), Math.max(0, sheet - 120));
   // The width the zoom is for (useStrip): a reader past half the screen only hides the strip's oldest part.
   const laid = Math.max(sheet, zoomWidth) - lead;
   // Hidden strips need only the clock-width minimum, not each row's end prediction.
@@ -469,7 +468,7 @@ export function TimeTree() {
               {section.section === "done" && section.open && <div className="bg-bg"><PageTail page={finished} read={finishedRead} sentinel={finishedSentinel} shared={shared} /></div>}
               {section.hidden !== null &&
                 <div data-group-more={section.section} data-motion-key={`more:${section.section}`} className="border-b border-rule">
-                  <div style={frozen(shared)} className="sticky left-0 bg-bg pl-list-text">
+                  <div style={frozen(shared)} className={cn("sticky left-0 bg-bg pl-list-text", columnEdge(shared))}>
                     <button type="button" aria-expanded={section.hidden === 0} onClick={() => setMore((was) => was.has(section.section) ? without(was, section.section) : new Set(was).add(section.section))}
                       className="flex min-h-8 items-center gap-1 pr-2 text-sm text-muted hover:text-ink narrow:min-h-11">
                       {section.hidden > 0 ? t("home.more", { count: section.hidden }) : t("home.less")}</button>
@@ -540,7 +539,7 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
   const name = { doing: t("home.running"), error: t("home.error"), review: t("home.turn"), awaited: t("home.awaited"), held: t("home.held"), todo: t("home.todo"), done: t("home.finished") }[section.section];
   return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="border-b border-rule">
     <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pr-2 pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
-      !first && "h-12 pt-4 narrow:h-13 narrow:pt-2")}>
+      !first && "h-12 pt-4 narrow:h-13 narrow:pt-2", columnEdge(shared))}>
       <h2 className="m-0 flex text-base font-semibold">
         <button type="button" aria-expanded={section.open} onClick={onToggle} className={cn(HEAD_LINE, HEAD_PRESS)}>
           {/* The square stands on the list's mark line, where a row's unread dot does; the name starts on the rows' icons. */}
@@ -556,6 +555,11 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
   </div>;
 }
 
+/**
+ * The title column's edge on a computer: one line down the whole list, through the headings and the "N more" lines as
+ * through the rows, so the titles and the time read as two panes. A phone's rows lie across the strips and have none.
+ */
+const columnEdge = (shared: Shared) => !shared.narrow && "border-r border-rule";
 /** What stays at the left while the strip scrolls: as wide as the title column, or the screen on a narrow one. */
 const frozen = (shared: Shared) => ({ width: shared.narrow ? shared.screen : shared.lead });
 
@@ -613,7 +617,9 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const hasChildren = childrenOf(task.id, index).length > 0
     || ((index.childCounts?.[task.id]?.live ?? 0) + (index.childCounts?.[task.id]?.finished ?? 0) > 0);
   const progress = summary ? summary.total > 0 ? summary : null : hasChildren ? childProgress(task.id, index) : null;
-  const ground = !narrow && shared.selected === task.id ? "bg-row-picked-solid" : "bg-bg";
+  // A computer's row takes one ground under its title and its time: the picked row's, or a thinner one while pointed at.
+  const picked = !narrow && shared.selected === task.id;
+  const ground = picked ? "bg-row-picked-solid" : narrow ? "bg-bg" : "bg-bg group-hover:bg-row-hover-solid";
   const people = usePeopleFor(task.id, true);
   const displayLook = look;
   // A dot for what changed since it was read. It hangs left of the row's first line, centred on the
@@ -633,10 +639,12 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   return (
     <li data-row={task.id} data-row-section={node.row?.section} data-row-turn={node.row?.section === "review" ? turnKind(task) : undefined} data-depth={0} data-held={task.state === "held" || undefined} data-dated={node.dated || undefined}>
       <div data-row-head data-motion-key={task.id}
-        className={cn("group relative flex border-b border-rule", narrow && "flex-col", !narrow && shared.selected === task.id && "bg-row-picked [--row-ground:var(--color-row-picked-solid)]")}>
+        className={cn("group relative flex border-b border-rule", narrow && "flex-col",
+          picked ? "bg-row-picked [--row-ground:var(--color-row-picked-solid)]"
+            : !narrow && "hover:bg-row-hover hover:[--row-ground:var(--color-row-hover-solid)]")}>
         <div ref={label} data-row-label style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}
           className={cn("sticky left-0 z-2 flex flex-none items-stretch overflow-hidden", ground,
-          !narrow && "border-r border-rule", narrow && shared.selected === task.id && "ring-1 ring-muted ring-inset")}>
+          columnEdge(shared), narrow && shared.selected === task.id && "ring-1 ring-muted ring-inset")}>
           {/* A row lifted away from its parent says that parent once, before its id. */}
           {narrow ? <RowLines task={task} people={people} unread={unread}
             lifted={node.lifted && path.length ? path.at(-1)! : null}
@@ -653,7 +661,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
               <RowProjectTile project={task.projectId} />
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
               {/* The title keeps about half the line; what stands at its end is cut first. */}
-              <RowTitle title={task.title} className={cn("min-w-[45%] flex-1 text-base text-ink group-hover:underline group-hover:underline-offset-3")} />
+              <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
             </>, "flex min-w-0 flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", endId)}
             {/* The row's one time at its end, with what is so of its state before it. It stands beside the press, as its time
                 is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}

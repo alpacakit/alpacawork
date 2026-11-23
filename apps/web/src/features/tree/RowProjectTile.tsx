@@ -9,5 +9,5 @@ export function RowProjectTile({ project, className }: { project: string; classN
   const shows = useMarksTasks();
   const mark = useProjectMarks().get(project);
   if (!shows || !mark) return null;
-  return <ProjectTile name={mark.name} color={mark.color} size={16} label={mark.name} className={className} />;
+  return <ProjectTile name={mark.name} color={mark.color} size={16} label={mark.name} quiet className={className} />;
 }
