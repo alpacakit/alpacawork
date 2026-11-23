@@ -11,7 +11,7 @@
 3. 在电脑的界面上打开“设置（齿轮）→ 应用和手机”，用手机扫描显示的二维码。
 4. 按界面上的步骤添加到主屏幕（iPhone 用 Safari，Android 用 Chrome）。
 
-<img src="../images/phone-setup.png" alt="Use from your phone under App & phone in Settings, showing three steps and a QR code" width="560">
+<img src="../images/phone-setup.png" alt="设置中“App & phone”（应用和手机）里的“Use from your phone”（在手机上使用），显示三个步骤和一个二维码" width="560">
 
 界面没有登录验证。只让你自己的设备连入 VPN，不要使用公开到互联网的设置（如 Tailscale Funnel）。设备丢失时，把它从 VPN 中移除。
 
@@ -32,7 +32,7 @@
 
 - 暂时停止：在界面右上角的人形按钮（齿轮左边）中选择“暂停 1 小时”等。
 
-  <img src="../images/header-icons.png" alt="The top right of the screen, with the person button and the gear button" width="90">
+  <img src="../images/header-icons.png" alt="界面右上角的人形按钮和齿轮按钮" width="90">
 
 - 每晚停止：打开“设置（齿轮）→ 个人”中的“每日免打扰时段”。时段结束后，仍在等待的通知会合并成 1 条送达。
 - 选择种类：在同一处的“通知”中，可以按通知的种类分别开关。“任务完成时”起初是关闭的。
