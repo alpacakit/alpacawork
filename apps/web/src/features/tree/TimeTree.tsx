@@ -46,7 +46,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { TITLE_COLUMN_TIGHT } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
-import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, zoomFor, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
+import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
@@ -374,7 +374,9 @@ export function TimeTree() {
     if (label) futureLabels.push(label);
   });
   const futureWidth = futureBandWidth(futureLabels);
-  const viewMs = zoomFor(chosen, showZoom(earliest, now, Math.max(120, sheet - lead), Math.max(120, laid), futureWidth).viewMs);
+  // All of time is drawn from the zoom that shows the history; the strip zooms out from it until all of it is in sight.
+  const viewMs = chosen === "all" ? showZoom(earliest, now, Math.max(120, sheet - lead), Math.max(120, laid), futureWidth).viewMs
+    : chosen ?? 24 * 3_600_000;
   const from = startAt(viewMs);
   // A fitted axis can enlarge linear time after long quiet gaps fold. Use its scale near now as well as the zoom scale.
   const fitted = buildAxis(from, now, now, axisBusy, Math.max(120, sheet - lead), viewMs);
