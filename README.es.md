@@ -60,13 +60,13 @@ Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de ins
 
 ### Volver a abrir la pantalla
 
-Si cierras la pantalla, pide a Claude Code o Codex, abierto en una terminal o en su app, que la abra, así (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). La IA abre la pantalla en el navegador o te dice su URL.
+Para abrir la pantalla en el navegador, pídelo así en Claude Code o Codex (`$alpacawork` en Codex).
 
 ```text
 /alpacawork abre la pantalla
 ```
 
-Desde una terminal, también puedes abrirla con `alpacawork open`.
+En una terminal, también se abre con `alpacawork open`.
 
 ## Qué hace
 

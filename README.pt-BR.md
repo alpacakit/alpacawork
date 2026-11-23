@@ -60,7 +60,7 @@ Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois 
 
 ### Abrir a tela de novo
 
-Se você fechar a tela, peça assim ao Claude Code ou ao Codex aberto no terminal ou no app (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). A IA abre a tela no navegador ou informa a URL dela.
+Para abrir a tela no navegador, peça assim no Claude Code ou no Codex (`$alpacawork` no Codex).
 
 ```text
 /alpacawork abra a tela

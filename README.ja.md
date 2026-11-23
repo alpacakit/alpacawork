@@ -60,10 +60,10 @@ alpacawork setup
 
 ### 画面を開き直す
 
-画面を閉じたら、Claude Code か Codex で次のように頼みます（Codex では `$alpacawork`）。
+ブラウザで画面を開く場合、Claude Code か Codex で次のように頼みます（Codex では `$alpacawork`）。
 
 ```text
-/alpacawork 画面開いて
+/alpacawork 画面を開いて
 ```
 
 ターミナルなら `alpacawork open` でも開けます。

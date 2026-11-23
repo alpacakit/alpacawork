@@ -90,13 +90,13 @@ It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installi
 
 ### Reopen the screen
 
-If you close the screen, ask Claude Code or Codex opened in a terminal or its app like this (in Codex, write `$alpacawork` instead of `/alpacawork`). The AI opens the screen in your browser or tells you its URL.
+To open the screen in your browser, ask Claude Code or Codex like this (`$alpacawork` in Codex).
 
 ```text
 /alpacawork open the screen
 ```
 
-From a terminal, `alpacawork open` opens it too.
+In a terminal, `alpacawork open` also opens it.
 
 ## What it does
 

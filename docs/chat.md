@@ -1,18 +1,18 @@
 # Use it from Claude Code or Codex
 
-Besides the input box on the screen, you can operate alpacawork from a Claude Code or Codex conversation opened in a terminal or its app.
+You can also operate alpacawork from a Claude Code or Codex conversation.
 
 ## Getting started
 
-At the start of the conversation, make one request with `/alpacawork` in front (`$alpacawork` in Codex).
+Put `/alpacawork` in front of only the first request in the conversation (`$alpacawork` in Codex).
 
 ```text
 /alpacawork tell me about each task awaiting review, briefly, one at a time
 ```
 
-The AI reads the alpacawork skill, and from then on the AI in that conversation acts as the same point of contact as the input box on the screen (the coordinator). From the second request on, you can leave out `/alpacawork`. `/alpacawork` is there to make this conversation read the skill. You don't add it in the input box on the alpacawork screen.
+From then on, the AI in that conversation acts as the point of contact (the coordinator). In the input box on the alpacawork screen, you don't need `/alpacawork`.
 
-The work you request is carried out by the AIs that alpacawork starts. Closing this conversation does not stop it. Questions and reports arrive under "Awaiting review" on the screen, not in this conversation. To check them here, ask something like "tell me about each task awaiting review, briefly, one at a time".
+The work you request is carried out by the AIs in charge, so closing the conversation does not stop it. Questions and reports arrive under "Awaiting review" on the screen.
 
 ## Examples of task requests
 
@@ -32,7 +32,7 @@ You can point to a task by its number (such as T12) or by words from its title. 
 
 ## Operating alpacawork itself
 
-You can also ask in this conversation to open the screen, update, restart and the like. In a terminal, the commands in the table do the same.
+In a terminal, the commands in the table do the same.
 
 | To | Example of what to ask | Command |
 | --- | --- | --- |
@@ -46,4 +46,4 @@ You can also ask in this conversation to open the screen, update, restart and th
 | Stop, start or restart | `restart alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Uninstall | `uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
 
-The first time in a conversation, put `/alpacawork` in front of the request. Changes to settings, models and the project policy can also be requested in the input box on the screen, and updating can also be done from Settings on the screen. Stopping, restarting and uninstalling cannot be done from the input box on the screen, so do them in this conversation or in a terminal. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](manage.md)).
+Changes to settings, models and the project policy can also be requested in the input box on the screen. Stopping, restarting and uninstalling cannot be done from the input box on the screen. For the other commands, run `alpacawork -h` ([Reopen, stop and update](manage.md)).

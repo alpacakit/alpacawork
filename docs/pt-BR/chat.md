@@ -1,18 +1,18 @@
 # Usar pelo Claude Code ou Codex
 
-Além da caixa de entrada da tela, você pode operar o alpacawork numa conversa do Claude Code ou do Codex aberta no terminal ou no app.
+Você também pode operar o alpacawork numa conversa do Claude Code ou do Codex.
 
 ## Como começar
 
-No início da conversa, faça um pedido com `/alpacawork` na frente (`$alpacawork` no Codex).
+Coloque `/alpacawork` na frente só do primeiro pedido da conversa (`$alpacawork` no Codex).
 
 ```text
 /alpacawork me conte, uma por uma e de forma breve, as tarefas aguardando revisão
 ```
 
-A IA lê a skill do alpacawork e, a partir daí, a IA dessa conversa atua como o mesmo ponto de contato da caixa de entrada da tela (o coordenador). Do segundo pedido em diante, você pode deixar de lado o `/alpacawork`. O `/alpacawork` serve para que esta conversa leia a skill. Na caixa de entrada da tela do alpacawork, ele não é usado.
+A partir daí, a IA dessa conversa atua como ponto de contato (o coordenador). Na caixa de entrada da tela do alpacawork, o `/alpacawork` não é necessário.
 
-O trabalho que você pede é feito pelas IAs que o alpacawork inicia. Fechar esta conversa não o interrompe. Perguntas e relatórios chegam em "Aguardando revisão" na tela, não nesta conversa. Para conferi-los aqui, peça algo como "me conte, uma por uma e de forma breve, as tarefas aguardando revisão".
+O trabalho que você pede é feito pelas IAs responsáveis, então fechar a conversa não o interrompe. Perguntas e relatórios chegam em "Aguardando revisão" na tela.
 
 ## Exemplos do que pedir sobre as tarefas
 
@@ -32,7 +32,7 @@ Você pode indicar uma tarefa pelo número (como T12) ou por palavras do título
 
 ## Operar o próprio alpacawork
 
-Abrir a tela, atualizar, reiniciar e coisas assim também podem ser pedidos nesta conversa. No terminal, os comandos da tabela fazem o mesmo.
+No terminal, os comandos da tabela fazem o mesmo.
 
 | Para | Exemplo do que pedir | Comando |
 | --- | --- | --- |
@@ -46,4 +46,4 @@ Abrir a tela, atualizar, reiniciar e coisas assim também podem ser pedidos nest
 | Parar, iniciar ou reiniciar | `reinicie o alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |
 
-Na primeira vez numa conversa, coloque `/alpacawork` na frente do pedido. Mudanças de configurações, de modelos e da política do projeto também podem ser pedidas na caixa de entrada da tela, e a atualização também pode ser feita em Configurações na tela. Parar, reiniciar e desinstalar não podem ser feitos pela caixa de entrada da tela, então faça isso nesta conversa ou no terminal. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](manage.md)).
+Mudanças de configurações, de modelos e da política do projeto também podem ser pedidas na caixa de entrada da tela. Parar, reiniciar e desinstalar não podem ser feitos pela caixa de entrada da tela. Os outros comandos podem ser vistos com `alpacawork -h` ([Abrir de novo, parar e atualizar](manage.md)).

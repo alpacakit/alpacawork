@@ -1,18 +1,18 @@
 # 从 Claude Code 或 Codex 使用
 
-除了界面的输入框，也可以在终端或应用中打开的 Claude Code 或 Codex 的对话里操作 alpacawork。
+也可以在 Claude Code 或 Codex 的对话中操作 alpacawork。
 
 ## 开始方法
 
-在对话开头，加上 `/alpacawork` 发出一次请求（在 Codex 中是 `$alpacawork`）。
+只在对话的第一次请求前加上 `/alpacawork`（在 Codex 中是 `$alpacawork`）。
 
 ```text
 /alpacawork 把待验收的任务一件一件简短地告诉我
 ```
 
-AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与界面输入框相同的对接 AI（协调员）工作。从第二次起，可以不加 `/alpacawork`。`/alpacawork` 是用来让这个对话读取技能的。在 alpacawork 界面的输入框中不加。
+之后，这个对话里的 AI 就会作为对接 AI（协调员）工作。在 alpacawork 界面的输入框中，不需要 `/alpacawork`。
 
-委托的工作由 alpacawork 启动的负责 AI 来推进。关闭这个对话，工作也不会停止。提问和报告会送到界面的“待验收”，而不是这个对话。要在这个对话里确认时，可以说“把待验收的任务一件一件简短地告诉我”。
+委托的工作由负责的 AI 推进，所以关闭对话也不会停止。提问和报告会送到界面的“待验收”。
 
 ## 任务的说法示例
 
@@ -32,7 +32,7 @@ AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与�
 
 ## alpacawork 本身的操作
 
-打开界面、更新、重启等操作，也可以在这个对话中提出。在终端中，用表中的命令也能做到同样的事。
+在终端中，用表中的命令也能做到同样的事。
 
 | 要做的事 | 说法示例 | 命令 |
 | --- | --- | --- |
@@ -46,4 +46,4 @@ AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与�
 | 停止、启动、重启 | `重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
 | 卸载 | `卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
 
-对话中的第一次，要在说法前面加上 `/alpacawork`。设置、模型和项目准则的更改也可以在界面的输入框中提出，更新也可以在界面的设置中进行。停止、重启和卸载无法在界面的输入框中进行，请在这个对话或终端中操作。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](manage.md)）。
+设置、模型和项目准则的更改，也可以在界面的输入框中提出。停止、重启和卸载无法在界面的输入框中进行。其他命令可用 `alpacawork -h` 查看（[重新打开、停止、更新](manage.md)）。

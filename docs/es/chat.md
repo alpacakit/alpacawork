@@ -1,18 +1,18 @@
 # Usarlo desde Claude Code o Codex
 
-Además del cuadro de entrada de la pantalla, puedes operar alpacawork desde una conversación de Claude Code o Codex abierta en una terminal o en su app.
+También puedes operar alpacawork desde una conversación de Claude Code o Codex.
 
 ## Cómo empezar
 
-Al principio de la conversación, haz una petición con `/alpacawork` delante (`$alpacawork` en Codex).
+Pon `/alpacawork` delante solo en la primera petición de la conversación (`$alpacawork` en Codex).
 
 ```text
 /alpacawork cuéntame brevemente, una por una, las tareas por revisar
 ```
 
-La IA lee la skill de alpacawork y, desde entonces, la IA de esa conversación actúa como el mismo punto de contacto que el cuadro de entrada de la pantalla (el coordinador). A partir de la segunda petición, puedes omitir `/alpacawork`. `/alpacawork` sirve para que esta conversación lea la skill. En el cuadro de entrada de la pantalla de alpacawork no se añade.
+Desde entonces, la IA de esa conversación actúa como punto de contacto (el coordinador). En el cuadro de entrada de la pantalla de alpacawork, `/alpacawork` no hace falta.
 
-El trabajo que pides lo hacen las IA que inicia alpacawork. Cerrar esta conversación no lo detiene. Las preguntas y los informes llegan a "Por revisar" en la pantalla, no a esta conversación. Para revisarlos aquí, pide algo como "cuéntame brevemente, una por una, las tareas por revisar".
+El trabajo que pides lo hacen las IA encargadas, así que no se detiene aunque cierres la conversación. Las preguntas y los informes llegan a "Por revisar" en la pantalla.
 
 ## Ejemplos de qué pedir sobre las tareas
 
@@ -32,7 +32,7 @@ Puedes señalar una tarea por su número (como T12) o por palabras de su título
 
 ## Operar alpacawork en sí
 
-En esta conversación también puedes pedir operaciones como abrir la pantalla, actualizar o reiniciar. En una terminal, los comandos de la tabla hacen lo mismo.
+En una terminal, los comandos de la tabla hacen lo mismo.
 
 | Para | Ejemplo de qué pedir | Comando |
 | --- | --- | --- |
@@ -46,4 +46,4 @@ En esta conversación también puedes pedir operaciones como abrir la pantalla, 
 | Detener, iniciar o reiniciar | `reinicia alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `desinstala alpacawork` | `alpacawork uninstall` y después `npm uninstall -g alpacawork` |
 
-La primera vez en una conversación, pon `/alpacawork` delante de la petición. Los cambios de configuración, de modelos y de la política del proyecto también se pueden pedir en el cuadro de entrada de la pantalla, y la actualización también se hace desde Configuración en la pantalla. Detener, reiniciar y desinstalar no se pueden hacer desde el cuadro de entrada de la pantalla, así que hazlo en esta conversación o en una terminal. Los demás comandos y su uso se consultan con `alpacawork -h` (detalles en [Volver a abrir, detener y actualizar](manage.md)).
+Los cambios de configuración, de modelos y de la política del proyecto también se pueden pedir en el cuadro de entrada de la pantalla. Detener, reiniciar y desinstalar no se pueden hacer desde el cuadro de entrada de la pantalla. Los demás comandos se consultan con `alpacawork -h` ([Volver a abrir, detener y actualizar](manage.md)).

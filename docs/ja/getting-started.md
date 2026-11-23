@@ -29,7 +29,7 @@ alpacawork setup
 インストールが終わると、ブラウザで画面が開きます。開かなかったときや、あとで閉じたときは、Claude Code か Codex に次のように頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。
 
 ```text
-/alpacawork 画面開いて
+/alpacawork 画面を開いて
 ```
 
 Codex では `/alpacawork` を `$alpacawork` に変えます。ターミナルからは次のコマンドでも開けます。

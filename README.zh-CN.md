@@ -60,7 +60,7 @@ alpacawork setup
 
 ### 重新打开界面
 
-关闭界面后，可以像下面这样，请在终端或应用中打开的 Claude Code 或 Codex 打开界面（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+要在浏览器中打开界面时，在 Claude Code 或 Codex 中这样请求（在 Codex 中用 `$alpacawork`）。
 
 ```text
 /alpacawork 打开界面
