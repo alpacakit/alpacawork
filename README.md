@@ -1,14 +1,15 @@
 <!--
 Use repository-root paths for local files (docs/images/logo.png, LICENSE) so they open on every
 branch. Link to the guides in this README with absolute GitHub URLs so the npm copy opens the
-rendered guides and their section links. Put pictures in docs/images/, which the npm package
-carries. Write links and pictures as inline Markdown links or as src and href attributes in double quotes.
-Double-quoted srcset attributes are also rewritten, preserving each image candidate's descriptor.
+rendered guides and their section links. Put pictures in docs/images/. The package omits GIFs
+from that directory. Write links and pictures as inline Markdown links or as double-quoted src,
+srcset or href attributes. Image descriptors in srcset are preserved.
 Other forms are not rewritten for npm.
 npm resolves no relative path, so the release rewrites each one in the packaged copy
 (apps/backend/src/release/npm-readme.ts): a file the package carries opens from
-https://unpkg.com/alpacawork@<version>/<path>, any other file from
-https://github.com/alpacakit/alpacawork/blob/main/<path>.
+https://unpkg.com/alpacawork@<version>/<path>. Pictures outside the package are served from
+https://raw.githubusercontent.com/alpacakit/alpacawork/<release-commit>/<path>.
+Other links outside the package open https://github.com/alpacakit/alpacawork/blob/main/<path>.
 The setup guide an AI downloads uses a GitHub raw URL so the AI can read the Markdown directly.
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else, and npm shows such a URL as
@@ -17,8 +18,9 @@ The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages
 larger than a heading can; its alt text carries the name.
 The pictures show made-up data. This file and its translations use the dark-theme pictures
 (*-dark.png); README.ja.md shows the Japanese screen (*-dark-ja.png), the others the English one.
-The diagram at the top (hero.gif, hero-dark.gif; hero-ja.gif, hero-dark-ja.gif for README.ja.md)
-switches with the page theme in a <picture>; its first and last frames are the finished picture.
+The diagram at the top is drawn in each README's language (hero.gif, hero-dark.gif for this file;
+hero-<lang>.gif, hero-dark-<lang>.gif for the others) and switches with the page theme in a <picture>;
+its first and last frames are the finished picture.
 README.ja.md, README.zh-CN.md, README.es.md and README.pt-BR.md are translations: keep all five with
 the same sections and content, and change them in the same commit. Each links to the guides in its
 own language (this file to docs/, the others to docs/ja/, docs/zh-CN/, docs/es/, docs/pt-BR/).

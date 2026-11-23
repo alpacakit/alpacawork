@@ -29,8 +29,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
-    <img src="docs/images/hero.gif" alt="在一个输入框写下的请求交给协调员，它在三个项目（网站、移动应用、市场营销）中创建任务，并为每个任务分配 opus · high、gpt-5 · high 等 AI；其中一个任务提出问题，回答后所有任务完成" width="640">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark-zh-CN.gif">
+    <img src="docs/images/hero-zh-CN.gif" alt="在一个输入框写下的请求交给协调员，它在三个项目（公司网站、应用开发、市场营销）中创建任务，并为每个任务分配 opus · high、gpt-5 · high 等 AI；其中一个任务提出问题，回答后所有任务完成" width="640">
   </picture>
 </p>
 
