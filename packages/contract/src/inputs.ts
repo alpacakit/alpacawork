@@ -39,8 +39,8 @@ const scopeText = (scope: string, show = identity) => scope.replace(/\{(\w+)\}/g
 export function ruleHelp(rules: readonly InputRule<never>[], show = identity): string[] {
   return rules.map(rule => {
     switch (rule.kind) {
-      case 'required': return `${scopeText(rule.scope, show)}. Required fields are ${names(rule.keys, 'and', show)}.`;
-      case 'forbidden': return `${scopeText(rule.scope, show)}. Omit ${names(rule.keys, 'or', show)}.`;
+      case 'required': return `${scopeText(rule.scope, show)}, supply ${names(rule.keys, 'and', show)}.`;
+      case 'forbidden': return `${scopeText(rule.scope, show)}, omit ${names(rule.keys, 'or', show)}.`;
       case 'one': return `Exactly one of ${names(rule.keys, 'or', show)}.`;
       case 'some': return `Supply ${names(rule.keys, 'or', show)}.`;
     }

@@ -34,6 +34,7 @@ import {
 export type CommandOption = {
   key: string;
   description: string;
+  cliDetail?: string;
   kind: 'text' | 'boolean' | 'number' | 'list' | 'file' | 'json';
   max?: number;
   jsonFile?: true;
@@ -72,14 +73,16 @@ const groups: Readonly<Record<string, string>> = {
 };
 
 /** CLI write contract; server operation IDs remain mandatory. Offline stop-local has its own explicit UUID. */
-export const cliWriteHelp = 'The CLI generates one random operation ID when --op-id is omitted. It resends only the same prepared request after an unknown save result, at most 3 writes within 65 seconds. Specify --op-id if you need to check after process loss; automatic IDs are not saved to disk. Failure detail includes the ID and check command. A new CLI invocation is a new operation.';
+export const cliWriteHelp = 'Writes use a fresh operation ID unless you supply --op-id. After an unknown result the CLI tries the same request up to 3 times total within 65 seconds. Specify --op-id to check after process loss. Automatic IDs are not saved. An unknown-result error includes the ID and check command.';
 
 const option = (kind: CommandOption['kind']) =>
-  (key: string, description: string, extra: Pick<CommandOption, 'nullable' | 'local' | 'jsonScalar' | 'queryCount'> = {}): CommandOption =>
+  (key: string, description: string, extra: Pick<CommandOption, 'nullable' | 'local' | 'jsonScalar' | 'queryCount' | 'cliDetail'> = {}): CommandOption =>
     ({ key, description, kind, ...extra });
-const text = option('text'), number = option('number'), boolean = option('boolean'), list = option('list'), json = option('json');
+const text = option('text'), number = option('number'), boolean = option('boolean'), json = option('json');
+const list = (key: string, description: string) =>
+  option('list')(key, description, { cliDetail: 'Repeatable or comma-separated.' });
 const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
-  ({ key, description: `${description} (a UTF-8 file's absolute path, or - for stdin)`, kind: 'file', max, jsonFile });
+  ({ key, description, cliDetail: 'Use an absolute UTF-8 file path or - for stdin.', kind: 'file', max, jsonFile });
 const help = (...lines: string[]) => `\n${lines.join('\n')}`;
 /** The agents block, as config get returns it and config set saves it. */
 const agentsHelp = 'agents: profiles in order; a coordinator message that names no agent goes to the first enabled one. ' +
@@ -108,6 +111,7 @@ export type FileBinding = {
 type CommandDetails = {
   cli?: false;
   help?: string;
+  cliHelp?: string;
   attachesDiffs?: 'description';
   rules?: readonly InputRule<never>[];
   output: z.ZodType;
@@ -131,23 +135,22 @@ export const attachmentMoveInput = z.object({ task: taskIdSchema, from: z.string
 const taskId = text('task', 'Task ID (T<number>) or project ID (P<number>)');
 const expectedTaskHash = text('expectedTaskHash', 'Current Task SHA-256 hash (task get)');
 const placementRevision = number('expectedPlacementRevision', 'Current placement revision (task get)');
-const quote = text('quote', 'Optional record of the user’s words; the server does not match them or use them as permission');
+const quote = text('quote', 'Record the user’s words. The quote grants no permission.');
 const sourceRequest = text('sourceRequest', 'Screen message ID this write records; its own or a message delivered to the current Run');
 const fromUser = boolean('fromUser', 'Whether the user asked for this Task; only directly below a project, never a child Task');
-const reportTitle = text('title', `Plain text, one line; aim for display width ${REPORT_TITLE_GUIDE_WIDTH} ` +
-  `(wide=2, other=1), rejected above ${REPORT_TITLE_MAX_WIDTH}. Markdown is not rendered`);
+const reportTitle = text('title', `One plain-text line, display width up to ${REPORT_TITLE_MAX_WIDTH} ` +
+  `(aim ${REPORT_TITLE_GUIDE_WIDTH}, wide characters count twice)`);
 /** A description counts characters, each at most 4 UTF-8 bytes. */
-const descriptionFile = file('description', MAX_DETAIL_LENGTH * 4, 'Description Markdown: ' +
-  'headings, paragraphs, line breaks, lists, quotes, tables, fenced code, bold, inline code, links and images');
+const descriptionFile = file('description', MAX_DETAIL_LENGTH * 4, 'Description in Markdown');
 /** Where a writer reads how to write a Task's values, and a project's own (no Task's schema names those). */
 const TASK_VALUES_GUIDE = 'field get';
 const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; a project's own values, ${PROJECT_SCHEMA.join(' and ')}: field list`;
 /** A write's values: only the fields it changes, as `guide` describes them. */
-const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('values', MAX_CONTROL_BODY, `${description}: a JSON object of ` +
-  `field ID to value; a field left out keeps its value, null clears it, a list is replaced whole (${guide})`, true);
+const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('values', MAX_CONTROL_BODY, `${description}: JSON from field IDs to values. ` +
+  `Omit to keep or use null to clear. Lists replace (${guide})`, true);
 const urgent = (what: string) => text('urgent', `Why the requester must read ${what} now (one line)`);
-const schemaTask = text('task', 'Task ID; left out, a Run\'s own Task, else the project the cwd rule ' +
-  '(alpacawork -h) gives, else the default schema');
+const schemaTask = text('task', 'Task ID. Omit for the Run’s own Task, the resolved project or the default schema.',
+  { cliDetail: 'See the cwd rule in alpacawork -h.' });
 
 const taskGetResultSchema = z.looseObject({
   task: z.looseObject({
@@ -211,7 +214,7 @@ const definitions = {
   'help': command('read', 'List commands or read the full inputs and access for selected commands',
     z.object({ commands: z.array(z.string()).max(45).optional() }).strict(),
     [list('commands', 'Command names, e.g. task get')], { cli: false,
-      output: z.object({ guide: z.string(), commands: z.array(z.looseObject({ command: z.string(), kind: z.string(), description: z.string() })) }).strict() }),
+      output: z.object({ guide: z.string().optional(), commands: z.array(z.looseObject({ command: z.string(), kind: z.string(), description: z.string() })) }).strict() }),
   'guide': command('read', 'Read a bundled alpacawork skill document',
     z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
     { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
@@ -220,12 +223,12 @@ const definitions = {
     text('under', 'Subtree root Task ID, listed first'),
     number('depth', 'Levels below --under (1 = direct children), or below the top', { queryCount: true }),
     text('text', 'Case-insensitive substring in ID, title or any value; all states unless --state is set'),
-    list('in', 'Add search places (history, runs, files, work); repeatable or comma-separated. ' +
+    list('in', 'Search places (history, runs, files, work). ' +
       'history: reports, questions, answers and requests (light); runs: results, never prompts (light); ' +
       'files: Task documents outside work/ (more I/O); work: documents under work/ (heaviest)'),
     number('limit', 'Maximum rows per page (default 100; includes ancestors)', { queryCount: true }),
     text('cursor', 'Cursor from the previous page, for the same filters'),
-    list('state', `States to include (${[...taskStateSchema.options, 'all'].join(', ')}); repeatable or comma-separated`),
+    list('state', `States to include (${[...taskStateSchema.options, 'all'].join(', ')})`),
     boolean('all', 'Include archived and deleted Tasks'),
     text('kind', `Only Tasks of this kind (${taskKindSchema.options.join(' or ')}); their ancestors still lead the path`),
   ], { rules: taskListRules, output: taskListResultSchema, help: help(
@@ -239,7 +242,7 @@ const definitions = {
     taskId,
     number('log', 'Latest log entries to include', { queryCount: true }),
     number('runs', 'Latest Runs to include', { queryCount: true }),
-    list('include', `Additional data: ${taskGetIncludes.join(', ')}. agents includes inactive placements. Repeatable or comma-separated`),
+    list('include', `Additional data: ${taskGetIncludes.join(', ')}. agents includes inactive placements.`),
     text('question', 'A question\'s ID: its full text as asked, whether it is open, answered, withdrawn or expired, ' +
       'and its answer\'s full text once answered'),
   ], { output: taskGetResultSchema }),
@@ -248,8 +251,8 @@ const definitions = {
       text('title', 'Task title'),
       text('color', 'Project color: required with --kind project; six lowercase hex digits #rrggbb'),
       text('kind', `${taskKindSchema.options.join(' or ')}; task when left out`),
-      text('parent', 'Parent Task ID, or none for a top project; left out, the project the cwd rule ' +
-        '(alpacawork -h) gives, refused when it gives none (a Run names it)'),
+      text('parent', 'Parent Task ID, or none for a top project. Runs must name it. Other callers can omit it when one project resolves.',
+        { cliDetail: 'See the cwd rule in alpacawork -h.' }),
       text('cwd', 'A project\'s code location on this PC (absolute, or ~/…); empty turns it off'),
       text('expectedParentHash', 'Current parent Task SHA-256 hash'),
       valuesFile('Field values', PROJECT_VALUES_GUIDE),
@@ -284,16 +287,15 @@ const definitions = {
     boolean('newConversation', 'Begin a new conversation'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),
-    json('selected', 'Launch choices as a JSON object: a candidate string, or null where the candidates begin with - (or none are written). A field left out ' +
-      'keeps the conversation\'s value. Only a Request without --new-conversation to a placement with no Run yet takes its ' +
-      'initial choice; any other new conversation, --new-conversation included, takes the first candidate'),
+    json('selected', 'Launch choices by key. Use a candidate, or null when candidates are absent or start with -. Unset keys keep the conversation value. ' +
+      'A placement with no Run uses its initial choices unless --new-conversation is set. Other new conversations use first candidates.'),
     json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
-    'An answer takes no version. An answer to a question already answered or withdrawn goes to the Task as an ordinary instruction from the answerer (its outcome names the question); an expired question refuses it.',
-    "An instruction uses the current Task hash and placement revision. An instruction accepted by the responsible withdraws the Task's old question or review and returns it to doing, including a late answer sent as an instruction. Member instructions do not reopen the responsible's work.") }),
-  'task/report': command('write', 'Report a Task\'s state, ask an ancestor Task or the user a question (--state waiting --ask-to <Task ID>|user), or withdraw a question',
+    'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
+    'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.') }),
+  'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
     taskReportInput, [
       text('task', 'Task ID; a Run reports on its own Task when left out'),
       text('state', `New state: ${reportStateSchema.options.join(', ')}`),
@@ -307,27 +309,20 @@ const definitions = {
       number('estimateMinutes', `Remaining work estimate in minutes (${ESTIMATE_MINUTES.min}–${ESTIMATE_MINUTES.max})`),
       quote, sourceRequest, expectedTaskHash, placementRevision,
     ], { attachesDiffs: 'description', rules: taskReportRules, output: taskReportResultSchema,
-      help: help('Code containing git diff between commits automatically attaches the submitted diff.',
-      'An owner completion report (--state done) requires --title and --description-file with nonblank text. Task values and attachments do not replace the summary. Confirming a review or returning a held Task needs neither.',
-      'A Run asking on its own Task (--state waiting): --title and --description-file (its summary) required; the full ' +
-        'question goes in the decide value, --ask-to <Task ID>|user chooses an ancestor Task or the user explicitly. Returning a Task held ' +
-        'from review (--state waiting) needs neither.',
-      "A new question withdraws this Task's open question; a Task has at most one awaited reply (a question or a review). A question asked while the Task waits for review returns it to doing.",
-      'An own Run reporting doing resumes work and withdraws its old question or review; use task update to save only values. A done report also withdraws its own open question; open questions asked of this Task still keep it from finishing.',
-      'Outside a Run, --state waiting submits a done Task requested by the user for review. ' +
-        'It reviews the Task snapshot and creates no question or Run.',
-      'Done: a Task the user asked for goes to review, any other is done; done on a Task awaiting review ' +
-        'confirms it. A Run review requires --about-run and --expected-placement-revision; a Task snapshot review ' +
-        'needs neither. Both require --expected-task-hash. Stopped stops the Task, its subtree and their Runs.',
-      'Managers return a held Task with --state <current baseState>. This only removes hold; it does not confirm a review or resume a stopped Task. Own progress and questions preserve hold. Todo and error only return a hold. Holds preserve Runs, requests and children.',
-      "For a multiline description: alpacawork task report ... --title 'Summary' --description-file - <<'EOF'",
-      'Markdown description here',
-      'EOF') }),
+      help: help(
+        'An owner’s done report needs --title and a nonblank --description-file. User-requested Tasks go to review; internal Tasks become done.',
+        'A Run asks with --state waiting, --ask-to, --title and --description-file. Put the full question in values.decide. Outside a Run, waiting submits a done user-requested Task for snapshot review.',
+        'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
+        'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
+        'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
+        'Stopped stops the Task, its subtree and their Runs.'),
+      cliHelp: help('A Git diff in the description is attached automatically.',
+        'For multiline Markdown, pass --description-file - and write the text on stdin.') }),
   'task/comment': command('write', 'Add a comment without changing Task state; --urgent sends it to the requester now',
     taskCommentInput, [taskId, reportTitle, descriptionFile, urgent('this comment'), quote, sourceRequest, expectedTaskHash],
-    { attachesDiffs: 'description', output: taskWriteResultSchema, help: help('Code containing git diff between commits automatically attaches the submitted diff.') }),
+    { attachesDiffs: 'description', output: taskWriteResultSchema, cliHelp: help('A Git diff in the description is attached automatically.') }),
   'dependency/set': command('write', 'Replace a Task’s dependencies before its first start', dependencySetInput,
-    [taskId, list('after', 'Tasks that must finish first (comma-separated IDs)'), expectedTaskHash, quote, sourceRequest],
+    [taskId, list('after', 'IDs of Tasks that must finish first'), expectedTaskHash, quote, sourceRequest],
     { output: taskWriteResultSchema.extend({ dependencies: startOrderSchema }) }),
   'dependency/clear': command('write', 'Clear a Task’s dependencies before its first start', dependencyClearInput,
     [taskId, expectedTaskHash, quote, sourceRequest], { output: taskWriteResultSchema.extend({ dependencies: startOrderSchema }) }),
@@ -416,7 +411,7 @@ const definitions = {
     { output: serverSettingsSchema, help: help(
       `Host observations share a ${AGENT_CHECK_MS / 1000}-second deadline and are never saved. availability is keyed by profile and detected by adapter.`,
       'With --adapter codex --command /absolute/path/to/codex, inspected gives a version-only observation.',
-      'If the response is lost, the result is unknown. The CLI never sends this command again automatically.') }),
+      'A lost response leaves the execution result unknown. The command is never resent automatically.') }),
   'config/set': command('write', 'Save the screen\'s part of config.yaml', configSetShape, [
     text('config', 'Limits and optional aiStack and coordinatorAiStack as YAML'), text('agents', 'The agents block as written'),
     text('expectedConfigHash', 'Current config.yaml hash'),
@@ -461,7 +456,7 @@ function compileCommand(id: CommandName): Command {
   const { options } = definition;
   const access = id.startsWith('task/file/') || id.startsWith('task/attachment/')
     ? `task.${words.slice(1).join('-')}`
-    : words.length === 2 ? words.join('.') : `${words.slice(0, -1).join(' ')}.${words.at(-1)}`;
+    : words.length <= 2 ? words.join('.') : `${words.slice(0, -1).join(' ')}.${words.at(-1)}`;
   return { ...definition, id, words, options, access,
     path: definition.file?.path ?? commandPath(id),
     method: definition.file?.method ?? (definition.kind === 'read' ? 'GET' : 'POST') };

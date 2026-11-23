@@ -164,7 +164,7 @@ test('HTTP CLI help performs no work and exposes the server selector', async () 
   assert.match(reportHelp.stdout, /--description-file <path>/);
   assert.match(reportHelp.stdout, /--op-id <id>/);
   assert.match(reportHelp.stdout, /--estimate-minutes <value>/);
-  assert.match(reportHelp.stdout, /Omit --estimate-minutes\b/);
+  assert.match(reportHelp.stdout, /omit --estimate-minutes\b/i);
   const fieldHelp = (await run(['field', 'set', '-h'])).stdout;
   for (const flag of ['--many', '--no-many', '--required', '--no-required'])
     assert.match(fieldHelp, new RegExp(`^\\s+${flag}\\s{2,}`, 'm'));

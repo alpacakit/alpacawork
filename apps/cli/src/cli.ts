@@ -205,7 +205,7 @@ const serverOrderHelp = 'Selection order: --server, ALPACAWORK_SERVER, client.js
 async function runMain(args: string[], installedServer?: string): Promise<number> {
   const program = new Command().name('alpacawork').description('Task tree and agent runs over HTTP')
     .exitOverride().allowExcessArguments(false).enablePositionalOptions()
-    .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork telemetry      This PC\'s usage reporting: status, show or off\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
+    .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\n' + cliWriteHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork telemetry      This PC\'s usage reporting: status, show or off\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
   program.option('--server <url>', 'Use this server for one command (overrides environment and saved server)');
   const bound = commandTree<CommandContext>(spec => (input, context) => execute(spec, input, context));
   const selectedServer = () => selectServer(program.opts().server as string | undefined, process.env, installedServer);
@@ -271,11 +271,13 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     const command = group.command(words.at(-1)!).description(spec.description).allowExcessArguments(false);
     const writes = spec.kind === 'write';
     command.addHelpText('after', () => accessHelp(spec.access));
-    if (writes) command.addHelpText('after', '\n' + cliWriteHelp);
     if (spec.rules?.length) command.addHelpText('after', '\n' + commandRuleHelp(spec, true).join('\n'));
     if (spec.help) command.addHelpText('after', spec.help);
+    if (spec.cliHelp) command.addHelpText('after', spec.cliHelp);
     for (const option of spec.options) {
       const syntax = commandFlag(option);
+      const ending = /[.!?]$/.test(option.description) ? ' ' : '. ';
+      const description = option.cliDetail ? option.description + ending + option.cliDetail : option.description;
       if (option.kind === 'boolean') {
         const negative = syntax.replace(/^--/, '--no-');
         const positiveOption = syntax.slice(2), negativeOption = negative.slice(2);
@@ -285,18 +287,18 @@ async function runMain(args: string[], installedServer?: string): Promise<number
             throw new Problem(PROBLEM_CODE.invalidInput, `${syntax} and ${negative} cannot be used together`);
           first = name;
         };
-        command.option(syntax, option.description).option(negative, 'Disable ' + syntax)
+        command.option(syntax, description).option(negative, 'Disable ' + syntax)
           .on(`option:${positiveOption}`, mark(syntax)).on(`option:${negativeOption}`, mark(negative));
-      } else if (option.kind === 'number') command.option(`${syntax} <value>`, option.description, (value: string) => {
+      } else if (option.kind === 'number') command.option(`${syntax} <value>`, description, (value: string) => {
         if (option.nullable && value === 'null') return value;
         if (!/^[0-9]+$/.test(value)) throw new Problem(PROBLEM_CODE.invalidInput, `${syntax} needs a positive integer`);
         return Number(value);
       });
-      else if (option.kind === 'list') command.option(`${syntax} <value>`, option.description,
+      else if (option.kind === 'list') command.option(`${syntax} <value>`, description,
         (value: string, previous: string[] = []) => [...previous, ...value.split(',')]);
-      else command.option(`${syntax} <${option.kind === 'file' ? 'path' : 'value'}>`, option.description);
+      else command.option(`${syntax} <${option.kind === 'file' ? 'path' : 'value'}>`, description);
     }
-    if (writes) command.option('--op-id <id>', 'Operation key (random UUID when omitted; specify to check after process loss)');
+    if (writes) command.option('--op-id <id>', 'Operation ID (new UUID if omitted). See alpacawork -h for retry rules.');
     command.action(async (options: Record<string, unknown>) => {
       const opId = writes ? operationId(options.opId) : undefined;
       const input = spec.parse(await inputFor(spec, options));

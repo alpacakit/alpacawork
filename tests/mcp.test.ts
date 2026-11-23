@@ -141,10 +141,12 @@ test('HTTP and stdio MCP share authorization, restore fencing, receipts and file
   const denied = await call(read('project shelf'));
   assert.equal(denied.result.isError, true);
   assert.equal(text(denied).error.code, PROBLEM_CODE.forbidden);
-  const help = text(await call(read('help', { commands: ['task get', 'config inspect', 'task file get'] })));
-  assert.equal(help.commands[0].inputs.find((input: { key: string }) => input.key === 'task').schema.type, 'string');
-  assert.equal(help.commands[2].inputs.some((input: { key: string }) => input.key === 'output'), false);
+  const help = text(await call(read('help', { commands: ['task get', 'config inspect', 'task file get', 'help', 'guide'] })));
+  assert.equal(help.commands[0].inputs.task.type, 'string');
+  assert.equal(Object.hasOwn(help.commands[2].inputs, 'output'), false);
   assert.match(help.commands[1].notes.join(' '), /unknown/);
+  assert.equal(help.commands[3].inputs.commands.type, 'array');
+  assert.equal(help.commands[4].inputs.name.type, 'string');
   assert.match(text(await call(read('guide', { name: 'SKILL.md' }))).text, /# alpacawork/);
   const malformed = await call(read('guide', { name: '../package.json' }));
   assert.equal(text(malformed).error.code, PROBLEM_CODE.invalidInput);

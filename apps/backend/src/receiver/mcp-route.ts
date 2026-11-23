@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { CLI_CONTRACT, CONTRACT_HEADER } from '@alpacawork/contract/client-contract';
 import { byteInputFromMcp, byteRequest, commandCatalog, type Command } from '@alpacawork/contract/commands';
 import {
-  mcpFileReadOptions, mcpInlineFileBytes, mcpPath, mcpProtocolVersions, mcpReadTool,
+  mcpFileReadOptions, mcpFlagGuide, mcpInlineFileBytes, mcpPath, mcpProtocolVersions, mcpReadTool,
   mcpRelayHeader, mcpSourceHeader, mcpWriteTool, type McpFileReadOptions,
 } from '@alpacawork/contract/mcp';
 import { RESTORE_HEADER, restoreIdSchema } from '@alpacawork/contract/recovery';
@@ -201,7 +201,7 @@ export function installMcpRoute(api: Hono, options: Options) {
       if (!requested.success) return rpcError(id, -32602, 'protocolVersion is required');
       return rpc(id, { protocolVersion: mcpProtocolVersions.find(each => each === requested.data.protocolVersion) ?? mcpProtocolVersions[0],
         capabilities: { tools: {} }, serverInfo: { name: 'alpacawork', version: options.version },
-        instructions: claim.run ? terminalInstructions : coordinatorInstructions });
+        instructions: (claim.run ? terminalInstructions : coordinatorInstructions) + ' ' + mcpFlagGuide });
     }
     if (method === 'ping') return rpc(id, {});
     if (method === 'tools/list') return rpc(id, { tools });
