@@ -249,7 +249,7 @@ export class ProjectionOwner {
     const previous = before && usableRecords(before.records, () => before.good);
     const rows = { before: (id: string) => before?.derived(id), after: derive };
     let effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(['row','view','history','files','membership','page','search','timeline','seat','push'])])),
-      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(records.taskIds()) }, meta: true }
+      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(before ? records.taskIds() : []) }, meta: true }
       : affected({ ...change!, before: previous!, after: readable }, rows);
     // The Tasks this publication gives facets of its own; their scopes follow from the same rule (rescope).
     const forced = new Set<string>();

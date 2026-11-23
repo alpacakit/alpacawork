@@ -414,7 +414,7 @@ export const affected = (change: RecordsChange, rows?: DerivedRows): AffectedSet
     // R14: the Tasks that start after Y (their rows, views, closed page rows and search rows carry the start order).
     if (c.title || c.state || c.lifecycle || c.unfinished) gather.addAll(gather.each(reader => reader.dependents(y)), ['row', 'view']);
     // R5, R6, R19, B9: a move, a kind change or a lifecycle change re-places and re-judges the whole subtree.
-    if (c.parent || c.kind || c.lifecycle) gather.addAll(gather.subtree(y), [...ALL_ROW, 'timeline', 'history']);
+    if (c.parent || c.kind || c.lifecycle) gather.addAll(gather.subtree(y), [...ALL_ROW, 'history']);
     // R16: the ancestors' heads every view below shows; H8: the History events that name Y.
     if (c.title || c.parent || c.kind || c.lifecycle) {
       gather.addAll(gather.subtree(y), ['view']);
@@ -441,7 +441,7 @@ export const affected = (change: RecordsChange, rows?: DerivedRows): AffectedSet
     if (c.parentVisible || c.openQuestions || c.parent || c.title || c.requests || c.runs) gather.addAll(gather.each(reader => {
       const parent = reader.parent(y);
       return parent === null ? [] : [parent];
-    }), ['history', 'timeline']);
+    }), ['history']);
     // H8: the crew a History names reads Y's placements and Runs.
     if (c.placements || c.runs) gather.addAll(gather.each(reader => reader.historyReferrers(y)), ['history']);
     // H2: History authors and recipients read the placements Y wrote with.
@@ -578,17 +578,21 @@ function listedRow(derived: TaskDerived | undefined): string {
 
 /** What a Task's view shows of its derived facts: its row (its ball too), placements and Runs, without activity. */
 const viewFacts = (derived: TaskDerived | undefined) => JSON.stringify(derived ? [derived.row, withoutActivity(derived)] : null);
-/** What a strip above a Task reads of it: its Runs' spans (belowRuns, the axis). */
-const runSpans = (derived: TaskDerived | undefined) =>
-  JSON.stringify(derived?.runs.map(run => [run.id, run.state, run.startedAt, run.endedAt]) ?? []);
+/**
+ * What the strips and axis of the rows above a Task read of it (belowRuns, busy, earliest): its Runs' spans, whether it
+ * is read at all (it exists in a listed project) and where it sits.
+ */
+const readAbove = (reader: RecordsReader, derived: TaskDerived | undefined, task: TaskId) =>
+  !reader.bundle(task) || !reader.shelf().listed.has(reader.projectOf(task)) ? null
+    : JSON.stringify([derived?.runs.map(run => [run.id, run.state, run.createdAt, run.startedAt, run.endedAt]) ?? [], reader.ancestors(task)]);
 
 /**
  * The scopes of the resources that changed. Closed pages and search return a Task's row as it is: when an affected
  * Task's own row (what activity alone never moves) differs between the two points, every scope it is listed in at
  * either point changes. A row's time strip is made from its own row (without what descendants decide), History events,
  * log, Runs and placements, and from the spans of the Runs below it: a Task's own strip changes with its row, its
- * records (its timeline facet) and its History; its ancestors' strips change only when its Runs' spans or its place
- * change, at either point. What descendants decide of a row (counts, movedAt and the order) is the aggregate's
+ * records (its timeline facet) and its History; its ancestors' strips change only when what they read of it
+ * (readAbove) changes, at either point. What descendants decide of a row (counts, movedAt and the order) is the aggregate's
  * (aggregateResources), and no strip carries it. A Task whose row was reached has its view made old when its derived
  * facts moved.
  */
@@ -612,8 +616,7 @@ export function rescope(set: AffectedSet, tasks: Iterable<TaskId>, before: Recor
     if (!facets) continue;
     const rowChanged = facets.has('row') && listedRow(rows.before(task)) !== listedRow(rows.after(task));
     const own = rowChanged || facets.has('timeline') || facets.has('history');
-    const below = runSpans(rows.before(task)) !== runSpans(rows.after(task)) || !!before.bundle(task) !== !!after.bundle(task)
-      || before.ancestors(task).join() !== after.ancestors(task).join();
+    const below = readAbove(before, rows.before(task), task) !== readAbove(after, rows.after(task), task);
     if (!rowChanged && !own && !below) continue;
     for (const [reader, derived] of [[before, rows.before(task)], [after, rows.after(task)]] as const) {
       if (!reader.bundle(task)) continue;
