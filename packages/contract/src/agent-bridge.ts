@@ -1,6 +1,7 @@
 /** The built-in bridges' stdin/stdout boundary. Provider-specific objects never cross it. */
 import { z } from 'zod';
 import { tokenCountersSchema } from './run-contract.js';
+import type { RunFailure } from './run-failure.js';
 
 export const agentUsageSchema = z.object({ scope: z.enum(['conversation', 'run']), counters: tokenCountersSchema }).strict();
 export type AgentUsage = z.infer<typeof agentUsageSchema>;
@@ -12,6 +13,7 @@ export type BridgeEvent =
   | { type: 'input.uncertain'; id: string; message: string }
   | { type: 'turn.started' }
   | { type: 'turn.completed'; usage: AgentUsage | null }
-  | { type: 'turn.failed'; error: { message: string } }
+  /** `cause`: the bridge recognized the agent's own report that its plan or the model ran out (see RunFailure). */
+  | { type: 'turn.failed'; error: { message: string; cause?: RunFailure['cause'] } }
   | { type: 'error'; message: string }
   | { type: 'item.started' | 'item.completed'; item: { type: string; [key: string]: unknown } };

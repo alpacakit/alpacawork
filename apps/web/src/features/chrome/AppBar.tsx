@@ -12,6 +12,7 @@ import { cancelPendingSearch, focusSearchInput } from "./search-ref";
 import { cn } from "@/lib/utils";
 import { SearchField } from "./SearchField";
 import { PresenceMenu } from './PresenceMenu';
+import { LimitsMenu } from './LimitsMenu';
 import { ProjectMenu } from "./ProjectMenu";
 import { OfflineMark } from "./OfflineMark";
 import { useOfflineShown } from "@/data/reach";
@@ -68,6 +69,8 @@ export function AppBar() {
         </Button>
         {/* Out of reach, the screen's one offline mark, before the person's own buttons. */}
         {offline && <OfflineMark />}
+        {/* How much of its plan the first agent has used; a press shows every agent's. */}
+        <LimitsMenu />
         <PresenceMenu />
         {/* The gear ends its icon on the list's right edge, as each line's last icon does (press-end, press-reach). */}
         <Button

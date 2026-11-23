@@ -103,6 +103,16 @@
       "elapsed": "Elapsed",
       "report": "Report estimate"
     },
+    "tokens": {
+      "cacheRead": "Cache reads",
+      "cacheWrite": "Cache writes",
+      "heading": "Tokens used",
+      "input": "Input",
+      "output": "Output",
+      "scope": "Includes the tasks below; finished runs only.",
+      "unknown_one": "{{count}} more run not recorded.",
+      "unknown_other": "{{count}} more runs not recorded."
+    },
     "turn": {
       "children": "Request limit",
       "depth": "Depth limit",

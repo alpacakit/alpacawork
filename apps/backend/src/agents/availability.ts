@@ -1,37 +1,12 @@
 /** On-demand host observations. One deadline and one probe per target/operation for a whole inspection. */
-import { spawn } from 'node:child_process';
 import { setMaxListeners } from 'node:events';
-import { join } from 'node:path';
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 import { settingAdapter, type AgentSetting } from '@alpacawork/contract/agent-settings';
 import { executableCandidates, executableIssue, resolveExecutable } from '@alpacawork/core';
 import { AGENT_CHECK_MS, type AgentAvailability } from '@alpacawork/contract';
-import { agentEnvironment } from '../runs/env.js';
-import { appRoot } from '../app-paths.js';
-export type InspectionEnvironment = { cwd: string; env: Readonly<Record<string, string | undefined>>; bridge?: readonly string[] };
+import { probe, probeArgv, type InspectionEnvironment, type Probe } from './probe.js';
+export type { InspectionEnvironment } from './probe.js';
 const host = (): InspectionEnvironment => ({ cwd: process.cwd(), env: process.env });
-type Probe = { status: number | null; stdout: string; failed: boolean };
-function probe(argv: readonly string[], environment: InspectionEnvironment, names: readonly string[], signal: AbortSignal): Promise<Probe> {
-  if (signal.aborted) return Promise.resolve({ status: null, stdout: '', failed: true });
-  return new Promise(resolve => {
-    const child = spawn(argv[0]!, argv.slice(1), { cwd: environment.cwd,
-      env: agentEnvironment(environment.env, environment.env.PATH ?? '', undefined, names),
-      detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '', size = 0, failed = false;
-    const stop = () => { if (child.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; } } };
-    const abort = () => { failed = true; stop(); };
-    signal.addEventListener('abort', abort, { once: true });
-    for (const stream of [child.stdout, child.stderr]) stream.on('data', (data: Buffer) => {
-      size += data.length;
-      if (size > 64 * 1024) abort();
-      else if (stream === child.stdout) stdout += data.toString();
-    });
-    child.once('error', () => { failed = true; });
-    child.once('close', (status, exitSignal) => {
-      signal.removeEventListener('abort', abort); stop(); resolve({ status, stdout, failed: failed || exitSignal !== null });
-    });
-  });
-}
 /** The same admitted prefix for native and bridge commands; options remain separate. */
 export function commandPrefix(id: BuiltinAdapterId, command: string | undefined): string[] {
   const adapter = AGENT_ADAPTERS[id];
@@ -50,10 +25,7 @@ async function inspect<T>(environment: InspectionEnvironment, timeoutMs: number,
   const probes = new Map<string, Promise<Probe>>();
   const check = (id: BuiltinAdapterId, command: string | null, args: readonly string[], names: readonly string[]) => {
     const key = JSON.stringify([id, command, args, names]);
-    if (!probes.has(key)) {
-      const argv = command === null ? [...(environment.bridge ?? [process.execPath, join(appRoot(import.meta.url), 'apps/agent-cli/dist/cli.js')]), id] : [command];
-      probes.set(key, probe([...argv, ...args], environment, names, controller.signal));
-    }
+    if (!probes.has(key)) probes.set(key, probe([...probeArgv(id, command, environment), ...args], environment, names, controller.signal));
     return probes.get(key)!;
   };
   const observe = async (id: BuiltinAdapterId, setting?: AgentSetting, versionOnly = false): Promise<AgentAvailability> => {

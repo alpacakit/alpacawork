@@ -5,6 +5,9 @@ import { managedSkillsRoot } from '@alpacawork/core/installed-skills';
 import { CopilotClient, RuntimeConnection, approveAll, type CopilotSession, type SessionEvent } from '@github/copilot-sdk';
 import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
+import { measuredUsage, usageRecord } from './usage.js';
+import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
+import { limitWindow, type LimitWindow } from '@alpacawork/contract/agent-limits';
 
 type Options = { model: string | null; output: string | null; resume: string | null; serverUrl: string | null };
 const USAGE = 'Usage: alpacawork-agent copilot [-m MODEL] [-o FILE] [--server-url URL] [resume SESSION]';
@@ -33,6 +36,8 @@ export class CopilotRuntime implements Runtime {
   private buffered: SessionEvent[] = [];
   private waiting = new Map<string, { input: Instruction; observed: boolean; interactionId?: string }>();
   private lastMessage = '';
+  /** Every model call of this process (one Run), so each turn's completion carries the Run's whole usage so far. */
+  private calls: unknown[] = [];
   private turnCount = 0;
   private lastFailed = false;
   private health: NodeJS.Timeout | null = null;
@@ -114,7 +119,10 @@ export class CopilotRuntime implements Runtime {
   }
 
   private receive(event: SessionEvent): void {
-    if (this.closing || event.agentId) return;
+    if (this.closing) return;
+    // Sub-agents' model calls are this Run's cost too; their other events are not this conversation's.
+    if (event.type === 'assistant.usage') { this.calls.push(event.data); return; }
+    if (event.agentId) return;
     if (event.type === 'user.message' && event.data.messageId) {
       const pending = this.waiting.get(event.data.messageId);
       if (!pending) return;
@@ -166,7 +174,7 @@ export class CopilotRuntime implements Runtime {
     if (error) this.io.emit({ type: 'turn.failed', error: { message: error } });
     else {
       if (this.options.output) writeFileSync(this.options.output, this.lastMessage);
-      this.io.emit({ type: 'turn.completed', usage: null });
+      this.io.emit({ type: 'turn.completed', usage: copilotUsage(this.calls) });
     }
     this.io.idle();
   }
@@ -189,6 +197,30 @@ export class CopilotRuntime implements Runtime {
   }
 }
 
+/** Model calls summed. The SDK's input count includes the cache's reads and writes, as Codex's does. */
+export function copilotUsage(calls: readonly unknown[]): AgentUsage | null {
+  if (!calls.length) return null;
+  const sum = (key: string) => calls.reduce<number | null>((total, call) => {
+    const n = usageRecord(call)[key];
+    return total !== null && typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 ? total + n : null;
+  }, 0);
+  const input = sum('inputTokens'), read = sum('cacheReadTokens'), write = sum('cacheWriteTokens');
+  return measuredUsage('run', { input: input !== null && read !== null && write !== null ? input - read - write : null,
+    cacheRead: read, cacheWrite: write, output: sum('outputTokens') });
+}
+
+/** The monthly allowance a limit applies to: premium requests when the plan has them, otherwise chat. Completions are the editor's. */
+export function copilotLimitWindows(value: unknown, now = Date.now()): LimitWindow[] {
+  const snapshots = usageRecord(usageRecord(value).quotaSnapshots);
+  const limited = ['premium_interactions', 'chat'].map(key => usageRecord(snapshots[key]))
+    .find(quota => quota.isUnlimitedEntitlement === false && typeof quota.entitlementRequests === 'number' && quota.entitlementRequests > 0);
+  if (!limited || typeof limited.remainingPercentage !== 'number') return [];
+  // A plan without a monthly cycle reports the moment of the read as its reset: that is no reset.
+  const reset = typeof limited.resetDate === 'string' && Date.parse(limited.resetDate) > now ? limited.resetDate : null;
+  const read = limitWindow({ kind: 'monthly', usedPercent: 100 - limited.remainingPercentage, resetsAt: reset });
+  return read ? [read] : [];
+}
+
 /** No conversation/session is created by these model-free checks. Exit 2 means uncheckable. */
 export async function inspectCopilot(version = false): Promise<void> {
   const client = new CopilotClient({ workingDirectory: process.cwd() });
@@ -203,6 +235,15 @@ export async function inspectCopilot(version = false): Promise<void> {
     try { await client.stop(); }
     catch { process.exitCode = 2; }
   }
+}
+
+/** The account's quota, read without a session. */
+export async function copilotLimits(): Promise<LimitWindow[]> {
+  const client = new CopilotClient({ workingDirectory: process.cwd() });
+  try {
+    await client.start();
+    return copilotLimitWindows(await client.rpc.account.getQuota({}));
+  } finally { await client.stop().catch(() => {}); }
 }
 
 /** Optional module inspection: the entry point dispatches without knowing agent-specific flags. */

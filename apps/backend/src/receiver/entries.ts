@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { readProjectShelf } from '../control/project-shelf.js';
 import { SCREEN, authorizeRead, commandGroups, readNode, requireAdmin, requireRoot, withAct, withRequestLimit, writeNode, type Context as TaskContext } from '../entries.js';
 import { type HostMonitor } from '../host/monitor.js';
+import type { AgentLimitsMonitor } from '../agents/limits.js';
 import { maintenance } from '../maintenance.js';
 import type { PublishedFrame } from './projection-contract.js';
 import { ProjectedPages } from './index-pages.js';
@@ -26,6 +27,7 @@ export interface Context extends TaskContext {
   push?: PushStore;
   presence?: Presence;
   host?: HostMonitor;
+  limits?: AgentLimitsMonitor;
   presenceChanged?: () => void;
   presenceSettings?: () => ReturnType<ReturnType<typeof createPersonSettings>['values']>;
   /** The screen's index: every active project's Tasks. */
@@ -307,6 +309,13 @@ const hostStatus = withAct(defineEntryEndpoint(empty('status'), {
     return requireHost(context).status();
   }, channels: [bindHttpEntry({ method: 'GET' })],
 }), SCREEN);
+/** Each kind of agent's plan limits, in the screen's order. */
+const agentLimits = withAct(defineEntryEndpoint(empty('limits'), {
+  handler: (input: unknown, context: Context) => {
+    parseInput(emptyInput, input);
+    return context.limits!.read();
+  }, channels: [bindHttpEntry({ method: 'GET' })],
+}), SCREEN);
 const hostEpisodeEntry = defineEntry({ name: 'episode', parameters: [
   defineParameter({ name: 'id', description: 'Episode ID', requirement: required(), codec: codecs.string() }),
 ], project: ({ values }) => values });
@@ -327,6 +336,7 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'status', description: 'Current values, the last hour and tight episodes', endpoints: [hostStatus] }),
     defineEntryNode({ name: 'episode', description: 'Minute values around one tight episode', endpoints: [hostEpisode] }),
   ] }),
+  defineEntryNode({ name: 'limits', description: "Agents' plan usage limits", endpoints: [agentLimits] }),
   defineEntryNode({ name: 'presence', description: 'Current screen activity', endpoints: [activePresence], children: [
     defineEntryNode({ name: 'away', description: 'Set away for at least one minute', endpoints: [awayPresence] }),
     defineEntryNode({ name: 'pause', description: 'Pause notifications', endpoints: [pausePresence] }),

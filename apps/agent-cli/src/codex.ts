@@ -1,5 +1,7 @@
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
+import { limitWindow, type LimitWindow } from '@alpacawork/contract/agent-limits';
+import type { RunFailure } from '@alpacawork/contract/run-failure';
 /** Codex-specific exec options and app-server protocol. */
 import { type ChildProcessByStdio } from 'node:child_process';
 import { spawn } from 'node:child_process';
@@ -9,6 +11,11 @@ import { isAbsolute } from 'node:path';
 import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
 import { unknownOption, withUsage } from './options.js';
 import { defaultCodexHome, originalCodexThread, prepareCodexHome } from './codex-home.js';
+
+/** Codex's own error kinds that mean its plan or the model ran out. */
+const CODEX_CAUSES: Record<string, NonNullable<RunFailure['cause']>> = { usageLimitExceeded: 'session_limit', serverOverloaded: 'model_capacity' };
+const INITIALIZE = { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.6' },
+  capabilities: { experimentalApi: false, requestAttestation: false } };
 
 type Options = { model: string | null; config: string[]; features: string[]; sandbox: string | null;
   output: string | null; resume: string | null };
@@ -140,8 +147,7 @@ export class CodexRuntime implements Runtime {
       try { this.receive(chunk); }
       catch (error) { this.io.fatal(error instanceof Error ? error : new Error(String(error))); }
     });
-    await this.request('initialize', { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.6' },
-      capabilities: { experimentalApi: false, requestAttestation: false } });
+    await this.request('initialize', INITIALIZE);
     this.write({ method: 'initialized', params: {} });
   }
 
@@ -212,11 +218,8 @@ export class CodexRuntime implements Runtime {
         this.io.emit({ type: 'turn.completed', usage: this.usage });
       } else {
         this.lastFailed = true;
-        this.io.emit({ type: 'turn.failed', error: {
-          message: turn.error?.message ?? `turn ${turn.status}`,
-          ...turn.error?.codexErrorInfo === 'usageLimitExceeded' || turn.error?.codexErrorInfo === 'serverOverloaded'
-            ? { codexErrorInfo: turn.error.codexErrorInfo } : {},
-        } });
+        const cause = CODEX_CAUSES[turn.error?.codexErrorInfo];
+        this.io.emit({ type: 'turn.failed', error: { message: turn.error?.message ?? `turn ${turn.status}`, ...cause ? { cause } : {} } });
       }
       this.io.idle();
     } else if (message.method === 'error') {
@@ -248,4 +251,42 @@ export function codexUsage(value: unknown): AgentUsage | null {
   const known = [input, read, write].every(n => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0);
   return measuredUsage('conversation', { input: known ? (input as number) - (read as number) - (write as number) : null,
     cacheRead: read, cacheWrite: write, output: total.outputTokens });
+}
+
+/** The account's own limit windows (`account/rateLimits/read`); no thread is opened and no model is called. */
+export async function codexLimits(command: string): Promise<LimitWindow[]> {
+  const server = spawn(command, ['app-server'], { stdio: ['pipe', 'pipe', 'ignore'] });
+  try {
+    const result = await new Promise<unknown>((resolve, reject) => {
+      let buffered = '';
+      const write = (message: object) => server.stdin.write(`${JSON.stringify(message)}\n`);
+      server.once('error', reject);
+      server.once('exit', code => reject(new Error(`codex app-server ended (${code})`)));
+      server.stdout.setEncoding('utf8');
+      server.stdout.on('data', (chunk: string) => {
+        buffered += chunk;
+        for (let end = buffered.indexOf('\n'); end !== -1; end = buffered.indexOf('\n')) {
+          let message: Message;
+          try { message = JSON.parse(buffered.slice(0, end)); } catch { message = {}; }
+          buffered = buffered.slice(end + 1);
+          if (message.error && (message.id === 1 || message.id === 2)) reject(new Error(message.error.message ?? 'app-server error'));
+          else if (message.id === 1) { write({ method: 'initialized', params: {} }); write({ id: 2, method: 'account/rateLimits/read', params: {} }); }
+          else if (message.id === 2) resolve(message.result);
+        }
+      });
+      write({ id: 1, method: 'initialize', params: INITIALIZE });
+    });
+    return codexLimitWindows(result);
+  } finally { server.kill('SIGTERM'); }
+}
+
+/** Primary and secondary are positions, not lengths: each window says its own length. */
+export function codexLimitWindows(value: unknown): LimitWindow[] {
+  const limits = usageRecord(usageRecord(value).rateLimits);
+  return [limits.primary, limits.secondary].flatMap(entry => {
+    if (entry == null) return [];
+    const window = usageRecord(entry);
+    const read = limitWindow({ minutes: window.windowDurationMins as number, usedPercent: window.usedPercent, resetsAt: window.resetsAt });
+    return read ? [read] : [];
+  });
 }

@@ -109,6 +109,17 @@
       "elapsed": "Transcurrido",
       "report": "Informe previsto"
     },
+    "tokens": {
+      "cacheRead": "Lecturas de caché",
+      "cacheWrite": "Escrituras de caché",
+      "heading": "Tokens usados",
+      "input": "Entrada",
+      "output": "Salida",
+      "scope": "Incluye las tareas inferiores; solo ejecuciones terminadas.",
+      "unknown_one": "{{count}} ejecución más sin registro.",
+      "unknown_many": "{{count}} ejecuciones más sin registro.",
+      "unknown_other": "{{count}} ejecuciones más sin registro."
+    },
     "turn": {
       "children": "Límite de solicitudes",
       "depth": "Límite de profundidad",

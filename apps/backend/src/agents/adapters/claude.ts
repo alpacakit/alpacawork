@@ -1,11 +1,12 @@
 import { agentUsageSchema, type AgentUsage } from '@alpacawork/contract/agent-bridge';
+import { limitWindow, type LimitWindow } from '@alpacawork/contract/agent-limits';
 import { RUN_RESULT_LIMIT } from '@alpacawork/contract/run';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 import { claudeActivity, ToolResults } from './activity.js';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
-import type { AgentAdapter, InputProtocol } from './types.js';
+import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
 
 const ownSession = (row: Record<string, unknown>, session: string | null) =>
   row.parent_tool_use_id == null && session !== null && row.session_id === session;
@@ -34,8 +35,41 @@ export function claudeUsage(value: unknown): AgentUsage | null {
   } });
   return parsed.success ? parsed.data : null;
 }
+/** `/usage`'s windows: the 5-hour session, the week, and a week per model (Fable, Opus…). Utilization is 0-100 here. */
+export function claudeLimitWindows(value: unknown): LimitWindow[] {
+  const limits = object(value);
+  const named: [string, number, string | null][] = [['five_hour', 300, null], ['seven_day', 10_080, null],
+    ['seven_day_opus', 10_080, 'Opus'], ['seven_day_sonnet', 10_080, 'Sonnet']];
+  const windows = named.flatMap(([key, minutes, model]) => {
+    const entry = limits[key];
+    return entry == null ? [] : [limitWindow({ minutes, model, usedPercent: object(entry).utilization, resetsAt: object(entry).resets_at })];
+  });
+  const scoped = Array.isArray(limits.model_scoped) ? limits.model_scoped.map(object) : [];
+  for (const entry of scoped) {
+    const model = typeof entry.display_name === 'string' ? entry.display_name : null;
+    if (model && !windows.some(window => window?.model === model))
+      windows.push(limitWindow({ minutes: 10_080, model, usedPercent: entry.utilization, resetsAt: entry.resets_at }));
+  }
+  return windows.filter(window => window !== null);
+}
+/** A control request answered without a conversation or a model call; the process ends when its stdin does. */
+export const claudeLimits: LimitsProbe = {
+  args: ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'],
+  input: `${JSON.stringify({ type: 'control_request', request_id: 'limits', request: { subtype: 'get_usage', skip_behaviors: true } })}\n`,
+  read(stdout) {
+    for (const line of stdout.split('\n')) {
+      let row: Record<string, unknown>;
+      try { row = object(JSON.parse(line)); } catch { continue; }
+      const response = object(row.response);
+      if (row.type !== 'control_response' || response.request_id !== 'limits') continue;
+      const usage = object(response.response);
+      return response.subtype === 'success' && usage.rate_limits_available === true ? claudeLimitWindows(usage.rate_limits) : null;
+    }
+    return null;
+  },
+};
 export const claudeAdapter: AgentAdapter = {
-  input: claudeInput, activity: claudeActivity,
+  input: claudeInput, activity: claudeActivity, limits: claudeLimits,
   earlySession: invocation => invocation.session,
   skillCatalogContext: input => catalogContext('claude', input),
   read(invocation, folder, exit) {

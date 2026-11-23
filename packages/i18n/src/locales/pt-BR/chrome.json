@@ -19,6 +19,35 @@
   "gathered": {
     "markAllRead": "Marcar tudo como lido"
   },
+  "limits": {
+    "barLabel": "Limites de uso da IA: {{agent}} usou {{percent}} do limite {{window}}",
+    "barUnknown": "Limites de uso da IA: não foi possível ler os limites de {{agent}}",
+    "none": "Nenhum limite agora",
+    "readAgo_one": "Lido há {{count}} min",
+    "readAgo_many": "Lido há {{count}} min",
+    "readAgo_other": "Lido há {{count}} min",
+    "readNow": "Lido agora",
+    "reset": {
+      "at": "Reinicia em {{when}}",
+      "inHours": "Reinicia em {{hours}}h {{minutes}}min",
+      "inMinutes_one": "Reinicia em {{count}} min",
+      "inMinutes_many": "Reinicia em {{count}} min",
+      "inMinutes_other": "Reinicia em {{count}} min"
+    },
+    "title": "Limites de uso da IA",
+    "unavailable": "Não foi possível ler. Verifique se está conectada",
+    "unsupported": "Esta IA não informa limites",
+    "window": {
+      "allModels": "{{period}} (todos os modelos)",
+      "hours_one": "{{count}} hora",
+      "hours_many": "{{count}} horas",
+      "hours_other": "{{count}} horas",
+      "model": "{{period}} ({{model}})",
+      "monthly": "Este mês",
+      "session": "5 horas",
+      "weekly": "Semanal"
+    }
+  },
   "notice": {
     "back": "A tela voltou a se atualizar",
     "diagnostics": "Ver status",
