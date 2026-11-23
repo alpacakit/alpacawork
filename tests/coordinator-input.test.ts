@@ -34,7 +34,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
     const setting = fixtureAgentSetting(adapter);
     setting.params.model = ['one', 'two']; setting.params.effort = ['low', 'high'];
     if (adapter === 'codex') setting.params.fast = [];
-    writer.save('config.yaml', null, Buffer.from(stringify({ agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] })));
+    writer.save('config.yaml', null, Buffer.from(stringify({ agents: { fake: setting } })));
     project = initializeControlFixture(root);
   } finally { writer.close(); }
   process.env.PATH = installAgentStub(root, adapter === 'claude' ? 'claude' : 'alpacawork-agent', [process.execPath, agent, ...(adapter === 'claude' ? ['--fixture-native'] : [])]);

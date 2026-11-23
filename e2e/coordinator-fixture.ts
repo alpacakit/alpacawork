@@ -16,8 +16,7 @@ export function configureCoordinator(root: string) {
   const setting = fixtureAgentSetting('claude');
   setting.params.model = ['opus', 'sonnet']; setting.params.effort = ['medium', 'high'];
   // The fake goes first: with no tasks' or input's stack saved, the input runs on the first enabled agent.
-  const { coordinatorAiStack: _input, ...kept } = existing;
-  writeFixtureConfig(root, stringify({ ...kept, agents: { fake: setting, ...existing.agents } }, { lineWidth: 0 }));
+  writeFixtureConfig(root, stringify({ ...existing, agents: { fake: setting, ...existing.agents } }, { lineWidth: 0 }));
   return path;
 }
 
@@ -35,8 +34,7 @@ export const fakeCoordinatorArgv = [process.execPath, new URL('./fixture/fake-co
  * configured stay, for the Tasks' Runs. Before serve starts it is a `start` preparation; after, serve writes it.
  */
 export function startFakeCoordinator(root: string): void {
-  const { coordinatorAiStack: _input, ...config }: { agents?: Record<string, unknown>; coordinatorAiStack?: unknown } =
-    parse(readFileSync(join(root, 'config.yaml'), 'utf8'));
+  const config: { agents?: Record<string, unknown> } = parse(readFileSync(join(root, 'config.yaml'), 'utf8'));
   installAgentStub(root, 'claude', fakeCoordinatorArgv);
   writeFixtureConfig(root, stringify({ ...config, agents: {
     'fake-coordinator': fixtureAgentSetting('claude'), ...config.agents,

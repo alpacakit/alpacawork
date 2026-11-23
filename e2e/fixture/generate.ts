@@ -68,7 +68,6 @@ export function generate(root: string): void {
       claude: fixtureAgentSetting('claude'),
       codex: fixtureAgentSetting('codex'),
     },
-    coordinatorAiStack: [{ agent: 'claude', values: {} }],
   }, { lineWidth: 0 }));
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   try {

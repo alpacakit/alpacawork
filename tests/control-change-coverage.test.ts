@@ -51,7 +51,7 @@ test('seeded real operations cover writers and every committed row change has it
   after(() => { if (previousPath === undefined) delete process.env.PATH; else process.env.PATH = previousPath; });
   const setting = fixtureAgentSetting('claude');
   setting.params = Object.fromEntries(Object.keys(setting.params).map(key => [key, []]));
-  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] }));
+  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting } }));
   const journal = keepControlChanges(root, new ChangeLog(1024)); after(journal.close);
   const audit = changeAudit(root, journal.log); after(audit.close);
   const observed = observeWriteSites(inventory); after(observed.close);

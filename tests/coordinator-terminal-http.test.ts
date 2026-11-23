@@ -18,7 +18,7 @@ import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 const fake = new URL('./fixtures/fake-coordinator-agent.mjs', import.meta.url).pathname;
 type Snapshot = { id: string; cancelled: string[]; warm: string; turns: { id: string; status: string; ask: string }[] };
-const config = stringify({ agents: { fake: fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
+const config = stringify({ agents: { fake: fixtureAgentSetting('claude') } });
 
 /** Polls `check` until it holds: serve sweeps files on its own passes. */
 async function eventually(check: () => boolean, message: string, timeout = 20_000): Promise<void> {

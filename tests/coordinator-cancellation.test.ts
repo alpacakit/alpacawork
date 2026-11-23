@@ -14,7 +14,7 @@ import { saveCoordinatorAttachment, readCoordinatorAttachment, coordinatorFilePa
 import { reserveAttempt } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
-const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') } });
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-cancel-')));
   initializeControlFixture(root); writeFileSync(join(root, 'config.yaml'), config);
