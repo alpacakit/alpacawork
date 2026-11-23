@@ -49,7 +49,7 @@ Descarga la siguiente guía, léela completa y síguela para instalar alpacawork
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-Para instalarlo con comandos, ejecuta estas dos líneas en una terminal (en Windows, dentro de Ubuntu), en orden. La configuración inicial muestra lo que va a preparar y empieza cuando presionas Enter. Al terminar, muestra la URL de la pantalla en la línea `Abrir:` (`Open:` si la terminal está en inglés) y normalmente la abre en tu navegador.
+Para instalarlo con comandos, ejecuta estas dos líneas en una terminal (en Windows, dentro de Ubuntu), en orden. La configuración inicial muestra lo que va a preparar y empieza cuando presionas Enter.
 
 ```sh
 npm install -g alpacawork

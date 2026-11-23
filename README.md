@@ -79,7 +79,7 @@ Download the guide below, read all of it, and follow it to install alpacawork on
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-To install with commands, run these two lines in a terminal (on Windows, inside Ubuntu), in order. Setup lists what it will set up and starts when you press Enter. When it finishes, it prints the screen's URL on the `Open:` line and usually opens it in your browser.
+To install with commands, run these two lines in a terminal (on Windows, inside Ubuntu), in order. Setup lists what it will set up and starts when you press Enter.
 
 ```sh
 npm install -g alpacawork

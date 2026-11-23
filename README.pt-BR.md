@@ -49,7 +49,7 @@ Baixe o guia abaixo, leia-o inteiro e siga as instruções para instalar o alpac
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-Para instalar pela linha de comando, execute estas duas linhas no terminal (no Windows, dentro do Ubuntu), nesta ordem. A configuração inicial mostra o que vai preparar e começa quando você pressiona Enter. Ao terminar, ela mostra a URL da tela na linha `Abra:` (`Open:` se o terminal estiver em inglês) e normalmente a abre no navegador.
+Para instalar pela linha de comando, execute estas duas linhas no terminal (no Windows, dentro do Ubuntu), nesta ordem. A configuração inicial mostra o que vai preparar e começa quando você pressiona Enter.
 
 ```sh
 npm install -g alpacawork

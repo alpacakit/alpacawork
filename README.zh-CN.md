@@ -49,7 +49,7 @@ alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 C
 https://raw.githubusercontent.com/alpacakit/alpacawork/main/skills/alpacawork/references/setup.md
 ```
 
-想用命令安装的话，在终端（在 Windows 上是 Ubuntu 中）依次执行以下两行。初始设置会列出要设置的内容，按 Enter 后开始。完成后，它会在 `打开：` 一行（终端为英文时是 `Open:`）中显示界面的 URL，通常也会在浏览器中打开它。
+想用命令安装的话，在终端（在 Windows 上是 Ubuntu 中）依次执行以下两行。初始设置会列出要设置的内容，按 Enter 后开始。
 
 ```sh
 npm install -g alpacawork
