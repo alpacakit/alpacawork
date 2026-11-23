@@ -246,12 +246,11 @@ export function readAcquisition(query: Query) {
 export function recordCheckpointAcquisition(query: Query, id: string) {
   if (object(query.state.data)) stateFor(query).acquisition = { source: 'checkpoint', id, issued: 0, target: new WeakRef(query.state.data), canStartCheckpointSlot: false };
 }
-/** A complete personal receipt can carry forward this session's checkpoint basis. */
-export function deriveReadAcquisition(query: Query, receipt: 'personal' | 'other') {
+/** A receipt inherits the acquisition's checkpoint basis. Read evaluation decides whether its value can be stored. */
+export function deriveReadAcquisition(query: Query) {
   const state = stateFor(query), previous = state.acquisition;
   if (!previous || !object(query.state.data)) return;
-  state.acquisition = { ...previous, source: 'derived', target: new WeakRef(query.state.data),
-    canStartCheckpointSlot: receipt === 'personal' && previous.canStartCheckpointSlot };
+  state.acquisition = { ...previous, source: 'derived', target: new WeakRef(query.state.data) };
 }
 // Monotonic transport causality. Restore, receipts and live publication cannot invent a GET.
 let issuedSequence = 0;

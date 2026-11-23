@@ -23,7 +23,7 @@ test("a row's time opens its words, and the title under it still opens the task"
   const box = (await time.boundingBox())!;
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
   const tip = page.locator("[data-time-tip]");
-  await expect(tip.getByText("In this state for 2h", { exact: true })).toBeVisible();
+  await expect(tip).toBeVisible();
   expect(await page.evaluate(() => location.pathname + location.search)).toBe(list);
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0);

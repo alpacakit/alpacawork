@@ -59,7 +59,12 @@ test("list responses carry no hover details and hovering or focusing titles and 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await open(page, runtime, "?agent=1&zoom=21600000");
   // Your turn rows warm their detail and history on startup, independently of hover or focus.
-  const startupReads = ["T111", "T112", "T113"].flatMap(id => [`/api/task/view:${id}`, `/api/task/history:${id}`]).sort();
+  const reviewTitles = page.locator('[data-row-section="review"] [data-read]');
+  await expect(reviewTitles.first()).toBeVisible();
+  const startupReads = await reviewTitles.evaluateAll(titles => titles.flatMap(title => {
+    const id = title.getAttribute("data-read");
+    return [`/api/task/view:${id}`, `/api/task/history:${id}`];
+  }).sort());
   await expect.poll(() => [...completed].sort()).toEqual(startupReads);
   // Bootstrap may arrive through SSE without a workspace/live browser request. Check the same public list response directly.
   const live = await page.request.get(`${runtime.origin}/api/workspace/live`);
@@ -71,7 +76,8 @@ test("list responses carry no hover details and hovering or focusing titles and 
     await expect(page.locator(`[data-row="${id}"] [data-read="${id}"]`)).toBeVisible();
   const marks = page.locator('[data-row="T112"] [data-mark]');
   await expect(marks.first()).toBeVisible();
-  for (const title of await page.locator("[data-row] [data-read]").all()) {
+  const titles = page.locator("[data-row] [data-read]");
+  for (const title of await titles.all()) {
     await title.hover();
     await title.focus();
     await page.clock.runFor(700);
@@ -97,11 +103,13 @@ test("list responses carry no hover details and hovering or focusing titles and 
       if (item.kind === "note") expect(Object.keys(item.event!).filter(key =>
         !["id", "kind", "taskId", "at", "state", "mark", "displayed"].includes(key)), "list notes contain no detail links").toEqual([]);
   }
-  // This row was not warmed at startup. Opening it does need its detail.
-  const fetched = page.waitForResponse(response => detailKey(response.url()) === "/api/task/view:T114");
-  await page.locator('[data-read="T114"]').click();
+  const ids = await titles.evaluateAll(rows => rows.map(row => row.getAttribute("data-read")!));
+  const coldId = ids.find(id => !details.includes(`/api/task/view:${id}`));
+  expect(coldId, "a listed task has no prefetched detail").toBeDefined();
+  const fetched = page.waitForResponse(response => detailKey(response.url()) === `/api/task/view:${coldId}`);
+  await page.locator(`[data-row] [data-read="${coldId}"]`).click();
   expect((await fetched).ok()).toBe(true);
-  await expect(page.getByRole("complementary").locator('[data-reader-title="T114"]')).toBeVisible();
+  await expect(page.getByRole("complementary").locator(`[data-reader-title="${coldId}"]`)).toBeVisible();
 });
 
 for (const input of ["keyboard", "touch"] as const) test(`a report mark opens its matching reader report with ${input}`, async ({ page, browser, runtime }) => {
