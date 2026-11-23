@@ -137,7 +137,7 @@ process.stdout.write(child.stdout||'');process.stderr.write(child.stderr||'');if
   // A source checkout without a receipt is allowed. This scenario starts with an installed older skill.
   await installed(f.root, ['alpacawork']);
   const w = callerWorkspace(t), owner = new CoordinatorConversation(w.root), conversation = owner.read();
-  const input = coordinatorMessageInputSchema.parse({ conversationId: conversation.id, id: randomUUID(), text: '$alpacawork original instruction', skills: ['alpacawork'], attachments: [] });
+  const input = coordinatorMessageInputSchema.parse({ conversationId: conversation.id, id: randomUUID(), text: '/alpacawork original instruction', skills: ['alpacawork'], attachments: [] });
   const counts = () => { const db = new ControlStore(w.root, { busyTimeoutMs: 1000 }, true);
     try { return db.read(db => ['requests', 'runs', 'tasks', 'task_log'].map(table => Number(db.prepare(`SELECT count(*) AS n FROM ${table}`).get()!.n))); } finally { db.close(); } };
   const before = counts(); let command = '';

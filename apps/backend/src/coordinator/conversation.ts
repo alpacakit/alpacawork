@@ -27,7 +27,7 @@ import { assignedSession, readAgentsSettings, type AgentsSettings } from '../age
 import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
 import { createCoordinatorReadState, languageLine, savedReplyLanguage } from '../receiver/person-state.js';
-import { coordinatorSkills } from './skills.js';
+import { assertSkillInvocations, coordinatorSkills } from './skills.js';
 import { coordinatorNextLaunch } from './continuation.js';
 import { assertManagedSkillsVersion } from './managed-skills-version.js';
 import { failedRun, handovers, readable, view, type Conversation } from './conversation-view.js';
@@ -179,6 +179,10 @@ export class CoordinatorConversation {
     const { launch, restartArgv, continued } = next, agent = next.row.agent;
     const mode: RequestMode = continued ? 'continue' : 'new', text = input.text;
     if (Buffer.byteLength(text) > PROTOCOL_LIMITS.prompt) throw new Problem(PROBLEM_CODE.tooLarge, 'Coordinator message is too large', undefined, { reason: { kind: 'coordinator_message_too_large' } });
+    if (input.message.skills?.length) {
+      assertSkillInvocations(launch.adapter, input.body, input.message.skills);
+      assertManagedSkillsVersion(input.message.skills);
+    }
     const session = continued ? continued.session : assignedSession(launch, agent);
     assertRunReservation(this.root);
     tx.insertConversationRequest({ id: input.id, conversationId: conversation.id, headRunId: head?.id ?? null, mode,
@@ -244,7 +248,6 @@ export class CoordinatorConversation {
           if (tx.coordinatorRuns(conversation.id).some(run => run.message.retryOf === message.retryOf))
             throw new Problem(PROBLEM_CODE.conflict, 'Message has already been sent again', undefined, { reason: { kind: 'message_already_sent_again' } });
         }
-        assertManagedSkillsVersion(message.skills ?? []);
         if (!settings.ok) throw settings.error;
         const acted = [...actedTasks(message)];
         const present = new Set(acted.length ? db.prepare(`SELECT external_id FROM tasks

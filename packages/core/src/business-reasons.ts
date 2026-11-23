@@ -170,6 +170,7 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('agent_unavailable') }).strict(),
   z.object({ kind: z.literal('new_conversation_required'), previous: z.string(), current: z.string() }).strict(),
   z.object({ kind: z.literal('conversation_has_changed') }).strict(),
+  z.object({ kind: z.literal('coordinator_ai_changed') }).strict(),
   z.object({ kind: z.literal('managed_skills_version'), skill: z.string(), expectedVersion: z.string(), currentVersion: z.string().nullable(), command: z.string() }).strict(),
   z.object({ kind: z.literal('coordinator_message_not_conversation') }).strict(),
   z.object({ kind: z.literal('reply_target_unavailable') }).strict(),
