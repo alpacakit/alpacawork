@@ -590,8 +590,16 @@ export async function startServer(root: string, port: number, options: ServerOpt
       const sentRestoreId = c.req.header(RESTORE_HEADER) ?? null;
       const operationId = c.req.header('X-Alpacawork-Op-Id') ?? null;
       if (command?.kind === 'run') {
-        if (sentRestoreId === null) throw new Problem(PROBLEM_CODE.invalidInput, 'Restore ID is required to execute a command');
-        if (operationId !== null) throw new Problem(PROBLEM_CODE.invalidInput, 'An execution does not take an operation ID');
+        if (sentRestoreId === null) {
+          const message = 'Restore ID is required to execute a command';
+          throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+            { reason: { kind: 'validation_error' }, issues: [{ path: RESTORE_HEADER, code: 'required', message }] });
+        }
+        if (operationId !== null) {
+          const message = 'An execution does not take an operation ID';
+          throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+            { reason: { kind: 'validation_error' }, issues: [{ path: 'X-Alpacawork-Op-Id', code: 'invalid_value', message }] });
+        }
       }
       assertRestoredMutation(root, sentRestoreId, operationId, operationRecorded);
     }

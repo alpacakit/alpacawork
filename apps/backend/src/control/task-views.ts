@@ -369,13 +369,13 @@ function readCursor(encoded: string, filter: string): CursorPosition {
   try { candidate = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); }
   catch (cause) {
     throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid task list cursor', undefined,
-      { cause, issues: [{ path: 'cursor', code: 'invalid_value', message: 'Invalid task list cursor' }] });
+      { cause, reason: { kind: 'validation_error' }, issues: [{ path: 'cursor', code: 'invalid_value', message: 'Invalid task list cursor' }] });
   }
   const cursor = cursorSchema.safeParse(candidate);
   if (!cursor.success || cursor.data.filter !== filter) {
     const message = 'Cursor requires the same task list filters';
     throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
-      { issues: [{ path: 'cursor', code: 'invalid_value', message }] });
+      { reason: { kind: 'validation_error' }, issues: [{ path: 'cursor', code: 'invalid_value', message }] });
   }
   return cursor.data;
 }

@@ -30,7 +30,7 @@ async function fixture(t: Parameters<typeof taskFlow>[0]) {
   try { server = await startServer(f.root, 0); } finally { globalThis.setInterval = interval; }
   close = () => server.close();
   const env = (seat: Seat) => ({ ALPACAWORK_RUN: seat.runId, ALPACAWORK_RUN_TOKEN: issueRunCredential(f.root, seat.runId) });
-  const current = (id: string) => call(server.url, ['task', 'get', '--task', id]);
+  const current = (id: string, ...options: string[]) => call(server.url, ['task', 'get', '--task', id, ...options]);
   const ask = async (seat: Seat, to?: string) => {
     const id = randomUUID();
     await call(server.url, ['task', 'report', '--task', seat.id, '--state', 'waiting',
@@ -73,7 +73,7 @@ test('CLI requires a chosen recipient; Q1 to parent and Q2 to user retain separa
   await h.answer(h.top.id, q2);
   assert.equal((await h.current(h.child.id)).questions[0].id, q1, 'Q2 answer cannot close Q1');
   await h.answer(h.child.id, q1, h.parent);
-  const records = (await h.current(h.child.id)).questions;
+  const records = (await h.current(h.child.id, '--include', 'closedQuestions')).questions;
   assert.deepEqual(records.map(q=>q.state), ['answered']);
   const returns = h.f.store(store => store.readReturns());
   for (const [id, question] of [[h.top.id, q2], [h.child.id, q1]]) {

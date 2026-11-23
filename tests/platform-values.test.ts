@@ -49,7 +49,9 @@ test('task update --values-file refuses a stale hash, an unknown Task and unread
   writeFileSync(source, Buffer.from([0xff, 0xfe]));
   assert.match((await reject(args)).stderr, /UTF-8/);
   writeFileSync(source, '- ゴール: a Markdown line');
-  assert.match((await reject(args)).stderr, /JSON object/);
+  const invalidJson = JSON.parse((await reject(args)).stderr).error;
+  assert.ok(invalidJson.issues.some((issue: { path: string; code: string }) =>
+    issue.path === 'values' && issue.code === 'invalid_json'));
   rmSync(source);
   assert.match((await reject(args)).stderr, /Cannot read --values-file/);
   mkdirSync(source);
