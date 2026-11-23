@@ -1,20 +1,20 @@
 # 从 Claude Code 或 Codex 使用
 
-除了界面的输入框，也可以在终端或应用中打开的 Claude Code 或 Codex 的对话里操作 alpacawork。
+也可以在 Claude Code 或 Codex 的对话中操作 alpacawork。
 
 ## 开始方法
 
-在对话开头，加上 `/alpacawork` 发出一次请求（在 Codex 中是 `$alpacawork`）。
+只在对话的第一次请求前加上 `/alpacawork`（在 Codex 中是 `$alpacawork`）。
 
 ```text
 /alpacawork 把待验收的任务一件一件简短地告诉我
 ```
 
-AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与界面输入框相同的对接 AI（协调员）工作。从第二次起，可以不加 `/alpacawork`。
+之后，这个对话里的 AI 就会作为对接 AI（协调员）工作。在 alpacawork 界面的输入框中，不需要 `/alpacawork`。
 
-委托的工作由 alpacawork 启动的负责 AI 来推进。关闭这个对话，工作也不会停止。提问和报告会送到界面的“待验收”，而不是这个对话。要在这个对话里确认时，可以说“把待验收的任务一件一件简短地告诉我”。
+委托的工作由负责的 AI 推进，所以关闭对话也不会停止。提问和报告会送到界面的“待验收”。
 
-## 说法示例
+## 任务的说法示例
 
 | 要做的事 | 说法示例 |
 | --- | --- |
@@ -28,4 +28,20 @@ AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与�
 | 搁置、停止 | `搁置 T12`、`停止 T12` |
 | 创建项目 | `把 ~/code/shop 设为项目` |
 
-任务可以用编号（如 T12）或标题中的词来指定。同样的说法在界面的输入框中也能用（不需要 `/alpacawork`）。打开界面、更改设置或模型、更新等操作，见 [README 的“常用操作”](../../README.zh-CN.md#常用操作)。
+任务可以用编号（如 T12）或标题中的词来指定。同样的说法在界面的输入框中也能用。
+
+## alpacawork 本身的操作
+
+| 要做的事 | 说法示例 | 命令 |
+| --- | --- | --- |
+| 打开界面 | `打开界面` | `alpacawork open` |
+| 查看是否在运行 | `看看是否在运行` | `alpacawork status` |
+| 更改设置 | `同时最多运行 4 个 AI` | — |
+| 更改平时使用的模型 | `让任务平时用 opus 来做` | — |
+| 让新模型可用 | `Codex 出了新模型，把它加到模型设置里以便选择` | — |
+| 更改项目准则 | `在项目准则中加上“设计工作用 opus 来做”` | — |
+| 更新到最新版本 | `更新到最新版本` | `alpacawork deploy npm:alpacawork` |
+| 停止、启动、重启 | `重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
+| 卸载 | `卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
+
+设置、模型和项目准则的更改，也可以在界面的输入框中提出。停止、重启和卸载无法在界面的输入框中进行。其他命令可用 `alpacawork -h` 查看（[重新打开、停止、更新](manage.md)）。

@@ -1,20 +1,20 @@
 # Use it from Claude Code or Codex
 
-Besides the input box on the screen, you can operate alpacawork from a Claude Code or Codex conversation opened in a terminal or its app.
+You can also operate alpacawork from a Claude Code or Codex conversation.
 
 ## Getting started
 
-At the start of the conversation, make one request with `/alpacawork` in front (`$alpacawork` in Codex).
+Put `/alpacawork` in front of only the first request in the conversation (`$alpacawork` in Codex).
 
 ```text
 /alpacawork tell me about each task awaiting review, briefly, one at a time
 ```
 
-The AI reads the alpacawork skill, and from then on the AI in that conversation acts as the same point of contact as the input box on the screen (the coordinator). From the second request on, you can leave out `/alpacawork`.
+From then on, the AI in that conversation acts as the point of contact (the coordinator). In the input box on the alpacawork screen, you don't need `/alpacawork`.
 
-The work you request is carried out by the AIs that alpacawork starts. Closing this conversation does not stop it. Questions and reports arrive under "Awaiting review" on the screen, not in this conversation. To check them here, ask something like "tell me about each task awaiting review, briefly, one at a time".
+The work you request is carried out by the AIs in charge, so closing the conversation does not stop it. Questions and reports arrive under "Awaiting review" on the screen.
 
-## Examples of what to ask
+## Examples of task requests
 
 | To | Example of what to ask |
 | --- | --- |
@@ -28,4 +28,20 @@ The work you request is carried out by the AIs that alpacawork starts. Closing t
 | Put on hold or stop | `put T12 on hold`, `stop T12` |
 | Create a project | `make ~/code/shop a project` |
 
-You can point to a task by its number (such as T12) or by words from its title. The same requests work in the input box on the screen (without `/alpacawork`). Opening the screen, changing settings or models, updating and the like are in ["Common operations" in the README](../README.md#common-operations).
+You can point to a task by its number (such as T12) or by words from its title. The same requests work in the input box on the screen.
+
+## Operating alpacawork itself
+
+| To | Example of what to ask | Command |
+| --- | --- | --- |
+| Open the screen | `open the screen` | `alpacawork open` |
+| Check whether it is running | `check whether it is running` | `alpacawork status` |
+| Change a setting | `run at most 4 AIs at once` | — |
+| Change the model normally used | `use opus for tasks normally` | — |
+| Make a new model available | `a new Codex model is out; add it to the model settings so I can choose it` | — |
+| Change the project policy | `add "use opus for design work" to the project policy` | — |
+| Update to the latest version | `update to the latest version` | `alpacawork deploy npm:alpacawork` |
+| Stop, start or restart | `restart alpacawork` | `alpacawork stop`, `start`, `restart` |
+| Uninstall | `uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
+
+Changes to settings, models and the project policy can also be requested in the input box on the screen. Stopping, restarting and uninstalling cannot be done from the input box on the screen. For the other commands, run `alpacawork -h` ([Reopen, stop and update](manage.md)).

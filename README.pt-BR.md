@@ -58,27 +58,15 @@ alpacawork setup
 
 Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois de instalar, siga os [Primeiros passos](docs/pt-BR/getting-started.md) para fazer a sua primeira solicitação.
 
-### Operações comuns
+### Abrir a tela
 
-As tarefas são pedidas na caixa de entrada da tela. Para abrir a tela, mudar configurações e coisas assim, peça ao Claude Code ou ao Codex aberto no terminal ou no app, e a IA faz isso (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). No terminal, os comandos da tabela fazem o mesmo.
+Para abrir a tela no navegador, peça assim no Claude Code ou no Codex (`$alpacawork` no Codex).
 
-| Para | Peça à IA | Comando |
-| --- | --- | --- |
-| Abrir a tela | `/alpacawork abra a tela` | `alpacawork open` |
-| Ver se está rodando | `/alpacawork veja se está rodando` | `alpacawork status` |
-| Mudar uma configuração | `/alpacawork rode no máximo 4 IAs ao mesmo tempo` | — |
-| Mudar o modelo de uso normal | `/alpacawork use o opus normalmente nas tarefas` | — |
-| Disponibilizar um modelo novo | `/alpacawork saiu um modelo novo do Codex; adicione nas configurações de modelos para eu poder escolher` | — |
-| Mudar a política do projeto | `/alpacawork acrescente "use o opus para o design" à política do projeto` | — |
-| Atualizar para a versão mais recente | `/alpacawork atualize para a versão mais recente` | `alpacawork deploy npm:alpacawork` |
-| Parar, iniciar ou reiniciar | `/alpacawork reinicie o alpacawork` | `alpacawork stop`, `start`, `restart` |
-| Desinstalar | `/alpacawork desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |
+```text
+/alpacawork abra a tela
+```
 
-Configurações e modelos também podem ser mudados na caixa de entrada ou em Configurações na tela, e a atualização também pode ser feita em Configurações. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md)).
-
-Pedir tarefas, procurá-las, responder perguntas e coisas assim também funciona numa conversa do Claude Code ou do Codex. Como pedir está em [Usar pelo Claude Code ou Codex](docs/pt-BR/chat.md).
-
-No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial na tela, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
+No terminal, `alpacawork open` também abre a tela.
 
 ## O que ele faz
 
