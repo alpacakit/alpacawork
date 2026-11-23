@@ -32,8 +32,6 @@ Você pode indicar uma tarefa pelo número (como T12) ou por palavras do título
 
 ## Operar o próprio alpacawork
 
-No terminal, os comandos da tabela fazem o mesmo.
-
 | Para | Exemplo do que pedir | Comando |
 | --- | --- | --- |
 | Abrir a tela | `abra a tela` | `alpacawork open` |

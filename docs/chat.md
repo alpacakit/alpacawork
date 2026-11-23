@@ -32,8 +32,6 @@ You can point to a task by its number (such as T12) or by words from its title. 
 
 ## Operating alpacawork itself
 
-In a terminal, the commands in the table do the same.
-
 | To | Example of what to ask | Command |
 | --- | --- | --- |
 | Open the screen | `open the screen` | `alpacawork open` |
