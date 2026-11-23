@@ -127,10 +127,7 @@ function shownParts(selector: string): HTMLElement[] {
     const box = element.getBoundingClientRect();
     if (box.width < 4 || box.height < 4) return false;
     const across = box.left + box.width / 2;
-    return [box.top + box.height / 2, box.top + Math.min(box.height, HEAD) / 2].some(down => {
-      const front = document.elementFromPoint(across, down);
-      return !!front && element.contains(front);
-    });
+    return [box.top + box.height / 2, box.top + Math.min(box.height, HEAD) / 2].some(down => inFront(element, across, down));
   });
 }
 /** The nearest box `element` (itself included) scrolls in: one that lets its content overflow and scroll. */
@@ -141,10 +138,16 @@ function scrollerOf(element: Element | null): HTMLElement | null {
   }
   return null;
 }
+/** Whether `element` (or what is in it) is what stands in front at this point of the screen. */
+const inFront = (element: Element, across: number, down: number) => {
+  const front = document.elementFromPoint(across, down);
+  return !!front && element.contains(front);
+};
 /**
- * The first element marked as `selector` that is laid out and shown but out of the box it scrolls in: its head scrolled
- * out of it, or, where it would fit in that box whole, reaching past its edge. A part to bring into view; one taller
- * than the box is left where the person has it while its head is seen.
+ * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there: its
+ * head not in front (scrolled out of the box, or under a heading that stays at its top), or, where it would fit in
+ * that box whole, reaching past its edge. A part to bring into view; one taller than the box is left where the person
+ * has it while its head is seen.
  */
 function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
@@ -152,11 +155,15 @@ function outOfPane(selector: string): HTMLElement | null {
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
     const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
     if (!pane) continue;
-    const head = box.top + Math.min(box.height, HEAD) / 2;
-    const fits = box.height <= pane.height;
-    if (head < pane.top || head > pane.bottom || fits && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
+    const head = inFront(element, box.left + box.width / 2, box.top + Math.min(box.height, HEAD) / 2);
+    if (!head || box.height <= pane.height && (box.top < pane.top - 1 || box.bottom > pane.bottom + 1)) return element;
   }
   return null;
+}
+/** Brings `element` into the box it scrolls in: whole where it fits there, else from its head. */
+function bringIn(element: HTMLElement) {
+  const pane = scrollerOf(element.parentElement);
+  element.scrollIntoView({ block: pane && element.getBoundingClientRect().height > pane.clientHeight ? "start" : "nearest" });
 }
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
@@ -223,7 +230,8 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     let roomed: HTMLElement | null = null;
     // Looks in a row that did not see the part: a passable step is passed over after two (half a second).
     let missed = 0;
-    // Counts the balloon as having stood once it has been on the screen for a moment without a break.
+    // Counts the balloon as having stood once it has been on the screen, in a tab the person is looking at, for a
+    // moment without a break.
     let standing: ReturnType<typeof setTimeout> | null = null;
     const stoodNow = () => {
       standing = null;
@@ -234,7 +242,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       let target = shownPart(part);
       if (!settled) {
         const away = outOfPane(part);
-        if (away) { away.scrollIntoView({ block: "nearest" }); target = shownPart(part); }
+        if (away) { bringIn(away); target = shownPart(part); }
         settled = !!away || !!target;
       }
       missed = target ? 0 : missed + 1;
@@ -247,8 +255,9 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
       }) : [];
       const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear) : null;
-      if (!next && standing) { clearTimeout(standing); standing = null; }
-      if (next && !standing && !stood.current.ids.has(entry.id)) standing = setTimeout(stoodNow, STOOD_MS);
+      const looked = !!next && document.visibilityState === "visible";
+      if (!looked && standing) { clearTimeout(standing); standing = null; }
+      if (looked && !standing && !stood.current.ids.has(entry.id)) standing = setTimeout(stoodNow, STOOD_MS);
       if (!same(last, next)) { last = next; setPlaced(next); }
       roomed = keepRoom(roomed, next && own ? own : null);
     };
@@ -258,8 +267,10 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const timer = setInterval(update, 250);
     addEventListener("resize", update);
     addEventListener("scroll", update, true);
+    document.addEventListener("visibilitychange", update);
     return () => {
       clearInterval(timer); removeEventListener("resize", update); removeEventListener("scroll", update, true);
+      document.removeEventListener("visibilitychange", update);
       if (standing) clearTimeout(standing);
       keepRoom(roomed, null);
     };
