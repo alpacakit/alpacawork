@@ -13,6 +13,6 @@
     "@alpacawork/core": "workspace:*",
     "@alpacawork/cli-kit": "workspace:*",
     "commander": "14.0.3",
-    "zod": "4.3.6"
+    "zod": "4.6.6"
   }
 }

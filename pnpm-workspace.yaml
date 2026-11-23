@@ -41,3 +41,7 @@ ignoredOptionalDependencies:
 
 minimumReleaseAgeExclude:
   - '@alpacakit/channels@0.2.0-beta.5'
+
+overrides:
+  # ts-morph's glob matcher still requires minimatch 10, which has no patched release.
+  '@ts-morph/common@0.27.0>minimatch': 11.0.9
