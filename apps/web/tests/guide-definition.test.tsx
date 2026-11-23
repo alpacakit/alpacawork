@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
 import { PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
-import { placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
+import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
@@ -251,6 +251,13 @@ test("a part reaching under the input at a detail's foot is pointed at where it 
   expect(seenPart(question, { top: 282, bottom: 682 })).toEqual({ left: 37, top: 362, width: 341, height: 320 });
   // Seen whole, it is pointed at whole.
   expect(seenPart({ ...question, height: 200 }, { top: 282, bottom: 682 })).toEqual({ ...question, height: 200 });
+});
+
+test("a part taller than what its pane shows above the input is brought in from its head, though the whole pane could hold it", () => {
+  // A phone's sheet 562px tall, 400px of it seen above the input and its row: a 448px question is brought to its head.
+  const seen = { top: 282, bottom: 682 };
+  expect(bringInAt(448, seen)).toBe("start");
+  expect(bringInAt(300, seen)).toBe("nearest");
 });
 
 test("after each of two replies that make no Task, the step at the input is shown again, its button used or not", () => {

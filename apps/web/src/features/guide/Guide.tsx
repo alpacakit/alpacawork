@@ -181,15 +181,20 @@ function outOfPane(selector: string): HTMLElement | null {
     const kept = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
     const head = box.top + Math.min(box.height, HEAD) / 2;
     const seen = box.top >= pane.top + kept - 1 && head <= pane.bottom && inFront(element, box.left + box.width / 2, head);
-    if (!seen || box.height <= pane.bottom - pane.top && box.bottom > pane.bottom + 1) return element;
+    if (!seen || fitsIn(box.height, pane) && box.bottom > pane.bottom + 1) return element;
   }
   return null;
 }
-/** Brings `element` into the box it scrolls in: whole where it fits there, else from its head. */
+/** Brings `element` into what the box it scrolls in shows (seenArea): whole where it fits there, else from its head. */
 function bringIn(element: HTMLElement) {
   const pane = scrollerOf(element.parentElement);
-  element.scrollIntoView({ block: pane && element.getBoundingClientRect().height > pane.clientHeight ? "start" : "nearest" });
+  element.scrollIntoView({ block: bringInAt(element.getBoundingClientRect().height, pane ? seenArea(pane) : null) });
 }
+/** Whether a part of `height` fits whole in what its pane shows (`seen`, seenArea). */
+const fitsIn = (height: number, seen: { top: number; bottom: number }) => height <= seen.bottom - seen.top;
+/** Where a part of `height` is brought in its pane (`seen`, seenArea; none where it scrolls in none): whole where it fits, else from its head. */
+export const bringInAt = (height: number, seen: { top: number; bottom: number } | null): ScrollLogicalPosition =>
+  seen && !fitsIn(height, seen) ? "start" : "nearest";
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
   return { left: box.left, top: box.top, width: box.width, height: box.height };
