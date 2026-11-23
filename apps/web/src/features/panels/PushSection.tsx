@@ -5,21 +5,21 @@ import { Message } from "@/components/ui/message";
 import { Label } from "@/components/ui/label";
 import { SETTING_ROW } from "@/components/settings/SettingRow";
 import { cn } from "@/lib/utils";
-import { pushState, pushSupported, usePushDevices, usePushHere, useSubscribePush, useUnsubscribePush } from "@/data/push";
+import { receivingPush, pushSupported, usePushDevices, usePushHere, useSubscribePush, useUnsubscribePush } from "@/data/push";
 import { formatNoticeTime } from "@/domain/time";
 
 /**
  * The notification tab in global settings: whether this browser receives Web Push, the button to
  * start or stop, and every registered device with its remove button (a lost
  * device is removed here, since delivery does not go through the tailnet). Whether this browser receives them is
- * pushState, as the guide reads it too.
+ * receivingPush, as the guide reads it too.
  */
 export function PushSection({ focusHeading = false }: { focusHeading?: boolean }) {
   const { t, i18n } = useTranslation("panels");
   const supported = pushSupported();
   const here = usePushHere();
   const devices = usePushDevices(supported);
-  const state = pushState(supported, here.data, devices.data?.devices);
+  const state = receivingPush(supported, here.data, devices.data?.devices);
   const own = here.data?.subscription ?? null;
   const subscribe = useSubscribePush();
   const unsubscribe = useUnsubscribePush();

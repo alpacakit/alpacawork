@@ -102,20 +102,20 @@ export const usePushHere = (enabled = true) => useQuery({ ...pushHere(), enabled
  * subscription serve lists among its devices (both sides agree), else `off` (none here, or one serve no longer knows,
  * removed from another device: offered again). Undefined while either side is not read yet.
  */
-export type PushState = "unsupported" | "blocked" | "on" | "off";
-export function pushState(supported: boolean, here: { permission: NotificationPermission; subscription: { endpoint: string } | null } | undefined,
-  devices: readonly { endpoint: string }[] | undefined): PushState | undefined {
+export type PushReceiving = "unsupported" | "blocked" | "on" | "off";
+export function receivingPush(supported: boolean, here: { permission: NotificationPermission; subscription: { endpoint: string } | null } | undefined,
+  devices: readonly { endpoint: string }[] | undefined): PushReceiving | undefined {
   if (!supported) return "unsupported";
   if (!here) return undefined;
   if (here.permission === "denied") return "blocked";
   if (!devices) return undefined;
   return here.subscription && devices.some((device) => device.endpoint === here.subscription!.endpoint) ? "on" : "off";
 }
-/** This browser's push state (pushState), from what it and serve say; nothing is read unless `enabled`. */
-export function usePushState(enabled = true): PushState | undefined {
+/** This browser's push state (receivingPush), from what it and serve say; nothing is read unless `enabled`. */
+export function useReceivingPush(enabled = true): PushReceiving | undefined {
   const here = usePushHere(enabled);
   const devices = usePushDevices(enabled && pushSupported());
-  return pushState(pushSupported(), here.data, devices.data?.devices);
+  return receivingPush(pushSupported(), here.data, devices.data?.devices);
 }
 /** Ask permission, subscribe with serve's key, and register the subscription. */
 export function useSubscribePush() {

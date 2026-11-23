@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
-import type { PushState } from "@/data/push";
+import type { PushReceiving } from "@/data/push";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
@@ -167,8 +167,8 @@ export type GuideFacts = {
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
-  /** Whether this browser receives notifications (pushState); undefined while not known, or not read (no step left reads it). */
-  push: PushState | undefined;
+  /** Whether this browser receives notifications (receivingPush); undefined while not known, or not read (no step left reads it). */
+  push: PushReceiving | undefined;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps said: put away by their button, shown (with no button), or left after their balloon stood on the screen. */

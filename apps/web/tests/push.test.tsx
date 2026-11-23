@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-li
 import { startI18n } from "@alpacawork/i18n";
 import { PushSection } from "../src/features/panels/PushSection";
 import { SettingsDialog } from "../src/features/panels/SettingsDialog";
-import { deviceLabel, pushState } from "../src/data/push";
+import { deviceLabel, receivingPush } from "../src/data/push";
 import { queryClient } from "../src/data/query-client";
 import { PROJECT_TASK, TestWorkspace, tree, viewsOf } from "./fixtures";
 import { adapterCatalog, DEFAULT_LIMITS } from "@alpacawork/contract";
@@ -119,10 +119,10 @@ test("the notifications tab shows the existing subscription without disturbing t
 test("this browser receives notifications only while serve lists its subscription: one serve no longer knows is off", () => {
   const here = (endpoint: string | null, permission: NotificationPermission = "granted") => ({ permission, subscription: endpoint === null ? null : { endpoint } });
   const devices = [{ endpoint: "https://push.example/other" }];
-  expect(pushState(true, here("https://push.example/this"), devices)).toBe("off");
-  expect(pushState(true, here("https://push.example/this"), [...devices, { endpoint: "https://push.example/this" }])).toBe("on");
-  expect(pushState(true, here(null, "default"), devices)).toBe("off");
-  expect(pushState(true, here(null, "denied"), devices)).toBe("blocked");
+  expect(receivingPush(true, here("https://push.example/this"), devices)).toBe("off");
+  expect(receivingPush(true, here("https://push.example/this"), [...devices, { endpoint: "https://push.example/this" }])).toBe("on");
+  expect(receivingPush(true, here(null, "default"), devices)).toBe("off");
+  expect(receivingPush(true, here(null, "denied"), devices)).toBe("blocked");
   // Not said off before both sides are read.
-  expect([pushState(true, undefined, devices), pushState(true, here(null), undefined)]).toEqual([undefined, undefined]);
+  expect([receivingPush(true, undefined, devices), receivingPush(true, here(null), undefined)]).toEqual([undefined, undefined]);
 });

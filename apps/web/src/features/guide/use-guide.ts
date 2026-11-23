@@ -8,7 +8,7 @@ import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
-import { usePushState } from "@/data/push";
+import { useReceivingPush } from "@/data/push";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -205,7 +205,7 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
   // Read only while a step left reads it (stepsLeft).
-  const push = usePushState(reads.has("push"));
+  const push = useReceivingPush(reads.has("push"));
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
