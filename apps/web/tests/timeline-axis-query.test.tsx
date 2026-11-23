@@ -8,6 +8,7 @@ import { useTimelineAxis } from '../src/data/timeline-axis';
 import type { TaskProjectedTimelineAxisDTO as TaskTimelineAxisDTO } from '@alpacawork/contract/control';
 import { dto, indexOf, served0, tree } from './fixtures';
 import { fixtureReceipt } from './read-fixtures';
+import { useConnection } from '../src/data/connection';
 
 const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children);
 afterEach(() => { cleanup(); queryClient.clear(); vi.restoreAllMocks(); });
@@ -44,10 +45,16 @@ test('201 lanes wait for every chunk; a failed chunk stays unknown, retry comple
   } finally { queryClient.setDefaultOptions(defaults); }
 });
 
-test('until the axis of the rows in view arrives, the newest axis held for the list stands in', () => {
-  fixtureReceipt(['index'], indexOf(tree({ tasks: [dto({ id: 'T1' }), dto({ id: 'T2', path: 'tasks/T2' })] })));
+test('out of reach, until the axis of the rows in view arrives, the newest held axis of those rows stands in', () => {
+  fixtureReceipt(['index'], indexOf(tree({ tasks: [dto({ id: 'T1' }), dto({ id: 'T2', path: 'tasks/T2' }), dto({ id: 'T9', path: 'tasks/T9' })] })));
   fixtureReceipt(resources.timelineAxis('/fixture', ['T1']).queryKey, { busy: [[100, 200]], earliest: 50, ...served0 });
+  // Another list's axis, read later, holds none of the rows in view.
+  fixtureReceipt(resources.timelineAxis('/fixture', ['T9']).queryKey, { busy: [[300, 400]], earliest: 30, ...served0 });
+  queryClient.getQueryCache().find({ queryKey: resources.timelineAxis('/fixture', ['T9']).queryKey, exact: true })!.setState({ dataUpdatedAt: Date.now() + 1000 });
   vi.spyOn(api, 'request').mockImplementation((() => new Promise(() => {})) as typeof api.request);
   const view = renderHook(() => useTimelineAxis('/fixture', ['T1', 'T2'], true), { wrapper });
-  expect([view.result.current.busy, view.result.current.earliest]).toEqual([[[100, 200]], 50]);
+  expect(view.result.current.busy).toBeUndefined();
+  act(() => useConnection.setState({ offline: true }));
+  expect([view.result.current.busy, view.result.current.earliest, view.result.current.standIn]).toEqual([[[100, 200]], 50, true]);
+  useConnection.setState({ offline: false });
 });

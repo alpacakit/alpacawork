@@ -265,24 +265,25 @@ describe('chronology windows', () => {
     expect(next.getQueryData(h.timeline.queryKey)).toBeUndefined();
   });
 
-  test('the strip of a row acquired last is the one restored, whichever range it reads', async () => {
+  test('a later window acquired before the earlier one proves nothing about it: both are restored', async () => {
     const h = await fixture(), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
     const key = [...stored.key.slice(0, 5), LATER], hash = JSON.stringify(key), acquiredAt = stored.acquiredAt - 5000;
     raw.slots.push({ ...stored, key, hash, slotId: 'later-slot', acquiredAt, qualification: { ...stored.qualification, proof: { ...stored.qualification.proof, acquiredAt } },
       query: { ...stored.query, queryKey: key, queryHash: hash } });
     h.writer.stop(); h.storage.replaceRaw(raw);
     const next = client(); await restoreReadPersistence(next);
-    expect(next.getQueryData(key)).toBeUndefined();
+    expect(next.getQueryData(key)).toBeDefined();
     expect(next.getQueryData(h.timeline.queryKey)).toBeDefined();
   });
 
-  test('an older strip of a row stays only while it is shown', async () => {
+  test('a window that adds something stays: another start, or one still shown', async () => {
     const h = await fixture();
-    const shown = new QueryObserver(h.value, h.timeline); cleanup.push(shown.subscribe(() => {}));
     await saveWindow(h, '2025-12-01T00:00:00.000Z', TO);
     expect(windows(h.storage.read())).toEqual(['2025-12-01T00:00:00.000Z..' + TO, `${FROM}..${TO}`]);
-    cleanup.pop()!();
+
+    const shown = new QueryObserver(h.value, h.timeline); cleanup.push(shown.subscribe(() => {}));
     await saveWindow(h, FROM, LATER);
-    expect(windows(h.storage.read())).toEqual([`${FROM}..${LATER}`]);
+    expect(windows(h.storage.read())).toContain(`${FROM}..${TO}`);
+    cleanup.pop()!();
   });
 });

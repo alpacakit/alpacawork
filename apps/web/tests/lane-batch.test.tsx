@@ -80,3 +80,17 @@ test('a row\'s failed read is drawn as soon as it fails', async () => {
   const view = renderHook(() => useLaneReads('/fixture', ['T1'], { from: 'from', to: 'to' }, false, true), { wrapper });
   await waitFor(() => expect(view.result.current.error).toMatchObject({ code: 'unavailable' }));
 });
+
+test('an answer holding none of the rows asked for is asked no further; a shared failure is each row\'s own', async () => {
+  const request = vi.fn(async (): Promise<TaskTimelineLanesDTO> => ({ lanes: [strip('T3')], gone: [] }));
+  const read = laneBatches(request);
+  const settled = await Promise.allSettled(['T1', 'T2'].map(lane => read(lane, 'from', 'to')));
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(settled.map(result => result.status === 'rejected' && (result.reason as ApiError).code)).toEqual(['invalid_response', 'invalid_response']);
+  const shared = new ApiError('Timeline unavailable', 'unavailable', 'later');
+  const failing = laneBatches(async () => { throw shared; });
+  const failures = await Promise.allSettled(['T1', 'T2'].map(lane => failing(lane, 'from', 'to')));
+  const [first, second] = failures.map(result => result.status === 'rejected' ? result.reason as ApiError : undefined);
+  expect([first?.code, second?.code, first?.cause, second?.cause]).toEqual(['unavailable', 'unavailable', shared, shared]);
+  expect(first).not.toBe(second);
+});

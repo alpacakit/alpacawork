@@ -386,12 +386,13 @@ export function TimeTree() {
   const settled = useRef(false);
   useEffect(() => { strip.restart(); settled.current = false; }, []);
   useEffect(() => {
-    if (!seen || !axisReady || settled.current) return;
+    // Fitted to the list's own axis, never to one standing in for it.
+    if (!seen || !axisReady || axis.standIn || settled.current) return;
     settled.current = true;
     const happens = earliest >= seen.from && earliest <= seen.to
       || axisBusy.some(([from, to]) => (to ?? now) >= seen.from && from <= seen.to);
     if (rowNodes.length && !happens) showAll();
-  }, [seen]);
+  }, [seen, axis.standIn]);
   const nowSeen = !seen || seen.to >= now;
   const keys = (event: KeyboardEvent<HTMLDivElement>) => stripKeys(event, strip, showAll,
     (box.current?.getBoundingClientRect().left ?? 0) + lead + strip.screen / 2);
@@ -434,7 +435,7 @@ export function TimeTree() {
           {strips && <div className="flex-none narrow:flex narrow:h-11 narrow:items-center"><TimeClock place="list" pieces={pieces} width={strip.width} now={now} onShowAll={showAll} seen={seen} inset={narrow && !nowSeen ? 72 * k : 0} insetStart={narrow ? MOBILE_PERIOD_W * k : 0} /></div>}
         </div>}
         {/* The time axis is read, never kept on this device: out of reach it says so, not the failure again. */}
-        {axis.error && !axisReady && <div style={frozen(shared)}>{offline ? <ReadNote kind="absent" className="px-1 py-1.5">{t("timeView.axisAbsent")}</ReadNote>
+        {axis.error && (!axisReady || axis.standIn) && <div style={frozen(shared)}>{offline ? <ReadNote kind="absent" className="px-1 py-1.5">{t("timeView.axisAbsent")}</ReadNote>
           : <ReadFailure error={axis.error} retry={axis.retry} />}</div>}
         {/* A failed strip read must not move its rows and thereby change which rows are read. */}
         {needsTimeline && windowRange !== null && <div data-timeline-read

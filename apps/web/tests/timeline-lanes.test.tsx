@@ -17,7 +17,7 @@ const named = (lanes: readonly TaskTimelineLaneDTO[]) => lanes.map(lane => `${la
 const strip = (lane: string, sourcePv: number) => ({ ...timelineLaneAnswer(value, lane), sourcePv }) as unknown as TaskTimelineLaneDTO;
 afterEach(() => { cleanup(); queryClient.clear(); });
 
-test('coverage survives a row not read yet; a row\'s later strip replaces its earlier one; removal and refusal withdraw only their own strip', async () => {
+test('coverage survives a row not read yet for another range; removal and refusal withdraw only their own strip', async () => {
   const index = indexOf(value); fixtureReceipt(['index'], index);
   fixtureReceipt(key('T1'), strip('T1', 1));
   const view = renderHook(() => useTimelineLanes('/fixture'), { wrapper });
@@ -25,16 +25,26 @@ test('coverage survives a row not read yet; a row\'s later strip replaces its ea
   const identity = view.result.current;
   act(() => { queryClient.getQueryCache().build(queryClient, { queryKey: key('T2') }); });
   await waitFor(() => expect(view.result.current).toBe(identity));
-  // A row's strip read for another range later takes the place of the one before it.
   act(() => { fixtureReceipt(key('T2'), strip('T2', 2)); fixtureReceipt(key('T1', 'earlier'), strip('T1', 3)); });
-  await waitFor(() => expect(named(view.result.current)).toEqual(['T2@2', 'T1@3']));
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T2@2', 'T1@3']));
   act(() => {
     const query = queryClient.getQueryCache().find({ queryKey: key('T2'), exact: true })!;
     refuseRead(query, index); query.setState({});
   });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T1@3']));
+  act(() => { queryClient.removeQueries({ queryKey: key('T1'), exact: true }); });
   await waitFor(() => expect(named(view.result.current)).toEqual(['T1@3']));
-  act(() => { queryClient.removeQueries({ queryKey: key('T1', 'earlier'), exact: true }); });
-  await waitFor(() => expect(named(view.result.current)).toEqual([]));
+});
+
+test('a row\'s strip over a range the clock moved on replaces those before it; a range zoomed to stays', async () => {
+  fixtureReceipt(['index'], indexOf(value));
+  const range = (from: string, to: string) => resources.timelineLane('/fixture', 'T1', from, to).queryKey;
+  const view = renderHook(() => useTimelineLanes('/fixture'), { wrapper });
+  act(() => { fixtureReceipt(range('2026-01-01T00:00', '2026-01-02T00:00'), strip('T1', 1)); });
+  act(() => { fixtureReceipt(range('2026-01-01T23:00', '2026-01-02T00:00'), strip('T1', 2)); });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@1', 'T1@2']));
+  act(() => { fixtureReceipt(range('2026-01-01T00:05', '2026-01-02T00:05'), strip('T1', 3)); });
+  await waitFor(() => expect(named(view.result.current)).toEqual(['T1@3']));
 });
 
 test('root and generation qualify every cached strip', async () => {

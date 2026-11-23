@@ -1,6 +1,6 @@
 import { readDataSize } from './read-json';
 export { readSize, readDataSize } from './read-json';
-import { readGroup, readTaskId, readUsedAt, READ_BUNDLE_AGE, READ_MAX_BYTES, READ_MAX_TASKS, readLifetime } from './read-model';
+import { getReadProof, readGroup, readTaskId, readUsedAt, READ_BUNDLE_AGE, READ_MAX_BYTES, READ_MAX_TASKS, readLifetime } from './read-model';
 import { type Query, type QueryClient, type QueryKey } from '@tanstack/react-query';
 
 const memoryBytes = (query: Query) => readDataSize(query.state.data, data => ({ key: query.queryKey, data }));
@@ -13,16 +13,16 @@ export function representedReadIds(key: QueryKey, data: unknown): string[] {
 }
 const isTimelineLane = (key: QueryKey) => key[0] === 'task-timeline' && key[2] === 'lane' && key.length === 6;
 /**
- * Whether a row's strip read for an earlier range gives way to `later`: the same row's strip read after it (at the same
- * moment, the one reaching later). The range
- * moves with the clock and the zoom, so without this every turn of it would keep one more copy of each row to project,
- * sweep and prove on every restart; one held for a reader now (active) is the caller's to keep.
+ * Whether a row's strip read for an earlier range gives way to `later`: the same row's strip, read no earlier, over a range
+ * the clock has moved on (it ends later and still overlaps). The range's end moves with the clock, so without this each
+ * turn of it would keep one more copy of each row to project, sweep and prove on every restart. A range zoomed or panned
+ * to (ending no later) adds what it does not share and stays; one held for a reader now (active) is the caller's to keep.
  */
 export function coversTimelineWindow(later: { key: QueryKey; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
   // [kind, root, 'lane', lane, from, to]: the same row of the same list.
   return later.key !== earlier.key && isTimelineLane(later.key) && isTimelineLane(earlier.key)
-    && later.key.slice(0, 4).every((part, at) => part === earlier.key[at])
-    && (later.acquiredAt > earlier.acquiredAt || later.acquiredAt === earlier.acquiredAt && String(later.key[5]) > String(earlier.key[5]));
+    && later.key.slice(0, 4).every((part, at) => part === earlier.key[at]) && later.acquiredAt >= earlier.acquiredAt
+    && String(later.key[5]) > String(earlier.key[5]) && String(later.key[4]) <= String(earlier.key[5]);
 }
 type RetentionItem<T> = { value: T; key: QueryKey; hash: string; data: unknown; usedAt: number; bytes: number; required: boolean; protected: boolean };
 /** One group/deadline/rank/budget policy. Adapters decide which values are eligible and what protection means. */
@@ -62,15 +62,16 @@ export function startReadRetention(client: QueryClient) {
     running = true;
     try {
       const all = client.getQueryCache().getAll().filter(query => readLifetime(query.queryKey) !== undefined);
-      // Each row's newest acquired strip; an idle one of the same row acquired before it gives way (coversTimelineWindow).
-      const window = (query: Query) => ({ key: query.queryKey, acquiredAt: query.state.data === undefined ? 0 : query.state.dataUpdatedAt });
-      const newest = new Map<string, Query>();
+      // An idle strip of a row gives way to another acquired strip of the same row the clock moved on (coversTimelineWindow).
+      // When it was read is its proof's, as in the checkpoint (a restored strip keeps the time it was read).
+      const window = (query: Query) => ({ key: query.queryKey, acquiredAt: query.state.data === undefined ? 0 : getReadProof(query)?.acquiredAt ?? query.state.dataUpdatedAt });
+      const rows = new Map<string, Query[]>();
       for (const query of all) if (isTimelineLane(query.queryKey) && query.state.data !== undefined) {
-        const row = JSON.stringify(query.queryKey.slice(0, 4)), held = newest.get(row);
-        if (!held || held.state.dataUpdatedAt < query.state.dataUpdatedAt) newest.set(row, query);
+        const row = JSON.stringify(query.queryKey.slice(0, 4)), held = rows.get(row);
+        if (held) held.push(query); else rows.set(row, [query]);
       }
       const superseded = new Set(all.filter(query => !query.isActive() && query.state.fetchStatus === 'idle' && isTimelineLane(query.queryKey)
-        && (row => !!row && coversTimelineWindow(window(row), window(query)))(newest.get(JSON.stringify(query.queryKey.slice(0, 4))))));
+        && (rows.get(JSON.stringify(query.queryKey.slice(0, 4))) ?? []).some(later => coversTimelineWindow(window(later), window(query)))));
       for (const query of superseded) client.removeQueries({ queryKey: query.queryKey, exact: true });
       const queries = all.filter(query => !superseded.has(query));
       const selection = selectGroups(queries.map(query => ({ value: query, key: query.queryKey, hash: query.queryHash, data: query.state.data,

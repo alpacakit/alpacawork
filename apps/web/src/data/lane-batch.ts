@@ -12,6 +12,16 @@ const LANES_PER_READ = 200;
  * rows' Queries do not retry on their own), so a busy server is not met with one read per row. Nothing here touches the
  * cache.
  */
+/**
+ * Each row's own failure of a read they shared, with the read's failure as its cause: a failure is recorded by its
+ * object (read-model's failed GETs), so rows sharing one object would leave only the last row's record.
+ */
+function rowError(error: unknown): Error {
+  const own = error instanceof ApiError ? new ApiError(() => error.displayMessage, error.code, error.retry, error.detail, error.issues, error.reason)
+    : new Error(error instanceof Error ? error.message : String(error));
+  own.cause = error;
+  return own;
+}
 export function laneBatches(request: (path: string, signal: AbortSignal) => Promise<TaskTimelineLanesDTO>) {
   const queued = new Map<string, Waiter[]>();
   const live = (waiters: Waiter[]) => waiters.filter(waiter => !waiter.signal?.aborted);
@@ -34,18 +44,20 @@ export function laneBatches(request: (path: string, signal: AbortSignal) => Prom
     request(`task/timeline?lanes=${encodeURIComponent(lanes.join(','))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, controller.signal)
       .then(answer => {
         const answered = new Map(answer.lanes.map(lane => [lane.lane, lane])), gone = new Set(answer.gone);
+        // Only an answer holding a row asked for moves on: one holding none of them is asked no further.
+        const progressed = waiters.some(waiter => answered.has(waiter.lane));
         for (const waiter of waiters) {
           const lane = answered.get(waiter.lane);
           if (lane) waiter.resolve(lane);
           else if (gone.has(waiter.lane)) waiter.reject(new ApiError('Task does not exist', 'not_found', 'check'));
-          else if (answered.size) enqueue(range, waiter);
-          else waiter.reject(new ApiError('Timeline answered no row', 'invalid_response', 'later'));
+          else if (progressed) enqueue(range, waiter);
+          else waiter.reject(new ApiError('Timeline answered none of the rows asked for', 'invalid_response', 'later'));
         }
       }, error => {
         const waiting = live(waiters);
         if (waiting.length && failures < READ_RETRIES && readDeadlinePassed(error))
           setTimeout(() => { const still = live(waiting); if (still.length) send(range, still, failures + 1); }, readRetryDelay(failures));
-        else for (const waiter of waiters) waiter.reject(error);
+        else for (const waiter of waiters) waiter.reject(rowError(error));
       })
       .finally(() => { for (const waiter of waiters) waiter.signal?.removeEventListener('abort', dropped); });
   };
