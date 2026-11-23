@@ -574,6 +574,7 @@
     "not_directory": "This is a file, not a folder.",
     "required": "Enter a value in this field.",
     "too_big": "Enter at most {{maximum}}.",
+    "too_long": "{{maximum}} characters at most.",
     "too_small": "Enter at least {{minimum}}.",
     "unreadable_directory": "This folder cannot be read.",
     "unwritable_directory": "Cannot create here (no permission to write to this folder)."

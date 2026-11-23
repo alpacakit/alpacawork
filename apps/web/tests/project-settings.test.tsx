@@ -3,7 +3,7 @@ import { queryClient } from '../src/data/query-client';
 import { receiveFullIndex } from '../src/data/resources';
 import { test, expect, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { adapterCatalog, DEFAULT_LIMITS, DEFAULT_SCHEMA, PROJECT_POLICY } from "@alpacawork/contract";
+import { adapterCatalog, DEFAULT_LIMITS, DEFAULT_SCHEMA, PROJECT_SCHEMA } from "@alpacawork/contract";
 import type { ControlTaskDTO } from "@alpacawork/contract/control";
 import { ProjectDialog } from "../src/features/panels/ProjectDialog";
 import { DialogHost } from "../src/features/shell/DialogHost";
@@ -27,10 +27,10 @@ const COLOR = "#39659b";
 
 /** The fixture's project Task with this goal (its body) at this hash. */
 const goal = (body: string, hash: string, more: Partial<ControlTaskDTO> = {}): ControlTaskDTO => project({ body, hash, ...more });
-/** The project's view as the server gives it: its own value is its policy alone, whatever its Tasks use. */
+/** The project's view as the server gives it: its own values (summary, policy), whatever its Tasks use. */
 const goalView = (body: string, hash: string, more: Partial<ControlTaskDTO> = {}) => {
   const view = viewsOf(tree({ tasks: [dto(), goal(body, hash, more)] })).find((each) => each.task.id === PROJECT_TASK)!;
-  return { ...view, values: { ...view.values, fields: [PROJECT_POLICY], from: null } };
+  return { ...view, values: { ...view.values, fields: [...PROJECT_SCHEMA], from: null } };
 };
 /** field get at the project: the fields its Tasks use. */
 const tasksSchema = () => ({ task: PROJECT_TASK, from: null, fields: [...DEFAULT_SCHEMA], version: "v".repeat(64), schema: {} });
@@ -65,7 +65,7 @@ const openProject = async () => {
   await waitFor(() => expect(body()?.value).toBe("# Goal"));
 };
 
-test("the dialog's heading is the project's tile, name and ID; its fields go name, colour, parent, code location, goal, extracts, then the save bar", async () => {
+test("the dialog's heading is the project's tile, name and ID; its fields go name, summary, colour, parent, code location, goal, extracts, then the save bar", async () => {
   serve([written(goal("# Goal\n", SAVED_1))]);
   await openProject();
   const heading = document.querySelector("[data-project-heading]")!;
@@ -74,7 +74,7 @@ test("the dialog's heading is the project's tile, name and ID; its fields go nam
   expect(heading.textContent).toContain(PROJECT_TASK);
   expect(heading.textContent).not.toContain(PROJECT_TASK.replace(/^P/, "T"));
   expect(heading.querySelector("[data-copy]")!.getAttribute("aria-label")).toContain(PROJECT_TASK);
-  const order = ["project-name", "project-color", "project-parent-shown", "project-location", "project-policy"]
+  const order = ["project-name", "project-summary", "project-color", "project-parent-shown", "project-location", "project-policy"]
     .map((id) => document.getElementById(id)!);
   for (let at = 1; at < order.length; at++)
     expect(order[at - 1]!.compareDocumentPosition(order[at]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -96,6 +96,32 @@ test("name, colour, goal and extracts are saved with one task update; config.yam
   expect(updateBody(fetcher)).toEqual({ task: PROJECT_TASK, title: "Launch Room", color: "#31c8c9", values: { project_policy: "# My goal\n" }, expectedTaskHash: OPEN });
   expect(configCalls(fetcher)).toHaveLength(0);
   await screen.findByText("Saved");
+});
+
+test("the summary is saved as a value of its own, cleared when emptied, and one too long is refused before it is sent", async () => {
+  const summary = { values: { project_summary: "Monthly closing" } }, summarised = goal("# Goal\n", SAVED_1, summary);
+  let saved = false;
+  const fetcher = serve([() => { saved = true; return written(summarised); }, written(goal("# Goal\n", LATEST))],
+    () => saved ? goalView("# Goal\n", SAVED_1, summary) : goalView("# Goal\n", OPEN));
+  await openProject();
+  const field = document.getElementById("project-summary") as HTMLTextAreaElement;
+  fireEvent.change(field, { target: { value: "x".repeat(131) } });
+  fireEvent.click(save());
+  await screen.findByText("130 characters at most.");
+  expect(updateCalls(fetcher)).toHaveLength(0);
+  fireEvent.change(field, { target: { value: "Monthly closing" } });
+  fireEvent.click(save());
+  await waitFor(() => expect(updateCalls(fetcher)).toHaveLength(1));
+  expect(updateBody(fetcher)).toEqual({ task: PROJECT_TASK, values: { project_summary: "Monthly closing" }, expectedTaskHash: OPEN });
+  await screen.findByText("Saved");
+  // The feed brings the saved Task; the next save is read against it.
+  receiveFullIndex(queryClient, { ...indexOf(tree({ tasks: [dto(), summarised] })), rev: 2 });
+  await queryClient.refetchQueries();
+  fireEvent.change(field, { target: { value: " " } });
+  await waitFor(() => expect(save().disabled).toBe(false));
+  fireEvent.click(save());
+  await waitFor(() => expect(updateCalls(fetcher)).toHaveLength(2));
+  expect(updateBody(fetcher, 1)).toEqual({ task: PROJECT_TASK, values: { project_summary: null }, expectedTaskHash: SAVED_1 });
 });
 
 test("a blank name cannot be saved", async () => {
@@ -129,7 +155,7 @@ test("a refused code location says so on its own field while the Task's fields a
   fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Renamed" } });
   fireEvent.change(document.getElementById("project-location")!, { target: { value: "/work/app" } });
   fireEvent.click(save());
-  await screen.findByText("The code location was not saved. The other fields were.");
+  await screen.findByText("The working folder was not saved. The other fields were.");
   expect(updateCalls(fetcher)).toHaveLength(2);
   expect(updateBody(fetcher, 1)).toEqual({ task: PROJECT_TASK, title: "Renamed", expectedTaskHash: OPEN });
   // Only the location is still unsaved: the next save sends it alone, against the hash the Task's write answered.

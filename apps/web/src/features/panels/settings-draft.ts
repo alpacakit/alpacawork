@@ -2,7 +2,7 @@ import { detailWriteBasis, type WriteBasis } from "@/data/connection";
 import type { QueryClient } from "@tanstack/react-query";
 import { stringify } from "yaml";
 import { z } from "zod";
-import { PROJECT_POLICY, compileAgentSetting, enabledAgents, projectColorSchema, resolveAgentSelection, titleSchema,
+import { DEFAULT_FIELDS, PROJECT_POLICY, PROJECT_SUMMARY, compileAgentSetting, hardLimit, enabledAgents, projectColorSchema, resolveAgentSelection, titleSchema,
   type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
 import { readServerAgents, serverAgentDraftSchema } from './server-agent-draft';
 import { readStack, writeStack } from './ai-stack-draft';
@@ -29,31 +29,52 @@ export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<Ser
   return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
     { lineWidth: 0, aliasDuplicateObjects: false });
 }
+/** The most a project's summary may hold: what the server takes for its field (about 30% over the size aimed for). */
+export const PROJECT_SUMMARY_LIMIT = hardLimit(DEFAULT_FIELDS.find(({ id }) => id === PROJECT_SUMMARY)!.maxChars!);
+/** The project's own values the settings edit, by the draft key holding each as typed ("" for none). */
+const PROJECT_VALUES = { summary: PROJECT_SUMMARY, policy: PROJECT_POLICY } as const;
+type ProjectValueKey = keyof typeof PROJECT_VALUES;
+const projectValueKeys = Object.keys(PROJECT_VALUES) as ProjectValueKey[];
+/** Counted as the server counts the field's length, so the form refuses what a save would be refused for. */
+const summarySchema = z.string().superRefine((value, context) => {
+  if (value.length > PROJECT_SUMMARY_LIMIT)
+    context.addIssue({ code: "custom", message: `At most ${PROJECT_SUMMARY_LIMIT} characters`, params: { kind: "too_long", maximum: PROJECT_SUMMARY_LIMIT } });
+});
 /**
  * A project's settings as one draft: its Task's title and colour, its code location on this PC, the fields its Tasks
- * use in order (`ownFields` false: inherited from above, as `fields` shows them) and its policy text as typed.
+ * use in order (`ownFields` false: inherited from above, as `fields` shows them) and its own values (summary, policy) as typed.
  */
 export const projectDraftSchema = z.object({ title: titleSchema, color: projectColorSchema, cwd: z.string(),
-  fields: z.array(z.string()), ownFields: z.boolean(), policy: z.string() });
+  fields: z.array(z.string()), ownFields: z.boolean(), summary: summarySchema, policy: z.string() });
 export type ProjectDraft = z.infer<typeof projectDraftSchema>;
+/** The project's own values as a draft holds them, from the values its Task was read with. */
+export function draftValues(values: Readonly<Record<string, unknown>>): Pick<ProjectDraft, ProjectValueKey> {
+  return Object.fromEntries(projectValueKeys.map((key) => {
+    const value = values[PROJECT_VALUES[key]];
+    return [key, typeof value === "string" ? value : ""];
+  })) as Pick<ProjectDraft, ProjectValueKey>;
+}
 /**
- * What a project's settings change on its Task, against the hash they were read with: its title, colour and policy
- * (a value of the policy field, null clearing it); in this PC's config.yaml, its code location (`null` inherits it).
+ * What a project's settings change on its Task, against the hash they were read with: its title, colour and own values
+ * (null clearing one); in this PC's config.yaml, its code location (`null` inherits it).
  */
 export type ProjectUpdate = { task: string; title?: string; color?: string; values?: ValuesPatch; cwd?: string | null; expectedTaskHash: string };
-/** What a save writes on the Task: each key only when it changed. */
+/** What a save writes on the Task: each key only when it changed; a value emptied is cleared. */
 export function projectChange(was: ProjectDraft, sent: ProjectDraft): Pick<ProjectUpdate, "title" | "color" | "values"> {
+  const values: ValuesPatch = Object.fromEntries(projectValueKeys.filter((key) => sent[key] !== was[key])
+    .map((key) => [PROJECT_VALUES[key], sent[key].trim() ? sent[key] : null]));
   return { ...sent.title === was.title ? {} : { title: sent.title }, ...sent.color === was.color ? {} : { color: sent.color },
-    ...sent.policy === was.policy ? {} : { values: { [PROJECT_POLICY]: sent.policy.trim() ? sent.policy : null } } };
+    ...Object.keys(values).length ? { values } : {} };
 }
 /** Whether a save changes the project's own fields: their order or membership, or whether it inherits them. */
 export const schemaChanged = (was: ProjectDraft, sent: ProjectDraft) =>
   was.ownFields !== sent.ownFields || sent.ownFields && JSON.stringify(was.fields) !== JSON.stringify(sent.fields);
 /** The draft once a save sent again is answered: what that save carried, the rest as it was. */
 export function draftAfterResend(draft: ProjectDraft, { title, color, values, cwd }: ProjectUpdate): ProjectDraft {
-  const policy = values?.[PROJECT_POLICY];
+  const sentValues = projectValueKeys.filter((key) => values && PROJECT_VALUES[key] in values)
+    .map((key) => [key, draftValues(values!)[key]]);
   return { ...draft, ...title === undefined ? {} : { title }, ...color === undefined ? {} : { color },
-    ...values ? { policy: typeof policy === "string" ? policy : "" } : {},
+    ...Object.fromEntries(sentValues),
     ...cwd === undefined ? {} : { cwd: cwd ?? "" } };
 }
 /** Saves `input` on the project's Task and answers the Task as written, so the next save expects its new hash. */

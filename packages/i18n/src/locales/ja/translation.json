@@ -573,6 +573,7 @@
     "not_directory": "フォルダではなくファイルです。",
     "required": "この欄を入力してください。",
     "too_big": "{{maximum}} 以下で入力してください。",
+    "too_long": "{{maximum}} 文字以内で入力してください。",
     "too_small": "{{minimum}} 以上で入力してください。",
     "unreadable_directory": "このフォルダは読めません。",
     "unwritable_directory": "ここには作れません（このフォルダに書き込む権限がありません）。"

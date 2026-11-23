@@ -330,6 +330,8 @@
       "title": "用法与 AGENTS.md 或 CLAUDE.md 相同"
     },
     "settingsTitle": "项目设置",
+    "summary": "简介",
+    "summaryHint": "用一句话说明这个项目做什么。AI 在选择请求放在哪个项目下、以及在这个项目中工作时都会读它。留空时，AI 会在第一个请求时写好。",
     "target": "项目",
     "targetHeld": "保存或放弃更改后，才能选择其他项目。",
     "title": "新建项目"

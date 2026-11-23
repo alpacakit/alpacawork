@@ -27,7 +27,7 @@ import type { ProjectDraft } from "./settings-draft";
 import { useProjectSave, type Project } from "./use-project-save";
 
 /**
- * The fields, in the order they are read: name, colour, the project it is in (shown, not changed here), code location,
+ * The fields, in the order they are read: name, summary, colour, the project it is in (shown, not changed here), code location,
  * its values (field by field, with what the projects above it pass on folded under them), the fields its Tasks use;
  * then the save bar at
  * the end of the content, and under a divider, Archive project. What a save writes is `useProjectSave`'s.
@@ -59,6 +59,7 @@ export function ProjectSettings({ project, projects, onUnsaved, onArchived }: { 
       {/* The fields hold still while a save is under way: what it answers is the base the next save starts from. */}
       <fieldset disabled={saving} data-project-fields className="m-0 min-w-0 border-0 p-0">
       <ProjectNameRow />
+      <ProjectSummaryRow />
       <SettingRow id="project-color" label={t("project.color")} className="narrow:grid-cols-1 narrow:gap-y-2">
         <ProjectColorField id="project-color" labelledBy="project-color-label" name={draft.title ?? project.title} value={draft.color}
           onChange={(color) => form.setValue("color", color, { shouldDirty: true })} />
@@ -98,6 +99,20 @@ export function ProjectNameRow() {
   const { register, formState: { errors } } = useFormContext<ProjectDraft>();
   return <SettingRow id="project-name" label={t("project.name")} error={errors.title?.message}>
     <Input id="project-name" dir="auto" autoComplete="off" aria-invalid={!!errors.title} className="w-64 max-w-[50vw] min-w-0" {...register("title")} />
+  </SettingRow>;
+}
+
+/**
+ * What the project is for, in one sentence: read beside its name to choose where a request goes. Not in setup or the
+ * new project dialog: agents write it with the project's first request when it is empty.
+ */
+function ProjectSummaryRow() {
+  const { t } = useTranslation("panels");
+  const { register, formState: { errors } } = useFormContext<ProjectDraft>();
+  return <SettingRow id="project-summary" label={t("project.summary")} hint={t("project.summaryHint")} error={errors.summary?.message}
+    className="narrow:grid-cols-1 narrow:gap-y-2">
+    <Textarea id="project-summary" dir="auto" rows={2} aria-invalid={!!errors.summary} className="min-h-0 w-110 max-w-full min-w-0 narrow:w-full"
+      {...register("summary")} />
   </SettingRow>;
 }
 

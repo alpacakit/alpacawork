@@ -573,6 +573,7 @@
     "not_directory": "这是文件，不是文件夹。",
     "required": "请填写此项。",
     "too_big": "请输入不超过 {{maximum}} 的值。",
+    "too_long": "请输入不超过 {{maximum}} 个字符。",
     "too_small": "请输入不小于 {{minimum}} 的值。",
     "unreadable_directory": "无法读取此文件夹。",
     "unwritable_directory": "无法在此处创建（没有此文件夹的写入权限）。"

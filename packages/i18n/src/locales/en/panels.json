@@ -337,6 +337,8 @@
       "title": "Use it the way you use AGENTS.md or CLAUDE.md"
     },
     "settingsTitle": "Project settings",
+    "summary": "Summary",
+    "summaryHint": "One sentence on what this project is for. AI reads it when choosing the project a request goes under and when working in this project. If left empty, AI writes it with the first request.",
     "target": "Project",
     "targetHeld": "Save or discard the changes to choose another project.",
     "title": "New project"
