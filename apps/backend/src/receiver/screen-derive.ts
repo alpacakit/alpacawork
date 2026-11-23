@@ -273,7 +273,11 @@ export function replyOf(bundle: TaskBundle) {
 // affected
 
 const ALL_ROW: readonly Facet[] = ['row', 'view', 'seat', 'push', 'membership'];
-const BALL: readonly Facet[] = ['row', 'view', 'seat', 'push', 'membership'];
+/**
+ * What another Task's records reach of a Task through its ball: its row, seat, push keys and home membership. Its view
+ * shows that ball only through its row, so the view is old only when its derived facts moved (finish).
+ */
+const BALL: readonly Facet[] = ['row', 'seat', 'push', 'membership'];
 
 /** Whether two lists hold the same items in the same order, by identity: records that kept their rows keep their objects. */
 const same = <T>(a: readonly T[] | undefined, b: readonly T[] | undefined) =>
@@ -417,7 +421,7 @@ export const affected = (change: RecordsChange, rows?: DerivedRows): AffectedSet
       gather.addAll(gather.each(reader => reader.historyReferrers(y)), ['history']);
     }
     // R19, B9: the questions addressed to Y.
-    if (c.kind || c.lifecycle || c.parent) gather.addAll(gather.each(reader => reader.questionsByDestination(y)), [...BALL, 'history']);
+    if (c.kind || c.lifecycle || c.parent) gather.addAll(gather.each(reader => reader.questionsByDestination(y)), [...BALL, 'view', 'history']);
     // N2: the direct children's end notices read Y's kind and lifecycle.
     if (c.kind || c.lifecycle) gather.addAll(gather.each(reader => reader.children(y)), ['push', 'membership']);
     // B6, S3: the Tasks waiting on a Request to Y (closureOf reads Y's log, lifecycle, responsible and Runs, and
@@ -513,7 +517,7 @@ function keyRelations(key: ChangeKey, change: RecordsChange, gather: Gather, own
   switch (key.kind) {
     case 'config':
       // B10, A9, A10: the agents and limits every seat reads, and the index's small fields.
-      gather.addAll(new Set([...before.taskIds(), ...after.taskIds()]), [...BALL, 'history']);
+      gather.addAll(new Set([...before.taskIds(), ...after.taskIds()]), [...BALL, 'view', 'history']);
       gather.meta = true;
       return;
     case 'person': case 'conversation':
@@ -572,6 +576,8 @@ function listedRow(derived: TaskDerived | undefined): string {
   return JSON.stringify([derived.row, projectRowFacts(derived.row, derived.placements, derived.runs, 0, 0, 0), derived.contribution]);
 }
 
+/** What a Task's view shows of its derived facts: its row (its ball too), placements and Runs, without activity. */
+const viewFacts = (derived: TaskDerived | undefined) => JSON.stringify(derived ? [derived.row, withoutActivity(derived)] : null);
 /** What a strip above a Task reads of it: its Runs' spans (belowRuns, the axis). */
 const runSpans = (derived: TaskDerived | undefined) =>
   JSON.stringify(derived?.runs.map(run => [run.id, run.state, run.startedAt, run.endedAt]) ?? []);
@@ -583,11 +589,14 @@ const runSpans = (derived: TaskDerived | undefined) =>
  * log, Runs and placements, and from the spans of the Runs below it: a Task's own strip changes with its row, its
  * records (its timeline facet) and its History; its ancestors' strips change only when its Runs' spans or its place
  * change, at either point. What descendants decide of a row (counts, movedAt and the order) is the aggregate's
- * (aggregateResources), and no strip carries it.
+ * (aggregateResources), and no strip carries it. A Task whose row was reached has its view made old when its derived
+ * facts moved.
  */
 function finish(gather: Gather, before: RecordsReader, after: RecordsReader, rows: DerivedRows): AffectedSet {
   const page = new Set<string>(), search = new Set<string>(), timeline = new Set<string>();
   for (const [task, facets] of gather.tasks) {
+    // A view shows its Task's derived facts: whatever reached them made the view old when they moved.
+    if (facets.has('row') && !facets.has('view') && viewFacts(rows.before(task)) !== viewFacts(rows.after(task))) gather.add(task, ['view']);
     const rowChanged = facets.has('row') && listedRow(rows.before(task)) !== listedRow(rows.after(task));
     const own = rowChanged || facets.has('timeline') || facets.has('history');
     const below = runSpans(rows.before(task)) !== runSpans(rows.after(task)) || !!before.bundle(task) !== !!after.bundle(task)
