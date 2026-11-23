@@ -65,7 +65,7 @@ export function configureReadRetention(client: QueryClient) {
   startReadRetention(client);
 }
 const pageCodecs = new WeakMap<z.ZodType, { envelope: z.ZodType; page: z.ZodType }>();
-const pageProofs = new WeakMap<z.ZodType, WeakSet<object>>();
+const pageProofs = new WeakMap<z.ZodType, WeakSet<object>>(), pageSchemas = new Set<z.ZodType>();
 const pageEnvelope = (schema: z.ZodType) => z.object({ pages: z.array(schema).min(1), pageParams: z.array(z.string().nullable()).min(1) })
   .strict().refine(value => value.pages.length === value.pageParams.length && value.pageParams[0] === null
     && new Set(value.pageParams).size === value.pageParams.length);
@@ -73,6 +73,7 @@ const pageEnvelope = (schema: z.ZodType) => z.object({ pages: z.array(schema).mi
 function pages(schema: z.ZodType) {
   const codec = pageEnvelope(schema);
   pageCodecs.set(codec, { envelope: pageEnvelope(z.unknown()), page: schema });
+  pageSchemas.add(schema);
   return codec;
 }
 // The view's own row is part of this very view, never a second version of the Task's identity or body facts.
@@ -495,6 +496,13 @@ function resolveReadData(old: unknown, incoming: unknown): unknown {
   const proven = object(incoming) ? shapes.get(incoming) : undefined;
   if (proven && object(shared) && shared !== incoming && !shapes.has(shared) && freezeReadJson(shared))
     shapes.set(shared, { keys: proven.keys.map(proof => ({ key: proof.key })), queries: new WeakMap<Query, QueryKey>() });
+  // Paged values are proven page by page: a page sharing rebuilt says the same as the checked page it was built from.
+  const pages = object(incoming) && object(shared) && shared !== incoming ? (incoming as { pages?: unknown }).pages : undefined;
+  if (Array.isArray(pages)) pages.forEach((page, at) => {
+    const built = (shared as { pages?: unknown[] }).pages?.[at];
+    if (built === page || !object(page) || !object(built)) return;
+    for (const schema of pageSchemas) if (pageProofs.get(schema)?.has(page) && freezeReadJson(built)) rememberPage(schema, built);
+  });
   return shared;
 }
 export function acceptedGet(ticket: GetTicket | undefined, raw: unknown): boolean {
@@ -688,7 +696,7 @@ export function observeReadProofs(client: QueryClient) {
   configureReadRetention(client);
   if (observed.has(client)) return;
   observed.add(client);
-  for (const prefix of ['task', 'person-settings', 'person-notices', 'coordinator', 'task-history', 'task-finished', 'task-shelved', 'project-shelf'])
+  for (const prefix of ['task', 'person-settings', 'person-notices', 'coordinator', 'task-history', 'task-finished', 'task-shelved', 'task-search', 'task-timeline', 'project-shelf'])
     client.setQueryDefaults([prefix], { ...client.getQueryDefaults([prefix]), structuralSharing: resolveReadData });
   const cache = client.getQueryCache(), success = cache.config.onSuccess, settled = cache.config.onSettled, failure = cache.config.onError;
   cache.config.onError = (error, query) => { if (failedGetAccepted(query, error)) failure?.(error, query); };

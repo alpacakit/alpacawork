@@ -58,6 +58,25 @@ test('resources.timeline appends through Query and checks each immutable page on
   } finally { stop(); observer.destroy(); }
 });
 
+test('a page read again with changes is checked once, on arrival, and not again when drawn', async () => {
+  const f = fixture(), options = resources.finished(f.index.root, null);
+  let total = 1;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+    new Response(JSON.stringify({ rows: [], total: total++, nextAfter: null, ...served0 }), { headers: { 'Content-Type': 'application/json' } }));
+  const traversal = vi.spyOn(taskPageSchema._zod, 'run');
+  const observer = new InfiniteQueryObserver(f.client, options);
+  const stop = observer.subscribe(() => {});
+  try {
+    const query = () => f.client.getQueryCache().find({ queryKey: options.queryKey, exact: true })!;
+    await vi.waitFor(() => expect(observer.getCurrentResult().data?.pages[0]?.total).toBe(1));
+    await observer.refetch();
+    const acquired = observer.getCurrentResult().data!.pages[0]!;
+    expect(acquired.total).toBe(2);
+    expect(assessRead(f.client, query())).toMatchObject({ state: 'current', display: true });
+    expect(traversal).toHaveBeenCalledTimes(2);
+  } finally { stop(); observer.destroy(); }
+});
+
 test('new envelopes and changed pages still follow the full codec after a successful page proof', () => {
   const f = fixture(), shared = page();
   expect(evaluateRead(f.index, f.entry(bundle([shared]))).state).toBe('current');
