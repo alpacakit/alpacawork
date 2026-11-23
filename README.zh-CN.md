@@ -63,11 +63,13 @@ alpacawork setup
 | 查看是否在运行 | `/alpacawork 看看是否在运行` | `alpacawork status` |
 | 更改设置 | `/alpacawork 同时最多运行 4 个 AI` | — |
 | 更改平时使用的模型 | `/alpacawork 让任务平时用 opus 来做` | — |
+| 让新模型可用 | `/alpacawork opus 出了新版本，把它加到模型设置里以便选择` | — |
+| 更改项目准则 | `/alpacawork 在项目准则中加上“设计工作用 opus 来做”` | — |
 | 更新到最新版本 | `/alpacawork 更新到最新版本` | `alpacawork deploy npm:alpacawork` |
 | 停止、启动、重启 | `/alpacawork 重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
 | 卸载 | `/alpacawork 卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
 
-设置和模型也可以在界面的输入框或设置中更改，更新也可以在界面的设置中进行。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](docs/zh-CN/manage.md)）。
+设置、模型和准则也可以在界面的输入框或设置中更改，更新也可以在界面的设置中进行。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](docs/zh-CN/manage.md)）。
 
 委托任务、查找任务、回答提问等操作，也可以在 Claude Code 或 Codex 的对话中进行。说法见 [从 Claude Code 或 Codex 使用](docs/zh-CN/chat.md)。
 

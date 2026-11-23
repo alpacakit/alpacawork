@@ -63,11 +63,13 @@ Las tareas se piden en el cuadro de entrada de la pantalla. Para abrir la pantal
 | Ver si está en marcha | `/alpacawork mira si está en marcha` | `alpacawork status` |
 | Cambiar la configuración | `/alpacawork ejecuta como máximo 4 IA a la vez` | — |
 | Cambiar el modelo de uso normal | `/alpacawork usa opus normalmente para las tareas` | — |
+| Hacer disponible un modelo nuevo | `/alpacawork salió una versión nueva de opus; añádela a la configuración de modelos para poder elegirla` | — |
+| Cambiar la política del proyecto | `/alpacawork añade «el diseño, con opus» a la política del proyecto` | — |
 | Actualizar a la última versión | `/alpacawork actualiza a la última versión` | `alpacawork deploy npm:alpacawork` |
 | Detener, iniciar o reiniciar | `/alpacawork reinicia alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `/alpacawork desinstala alpacawork` | `alpacawork uninstall` y después `npm uninstall -g alpacawork` |
 
-La configuración y los modelos también se cambian en el cuadro de entrada o en Configuración de la pantalla, y la actualización también se hace desde Configuración. Los demás comandos y su uso se consultan con `alpacawork -h` (detalles en [Volver a abrir, detener y actualizar](docs/es/manage.md)).
+La configuración, los modelos y la política también se cambian en el cuadro de entrada o en Configuración de la pantalla, y la actualización también se hace desde Configuración. Los demás comandos y su uso se consultan con `alpacawork -h` (detalles en [Volver a abrir, detener y actualizar](docs/es/manage.md)).
 
 Pedir tareas, buscarlas, responder preguntas y cosas así también se hace desde una conversación de Claude Code o Codex. Cómo pedirlo está en [Usarlo desde Claude Code o Codex](docs/es/chat.md).
 
