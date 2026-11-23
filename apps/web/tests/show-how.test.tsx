@@ -40,6 +40,12 @@ test("the sheet is not shown while a finger is on it (scrolling too), grows and 
   act(() => { window.dispatchEvent(finger("pointercancel")); });
   expect(useShowHow.getState().sheet).toBeUndefined();
   act(() => { window.dispatchEvent(finger("touchend")); });
+  // A mouse press ended by the browser (a text dragged away) is over: it is offered again.
+  const mouse = (type: string) => { const event = new Event(type, { bubbles: true }); Object.assign(event, { pointerId: 1, pointerType: "mouse" }); return event; };
+  act(() => { frame.dispatchEvent(mouse("pointerdown")); });
+  expect(useShowHow.getState().sheet).toBeUndefined();
+  act(() => { window.dispatchEvent(mouse("pointercancel")); });
+  expect(useShowHow.getState().sheet).toBeDefined();
   act(() => { useShowHow.getState().sheet!(ended); });
   pass(16); pass(600);
   // Grown by about 48 px, held as a finger holds it.

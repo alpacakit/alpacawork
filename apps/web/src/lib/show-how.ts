@@ -40,7 +40,8 @@ function offerShowHow(kind: ShowHowKind, play: ShowHow): () => void {
  * Offers a kind's motion from its owner while nothing is down on the owner's own `surface`: a finger, mouse button or
  * pen going down there is the person's own press, so the motion is withdrawn until it is really lifted. A finger stays
  * down until the screen has no finger on it (touchend, touchcancel), even when the browser takes its pointer for a
- * scroll (pointercancel); a mouse or a pen until it is let go (pointerup). Returns what withdraws it for good (the owner
+ * scroll (pointercancel); a mouse or a pen until it is let go (pointerup) or its press is ended otherwise (pointercancel:
+ * a text dragged away, after which that press sends nothing more). Returns what withdraws it for good (the owner
  * gone, or its part no longer able to do it).
  */
 export function offerWhileFree(kind: ShowHowKind, surface: HTMLElement, play: ShowHow): () => void {
@@ -59,11 +60,13 @@ export function offerWhileFree(kind: ShowHowKind, surface: HTMLElement, play: Sh
   const lift = (event: TouchEvent) => { if (!event.touches?.length) change(() => { finger = false; }); };
   surface.addEventListener("pointerdown", press, true);
   addEventListener("pointerup", letGo, true);
+  addEventListener("pointercancel", letGo, true);
   addEventListener("touchend", lift, true);
   addEventListener("touchcancel", lift, true);
   return () => {
     surface.removeEventListener("pointerdown", press, true);
     removeEventListener("pointerup", letGo, true);
+    removeEventListener("pointercancel", letGo, true);
     removeEventListener("touchend", lift, true);
     removeEventListener("touchcancel", lift, true);
     withdraw();
