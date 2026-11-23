@@ -126,7 +126,7 @@ export const ACTIONS = {
   'task.new.from_user': { grants: [['user']] },
   'task.new.project': { grants: [['user']] },
   'task.update.title': { grants: [['own'], ['parent'], ['user']] },
-  /** A Task's values; a project's are its policy. */
+  /** A Task's values; a project's are its summary and its policy. */
   'task.update.values': { grants: [['own'], ['parent'], ['user']] },
   'task.update.cwd': { grants: [['user']] },
   'task.update.color': { grants: [['user']] },

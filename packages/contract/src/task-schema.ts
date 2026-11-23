@@ -61,6 +61,8 @@ export const PROJECT_POLICY = 'project_policy';
  * every launch below the project.
  */
 export const PROJECT_SUMMARY = 'project_summary';
+/** The size a summary aims for: the most a write may hold (`hardLimit`) comes to 128 characters. */
+const PROJECT_SUMMARY_SIZE = 98;
 /** The fields of a project's own values, whatever schema its Tasks use. */
 export const PROJECT_SCHEMA: readonly string[] = [PROJECT_SUMMARY, PROJECT_POLICY];
 /** Whether a field is a project's own value, which no Task's schema names. */
@@ -96,7 +98,7 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('decide_choice_recommended', 'Recommended', 80, 'Only on the one choice you recommend: why, in one sentence. The screen marks that choice as recommended.'),
   text('decide_note', 'Note', 250, 'Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.'),
   text('decide_stop', 'Stop', 180, 'Only when stopping the task is one of the options: what stopping means here, in 3 lines. It is offered as a choice of its own (`<number>-stop`), and whoever picks it stops the task instead of answering. Do not write it as one of the choices.'),
-  text(PROJECT_SUMMARY, 'Project summary', 100, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.'),
+  text(PROJECT_SUMMARY, 'Project summary', PROJECT_SUMMARY_SIZE, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.'),
   { id: PROJECT_POLICY, title: 'Project policy', type: 'text', many: false, required: false, maxChars: null, maxItems: null, members: [],
     hint: 'What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.' },
   text('notes', 'Notes', 600, 'What the next agent needs to carry on: the decisions in effect and why, one line on how a decision changed (rejected options and why), unchecked points that could change a decision, and the next step and where. Commands, test counts and work steps go in files in the task folder, linked from the deliverables.'),
