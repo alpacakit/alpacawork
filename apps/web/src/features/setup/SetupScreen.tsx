@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { installSetupTexts } from "@alpacawork/i18n/setup";
 import { setupSteps, type SetupStep } from "@alpacawork/contract";
@@ -129,6 +129,7 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
   const app = useDesktopApp();
   const asks = way === "prompt";
   const [asking, setAsking] = useState(false);
+  const markId = useId();
   const open = () => leaveSetup(to);
   useEffect(() => { if (!asking && app?.kind !== way) open(); }, [app, asking]);
   const install = async () => {
@@ -149,8 +150,8 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
       {asks
         ? <StepButtons other={<Button variant="outline" className="min-h-11 px-4 narrow:w-full" disabled={asking} onClick={open}>{t("done.browser")}</Button>}>
           <span className="relative inline-flex narrow:w-full">
-            <RecommendedMark className="pointer-events-none absolute -top-2.5 left-2" />
-            <Button className="min-h-11 px-6 narrow:w-full" disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
+            <RecommendedMark id={markId} className="pointer-events-none absolute -top-2.5 left-2" />
+            <Button className="min-h-11 px-6 narrow:w-full" aria-describedby={markId} disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
           </span>
         </StepButtons>
         : <StepButtons><Button className="min-h-11 px-6 narrow:w-full" onClick={open}>{t("done.start")}</Button></StepButtons>}

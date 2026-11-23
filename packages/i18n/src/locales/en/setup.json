@@ -9,7 +9,7 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "First AI to use",
-    "firstHint": "Both the AI you talk to in the input box and the AI that works on tasks start with this one. You can add AIs to take over when it hits a usage limit later in the settings.",
+    "firstHint": "This AI is used first, both when you talk in the input box and when tasks are worked on. Later, in the settings, you can add AIs that take over when it hits a usage limit.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",

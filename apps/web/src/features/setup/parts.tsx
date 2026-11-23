@@ -21,9 +21,9 @@ export function StepButtons({ back, other, children, failure }: { back?: { onCli
 }
 
 /** The mark on what the setup recommends: the same pill as a recommended answer to a question. */
-export function RecommendedMark({ className }: { className?: string }) {
+export function RecommendedMark({ id, className }: { id?: string; className?: string }) {
   const { t } = useTranslation("setup");
-  return <span data-setup-recommended className={cn("rounded-full border border-turn bg-lit px-1.5 text-xs font-normal whitespace-nowrap text-turn", className)}>{t("recommended")}</span>;
+  return <span id={id} data-setup-recommended className={cn("rounded-full border border-turn bg-lit px-1.5 text-xs font-normal whitespace-nowrap text-turn", className)}>{t("recommended")}</span>;
 }
 
 export function FailureLine({ text, detail }: { text: string; detail: string }) {
