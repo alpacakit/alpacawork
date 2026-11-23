@@ -325,7 +325,7 @@
     "description": "Agrupa tareas, un objetivo y agentes.",
     "fieldsNote": "Campos que se escriben en las tareas. Los agentes los reciben en este orden.",
     "gone": "Este proyecto ya no está en la lista.",
-    "inherited": "Políticas de los proyectos superiores (donde difieran, prevalece la del superior)",
+    "inherited": "Resúmenes y políticas de los proyectos superiores (donde las políticas difieran, prevalece la del superior)",
     "locationInherits": "La carpeta en la que trabajan los agentes. Si se deja vacía, usan {{path}} del proyecto superior.",
     "locationNotSaved": "La carpeta de trabajo no se guardó. Los demás campos sí.",
     "locationRoot": "La carpeta en la que trabajan los agentes. Si se deja vacía, usan {{path}}.",
@@ -345,7 +345,7 @@
     },
     "settingsTitle": "Configuración del proyecto",
     "summary": "Resumen",
-    "summaryHint": "Una frase sobre de qué trata este proyecto. El coordinador la lee al elegir en qué proyecto va una petición, y los agentes al trabajar en este proyecto. Si se deja vacía, el coordinador la escribe la próxima vez que ponga una petición en este proyecto.",
+    "summaryHint": "Una frase sobre de qué trata este proyecto. El coordinador la lee para elegir dónde va una petición, y los agentes al trabajar aquí. Si queda vacía, el coordinador la escribe con la próxima petición.",
     "target": "Proyecto",
     "targetHeld": "Guarda o descarta los cambios para elegir otro proyecto.",
     "title": "Nuevo proyecto"

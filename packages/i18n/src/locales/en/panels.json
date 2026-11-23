@@ -319,7 +319,7 @@
     "description": "Groups tasks, a goal and agents.",
     "fieldsNote": "Fields written in tasks. Agents receive them in this order.",
     "gone": "This project is no longer listed.",
-    "inherited": "Policies of the projects above (where they differ, the one above wins)",
+    "inherited": "Summaries and policies of the projects above (where policies differ, the one above wins)",
     "locationInherits": "The folder agents work in. If left empty, they use {{path}} from the parent project.",
     "locationNotSaved": "The working folder was not saved. The other fields were.",
     "locationRoot": "The folder agents work in. If left empty, they use {{path}}.",
@@ -338,7 +338,7 @@
     },
     "settingsTitle": "Project settings",
     "summary": "Summary",
-    "summaryHint": "One sentence on what this project is for. The coordinator reads it when choosing the project a request goes under, and agents read it when working in this project. If left empty, the coordinator writes it the next time it puts a request in this project.",
+    "summaryHint": "One sentence on what this project is for. The coordinator reads it to choose where a request goes, and agents read it when they work here. Left empty, the coordinator writes it with the next request.",
     "target": "Project",
     "targetHeld": "Save or discard the changes to choose another project.",
     "title": "New project"
