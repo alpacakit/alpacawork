@@ -1,11 +1,20 @@
 {
   "guide": {
+    "again": {
+      "accept": "A report came. If you're happy with it, finish the task with “{{finish}}”.",
+      "answer": "The AI carried on and has a question for you. As before, choose an option and send it.",
+      "question": "The AI on the task has a question for you. Press this row to open it.",
+      "received": "The front-desk AI has it, and is passing it to the AI on the task.",
+      "result": "The AI on the task sent a report. Press this row to open it.",
+      "working": "The AI on the task has your instructions and is carrying on. When it has a question or a report for you, the task moves back to “{{section}}”."
+    },
     "close": "End the getting-started guide",
     "closed": "The guide has ended. You can show it again from {{settings}} → {{tab}}, under “{{guide}}”.",
     "example": "This is a demo to try the alpacawork flow.\nCreate an HTML page that shows \"Hello\" in two fonts, then ask me which one is better.",
     "moreExample": "Make one more version so I can compare them.",
     "next": "Got it",
     "openSteps": "Open the steps",
+    "over": "That's the end of the getting-started guide. You can show it again from {{settings}} → {{tab}}, under “{{guide}}”.",
     "reopen": "Undo",
     "say": {
       "accept": "If you're happy with it, finish the task with this button ({{finish}}). If you'd like something else done next, you can send more instructions instead.",
@@ -22,7 +31,7 @@
       "send": "This is the only input box. All your instructions go here.",
       "sendAgain": "Write what you want done here and send it.",
       "sendReady": "Send it with this button.",
-      "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input box. You can also ask there to change settings or add a model.",
+      "stop": "The AI is working on the task. To stop it, choose “{{stop}}” here, or ask in the input box. You can also ask there to change settings or add a model.",
       "unassigned": "No AI is on this task yet. Open the row and ask in the input box to start it.",
       "working": "This is a task. The AI on it does the work. When it has a question or a report for you, the task moves to “{{section}}”."
     },

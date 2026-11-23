@@ -1,11 +1,20 @@
 {
   "guide": {
+    "again": {
+      "accept": "Chegou um relatório. Se estiver bom, encerre a tarefa com “{{finish}}”.",
+      "answer": "A IA continuou o trabalho e tem uma pergunta para você. Como antes, escolha uma opção e envie.",
+      "question": "A IA responsável tem uma pergunta para você. Abra esta linha para ver.",
+      "received": "A IA da recepção recebeu e está passando para a IA responsável.",
+      "result": "A IA responsável enviou um relatório. Abra esta linha para ver.",
+      "working": "A IA responsável recebeu suas instruções e continua o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa volta para “{{section}}”."
+    },
     "close": "Encerrar o guia",
     "closed": "O guia foi encerrado. Você pode mostrá-lo de novo em {{settings}} → {{tab}}, em “{{guide}}”.",
     "example": "Esta é uma demonstração para experimentar o fluxo do alpacawork.\nCrie um HTML que mostre \"Hello\" em duas fontes e me pergunte qual é melhor.",
     "moreExample": "Faça mais uma versão para eu poder comparar.",
     "next": "Entendi",
     "openSteps": "Abrir os passos",
+    "over": "O guia termina aqui. Você pode mostrá-lo de novo em {{settings}} → {{tab}}, em “{{guide}}”.",
     "reopen": "Desfazer",
     "say": {
       "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}). Se quiser pedir outra coisa em seguida, você pode enviar mais instruções em vez de encerrar.",
@@ -22,7 +31,7 @@
       "send": "Este é o único campo de mensagem. Todas as instruções são dadas por aqui.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie.",
       "sendReady": "Envie com este botão.",
-      "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
+      "stop": "A IA está trabalhando na tarefa. Para pará-la, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
       "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça no campo de mensagem para começar.",
       "working": "Isto é uma tarefa. A IA responsável faz o trabalho. Quando ela tiver uma pergunta ou um relatório para você, a tarefa passa para “{{section}}”."
     },

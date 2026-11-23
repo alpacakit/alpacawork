@@ -20,7 +20,7 @@ import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { closing, doneOnLeaving, finishedHere, guideEntry, nextStage, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
+import { closing, doneOnLeaving, finishedHere, guideEntry, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
@@ -149,7 +149,7 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
+export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
@@ -203,30 +203,35 @@ export function useGuide(stage: GoingStage, skipped: ReadonlySet<string>): { ent
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
   const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
-  const doneHere = finishedHere(pressed, useServerState(pressed, index.byId)).length > 0;
-  // The step standing on this page as it was last chosen: it stays the step while it holds, done or not.
+  const finished = finishedHere(pressed, useServerState(pressed, index.byId));
+  const doneHere = finished.length > 0;
+  // Done pressed on this page and kept, on a Task the server does not say is finished yet: on its way.
+  const finishing = fresh.some(id => !finished.includes(id));
+  // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
-  const facts: GuideFacts = { stage, tasks, doneHere, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
+  const facts: GuideFacts = { stage, tasks, doneHere, finishing, questions, results, working, unowned, ...coordinator, conversationOpen, labelled, drafting, open,
     apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;
-  if (ready) standing.current = entry?.id ?? null;
-  return { entry, facts, fresh, ready };
+  const again = !!entry && saidBefore(entry, facts);
+  if (ready) standing.current = entry && !again ? entry.id : null;
+  return { entry, again, facts, fresh, ready };
 }
 
 /**
  * Stores the stage as a guide going on moves (nextStage), only over the stage it was decided on (moveGuide): the Tasks
  * Done was pressed on since it began (`fresh`, kept as `finished` whatever step shows), and puts away a step with a
  * button as the guide moves on from it (doneOnLeaving; `stood`: its balloon has stood on this page). Nothing is stored
- * while the guide is not `ready`. Mounted once, beside the balloon, so a stage is written by one owner only.
+ * while the guide is not `ready`. `over` is called once the guide is stored as read to its end. Mounted once, beside the balloon, so a stage is written by one owner only.
  */
-export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean) {
+export function useGuideStage(stage: GoingStage, entry: GuideEntry | null, facts: GuideFacts, fresh: readonly string[], ready: boolean, stood: (id: string) => boolean, over: () => void) {
   const kept = stage.finished ?? [];
   const adding = fresh.filter(id => !kept.includes(id));
   const next = !ready ? undefined : adding.length ? { ...stage, finished: [...kept, ...adding] } : nextStage(stage, entry, closing(facts));
   const key = next && JSON.stringify(next);
-  useEffect(() => { if (next) moveGuide(stage, next); }, [key]);
+  // Read to its end, the guide says that it is over (`over`): it never just stops showing.
+  useEffect(() => { if (next && moveGuide(stage, next) && next.stage === "done") over(); }, [key]);
   // The step held, and the start of the guide it was held in: one started again (settings' "Show again") reads nothing
   // as done from before it.
   const held = useRef<{ entry: GuideEntry | null; at: number | null }>({ entry: null, at: null });

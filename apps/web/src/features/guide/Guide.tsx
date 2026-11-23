@@ -12,6 +12,9 @@ import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./g
 import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } from "./use-guide";
 
+/** Where settings show the guide again: named in the notice that it is over, however it ended. */
+const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
+
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
   const { t } = useTranslation("tree");
@@ -19,7 +22,7 @@ function CloseGuide({ className }: { className?: string }) {
     // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
     const before = guideStage.get();
     closeGuide();
-    notify.info(t("guide.closed", { settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") }),
+    notify.info(t("guide.closed", shownAgainAt(t as TFunction)),
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
@@ -239,13 +242,15 @@ function useSkipped() {
 
 function GoingBalloon({ stage }: { stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { entry, facts, fresh, ready } = useGuide(stage, skipped);
+  const { t } = useTranslation("tree");
+  const { entry, again, facts, fresh, ready } = useGuide(stage, skipped);
   // The steps whose balloon has stood on this page, in this guide (begun again, none has): one stands once it has been
   // on the screen for a moment without a break (STOOD_MS).
   const began = stage.stage === "started" ? stage.at : null;
   const stood = useRef({ began, ids: new Set<string>() });
   if (began !== null && stood.current.began !== began) stood.current = { began, ids: new Set() };
-  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id));
+  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id),
+    () => notify.info(t("guide.over", shownAgainAt(t as TFunction)), { id: "guide-closed" }));
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
@@ -311,10 +316,10 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
   return createPortal(<>
     {placed && <div aria-hidden="true" data-guide-ring className="pointer-events-none fixed z-(--layer-guide) rounded-md ring-2 ring-turn ring-offset-2 ring-offset-bg transition-[left,top,width,height] duration-(--motion-fast) motion-reduce:transition-none"
       style={{ left: placed.target.left, top: placed.target.top, width: placed.target.width, height: placed.target.height }} />}
-    <div ref={balloon} data-guide-balloon={entry.id} data-guide-side={placed?.side}
+    <div ref={balloon} data-guide-balloon={entry.id} data-guide-again={again || undefined} data-guide-side={placed?.side}
       className={cn("pointer-events-none fixed z-(--layer-guide) w-max max-w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
       style={placed ? { left: placed.x, top: placed.y } : { left: 0, top: 0 }}>
-      <BalloonBody entry={entry} placed={placed} />
+      <BalloonBody entry={entry} again={again} placed={placed} />
     </div>
   </>, document.body);
 }
@@ -340,10 +345,12 @@ function keepRoom(before: HTMLElement | null, balloon: DOMRect | null): HTMLElem
 export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DOMRect, "top" | "bottom">) =>
   balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
-function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | null }) {
+/** The balloon's words and buttons: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
+function BalloonBody({ entry, again, placed }: { entry: GuideEntry; again: boolean; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
-  const say = entry.say(t as TFunction);
+  const say = (again && entry.again || entry.say)(t as TFunction);
+  const next = !!entry.next && !again;
   // The balloon is as wide as its longest line: words broken at a sentence's or a phrase's end (Sentences) leave no
   // empty room at their right.
   const words = useRef<HTMLParagraphElement>(null);
@@ -380,10 +387,10 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
       </p>
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
-    {(entry.next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
+    {(next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
         onClick={() => { read(); entry.action!.run(t as TFunction); }}>{entry.action.label(t as TFunction)}</Button>}
-      {entry.next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}
+      {next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}
     </div>}
   </div>;
 }

@@ -1,11 +1,20 @@
 {
   "guide": {
+    "again": {
+      "accept": "Llegó un informe. Si está bien, termina la tarea con «{{finish}}».",
+      "answer": "La IA siguió con el trabajo y tiene una pregunta para ti. Como antes, elige una opción y envíala.",
+      "question": "La IA asignada tiene una pregunta para ti. Pulsa esta fila para abrirla.",
+      "received": "La IA de recepción lo recibió y se lo está pasando a la IA asignada.",
+      "result": "La IA asignada envió un informe. Pulsa esta fila para abrirlo.",
+      "working": "La IA asignada recibió tus instrucciones y sigue con el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea vuelve a «{{section}}»."
+    },
     "close": "Terminar la guía",
     "closed": "La guía ha terminado. Puedes volver a mostrarla desde {{settings}} → {{tab}}, en «{{guide}}».",
     "example": "Esta es una demostración para probar el recorrido de alpacawork.\nCrea un HTML que muestre \"Hello\" con dos fuentes y pregúntame cuál es mejor.",
     "moreExample": "Haz una versión más para que pueda compararlas.",
     "next": "Entendido",
     "openSteps": "Abrir los pasos",
+    "over": "Aquí termina la guía. Puedes volver a mostrarla desde {{settings}} → {{tab}}, en «{{guide}}».",
     "reopen": "Deshacer",
     "say": {
       "accept": "Si está bien, termina la tarea con este botón ({{finish}}). Si quieres pedir algo más a continuación, puedes enviar más instrucciones en lugar de terminarla.",
@@ -22,7 +31,7 @@
       "send": "Este es el único cuadro de entrada. Todas las instrucciones se dan desde aquí.",
       "sendAgain": "Escribe aquí lo que quieres que se haga y envíalo.",
       "sendReady": "Envíalo con este botón.",
-      "stop": "Para detener la IA, elige «{{stop}}» aquí o pídelo en el cuadro de entrada, donde también puedes pedir cambios en la configuración o añadir modelos.",
+      "stop": "La IA está trabajando en la tarea. Para detenerla, elige «{{stop}}» aquí o pídelo en el cuadro de entrada, donde también puedes pedir cambios en la configuración o añadir modelos.",
       "unassigned": "Esta tarea aún no tiene una IA asignada. Abre la fila y pide en el cuadro de entrada que empiece.",
       "working": "Esto es una tarea. La IA asignada hace el trabajo. Cuando tenga una pregunta o un informe para ti, la tarea pasa a «{{section}}»."
     },
