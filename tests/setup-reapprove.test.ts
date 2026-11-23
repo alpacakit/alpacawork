@@ -15,7 +15,7 @@ import { controlSchemaManifest } from '@alpacawork/db';
 import { createSystemdService, systemdDefinition } from '../packages/core/dist/platform/systemd-service.js';
 import { createLaunchdService, launchdDefinition } from '../packages/core/dist/platform/launchd-service.js';
 import { InstallationStore, installationPath } from '@alpacawork/backend/test-dist/installation/store.js';
-import { initializeInstallation, registerInstallation, readInstallationService, managedInstallation, installationSkillsRoot, serviceDefinition, servicePath, servicePort, servicePublicHost } from '@alpacawork/backend/test-dist/installation/setup.js';
+import { initializeInstallation, registerInstallation, readInstallationService, managedInstallation, installationSkillsRoot, serviceDefinition, servicePath, servicePort, servicePublicHost, serviceMcp } from '@alpacawork/backend/test-dist/installation/setup.js';
 import { runSetup, type SetupRequest } from '@alpacawork/backend/test-dist/installation/public-setup.js';
 import { newSetupSkills, saveSetupSkills } from '@alpacawork/backend/test-dist/installation/setup-skills.js';
 import { applyDeployArtifact } from '@alpacawork/backend/test-dist/installation/deploy.js';
@@ -127,7 +127,7 @@ async function fixture(t: TestContext, manager: typeof MANAGERS[number], approve
   };
   const lines: string[] = [];
   /** Setup run from the package whose release folder is `source`; the installed one is `a`. */
-  const setup = async (options: { port?: number; publicHost?: string; explicit?: string; yes?: boolean } = {}, answer: string | null = '\r', lang = 'en', source = 'a') => {
+  const setup = async (options: Partial<Pick<SetupRequest, 'port' | 'publicHost' | 'mcp' | 'confirmPrivateTailnet' | 'explicit' | 'yes'>> = {}, answer: string | null = '\r', lang = 'en', source = 'a') => {
     const terminal = installationTerminal(answer, !options.yes); terminal.value.env = { ...env, LANG: lang }; lines.length = 0;
     const result = await runSetup({ ...request, ...options, env: terminal.value.env, artifact: { facts: { name: 'alpacawork', version: '1.0.0', source, edition: 'production', targets: [] },
       publish: async () => { throw new Error('A changed fact publishes no release'); } } }, line => lines.push(line), terminal.value);
@@ -151,6 +151,35 @@ const listening = (port: number) => new Promise<() => Promise<void>>((done, reje
 const artifact = (source: string) => ({ facts: { name: 'alpacawork', version: '1.0.1', source, edition: 'production' as const, targets: [] }, publish: async () => { throw new Error('Refused before publication'); } });
 const savedSetup = (f: { releases: string; workspace: string; env: NodeJS.ProcessEnv }) => saveSetupSkills(f.releases, newSetupSkills(f.workspace, installationSkillsRoot(f.env),
   { version: 2, operationId: randomUUID(), release: join(f.releases, 'a'), intent: { place: ['alpacawork'], remove: [] } }));
+
+test('setup refuses Funnel, then records and shows the powers granted by private MCP access', async t => {
+  const port = await freePort();
+  const f = await fixture(t, 'systemd', { port });
+  await f.serve();
+  const bin = join(f.home, 'bin');
+  mkdirSync(bin);
+  f.env.PATH = bin + ':/usr/bin:/bin';
+  const tailscale = join(bin, 'tailscale');
+  const status = (value: object) => writeFileSync(tailscale, '#!/bin/sh\nprintf "%s\\n" \'' + JSON.stringify(value) + '\'\n', { mode: 0o700 });
+  const address = 'node.test.ts.net:443';
+  const web = { [address]: { Handlers: { '/': { Proxy: `http://127.0.0.1:${port}` } } } };
+  status({ Web: web, AllowFunnel: { [address]: true } });
+  const original = f.generation();
+  await assert.rejects(f.setup({ mcp: true, confirmPrivateTailnet: true, yes: true }), /Tailscale Funnel forwards/);
+  assert.equal(f.generation(), original);
+  assert.equal(serviceMcp(f.recorded()), false);
+  status({ Web: web });
+  const enabled = await f.setup({ mcp: true });
+  assert.ok(enabled.result.installed);
+  assert.match(enabled.shown, /save settings that affect future AI launches/);
+  assert.match(enabled.shown, /run an executable immediately to inspect it/);
+  assert.equal(serviceMcp(f.recorded()), true);
+  f.assertServing();
+  const disabled = await f.setup({ mcp: false });
+  assert.ok(disabled.result.installed);
+  assert.equal(serviceMcp(f.recorded()), false);
+  f.assertServing();
+});
 
 for (const manager of MANAGERS) {
   test(`${manager}: setup adds a public host to an installation made without one and ends there; a later plain setup keeps it`, async t => {

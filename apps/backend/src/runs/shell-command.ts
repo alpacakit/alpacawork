@@ -2,7 +2,7 @@
 import { commandCatalog } from '@alpacawork/contract/commands';
 import { workCommandSchema, type WorkCommand } from '@alpacawork/contract/run';
 
-const commands = commandCatalog.commands.map(spec => ({ words: spec.words, key: spec.access }));
+const commands = commandCatalog.cliCommands.map(spec => ({ words: spec.words, key: spec.access }));
 
 /** Literal words only. Expansion, control flow, pipelines and redirection are deliberately unknown. */
 function literalWords(text: string): string[] | null {

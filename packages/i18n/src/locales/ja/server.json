@@ -94,18 +94,6 @@
       "existing": "既存",
       "new": "新規"
     },
-    "mcp": {
-      "on": "有効",
-      "off": "無効",
-      "access": "/mcp に届く端末と、この MCP サーバーを登録した AI は、成果の受け入れ、あなたとしての回答、仕事の依頼、設定済みの AI の起動ができます。",
-      "settings": "MCP から、今後の AI の起動に使う設定を保存できます。",
-      "inspect": "MCP から、検査のためにその場で実行ファイルを起動できます。",
-      "runs": "起動された担当には alpacawork mcp --run を登録します。Claude Code や Codex の全体設定に登録すると、Run の認証情報を受け取らない担当も、あなたのコーディネーターと同じ範囲にアクセスできます。",
-      "private": "接続先を tailnet 内に限るには Tailscale Serve を使います。",
-      "confirmed": "接続先が非公開であることを確認済みです。/mcp は tailnet 内だけで使ってください。",
-      "funnel": "Tailscale Funnel がポート {{port}} に転送しています。その公開転送を解除してから MCP を有効にしてください。",
-      "verify": "Tailscale の転送設定を確認できませんでした。/mcp に tailnet 内からだけ届くことを確認し、--confirm-private-tailnet を付けてください。"
-    },
     "fact": {
       "mcp": "MCP アクセス",
       "node": "Node.js",
@@ -114,6 +102,18 @@
       "publicHost": "公開ホスト"
     },
     "listSeparator": "、",
+    "mcp": {
+      "access": "/mcp に届く端末と、この MCP サーバーを登録した AI は、成果の受け入れ、あなたとしての回答、仕事の依頼、設定済みの AI の起動ができます。",
+      "confirmed": "接続先が非公開であることを確認済みです。/mcp は tailnet 内だけで使ってください。",
+      "funnel": "Tailscale Funnel がポート {{port}} に転送しています。その公開転送を解除してから MCP を有効にしてください。",
+      "inspect": "MCP から、検査のためにその場で実行ファイルを起動できます。",
+      "off": "無効",
+      "on": "有効",
+      "private": "接続先を tailnet 内に限るには Tailscale Serve を使います。",
+      "runs": "起動された担当には alpacawork mcp --run を登録します。Claude Code や Codex の全体設定に登録すると、Run の認証情報を受け取らない担当も、あなたのコーディネーターと同じ範囲にアクセスできます。",
+      "settings": "MCP から、今後の AI の起動に使う設定を保存できます。",
+      "verify": "Tailscale の転送設定を確認できませんでした。/mcp に tailnet 内からだけ届くことを確認し、--confirm-private-tailnet を付けてください。"
+    },
     "open": "開く: {{url}}",
     "overwriteSkill": "同梱のスキル {{path}} を上書きします。手元で編集した内容も上書きされ、バックアップは作成しません。",
     "portWayBack": "元のポートに戻すには: alpacawork setup --port {{port}}",

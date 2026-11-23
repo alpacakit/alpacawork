@@ -265,8 +265,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     }
   };
   registerGroups(bound.cliRoot, program, []);
-  for (const spec of bound.commands) {
-    if (spec.cli === false) continue;
+  for (const spec of bound.cliCommands) {
     const words = spec.words;
     const group = groups.get(words.slice(0, -1).join('/'))!;
     const command = group.command(words.at(-1)!).description(spec.description).allowExcessArguments(false);

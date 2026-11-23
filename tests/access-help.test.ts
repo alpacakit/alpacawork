@@ -23,7 +23,7 @@ function cli(path: string[], backend = false, script?: string) {
   assert.equal(result.stderr, '');
   return result.stdout;
 }
-const ordinary = commandCatalog.commands.filter(spec => spec.cli !== false).map(spec => [...spec.words]);
+const ordinary = commandCatalog.cliCommands.map(spec => [...spec.words]);
 
 test('all 43 ordinary and 8 backend operation helps expose access without connecting or authorizing', () => {
   const client = [...ordinary, ['server', 'show'], ['server', 'set'], ['server', 'unset'], ['run', 'stop-local']];

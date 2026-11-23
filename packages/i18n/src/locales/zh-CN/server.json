@@ -94,18 +94,6 @@
       "existing": "已有",
       "new": "新建"
     },
-    "mcp": {
-      "on": "已启用",
-      "off": "已停用",
-      "access": "能够访问 /mcp 的设备和注册了此 MCP 服务器的 AI 可以接受成果、代你回答、委派工作并启动已配置的 AI。",
-      "settings": "MCP 可以保存影响后续 AI 启动的设置。",
-      "inspect": "MCP 可以立即运行可执行文件以进行检查。",
-      "runs": "使用 alpacawork mcp --run 注册由系统启动的代理。在 Claude Code 或 Codex 中全局注册可能会让未收到 Run 凭据的代理获得与你的协调员相同的权限。",
-      "private": "使用 Tailscale Serve 将访问范围限制在你的 tailnet 内。",
-      "confirmed": "你已确认访问为私有。请将 /mcp 保留在你的 tailnet 内。",
-      "funnel": "Tailscale Funnel 正转发到端口 {{port}}。请先移除此公开转发，再启用 MCP。",
-      "verify": "无法验证 Tailscale 的转发。请确认只能在你的 tailnet 内访问 /mcp，然后添加 --confirm-private-tailnet。"
-    },
     "fact": {
       "mcp": "MCP 访问",
       "node": "Node.js",
@@ -114,6 +102,18 @@
       "publicHost": "公开主机"
     },
     "listSeparator": "、",
+    "mcp": {
+      "access": "能够访问 /mcp 的设备和注册了此 MCP 服务器的 AI 可以接受成果、代你回答、委派工作并启动已配置的 AI。",
+      "confirmed": "你已确认访问为私有。请将 /mcp 保留在你的 tailnet 内。",
+      "funnel": "Tailscale Funnel 正转发到端口 {{port}}。请先移除此公开转发，再启用 MCP。",
+      "inspect": "MCP 可以立即运行可执行文件以进行检查。",
+      "off": "已停用",
+      "on": "已启用",
+      "private": "使用 Tailscale Serve 将访问范围限制在你的 tailnet 内。",
+      "runs": "使用 alpacawork mcp --run 注册由系统启动的代理。在 Claude Code 或 Codex 中全局注册可能会让未收到 Run 凭据的代理获得与你的协调员相同的权限。",
+      "settings": "MCP 可以保存影响后续 AI 启动的设置。",
+      "verify": "无法验证 Tailscale 的转发。请确认只能在你的 tailnet 内访问 /mcp，然后添加 --confirm-private-tailnet。"
+    },
     "open": "打开：{{url}}",
     "overwriteSkill": "将覆盖随附的技能 {{path}}，本地的修改也会被覆盖。不保留备份。",
     "portWayBack": "要改回原来的端口：alpacawork setup --port {{port}}",

@@ -507,7 +507,8 @@ type BoundCommand<Context> = Command & {
   parse: (values: Record<string, unknown>) => Record<string, unknown>;
 };
 export function commandTree<Context>(implement: (command: Command, verify: (value: unknown) => JsonValue) => CommandHandler<Context>):
-  { tree: EntryTreeDefinition<CommandEndpoint<Context>>; cliRoot: ReturnType<typeof nodeFor<Context>>; commands: readonly BoundCommand<Context>[] } {
+  { tree: EntryTreeDefinition<CommandEndpoint<Context>>; cliRoot: ReturnType<typeof nodeFor<Context>>;
+    commands: readonly BoundCommand<Context>[]; cliCommands: readonly BoundCommand<Context>[] } {
   const root = group<Context>('alpacawork', 'Task tree and agent runs');
   const commands = (Object.keys(definitions) as CommandName[]).map(compileCommand).map(command => {
     const parse = (values: Record<string, unknown>) => parseInput(command.schema, values) as Record<string, unknown>;
@@ -542,7 +543,7 @@ export function commandTree<Context>(implement: (command: Command, verify: (valu
   const http = defineEntryNode({ name: 'alpacawork', description: logical.description, children: [
     nodeFor({ ...root, name: commandPrefix }),
   ] });
-  return { tree: defineEntryTree(http), cliRoot: logical, commands };
+  return { tree: defineEntryTree(http), cliRoot: logical, commands, cliCommands: commands.filter(command => command.cli !== false) };
 }
 
 /** Metadata for callers that classify or construct command requests. */
