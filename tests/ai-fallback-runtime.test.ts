@@ -225,13 +225,9 @@ test('terminating a remaining tool process prevents an otherwise eligible fallba
 test('a queued coordinator message follows the replacement conversation using the coordinator stack', async t => {
   const h = await setup(t);
   h.pauseProjection();
-  const configure = (effort: string) => writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    agents: { ...h.config.agents, codex: { ...h.config.agents.codex,
-      params: { ...h.config.agents.codex.params, model: ['gpt-6.2-sol'], effort: ['low', 'high'] },
-      without: { 'gpt-6.2-sol': ['effort'] } } },
-    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: { effort } }],
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
+    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
   }, { aliasDuplicateObjects: false }));
-  configure('low');
   const conversation = new CoordinatorConversation(h.root);
   const conversationId = conversation.read().id;
   const first = randomUUID(), joined = randomUUID(), pending = randomUUID();
@@ -245,7 +241,6 @@ test('a queued coordinator message follows the replacement conversation using th
     send(joined, { output: 'An extra instruction' }, [h.taskId]);
     conversation.sendNow(conversationId, joined);
     await until(() => conversation.read().turns.find(turn => turn.id === joined)?.status === 'joined', 'the earlier AI takes the extra instruction');
-    configure('high');
     send(pending, { output: 'Follow-up reply' });
     h.release('first');
     await until(() => conversation.read().turns.some(turn => turn.id === first && turn.attempts?.length === 2), 'replacement trial is visible');

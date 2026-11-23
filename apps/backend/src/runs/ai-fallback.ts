@@ -7,7 +7,6 @@ import { runNumber, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { Problem } from '@alpacawork/core';
 import { compareRequestOrder, currentRequestRun, type RunStore, type RunTransaction } from '@alpacawork/runs';
 import { assignedSession, coordinatorLaunchSnapshot, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
-import { aiLaunchIdentity, sameAiLaunch } from '../ai-stack.js';
 import { messageCarrier } from '../coordinator/messages.js';
 import { queuedStart } from './execution-control.js';
 import type { EndObservation } from './result-observation.js';
@@ -77,11 +76,8 @@ function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly 
     if (!row || db.prepare("SELECT 1 FROM run_inputs WHERE instruction_run_no=? AND state<>'not_sent'").get(runNumber(run.id)))
       return undefined;
     const saved = typeof row.ai_stack === 'string' ? aiStackSchema.parse(JSON.parse(row.ai_stack)) : undefined;
-    const matches = run.role === 'coordinator'
-      ? (item: AiRow) => sameAiLaunch(aiLaunchIdentity(config, item), aiLaunchIdentity(config, predecessor))
-      : (item: AiRow) => item.agent === predecessor.agent && isDeepStrictEqual(item.values, predecessor.values);
-    const position = saved?.findIndex(matches) ?? -1;
-    const matched = matches({ agent: run.agent, values: run.launch.values });
+    const position = saved?.findIndex(item => item.agent === predecessor.agent && isDeepStrictEqual(item.values, predecessor.values)) ?? -1;
+    const matched = run.agent === predecessor.agent && isDeepStrictEqual(run.launch.values, predecessor.values);
     const canResume = matched || row.ai_explicit !== 1 && position >= 0;
     const mode = canResume ? 'resume' : 'start';
     const { agent } = canResume ? predecessor : run;
@@ -143,8 +139,7 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     const { agent, values } = rows[attempt]!;
     let prepared;
     try {
-      const prepare = run.role === 'coordinator' ? coordinatorLaunchSnapshot : launchSnapshot;
-      prepared = prepare(settings.config, agent, 'start', run.launch.path, values);
+      prepared = launchSnapshot(settings.config, agent, 'start', run.launch.path, values);
     } catch (error) {
       if (error instanceof Problem) continue;
       throw error;
