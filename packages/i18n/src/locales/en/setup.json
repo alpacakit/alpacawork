@@ -70,8 +70,6 @@
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
     "lead": "A project is a folder where the AI works, together with the rules for working there (the project policy).",
     "policyNote": "Write the rules for this project here. You can leave it empty.",
-    "policySkillLine": "- {{skill}}: use {{when}}.",
-    "policySkills": "## Skills to use",
     "reread": "Load the latest",
     "title": "First project"
   },
@@ -91,18 +89,15 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Checked by another AI before you see it",
-        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens.",
-        "when": "when planning, when asking for a review, and when receiving findings"
+        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
-        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video.",
-        "when": "when asking the user to decide, and when writing a report"
+        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video."
       },
       "doyourjob": {
         "title": "Fewer questions for you",
-        "what": "The AI asks you only what you alone can decide, and finds out the rest itself.",
-        "when": "before asking the user, and before making a choice with large consequences"
+        "what": "The AI asks you only what you alone can decide, and finds out the rest itself."
       }
     },
     "lead": "Skills change how the AI works.",

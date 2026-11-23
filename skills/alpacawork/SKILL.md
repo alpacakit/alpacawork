@@ -7,6 +7,18 @@ description: Read before operating alpacawork, a tool for handing tasks to AI ag
 
 alpacawork records a tree of tasks and the owner and members of each task, and launches the agent that receives a request.
 
+## Open the skills for your next action
+
+Before your next action, select the matching rows. For each row, start with the skill specified by project policy for that purpose. When policy leaves the choice open, use the matching skill from your available skills list. Call the agent's skill tool or read the skill's `SKILL.md` before proceeding.
+
+When you are the owner of a new request for a result, load the planning and reporting skills at the start: you will plan a result and give a progress estimate even for a small change. A request to offer the user choices is a decision about what to ask. Use the decision and question skills before preparing the choices.
+
+- **Plan a result or prepare its review:** load the available skill for planning and independent review.
+- **Decide what to ask the user or make a consequential choice:** load the available skill for deciding which judgments belong to the user.
+- **Draft a question or report for the user, including a progress estimate:** load the available skill for writing questions and reports.
+
+Apply this check again when another row becomes relevant. Reuse a skill already read in this conversation. If policy excludes the skill or the chosen skill is unavailable, continue using alpacawork and the request.
+
 ## Decide your role
 
 If you were launched through the conversation's own subagent call (such as `spawn_agent`) as the delegate for a one-off job, do the actual work within the scope the caller stated explicitly, and return the result and what you verified to the caller. Do not decide from the presence or absence of the Run mark (`ALPACAWORK_RUN`) to act as a coordinator or an owner; hand task state changes, questions and agent placements back to the caller. This is a distinction in how work is divided; it grants no CLI or API permissions.
@@ -115,7 +127,7 @@ Besides the file for your role, read the following according to the situation.
 - Owners and members get the project policy in their launch prompt as the policy chain; the coordinator reads it with `task get --task <project>` (["Authority" in Coordinator](references/coordinator.md#authority)). The only things the coordinator may quote on the user's behalf are the user's current message and this chain (["Relaying the user's words" in Coordinator](references/coordinator.md#relaying-the-users-words)). When projects conflict, the ancestor project's policy wins.
 - When instructions conflict, follow the user's own words first, then the project policy, then instruction files such as AGENTS.md, then the instructions of the AI that asked you for the work, then alpacawork's defaults. An instruction applies only to what it addresses.
 - In a launch prompt, the user's own words are under "User instructions" (the whole job; the request says which part is yours), the policy is under "Project policy", and the first line of "Request" says who wrote it. The user's words quoted in an AI's instructions count as the user's words.
-- For the skills for each purpose, use the ones written in the project policy (for the candidates and how to ask, see ["What to ask first" in Setup](references/setup.md#what-to-ask-first)). Even in an environment that does not have the skills written there, carry the task through with this skill and the request text.
+- For how project policy selects skills and what to do with an empty policy, see [Open the skills for your next action](#open-the-skills-for-your-next-action).
 
 ## Approval defaults
 

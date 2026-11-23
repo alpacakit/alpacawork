@@ -70,8 +70,6 @@
     "gone": "El proyecto creado durante la configuración ya no existe. Finaliza la configuración y luego crea un proyecto desde el menú de proyectos.",
     "lead": "Un proyecto reúne la carpeta en la que trabaja la IA y las reglas para trabajar ahí (la política del proyecto).",
     "policyNote": "Escribe aquí las reglas de este proyecto. Puedes dejarlo vacío.",
-    "policySkillLine": "- {{skill}}: úsala {{when}}.",
-    "policySkills": "## Skills que usar",
     "reread": "Cargar lo más reciente",
     "title": "Primer proyecto"
   },
@@ -93,18 +91,15 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Revisado por otra IA antes de que lo veas",
-        "what": "Salvo en trabajos ligeros, antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo comprueba, y se corrige lo que encuentre. Esto consume más tiempo y más tokens.",
-        "when": "al planificar, al pedir una revisión y al recibir observaciones"
+        "what": "Salvo en trabajos ligeros, antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo comprueba, y se corrige lo que encuentre. Esto consume más tiempo y más tokens."
       },
       "askmeclearly": {
         "title": "Preguntas e informes más breves y fáciles de leer",
-        "what": "Cuando la IA te pide que decidas algo o te informa de un resultado, señala con imágenes o videos dónde mirar.",
-        "when": "al pedir al usuario que decida y al escribir un informe"
+        "what": "Cuando la IA te pide que decidas algo o te informa de un resultado, señala con imágenes o videos dónde mirar."
       },
       "doyourjob": {
         "title": "Menos preguntas para ti",
-        "what": "La IA solo te pregunta lo que únicamente tú puedes decidir, y averigua el resto por su cuenta.",
-        "when": "antes de preguntar al usuario y antes de tomar una decisión con grandes consecuencias"
+        "what": "La IA solo te pregunta lo que únicamente tú puedes decidir, y averigua el resto por su cuenta."
       }
     },
     "lead": "Las skills cambian cómo trabaja la IA.",

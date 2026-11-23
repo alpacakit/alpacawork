@@ -76,7 +76,7 @@ function Setup() {
     {step === "agents" && <AgentsStep onBack={() => go("display")} onNext={() => go("skills")} />}
     {step === "skills" && <SkillsStep onBack={() => go("agents")} onNext={() => go("project")} />}
     {(step === "project" || projectSeen) && <div hidden={step !== "project"}>
-      <ProjectStep projectId={state.project} active={step === "project"} onBack={() => go("skills")} onFinish={finish} />
+      <ProjectStep projectId={state.project} onBack={() => go("skills")} onFinish={finish} />
     </div>}
   </Frame>;
 }
