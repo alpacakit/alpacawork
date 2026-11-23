@@ -44,7 +44,7 @@ test('connection-only read failure is quiet and settings and notices recover aut
   await page.setViewportSize({ width: 1440, height: 900 });
   let failing = false;
   const counts = { settings: 0, notices: 0 };
-  const reads = { settings: '**/api/settings/get', notices: '**/api/person/notices' };
+  const reads = { settings: '**/api/commands/settings/get', notices: '**/api/person/notices' };
   for (const kind of ['settings', 'notices'] as const) await page.route(reads[kind], route => {
     counts[kind]++;
     return failing ? route.abort('connectionfailed') : route.continue();
@@ -52,12 +52,12 @@ test('connection-only read failure is quiet and settings and notices recover aut
   await open(page, runtime, '?agent=1');
   await expect(page.locator('[data-time-tree]')).toBeVisible();
   await expect.poll(() => counts.settings > 0 && counts.notices > 0).toBe(true);
-  const priorSettings = await (await page.request.get(runtime.origin + '/api/settings/get')).json();
+  const priorSettings = await (await page.request.get(runtime.origin + '/api/commands/settings/get')).json();
   const priorNotices = await (await page.request.get(runtime.origin + '/api/person/notices')).json();
   const theme = priorSettings.values.theme === 'dark' ? 'light' : 'dark';
   const before = { ...counts };
   failing = true;
-  const settingsResponse = await commandPost(page.request, runtime.origin + '/api/settings/set', { data: {
+  const settingsResponse = await commandPost(page.request, runtime.origin + '/api/commands/settings/set', { data: {
     key: 'theme', value: theme, expectedRevision: priorSettings.revision,
   } });
   expect(settingsResponse.ok()).toBe(true);

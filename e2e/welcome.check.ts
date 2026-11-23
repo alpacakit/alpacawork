@@ -32,7 +32,7 @@ for (const [width, height] of [[1440, 900]] as const) {
     for (const [section, count] of counts) if (section !== "done") expect(count, String(section)).not.toBe("0");
     await expect(page.locator("[data-welcome]")).toHaveCount(0);
 
-    const { task: project } = await post(page, runtime, "task/new", { kind: "project", color: "#39659b", parent: "none", title: "Empty one" });
+    const { task: project } = await post(page, runtime, "commands/task/new", { kind: "project", color: "#39659b", parent: "none", title: "Empty one" });
     await page.goto(`${runtime.origin}/?project=${project.id}`);
     const welcome = page.locator("[data-welcome]");
     await expect(welcome).toBeVisible();
@@ -67,11 +67,11 @@ for (const [width, height] of [[1440, 900]] as const) {
     await expect(welcome).toBeVisible();
 
     // A Task an agent made is a Task too: no welcome, and as a top Task it is a row like the user's.
-    await post(page, runtime, "task/new", { parent: project.id, title: "Agent's own", fromUser: false });
+    await post(page, runtime, "commands/task/new", { parent: project.id, title: "Agent's own", fromUser: false });
     await expect(welcome).toHaveCount(0);
     await expect.poll(() => sections(page)).toEqual(["todo"]);
     await expect(page.locator("[data-time-corner]")).toHaveCount(1);
-    await post(page, runtime, "task/new", { parent: project.id, title: "First one" });
+    await post(page, runtime, "commands/task/new", { parent: project.id, title: "First one" });
     await expect(page.locator('[data-section="todo"] + ol [data-row]')).toHaveCount(2);
     expect(await sections(page)).toEqual(["todo"]);
   });

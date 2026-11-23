@@ -43,9 +43,9 @@ afterEach(() => { cleanup(); vi.restoreAllMocks();
   for (const toast of useToasts.getState().toasts) notify.dismiss(toast.id); useToasts.setState({ hidden: new Set() });
 });
 function Recovery() { useDirectWriteRecovery(); return <Toaster />; }
-async function mount(deliver: (input: any) => Response | Promise<Response>) {
+async function mount(deliver: (input: any, opId: string | null) => Response | Promise<Response>) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
-    if (String(url) === '/api/task/report') return deliver(JSON.parse(String(init?.body)));
+    if (String(url) === '/api/commands/task/report') return deliver(JSON.parse(String(init?.body)), new Headers(init?.headers).get('X-Alpacawork-Op-Id'));
     if (String(url) === '/api/coordinator') return new Response(snapshotJson(conversation));
     return new Response(snapshotJson({ status: 'unavailable', profile: 'claude', skills: [], reason: 'unavailable' }));
   });
@@ -79,12 +79,13 @@ test('a refused Check replaces the same rendered unknown toast with Open', async
 
 for (const next of ['Check', 'Open']) test(`hiding a previous hold permits the next operation's ${next} with a new request and toast ID`, async () => {
   const bodies: any[] = [];
-  await mount(input => { bodies.push(input); if (bodies.length > 1 && next === 'Check') throw new Error('connection lost'); return refusal(); });
+  const opIds: (string | null)[] = [];
+  await mount((input, opId) => { bodies.push(input); opIds.push(opId); if (bodies.length > 1 && next === 'Check') throw new Error('connection lost'); return refusal(); });
   hold(); await waitFor(() => expect(action('Open')).toBeTruthy()); const firstId = toast().getAttribute('data-toast-id');
   fireEvent.click(action('Close notification')); expect(toast()).toBeNull();
   data(); await readConversationThroughOwner(conversation);
   act(() => useViewStore.getState().openTask('T1', { reader: true })); expect(shown()).toBe('T1'); hold();
-  await waitFor(() => expect(action(next)).toBeTruthy()); expect(bodies).toHaveLength(2); expect(bodies[1].opId).not.toBe(bodies[0].opId);
+  await waitFor(() => expect(action(next)).toBeTruthy()); expect(bodies).toHaveLength(2); expect(opIds[1]).not.toBe(opIds[0]);
   expect(bodies[0]).toMatchObject({ task: 'T1', state: 'held' });
   expect(bodies[1]).toMatchObject({ task: 'T1', state: 'held' });
   expect(toast().getAttribute('data-toast-id')).not.toBe(firstId);

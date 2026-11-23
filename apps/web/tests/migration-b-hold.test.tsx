@@ -8,10 +8,11 @@ import { useDialogStore } from '../src/state/dialog-store';
 setupForms();
 for (const origin of ['todo', 'doing', 'error', 'waiting', 'done', 'stopped'] as const) {
   test(`state form holds ${origin} and restores the original state`, async () => {
-    const reports: Record<string, any>[] = [], paths: string[] = [];
+    const reports: Record<string, any>[] = [], paths: string[] = [], opIds: (string | null)[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
       paths.push(String(url));
-      expect(String(url)).toBe('/api/task/report');
+      opIds.push(new Headers(init?.headers).get('X-Alpacawork-Op-Id'));
+      expect(String(url)).toBe('/api/commands/task/report');
       expect(init?.method).toBe('POST');
       const input = JSON.parse(String(init?.body)); reports.push(input);
       return new Response(JSON.stringify({ task: headOf(dto({ state: input.state, baseState: origin })), outcome: { kind: 'recorded' } }));
@@ -26,7 +27,8 @@ for (const origin of ['todo', 'doing', 'error', 'waiting', 'done', 'stopped'] as
     await waitFor(() => expect(reports).toHaveLength(1));
     expect(reports[0]).toMatchObject({ task: 'T1', state: 'held', expectedTaskHash: data.tasks[0]!.hash,
       title: 'Hold any state', description: 'Review later' });
-    expect(reports[0]!.opId).toEqual(expect.any(String));
+    expect(opIds[0]).toEqual(expect.any(String));
+    expect(reports[0]).not.toHaveProperty('opId');
     await waitFor(() => expect(Object.values(useWriteIntentStore.getState().entries).every(entry => entry.status === 'confirmed')).toBe(true));
     await waitFor(() => expect(useDialogStore.getState().dialog).toBeNull());
     view.unmount();
@@ -46,8 +48,8 @@ for (const origin of ['todo', 'doing', 'error', 'waiting', 'done', 'stopped'] as
     await waitFor(() => expect(reports).toHaveLength(2));
     expect(reports[1]).toMatchObject({ task: 'T1', state: origin, expectedTaskHash: data.tasks[0]!.hash,
       title: 'Restore original state', description: 'Ready now' });
-    expect(reports[1]!.opId).not.toBe(reports[0]!.opId);
-    expect(paths).toEqual(['/api/task/report', '/api/task/report']);
+    expect(opIds[1]).not.toBe(opIds[0]);
+    expect(paths).toEqual(['/api/commands/task/report', '/api/commands/task/report']);
     await waitFor(() => expect(Object.values(useWriteIntentStore.getState().entries).every(entry => entry.status === 'confirmed')).toBe(true));
     await waitFor(() => expect(useDialogStore.getState().dialog).toBeNull());
   });

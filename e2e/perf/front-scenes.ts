@@ -342,7 +342,7 @@ try {
         const post = (path: string, data: unknown) => fetch(new URL(path, app.url), { method: 'POST', headers: Object.fromEntries(commandHeaders(data, { 'content-type': 'application/json' })), body: JSON.stringify(data) });
         const update = async (task: string, n: number) => {
           const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, app.url))).json();
-          const response = await post('/api/task/comment', { task, title: `Measured report ${n}`, description: `Measured report body ${n}.`, expectedTaskHash: current.hash });
+          const response = await post('/api/commands/task/comment', { task, title: `Measured report ${n}`, description: `Measured report body ${n}.`, expectedTaskHash: current.hash });
           if (!response.ok) throw new Error(`Update ${task}: ${response.status} ${await response.text()}`);
         };
         const live = await windowOf(page, cdp, network, () => profiled(cdp, 'live', async () => {
@@ -373,7 +373,7 @@ try {
           for (let n = 0; n < 20; n++) {
             const task = ids[n % ids.length]!;
             const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, app.url))).json();
-            const response = await post('/api/task/comment', { task, title: `Listed report ${n}`, description: `Listed body ${n}.`, expectedTaskHash: current.hash });
+            const response = await post('/api/commands/task/comment', { task, title: `Listed report ${n}`, description: `Listed body ${n}.`, expectedTaskHash: current.hash });
             if (!response.ok) throw new Error(`Update ${task}: ${response.status}`);
             await page.waitForTimeout(500);
           }
@@ -412,7 +412,7 @@ try {
           const updates = (async () => { for (let n = 0; n < 16; n++) {
             const task = ids[n % ids.length]!;
             const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, app.url))).json();
-            await post('/api/task/comment', { task, title: `Typed report ${n}`, description: `Typed body ${n}.`, expectedTaskHash: current.hash });
+            await post('/api/commands/task/comment', { task, title: `Typed report ${n}`, description: `Typed body ${n}.`, expectedTaskHash: current.hash });
             await page.waitForTimeout(800);
           } })();
           for (let n = 0; n < 4; n++) await page.keyboard.type('The quick brown fox jumps over the lazy dog ', { delay: 60 });

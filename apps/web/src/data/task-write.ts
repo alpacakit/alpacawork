@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import type { QueryClient } from "@tanstack/react-query";
 import type { z } from "zod";
 import type { ControlTaskHeadDTO, ProjectedIndexDTO } from "@alpacawork/contract/control";
@@ -16,7 +17,7 @@ export async function writeTask<Result extends { task: ControlTaskHeadDTO }>(
 ): Promise<Result & { local: 'applied' | 'scope-changed' | 'failed' }> {
   const boundary = captureReadBoundary(client);
   const source = client.getQueryData<ProjectedIndexDTO>(indexKey);
-  const result = await api.request(path, schema, undefined, input, opId, basis, keepalive);
+  const result = await api.request(commandRoute(path), schema, undefined, input, opId, basis, keepalive);
   if (!sameReadSession(client, boundary)) return { ...result, local: 'scope-changed' };
   try { showWrittenTask(client, result.task, source); return { ...result, local: 'applied' }; }
   catch (error) { recordFailure(error, 'publish confirmed Task receipt'); return { ...result, local: 'failed' }; }

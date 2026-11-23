@@ -8,7 +8,7 @@ test('task suggestions: all fourteen created tasks are returned through the live
     const { commandFetch } = await import('./helpers/command-fetch.ts');
     const ids: string[] = [];
     for (let n = 1; n <= 14; n++) {
-      const response = await commandFetch(`${runtime.origin}/api/task/new`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      const response = await commandFetch(`${runtime.origin}/api/commands/task/new`, { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ title: `List extension item ${n}` }) });
       assert.equal(response.status, 200, await response.clone().text());
       ids.push((await response.json()).task.id);

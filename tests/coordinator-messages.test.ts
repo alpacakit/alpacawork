@@ -139,10 +139,10 @@ test('input validation and authorization failures on an existing Task preserve t
   const w = callerWorkspace(t), head = w.screenRun({ words: `Update ${w.project}`, session: 'screen' });
   const url = await w.start(); await w.startScreenRun(url, head);
   const headers = conversationHeaders('screen');
-  const invalid = await post(url, '/api/task/update', { task: w.project, title: 'Missing expected hash' }, headers);
+  const invalid = await post(url, '/api/commands/task/update', { task: w.project, title: 'Missing expected hash' }, headers);
   assert.equal(invalid.status, 400);
   const opId = randomUUID();
-  const forbidden = await post(url, '/api/task/report', { task: w.project, state: 'doing', expectedTaskHash: 'a'.repeat(64), opId },
+  const forbidden = await post(url, '/api/commands/task/report', { task: w.project, state: 'doing', expectedTaskHash: 'a'.repeat(64) },
     { ...headers, 'X-Alpacawork-Op-Id': opId });
   assert.equal(forbidden.status, 403);
   const results = control(w.root, db => resultsOf(db, [head.requestId])).get(head.requestId)!;
@@ -163,7 +163,7 @@ test('an HTTP operation waiting across a same-session Run change records its ref
     if (args[0].opId === opId) { entered(); await gate; }
     return original.apply(this, args);
   });
-  const pending = post(url, '/api/task/update', { task: w.project, title: 'Must not reach B', expectedTaskHash: shown.hash },
+  const pending = post(url, '/api/commands/task/update', { task: w.project, title: 'Must not reach B', expectedTaskHash: shown.hash },
     { ...conversationHeaders('shared-screen'), 'X-Alpacawork-Op-Id': opId });
   await admitted;
   try {
@@ -201,9 +201,9 @@ test('a refused mutation and later async mutation keep their separate Request re
     return original.apply(this, args);
   });
   const headers = conversationHeaders('audit-race');
-  const first = post(url, '/api/task/update', { task: a.id, title: 'Reject A', expectedTaskHash: a.hash }, headers);
+  const first = post(url, '/api/commands/task/update', { task: a.id, title: 'Reject A', expectedTaskHash: a.hash }, headers);
   await aStarted;
-  const second = post(url, '/api/task/update', { task: b.id, title: 'Block B', expectedTaskHash: b.hash }, headers);
+  const second = post(url, '/api/commands/task/update', { task: b.id, title: 'Block B', expectedTaskHash: b.hash }, headers);
   await delay(100); releaseA();
   try { await bStarted; assert.equal((await first).status, 409); }
   finally { releaseB(); }
@@ -228,7 +228,7 @@ test('an admitted refusal survives quiesce and drained observes its durable Prob
     entered(); await gate; throw new Problem('conflict', 'Refused during drain', undefined,
       { reason: { kind: 'task_changed_reload_before_review' } });
   });
-  const first = post(url, '/api/task/update', { task: task.id, title: 'Rejected', expectedTaskHash: task.hash },
+  const first = post(url, '/api/commands/task/update', { task: task.id, title: 'Rejected', expectedTaskHash: task.hash },
     conversationHeaders('audit-quiesce'));
   await started;
   let drainedReturned = false, savedWhenDrained = 0;

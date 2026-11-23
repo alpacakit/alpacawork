@@ -85,7 +85,7 @@ async function serve(): Promise<string> {
 }
 
 async function task(base: string) {
-  const response = await commandFetch(`${base}/api/task/new`, { method: "POST", headers: { "Content-Type": "application/json" },
+  const response = await commandFetch(`${base}/api/commands/task/new`, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ parent: ROOT_PROJECT, title: "Investigate" }) });
   const text = await response.text();
   expect(response.status, text).toBe(200);
@@ -122,7 +122,7 @@ test.each(["lost", "invalid"])("a committed HTTP write with a %s reply reads as 
   let intercepted = false;
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     const response = await real(typeof url === "string" && url.startsWith("/api/") ? base + url : url, init);
-    if (!intercepted && String(url).endsWith("/api/task/update")) {
+    if (!intercepted && String(url).endsWith("/api/commands/task/update")) {
       expect(new Headers(init?.headers).get("X-Alpacawork-Op-Id")).toBe(opId);
       expect(JSON.parse(String(init?.body))).toEqual(input);
       expect(response.status, await response.clone().text()).toBe(200);
@@ -134,7 +134,7 @@ test.each(["lost", "invalid"])("a committed HTTP write with a %s reply reads as 
   }) as typeof fetch;
   try {
     let failure: unknown;
-    try { await createApi().request("task/update", taskWriteResultSchema, undefined, input, opId, rowWriteBasis(input.task, input.expectedTaskHash)); }
+    try { await createApi().request("commands/task/update", taskWriteResultSchema, undefined, input, opId, rowWriteBasis(input.task, input.expectedTaskHash)); }
     catch (error) { failure = error; }
     expect(intercepted).toBe(true);
     expect(retryOf(failure)).toBe("check");
@@ -144,7 +144,7 @@ test.each(["lost", "invalid"])("a committed HTTP write with a %s reply reads as 
     expect(committed).toMatchObject({ id: current.id, values: input.values });
     expect(committed.hash).not.toBe(current.hash);
     // Receipt replay confirms the committed operation even though its original CAS is now stale.
-    const checked = await createApi().request("task/update", taskWriteResultSchema, undefined, input, opId, rowWriteBasis(input.task, input.expectedTaskHash));
+    const checked = await createApi().request("commands/task/update", taskWriteResultSchema, undefined, input, opId, rowWriteBasis(input.task, input.expectedTaskHash));
     expect(checked.task).toMatchObject({ id: current.id, values: input.values, hash: committed.hash });
   } finally { globalThis.fetch = real; }
 });

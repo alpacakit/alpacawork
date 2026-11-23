@@ -67,7 +67,7 @@ async function fixture() {
   const origin = new URL(server.url).origin;
   const request = (path: string, init?: RequestInit) => transport(origin + '/api/' + path, init);
   const settings = async () => {
-    const response = await request('settings/get'); expect(response.status).toBe(200); return response.json();
+    const response = await request('commands/settings/get'); expect(response.status).toBe(200); return response.json();
   };
   abort = new AbortController();
   const feed = await openIndexStream(new URL('/api/events', origin), abort.signal);

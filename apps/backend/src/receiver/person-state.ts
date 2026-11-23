@@ -131,17 +131,17 @@ export function createPersonSettings(root: string, definitions: readonly Setting
   return {
     revision: () => personRevision(root, 'personal-settings.json', parse),
     values: () => view(readPerson(root, 'personal-settings.json', parse)?.value),
-    /**
-     * The settings and their revision. A reader that names its language (the screen's browser) chooses the screen's
-     * language while none is chosen, as the first save; any other read saves nothing.
-     */
-    get: async (acceptLanguage?: string) => {
-      const language = uiLocaleFromAcceptLanguage(acceptLanguage), stored = readPerson(root, 'personal-settings.json', parse);
-      if (stored && 'language' in stored.value || !language) return stored ? result(stored) :
-        { values: view(undefined), revision: UNSAVED_SETTINGS };
+    get: () => {
+      const stored = readPerson(root, 'personal-settings.json', parse);
+      return stored ? result(stored) : { values: view(undefined), revision: UNSAVED_SETTINGS };
+    },
+    /** The first screen navigation selects a language unless the person already chose one. */
+    initializeLanguage: async (acceptLanguage: string) => {
+      const language = uiLocaleFromAcceptLanguage(acceptLanguage);
+      if (!language || 'language' in (readPerson(root, 'personal-settings.json', parse)?.value ?? {})) return null;
       const state = await transaction(root, 'personal-settings.json', parse, (current, put) =>
         current && 'language' in current.value ? current : put({ ...current?.value, language }));
-      return result(state!);
+      return state!.revision;
     },
     set: async (key: string, value: unknown, expectedRevision: string, timeZone?: string) => {
       if (!validSettingWrite(definitions, key, value))

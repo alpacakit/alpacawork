@@ -42,11 +42,11 @@ test('CLI stop receipt failure leaves a lost agent alive and same op-id can be r
     assert.notEqual(failed.code, 0);
     assert.equal(h.getStore().get(run.id)?.stop_requested, false);
     assert.equal(alive(running.pids.agent!, true), true);
-    assert.equal((await http(app.url, `operation/get?opId=${opId}`)).body.state, 'not_found');
+    assert.equal((await http(app.url, `commands/operation/get?opId=${opId}`)).body.state, 'not_found');
   } finally { h.sql(db => db.exec('DROP TRIGGER fail_stop_receipt')); }
   const stopped = await cli(h.root, 'run stop', { run: run.id, 'op-id': opId });
   assert.equal(stopped.code, 0, stopped.stderr);
-  const receipt = await http(app.url, `operation/get?opId=${opId}`);
+  const receipt = await http(app.url, `commands/operation/get?opId=${opId}`);
   assert.equal(receipt.body.state, 'committed');
   assert.deepEqual(receipt.body.body, stopped.body);
   await h.waitState(run.id, 'cancelled');
@@ -64,7 +64,7 @@ test('ordinary HTTP stop acknowledges publication, then recovery terminates its 
   process.kill(running.pids.manager!, 'SIGKILL');
   await until(() => !alive(running.pids.manager!), 'manager exits');
   await h.tick();
-  const stopped = await http(app.url, 'run/stop', { run: run.id });
+  const stopped = await http(app.url, 'commands/run/stop', { run: run.id });
   assert.equal(stopped.status, 200);
   assert.deepEqual(stopped.body.cancelled, []);
   assert.deepEqual(stopped.body.stop_requested, [run.id]);

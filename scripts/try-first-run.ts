@@ -208,7 +208,7 @@ async function runPreview() {
     const skills = await (await checked('/api/skills')).json();
     if (Date.now() - probeStarted > 3000 || skills.skills.some(skill => skill.name !== 'alpacawork-betterquality' && skill.available !== 'unknown'))
       throw new Error('The preview skill listing was slow or returned unexpected remote availability.');
-    const settings = await (await checked('/api/settings/get')).json();
+    const settings = await (await checked('/api/commands/settings/get')).json();
     if (settings.values.language !== values.lang || settings.values['ai.language'] !== values.lang) throw new Error('Setup did not initialize the selected language.');
     if (values.check && !values['no-open'] && !env.SSH_CONNECTION && !env.SSH_CLIENT && !env.SSH_TTY) {
       for (let tries = 0; !existsSync(join(root, 'opened-url')) && tries < 50; tries++) await delay(20);

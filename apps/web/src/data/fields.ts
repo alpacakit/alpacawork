@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fieldCatalog, fieldListResultSchema, fieldSetResultSchema, fieldGetResultSchema, fieldUseResultSchema, type FieldCatalog, type FieldDef } from "@alpacawork/contract";
 import { z } from "zod";
@@ -22,7 +23,7 @@ const schemaKey = (root: string, task: string) => ["schema", root, task] as cons
 export function useFieldCatalog() {
   const root = useWorkspaceInfo(info => info.root);
   const query = useQuery({ queryKey: fieldsKey(root), enabled: !!root, staleTime: 30_000,
-    queryFn: ({ signal }) => api.request("field/list", fieldListResultSchema, signal) });
+    queryFn: ({ signal }) => api.request(commandRoute("field/list"), fieldListResultSchema, signal) });
   const fields = query.data?.fields;
   // Until the workspace's definitions are read, the app's own defaults stand for them (the server checks every write).
   const catalog: FieldCatalog = fields ? new Map(fields.map(view => [view.id, definition(view)])) : SHIPPED;
@@ -33,7 +34,7 @@ export function useFieldCatalog() {
 export function useTaskSchema(task: string | null) {
   const root = useWorkspaceInfo(info => info.root);
   return useQuery({ queryKey: schemaKey(root, task ?? ""), enabled: !!root && task !== null, staleTime: 0,
-    queryFn: ({ signal }) => api.request(`field/get?task=${encodeURIComponent(task!)}`, fieldGetResultSchema, signal) });
+    queryFn: ({ signal }) => api.request(`${commandRoute('field/get')}?task=${encodeURIComponent(task!)}`, fieldGetResultSchema, signal) });
 }
 
 /** What `field set` takes: the field's ID and the keys it changes (a new field names title and type). */
@@ -44,7 +45,7 @@ export function useSaveField() {
   const root = useWorkspaceInfo(info => info.root);
   // The definition's editor says a refusal beside the field it is about; no toast says it again.
   return useMutation({ meta: { errorToast: false }, mutationFn: async (input: FieldSet) => {
-    const answer = await api.request("field/set", fieldSetResultSchema, undefined, input, crypto.randomUUID(), workspaceWriteBasis());
+    const answer = await api.request(commandRoute("field/set"), fieldSetResultSchema, undefined, input, crypto.randomUUID(), workspaceWriteBasis());
     await client.invalidateQueries({ queryKey: fieldsKey(root) });
     return answer.field;
   } });
@@ -53,7 +54,7 @@ export function useSaveField() {
 /** Writes a project's own fields in order, or with null makes it inherit them; answers the project Task's new head. */
 export async function saveSchema(client: ReturnType<typeof useQueryClient>, root: string,
   input: { task: string; fields: string[] | null; expectedTaskHash: string }, opId: string) {
-  const answer = await api.request("field/use", fieldUseResultSchema, undefined,
+  const answer = await api.request(commandRoute("field/use"), fieldUseResultSchema, undefined,
     { task: input.task, ...input.fields ? { fields: input.fields } : { inherit: true }, expectedTaskHash: input.expectedTaskHash },
     opId, workspaceWriteBasis());
   await Promise.all([client.invalidateQueries({ queryKey: ["schema", root] }), client.invalidateQueries({ queryKey: fieldsKey(root) })]);

@@ -136,7 +136,7 @@ test('public HTTP uses ordinary task.request authority; CLI set/clear and task g
   t.after(() => server.close());
   const post = async (verb: 'set' | 'clear', target: string, seat?: typeof rp, fields = {}) => {
     const opId = randomUUID();
-    const response = await fetch(new URL(`/api/dependency/${verb}`, server.url), { method: 'POST',
+    const response = await fetch(new URL(`/api/commands/dependency/${verb}`, server.url), { method: 'POST',
       headers: { 'content-type': 'application/json', 'x-alpacawork-op-id': opId,
         ...(seat ? { authorization: `Alpacawork-Run ${seat.runId}:${issueRunCredential(f.root, seat.runId)}` } : {}) },
       body: JSON.stringify({ task: target, expectedTaskHash: (await f.get(target)).hash,

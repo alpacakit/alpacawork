@@ -8,14 +8,14 @@ test('a warmed project URL survives parent archive and restore through the stand
     const response = await commandPost(page.request, runtime.origin + '/api/' + path, { data });
     expect(response.ok(), await response.text()).toBe(true); return response.json();
   };
-  const project = (await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Shelf core fixture' })).task;
-  const nested = (await post('task/new', { kind: 'project', color: '#39659b', parent: project.id, title: 'Nested fixture' })).task;
-  const child = (await post('task/new', { parent: nested.id, title: 'Retained child', fromUser: true })).task;
+  const project = (await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Shelf core fixture' })).task;
+  const nested = (await post('commands/task/new', { kind: 'project', color: '#39659b', parent: project.id, title: 'Nested fixture' })).task;
+  const child = (await post('commands/task/new', { parent: nested.id, title: 'Retained child', fromUser: true })).task;
   await page.goto(runtime.origin + '/?agent=1&task=' + child.id);
   await expect(page.locator('[data-reader-task-id]')).toHaveText(child.id);
-  const before = await (await page.request.get(runtime.origin + '/api/task/get?task=' + child.id)).json();
-  const currentProject = await (await page.request.get(runtime.origin + '/api/task/get?task=' + project.id)).json();
-  const archived = await post('task/archive', { task: project.id, expectedTaskHash: currentProject.task.hash });
+  const before = await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + child.id)).json();
+  const currentProject = await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + project.id)).json();
+  const archived = await post('commands/task/archive', { task: project.id, expectedTaskHash: currentProject.task.hash });
   await expect.poll(async () => (await (await page.request.get(runtime.origin + '/api/workspace/live')).json()).projects.some((p: { id: string }) => p.id === nested.id)).toBe(false);
   const id = project.id;
   await page.goto(runtime.origin + '/?agent=1&project=' + id);
@@ -27,7 +27,7 @@ test('a warmed project URL survives parent archive and restore through the stand
   await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(id);
   await expect(page.locator('[data-archive-notice]')).toBeVisible();
   await expect(page.locator('[data-row="' + child.id + '"]')).toHaveCount(0);
-  const catalog = await (await page.request.get(runtime.origin + '/api/project/shelf')).json();
+  const catalog = await (await page.request.get(runtime.origin + '/api/commands/project/shelf')).json();
   const target = catalog.projects.find((p: { id: string }) => p.id === project.id).shelf.restoreTarget;
   expect(target.hash).toBe(archived.task.hash);
   await expect(page.locator('[data-archive-notice]')).toBeVisible();
@@ -37,7 +37,7 @@ test('a warmed project URL survives parent archive and restore through the stand
   await expect(page.locator('[data-archive-notice]')).toHaveCount(0);
   await expect.poll(async () => (await (await page.request.get(runtime.origin + '/api/task/view?task=' + id)).json()).task?.id).toBe(id);
   await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(id);
-  const after = await (await page.request.get(runtime.origin + '/api/task/get?task=' + child.id)).json();
+  const after = await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + child.id)).json();
   expect(after.task.hash).toBe(before.task.hash); expect(after.task.lifecycle).toBe(before.task.lifecycle);
 });
 
@@ -48,14 +48,14 @@ test('a shelved next page refused because the list changed is read again from it
     expect(response.ok(), await response.text()).toBe(true); return response.json();
   };
   const shelve = async (title: string) => {
-    const { task } = await post('task/new', { title });
-    return (await post('task/archive', { task: task.id, expectedTaskHash: task.hash })).task;
+    const { task } = await post('commands/task/new', { title });
+    return (await post('commands/task/archive', { task: task.id, expectedTaskHash: task.hash })).task;
   };
   const shelved = [];
   for (let at = 0; at < 22; at++) shelved.push(await shelve(`Shelved ${at}`));
   // The server's own refusal of a cursor from before a change.
   const first = await (await page.request.get(runtime.origin + '/api/task/shelved?limit=20')).json();
-  await post('task/restore', { task: shelved[0].id, expectedTaskHash: shelved[0].hash });
+  await post('commands/task/restore', { task: shelved[0].id, expectedTaskHash: shelved[0].hash });
   const refusal = await page.request.get(runtime.origin + `/api/task/shelved?limit=20&after=${encodeURIComponent(first.nextAfter)}`);
   expect(refusal.status()).toBe(409);
   const refused = await refusal.text();
@@ -89,7 +89,7 @@ test('a shelved next page refused because the list changed is read again from it
   const width = 390;
   test(`committed archive loses only its response; SSE unmount then notification Check closes settings at ${width}`, async ({ page, runtime }) => {
     await page.setViewportSize({ width, height: 900 });
-    const made = await commandPost(page.request, runtime.origin + '/api/task/new', { data: {
+    const made = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: {
       kind: 'project', color: '#39659b', parent: 'none', title: 'Committed response loss fixture',
     } });
     expect(made.ok()).toBe(true);
@@ -101,7 +101,7 @@ test('a shelved next page refused because the list changed is read again from it
     await page.locator('[data-project-archive] button').click();
     const requests: { body: string | null; operationId?: string }[] = [];
     const receipts: { status: number; body: any }[] = [];
-    await page.route('**/api/task/archive', async route => {
+    await page.route('**/api/commands/task/archive', async route => {
       requests.push({ body: route.request().postData(), operationId: route.request().headers()['x-alpacawork-op-id'] });
       const response = await route.fetch();
       receipts.push({ status: response.status(), body: await response.json() });
@@ -121,7 +121,7 @@ test('a shelved next page refused because the list changed is read again from it
     expect(requests).toHaveLength(2);
     expect(requests[1]).toEqual(requests[0]);
     expect(receipts[1]).toEqual(receipts[0]);
-    const current = await (await page.request.get(runtime.origin + '/api/task/get?task=' + project.id + '&log=80')).json();
+    const current = await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + project.id + '&log=80')).json();
     expect(current.task.lifecycle).toBe('archived');
     const archived = current.task.log.filter((entry: { kind: string }) => entry.kind === 'archived');
     expect(archived).toHaveLength(1);
@@ -133,20 +133,20 @@ for (const failure of ['unknown'] as ('unknown' | 'hash conflict')[]) test(`proj
     const response = await commandPost(page.request, runtime.origin + '/api/' + path, {data});
     expect(response.ok(), await response.text()).toBe(true); return response.json();
   };
-  const project = (await post('task/new', {kind:'project', color:'#5a8649', parent:'none', title:'Archive recovery fixture'})).task;
+  const project = (await post('commands/task/new', {kind:'project', color:'#5a8649', parent:'none', title:'Archive recovery fixture'})).task;
   await page.goto(runtime.origin + '/?agent=1&project=' + project.id);
   await page.locator('[data-project-trigger]').click();
   await page.locator('[data-project-settings]').click();
   await expect(page.locator('[data-project-archive] button')).toBeEnabled();
   await page.locator('[data-project-archive] button').click();
   const requests: {body: string | null; id: string | undefined}[] = [];
-  await page.route('**/api/task/archive', async route => {
+  await page.route('**/api/commands/task/archive', async route => {
     const request = route.request(); requests.push({body: request.postData(), id: request.headers()['x-alpacawork-op-id']});
     if(requests.length === 1 && failure === 'unknown') {
       await route.fulfill({status:503, contentType:'application/json', body:JSON.stringify({error:{code:'unavailable', message:'Lost fixture answer', retry:'check'}})});
       return;
     }
-    if(failure === 'hash conflict') await post('task/update',{task:project.id, title:'Changed elsewhere', expectedTaskHash:project.hash});
+    if(failure === 'hash conflict') await post('commands/task/update',{task:project.id, title:'Changed elsewhere', expectedTaskHash:project.hash});
     await route.continue();
   });
   await page.locator('[data-archive-submit]').click();
@@ -159,11 +159,11 @@ for (const failure of ['unknown'] as ('unknown' | 'hash conflict')[]) test(`proj
     await notice.getByRole('button', { name: 'Check', exact: true }).click();
     await expect(page.locator('[role=dialog]')).toHaveCount(0);
     expect(requests).toHaveLength(2); expect(requests[1]).toEqual(requests[0]);
-    const catalog = await (await page.request.get(runtime.origin + '/api/project/shelf')).json();
+    const catalog = await (await page.request.get(runtime.origin + '/api/commands/project/shelf')).json();
     expect(catalog.projects.find((p: {id:string}) => p.id===project.id).color).toBe('#5a8649');
   } else {
     await expect(notice.getByRole('button', { name: 'Open', exact: true })).toBeVisible();
     expect(requests).toHaveLength(1);
-    expect((await (await page.request.get(runtime.origin + '/api/task/get?task=' + project.id)).json()).task.lifecycle).toBe('active');
+    expect((await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + project.id)).json()).task.lifecycle).toBe('active');
   }
 });

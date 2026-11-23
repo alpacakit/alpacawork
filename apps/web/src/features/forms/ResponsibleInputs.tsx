@@ -25,7 +25,7 @@ import { AgentChoiceFields, useAgentChoice } from "./AgentChoice";
 import { useRereadActiveTask } from "./reread-active-task";
 
 type ResponsiblePayload = { task: string; expectedTaskHash: string; agent?: string; role?: "responsible";
-  profile?: string; selected?: string; replace?: string; expectedPlacementRevision?: number };
+  profile?: string; selected?: Record<string, string | null>; replace?: string; expectedPlacementRevision?: number };
 
 /**
  * Where the screen offers to decide a task's responsible (the A key): only on a task right below its project (the
@@ -56,7 +56,7 @@ function ResponsibleFields({ task }: { task: Task }) {
   const root = useWorkspaceInfo(info => info.root);
   const intent = useWriteIntent<ResponsiblePayload, unknown>(intentKey(root, "responsible", task.id));
   const kept = intent.retainedInput?.payload;
-  const agent = useAgentChoice(kept?.profile ? { profile: kept.profile, selected: JSON.parse(kept.selected ?? '{}') } : undefined);
+  const agent = useAgentChoice(kept?.profile ? { profile: kept.profile, selected: kept.selected ?? {} } : undefined);
   const [opening, setOpening] = useState(() => ({ hash: kept?.expectedTaskHash ?? task.hash, ...crewOf(task.id, people) }));
   const { responsible, members } = opening;
   // Labels include translated launch status; a language change also changes t.
@@ -71,7 +71,7 @@ function ResponsibleFields({ task }: { task: Task }) {
       ? { path: "agent/handover", payload: { task: task.id, agent: member.id,
           expectedTaskHash: opening.hash, expectedPlacementRevision: member.revision } }
       : { path: "agent/assign", payload: { task: task.id, role: "responsible",
-          profile: value.profile, selected: JSON.stringify(agent.selected), expectedTaskHash: opening.hash,
+          profile: value.profile, selected: agent.selected, expectedTaskHash: opening.hash,
           ...(responsible ? { replace: responsible.id, expectedPlacementRevision: responsible.revision } : {}) } };
   };
   const schema = z.object({ agent: z.string(), profile: z.string() }).superRefine((value, context) => {

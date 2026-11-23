@@ -32,7 +32,7 @@ test('HTTP task get returns current Run facts and live sends the same authorized
   const server = await startServer(h.root, 0);
   try {
     const get = async () => {
-      const response = await fetch(new URL(`/api/task/get?task=${h.task.id}&runs=1`, server.url));
+      const response = await fetch(new URL(`/api/commands/task/get?task=${h.task.id}&runs=1`, server.url));
       assert.equal(response.status, 200); return response.json();
     };
     const first = await get();

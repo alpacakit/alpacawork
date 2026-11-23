@@ -35,7 +35,7 @@ export const sameTaskReportTarget = (opening: TaskReportTarget, current: TaskRep
 
 /** Translate only this captured target. Never supplement it with a later Task, placement, or Run. */
 export function reportRequest(target: TaskReportTarget, choice: StateChoice,
-  words: { title?: string; description?: string }, opId: string) {
+  words: { title?: string; description?: string }) {
   const facts = target.facts;
   if (!facts.choices.includes(choice)) throw new ApiError(() => i18n.t('forms:reportForm.chooseAgain'), 'conflict', 'reread');
   const state = choice === 'unhold' ? facts.restoreState : REPORT_STATE[choice];
@@ -43,7 +43,7 @@ export function reportRequest(target: TaskReportTarget, choice: StateChoice,
   const aboutRun = choice === 'approve' ? facts.aboutRun : null;
   if (aboutRun && facts.revision === null) throw new ApiError(() => i18n.t('forms:reportForm.chooseAgain'), 'conflict', 'reread');
   const defaults = reportDefaults(choice);
-  return { task: facts.task, state, opId, expectedTaskHash: facts.hash,
+  return { task: facts.task, state, expectedTaskHash: facts.hash,
     ...(facts.revision === null ? {} : { expectedPlacementRevision: facts.revision }), ...(aboutRun ? { aboutRun } : {}),
     title: words.title?.trim() || defaults.title, description: words.description?.trim() || defaults.description };
 }

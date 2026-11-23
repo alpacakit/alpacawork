@@ -1,3 +1,4 @@
+import { commandPath, commandRoute } from '@alpacawork/contract/command-path';
 import { withRequestActivity } from './request-activity';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from '@alpacawork/contract/recovery';
 import { basisForRead, useConnection, writeAccess, type WriteBasis } from '@/data/connection';
@@ -6,17 +7,15 @@ import { i18n } from "@alpacawork/i18n";
 import { problemSchema } from "@alpacawork/contract/problem";
 import { attachmentResultSchema, type AttachmentResult } from "@alpacawork/contract/control";
 import { z } from "zod";
-import { taskFileRoute } from "@alpacawork/contract/task-file-route";
+import { attachmentsPath, taskFileRoute } from "@alpacawork/contract/task-file-route";
 import { ApiError, apiError } from "./client";
 import { api } from "./resources";
 import type { Attachment } from "@/domain/attachments";
 
-const attachmentFromResult = (result: AttachmentResult): Attachment => ({ ...result, name: result.path.split("/").at(-1)! });
-
 export type AttachmentDestination = { kind: "task"; taskId: string } | { kind: "coordinator"; conversationId: string };
 /** A Task's attachments are under its file route; the coordinator's in its conversation. */
 const base = (destination: AttachmentDestination) => destination.kind === "task"
-  ? `/api/tasks/${encodeURIComponent(destination.taskId)}/attachments` : "/api/coordinator/attachments";
+  ? attachmentsPath.replace(':task', encodeURIComponent(destination.taskId)) : "/api/coordinator/attachments";
 /** What a write here is checked against: the Task's own read, or the workspace for the coordinator's. */
 const destinationBasis = (destination: AttachmentDestination) => basisForRead(destination.kind === "task" ? destination.taskId : undefined);
 /** One attachment's query: a request's file, in the coordinator's conversation too. */
@@ -26,6 +25,15 @@ export const attachmentFileUrl = (destination: AttachmentDestination, path: stri
   ? taskFileRoute(destination.taskId, path)
   : `/api/coordinator/file?requestId=${encodeURIComponent(path.split("/")[1] ?? "")}&name=${encodeURIComponent(path.split("/")[2] ?? "")}`;
 
+
+/** Keep the workspace-relative link in drafts and instructions after checking the receipt names the expected file. */
+export function attachmentFromResult(destination: AttachmentDestination, result: AttachmentResult): Attachment | null {
+  const path = attachmentFileUrl(destination, result.path);
+  const link = new URL(result.absolutePath, 'http://local.invalid');
+  return link.pathname + link.search === path && !link.hash
+    ? { ...result, absolutePath: path, name: result.path.split('/').at(-1)! }
+    : null;
+}
 
 const attachmentOperationSchema = z.discriminatedUnion("state", [
   z.object({ state: z.literal("committed"), status: z.number(), body: attachmentResultSchema }).strict(),
@@ -37,7 +45,7 @@ export type AttachmentOperation = z.infer<typeof attachmentOperationSchema>;
 
 /** Read the receipt of an upload whose browser reply was lost, without sending its bytes again. */
 export function getAttachmentOperation(opId: string) {
-  return api.request(`operation/get?opId=${encodeURIComponent(opId)}`, attachmentOperationSchema);
+  return api.request(`${commandRoute('operation/get')}?opId=${encodeURIComponent(opId)}`, attachmentOperationSchema);
 }
 
 /** What a refused attachment write says: the server's problem when it sent one, else its HTTP status. */
@@ -87,8 +95,9 @@ function sendAttachment(destination: AttachmentDestination, requestId: string, f
       let body: unknown = null;
       try { body = JSON.parse(request.responseText); } catch { /* answered below */ }
       if (request.status >= 200 && request.status < 300) {
-        const saved = attachmentResultSchema.safeParse(body);
-        if (saved.success) resolve(attachmentFromResult(saved.data));
+        const parsed = attachmentResultSchema.safeParse(body);
+        const saved = parsed.success ? attachmentFromResult(destination, parsed.data) : null;
+        if (saved) resolve(saved);
         else reject(new ApiError(() => i18n.t("workspace.invalidResponse"), "invalid_response"));
         return;
       }
@@ -116,8 +125,12 @@ export function admitAttachmentRemoval(destination: AttachmentDestination): stri
 export async function removeAttachment(destination: AttachmentDestination, requestId: string, name: string, opId: string): Promise<void> {
   return withRequestActivity(async () => {
     const headers = continuingMutationHeaders(destinationBasis(destination), opId);
-    const response = await fetch(`${base(destination)}?${fileQuery(destination, requestId, name)}`,
-      { method: "DELETE", headers }).catch(unanswered);
+    const response = await (destination.kind === "task"
+      ? fetch(commandPath('task/attachment/remove'), {
+        method: "POST", headers: new Headers([...headers, ['Content-Type', 'application/json']]),
+        body: JSON.stringify({ task: destination.taskId, requestId, name }),
+      })
+      : fetch(`${base(destination)}?${fileQuery(destination, requestId, name)}`, { method: "DELETE", headers })).catch(unanswered);
     if (response.ok) return;
     throw attachmentRefusal(await response.json().catch(() => null), response.status);
   });

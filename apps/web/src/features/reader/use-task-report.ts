@@ -81,13 +81,13 @@ export function useTaskReportTarget(opening: ReportOpening, card: ReaderCard | n
       if (!sameReadSession(client, boundary) || !canSendWrites(basis) || !row
         || !sameTaskReportTarget(target, taskReportTarget(rowTask(row), readerPeopleFor(client, basis.root, task.id))))
         throw new ApiError(() => i18n.t('forms:reportForm.chooseAgain'), 'conflict', 'reread');
-      input = reportRequest(target, choice, words, '');
+      input = reportRequest(target, choice, words);
     } catch (error) {
       return reject(error instanceof ApiError ? error : new ApiError(String(error), 'invalid_input', 'fix'));
     }
     let result: Promise<TaskWriteResult>;
     try { result = sendDirectIntent(client, key, { path: 'task/report', response: 'task', label: task.title },
-      id => ({ ...input, opId: id }), basis, {
+      () => input, basis, {
         reader: { ...readerTurn(task), title: task.title, answer, recovery: choice === 'unhold' ? 'restore' : answer! },
         // The person's own words only: a form restored from it knows which fields they wrote.
         draft: { choice, ...words.title !== undefined && { title: words.title }, ...words.description !== undefined && { description: words.description } },

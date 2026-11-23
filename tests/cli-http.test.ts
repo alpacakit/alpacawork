@@ -45,6 +45,7 @@ after(() => server.close());
 const address = server.address();
 assert(address && typeof address === 'object');
 const origin = `http://127.0.0.1:${address.port}`;
+reply.body = { task: { id: 'T1', folder: origin + '/api/tasks/T1/file?path=' }, errors: [] };
 
 async function run(args: string[], env: Record<string, string | undefined> = {}, input = '') {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolveRun, reject) => {
@@ -61,23 +62,23 @@ async function run(args: string[], env: Record<string, string | undefined> = {},
 }
 const sent = () => JSON.parse(requests.at(-1)!.body.toString());
 
-test('different cwd and HOME use only selected HTTP server; URLs become absolute', async () => {
+test('different cwd and HOME use the selected HTTP server and its published URLs', async () => {
   const result = await run(['task', 'get', '--task', 'T1']);
   assert.equal(result.code, 0, result.stderr);
-  assert.equal(requests.at(-1)?.url, '/api/task/get?task=T1');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/get?task=T1');
   assert.equal(JSON.parse(result.stdout).task.folder, `${origin}/api/tasks/T1/file?path=`);
   assert.equal(result.stderr, '');
   assert.equal(requests.at(-1)?.headers[CONTRACT_HEADER.toLowerCase()], String(CLI_CONTRACT));
   // A person's command names where it runs, for the cwd rule; a Run works in its own Task and names none.
   assert.equal(requests.at(-1)?.headers['x-alpacawork-cwd'], encodeURIComponent(realpathSync(cwd)));
   await run(['task', 'list']);
-  assert.equal(requests.at(-1)?.url, '/api/task/list');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/list');
   await run(['task', 'list', '--state', 'todo,doing', '--state', 'waiting']);
-  assert.equal(requests.at(-1)?.url, '/api/task/list?state=todo&state=doing&state=waiting');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/list?state=todo&state=doing&state=waiting');
   await run(['task', 'get', '--task', 'T1', '--log', '2', '--runs', '3']);
-  assert.equal(requests.at(-1)?.url, '/api/task/get?task=T1&log=2&runs=3');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/get?task=T1&log=2&runs=3');
   await run(['task', 'list', '--depth', '1', '--kind', 'project']);
-  assert.equal(requests.at(-1)?.url, '/api/task/list?depth=1&kind=project');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/list?depth=1&kind=project');
   assert.equal((await run(['task', 'list'], { ALPACAWORK_RUN: 'R1', ALPACAWORK_RUN_TOKEN: 'a'.repeat(64) })).code, 0);
   assert.equal(requests.at(-1)?.headers['x-alpacawork-cwd'], undefined);
 });
@@ -97,7 +98,7 @@ test('a Task is its T number alone: --project, ALPACAWORK_PROJECT and <key>/T42 
   assert.equal(requests.length, before, 'nothing is sent');
   // The environment variable is no option at all: the command goes as if it were not set.
   assert.equal((await run(['task', 'list'], { ALPACAWORK_PROJECT: 'default' })).code, 0);
-  assert.equal(requests.at(-1)?.url, '/api/task/list');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/list');
 });
 
 test('source precedence and malformed selected source fail without fallback', async () => {
@@ -187,17 +188,17 @@ test('report reads local UTF-8 bytes but sends text with automatic or explicit o
     '--description-file', path, '--expected-task-hash', 'a'.repeat(64)]);
   assert.equal(noId.code, 0, noId.stderr);
   assert.match(String(requests.at(-1)?.headers['x-alpacawork-op-id']), /^[0-9a-f-]{36}$/);
-  assert.equal(sent().opId, requests.at(-1)?.headers['x-alpacawork-op-id']);
+  assert.equal(sent().opId, undefined);
   const result = await run(['task', 'report', '--task', 'T1', '--state', 'doing', '--title', 'In progress',
     '--description-file', path, '--expected-task-hash', 'a'.repeat(64), '--op-id', 'same-operation']);
   assert.equal(result.code, 0, result.stderr);
   const received = requests.at(-1)!;
   assert.equal(received.method, 'POST');
-  assert.equal(received.url, '/api/task/report');
+  assert.equal(received.url, '/api/commands/task/report');
   assert.equal(received.headers['x-alpacawork-op-id'], 'same-operation');
   const body = JSON.parse(received.body.toString());
   assert.equal(body.description, '\ufeffあ\r\n');
-  assert.equal(body.opId, 'same-operation');
+  assert.equal(body.opId, undefined);
   assert.equal(body.descriptionFile, undefined);
 });
 
@@ -207,9 +208,25 @@ test('an instruction goes by task request and keeps its op-id during shared vali
   const result = await run(['task', 'request', '--task', 'T1', '--instruction-file', path,
     '--expected-task-hash', 'a'.repeat(64), '--expected-placement-revision', '1', '--op-id', 'request-1']);
   assert.equal(result.code, 0, result.stderr);
-  assert.equal(requests.at(-1)?.url, '/api/task/request');
+  assert.equal(requests.at(-1)?.url, '/api/commands/task/request');
   assert.equal(requests.at(-1)?.headers['x-alpacawork-op-id'], 'request-1');
-  assert.deepEqual([sent().instruction, sent().opId], ['Start now', 'request-1']);
+  assert.deepEqual([sent().instruction, sent().opId], ['Start now', undefined]);
+});
+
+test('config inspect sends one execution with a restore ID and reports an incomplete answer', async () => {
+  const before = requests.length, previous = reply;
+  reply = { status: 200, body: null, raw: '{' };
+  try {
+    const result = await run(['config', 'inspect']);
+    assert.notEqual(result.code, 0);
+    assert.equal(JSON.parse(result.stderr).error.detail.state, 'result_unknown');
+    const sent = requests.slice(before);
+    assert.deepEqual(sent.map(({ method, url }) => [method, url]), [
+      ['GET', '/api/runtime/recovery'], ['POST', '/api/commands/config/inspect'],
+    ]);
+    assert.equal(sent[1]!.headers['x-alpacawork-restore-id'], INITIAL_RESTORE_ID);
+    assert.equal(sent[1]!.headers['x-alpacawork-op-id'], undefined);
+  } finally { reply = previous; }
 });
 
 test('negative and nullable CLI flags send their JSON values under the shared command keys', async () => {

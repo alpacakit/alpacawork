@@ -37,7 +37,7 @@ test('DNS failures and a 200 stream body failure recover automatically while nat
   await expect(page.locator('[data-toast-id="offline"]')).toHaveCount(0);
   expect(await page.evaluate(() => navigator.onLine)).toBe(true);
   const { task } = await (await page.request.get(`${runtime.origin}/api/task/view?task=T11`)).json();
-  const changed = await commandPost(page.request, `${runtime.origin}/api/task/update`, {
+  const changed = await commandPost(page.request, `${runtime.origin}/api/commands/task/update`, {
     data: { task: 'T11', title: 'Update received after reconnect', expectedTaskHash: task.hash },
   });
   expect(changed.ok(), await changed.text()).toBe(true);

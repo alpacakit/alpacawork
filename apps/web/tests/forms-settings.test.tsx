@@ -40,14 +40,14 @@ function serverFetch(saves: (Response | Error | Promise<Response>)[], reads: unk
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
     const next = <T,>(list: T[]) => (list.length > 1 ? list.shift() : list[0]) as T;
     // The agents' checks read config/get too; only the settings' own reads take from the list.
-    if (String(url).includes("/api/config/get?check")) return answer(serverSettings());
-    if (String(url).includes("/api/config/get")) { const read = next(reads); return read instanceof Response ? read.clone() : answer(read); }
+    if (String(url).includes("/api/commands/config/inspect")) return answer(serverSettings());
+    if (String(url).includes("/api/commands/config/get")) { const read = next(reads); return read instanceof Response ? read.clone() : answer(read); }
     if (String(url).includes("/api/task/view")) return answer(goalView("# Goal\n", OPEN));
     // Settings read the update status; it is no save.
     if (String(url).includes("/api/update/status")) return answer({ kind: "none" });
     if (String(url).includes("/api/telemetry/status")) return answer({ state: "blocked", blockedBy: "test", digest: null });
     if (String(url).includes("/api/environment-file")) return answer({ path: "/fixture-home/.config/alpacawork/env", state: "absent", applied: 0, skipped: [] });
-    if (!String(url).includes("/api/config/set")) throw new Error(`Unexpected settings request: ${String(url)}`);
+    if (!String(url).includes("/api/commands/config/set")) throw new Error(`Unexpected settings request: ${String(url)}`);
     const value = await next(saves);
     if (value instanceof Error) throw value;
     return value.clone();
@@ -55,13 +55,13 @@ function serverFetch(saves: (Response | Error | Promise<Response>)[], reads: unk
 }
 
 const saveCalls = (fetcher: ReturnType<typeof vi.spyOn>) =>
-  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/config/set"));
+  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/commands/config/set"));
 
 const saveBody = (fetcher: ReturnType<typeof vi.spyOn>, index = 0) => JSON.parse(String((saveCalls(fetcher)[index]?.[1] as RequestInit).body));
 
 /** The project's own saves (its title, goal or extracts) through task update. */
 const updateCalls = (fetcher: ReturnType<typeof vi.spyOn>) =>
-  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/task/update"));
+  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/commands/task/update"));
 
 const updateBody = (fetcher: ReturnType<typeof vi.spyOn>, index = 0) => JSON.parse(String((updateCalls(fetcher)[index]?.[1] as RequestInit).body));
 

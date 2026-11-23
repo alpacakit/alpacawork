@@ -195,7 +195,7 @@ test('a failed rotation with unknown receipt never silently starts another conve
 });
 
 test('the contract requires atomic values with next-conversation and excludes confirmations and stops', () => {
-  const base = { state: 'doing', opId: 'report', expectedTaskHash: 'a'.repeat(64), nextConversation: 'new' };
+  const base = { state: 'doing', expectedTaskHash: 'a'.repeat(64), nextConversation: 'new' };
   assert.equal(taskReportInput.safeParse(base).success, false);
   assert.equal(taskReportInput.safeParse({ ...base, values: snapshot }).success, true);
   assert.equal(taskReportInput.safeParse({ ...base, values: snapshot, state: 'stopped' }).success, false);

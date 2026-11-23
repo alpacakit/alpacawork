@@ -188,17 +188,17 @@ test('a warm read thread and kept history end before DB replacement; a new gener
  let server=await startServer(h.root,0);let closed=false;
  try {
   const oldGeneration=(await(await fetch(new URL('/api/workspace/live',server.url))).json()).generation;
-  const current=await(await fetch(new URL('/api/task/get?task=T2',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
-  const op=randomUUID(),saved=await fetch(new URL('/api/task/comment',server.url),{method:'POST',headers:{'Content-Type':'application/json','X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT),'X-Alpacawork-Op-Id':op,'X-Alpacawork-Restore-Id':'initial'},body:JSON.stringify({task:'T2',title:'AFTER_T0_MUST_DISAPPEAR',expectedTaskHash:current.task.hash})});
+  const current=await(await fetch(new URL('/api/commands/task/get?task=T2',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
+  const op=randomUUID(),saved=await fetch(new URL('/api/commands/task/comment',server.url),{method:'POST',headers:{'Content-Type':'application/json','X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT),'X-Alpacawork-Op-Id':op,'X-Alpacawork-Restore-Id':'initial'},body:JSON.stringify({task:'T2',title:'AFTER_T0_MUST_DISAPPEAR',expectedTaskHash:current.task.hash})});
   assert.equal(saved.status,200,await saved.text());
   for(let n=0;n<3;n++) {
-   const warm=await(await fetch(new URL('/api/task/get?task=T2&log=100',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
+   const warm=await(await fetch(new URL('/api/commands/task/get?task=T2&log=100',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
    assert(JSON.stringify(warm).includes('AFTER_T0_MUST_DISAPPEAR'));
   }
   await server.close();closed=true;
   restoreGroupMember(h.root,backup,'control');restoreGroupMember(h.root,backup,'host');
   server=await startServer(h.root,0);closed=false;
-  const restored=await(await fetch(new URL('/api/task/get?task=T2&log=100',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
+  const restored=await(await fetch(new URL('/api/commands/task/get?task=T2&log=100',server.url),{headers:{'X-Alpacawork-Client':'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT)}})).json();
   assert(!JSON.stringify(restored).includes('AFTER_T0_MUST_DISAPPEAR'));
   const index=await(await fetch(new URL('/api/workspace/live',server.url))).json();assert.notEqual(index.generation,oldGeneration);
   events.push({case:'warm restored read',oldGeneration,newGeneration:index.generation,discardedOldHistory:true});

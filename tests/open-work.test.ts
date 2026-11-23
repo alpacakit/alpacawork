@@ -20,7 +20,7 @@ type Placement = { id: string; revision: number };
 const human = { purpose: 'instruction', actor: { kind: 'human' } } as const;
 const count = (text: string, value: string) => text.split(value).length - 1;
 const promptOf = (h: Fixture, receipt: RequestReceipt) => h.store.getText(receipt.runId)!.prompt;
-const readOpen = (h: Fixture) => readTaskView(h.root, h.task.id, { openObligations: true }, null);
+const readOpen = (h: Fixture) => readTaskView(h.root, h.task.id, { include: ['openObligations'] as const }, null);
 const instruction = (h: Fixture, placement: Placement, mode: 'new' | 'continue') => new RequestService(h.root).request({
   taskId: h.task.id, targetPlacementId: placement.id, body: 'Resume the assigned work', requestId: randomUUID(), mode,
   expectedTaskHash: currentTaskHash(h.root, h.task.id), expectedPlacementRevision: placement.revision,
@@ -162,7 +162,7 @@ test('a budgeted saved prompt advertises a formal CLI read that reaches every om
   assert.equal(count(prompt, '## Open work\n'), 1);
   assert.match(prompt, /Open requests: 1401; returns and notices not yet handled: \d+\. Too large to include/);
   assert.ok(!prompt.includes(seeded[0]!.id), 'the full list really exceeded the launch budget');
-  const advertised = prompt.match(/alpacawork (task get --task T\d+ --open-obligations)/);
+  const advertised = prompt.match(/alpacawork (task get --task T\d+ --include openObligations)/);
   assert.ok(advertised, prompt);
   const cli = await withCli(h);
   try {

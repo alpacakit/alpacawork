@@ -48,7 +48,7 @@ test('HTTP finish must reject a closed worker Request until its Return is receiv
   try {
   const token = issueRunCredential(h.root, owner.runId), current = await h.current(), opId = randomUUID();
   const input = { task: h.task.id, state: 'done', title: 'Premature finish', description: 'The result is ready for review.', opId, expectedTaskHash: current.hash };
-  const response = await commandFetch(new URL('/api/task/report', server.url), { method: 'POST',
+  const response = await commandFetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Alpacawork-Run ${owner.runId}:${token}` }, body: JSON.stringify(input) });
   const output = await response.json();
   assert.ok(before.working!.includes(h.task.id));
@@ -114,7 +114,7 @@ test('HTTP completion succeeds after the actual worker result receipt', async t 
   const unlockManager = managerLock(h.root, delivered.run), server = await startServer(h.root, 0);
   try {
     const token = issueRunCredential(h.root, delivered.run);
-    const response = await commandFetch(new URL('/api/task/report', server.url), { method: 'POST',
+    const response = await commandFetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Alpacawork-Run ${delivered.run}:${token}` },
       body: JSON.stringify({ task: h.task.id, state: 'done', title: 'Result received', description: 'The result is ready for review.', opId: randomUUID(), expectedTaskHash: (await h.current()).hash }) });
     assert.equal(response.status, 200, JSON.stringify(await response.json()));

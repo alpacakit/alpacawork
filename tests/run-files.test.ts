@@ -55,7 +55,7 @@ async function setup(t: TestContext, seed = true, seedResult?: string) {
     app ??= await startServer(root, 0);
     const query = new URLSearchParams({ run });
     if (kind) query.set('kind', kind);
-    const response = await fetch(new URL(`/api/run/get?${query}`, app.url));
+    const response = await fetch(new URL(`/api/commands/run/get?${query}`, app.url));
     return { status: response.status, body: await response.json() };
   }
   async function cli(...args: string[]) {

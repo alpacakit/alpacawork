@@ -54,15 +54,15 @@ const RUNTIME = /diff[.-](worker|runtime)|shiki|@pierre/;
 async function diffTask(page: Page, origin: string, body = BODY) {
   // Large reader samples use a workspace field; app-provided field definitions are fixed.
   const field = "diff_sample";
-  const defined = await commandPost(page.request, `${origin}/api/field/set`,
+  const defined = await commandPost(page.request, `${origin}/api/commands/field/set`,
     { data: { field, title: "Diff sample", type: "text", maxChars: body.length } });
   expect(defined.ok(), await defined.text()).toBe(true);
-  const project = await (await page.request.get(`${origin}/api/task/get?task=${SAMPLE_PROJECT.id}`)).json();
-  const schema = await (await page.request.get(`${origin}/api/field/get?task=${SAMPLE_PROJECT.id}`)).json();
-  const used = await commandPost(page.request, `${origin}/api/field/use`, { data: { task: SAMPLE_PROJECT.id,
+  const project = await (await page.request.get(`${origin}/api/commands/task/get?task=${SAMPLE_PROJECT.id}`)).json();
+  const schema = await (await page.request.get(`${origin}/api/commands/field/get?task=${SAMPLE_PROJECT.id}`)).json();
+  const used = await commandPost(page.request, `${origin}/api/commands/field/use`, { data: { task: SAMPLE_PROJECT.id,
     fields: [...new Set([...schema.fields, field])], expectedTaskHash: project.task.hash } });
   expect(used.ok(), await used.text()).toBe(true);
-  const made = await commandPost(page.request, `${origin}/api/task/new`, { data: { parent: SAMPLE_PROJECT.id, title: "Diff view", values: { [field]: body } } });
+  const made = await commandPost(page.request, `${origin}/api/commands/task/new`, { data: { parent: SAMPLE_PROJECT.id, title: "Diff view", values: { [field]: body } } });
   expect(made.ok(), await made.text()).toBe(true);
   return (await made.json()).task.id as string;
 }

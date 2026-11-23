@@ -15,7 +15,7 @@ import { actorHeaders, LostAnswer, prepareRequest, RemoteProblem, sendPrepared }
 import { cliRun } from './helpers/http-cli.ts';
 import { cliCommand } from './helpers/cli-session.ts';
 
-const prepared = () => prepareRequest('http://127.0.0.1:1', '/api/task/new', 'POST', { title: 'one' }, new Headers());
+const prepared = () => prepareRequest('http://127.0.0.1:1', '/api/commands/task/new', 'POST', { title: 'one' }, new Headers());
 const remote = (code: 'busy' | 'invalid_input' | 'conflict' | 'publication_pending' | 'publication_needs_review', detail?: unknown) =>
   new RemoteProblem({ error: { code, message: code, retry: code.startsWith('publication_') ? 'check' : code === 'busy' ? 'later' : code === 'conflict' ? 'reread' : 'fix', detail } });
 function runtime() {
@@ -163,7 +163,7 @@ for (const [name, answer, read, write, speaksOfASave] of [
   assert.equal(error.detail.operation.opId, opId);
   const requests = server.seen.slice(1); // The neutral read above is separate from this write.
   assert.deepEqual(requests.map(item => [item.method, item.url, item.fault]), [
-    ['GET', '/api/runtime/recovery', false], ...Array.from({ length: 3 }, () => ['POST', '/api/task/update', true]),
+    ['GET', '/api/runtime/recovery', false], ...Array.from({ length: 3 }, () => ['POST', '/api/commands/task/update', true]),
   ]);
   const posts = requests.slice(1), first = posts[0];
   assert.equal(first.headers['x-alpacawork-op-id'], opId);

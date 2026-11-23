@@ -137,7 +137,7 @@ test('zero projects publish SSE removals, survive restart, and restore through t
   const stream = await openIndexStream(new URL('/api/events', app.url), h.signal);
   await stream.index();
   const change = async (id: string, action: 'archive' | 'restore') => {
-    const response = await fetch(new URL(`/api/task/${action}`, app.url), { method: 'POST',
+    const response = await fetch(new URL(`/api/commands/task/${action}`, app.url), { method: 'POST',
       headers: { 'content-type': 'application/json', 'x-alpacawork-op-id': randomUUID() },
       body: JSON.stringify({ task: id, expectedTaskHash: (await h.get(id)).hash }) });
     assert.equal(response.status, 200, await response.clone().text()); return response.json();
@@ -148,7 +148,7 @@ test('zero projects publish SSE removals, survive restart, and restore through t
   let streamed = await stream.index();
   while (streamed.rev < empty.rev) streamed = await stream.index();
   assert.deepEqual(streamed.tasks, []);
-  const catalog = projectShelfSchema.parse(await read('/api/project/shelf'));
+  const catalog = projectShelfSchema.parse(await read('/api/commands/project/shelf'));
   assert.equal(catalog.projects.find(project => project.id === h.projectId)?.shelf.restoreTarget?.id, 'P1');
   for (const address of ['P1', h.projectId, h.child.id]) {
     const response = await fetch(new URL(`/api/task/view?task=${address}`, app.url));
@@ -163,7 +163,7 @@ test('zero projects publish SSE removals, survive restart, and restore through t
   const restarted = await h.start();
   const restartedIndex = await fetch(new URL('/api/workspace/live', restarted.url));
   assert.deepEqual(projectedIndexSchema.parse(await restartedIndex.json()).projects, []);
-  const response = await fetch(new URL('/api/task/restore', restarted.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/restore', restarted.url), { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-alpacawork-op-id': randomUUID() },
     body: JSON.stringify({ task: 'P1', expectedTaskHash: (await h.get('P1')).hash }) });
   assert.equal(response.status, 200, await response.text());
@@ -219,7 +219,7 @@ test('deleted projects have an explicit deleted location and are not offered as 
     assert.equal(located.shelf.shelvedBy[0]!.lifecycle, 'deleted');
     assert.equal(located.shelf.restoreTarget, null);
   }
-  const catalog = projectShelfSchema.parse(await (await fetch(new URL('/api/project/shelf', app.url))).json());
+  const catalog = projectShelfSchema.parse(await (await fetch(new URL('/api/commands/project/shelf', app.url))).json());
   assert.equal(catalog.projects.some(project => project.id === deleted.id), false);
 });
 

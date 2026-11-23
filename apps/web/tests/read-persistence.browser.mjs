@@ -61,9 +61,9 @@ try {
     await page.route('**/__read-test', route => route.fulfill({ contentType: 'text/html', body: '<html><body>Native FORMAT14 boundary</body></html>' }));
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
-      const data = path === '/api/person/notices' ? notice : path === '/api/settings/get' ? { values: { theme: 'dark' }, revision: 's1' }
+      const data = path === '/api/person/notices' ? notice : path === '/api/commands/settings/get' ? { values: { theme: 'dark' }, revision: 's1' }
         : path === '/api/task/view' ? view : path === '/api/task/history' ? { ...source, events: [], oldestKey: null, hasOlder: false, tasks: {} }
-        : path === '/api/project/shelf' ? catalog : path === '/api/workspace/live' ? index
+        : path === '/api/commands/project/shelf' ? catalog : path === '/api/workspace/live' ? index
         : { ...source, rows: [], total: 0, nextAfter: null };
       return route.fulfill({ json: data });
     });
@@ -226,7 +226,7 @@ try {
     }; });
     const elapsed = await boot(b); assert(elapsed < 720 && elapsed >= 480, `restore duration ${elapsed}`);
     assert.equal(await b.evaluate(() => window.s.readIndex(window.s.queryClient)), undefined);
-    if (status === 403) await b.route('**/api/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Settings refused', retry: 'fix' } } }));
+    if (status === 403) await b.route('**/api/commands/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Settings refused', retry: 'fix' } } }));
     await b.evaluate(async index => { const s = window.s, c = s.queryClient; s.receiveFullIndex(c, { ...index, rev: 3 });
       await Promise.allSettled([c.fetchQuery(s.resources.personalSettings(index.root)), c.fetchQuery(s.resources.notices(index.root))]); window.dispatchEvent(new Event('pagehide')); }, index);
     await expect.poll(async () => (await disk(b)).control.revision).toBeGreaterThan(first.control.revision);
@@ -253,11 +253,11 @@ try {
   });
   await check('first checkpoint waits for missing required reads but a refused required read permits only partial', async () => {
     const ctx = await context(), a = await pageIn(ctx); await boot(a);
-    await a.route('**/api/settings/get', route => route.fulfill({ status: 503, json: { error: { code: 'unavailable', message: 'First missing', retry: 'later' } } }));
+    await a.route('**/api/commands/settings/get', route => route.fulfill({ status: 503, json: { error: { code: 'unavailable', message: 'First missing', retry: 'later' } } }));
     await a.evaluate(async index => { const s = window.s, c = s.queryClient; s.receiveFullIndex(c, index);
       await Promise.allSettled([c.fetchQuery(s.resources.taskView(index.root, 'T11')), c.fetchQuery(s.resources.notices(index.root)), c.fetchQuery(s.resources.personalSettings(index.root))]); }, index);
     await flush(a); await a.waitForTimeout(350); assert.equal((await disk(a)).slots.length, 0);
-    await a.route('**/api/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Explicit refusal', retry: 'fix' } } }));
+    await a.route('**/api/commands/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Explicit refusal', retry: 'fix' } } }));
     assert.equal(await force(a, 'settings'), 'forbidden'); await flush(a);
     await expect.poll(() => a.evaluate(() => window.s.useReadPersistence.getState().status)).toBe('partial');
     assert(taskSlot(await disk(a))); assert.equal((await disk(a)).slots.some(slot => slot.key[0] === 'person-settings'), false);
@@ -520,7 +520,7 @@ try {
     await a.evaluate(index => { const s = window.s; s.receiveFullIndex(s.queryClient, { ...index, rev: 2, errors: [{ code: 'fault', path: 'root', message: 'x'.repeat(9 * 1024 * 1024) }] }); window.dispatchEvent(new Event('pagehide')); }, index);
     await expect.poll(() => a.evaluate(() => window.s.useReadPersistence.getState().status)).toBe('over-budget');
     assert.equal((await disk(a)).control.epoch, before.control.epoch); assert.equal(taskSlot(await disk(a)).acquiredAt, taskSlot(before).acquiredAt);
-    await a.route('**/api/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Revoked despite huge index', retry: 'fix' } } }));
+    await a.route('**/api/commands/settings/get', route => route.fulfill({ status: 403, json: { error: { code: 'forbidden', message: 'Revoked despite huge index', retry: 'fix' } } }));
     await force(a, 'settings'); await expect.poll(async () => (await disk(a)).control.epoch !== before.control.epoch).toBe(true);
     assert.equal((await disk(a)).slots.some(slot => slot.key[0] === 'person-settings'), false);
     assert.equal(taskSlot(await disk(a)).query.state.data.task.values?.notes, view.task.values?.notes);

@@ -62,7 +62,7 @@ test('new human acts and SCREEN refuse unknown direct conversations before impor
     }
   }
   // A normal CLI entry preserves resolveCaller's original import/reason/detail, proving the journal was not inert.
-  const ordinary = await f.call('/api/task/get?task=' + f.task.id, true);
+  const ordinary = await f.call('/api/commands/task/get?task=' + f.task.id, true);
   assert.equal(ordinary.status, 403); assert.equal(ordinary.body.error.reason.kind, 'conversation_belongs_alpacawork_run');
   assert.deepEqual(ordinary.body.error.detail, { conversation: 'task_run' });
   assert.notDeepEqual(f.snapshot(), before); assert.ok(f.store.runtimeGet(f.run.id)?.session);

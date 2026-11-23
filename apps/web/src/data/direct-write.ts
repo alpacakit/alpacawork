@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { type WriteBasis } from './connection';
 import type { QueryClient } from '@tanstack/react-query';
 import { stopResponseSchema, serverSettingsSchema, personalSettingsResponseSchema } from '@alpacawork/contract';
@@ -23,7 +24,7 @@ async function deliver<K extends keyof Results>(client: QueryClient, recovery: D
   const result = recovery.response === 'task'
     ? await writeTask(client, recovery.path, input, taskWriteResultSchema, opId, basis, keepalive)
     : recovery.response === 'placement' ? await writeTask(client, recovery.path, input, taskPlacementResultSchema, opId, basis, keepalive)
-    : await api.request(recovery.path, recovery.response === 'settings' ? serverSettingsSchema as import('zod').z.ZodType<unknown> : recovery.response === 'personal' ? personalSettingsResponseSchema as import('zod').z.ZodType<unknown> : stopResponseSchema as import('zod').z.ZodType<unknown>, undefined, input, opId, basis, keepalive);
+    : await api.request(commandRoute(recovery.path), recovery.response === 'settings' ? serverSettingsSchema as import('zod').z.ZodType<unknown> : recovery.response === 'personal' ? personalSettingsResponseSchema as import('zod').z.ZodType<unknown> : stopResponseSchema as import('zod').z.ZodType<unknown>, undefined, input, opId, basis, keepalive);
   return result as Results[K];
 }
 

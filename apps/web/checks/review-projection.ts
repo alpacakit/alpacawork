@@ -22,7 +22,7 @@ async function get(path: string) { const response = await fetch(`${runtime.origi
 async function post(path: string, body: object) { const response = await fetch(`${runtime.origin}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); expect(response.status, await response.clone().text()).toBe(200); return response.json(); }
 async function task(parent: string, title: string, body?: string) {
  const task = seedTask(runtime.root, parent, title, body);
- await post('agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+ await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
  patchTask(runtime.root, task.id, { state: 'doing' }); return task.id as string;
 }
 const reader = page.locator('aside[data-reader-mode]');
@@ -33,11 +33,11 @@ async function openCard(id: string, record: string) {
  if (await heading.getAttribute('aria-expanded') === 'false') await heading.click();
  return target;
 }
-const sourceState = async (id: string) => get(`task/get?task=${id}`);
-const sourceRuns = async (id: string) => (await get(`task/get?task=${id}&runs=999999999`)).runs;
+const sourceState = async (id: string) => get(`commands/task/get?task=${id}`);
+const sourceRuns = async (id: string) => (await get(`commands/task/get?task=${id}&runs=999999999`)).runs;
 async function reviewId(direct: string, source: string) { await expect.poll(async () => (await get(`task/view?address=${direct}`)).userReviews?.some((review: { taskId: string }) => review.taskId === source)).toBe(true); return (await get(`task/view?address=${direct}`)).userReviews.find((review: { taskId: string }) => review.taskId === source).id as string; }
 try {
- const project = (await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Review UI local fixture' })).task.id;
+ const project = (await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Review UI local fixture' })).task.id;
  const direct = await task(project, 'Direct display'); const middle = await task(direct, 'Middle owner');
  const source = await task(middle, 'Original deep review owner');
  const run = seedReview(runtime.root, source, { title: 'Deep result ready', description: '[Original file](proof.md)\nPlease confirm the original result.' });
@@ -123,9 +123,9 @@ try {
  // Hold/revise removes stale operations while retaining the submitted result for reading.
  await page.setViewportSize({ width: 1280, height: 900 });
  const held = await task(middle, 'Held review owner'); seedReview(runtime.root, held, { title: 'Held result' }); const heldId = await reviewId(direct, held);
- const h = await sourceState(held); await post('task/report', { opId: randomUUID(), task: held, state: 'held', expectedTaskHash: h.task.hash });
+ const h = await sourceState(held); await post('commands/task/report', { opId: randomUUID(), task: held, state: 'held', expectedTaskHash: h.task.hash });
  await openCard(held, heldId); await expect(card(held, heldId).locator('[data-task-done]')).toBeEnabled(); await expect(card(held, heldId).getByRole('button', { name: 'Write a send-back' })).toBeDisabled();
- const hs = await sourceState(held); await post('task/report', { opId: randomUUID(), task: held, state: 'waiting', expectedTaskHash: hs.task.hash });
+ const hs = await sourceState(held); await post('commands/task/report', { opId: randomUUID(), task: held, state: 'waiting', expectedTaskHash: hs.task.hash });
  await expect(card(held, heldId).locator('[data-task-done]')).toBeEnabled();
  patchTask(runtime.root, held, { state: 'doing', body: 'Revised result; old review is invalid.' });
  await expect(card(held, heldId).locator('[data-review-report-actions]')).toHaveCount(0);
@@ -145,7 +145,7 @@ try {
   if (snapshot) patchTask(runtime.root, heldSource, { userRequested: true, state: 'waiting', logs: [{ id: heldRecord, kind: 'reported', at: new Date().toISOString(), title: 'Held snapshot result', description: 'Review after holding this snapshot.', actor: { kind: 'human' }, fromState: 'doing', toState: 'waiting' }] });
   else seedReview(runtime.root, heldSource, { title: 'Held Run result', description: 'Review after holding this Run result.' });
   const heldSubmission = await reviewId(direct, heldSource), waiting = await sourceState(heldSource);
-  await post('task/report', { opId: randomUUID(), task: heldSource, state: 'held', expectedTaskHash: waiting.task.hash });
+  await post('commands/task/report', { opId: randomUUID(), task: heldSource, state: 'held', expectedTaskHash: waiting.task.hash });
   const heldBefore = await sourceState(heldSource), heldRuns = await sourceRuns(heldSource), heldCard = await openCard(heldSource, heldSubmission);
   await expect(heldCard.locator('[data-task-done]')).toBeEnabled();
   await expect(heldCard.getByRole('button', { name: 'Write a send-back' })).toBeDisabled();

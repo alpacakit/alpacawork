@@ -58,7 +58,7 @@
     "@alpacawork/db": "workspace:*"
   },
   "devDependencies": {
-    "@alpacakit/channels": "0.2.0-beta.5",
+    "@alpacakit/channels": "0.2.0-beta.6",
     "@alpacawork/backend": "workspace:*",
     "@alpacawork/cli-kit": "workspace:*",
     "@alpacawork/cli": "workspace:*",

@@ -64,7 +64,7 @@ test('the one line brings the input up, sending puts it down, and it says the wo
 for (const expanded of [false]) test(`Done actually approves the reviewed task and keeps the person's draft (${expanded ? 'open' : 'folded'})`, async ({ page, runtime }) => {
   startFakeCoordinator(runtime.root);
   await page.setViewportSize({ width: expanded ? 1440 : 320, height: 900 });
-  const made = await commandPost(page.request, `${runtime.origin}/api/task/new`, {
+  const made = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, {
     data: { parent: SAMPLE_PROJECT.id, title: 'Review from conversation controls' },
   });
   expect(made.ok()).toBe(true);
@@ -82,7 +82,7 @@ for (const expanded of [false]) test(`Done actually approves the reviewed task a
   });
   const before = await ownDraft();
   if (expanded) await page.locator('[data-coordinator-pill]').click();
-  const sent = page.waitForRequest(request => request.url().endsWith('/api/task/report'));
+  const sent = page.waitForRequest(request => request.url().endsWith('/api/commands/task/report'));
   // Done stands in the conversation's row: its open end, or its folded row.
   await page.locator(`${expanded ? '[data-coordinator-end]' : '[data-coordinator-fold-row]'} [data-task-done]`).click();
   const message = (await sent).postDataJSON();

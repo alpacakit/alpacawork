@@ -122,7 +122,7 @@ test('HTTP admission and CLI continuation authorize only delivered screen reply 
   const page = await call(url, ['coordinator', 'reply', 'get', '--message', source.requestId, '--from', '801'], { CLAUDE_CODE_SESSION_ID: session });
   assert.equal(page.from, 801); assert.equal(page.total, 1500); assert.equal(Array.from(page.text).length, 700);
   assert.equal((await run(url, ['coordinator', 'reply', 'get', '--message', source.requestId], { CLAUDE_CODE_SESSION_ID: randomUUID() })).code, 2);
-  const human = await fetch(new URL('/api/coordinator/reply/get?message=' + source.requestId, url)); assert.equal(human.status, 403);
+  const human = await fetch(new URL('/api/commands/coordinator/reply/get?message=' + source.requestId, url)); assert.equal(human.status, 403);
   const body = input(source.conversation, 'HTTP reply', source.requestId);
   body.attachments = ['note.txt'];
   const uploaded = await fetch(new URL(`/api/coordinator/attachments?conversationId=${source.conversation}&requestId=${body.id}&name=note.txt`, url),
@@ -147,9 +147,9 @@ test('HTTP admission and CLI continuation authorize only delivered screen reply 
   const linked = control.read(db => dialoguesOf(db, [new TaskRepository(f.root, db).metadataWithHistory(f.project)]));
   assert.ok(linked.some(turn => turn.words === 'Original'), 'original explicit target remains linked');
   assert.ok(!linked.some(turn => turn.words === 'Joined reply'), 'reply reference never expands explicit targets');
-  const retained = await fetch(new URL('/api/coordinator/reply/get?message=' + source.requestId, url), { headers: conversationHeaders(session) });
+  const retained = await fetch(new URL('/api/commands/coordinator/reply/get?message=' + source.requestId, url), { headers: conversationHeaders(session) });
   assert.equal(retained.status, 200, 'completed Runs keep their delivered reply references without a clock');
   assert.equal((await post(url, '/api/coordinator/clear', { conversationId: source.conversation })).status, 200);
-  const cleared = await fetch(new URL('/api/coordinator/reply/get?message=' + source.requestId, url), { headers: conversationHeaders(session) });
+  const cleared = await fetch(new URL('/api/commands/coordinator/reply/get?message=' + source.requestId, url), { headers: conversationHeaders(session) });
   assert.equal(cleared.status, 409, 'a cleared conversation makes the reply source unavailable');
 });

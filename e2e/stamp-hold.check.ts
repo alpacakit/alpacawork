@@ -34,10 +34,10 @@ const post = async (page: Page, runtime: Runtime, path: string, data: object) =>
  */
 async function prepare(page: Page, runtime: Runtime, kind: "review" | "decide" = "review", count = 3) {
   startFakeCoordinator(runtime.root);
-  const { task: project } = await post(page, runtime, "task/new", { kind: "project", color: '#39659b', parent: "none", title: "Stamp" });
+  const { task: project } = await post(page, runtime, "commands/task/new", { kind: "project", color: '#39659b', parent: "none", title: "Stamp" });
   const ids: string[] = [];
   for (let n = 0; n < count; n++) {
-    const { task } = await post(page, runtime, "task/new", { parent: project.id, title: `確認カード ${n + 1}`,
+    const { task } = await post(page, runtime, "commands/task/new", { parent: project.id, title: `確認カード ${n + 1}`,
       ...kind === "decide" ? { values: decideValues(['案を選ぶ', ['案1 進める', '選択します'], ['案2 あとで', '保留します']]) } : {} });
     await placeResponsible(page.request, runtime.origin, task);
     if (kind === "review") seedReview(runtime.root, task.id, { title: "確認してください", description: "回答を確認してください。" });
@@ -200,9 +200,9 @@ async function settled(page: Page) {
 
 test("a definite refusal restores the answer while its submitted copy finishes the same departure", async ({ page, runtime }) => {
   const ids = await prepare(page, runtime);
-  await page.route(url => url.pathname === '/api/task/report', async route => {
+  await page.route(url => url.pathname === '/api/commands/task/report', async route => {
     const { hash } = (await (await page.request.get(runtime.origin + '/api/task/view?task=' + ids[0])).json()).task;
-    await post(page, runtime, 'task/update', { task: ids[0], expectedTaskHash: hash, title: '変わった確認カード' });
+    await post(page, runtime, 'commands/task/update', { task: ids[0], expectedTaskHash: hash, title: '変わった確認カード' });
     await route.continue();
   });
   await sample(page);
@@ -221,7 +221,7 @@ test("presses and keys during the hold do not reach the next card hidden under t
   const ids = await prepare(page, runtime, "review", 4);
   const sent: {task:string;state:string}[] = [];
   page.on("request", request => {
-    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/task/report") sent.push(request.postDataJSON());
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/commands/task/report") sent.push(request.postDataJSON());
   });
   /** What each message sent meant: the card it was about, and the press. */
   const pressed = () => sent.map(message => [message.task, message.state]);

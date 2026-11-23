@@ -17,7 +17,7 @@ test('a form validates locally and closes on admission, then shows its refused d
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('[data-toast]')).toHaveCount(0);
   await dialog.locator('#project-new-name').fill('見本');
-  await page.route('**/api/task/new', route => route.fulfill({ status: 503, json: { error: { code: 'busy', message: 'busy', retry: 'later' } } }));
+  await page.route('**/api/commands/task/new', route => route.fulfill({ status: 503, json: { error: { code: 'busy', message: 'busy', retry: 'later' } } }));
   await dialog.getByRole('button', { name: 'Create', exact: true }).click();
   const toast = page.locator('[data-toast][data-kind=error]');
   await expect(toast).toContainText('Try again shortly.');
@@ -46,15 +46,15 @@ test.describe('three-second unsent undo', () => {
   test.use({ fixedTime: false, writeGraceMs: 3000 });
   test('restore offers undo immediately and sends only after three real seconds',async({page,runtime})=>{
     await page.setViewportSize({width:1440,height:900});
-    const made=await commandPost(page.request,runtime.origin+'/api/task/new',{data:{parent:'P1',title:'Five second undo'}});
+    const made=await commandPost(page.request,runtime.origin+'/api/commands/task/new',{data:{parent:'P1',title:'Five second undo'}});
     const task=(await made.json()).task;
-    expect((await commandPost(page.request,runtime.origin+'/api/task/archive',{data:{task:task.id,expectedTaskHash:task.hash}})).ok()).toBe(true);
+    expect((await commandPost(page.request,runtime.origin+'/api/commands/task/archive',{data:{task:task.id,expectedTaskHash:task.hash}})).ok()).toBe(true);
     await open(page,runtime,'?agent=1');
     await page.locator('[data-section="done"] button').click();
     await page.locator('[data-shelved] summary').click();
     const posts: number[]=[];
-    page.on('request',request=>{if(new URL(request.url()).pathname==='/api/task/restore'&&request.method()==='POST') posts.push(Date.now());});
-    const sent=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/task/restore'&&response.request().method()==='POST');
+    page.on('request',request=>{if(new URL(request.url()).pathname==='/api/commands/task/restore'&&request.method()==='POST') posts.push(Date.now());});
+    const sent=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/commands/task/restore'&&response.request().method()==='POST');
     const pressed=Date.now();
     await page.locator('[data-shelved] li').filter({hasText:'Five second undo'}).getByRole('button',{name:'Restore',exact:true}).click();
     const offer=page.locator('[data-toast][data-kind="success"]');

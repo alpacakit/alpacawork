@@ -28,7 +28,7 @@ async function post(path: string, body: object) {
 }
 async function task(parent: string, title: string, body?: string) {
  const task = seedTask(runtime.root, parent, title, body);
- await post('agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+ await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
  patchTask(runtime.root, task.id, { state: 'doing' });
  return task.id as string;
 }
@@ -43,7 +43,7 @@ async function openCard(id: string, question: string) {
  return target;
 }
 try {
- const project = (await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Question UI local fixture' })).task.id;
+ const project = (await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Question UI local fixture' })).task.id;
  const direct = await task(project, 'Direct display');
  const parent = await task(direct, 'Middle owner');
  const source = await task(parent, 'Original question owner', body('Where to save the result?'));
@@ -83,7 +83,7 @@ try {
  await page.screenshot({ path: join(evidence, 'ui-question-answered.png') });
  steps.push({ step: 'Selected Keep on direct reader; answered once on original source; direct has no answered record' });
  // Withdrawal closes the original asking record. The open reader reads again when its view's required version rises.
- const state = await get(`task/get?task=${source}`);
+ const state = await get(`commands/task/get?task=${source}`);
  const placement = state.agents.find((entry: { responsible: boolean }) => entry.responsible);
  patchTask(runtime.root, source, { logs: [{ id: randomUUID(), kind: 'question_withdrawn', at: new Date().toISOString(), title: 'Withdraw second', description: null,
    actor: { kind: 'placement', placementId: placement.id }, fromState: null, toState: null, questionId: second }] });
@@ -93,9 +93,9 @@ try {
  const expiring = await task(parent, 'Expiring question owner', body('Expires on stop'));
  const expires = seedQuestion(runtime.root, expiring, { to: 'user', title: 'Expiring question' });
  await openCard(expiring, expires);
- const expiryTask = (await get(`task/get?task=${expiring}`)).task;
- await post('task/report', { opId: randomUUID(), task: expiring, state: 'stopped', expectedTaskHash: expiryTask.hash, title: 'Stop fixture', description: 'Local expiry check' });
- await expect.poll(async () => (await get(`task/get?task=${expiring}&question=${expires}`)).question.state).toBe('expired');
+ const expiryTask = (await get(`commands/task/get?task=${expiring}`)).task;
+ await post('commands/task/report', { opId: randomUUID(), task: expiring, state: 'stopped', expectedTaskHash: expiryTask.hash, title: 'Stop fixture', description: 'Local expiry check' });
+ await expect.poll(async () => (await get(`commands/task/get?task=${expiring}&question=${expires}`)).question.state).toBe('expired');
  await expect(card(expiring, expires).locator('[data-waiting-report-actions]')).toHaveCount(0);
  steps.push({ step: 'Stopping original Task expires its question and removes direct-reader choices' });
  // A child result keeps its existing review target: open that result, approve, and verify only it completes.
@@ -107,8 +107,8 @@ try {
  await expect(reader.locator('header [data-reader-task-id]')).toHaveText(review);
  await expect(page.locator('[data-task-done]')).toBeEnabled();
  await page.locator('[data-task-done]').click();
- await expect.poll(async () => (await get(`task/get?task=${review}`)).task.state, { timeout: 20000 }).toBe('done');
- expect((await get(`task/get?task=${direct}`)).task.state).not.toBe('done');
+ await expect.poll(async () => (await get(`commands/task/get?task=${review}`)).task.state, { timeout: 20000 }).toBe('done');
+ expect((await get(`commands/task/get?task=${direct}`)).task.state).not.toBe('done');
  steps.push({ step: 'Existing child-result link and confirmation complete original child, leaving display parent unconfirmed', review });
  await page.setViewportSize({ width: 390, height: 844 });
  const phone = await task(parent, 'Phone question owner', body('Confirm original question on phone'));

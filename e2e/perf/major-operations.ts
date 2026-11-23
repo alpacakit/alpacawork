@@ -161,7 +161,7 @@ try {
       }
       result.settling??=[];result.settling.push({profile,device,waitMs:Date.now()-settleStart,stableMs:Date.now()-lastChanged,stable:Date.now()-lastChanged>=35_000});save();
       if(profile==='perf'){
-        const r=await fetch(server.url+'/api/task/new',{method:'POST',headers:{'content-type':'application/json','x-alpacawork-op-id':crypto.randomUUID()},body:JSON.stringify({kind:'project',color:'#795548',parent:'none',title:'Synthetic secondary project'})});
+        const r=await fetch(server.url+'/api/commands/task/new',{method:'POST',headers:{'content-type':'application/json','x-alpacawork-op-id':crypto.randomUUID()},body:JSON.stringify({kind:'project',color:'#795548',parent:'none',title:'Synthetic secondary project'})});
         if(!r.ok)throw Error('Cannot add secondary project: '+await r.text());
         result.secondaryProject=await r.json();
       }

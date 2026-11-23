@@ -18,7 +18,7 @@ const open = () => {
 
 test('dialog check is not duplicated; after closing, the same operation has a Check toast', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async url => {
-    if (String(url) === '/api/task/new') throw new TypeError('lost');
+    if (String(url) === '/api/commands/task/new') throw new TypeError('lost');
     return new Response(JSON.stringify({ folder: '/fixture', home: '/home', entries: [], truncated: false }));
   });
   const dialog = open();

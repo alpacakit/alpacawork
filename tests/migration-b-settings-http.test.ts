@@ -10,14 +10,14 @@ test('settings: attachment MiB survives real config saves and reads', async () =
   const runtime = await start();
   try {
     const read = async () => {
-      const response = await fetch(`${runtime.origin}/api/config/get`);
+      const response = await fetch(`${runtime.origin}/api/commands/config/get`);
       assert.equal(response.status, 200);
       return response.json();
     };
     const disk = () => parse(readFileSync(join(runtime.root, 'config.yaml'), 'utf8'));
     const save = async (config: object) => {
       const current = await read();
-      return fetch(`${runtime.origin}/api/config/set`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      return fetch(`${runtime.origin}/api/commands/config/set`, { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ config: stringify(config), agents: current.agentsText, expectedConfigHash: current.hash }) });
     };
     const initial = await read();

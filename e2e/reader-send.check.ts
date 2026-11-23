@@ -62,8 +62,8 @@ const current = async (page: Page, runtime: Runtime, id: string): Promise<Task> 
  */
 async function asking(page: Page, runtime: Runtime, { parent, title, values, profile, description = 'Send the selected result to the coordinator.' }: { parent: string; title: string; values: TaskValues; profile: string; description?: string }) {
   const post = poster(page, runtime);
-  const { task } = await post('task/new', { parent, title, values }) as { task: Task };
-  await post('agent/assign', { task: task.id, role: 'responsible', profile, expectedTaskHash: task.hash });
+  const { task } = await post('commands/task/new', { parent, title, values }) as { task: Task };
+  await post('commands/agent/assign', { task: task.id, role: 'responsible', profile, expectedTaskHash: task.hash });
   patchTask(runtime.root, task.id, { state: 'doing' });
   seedQuestion(runtime.root, task.id, { to: 'user', title: 'Please choose an option', description });
   return current(page, runtime, task.id);

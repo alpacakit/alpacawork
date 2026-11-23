@@ -14,21 +14,21 @@ test('direct state reports: every state holds, repeats hold and restores as the 
       const text = await response.text(); assert.equal(response.status, 200, text); return JSON.parse(text);
     };
     for (const origin of ['todo', 'doing', 'error', 'waiting', 'done', 'stopped'] as const) await t.test(origin, async () => {
-      const { task } = await post('task/new', { parent: SAMPLE_PROJECT.id, title: `Hold ${origin}` });
-      await post('agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+      const { task } = await post('commands/task/new', { parent: SAMPLE_PROJECT.id, title: `Hold ${origin}` });
+      await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
       const id = task.id;
       if (origin === 'waiting') seedReview(runtime.root, id, { title: 'Review', description: 'Review later' });
       else if (origin !== 'todo') patchTask(runtime.root, id, { state: origin, logs: [{ id: crypto.randomUUID(), kind: 'linked',
         at: new Date().toISOString(), title: null, description: null, actor: { kind: 'human' }, fromState: 'todo', toState: origin }] });
       const view = async () => (await (await fetch(`${runtime.origin}/api/task/view?task=${id}`)).json()).task;
       // Finished Tasks leave the live projection; their scoped Task read still owns their placement facts.
-      const current = await (await fetch(`${runtime.origin}/api/task/get?task=${id}`)).json();
+      const current = await (await fetch(`${runtime.origin}/api/commands/task/get?task=${id}`)).json();
       const responsible = current.agents.find((placement: any) => placement.active && placement.responsible);
       assert.ok(responsible);
       const conversation = (await (await fetch(`${runtime.origin}/api/coordinator`)).json()).conversation;
       const report = async (state: string, title: string, description: string) => {
         const opId = crypto.randomUUID();
-        await post('task/report', { task: id, state, opId, title, description,
+        await post('commands/task/report', { task: id, state, opId, title, description,
           expectedTaskHash: (await view()).hash, expectedPlacementRevision: responsible.revision });
         assert.equal((await view()).state, state);
         return opId;

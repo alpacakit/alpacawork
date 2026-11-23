@@ -439,14 +439,19 @@ test('person writes publish only revision metadata in the index stream', async t
   while (changed.person.notices !== saved.revision) changed = await stream.index();
   assert.deepEqual(changed.tasks, first.tasks);
   assert.equal(changed.person.settings, UNSAVED_SETTINGS);
-  const personal = await (await fetch(new URL('/api/settings/get', app.url), {
-    headers: { 'Accept-Language': 'zh-TW,pt-PT;q=0.9,es;q=0.8' },
-  })).json();
-  assert.equal(personal.values.language, 'pt-BR', 'the first browser request chooses the language');
+  const headers = { 'Accept-Language': 'zh-TW,pt-PT;q=0.9,es;q=0.8' };
+  const command = new URL('/api/commands/settings/get', app.url);
+  const prior = await (await fetch(command, { headers })).json();
+  assert.equal(prior.revision, UNSAVED_SETTINGS, 'the command does not save a default language');
+  const page = await fetch(new URL('/', app.url), { headers });
+  assert.equal(page.status, 200);
+  await page.arrayBuffer();
+  const personal = await (await fetch(command)).json();
+  assert.equal(personal.values.language, 'pt-BR', 'the first screen navigation chooses the language');
   let initialized = changed;
   while (initialized.person.settings !== personal.revision) initialized = await stream.index();
   assert.equal(initialized.person.settings, personal.revision);
-  const settingsSave = await fetch(new URL('/api/settings/set', app.url), {
+  const settingsSave = await fetch(new URL('/api/commands/settings/set', app.url), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key: 'theme', value: 'dark', expectedRevision: personal.revision }),
   });

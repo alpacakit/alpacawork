@@ -28,7 +28,7 @@ const test = base.extend<{ runtime: Runtime; project: string }>({
     try { await use(runtime); } finally { await runtime.stop(); }
   },
   project: async ({ runtime }, use) => {
-    await use((await post<Written>(runtime, "task/new", { kind: "project", color: '#39659b', parent: "none", title: "Decision check" })).task.id);
+    await use((await post<Written>(runtime, "commands/task/new", { kind: "project", color: '#39659b', parent: "none", title: "Decision check" })).task.id);
   },
 });
 test.describe.configure({ timeout: 90_000 });
@@ -73,7 +73,7 @@ async function post<Result>(runtime: Runtime, path: string, body: object): Promi
 }
 /** One Task as `task get` reads it: its state, version and questions including closed records. */
 async function taskOf(runtime: Runtime, id: string) {
-  const response = await fetch(`${runtime.origin}/api/task/get?task=${encodeURIComponent(id)}`);
+  const response = await fetch(`${runtime.origin}/api/commands/task/get?task=${encodeURIComponent(id)}`);
   baseExpect(response.status).toBe(200);
   return await response.json() as { task: { state: string; hash: string }; questions: { id: string; destination: { kind: 'user' | 'task' }; state: 'open' | 'answered' | 'withdrawn' | 'expired' }[] | null };
 }
@@ -81,8 +81,8 @@ const stateOf = async (runtime: Runtime, id: string) => (await taskOf(runtime, i
 
 /** A Task the user asks for in the case's project, with its responsible placed: what each question below is asked on. */
 async function requested(runtime: Runtime, project: string, title: string, values?: TaskValues) {
-  const { task } = await post<Written>(runtime, "task/new", { parent: project, title, ...values === undefined ? {} : { values } });
-  await post(runtime, "agent/assign", { task: task.id, role: "responsible", profile: "codex", expectedTaskHash: task.hash });
+  const { task } = await post<Written>(runtime, "commands/task/new", { parent: project, title, ...values === undefined ? {} : { values } });
+  await post(runtime, "commands/agent/assign", { task: task.id, role: "responsible", profile: "codex", expectedTaskHash: task.hash });
   return task.id;
 }
 /** A new review: its responsible's Run reported done (seedReview), so ✔ confirms it. It joins the waiting list's end. */
@@ -236,7 +236,7 @@ test("a choice only goes into the draft; sent, the card flies off to the server'
 test("a refused optimistic approval keeps the next card and its notice opens the failed card", async ({ page, runtime, project }) => {
   const [first, second] = await serverOrder(runtime, await questions(runtime, project, 2));
   await begin(page, runtime, project, first!);
-  await page.route(url => url.pathname === "/api/task/report", route => route.fulfill({ status: 409,
+  await page.route(url => url.pathname === "/api/commands/task/report", route => route.fulfill({ status: 409,
     json: { error: { code: "conflict", message: "Task changed", retry: "reread" } } }));
   await approve(page);
   const notice = page.locator("[data-toast]");
@@ -262,7 +262,7 @@ const residualQuestionTest = base.extend<{ project: string }>({
   retainRuntime: true,
   runtimePrepare: async ({}, use) => { await use(configureCoordinator); },
   project: async ({ runtime }, use) => {
-    await use((await post<Written>(runtime, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Residual question regression' })).task.id);
+    await use((await post<Written>(runtime, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Residual question regression' })).task.id);
   },
 });
 
@@ -390,7 +390,7 @@ for (const [width, count] of [[390, 1]] as [number, 1 | 2][]) residualQuestionTe
       const beforeHold = await taskOf(runtime, ids.at(-1)!);
       await close.focus();
       const holdRequest = page.waitForRequest(request => request.method() === 'POST' &&
-        new URL(request.url()).pathname === '/api/task/report', { timeout: 1000 }).catch(() => null);
+        new URL(request.url()).pathname === '/api/commands/task/report', { timeout: 1000 }).catch(() => null);
       await page.keyboard.press('h');
       const hiddenHold = await holdRequest;
       const afterHold = await taskOf(runtime, ids.at(-1)!);

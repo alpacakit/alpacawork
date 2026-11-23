@@ -137,7 +137,7 @@ test('HTTP stopping a synthetic Run records its ID and human actor on the Task',
   const assignment = await call(url, ['agent', 'assign', '--task', created.id, '--role', 'responsible', '--profile', 'codex',
     '--expected-task-hash', created.hash]);
   const queued = w.heldRun({ task: created.id, placementId: assignment.agent.placement.id, running: false });
-  const response = await post(url, '/api/run/stop', { run: queued.id });
+  const response = await post(url, '/api/commands/run/stop', { run: queued.id });
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.cancelled, [queued.id]);
   const store = new RunStore(w.root, { busyTimeoutMs: 1000 });
@@ -211,7 +211,7 @@ test('Run markers the CLI cannot send whole, and a Task Run\'s own conversation,
   assert.equal(current.log.some((entry: { title: string | null }) => entry.title === 'Close task'), false);
   // Over HTTP, a credential of a Run the server does not have is refused as well.
   const unknown = 'R999';
-  const refused = await post(url, '/api/task/new', { title: 'Forbidden HTTP', parent: w.project, fromUser: false },
+  const refused = await post(url, '/api/commands/task/new', { title: 'Forbidden HTTP', parent: w.project, fromUser: false },
     { authorization: `Alpacawork-Run ${unknown}:${issueRunCredential(w.root, unknown)}` });
   assert.equal(refused.status, 403);
 });
@@ -256,13 +256,13 @@ test('a Run is its credential\'s only while a current placement, an owner only a
   await assert.rejects(call(url, await comment('After the end'), owner.env), { code: 'forbidden', message: /not a current placement/ });
 
   // HTTP headers and the CLI's environment claim the same caller.
-  const viaHeaders = await post(url, '/api/task/comment', { task: task.id, title: 'After the end', expectedTaskHash: await hash() },
+  const viaHeaders = await post(url, '/api/commands/task/comment', { task: task.id, title: 'After the end', expectedTaskHash: await hash() },
     { authorization: `Alpacawork-Run ${owner.id}:${owner.env.ALPACAWORK_RUN_TOKEN}` });
   assert.deepEqual([viaHeaders.status, viaHeaders.body.error.code], [403, 'forbidden']);
   assert.match(viaHeaders.body.error.message, /not a current placement/);
 
   const viaCli = (await call(url, ['task', 'new', '--no-from-user', '--parent', w.project, '--title', 'Via the CLI'], main)).task;
-  const viaHttp = await post(url, '/api/task/new', { title: 'Via HTTP', parent: w.project, fromUser: false },
+  const viaHttp = await post(url, '/api/commands/task/new', { title: 'Via HTTP', parent: w.project, fromUser: false },
     conversationHeaders(conversationId));
   assert.equal(viaHttp.status, 200, JSON.stringify(viaHttp.body));
   assert.deepEqual([await actorOf(url, viaCli), await actorOf(url, viaHttp.body.task)], [mainActor, mainActor]);
@@ -270,7 +270,7 @@ test('a Run is its credential\'s only while a current placement, an owner only a
   const admin = spawnSync(process.execPath, [join(import.meta.dirname, '../apps/backend/dist/backend.js'),
     '--workspace', w.root, 'workspace', 'init'], { env: cleanCliEnv({ ...owner.env, HOME: w.root, XDG_CONFIG_HOME: join(w.root, 'negative-config') }), encoding: 'utf8' });
   assert.equal(JSON.parse(admin.stderr).error.code, 'forbidden', admin.stderr);
-  const returns = await post(url, '/api/workspace/returns', {}, { authorization: `Alpacawork-Run ${owner.id}:${owner.env.ALPACAWORK_RUN_TOKEN}` });
+  const returns = await post(url, '/api/commands/workspace/returns', {}, { authorization: `Alpacawork-Run ${owner.id}:${owner.env.ALPACAWORK_RUN_TOKEN}` });
   assert.deepEqual([returns.status, returns.body.error.code], [403, 'forbidden']);
 });
 

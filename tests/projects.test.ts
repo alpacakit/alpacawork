@@ -109,7 +109,7 @@ test('Task numbers are one sequence across projects, and each Task keeps its fil
   writeFileSync(file, 'mobile note');
   await h.ok(['task', 'file', 'put', '--task', second.id, '--path', 'note.txt', '--file', file]);
   assert.equal(readFileSync(join(h.root, 'tasks', second.id, 'note.txt'), 'utf8'), 'mobile note');
-  const got = (await h.ok(['task', 'get', '--task', second.id, '--files'])).task;
+  const got = (await h.ok(['task', 'get', '--task', second.id, '--include', 'files'])).task;
   assert.deepEqual([got.kind, got.projectId], ['task', mobile.id]);
   assert.equal(got.folder, new URL(taskFileRoute(second.id), h.server.url).href);
   assert.equal(await (await fetch(got.files[0].path)).text(), 'mobile note');
@@ -377,7 +377,7 @@ test('a project\'s code location that config.yaml cannot take leaves neither the
   const refused = await h.cli(['task', 'new', '--kind', 'project', '--color', '#39659b', '--title', 'Mobile', '--parent', 'P1',
     '--cwd', join(h.base, 'code-b'), '--op-id', opId]);
   assert.notEqual(refused.code, 0);
-  const receipt = await (await fetch(new URL(`/api/operation/get?opId=${opId}`, h.server.url),
+  const receipt = await (await fetch(new URL(`/api/commands/operation/get?opId=${opId}`, h.server.url),
     { headers: { 'X-Alpacawork-Client': 'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT) } })).json();
   assert.deepEqual(receipt, { state: 'not_found' });
   const store = new ControlStore(h.root, { busyTimeoutMs: 1000 }, true);
@@ -431,7 +431,7 @@ test('the CLI reads a code location\'s operation as pending until it is publishe
   await assert.rejects(writeProjectLocation(root, project, code, opId), /simulated interruption/);
   interrupted.mock.restore();
   const get = async () => {
-    const response = await fetch(new URL(`/api/operation/get?opId=${opId}`, server.url),
+    const response = await fetch(new URL(`/api/commands/operation/get?opId=${opId}`, server.url),
       { headers: { 'X-Alpacawork-Client': 'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT), 'X-Alpacawork-Cwd': encodeURIComponent(code) } });
     assert.equal(response.status, 200, await response.clone().text());
     return response.json();
@@ -533,7 +533,7 @@ test('project color is mandatory lowercase #rrggbb in CLI/API; tasks reject colo
   const request = async (path: string, body: unknown) => fetch(new URL(`/api/${path}`, h.server.url), {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Client': 'cli', [CONTRACT_HEADER]: String(CLI_CONTRACT) }, body: JSON.stringify(body) });
   for (const color of [undefined, null, '#ABCDEF', '#abc', 'navy', '#12345g', '#1234567', ' #123456']) {
-    const response = await request('task/new', { kind: 'project', title: 'API color', parent: 'P1', color });
+    const response = await request('commands/task/new', { kind: 'project', title: 'API color', parent: 'P1', color });
     assert.equal(response.status, 400, await response.clone().text());
   }
   const made = await h.ok([...base, '--color', '#000000']);
@@ -548,7 +548,7 @@ test('project color is mandatory lowercase #rrggbb in CLI/API; tasks reject colo
     assert.notEqual(result.code, 0);
     assert.match(JSON.stringify(result.body), /[Oo]nly a project/);
   }
-  const invalidUpdate = await request('task/update', { task: made.task.id, expectedTaskHash: made.task.hash, color: '#ABCDEF' });
+  const invalidUpdate = await request('commands/task/update', { task: made.task.id, expectedTaskHash: made.task.hash, color: '#ABCDEF' });
   assert.equal(invalidUpdate.status, 400);
   assert.match(await invalidUpdate.text(), /#rrggbb/);
 });

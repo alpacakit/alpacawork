@@ -103,7 +103,7 @@ function Recovery() { useDirectWriteRecovery(); return null; }
 function serve() {
   asked = []; pending = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
-    if (String(url) === '/api/task/report' && init?.method === 'POST') {
+    if (String(url) === '/api/commands/task/report' && init?.method === 'POST') {
       const input = JSON.parse(String(init.body)) as Report;
       asked.push(input);
       return new Promise<Response>(resolve => pending.push(() => resolve(outcome

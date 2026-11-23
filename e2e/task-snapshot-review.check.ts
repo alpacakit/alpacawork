@@ -16,16 +16,16 @@ test('Done approves a Task snapshot with no responsible, Run target, or placemen
     expect(response.ok(), await response.text()).toBe(true);
     return response.json();
   };
-  const view = async (id: string) => (await (await page.request.get(runtime.origin + '/api/task/get?task=' + id)).json());
-  const { task: project } = await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result review' });
-  const { task } = await post('task/new', { parent: project.id, fromUser: true, title: 'Earlier review equivalent',
+  const view = async (id: string) => (await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + id)).json());
+  const { task: project } = await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result review' });
+  const { task } = await post('commands/task/new', { parent: project.id, fromUser: true, title: 'Earlier review equivalent',
     values: { notes: 'The result was completed earlier. Please confirm it again.' } });
   // Isolated historical preparation only. The operation being checked below uses the public API.
   patchTask(runtime.root, task.id, { state: 'done', logs: [{ id: crypto.randomUUID(), kind: 'reported',
     at: new Date().toISOString(), title: 'Historical completion', description: null, actor: { kind: 'human' },
     fromState: 'todo', toState: 'done' }] });
   const before = await view(task.id);
-  const waiting = await post('task/report', { task: task.id, state: 'waiting', opId: crypto.randomUUID(), expectedTaskHash: before.task.hash });
+  const waiting = await post('commands/task/report', { task: task.id, state: 'waiting', opId: crypto.randomUUID(), expectedTaskHash: before.task.hash });
   const shown = await view(task.id);
   expect(shown.reviewRun).toBeNull();
   expect(shown.questions).toEqual([]);
@@ -44,8 +44,8 @@ test('Done approves a Task snapshot with no responsible, Run target, or placemen
   page.on('request', request => {
     if (request.method() !== 'POST') return;
     const path = new URL(request.url()).pathname;
-    if (path === '/api/task/report') sent.push(request.postDataJSON());
-    if (path === '/api/task/report') screenReports.push(path);
+    if (path === '/api/commands/task/report') sent.push(request.postDataJSON());
+    if (path === '/api/commands/task/report') screenReports.push(path);
   });
   await done.click();
   await expect.poll(() => sent.length).toBe(1);
@@ -69,20 +69,20 @@ test('a written revision request sends a Task snapshot back without inventing th
     return response.json();
   };
   const view = async (id: string) => {
-    const response = await page.request.get(runtime.origin + '/api/task/get?task=' + id + '&log=100&runs=10');
+    const response = await page.request.get(runtime.origin + '/api/commands/task/get?task=' + id + '&log=100&runs=10');
     expect(response.ok(), await response.text()).toBe(true);
     return response.json();
   };
-  const { task: project } = await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result revision' });
-  const { task } = await post('task/new', { parent: project.id, fromUser: true, title: 'Snapshot to revise',
+  const { task: project } = await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result revision' });
+  const { task } = await post('commands/task/new', { parent: project.id, fromUser: true, title: 'Snapshot to revise',
     values: { notes: 'This completed result needs another edit.' } });
   patchTask(runtime.root, task.id, { state: 'done', logs: [{ id: crypto.randomUUID(), kind: 'reported',
     at: new Date().toISOString(), title: 'Historical completion', description: null, actor: { kind: 'human' },
     fromState: 'todo', toState: 'done' }] });
   const before = await view(task.id);
-  const waiting = await post('task/report', { task: task.id, state: 'waiting', opId: crypto.randomUUID(),
+  const waiting = await post('commands/task/report', { task: task.id, state: 'waiting', opId: crypto.randomUUID(),
     expectedTaskHash: before.task.hash });
-  await post('agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: waiting.task.hash });
+  await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: waiting.task.hash });
   const shown = await view(task.id);
   expect(shown.reviewRun).toBeNull();
   expect(shown.questions).toEqual([]);

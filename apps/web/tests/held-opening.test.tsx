@@ -61,7 +61,7 @@ function serve() {
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     const path = String(url);
-    if (path === '/api/task/report' && init?.method === 'POST') { sent.push(JSON.parse(String(init.body))); stage = (['held', 'restored', 'heldAgain'] as const)[sent.length - 1]!; return json({ task: headOf(fixture[stage].tasks.find(each => each.id === task)!), outcome: { kind: 'recorded' } }); }
+    if (path === '/api/commands/task/report' && init?.method === 'POST') { sent.push(JSON.parse(String(init.body))); stage = (['held', 'restored', 'heldAgain'] as const)[sent.length - 1]!; return json({ task: headOf(fixture[stage].tasks.find(each => each.id === task)!), outcome: { kind: 'recorded' } }); }
     const address = new URL(path, 'http://fixture');
     const id = address.searchParams.get('task');
     if (address.pathname === '/api/task/view') return json(viewsOf(servedAt(stage)).find(view => view.task.id === id));

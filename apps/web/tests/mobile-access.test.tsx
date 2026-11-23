@@ -32,7 +32,7 @@ test('reads the published URL through the API, preserves null and never infers a
   const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(serving)));
   const view = renderHook(useMobileAccess, { wrapper });
   await waitFor(() => expect(view.result.current.data).toEqual(serving));
-  expect(fetch.mock.calls[0]![0]).toBe('/api/workspace/url');
+  expect(fetch.mock.calls[0]![0]).toBe('/api/commands/workspace/url');
   for (const answer of [
     { ...serving, publicUrl: null },
     { status: 'unavailable', localUrl: null, publicUrl: null },

@@ -73,8 +73,8 @@ test('E: YAML shell profile and responsible Placement are visible before any Req
 
 test('E: appended YAML shell profile survives settings saves and handles success and failure', async t => {
   const h = await local(t), app = await h.server();
-  const settings = await http(app.url, 'config/get');
-  const saved = await http(app.url, 'config/set', { config: JSON.stringify({ limits: settings.body.limits }),
+  const settings = await http(app.url, 'commands/config/get');
+  const saved = await http(app.url, 'commands/config/set', { config: JSON.stringify({ limits: settings.body.limits }),
     agents: settings.body.agentsText, expectedConfigHash: settings.body.hash });
   assert.equal(saved.status, 200);
   const tree = await http(app.url, 'workspace/live'); assert.equal(tree.status, 200);

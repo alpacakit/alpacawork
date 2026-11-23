@@ -28,11 +28,11 @@ async function begin(page: Page, runtime: Runtime, width = 1440, text?: TaskValu
       { decide_choice: 'Alt2 Decide later', decide_choice_detail: 'Hold it' }], decide_note: 'Related: T111 [Note](note.md)' },
     { decide_question: 'Additional review', decide_choices: [{ decide_choice: 'Alt1 Proceed', decide_choice_detail: 'Select it' },
       { decide_choice: 'Alt2 Later', decide_choice_detail: 'Put on hold' }] }] };
-  const made = await commandPost(page.request, runtime.origin + '/api/task/new', { data: { parent: SAMPLE_PROJECT.id, title: 'Choice view', values: text ?? values } });
+  const made = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { parent: SAMPLE_PROJECT.id, title: 'Choice view', values: text ?? values } });
   expect(made.ok(), await made.text()).toBe(true);
   const task = (await made.json()).task as { id: string; hash: string };
   // The coordinator's config keeps only its own agent, so the responsible is placed with that profile.
-  const placed = await commandPost(page.request, runtime.origin + '/api/agent/assign', { data: { task: task.id, role: 'responsible', profile: 'fake', expectedTaskHash: task.hash } });
+  const placed = await commandPost(page.request, runtime.origin + '/api/commands/agent/assign', { data: { task: task.id, role: 'responsible', profile: 'fake', expectedTaskHash: task.hash } });
   expect(placed.ok(), await placed.text()).toBe(true);
   patchTask(runtime.root, task.id, { state: 'doing' });
   seedQuestion(runtime.root, task.id, { to: 'user', title: 'Please choose an option', description: 'Please choose.' });

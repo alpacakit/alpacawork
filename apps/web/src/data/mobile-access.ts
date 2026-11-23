@@ -1,16 +1,12 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { useCallback, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
+import { workspaceUrlSchema } from '@alpacawork/contract/control';
 import { createApi } from './client';
 import { useConnection } from './connection';
 import { readIndex, subscribeReads } from './read-model';
 
 const api = createApi();
-const mobileAccessSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('serving'), localUrl: z.url(), publicUrl: z.url().nullable() }),
-  z.object({ status: z.literal('unavailable'), localUrl: z.null(), publicUrl: z.null() }),
-  z.object({ status: z.literal('unverified'), localUrl: z.null(), publicUrl: z.null() }),
-]);
 
 /** Only serve's published publicUrl may become a phone link; this read is never persisted. */
 export function useMobileAccess() {
@@ -22,7 +18,7 @@ export function useMobileAccess() {
   const enabled = !!index && reachable;
   const query = useQuery({
     queryKey: ['mobile-access', index?.root, index?.generation],
-    queryFn: ({ signal }) => api.request('workspace/url', mobileAccessSchema, signal),
+    queryFn: ({ signal }) => api.request(commandRoute('workspace/url'), workspaceUrlSchema, signal),
     enabled,
     staleTime: 0,
     gcTime: 0,

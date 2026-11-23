@@ -1,3 +1,5 @@
+import { commandPath } from '@alpacawork/contract/command-path';
+import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
 import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { redactSecrets } from '@alpacawork/core';
@@ -13,8 +15,13 @@ type SetupAgentReadiness = [name: string, observation: AgentAvailability];
 /** The setup screen lists saved agents first, then external adapters without a saved profile. */
 export async function readSetupAgentReadiness(url: string): Promise<SetupAgentReadiness[]> {
   try {
-    const response = await fetch(new URL('/api/config/get?check=true', url), {
-      redirect: 'error', signal: AbortSignal.timeout(AGENT_CHECK_READ_MS),
+    const signal = AbortSignal.timeout(AGENT_CHECK_READ_MS);
+    const recovery = await fetch(new URL('/api/runtime/recovery', url), { redirect: 'error', signal });
+    if (!recovery.ok) return [];
+    const { restoreId } = recoveryIdentitySchema.parse(await recovery.json());
+    const response = await fetch(new URL(commandPath('config/inspect'), url), {
+      method: 'POST', headers: { [RESTORE_HEADER]: restoreId, 'Content-Type': 'application/json' },
+      body: '{}', redirect: 'error', signal,
     });
     if (!response.ok) return [];
     const { agents, availability, detected, error } = serverSettingsSchema.parse(await response.json());

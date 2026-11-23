@@ -2,6 +2,7 @@ import { commandFetchWith } from './helpers/command-fetch.ts';
 import { fetchBuffered } from './helpers/buffered-http.ts';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 import { test } from 'node:test';
+import { get as httpGet } from 'node:http';
 import assert from 'node:assert/strict';
 import { chmodSync, closeSync, existsSync, linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
@@ -40,8 +41,8 @@ async function fixture(t: { after: (fn: () => Promise<void> | void) => void }) {
   const folder = join(root, new FileJournal(root).taskLocation(task.id).folder);
   assert.equal(folder, join(root, 'tasks', task.id));
   mkdirSync(folder, { recursive: true });
-  const start = async () => {
-    const server = await startServer(root, 0);
+  const start = async (options?: Parameters<typeof startServer>[2]) => {
+    const server = await startServer(root, 0, options);
     servers.push(server);
     return server;
   };
@@ -97,10 +98,10 @@ test('a Run credential changes files only on its current Task', async t => {
   assert.equal((await fetch(attachment(other.id), { method: 'POST', headers: operation(), body: 'attached' })).status, 200);
   for (const [url, method, body] of [
     [attachment(other.id), 'POST', 'another'],
-    [attachment(other.id), 'DELETE', undefined],
-    [new URL(`/api/tasks/${other.id}/attachments/move`, server.url), 'POST', JSON.stringify({ from: 'draft1', to: 'draft2' })],
+    [new URL('/api/commands/task/attachment/remove', server.url), 'POST', JSON.stringify({ task: other.id, requestId: 'draft1', name: 'a.txt' })],
+    [new URL('/api/commands/task/attachment/move', server.url), 'POST', JSON.stringify({ task: other.id, from: 'draft1', to: 'draft2' })],
   ] as const) {
-    const response = await fetch(url, { method, headers: { ...operation(), ...auth }, body });
+    const response = await fetch(url, { method, headers: { ...operation(), ...auth, 'Content-Type': url.pathname.startsWith('/api/commands/') ? 'application/json' : 'application/octet-stream' }, body });
     assert.equal(response.status, 403, `${method} ${url.pathname}`);
   }
   assert.equal((await fetch(fileUrl(server.url, other.id, 'attachments/draft1/a.txt'))).status, 200);
@@ -186,13 +187,13 @@ test('a Run reaches no entry of the screen, and reads a saved operation only of 
   const call = (path: string, headers: Record<string, string>, body?: unknown) => fetch(new URL(path, server.url),
     body === undefined ? { headers } : { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(body) });
-  const settings = await (await call('/api/settings/get', {})).json();
-  for (const [path, body] of [['/api/settings/get', undefined],
-    ['/api/settings/set', { key: 'push.awayAfter', value: '10', expectedRevision: settings.revision }],
+  const settings = await (await call('/api/commands/settings/get', {})).json();
+  for (const [path, body] of [['/api/commands/settings/get', undefined],
+    ['/api/commands/settings/set', { key: 'push.awayAfter', value: '10', expectedRevision: settings.revision }],
     ['/api/person/notices', undefined], ['/api/person/notices/save', { state: {}, expectedRevision: null }],
     ['/api/notify/devices', undefined], ['/api/notify/unsubscribe', { id: 'device' }], ['/api/presence/away', {}]] as const)
     assert.equal((await call(path, run.auth, body)).status, 403, path);
-  assert.equal((await call('/api/settings/get', {})).status, 200, 'a person\'s screen reads them');
+  assert.equal((await call('/api/commands/settings/get', {})).status, 200, 'a person\'s screen reads them');
   const putOn = async (task: string, headers: Record<string, string>) => {
     const opId = globalThis.crypto.randomUUID();
     const response = await fetch(fileUrl(server.url, task, 'saved.txt'), { method: 'PUT', body: 'saved',
@@ -201,7 +202,7 @@ test('a Run reaches no entry of the screen, and reads a saved operation only of 
     return opId;
   };
   const elsewhere = await putOn(outside.id, {}), mine = await putOn(own.id, run.auth);
-  const receipt = (opId: string, headers: Record<string, string>) => call(`/api/operation/get?opId=${opId}`, headers);
+  const receipt = (opId: string, headers: Record<string, string>) => call(`/api/commands/operation/get?opId=${opId}`, headers);
   assert.equal((await receipt(elsewhere, run.auth)).status, 403, 'another project\'s Task is read by no Run of this one');
   assert.equal((await (await receipt(mine, run.auth)).json()).state, 'committed');
   assert.equal((await (await receipt(elsewhere, {})).json()).state, 'committed', 'a person reads every receipt');
@@ -374,18 +375,35 @@ test('task file reading rejects traversal, index.md and oversized content', asyn
 
 test('HTTP attachments share a request folder, deduplicate bytes, resolve names, and remove only before send', async t => {
   const { root, task, folder, start } = await fixture(t);
-  const server = await start();
+  const publicHost = 'fixture.tailnet.example';
+  const server = await start({ publicHost });
   const requestId = 'draft-request-1';
-  const upload = (name: string, bytes: Buffer) => fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=${requestId}&name=${encodeURIComponent(name)}`, server.url),
-    { method: 'POST', headers: { 'content-type': 'application/octet-stream', ...operation() }, body: new Uint8Array(bytes) });
+  const upload = (name: string, bytes: Buffer, id = operation()) => fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=${requestId}&name=${encodeURIComponent(name)}`, server.url),
+    { method: 'POST', headers: { 'content-type': 'application/octet-stream', ...id }, body: new Uint8Array(bytes) });
   const bytes = Buffer.from([0, 1, 255, 42]);
-  const first = await upload('shot.png', bytes);
+  const identity = operation();
+  const first = await upload('shot.png', bytes, identity);
   assert.equal(first.status, 200);
   const saved = attachmentResultSchema.parse(await first.json());
   assert.equal(saved.path, `attachments/${requestId}/shot.png`);
-  assert.equal(saved.absolutePath, `/api/tasks/${task.id}/file?path=${encodeURIComponent(saved.path)}`);
+  assert.equal(saved.absolutePath, fileUrl(server.url, task.id, saved.path).href);
   assert.equal(saved.size, bytes.length);
   assert.deepEqual(readFileSync(join(folder, saved.path)), bytes);
+
+  const lookup = new URL('/api/commands/operation/get', server.url);
+  lookup.searchParams.set('opId', identity['X-Alpacawork-Op-Id']);
+  const receipt = await new Promise<unknown>((resolve, reject) => {
+    httpGet(lookup, { headers: { Host: publicHost } }, async response => {
+      try {
+        assert.equal(response.statusCode, 200);
+        const chunks: Buffer[] = [];
+        for await (const chunk of response) chunks.push(chunk);
+        resolve(JSON.parse(Buffer.concat(chunks).toString()));
+      } catch (error) { reject(error); }
+    }).on('error', reject);
+  });
+  assert.deepEqual(receipt, { state: 'committed', status: 200,
+    body: { ...saved, absolutePath: fileUrl('https://' + publicHost, task.id, saved.path).href } });
   const second = attachmentResultSchema.parse(await (await upload('shot.png', bytes)).json());
   assert.equal(saved.path, second.path);
   const collision = attachmentResultSchema.parse(await (await upload('shot.png', Buffer.from('different'))).json());
@@ -396,7 +414,8 @@ test('HTTP attachments share a request folder, deduplicate bytes, resolve names,
   assert.deepEqual((await filesOf(root, task)).map(item => item.name).sort(),
     [saved.path, collision.path].sort());
   assert.deepEqual(Buffer.from(await (await fetch(fileUrl(server.url, task.id, saved.path))).arrayBuffer()), bytes);
-  const removed = await fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=${requestId}&name=shot-2.png`, server.url), { method: 'DELETE', headers: operation() });
+  const removed = await fetch(new URL('/api/commands/task/attachment/remove', server.url), { method: 'POST',
+    headers: { ...operation(), 'Content-Type': 'application/json' }, body: JSON.stringify({ task: task.id, requestId, name: 'shot-2.png' }) });
   assert.equal(removed.status, 200);
   assert.equal(existsSync(join(folder, collision.path)), false);
   assert.equal(existsSync(join(folder, saved.path)), true);
@@ -458,8 +477,8 @@ test('the attachment limit is limits.attachment_mib: 50 MiB by default, and a ch
   { code: 'too_large', message: 'File exceeds 1 MiB' });
   // The screen opens no more than the setting; a lower one never blocks removing a file saved under a higher one.
   assert.deepEqual(await refusal(await fetch(fileUrl(server.url, task.id, 'notes/recording.bin'))), { status: 413, message: 'File exceeds 1 MiB' });
-  assert.equal((await fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=draft-limit&name=recording.bin`, server.url),
-    { method: 'DELETE', headers: operation() })).status, 200);
+  assert.equal((await fetch(new URL('/api/commands/task/attachment/remove', server.url), { method: 'POST',
+    headers: { ...operation(), 'Content-Type': 'application/json' }, body: JSON.stringify({ task: task.id, requestId: 'draft-limit', name: 'recording.bin' }) })).status, 200);
   assert.equal(existsSync(join(folder, 'attachments/draft-limit/recording.bin')), false);
 
   writeFileSync(join(root, 'config.yaml'), 'limits: {attachment_mib: 3}\nagents: {}\n');
@@ -473,16 +492,16 @@ test('a refused draft moves its attachment folder to a fresh request ID', async 
   const saved = attachmentResultSchema.parse(await (await fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=old-draft&name=note.txt`, server.url),
     { method: 'POST', headers: { 'content-type': 'application/octet-stream', ...operation() }, body: new Uint8Array(bytes) })).json());
   const moveOperation = operation();
-  const response = await fetch(new URL(`/api/tasks/${task.id}/attachments/move`, server.url), { method: 'POST',
-    headers: { 'content-type': 'application/json', ...moveOperation }, body: JSON.stringify({ from: 'old-draft', to: 'new-draft' }) });
+  const response = await fetch(new URL('/api/commands/task/attachment/move', server.url), { method: 'POST',
+    headers: { 'content-type': 'application/json', ...moveOperation }, body: JSON.stringify({ task: task.id, from: 'old-draft', to: 'new-draft' }) });
   assert.equal(response.status, 200);
   const [moved] = attachmentResultSchema.array().parse(await response.json());
   assert.equal(moved!.path, 'attachments/new-draft/note.txt');
   assert.equal(existsSync(join(folder, saved.path)), false);
   assert.deepEqual(readFileSync(join(folder, moved!.path)), bytes);
   assert.equal(existsSync(join(folder, 'attachments', 'old-draft')), false);
-  const replay = await fetch(new URL(`/api/tasks/${task.id}/attachments/move`, server.url), { method: 'POST',
-    headers: { 'content-type': 'application/json', ...moveOperation }, body: JSON.stringify({ from: 'old-draft', to: 'new-draft' }) });
+  const replay = await fetch(new URL('/api/commands/task/attachment/move', server.url), { method: 'POST',
+    headers: { 'content-type': 'application/json', ...moveOperation }, body: JSON.stringify({ task: task.id, from: 'old-draft', to: 'new-draft' }) });
   assert.equal(replay.status, 200);
   assert.deepEqual(attachmentResultSchema.array().parse(await replay.json()), [moved]);
   const staleUpload = await fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=old-draft&name=late.txt`, server.url),
@@ -490,7 +509,8 @@ test('a refused draft moves its attachment folder to a fresh request ID', async 
   assert.equal(staleUpload.status, 400);
   assert.equal((await staleUpload.json()).error.code, 'attachment_request_replaced');
   assert.equal(existsSync(join(folder, 'attachments', 'old-draft')), false);
-  const removed = await fetch(new URL(`/api/tasks/${task.id}/attachments?requestId=new-draft&name=note.txt`, server.url), { method: 'DELETE', headers: operation() });
+  const removed = await fetch(new URL('/api/commands/task/attachment/remove', server.url), { method: 'POST',
+    headers: { ...operation(), 'Content-Type': 'application/json' }, body: JSON.stringify({ task: task.id, requestId: 'new-draft', name: 'note.txt' }) });
   assert.equal(removed.status, 200);
   assert.equal(existsSync(join(folder, 'attachments', 'new-draft', 'note.txt')), false);
 });

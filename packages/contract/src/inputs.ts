@@ -18,86 +18,74 @@ import { addAgentsIssues, configEditSchema } from './server-settings.js';
 
 const nonempty = z.string().min(1);
 const revision = z.number().int().positive();
-const decimalCount = z.string().regex(/^[0-9]{1,9}$/, 'must be a non-negative integer');
+const queryCount = z.union([z.number(), z.string().regex(/^[0-9]{1,9}$/).transform(Number)])
+  .pipe(z.number().int().min(0).max(999999999));
 const parent = z.union([taskIdSchema, z.literal('none')]);
-/** An option given as JSON text. */
-const json = <Value extends z.ZodType>(value: Value, message: string) => z.string().transform((text, context) => {
-  try { return JSON.parse(text) as unknown; }
-  catch {
-    context.addIssue({ code: 'custom', message, params: { kind: 'invalid_json' } });
-    return z.NEVER;
-  }
-}).pipe(value);
-const aiStack = json(aiStackPrefixSchema, 'Must be a JSON list of AI rows and an optional final stop');
-const selected = json(selectionSchema, 'Must be a JSON object of strings or null');
-export const commandLaunchInput = z.object({ selected: selected.optional(), aiStack: aiStack.optional() });
 const issue = (context: z.RefinementCtx, path: string, code: string, message: string) =>
   context.addIssue({ code: 'custom', path: [path], message, params: { kind: code } });
 /** This PC's code location for a project Task: absolute, or from home (`~`, `~/…`); `''` turns it off. */
 const projectCwd = z.string().trim().refine(value => value === '' || value.startsWith('/') || value === '~' || value.startsWith('~/'),
   { message: 'cwd must be an absolute path', params: { kind: 'absolute_path' } });
-/** A flag an input rule names: the input key it sets, as the CLI writes it. */
-type Flag<Value> = { key: keyof Value & string; flag: string };
-type Flags<Value> = readonly [Flag<Value>, ...Flag<Value>[]];
-/**
- * A rule the input alone decides, stated once: the schema checks it and -h shows it (`ruleHelp`, commands). Where
- * `applies`, as `scope` says, `required` asks for each flag and `forbidden` refuses each; `one` asks for exactly one of
- * the flags and `some` for at least one. A rule that turns on the Task, its state or the caller is the server's.
- */
-type InputRule<Value> =
-  | { kind: 'required' | 'forbidden'; scope: string; applies: (value: Value) => boolean; flags: Flags<Value> }
-  | { kind: 'one' | 'some'; flags: Flags<Value> };
-/** `--a`, `--a or --b`, `--a, --b or --c`. */
-const named = <Value>(flags: Flags<Value>, conjunction: 'and' | 'or') => flags.map(each => each.flag)
-  .reduce((text, flag, index, all) => `${text}${index === all.length - 1 ? ` ${conjunction} ` : ', '}${flag}`);
-/** The lines -h shows for `rules`. */
-export function ruleHelp<Value>(rules: readonly InputRule<Value>[]): string[] {
+/** Input-only rules supply both validation issues and the command's help. */
+type Keys<Value> = readonly [keyof Value & string, ...(keyof Value & string)[]];
+export type InputRule<Value> =
+  | { kind: 'required' | 'forbidden'; scope: string; applies: (value: Value) => boolean; keys: Keys<Value> }
+  | { kind: 'one' | 'some'; keys: Keys<Value> };
+
+const names = (keys: readonly string[], conjunction: 'and' | 'or', show: (key: string) => string) => keys.map(show)
+  .reduce((text, key, index, all) => `${text}${index === all.length - 1 ? ` ${conjunction} ` : ', '}${key}`);
+const identity = (key: string) => key;
+const scopeText = (scope: string, show = identity) => scope.replace(/\{(\w+)\}/g, (_match, key: string) => show(key));
+export function ruleHelp(rules: readonly InputRule<never>[], show = identity): string[] {
   return rules.map(rule => {
     switch (rule.kind) {
-      case 'required': return `${rule.scope}: ${named(rule.flags, 'and')} required.`;
-      case 'forbidden': return `${rule.scope}: no ${named(rule.flags, 'or')}.`;
-      case 'one': return `Exactly one of ${named(rule.flags, 'or')}.`;
-      case 'some': return `Supply ${named(rule.flags, 'or')}.`;
+      case 'required': return `${scopeText(rule.scope, show)}. Required fields are ${names(rule.keys, 'and', show)}.`;
+      case 'forbidden': return `${scopeText(rule.scope, show)}. Omit ${names(rule.keys, 'or', show)}.`;
+      case 'one': return `Exactly one of ${names(rule.keys, 'or', show)}.`;
+      case 'some': return `Supply ${names(rule.keys, 'or', show)}.`;
     }
   });
 }
 function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readonly InputRule<Value>[]): void {
   for (const rule of rules) {
-    const given = rule.flags.filter(each => value[each.key] !== undefined);
+    const given = rule.keys.filter(key => value[key] !== undefined);
     switch (rule.kind) {
       case 'required':
-        if (rule.applies(value)) for (const each of rule.flags) if (value[each.key] === undefined)
-          issue(context, each.key, 'required', `${each.flag} is required (${rule.scope})`);
+        if (rule.applies(value)) for (const key of rule.keys) if (value[key] === undefined)
+          issue(context, key, 'required', `${key} is required (${scopeText(rule.scope)})`);
         break;
       case 'forbidden':
-        if (rule.applies(value)) for (const each of given)
-          issue(context, each.key, 'incompatible', `${each.flag} is not allowed (${rule.scope})`);
+        if (rule.applies(value)) for (const key of given)
+          issue(context, key, 'incompatible', `${key} is not allowed (${scopeText(rule.scope)})`);
         break;
       case 'one':
-        if (given.length !== 1) issue(context, (given[1] ?? rule.flags[0]).key, 'exactly_one',
-          `Supply exactly one of ${named(rule.flags, 'or')}`);
+        if (given.length !== 1) issue(context, given[1] ?? rule.keys[0], 'exactly_one',
+          `Supply exactly one of ${names(rule.keys, 'or', identity)}`);
         break;
       case 'some':
-        if (!given.length) issue(context, rule.flags[0].key, 'required', `Supply ${named(rule.flags, 'or')}`);
+        if (!given.length) issue(context, rule.keys[0], 'required', `Supply ${names(rule.keys, 'or', identity)}`);
         break;
     }
   }
 }
 
-export const taskGetInput = z.object({ task: taskIdSchema, log: decimalCount.optional(),
-  runs: decimalCount.optional(), files: z.boolean().optional(), usage: z.boolean().optional(),
-  estimateExamples: z.boolean().optional(), openObligations: z.boolean().optional(), question: logIdSchema.optional() });
-export const taskListShape = z.object({ under: taskIdSchema.optional(), depth: decimalCount.optional(),
+export const taskGetIncludes = [
+  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations',
+] as const;
+export type TaskGetInclude = typeof taskGetIncludes[number];
+export const taskGetInput = z.object({ task: taskIdSchema, log: queryCount.optional(), runs: queryCount.optional(),
+  include: z.array(z.enum(taskGetIncludes)).optional(), question: logIdSchema.optional() }).strict();
+export const taskListShape = z.object({ under: taskIdSchema.optional(), depth: queryCount.optional(),
   text: z.string().optional(), state: z.array(z.union([taskStateSchema, z.literal('all')])).optional(),
   all: z.boolean().optional(), kind: taskKindSchema.optional() });
 export const taskSearchPlaceSchema = z.enum(['history', 'runs', 'files', 'work']);
 export type TaskSearchPlace = z.infer<typeof taskSearchPlaceSchema>;
-const searchOptions = { in: z.array(taskSearchPlaceSchema).min(1).optional(), limit: decimalCount.refine(value => Number(value) > 0, 'must be a positive integer').optional() };
-export const taskListRules: readonly InputRule<{ text?: string; in?: unknown; limit?: unknown }>[] = [
-  { kind: 'forbidden', scope: 'Without --text', applies: value => !value.text,
-    flags: [{ key: 'in', flag: '--in' }, { key: 'limit', flag: '--limit' }] },
+const searchOptions = { in: z.array(taskSearchPlaceSchema).min(1).optional(),
+  limit: queryCount.pipe(z.number().min(1).max(10000)).optional(), cursor: z.string().min(1).max(1024).optional() };
+export const taskListRules: readonly InputRule<{ text?: string; in?: unknown }>[] = [
+  { kind: 'forbidden', scope: 'Without {text}', applies: value => !value.text, keys: ['in'] },
 ];
-export const taskListInput = taskListShape.extend(searchOptions).superRefine((value, context) => checkRules(value, context, taskListRules));
+export const taskListInput = taskListShape.extend(searchOptions).strict().superRefine((value, context) => checkRules(value, context, taskListRules));
 /**
  * One Task's fields, as a form picks them. Without a parent the server picks one from where the person works. Only a
  * project may be at the top (`none`) and name this PC's code location (`cwd`); without one it inherits its parent
@@ -113,16 +101,14 @@ const taskPlan = z.array(z.object({ title: titleSchema, values: valuesInputSchem
 /** The command takes one Task's title, or a plan in its place. */
 const taskCreateFields = taskCreateShape.extend({ title: titleSchema.optional() });
 type CreateChecks = z.output<typeof taskCreateFields> & { plan?: unknown };
-const planFlag = { key: 'plan', flag: '--plan-file' } as const;
-const markFlag = { key: 'fromUser', flag: '--from-user/--no-from-user' } as const;
 export const taskCreateRules: readonly InputRule<CreateChecks>[] = [
-  { kind: 'required', scope: 'With --kind project', applies: value => value.kind === 'project',
-    flags: [{ key: 'color', flag: '--color' }] },
-  { kind: 'one', flags: [{ key: 'title', flag: '--title' }, planFlag] },
-  { kind: 'forbidden', scope: 'With --plan-file', applies: value => value.plan !== undefined,
-    flags: [{ key: 'values', flag: '--values-file' }] },
-  { kind: 'forbidden', scope: 'With --kind project', applies: value => value.kind === 'project',
-    flags: [planFlag, markFlag] },
+  { kind: 'required', scope: 'With {kind} project', applies: value => value.kind === 'project',
+    keys: ['color'] },
+  { kind: 'one', keys: ['title', 'plan'] },
+  { kind: 'forbidden', scope: 'With {plan}', applies: value => value.plan !== undefined,
+    keys: ['values'] },
+  { kind: 'forbidden', scope: 'With {kind} project', applies: value => value.kind === 'project',
+    keys: ['plan', 'fromUser'] },
 ];
 function checkTaskCreate(value: CreateChecks, context: z.RefinementCtx): void {
   checkRules(value, context, taskCreateRules);
@@ -131,17 +117,14 @@ function checkTaskCreate(value: CreateChecks, context: z.RefinementCtx): void {
   if (value.color !== undefined) issue(context, 'color', 'project_only', 'Only a project has color');
   if (value.cwd !== undefined) issue(context, 'cwd', 'project_only', 'Only a project has a cwd');
 }
-export const taskPlanInput = z.object({
-  plan: json(taskPlan, '--plan-file must be JSON: a list of {"title", "values"?}').optional(),
-});
-export const taskCreateInput = taskCreateFields.extend({ plan: z.string().optional() }).superRefine(checkTaskCreate);
+export const taskCreateInput = taskCreateFields.extend({ plan: taskPlan.optional() }).superRefine(checkTaskCreate);
 /** A project's cwd: null drops its own, so it inherits its parent project's. */
 export const taskUpdateShape = z.object({ task: taskIdSchema, title: titleSchema.optional(),
   values: valuesInputSchema.optional(), color: projectColorSchema.optional(), cwd: projectCwd.nullable().optional(),
   fromUser: z.boolean().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
 export const taskUpdateRules: readonly InputRule<z.output<typeof taskUpdateShape>>[] = [
-  { kind: 'some', flags: [{ key: 'title', flag: '--title' }, { key: 'values', flag: '--values-file' },
-    { key: 'cwd', flag: '--cwd' }, { key: 'color', flag: '--color' }, markFlag] },
+  { kind: 'some', keys: ['title', 'values',
+    'cwd', 'color', 'fromUser'] },
 ];
 const checkTaskUpdate = (value: z.output<typeof taskUpdateShape>, context: z.RefinementCtx) =>
   checkRules(value, context, taskUpdateRules);
@@ -160,7 +143,7 @@ export const taskReportShape = z.object({ task: taskIdSchema.optional(), state: 
   askTo: z.union([z.literal('user'), taskIdSchema]).optional(), withdraw: logIdSchema.optional(), title: reportTitleSchema.optional(), description: descriptionSchema.optional(),
   urgent: urgentReasonSchema.optional(), aboutRun: runIdSchema.optional(),
   values: valuesInputSchema.optional(), nextConversation: z.literal('new').optional(),
-  estimateMinutes: estimateMinutesSchema.optional(), ...writeRecordShape, opId: nonempty,
+  estimateMinutes: estimateMinutesSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema, expectedPlacementRevision: revision.optional() });
 /**
  * What a report's input alone decides. A question's --title and --description-file are the server's to require: the
@@ -168,25 +151,25 @@ export const taskReportShape = z.object({ task: taskIdSchema.optional(), state: 
  * a held Task returns to, an urgent report's requester (refused when it is the user) and who may report.
  */
 export const taskReportRules: readonly InputRule<z.output<typeof taskReportShape>>[] = [
-  { kind: 'forbidden', scope: 'Other than --state waiting', applies: value => value.state !== 'waiting',
-    flags: [{ key: 'askTo', flag: '--ask-to' }] },
-  { kind: 'required', scope: 'With --next-conversation', applies: value => value.nextConversation !== undefined,
-    flags: [{ key: 'values', flag: '--values-file' }] },
+  { kind: 'forbidden', scope: 'Other than {state} waiting', applies: value => value.state !== 'waiting',
+    keys: ['askTo'] },
+  { kind: 'required', scope: 'With {nextConversation}', applies: value => value.nextConversation !== undefined,
+    keys: ['values'] },
   { kind: 'forbidden', scope: 'Other than an owner doing, waiting or done report',
     applies: value => value.withdraw !== undefined || value.aboutRun !== undefined || !['doing', 'waiting', 'done'].includes(value.state ?? ''),
-    flags: [{ key: 'values', flag: '--values-file' }, { key: 'nextConversation', flag: '--next-conversation' }] },
-  { kind: 'one', flags: [{ key: 'state', flag: '--state' }, { key: 'withdraw', flag: '--withdraw' }] },
-  { kind: 'required', scope: 'With --description-file', applies: value => value.description !== undefined,
-    flags: [{ key: 'title', flag: '--title' }] },
-  { kind: 'forbidden', scope: 'With --withdraw', applies: value => value.withdraw !== undefined,
-    flags: [{ key: 'title', flag: '--title' }, { key: 'description', flag: '--description-file' }] },
-  { kind: 'forbidden', scope: 'Other than --state done', applies: value => value.state !== 'done',
-    flags: [{ key: 'urgent', flag: '--urgent' }, { key: 'aboutRun', flag: '--about-run' }] },
-  { kind: 'required', scope: 'With --about-run', applies: value => value.aboutRun !== undefined,
-    flags: [{ key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
-  { kind: 'forbidden', scope: 'With --state done or --withdraw',
+    keys: ['values', 'nextConversation'] },
+  { kind: 'one', keys: ['state', 'withdraw'] },
+  { kind: 'required', scope: 'With {description}', applies: value => value.description !== undefined,
+    keys: ['title'] },
+  { kind: 'forbidden', scope: 'With {withdraw}', applies: value => value.withdraw !== undefined,
+    keys: ['title', 'description'] },
+  { kind: 'forbidden', scope: 'Other than {state} done', applies: value => value.state !== 'done',
+    keys: ['urgent', 'aboutRun'] },
+  { kind: 'required', scope: 'With {aboutRun}', applies: value => value.aboutRun !== undefined,
+    keys: ['expectedPlacementRevision'] },
+  { kind: 'forbidden', scope: 'With {state} done or {withdraw}',
     applies: value => value.state === 'done' || value.withdraw !== undefined,
-    flags: [{ key: 'estimateMinutes', flag: '--estimate-minutes' }] },
+    keys: ['estimateMinutes'] },
 ];
 export const taskReportInput = taskReportShape.superRefine((value, context) =>
   checkRules(value, context, taskReportRules));
@@ -196,21 +179,19 @@ export const taskReportInput = taskReportShape.superRefine((value, context) =>
  */
 export const taskRequestShape = z.object({ task: taskIdSchema, instruction: instructionSchema, answers: logIdSchema.optional(),
   agent: nonempty.optional(), newConversation: z.boolean().optional(),
-  cwd: nonempty.optional(), selected: z.string().optional(), aiStack: z.string().optional(), ...writeRecordShape, opId: nonempty,
+  cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
   expectedHeadRun: runIdSchema.optional() });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
-const agentFlag = { key: 'agent', flag: '--agent' } as const;
-const headRunFlag = { key: 'expectedHeadRun', flag: '--expected-head-run' } as const;
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
-  { kind: 'forbidden', scope: 'With --answers', applies: value => value.answers !== undefined,
-    flags: [agentFlag, { key: 'newConversation', flag: '--new-conversation' },
-      { key: 'cwd', flag: '--cwd' }, { key: 'selected', flag: '--selected' }, { key: 'aiStack', flag: '--ai-stack' }, headRunFlag,
-      { key: 'expectedTaskHash', flag: '--expected-task-hash' }, { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
-  { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined, flags: [{ key: 'expectedTaskHash', flag: '--expected-task-hash' }] },
-  { kind: 'required', scope: 'Without --answers', applies: value => value.answers === undefined,
-    flags: [{ key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] },
+  { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
+    keys: ['agent', 'newConversation',
+      'cwd', 'selected', 'aiStack', 'expectedHeadRun',
+      'expectedTaskHash', 'expectedPlacementRevision'] },
+  { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
+  { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined,
+    keys: ['expectedPlacementRevision'] },
 ];
 const checkTaskRequest = (value: RequestChecks, context: z.RefinementCtx) => checkRules(value, context, taskRequestRules);
 export const taskRequestInput = taskRequestShape.strict().superRefine(checkTaskRequest);
@@ -220,21 +201,19 @@ export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitl
   expectedTaskHash: digestSchema });
 
 export const agentAssignShape = z.object({ task: taskIdSchema, role: z.enum(['responsible', 'member']),
-  person: nonempty.optional(), profile: nonempty.optional(), selected: z.string().optional(), aiStack: z.string().optional(), ...writeRecordShape,
+  person: nonempty.optional(), profile: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema, replace: nonempty.optional(),
   expectedPlacementRevision: revision.optional(), expectedResponsibleRevision: revision.optional() });
-const replaceFlags = [{ key: 'replace', flag: '--replace' },
-  { key: 'expectedPlacementRevision', flag: '--expected-placement-revision' }] as const;
-const responsibleRevisionFlag = { key: 'expectedResponsibleRevision', flag: '--expected-responsible-revision' } as const;
+const replaceKeys = ['replace', 'expectedPlacementRevision'] as const;
 type AssignChecks = Omit<z.output<typeof agentAssignShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 export const agentAssignRules: readonly InputRule<AssignChecks>[] = [
   { kind: 'required', scope: 'Replacing a responsible', applies: value => value.role === 'responsible' &&
-    (value.replace !== undefined || value.expectedPlacementRevision !== undefined), flags: replaceFlags },
-  { kind: 'forbidden', scope: 'With --role responsible', applies: value => value.role === 'responsible',
-    flags: [{ key: 'person', flag: '--person' }, responsibleRevisionFlag] },
-  { kind: 'required', scope: 'With --role member', applies: value => value.role === 'member',
-    flags: [responsibleRevisionFlag] },
-  { kind: 'forbidden', scope: 'With --role member', applies: value => value.role === 'member', flags: replaceFlags },
+    (value.replace !== undefined || value.expectedPlacementRevision !== undefined), keys: replaceKeys },
+  { kind: 'forbidden', scope: 'With {role} responsible', applies: value => value.role === 'responsible',
+    keys: ['person', 'expectedResponsibleRevision'] },
+  { kind: 'required', scope: 'With {role} member', applies: value => value.role === 'member',
+    keys: ['expectedResponsibleRevision'] },
+  { kind: 'forbidden', scope: 'With {role} member', applies: value => value.role === 'member', keys: replaceKeys },
 ];
 export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
   checkRules(value, context, agentAssignRules));
@@ -266,7 +245,7 @@ export const fieldDeleteInput = z.object({ field: fieldIdSchema, ...writeRecordS
 export const fieldUseShape = z.object({ task: taskIdSchema, fields: z.array(fieldIdSchema).min(1).optional(),
   inherit: z.boolean().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
 export const fieldUseRules: readonly InputRule<z.output<typeof fieldUseShape>>[] = [
-  { kind: 'one', flags: [{ key: 'fields', flag: '--fields' }, { key: 'inherit', flag: '--inherit' }] },
+  { kind: 'one', keys: ['fields', 'inherit'] },
 ];
 export const fieldUseInput = fieldUseShape.superRefine((value, context) => checkRules(value, context, fieldUseRules));
 export const emptyInput = z.object({});
@@ -371,5 +350,5 @@ export const workspaceInput = z.object({ workspace: z.string().refine(value => v
   '--workspace must name a directory').optional() });
 
 /** Replace the execution order of a Task that has never started. */
-export const dependencyClearInput = z.object({ task: taskIdSchema, ...writeRecordShape, opId: nonempty.optional(), expectedTaskHash: digestSchema }).strict();
+export const dependencyClearInput = z.object({ task: taskIdSchema, ...writeRecordShape, expectedTaskHash: digestSchema }).strict();
 export const dependencySetInput = dependencyClearInput.extend({ after: z.array(taskIdSchema).min(1).refine(ids => new Set(ids).size === ids.length, 'Duplicate dependency') });

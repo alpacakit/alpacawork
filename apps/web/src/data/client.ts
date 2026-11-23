@@ -1,5 +1,5 @@
 import { withRequestActivity } from './request-activity';
-import { RESTORE_HEADER } from '@alpacawork/contract/recovery';
+import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
 import { rememberWriteIdentity, readWriteIdentity } from './write-identity';
 import { validIntentConfirmation } from './write-intent';
 import { writeAccess, writeRestoreId, workspaceWriteBasis, type WriteBasis } from './connection';
@@ -44,7 +44,7 @@ export class ApiError extends Error {
     super(typeof text === "function" ? text() : text);
   }
   get displayMessage() {
-    if (this.reason) return problemReasonText(this.reason);
+    if (this.reason) return problemReasonText(this.reason, this.issues);
     return typeof this.text === "function" ? this.text() : problemCodeText(this.code, this.retry, this.detail);
   }
 }
@@ -59,7 +59,7 @@ function phrases(parts: string[]): string {
 }
 
 /** One translation of the reason and all of its parameters, independent of retry guidance. */
-export function problemReasonText(reason: ProblemReason): string {
+export function problemReasonText(reason: ProblemReason, issues: readonly Issue[] = []): string {
   const technical = (diagnostic: string) => i18n.t('problem.technical', { diagnostic });
   switch (reason.kind) {
     case 'update_refused': return [i18n.t('problem.reason.update_refused', { reason: reason.reason }),
@@ -85,7 +85,9 @@ export function problemReasonText(reason: ProblemReason): string {
       return [...said.some(problem => problem.recovery === 'new_conversation') ? [] : [i18n.t('problem.reason.selection_required')],
         ...said.map(problem => selectionProblemText(problem))].join(' ');
     }
-    case 'validation_error':
+    case 'validation_error': return [i18n.t('problem.reason.validation_error'),
+      ...issues.map(issue => [issue.path, issue.params?.line === undefined ? '' : i18n.t('problem.location', { line: issue.params.line, column: issue.params.column ?? 1 }),
+        issue.code, technical(issue.message)].filter(Boolean).join(' · '))].join(' · ');
     case 'config_invalid': return [i18n.t(`problem.reason.${reason.kind}`, { path: 'path' in reason ? reason.path : '' }),
       ...reason.issues.map(issue => [issue.path, issue.line === undefined ? '' : i18n.t('problem.location', { line: issue.line, column: issue.column ?? 1 }), issue.code, technical(issue.diagnostic)].filter(Boolean).join(' · '))].join(' · ');
     default: return i18n.t(`problem.reason.${reason.kind}`, { ...reason });
@@ -177,13 +179,13 @@ export function continuingMutationHeaders(basis: WriteBasis, opId: string, initi
   return writeHeaders(basis, opId, initial, () => readWriteIdentity(basis.root, opId));
 }
 export function createApi() {
-  async function responseFor(url: string, deadline: AbortSignal, signal?: AbortSignal, data?: unknown, opId?: string, basis?: WriteBasis, keepalive = false): Promise<Response> {
-    if (data !== undefined) {
+  async function responseFor(url: string, deadline: AbortSignal, signal?: AbortSignal, data?: unknown, opId?: string, basis?: WriteBasis, keepalive = false, execution?: Headers): Promise<Response> {
+    if (data !== undefined && !execution) {
       if (!basis) throw new ApiError('Write basis is required', 'write_unavailable', 'later');
       requireWriteAccess(basis);
       if (basis.kind === 'confirmation' && !validIntentConfirmation(basis.confirmation, basis.root, data, opId)) throw new ApiError('Recorded operation changed', 'write_unavailable', 'later');
     }
-    const headers=data===undefined?{}:mutationHeaders(basis,opId,{'Content-Type':'application/json'});
+    const headers = execution ?? (data === undefined ? {} : mutationHeaders(basis, opId, { 'Content-Type': 'application/json' }));
     let response: Response;
     try {
       response = await fetch(url, {
@@ -215,10 +217,11 @@ export function createApi() {
     basis?: WriteBasis,
     keepalive = false,
     deadlineMs?: number,
+    execution?: Headers,
   ): Promise<T> {
     return withRequestActivity(async () => {
       const deadline = deadlineMs === undefined ? deadlineOf(data) : AbortSignal.timeout(deadlineMs);
-      const response = await responseFor(`/api/${path}`, deadline, signal, data, opId, basis, keepalive);
+      const response = await responseFor(`/api/${path}`, deadline, signal, data, opId, basis, keepalive, execution);
       try {
         const body: unknown = await response.json();
         const value = schema.parse(body);
@@ -273,5 +276,12 @@ export function createApi() {
   /** A read the server itself takes long over (it bounds the work), so this screen waits longer than that bound. */
   const readWithin = <T,>(path: string, schema: z.ZodType<T>, deadlineMs: number, signal?: AbortSignal) =>
     request(path, schema, signal, undefined, undefined, undefined, false, deadlineMs);
-  return { request, requestText, requestBytes, readWithin };
+  /** Execute once, pinned to the restore identity observed before the request. */
+  async function runWithin<T>(path: string, schema: z.ZodType<T>, data: Record<string, unknown>, deadlineMs: number, signal?: AbortSignal) {
+    const restoreId = writeRestoreId(workspaceWriteBasis().root)
+      ?? (await request('runtime/recovery', recoveryIdentitySchema, signal)).restoreId;
+    const headers = new Headers({ [RESTORE_HEADER]: restoreId, 'Content-Type': 'application/json' });
+    return request(path, schema, signal, data, undefined, undefined, false, deadlineMs, headers);
+  }
+  return { request, requestText, requestBytes, readWithin, runWithin };
 }

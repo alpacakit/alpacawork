@@ -62,7 +62,7 @@ try { for (const width of [1440, 390]) {
     await reader.locator('[data-reader-content]').evaluate(each => { each.scrollTop = 0; });
     await reader.getByRole('button', { name: 'Close details' }).click(); await reader.waitFor({ state: 'detached' });
     // A task with no Task tree row: a project's own task without children, read for the first time.
-    const made = await fetch(runtime.origin + '/api/task/new', { method: 'POST', headers: { 'content-type': 'application/json' },
+    const made = await fetch(runtime.origin + '/api/commands/task/new', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ parent: 'P1', title: 'A task on its own', userRequested: true }) });
     const alone = (await made.json()).task as { id: string };
     await page.goto(`${runtime.origin}/?task=${alone.id}&agent=1`);

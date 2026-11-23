@@ -16,7 +16,7 @@ test.use({ isolated: true });
 
 /** The workspace setup makes: one empty Sample Project, its setup not done, and nothing else listed. */
 async function enroll(page: Page, runtime: Runtime): Promise<string> {
-  const response = await commandPost(page.request, `${runtime.origin}/api/task/new`, { data: { kind: "project", color: "#39659b", parent: "none", title: "Sample Project" } });
+  const response = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, { data: { kind: "project", color: "#39659b", parent: "none", title: "Sample Project" } });
   expect(response.ok(), await response.text()).toBe(true);
   const sample = (await response.json()).task.id as string;
   archiveFixtureProject(runtime.root, "P1");
@@ -87,11 +87,11 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     await expect(page.locator("[data-toast]").filter({ hasNotText: "Installed 1 skill" })).toHaveCount(0);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     // The kind enabled in setup is now in the agent settings, enabled.
-    const config = await (await page.request.get(`${runtime.origin}/api/config/get`)).json();
+    const config = await (await page.request.get(`${runtime.origin}/api/commands/config/get`)).json();
     expect(config.agentsText).toMatch(/^\s*grok:/m);
     const saved = await (await page.request.get(`${runtime.origin}/api/first-run`)).json();
     expect(saved.state.finishedAt).not.toBeNull();
-    const savedProject = await (await page.request.get(`${runtime.origin}/api/task/get?task=${sample}`)).json();
+    const savedProject = await (await page.request.get(`${runtime.origin}/api/commands/task/get?task=${sample}`)).json();
     expect(savedProject.task.values[PROJECT_POLICY] ?? "").toBe(policy);
     await page.screenshot({ path: test.info().outputPath(`welcome-${width}.png`) });
   });

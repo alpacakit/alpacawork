@@ -67,7 +67,7 @@ test('the parent owner moves direct children inside its subtree via CLI and HTTP
   assert.deepEqual([moved.id, moved.path, moved.parentId], [first.id, first.path, destination.id]);
   assert.deepEqual((await lastRecord(url, first.id)).actor, { kind: 'placement', placementId: owner.id });
   const httpBefore = await read(second.id);
-  const result = await post(url, '/api/task/move', { task: second.id, parent: destination.id, expectedTaskHash: httpBefore.hash },
+  const result = await post(url, '/api/commands/task/move', { task: second.id, parent: destination.id, expectedTaskHash: httpBefore.hash },
     { authorization: `Alpacawork-Run ${ownerRun.id}:${ownerRun.env.ALPACAWORK_RUN_TOKEN}` });
   assert.equal(result.status, 200, JSON.stringify(result.body));
   assert.equal(result.body.task.parentId, destination.id);
@@ -127,7 +127,7 @@ test('a coordinator moves across owner subtrees only with verified user words; C
   assert.equal(JSON.parse(replay.stdout).task.hash, moved.hash, 'same opId replays original receipt');
   assert.equal((await get(first.id)).hash, moved.hash, 'replay adds no record');
   const secondBefore = await get(second.id);
-  const http = await post(url, '/api/task/move', { task: second.id, parent: destination.id, quote: words,
+  const http = await post(url, '/api/commands/task/move', { task: second.id, parent: destination.id, quote: words,
     expectedTaskHash: secondBefore.hash }, { 'X-Alpacawork-Provider': 'codex', 'X-Alpacawork-Conversation': conversation });
   assert.equal(http.status, 200, JSON.stringify(http.body));
   assert.equal(http.body.task.parentId, destination.id);

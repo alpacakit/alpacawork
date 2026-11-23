@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { readQuery, readIndex, subscribeReads, captureReadBoundary, sameReadSession } from './read-model';
 import { readWriteBasis } from './connection';
 import type { ProjectedIndexDTO } from '@alpacawork/contract/control';
@@ -135,7 +136,7 @@ const controls = createStore<PersonControl>((set) => {
           const started = captureResourceRead(queryClient, resources.personalSettings(root).queryKey);
           const delivery = submitWriteIntent(writeKey, () => ({ key, value, expectedRevision,
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }), input =>
-            api.request('settings/set', personalSettingsResponseSchema, undefined, input, undefined, readWriteBasis(resources.personalSettings(root).queryKey, expectedRevision)), undefined, undefined, { path: 'settings/set', response: 'personal', label: key });
+            api.request(commandRoute('settings/set'), personalSettingsResponseSchema, undefined, input, undefined, readWriteBasis(resources.personalSettings(root).queryKey, expectedRevision)), undefined, undefined, { path: 'settings/set', response: 'personal', label: key });
           if (!delivery) return false;
           const next = await delivery;
           const accepted = accept(next, expectedRevision, started);

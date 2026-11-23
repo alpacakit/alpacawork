@@ -49,17 +49,17 @@ type First = 'review' | 'question' | 'held' | 'todo';
  */
 async function prepare(page: Page, runtime: Runtime, first: First = 'review') {
   startFakeCoordinator(runtime.root);
-  const { task: project } = await post(page, runtime, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Swipe check' });
+  const { task: project } = await post(page, runtime, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Swipe check' });
   const ids: string[] = [], runs: Record<string, string> = {};
   for (const card of [first, 'review'] as const) {
-    const { task } = await post(page, runtime, 'task/new', { parent: project.id, title: ids.length ? 'Next review card' : 'First card',
+    const { task } = await post(page, runtime, 'commands/task/new', { parent: project.id, title: ids.length ? 'Next review card' : 'First card',
       values: card === 'question' ? QUESTION : { notes: 'Validation is complete. Please review the results.' } });
     await placeResponsible(page.request, runtime.origin, task);
     if (card === 'question') {
       patchTask(runtime.root, task.id, { state: 'doing' });
       seedQuestion(runtime.root, task.id, { to: 'user' });
     } else if (card !== 'todo') runs[task.id] = seedReview(runtime.root, task.id, { title: 'Validation is complete', description: 'Please review the results.' });
-    if (card === 'held') await post(page, runtime, 'task/report', { task: task.id, state: 'held', opId: crypto.randomUUID(),
+    if (card === 'held') await post(page, runtime, 'commands/task/report', { task: task.id, state: 'held', opId: crypto.randomUUID(),
       expectedTaskHash: (await view(page, runtime, task.id)).hash });
     ids.push(task.id);
   }
@@ -81,10 +81,10 @@ test(`right: a review's swipe writes a direct report, and the card and state cha
   const pressed = await versions(page, runtime, ids[0]!);
   // The screen writes no state of its own: the coordinator does.
   const reports: string[] = [];
-  page.on('request', request => { if (new URL(request.url()).pathname === '/api/task/report') reports.push(request.url()); });
+  page.on('request', request => { if (new URL(request.url()).pathname === '/api/commands/task/report') reports.push(request.url()); });
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
   const sent: Record<string, any>[] = [];
-  await page.route(url => url.pathname === '/api/task/report', async route => { sent.push(route.request().postDataJSON()); await gate; await route.continue(); });
+  await page.route(url => url.pathname === '/api/commands/task/report', async route => { sent.push(route.request().postDataJSON()); await gate; await route.continue(); });
   try {
     await pay(page, 'right');
     await expect.poll(() => sent.length).toBe(1);
@@ -106,7 +106,7 @@ test(`right: a review's swipe writes a direct report, and the card and state cha
 test("the reader's head and title are swiped as its reports are: right answers, left holds", async ({ page, runtime }) => {
   const { ids } = await prepare(page, runtime);
   const sent: Record<string, any>[] = [];
-  page.on('request', request => { if (new URL(request.url()).pathname === '/api/task/report') sent.push(request.postDataJSON()); });
+  page.on('request', request => { if (new URL(request.url()).pathname === '/api/commands/task/report') sent.push(request.postDataJSON()); });
   // The head's row stands over the reports, outside them; the title is a sheet grip inside them.
   await pay(page, 'right', reader(page).locator('[data-reader-path]'));
   await expect(shown(page)).toHaveText(ids[1]!);
@@ -143,7 +143,7 @@ for (const mode of ['refused', 'saved-lost'] as const) test(`${mode}: a direct r
   const { ids } = await prepare(page, runtime);
   await expect(page.locator('[data-swipe-mark="done"]')).toHaveCount(1);
   const sent: Record<string, any>[] = [];
-  await page.route(url => url.pathname === '/api/task/report', async route => {
+  await page.route(url => url.pathname === '/api/commands/task/report', async route => {
     sent.push(route.request().postDataJSON());
     if (sent.length > 1) return route.continue();
     if (mode === 'refused') return route.fulfill({ status: 409, json: { error: { code: 'conflict', message: 'Conflict', retry: 'reread' } } });
@@ -183,10 +183,10 @@ test('a ✔ with the version shown is refused once the task has changed, and its
   await expect(page.locator('[data-swipe-mark="done"]')).toHaveCount(1);
   const pressed = await versions(page, runtime, ids[0]!);
   const sent: Record<string, any>[] = [];
-  await page.route(url => url.pathname === '/api/task/report', async route => {
+  await page.route(url => url.pathname === '/api/commands/task/report', async route => {
     sent.push(route.request().postDataJSON());
     // The Task changes after the press, before the coordinator writes.
-    await post(page, runtime, 'task/update', { task: ids[0], expectedTaskHash: pressed.expectedTaskHash, title: 'New review' });
+    await post(page, runtime, 'commands/task/update', { task: ids[0], expectedTaskHash: pressed.expectedTaskHash, title: 'New review' });
     await route.continue();
   });
   await pay(page, 'right');

@@ -443,7 +443,7 @@
       "settings_changed_another_view": "Settings changed in another view",
       "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project": "Several projects are active. Specify one with --{{option}} <ID>, or run inside a project's working folder (alpacawork task list --kind project)",
       "sqlite_serialization_required": "Node with SQLite serialization support is required",
-      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "The stop was committed but is waiting to be applied. Check or retry with the same operation ID",
+      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "The stop was saved and is waiting to be applied. Resend the original write with the same input, operation ID, and restore ID",
       "stopped_task_requires_new_request": "Restart a stopped task with a new request from the user.",
       "subtree_root_does_not_exist": "Subtree root not found",
       "supply_state_or_withdraw": "Specify --state or --withdraw",

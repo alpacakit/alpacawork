@@ -77,7 +77,7 @@ test('the responsible Run saves the same bounded estimate by CLI and HTTP withou
   assert.equal(command.status, 0, command.stderr);
   const first = JSON.parse(command.stdout).task;
   assert.equal(currentTaskLog(h.root, h.task.id).at(-1)!.estimateMinutes, 30);
-  const response = await fetch(new URL('/api/task/report', servers.get(h.root)!), {
+  const response = await fetch(new URL('/api/commands/task/report', servers.get(h.root)!), {
     method: 'POST', headers: { 'content-type': 'application/json',
       authorization: `Alpacawork-Run ${h.run}:${h.env.ALPACAWORK_RUN_TOKEN}` },
     body: JSON.stringify({ task: h.task.id, state: 'doing', estimateMinutes: 20, opId: globalThis.crypto.randomUUID(),
@@ -102,7 +102,7 @@ test('CLI and HTTP reject each invalid estimate, and an estimate with an instruc
     const command = cli(h.root, ['task', 'report', '--task', h.task.id, '--state', 'doing', '--estimate-minutes', value,
       '--expected-task-hash', h.task.hash, '--op-id', globalThis.crypto.randomUUID()], h.env);
     assert.equal(command.status, 2, `${value}: ${command.stdout} ${command.stderr}`);
-    const response = await fetch(new URL('/api/task/report', server), {
+    const response = await fetch(new URL('/api/commands/task/report', server), {
       method: 'POST', headers: { 'content-type': 'application/json',
         authorization: `Alpacawork-Run ${h.run}:${h.env.ALPACAWORK_RUN_TOKEN}` },
       body: JSON.stringify({ task: h.task.id, state: 'doing', estimateMinutes: Number(value),
@@ -116,7 +116,7 @@ test('CLI and HTTP reject each invalid estimate, and an estimate with an instruc
   const command = cli(h.root, ['task', 'request', '--task', h.task.id, '--estimate-minutes', '30', '--instruction-file', bodyFile,
     '--expected-task-hash', h.task.hash, '--expected-placement-revision', '1', '--op-id', globalThis.crypto.randomUUID()]);
   assert.equal(command.status, 2, command.stderr);
-  const response = await fetch(new URL('/api/task/request', server), {
+  const response = await fetch(new URL('/api/commands/task/request', server), {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ task: h.task.id, estimateMinutes: 30, instruction: 'Instruction', opId: globalThis.crypto.randomUUID(),
       expectedTaskHash: h.task.hash, expectedPlacementRevision: 1 }),
