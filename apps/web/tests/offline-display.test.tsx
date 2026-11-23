@@ -89,7 +89,7 @@ function serve() {
     calls.push(`${init?.method ?? "GET"} ${path}`);
     if (unreachable) throw new TypeError("Failed to fetch");
     if (path === "/api/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
-    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", agent: null, warm: 'none' as const, cancelled: [], turns: [] }));
+    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, cancelled: [], turns: [] }));
     if (path === "/api/settings/get") {
       if (failing.has("settings")) return problemResponse("unavailable");
       personRevision = (indexNow()?.person.settings ?? personRevision) || personRevision;

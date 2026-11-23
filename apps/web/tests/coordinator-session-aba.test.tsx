@@ -19,7 +19,7 @@ import { receiveFullIndex } from '../src/data/resources';
 import { TestWorkspace, tree, dto, decideItem, questionFixture, indexOf, screenData, viewsOf } from './fixtures';
 
 const cid = 'aba-conversation';
-const conv = (turns: any[] = []) => ({ id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conv = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 const reply = (value: unknown) => new Response(snapshotJson(value));
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { resolve, promise }; };
 const tick = async () => { await act(async () => { await new Promise(done => setTimeout(done, 10)); }); };
@@ -54,7 +54,7 @@ test('a send whose checks a new read session ended, its conversation already rea
     return reply(conv());
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -88,7 +88,7 @@ test('an attempt that could not save its checkpoint keeps the notice saying so w
     if (url.includes('task/view')) return reply(viewsOf(served).find(v => v.task.id === new URL(url, 'http://fixture').searchParams.get('task')));
     return reply(conv());
   }));
-  render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
   act(() => receiveFullIndex(queryClient, index));
   const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
   await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -129,7 +129,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       ...(submitted.tasks ? { tasks: submitted.tasks } : {}), ...(submitted.answers ? { answers: submitted.answers } : {}), attachments: [],
       status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null }]);
     vi.stubGlobal('fetch', fetcher);
-    render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></TestWorkspace>);
+    render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></TestWorkspace>);
     act(() => receiveFullIndex(queryClient, index));
     const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
     await waitFor(() => expect(input?.editor).toBeTruthy());
@@ -138,7 +138,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
     let refreshing: Promise<void> | undefined;
     if (stage === 'refresh/draw') {
       submitted = { id: crypto.randomUUID(), text: 'old accepted request', attachments: [] };
-      const fixed = { conversationId: cid, text: submitted.text, attachments: [], selected: {} };
+      const fixed = { conversationId: cid, text: submitted.text, attachments: [] };
       freeze(index.root, fixed, { requestId: submitted.id, doc: JSON.stringify(textDocument(submitted.text)) });
       const attempt = begin(index.root, submitted.id)!; expect(attempt.check()).toBe('posted'); attempt.finish();
       act(() => { refreshing = useConversation.getState().refresh(); });
@@ -184,3 +184,50 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       expect.soft(availableInput(useDraftStore.getState().entries, index.root, key)).toEqual(visible.values);
     }
   });
+
+test.each(['the first send', 'a resend of the same ID after an unknown answer'])('a message serve refuses because the settings turned its AI to a Codex row (%s) goes back, and the next send goes with the Codex mark', async way => {
+  const served = tree({ tasks: [dto({ id: 'T1' })] });
+  const codex = { status: 'ready', profile: 'codex-team', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] };
+  let lost = way !== 'the first send';
+  const posts: any[] = [];
+  const fetcher = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url.startsWith('/api/coordinator/skills')) return reply(posts.length ? codex : catalog);
+    if (url === '/api/coordinator/messages') {
+      const body = JSON.parse(String(init?.body));
+      posts.push(body);
+      if (lost) { lost = false; throw new TypeError('network'); }
+      if (!body.text.includes('$')) return new Response(JSON.stringify({ error: { code: 'conflict', message: 'Coordinator AI changed', retry: 'fix',
+        reason: { kind: 'skill_invocation_mismatch' } } }), { status: 409 });
+      return reply(conv([{ id: body.id, at: new Date().toISOString(), ask: body.text, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }]));
+    }
+    return reply(conv());
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} /></TestWorkspace>;
+  const view = render(input('claude'));
+  const editor = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
+  await waitFor(() => expect(editor?.editor).toBeTruthy());
+  await tick();
+  act(() => editor.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'use it ' }, { type: 'skillLabel', attrs: skill }] }] }));
+  fireEvent.click(window.document.querySelector('[data-ask-send]')!);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  if (way !== 'the first send') {
+    // Not answered: the same request goes again, as it was.
+    await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); await tick();
+    await act(async () => { await useOutbox.getState().resend!(posts[0].id); });
+    expect(posts[1]).toMatchObject({ id: posts[0].id, text: posts[0].text });
+  }
+  await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); await tick();
+  expect(posts.at(-1).text).toBe('use it /fixture-skill');
+  // Refused: the words and the skill's chip are back in the input.
+  await waitFor(() => expect(JSON.stringify(editor.editor.getJSON())).toContain('use it'));
+  expect(window.document.querySelectorAll('[data-one-input-area] [data-label=skill]')).toHaveLength(1);
+  // The conversation now goes to the Codex row; pressed once with nothing changed, the words go with its mark.
+  view.rerender(input('codex-team'));
+  await tick();
+  const before = posts.length;
+  await waitFor(() => expect(window.document.querySelector<HTMLButtonElement>('[data-ask-send]')!.disabled).toBe(false));
+  fireEvent.click(window.document.querySelector('[data-ask-send]')!);
+  await waitFor(() => expect(posts).toHaveLength(before + 1));
+  expect(posts.at(-1).text).toBe('use it $fixture-skill');
+});

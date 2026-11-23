@@ -5,6 +5,11 @@
     "undo": "Undo"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "AI you talk to in the input: {{ai}}. Press to change it in the settings",
+      "none": "There is no AI to talk to in the input, so nothing can be sent. Press to open the settings",
+      "setUp": "Set up AI"
+    },
     "attached": "Attachments only",
     "attempts": {
       "stopped": "{{agent}} — stopped on {{reason}}",
@@ -21,6 +26,7 @@
     "completeHint": "Mark {{id}} as done",
     "conflict": "different content already arrived under the same ID",
     "conversationChanged": "The conversation changed",
+    "coordinatorAiChanged": "Not sent: the AI you talk to in the input has changed. Check the skills, then send again.",
     "copyAnswer": "Copy reply",
     "deliveryRefused": "The agent could not take the message. It remains queued.",
     "done": "Done",
@@ -57,8 +63,6 @@
     "interrupted": "Interrupted before sending",
     "joinedCount_one": "+{{count}} more",
     "joinedCount_other": "+{{count}} more",
-    "launchChoiceChanged": "The model and other choices it was sent with can't be sent now. Choose again and send",
-    "launchChoiceUnresendable": "The model and other choices it was sent with can't be resent now. Whether it arrived will show once confirmed",
     "loadFailed": "Could not load the conversation",
     "loading": "Loading the conversation…",
     "loadingWanted": "Opens once it is loaded…",
@@ -237,8 +241,12 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: the purpose (what the project is for), how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
+      "hint": "What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.",
       "title": "Project policy"
+    },
+    "project_summary": {
+      "hint": "One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.",
+      "title": "Project summary"
     },
     "remaining": {
       "hint": "One per piece of work left: `<what> — <who / waiting for what>` (the condition to resume). Steps and commands go in files in the task folder. Remove what is done.",
@@ -305,10 +313,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "The model was at capacity, so the run failed. Retry later or with another model, or stop",
-      "modelLimit": "The agent hit its model's usage limit, so the run failed. Retry with another model or after the limit resets, or stop",
-      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Retry after the limit resets, or stop",
-      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Retry after the limit resets, or stop"
+      "modelCapacity": "The model was at capacity, so the run failed. Continue with the same AI later, continue with another AI, or stop",
+      "modelLimit": "The agent hit its model's usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop",
+      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop",
+      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop"
     },
     "causeReason": {
       "modelCapacity": "The model is at capacity",
@@ -338,7 +346,7 @@
     "reason": {
       "children": "The run reached its request limit. Review the work and send a separate instruction if needed",
       "depth": "Request depth limit reached. Review the result and send a new instruction if needed",
-      "failed": "The agent run failed or ended without a report. Choose to retry or stop",
+      "failed": "The agent run failed or ended without a report. Choose to continue or stop",
       "limit_one": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "limit_other": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "noProfile": "There is no launch profile for this agent. Check the settings and send an instruction",
@@ -347,8 +355,9 @@
       "responsibleUnavailable": "Could not start the request to the owner. Check the owner assignment and launch profile, then resend the instruction",
       "unconfirmed": "Couldn't confirm whether the reply reached the agent. Check the result and send an instruction if needed"
     },
-    "retry": "Retry",
-    "stop": "Stop"
+    "retry": "Continue with the same AI",
+    "stop": "Stop",
+    "switch": "Continue with another AI"
   },
   "undo": {
     "offer": {

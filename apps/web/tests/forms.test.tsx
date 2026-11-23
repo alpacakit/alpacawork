@@ -85,7 +85,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const asked: CoordinatorMessageInput[] = [];
   const reports: any[] = [], pending: ((result: CoordinatorResult) => void)[] = [];
   let status: CoordinatorConversation["turns"][number]["status"] = "running", result: CoordinatorResult | null = null;
-  const conversation = (): CoordinatorConversation => ({ id: "c1", agent: null, warm: 'none' as const, busy: false, cancelled: [],
+  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
     turns: asked.map((input) => ({ id: input.id, at, ask: input.text, tasks: input.tasks, attachments: input.attachments,
       ...(input.intent ? { intent: input.intent } : {}), status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result })) });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
@@ -102,7 +102,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
     return problemResponse("not_found");
   });
   setConversationState({ conversation: conversation(), open: true, expanded: false, engaged: false, read: true, error: null });
-  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /><Toaster /></TestWorkspace>);
+  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></TestWorkspace>);
   // The coordinator's Run ends, and the server says what its messages did (`outcome`).
   return { view, asked, reports, fetcher, finish: async (outcome: CoordinatorResult) => { status = "succeeded"; result = outcome; await act(async () => { pending.splice(0).forEach(resolve => resolve(outcome)); }); await act(async () => { await useConversation.getState().refresh(); }); } };
 }
@@ -336,13 +336,13 @@ test("H holds the open task regardless of its ball; an already held task sends n
   expect(heldInput.reports).toEqual([]);
 });
 
-test("why the user's turn came is said by the ball: at the limit Continue, on a failure Retry and Stop, requests go to the coordinator", async () => {
+test("why the user's turn came is said by the ball: at the limit Continue, on a failure continue with the same AI or another, or Stop", async () => {
   const limit = userBall("limit", "K1", at, { count: 3 });
   const failed = userBall("failed", "F1", at);
   const blocked = userBall("blocked", "B1", at, { code: "too_deep" });
   for (const [ball, words, actions] of [
     [limit, i18n.t("ui:turn.reason.limit", { count: 3 }), ["continue"]],
-    [failed, i18n.t("ui:turn.reason.failed"), ["retry", "stop"]],
+    [failed, i18n.t("ui:turn.reason.failed"), ["retry", "switch", "stop"]],
     [blocked, i18n.t("ui:turn.reason.depth"), []],
   ] as const) {
     const data = screenData(tree({ tasks: [taskFixture({ state: "doing", ball })] }));
@@ -364,6 +364,25 @@ test("why the user's turn came is said by the ball: at the limit Continue, on a 
       .toEqual(actions.slice(0,1).map((action) => [action, i18n.t(`reader:intent.${action}`, { id: "T1" })]));
     cleanup();
   }
+});
+
+test("Continue with another AI only puts its line in the input; Continue with the same AI then sends its own line", async () => {
+  const data = screenData(tree({ tasks: [taskFixture({ state: "error", ball: userBall("failed", "F1", at) })] }));
+  const task = data.tasks[0]!;
+  const { asked } = withInput(data, <TurnReason turn={reasonedTurn(task.ball)!} task={task} />);
+  await waitFor(() => expect(useReaderSend.getState().post).not.toBeNull());
+  const button = (action: string) => document.querySelector<HTMLButtonElement>(`[data-turn-action="${action}"]`)!;
+  fireEvent.click(button("switch"));
+  const field = screen.getByRole("textbox", { name: "Message the coordinator" });
+  await waitFor(() => expect(field.textContent).toContain(i18n.t("reader:intent.switch")));
+  await act(async () => {});
+  expect(asked).toEqual([]);
+  // The line is already there: a second press would add nothing.
+  expect(button("switch").disabled).toBe(true);
+  fireEvent.click(button("retry"));
+  await waitFor(() => expect(asked).toHaveLength(1));
+  expect([asked[0]!.intent?.action, asked[0]!.text]).toEqual(["retry", i18n.t("reader:intent.retry", { id: "T1" })]);
+  expect(field.textContent).toContain(i18n.t("reader:intent.switch"));
 });
 
 test("TurnReason Stop reports directly with the displayed task version and no coordinator message", async () => {
@@ -504,9 +523,9 @@ test('a submitted reader turn disables its state form while another Task remains
 test('a persisted submission disables the original failure actions but not another Task', async()=>{
  const data=screenData(tree({tasks:[taskFixture({id:'T1',state:'waiting',ball:userBall('failed','L1',at)}),taskFixture({id:'T2',state:'waiting',ball:userBall('failed','L2',at)})]}));
  const task=data.tasks[0]!,other=data.tasks[1]!,id=crypto.randomUUID();
- freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],selected:{},attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
+ freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
  withInput(data,<><TurnReason turn={reasonedTurn(task.ball)!} task={task}/><TurnReason turn={reasonedTurn(other.ball)!} task={other}/></>);
- const retry=screen.getAllByRole('button',{name:'Retry'}),stop=screen.getAllByRole('button',{name:'Stop'});
- expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);
+ const retry=screen.getAllByRole('button',{name:'Continue with the same AI'}),another=screen.getAllByRole('button',{name:'Continue with another AI'}),stop=screen.getAllByRole('button',{name:'Stop'});
+ expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((another[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);
  await waitFor(()=>expect((retry[1] as HTMLButtonElement).disabled).toBe(false));expect((stop[1] as HTMLButtonElement).disabled).toBe(false);
 });

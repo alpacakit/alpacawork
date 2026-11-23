@@ -12,14 +12,14 @@ import { useConversation } from '../src/features/coordinator/coordinator';
 const reply = { id: '11111111-1111-4111-8111-111111111111', answeredAt: '2026-10-22T11:00:00Z' };
 const other = { ...reply, id: '22222222-2222-4222-8222-222222222222' };
 const root = '/fixture', cid = 'conversation', key = draftKey(root, 'coordinator', cid);
-beforeEach(() => { sessionStorage.clear(); useDraftStore.setState({ entries: {}, unavailable: false }); useOutbox.setState({ live: new Set() }); setConversationState({ root, conversation: { id: cid, agent: null, warm: 'none' as const, busy: false, turns: [], cancelled: [] } }); });
+beforeEach(() => { sessionStorage.clear(); useDraftStore.setState({ entries: {}, unavailable: false }); useOutbox.setState({ live: new Set() }); setConversationState({ root, conversation: { id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns: [], cancelled: [] } }); });
 afterEach(cleanup);
 
 test('the document owns one replaceable reply; putting it in takes Task labels off and keeps everything else', () => {
   const original = labelled(textDocument('Read [this](/tmp/file).'), { id: 'T315', title: 'Other context' });
   const doc = replyTo(original, reply);
   expect(replyIn(doc)).toEqual(reply); expect(inlines(doc).filter(node => node.type === 'taskLabel')).toEqual([]);
-  expect(serialize(doc, 'codex')).toBe('Read [this](/tmp/file).');
+  expect(serialize(doc)).toBe('Read [this](/tmp/file).');
   expect(answeredQuestions(doc)).toEqual({});
   expect(replyTo(doc, reply)).toBe(doc);
   const next = replyTo(doc, other); expect(replyIn(next)).toEqual(other);
@@ -69,7 +69,7 @@ test('clipboard projection cannot recreate a reply reference', () => {
 test('refusal never replaces a newly selected reply-only draft; resend keeps the fixed reference', () => {
   const doc = replyTo(textDocument('reply words'), reply), values = { doc: JSON.stringify(doc), requestId: 'request-1' };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
-  const fixed = { conversationId: cid, text: 'reply words', selected: {}, attachments: [], replyTo: reply.id };
+  const fixed = { conversationId: cid, text: 'reply words', attachments: [], replyTo: reply.id };
   expect(freeze(root, fixed, values, { from: key })).toBe('request-1');
   useDraftStore.setState({ entries: { ...useDraftStore.getState().entries, [key]: { status: 'editing', values: { requestId: 'request-2', doc: JSON.stringify(replyTo(emptyDocument(), other)) } } } });
   const attempt = begin(root, 'request-1')!; expect(attempt.fixed.replyTo).toBe(reply.id); attempt.finish();
@@ -81,7 +81,7 @@ test('refusal never replaces a newly selected reply-only draft; resend keeps the
 test('a snapshot with a different reply under the same ID cannot settle the outbox', () => {
   const doc = replyTo(textDocument('reply words'), reply), values = { doc: JSON.stringify(doc), requestId: 'request-1' };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
-  freeze(root, { conversationId: cid, text: 'reply words', selected: {}, attachments: [], replyTo: reply.id }, values);
-  const conflicts = isolateConflicts({ id: cid, agent: null, busy: false, warm: 'none' as const, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }, root, 'conflict');
+  freeze(root, { conversationId: cid, text: 'reply words', attachments: [], replyTo: reply.id }, values);
+  const conflicts = isolateConflicts({ id: cid, nextLaunch: { agent: 'claude', values: {} }, busy: false, warm: 'none' as const, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }, root, 'conflict');
   expect(conflicts.has('request-1')).toBe(true);
 });

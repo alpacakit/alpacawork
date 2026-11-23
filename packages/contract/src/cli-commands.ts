@@ -3,6 +3,7 @@ import { AGENT_CHECK_MS, agentInspectionSchema } from './server-settings.js';
 /** The ordinary CLI's wire commands and what -h says of them. The receiver can register these paths and schemas. */
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
+import { PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
@@ -145,9 +146,12 @@ const reportTitle = text('title', `Plain text, one line; aim for display width $
 /** A description counts characters, each at most 4 UTF-8 bytes. */
 const descriptionFile = file('descriptionFile', 'description', MAX_DETAIL_LENGTH * 4, 'Description Markdown: ' +
   'headings, paragraphs, line breaks, lists, quotes, tables, fenced code, bold, inline code, links and images');
-/** A write's values: only the fields it changes, as field get describes them. */
-const valuesFile = (description: string) => file('valuesFile', 'values', MAX_CONTROL_BODY, `${description}: a JSON object of ` +
-  'field ID to value; a field left out keeps its value, null clears it, a list is replaced whole (field get)');
+/** Where a writer reads how to write a Task's values, and a project's own (no Task's schema names those). */
+const TASK_VALUES_GUIDE = 'field get';
+const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; a project's own values, ${PROJECT_SCHEMA.join(' and ')}: field list`;
+/** A write's values: only the fields it changes, as `guide` describes them. */
+const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('valuesFile', 'values', MAX_CONTROL_BODY, `${description}: a JSON object of ` +
+  `field ID to value; a field left out keeps its value, null clears it, a list is replaced whole (${guide})`);
 const urgent = (what: string) => text('urgent', `Why the requester must read ${what} now (one line)`);
 const schemaTask = text('task', 'Task ID; left out, a Run\'s own Task, else the project the cwd rule ' +
   '(alpacawork -h) gives, else the default schema');
@@ -166,6 +170,7 @@ export const cliCommands: readonly CliCommand[] = [
     boolean('all', 'Include archived and deleted Tasks'),
     text('kind', `Only Tasks of this kind (${taskKindSchema.options.join(' or ')}); their ancestors still lead the path`),
   ], { help: help(...ruleHelp(taskListRules),
+    `Project rows show ${PROJECT_SUMMARY} as summary when it is set and the caller may read the project.`,
     'ID, title and values are always searched. Without --in no History, Requests, Runs or files are read.',
     'files/work: md, txt, json, csv, html up to 1 MiB each; node_modules is excluded.',
     'Each match shows one excerpt (about 80 characters), its source and other match count; ancestors have none.',
@@ -191,7 +196,7 @@ export const cliCommands: readonly CliCommand[] = [
         '(alpacawork -h) gives, refused when it gives none (a Run names it)'),
       text('cwd', 'A project\'s code location on this PC (absolute, or ~/…); empty turns it off'),
       text('expectedParentHash', 'Current parent Task SHA-256 hash'),
-      valuesFile('Field values'),
+      valuesFile('Field values', PROJECT_VALUES_GUIDE),
       file('planFile', 'plan', MAX_CONTROL_BODY, 'Sibling Tasks made at once under the parent, with one mark: ' +
         'a JSON array of {"title", "values"?}'),
       fromUser, internal, quote, sourceRequest,
@@ -205,7 +210,7 @@ export const cliCommands: readonly CliCommand[] = [
     'user asked for the Task, in one save', taskUpdateCliInput, [
     taskId,
     text('title', 'New title'),
-    valuesFile('Changed field values'),
+    valuesFile('Changed field values', PROJECT_VALUES_GUIDE),
     text('cwd', 'A project\'s code location on this PC (absolute, or ~/…); empty turns it off'),
     text('color', 'Project color: six lowercase hex digits #rrggbb; omitted keeps the current color'),
     fromUser, internal, quote, sourceRequest, expectedTaskHash,
@@ -315,14 +320,16 @@ export const cliCommands: readonly CliCommand[] = [
   command('run', 'stop', 'POST', 'Stop a Run; task report --state stopped stops a Task with its subtree', runStopInput,
     [text('run', 'Run ID'), quote, sourceRequest], { mutation: true }),
   command('field', 'get', 'GET', 'Read the shape of the values a Task writes, as JSON Schema: its fields in order, each with ' +
-    'how to write it, naming the project the order comes from. A field\'s definition is changed with field set', fieldGetInput, [text('version', 'Previously read schema version'), schemaTask]),
+    'how to write it, naming the project the order comes from. A project\'s ID gives the fields of the Tasks in it; a project\'s own values ' +
+    `(${PROJECT_SCHEMA.join(', ')}) are in field list. A field\'s definition is changed with field set`, fieldGetInput, [text('version', 'Previously read schema version'), schemaTask]),
   command('field', 'use', 'POST', 'Choose the fields a project\'s Tasks use and their order, or inherit the nearest project above\'s',
-    fieldUseInput, [text('task', 'Project ID (P<number>) whose own fields these are'),
+    fieldUseInput, [text('task', 'Project ID (P<number>) whose Tasks use these fields'),
       list('fields', 'Field IDs in order, system fields included (decide, user_instructions, conclusion, notes)'),
       boolean('inherit', 'Drop the project\'s own fields and use the nearest project above\'s'),
       quote, sourceRequest, expectedTaskHash], { mutation: true, help: help(...ruleHelp(fieldUseRules),
       'A field left out keeps its stored values; they show again when it comes back.') }),
-  command('field', 'list', 'GET', 'Read the field definitions every project can use, with where each is used', emptyInput, []),
+  command('field', 'list', 'GET', 'Read every field definition, with where each is used: the fields projects choose for their Tasks, and ' +
+    `a project\'s own values (${PROJECT_SCHEMA.join(', ')}). maxChars and maxItems are the size to aim for; a write is refused past about 1.3 times it`, emptyInput, []),
   command('field', 'set', 'POST', 'Add a field definition or change one; it changes for every project using it. A field that comes with the app changes only --required', fieldSetCliInput, [
     text('field', 'Field ID: lowercase letters, digits and _ starting with a letter'),
     text('title', 'Title shown to writers and on screen'), text('type', 'text or schema (an item of member fields)'),
@@ -342,7 +349,7 @@ export const cliCommands: readonly CliCommand[] = [
       help: help('A default field, or one a project or another field still uses, is refused.') }),
   command('workspace', 'returns', 'POST', 'Retry returns and wakes now', emptyInput, [], { mutation: true }),
   command('workspace', 'url', 'GET', 'Read the running workspace UI URL', emptyInput, []),
-  command('config', 'get', 'GET', 'Read limits and agents; optionally check executable and sign-in status', agentInspectionSchema,
+  command('config', 'get', 'GET', 'Read limits, agents and AI stacks; optionally check executable and sign-in status', agentInspectionSchema,
     [text('adapter', 'Adapter to inspect with --command'), text('command', 'Absolute executable path to inspect (version only; requires --adapter)'),
       boolean('check', `Check executable paths, versions and sign-in status (up to ${AGENT_CHECK_MS / 1000} seconds)`)],
     { help: help(agentsHelp,
@@ -350,7 +357,7 @@ export const cliCommands: readonly CliCommand[] = [
       'Ordinary reads start no executables. Add --check for host observations. availability is keyed by profile; detected is keyed by adapter. Each has command, version, candidates (path and version on server PATH), status (ready, signed_out, unknown, not_found), nextAction and issue. Observations are fresh and never saved; all checks share one 10-second deadline without calling a model.',
       'With --check --adapter codex --command /absolute/path/to/codex, inspected returns a version-only observation for that path. Existing settings and accepted Runs are unchanged.') }),
   command('config', 'set', 'POST', 'Save the screen\'s part of config.yaml', configSetShape, [
-    text('config', 'limits as YAML'), text('agents', 'The agents block as written'),
+    text('config', 'Limits and optional aiStack and coordinatorAiStack as YAML'), text('agents', 'The agents block as written'),
     text('expectedConfigHash', 'Current config.yaml hash'),
   ], { mutation: true, journaled: true, help: help(agentsHelp,
     'The agents block is saved as written. Delete a setting to follow the defaults in future updates.',

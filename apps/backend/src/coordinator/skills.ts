@@ -1,6 +1,7 @@
 import { requireRuntimeAdapter } from '../agents/registry.js';
 import { pathToFileURL } from 'node:url';
 import { appRoot } from '../app-paths.js';
+import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 /** Read-only local skill catalogs. No CLI startup, plugin initialization, network, or TTL success cache. */
 import { join, resolve } from 'node:path';
 import { Files, CatalogUnavailable, type CatalogReason } from './skill-catalog/files.js';
@@ -12,6 +13,17 @@ import { coordinatorCwd } from '../runs/execution-control.js';
 type CatalogSkill = { name: string; description: string; invocation: '/' | '$' };
 type Catalog = { status: 'ready'; profile: string; skills: CatalogSkill[] } |
   { status: 'unavailable'; profile: string; skills: []; reason: CatalogReason };
+
+const SKILL_INVOCATIONS = { claude: '/', codex: '$' } as const;
+
+/** Skill chips are serialized as complete words in the message body. */
+export function assertSkillInvocations(adapter: string, text: string, skills: readonly string[]): void {
+  const invocation = Object.hasOwn(SKILL_INVOCATIONS, adapter) ? SKILL_INVOCATIONS[adapter as keyof typeof SKILL_INVOCATIONS] : undefined;
+  const words = new Set(text.split(/\s+/u));
+  if (!invocation || skills.some(name => !words.has(invocation + name)))
+    throw new Problem(PROBLEM_CODE.conflict, 'The message uses a different skill invocation than the selected coordinator. Check the skills and send it again.',
+      undefined, { reason: { kind: 'skill_invocation_mismatch' } });
+}
 
 /**
  * What a coordinator turn finds from the folder it runs in. `adapter`, `argv`, `env` and `session` are the admitted
@@ -80,7 +92,7 @@ export async function coordinatorSkills(input: CatalogInput & { adapter: string 
     }
     return { status: 'ready', profile,
       skills: definitions.filter(definition => definition.invocable && !ambiguous.has(definition.name)).sort((a, b) => a.name.localeCompare(b.name, 'en')).map(definition => ({
-        name: definition.name, description: definition.description, invocation: kind === 'codex' ? '$' : '/',
+        name: definition.name, description: definition.description, invocation: SKILL_INVOCATIONS[kind],
       })) };
   } catch (error) {
     return { status: 'unavailable', profile, skills: [], reason: error instanceof CatalogUnavailable ? error.reason : 'unreadable' };

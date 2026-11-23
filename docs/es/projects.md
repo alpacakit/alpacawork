@@ -4,15 +4,17 @@ Cómo decidir los proyectos, la política y las IA que usas. Todos los ajustes d
 
 ## Usarlo con un repositorio existente
 
-Elige la carpeta de ese repositorio como “Ubicación del código” del proyecto. No hace falta mover nada. La IA sigue leyendo los `AGENTS.md` y `CLAUDE.md` de la carpeta como siempre.
+Elige la carpeta de ese repositorio como “Carpeta de trabajo” del proyecto. No hace falta mover nada. La IA sigue leyendo los `AGENTS.md` y `CLAUDE.md` de la carpeta como siempre.
 
-Para cambiarla después: nombre del proyecto arriba a la izquierda → “Configuración de (nombre del proyecto)…” → “Elegir” en “Ubicación del código” → “Guardar”.
+Para cambiarla después: nombre del proyecto arriba a la izquierda → “(nombre del proyecto) · configuración…” → “Elegir” en “Carpeta de trabajo” → “Guardar”.
 
 La IA modifica archivos sin pedir confirmación. Si haces un commit antes de empezar, podrás distinguir los cambios de la IA y deshacerlos.
 
 ## Añadir proyectos
 
-Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la ubicación del código, y pulsa “Crear”.
+Crea un proyecto por repositorio. Pulsa el nombre del proyecto arriba a la izquierda → “Nuevo proyecto”, escribe el nombre y la carpeta de trabajo, y pulsa “Crear”.
+
+Cada proyecto tiene un “Resumen”, una frase que dice para qué sirve. La IA lo lee para elegir el proyecto de una solicitud que no dice a cuál corresponde, y todas las IA que trabajan en el proyecto lo reciben. Mientras el resumen esté vacío, la IA lo escribe la próxima vez que coloca una solicitud en el proyecto. Puedes cambiarlo en la configuración del proyecto.
 
 Los proyectos que ya no uses se pueden archivar desde el final de la configuración del proyecto.
 
@@ -23,7 +25,6 @@ Escribe con frases normales, en “Política del proyecto” de la configuració
 Sirve básicamente para lo mismo que `AGENTS.md`. En la política del proyecto, escribe las instrucciones que quieres que la IA lea solo cuando usa alpacawork.
 
 ```text
-Objetivo: que la web de la tienda se vea bien en el teléfono y publicarla
 Cómo trabajar: antes de hacer un cambio que afecte al aspecto, muestra un ejemplo y pregunta
 Lo que dejo en tus manos: decide sin preguntar cómo trabajar, las pruebas y la limpieza, e informa
 Lo que no debes hacer: hacer push a GitHub o publicar sin aprobación
@@ -45,7 +46,7 @@ Se usan tus suscripciones y configuraciones actuales de las IA tal como están. 
 
 ## Elegir el modelo
 
-El modelo que eliges junto al cuadro de texto es el de la IA que es tu punto de contacto. El modelo de las IA que hacen las tareas se indica en la solicitud o en la política (“Haz este trabajo con opus”).
+Junto al botón de enviar del cuadro de texto ves el modelo que usa la IA que es tu punto de contacto (por ejemplo `opus(low)`). Al pulsarlo se abre “IA con la que hablas en el cuadro de texto (coordinador)” en “Configuración (el engranaje) → Servidor”, donde eliges esa IA y las IA alternativas que siguen cuando se detiene. Las IA que hacen las tareas se eligen en “IA de las tareas”, en la misma pantalla. Para usar otro modelo en un trabajo concreto, indícalo en la solicitud o en la política (“Haz este trabajo con opus”). Una conversación que pasó a una IA alternativa por un límite de uso o de capacidad sigue con esa IA. Para volver a la IA 1, pulsa “Borrar conversación” o cambia esa fila en la configuración.
 
 Para añadir un modelo nuevo, abre su tarjeta en “Agentes” de “Configuración (el engranaje) → Servidor”, añade el nombre del modelo en la fila `model` de “Valores disponibles al pedir trabajo” y pulsa “Guardar”.
 

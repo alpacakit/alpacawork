@@ -19,7 +19,7 @@ import { TestWorkspace } from './fixtures';
 
 const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id: 'first', at: new Date().toISOString(), ask: 'One instruction',
   attachments: [], status: 'queued', waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null, ...extra });
-const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', agent: null, warm: 'none' as const, busy, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy, cancelled: [], turns });
 function Surface() {
   const turns = useConversation(state => state.conversation?.turns ?? []);
   const expanded = useConversation(state => state.expanded);
@@ -57,7 +57,7 @@ test.each([false, true])('the local sending row keeps its DOM identity when serv
   const root = '/fixture', cid = 'waiting-test', id = crypto.randomUUID(), key = draftKey(root, 'coordinator', cid);
   setConversationState({ root, expanded, conversation: conversation() });
   useDraftStore.setState({ unavailable: false, entries: { [key]: { status: 'editing', values: { body: '', doc: JSON.stringify(textDocument('One instruction')), requestId: id } } } });
-  freeze(root, { conversationId: cid, text: 'One instruction', attachments: [], selected: {} }, { body: '', doc: JSON.stringify(textDocument('One instruction')), requestId: id }, { from: key });
+  freeze(root, { conversationId: cid, text: 'One instruction', attachments: [] }, { body: '', doc: JSON.stringify(textDocument('One instruction')), requestId: id }, { from: key });
   const attempt = begin(root, id)!; attempt.check();
   render(<Surface />);
   const row = document.querySelector('[data-coordinator-local=sending]')!;
@@ -120,7 +120,7 @@ test('the folded pill and message say waiting before dispatch, then sending only
   const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
   const values = { body: '', doc: JSON.stringify(textDocument('Five second message')), requestId: id };
   useDraftStore.setState({ unavailable: false, entries: { [key]: { status: 'editing', values } } });
-  freeze(root, { conversationId: cid, text: 'Five second message', attachments: [], selected: {} }, values,
+  freeze(root, { conversationId: cid, text: 'Five second message', attachments: [] }, values,
     { from: key });
   render(<Surface />);
   const pill = document.querySelector('[data-coordinator-pill]')!;
@@ -150,7 +150,7 @@ function mixedQueue(text: string) {
   const root = '/fixture', cid = 'waiting-test', id = crypto.randomUUID(), key = draftKey(root, 'coordinator', cid);
   const values = { doc: JSON.stringify(textDocument(text)), requestId: id };
   useDraftStore.setState(state => ({ entries: { ...state.entries, [key]: { status: 'editing', values } } }));
-  freeze(root, { conversationId: cid, text, attachments: [], selected: {} }, values,
+  freeze(root, { conversationId: cid, text, attachments: [] }, values,
     { from: key });
   return id;
 }
@@ -316,7 +316,7 @@ test('an earlier cancelled recovery row precedes later server waiting words, eve
   updateDraft(key, { values: { ...values, doc: JSON.stringify(textDocument('Later waiting')), phase: 'composing' } });
   expect(cancelOutgoing(root, first, key)).toBe('kept');
   const next = useDraftStore.getState().entries[key]!.values, second = next.requestId!;
-  expect(freeze(root, { conversationId: 'waiting-test', text: 'Later waiting', attachments: [], selected: {} }, next, { from: key })).toBe(second);
+  expect(freeze(root, { conversationId: 'waiting-test', text: 'Later waiting', attachments: [] }, next, { from: key })).toBe(second);
   // A newer unsent draft keeps cancellation recoverable on its row. With an empty prepared input,
   // admission restores it into that input instead.
   const current = useDraftStore.getState().entries[key]!.values;

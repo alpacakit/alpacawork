@@ -110,7 +110,7 @@ export class ControlTaskCommands {
       const depth = parent ? new TaskTree(writer.branch(writer.projectFor(parent.id))).depth(parent.id) + 1 : 1;
       if (depth > 32) throw new Problem(PROBLEM_CODE.tooDeep, 'Logical task depth exceeds 32 levels', undefined, { reason: { kind: 'logical_task_depth_exceeds_32_levels' } });
       if (kind === 'task') markFits(parent!.meta.kind, userRequested);
-      // A new task takes its parent's schema; a new project's own values are its policy.
+      // A new task takes its parent's schema; a project has a fixed schema for its own values.
       const fields = readTaskFields(tx.store.connection);
       const schema = kind === 'project' ? PROJECT_VALUES : schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas);
       const ids = input.tasks.map(draft => writer.create(kind, id => {
@@ -239,7 +239,7 @@ export class ControlTaskCommands {
   /**
    * Replaces a project's own schema (task-values-store writeProjectSchema), or with null makes it inherit, and records
    * it as a change of the project's settings (body_updated, changed field `schema`), so launches carry the new order.
-   * A project's own value, its policy, is not a field of the schema, so no order hides it.
+   * The project's own values stay available in project settings regardless of the fields its Tasks use.
    */
   setSchema(input: { task: string; fields: readonly string[] | null; expectedTaskHash: string }) {
     return this.change(input.task, (_, tx, snapshot) => {

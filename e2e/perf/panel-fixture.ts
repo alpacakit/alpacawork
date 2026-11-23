@@ -6,7 +6,7 @@ import { patchTask, taskFolder } from '../fixture/task-state.ts';
 import { SAMPLE_NOW } from '../fixture/sample.ts';
 import type { Page } from '@playwright/test';
 
-export const conversation: CoordinatorConversation = { id: 'render-motion', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [],
+export const conversation: CoordinatorConversation = { id: 'render-motion', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
   turns: Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
     answer: Array.from({ length: 25 }, (_, n) => `### Item ${n}\nText with explanations and **checks**. Compare load under the same conditions.\n\n- Result ${n}\n- Next review\n\n`).join(''),

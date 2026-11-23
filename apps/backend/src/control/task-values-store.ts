@@ -142,7 +142,7 @@ export function readTaskFields(db: DatabaseSync): TaskFields {
 
 /** A list of fields and the project whose own schema it is (null: the default schema, or a project's own values). */
 export type EffectiveSchema = { fields: readonly string[]; from: string | null };
-/** A project's own values: its policy alone (contract PROJECT_SCHEMA), whatever its Tasks use. */
+/** The fixed schema of a project's own values, whatever its Tasks use. */
 export const PROJECT_VALUES: EffectiveSchema = { fields: PROJECT_SCHEMA, from: null };
 type SchemaTree = TaskTree<{ id: string; meta: BranchTask & { kind: TaskKind } }>;
 /**
@@ -152,7 +152,7 @@ type SchemaTree = TaskTree<{ id: string; meta: BranchTask & { kind: TaskKind } }
 export function tasksSchema(tree: SchemaTree, schemas: ReadonlyMap<string, readonly string[]>, taskId: string): EffectiveSchema {
   return schemaAlong([...tree.projects(taskId)].reverse(), schemas);
 }
-/** The fields of a Task's own values: a project's policy, or the schema a task uses (tasksSchema). */
+/** The fields of a Task's own values: the fixed project schema, or the schema a task uses (tasksSchema). */
 export function schemaFor(tree: SchemaTree, schemas: ReadonlyMap<string, readonly string[]>, taskId: string): EffectiveSchema {
   return tree.byId.get(taskId)?.meta.kind === 'project' ? PROJECT_VALUES : tasksSchema(tree, schemas, taskId);
 }

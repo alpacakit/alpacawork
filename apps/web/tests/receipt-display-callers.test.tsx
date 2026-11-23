@@ -105,7 +105,7 @@ function serve() {
       return view ? new Response(snapshotJson(view)) : problemResponse('not_found', 'No task');
     }
     if (target.pathname === '/api/task/history') return new Response(snapshotJson({ ...historyWindowAnswer(), sourcePv: live.sourcePv }));
-    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
+    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
     if (path === '/api/settings/get') return new Response(snapshotJson({ values, revision: 'person-1' }));
     if (path === '/api/person/notices') return new Response(snapshotJson({ state: { version: NOTICE_VERSION, checkpoint, reads: {} }, revision: notices }));
     // The fixture server keeps the notice revision the live index names and does not retain Task reads, so every

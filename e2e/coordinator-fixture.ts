@@ -15,7 +15,9 @@ export function configureCoordinator(root: string) {
   const path = installAgentStub(root, 'claude', [process.execPath, fake]);
   const setting = fixtureAgentSetting('claude');
   setting.params.model = ['opus', 'sonnet']; setting.params.effort = ['medium', 'high'];
-  writeFixtureConfig(root, stringify({ ...existing, agents: { fake: setting, ...existing.agents } }, { lineWidth: 0 }));
+  // The fake goes first, and is the input's AI (writeFixtureConfig).
+  const { coordinatorAiStack: _input, ...kept } = existing;
+  writeFixtureConfig(root, stringify({ ...kept, agents: { fake: setting, ...existing.agents } }, { lineWidth: 0 }));
   return path;
 }
 
@@ -33,7 +35,8 @@ export const fakeCoordinatorArgv = [process.execPath, new URL('./fixture/fake-co
  * configured stay, for the Tasks' Runs. Before serve starts it is a `start` preparation; after, serve writes it.
  */
 export function startFakeCoordinator(root: string): void {
-  const config: { agents?: Record<string, unknown> } = parse(readFileSync(join(root, 'config.yaml'), 'utf8'));
+  const { coordinatorAiStack: _input, ...config }: { agents?: Record<string, unknown>; coordinatorAiStack?: unknown } =
+    parse(readFileSync(join(root, 'config.yaml'), 'utf8'));
   installAgentStub(root, 'claude', fakeCoordinatorArgv);
   writeFixtureConfig(root, stringify({ ...config, agents: {
     'fake-coordinator': fixtureAgentSetting('claude'), ...config.agents,
@@ -50,12 +53,13 @@ export async function readyCoordinator(page: Page, runtime: Runtime) {
   };
   const opening = await conversation();
   const warmed = await page.request.post(runtime.origin + '/api/coordinator/warm', {
-    data: { conversationId: opening.id, agent: 'fake', selected: { model: 'opus', effort: 'medium' } },
+    data: { conversationId: opening.id },
   });
   expect(warmed.ok()).toBe(true);
+  // The fake is the input's AI (configureCoordinator), at its first model and effort.
   await expect.poll(async () => {
     const current = await conversation();
-    return { id: current.id, agent: current.agent, preparing: current.warm === 'preparing' };
+    return { id: current.id, agent: current.nextLaunch?.agent, preparing: current.warm === 'preparing' };
   }, { timeout: 20_000 }).toEqual({ id: opening.id, agent: 'fake', preparing: false });
 }
 

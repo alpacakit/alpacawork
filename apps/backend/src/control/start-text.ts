@@ -76,15 +76,19 @@ function parentOf(tree: LaunchSource['tree'], task: LaunchTask): LaunchTask | nu
 }
 
 /**
- * The policy of each project from the root to the task's own, as written, under the project's name, as they are at
- * this launch. Nothing is cut out of a policy; when they do not fit, the commands that read them.
+ * Each project's summary and full policy under its name, from the root to the Task's own project.
+ * If the chain does not fit, include the command that reads its projects.
  */
 function policyPart(source: LaunchSource, taskId: string): Part | null {
   const chain = policyChain(source.tree, source.contexts, taskId);
   if (!chain.length) return null;
   const heading = 'Project policy';
   return { full: () => section(heading, ['Listed from the root project down.',
-    ...chain.map(link => `\n### ${link.title} (${link.project})\n${link.policy}`)]),
+    ...chain.map(link => {
+      const summary = link.summary && `Summary: ${link.summary}`;
+      const body = [summary, link.policy].filter(Boolean).join('\n\n');
+      return `\n### ${link.title} (${link.project})\n${body}`;
+    })]),
   short: section(heading, [`Too large to include. Read the policies of ${chain.map(link => link.project).join(', ')} with ` +
     'alpacawork task get --task <project ID>.']) };
 }
@@ -220,6 +224,11 @@ const READ_GUIDE = section('Reading records', [
   '- A Run\'s result: alpacawork run get --run <ID> (the launch prompt it received: --kind prompt)',
   '- Usage: alpacawork -h, alpacawork <group> <verb> -h',
 ]);
+// Prompt the owner to act on the installed-skills procedure before entering the reporting workflow.
+const OWNER_SKILL_GUIDE = 'Use the alpacawork procedure "Open the skills for your next action" now. ' +
+  'Use your skill tool to open the applicable installed skills before preparing an estimate or starting work. ' +
+  'Return to that procedure before a consequential choice, question, or result report.\n';
+
 /** What a responsible writes with; a worker changes no Task and asks nothing, so it is not told. */
 const WRITE_GUIDE = section('Writing records', [
   '- Procedure, roles and reporting: the alpacawork skill. Each command\'s contract: alpacawork <group> <verb> -h',
@@ -300,10 +309,11 @@ export function startText({ source, taskId, responsible, mode, at, body, conditi
     return head + projects + original + own + above + message + guide;
   }
   const head = continued
-    ? `[alpacawork] Request for task ${taskId} (continuing the same conversation). You are the owner of this task. If you have not read the alpacawork skill (including after the conversation was compacted), read it before you go on.\n` + language +
+    ? `[alpacawork] Request for task ${taskId} (continuing the same conversation). You are the owner of this task. If you have not read the alpacawork skill (including after the conversation was compacted), read it before you go on.\n` +
+      (voidsEstimate ? OWNER_SKILL_GUIDE : '') + language +
       `Below are the records as of ${at}, when the request was accepted.\n\n`
     : `[alpacawork] Request for task ${taskId}. You are the owner of this task. Read the alpacawork skill before you go on.\n` +
-      language +
+      OWNER_SKILL_GUIDE + language +
       `Below are the records as of ${at}, when the request was accepted. For the current questions, placements and other records, read alpacawork task get --task ${taskId}.\n\n`;
   const guide = continued ? '' : READ_GUIDE + WRITE_GUIDE;
   const parent = continued ? null : parentOf(tree, task);

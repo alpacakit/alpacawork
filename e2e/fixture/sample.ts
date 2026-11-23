@@ -99,8 +99,8 @@ export function createSampleTasks(): SampleTask[] {
   const projects = new Set(tasks.filter((n) => n.kind === "project").map((n) => n.id));
   for (const n of tasks) n.userRequested = n.kind === "task" && (projects.has(n.parent!) || n.state === "waiting");
   for (const n of tasks) {
-    // A project's own value is its policy, free text written as the user likes.
     n.values = n.kind === "project" ? {
+      project_summary: "Month-end accounting, reconciliation, and financial reporting.",
       project_policy: "Goal: close September's books on time with every difference explained.\n\n" +
         "- Reconcile against the source documents before adjusting an entry\n- Ask before posting an adjustment over 100,000 yen\n" +
         "- Do not send anything to vendors without approval",

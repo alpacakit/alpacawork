@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -8,20 +8,26 @@ import { FieldError } from '@/components/ui/field';
 import { useChoiceText } from '@/features/forms/choice-text';
 import { cn } from '@/lib/utils';
 import type { AgentDraft } from './agent-settings-draft';
-import { moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
+import { coordinatorStart, startValues, moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
+
+/** Which of config.yaml's two AI stacks a list edits: the one tasks run on (`aiStack`), or the input's (`coordinatorAiStack`). */
+export type StackKind = 'tasks' | 'coordinator';
+/** The id of each list's heading: the input's AI opens the settings onto its own (openSettings' `focus`). */
+export const stackHeadingId = (kind: StackKind) => `settings-ai-stack-${kind}`;
+/** The heading each list is named by, where a refused save says which list it is. */
+export const stackTitleKey = (kind: StackKind) => kind === 'tasks' ? 'agentSettings.aiStack.title' as const : 'agentSettings.coordinatorStack.title' as const;
 
 /**
- * The AI stack: the rows owners and members run on, in order. The first is where they start (the default); when one
- * stops on a usage limit or capacity, the next takes over the same request. Each row is an agent and a value of each
- * of its choices; the same agent may stand on several rows with other models. A row the agents' settings no longer
- * run says so here, as the settings change, and keeps the save back.
+ * One AI stack: the rows its AIs run on, in order. The first is where they start (the default); when one stops on a
+ * usage limit or capacity, the next takes over. Each row is an agent and a value of each of its choices; the same
+ * agent may stand on several rows with other models. A row the agents' settings no longer run says so here, as the
+ * settings change, and keeps the save back. Both stacks are this one list; only their words differ.
  */
-export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; agents: AgentDraft[]; onChange: (rows: StackRowDraft[]) => void }) {
+export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; rows: StackRowDraft[]; agents: AgentDraft[]; onChange: (rows: StackRowDraft[]) => void }) {
   const { t } = useTranslation('panels');
-  const id = useId();
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
-  const added = newStackRow(agents, rows);
+  const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : startValues);
   // A row just added is edited from its first choice (its model), which takes the focus.
   const list = useRef<HTMLOListElement>(null);
   const [focusRow, setFocusRow] = useState<string | null>(null);
@@ -32,14 +38,16 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
     setFocusRow(null);
   }, [focusRow]);
   return <div className="flex flex-col gap-2">
-    <section aria-labelledby={`${id}-title`} data-ai-stack className="min-w-0 rounded-lg border border-line bg-raised">
+    {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
+    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
-        <h3 id={`${id}-title`} className="text-base font-semibold">{t('agentSettings.aiStack.title')}</h3>
-        <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.lead')}</p>
+        {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
+        <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
+        <p className="mt-1 text-sm text-muted">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
-      <ol ref={list} aria-labelledby={`${id}-title`} className="m-0 list-none p-0">
+      <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
-          issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index)}
+          issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
           onMove={by => onChange(moveRow(rows, index, by))}
           onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
@@ -48,10 +56,9 @@ export function AiStack({ rows, agents, onChange }: { rows: StackRowDraft[]; age
         <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
           {t(rows.length ? 'agentSettings.aiStack.add' : 'agentSettings.aiStack.addFirst')}</Button>
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
-        <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>
+        {/* Only a request names an AI for a task; nothing names one for the input. */}
+        {kind === 'tasks' && <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>}
       </div>
-      {/* The input's AI follows the same order: said last, inside the box it refers to. */}
-      <p data-ai-stack-input className="m-0 border-t border-line px-4 py-3 text-sm text-muted narrow:px-3">{t('agentSettings.aiStack.coordinatorNote')}</p>
     </section>
   </div>;
 }
@@ -88,15 +95,14 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
       </div>
       {choices.length > 0 && <div className="grid min-w-0 flex-1 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-center gap-x-3 gap-y-2 narrow:col-span-2 narrow:col-start-2 narrow:row-start-2 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
         {choices.map((choice, at) => {
-          const value = Object.hasOwn(row.values, choice.key) ? row.values[choice.key]! : choice.values[0]!;
-          const offered = choice.values.includes(value);
+          const { value, refused } = choice;
           return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
             <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
-            <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={!offered || undefined}
+            <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
               aria-label={t('agentSettings.aiStack.valueFor', { n, row: text.row(choice.key) })}
-              onChange={event => agent && onChange(withRowValue(agent, row, choice.key, event.target.value === '-' ? null : event.target.value))}>
-              {!offered && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
-              {choice.values.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
+              onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
+              {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
+              {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
             </NativeSelect>
           </label>;
         })}
@@ -107,7 +113,7 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
         onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
       <Button type="button" variant="quiet" size="icon" disabled={index === count - 1} aria-label={t('agentSettings.aiStack.down', { n })} title={t('agentSettings.aiStack.down', { n })}
         onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" disabled={count === 1} aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
+      <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
     </div>
     {(issues.length > 0 || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1">

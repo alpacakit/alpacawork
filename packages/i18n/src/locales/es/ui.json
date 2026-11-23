@@ -5,6 +5,11 @@
     "undo": "Deshacer"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "IA con la que hablas en el cuadro de texto: {{ai}}. Púlsalo para cambiarla en la configuración",
+      "none": "No hay una IA con la que hablar en el cuadro de texto, así que no se puede enviar. Púlsalo para abrir la configuración",
+      "setUp": "Configurar IA"
+    },
     "attached": "Solo archivos adjuntos",
     "attempts": {
       "stopped": "{{agent}} — se detuvo por {{reason}}",
@@ -21,6 +26,7 @@
     "completeHint": "Marcar {{id}} como completada",
     "conflict": "ya llegó otro contenido con el mismo ID",
     "conversationChanged": "La conversación cambió",
+    "coordinatorAiChanged": "No se envió: cambió la IA con la que hablas en el cuadro de texto. Revisa las skills y vuelve a enviar.",
     "copyAnswer": "Copiar respuesta",
     "deliveryRefused": "El agente no pudo recibir el mensaje. Sigue en cola.",
     "done": "Completar",
@@ -60,8 +66,6 @@
     "joinedCount_one": "+{{count}} más",
     "joinedCount_many": "+{{count}} más",
     "joinedCount_other": "+{{count}} más",
-    "launchChoiceChanged": "El modelo y las demás opciones con las que se envió ya no se pueden enviar. Elige de nuevo y envía",
-    "launchChoiceUnresendable": "El modelo y las demás opciones con las que se envió ya no permiten reenviarlo. Cuando se confirme, se mostrará si llegó",
     "loadFailed": "No se pudo cargar la conversación",
     "loading": "Cargando la conversación…",
     "loadingWanted": "Se abrirá cuando termine de cargar…",
@@ -245,8 +249,12 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "Lo que escribas aquí pasa tal cual a las instrucciones de cada trabajo de este proyecto. Por ejemplo: el propósito (para qué es el proyecto), cómo te gusta que se trabaje (qué se puede dejar a los agentes y qué hay que preguntarte) y lo que no se debe hacer.",
+      "hint": "Lo que escribas aquí pasa tal cual a las instrucciones de cada trabajo de este proyecto. Por ejemplo: cómo te gusta que se trabaje (qué se puede dejar a los agentes y qué hay que preguntarte) y lo que no se debe hacer.",
       "title": "Política del proyecto"
+    },
+    "project_summary": {
+      "hint": "Una frase sobre para qué es este proyecto: el tipo de trabajo que va en él. Se muestra junto al nombre del proyecto en la lista, donde se lee para elegir en qué proyecto va una nueva petición, y va encima de la política del proyecto en las instrucciones de cada trabajo de este proyecto. Cómo se hace el trabajo va en la política del proyecto.",
+      "title": "Resumen del proyecto"
     },
     "remaining": {
       "hint": "Uno por cada trabajo que queda: `<qué> — <quién / a la espera de qué>` (la condición para reanudar). Los pasos y los comandos van en archivos de la carpeta de la tarea. Quita lo que ya esté hecho.",
@@ -316,10 +324,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Reintenta más tarde o con otro modelo, o detén la tarea",
-      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Reintenta con otro modelo o cuando el límite se restablezca, o detén la tarea",
-      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Reintenta cuando el límite se restablezca, o detén la tarea",
-      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Reintenta cuando el límite se restablezca, o detén la tarea"
+      "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Sigue con la misma IA más tarde, sigue con otra IA, o detén la tarea",
+      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea",
+      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea",
+      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea"
     },
     "causeReason": {
       "modelCapacity": "El modelo está al límite de su capacidad",
@@ -349,7 +357,7 @@
     "reason": {
       "children": "La ejecución alcanzó su límite de solicitudes. Revisa el trabajo y envía una instrucción aparte si hace falta",
       "depth": "Se alcanzó el límite de profundidad de las solicitudes. Revisa el resultado y envía una nueva instrucción si hace falta",
-      "failed": "La ejecución del agente falló o terminó sin informe. Elige si reintentar o detener",
+      "failed": "La ejecución del agente falló o terminó sin informe. Elige si seguir o detener",
       "limit_one": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_many": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_other": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
@@ -359,8 +367,9 @@
       "responsibleUnavailable": "No se pudo iniciar la solicitud al responsable. Comprueba la asignación del responsable y el perfil de inicio, y reenvía la instrucción",
       "unconfirmed": "No se pudo confirmar si la respuesta llegó al agente. Comprueba el resultado y envía una instrucción si hace falta"
     },
-    "retry": "Reintentar",
-    "stop": "Detener"
+    "retry": "Seguir con la misma IA",
+    "stop": "Detener",
+    "switch": "Seguir con otra IA"
   },
   "undo": {
     "offer": {

@@ -5,6 +5,11 @@
     "undo": "Desfazer"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "IA com quem você fala no campo de mensagem: {{ai}}. Toque para mudar nas configurações",
+      "none": "Não há IA para falar no campo de mensagem, então nada pode ser enviado. Toque para abrir as configurações",
+      "setUp": "Configurar IA"
+    },
     "attached": "Somente anexos",
     "attempts": {
       "stopped": "{{agent}} — parou por {{reason}}",
@@ -21,6 +26,7 @@
     "completeHint": "Marcar {{id}} como concluída",
     "conflict": "já chegou um conteúdo diferente com o mesmo ID",
     "conversationChanged": "A conversa mudou",
+    "coordinatorAiChanged": "Não foi enviado: a IA com quem você fala no campo de mensagem mudou. Confira as skills e envie de novo.",
     "copyAnswer": "Copiar resposta",
     "deliveryRefused": "O agente não pôde receber a mensagem. Ela continua na fila.",
     "done": "Concluir",
@@ -60,8 +66,6 @@
     "joinedCount_one": "mais {{count}}",
     "joinedCount_many": "mais {{count}}",
     "joinedCount_other": "mais {{count}}",
-    "launchChoiceChanged": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados agora. Escolha de novo e envie",
-    "launchChoiceUnresendable": "O modelo e as outras opções com que a mensagem foi enviada não podem ser usados para reenviar agora. Você verá se ela chegou assim que isso for confirmado",
     "loadFailed": "Não foi possível carregar a conversa",
     "loading": "Carregando a conversa…",
     "loadingWanted": "Abre assim que terminar de carregar…",
@@ -245,8 +249,12 @@
       "title": "PR (MR)"
     },
     "project_policy": {
-      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: o propósito (para que serve o projeto), como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
+      "hint": "O que você escreve aqui entra, do jeito que está, nas instruções de todo trabalho deste projeto. Por exemplo: como você gosta que o trabalho seja feito (o que pode ficar com os agentes e o que perguntar a você) e o que não pode ser feito.",
       "title": "Política do projeto"
+    },
+    "project_summary": {
+      "hint": "Uma frase sobre para que serve este projeto: o tipo de trabalho que cabe nele. Aparece ao lado do nome do projeto na lista, onde é lido para escolher em qual projeto um novo pedido entra, e vai acima da política do projeto nas instruções de todo trabalho deste projeto. Como o trabalho é feito vai na política do projeto.",
+      "title": "Resumo do projeto"
     },
     "remaining": {
       "hint": "Uma linha por trabalho que falta: `<o quê> — <quem / aguardando o quê>` (a condição para retomar). Passos e comandos vão em arquivos na pasta da tarefa. Remova o que já foi feito.",
@@ -316,10 +324,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Tente novamente mais tarde ou com outro modelo, ou pare",
-      "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Tente novamente com outro modelo ou depois que o limite for renovado, ou pare",
-      "sessionLimit": "O agente atingiu o limite de uso de 5 horas, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare",
-      "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare"
+      "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Continue com a mesma IA mais tarde, continue com outra IA, ou pare",
+      "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare",
+      "sessionLimit": "O agente atingiu o limite de uso de 5 horas, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare",
+      "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare"
     },
     "causeReason": {
       "modelCapacity": "O modelo está sobrecarregado",
@@ -349,7 +357,7 @@
     "reason": {
       "children": "A execução atingiu o limite de solicitações. Revise o trabalho e envie outra instrução se precisar",
       "depth": "Limite de profundidade de solicitações atingido. Revise o resultado e envie uma nova instrução se precisar",
-      "failed": "A execução do agente falhou ou terminou sem relatório. Escolha entre tentar novamente ou parar",
+      "failed": "A execução do agente falhou ou terminou sem relatório. Escolha entre continuar ou parar",
       "limit_one": "As trocas automáticas pararam no limite ({{count}} aguardando)",
       "limit_many": "As trocas automáticas pararam no limite ({{count}} aguardando)",
       "limit_other": "As trocas automáticas pararam no limite ({{count}} aguardando)",
@@ -359,8 +367,9 @@
       "responsibleUnavailable": "Não foi possível iniciar a solicitação ao responsável. Verifique a atribuição do responsável e o perfil de inicialização e envie a instrução novamente",
       "unconfirmed": "Não foi possível confirmar se a resposta chegou ao agente. Verifique o resultado e envie uma instrução se precisar"
     },
-    "retry": "Tentar novamente",
-    "stop": "Parar"
+    "retry": "Continuar com a mesma IA",
+    "stop": "Parar",
+    "switch": "Continuar com outra IA"
   },
   "undo": {
     "offer": {

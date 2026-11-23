@@ -4,16 +4,17 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { stringify } from 'yaml';
-import type { AiStackPrefix } from '@alpacawork/contract';
+import { serverSettingsSchema, type AiStackPrefix } from '@alpacawork/contract';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { sourceMessage } from '@alpacawork/backend/test-dist/coordinator/messages.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { createLaunchMemory } from '@alpacawork/backend/test-dist/receiver/person-state.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
+import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { assignResponsible, currentTaskHash, currentTaskLog, seedFixtureTask } from './helpers/control-fixture.ts';
+import { commandFetch } from './helpers/command-fetch.ts';
 import { receipts, setup, until } from './runs-runtime.fixture.ts';
 
 test('an exhausted owner gives the same request to another agent and the parent gets one return', async t => {
@@ -90,8 +91,11 @@ test('a worker uses a named model just for its request and retains the prior con
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    agents: { ...h.config.agents, claude: { ...h.config.agents.claude, params: { model: ['opus', 'fable'], effort: ['high'] } } },
-    aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'codex', values: {} }],
+    agents: { ...h.config.agents, claude: { ...h.config.agents.claude, params: { model: ['opus', 'fable'], effort: ['high'] } },
+      codex: { ...h.config.agents.codex, params: { ...h.config.agents.codex.params, effort: ['medium', 'low'] },
+        without: { 'gpt-6.2-sol': ['effort'] } } },
+    aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'codex', values: { effort: 'low' } },
+      { agent: 'plain', values: {} }, { agent: 'own', values: {} }],
   }, { aliasDuplicateObjects: false }));
   const owner = h.create('claude', { gate: h.gate('owner') });
   await h.tick();
@@ -132,6 +136,25 @@ test('a worker uses a named model just for its request and retains the prior con
     assert.match(prompt, /Report for Friday/);
     assert.match(prompt, /fixture reply/);
     assert.doesNotMatch(prompt, /Do the important task first\.|continuing the same conversation/);
+
+    const settings = serverSettingsSchema.parse(await (await fetch(new URL('/api/config/get', app.url))).json());
+    const [primary, replacement, third, fourth] = settings.aiStack!;
+    assert.equal(next.launch.values.effort, 'low');
+    assert.deepEqual(replacement!.values, next.launch.values);
+    const saved = await commandFetch(new URL('/api/config/set', app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedConfigHash: settings.hash, agents: settings.agentsText,
+        config: stringify({ limits: settings.limits, aiStack: [primary, replacement, fourth, third] }) }) });
+    assert.equal(saved.status, 200, await saved.text());
+    const reloaded = readAgentsSettings(h.root);
+    assert.ok(reloaded.ok);
+    assert.deepEqual(reloaded.config.aiStack?.map(row => row.agent), ['claude', 'codex', 'own', 'plain']);
+    assert.deepEqual(reloaded.config.aiStack?.[1]?.values, next.launch.values);
+    const continued = await ask('Continue with the same worker.');
+    assert.equal(continued.agent, 'codex');
+    assert.equal(continued.resumes, next.id);
+    assert.deepEqual(continued.launch.values, next.launch.values);
+    await until(() => h.store.get(continued.id)?.state === 'succeeded', 'the worker continues in the fallback session');
+
     const fresh = await ask('Start a fresh discussion with the same worker.', undefined, true);
     assert.equal(fresh.agent, 'codex');
     assert.equal(fresh.resumes, null);
@@ -183,13 +206,13 @@ test('terminating a remaining tool process prevents an otherwise eligible fallba
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    aiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
+    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
   }, { aliasDuplicateObjects: false }));
   const conversation = new CoordinatorConversation(h.root), id = randomUUID(), conversationId = conversation.read().id;
   const app = await startServer(h.root, 0);
   try {
     conversation.ask({ id, conversationId, text: JSON.stringify({ group: true, gate: h.gate('ready'), sessionLimit: true }),
-      attachments: [], selected: {} });
+      attachments: [] });
     await until(() => receipts(h.root).some(entry => entry.branch === 'child'), 'the agent leaves a child process');
     h.release('ready');
     await until(() => conversation.read().turns.find(turn => turn.id === id)?.status === 'failed', 'the exhausted turn ends');
@@ -199,19 +222,17 @@ test('terminating a remaining tool process prevents an otherwise eligible fallba
   } finally { await app.close(); }
 });
 
-test('a queued coordinator message follows the replacement conversation without changing the selected AI memory', async t => {
+test('a queued coordinator message follows the replacement conversation using the coordinator stack', async t => {
   const h = await setup(t);
   h.pauseProjection();
   writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
-    aiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
+    coordinatorAiStack: [{ agent: 'claude', values: {} }, { agent: 'codex', values: {} }],
   }, { aliasDuplicateObjects: false }));
-  const memory = createLaunchMemory(h.root);
-  const recorded = await memory.change({ kind: 'choose', agent: 'claude', values: {} });
   const conversation = new CoordinatorConversation(h.root);
   const conversationId = conversation.read().id;
   const first = randomUUID(), joined = randomUUID(), pending = randomUUID();
   const send = (id: string, plan: object, tasks?: string[]) => conversation.ask({
-    id, conversationId, text: JSON.stringify(plan), attachments: [], selected: {}, tasks,
+    id, conversationId, text: JSON.stringify(plan), attachments: [], tasks,
   });
   const app = await startServer(h.root, 0);
   try {
@@ -245,10 +266,14 @@ test('a queued coordinator message follows the replacement conversation without 
     assert.equal(following?.agent, 'codex');
     assert.equal(following?.resumes, active?.id);
     assert.equal(following?.session?.id, h.store.runtimeGet(active.id)?.session?.id);
-    assert.deepEqual(memory.get(), recorded);
+    assert.equal(conversation.read().nextLaunch?.agent, 'codex');
 
     const later = randomUUID();
-    conversation.ask({ id: later, conversationId, agent: 'claude', selected: {}, attachments: [],
+    writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
+      agents: { ...h.config.agents, retry: h.config.agents.claude, replacement: h.config.agents.codex },
+      coordinatorAiStack: [{ agent: 'retry', values: {} }, { agent: 'replacement', values: {} }],
+    }, { aliasDuplicateObjects: false }));
+    conversation.ask({ id: later, conversationId, attachments: [],
       text: JSON.stringify({ sessionLimit: true, output: 'Second replacement' }) });
     await until(() => conversation.read().turns.some(turn => turn.id === later && turn.status === 'succeeded'), 'the later turn also switches');
     const latest = h.store.read().filter(run => run.requestId === later).at(-1)!;

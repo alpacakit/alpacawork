@@ -13,13 +13,13 @@ import { Input } from "@/components/ui/input";
 import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
 import { AgentSettings } from './AgentSettings';
-import { AiStack } from './AiStack';
+import { AiStack, stackHeadingId, stackTitleKey } from './AiStack';
 import { followRenames } from './ai-stack-draft';
 import { AgentObservationsProvider } from './AgentSettingsExecutable';
 import { EnvironmentFileLine, EnvironmentFileProblems, useEnvironmentFile } from './EnvironmentFile';
 import { validateAgentsDraft } from './agent-settings-draft';
 import { agentDraftIssueText } from './agent-settings-issues';
-import { serverAgentDraftSchema, serverAgentsYaml } from './server-agent-draft';
+import { STACK_FIELDS, serverAgentDraftSchema, serverAgentsYaml, stackKind, type StackField } from './server-agent-draft';
 import { apiError } from "@/data/client";
 import type { WriteBasis } from "@/data/connection";
 import { useAgentStatus, useSaveServerSettings, useServerSettings, useWorkspaceInfo, useWriteDisabled } from "@/data/queries";
@@ -33,16 +33,9 @@ import { configYaml, serverDraft, type ServerDraft } from "./settings-draft";
 
 
 type ConfigPayload = { yaml: string; agents: string; expected: string };
-/** The tab writes its stack rows; with none (no agent enabled yet) it leaves the stack in config.yaml as it is. */
-const stackKept = (draft: ServerDraft): ServerDraft | Omit<ServerDraft, 'aiStack'> => {
-  if (draft.aiStack.length) return draft;
-  const { aiStack: _none, ...rest } = draft;
-  return rest;
-};
-
-/** The first row of the AI stack that keeps a save back: brought into view, its control to fix focused. */
-function focusStackIssue() {
-  const stack = document.querySelector<HTMLElement>('[data-ai-stack]');
+/** The first row of a stack that keeps a save back: brought into view, its control to fix focused. */
+function focusStackIssue(field: StackField) {
+  const stack = document.querySelector<HTMLElement>(`[data-ai-stack="${stackKind(field)}"]`);
   const target = stack?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? stack?.querySelector<HTMLElement>('[data-ai-stack-row][data-invalid] select')
     ?? stack?.querySelector<HTMLElement>('[data-slot="field-error"]');
   if (!target) return;
@@ -52,7 +45,11 @@ function focusStackIssue() {
 }
 
 /** This PC's config.yaml as a draft: what it was last read or saved as (with its hash), saved when changed. */
-export function ServerSettingsTab() {
+/**
+ * `focusCoordinatorAi`: asked again each time it changes (the dialog's request count): the agents unfold and the input's
+ * AI stack is brought into view with its heading focused, once the settings are read.
+ */
+export function ServerSettingsTab({ focusCoordinatorAi }: { focusCoordinatorAi?: number } = {}) {
   const { t } = useTranslation("panels");
   const server = useServerSettings(true);
   const environmentFile = useEnvironmentFile().data;
@@ -76,7 +73,7 @@ export function ServerSettingsTab() {
         unfold('agents');
         return false;
       }
-      const config = { yaml: configYaml(stackKept(valid)), agents: agents.value, expected: base.hash };
+      const config = { yaml: configYaml(valid), agents: agents.value, expected: base.hash };
       const saving = intent.submit(() => config, send);
       if (saving === undefined) return false;
       const saved = await saving;
@@ -86,10 +83,11 @@ export function ServerSettingsTab() {
       form.reset(draft);
     },
     onInvalid: errors => {
-      if (errors.agents || errors.aiStack) unfold('agents');
+      const refused = STACK_FIELDS.find(field => errors[field]);
+      if (errors.agents || refused) unfold('agents');
       if (errors.limits) unfold('advanced');
       // A refused stack takes the eye to the row to fix, once its fold has opened.
-      if (errors.aiStack && !errors.agents) requestAnimationFrame(() => requestAnimationFrame(focusStackIssue));
+      if (refused && !errors.agents) requestAnimationFrame(() => requestAnimationFrame(() => focusStackIssue(refused)));
     },
   });
   const capture = useAnswerGuard(form);
@@ -102,6 +100,18 @@ export function ServerSettingsTab() {
     form.reset(draft);
     setBase({ hash: loaded.hash!, draft });
   }, [loaded, base, form, server.isFetchedAfterMount]);
+
+  const ready = base !== null;
+  useEffect(() => {
+    if (focusCoordinatorAi === undefined || !ready) return;
+    unfold('agents');
+    // Once the fold has opened and drawn the stack.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const heading = document.getElementById(stackHeadingId('coordinator'));
+      heading?.closest('section')?.scrollIntoView?.({ block: 'start' });
+      heading?.focus({ preventScroll: true });
+    }));
+  }, [focusCoordinatorAi, ready]);
 
   const reload = async () => {
     const answer = capture();
@@ -144,8 +154,9 @@ export function ServerSettingsTab() {
         <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
           <FieldHint role="status">{isDirty ? t("settings.status.dirty") : t("settings.status.saved")}</FieldHint>
           {/* A save the stack refused says why beside the button, and takes the eye to the row to fix. */}
-          {formErrors.aiStack && <FieldError data-ai-stack-refused className="mt-type-close">{t('agentSettings.aiStack.saveRefused')}{' '}
-            <Button type="button" variant="ref" onClick={focusStackIssue}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>}
+          {STACK_FIELDS.map(field => formErrors[field] && <FieldError key={field} data-ai-stack-refused={stackKind(field)} className="mt-type-close">
+            {t('agentSettings.aiStack.saveRefused', { list: t(stackTitleKey(stackKind(field))) })}{' '}
+            <Button type="button" variant="ref" onClick={() => focusStackIssue(field)}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>)}
           <FieldHint className="mt-type-close">{t("settings.server.effect")}</FieldHint>
         </div>
         <Button variant="outline" disabled={!isDirty} onClick={() => form.reset()}>
@@ -195,9 +206,9 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
     </SettingSection>
     */}
     <ServerFold id="server-agents" title={t('agentSettings.title')} summary={inUse.length ? t('settings.server.agentsInUse', { names: inUse.join(', ') }) : undefined} {...fold('agents')}>
-    {/* The stack the agents run in, above the agents whose choices its rows pick from. */}
-    {draft.agents.ok && <fieldset disabled={disabled} className="mb-4 min-w-0 border-0 p-0"><Controller name="aiStack" control={control} render={({ field }) =>
-      <AiStack rows={field.value} agents={draft.agents.ok ? draft.agents.value.agents : []} onChange={field.onChange} />} /></fieldset>}
+    {/* The stacks the agents run in (tasks', then the input's), above the agents whose choices their rows pick from. */}
+    {draft.agents.ok && STACK_FIELDS.map(name => <fieldset key={name} disabled={disabled} className="mb-4 min-w-0 border-0 p-0"><Controller name={name} control={control} render={({ field }) =>
+      <AiStack kind={stackKind(name)} rows={field.value} agents={draft.agents.ok ? draft.agents.value.agents : []} onChange={field.onChange} />} /></fieldset>)}
     {/* Under the stack, the agents get their own heading, so their cards do not read as more rows of it. */}
     {draft.agents.ok && <div className="mb-3">
       <h3 className="text-base font-semibold">{t('agentSettings.aiStack.agentsTitle')}</h3>
@@ -207,10 +218,12 @@ function ServerFields({ folds, onFoldsChange, disabled, environmentFile }: {
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
         <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
           onChange={value => {
-            // A row of the stack follows its agent's new name.
+            // A row of either stack follows its agent's new name.
             const before = field.value;
-            const rows = getValues('aiStack'), followed = before.ok ? followRenames(rows, before.value, value) : rows;
-            if (followed !== rows) setValue('aiStack', followed, { shouldDirty: true });
+            for (const stack of STACK_FIELDS) {
+              const rows = getValues(stack), followed = before.ok ? followRenames(rows, before.value, value) : rows;
+              if (followed !== rows) setValue(stack, followed, { shouldDirty: true });
+            }
             field.onChange({ ok: true, value });
           }} /></AgentObservationsProvider>
       : <FieldError ref={field.ref} tabIndex={-1}>{agentIssues.map(issue => agentDraftIssueText(issue, t)).join('\n')}</FieldError>} />
@@ -258,6 +271,6 @@ function ServerYamlExample({ draft }: { draft: ServerDraft }) {
   const agents = open ? serverAgentsYaml(draft) : undefined;
   return <details className="mt-6 text-base" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <DisclosureSummary className="gap-x-2 text-sm text-muted hover:text-ink"><Caret open={open} />{t('settings.server.yamlExample')}</DisclosureSummary>
-    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(stackKept(draft))}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
+    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(draft)}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
   </details>;
 }

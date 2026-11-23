@@ -38,7 +38,7 @@ import { getRequestListener } from '@hono/node-server';
 import { compress } from 'hono/compress';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
 import { cliCommands, type CliCommand } from '@alpacawork/contract/cli-commands';
-import { defaultSettings, emptyLaunchMemory } from '@alpacawork/contract';
+import { defaultSettings } from '@alpacawork/contract';
 import { ControlStore, keepControlChanges, keepControlTables, holdControlWriter, restoreControlWal } from '@alpacawork/db';
 import { INDEX_HEARTBEAT_MS, taskReportResultSchema, taskPlacementResultSchema, taskRequestResultSchema,
   taskWriteResultSchema, taskPlanResultSchema, type ControlTreeDTO } from '@alpacawork/contract/control';
@@ -88,7 +88,7 @@ import { installTaskFileRoutes, installAttachmentFileRoutes } from './file-route
 import { installCoordinatorRoutes } from './coordinator-routes.js';
 import { CoordinatorConversation } from '../coordinator/conversation.js';
 import { ReturnRouter } from '../control/return-router.js';
-import { createFirstRunState, createLaunchMemory, createNoticeState, createPersonSettings, LAUNCH_MEMORY_FILE, UNSAVED_SETTINGS } from './person-state.js';
+import { createFirstRunState, createNoticeState, createPersonSettings, UNSAVED_SETTINGS } from './person-state.js';
 import { FirstRunSkills } from '../installation/first-run-skills.js';
 import { resolveCaller, type CallerClaim } from '../control/credentials.js';
 import { authorize, reportTaskFacts, type Action, type Caller } from '../control/authorize.js';
@@ -366,9 +366,6 @@ export async function startServer(root: string, port: number, options: ServerOpt
   context.noticeState = noticeState;
   const firstRun = createFirstRunState(root);
   context.firstRun = firstRun;
-  // Republished at once on a save here; the file watcher covers an edit by hand.
-  const launchMemory = createLaunchMemory(root, () => republish('launch'));
-  context.launchMemory = launchMemory;
   const firstRunSkills = new FirstRunSkills({ locale: () => uiLocaleOrDefault(personSettings.values().language) });
   context.skills = firstRunSkills;
   /** The screens subscribed to the index. */
@@ -398,7 +395,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     else for (const batch of range.batches) if (batch.seq > lastDemand) {
       for (const key of batch.keys) {
         if (['request', 'run', 'attempt', 'start_grant', 'stop_epoch'].includes(key.kind)) executionPrompt = true;
-        if (['conversation', 'dialogue', 'refusal'].includes(key.kind) || key.kind === 'person' && key.id === 'coordinator') coordinatorDirty = true;
+        if (['conversation', 'dialogue', 'refusal', 'config'].includes(key.kind) || key.kind === 'person' && key.id === 'coordinator') coordinatorDirty = true;
         if (!coordinatorDirty && ['run', 'activity', 'request'].includes(key.kind)) {
           coordinatorDirty = readControl(db => {
             const row = key.kind === 'request' ? db.prepare('SELECT task_id FROM requests WHERE id=?').get(key.id)
@@ -442,14 +439,9 @@ export async function startServer(root: string, port: number, options: ServerOpt
       coordinatorWork = coordinator.work(); coordinatorDirty = false;
     } catch (error) { console.error('Coordinator projection could not be read', error); }
     publishedPresence = presence.status(latestSettings);
-    // A damaged file starts new conversations from nothing remembered, says so, and refuses a change until repaired.
-    let remembered = emptyLaunchMemory, launchError: string | null = null;
-    try { remembered = launchMemory.get(); } catch (error) { launchError = (error as Error).message; }
-    return { person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork, launchMemory: remembered,
+    return { person: { ...personRevisions }, presence: publishedPresence, host: hostNotice, coordinatorWork,
       errors: [...fileFaults.values(), ...runReviews.issues, ...(settleError ? [{ code: PROBLEM_CODE.readFailed,
-        path: '.alpacawork/runs', message: settleError, reason: faultReason(new Error(settleError)) }] : []),
-      ...(launchError ? [{ code: PROBLEM_CODE.readFailed, path: `.alpacawork/${LAUNCH_MEMORY_FILE}`, message: launchError,
-        reason: faultReason(new Error(launchError)) }] : [])] };
+        path: '.alpacawork/runs', message: settleError, reason: faultReason(new Error(settleError)) }] : [])] };
   }
   function queuePushObservation() {
     if (observingPush || lifecycle.state !== 'accepting' || !settingsReadable || !pushPending.size) return;
@@ -574,7 +566,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   httpRoutes.forEach(route => routeActs.set(`${route.method} /api${route.path}`,
     ordinary.has(`${route.method} /api${route.path}`) ? null : entryActFor(route.handler)));
   /** Each request's claim and working directory, read before any route; its caller, once resolved (`callerOf`). */
-  const scopes = new WeakMap<Request, { claim: CallerClaim; cwd: string | null; caller?: Caller }>();
+  const scopes = new WeakMap<Request, ReturnType<typeof requestScope> & { caller?: Caller }>();
   const scopeOf = (request: Request) => scopes.get(request)!;
   /** Who calls (resolveCaller): resolved when first asked, and kept for the rest of the request. */
   const callerOf = (request: Request): Caller => {

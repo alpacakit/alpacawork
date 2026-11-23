@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { installSetupTexts } from "@alpacawork/i18n/setup";
 import { setupSteps, type SetupStep } from "@alpacawork/contract";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { desktopApp, useDesktopApp } from "@/lib/desktop-app";
 import { useFirstRun, useFirstRunChange } from "@/data/first-run";
 import { useFrameSelector } from "@/data/workspace-store";
-import { Loading, StepButtons } from "./parts";
+import { Loading, RecommendedMark, StepButtons } from "./parts";
 import { leaveSetup } from "./entrance";
 import { DisplayStep } from "./DisplayStep";
 import { AgentsStep } from "./AgentsStep";
@@ -76,7 +76,7 @@ function Setup() {
     {step === "agents" && <AgentsStep onBack={() => go("display")} onNext={() => go("skills")} />}
     {step === "skills" && <SkillsStep onBack={() => go("agents")} onNext={() => go("project")} />}
     {(step === "project" || projectSeen) && <div hidden={step !== "project"}>
-      <ProjectStep projectId={state.project} active={step === "project"} onBack={() => go("skills")} onFinish={finish} />
+      <ProjectStep projectId={state.project} onBack={() => go("skills")} onFinish={finish} />
     </div>}
   </Frame>;
 }
@@ -129,6 +129,7 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
   const app = useDesktopApp();
   const asks = way === "prompt";
   const [asking, setAsking] = useState(false);
+  const markId = useId();
   const open = () => leaveSetup(to);
   useEffect(() => { if (!asking && app?.kind !== way) open(); }, [app, asking]);
   const install = async () => {
@@ -148,7 +149,10 @@ function DesktopAppOffer({ to, way }: { to: URL; way: "prompt" | "menu" }) {
         {t("done.later", { settings: t("settings.title", { ns: "panels" }), apps: t("settings.tabs.apps", { ns: "panels" }) })}</p>}
       {asks
         ? <StepButtons other={<Button variant="outline" className="min-h-11 px-4 narrow:w-full" disabled={asking} onClick={open}>{t("done.browser")}</Button>}>
-          <Button className="min-h-11 px-6 narrow:w-full" disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
+          <span className="relative inline-flex narrow:w-full">
+            <RecommendedMark id={markId} className="pointer-events-none absolute -top-2.5 left-2" />
+            <Button className="min-h-11 px-6 narrow:w-full" aria-describedby={markId} disabled={asking} onClick={() => void install()}>{t("done.install")}</Button>
+          </span>
         </StepButtons>
         : <StepButtons><Button className="min-h-11 px-6 narrow:w-full" onClick={open}>{t("done.start")}</Button></StepButtons>}
     </div>

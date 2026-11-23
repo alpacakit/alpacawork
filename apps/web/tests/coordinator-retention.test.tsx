@@ -16,9 +16,9 @@ function seed() {
   return entries;
 }
 
-const fixed = (text: string) => ({ conversationId: 'conversation', text, selected: { model: 'opus' }, attachments: ['a.txt'] });
+const fixed = (text: string) => ({ conversationId: 'conversation', text, attachments: ['a.txt'] });
 const next = (requestId = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument('')), phase: 'prepared', requestId });
-const draftText = (entry: { values: Record<string, string> } | undefined) => entry && serialize(draftDocument(entry.values), '');
+const draftText = (entry: { values: Record<string, string> } | undefined) => entry && serialize(draftDocument(entry.values));
 
 test('the press fixes the request and retains the input in one write; nothing new is sent while it is unresolved, and its answer cannot overwrite the next draft', () => {
   seed();
@@ -64,18 +64,18 @@ test('refused before anything else is written, the words and files go back at on
   expect(readDrafts().entries[key]!.values).toEqual({ ...original, requestId: expect.any(String), phase: 'composing', seen: 'T9', seenProject: '' });
   const again = useDraftStore.getState().entries[key]!.values.requestId!; expect(again).not.toBe(original.requestId);
   freeze('/fixture', fixed('Fixed text'), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
-  reconcileOutbox({ id: 'conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] }, '/fixture', null);
+  reconcileOutbox({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }, '/fixture', null);
   expect(holds(readDrafts().entries, '/fixture', 'conversation')).toBe(true);
   // Its turn as sent: the same words, context and files.
   const turn = { id: again, at: '', ask: 'Fixed text', attachments: ['a.txt'], status: 'queued' as const, waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
   // Another conversation's snapshot, read but not drawn, settles nothing of it, though it holds a turn under its ID (a
   // drawn one would be of the open conversation, so the request went with a cleared one).
-  reconcileOutbox({ id: 'other', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] }, '/fixture', null, false);
+  reconcileOutbox({ id: 'other', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] }, '/fixture', null, false);
   expect(holds(readDrafts().entries, '/fixture', 'conversation')).toBe(true);
-  reconcileOutbox({ id: 'conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] }, '/fixture', null);
+  reconcileOutbox({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] }, '/fixture', null);
   expect(readDrafts().entries[outgoingKey('/fixture', again)]?.values.stage).toBe('accepted');
   expect(holds(readDrafts().entries, '/fixture', 'conversation')).toBe(false);
-  reconcileOutbox({ id: 'conversation', agent: null, warm: 'none' as const, busy: true, cancelled: [], turns: [{ ...turn, status: 'running', waiting: false }] }, '/fixture', null);
+  reconcileOutbox({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: true, cancelled: [], turns: [{ ...turn, status: 'running', waiting: false }] }, '/fixture', null);
   expect(readDrafts().entries[outgoingKey('/fixture', again)]).toBeUndefined();
 });
 
@@ -107,7 +107,7 @@ for (const stage of ['checking', 'posted', 'accepted', 'refused'] as const) test
   const sent = { ...readDrafts().entries[sentKey]!, values: { ...readDrafts().entries[sentKey]!.values, stage } };
   const elsewhere = outgoingKey('/other-workspace', id);
   expect(commitDrafts({ ...readDrafts().entries, [sentKey]: sent, [elsewhere]: sent })).toBe(true);
-  const snapshot = (id: string) => ({ id, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const snapshot = (id: string) => ({ id, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
   // Absence in the open conversation settles nothing; a snapshot not drawn cannot establish closure.
   reconcileOutbox(snapshot('conversation'), '/fixture', null);
   expect(readDrafts().entries[sentKey]).toEqual(sent);
@@ -199,7 +199,7 @@ test('the conversation arriving settles what a reload left, before the input mov
   const { result } = renderHook(() => useInputDraft(), { wrapper: ({ children }) => <TestWorkspace data={screenData()}>{children}</TestWorkspace> });
   // Nothing is settled before there is a conversation.
   expect(readDrafts().entries[outgoingKey('/fixture', sent)]?.values.stage).toBe('checking');
-  act(() => setConversationState({ root: '/fixture', conversation: { id: 'conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ root: '/fixture', conversation: { id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
   await waitFor(() => expect(result.current.key).toBe(key));
   expect(readDrafts().entries[outgoingKey('/fixture', sent)]).toBeUndefined();
   expect(readDrafts().entries[loading]).toBeUndefined();
@@ -214,8 +214,8 @@ test('what a reload left is settled by the conversation arriving, whichever surf
   useDraftStore.setState(readDrafts()); useOutbox.setState({ live: new Set() });
   expect(readDrafts().entries[outgoingKey('/fixture', sent)]?.values.stage).toBe('checking');
   // Through the read's own path, as the page reads it.
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(snapshotJson({ id: 'conversation', agent: null, warm: 'none', busy: false, cancelled: [], turns: [] }))));
-  await readConversationThroughOwner({ id: 'conversation', agent: null, warm: 'none', busy: false, cancelled: [], turns: [] });
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(snapshotJson({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [] }))));
+  await readConversationThroughOwner({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [] });
   vi.unstubAllGlobals();
   await waitFor(() => expect(readDrafts().entries[outgoingKey('/fixture', sent)]).toBeUndefined());
   expect(draftText(readDrafts().entries[key])).toBe('Coordinator body');
@@ -229,7 +229,7 @@ for (const change of ['append', 'words', 'label', 'file', 'fresh', 'quote'] as c
   ] }] };
   const file = { name: 'a.txt', size: 1, path: 'attachments/original/a.txt', absolutePath: '/original/a.txt' };
   const later = { name: 'b.txt', size: 2, path: 'attachments/later/b.txt', absolutePath: '/later/b.txt' };
-  const id = crypto.randomUUID(), submitted = { conversationId: 'conversation', text: '/alpacawork First\nline', selected: {}, attachments: ['a.txt'], skills: ['alpacawork'] };
+  const id = crypto.randomUUID(), submitted = { conversationId: 'conversation', text: '/alpacawork First\nline', attachments: ['a.txt'], skills: ['alpacawork'] };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values: { requestId: id, doc: JSON.stringify(source), attachments: JSON.stringify([file]) } } } });
   freeze('/fixture', submitted, useDraftStore.getState().entries[key]!.values, { from: key });
   const doc = structuredClone(source);
@@ -242,7 +242,7 @@ for (const change of ['append', 'words', 'label', 'file', 'fresh', 'quote'] as c
     attachments: JSON.stringify([change === 'file' ? { ...file, path: 'attachments/replaced/a.txt' } : file, later]),
     ...change === 'fresh' ? { requestId: crypto.randomUUID() } : {} };
   updateDraft(key, { values: current });
-  const server = { id: 'conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, ask: submitted.text, skills: submitted.skills, attachments: ['a.txt'], at: '', status: 'queued' as const, waiting: true, seen: false, answer: null, answeredAt: null, error: null, result: null }] };
+  const server = { id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, ask: submitted.text, skills: submitted.skills, attachments: ['a.txt'], at: '', status: 'queued' as const, waiting: true, seen: false, answer: null, answeredAt: null, error: null, result: null }] };
   // Undrawn and then drawn acceptance must consume exactly once.
   reconcileOutbox(server, '/fixture', key, false); reconcileOutbox(server, '/fixture', key);
   const result = useDraftStore.getState().entries[key]!.values;
@@ -259,7 +259,7 @@ for (const change of ['append', 'words', 'label', 'file', 'fresh', 'quote'] as c
 test('refusal of a repeated structural portion keeps the whole input without a second refused copy', () => {
   seed(); const source = entry('Repeat.');
   useDraftStore.setState({ entries: { [key]: source } });
-  const id = freeze('/fixture', { conversationId: 'conversation', text: 'Repeat.', selected: {}, attachments: [] }, source.values, { from: key })!;
+  const id = freeze('/fixture', { conversationId: 'conversation', text: 'Repeat.', attachments: [] }, source.values, { from: key })!;
   const draft = useDraftStore.getState().entries[key]!;
   const current = { ...draft.values, doc: JSON.stringify(textDocument('Repeat.Repeat.')) };
   updateDraft(key, { values: current });

@@ -19,12 +19,13 @@ test('send now bypasses a waiting message with different choices', () => {
   let store: RunStore | undefined;
   try {
     initializeControlFixture(root);
-    writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: fixtureAgentSetting('codex') } }));
     store = new RunStore(root, { busyTimeoutMs: 1000 });
     const conversation = new CoordinatorConversation(root), cid = conversation.read().id;
     const ask = (effort: string) => {
+      writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: fixtureAgentSetting('codex') },
+        coordinatorAiStack: [{ agent: 'fake', values: { effort } }] }));
       const id = randomUUID();
-      conversation.ask({ conversationId: cid, id, text: `Use effort ${effort}`, selected: { effort }, attachments: [] });
+      conversation.ask({ conversationId: cid, id, text: `Use effort ${effort}`, attachments: [] });
       return store!.coordinatorRuns(cid).find(run => run.requestId === id)!;
     };
     const first = ask('high');

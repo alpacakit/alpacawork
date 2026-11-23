@@ -49,10 +49,7 @@ export function projectPlacements(root: string, placed: ReturnType<PlacementStor
 
 /** Workspace facts exist independently of any listed project. */
 export function readControlEnvironment(root: string, settings = readAgentsSettings(root)): Pick<ControlTreeDTO, 'root' | 'profiles' | 'attachmentBytes' | 'errors' | 'writable'> {
-  const profiles = settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => {
-    const initialValues = settings.config.aiStack?.find(row => row.agent === key)?.values;
-    return { ...agentProfile(key, agent), ...(initialValues ? { initialValues } : {}) };
-  }) : [];
+  const profiles = settings.ok ? enabledAgents(settings.config.agents).map(([key, agent]) => agentProfile(key, agent)) : [];
   if (settings.ok) {
     const first = settings.config.aiStack?.[0]?.agent;
     const index = profiles.findIndex(profile => profile.key === first);

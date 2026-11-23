@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 import { Icon } from "./icon";
 
 /**
- * The rows a floating card picks from (the model picker, the state card), one look for both: a quiet bold name over a
- * group, and rows whose picked one is filled, bold and ticked at its start.
+ * The rows a floating card picks from (the state card): a quiet bold name over a group, and rows whose picked one is
+ * filled, bold and ticked at its start.
  */
 export const MENU_GROUP = "px-2 pt-2 pb-0.5 text-xs font-semibold text-muted";
 

@@ -7,7 +7,7 @@ import { screenData } from './fixtures';
 import { sharedName, sharedText } from "@/features/coordinator/shared";
 
 // Taking a share opens the actual composer. Its conversation read is part of this fixture too.
-const conversation = { id: 'share-inbox', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] };
+const conversation = { id: 'share-inbox', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] };
 let reads: MockInstance<typeof fetch>;
 beforeEach(() => {
   screenData();

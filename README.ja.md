@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">AI の管理は、AI に任せる。</h3>
+<h3 align="center">ひとつの入力欄から、すべてのプロジェクトの AI を動かす。</h3>
 
 <p align="center">
-  Claude Code・Codex への仕事の割り振りも、<br/>進み具合の見張りも。<br/>
-  PC の前に座って働くことから、解放されます。
+  頼みごとを書くと、PC の Claude Code や Codex が仕事を分けて同時に進めます。<br/>
+  あなたは AI からの質問に答えて、できあがりを確かめます。スマートフォンからも使えます。
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark-ja.gif">
+    <img src="docs/images/hero-ja.gif" alt="1つの入力欄に書いた依頼を窓口の AI が受け、自社サイト・アプリ開発・マーケティングの3つのプロジェクトにタスクを作り、それぞれに opus · high や gpt-5 · high などの AI を付けて進める。1つのタスクが質問し、答えるとすべて終わる" width="640">
+  </picture>
+</p>
+
+alpacawork は、あなたの PC に入っている Claude Code や Codex に仕事を割り振って動かす道具（AI ハーネス）です。やりたいことを1つの入力欄に書くと、窓口の AI（コーディネーター）がタスクにして担当の AI に割り振り、進み具合を管理します。あなたがするのは、頼む、質問に答える、できあがりを確かめる、の3つです。スマートフォンからも同じように使えます。
 
 <p align="center">
   <img src="docs/images/pc-phone-dark-ja.png" alt="PC のブラウザで、作業中の10件と確認待ちの3件が並ぶ一覧と、開いたタスクの報告を横に並べた alpacawork。右に、同じ報告を開いたスマートフォン" width="820">
 </p>
-
-alpacawork は、あなたの PC に入っている Claude Code や Codex に仕事を割り振って動かす道具（AI ハーネス）です。やりたいことを1つの入力欄に書くと、窓口の AI（コーディネーター）がタスクにして担当の AI に割り振り、進み具合を管理します。あなたがするのは、頼む、質問に答える、できあがりを確かめる、の3つです。スマートフォンからも同じように使えます。
 
 ## インストール
 
@@ -53,19 +58,27 @@ alpacawork setup
 
 動作環境は macOS（Apple シリコン）、Linux（x64）、Windows（WSL2）です。入れたあとは [はじめかた](docs/ja/getting-started.md) に沿って、最初の1件を頼みます。
 
-### 画面を開き直す
+### よく使う操作
 
-画面を閉じたあとは、Claude Code か Codex に次のように頼みます。AI がブラウザで画面を開くか、画面の URL を伝えます。
+タスクは画面の入力欄で頼みます。画面を開く、設定を変えるといった操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
 
-```text
-/alpacawork 画面開いて
-```
+| すること | AI に頼む文 | コマンド |
+| --- | --- | --- |
+| 画面を開く | `/alpacawork 画面開いて` | `alpacawork open` |
+| 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
+| 設定を変える | `/alpacawork 同時に動かす AI を4つまでにして` | — |
+| ふだん使うモデルを変える | `/alpacawork タスクをふだん opus で進めるようにして` | — |
+| 新しいモデルを使えるようにする | `/alpacawork Codex の新しいモデルが出たので、選べるようにモデルの設定に足して` | — |
+| プロジェクト方針を変える | `/alpacawork プロジェクト方針に「デザインの作成は opus で」と書き足して` | — |
+| 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
+| 止める・起動する・再起動する | `/alpacawork 再起動して` | `alpacawork stop`・`start`・`restart` |
+| アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |
 
-Codex では `/alpacawork` を `$alpacawork` に変えます。ターミナルからは次のコマンドでも開けます。
+設定とモデルは画面の入力欄や設定でも変えられ、更新も画面の設定からできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
 
-```sh
-alpacawork open
-```
+タスクを頼む・探す・質問に答えるといった操作も、Claude Code・Codex の会話からできます。頼み方は [Claude Code・Codex から使う](docs/ja/chat.md) にあります。
+
+Chrome か Edge なら、画面でのセットアップの終わりか、あとから設定の「アプリ・スマホ」でアプリとして入れられ、Dock やタスクバーのアイコンから開き直せます。Mac の Safari では、メニューの「ファイル → Dock に追加」（macOS Sonoma 以降）で入れます。
 
 ## できること
 

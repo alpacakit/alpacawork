@@ -70,7 +70,7 @@ export const CoordinatorCapsule = memo(function CoordinatorCapsule() {
   // nothing to send, yet says whom the input is for.
   const preview = previewContent(draft.doc), populated = preview.labels.length > 0 || !!preview.text;
   const replyName = reply ? t('coordinatorCard.replyLabel', { time: messageTime(reply.answeredAt, i18n.language) }) : '';
-  const draftName = populated || attached.length > 0 ? [replyName, serialize(own, '').replace(/\s+/g, ' ').trim()].filter(Boolean).join(' ') || t('coordinatorCard.attached') : '';
+  const draftName = populated || attached.length > 0 ? [replyName, serialize(own).replace(/\s+/g, ' ').trim()].filter(Boolean).join(' ') || t('coordinatorCard.attached') : '';
   // Its words and moves stand in the column the conversation is read in (reading-column.ts), as the input's do, so
   // folding and opening a wide coordinator leaves them where they are.
   // Its round action: 40px inside the 48px line, its press reaching the 44px a finger takes (the line's own padding).

@@ -92,10 +92,18 @@ export function prepareLaunchOptions(ast: LaunchOptions, selection: Readonly<Rec
     return [template(node)];
   });
 }
+const optionReference = /\{([a-z][a-z0-9_]*)\}/g;
+
+/** Values used by the prepared options, after groups with missing values have been dropped. */
+export function appliedLaunchValues(argv: readonly string[], effective: Readonly<Record<string, string | null>>) {
+  const names = new Set(argv.flatMap(arg => Array.from(arg.matchAll(optionReference), match => match[1]!)));
+  return Object.fromEntries(Object.entries(effective).filter(([key, value]) => value !== null && names.has(key)));
+}
+
 /** Consumes prepared original argv, never a previously substituted string. No tokenization or shell. */
 export function resolveLaunchArgv(argv: readonly string[], selection: Readonly<Record<string, string | null>>,
   system: Readonly<Partial<Record<SystemVariableName, string>>>): string[] {
-  return argv.map(arg => arg.replace(/\{([a-z][a-z0-9_]*)\}/g, (_match, name: string) => {
+  return argv.map(arg => arg.replace(optionReference, (_match, name: string) => {
     const source = isSystemVariable(name) ? system : selection;
     const value = Object.hasOwn(source, name) ? source[name as keyof typeof source] : undefined;
     if (value == null || value === '') throw new MissingOptionValue(name, isSystemVariable(name) ? 'system' : 'selection');

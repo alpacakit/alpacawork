@@ -1,19 +1,23 @@
 /**
  * The README as npm shows it. The repository's README links to its own files by relative path, which GitHub
  * resolves on every branch; npm resolves none, so each relative target becomes an absolute URL: a file the
- * package carries opens from this version of the published package on unpkg, any other file from the
- * repository on GitHub. A picture must be in the package: the repository may not be public.
+ * package carries opens from this version of the published package on unpkg. Other pictures come from
+ * the source commit on GitHub, which shows them only while the repository is public; other links open the
+ * corresponding repository page.
  * Only `[text](path)`, `src="path"`, `srcset="..."` and `href="path"` are rewritten; the README's header comment says so.
  */
-export function npmReadme(text: string, packageName: string, version: string, repositoryUrl: string | undefined,
+export function npmReadme(text: string, packageName: string, version: string, source: string, repositoryUrl: string | undefined,
   inPackage: (path: string) => boolean): string {
+  const repository = repositoryUrl?.replace(/^git\+/, '').replace(/\/$/, '').replace(/\.git$/, '');
+  const githubRepo = repository?.match(/^https?:\/\/github\.com\/([\w.-]+\/[\w.-]+)$/i)?.[1];
   const absolute = (target: string, picture: boolean): string => {
     if (/^(?:[a-z][a-z0-9+.-]*:|#|\/)/i.test(target)) return target;
     const path = target.replace(/^\.\//, ''), file = path.split(/[?#]/)[0]!;
     if (inPackage(file)) return `https://unpkg.com/${packageName}@${version}/${path}`;
-    if (picture) throw new Error(`README shows ${file}, which the package does not carry`);
-    if (!repositoryUrl) throw new Error(`README links to ${file}, which the package does not carry, and the package names no repository`);
-    return `${repositoryUrl.replace(/^git\+/, '').replace(/\.git$/, '')}/blob/main/${path}`;
+    if (!repository) throw new Error(`README refers to ${file}, which the package does not carry, and the package names no repository`);
+    if (!picture) return `${repository}/blob/main/${path}`;
+    if (!githubRepo) throw new Error(`README image ${file} requires a GitHub repository URL`);
+    return `https://raw.githubusercontent.com/${githubRepo}/${source}/${path}`;
   };
   const sourceSet = (input: string): string => {
     let result = '';

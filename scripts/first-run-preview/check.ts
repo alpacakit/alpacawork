@@ -43,16 +43,17 @@ export async function checkJourney(url: string, root: string, language: string, 
     await expect(skills.locator('[data-setup-install]')).toHaveText(en ? 'Install 3 skills' : '3 個のスキルをインストール');
     assert.equal((await get('/api/telemetry/status')).state, 'on');
     await skills.locator('[data-setup-install]').click();
-    // 4 Project: reached once every ticked skill is installed; its policy names them.
+    // 4 Project: reached once every ticked skill is installed, with an empty policy.
     const project = setup.locator('[data-setup-panel="project"]');
     await expect(project).toBeVisible({ timeout: 40_000 });
     for (const name of ['askmeclearly', 'doyourjob', 'alpacawork-betterquality'])
       assert.ok(existsSync(join(marker.home, '.agents/skills', name, 'SKILL.md')), `${name} was not installed`);
     assert.match(readFileSync(join(marker.home, '.agents/skills/askmeclearly/SKILL.md'), 'utf8'), /Synthetic preview/);
-    await expect(project.locator('#project-policy')).toHaveValue(/askmeclearly[\s\S]*doyourjob[\s\S]*alpacawork-betterquality/);
+    await expect(project.locator('#project-policy')).toHaveValue('');
     // A reload reopens on the step reached.
     await page.reload();
     await expect(setup.locator('[data-setup-panel="project"]')).toBeVisible();
+    await expect(project.locator('#project-policy')).toHaveValue('');
     const folder = join(root, 'project'); mkdirSync(folder);
     await project.locator('#project-name').fill('Preview project');
     await project.locator('#project-location').fill(folder);
@@ -66,6 +67,7 @@ export async function checkJourney(url: string, root: string, language: string, 
     assert.ok(state.finishedAt, 'Setup was not recorded as finished');
     const saved = (await get(`/api/task/get?task=${state.project}`)).task;
     assert.equal(saved.title, 'Preview project');
+    assert.equal(saved.values.project_policy ?? '', '');
     await page.goto(`${url}welcome?agent=1`);
     expect(new URL(page.url()).pathname).toBe('/');
 

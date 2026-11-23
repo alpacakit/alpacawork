@@ -12,6 +12,7 @@ import { seedTask } from './fixture/tasks.ts';
 import { patchTask } from './fixture/task-state.ts';
 import { inertFixtureLaunch } from '../tests/helpers/agent-stub.ts';
 import { builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
+import { parseDocument } from 'yaml';
 const writers=new Set<string>(),held=new Map<string,ControlStore>();
 const descriptor=(root:string)=>join(root,'.alpacawork','e2e-fixture.json');
 export function remoteFixture(root:string,operation:unknown):{handled:boolean;value?:any}{
@@ -21,8 +22,18 @@ export function remoteFixture(root:string,operation:unknown):{handled:boolean;va
  if(result.status!==0)throw new Error('Serve fixture mutation failed: '+result.stderr);
  const answer=JSON.parse(result.stdout);if(answer.error)throw new Error(answer.error);return{handled:true,value:answer.value};
 }
+/**
+ * The fixture's config, its input's AI stack on the first agent it lists (at that agent's defaults) unless it names one:
+ * the agent a fixture puts first (a fake coordinator) is the one the screen's input talks to.
+ */
+export function withFixtureCoordinator(text:string):string{
+ const doc=parseDocument(text),agents=(doc.toJS()??{}).agents as Record<string,unknown>|undefined,first=agents?Object.keys(agents)[0]:undefined;
+ if(!first||doc.has('coordinatorAiStack'))return text;
+ doc.set('coordinatorAiStack',[{agent:first,values:{}}]);return doc.toString({lineWidth:0});
+}
 /** A served fixture's config is written and published by its owner; cold setup writes before serve starts. */
 export function writeFixtureConfig(root:string,text:string):void{
+ text=withFixtureCoordinator(text);
  if(remoteFixture(root,{kind:'config',text}).handled)return;
  writeFileSync(join(root,'config.yaml'),text);
 }

@@ -57,7 +57,7 @@ const screenAt = (stage: Stage) => screenData(servedAt(stage));
 function serve() {
   const sent: {task:string;state:string}[] = [];
   let stage: Stage = 'asked';
-  const conversation = (): CoordinatorConversation => ({ id: 'c1', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const conversation = (): CoordinatorConversation => ({ id: 'c1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     const path = String(url);
@@ -72,7 +72,7 @@ function serve() {
   setConversationState({ root: fixture.asked.root, conversation: conversation(), open: false, expanded: false, engaged: false, read: true, error: null });
   return sent;
 }
-const contents = <><Reader mode="docked" /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></>;
+const contents = <><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></>;
 const hold = () => fireEvent.keyDown(document.body, { key: 'h' });
 
 // A manual opening uses the list then at hand and keeps its shelf for that card.

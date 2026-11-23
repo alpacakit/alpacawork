@@ -27,7 +27,7 @@ let useConnection: typeof import('../src/data/connection')['useConnection'];
 import { indexOf, tree } from './fixtures';
 import { checkpointFixture } from './checkpoint-fixture';
 const { Hono } = createRequire(process.cwd() + '/apps/backend/package.json')('hono');
-const empty = (): CoordinatorConversation => ({ id: 'checkpoint-conversation', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+const empty = (): CoordinatorConversation => ({ id: 'checkpoint-conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
 const answered = (): CoordinatorConversation => ({ ...empty(), turns: [{ id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
   status: 'succeeded' as const, waiting: false, answer: 'ACQUIRED WORDS', answeredAt: '2026-10-21T10:01:00Z', seen: false, error: null, result: null }] });
 let stops: (() => void)[] = [];
@@ -166,7 +166,7 @@ test('all snapshot routes use the same scope/digest rule; ACK retains its narrow
   const h = await fixture();
   for (const path of ['', '/messages', '/warm', '/messages/withdraw', '/messages/send-now', '/clear']) {
     const response = await h.app.request('http://fixture/api/coordinator' + path, path ? { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId: h.server.read().id, ...(path === '/messages' ? { id: 'send', text: 'hello', attachments: [], selected: {} }
+      body: JSON.stringify({ conversationId: h.server.read().id, ...(path === '/messages' ? { id: 'send', text: 'hello', attachments: [] }
         : path.startsWith('/messages/') ? { id: 'send' } : {}) }) } : undefined);
     expect(response.status).toBe(200);
     const snapshot = await response.json(); coordinatorSnapshotSchema.parse(snapshot);
@@ -252,7 +252,7 @@ for (const field of ['root', 'generation'] as const) test(`a POST snapshot from 
   const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ...h.snapshot, [field]: 'foreign' }))));
   vi.stubGlobal('fetch', fetcher);
   rememberWriteIdentity(h.index.root, 'reply', 'initial');
-  const asking = useConversation.getState().ask({ conversationId: h.snapshot.conversation.id, id: 'reply', text: 'question', attachments: [], selected: {} });
+  const asking = useConversation.getState().ask({ conversationId: h.snapshot.conversation.id, id: 'reply', text: 'question', attachments: [] });
   if (field === 'root') await expect(asking).rejects.toMatchObject({ code: 'invalid_response', retry: 'check' });
   else await expect(asking).resolves.toBe(true);
   expect(fetcher).toHaveBeenCalledTimes(1);

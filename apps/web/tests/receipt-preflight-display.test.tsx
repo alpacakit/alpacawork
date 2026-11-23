@@ -101,7 +101,7 @@ test('the Workspace frame, Reader and coordinator card stay mounted while server
       return view ? new Response(snapshotJson(view)) : problemResponse('not_found', 'No task');
     }
     if (target.pathname === '/api/task/history') return new Response(snapshotJson({ events: [], nextBefore: null }));
-    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
+    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
     if (path === '/api/settings/get') return new Response(snapshotJson({ values, revision: 'person-1' }));
     if (path === '/api/person/notices') return new Response(snapshotJson({ state: null, revision: null, initialBaselines: Object.fromEntries(indexOf(served).tasks.map(row => [row.id, taskBaseline(row)])) }));
     if (path.startsWith('/api/task/timeline-axis?')) {

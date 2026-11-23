@@ -6,10 +6,11 @@
  */
 import { z } from 'zod';
 import { AGENT_ADAPTERS, LAUNCH_MODES, type BuiltinAdapterId } from './agent-adapters.js';
-import { selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
-import { prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
+import { launchArgumentValuesSchema, selectionSchema, type CompiledAgentSetting } from './agent-settings.js';
+import { appliedLaunchValues, prepareLaunchOptions, resolveLaunchArgv } from './launch-options.js';
 import type { SystemVariableName } from './agent-variables.js';
-import { resolveAgentSelection, type AgentChoice, type ResolvedAgentSelection } from './agent-selection.js';
+import { resolveAgentSelection, SelectionRequired, type AgentChoice, type ResolvedAgentSelection,
+  type SelectionProblem } from './agent-selection.js';
 import { agentEnvironmentNamesSchema } from './agent-environment.js';
 export const launchModeSchema = z.enum(LAUNCH_MODES);
 export const launchArgvSchema = z.array(z.string()).min(1).refine(argv => argv.length === 0 || argv[0]!.length > 0, 'Executable must not be empty');
@@ -90,16 +91,28 @@ export function prepareAgentLaunch(compiled: CompiledAgentSetting, admission: La
 /** Live coordinator admission: a resume must capture its fresh-start alternative now.
  * The saved-record extension above also accepts null for migrated ended records.
  */
+const coordinatorAdmissionFields = { launch: agentLaunchSchema, appliedValues: launchArgumentValuesSchema };
 export const coordinatorLaunchAdmissionSchema = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('start'), launch: agentLaunchSchema, restartArgv: z.null() }).strict(),
-  z.object({ mode: z.literal('resume'), launch: agentLaunchSchema, restartArgv: launchArgvSchema }).strict(),
+  z.object({ ...coordinatorAdmissionFields, mode: z.literal('start'), restartArgv: z.null() }).strict(),
+  z.object({ ...coordinatorAdmissionFields, mode: z.literal('resume'), restartArgv: launchArgvSchema }).strict(),
 ]);
 export type CoordinatorLaunchAdmission = z.infer<typeof coordinatorLaunchAdmissionSchema>;
 export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admission: LaunchAdmission): CoordinatorLaunchAdmission {
   const valid = resolveAdmission(compiled, admission);
   const launch = snapshot(compiled, valid.admission, valid.resolved);
   const adapter = AGENT_ADAPTERS[compiled.adapter];
+  const appliedValues = appliedLaunchValues(launch.argv.slice(adapter.prefix.length), valid.resolved.effective);
+  if (valid.admission.mode === 'resume') {
+    const previous = valid.admission.previous.values;
+    const problems: SelectionProblem[] = [];
+    for (const { key, candidates, active } of valid.resolved.choices) {
+      const former = Object.hasOwn(previous, key) ? previous[key]! : null;
+      if (!active || launch.values[key] === former || Object.hasOwn(appliedValues, key)) continue;
+      problems.push({ key, previous: former, candidates, reason: 'unused', recovery: 'new_conversation' });
+    }
+    if (problems.length) throw new SelectionRequired(problems);
+  }
   const restartArgv = valid.admission.mode === 'start' ? null : [...adapter.prefix,
     ...prepareLaunchOptions(compiled.options.start, valid.resolved.effective, adapter.system.start)];
-  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, restartArgv });
+  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, appliedValues, restartArgv });
 }

@@ -14,7 +14,6 @@ import { useAgentStatus, useSaveServerSettings, useServerSettings, useWorkspaceI
 import { resources } from "@/data/resources";
 import { useTelemetry } from "@/features/telemetry/data";
 import { TelemetryDetailsLink } from "@/features/telemetry/TelemetryDetailsLink";
-import { forgetLaunchAgent } from "@/features/forms/launch-choice";
 import { readServerAgents } from "@/features/panels/server-agent-draft";
 import { setupSave } from "./save";
 import { agentDisplayName, canWork, firstAgentOf, startAgents, usableAgents, type AgentSwitches, type StartAgent } from "./rules";
@@ -84,15 +83,12 @@ export function AgentsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     setBusy(true); setFailure(null);
     try {
       if (drafts && loaded) {
-        // The agents and the AI stack together: the first AI chosen here is row 1 of the stack the settings show.
+        // The agents and both AI stacks together: the first AI chosen here is row 1 of each stack the settings show.
         const saving = setupSave(loaded, drafts, rows, on, first);
         if (saving) {
           try { await save.mutateAsync({ yaml: saving.config, agents: saving.agents, expected: loaded.hash! }); }
           catch (error) { fail("agents", error); void settings.refetch(); return; }
         }
-        // The agent chosen here is where the next request starts, whatever was picked before on any device. Unsaved,
-        // the agent picked before would come back: setup stays here to be tried again.
-        try { await forgetLaunchAgent(); } catch (error) { fail("agents", error); return; }
       }
       if (asksConsent) {
         let refused: unknown = null;

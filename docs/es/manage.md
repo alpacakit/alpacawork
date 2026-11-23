@@ -2,7 +2,7 @@
 
 ## Volver a abrir la pantalla
 
-La URL de la pantalla (con la forma `http://127.0.0.1:43127/`) no cambia aunque cierres el navegador o reinicies el PC. Guárdala en marcadores o, en Chrome o Edge, instálala como app con “Instalar”, en el extremo derecho de la barra de direcciones.
+La URL de la pantalla (con la forma `http://127.0.0.1:43127/`) no cambia aunque cierres el navegador o reinicies el PC. Guárdala en marcadores o instálala como app: en Chrome o Edge con “Instalar” en “Configuración (el engranaje) → App y teléfono”; en Safari en un Mac con “Archivo → Añadir al Dock” en el menú (macOS Sonoma o posterior).
 
 Si olvidaste la URL, ejecuta `alpacawork open` en una terminal y la pantalla se abrirá en el navegador. Donde no se puede abrir un navegador, como en un PC al que te conectas por SSH, el comando muestra la URL y cómo abrirla.
 

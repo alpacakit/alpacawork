@@ -160,9 +160,9 @@ test('W5 display turn cannot retire a different server turn',()=>{
 });
 
 for(const historical of [{task:'T1',action:'approve'}, {nonsense:'recorded'}] as Record<string,string>[]) test(`W6 historical ${JSON.stringify(historical)} is nonthrowing and cannot match absent intent`,()=>{
- const fixed:Fixed={conversationId:'c',text:'original words',attachments:[],selected:{}};
+ const fixed:Fixed={conversationId:'c',text:'original words',attachments:[]};
  const turn={id:'fixed',at,ask:fixed.text,attachments:[],intent:historical,status:'queued' as const,waiting:true,answer:null,seen:false,answeredAt:null,error:null,result:null};
- const conversation:CoordinatorConversation={id:'c',agent:null,warm: 'none' as const,busy:false,cancelled:[],turns:[turn]};
+ const conversation:CoordinatorConversation={id:'c',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[turn]};
  expect(()=>hasSubmission(conversation,'fixed',fixed)).not.toThrow();expect(hasSubmission(conversation,'fixed',fixed)).toBe(false);
  expect(turn.ask).toBe('original words');
 });

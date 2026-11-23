@@ -101,7 +101,7 @@ export function seedHistoryRequest(root: string, supplements = 85) {
     assert.equal(db.prepare('SELECT head_run_id FROM requests WHERE id=?').get(id)!.head_run_id, 'R9001');
     assert.equal(db.prepare('SELECT id FROM runs WHERE request_id=?').get(id)!.id, 9002);
     assertInertFixtureRuns(db.prepare('SELECT record FROM runs').all().map(row => JSON.parse(String(row.record))));
-    writeFileSync(join(root, 'config.yaml'), stringify({ agents: { claude: fixtureAgentSetting('claude') } }));
+    writeFileSync(join(root, 'config.yaml'), stringify({ agents: { claude: fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'claude', values: {} }] }));
     return { id, body: body as string, at: head.submittedAt as string };
   } finally { db.close(); }
 }

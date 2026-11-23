@@ -1,24 +1,11 @@
 {
   "agentPicker": {
-    "brief": {
-      "gone": "Choose someone else to ask",
-      "new_conversation": "Start over with “{{action}}”",
-      "none": "No agent is enabled",
-      "select_value": "Choose the {{row}} again"
-    },
     "next": {
-      "anew": "A new conversation is needed",
-      "clear": "Start over with “{{action}}”"
+      "anew": "A new conversation is needed"
     },
     "none": "None",
-    "notOffered": "Not offered for this model",
-    "openSettings": "Open agent settings",
-    "pickerLabel": "{{agent}}. Press to change",
-    "pickerTitle": "Who to ask",
     "problem": {
-      "gone": "{{agent}} isn't available with the current settings. Choose someone else to ask",
       "invalid_value": "The previous {{row}}, {{previous}}, is no longer offered. Choose again",
-      "none": "No agent is enabled. In the agent settings, sign in to an agent, then enable it.",
       "null_required": "{{row}} can no longer be None. Choose a value",
       "removed": "{{row}} (previously {{previous}}) was removed from the settings, so this conversation can't be continued. {{next}}",
       "unused": "{{row}} (previously {{previous}}) is no longer used by the launch options, so this conversation can't be continued. {{next}}"

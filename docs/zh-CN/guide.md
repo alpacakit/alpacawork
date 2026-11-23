@@ -51,7 +51,7 @@
 - 没问题的话，按界面下方的“完成”（对勾图标）。不按，任务就不会结束。
 - 想让它修改时，保持任务打开，把要改的地方写在输入框里发送。
 
-<img src="../images/action-bar.png" alt="The buttons along the bottom when a task is open: Auto-swipe, Change state, and Done" width="338">
+<img src="../images/action-bar.png" alt="打开任务时排在下方的按钮：“Auto-swipe”（自动滑动）、“Change state”（更改状态）和“Done”（完成）" width="338">
 
 按“完成”后，会打开下一个待验收的任务。用于搁置或停止的“更改状态”也在同一处。
 
@@ -59,7 +59,7 @@
 
 打开“需要处理”的任务，会看到停住的原因和按钮。
 
-- 按“重试”或“停止”。
+- 按“用同一 AI 继续”“换一个 AI 继续”或“停止”。“换一个 AI 继续”会在输入框里放入一句话，写上要用的 AI 后发送。
 - 出现“继续”时，如果可以继续，就按它。
 - 没有按钮时，按显示的说明在输入框里下指示。
 

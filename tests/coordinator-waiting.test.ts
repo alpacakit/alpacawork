@@ -14,14 +14,14 @@ import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinat
 import { reserveAttempt, blockedInvocations, queuedInputReservations } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 // The fixture never starts a process, so the admission supplies the session.
-const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') } });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-waiting-')));
   initializeControlFixture(root); writeFileSync(join(root, 'config.yaml'), config);
   const conversation = new CoordinatorConversation(root), id = conversation.read().id;
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
-  const ask = () => { const request = randomUUID(); conversation.ask({ conversationId: id, id: request, text: request, attachments: [], selected: {} }); return request; };
+  const ask = () => { const request = randomUUID(); conversation.ask({ conversationId: id, id: request, text: request, attachments: [] }); return request; };
   const run = (request: string, tx?: import("@alpacawork/runs").RunTransaction) => (tx ? tx.coordinatorRuns(id) : store.coordinatorRuns(id)).find(run => run.requestId === request)!;
   const running = (request: string) => store.write(tx => tx.update({ ...run(request, tx), state: 'running', started_at: new Date().toISOString() }));
   return { root, conversation, id, store, ask, run, running, read: () => conversation.read() };
@@ -102,7 +102,7 @@ test('send-now before reservation can be cancelled, and neither send-now nor lat
   f.conversation.sendNow(f.id, next);
   assert.deepEqual(f.conversation.withdraw(f.id, next).cancelled, [next]);
   assert.throws(() => f.conversation.sendNow(f.id, next), (error: any) => error.reason?.kind === 'message_has_already_left_queue');
-  assert.deepEqual(f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [], selected: {} }).cancelled, [next]);
+  assert.deepEqual(f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [] }).cancelled, [next]);
   assert.equal(f.store.connection.prepare('SELECT count(*) AS n FROM runs WHERE request_id=?').get(next)!.n, 1);
 });
 
@@ -135,7 +135,7 @@ test('a failed message is sent again once: the server marks it, keeps its ID rea
   const reasons = { failed: 'exit', cancelled: 'stopped', needs_review: 'manager_lost' } as const;
   const fail = (request: string, state: keyof typeof reasons = 'failed') => { f.running(request);
     f.store.write(tx => tx.update({ ...f.run(request, tx), state, reason: reasons[state], ...state === 'needs_review' ? {} : { ended_at: new Date().toISOString() } })); };
-  const again = (retryOf: string) => { const request = randomUUID(); f.conversation.ask({ conversationId: f.id, id: request, retryOf, text: first, attachments: [], selected: {} }); return request; };
+  const again = (retryOf: string) => { const request = randomUUID(); f.conversation.ask({ conversationId: f.id, id: request, retryOf, text: first, attachments: [] }); return request; };
   fail(first, 'needs_review');
   const second = again(first);
   assert.deepEqual(f.read().turns.map(turn => [turn.id, turn.sentAgain ?? false]), [[first, true], [second, false]]);

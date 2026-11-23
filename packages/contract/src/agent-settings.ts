@@ -1,6 +1,7 @@
 /** Target configuration contract. Stage 1 prepares it; stage 3 replaces the old server-settings DSL. */
 import { z } from 'zod';
 import { selectedValueSchema } from '@alpacawork/raw/values';
+import { selectedCandidateSchema } from '@alpacawork/core/selection';
 import { AGENT_ADAPTERS, LAUNCH_MODES, builtinAdapterIdSchema, optionsBase, unavailableAgentKind, type BuiltinAdapterId, type LaunchMode } from './agent-adapters.js';
 import { isParamName } from './agent-variables.js';
 import { InvalidLaunchOptions, optionReferences, parseLaunchOptions, type LaunchOptions } from './launch-options.js';
@@ -22,6 +23,8 @@ export const paramValuesSchema = z.array(candidateSchema).superRefine((values, c
 export const paramsSchema = z.record(paramNameSchema, paramValuesSchema);
 export const selectionSchema = z.record(paramNameSchema, selectedValueSchema);
 export type Selection = z.infer<typeof selectionSchema>;
+/** Only values substituted into launch options. Omitted values have no entry. */
+export const launchArgumentValuesSchema = z.record(paramNameSchema, selectedCandidateSchema);
 /** Empty whole input is []; an empty component or duplicate is an error at its index. */
 export function parseParamValues(input: string): string[] {
   return paramValuesSchema.parse(input.trim() === '' ? [] : input.split(',').map(value => value.trim()));

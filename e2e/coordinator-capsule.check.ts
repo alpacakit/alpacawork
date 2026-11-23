@@ -36,7 +36,7 @@ test('the one line brings the input up, sending puts it down, and it says the wo
   await expect(editorSurface(field(page)).locator('[data-placeholder]')).toHaveAttribute('data-placeholder', 'Manage tasks and request work, all from here');
   // No × of its own: Esc, a tap away and sending put it down.
   await expect(page.locator('[data-composer-frame] [data-icon=close]')).toHaveCount(0);
-  await expect(page.locator('[data-agent-picker]')).toContainText('opus');
+  await expect(page.locator('[data-coordinator-ai]')).toContainText('opus');
   const gate = join(runtime.root, 'answer-now');
   await page.keyboard.insertText(`wait:${gate}`); await page.locator('[data-ask-send]').click();
   // Taken, the input goes down: the line says the coordinator is at it, at the same height.

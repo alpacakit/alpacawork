@@ -45,7 +45,7 @@
       "finished_branch": "終わったタスクの下に、終わっていないタスクは置けません。",
       "forbidden": "この操作を行う権限がありません。",
       "handoff_pending": "受け渡しの完了を待っています。",
-      "handover_required": "この責任者は単独では外せません。別の人に引き継ぐか、替えてください。",
+      "handover_required": "この責任者は単独では外せません。別のエージェントに引き継ぐか、替えてください。",
       "invalid_input": "入力を確認してください。",
       "not_found": "見つかりません。",
       "publication_needs_review": "ファイルの反映は要確認です",
@@ -143,7 +143,6 @@
       "conversation_belongs_alpacawork_run": "この会話はalpacaworkのRunに属しています",
       "conversation_has_changed": "会話が変更されました",
       "conversation_head_changed": "会話の最新のRunが変更されました。再読み込みしてからやり直してください",
-      "conversation_id_required": "会話IDが必要です",
       "conversation_requires_review_before_another_request": "次の依頼を送る前に会話の確認が必要です",
       "conversation_session_unavailable": "会話のセッションを利用できません",
       "coordinator_attachment_not_conversation": "コーディネーターの添付ファイルはこの会話にありません",
@@ -573,12 +572,13 @@
     "not_directory": "フォルダではなくファイルです。",
     "required": "この欄を入力してください。",
     "too_big": "{{maximum}} 以下で入力してください。",
+    "too_long": "{{maximum}} 文字以内で入力してください。",
     "too_small": "{{minimum}} 以上で入力してください。",
     "unreadable_directory": "このフォルダは読めません。",
     "unwritable_directory": "ここには作れません（このフォルダに書き込む権限がありません）。"
   },
   "voice": {
-    "providerFailed": "Speech recognition failed"
+    "providerFailed": "音声認識に失敗しました"
   },
   "workspace": {
     "connecting": "接続しています",

@@ -60,6 +60,8 @@ export const TELEMETRY_OPS = [
   'effort.low', 'effort.medium', 'effort.high', 'effort.xhigh', 'effort.max', 'effort.other',
   // The CLI's own writes, which the screen does not make: a state report, a question, a comment, a new Task, a file.
   'w.report', 'w.ask', 'w.comment', 'w.task', 'w.file',
+  // A failed Task continued with another AI (its draft sent), beside w.retry for the same AI.
+  'w.switch',
 ] as const;
 /** A screen's device, decided in the browser: its kind and its system, never the user agent's words or a size. */
 export const TELEMETRY_DEVICE_CLASSES = ['phone', 'tablet', 'desktop'] as const;

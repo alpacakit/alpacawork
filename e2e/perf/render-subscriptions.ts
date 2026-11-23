@@ -25,7 +25,7 @@ declare global { interface Window {
 const output = resolve(process.argv[2]!);
 mkdirSync(dirname(output), { recursive: true });
 const results: unknown[] = [], errors: string[] = [];
-const conversation = coordinatorConversationSchema.parse({ id: 'subscriptions', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'subscriptions', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
   turns: Array.from({ length: 3 }, (_, n) => ({ id: `reply-${n}`, at: `2026-01-01T00:0${n}:00Z`, ask: `Request ${n}`,
     attachments: [], status: 'succeeded', waiting: false, seen: n < 2, error: null, result: null,
     answer: Array.from({ length: 20 }, (_, i) => `Paragraph ${i}: a stable answer for scrolling and read checks.\n\n`).join(''),

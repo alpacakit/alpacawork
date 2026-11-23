@@ -9,8 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { ControlStore } from '@alpacawork/db';
 import { CONFIG_FILE, digest, type TaskActor } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem, errorBody } from '@alpacawork/core';
-import { adapterCatalog, agentSettingSchemaFor } from '@alpacawork/contract';
-import type { ServerSettings } from '@alpacawork/contract';
+import { adapterCatalog, agentSettingSchemaFor, type ServerSettings } from '@alpacawork/contract';
 import type { ConfigSetValues } from '@alpacawork/contract/inputs';
 import { parseConfig, requireConfigBytes } from './config.js';
 import { parseAgentsSettings } from './agents-settings.js';
@@ -36,7 +35,8 @@ function view(bytes: Buffer): ServerSettings {
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
   return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
-    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }), catalog: adapterCatalog() };
+    ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }),
+    ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog() };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
   let writer: FileWriter | undefined;
@@ -80,8 +80,10 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       let rewrite = false;
       for (const [key, value] of Object.entries(edit.limits))
         if (value !== current.limits[key as keyof typeof current.limits]) { document.setIn(['limits', key], value); rewrite = true; }
-      if (edit.aiStack !== undefined && !isDeepStrictEqual(edit.aiStack, current.aiStack)) {
-        document.set('aiStack', edit.aiStack);
+      for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
+        const edited = edit[key];
+        if (edited === undefined || isDeepStrictEqual(edited, current[key])) continue;
+        document.set(key, edited);
         rewrite = true;
       }
       /* Initial release: Jev settings are not editable.
@@ -90,8 +92,7 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
         rewrite = true;
       }
       */
-      // Rewriting may respace flow lists across the file, so only a limits or Jev change rewrites it;
-      // the agents block then goes in as typed, comments and spacing included.
+      // The agents block goes in as typed, even when serializing the other edits.
       const base = rewrite ? document.toString({ lineWidth: 0 }) : before;
       const block = agentsBlock(base);
       const output = Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));

@@ -139,12 +139,6 @@ for (const phone of [false, true]) test(`folded, a tap on the list does what it 
   await expect(page.getByRole('listbox')).toBeVisible();
   await tap(page, phone, await belowRows(page));
   await stillUp(page, draft);
-  await page.locator('[data-agent-picker]').click();
-  const menu = page.locator('[data-agent-picker-menu]');
-  await expect(menu).toBeVisible(); await settleMotion(page);
-  await tap(page, phone, await belowRows(page));
-  await expect(menu).toHaveCount(0);
-  await stillUp(page, draft);
 
   // Moved over the list, a finger or the mouse is reading or selecting it; held, it is for the words or the phone.
   const at = await pointOn(page, ROW);

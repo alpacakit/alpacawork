@@ -14,14 +14,14 @@ import { saveCoordinatorAttachment, readCoordinatorAttachment, coordinatorFilePa
 import { reserveAttempt } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
-const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') } });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-cancel-')));
   initializeControlFixture(root); writeFileSync(join(root, 'config.yaml'), config);
   const conversation = new CoordinatorConversation(root), cid = conversation.read().id;
   const store = new RunStore(root, { busyTimeoutMs: 1000 }), db = store.connection;
   t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
-  const ask = (id = randomUUID(), text = 'words') => conversation.ask({ conversationId: cid, id, text, attachments: [], selected: {} });
+  const ask = (id = randomUUID(), text = 'words') => conversation.ask({ conversationId: cid, id, text, attachments: [] });
   const rows = () => db.prepare('SELECT * FROM requests WHERE conversation_id = ? ORDER BY rowid').all(cid);
   const run = (id: string, tx?: import('@alpacawork/runs').RunTransaction) => (tx ? tx.coordinatorRuns(cid) : store.coordinatorRuns(cid)).find(run => run.requestId === id)!;
   return { root, conversation, cid, store, db, ask, rows, run };
@@ -109,7 +109,7 @@ test('HTTP lost cancellation answer is recovered by GET and duplicate withdraw, 
   const read = await (await fetch(new URL('/api/coordinator', server.url))).json() as any;
   assert.deepEqual(read.conversation.cancelled, [id]);
   assert.equal((await post('messages/withdraw', input)).status, 200);
-  const late = await post('messages', { ...input, text: 'delayed', attachments: [], selected: {} });
+  const late = await post('messages', { ...input, text: 'delayed', attachments: [] });
   assert.equal(late.status, 200); assert.deepEqual((await late.json() as any).conversation.turns, []);
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM runs').get()!.n, 0);
   f.conversation.sweepAttachments();

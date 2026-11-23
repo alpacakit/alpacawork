@@ -18,7 +18,7 @@ import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 const fake = new URL('./fixtures/fake-coordinator-agent.mjs', import.meta.url).pathname;
 type Snapshot = { id: string; cancelled: string[]; warm: string; turns: { id: string; status: string; ask: string }[] };
-const config = stringify({ agents: { fake: fixtureAgentSetting('claude') } });
+const config = stringify({ agents: { fake: fixtureAgentSetting('claude') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
 
 /** Polls `check` until it holds: serve sweeps files on its own passes. */
 async function eventually(check: () => boolean, message: string, timeout = 20_000): Promise<void> {
@@ -73,7 +73,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, attached
   if (attached) {
     assert.equal((await upload(id, 'notes.txt')).status, 200);
   }
-  const input = { conversationId, id, text: 'raw instruction', attachments: attached ? ['notes.txt'] : [] as string[], selected: {} };
+  const input = { conversationId, id, text: 'raw instruction', attachments: attached ? ['notes.txt'] : [] as string[] };
   assert.equal((await post('messages', input)).status, 200);
   assert.equal((await get()).turns.find(turn => turn.id === id)?.status, 'queued');
   return { root, folder: join(marks, conversationId), conversationId, id, input, post, get, upload, file,
@@ -191,7 +191,7 @@ test('only cancelled messages do not prevent warm-up and are absent from public 
   const conversation = new CoordinatorConversation(root);
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const id = conversation.read().id, message = crypto.randomUUID();
-  conversation.ask({ conversationId: id, id: message, text: 'cancelled first input', attachments: [], selected: {} });
+  conversation.ask({ conversationId: id, id: message, text: 'cancelled first input', attachments: [] });
   conversation.withdraw(id, message);
   assert.deepEqual(conversation.read().turns, []);
   assert.equal(conversation.warm(id).warm, 'preparing');

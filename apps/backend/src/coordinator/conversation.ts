@@ -13,8 +13,6 @@ import type { z } from 'zod';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
 import { ControlStore, touch } from '@alpacawork/db';
 import { resolveAgentLaunchArgv } from '@alpacawork/contract/agent-launch';
-import { compileAgentSetting, type Selection } from '@alpacawork/contract/agent-settings';
-import { agentChoices, type LaunchMemory } from '@alpacawork/contract/agent-selection';
 import { DELIVERY_STATE, type RequestMode } from '@alpacawork/contract/control';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { inputUnsettled, PROTOCOL_LIMITS } from '@alpacawork/contract/run-protocol';
@@ -25,14 +23,12 @@ import { RunStore, admittedDelivery, isUnfinished, type RunTransaction } from '@
 import { authorize } from '../control/authorize.js';
 import { TaskRepository } from '../control/task-store.js';
 import { assertQuestionReplyApplicable, questionSnapshot, replyQuestion } from '../control/question-rules.js';
-import { assignedSession, coordinatorLaunchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
-import { enabledAgents } from '@alpacawork/contract/agent-settings';
+import { assignedSession, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
 import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
-import { freezeAiStack } from '../ai-stack.js';
-import { createCoordinatorReadState, createLaunchMemory, languageLine, savedReplyLanguage } from '../receiver/person-state.js';
-import { coordinatorSkills } from './skills.js';
-import { continuation, resumable } from './continuation.js';
+import { createCoordinatorReadState, languageLine, savedReplyLanguage } from '../receiver/person-state.js';
+import { assertSkillInvocations, coordinatorSkills } from './skills.js';
+import { coordinatorNextLaunch } from './continuation.js';
 import { assertManagedSkillsVersion } from './managed-skills-version.js';
 import { failedRun, handovers, readable, view, type Conversation } from './conversation-view.js';
 import { actedTasks } from './messages.js';
@@ -44,7 +40,6 @@ import type { ControlIndexDTO } from '@alpacawork/contract/control';
 
 type Message = z.output<typeof coordinatorMessageInputSchema>;
 const OPTIONS = { busyTimeoutMs: 10_000 };
-const path = () => process.env.PATH ?? '';
 /** What the background first turn asks: the reading a first message would otherwise wait for, and nothing else. */
 const WARM_PROMPT = 'Load the alpacawork skill and its coordinator reference, and do nothing else. Reply only with: ready';
 
@@ -93,40 +88,6 @@ function launchText(id: string, message: CoordinatorMessage, body: string, files
     message.answers === undefined ? '' : `Questions being answered: ${JSON.stringify(message.answers)}`,
     ...files.map(([name, file]) => `![${name}](${file})`)].filter(Boolean).join('\n');
 }
-/**
- * The agent a message goes to: the one the screen chose, else the one the conversation goes on with (resumable, as
- * the screen reads it), else the first enabled one in config order. An unknown name is refused here; a chosen or
- * inherited agent that is disabled is refused at admission, never replaced by another agent.
- */
-function agentFor(config: AgentsSettings, requested: string | undefined, runs: readonly CoordinatorRunRecord[], memory: LaunchMemory): string | null {
-  const remembered = memory.agent && Object.hasOwn(config.agents, memory.agent) &&
-    config.agents[memory.agent]?.enabled !== false ? memory.agent : null;
-  const agent = requested ?? resumable(runs)?.continued.agent ?? remembered ??
-    config.aiStack?.[0]?.agent ?? enabledAgents(config.agents)[0]?.[0] ?? null;
-  if (agent !== null && !Object.hasOwn(config.agents, agent))
-    throw new Problem(PROBLEM_CODE.invalidInput, `Agent ${agent} is not configured`, undefined,
-      { reason: { kind: 'agent_not_configured', agent } });
-  return agent;
-}
-/**
- * The launch a message to `agent` is admitted with, by the shared admission (agents-settings.ts): a resume with the
- * conversation's previous values when it goes on in a session (`continuation`), else a new session with a new
- * selection. A resume also fixes its fresh-start argv now, from the same values, for a restart after a failed first
- * launch. A previous value that no longer fits, a disabled agent or a profile now of another adapter is refused there:
- * never a silent new session or default. The skills catalog uses the same admission, even before session discovery.
- */
-function admit(config: AgentsSettings, runs: readonly CoordinatorRunRecord[], agent: string, selected: Selection, memory: LaunchMemory) {
-  const next = continuation(runs, agent);
-  const defaults = config.aiStack?.find(row => row.agent === agent)?.values;
-  const choices = agentChoices(compileAgentSetting(agent, config.agents[agent]));
-  const remembered = Object.fromEntries(Object.entries(memory.values[agent] ?? {}).filter(([key, value]) =>
-    choices.some(choice => choice.key === key && choice.candidates.includes(value))));
-  const initial = next ? selected : { ...defaults, ...remembered, ...selected };
-  const snapshot = coordinatorLaunchSnapshot(config, agent, next ? 'resume' : 'start', path(), initial, next?.previous);
-  if (!snapshot.ok) throw new Problem(PROBLEM_CODE.invalidSettings, `Agent ${agent} is not configured`, undefined,
-    { reason: { kind: 'agent_not_configured', agent } });
-  return { launch: snapshot.launch, restartArgv: snapshot.restartArgv, continued: next?.continued ?? null };
-}
 export class CoordinatorConversation {
   private readonly observations;
   /** A derived pointer refreshed with the same DB snapshot as the conversation, never a second Run state. */
@@ -136,9 +97,13 @@ export class CoordinatorConversation {
   }
   /** A personal-file replacement invalidates the same conversation digest as a control commit. */
   seenRevision(): string | null { return this.observations.revision(); }
-  private project(db: DatabaseSync, store: RunStore, conversation: Conversation): ConversationView {
+  private project(db: DatabaseSync, store: RunStore, conversation: Conversation, settings = readAgentsSettings(this.root)): ConversationView {
     const observed = this.observations.get()?.value;
-    return view(db, store, conversation, new Set(observed?.conversationId === conversation.id ? observed.seen : []), run => { this.running = run; });
+    const runs = store.coordinatorRuns(conversation.id);
+    const history = view(db, store, conversation, runs, new Set(observed?.conversationId === conversation.id ? observed.seen : []),
+      run => { this.running = run; });
+    const next = settings.ok ? coordinatorNextLaunch(settings.config, runs) : null;
+    return { ...history, nextLaunch: next?.row ? { agent: next.row.agent, values: next.appliedValues } : null };
   }
   /** Only this small projection is sampled for stdout changes; no conversation digest or transcript changes. */
   work(): ControlIndexDTO['coordinatorWork'] {
@@ -195,22 +160,15 @@ export class CoordinatorConversation {
     return this.control(false, (db, store) => { const conversation = current(db); return conversation && this.project(db, store, conversation); })
       ?? this.control(true, (db, store) => this.project(db, store, current(db) ?? begin(db)));
   }
-  async skills(conversationId: string, requested?: string) {
+  async skills(conversationId: string) {
     const runs = this.control(false, (db, store) => store.coordinatorRuns(opened(db, conversationId).id));
     const settings = readAgentsSettings(this.root);
-    if (!settings.ok) return { status: 'unavailable', profile: requested ?? '', skills: [], reason: 'settings' };
-    const memory = createLaunchMemory(this.root).get();
-    const profile = agentFor(settings.config, requested, runs, memory);
-    if (profile === null) return { status: 'unavailable', profile: requested ?? '', skills: [], reason: 'launch' };
-    // The catalog of the launch the next message would be admitted with: its adapter, argv, environment and session.
-    const session = continuation(runs, profile)?.continued.session?.id ?? null;
-    let launch;
-    try { launch = admit(settings.config, runs, profile, {}, memory).launch; }
-    catch (error) {
-      if (!(error instanceof Problem)) throw error;
-      return { status: 'unavailable', profile, skills: [], reason: 'launch' };
-    }
-    return coordinatorSkills({ profile, adapter: launch.adapter, root: this.root, argv: resolveAgentLaunchArgv(launch, { session: session ?? 'catalog-session', result: 'catalog-result' }),
+    if (!settings.ok) return { status: 'unavailable', profile: '', skills: [], reason: 'settings' };
+    const next = coordinatorNextLaunch(settings.config, runs);
+    if (next.row === null) return { status: 'unavailable', profile: '', skills: [], reason: 'launch' };
+    const { launch } = next, session = next.continued?.session?.id ?? null;
+    return coordinatorSkills({ profile: next.row.agent, adapter: launch.adapter, root: this.root,
+      argv: resolveAgentLaunchArgv(launch, { session: session ?? 'catalog-session', result: 'catalog-result' }),
       env: agentEnvironment(process.env, launch.path, undefined, launch.env), session });
   }
   /**
@@ -218,20 +176,23 @@ export class CoordinatorConversation {
    * given (`text`) fixed now. It goes on in the conversation's agent session when it can, else starts one.
    */
   private queue(tx: RunTransaction, config: AgentsSettings, conversation: Conversation, input: { id: string; body: string;
-    message: CoordinatorMessage; replyTo?: string | null; agent?: string; selected: Selection; text: string; warm?: boolean }) {
-    const memory = createLaunchMemory(this.root).get();
-    const head = tx.coordinatorHead(conversation.id), runs = tx.coordinatorRuns(conversation.id), agent = agentFor(config, input.agent, runs, memory);
-    if (agent === null) throw new Problem(PROBLEM_CODE.invalidSettings, 'No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server', undefined, { reason: { kind: 'no_configured_agents' } });
-    const { launch, restartArgv, continued } = admit(config, runs, agent, input.selected, memory);
+    message: CoordinatorMessage; replyTo?: string | null; text: string; warm?: boolean }) {
+    const head = tx.coordinatorHead(conversation.id), runs = tx.coordinatorRuns(conversation.id);
+    const next = coordinatorNextLaunch(config, runs);
+    if (next.row === null) throw next.error;
+    const { launch, restartArgv, continued } = next, agent = next.row.agent;
     const mode: RequestMode = continued ? 'continue' : 'new', text = input.text;
     if (Buffer.byteLength(text) > PROTOCOL_LIMITS.prompt) throw new Problem(PROBLEM_CODE.tooLarge, 'Coordinator message is too large', undefined, { reason: { kind: 'coordinator_message_too_large' } });
+    if (input.message.skills?.length) {
+      assertSkillInvocations(launch.adapter, input.body, input.message.skills);
+      assertManagedSkillsVersion(input.message.skills);
+    }
     const session = continued ? continued.session : assignedSession(launch, agent);
     assertRunReservation(this.root);
     tx.insertConversationRequest({ id: input.id, conversationId: conversation.id, headRunId: head?.id ?? null, mode,
       body: input.body, replyTo: input.replyTo, submittedAt: new Date().toISOString(),
       deliveryState: admittedDelivery(!!continued, session, runs),
-      aiExplicit: input.agent !== undefined || Object.keys(input.selected).length > 0,
-      aiStack: input.warm ? undefined : freezeAiStack(config, { agent, values: launch.values }) });
+      aiStack: input.warm || !next.following.length ? undefined : [next.row, ...next.following] });
     tx.createCoordinatorRun({ conversationId: conversation.id, requestId: input.id, agent, resumes: continued?.id ?? null,
       session, cwd: coordinatorCwd(this.root), launch, restartArgv, message: input.message }, text);
   }
@@ -239,7 +200,7 @@ export class CoordinatorConversation {
    * Starts the background first turn of a conversation that has had no message yet; otherwise does nothing, so the card
    * may ask each time it opens. A message sent meanwhile waits behind it and goes on in its session.
    */
-  warm(conversationId: string, selected: Selection = {}, agent?: string): ConversationView {
+  warm(conversationId: string): ConversationView {
     const settings = readAgentsSettings(this.root);
     return this.control(true, (db, store) => {
       let conversation = opened(db, conversationId);
@@ -247,13 +208,13 @@ export class CoordinatorConversation {
         .get(conversation.id, DELIVERY_STATE.aborted)) {
         if (!settings.ok) throw settings.error;
         const id = randomUUID(), opening = conversation;
-        store.write(tx => this.queue(tx, settings.config, opening, { id, body: WARM_PROMPT, agent, selected, warm: true,
+        store.write(tx => this.queue(tx, settings.config, opening, { id, body: WARM_PROMPT, warm: true,
           message: { context: null, attachments: [], intent: null }, text: WARM_PROMPT }));
         db.prepare('UPDATE coordinator_conversations SET warm_request_id = ? WHERE id = ?').run(id, conversation.id);
         touch(db, { kind: 'conversation', id: conversation.id });
         conversation = { ...conversation, warmRequestId: id };
       }
-      return this.project(db, store, conversation);
+      return this.project(db, store, conversation, settings);
     });
   }
   /**
@@ -279,8 +240,7 @@ export class CoordinatorConversation {
           const stored = ours ? db.prepare('SELECT id FROM runs WHERE request_id = ? AND attempt=0').get(input.id) : undefined;
           const run = stored ? tx.runtimeGet(`R${stored.id}`) : null;
           const same = ours && previous.body === input.text && previous.replyTo === (input.replyTo ?? null) && (run?.role === 'coordinator' &&
-            isDeepStrictEqual(run.message, message) && (input.agent === undefined || input.agent === run.agent) &&
-            Object.entries(input.selected).every(([name, value]) => run.launch.values[name] === value));
+            isDeepStrictEqual(run.message, message));
           if (!same) throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Message ID belongs to different input', undefined, { reason: { kind: 'message_id_belongs_different_input' } });
           return;
         }
@@ -292,7 +252,6 @@ export class CoordinatorConversation {
           if (tx.coordinatorRuns(conversation.id).some(run => run.message.retryOf === message.retryOf))
             throw new Problem(PROBLEM_CODE.conflict, 'Message has already been sent again', undefined, { reason: { kind: 'message_already_sent_again' } });
         }
-        assertManagedSkillsVersion(message.skills ?? []);
         if (!settings.ok) throw settings.error;
         const acted = [...actedTasks(message)];
         const present = new Set(acted.length ? db.prepare(`SELECT external_id FROM tasks
@@ -309,11 +268,11 @@ export class CoordinatorConversation {
         }
         const reply = input.replyTo ? replySource(db, conversation.id, input.replyTo) : null;
         const files = message.attachments.map(name => [name, coordinatorAttachmentFile(this.root, conversation.id, input.id, name)] as const);
-        this.queue(tx, settings.config, conversation, { id: input.id, body: input.text, message, replyTo: input.replyTo, agent: input.agent,
-          selected: input.selected, text: [reply ? replyPrompt(reply) : '',
+        this.queue(tx, settings.config, conversation, { id: input.id, body: input.text, message, replyTo: input.replyTo,
+          text: [reply ? replyPrompt(reply) : '',
             launchText(input.id, message, input.text, files, savedReplyLanguage(this.root))].filter(Boolean).join('\n') });
       });
-      return this.project(db, store, conversation);
+      return this.project(db, store, conversation, settings);
     });
   }
   /** Aborts a queued Request, or records a pre-admission cancellation under the same primary key as ask. */

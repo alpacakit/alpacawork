@@ -9,11 +9,11 @@
   </picture>
 </h1>
 
-<h3 align="center">让 AI 来管理你的 AI。</h3>
+<h3 align="center">用一个输入框，运行所有项目中的 AI 智能体。</h3>
 
 <p align="center">
-  为 Claude Code 和 Codex 指派工作，<br/>并跟进它们的进度。<br/>
-  你不必再坐在电脑前工作。
+  写下想做的事，你电脑上的 Claude Code 和 Codex 就会拆成多个任务，同时推进。<br/>
+  你来回答 AI 的提问、验收结果。在手机上也能使用。
 </p>
 
 <p align="center">
@@ -27,13 +27,18 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark-zh-CN.gif">
+    <img src="docs/images/hero-zh-CN.gif" alt="在一个输入框写下的请求交给协调员，它在三个项目（公司网站、应用开发、市场营销）中创建任务，并为每个任务分配 opus · high、gpt-5 · high 等 AI；其中一个任务提出问题，回答后所有任务完成" width="640">
+  </picture>
+</p>
+
+alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="电脑浏览器中的 alpacawork，列表里有 10 个进行中和 3 个待验收的任务，旁边并排显示打开的任务报告；右侧的手机上打开着同一份报告" width="820">
 </p>
-
-alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 ## 安装
 
@@ -53,19 +58,27 @@ alpacawork setup
 
 运行环境为 macOS（Apple 芯片）、Linux（x64）或 Windows（WSL2）。安装之后，按照[入门指南](docs/zh-CN/getting-started.md)发出第一个委托。
 
-### 重新打开界面
+### 常用操作
 
-关闭界面后，像下面这样请 Claude Code 或 Codex 打开。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+在界面的输入框中委托任务。打开界面、更改设置等操作，交给在终端或应用中打开的 Claude Code 或 Codex 即可（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。在终端中，用表中的命令也能做到同样的事。
 
-```text
-/alpacawork 打开界面
-```
+| 要做的事 | 对 AI 说 | 命令 |
+| --- | --- | --- |
+| 打开界面 | `/alpacawork 打开界面` | `alpacawork open` |
+| 查看是否在运行 | `/alpacawork 看看是否在运行` | `alpacawork status` |
+| 更改设置 | `/alpacawork 同时最多运行 4 个 AI` | — |
+| 更改平时使用的模型 | `/alpacawork 让任务平时用 opus 来做` | — |
+| 让新模型可用 | `/alpacawork Codex 出了新模型，把它加到模型设置里以便选择` | — |
+| 更改项目准则 | `/alpacawork 在项目准则中加上“设计工作用 opus 来做”` | — |
+| 更新到最新版本 | `/alpacawork 更新到最新版本` | `alpacawork deploy npm:alpacawork` |
+| 停止、启动、重启 | `/alpacawork 重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
+| 卸载 | `/alpacawork 卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
 
-在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`。也可以在终端执行下面的命令打开。
+设置和模型也可以在界面的输入框或设置中更改，更新也可以在界面的设置中进行。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](docs/zh-CN/manage.md)）。
 
-```sh
-alpacawork open
-```
+委托任务、查找任务、回答提问等操作，也可以在 Claude Code 或 Codex 的对话中进行。说法见 [从 Claude Code 或 Codex 使用](docs/zh-CN/chat.md)。
+
+如果用 Chrome 或 Edge，可以在界面上初始设置的最后，或之后在设置的“应用和手机”中把它安装为应用，然后从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 
 ## 能做什么
 

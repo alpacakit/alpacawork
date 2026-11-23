@@ -207,26 +207,58 @@ test('packaged self import and ordinary copy accept writable files, preserve emp
   assert.ok(lstatSync(join(copy, 'skills/empty')).isDirectory());
   assert.equal(existsSync(join(copy, 'apps/backend/test-dist')), false);
 });
-test('README pictures and links open on GitHub, and the packaged README shows its pictures from this version on npm', () => {
+test('README pictures and links open on GitHub, and the packaged README uses versioned image URLs', () => {
   const tracked = new Set(spawnSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).stdout.split('\0'));
   const targets = (text: string) => [...text.matchAll(/(!?)\[[^\]]*\]\(([^)\s]+)\)|\b(src|srcset|href)="([^"]+)"/g)]
     .map(m => ({ picture: m[1] === '!' || ['src', 'srcset'].includes(m[3]!), target: (m[2] ?? m[4])! }));
   for (const readme of readdirSync('.').filter(file => /^README(?:\.[\w-]+)?\.md$/.test(file)))
     for (const { target } of targets(readFileSync(readme, 'utf8')).filter(({ target }) => !/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(target)))
       assert.ok(tracked.has(target.split(/[?#]/)[0]!), `${readme} links to ${target}, which GitHub cannot open`);
+  const source = 'a'.repeat(40);
   const packaged = (file: string) => /^(?:docs|skills)\//.test(file) || ['LICENSE', 'SECURITY.md'].includes(file);
-  const npm = npmReadme(readFileSync('README.md', 'utf8'), 'alpacawork', '1.2.3', 'git+https://github.com/alpacakit/alpacawork.git', packaged);
+  const npm = npmReadme(readFileSync('README.md', 'utf8'), 'alpacawork', '1.2.3', source,
+    'git+https://github.com/alpacakit/alpacawork.git', packaged);
+  const unpkg = 'https://unpkg.com/alpacawork@1.2.3/';
+  const github = `https://raw.githubusercontent.com/alpacakit/alpacawork/${source}/`;
   for (const { picture, target } of targets(npm).filter(({ target }) => !target.startsWith('#'))) {
     assert.match(target, /^https?:/, target);
-    if (picture && !target.startsWith('https://img.shields.io/')) assert.ok(target.startsWith('https://unpkg.com/alpacawork@1.2.3/'), target);
+    if (picture && !target.startsWith('https://img.shields.io/'))
+      assert.ok(target.startsWith(unpkg) || target.startsWith(github), target);
   }
 });
-test('README responsive pictures use this package version and reject missing source images', () => {
-  const rewrite = (text: string) => npmReadme(text, 'alpacawork', '1.2.3', undefined,
+test('README responsive pictures use this package version and require a repository for unbundled images', () => {
+  const rewrite = (text: string) => npmReadme(text, 'alpacawork', '1.2.3', 'a'.repeat(40), undefined,
     file => ['docs/images/phone.gif', 'docs/images/wide.gif'].includes(file));
   assert.equal(rewrite('<picture><source srcset="./docs/images/wide.gif?theme=dark 1x, docs/images/phone.gif 2x"><img src="docs/images/phone.gif"></picture>'),
     '<picture><source srcset="https://unpkg.com/alpacawork@1.2.3/docs/images/wide.gif?theme=dark 1x, https://unpkg.com/alpacawork@1.2.3/docs/images/phone.gif 2x"><img src="https://unpkg.com/alpacawork@1.2.3/docs/images/phone.gif"></picture>');
   const external = '<source srcset="data:image/gif;base64,R0lGODlh 1x, https://example.com/wide.gif 2x">';
   assert.equal(rewrite(external), external);
-  assert.throws(() => rewrite('<source srcset="docs/images/missing.gif">'), /README shows docs\/images\/missing.gif, which the package does not carry/);
+  assert.throws(() => rewrite('<source srcset="docs/images/missing.gif">'), /repository/);
+});
+
+test('assembly omits documentation image GIFs and pins the packaged README to their source commit',
+  { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)' }, t => {
+    const f = fixture(t);
+    const manifestPath = join(f.built, 'package.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const repository = { type: 'git', url: 'git+https://github.com/fixture/project.git' };
+    writeFileSync(manifestPath, JSON.stringify({ ...manifest, repository }));
+    const gifs = ['docs/images/hero.gif', 'docs/images/hero-dark.gif'];
+    for (const gif of gifs) writeFileSync(join(f.built, gif), 'synthetic GIF');
+    writeFileSync(join(f.built, 'README.md'), `<picture>
+<source media="(prefers-color-scheme: dark)" srcset="${gifs[1]}">
+<img src="${gifs[0]}" alt="Overview">
+</picture>
+![Example](docs/images/example.png)
+`);
+
+    assembleDistribution(f.built, f.image, f.expected);
+
+    for (const gif of gifs) assert.equal(existsSync(join(f.image, gif)), false, gif);
+    assert.ok(existsSync(join(f.image, 'docs/images/example.png')));
+    const readme = readFileSync(join(f.image, 'README.md'), 'utf8');
+    const github = `https://raw.githubusercontent.com/fixture/project/${f.expected.source}`;
+    assert.ok(readme.includes(`src="${github}/${gifs[0]}"`), readme);
+    assert.ok(readme.includes(`srcset="${github}/${gifs[1]}"`), readme);
+    assert.ok(readme.includes('https://unpkg.com/fixture@1.0.0/docs/images/example.png'), readme);
 });

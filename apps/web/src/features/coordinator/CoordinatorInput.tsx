@@ -1,4 +1,4 @@
-import type { Selection } from "@alpacawork/contract/agent-settings";
+import type { CoordinatorNextLaunch } from "@alpacawork/contract/coordinator";
 import { mutateInput } from './editor/draft';
 import { useSendGrace } from '@/data/send-grace';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,8 +21,7 @@ import { crewOf } from '@/domain/people';
 import { decideOf } from '@/domain/questions';
 import { useTaskDetail, useWriteDisabled, useWorkspaceWritable } from '@/data/queries';
 import { useDraftStore } from '@/features/forms/draft-store';
-import { AgentPicker } from '@/features/forms/AgentPicker';
-import { admitLaunch, useLaunchPicker, type LaunchChoice } from '@/features/forms/launch-choice';
+import { CoordinatorAi } from './CoordinatorAi';
 import { attachmentsOf } from '@/domain/attachments';
 import { useComposerFiles } from '@/features/reader/Attachments';
 import { useConversation } from './coordinator';
@@ -31,7 +30,7 @@ import { focusCoordinator, useInputDraft } from './editor/draft';
 import { writtenIn } from './editor/document';
 import { inlines, answeredQuestions, replyIn, hasContent, taskReferencesIn, serialize, draftDocument, textDocument, type Document } from './editor/document';
 import { LabelEditor, typeTrigger } from './editor/LabelEditor';
-import { useCoordinatorSkills } from './editor/skills';
+import { skillMark, useCoordinatorSkills } from './editor/skills';
 import { deliverOutgoing, SEND_ERROR, sendError } from './deliver';
 import { availableInput, pendingInput, inputDraftFiles, freeze, offerOutgoingUndo, flushLeavingOutbox, holdsReaderTurn, nextDelivery, outgoingKey, useOutbox, type Fixed } from './editor/outbox';
 import { useShownConversation } from './shown';
@@ -59,9 +58,11 @@ const EXPAND_ROOM = cn('[&[data-input-long]_[data-one-input]]:pr-11 narrow:[&[da
   // The cards keep their width and scroll sideways, so their strip itself ends before the button: room inside it would only be scrolled to.
   '[&[data-input-long]_[data-attachments]]:mr-10 narrow:[&[data-input-long]_[data-attachments]]:mr-12 pointer-coarse:[&[data-input-long]_[data-attachments]]:mr-12');
 
-export function CoordinatorInput({ launch, profile }: {
-  launch: { selected: Selection; picker: LaunchChoice | null; saving: boolean }; profile: string;
-}) {
+/**
+ * `launch.next`: the AI the next message goes to (the conversation's `nextLaunch`); null when none can run, and nothing
+ * goes. `launch.ready`: the screen has read its workspace and conversation, so `next` is the server's word.
+ */
+export function CoordinatorInput({ launch }: { launch: { next: CoordinatorNextLaunch | null; ready: boolean } }) {
   const { t } = useTranslation('ui');
   const conversation = useConversation(state => state.conversation);
   const open = useConversation(state => state.open);
@@ -88,8 +89,6 @@ export function CoordinatorInput({ launch, profile }: {
   const heldReader = useReaderTurnUnadmitted(cardTask?.id) && !!conversation;
   const shownConversation = useShownConversation();
   const [long, setLong] = useState(false), [tall, setTall] = useState(false);
-  // The launch picker's menu: a new admission that cannot go yet opens it (admitLaunch).
-  const picking = useLaunchPicker(state => state.open), setPicking = (open: boolean) => useLaunchPicker.setState({ open });
   const editor = useRef<Editor | null>(null);
   const voice = useVoiceInput(editor, !open || unreachable || !conversation, draft.lockVoice);
   const recording = voice.active;
@@ -116,6 +115,8 @@ export function CoordinatorInput({ launch, profile }: {
   }, [listen, voice.enabled, conversation, unreachable]);
 
   const files = useComposerFiles(draft.key, { kind: 'coordinator', conversationId: conversation?.id ?? '' }, !writing, inputDraftFiles(root, draft.entry.values.requestId!));
+  // The agent the next message goes to: its skills are the ones the input offers and checks.
+  const profile = launch.next?.agent ?? '';
   const catalog = useCoordinatorSkills(profile);
   const shared = useShared(state => state.shared);
   useEffect(() => {
@@ -139,13 +140,12 @@ export function CoordinatorInput({ launch, profile }: {
   }, [shared, files.attachments.disabled, draft.locked, draft.entry.values]);
   /**
    * Whether a send may go now: the one gate every way of sending meets. A press's intent (canPost) needs serve in reach,
-   * no unadmitted copy of this same reader turn, and a conversation; the draft (the button, Enter, a report's swipe) needs that and
+   * no unadmitted copy of this same reader turn, a conversation and an AI that can take it (`launch.next`); the draft (the button, Enter, a report's swipe) needs that and
    * itself ready (canSend).
    */
   const closing = shownConversation.closing;
-  const canPost = !unreachable && !!conversation && !closing;
-  // A choice made in the picker is still being saved: the send waits, so it goes with that choice.
-  const canSend = canPost && !launch.saving && !draftUnavailable && !shared && !recording && !draft.unavailable && !files.attachments.waiting
+  const canPost = !unreachable && !!conversation && !closing && !!launch.next;
+  const canSend = canPost && !draftUnavailable && !shared && !recording && !draft.unavailable && !files.attachments.waiting
     && !pendingInput(useDraftStore.getState().entries, root, draft.key)
     && !(heldReader && readerSendReadiness(draft.doc, serverTasksFor(client) ?? [], null).ready);
   /**
@@ -162,17 +162,15 @@ export function CoordinatorInput({ launch, profile }: {
    * `intent`, or the questions a draft's choices answer, `answers`) becomes a fixed request under the request ID in
    * `values` (outbox.ts), and `accept` is what it answers in the reader once it goes. Its recipients (`tasks`) are what
    * `doc` names (labels, answers, Task IDs in its words) and a press's Task, fixed here. The input's draft goes on in
-   * the same write (`input`); an intent leaves the draft as it is. Null when it could not be kept, or when its launch
-   * has a value to choose again (selectionReady): then the picker opens instead.
+   * the same write (`input`); an intent leaves the draft as it is. Null when it could not be kept.
    */
   const fix = (conversationId: string, doc: Document, attachments: string[],
     meaning: Pick<Fixed, 'intent' | 'answers'>,
     values: Record<string, string>, input?: { from: string }, card: ReaderCard | null = useSitting.getState().card) => {
-    if (!admitLaunch(launch.picker)) return null;
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
-    const fixed: Fixed = { conversationId, text: serialize(doc, profile), ...(tasks.length ? { tasks } : {}),
+    const fixed: Fixed = { conversationId, text: serialize(doc, skillMark(catalog)), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
-      agent: launch.picker ? launch.picker.sendAgent : profile, selected: launch.selected, attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
+      attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };
     const accept = captureReaderSubmission(fixed, doc, serverTasksFor(client) ?? [], requestId, scope, recheck(requestId, scope), card);
     if (accept.reader.some(reader => holdsReaderTurn(useDraftStore.getState().entries, root, reader))) return null;
@@ -235,7 +233,7 @@ export function CoordinatorInput({ launch, profile }: {
     const requestId = crypto.randomUUID(), doc = textDocument(text);
     return fix(conversation.id, doc, [], { intent }, { doc: JSON.stringify(doc), requestId }, undefined, card) ?? 'rejected';
   };
-  const place = { root, client, surface, profile, draw: shownConversation.send };
+  const place = { root, client, surface, draw: shownConversation.send };
   const deliver = (requestId: string, keepalive?: boolean, leaving?: boolean) => deliverOutgoing(place, requestId, keepalive, leaving);
   const latestDeliver = useRef(deliver);
   latestDeliver.current = deliver;
@@ -297,8 +295,8 @@ export function CoordinatorInput({ launch, profile }: {
   // frame's bottom as from its side; the frame's rounding is that action's own plus those 8px (FRAME_ROUND), one curve
   // round the other, as the folded capsule's is. The words above start where the row's first mark does (LabelEditor).
   const row = 'flex min-h-10 flex-none flex-wrap items-center gap-1 px-2 pb-2 narrow:min-h-13 narrow:gap-0 narrow:px-2 narrow:pb-2 pointer-coarse:min-h-13 pointer-coarse:gap-0 pointer-coarse:px-2 pointer-coarse:pb-2';
-  // The model is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at or open.
-  const picker = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink data-[state=open]:border-transparent data-[state=open]:bg-hover narrow:h-11 pointer-coarse:h-11';
+  // The input's AI is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at.
+  const ai = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink narrow:h-11 pointer-coarse:h-11';
   const tool = inputTool;
   return <div data-one-input-area data-input-tall={tall || undefined} className="flex min-h-0 shrink flex-col border-t border-rule bg-raised p-2">
     {/* What stands over the words is what lasts about them (a draft that cannot be kept, notify.ts); a send that did not
@@ -329,9 +327,9 @@ export function CoordinatorInput({ launch, profile }: {
           {/* Initial release: {voice.enabled && content && <VoiceInput voice={voice} disabled={unreachable} className={inputFinger} />} */}
           {/* The row's ground: on a computer it moves the coordinator (frame-hand.tsx). */}
           <span className={cn("min-w-0 flex-1 self-stretch", !own && !narrow && "cursor-grab touch-none [[data-coordinator-held]_&]:cursor-grabbing")} />
-          {/* The model takes the room it needs before the ground does (grow-9), and keeps at least a finger's width (basis-11):
+          {/* The AI takes the room it needs before the ground does (grow-9), and keeps at least a finger's width (basis-11):
               narrower than that, it goes to the next line instead. */}
-          {launch.picker && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11"><AgentPicker choice={launch.picker} disabled={!writing} className={picker} open={picking} onOpenChange={setPicking} /></span>}
+          {launch.ready && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11"><CoordinatorAi next={launch.next} className={ai} /></span>}
           <span className="ml-auto flex flex-none">
           {/* Initial release: voice.enabled && !content ? <VoiceInput voice={voice} disabled={unreachable} round className={cn(inputSpeak, inputFinger)} /> : */}<Button type="submit" data-ask-send className={action}
             aria-label={t('coordinatorCard.send')} title={closing ? t('coordinatorCard.clearingHint') : undefined} disabled={steady.disabled || !content} onClick={steady.press()}><Icon name="plane" className="size-4" /></Button>

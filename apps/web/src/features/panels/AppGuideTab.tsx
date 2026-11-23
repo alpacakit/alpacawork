@@ -141,7 +141,7 @@ function Notifications() {
       notifications: t("settings.personal.notifications"), subscribe: t("push.subscribe"),
     }} /></p>
     <Button variant="outline" className="mt-3"
-      onClick={() => useDialogStore.getState().open("settings", { tab: "personal", focusNotifications: true })}>
+      onClick={() => useDialogStore.getState().open("settings", { tab: "personal", focus: "notifications" })}>
       {t("settings.apps.notifyOpen")}
     </Button>
     <FieldHint className="mt-3">{t("settings.apps.notifyIos")}</FieldHint>

@@ -144,7 +144,7 @@ function returnFocus(event: Event, returnTo: React.RefObject<readonly Element[]>
   requestAnimationFrame(() => giveFocusBack(chain));
 }
 
-/** A popup's heading: a head's weight at its rows' size, as the model picker's group names lead their rows (tokens.css). */
+/** A popup's heading: a head's weight at its rows' size, as a menu's group names lead their rows (tokens.css). */
 const POPUP_HEADING = "mb-2 text-base font-semibold [overflow-wrap:anywhere]";
 
 /**

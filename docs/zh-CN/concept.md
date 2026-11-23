@@ -13,7 +13,7 @@
 假设你委托“给店铺网站做一个预约表单”。图中的编号与下文的编号对应。
 
 <p align="center">
-  <img src="../images/concept-flow.svg" alt="1. You tell the front-desk AI (the coordinator) what you want done. 2. The coordinator makes it a task and hands it to the AI that takes it on (the owner). 3. The owner splits it into subtasks and asks members for help. 4. Questions and reports come back to you." width="410">
+  <img src="../images/concept-flow.svg" alt="1. 你把想做的事告诉负责对接的 AI（协调员）。2. 协调员把它建成任务，交给接手的 AI（负责人）。3. 负责人把它拆成子任务，并请成员帮忙。4. 提问和报告会回到你这里。" width="410">
 </p>
 
 1. 写在输入框里的委托，会送到负责对接的 AI（协调员）那里。
@@ -27,7 +27,7 @@
 
 只有必须由你决定的事，才会送到你这里。收到提问或报告的任务排在列表的“待验收”中，AI 的运行停住的任务排在“需要处理”中。
 
-![Task list on the left, with In progress at the top and Awaiting review below. On the right, the report of an open task awaiting review. A Done button under the list](../images/home-desktop-dark.png)
+![左边是任务列表，上面是“In progress”（进行中），下面是“Awaiting review”（待验收）。右边是打开的一个待验收任务的报告。列表下方有“Done”（完成）按钮](../images/home-desktop-dark.png)
 
 
 - 选择偏好或方向的提问

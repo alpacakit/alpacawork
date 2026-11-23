@@ -1,5 +1,4 @@
 import { countUse } from '@/features/telemetry/count';
-import type { Selection } from "@alpacawork/contract/agent-settings";
 import { useReadState } from '@/data/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { readerPresentation, subscribeReads } from '@/data/read-model';
@@ -32,8 +31,6 @@ import { useBar } from '@/state/bar';
 import { PhoneSheet } from './PhoneSheet';
 import { useCoordinatorSkills } from './editor/skills';
 import { readerShows, shownInReader, useViewStore } from "@/state/view-store";
-import { admitLaunch, useLaunchChoice } from "@/features/forms/launch-choice";
-import { conversationSelection } from "@/features/forms/agent-offers";
 import { useFrameSelector } from "@/data/workspace-store";
 import { useConversation } from "./coordinator";
 import { useConversationReading } from "./read-boundary";
@@ -56,14 +53,15 @@ import { FrameEdge, FrameGrip, FrameHandContext } from "./frame-hand";
 import { useFramePlacement } from "./use-frame-placement";
 import { goesDownByItself } from "./foot";
 
-/** All configured adapters share the prompt input's launch picker. */
+/**
+ * The AI the conversation's next message goes to, as the server says it (`nextLaunch`: its coordinator AI stack, and the
+ * row the conversation is on); null when no row can run. Chosen in the settings, never here.
+ */
 function useCoordinatorLaunch() {
   const read = useFrameSelector(data => data !== null);
   const conversation = useConversation(state => state.conversation);
-  const choice = useLaunchChoice(conversation ? { id: conversation.id, agent: conversation.agent, previous: conversationSelection(conversation) } : undefined);
-  // Once read, the picker is there even with no agent to choose: it says so, and a send opens it (admitLaunch).
-  return { profile: choice.profile, selected: choice.send, picker: read ? choice : null,
-    saving: choice.saving, ready: read && conversation !== null && !choice.saving };
+  const next = conversation?.nextLaunch ?? null;
+  return { next, ready: read && conversation !== null };
 }
 const CoordinatorFooter = memo(function CoordinatorFooter() {
   const launch = useCoordinatorLaunch();
@@ -108,7 +106,7 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   }, [ready, panel, project, index, serverTasks, presentation, root, draft.key, draft.locked, draft.entry.values.phase, draft.entry.values.seen,
     draft.entry.values.seenProject, emptied(draft.entry.values), revision, live, conversation?.id]);
 
-  return <CoordinatorInput launch={launch} profile={launch.profile} />;
+  return <CoordinatorInput launch={launch} />;
 });
 
 /**
@@ -308,11 +306,11 @@ function Card() {
   const frame = held ?? kept ?? FIRST;
   const narrow = useNarrow();
   const bar = useBar(state => state.hidden ? 0 : state.height);
-  const retryIds = useRef(new Map<string, { conversationId: string; id: string; selected: Selection; agent: string }>());
+  const retryIds = useRef(new Map<string, { conversationId: string; id: string }>());
   const disabled = useWriteDisabled();
   const launch = useCoordinatorLaunch();
   const engaged = useConversation(state => state.engaged);
-  const catalog = useCoordinatorSkills(launch.profile);
+  const catalog = useCoordinatorSkills(launch.next?.agent ?? '');
   const card = useRef<HTMLDivElement>(null), panel = useRef<HTMLDivElement>(null), outline = useRef<HTMLDivElement>(null), entrance = useRef<HTMLDivElement>(null);
   const [own, setOwn] = useState<Window | null>(null);
   const opening = useRef(false);
@@ -360,9 +358,9 @@ function Card() {
     const foot = drawn.foot, engage = () => { if (!useConversation.getState().engaged) useConversation.setState({ engaged: true }); };
     foot.addEventListener("focusin", engage); return () => foot.removeEventListener("focusin", engage);
   }, [drawn]);
-  // With no adapter configured there is none to choose (an empty profile): asked all the same, the server's own answer
-  // (none can coordinate) is what the conversation says.
-  useEffect(() => { if (engaged && !disabled && launch.ready) void useConversation.getState().warm(launch.selected, launch.profile || undefined); },
+  // With no coordinator AI that can run, it is asked all the same: the server's own answer (none can coordinate) is what
+  // the conversation says.
+  useEffect(() => { if (engaged && !disabled && launch.ready) void useConversation.getState().warm(); },
     [engaged, disabled, conversation?.id, turns.length, launch.ready]);
   // The grip is one, on the far surface: the conversation open, or the input folded. Opened or folded with the focus on
   // the grip (its keys, Esc), the focus goes with it (the one leaving fades out before it is taken away).
@@ -426,13 +424,12 @@ function Card() {
     if (!again) {
       // A known failed turn is a new user admission. Its later presses keep this ID and original pin,
       // unlike an unanswered outbox request, which only continues its existing admission.
-      if (!admitLaunch(launch.picker)) return;
-      again = { conversationId: conversation!.id, id: crypto.randomUUID(), selected: launch.selected, agent: launch.profile };
+      again = { conversationId: conversation!.id, id: crypto.randomUUID() };
       if (!admitOutgoingIdentity(useConversation.getState().root, again.id)) { notify.error(t('input.storageUnavailable')); return; }
       retryIds.current.set(retryKey, again);
     }
     scrollThreadToEnd(drawn.body);
-    try { await useConversation.getState().ask({ conversationId: again.conversationId, id: again.id, retryOf: turn.id, text: turn.ask, ...(turn.tasks ? { tasks: turn.tasks } : {}), attachments: [], selected: again.selected, agent: again.agent,
+    try { await useConversation.getState().ask({ conversationId: again.conversationId, id: again.id, retryOf: turn.id, text: turn.ask, ...(turn.tasks ? { tasks: turn.tasks } : {}), attachments: [],
       ...(turn.replyTo ? { replyTo: turn.replyTo.id } : {}), ...(intent?.success ? { intent: intent.data } : {}), ...(turn.answers ? { answers: turn.answers.map(({ task, question }) => ({ task, question })) } : {}) }); }
     // Pressed again, it goes under the same ID (a lost answer is said as unknown, not as this; lib/notify.ts failure).
     catch (error) { notify.failure(error, { about: "coordinator retry", from: "coordinator", text: t("coordinatorCard.sendFailed") }); }

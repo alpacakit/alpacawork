@@ -33,7 +33,7 @@ const current = () => (screen.getByRole('textbox') as HTMLElement & { editor: Ed
 const hintText = () => document.querySelector('[data-draft-hint]')?.getAttribute('data-draft-hint')
   ?? document.querySelector('[data-placeholder]')?.getAttribute('data-placeholder');
 beforeAll(() => startI18n());
-beforeEach(async () => { onSend.mockClear(); await i18n.changeLanguage('en'); setConversationState({ conversation: { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] } }); });
+beforeEach(async () => { onSend.mockClear(); await i18n.changeLanguage('en'); setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }); });
 afterEach(() => { cleanup(); setConversationState({ conversation: null, open: false }); });
 const mount = () => render(<TestWorkspace><Harness /></TestWorkspace>);
 
@@ -119,7 +119,7 @@ test('choices made during conversation loading transfer to the real draft with t
   setConversationState({ conversation: null }); mount();
   act(() => input.change(() => ({ type: 'doc', content: [{ type: 'paragraph', content: [taskLabel({ id: 'T1', title: 'Task one' }), { type: 'answerLabel', attrs: { question: 'Q1', task: 'T1', n: '1', name: 'Choice', answer: '1-Choice' } }] }] })));
   const requestId = input.entry.values.requestId;
-  act(() => setConversationState({ conversation: { id: 'loaded-conversation', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'loaded-conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
   expect(current().getText()).toContain('1-Choice'); expect(input.entry.values.requestId).toBe(requestId);
   expect(Object.keys(useDraftStore.getState().entries).some(key => JSON.parse(key)[2] === 'loading')).toBe(false);
 });
@@ -129,7 +129,7 @@ test('a seed into the loading draft does not reach a draft the person already wr
   act(() => input.change(() => textDocument('Retained words')));
   act(() => setConversationState({ conversation: null }));
   act(() => input.observe({ panel: { id: 'T1', title: 'Task one' }, project: null }));
-  act(() => setConversationState({ conversation: { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
   expect(current().getText()).toBe('Retained words'); expect(input.entry.values.phase).toBe('composing');
 });
 test('a selection made immediately after mount is not reset by a deferred autofocus timer', () => {
@@ -250,7 +250,7 @@ test.each(['#T', '/al'])('a press outside the %s list closes it and leaves the w
 test('the project Task the screen is narrowed to seeds a task badge, removable like any, and no project badge', async () => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(snapshotJson(url.startsWith('/api/coordinator/skills')
     ? { status: 'unavailable', profile: 'claude', skills: [], reason: 'test' }
-    : { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
+    : { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
   onTestFinished(() => { vi.unstubAllGlobals(); useViewStore.setState(useViewStore.getInitialState()); });
   useViewStore.setState({ project: PROJECT_TASK, selected: null, navigationReady: true });
   setConversationState({ open: true, read: true, error: null });
@@ -339,7 +339,7 @@ test('loading draft merge keeps one reply reference and the retained reply wins'
   // QueryCache delivers removals through its scheduled subscription; edit only once the loading draft is actually shown.
   await waitFor(() => expect(JSON.parse(input.key)[2]).toBe('loading'));
   act(() => input.change(() => replyTo(textDocument('Loading words'), incoming)));
-  act(() => setConversationState({ conversation: { id: 'editor-tests', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
   expect(replyIn(input.doc)).toEqual(retained);
   expect(inlines(input.doc).filter(node => node.type === 'replyLabel')).toHaveLength(1);
   expect(current().getText()).toContain('Retained words'); expect(current().getText()).toContain('Loading words');
@@ -453,7 +453,7 @@ test('pending words leave the editor immediately; editing identical next words p
   mount();
   act(() => { current().commands.setContent(textDocument('same')); });
   const id = input.entry.values.requestId!, key = input.key;
-  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'same', attachments: [], selected: {} }, input.entry.values, { from: key }); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'same', attachments: [] }, input.entry.values, { from: key }); });
   expect(current().getText()).toBe('');
   expect(useDraftStore.getState().entries[key]!.values.doc).toContain('same');
   act(() => {
@@ -463,7 +463,7 @@ test('pending words leave the editor immediately; editing identical next words p
   expect(current().getText()).toBe('same');
   const entries = { ...useDraftStore.getState().entries };
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
-  expect(serialize(draftDocument(entries[key]!.values), '')).toBe('same');
+  expect(serialize(draftDocument(entries[key]!.values))).toBe('same');
 });
 
 
@@ -471,9 +471,9 @@ test.each(['reply', 'change', 'intend'] as const)('programmatic %s edits only th
   mount();
   act(() => current().commands.setContent(replyTo(textDocument('original message'), { id: 'answer-one', answeredAt: '2026-11-05T00:00:00Z' })));
   const id = input.entry.values.requestId!, key = input.key;
-  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'original message', replyTo: 'answer-one', attachments: [], selected: {} }, input.entry.values, { from: key }); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'original message', replyTo: 'answer-one', attachments: [] }, input.entry.values, { from: key }); });
   const fixed = useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted;
-  expect(serialize(input.doc, '')).toBe('');
+  expect(serialize(input.doc)).toBe('');
   act(() => {
     if (kind === 'reply') replyInDraft({ id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z' });
     else if (kind === 'change') input.change(() => textDocument('new words'));
@@ -482,11 +482,11 @@ test.each(['reply', 'change', 'intend'] as const)('programmatic %s edits only th
       input.intend(task, { task: task.id, action: 'sendback', expectedTaskHash: task.hash }, 'new words');
     }
   });
-  expect(serialize(input.doc, '')).not.toContain('original message');
+  expect(serialize(input.doc)).not.toContain('original message');
   if (kind === 'reply') expect(replyIn(input.doc)?.id).toBe('answer-two');
-  else expect(serialize(input.doc, '')).toContain('new words');
+  else expect(serialize(input.doc)).toContain('new words');
   const visible = input.doc, entries = { ...useDraftStore.getState().entries };
-  expect(serialize(draftDocument(entries[key]!.values), '')).toContain('original message');
+  expect(serialize(draftDocument(entries[key]!.values))).toContain('original message');
   expect(entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
   expect(draftDocument(entries[key]!.values)).toEqual(visible);
@@ -498,7 +498,7 @@ test.each(['delete text', 'delete paragraphs and reply', 'delete empty paragraph
   const original = replyTo(textDocument('retained words\n\n😀'), { id: 'original-answer', answeredAt: '2026-11-05T00:00:00Z' });
   act(() => current().commands.setContent(original));
   const id = input.entry.values.requestId!, key = input.key;
-  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(original, ''), replyTo: 'original-answer', attachments: [], selected: {} }, input.entry.values, { from: key }); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(original), replyTo: 'original-answer', attachments: [] }, input.entry.values, { from: key }); });
   const fixed = useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted;
   act(() => input.change(() => edit === 'delete empty paragraph' ? textDocument('\n') : edit === 'delete paragraphs and reply'
     ? replyTo(textDocument('next\n\nwords'), { id: 'next-answer', answeredAt: '2026-11-05T00:01:00Z' }) : textDocument('next words')));
@@ -511,12 +511,12 @@ test.each(['delete text', 'delete paragraphs and reply', 'delete empty paragraph
     }
   });
   expect(input.doc).toEqual(parseDocument(current().getJSON()));
-  expect(serialize(input.doc, '')).toBe(edit.startsWith('replace') ? 'replacement\n\nwords' : '');
+  expect(serialize(input.doc)).toBe(edit.startsWith('replace') ? 'replacement\n\nwords' : '');
   act(() => { current().commands.setTextSelection(current().state.doc.content.size - 1); current().commands.insertContent('after'); });
   const visible = input.doc, entries = { ...useDraftStore.getState().entries };
-  expect(serialize(visible, '')).not.toContain('retained words');
-  expect(serialize(visible, '')).toContain('after');
-  expect(serialize(draftDocument(entries[key]!.values), '')).toContain('retained words');
+  expect(serialize(visible)).not.toContain('retained words');
+  expect(serialize(visible)).toContain('after');
+  expect(serialize(draftDocument(entries[key]!.values))).toContain('retained words');
   expect(entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
   expect(draftDocument(entries[key]!.values)).toEqual(visible);
@@ -527,7 +527,7 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
   const reply = { id: 'answer-one', answeredAt: '2026-11-05T00:00:00Z' };
   act(() => current().commands.setContent(replyTo(textDocument('original message'), reply)));
   const id = input.entry.values.requestId!, key = input.key;
-  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'original message', replyTo: reply.id, attachments: [], selected: {} }, input.entry.values, { from: key }); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'original message', replyTo: reply.id, attachments: [] }, input.entry.values, { from: key }); });
   const fixed = useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted;
   act(() => replyInDraft({ id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z' }));
   const clearReply = () => input.change(doc => filterDocument(doc, node => node.type !== 'replyLabel'));
@@ -535,22 +535,22 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
   act(() => { expect(cancelUnsent('/fixture', id)).toBe('cancelled'); });
   if (recovery !== 'clear before cancelling') {
     expect(replyIn(input.doc)?.id).toBe('answer-two');
-    expect(serialize(input.doc, '')).toBe('');
+    expect(serialize(input.doc)).toBe('');
     expect(useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.taken).toBeUndefined();
     expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(false);
     if (recovery === 'send newer reply before recovery') {
       act(() => input.change(doc => ({ ...doc, content: [...doc.content, ...textDocument('next words').content] })));
       const nextId = input.entry.values.requestId!;
       act(() => {
-        expect(freeze('/fixture', { conversationId: 'editor-tests', text: 'next words', replyTo: 'answer-two', attachments: [], selected: {} }, input.entry.values, { from: key })).toBe(nextId);
-        reconcileOutbox({ id: 'editor-tests', agent: null, warm: 'none', busy: true, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
+        expect(freeze('/fixture', { conversationId: 'editor-tests', text: 'next words', replyTo: 'answer-two', attachments: [] }, input.entry.values, { from: key })).toBe(nextId);
+        reconcileOutbox({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: true, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
       });
     } else act(clearReply);
-    expect(serialize(input.doc, '')).toBe('');
+    expect(serialize(input.doc)).toBe('');
     expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(true);
     act(() => { expect(takeBack('/fixture', id, key)).toBe(true); });
   }
-  expect(serialize(input.doc, '')).toBe('original message');
+  expect(serialize(input.doc)).toBe('original message');
   expect(replyIn(input.doc)).toEqual(reply);
   expect(useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(false);

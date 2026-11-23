@@ -30,7 +30,7 @@ const message = (id: string, status: CoordinatorTurn["status"], rest: Partial<Co
   // Replies are read unless a case says otherwise: an unread one is folded when the conversation opens.
   answer: null, seen: status === 'succeeded' || status === 'failed', answeredAt: null, error: null, result: null, ...rest,
 });
-const state = (turns: CoordinatorTurn[]) => ({ id: "conversation", agent: "fake", warm: 'none' as const, busy: false, cancelled: [], turns });
+const state = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: "fake", values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 const reply = (turns: CoordinatorTurn[], cancelled: string[] = []) => new Response(snapshotJson({ ...state(turns), cancelled }), { status: 200 });
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage("en"); });
 afterEach(() => { for (const offer of useUndoOffers.getState().offers) endSendGrace(offer.id); useOutbox.setState({ live: new Set() }); useConnection.setState({ offline: false }); cleanup(); vi.unstubAllGlobals(); setConversationState({ conversation: null, open: false, read: true, error: null }); });
@@ -183,7 +183,7 @@ function localQueue(text = 'Local words', attachments: string[] = [], grace = 0)
   const values = { requestId: id, doc: JSON.stringify(textDocument(text)), phase: 'composing' };
   useDraftStore.setState({ unavailable: false, entries: { [key]: { status: 'editing', values } } });
   window.__ALPACAWORK_WRITE_GRACE_MS__ = grace;
-  freeze(root, { conversationId, text, selected: {}, attachments }, values,
+  freeze(root, { conversationId, text, attachments }, values,
     { from: key });
   if (grace) offerOutgoingUndo(root, id, document);
   return { root, id, key };

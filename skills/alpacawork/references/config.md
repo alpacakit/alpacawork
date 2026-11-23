@@ -6,9 +6,12 @@ The coordinator reads this when asked to read or change settings, when adding or
 
 | What you want to change | Where it lives | How to change it |
 |---|---|---|
+| The AI that starts task requests, and what takes over | `aiStack` in `config.yaml` | `config set --config` with `limits` and `aiStack` together, or "Settings → Server → AI for tasks" on the screen |
+| The AI that answers messages from the input, and what takes over | `coordinatorAiStack` in `config.yaml` | `config set --config` with `limits` and `coordinatorAiStack` together, or "Settings → Server → AI you talk to in the input (coordinator)" on the screen |
 | The number of Runs running at once, time limits, the attachment limit | `limits` in the server's `config.yaml` | `config set`, or "Settings → Server" on the screen |
 | The AIs in use, the models and other values selectable in a request, launch options | `agents` in `config.yaml` | Same as above |
 | The folder agents work in | The project's code location | `task update --task <P number> --cwd`, or the project's settings on the screen |
+| A project's summary (what the project is for, in one sentence) | The project | `task update --task <P number> --values-file` with `project_summary`, or the project's settings on the screen (["Turning a request into a task" in Coordinator](coordinator.md#turning-a-request-into-a-task)) |
 | The project policy, the fields tasks write | The project | For the project policy, ["Authority" in Coordinator](coordinator.md#authority); for the fields the project uses, `field use`; for field definitions, `field set` |
 | The screen's language, theme and notifications; the reply language | Personal settings | `settings set`, or "Settings → Personal" on the screen |
 | The port, the name for opening the screen from other devices | Decided at installation | [Setup](setup.md#install) |
@@ -17,6 +20,23 @@ The coordinator reads this when asked to read or change settings, when adding or
 - `config.yaml` is directly under the data folder. Saving it needs no restart. Editing it by hand lets you write broken content too, which is refused when it is read. A single unknown key or old form makes the whole file count as unreadable (symptoms and fixes are in [Troubleshooting](troubleshoot.md#configyaml-cannot-be-read)).
 - Pass `config set` every item of `limits` and the full text of `agents` (it does not accept a partial value). First read the current values, `agentsText` and `hash` with `config get`. If the configuration was changed from somewhere else after you read it, `config set` is refused; read again and make the change again.
 - There is one set of personal settings per server, and it does not distinguish between people. Every device that connects to the same server has the same values.
+
+## AI stacks
+
+```yaml
+aiStack:
+  - { agent: claude, values: { model: opus, effort: medium } }
+  - { agent: codex, values: {} }
+coordinatorAiStack:
+  - { agent: claude, values: { model: opus, effort: low } }
+  - { agent: codex, values: {} }
+```
+
+Each stack lists named, enabled agents and their launch values in order. The first row is the default. The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends. The coordinator uses its own stack. A missing or empty `coordinatorAiStack` leaves it unconfigured.
+
+Coordinator stack changes apply when the next message is accepted. The coordinator checks the rows in order, skips duplicate launches, and skips rows whose latest run in this conversation hit a usage or capacity limit. If every row hit a limit, it checks again from the top. Only rows below the chosen row can take over.
+
+`config get` returns each saved stack with the values its rows use. Include either stack in the YAML passed to `config set --config` along with the full limits. Omitting a stack from the edit leaves it as saved. Use `[]` to clear it.
 
 ## Run limits (limits)
 

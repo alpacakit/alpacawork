@@ -179,7 +179,7 @@ function queued(text: string, id = crypto.randomUUID()) {
   const input = draftKey(root,'coordinator','C1');
   const values = { requestId:id, doc:JSON.stringify(textDocument(text)) };
   useDraftStore.setState(state => ({ entries: { ...state.entries, [input]: {status:'editing',values} } }));
-  const fixed = { conversationId:'C1',text,selected:{},attachments:[] };
+  const fixed = { conversationId:'C1',text,attachments:[] };
   expect(freeze(root,fixed,values,{from:input})).toBe(id);
   offerOutgoingUndo(root,id,document);
   return {id,input};
@@ -268,7 +268,7 @@ function showQueuedConversation() {
   const view = render(<TestWorkspace><ShownConversationProvider><CoordinatorThread turns={[]} retry={() => {}} /><Toaster /></ShownConversationProvider></TestWorkspace>);
   // No server in this fixture; opening the recovered input may refresh its conversation.
   act(() => setConversationState({ root, open: true, expanded: true, refresh: async () => {}, conversation: {
-    id: 'C1', agent: null, warm: 'none', busy: false, cancelled: [], turns: [],
+    id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [],
   } }));
   return view;
 }
@@ -302,7 +302,7 @@ test('cancelling grace from its message preserves newer input and never dispatch
 test('inline undo of a card send retains its terminal identity across reload and forbids a later withdrawal', async () => {
   useOutbox.setState({ live: new Set(), resend: null });
   const id = crypto.randomUUID();
-  const fixed = { conversationId: 'C1', text: 'Card send', selected: {}, attachments: [], intent: { action: 'continue' as const, task: 'T1', expectedTaskHash: dto().hash } };
+  const fixed = { conversationId: 'C1', text: 'Card send', attachments: [], intent: { action: 'continue' as const, task: 'T1', expectedTaskHash: dto().hash } };
   const values = { requestId: id, doc: JSON.stringify(textDocument('Card send')) };
   showQueuedConversation();
   act(() => {
@@ -313,7 +313,7 @@ test('inline undo of a card send retains its terminal identity across reload and
   fireEvent.click(document.querySelector('[data-coordinator-cancel-unsent]')!);
   expect(document.querySelector('[data-coordinator-cancel-unsent]')).toBeNull();
   useDraftStore.setState(readDrafts());
-  const conversation = { id: 'C1', agent: null, warm: 'none' as const, busy: false, turns: [], cancelled: [] };
+  const conversation = { id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns: [], cancelled: [] };
   expect(beginWithdrawal(root, id, conversation)).toBeNull();
   expect(begin(root, id)).toBeNull();
   expect(useUndoOffers.getState().offers.some(offer => offer.id === id)).toBe(false);

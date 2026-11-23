@@ -21,7 +21,7 @@ import { queryClient } from '../src/data/query-client';
 import { notify, useToasts } from '../src/lib/notify';
 const root='/fixture', cid='review-recovery', key=draftKey(root,'coordinator',cid);
 const originalHash='c'.repeat(64), currentHash='d'.repeat(64);
-const conv=()=>({id:cid,agent:null,warm: 'none' as const,busy:false,cancelled:[],turns:[]});
+const conv=()=>({id:cid,nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[]});
 beforeAll(async()=>{await startI18n();await i18n.changeLanguage('en');});
 afterEach(()=>{cleanup();for(const toast of useToasts.getState().toasts)notify.dismiss(toast.id);queryClient.clear();vi.unstubAllGlobals();useDraftStore.setState({entries:{}});useReaderSend.setState({receipts:new Map(),post:null});useOutbox.setState({live:new Set(),resend:null});setConversationState(useConversation.getInitialState());});
 function setup({restored=true, changed=false, changedTurn=false, changedPlacement=false, action='sendback', ordinary=false, snapshot=false, failFirst=false, unknownFirst=false}:
@@ -41,7 +41,7 @@ function setup({restored=true, changed=false, changedTurn=false, changedPlacemen
  useDraftStore.setState({entries:{[key]:{status:'editing',values:restored?next:{doc:JSON.stringify(doc),requestId:crypto.randomUUID(),...editableIntentValues(intent,readerTurn(original))}}},unavailable:false});
  if(restored){
   const requestId=crypto.randomUUID();
-  expect(freeze(root,{conversationId:cid,text:'Send T3 back with changes',selected:{},attachments:[],intent},{requestId,doc:JSON.stringify(doc)},{from:key},[binding])).toBe(requestId);
+  expect(freeze(root,{conversationId:cid,text:'Send T3 back with changes',attachments:[],intent},{requestId,doc:JSON.stringify(doc)},{from:key},[binding])).toBe(requestId);
   returnReaderSubmission(root,requestId,'conflict'); expect(restoreReaderDraft(root,cid,'T3')).toBe(true);
   const values=useDraftStore.getState().entries[key]!.values;
   expect(hasReaderOperation(draftDocument(values))).toBe(true);
@@ -57,7 +57,7 @@ function setup({restored=true, changed=false, changedTurn=false, changedPlacemen
   }
   return new Response(snapshotJson({status:'unavailable',profile:'claude',skills:[]}));
  }));
- const rendered=render(<TestWorkspace data={data}><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile='claude'/></TestWorkspace>);
+ const rendered=render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }}/></TestWorkspace>);
  return {posts,intent,data,current,original,rendered};
 }
 const send=()=>fireEvent.click(document.querySelector('[data-ask-send]')!);

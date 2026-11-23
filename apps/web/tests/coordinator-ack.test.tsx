@@ -23,17 +23,17 @@ const root = '/fixture', cid = 'ack-conversation';
 const turn = (id: string, status: CoordinatorTurn['status']): CoordinatorTurn => ({ id, status, ask: id, at: '2026-10-31T15:00:00Z',
   attachments: [], waiting: status === 'queued' || status === 'sending', answer: null, answeredAt: null, error: null, result: null, seen: false });
 const work = turn('working', 'running'), queued = turn('waiting', 'queued');
-const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, agent: 'fake', warm: 'none' as const, busy: true, turns, cancelled });
+const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: true, turns, cancelled });
 const response = (value: unknown) => new Response(snapshotJson(value));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function Rows() { return <WaitingRows queue={useWaiting()} open={() => {}} />; }
 function mount() { return render(<TestWorkspace><ShownConversationProvider><Rows /></ShownConversationProvider></TestWorkspace>); }
-function mountInput() { return render(<TestWorkspace><ShownConversationProvider><Rows /><CoordinatorThread turns={[]} retry={() => {}} /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="fake" /></ShownConversationProvider></TestWorkspace>); }
+function mountInput() { return render(<TestWorkspace><ShownConversationProvider><Rows /><CoordinatorThread turns={[]} retry={() => {}} /><CoordinatorInput launch={{ next: { agent: 'fake', values: {} }, ready: false }} /></ShownConversationProvider></TestWorkspace>); }
 function local() {
   const key = draftKey(root, 'coordinator', cid), id = crypto.randomUUID();
   const values = { requestId: id, doc: JSON.stringify(textDocument('Local words')), phase: 'composing' };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } }, unavailable: false });
-  freeze(root, { conversationId: cid, text: 'Local words', selected: {}, attachments: [] }, values,
+  freeze(root, { conversationId: cid, text: 'Local words', attachments: [] }, values,
     { from: key });
   return { id, key };
 }
@@ -215,7 +215,7 @@ test('the central sender waits for clear, and never posts an old conversation af
   const fetcher = vi.fn((url: string) => url.endsWith('/clear') ? pending.promise : Promise.resolve(response(conversation())));
   vi.stubGlobal('fetch', fetcher); render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
   const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!; fireEvent.click(clear); fireEvent.click(clear);
-  const sending = useConversation.getState().ask({ conversationId: cid, id: 'reader-request', text: 'Reader send', attachments: [], selected: {} });
+  const sending = useConversation.getState().ask({ conversationId: cid, id: 'reader-request', text: 'Reader send', attachments: [] });
   const result = expect(sending).rejects.toThrow('changed');
   expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/messages')).toHaveLength(0);
   await act(async () => { pending.resolve(response({ ...conversation([]), id: 'new-conversation' })); await result; });
@@ -375,7 +375,7 @@ test(`a late server refusal is recoverable in the current conversation (occupied
       return Promise.resolve(new Response('', { status: 404 }));
     });
     // An explicit new send succeeds as text, with no removal/copy of the cleared files.
-    act(() => { freeze(root, { conversationId: 'current', text: 'Local words', selected: {}, attachments: [] }, values,
+    act(() => { freeze(root, { conversationId: 'current', text: 'Local words', attachments: [] }, values,
       { from: visible }); });
     await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/messages')).toHaveLength(2));
     await waitFor(() => expect(useConversation.getState().conversation?.turns.some(turn => turn.id === values.requestId && turn.ask === 'Local words')).toBe(true));

@@ -171,8 +171,9 @@
   },
   "intent": {
     "continue": "继续 {{id}}",
-    "retry": "重试 {{id}}",
-    "sendback": "退回 {{id}}"
+    "retry": "请继续 {{id}}。",
+    "sendback": "退回 {{id}}",
+    "switch": "请选择另一个模型或智能体，继续进行。"
   },
   "markdownBody": {
     "copyCode": "复制代码",
@@ -419,7 +420,7 @@
     "inGitFolder": "位于 git 自身的文件夹内，无法打开",
     "label": "差异和文件",
     "missing": "文件不存在",
-    "outside": "位于项目登记的代码位置之外，无法打开",
+    "outside": "位于项目登记的工作文件夹之外，无法打开",
     "rendered": "预览",
     "shared": "与其他位置共用内容，无法打开",
     "source": "源码",

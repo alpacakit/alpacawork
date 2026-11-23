@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const packageVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string;
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { parse, stringify } from 'yaml';
 import { ControlStore } from '@alpacawork/db';
 import { Problem } from '@alpacawork/core';
 import { InstalledSkillsStore, managedSkillsRoot } from '@alpacawork/core/installed-skills';
@@ -15,7 +16,44 @@ import { skillsUpdateCommand } from '@alpacawork/backend/test-dist/installation/
 import { main as updateSkills } from '@alpacawork/backend/test-dist/installation/skills-update.js';
 import type { SkillWriteRequest } from '@alpacawork/backend/test-dist/installation/skills.js';
 import { installed } from './helpers/managed-skills-fixture.ts';
-import { callerWorkspace } from './coordinator-caller.fixture.ts';
+import { callerWorkspace, NO_AGENT_CONFIG } from './coordinator-caller.fixture.ts';
+
+test('skill invocations must match the first admission even when the client retries an earlier message', async t => {
+  const w = callerWorkspace(t), url = await w.start();
+  const owner = new CoordinatorConversation(w.root), conversationId = owner.read().id;
+  const post = (input: { id: string; text: string }) => fetch(new URL('/api/coordinator/messages', url), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...input, conversationId, attachments: [], skills: ['demo-skill'] }),
+  });
+  const accepted = { id: randomUUID(), text: '/demo-skill keep my words' };
+  const first = await post(accepted);
+  assert.equal(first.status, 200, await first.text());
+
+  const config = parse(NO_AGENT_CONFIG);
+  config.agents['codex-team'] = config.agents.codex;
+  config.coordinatorAiStack = [{ agent: 'codex-team', values: {} }];
+  writeFileSync(join(w.root, 'config.yaml'), stringify(config, { aliasDuplicateObjects: false }));
+  assert.equal(owner.read().nextLaunch?.agent, 'codex-team');
+
+  const retry = { id: randomUUID(), text: accepted.text };
+  for (const text of [retry.text, `$demo-skill-extra ${retry.text}`]) {
+    const refusal = await post({ ...retry, text });
+    assert.equal(refusal.status, 409);
+    assert.deepEqual((await refusal.json()).error.reason, { kind: 'skill_invocation_mismatch' });
+    assert.ok(!owner.read().turns.some(turn => turn.id === retry.id));
+  }
+
+  const replay = await post(accepted);
+  assert.equal(replay.status, 200, await replay.text());
+  const corrected = await post({ ...retry, text: '$demo-skill keep my words' });
+  assert.equal(corrected.status, 200, await corrected.text());
+  const store = new ControlStore(w.root, { busyTimeoutMs: 1000 }, true);
+  try {
+    const count = (id: string) => store.read(db => db.prepare('SELECT count(*) AS n FROM runs WHERE request_id = ?').get(id)!.n);
+    assert.equal(count(accepted.id), 1);
+    assert.equal(count(retry.id), 1);
+  } finally { store.close(); }
+});
 
 test('version refusal has no admission effects; local v2 update then explicit send admits once; replay stays idempotent', async t => {
   const f = mkdtempSync(join(tmpdir(), 'skills-send-slim-'));
@@ -24,7 +62,7 @@ test('version refusal has no admission effects; local v2 update then explicit se
   const priorHome = process.env.HOME; process.env.HOME = skill.home;
   t.after(() => { if (priorHome === undefined) delete process.env.HOME; else process.env.HOME = priorHome; });
   const w = callerWorkspace(t), owner = new CoordinatorConversation(w.root), conversation = owner.read();
-  const input = coordinatorMessageInputSchema.parse({ conversationId: conversation.id, id: randomUUID(), text: '$alpacawork keep my words',
+  const input = coordinatorMessageInputSchema.parse({ conversationId: conversation.id, id: randomUUID(), text: '/alpacawork keep my words',
     skills: ['alpacawork'], attachments: [] });
   const counts = () => {
     const db = new ControlStore(w.root, { busyTimeoutMs: 1000 }, true);
@@ -38,7 +76,7 @@ test('version refusal has no admission effects; local v2 update then explicit se
   });
   assert.deepEqual(counts(), before);
   // Unmanaged skills continue through ordinary admission, irrespective of the managed receipt's version.
-  assert.doesNotThrow(() => owner.ask({ ...input, id: randomUUID(), skills: ['my-local-skill'] }));
+  assert.doesNotThrow(() => owner.ask({ ...input, id: randomUUID(), text: '/my-local-skill keep my words', skills: ['my-local-skill'] }));
   const receiptFile = join(skill.skills, '.alpacawork/installed.json');
   const receipt = JSON.parse(readFileSync(receiptFile, 'utf8'));
   receipt.skills[0].source.version = packageVersion;

@@ -23,7 +23,7 @@ import { notify, useToasts } from '../src/lib/notify';
 import { TestWorkspace } from './fixtures';
 
 const root = '/fixture', cid = 'migration-delivery', key = draftKey(root, 'coordinator', cid);
-const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, agent: null, warm: 'none' as const, busy, cancelled: [], turns });
+const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy, cancelled: [], turns });
 const turn = (input: any, extra = {}) => ({ ...input.tasks?.length ? { tasks: input.tasks } : {}, ...input.skills?.length ? { skills: input.skills } : {}, id: input.id, at: '2026-10-16T00:00:00Z', ask: input.text, attachments: [],
   status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [] }, ...extra });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
@@ -33,7 +33,7 @@ function Surface() {
   const area = useRef<HTMLDivElement>(null);
   return <TestWorkspace><ShownConversationProvider><div ref={area}>
     <CoordinatorThread turns={turns} retry={() => {}} />
-  </div><ThreadQueue area={area} /><Toaster /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /></ShownConversationProvider></TestWorkspace>;
+  </div><ThreadQueue area={area} /><Toaster /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /></ShownConversationProvider></TestWorkspace>;
 }
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 beforeEach(() => {

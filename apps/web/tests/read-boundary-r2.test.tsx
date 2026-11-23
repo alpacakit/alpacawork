@@ -14,7 +14,7 @@ afterEach(() => { client.clear(); vi.restoreAllMocks(); });
 for (const later of [false, true]) test(`coordinator receipt cannot complete a GET demand; later demand=${later}`, async () => {
   const index = indexOf(tree()); receiveFullIndex(client, index);
   const key: QueryKey = ['coordinator', index.root];
-  const snapshot = conversationSnapshot({ id: 'C1', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const snapshot = conversationSnapshot({ id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
   const query = client.getQueryCache().build(client, { queryKey: key });
   requestRead(query); requestReadRecovery(query);
   const served = readDemandStamp(query);

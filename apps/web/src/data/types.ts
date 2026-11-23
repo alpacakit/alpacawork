@@ -111,8 +111,6 @@ export type WorkspaceInfo = {
   attachmentBytes: number;
   presence: ProjectedIndexDTO["presence"];
   coordinatorWork: ProjectedIndexDTO['coordinatorWork'];
-  /** Where the person's next new coordinator conversation starts, shared by every device. */
-  launchMemory: ProjectedIndexDTO['launchMemory'];
   /** Set while this machine is tight (the banner and Settings > Host status). */
   host: ProjectedIndexDTO["host"];
   /** The reader's last check; the unread baseline starts here. */

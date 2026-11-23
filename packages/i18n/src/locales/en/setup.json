@@ -9,7 +9,7 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "First AI to use",
-    "firstHint": "It becomes AI 1 in “AI for tasks and fallback order” in the settings, and new conversations start with it too. You can change the fallback order in the settings later.",
+    "firstHint": "This AI is used both when you talk in the input box and when tasks are worked on. You can change it later in the settings.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",
@@ -52,7 +52,7 @@
     "title": "Language and theme"
   },
   "done": {
-    "appBody": "Your browser puts an icon in the Dock or the taskbar, so you can open alpacawork again from it after closing the tab.",
+    "appBody": "Even after you close the tab, you can open alpacawork from its icon in the Dock or the taskbar.",
     "appTitle": "Install as an app",
     "browser": "Start in the browser",
     "install": "Install and start",
@@ -69,21 +69,18 @@
     "finish": "Finish setup",
     "gone": "The project created during setup no longer exists. Finish setup, then create a project from the project menu.",
     "lead": "A project is a folder where the AI works, together with the rules for working there (the project policy).",
-    "policyNote": "The AI changes files without asking. Write here what it should ask you about first, and every AI in this project receives it. The example is fine to start with.",
-    "policySkillLine": "- {{skill}}: use {{when}}.",
-    "policySkills": "## Skills to use",
-    "policyStart": "## About this project\n- The code and documents in the working folder are what this project is about. Follow the rules already there (README, AGENTS.md and the like) and the way things are written.\n\n## Ask the user first\n- For a change that affects how something looks or feels to use, show a sample and ask before building it.\n- Ask before starting work that changes direction or will take a long time.\n- Get approval before publishing, sending anything to outside services or people, replacing a running service, doing anything that costs money, or deleting something that cannot be restored.\n\n## Decide without asking\n- For anything not listed above, decide without asking, go ahead, and report the result.\n\n## How to work\n- Except for small fixes, when the work is done, have the work checked by an AI other than the one that made it, fix what it finds, and then ask the user to review it.\n- For a screen design change, have a separate AI create each candidate, up to three in total. The owner shows them to the user together and asks which one they prefer. When asking, the owner also says which one it recommends and why.\n\n## Not allowed\n- Do not write secrets such as API keys or passwords in records or deliverables.",
+    "policyNote": "Write the rules for this project here. You can leave it empty.",
     "reread": "Load the latest",
     "title": "First project"
   },
+  "recommended": "Recommended",
   "skills": {
     "done_one": "Installed {{count}} skill",
     "done_other": "Installed {{count}} skills",
     "failed": "Couldn't install. {{reason}}",
     "failedRequest": "Couldn't start the installation.",
     "from": {
-      "bundled": "Included with alpacawork",
-      "repo": "From GitHub ({{repo}})"
+      "repo": "From GitHub (<repo>{{repo}}</repo>)"
     },
     "install_one": "Install {{count}} skill",
     "install_other": "Install {{count}} skills",
@@ -91,22 +88,19 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Criteria set first, then another AI checks",
-        "what": "Before building, the AI sets the criteria for passing and compares options for decisions with a large impact. An AI other than the one that built the result checks the real thing, and it is fixed before you are asked to review it. This takes more time and tokens (light work is only checked by the AI itself).",
-        "when": "when planning, when asking for a review, and when receiving findings"
+        "title": "Checked by another AI before you see it",
+        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
-        "what": "The AI uses images or video to show where to look, so you can decide or check right away.",
-        "when": "when asking the user to decide, and when writing a report"
+        "what": "When the AI asks you to decide something or reports a result, it shows where to look with images or video."
       },
       "doyourjob": {
         "title": "Fewer questions for you",
-        "what": "The AI goes ahead on its own with what it can find out and what it may decide, and asks you only what you alone can decide.",
-        "when": "before asking the user, and before making a choice with large consequences"
+        "what": "The AI asks you only what you alone can decide, and finds out the rest itself."
       }
     },
-    "lead": "A skill is an extra set of instructions that changes how the AI works. These are picked from the ones the developers of alpacawork publish.",
+    "lead": "Skills change how the AI works.",
     "reason": {
       "link_conflict": "Another item with the same name is already in the Claude Code skills folder (~/.claude/skills). It was left unchanged.",
       "npm": "The installer failed. Check that npm works and that GitHub is reachable, then try again.",
@@ -115,8 +109,8 @@
       "unreachable": "Couldn't reach the download source. Check your network connection, then try again."
     },
     "skip": "Continue without installing",
-    "title": "Recommended skills",
-    "where": "Install location: {{place}} (linked so Claude Code can use them too). You can remove them later."
+    "title": "Skills to install",
+    "where": "Installs to {{place}}. They also apply when you use Claude Code outside alpacawork."
   },
   "steps": {
     "agents": "Agents",

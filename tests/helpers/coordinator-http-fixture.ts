@@ -22,7 +22,7 @@ export const WARM = 'Load the alpacawork skill and its coordinator reference, an
 
 export type Turn = { id: string; status: string; ask: string; intent?: unknown; answers?: unknown; answer: string | null; error: string | null };
 
-export type View = { id: string; agent: string | null; warm: string; cancelled: string[]; turns: Turn[] };
+export type View = { id: string; nextLaunch: import('@alpacawork/contract/coordinator').CoordinatorNextLaunch | null; warm: string; cancelled: string[]; turns: Turn[] };
 
 export async function eventually<T>(check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   message: string, timeout = 20_000): Promise<T> {
@@ -66,7 +66,7 @@ export async function fixture(t: { name?: string; after: (fn: () => void | Promi
   setting.params.model = choices ? ['opus', 'fable'] : [];
   setting.params.effort = choices ? ['high', 'max'] : [];
   if (adapter === 'codex') setting.params.fast = [];
-  const config = stringify({ ...parse(limits), agents: { fake: setting } });
+  const config = stringify({ ...parse(limits), agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
   const writer = new FileWriter(root);
   let project: string;
   try { writer.save('config.yaml', null, Buffer.from(config)); project = initializeControlFixture(root); }

@@ -1,10 +1,10 @@
-import { selectionSchema } from './agent-settings.js';
 /**
  * Browser-safe: the screen's coordinator conversation as serve shows it, and a message the screen sends to it. Serve
  * builds the one, the screen parses it; the screen builds the other, serve parses it.
  */
 import { z } from 'zod';
 import { aiRowSchema } from './ai-stack.js';
+import { launchArgumentValuesSchema } from './agent-settings.js';
 import { runAvailabilitySchema, runFailureSchema } from './run-failure.js';
 import { recordedProblemSchema } from './problem.js';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
@@ -15,14 +15,14 @@ const COORDINATOR_ATTACHMENT_LIMIT = 20;
 /** Immutable historical operation data. This is not an executable input contract. */
 export const recordedOperationSchema = z.record(z.string(), z.json());
 /**
- * A request on the screen (send back, continue, retry), for the coordinator to carry out: the Task, the Run or question
+ * A request on the screen (send back, continue, continue with the same AI or another), for the coordinator to carry out: the Task, the Run or question
  * it was about, and the versions the screen showed when it was pressed. The coordinator passes those to `--expected-*`
  * as they are. Its words are only the message's own; serve never makes words of an intent. A draft's choices are not a
  * press: the questions they answer go as the message's `answers`.
  */
 export const coordinatorIntentSchema = z.object({
   task: taskIdSchema,
-  action: z.enum(['sendback', 'continue', 'retry']),
+  action: z.enum(['sendback', 'continue', 'retry', 'switch']),
   aboutRun: runIdSchema.optional(), question: logIdSchema.optional(),
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: z.number().int().positive().optional(),
 }).strict();
@@ -56,8 +56,7 @@ export const coordinatorMessageSchema = z.object({
 }).strict();
 export type CoordinatorMessage = z.infer<typeof coordinatorMessageSchema>;
 /**
- * POST /api/coordinator/messages. `id` is the message's Request ID; `selected` and `agent` choose its launch. Its size
- * is bounded by what a Run is given (serve refuses one that would not fit).
+ * POST /api/coordinator/messages. `id` is the message's Request ID. Its size is bounded by what a Run is given.
  */
 export const coordinatorMessageInputSchema = z.object({
   conversationId: z.string(), id: z.string(), text: z.string(),
@@ -66,13 +65,12 @@ export const coordinatorMessageInputSchema = z.object({
   attachments: coordinatorMessageSchema.shape.attachments,
   intent: coordinatorIntentSchema.optional(),
   answers: coordinatorAnswersInputSchema.optional(),
-  selected: selectionSchema.default({}),
-  agent: z.string().optional(),
   replyTo: z.string().min(1).max(256).nullable().optional(),
   retryOf: coordinatorMessageSchema.shape.retryOf,
 }).strict().refine(input => input.text.trim() !== '' || input.attachments.length > 0,
   { message: 'A message needs words or a file', path: ['text'] });
 export type CoordinatorMessageInput = z.input<typeof coordinatorMessageInputSchema>;
+export const coordinatorConversationInputSchema = z.object({ conversationId: z.string().min(1) }).strict();
 
 /** Completed replies acknowledged by reading or explicitly opening history, scoped to the conversation; set union makes retries idempotent. */
 export const coordinatorReadInputSchema = z.object({
@@ -126,18 +124,19 @@ export const coordinatorTurnSchema = z.object({
   answerFiles: z.array(answerFileSchema).optional(),
   result: coordinatorResultSchema.nullable(),
 });
+/** The agent and selected values actually passed in the next message's launch arguments. */
+export const coordinatorNextLaunchSchema = z.object({ agent: aiRowSchema.shape.agent, values: launchArgumentValuesSchema }).strict();
+export type CoordinatorNextLaunch = z.infer<typeof coordinatorNextLaunchSchema>;
 /**
  * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
  * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
- * `agent`: the agent the conversation goes on with; null for a new one, which starts with the first that can coordinate.
+ * `nextLaunch`: the agent and values passed in the next message's launch arguments, or null if no row can run.
  * `cancelled`: the messages withdrawn before they went.
  */
 export const coordinatorConversationSchema = z.object({
-  id: z.string().min(1), agent: z.string().nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
+  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
   /** A message admitted at the end of this conversation now would wait behind its work or delivery. */
   busy: z.boolean(),
-  /** Values used for fields omitted on the next message; null if no conversation can be continued, absent if unreadable. */
-  previousValues: selectionSchema.nullable().optional(),
   cancelled: z.array(z.string()), turns: z.array(coordinatorTurnSchema),
 });
 /** One server snapshot, with the scope and digest of that exact conversation object. */

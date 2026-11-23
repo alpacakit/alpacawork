@@ -17,7 +17,7 @@ import { notify } from '../src/lib/notify';
 import { TestWorkspace, tree, dto, screenData, viewsOf } from './fixtures';
 
 const root = '/fixture', cid = 'admission-callers', id = 'unknown-request';
-const conversation = (turns: any[] = []) => ({ id: cid, agent: null, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
 const response = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 const fixedTurn = (input: any) => ({ id: input.id, at: '2026-10-23T09:00:00Z', ask: input.text,
   tasks: input.tasks, answers: input.answers, intent: input.intent, attachments: input.attachments,
@@ -71,7 +71,7 @@ afterEach(({ task }) => {
 for (const meaning of ['answers', 'intent'] as const) for (const matches of [true, false])
   test(`Card unknown recovery ${meaning}: snapshot matching=${matches}, receipt GET precedes any resend`, async ({ task }) => {
     const fixture = served(), data = screenData(fixture);
-    const fixed = { conversationId: cid, text: 'fixed words 1-Yes', tasks: ['T1'], attachments: [], selected: {},
+    const fixed = { conversationId: cid, text: 'fixed words 1-Yes', tasks: ['T1'], attachments: [],
       ...(meaning === 'answers' ? { answers: [{ task: 'T1', question: 'Q1' }] } : { intent: { task: 'T1', action: 'continue' as const } }) };
     // An existing unrelated turn excludes the independent empty-conversation warm-up POST.
     const other = fixedTurn({ id: 'unrelated-request', text: 'earlier words', tasks: [], attachments: [] });
