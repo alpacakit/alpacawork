@@ -6,7 +6,7 @@ Cómo decidir los proyectos, la política y las IA que usas. Todos los ajustes d
 
 Elige la carpeta de ese repositorio como “Carpeta de trabajo” del proyecto. No hace falta mover nada. La IA sigue leyendo los `AGENTS.md` y `CLAUDE.md` de la carpeta como siempre.
 
-Para cambiarla después: nombre del proyecto arriba a la izquierda → “Configuración de (nombre del proyecto)…” → “Elegir” en “Carpeta de trabajo” → “Guardar”.
+Para cambiarla después: nombre del proyecto arriba a la izquierda → “(nombre del proyecto) · configuración…” → “Elegir” en “Carpeta de trabajo” → “Guardar”.
 
 La IA modifica archivos sin pedir confirmación. Si haces un commit antes de empezar, podrás distinguir los cambios de la IA y deshacerlos.
 

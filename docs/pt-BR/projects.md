@@ -6,7 +6,7 @@ Como definir os projetos, a política do projeto e as IAs que você usa. A IA mu
 
 Escolha a pasta do repositório como “Pasta de trabalho” do projeto. Não é preciso mover nada. A IA também lê, como sempre, o `AGENTS.md` e o `CLAUDE.md` da pasta.
 
-Para mudar depois: nome do projeto, no canto superior esquerdo da tela → “Configurações de (nome do projeto)…” → “Escolher” em “Pasta de trabalho” → “Salvar”.
+Para mudar depois: nome do projeto, no canto superior esquerdo da tela → “(nome do projeto) – configurações…” → “Escolher” em “Pasta de trabalho” → “Salvar”.
 
 A IA altera arquivos sem pedir confirmação. Se você fizer um commit antes de começar, vai conseguir distinguir e desfazer as mudanças da IA.
 

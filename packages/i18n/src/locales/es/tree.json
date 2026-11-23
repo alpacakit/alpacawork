@@ -116,7 +116,7 @@
     "examples": {
       "decide": {
         "label": "Elige una idea de minijuego y pide que lo creen",
-        "shows": "La IA propone ideas; elige una y crea ese juego.",
+        "shows": "La IA propone ideas y crea el juego que tú elijas.",
         "words": "Quiero un minijuego para jugar en el navegador. Propón 3 ideas y pregúntame cuál crear. Después crea el que elija en unos 5 minutos. Es una prueba, así que mantén un esfuerzo ligero. Escribe todo en español, por favor."
       },
       "models": {

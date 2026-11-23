@@ -51,7 +51,7 @@
 - 没问题的话，按界面下方的“完成”（对勾图标）。不按，任务就不会结束。
 - 想让它修改时，保持任务打开，把要改的地方写在输入框里发送。
 
-<img src="../images/action-bar.png" alt="The buttons along the bottom when a task is open: Auto-swipe, Change state, and Done" width="338">
+<img src="../images/action-bar.png" alt="打开任务时排在下方的按钮：“Auto-swipe”（自动滑动）、“Change state”（更改状态）和“Done”（完成）" width="338">
 
 按“完成”后，会打开下一个待验收的任务。用于搁置或停止的“更改状态”也在同一处。
 
