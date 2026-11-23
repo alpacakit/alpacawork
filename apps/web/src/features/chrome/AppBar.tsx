@@ -12,6 +12,7 @@ import { cancelPendingSearch, focusSearchInput } from "./search-ref";
 import { cn } from "@/lib/utils";
 import { SearchField } from "./SearchField";
 import { PresenceMenu } from './PresenceMenu';
+import { LimitsMenu } from './LimitsMenu';
 import { ProjectMenu } from "./ProjectMenu";
 import { OfflineMark } from "./OfflineMark";
 import { useOfflineShown } from "@/data/reach";
@@ -30,6 +31,10 @@ import { UpdateMark, useGearLabel } from "@/features/update/UpdateView";
 // phone it takes what the buttons leave. The name cuts itself (`ProjectMenu`); the heading clips nothing, so the dot
 // that stands above the name's line is drawn whole.
 const SLOT = "min-w-0 w-[min(20rem,28cqw)] flex-none compactbar:w-auto compactbar:flex-1";
+// The buttons' side is at least as wide as the name's, so the search box stands in the middle of the bar and stays there
+// when a button comes late (the plan limits, read after the first index) or goes (the offline mark). Without the search
+// box the name takes the room and the buttons are as wide as they are.
+const BUTTONS = "flex min-w-[min(20rem,28cqw)] flex-none items-center justify-end gap-1.5 compactbar:min-w-0 narrow:gap-0";
 const NAME = "min-w-0 text-left text-lg font-semibold";
 
 export function AppBar() {
@@ -49,7 +54,7 @@ export function AppBar() {
       readerOpen && !narrow && "pr-[calc(var(--window-reserve)+36px)]")}>
       {ready ? <ProjectMenu className={cn(SLOT, NAME)} /> : <RegionSkeleton shape="title" className={SLOT} />}
       <SearchField className="mx-auto w-full max-w-120 min-w-50 flex-[1_0_200px] compactbar:hidden" />
-      <div className="ml-auto flex flex-none items-center gap-1.5 narrow:gap-0">
+      <div className={BUTTONS}>
         {/* The bar's face. On a phone every button here is a finger's 44px place, so their marks stand evenly apart; the
             bar's 2px gap, not the buttons, is what gives the project's name its room. */}
         <Button variant="ghost" size="bar" data-search-toggle aria-label={t("toolbar.searchLabel")} title={t("toolbar.searchLabel")}
@@ -68,6 +73,8 @@ export function AppBar() {
         </Button>
         {/* Out of reach, the screen's one offline mark, before the person's own buttons. */}
         {offline && <OfflineMark />}
+        {/* How much of its plan the first agent has used; a press shows every agent's. */}
+        <LimitsMenu />
         <PresenceMenu />
         {/* The gear ends its icon on the list's right edge, as each line's last icon does (press-end, press-reach). */}
         <Button

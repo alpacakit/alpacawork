@@ -1,14 +1,15 @@
-import type { BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
+import { AGENT_ADAPTERS, type BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
 import { agentUsageSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
+import { bridgeLimitsSchema } from '@alpacawork/contract/agent-limits';
 import { RUN_FILES } from '@alpacawork/contract/run';
-import type { RunFailure } from '@alpacawork/contract/run-failure';
+import { runErrorCauseSchema, type RunFailure } from '@alpacawork/contract/run-failure';
 import { bridgeActivity, ToolResults } from './activity.js';
 import { readRunFile } from '../../runs/files.js';
 import { JsonlReader, MAX_LINE } from '../../runs/readers/jsonl.js';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, resultFile, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
-import type { AgentAdapter, InputProtocol } from './types.js';
+import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
 
 // Non-tool items do not attest to external work. Unknown item kinds with a lifecycle require a completion.
 const codexTextItems = new Set(['agent_message', 'agent_configuration', 'reasoning', 'plan']);
@@ -26,10 +27,20 @@ export const bridgeInput: InputProtocol = {
   },
   turnEnded: value => ['turn.completed', 'turn.failed'].includes(String(object(value).type)),
 };
+/** A bridge prints its account's limits already translated (agent-cli `--limits`). */
+export const bridgeLimits: LimitsProbe = {
+  args: ['--limits'], input: null,
+  read(stdout) {
+    try {
+      const parsed = bridgeLimitsSchema.safeParse(JSON.parse(stdout.trim().split('\n').at(-1) ?? ''));
+      return parsed.success ? parsed.data.windows : null;
+    } catch { return null; }
+  },
+};
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
 export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
   return {
-    input: bridgeInput, activity: bridgeActivity,
+    input: bridgeInput, activity: bridgeActivity, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
     skillCatalogContext: input => catalogContext(id, input),
     earlySession(invocation, folder) {
       try {
@@ -60,10 +71,9 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
           if (row.type === 'turn.started' || row.type === 'turn.completed') failure = undefined;
           if (row.type === 'error') failure = diagnosticFailure(row.message);
           if (row.type === 'turn.failed') {
-            const error = object(row.error), read = diagnosticFailure(error.message);
-            const cause = id !== 'codex' ? undefined : error.codexErrorInfo === 'usageLimitExceeded' ? 'session_limit'
-              : error.codexErrorInfo === 'serverOverloaded' ? 'model_capacity' : undefined;
-            failure = cause ? { message: read?.message ?? 'Agent unavailable', cause } : read ?? failure;
+            // Each bridge translates its agent's own words for a spent plan or model into `cause`.
+            const error = object(row.error), read = diagnosticFailure(error.message), cause = runErrorCauseSchema.safeParse(error.cause);
+            failure = cause.success ? { message: read?.message ?? 'Agent unavailable', cause: cause.data } : read ?? failure;
           }
         }
         if (!session && row.type === 'thread.started' && typeof row.thread_id === 'string' && row.thread_id) session = row.thread_id;

@@ -1,3 +1,4 @@
+import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
 import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskProjectedTimelineSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedTimelineDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type InfiniteData, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
@@ -160,6 +161,11 @@ export const resources = {
     queryFn: ({ signal }) => api.request(`workspace/folders?${new URLSearchParams({ ...(path === null ? {} : { path }),
       ...(prefix ? { prefix } : {}), ...(prefix.startsWith(".") ? { hidden: "true" } : {}) })}`, foldersSchema, signal),
     staleTime: 10_000, retry: false }),
+  /** Each kind of agent's plan limits. The server asks an agent at most every 5 minutes, within the agents' check
+   * deadline (a first read waits for it); reading each minute while the screen is shown brings a fresh answer within a minute of it. */
+  agentLimits: (root: string) => queryOptions({ queryKey: ["agent-limits", root] as const,
+    queryFn: ({ signal }) => api.readWithin("limits", agentLimitsResponseSchema, AGENT_CHECK_READ_MS, signal),
+    staleTime: 60_000, refetchInterval: 60_000 }),
   /** Host status: read again every sample (10 s) while the tab is open. */
   hostStatus: (root: string) => queryOptions({ queryKey: ["host-status", root] as const,
     queryFn: ({ signal }) => api.request("host/status", hostStatusSchema, signal), staleTime: 0, refetchInterval: 10_000 }),

@@ -98,6 +98,16 @@
       "elapsed": "経過時間",
       "report": "報告の見込み"
     },
+    "tokens": {
+      "cache": "キャッシュ（読み直した会話の分）",
+      "cacheRead": "読み",
+      "cacheWrite": "書き",
+      "heading": "使ったトークン（配下のタスクも含めて）",
+      "input": "入力",
+      "output": "出力",
+      "scope": "終わった実行の分です。",
+      "unknown_other": "ほか{{count}}回の実行は数が取れていません。"
+    },
     "turn": {
       "children": "依頼上限",
       "depth": "深さ上限",

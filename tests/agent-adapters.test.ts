@@ -89,7 +89,7 @@ test('Codex overload cannot hand off an unfinished tool even when activity omits
         { type: 'item.started', item: { type: 'agent_message', id: 'message' } },
         { type: 'item.started', item },
         ...finished ? [{ type: 'item.completed', item }] : [],
-        { type: 'turn.failed', error: { codexErrorInfo: 'serverOverloaded' } });
+        { type: 'turn.failed', error: { cause: 'model_capacity' } });
       const observed = adapters.codex.read(resume, f.folder, failed);
       const end = readEnd({ observed, outcome: observed.outcome, exit: failed, measured: true });
       assert.equal(end.availability?.cause, 'model_capacity');

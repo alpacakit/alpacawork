@@ -1,5 +1,5 @@
 /** Prepare own and subtree Run time for display clocks. */
-import { runSpan } from "@alpacawork/contract";
+import { runSpan, TOKEN_COUNTER_KEYS, type TokenCounters } from "@alpacawork/contract";
 import type { ControlRunDTO } from "@alpacawork/contract/control";
 import type { TaskIndex } from "./tasks";
 import { isRunMoving } from "@alpacawork/contract/run";
@@ -49,4 +49,18 @@ export function taskWorkTime(taskId: string, index: TaskIndex, runsByTask: Reado
 
 export function workTimeMs(time: WorkTime, now: number): number {
   return time.runningSince.reduce((total, since) => total + Math.max(0, now - since), time.doneMs);
+}
+
+type SavedUsage = { tokens: TokenCounters | null; tokensUnknown: number } | null | undefined;
+/** Tokens of the finished Runs on a task and the tasks under it, and how many of those Runs recorded none. */
+export function subtreeTokens(own: SavedUsage, below: SavedUsage): { tokens: TokenCounters | null; unknown: number } {
+  let tokens: TokenCounters | null = null, unknown = 0;
+  for (const usage of [own, below]) {
+    if (!usage) continue;
+    unknown += usage.tokensUnknown;
+    if (!usage.tokens) continue;
+    tokens ??= { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+    for (const key of TOKEN_COUNTER_KEYS) tokens[key] += usage.tokens[key];
+  }
+  return { tokens, unknown };
 }

@@ -1,3 +1,4 @@
+import { AGENT_NAMES } from "@/domain/agent-names";
 import type { AgentAvailability } from "@alpacawork/contract";
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
 import { draftAdapter, newAgentDraft, type AgentDraft } from "@/features/panels/agent-settings-draft";
@@ -98,5 +99,4 @@ export function chosenAgents(agents: readonly AgentDraft[], rows: readonly Start
 }
 
 /** Product names of the kinds setup finds; an agent config.yaml names otherwise keeps its own name. */
-const PRODUCT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", grok: "Grok Build", pi: "pi", copilot: "GitHub Copilot" };
-export const agentDisplayName = (name: string) => PRODUCT_NAMES[name] ?? name;
+export const agentDisplayName = (name: string) => Object.hasOwn(AGENT_NAMES, name) ? AGENT_NAMES[name as keyof typeof AGENT_NAMES].product : name;

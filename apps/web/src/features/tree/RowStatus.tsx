@@ -11,7 +11,7 @@ import { capitalized, dayClock } from "@/domain/day-clock";
 import { finishWords } from "@/domain/finish-words";
 import type { PeopleIndex } from "@/domain/people";
 import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
-import { taskWorkTime, workTimeMs } from "@/domain/usage";
+import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
 import { useNow } from "@/state/clock";
@@ -116,9 +116,36 @@ function WorkTime({ task, at, className }: { task: Task; at?: number | null; cla
     { key: "own", label: t("status.work.own"), value: workWords(own, t) }];
   return <TimeTip data={data} shown={workShort(subtree, t)} heading={t("status.work.heading")}
     long={parts.map(part => `${part.label} ${part.value}`).join(t("status.work.separator"))}
-    body={<dl className="m-0 mt-2 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{parts.map(part => <div key={part.key} data-work-time={part.key} className="contents">
-      <dt className="text-muted">{part.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{part.value}</dd></div>)}</dl>}
+    body={<>
+      <dl className="m-0 mt-2 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{parts.map(part => <div key={part.key} data-work-time={part.key} className="contents">
+        <dt className="text-muted">{part.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{part.value}</dd></div>)}</dl>
+      <TokenLines task={task} />
+    </>}
     className={cn(still ? "text-muted" : "text-working", className)} />;
+}
+
+/**
+ * The tokens the finished Runs used, on this task and under it: input and output first, the cache's reads and writes
+ * after and quieter (reads run to many times the rest and would read as the cost). Runs still going count once they end.
+ */
+function TokenLines({ task }: { task: Task }) {
+  const { t, i18n } = useTranslation("tree");
+  const { tokens, unknown } = subtreeTokens(task.usage, task.usageBelow);
+  if (!tokens) return null;
+  const count = new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 });
+  const rows = (keys: readonly (keyof typeof tokens)[], quiet = false) =>
+    <dl className={cn("m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1", quiet && "text-muted")}>{keys.map(key =>
+      <div key={key} data-work-token={key} className="contents">
+        <dt className={quiet ? undefined : "text-muted"}>{t(`status.tokens.${key}`)}</dt>
+        <dd className={cn("m-0 text-right tabular-nums", !quiet && "font-medium")}>{count.format(tokens[key])}</dd></div>)}</dl>;
+  return <section data-work-tokens className="mt-3 border-t border-line pt-2">
+    <p className="m-0 text-xs font-medium text-muted">{t("status.tokens.heading")}</p>
+    {rows(["input", "output"])}
+    <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.cache")}</p>
+    {rows(["cacheRead", "cacheWrite"], true)}
+    <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.scope")}</p>
+    {unknown > 0 && <p className="m-0 text-xs text-muted">{t("status.tokens.unknown", { count: unknown })}</p>}
+  </section>;
 }
 
 /** Work time as the row says it: minutes, then whole hours. It is an amount of work, not a span of the calendar, so it never turns into days. */

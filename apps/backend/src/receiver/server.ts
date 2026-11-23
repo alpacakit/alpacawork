@@ -74,6 +74,7 @@ import { installVoiceRoutes, readVoiceSettings } from '../voice.js';
 import { unreadEnvironmentFile } from '../environment-file.js';
 import { hostPushKey, holdingKeys, PushStore, type PushSender, type HeldNotice } from './push.js';
 import { HostMonitor } from '../host/monitor.js';
+import { AgentLimitsMonitor } from '../agents/limits.js';
 import type { HostSource } from '../host/measure.js';
 import { hostPushEvent } from '../host/alert.js';
 import type { RunRoot } from '../host/measure.js';
@@ -531,6 +532,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
     episodeHeld: start => push.holdHost(start === null ? null : hostPushKey(start)),
     log: line => console.error(line) });
   context.host = host;
+  context.limits = new AgentLimitsMonitor({ environment: options.agentInspection,
+    config: async () => { const settings = readAgentsSettings(root); return settings.ok ? settings.config : null; } });
   /** One SSE event. A subscriber that has stopped reading is dropped rather than buffered without bound. */
   function publish(subscriber: Subscriber, feed: Pick<PublishedFrame, 'generation'>, rev: number, event: 'index' | 'patch', data: string) {
     try {

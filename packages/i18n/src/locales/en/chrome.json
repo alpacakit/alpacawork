@@ -18,6 +18,34 @@
   "gathered": {
     "markAllRead": "Mark all read"
   },
+  "limits": {
+    "barLabel": "AI plan limits: {{agent}}, {{window}}: {{percent}} used",
+    "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
+    "none": "No limits apply now",
+    "readAgo_one": "Updated {{count}} min ago",
+    "readAgo_other": "Updated {{count}} min ago",
+    "readNow": "Updated just now",
+    "reset": {
+      "at": "Resets {{when}}",
+      "inHours": "Resets in {{hours}}h {{minutes}}m",
+      "inMinutes_one": "Resets in {{count}} min",
+      "inMinutes_other": "Resets in {{count}} min",
+      "inWholeHours": "Resets in {{hours}}h"
+    },
+    "title": "AI plan limits",
+    "unavailable": "Could not be read. Check its sign-in",
+    "unsupported": "Does not provide its limits",
+    "window": {
+      "allModels": "{{period}} (all models)",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "model": "{{period}} ({{model}})",
+      "monthly": "This month",
+      "other": "Other period",
+      "session": "5 hours",
+      "weekly": "Weekly"
+    }
+  },
   "notice": {
     "back": "Updates resumed",
     "diagnostics": "View status",

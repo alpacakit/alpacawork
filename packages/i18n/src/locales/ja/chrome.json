@@ -17,6 +17,31 @@
   "gathered": {
     "markAllRead": "すべて既読に"
   },
+  "limits": {
+    "barLabel": "AI の利用上限: {{agent}} の{{window}}は {{percent}} 使用",
+    "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
+    "none": "いまかかっている上限はありません",
+    "readAgo_other": "{{count}}分前に更新",
+    "readNow": "たった今更新",
+    "reset": {
+      "at": "{{when}} にリセット",
+      "inHours": "あと{{hours}}時間{{minutes}}分でリセット",
+      "inMinutes_other": "あと{{count}}分でリセット",
+      "inWholeHours": "あと{{hours}}時間でリセット"
+    },
+    "title": "AI の利用上限",
+    "unavailable": "読めません。サインインを確かめてください",
+    "unsupported": "上限の値を取れません",
+    "window": {
+      "allModels": "{{period}}（全モデル）",
+      "hours_other": "{{count}}時間",
+      "model": "{{period}}（{{model}}）",
+      "monthly": "今月",
+      "other": "その他の期間",
+      "session": "5時間",
+      "weekly": "週"
+    }
+  },
   "notice": {
     "back": "更新が戻りました",
     "diagnostics": "状況を見る",

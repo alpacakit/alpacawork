@@ -109,6 +109,18 @@
       "elapsed": "Decorrido",
       "report": "Previsão do relatório"
     },
+    "tokens": {
+      "cache": "Cache (contexto relido)",
+      "cacheRead": "Leituras",
+      "cacheWrite": "Gravações",
+      "heading": "Tokens usados (com as tarefas abaixo)",
+      "input": "Entrada",
+      "output": "Saída",
+      "scope": "Só execuções concluídas.",
+      "unknown_one": "Mais {{count}} execução sem contagem.",
+      "unknown_many": "Mais {{count}} execuções sem contagem.",
+      "unknown_other": "Mais {{count}} execuções sem contagem."
+    },
     "turn": {
       "children": "Limite de solicitações",
       "depth": "Limite de profundidade",
