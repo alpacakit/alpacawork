@@ -24,7 +24,7 @@ function Sheet() {
   return <div ref={control.frame} data-frame><div data-task-sheet-grip /></div>;
 }
 
-test("the sheet is not shown while a finger is on it, grows and comes back once it is lifted, keeps its height, and stops at a touch", () => {
+test("the sheet is not shown while a finger is on it (scrolling too), grows and comes back once it is lifted, keeps its height, and stops at a touch", () => {
   vi.stubGlobal("innerHeight", 844);
   setSheetShare(0.6);
   render(<Sheet />);
@@ -32,11 +32,14 @@ test("the sheet is not shown while a finger is on it, grows and comes back once 
   frame.getAnimations = () => [];
   vi.spyOn(frame, "getBoundingClientRect").mockImplementation(() => ({ top: 844 - Number.parseFloat(frame.style.height) }) as DOMRect);
   const ended = vi.fn();
-  // A finger already on the sheet: nothing is offered to play until it is lifted.
-  const finger = (type: string) => { const event = new Event(type, { bubbles: true }); Object.assign(event, { pointerId: 7 }); return event; };
+  // A finger already on the sheet: nothing is offered to play until it is lifted from the screen, even once the browser
+  // has taken its pointer for a scroll.
+  const finger = (type: string) => { const event = new Event(type, { bubbles: true }); Object.assign(event, { pointerId: 7, pointerType: "touch", touches: [] }); return event; };
   act(() => { frame.dispatchEvent(finger("pointerdown")); });
   expect(useShowHow.getState().sheet).toBeUndefined();
-  act(() => { window.dispatchEvent(finger("pointerup")); });
+  act(() => { window.dispatchEvent(finger("pointercancel")); });
+  expect(useShowHow.getState().sheet).toBeUndefined();
+  act(() => { window.dispatchEvent(finger("touchend")); });
   act(() => { useShowHow.getState().sheet!(ended); });
   pass(16); pass(600);
   // Grown by about 48 px, held as a finger holds it.

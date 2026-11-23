@@ -37,22 +37,35 @@ function offerShowHow(kind: ShowHowKind, play: ShowHow): () => void {
   return () => { if (useShowHow.getState()[kind] === play) useShowHow.setState({ [kind]: undefined }); };
 }
 /**
- * Offers a kind's motion from its owner while no finger (or pointer) is down on the owner's own `surface`: one going
- * down there is the person's own press, so the motion is withdrawn until every one is lifted. Returns what withdraws it
- * for good (the owner gone, or its part no longer able to do it).
+ * Offers a kind's motion from its owner while nothing is down on the owner's own `surface`: a finger, mouse button or
+ * pen going down there is the person's own press, so the motion is withdrawn until it is really lifted. A finger stays
+ * down until the screen has no finger on it (touchend, touchcancel), even when the browser takes its pointer for a
+ * scroll (pointercancel); a mouse or a pen until it is let go (pointerup). Returns what withdraws it for good (the owner
+ * gone, or its part no longer able to do it).
  */
 export function offerWhileFree(kind: ShowHowKind, surface: HTMLElement, play: ShowHow): () => void {
-  const down = new Set<number>();
+  let finger = false;
+  const pointers = new Set<number>();
+  const held = () => finger || pointers.size > 0;
   let withdraw = offerShowHow(kind, play);
-  const press = (event: PointerEvent) => { if (!down.size) withdraw(); down.add(event.pointerId); };
-  const lift = (event: PointerEvent) => { if (down.delete(event.pointerId) && !down.size) withdraw = offerShowHow(kind, play); };
+  const change = (update: () => void) => {
+    const was = held();
+    update();
+    if (was && !held()) withdraw = offerShowHow(kind, play);
+    else if (!was && held()) withdraw();
+  };
+  const press = (event: PointerEvent) => change(() => { if (event.pointerType === "touch") finger = true; else pointers.add(event.pointerId); });
+  const letGo = (event: PointerEvent) => { if (event.pointerType !== "touch") change(() => pointers.delete(event.pointerId)); };
+  const lift = (event: TouchEvent) => { if (!event.touches?.length) change(() => { finger = false; }); };
   surface.addEventListener("pointerdown", press, true);
-  addEventListener("pointerup", lift, true);
-  addEventListener("pointercancel", lift, true);
+  addEventListener("pointerup", letGo, true);
+  addEventListener("touchend", lift, true);
+  addEventListener("touchcancel", lift, true);
   return () => {
     surface.removeEventListener("pointerdown", press, true);
-    removeEventListener("pointerup", lift, true);
-    removeEventListener("pointercancel", lift, true);
+    removeEventListener("pointerup", letGo, true);
+    removeEventListener("touchend", lift, true);
+    removeEventListener("touchcancel", lift, true);
     withdraw();
   };
 }
@@ -101,9 +114,9 @@ export function playSteps(steps: readonly ShowStep[], apply: (at: number) => voi
   return stop;
 }
 
-/** The finger of a motion: a half-clear circle over the part, following it, kept whole on the screen; nothing presses through it. */
 /** Half the finger mark's size (size-10), with its border. */
 const FINGER_HALF = 22;
+/** The finger of a motion: a half-clear circle over the part, following it, kept whole on the screen; nothing presses through it. */
 export function fingerMark() {
   const mark = document.createElement("div");
   mark.setAttribute("aria-hidden", "true");
