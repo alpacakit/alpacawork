@@ -2,7 +2,8 @@
  * The README as npm shows it. The repository's README links to its own files by relative path, which GitHub
  * resolves on every branch; npm resolves none, so each relative target becomes an absolute URL: a file the
  * package carries opens from this version of the published package on unpkg. Other pictures come from
- * the source commit on GitHub, and other links open the corresponding repository page.
+ * the source commit on GitHub, which shows them only while the repository is public; other links open the
+ * corresponding repository page.
  * Only `[text](path)`, `src="path"`, `srcset="..."` and `href="path"` are rewritten; the README's header comment says so.
  */
 export function npmReadme(text: string, packageName: string, version: string, source: string, repositoryUrl: string | undefined,

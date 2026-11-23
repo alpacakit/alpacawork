@@ -57,6 +57,7 @@ export function assembleDistribution(builtRoot: string, root: string, expected: 
   for (const app of ['backend', 'cli', 'agent-cli']) copyTree(join(builtRoot, 'apps', app, 'dist'), join(root, 'apps', app, 'dist'));
   copyTree(join(builtRoot, 'apps/backend/public'), join(root, 'apps/backend/public'));
   copyTree(join(builtRoot, 'skills'), join(root, 'skills'));
+  // GIFs in docs/images are only README animations; the npm README loads them from GitHub instead of every install carrying them.
   const docs = join(builtRoot, 'docs'), images = join(docs, 'images') + sep;
   copyTree(docs, join(root, 'docs'), file => !file.startsWith(images) || !file.endsWith('.gif'));
   copyTree(join(builtRoot, 'apps/launcher'), join(root, 'bin'));

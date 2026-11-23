@@ -215,8 +215,7 @@ test('README pictures and links open on GitHub, and the packaged README uses ver
     for (const { target } of targets(readFileSync(readme, 'utf8')).filter(({ target }) => !/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(target)))
       assert.ok(tracked.has(target.split(/[?#]/)[0]!), `${readme} links to ${target}, which GitHub cannot open`);
   const source = 'a'.repeat(40);
-  const packaged = (file: string) => (/^(?:docs|skills)\//.test(file) && !/^docs\/images\/.*\.gif$/.test(file))
-    || ['LICENSE', 'SECURITY.md'].includes(file);
+  const packaged = (file: string) => /^(?:docs|skills)\//.test(file) || ['LICENSE', 'SECURITY.md'].includes(file);
   const npm = npmReadme(readFileSync('README.md', 'utf8'), 'alpacawork', '1.2.3', source,
     'git+https://github.com/alpacakit/alpacawork.git', packaged);
   const unpkg = 'https://unpkg.com/alpacawork@1.2.3/';
