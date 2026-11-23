@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
-import { barLimit, limitTone, resetWords, windowLabel } from "../src/domain/limits";
+import { barLimit, besideModelWindow, limitTone, resetWords, windowLabel } from "../src/domain/limits";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("en"); });
 const t = (key: string, options?: Record<string, unknown>) => i18n.t(`chrome:${key}`, options);
@@ -28,12 +28,17 @@ test("every window has a name in words, a model's own window names its model, an
     expect(named(window)).not.toMatch(/limits\.|^$/);
   expect(named(week(77, "Fable"))).toContain("Fable");
   expect(named(week(63), true)).not.toBe(named(week(63)));
+  // Only the account's window over the same period as a model's own is set apart: a 5-hour one beside a model's week is not.
+  const session: LimitWindow = { ...week(5), kind: "session", minutes: 300 }, windows = [session, week(63), week(77, "Fable")];
+  expect(windows.map(window => besideModelWindow(window, windows))).toEqual([false, true, false]);
 });
 
 test("a reset within a day says how long until it, a later one when; a past one says nothing", () => {
   const now = Date.parse("2026-11-24T00:00:00Z");
   const soon = resetWords("2026-11-24T02:10:00Z", now, "en", t), later = resetWords("2026-11-29T15:00:00Z", now, "en", t);
   expect(soon).toMatch(/2.*10/);
+  // Whole hours say no "0 minutes".
+  expect(resetWords("2026-11-24T04:00:00Z", now, "en", t)).not.toMatch(/\b0/);
   expect(later).not.toBeNull();
   expect(later).not.toBe(soon);
   // A reset stamped a moment before the hour is read as that hour.

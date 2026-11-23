@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { barLimit, limitTone, readWords, resetWords, windowLabel, type LimitTone } from "@/domain/limits";
+import { barLimit, besideModelWindow, limitTone, readWords, resetWords, windowLabel, type LimitTone } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { cn } from "@/lib/utils";
@@ -18,42 +18,47 @@ const TONE_FILL: Record<LimitTone, string> = { normal: "bg-working", near: "bg-w
 const TONE_STROKE: Record<LimitTone, string> = { normal: "stroke-working", near: "stroke-warn", spent: "stroke-error" };
 const percentText = (value: number) => `${Math.round(value)}%`;
 
-/** A ring filled as far as the window is used: the bar's mark, wide or narrow. */
+/** A ring filled as far as the window is used: the bar's mark, wide or narrow. Empty at 0 and while the figure is unknown. */
 function Ring({ percent, tone }: { percent: number; tone: LimitTone }) {
   const r = 6, length = 2 * Math.PI * r;
   return <svg aria-hidden viewBox="0 0 16 16" className="size-4 flex-none -rotate-90">
     <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" className="stroke-line" />
-    <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" strokeLinecap="round" className={TONE_STROKE[tone]}
-      strokeDasharray={`${length * Math.min(100, percent) / 100} ${length}`} />
+    {percent > 0 && <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" strokeLinecap="round" className={TONE_STROKE[tone]}
+      strokeDasharray={`${length * Math.min(100, percent) / 100} ${length}`} />}
   </svg>;
 }
 
-/** One window's line in the menu: its name, how full it is, and when it resets. */
+/**
+ * One window in the menu: its name, how full it is, and under them when it resets. The reset has the row's whole width,
+ * so a long one (a weekday and a time, in any language) stays on its line.
+ */
 function WindowRow({ window, now, scoped }: { window: LimitWindow; now: number; scoped: boolean }) {
   const { t, i18n } = useTranslation("chrome");
   const tone = limitTone(window.usedPercent);
   const reset = resetWords(window.resetsAt, now, i18n.language, t);
-  return <li data-limit-window={window.kind} className="grid grid-cols-[7.5rem_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-0.5">
-    <span className="text-muted">{windowLabel(window, t, scoped)}</span>
+  return <li data-limit-window={window.kind} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-0.5">
+    <span>{windowLabel(window, t, scoped)}</span>
     <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
       <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />
     </span>
     <span className={cn("text-right font-medium tabular-nums", TONE_TEXT[tone])}>{percentText(window.usedPercent)}</span>
-    {reset && <span className="col-start-2 col-end-4 text-xs text-muted">{reset}</span>}
+    {reset && <span className="col-span-full text-xs text-muted">{reset}</span>}
   </li>;
 }
 
+/** An agent's windows under its name; one with none to show says why on its name's line (under it when the words are long). */
 function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
   const { t } = useTranslation("chrome");
   const name = AGENT_NAMES[agent.adapter].short;
-  // Beside a model's own window, the account's says it covers every model.
-  const scoped = agent.windows.some(window => window.model !== null);
   const note = agent.state === "unsupported" ? t("limits.unsupported") : agent.state === "unavailable" ? t("limits.unavailable")
     : agent.windows.length === 0 ? t("limits.none") : null;
   return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
-    <h3 className="m-0 text-sm font-semibold">{name}</h3>
-    {note ? <p className="m-0 text-sm text-muted">{note}</p>
-      : <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">{agent.windows.map((window, at) => <WindowRow key={at} window={window} now={now} scoped={scoped} />)}</ul>}
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h3 className="m-0 text-sm font-semibold">{name}</h3>
+      {note && <p className="m-0 text-sm text-muted">{note}</p>}
+    </div>
+    {!note && <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">{agent.windows.map((window, at) =>
+      <WindowRow key={at} window={window} now={now} scoped={besideModelWindow(window, agent.windows)} />)}</ul>}
   </section>;
 }
 
@@ -84,9 +89,11 @@ export function LimitsMenu() {
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
       aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-1.5">
       <Ring percent={percent} tone={tone} />
-      {/* Which agent and which of its windows the figure is: a computer has the room; a phone keeps the figure. */}
+      {/* Which agent and which of its windows the figure is: a computer has the room; a phone keeps the figure. The
+          window's name goes first, where the buttons' side of the bar (AppBar BUTTONS) no longer holds it and it would
+          take the search box's room. */}
       <span className="text-sm narrow:hidden">{name}</span>
-      {shown.window && <span className="text-sm text-muted narrow:hidden">{windowLabel(shown.window, t)}</span>}
+      {shown.window && <span className="text-sm text-muted narrow:hidden @max-[64rem]:hidden">{windowLabel(shown.window, t)}</span>}
       <span className={cn("text-sm font-medium tabular-nums", shown.window ? TONE_TEXT[tone] : "text-muted")}>
         {shown.window ? percentText(percent) : "—"}</span>
     </Button>

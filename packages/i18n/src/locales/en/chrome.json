@@ -29,11 +29,12 @@
       "at": "Resets {{when}}",
       "inHours": "Resets in {{hours}}h {{minutes}}m",
       "inMinutes_one": "Resets in {{count}} min",
-      "inMinutes_other": "Resets in {{count}} min"
+      "inMinutes_other": "Resets in {{count}} min",
+      "inWholeHours": "Resets in {{hours}}h"
     },
     "title": "AI plan limits",
-    "unavailable": "Could not be read. Check that it is signed in",
-    "unsupported": "This AI does not provide its limits",
+    "unavailable": "Could not be read. Check its sign-in",
+    "unsupported": "Does not provide its limits",
     "window": {
       "allModels": "{{period}} (all models)",
       "hours_one": "{{count}} hour",

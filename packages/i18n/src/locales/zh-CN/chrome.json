@@ -26,11 +26,12 @@
     "reset": {
       "at": "{{when}} 重置",
       "inHours": "{{hours}} 小时 {{minutes}} 分后重置",
-      "inMinutes_other": "{{count}} 分钟后重置"
+      "inMinutes_other": "{{count}} 分钟后重置",
+      "inWholeHours": "{{hours}} 小时后重置"
     },
     "title": "AI 用量上限",
     "unavailable": "无法读取。请确认已登录",
-    "unsupported": "无法从此 AI 获取上限",
+    "unsupported": "无法获取上限",
     "window": {
       "allModels": "{{period}}（全部模型）",
       "hours_other": "{{count}} 小时",

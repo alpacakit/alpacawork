@@ -24,7 +24,11 @@ export function barLimit(agents: readonly AgentLimits[]): { agent: AgentLimits; 
 
 type T = (key: string, options?: Record<string, unknown>) => string;
 
-/** "5 hours", "Weekly", "Weekly (Fable)"; `scoped`: beside a model's own window, the account's says "all models". */
+/** Whether a model has a window of its own over the same period as this account window: the account's then says "all models". */
+export const besideModelWindow = (window: LimitWindow, windows: readonly LimitWindow[]): boolean =>
+  window.model === null && windows.some(other => other.model !== null && other.kind === window.kind && other.minutes === window.minutes);
+
+/** "5 hours", "Weekly", "Weekly (Fable)"; `scoped` (`besideModelWindow`): "Weekly (all models)". */
 export function windowLabel(window: LimitWindow, t: T, scoped = false): string {
   const period = window.kind === "other" && window.minutes !== null && window.minutes >= 60
     ? t("limits.window.hours", { count: Math.round(window.minutes / 60) }) : t(`limits.window.${window.kind}`);
@@ -40,8 +44,9 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   if (!Number.isFinite(at) || left <= 0) return null;
   if (left < 86_400_000) {
     const minutes = Math.max(1, Math.ceil(left / 60_000));
+    const hours = Math.floor(minutes / 60);
     return minutes < 60 ? t("limits.reset.inMinutes", { count: minutes })
-      : t("limits.reset.inHours", { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
+      : minutes % 60 === 0 ? t("limits.reset.inWholeHours", { hours }) : t("limits.reset.inHours", { hours, minutes: minutes % 60 });
   }
   const when = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at);
   return t("limits.reset.at", { when });
