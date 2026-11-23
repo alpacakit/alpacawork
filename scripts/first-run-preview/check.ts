@@ -94,7 +94,7 @@ export async function checkJourney(url: string, root: string, language: string, 
       const snapshot = await get(`/api/task/get?task=${id}`);
       return { state: snapshot.task.state, question: snapshot.questions.some((question: { state: string }) => question.state === 'open') };
     }, { timeout: 30_000 }).toEqual({ state: 'waiting', question: false });
-    // The result names the game that was picked, not the first one offered.
+    // The result names the font that was picked, not the first one offered.
     assert.match((await get(`/api/task/get?task=${id}`)).task.values.conclusion, en ? /Clean sans-serif/ : /ゴシック体/);
     await expect(page.locator('[data-task-done]:visible').first()).toBeEnabled();
     await page.locator('[data-task-done]:visible').first().click();

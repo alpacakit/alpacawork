@@ -57,7 +57,7 @@ Go through the screen's four steps in order.
 
 <img src="images/setup-project.png" alt="The last step of setup, with the “Name” and “Working folder” fields and a “Choose” button beside the working folder" width="480">
 
-A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start without writing a project policy. Write here what you don't want the AI to do ([how to write it](projects.md#project-policy)).
+A project is one folder for the AI to work in, together with the ground rules for working there (the project policy). To use an existing repository, make its folder the working folder. If you are only trying it out, leave the working folder empty (the AI works in the data folder, `~/alpacawork`). You can start without writing a project policy. Write what you don't want the AI to do in the project policy ([how to write it](projects.md#project-policy)).
 
 After you press "Finish setup", Chrome and Edge ask whether to install alpacawork as an app. Press "Install and start" to be able to open it again from its icon in the Dock or the taskbar. If you choose "Start in the browser", you can install it later with "Install" in "Settings (the gear) → App & phone". In Safari on a Mac, install it with "File → Add to Dock" in the menu (macOS Sonoma or later).
 
@@ -69,7 +69,7 @@ When setup is finished, you see "Welcome to alpacawork" and a picture of how a r
 
 Write what you want done in the input box at the bottom of the screen, and send it.
 
-If you are only trying it out, press "Insert a demo prompt" in the balloon, and send the text it puts in as is. It asks for an HTML page that shows "Hello" in two fonts, and for the AI to then ask you which one is better. The HTML is made in the working folder.
+If you are only trying it out, press "Insert a demo prompt" in the balloon, and send the text it puts in as is. It asks for an HTML page that shows "Hello" in two fonts, and for the AI to then ask you which one is better.
 
 In an existing repository, make your first request one that doesn't change any files.
 
@@ -92,13 +92,13 @@ When a question or a report arrives from the AI, the task moves to "Awaiting rev
 <img src="images/list-waiting.png" alt="The “Awaiting review” heading in the list, with a task row under it" width="336">
 
 - For a question, press one option, and the answer goes into the input box. Send it as is to answer (pressing alone doesn't deliver it). You can also send a different message without choosing an option. Once you answer, the AI carries on, and a report arrives when it is finished.
-- For a report, read it, and if it is good, press "Done" (the check mark) at the bottom of the screen. If you want changes or want to ask for more, keep the task open, write it in the input box and send (for the demo, "Make one more version so I can compare them.").
+- For a report, read it, and if it is good, press "Done" (the check mark) at the bottom of the screen. If you want changes or want to ask for more, keep the task open, write it in the input box and send (for the demo, "Insert a demo prompt" in the balloon puts in "Make one more version so I can compare them.").
 
 <img src="images/action-bar.png" alt="The buttons along the bottom of an open task: “Auto-swipe”, “Change state” and “Done”" width="338">
 
 Once the task moves to "Done", you are finished ("Done" starts collapsed; press the heading to open it). Send your next request from the same input box.
 
-When you mark your first task done, the balloons finish by telling you how to clear the conversation with the front-desk AI, what to do to use another repository, and where to find the steps for using alpacawork from your phone. To see the guide again, press "Show again" under "Getting-started guide" in "Settings (the gear) → Personal".
+When you mark your first task done, the balloons finish by telling you, among other things, how to clear the conversation with the front-desk AI, what to do to use another repository, and where to find the steps for using alpacawork from your phone. To see the guide again, press "Show again" under "Getting-started guide" in "Settings (the gear) → Personal".
 
 ## What to read next
 

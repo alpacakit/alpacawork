@@ -57,7 +57,7 @@ Sigue en orden los cuatro pasos de la pantalla.
 
 <img src="../images/setup-project.png" alt="El último paso de la configuración, con los campos “Name” y “Working folder”, y el botón “Choose” junto a Working folder" width="480">
 
-Un proyecto es una carpeta en la que trabaja la IA, junto con las reglas para trabajar en ella (la política del proyecto). Para usarlo con un repositorio existente, elige la carpeta del repositorio como carpeta de trabajo. Si solo quieres probar, deja la carpeta de trabajo vacía (la IA trabaja en la carpeta de datos, `~/alpacawork`). Puedes empezar sin escribir una política del proyecto. Lo que no quieras que haga la IA, escríbelo ahí ([cómo escribirla](projects.md#política-del-proyecto)).
+Un proyecto es una carpeta en la que trabaja la IA, junto con las reglas para trabajar en ella (la política del proyecto). Para usarlo con un repositorio existente, elige la carpeta del repositorio como carpeta de trabajo. Si solo quieres probar, deja la carpeta de trabajo vacía (la IA trabaja en la carpeta de datos, `~/alpacawork`). Puedes empezar sin escribir una política del proyecto. Lo que no quieras que haga la IA, escríbelo en la política del proyecto ([cómo escribirla](projects.md#política-del-proyecto)).
 
 Al pulsar “Finalizar configuración”, Chrome y Edge preguntan si quieres instalar alpacawork como app. Pulsa “Instalar y empezar” para poder volver a abrirla desde su icono en el Dock o la barra de tareas. Si eliges “Empezar en el navegador”, puedes instalarla más tarde con “Instalar” en “Configuración (el engranaje) → App y teléfono”. En Safari en un Mac, instálala con “Archivo → Añadir al Dock” en el menú (macOS Sonoma o posterior).
 
@@ -69,7 +69,7 @@ Al terminar la configuración, aparece “Te damos la bienvenida a alpacawork”
 
 Escribe lo que quieres que se haga en el cuadro de texto de la parte inferior de la pantalla y envíalo.
 
-Si solo quieres probar, pulsa “Insertar un prompt de demostración” en el globo y envía tal cual el texto que aparece. Es una solicitud para crear un HTML que muestre “Hello” con dos fuentes y que después te pregunte cuál es mejor. El HTML se crea en la carpeta de trabajo.
+Si solo quieres probar, pulsa “Insertar un prompt de demostración” en el globo y envía tal cual el texto que aparece. Es una solicitud para crear un HTML que muestre “Hello” con dos fuentes y que después te pregunte cuál es mejor.
 
 Si es un repositorio existente, empieza con una solicitud que no modifique archivos.
 
@@ -92,13 +92,13 @@ Cuando la IA envía una pregunta o un informe, la tarea pasa a “Por revisar”
 <img src="../images/list-waiting.png" alt="El encabezado “Awaiting review” de la lista y la fila de una tarea debajo" width="336">
 
 - Si es una pregunta, al pulsar una opción la respuesta pasa al cuadro de texto. Envíala tal cual para responder (solo con pulsarla no se envía). También puedes enviar otro mensaje sin elegir ninguna opción. Cuando respondes, la IA sigue trabajando y, al terminar, envía un informe.
-- Si es un informe, léelo y, si está bien, pulsa “Completar” (la marca de verificación) en la parte inferior de la pantalla. Si quieres que corrija algo o pedirle algo más, escríbelo en el cuadro de texto con la tarea abierta y envíalo (en la demostración, “Haz una versión más para que pueda compararlas.”).
+- Si es un informe, léelo y, si está bien, pulsa “Completar” (la marca de verificación) en la parte inferior de la pantalla. Si quieres que corrija algo o pedirle algo más, escríbelo en el cuadro de texto con la tarea abierta y envíalo (en la demostración, “Insertar un prompt de demostración” en el globo pone “Haz una versión más para que pueda compararlas.”).
 
 <img src="../images/action-bar.png" alt="Los botones que aparecen abajo al abrir una tarea: “Auto-swipe”, “Change state” y “Done”" width="338">
 
 Cuando la tarea pasa a “Completadas”, has terminado (“Completadas” empieza cerrada; pulsa el encabezado para abrirla). La siguiente solicitud también se envía desde el mismo cuadro de texto.
 
-Cuando completas tu primera tarea, los globos terminan indicándote cómo borrar la conversación con la IA de recepción, qué hacer para usar otro repositorio y dónde están los pasos para usar alpacawork desde el teléfono. Para volver a ver la guía, pulsa “Mostrar de nuevo” en “Guía de primeros pasos”, dentro de “Configuración (el engranaje) → Personal”.
+Cuando completas tu primera tarea, los globos terminan indicándote, entre otras cosas, cómo borrar la conversación con la IA de recepción, qué hacer para usar otro repositorio y dónde están los pasos para usar alpacawork desde el teléfono. Para volver a ver la guía, pulsa “Mostrar de nuevo” en “Guía de primeros pasos”, dentro de “Configuración (el engranaje) → Personal”.
 
 ## Qué leer después
 
