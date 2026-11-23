@@ -197,7 +197,7 @@
     "continue": "Continuar {{id}}",
     "retry": "Continue {{id}}, por favor.",
     "sendback": "Devolver {{id}}",
-    "switch": "Continue com outro modelo ou agente, por favor."
+    "switch": "Escolha outro modelo ou agente e continue, por favor."
   },
   "markdownBody": {
     "copyCode": "Copiar código",
