@@ -377,6 +377,14 @@ function pageScopes(reader: RecordsReader, derived: TaskDerived | undefined, tas
 }
 
 /**
+ * The searches whose answer carries a Task's row: a search lists its matches with their ancestors, so a Task is in the
+ * searches of each scope it is in (`scopes`) and of each listed project below it.
+ */
+export function searchScopes(reader: RecordsReader, task: TaskId): string[] {
+  return [...reader.scopes(task), ...[...reader.shelf().listed].filter(project => reader.ancestors(project).includes(task))];
+}
+
+/**
  * Which Tasks and surfaces a batch of changes reaches: the owners of the changed records, and through the ledger's
  * relations the Tasks whose values read them, each only when the fact it reads moved between the two points.
  */
@@ -622,7 +630,7 @@ export function rescope(set: AffectedSet, tasks: Iterable<TaskId>, before: Recor
       if (!reader.bundle(task)) continue;
       if (rowChanged) {
         for (const scope of pageScopes(reader, derived, task)) page.add(scope);
-        for (const scope of reader.scopes(task)) search.add(scope);
+        for (const scope of searchScopes(reader, task)) search.add(scope);
       }
       if (own) timeline.add(task);
       if (below) for (const lane of reader.ancestors(task)) timeline.add(lane);

@@ -6,18 +6,23 @@ import { recordReads, type RecordedRead } from '@alpacawork/backend/test-dist/re
 export const operationKinds = ['create', 'title', 'values', 'state', 'question', 'answer', 'request', 'placement', 'dependency', 'move', 'lifecycle',
   'run-state', 'run-usage-session', 'joined-resumes', 'delivery', 'input-uncertain', 'files', 'config', 'person', 'read-failure', 'error-cause', 'schema', 'return', 'joined-delivery', 'delivery-uncertain', 'coordinator-join', 'coordinator-complete', 'wait-cycle'] as const;
 export type OperationKind = typeof operationKinds[number];
-export interface Operation { readonly kind: OperationKind; readonly step: number; readonly target: number; readonly variant: number }
+/** `task`: the Task an operation names when it is not `T<target>` (the nested project, mutations.nestProject). */
+export interface Operation { readonly kind: OperationKind; readonly step: number; readonly target: number; readonly variant: number; readonly task?: string }
+const scenarios: Omit<Operation, 'step'>[] = [
+  ...[0, 1, 2, 3].map(variant => ({ kind: 'run-state' as const, variant, target: 2 })),
+  ...[0, 1].map(variant => ({ kind: 'joined-resumes' as const, variant, target: 2 })),
+  { kind: 'joined-delivery' as const, variant: 1, target: 2 },
+  { kind: 'delivery-uncertain' as const, variant: 1, target: 2 },
+  ...[0, 1].map(variant => ({ kind: 'error-cause' as const, variant, target: 2 })),
+  // Shelving the nested project and taking it back: what the rows above read of its Tasks comes and goes.
+  ...[0, 1].map(variant => ({ kind: 'lifecycle' as const, variant, target: 15, task: 'P15' })),
+];
+/** The replay length that runs every operation family once and then every scenario. */
+export const coverageSteps = operationKinds.length + scenarios.length;
 /** A coverage prefix followed by a seeded random sequence: rare families occur even in short replays. */
 export function operations(seed: number, steps = 200): Operation[] {
   let state = seed >>> 0 || 1;
   const random = (max: number) => { state ^= state << 13; state ^= state >>> 17; state ^= state << 5; return (state >>> 0) % max; };
-  const scenarios = [
-    ...[0, 1, 2, 3].map(variant => ({ kind: 'run-state' as const, variant, target: 2 })),
-    ...[0, 1].map(variant => ({ kind: 'joined-resumes' as const, variant, target: 2 })),
-    { kind: 'joined-delivery' as const, variant: 1, target: 2 },
-    { kind: 'delivery-uncertain' as const, variant: 1, target: 2 },
-    ...[0, 1].map(variant => ({ kind: 'error-cause' as const, variant, target: 2 })),
-  ];
   return Array.from({ length: steps }, (_, step) => {
     const target = 2 + random(13), variant = random(1000);
     return step < operationKinds.length ? { kind: operationKinds[step]!, step, target, variant }
@@ -132,10 +137,20 @@ export function assertEquivalent(incremental: Observation, full: Observation, pr
   for (const resource of full.resources) {
     const got = actual.get(key(resource)); assert.ok(got, `missing resource ${key(resource)}`);
     assert.deepEqual(meaning(got.value), meaning(resource.value), `${key(resource)} meaning differs`);
-    if (previousFull && previous.has(key(resource)) && !equal(previous.get(key(resource))?.value, resource.value)) {
-      assert.ok(got.requiredPv >= incremental.pv, `${key(resource)} changed without raising requiredPv to ${incremental.pv} (got ${got.requiredPv})`);
-      assert.ok(got.requiredPv <= incremental.pv, `${key(resource)} claims a future projection`);
-    }
+    if (previousFull && previous.has(key(resource)) && !equal(previous.get(key(resource))?.value, resource.value)) raised(got, incremental.pv);
+  }
+}
+/** A resource served differently from before is required from this publication on. */
+function raised(resource: Resource, pv: number) {
+  assert.ok(resource.requiredPv >= pv, `${resource.kind}:${resource.id} changed without raising requiredPv to ${pv} (got ${resource.requiredPv})`);
+  assert.ok(resource.requiredPv <= pv, `${resource.kind}:${resource.id} claims a future projection`);
+}
+/** What a publication serves against what was served before it, when no full projection can say the same (a failed derivation keeps its Task's last facts). */
+export function assertRaised(current: Observation, previous: Observation): void {
+  const before = new Map(previous.resources.map(r => [`${r.kind}:${r.id}`, r]));
+  for (const resource of current.resources) {
+    const held = before.get(`${resource.kind}:${resource.id}`);
+    if (held && !equal(held.value, resource.value)) raised(resource, current.pv);
   }
 }
 export interface HarnessDriver {
@@ -146,8 +161,12 @@ export interface HarnessDriver {
   publication?: { verify(): Promise<{ incremental: Observation; full: Observation; applied: number; floor: number }> };
   /** Routing adapters run a full residual pass and compare business effects with a separate full-routing workspace. */
   routing?: { verify(operation: Operation): Promise<{ residualWrites: number; targeted: unknown; full: unknown; dependencyProbes?: readonly DependencyProbe[]; coverage?: Readonly<Record<string, number>> }> };
-  /** The adapter corrupts only derived values, runs the bounded audit/repair, and returns observations from that point. */
-  repair?: { verify(): Promise<{ repaired: Observation; full: Observation }> };
+  /** The adapter corrupts only derived values, runs the bounded audit/repair, and returns observations from that point,
+   * with what was served before the repair. */
+  repair?: { verify(): Promise<{ repaired: Observation; full: Observation; previous: Observation }> };
+  /** A derivation fails for a written Task and is retried: what was served before the write, while the derivation
+   * failed, and what the retry publishes. */
+  retry?: { verify(): Promise<{ before: Observation; failed: Observation; retried: Observation; full: Observation }> };
   /** Lag the projection beyond a small ChangeLog cap, recover through its real catch-up, then read at the current floor. */
   resync?: { verify(): Promise<{ recovered: Observation; full: Observation; applied: number; floor: number }> };
 }
@@ -219,8 +238,14 @@ export async function auditReplay(driver: HarnessDriver, seed: number, steps = 2
     }
   }
   if (driver.repair) {
-    try { const result = await driver.repair.verify(); check('aggregate-repair', null, () => assertEquivalent(result.repaired, result.full)); }
+    try { const result = await driver.repair.verify(); check('aggregate-repair', null, () => assertEquivalent(result.repaired, result.full, result.previous)); }
     catch (error) { check('aggregate-repair', null, () => { throw error; }); }
+  }
+  if (driver.retry) {
+    try { const result = await driver.retry.verify();
+      check('derivation-failure', null, () => assertRaised(result.failed, result.before));
+      check('derivation-retry', null, () => assertEquivalent(result.retried, result.full, result.failed)); }
+    catch (error) { check('derivation-retry', null, () => { throw error; }); }
   }
   if (driver.resync) {
     try { const result = await driver.resync.verify();
@@ -228,7 +253,7 @@ export async function auditReplay(driver: HarnessDriver, seed: number, steps = 2
       check('resynchronization', null, () => assertEquivalent(result.recovered, result.full));
     } catch (error) { check('resynchronization', null, () => { throw error; }); }
   }
-  return { seed, requested: steps, written, publicationSteps, routingSteps, routingCoverage, dependencyChecks: checks, issues, enabled: [...driver.capabilities, ...(driver.publication ? ['server-catch-up', 'atomic-publication', 'arrival-floor'] : []), ...(driver.routing ? ['routing', 'seat-reads'] : []), ...(driver.repair ? ['aggregate-repair'] : []), ...(driver.resync ? ['resynchronization'] : [])],
+  return { seed, requested: steps, written, publicationSteps, routingSteps, routingCoverage, dependencyChecks: checks, issues, enabled: [...driver.capabilities, ...(driver.publication ? ['server-catch-up', 'atomic-publication', 'arrival-floor'] : []), ...(driver.routing ? ['routing', 'seat-reads'] : []), ...(driver.repair ? ['aggregate-repair'] : []), ...(driver.retry ? ['derivation-retry'] : []), ...(driver.resync ? ['resynchronization'] : [])],
     operations: Object.fromEntries(operationKinds.map(kind => [kind, operations(seed, written).filter(op => op.kind === kind).length])),
     pending: ['server-catch-up', 'bounded-audit', 'resynchronization'].filter(name => !driver.capabilities.includes(name)
       && !(name === 'server-catch-up' && driver.publication) && !(name === 'resynchronization' && driver.resync)) };

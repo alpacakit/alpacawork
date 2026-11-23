@@ -9,7 +9,7 @@ import type { IndexPatchDTO, ProjectedIndexDTO, ProjectionVersion, RequiredPvDTO
 import type { TaskDerived, TaskBundle, PublishedFrame, RecordsReader, RoutingWorkSet, AffectedSet, Facet, AggregateContribution } from './projection-contract.js';
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from './workspace-records.js';
 import { RecordsMap } from './records-map.js';
-import { affected, deriveTask, rescope } from './screen-derive.js';
+import { affected, deriveTask, rescope, searchScopes } from './screen-derive.js';
 import { aggregateFactsOf } from './workspace-aggregate-facts.js';
 import { createScreenAggregate, updateScreenAggregate, repairScreenAggregate, type AggregateSnapshot, type AggregateFacts, type AggregateRepair } from './screen-aggregate.js';
 import { aggregateResources, composeRow, IndexPatcher, liveRow, patchCandidates, raiseRequiredPv, type PatchSource } from './index-rows.js';
@@ -250,7 +250,8 @@ export class ProjectionOwner {
     const rows = { before: (id: string) => before?.derived(id), after: derive };
     let effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(['row','view','history','files','membership','page','search','timeline','seat','push'])])),
       scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(before ? records.taskIds() : []) }, meta: true }
-      : affected({ ...change!, before: previous!, after: readable }, rows);
+      // A repaired or retried Task is a changed owner: what reads it follows the same relations as for a write.
+      : affected({ ...change!, owners: new Set([...change!.owners, ...repairing.keys(), ...retrying]), before: previous!, after: readable }, rows);
     // The Tasks this publication gives facets of its own; their scopes follow from the same rule (rescope).
     const forced = new Set<string>();
     if (before && runRecordsAvailable(before.records) !== runRecordsAvailable(records))
@@ -310,7 +311,7 @@ export class ProjectionOwner {
       const result = repair.length ? repairScreenAggregate(before!.aggregate, repair, changes, facts) : updateScreenAggregate(before!.aggregate, changes, facts);
       aggregate = result.next; changed = result.changed;
     }
-    const resources = aggregateResources(changed, id => [...new Set([...(previous?.bundle(id) ? previous.scopes(id) : []), ...(readable.bundle(id) ? readable.scopes(id) : [])])]);
+    const resources = aggregateResources(changed, id => [...new Set([...(previous?.bundle(id) ? searchScopes(previous, id) : []), ...(readable.bundle(id) ? searchScopes(readable, id) : [])])]);
     if (!full && forced.size) effects = rescope(effects, forced, previous!, readable, rows);
     const required = raiseRequiredPv(full ? emptyRequired() : before!.requiredPv, effects, pv, resources);
     if (full && before) for (const kind of Object.keys(required.next) as (keyof RequiredPvDTO)[])
