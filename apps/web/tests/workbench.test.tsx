@@ -48,8 +48,7 @@ const editor = () => screen.getByRole("textbox", { name: "本文" }) as HTMLText
 const reader = () => screen.getByRole("complementary", { name: "Full text of the task" });
 const save = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
 const mockWriteRefusal = (response: Response) => vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
-  String(input).includes("/api/task/timeline") ? new Response(JSON.stringify({ rows: [], runs: [], events: [],
-    anchors: {}, placements: [], nextAfter: null }),
+  String(input).includes("/api/task/timeline") ? new Response(JSON.stringify({ lanes: [], gone: [] }),
     { headers: { "Content-Type": "application/json" } }) : response.clone());
 const writes = (fetcher: ReturnType<typeof mockWriteRefusal>) => fetcher.mock.calls.filter(([input, init]) =>
   init?.method === "POST" && !String(input).includes("/api/presence"));

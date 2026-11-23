@@ -99,7 +99,7 @@ test("list responses carry no hover details and hovering or focusing titles and 
   expect(replies.some(reply => reply.path === "/api/task/timeline")).toBe(true);
   for (const reply of replies) {
     expect(detailFields(reply.body), reply.path).toEqual([]);
-    if (reply.path === "/api/task/timeline") for (const item of (reply.body as { events: { kind: string; event?: object }[] }).events)
+    if (reply.path === "/api/task/timeline") for (const item of (reply.body as { lanes: { events: { kind: string; event?: object }[] }[] }).lanes.flatMap(lane => lane.events))
       if (item.kind === "note") expect(Object.keys(item.event!).filter(key =>
         !["id", "kind", "taskId", "at", "state", "mark", "displayed"].includes(key)), "list notes contain no detail links").toEqual([]);
   }

@@ -1,8 +1,8 @@
 import { commandRoute } from '@alpacawork/contract/command-path';
 import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
-import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskProjectedTimelineSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedTimelineDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
-import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type InfiniteData, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
+import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
+import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
 import { ApiError, createApi, retryOf } from "./client";
 import { readCoordinator, type CoordinatorSnapshot } from './coordinator';
 import { historyResource, missingHistoryRange, trimClosedHistory } from './history-resource';
@@ -13,6 +13,7 @@ import { decodeText } from "@/domain/text-bytes";
 import { DIFF_LIMITS } from "@alpacawork/contract/report-diff";
 import { z } from "zod";
 import { taskCodeUrl, taskFileUrl } from "./task-file-url";
+import { laneBatches } from "./lane-batch";
 
 const codeRootsSchema = z.object({ roots: z.array(z.string()) });
 
@@ -22,6 +23,7 @@ import { skillCatalogSchema } from './skill-catalog';
 type Query = QueryRecord<any, any, any, any>;
 export const api = createApi();
 const readLiveIndex = (signal?: AbortSignal) => api.request("workspace/live", projectedIndexSchema, signal);
+const readTimelineLane = laneBatches((path, signal) => api.request(path, taskTimelineLanesSchema, signal));
 
 /**
  * What the screen reads, each with its key, how it is fetched and how long it is kept.
@@ -112,16 +114,13 @@ export const resources = {
       + `&lanes=${encodeURIComponent(lanes.join(","))}&folded=${encodeURIComponent(folded.join(","))}`, taskProjectedTimelineAxisSchema, signal)),
     staleTime: Infinity,
   }),
-  timeline: (root: string, scope: string | null, visible: string[], folded: string[], from: string, to: string) => infiniteQueryOptions({
-    queryKey: ["task-timeline", root, scope ?? "root", [...new Set(visible)].sort().join(","), [...new Set(folded)].sort().join(","), from, to] as const,
-    placeholderData: (previous: InfiniteData<TaskProjectedTimelineDTO> | undefined, query) =>
-      query?.queryKey[1] === root && query.queryKey[2] === (scope ?? "root") ? previous : undefined,
-    queryFn: ({ client, queryKey, signal, pageParam }) => readTimeline(client, queryKey, scope, visible, () => api.request(`task/timeline?scope=${encodeURIComponent(scope ?? "root")}`
-      + `&visible=${encodeURIComponent([...new Set(visible)].sort().join(","))}&folded=${encodeURIComponent([...new Set(folded)].sort().join(","))}`
-      + `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=2000`
-      + (typeof pageParam === "string" ? `&after=${encodeURIComponent(pageParam)}` : ""), taskProjectedTimelineSchema, signal)),
-    initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextAfter ?? undefined,
+  /**
+   * One row's time strip over a range, whole. It is read again only when its row's version moves; the rows asked for
+   * together go out as one read (lane-batch).
+   */
+  timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
+    queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, null, [lane], () => readTimelineLane(lane, from, to, signal)),
     staleTime: Infinity,
   }),
   notices: (root: string) => queryOptions({

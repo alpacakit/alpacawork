@@ -1,7 +1,7 @@
 import { questionApplicable, questionSnapshot } from '../control/question-rules.js';
 
 import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
-import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskTimelineDTO, type TaskViewDTO } from '@alpacawork/contract/control';
+import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskViewDTO } from '@alpacawork/contract/control';
 import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
 import { runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
@@ -38,8 +38,6 @@ export type HomeRowDTO = ControlIndexDTO['home'][number];
 export type ChildCounts = ControlIndexDTO['counts']['children'][string];
 
 export type HistoryEvent = TaskHistoryDTO['events'][number];
-
-export type TimelineStamp = { at: number; id: string; value: TaskTimelineDTO['events'][number] };
 
 /** A Request's heading: the first line of its text. */
 export const headline = (body: string) => body.split('\n', 1)[0] ?? '';

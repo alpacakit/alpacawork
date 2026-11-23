@@ -38,8 +38,7 @@ beforeEach(() => {
   useViewStore.setState(useViewStore.getInitialState());
   history.replaceState(null, "", "/");
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => new Response(JSON.stringify(
-    String(input).includes("/api/task/timeline") ? { rows: [], runs: [], events: [], anchors: {}, placements: [],
-      nextAfter: null } : {}), { headers: { "Content-Type": "application/json" } }));
+    String(input).includes("/api/task/timeline") ? { lanes: [], gone: [] } : {}), { headers: { "Content-Type": "application/json" } }));
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -139,7 +138,7 @@ test("a project whose parent project is archived (not listed) stands at the top,
     const url = new URL(String(input), "http://screen");
     const answer = url.pathname === "/api/task/view" ? viewsOf(value).find((view) => view.task.id === url.searchParams.get("task"))
       : url.pathname === "/api/commands/field/get" ? schemaOfTasks(url) : url.pathname === "/api/commands/field/list" ? fieldList()
-      : url.pathname === "/api/task/timeline" ? { rows: [], runs: [], events: [], anchors: {}, placements: [], nextAfter: null }
+      : url.pathname === "/api/task/timeline" ? { lanes: [], gone: [] }
       : { hash: "b".repeat(64), agentsText: "agents: {}\n", agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } };
     return new Response(JSON.stringify(answer), { headers: { "Content-Type": "application/json" } });
   });

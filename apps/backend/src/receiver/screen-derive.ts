@@ -572,24 +572,35 @@ function listedRow(derived: TaskDerived | undefined): string {
   return JSON.stringify([derived.row, projectRowFacts(derived.row, derived.placements, derived.runs, 0, 0, 0), derived.contribution]);
 }
 
+/** What a strip above a Task reads of it: its Runs' spans (belowRuns, the axis). */
+const runSpans = (derived: TaskDerived | undefined) =>
+  JSON.stringify(derived?.runs.map(run => [run.id, run.state, run.startedAt, run.endedAt]) ?? []);
+
 /**
- * The scopes of the resources that changed. Closed pages, search and the timeline return a Task's row as it is: when an
- * affected Task's own row (what activity alone never moves) differs between the two points, every scope it is listed in
- * at either point changes. The timeline also changes where a Task's events, Run spans or placements did (its facet).
- * What descendants decide of a row (counts, movedAt and the order) is the aggregate's (aggregateResources).
+ * The scopes of the resources that changed. Closed pages and search return a Task's row as it is: when an affected
+ * Task's own row (what activity alone never moves) differs between the two points, every scope it is listed in at
+ * either point changes. A row's time strip is made from its own row (without what descendants decide), History events,
+ * log, Runs and placements, and from the spans of the Runs below it: a Task's own strip changes with its row, its
+ * records (its timeline facet) and its History; its ancestors' strips change only when its Runs' spans or its place
+ * change, at either point. What descendants decide of a row (counts, movedAt and the order) is the aggregate's
+ * (aggregateResources), and no strip carries it.
  */
 function finish(gather: Gather, before: RecordsReader, after: RecordsReader, rows: DerivedRows): AffectedSet {
   const page = new Set<string>(), search = new Set<string>(), timeline = new Set<string>();
   for (const [task, facets] of gather.tasks) {
     const rowChanged = facets.has('row') && listedRow(rows.before(task)) !== listedRow(rows.after(task));
-    if (!rowChanged && !facets.has('timeline')) continue;
+    const own = rowChanged || facets.has('timeline') || facets.has('history');
+    const below = runSpans(rows.before(task)) !== runSpans(rows.after(task)) || !!before.bundle(task) !== !!after.bundle(task)
+      || before.ancestors(task).join() !== after.ancestors(task).join();
+    if (!rowChanged && !own && !below) continue;
     for (const [reader, derived] of [[before, rows.before(task)], [after, rows.after(task)]] as const) {
       if (!reader.bundle(task)) continue;
       if (rowChanged) {
         for (const scope of pageScopes(reader, derived, task)) page.add(scope);
         for (const scope of reader.scopes(task)) search.add(scope);
       }
-      for (const scope of ['root', task, ...reader.ancestors(task)]) timeline.add(scope);
+      if (own) timeline.add(task);
+      if (below) for (const lane of reader.ancestors(task)) timeline.add(lane);
     }
   }
   return { tasks: gather.tasks, scopes: { page, search, timeline }, meta: gather.meta };

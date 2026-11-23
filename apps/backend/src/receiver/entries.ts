@@ -176,11 +176,8 @@ const timelineAxis = withAct(defineEntryEndpoint(timelineAxisEntry, {
   channels: [bindHttpEntry({ method: 'GET' })],
 }), SCREEN);
 const timelineEntry = defineEntry({ name: 'timeline', parameters: [
-  query('scope', 'Scope Task or root'), query('visible', 'Visible Task IDs'),
-  defineParameter({ name: 'folded', description: 'Folded Task IDs', requirement: optional({ default: '' }), codec: codecs.string() }),
-  query('from', 'Visible range start'), query('to', 'Visible range end'),
-  defineParameter({ name: 'after', description: 'Page cursor', requirement: optional(), codec: codecs.string() }),
-  defineParameter({ name: 'limit', description: 'Page size up to 2000', requirement: optional(), codec: codecs.string() }),
+  query('lanes', 'Row Task IDs'), query('from', 'Visible range start'), query('to', 'Visible range end'),
+  defineParameter({ name: 'limit', description: 'Events per answer up to 2000', requirement: optional(), codec: codecs.string() }),
 ], project: ({ values }) => values });
 const timeline = withAct(defineEntryEndpoint(timelineEntry, {
   handler: (input: ReturnType<typeof timelineEntry.project>, context: Context) =>
@@ -314,7 +311,7 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'finished', description: 'Finished direct children', endpoints: [finished] }),
     defineEntryNode({ name: 'shelved', description: 'Archived and deleted Tasks', endpoints: [shelved] }),
     defineEntryNode({ name: 'timeline-axis', description: 'Full-lifetime time axis activity', endpoints: [timelineAxis] }),
-    defineEntryNode({ name: 'timeline', description: 'Visible time range', endpoints: [timeline] }),
+    defineEntryNode({ name: 'timeline', description: 'Rows\' time strips over a range', endpoints: [timeline] }),
   ] }),
   defineEntryNode({ name: 'person', description: 'Personal state', children: [
     defineEntryNode({ name: 'notices', description: 'Read checkpoints', endpoints: [notices], children: [

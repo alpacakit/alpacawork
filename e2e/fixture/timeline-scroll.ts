@@ -79,8 +79,8 @@ export function seedDenseTimelineScroll(root: string) {
   } finally { store.close(); }
 }
 
-/** The screen reads up to 2000 records a page; these seeds fill a smaller one, so a viewport still takes several pages here. Call after the test's own route, which then sees the smaller page. */
-export const timelineInSmallPages = (page: Page) => page.route('**/api/task/timeline?**', route => {
+/** The screen is answered up to 2000 records at a time; these seeds fill a smaller answer, so the rows in view still take several answers here. Call after the test's own route, which then sees the smaller answer. */
+export const timelineInSmallAnswers = (page: Page) => page.route('**/api/task/timeline?**', route => {
   const url = new URL(route.request().url());
   url.searchParams.set('limit', '200');
   return route.fallback({ url: url.toString() });

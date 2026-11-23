@@ -140,7 +140,7 @@ test('a Task that starts after another is made again when what its start order r
   const closed = change(finished, withTask(finished, 'T3', { title: 'Renamed' }), ['T3']);
   has(closed, 'T4', 'row');
   assert.ok(closed.scopes.page.has('finished:root'), 'the closed page that lists the finished Task');
-  assert.ok(closed.scopes.search.has('root') && closed.scopes.timeline.has('root'), 'and every search and timeline listing it');
+  assert.ok(closed.scopes.search.has('root') && closed.scopes.timeline.has('T4'), 'and every search listing it, and its own strip');
 });
 
 test("a child's closing record reaches the Task waiting on its Request; a failed child's requester reaches the child", () => {
@@ -209,16 +209,18 @@ test('the versions an applied batch raises are those of the resources it changed
   const required = { view: {}, history: {}, page: {}, timeline: {}, search: {} };
   const pv = 3 as ProjectionVersion;
   const raised = raiseRequiredPv(required, { tasks: new Map([['T2', new Set<Facet>(['view'])], ['T3', new Set<Facet>(['history', 'row'])]]),
-    scopes: { page: new Set(['finished:root']), search: new Set(), timeline: new Set(['root']) }, meta: false }, pv);
-  assert.deepEqual(raised.next, { view: { T2: 3 }, history: { T3: 3 }, page: { 'finished:root': 3 }, timeline: { root: 3 }, search: {} });
+    scopes: { page: new Set(['finished:root']), search: new Set(), timeline: new Set(['T3']) }, meta: false }, pv);
+  assert.deepEqual(raised.next, { view: { T2: 3 }, history: { T3: 3 }, page: { 'finished:root': 3 }, timeline: { T3: 3 }, search: {} });
   const again = raiseRequiredPv(raised.next, { tasks: new Map([['T2', new Set<Facet>(['view'])]]),
     scopes: { page: new Set(), search: new Set(), timeline: new Set() }, meta: false }, pv);
   assert.deepEqual(again.patch.view.upsert, {}, 'a version already sent is not sent again');
-  // A child's count or a moved order changes a closed page and the searches that list the Task, without any facet.
+  // A child's count or a moved order changes a closed page and the searches that list the Task, without any facet; no strip
+  // carries what descendants decide.
   const fromAggregate = raiseRequiredPv(raised.next, { tasks: new Map(), scopes: { page: new Set(), search: new Set(), timeline: new Set() }, meta: false },
     4 as ProjectionVersion, aggregateResources({ tasks: new Set(['T2']), pages: new Set(['finished:T2']), counts: false }, () => ['root', 'P1']));
   assert.deepEqual(fromAggregate.patch.page.upsert, { 'finished:T2': 4 });
   assert.deepEqual(fromAggregate.patch.search.upsert, { root: 4, P1: 4 });
+  assert.deepEqual(fromAggregate.patch.timeline.upsert, {});
 });
 
 test('a patch carries what changed among the candidates, the Tasks it no longer lists, and nothing when nothing changed', () => {
@@ -286,13 +288,13 @@ test("a Task's ball read through its own records is the whole read's at the auto
   assert.deepEqual(waiting(closed), { one: [], whole: [] }, 'the withdrawn one does not');
 });
 
-test("a Task's own row moving is what raises the pages, searches and timelines that list it, and nothing else", () => {
+test("a Task's own row moving is what raises the pages and searches that list it and its strips, and nothing else", () => {
   const base = withTask(world(), 'T4', { state: 'done', baseState: 'done' });
   // A value of the finished T4: its row's body mark moves, so every scope that lists T4 changes.
   const valued = withTask(base, 'T4', {});
   valued.find(item => item.task.id === 'T4')!.task.values = { goal: 'x' } as never;
   const values = change(base, valued, ['T4']);
-  assert.ok(values.scopes.page.has('finished:root') && values.scopes.search.has('root') && values.scopes.timeline.has('root'));
+  assert.ok(values.scopes.page.has('finished:root') && values.scopes.search.has('root') && values.scopes.timeline.has('T4'));
   // A start order T4 waits on: its row carries it.
   const after = replace(base, { ...base.find(item => item.task.id === 'T4')!, after: ['T2'] });
   assert.ok(change(base, after, ['T4']).scopes.page.has('finished:root'), 'a dependency added');

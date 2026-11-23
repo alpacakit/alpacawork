@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { ControlStore, holdControlWriter, type ChangeSeq } from '@alpacawork/db';
 import type { ProjectionVersion, RequiredPvDTO } from '@alpacawork/contract/control';
 import { affected, deriveTask } from '@alpacawork/backend/test-dist/receiver/screen-derive.js';
-import { raiseRequiredPv, aggregateResources, timelineScopes, type AggregateResources } from '@alpacawork/backend/test-dist/receiver/index-rows.js';
+import { raiseRequiredPv, aggregateResources, type AggregateResources } from '@alpacawork/backend/test-dist/receiver/index-rows.js';
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from '@alpacawork/backend/test-dist/receiver/workspace-records.js';
 import { createScreenAggregate, repairScreenAggregate, updateScreenAggregate, type AggregateSnapshot, type AggregateFacts } from '@alpacawork/backend/test-dist/receiver/screen-aggregate.js';
 import type { AffectedSet, TaskDerived, RecordsReader, Facet, PublishedFrame } from '@alpacawork/backend/test-dist/receiver/projection-contract.js';
@@ -104,7 +104,7 @@ export async function coreDriver() {
         }
         cache = nextCache;
         const updated = updateScreenAggregate(aggregate, contributions, facts(reader, cache)); aggregate = updated.next;
-        const aggregated = aggregateResources(updated.changed, id => reader.scopes(id), timelineScopes(id => reader.ancestors(id)));
+        const aggregated = aggregateResources(updated.changed, id => reader.scopes(id));
         required = raiseRequiredPv(required, impact, pv as ProjectionVersion, aggregated).next;
         // A resource's version rises for what the records changed (affected) and for what the aggregates changed: a
         // read of an aggregate value is checked against both, as the version is raised from both.
@@ -146,5 +146,5 @@ export async function coreDriver() {
 /** An affected set with the scopes an aggregate update changed added to its own. */
 function withAggregate(set: AffectedSet, aggregated: AggregateResources): AffectedSet {
   return { ...set, scopes: { page: new Set([...set.scopes.page, ...aggregated.page]), search: new Set([...set.scopes.search, ...aggregated.search]),
-    timeline: new Set([...set.scopes.timeline, ...aggregated.timeline ?? []]) } };
+    timeline: set.scopes.timeline } };
 }

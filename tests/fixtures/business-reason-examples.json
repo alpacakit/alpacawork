@@ -972,18 +972,6 @@
   },
   {
     "reason": {
-      "kind": "invalid_timeline_cursor"
-    },
-    "en": "Invalid timeline cursor"
-  },
-  {
-    "reason": {
-      "kind": "timeline_changed_read_from_first_page"
-    },
-    "en": "The timeline changed. Read again from the first page"
-  },
-  {
-    "reason": {
       "kind": "invalid_search_cursor"
     },
     "en": "Invalid search cursor"

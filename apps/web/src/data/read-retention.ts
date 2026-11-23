@@ -5,23 +5,22 @@ import { type Query, type QueryClient, type QueryKey } from '@tanstack/react-que
 
 const memoryBytes = (query: Query) => readDataSize(query.state.data, data => ({ key: query.queryKey, data }));
 export function representedReadIds(key: QueryKey, data: unknown): string[] {
-  if (['task-finished', 'task-shelved', 'task-search', 'task-timeline'].includes(String(key[0])))
+  if (['task-finished', 'task-shelved', 'task-search'].includes(String(key[0])))
     return ((data as { pages?: { rows?: { id: string }[] }[] } | undefined)?.pages ?? []).flatMap(page => (page.rows ?? []).map(row => row.id));
+  if (isTimelineLane(key)) return [String(key[3])];
   const id = readTaskId(key);
   return id ? [id] : [];
 }
+const isTimelineLane = (key: QueryKey) => key[0] === 'task-timeline' && key[2] === 'lane' && key.length === 6;
 /**
- * Whether a stored chronology window adds nothing to `later`: the same list and start, read after it to its end, ending
- * no earlier. The window's end moves with the clock, so without this each turn of it leaves one more whole copy for every
- * restart to prove.
+ * Whether a stored strip adds nothing to `later`: the same row and start, read after it, ending no earlier. The range's
+ * end moves with the clock, so without this each turn of it leaves one more whole copy for every restart to prove.
  */
-export function coversTimelineWindow(later: { key: QueryKey; data: unknown; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
-  // [kind, root, scope, visible, folded, from, to, ...]: everything but the end names the same list and start.
-  const window = (key: QueryKey) => key[0] === 'task-timeline' && key.length >= 7;
-  return later.key !== earlier.key && window(later.key) && window(earlier.key) && later.key.length === earlier.key.length
-    && later.key.every((part, at) => at === 6 || part === earlier.key[at])
-    && String(later.key[6]) >= String(earlier.key[6]) && later.acquiredAt >= earlier.acquiredAt
-    && (later.data as { pages?: { nextAfter?: string | null }[] }).pages?.at(-1)?.nextAfter === null;
+export function coversTimelineWindow(later: { key: QueryKey; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
+  // [kind, root, 'lane', lane, from, to]: everything but the end names the same row and start.
+  return later.key !== earlier.key && isTimelineLane(later.key) && isTimelineLane(earlier.key)
+    && later.key.every((part, at) => at === 5 || part === earlier.key[at])
+    && String(later.key[5]) >= String(earlier.key[5]) && later.acquiredAt >= earlier.acquiredAt;
 }
 type RetentionItem<T> = { value: T; key: QueryKey; hash: string; data: unknown; usedAt: number; bytes: number; required: boolean; protected: boolean };
 /** One group/deadline/rank/budget policy. Adapters decide which values are eligible and what protection means. */

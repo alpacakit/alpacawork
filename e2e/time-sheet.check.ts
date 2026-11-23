@@ -4,7 +4,7 @@ import { readOnlyTest, test, expect, open, settleMotion } from "./fixtures.ts";
 import { projectRows } from './fixture/list-rows.ts';
 import { patchTask } from './fixture/task-state.ts';
 import type { Runtime } from "./server.ts";
-import { seedTimelineScroll, seedDenseTimelineScroll, timelineInSmallPages } from "./fixture/timeline-scroll.ts";
+import { seedTimelineScroll, seedDenseTimelineScroll, timelineInSmallAnswers } from "./fixture/timeline-scroll.ts";
 /** An attached tree still has a zero-width clock until its axis response is drawn. */
 const waitForAxis = async (page: Page, sample?: (width: number) => void) => {
   await expect.poll(async () => {
@@ -25,7 +25,7 @@ const scrollTest = test.extend({
   runtimePrepare: async ({}, use) => { await use(root => { seedTimelineScroll(root); projectRows(root, ['T114']); }); },
 });
 
-for (const acquired of [true]) scrollTest(`timeline page failure is explicit and Retry recovers ${acquired ? 'acquired' : 'cold'} coverage, then saved native input and equal first live preserve ordinary tint`, async ({ page, runtime }) => {
+for (const acquired of [true]) scrollTest(`timeline read failure is explicit and Retry recovers ${acquired ? 'acquired' : 'cold'} coverage, then saved native input and equal first live preserve ordinary tint`, async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
     const w = window as any;
@@ -53,14 +53,13 @@ for (const acquired of [true]) scrollTest(`timeline page failure is explicit and
   });
   let failing = !acquired, failures = 0;
   await page.route('**/api/task/timeline?**', async route => {
-    if (failing && new URL(route.request().url()).searchParams.has('after') &&
-      !await page.evaluate(() => (window as any).timelineRetried === true)) {
+    if (failing && !await page.evaluate(() => (window as any).timelineRetried === true)) {
       failures++;
-      return route.fulfill({ status: 503, json: { error: { code: 'unavailable', retry: 'later', message: 'Timeline continuation unavailable' } } });
+      return route.fulfill({ status: 503, json: { error: { code: 'unavailable', retry: 'later', message: 'Timeline unavailable' } } });
     }
     await route.continue();
   });
-  await timelineInSmallPages(page);
+  await timelineInSmallAnswers(page);
   await openAxis(page, runtime, '?agent=1&task=T2063&zoom=21600000');
   if (await page.locator('[data-group-more=review] button').getAttribute('aria-expanded') !== 'true')
     await page.locator('[data-group-more=review] button').click();
@@ -126,26 +125,28 @@ for (const acquired of [true]) scrollTest(`timeline page failure is explicit and
   } finally { release(); }
 });
 
-readOnlyTest(seedDenseTimelineScroll)('turning Time off while the first page is pending does not acquire later pages', async ({ page, runtime }) => {
+readOnlyTest(seedDenseTimelineScroll)('turning Time off while the first answer is pending asks for no more rows', async ({ page, runtime }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  let paged = false, continuations = 0, release!: () => void;
+  let partial = false, off = false, later = 0, release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/api/task/timeline?**', async route => {
-    if (new URL(route.request().url()).searchParams.has('after')) { continuations++; return route.continue(); }
+    if (off) later++;
     const response = await route.fetch();
-    if ((await response.json()).nextAfter) paged = true;
+    const asked = new URL(route.request().url()).searchParams.get('lanes')!.split(',').length;
+    if ((await response.json()).lanes.length < asked) partial = true;
     await gate; await route.fulfill({ response });
   });
-  await timelineInSmallPages(page);
+  await timelineInSmallAnswers(page);
   try {
     await open(page, runtime, '?agent=1&task=T2063&strip=on&zoom=21600000');
     await page.locator('[data-reader-frame-buttons] button').last().click();
-    await expect.poll(() => paged).toBe(true);
+    await expect.poll(() => partial).toBe(true);
     const time = page.locator('header [data-strips]');
     await expect(time).toHaveAttribute('aria-pressed', 'true');
     await time.click();
     await expect(time).toHaveAttribute('aria-pressed', 'false');
+    off = true;
     release(); await page.waitForTimeout(350);
-    expect(continuations).toBe(0);
+    expect(later).toBe(0);
   } finally { release(); }
 });

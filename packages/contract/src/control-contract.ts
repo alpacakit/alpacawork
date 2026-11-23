@@ -447,11 +447,6 @@ export function timelineRunOf({ id, taskId, placementId, state, createdAt, start
 export function timelinePlacementOf({ id, taskId, responsible }: PlacementDTO): z.infer<typeof timelinePlacementSchema> {
   return { id, taskId, responsible };
 }
-/**
- * The visible range, bounded: the facts the work line is drawn from (log entries and Runs) and its notes. A note is a
- * history event (one record each, as History makes them: a Task below a folded one has those its parent sees), and a
- * note made from a log entry comes with that entry. Dense ranges carry exact Run facts for the work line.
- */
 /** Full-lifetime axis activity for the requested lanes and their folded descendants. */
 export const taskTimelineAxisSchema = z.object({
   busy: z.array(z.tuple([z.number().int(), z.number().int().nullable()])),
@@ -459,24 +454,6 @@ export const taskTimelineAxisSchema = z.object({
 }).strict();
 export type TaskTimelineAxisDTO = z.infer<typeof taskTimelineAxisSchema>;
 
-export const taskTimelineSchema = z.object({
-  rows: z.array(taskPageRowSchema),
-  /** Exact Run facts for the visible interval when its notes take more than one page. */
-  runs: z.array(timelineRunSchema),
-  /**
-   * The ended Runs of the Tasks under each visible row in the interval, on the first page: [Run, from, to]. A row's line
-   * counts them as its running count does; those running now are on the row itself (runsBelow).
-   */
-  belowRuns: z.record(taskIdSchema, z.array(z.tuple([runIdSchema, z.number().int(), z.number().int()]))),
-  events: z.array(z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('log'), taskId: taskIdSchema, entry: timelineLogSchema }).strict(),
-    z.object({ kind: z.literal('run'), taskId: taskIdSchema, run: timelineRunSchema }).strict(),
-    z.object({ kind: z.literal('note'), taskId: taskIdSchema, event: timelineNoteSchema }).strict(),
-  ])),
-  anchors: z.record(taskIdSchema, timelineLogSchema),
-  placements: z.array(timelinePlacementSchema),
-  nextAfter: z.string().nullable(), scopeVersion: z.string().min(1),
-}).strict();
 /**
  * The numbers the project menu shows for a scope: the Tasks whose turn is the user's and neither held nor failed (its Awaiting review rows of
  * the home list, counted as they are) and the Tasks a Run works on.
@@ -765,7 +742,6 @@ export type ControlReplyDTO = z.infer<typeof controlReplySchema>;
 export type ControlTreeDTO = z.infer<typeof controlTreeSchema>;
 export type TaskRowDTO = z.infer<typeof taskRowSchema>;
 export type TaskPageRowDTO = z.infer<typeof taskPageRowSchema>;
-export type TaskTimelineDTO = z.infer<typeof taskTimelineSchema>;
 export type StateLogEntryDTO = z.infer<typeof stateLogEntrySchema>;
 export type ControlIndexDTO = z.infer<typeof controlIndexSchema>;
 export type TaskViewDTO = z.infer<typeof taskViewSchema>;
@@ -798,7 +774,7 @@ export type ProjectionVersion = z.infer<typeof projectionVersionSchema>;
 export const projectionGenerationSchema = z.string().min(1);
 /** Who made a read: the projection it was made from. A read is current when its `sourcePv` reaches its resource's `requiredPv`. */
 export const projectionSourceFields = { generation: projectionGenerationSchema, sourcePv: projectionVersionSchema };
-/** A page, search or timeline scope as the projection names it: a listed project Task, or `root` for every project. */
+/** A page or search scope as the projection names it: a listed project Task, or `root` for every project. */
 export const projectionScopeSchema = z.union([taskIdSchema, z.literal('root')]);
 /**
  * For each resource, the projection version that last changed what it returns. A resource absent from its record has
@@ -809,11 +785,11 @@ export const requiredPvSchema = z.object({
   view: z.record(taskIdSchema, projectionVersionSchema),
   history: z.record(taskIdSchema, projectionVersionSchema),
   page: z.record(z.string().min(1), projectionVersionSchema),
-  timeline: z.record(projectionScopeSchema, projectionVersionSchema),
+  timeline: z.record(taskIdSchema, projectionVersionSchema),
   search: z.record(projectionScopeSchema, projectionVersionSchema),
 }).strict();
 export type RequiredPvDTO = z.infer<typeof requiredPvSchema>;
-/** The kinds of resource a `requiredPv` names; timeline and its axis share their scope's version. */
+/** The kinds of resource a `requiredPv` names; a time strip and the axis read their rows' versions. */
 export type ProjectionResourceKind = keyof RequiredPvDTO;
 
 /** An ancestor as an opened Task names it: enough to draw its path without its list row. */
@@ -895,7 +871,7 @@ export const indexPatchSchema = z.object({
   }).strict(),
   requiredPv: z.object({
     view: keyedPatch(taskIdSchema, projectionVersionSchema), history: keyedPatch(taskIdSchema, projectionVersionSchema),
-    page: keyedPatch(z.string().min(1), projectionVersionSchema), timeline: keyedPatch(projectionScopeSchema, projectionVersionSchema),
+    page: keyedPatch(z.string().min(1), projectionVersionSchema), timeline: keyedPatch(taskIdSchema, projectionVersionSchema),
     search: keyedPatch(projectionScopeSchema, projectionVersionSchema),
   }).strict(),
   meta: z.object(indexFields).partial().strict(),
@@ -914,7 +890,33 @@ export const taskProjectedPageSchema = taskPageSchema.omit({ scopeVersion: true 
 export type TaskProjectedPageDTO = z.infer<typeof taskProjectedPageSchema>;
 export const taskProjectedSearchSchema = taskSearchSchema.extend(projectionSourceFields).strict();
 export type TaskProjectedSearchDTO = z.infer<typeof taskProjectedSearchSchema>;
-export const taskProjectedTimelineSchema = taskTimelineSchema.omit({ scopeVersion: true }).extend(projectionSourceFields).strict();
-export type TaskProjectedTimelineDTO = z.infer<typeof taskProjectedTimelineSchema>;
+/**
+ * One row's time strip over the visible range, whole: its own row without what descendants decide (for a Task the list
+ * does not hold), the facts its work line is drawn from (its log entries and Runs), its notes (its History events, one
+ * record each; a note made from a log entry comes with that entry), the state it was in when the range starts
+ * (`anchor`), and the ended Runs of the Tasks under it ([Run, from, to]; a row's line counts them as its running count
+ * does, while those running now are on the row itself, runsBelow). Its own `sourcePv` is checked against
+ * `requiredPv.timeline[lane]`, which moves whenever any of these changes.
+ */
+export const taskTimelineLaneSchema = z.object({
+  lane: taskIdSchema,
+  row: taskViewRowSchema,
+  anchor: timelineLogSchema.nullable(),
+  events: z.array(z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('log'), taskId: taskIdSchema, entry: timelineLogSchema }).strict(),
+    z.object({ kind: z.literal('run'), taskId: taskIdSchema, run: timelineRunSchema }).strict(),
+    z.object({ kind: z.literal('note'), taskId: taskIdSchema, event: timelineNoteSchema }).strict(),
+  ])),
+  belowRuns: z.array(z.tuple([runIdSchema, z.number().int(), z.number().int()])),
+  placements: z.array(timelinePlacementSchema),
+  ...projectionSourceFields,
+}).strict();
+export type TaskTimelineLaneDTO = z.infer<typeof taskTimelineLaneSchema>;
+/**
+ * Whole rows, in the order asked, until the answer holds about `limit` events (always at least one row): the rows not
+ * answered are asked again. `gone` names the rows asked for that the server does not hold.
+ */
+export const taskTimelineLanesSchema = z.object({ lanes: z.array(taskTimelineLaneSchema), gone: z.array(taskIdSchema) }).strict();
+export type TaskTimelineLanesDTO = z.infer<typeof taskTimelineLanesSchema>;
 export const taskProjectedTimelineAxisSchema = taskTimelineAxisSchema.omit({ version: true }).extend(projectionSourceFields).strict();
 export type TaskProjectedTimelineAxisDTO = z.infer<typeof taskProjectedTimelineAxisSchema>;

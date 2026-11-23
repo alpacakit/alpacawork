@@ -1,20 +1,18 @@
 import { countPageOpened } from '@/features/telemetry/count';
 import { isDatedRead } from '@/data/read-model';
-import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { assessRead } from '@/data/resources';
 import type { ReadAssessment } from '@/data/read-model';
 import { rowTask } from '@/data/map';
 import { type Busy } from "@alpacawork/contract";
 import { useTimelineAxis } from "@/data/timeline-axis";
-import { useTimelinePages } from "@/data/timeline-pages";
+import { useLaneReads, useTimelineLanes } from "@/data/timeline-lanes";
 import { errorText } from "@/data/client";
 import { createContext, Fragment, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
 import { HOME_SECTIONS, userTurn } from "@alpacawork/contract";
 import { turnKind } from "@/features/guide/guide-definition";
-import type { TaskProjectedPageDTO, TaskPageRowDTO, TaskProjectedTimelineDTO } from "@alpacawork/contract/control";
+import type { TaskProjectedPageDTO, TaskPageRowDTO, TaskTimelineLaneDTO } from "@alpacawork/contract/control";
 import { StateIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
 import { Icon } from "@/components/ui/icon";
@@ -310,27 +308,11 @@ export function TimeTree() {
   const needsTimeline = strips && visibleIds.length > 0;
   const [windowRange, setWindowRange] = useState<{ from: number; to: number } | null>(null);
   const range = windowRange ?? { from: now - 24 * 3_600_000, to: now };
-  const queryClient = useQueryClient();
   const offline = useConnection((state) => state.offline);
   const offlineShown = useOfflineShown();
-  const wantedTimeline = resources.timeline(info.root, null, visibleIds, [],
-    new Date(range.from).toISOString(), new Date(range.to).toISOString());
-  // On an offline restart the clock has moved; reuse the last acquired window from this exact list's QueryCache.
-  const retainedTimeline = offline ? queryClient.getQueryCache().findAll({ queryKey: wantedTimeline.queryKey.slice(0, 5) })
-    .filter(query => query.queryKey.length === 7 && assessRead(queryClient, query).display)
-    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0] : undefined;
-  const timelineOptions = retainedTimeline ? resources.timeline(info.root, null, visibleIds, [],
-    String(retainedTimeline.queryKey[5]), String(retainedTimeline.queryKey[6])) : wantedTimeline;
-  const timeline = useInfiniteQuery({ ...timelineOptions,
-    enabled: needsTimeline && visibleIds.length > 0 && windowRange !== null });
-  const timelineRead = useReadState(timelineOptions.queryKey);
-  // A viewport is one chronology, even when the transport needs several pages. Publishing its
-  // first page would erase later marks that were already acquired for an overlapping viewport.
-  useEffect(() => {
-    if (timeline.isEnabled && !timeline.isPlaceholderData && timeline.hasNextPage && !timeline.isFetching && !timeline.isError)
-      void timeline.fetchNextPage({ cancelRefetch: false });
-  }, [timeline.data, timeline.isEnabled, timeline.isPlaceholderData, timeline.hasNextPage, timeline.isFetching, timeline.isError, timeline.fetchNextPage]);
-  const timelinePages = useTimelinePages(info.root);
+  const timeline = useLaneReads(info.root, visibleIds, { from: new Date(range.from).toISOString(), to: new Date(range.to).toISOString() },
+    offline, needsTimeline && windowRange !== null);
+  const timelineLanes = useTimelineLanes(info.root);
   // The time projection reads chronology, not a task's title, body, progress or
   // Run activity sample. Keep its identity when those unrelated fields change.
   const chronology = useMemo(() => chronologyKey(people), [people]);
@@ -339,12 +321,11 @@ export function TimeTree() {
   const projection = useRef(newTimeProjectionHeld()), heldBases = useRef(new Map<string, HeldBase>()), heldHistories = useRef(new Map<string, HeldHistory>());
   // Only strips consume the acquired chronology. Keep held identities while Time is hidden;
   // reopening projects the latest people and pages, including before the axis is ready.
-  const projected = useMemo(() => strips ? projectTimePeople(people, timelinePages, projection.current) : null, [chronology, timelinePages, strips]);
+  const projected = useMemo(() => strips ? projectTimePeople(people, timelineLanes, projection.current) : null, [chronology, timelineLanes, strips]);
   const timePeople = projected?.timePeople ?? null;
   // The Runs under each row come from the window the list reads now.
-  const heldBelow = useRef({ pages: null as TaskProjectedTimelineDTO[] | null, below: new Map<string, BelowRun[]>() });
-  const shownPages = timeline.data && timeline.data.pages.at(-1)?.nextAfter === null ? timeline.data.pages : null;
-  const below = useMemo(() => belowOf(shownPages, heldBelow.current), [shownPages]);
+  const heldBelow = useRef({ lanes: [] as readonly TaskTimelineLaneDTO[], below: new Map<string, BelowRun[]>() });
+  const below = useMemo(() => belowOf(timeline.shown, heldBelow.current), [timeline.shown]);
   // A phone's list has no history consumers. Keep the held row identities, but do not
   // build or project histories for clock ticks and chronology changes while Time is hidden.
   const bases = useMemo(() => projected ? timeHistoryBases(projected.timePeople, projected.notes, below, heldBases.current) : null, [projected, below]);
@@ -455,10 +436,11 @@ export function TimeTree() {
         {/* The time axis is read, never kept on this device: out of reach it says so, not the failure again. */}
         {axis.error && !axisReady && <div style={frozen(shared)}>{offline ? <ReadNote kind="absent" className="px-1 py-1.5">{t("timeView.axisAbsent")}</ReadNote>
           : <ReadFailure error={axis.error} retry={axis.retry} />}</div>}
-        {/* A failed viewport read must not move its rows and thereby change the read's own visible-ID key. */}
+        {/* A failed strip read must not move its rows and thereby change which rows are read. */}
         {needsTimeline && windowRange !== null && <div data-timeline-read
           style={{ ...frozen(shared), top: `calc(var(--bar-in) + ${head}px)` }} className="sticky left-0 z-30 h-0">
-          <div className="bg-bg"><PageReadFailure page={timeline} read={timelineRead} /></div>
+          <div className="bg-bg">{timeline.absent ? <ReadNote kind="absent" className="py-1.5 pr-2 pl-4" />
+            : timeline.error && !offline && <ReadFailure error={timeline.error} retry={timeline.retry} />}</div>
         </div>}
         <RowTimeContext.Provider value={rowTime}>
           {<>

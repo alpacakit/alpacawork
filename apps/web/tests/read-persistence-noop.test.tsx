@@ -6,7 +6,7 @@ import { getReadProof, readAcquisition, readIndex, readQuery, recordReadProof, R
 import { applyReadEvidence, onReadEvent, receiveFullIndex, resources } from '../src/data/resources';
 import { restoreReadPersistence, startReadPersistence, useReadPersistence } from '../src/data/read-persistence';
 import { checkpointFixture } from './checkpoint-fixture';
-import { dto, indexOf, tree, viewsOf } from './fixtures';
+import { dto, indexOf, timelineAnswer, tree, viewsOf } from './fixtures';
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { cleanup.splice(0).reverse().forEach(stop => stop()); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -32,14 +32,14 @@ async function fixture(clock = Date.now()) {
     if (path === '/api/commands/settings/get') return Response.json({ values: {}, revision: index.person.settings });
     if (path === '/api/person/notices') return Response.json({ state: null, revision: index.person.notices });
     if (path === '/api/task/view') return Response.json(view);
-    if (path === '/api/task/timeline') return Response.json({ rows: [], runs: [], belowRuns: {}, events: [], anchors: {}, placements: [], nextAfter: null, generation: 'a', sourcePv: 0 });
+    if (path === '/api/task/timeline') return Response.json(timelineAnswer(source, ['T1']));
     throw new Error('Unexpected noop fixture HTTP ' + input);
   });
   const value = client(); await restoreReadPersistence(value); receiveFullIndex(value, index);
   await value.fetchQuery(resources.personalSettings(index.root)); await value.fetchQuery(resources.notices(index.root));
   await value.fetchQuery(resources.taskView(index.root, 'T1'));
-  const timeline = resources.timeline(index.root, null, ['T1'], [], '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z');
-  await value.fetchInfiniteQuery(timeline);
+  const timeline = resources.timelineLane(index.root, 'T1', '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z');
+  await value.fetchQuery(timeline);
   const writer = start(value); writer.flush();
   await waitFor(() => expect(slot(storage.read(), 'task-timeline')).toBeDefined());
   const query = readQuery(value, ['task', index.root, 'T1'])!;
@@ -238,10 +238,10 @@ test('refusal, root generation and stop still withdraw old writes without a snap
 });
 
 describe('chronology windows', () => {
-  const windows = (disk: any) => disk.slots.filter((value: any) => value.key[0] === 'task-timeline').map((value: any) => `${value.key[5]}..${value.key[6]}`).sort();
+  const windows = (disk: any) => disk.slots.filter((value: any) => value.key[0] === 'task-timeline').map((value: any) => `${value.key[4]}..${value.key[5]}`).sort();
   const FROM = '2026-01-01T00:00:00.000Z', TO = '2026-01-02T00:00:00.000Z', LATER = '2026-01-02T00:05:00.000Z';
   async function saveWindow(h: Awaited<ReturnType<typeof fixture>>, from: string, to: string) {
-    h.advance(); await h.value.fetchInfiniteQuery(resources.timeline(h.index.root, null, ['T1'], [], from, to)); await flush(h);
+    h.advance(); await h.value.fetchQuery(resources.timelineLane(h.index.root, 'T1', from, to)); await flush(h);
   }
 
   test('a turn of the window end leaves one stored copy, and a restart restores that one', async () => {
@@ -250,14 +250,14 @@ describe('chronology windows', () => {
     expect(windows(h.storage.read())).toEqual([`${FROM}..${LATER}`]);
     h.writer.stop();
     const next = client(); await restoreReadPersistence(next);
-    expect(next.getQueryData(resources.timeline(h.index.root, null, ['T1'], [], FROM, LATER).queryKey)).toBeDefined();
+    expect(next.getQueryData(resources.timelineLane(h.index.root, 'T1', FROM, LATER).queryKey)).toBeDefined();
     expect(next.getQueryData(h.timeline.queryKey)).toBeUndefined();
     expect(h.storage.read().control.cut).toBe(false);
   });
 
   test('a checkpoint already holding both windows restores only the later one', async () => {
     const h = await fixture(), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
-    const key = [...stored.key.slice(0, 6), LATER], hash = JSON.stringify(key);
+    const key = [...stored.key.slice(0, 5), LATER], hash = JSON.stringify(key);
     raw.slots.push({ ...stored, key, hash, slotId: 'later-slot', query: { ...stored.query, queryKey: key, queryHash: hash } });
     h.writer.stop(); h.storage.replaceRaw(raw);
     const next = client(); await restoreReadPersistence(next);
@@ -267,7 +267,7 @@ describe('chronology windows', () => {
 
   test('a later window acquired before the earlier one proves nothing about it: both are restored', async () => {
     const h = await fixture(), raw = h.storage.readRaw(), stored = raw.slots.find((value: any) => value.key[0] === 'task-timeline');
-    const key = [...stored.key.slice(0, 6), LATER], hash = JSON.stringify(key), acquiredAt = stored.acquiredAt - 5000;
+    const key = [...stored.key.slice(0, 5), LATER], hash = JSON.stringify(key), acquiredAt = stored.acquiredAt - 5000;
     raw.slots.push({ ...stored, key, hash, slotId: 'later-slot', acquiredAt, qualification: { ...stored.qualification, proof: { ...stored.qualification.proof, acquiredAt } },
       query: { ...stored.query, queryKey: key, queryHash: hash } });
     h.writer.stop(); h.storage.replaceRaw(raw);
@@ -276,7 +276,7 @@ describe('chronology windows', () => {
     expect(next.getQueryData(h.timeline.queryKey)).toBeDefined();
   });
 
-  test('a window that adds something stays: another start, a later window not read to its end, or one still shown', async () => {
+  test('a window that adds something stays: another start, or one still shown', async () => {
     const h = await fixture();
     await saveWindow(h, '2025-12-01T00:00:00.000Z', TO);
     expect(windows(h.storage.read())).toEqual(['2025-12-01T00:00:00.000Z..' + TO, `${FROM}..${TO}`]);
@@ -285,12 +285,5 @@ describe('chronology windows', () => {
     await saveWindow(h, FROM, LATER);
     expect(windows(h.storage.read())).toContain(`${FROM}..${TO}`);
     cleanup.pop()!();
-
-    vi.stubGlobal('fetch', async () => Response.json({ rows: [], runs: [], belowRuns: {}, events: [], anchors: {}, placements: [], nextAfter: 'more', generation: 'a', sourcePv: 0 }));
-    const partial = '2025-11-01T00:00:00.000Z', first = resources.timeline(h.index.root, null, ['T1'], [], partial, TO);
-    await saveWindow(h, partial, TO);
-    await saveWindow(h, partial, LATER);
-    expect(h.value.getQueryData<any>(first.queryKey).pages.at(-1).nextAfter).toBe('more');
-    expect(windows(h.storage.read())).toEqual(expect.arrayContaining([`${partial}..${TO}`, `${partial}..${LATER}`]));
   });
 });

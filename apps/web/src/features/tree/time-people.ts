@@ -1,13 +1,19 @@
-import type { InfiniteData } from '@tanstack/react-query';
-import type { TaskProjectedTimelineDTO } from '@alpacawork/contract/control';
-import { pageRow } from '@/data/read-model';
+import type { TaskTimelineLaneDTO } from '@alpacawork/contract/control';
+import { unlistedAggregates } from '@/data/read-model';
 import { keepSame, sameParts, type Held } from '@/lib/keep-same';
 import type { TimelineLog, TimelineNote, TimelineRun } from '@/domain/history';
 import { indexTimePeople, type PeopleIndex, type TimePeopleIndex, type TimeTaskRow } from '@/domain/people';
 import { projectTimeHistory, timeHistoryBase, type BelowRun, type TaskHistory, type TimeHistoryBase } from '@/domain/time-history';
 
-type Page = InfiniteData<TaskProjectedTimelineDTO>['pages'][number];
-type Placement = TaskProjectedTimelineDTO['placements'][number];
+type Lane = TaskTimelineLaneDTO;
+const laneRows = new WeakMap<Lane['row'], TimeTaskRow>();
+/** A strip's own row, for a Task the list does not hold: what descendants decide is the list's, so it has none. */
+function laneRow(row: Lane['row']): TimeTaskRow {
+  let made = laneRows.get(row);
+  if (!made) { made = { ...unlistedAggregates, ...row }; laneRows.set(row, made); }
+  return made;
+}
+type Placement = Lane['placements'][number];
 
 const chronology = new WeakMap<object, string>();
 /** The one text of an item's chronology, written once per item: a row that did not change costs nothing more on the next update. */
@@ -30,20 +36,19 @@ export type TimeProjectionHeld = { rows: Held<TimeTaskRow>; runs: Held<TimelineR
 export const newTimeProjectionHeld = (): TimeProjectionHeld => ({ rows: new Map(), runs: new Map(), placements: new Map() });
 
 /** People as the time view draws them: the live index, with what the acquired chronology adds to it. */
-export function projectTimePeople(people: PeopleIndex, pages: readonly Page[], held: TimeProjectionHeld): TimeProjection {
+export function projectTimePeople(people: PeopleIndex, lanes: readonly Lane[], held: TimeProjectionHeld): TimeProjection {
   const records = new Map<string, Map<string, TimelineNote>>();
-  if (!pages.length) return { timePeople: people, notes: new Map() };
+  if (!lanes.length) return { timePeople: people, notes: new Map() };
   const rows = new Map<string, TimeTaskRow>(people.tasks);
   const logs = new Map<string, TimelineLog[]>();
   const runs = new Map<string, TimelineRun>(people.runs);
   const placements = new Map<string, Placement>(people.placements);
   const logged = (id: string) => { let list = logs.get(id); if (!list) logs.set(id, list = []); return list; };
-  for (const page of pages) {
-    for (const row of page.rows) if (!people.tasks.has(row.id)) rows.set(row.id, pageRow(row));
-    for (const [id, anchor] of Object.entries(page.anchors)) logged(id).push(anchor);
-    for (const run of page.runs) if (!people.runs.has(run.id)) runs.set(run.id, run);
-    for (const placement of page.placements) if (!people.placements.has(placement.id)) placements.set(placement.id, placement);
-    for (const event of page.events) if (event.kind === 'log') logged(event.taskId).push(event.entry);
+  for (const lane of lanes) {
+    if (!people.tasks.has(lane.row.id)) rows.set(lane.row.id, laneRow(lane.row));
+    if (lane.anchor) logged(lane.lane).push(lane.anchor);
+    for (const placement of lane.placements) if (!people.placements.has(placement.id)) placements.set(placement.id, placement);
+    for (const event of lane.events) if (event.kind === 'log') logged(event.taskId).push(event.entry);
     else if (event.kind === 'note') {
       const notes = records.get(event.taskId) ?? new Map<string, TimelineNote>();
       notes.set(event.event.id, event.event); records.set(event.taskId, notes);
@@ -64,19 +69,15 @@ export function projectTimePeople(people: PeopleIndex, pages: readonly Page[], h
 }
 
 /**
- * The ended Runs under each row, from the window the list reads now (its pages, or null while it has none complete).
- * Which row a Run is under is the tree's now, so other windows kept for their notes are not asked: one may still hold a
- * Run under a parent its Task has left. While the window being read is not complete, the last one read stands.
+ * The ended Runs under each row, from the range the list reads now. Which row a Run is under is the tree's now, so strips
+ * kept from other ranges for their notes are not asked: one may still hold a Run under a parent its Task has left. A row
+ * not read yet for this range keeps the last it was read with.
  */
-export function belowOf(pages: readonly Page[] | null, held: { pages: readonly Page[] | null; below: Map<string, BelowRun[]> }) {
-  if (!pages || pages === held.pages) return held.below;
-  const below = new Map<string, BelowRun[]>();
-  for (const page of pages) for (const [lane, spans] of Object.entries(page.belowRuns)) {
-    let collected = below.get(lane);
-    if (!collected) below.set(lane, collected = []);
-    for (const span of spans) collected.push(span);
-  }
-  held.pages = pages; held.below = below;
+export function belowOf(lanes: readonly Lane[], held: { lanes: readonly Lane[]; below: Map<string, BelowRun[]> }) {
+  if (lanes === held.lanes) return held.below;
+  const below = new Map(held.below);
+  for (const lane of lanes) below.set(lane.lane, lane.belowRuns);
+  held.lanes = lanes; held.below = below;
   return below;
 }
 

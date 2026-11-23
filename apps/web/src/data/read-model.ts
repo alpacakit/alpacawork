@@ -5,7 +5,7 @@ import { coordinatorSnapshotSchema, type CoordinatorSnapshot } from '@alpacawork
 import { z } from 'zod';
 import { startReadRetention } from './read-retention';
 import { hashKey, notifyManager, replaceEqualDeep, type Query as QueryRecord, type QueryClient, type QueryKey } from '@tanstack/react-query';
-import { projectShelfSchema, type ProjectShelfDTO, controlTaskHeadSchema, projectedIndexSchema, taskHistorySchema, taskProjectedPageSchema, taskProjectedViewSchema, taskProjectedTimelineSchema, taskProjectedTimelineAxisSchema, taskProjectedSearchSchema, closedPageScope,
+import { projectShelfSchema, type ProjectShelfDTO, controlTaskHeadSchema, projectedIndexSchema, taskHistorySchema, taskProjectedPageSchema, taskProjectedViewSchema, taskTimelineLaneSchema, taskProjectedTimelineAxisSchema, taskProjectedSearchSchema, closedPageScope,
   type TaskPageRowDTO, type TaskRowDTO, type ProjectedIndexDTO, type TaskProjectedViewDTO, type ControlTaskHeadDTO, type ProjectionResourceKind, type TaskViewPlacementDTO, type TaskViewRunDTO, type PlacementDTO, type ControlRunDTO } from '@alpacawork/contract/control';
 import { noticeStateResponseSchema, personalSettingsResponseSchema } from '@alpacawork/contract';
 import type { QueryCacheNotifyEvent } from '@tanstack/react-query';
@@ -90,7 +90,7 @@ const taskReadSchema = z.union([readViewSchema, writtenReadSchema]);
 /** A History window is one continuous page (history-window.ts): never a list of pages to join. */
 const historyPages = pages(taskHistorySchema).refine(value => value.pages.length === 1
   && (value.pages as z.infer<typeof taskHistorySchema>[]).every(page => page.events.every(event => event.taskId.length > 0)));
-const taskPages = pages(taskProjectedPageSchema), searchPages = pages(taskProjectedSearchSchema), timelinePages = pages(taskProjectedTimelineSchema);
+const taskPages = pages(taskProjectedPageSchema), searchPages = pages(taskProjectedSearchSchema);
 export function readCodec(key: QueryKey): z.ZodType | undefined {
   const [kind, root, id, scope] = key;
   if (kind === 'index' && key.length === 1) return projectedIndexSchema;
@@ -104,7 +104,8 @@ export function readCodec(key: QueryKey): z.ZodType | undefined {
   if (kind === 'task-finished' && key.length === 4 && typeof id === 'string' && (scope === null || typeof scope === 'string')) return taskPages;
   if (kind === 'task-search' && key.length === 4 && typeof id === 'string' && (scope === null || typeof scope === 'string')) return searchPages;
   if (kind === 'task-timeline' && key.length === 6 && id === 'axis' && key.slice(3).every(value => typeof value === 'string')) return taskProjectedTimelineAxisSchema;
-  if (kind === 'task-timeline' && key.length === 7 && key.slice(2).every(value => typeof value === 'string')) return timelinePages;
+  if (kind === 'task-timeline' && key.length === 6 && id === 'lane' && key.slice(3).every(value => typeof value === 'string'))
+    return taskTimelineLaneSchema.refine(lane => lane.lane === scope);
   if (kind === 'task-shelved' && key.length === 3 && (id === null || typeof id === 'string')) return taskPages;
 }
 /** Data identity only. Current raw metadata, qualification and acquisition are always evaluated separately. */
@@ -286,22 +287,28 @@ function indexTask(index: ProjectedIndexDTO, id: string | undefined) {
   return rows.get(id);
 }
 /**
- * The resource a read's freshness is measured on: its kind and key in the index's `requiredPv`. A timeline and its
- * axis share their scope's entry. Reads outside the projection (index, person, coordinator, shelf) have none.
+ * The resources a read's freshness is measured on: their kind and keys in the index's `requiredPv`. A row's time strip
+ * is its row's entry; the axis is made from its rows, so it has theirs. Reads outside the projection (index, person,
+ * coordinator, shelf) have none.
  */
-export function projectionResource(key: QueryKey): { kind: ProjectionResourceKind; id: string } | undefined {
+export function projectionResource(key: QueryKey): { kind: ProjectionResourceKind; ids: string[] } | undefined {
   const [kind, , id, scope] = key;
-  if (kind === 'task' && typeof id === 'string') return { kind: 'view', id };
-  if (kind === 'task-history' && typeof id === 'string') return { kind: 'history', id };
-  if (kind === 'task-finished') return { kind: 'page', id: closedPageScope('finished', id === 'root' ? null : String(id), scope as string | null) };
-  if (kind === 'task-shelved') return { kind: 'page', id: closedPageScope('shelved', null, id as string | null) };
-  if (kind === 'task-search') return { kind: 'search', id: typeof scope === 'string' ? scope : 'root' };
-  if (kind === 'task-timeline') return { kind: 'timeline', id: String(id === 'axis' ? scope : id) };
+  if (kind === 'task' && typeof id === 'string') return { kind: 'view', ids: [id] };
+  if (kind === 'task-history' && typeof id === 'string') return { kind: 'history', ids: [id] };
+  if (kind === 'task-finished') return { kind: 'page', ids: [closedPageScope('finished', id === 'root' ? null : String(id), scope as string | null)] };
+  if (kind === 'task-shelved') return { kind: 'page', ids: [closedPageScope('shelved', null, id as string | null)] };
+  if (kind === 'task-search') return { kind: 'search', ids: [typeof scope === 'string' ? scope : 'root'] };
+  if (kind === 'task-timeline') return { kind: 'timeline', ids: id === 'axis' ? String(key[4]).split(',').filter(Boolean) : [String(scope)] };
 }
-/** The version a read must come from to be current; a resource the index does not name has not changed this generation. */
+/**
+ * The version a read must come from to be current: the newest of its resources'. A resource the index does not name has
+ * not changed this generation.
+ */
 export function requiredVersion(index: ProjectedIndexDTO, key: QueryKey): number | undefined {
   const resource = projectionResource(key);
-  return resource && ((index.requiredPv[resource.kind] as Record<string, number>)[resource.id] ?? 0);
+  if (!resource) return;
+  const versions = index.requiredPv[resource.kind] as Record<string, number>;
+  return resource.ids.reduce((newest, id) => Math.max(newest, versions[id] ?? 0), 0);
 }
 /**
  * Dependency evidence, not another copy of data: what a read's freshness depends on, compared as it moves.

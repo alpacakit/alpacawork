@@ -248,7 +248,7 @@ export class ProjectionOwner {
     const readable = usableRecords(records, () => good, id => { if (evaluateTasks.has(id)) derive(id); });
     const previous = before && usableRecords(before.records, () => before.good);
     const effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(['row','view','history','files','membership','page','search','timeline','seat','push'])])),
-      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(['root', ...records.shelf().listed]) }, meta: true }
+      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(records.taskIds()) }, meta: true }
       : affected({ ...change!, before: previous!, after: readable }, { before: id => before?.derived(id), after: derive });
     if (before && runRecordsAvailable(before.records) !== runRecordsAvailable(records))
       for (const id of records.taskIds()) (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id,

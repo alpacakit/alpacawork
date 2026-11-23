@@ -1,39 +1,39 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { InfiniteQueryObserver, QueryClient, type QueryKey } from '@tanstack/react-query';
 import { z } from 'zod';
-import { taskProjectedPageSchema as taskPageSchema, taskProjectedSearchSchema as taskSearchSchema, taskProjectedTimelineSchema as taskTimelineSchema, type TaskProjectedTimelineDTO as TaskTimelineDTO } from '@alpacawork/contract/control';
+import { taskProjectedPageSchema as taskPageSchema, taskProjectedSearchSchema as taskSearchSchema, type TaskProjectedSearchDTO as SearchDTO } from '@alpacawork/contract/control';
 import { captureReadProof, evaluateRead, observeReadProofs, readCodec, readNormalized, refuseRead } from '../src/data/read-model';
 import { assessRead, receiveFullIndex, resources } from '../src/data/resources';
 import { dto, indexOf, served0, tree } from './fixtures';
 
 const clients: QueryClient[] = [];
 afterEach(() => { clients.splice(0).forEach(client => client.clear()); vi.restoreAllMocks(); });
-const page = (nextAfter: string | null = null): TaskTimelineDTO => ({
-  rows: [], runs: [], belowRuns: {}, events: [], anchors: {}, placements: [], nextAfter, ...served0,
+const page = (nextAfter: string | null = null): SearchDTO => ({
+  rows: [], ancestors: [], lines: {}, total: 0, nextAfter, ...served0,
 });
 const bundle = <T,>(pages: T[], pageParams: (string | null)[] = [null]) => ({ pages, pageParams });
 function fixture() {
   const index = indexOf(tree({ tasks: [dto({ id: 'T1' })] }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   clients.push(client); observeReadProofs(client); receiveFullIndex(client, index);
-  const options = resources.timeline(index.root, null, ['T1'], [], '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z');
+  const options = resources.taskSearch(index.root, 'words', null);
   const entry = (data: unknown, key: QueryKey = options.queryKey) => ({ key, data, proof: captureReadProof(index, key) });
   return { client, index, options, entry };
 }
 
-test('resources.timeline appends through Query and checks each immutable page once, on arrival, without revisiting older pages', async () => {
+test('paged reads append through Query and check each immutable page once, on arrival, without revisiting older pages', async () => {
   const f = fixture(), total = 4;
   const transport = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
     const url = new URL(String(input), 'http://fixture');
-    expect(url.pathname).toBe('/api/task/timeline');
+    expect(url.pathname).toBe('/api/task/search');
     const at = Number(url.searchParams.get('after') ?? 0);
     return new Response(JSON.stringify(page(at + 1 < total ? String(at + 1) : null)),
       { headers: { 'Content-Type': 'application/json' } });
   });
-  const parse = vi.spyOn(taskTimelineSchema, 'safeParse');
+  const parse = vi.spyOn(taskSearchSchema, 'safeParse');
   // The transport uses schema.parse; count its traversal too, so bypassing the
   // optimized safeParse helper cannot make this a green test with zero checks.
-  const traversal = vi.spyOn(taskTimelineSchema._zod, 'run');
+  const traversal = vi.spyOn(taskSearchSchema._zod, 'run');
   const observer = new InfiniteQueryObserver(f.client, { ...f.options, enabled: false });
   const stop = observer.subscribe(() => {});
   try {
@@ -49,7 +49,7 @@ test('resources.timeline appends through Query and checks each immutable page on
       expect(traversal).toHaveBeenCalledTimes(at + 1);
       for (let seen = 0; seen <= at; seen++) {
         expect(traversal.mock.calls.filter(([payload]) =>
-          (payload.value as TaskTimelineDTO).nextAfter === (seen + 1 < total ? String(seen + 1) : null))).toHaveLength(1);
+          (payload.value as SearchDTO).nextAfter === (seen + 1 < total ? String(seen + 1) : null))).toHaveLength(1);
       }
     }
     expect(parse).not.toHaveBeenCalled();
@@ -100,13 +100,11 @@ test('new envelopes and changed pages still follow the full codec after a succes
   }
 });
 
-test.each(['finished', 'shelved', 'search'] as const)('a timeline page proof cannot certify the same object as %s data', kind => {
+test.each(['finished', 'shelved'] as const)('a search page proof cannot certify the same object as %s data', kind => {
   const f = fixture(), shared = page();
   expect(evaluateRead(f.index, f.entry(bundle([shared]))).state).toBe('current');
-  const key = kind === 'finished' ? resources.finished(f.index.root, null).queryKey
-    : kind === 'shelved' ? resources.shelved(f.index.root, null).queryKey
-      : resources.taskSearch(f.index.root, '', null).queryKey;
-  const parse = vi.spyOn(kind === 'search' ? taskSearchSchema : taskPageSchema, 'safeParse');
+  const key = kind === 'finished' ? resources.finished(f.index.root, null).queryKey : resources.shelved(f.index.root, null).queryKey;
+  const parse = vi.spyOn(taskPageSchema, 'safeParse');
   expect(evaluateRead(f.index, f.entry(bundle([shared]), key)).state).toBe('invalid');
   expect(parse).toHaveBeenCalledTimes(1);
 });
@@ -124,11 +122,11 @@ test('a History window is one continuous page: each new envelope is checked whol
 test('hostile JSON cannot enter the memo through a shallow freeze or invoke an accessor', () => {
   const f = fixture(), getter = vi.fn(() => 'page');
   const accessor = page(); Object.defineProperty(accessor, 'nextAfter', { get: getter, enumerable: true });
-  const sparse = page(); sparse.events.length = 1;
+  const sparse = page(); sparse.rows.length = 1;
   const inherited = Object.assign(Object.create({ custom: true }), page());
   const symbolic = Object.assign(page(), { [Symbol('hidden')]: true });
   const cyclic = { ...page(), cycle: null as unknown }; cyclic.cycle = cyclic;
-  const parse = vi.spyOn(taskTimelineSchema, 'safeParse');
+  const parse = vi.spyOn(taskSearchSchema, 'safeParse');
   for (const hostile of [accessor, sparse, inherited, symbolic, cyclic, { ...page(), nonfinite: Infinity }]) {
     Object.freeze(hostile);
     expect(evaluateRead(f.index, f.entry(bundle([hostile]))).state).toBe('invalid');
@@ -136,9 +134,9 @@ test('hostile JSON cannot enter the memo through a shallow freeze or invoke an a
   expect(getter).not.toHaveBeenCalled();
   expect(parse).not.toHaveBeenCalled();
   const shallow = Object.freeze(page());
-  expect(Object.isFrozen(shallow.events)).toBe(false);
+  expect(Object.isFrozen(shallow.rows)).toBe(false);
   expect(evaluateRead(f.index, f.entry(bundle([shallow]))).state).toBe('current');
-  expect(Object.isFrozen(shallow.events)).toBe(true);
+  expect(Object.isFrozen(shallow.rows)).toBe(true);
   expect(parse).toHaveBeenCalledTimes(1);
 });
 
@@ -148,7 +146,7 @@ test('cold page normalization parses once; proof hits still produce detached, fr
   const first = readNormalized(f.options.queryKey, data)!.data as typeof data;
   expect(parse).toHaveBeenCalledTimes(1);
   expect(first.pages[0]).not.toBe(data.pages[0]);
-  (first.pages[0] as TaskTimelineDTO).nextAfter = 'mutated output';
+  (first.pages[0] as SearchDTO).nextAfter = 'mutated output';
   const second = readNormalized(f.options.queryKey, data)!.data as typeof data;
   expect(second).toEqual(data); expect(second.pages[0]).not.toBe(first.pages[0]);
   expect(parse).toHaveBeenCalledTimes(2);
@@ -164,11 +162,11 @@ test.each(['transform', 'default', 'strip', 'order', 'null-prototype'] as const)
   const codec = readCodec(f.options.queryKey)!;
   // First take the optimized boolean path, then demand its actual codec output.
   expect(evaluateRead(f.index, f.entry(data)).state).toBe('current');
-  const basePage = taskTimelineSchema.clone();
+  const basePage = taskSearchSchema.clone();
   const element = mode === 'default' ? basePage.extend({ normalizedDefault: z.string().default('ACTUAL DEFAULT') })
     : mode === 'transform' ? basePage.transform(value => ({ ...value, nextAfter: 'TRANSFORMED' }))
       : mode === 'order' ? basePage.transform(({ nextAfter, ...rest }) => ({ nextAfter, ...rest }))
-        : mode === 'strip' ? basePage.omit({ anchors: true }).strip() : basePage;
+        : mode === 'strip' ? basePage.omit({ lines: true }).strip() : basePage;
   const normalizedCodec = z.object({ pages: z.array(element), pageParams: z.array(z.string().nullable()) });
   const expected = normalizedCodec.parse(data);
   const parse = vi.spyOn(codec, 'safeParse').mockImplementation(value => normalizedCodec.safeParse(value));

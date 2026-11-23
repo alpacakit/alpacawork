@@ -15,7 +15,7 @@ export const useReadPersistence = create<{
   restore: 'pending' | 'restored' | 'skipped';
   restoredAt: number | null; savedAt: number | null; status: 'idle' | 'saved' | 'partial' | 'over-budget' | 'unavailable' | 'superseded'; unsavedTasks: number; error?: string;
 }>(() => ({ restore: 'pending', restoredAt: null, savedAt: null, unsavedTasks: 0, status: 'idle' }));
-const DATABASE = 'alpacawork-read-checkpoint', FORMAT = 16, VERSION = 3;
+const DATABASE = 'alpacawork-read-checkpoint', FORMAT = 17, VERSION = 3;
 const READ_STARTUP_BUDGET_MS = 500;
 const SAVE_IDLE_LIMIT_MS = 1000;
 const READ_OPEN_LIMIT_MS = 1000;

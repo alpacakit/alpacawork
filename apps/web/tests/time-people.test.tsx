@@ -9,8 +9,8 @@ const at = (minute: number) => `2026-11-01T00:${String(minute).padStart(2, '0')}
 const log = (id: string, minute: number) => ({ id, at: at(minute), toState: 'doing', fromState: 'todo', kind: 'reported' });
 const row = (id: string, state = 'doing') => ({ id, parentId: null, createdAt: at(0), state, stateLog: [], ball: { kind: 'none' }, notice: { logCount: 0 } });
 const peopleOf = (tasks: ReturnType<typeof row>[]) => indexPeople({ tasks, placements: [], runs: [] } as never);
-const page = (entries: [string, number][]) => ({ rows: [], runs: [], belowRuns: {}, placements: [], anchors: {}, nextAfter: null,
-  events: entries.map(([id, minute]) => ({ kind: 'log', taskId: id, entry: log(`${id}-${minute}`, minute) })) }) as never;
+const lane = (id: string, minutes: number[], belowRuns: [string, number, number][] = []) => ({ lane: id, row: row(id), anchor: null, placements: [], belowRuns,
+  events: minutes.map(minute => ({ kind: 'log', taskId: id, entry: log(`${id}-${minute}`, minute) })) }) as never;
 
 describe('keepSame', () => {
   it('keeps a value that says the same, replaces one that does not, and forgets what is gone', () => {
@@ -29,10 +29,10 @@ describe('the time projection', () => {
   it('reading the chronology again leaves the rows it did not change as they were', () => {
     const people = peopleOf([row('T1'), row('T2')]);
     const held = newTimeProjectionHeld(), bases = new Map(), histories = new Map();
-    const first = projectTimePeople(people, [page([['T1', 1], ['T2', 2]])], held);
+    const first = projectTimePeople(people, [lane('T1', [1]), lane('T2', [2])], held);
     const firstBases = timeHistoryBases(first.timePeople, first.notes, new Map(), bases);
     const firstHistories = timeHistories(firstBases, 1000, histories);
-    const second = projectTimePeople(people, [page([['T1', 1], ['T2', 2], ['T2', 3]])], held);
+    const second = projectTimePeople(people, [lane('T1', [1]), lane('T2', [2, 3])], held);
     const secondBases = timeHistoryBases(second.timePeople, second.notes, new Map(), bases);
     const secondHistories = timeHistories(secondBases, 1000, histories);
     expect(second.timePeople.tasks.get('T1')).toBe(first.timePeople.tasks.get('T1'));
@@ -48,10 +48,9 @@ describe('the time projection', () => {
     // and the window says so before the row has: it is counted once, ended.
     const people = peopleOf([{ ...row('T1'), runsBelow: [['R7', at(30)], ['R8', at(40)], ['R1', at(10)]] } as never, row('T2')]);
     const held = newTimeProjectionHeld(), bases = new Map(), histories = new Map();
-    const window = (version: string, belowRuns: Record<string, [string, number, number][]>) => ({ ...(page([]) as object), nextAfter: version, belowRuns }) as never;
     const { timePeople, notes } = projectTimePeople(people, [], held);
-    const shown = { pages: null, below: new Map() };
-    const below = belowOf([window('A', { T1: [['R1', at(10), at(20)], ['R2', at(15), at(25)], ['R3', at(40), at(45)]] })], shown);
+    const shown = { lanes: [], below: new Map() };
+    const below = belowOf([lane('T1', [], [['R1', at(10), at(20)], ['R2', at(15), at(25)], ['R3', at(40), at(45)]])], shown);
     const lines = timeHistories(timeHistoryBases(timePeople, notes, below, bases), at(50), histories);
     const line = lines.get('T1')!;
     // The Runs under it reach back past the row's own creation (a child moved in): its line starts with them.
@@ -60,17 +59,15 @@ describe('the time projection', () => {
     expect(stretches.map(each => [each.from, each.count])).toEqual([[at(10), 1], [at(15), 2], [at(20), 1], [at(25), 0], [at(30), 1], [at(40), 3], [at(45), 2]]);
   });
 
-  it('the Runs under a row are read from the window shown now, kept while the next one loads', () => {
+  it('the Runs under a row are read from the range shown now; a row not read for it yet keeps the last it was read with', () => {
     const at = (minute: number) => Date.parse('2026-10-10T10:00:00Z') + minute * 60_000;
-    const window = (version: string, belowRuns: Record<string, [string, number, number][]>) => [{ ...(page([]) as object), nextAfter: version, belowRuns }] as never;
-    const shown = { pages: null, below: new Map() };
-    const a = window('A', { T1: [['R1', at(10), at(20)]] }), b = window('B', { T2: [['R1', at(10), at(20)]] });
-    expect(belowOf(a, shown).get('T1')).toHaveLength(1);
-    // R1's Task moved under T2: the window read since says so, and T1 no longer holds it.
-    expect([...belowOf(b, shown).keys()]).toEqual(['T2']);
-    expect(belowOf(null, shown).get('T2')).toHaveLength(1);
-    // Back to the first window, cached and not read again: it is what is shown, so its Runs are back.
-    expect(belowOf(a, shown).get('T1')).toHaveLength(1);
+    const shown = { lanes: [], below: new Map() };
+    expect(belowOf([lane('T1', [], [['R1', at(10), at(20)]])], shown).get('T1')).toHaveLength(1);
+    // R1's Task moved from under T1 to under T2: both rows are read again, and say so.
+    const moved = belowOf([lane('T1', []), lane('T2', [], [['R1', at(10), at(20)]])], shown);
+    expect([moved.get('T1'), moved.get('T2')]).toEqual([[], [['R1', at(10), at(20)]]]);
+    // Another range, where T2 is not read yet: it keeps what it was last read with.
+    expect(belowOf([lane('T1', [])], shown).get('T2')).toHaveLength(1);
   });
 
   it('a Run begun at this instant is one that runs now, and one ended at this instant is not', () => {
@@ -120,7 +117,7 @@ describe('the time projection', () => {
   it('the clock moves only a history still open', () => {
     const people = peopleOf([row('T1')]);
     const held = newTimeProjectionHeld(), bases = new Map(), histories = new Map();
-    const { timePeople, notes } = projectTimePeople(people, [page([['T1', 1]])], held);
+    const { timePeople, notes } = projectTimePeople(people, [lane('T1', [1])], held);
     const base = timeHistoryBases(timePeople, notes, new Map(), bases);
     const before = timeHistories(base, 1000, histories).get('T1');
     expect(timeHistories(base, 1000, histories).get('T1')).toBe(before);
