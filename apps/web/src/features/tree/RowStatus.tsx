@@ -187,7 +187,7 @@ export function StatusNotes({ task, className }: { task: Task; className?: strin
 /**
  * When a task at work is expected to report, in a phone row's quiet line before its one time, as short as a time can be
  * said after a flag: "14:30" (by about then), "14:30+" (not before), "14:30 over" in ink once it has passed, or "?" while
- * the estimate waits for an update; nothing for a task not at work (countsEstimate) or one with no estimate.
+ * the estimate waits for an update; nothing for a task waiting on the user (countsEstimate) or one with no estimate.
  * Its press says it in the reader's words. The facts are the reader's and the band's (finishFactsFor), so a past estimate is
  * never said as ahead.
  */

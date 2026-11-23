@@ -87,8 +87,6 @@ test.each([
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { asks: true })], says: `After ${clock(40)}` },
   { combination: "a child whose estimate waits for an update makes it not before",
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90, ago: 5, sentBack: true })], says: `After ${clock(40)}` },
-  { combination: "a child whose person's work stopped makes it not before",
-    specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90 })], people: { T12: "attention" }, says: `After ${clock(40)}` },
   { combination: "a past estimate does not lead while a later one is ahead",
     specs: [parent(), kid("T11", { estimate: 30, ago: 60 }), kid("T12", { estimate: 20, ago: 30 }), kid("T13", { estimate: 120 }), kid("T14")],
     says: `After ${clock(120)}` },
@@ -234,4 +232,24 @@ test("a child awaiting the user's answer adds no estimate, even a past one: the 
   expect(finishOf("T1", { index: deep, now, factsOf: id => heldBelow.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
   // Its own row says no report time either.
   expect(finishOf("T12", { index, now, factsOf: id => own.get(id) ?? null })).toBeNull();
+});
+
+test("the position alone says whether a task's end is its agents': a Run needing attention stops only a task waiting on the user", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T12")]).tasks);
+  const estimate = { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false };
+  const stopped = (position: "doing" | "error") => finishFacts({ state: "doing", position, interrupted: true, working: true, estimate, since: null });
+  // A member's Run needs attention while the task is at work: its estimate still counts.
+  expect(stopped("doing")).toEqual({ kind: "estimate", estimate });
+  // An error to handle is a wait on the user: it says it stopped, and no estimate above covers it.
+  expect(stopped("error")).toEqual({ kind: "stopped" });
+  const own = new Map<string, FinishFacts | null>([["T1", { kind: "estimate", estimate: { ...estimate, remainingMinutes: 60 } }], ["T11", stopped("doing")], ["T12", stopped("error")]]);
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 60 * minute, count: 2, open: 1 });
+});
+
+test("a row not started says what the tasks under it say, as one at work with nobody working on it does", () => {
+  const index = indexTasks(data([parent({ state: "todo" }), kid("T11")]).tasks);
+  const own = new Map([["T1", finishFacts({ state: "todo", position: "todo", interrupted: false, working: false, estimate: null, since: null })],
+    ["T11", finishFacts({ state: "doing", position: "doing", interrupted: false, working: true,
+      estimate: { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false }, since: null })]]);
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 0 });
 });
