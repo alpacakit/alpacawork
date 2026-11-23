@@ -2,18 +2,20 @@ import { RUN_FAILURE_MESSAGE_LIMIT, type RunAvailability, type RunFailure } from
 import { redactSecrets } from '@alpacawork/core';
 type Cause = NonNullable<RunFailure['cause']>;
 /**
- * Claude says a usage limit as "You've hit your <scope> limit · resets <when>. …" (earlier "You've reached your <scope>
- * limit. Switch to another model, …"): a weekly or 5-hour session scope, or a model by its name ("Fable"). Other limits
- * ("context window", lowercase) and other endings are not a usage limit.
+ * Claude says a usage limit as "You've hit your <scope> limit · resets <when>. …": a weekly or 5-hour session scope, or
+ * a model by its name ("Fable"), which Claude always tells to switch to another model ("You've reached your Fable limit.
+ * Switch to another model, …"). Other limits ("context window", "MCP tool call") are not a usage limit.
  */
-const LIMIT = /^You've (?:hit|reached) your (weekly|session|[A-Z][\w.\- ]{0,40}?) limit(?: · resets [^\r\n]+|\. Switch to another model\b[^\r\n]*)?$/;
+const PERIOD_LIMIT = /^You've (?:hit|reached) your (weekly|session) limit(?: · resets [^\r\n]+)?$/;
+const MODEL_LIMIT = /^You've (?:hit|reached) your [A-Z][\w.\- ]{0,40}? limit(?: · resets [^\r\n]+?)?\. Switch to another model\b[^\r\n]*$/;
 function causeOf(message: unknown): Cause | undefined {
   if (message === 'Selected model is at capacity. Please try a different model.' ||
     message === 'Error running remote compact task: Selected model is at capacity. Please try a different model.')
     return 'model_capacity';
-  const scope = typeof message === 'string' ? LIMIT.exec(message)?.[1] : undefined;
-  if (scope === undefined) return undefined;
-  return scope === 'weekly' ? 'weekly_limit' : scope === 'session' ? 'session_limit' : 'model_limit';
+  if (typeof message !== 'string') return undefined;
+  const period = PERIOD_LIMIT.exec(message)?.[1];
+  if (period) return period === 'weekly' ? 'weekly_limit' : 'session_limit';
+  return MODEL_LIMIT.test(message) ? 'model_limit' : undefined;
 }
 
 /** A failure read from an agent's error words; `resetsAt` is when the provider said its usage limit lifts, kept only for a limit. */

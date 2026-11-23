@@ -36,11 +36,13 @@ export function windowLabel(window: LimitWindow, t: T, scoped = false): string {
     : scoped ? t("chrome:limits.window.allModels", { period }) : period;
 }
 
+/** A reset as every place says it: providers stamp one a moment before the hour ("…14:59:59.9Z"), read as that hour. */
+export const resetMinute = (resetsAt: string): number => Math.round(Date.parse(resetsAt) / 60_000) * 60_000;
+
 /** Within a day, how long until it resets; further off, the day and time it does. */
 export function resetWords(resetsAt: string | null, now: number, locale: string, t: T): string | null {
   if (!resetsAt) return null;
-  // Providers stamp a reset a moment before the hour ("…14:59:59.9Z"); it is read as that hour.
-  const at = Math.round(Date.parse(resetsAt) / 60_000) * 60_000, left = at - now;
+  const at = resetMinute(resetsAt), left = at - now;
   if (!Number.isFinite(at) || left <= 0) return null;
   if (left < 86_400_000) {
     const minutes = Math.max(1, Math.ceil(left / 60_000));

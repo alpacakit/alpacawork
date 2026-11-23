@@ -59,6 +59,13 @@ test("a limit whose reset is still ahead says when it lifts, on the opened task 
   expect(word.textContent).toContain(i18n.t("tree:status.cause.modelLimit"));
   expect(word.textContent).not.toBe(i18n.t("tree:status.cause.modelLimit"));
   expect(word.title).toBe(words);
+  // A reset stamped a moment before the hour reads as that hour on the row, as in the opened task's sentence.
+  const edge = new Date(Math.ceil((Date.now() + 3 * 86_400_000) / 3_600_000) * 3_600_000 - 1).toISOString();
+  const edged = { ...task, rowFacts: { ...task.rowFacts, kind: { kind: "stopped" as const, failure: "exit", errorCause: { cause: "model_limit" as const, resetsAt: edge } } } };
+  const hour = new Date(Date.parse(edge) + 1);
+  cleanup();
+  render(<TestWorkspace data={data}><RowKindWord task={edged} /></TestWorkspace>);
+  expect(document.querySelector("[data-row-until]")?.textContent).toContain(`${String(hour.getHours()).padStart(2, "0")}:00`);
   cleanup();
 });
 

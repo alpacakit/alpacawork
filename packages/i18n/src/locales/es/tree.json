@@ -71,7 +71,7 @@
       "sessionLimit": "Límite de uso de 5 horas",
       "weeklyLimit": "Límite de uso semanal"
     },
-    "causeUntil": "{{cause}} hasta {{when}}",
+    "causeUntil": "hasta {{when}}",
     "children": "Subtareas {{progress}}",
     "failure": {
       "conversationBusy": "Conversación ocupada",

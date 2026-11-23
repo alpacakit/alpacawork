@@ -69,7 +69,7 @@
       "sessionLimit": "5-hour usage limit",
       "weeklyLimit": "Weekly usage limit"
     },
-    "causeUntil": "{{cause}} until {{when}}",
+    "causeUntil": "until {{when}}",
     "children": "Subtasks {{progress}}",
     "failure": {
       "conversationBusy": "Conversation busy",
