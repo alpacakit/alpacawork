@@ -157,7 +157,7 @@ test("an overrun says how far past the estimate it is, no finer than the estimat
   expect(past(58).short).toBe(`${clock(-58)}から約1時間超過`);
   expect(past(6 * 60 + 10).short).toBe(`${clock(-370)}から約6時間超過`);
   // The long words say it is the estimate that was passed.
-  expect(past(6 * 60 + 10).long).toBe(`このタスクと下のタスクの一番遅い見込み${clock(-370)}を約6時間超過`);
+  expect(past(6 * 60 + 10).long).toBe(`このタスクと下のタスクで一番遅い${clock(-370)}の見込みを約6時間超過`);
   expect(past(3 * 24 * 60 + 100).short).toMatch(/から約3日超過$/);
   await i18n.changeLanguage("en");
   expect(past(6 * 60 + 10).short).toBe(`~6 hours past ${clock(-370)}`);
@@ -223,6 +223,10 @@ test("a child awaiting the user's answer adds no estimate, even a past one: the 
   const own = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T12", facts("review", -3 * 24 * 60)]]);
   expect(own.get("T12")).toBeNull();
   expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // A child awaiting an answer cannot end before it, whatever is under it: a working grandchild's estimate still counts.
+  const deep = indexTasks(data([parent(), kid("T11"), kid("T111", { parentId: "T11" })]).tasks);
+  const below = new Map([["T1", facts("doing", null)], ["T11", facts("review", null)], ["T111", facts("doing", 40)]]);
+  expect(finishOf("T1", { index: deep, now, factsOf: id => below.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
   // Its own row says no report time either.
   expect(finishOf("T12", { index, now, factsOf: id => own.get(id) ?? null })).toBeNull();
 });

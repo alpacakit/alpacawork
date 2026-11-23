@@ -74,11 +74,11 @@ export function finishFacts({ state, position, interrupted, working, estimate, s
 }
 
 /**
- * Says nothing of a task's end beyond what the tasks under it say: it waits for them, or nobody is placed on it to do
- * work of its own (not started or working without an estimate). A person's work without an estimate, or an estimate
- * that waits for an update, is an end left unsaid.
+ * Says nothing of a task's end beyond what the tasks under it say: it is at work but waits for them, nobody placed on it
+ * working on its own. A person's work without an estimate, or an estimate that waits for an update, is an end left
+ * unsaid; so is a task not at work (no facts), which cannot end before the user lets it resume, whatever is under it.
  */
-const defers = (facts: FinishFacts | null) => facts === null || facts.kind === "unknown" && !facts.working;
+const defers = (facts: FinishFacts | null) => facts !== null && facts.kind === "unknown" && !facts.working;
 
 /**
  * When a task reports, from its own facts (`factsOf`, finishFacts) and those of the unfinished tasks under it. A task with
