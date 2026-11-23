@@ -6,7 +6,7 @@ import { i18n } from "@alpacawork/i18n";
 import { problemSchema } from "@alpacawork/contract/problem";
 import { attachmentResultSchema, type AttachmentResult } from "@alpacawork/contract/control";
 import { z } from "zod";
-import { taskFileRoute } from "@alpacawork/contract/cli-commands";
+import { taskFileRoute } from "@alpacawork/contract/task-file-route";
 import { ApiError, apiError } from "./client";
 import { api } from "./resources";
 import type { Attachment } from "@/domain/attachments";

@@ -326,6 +326,9 @@ importers:
 
   packages/contract:
     dependencies:
+      '@alpacakit/channels':
+        specifier: 0.2.0-beta.5
+        version: 0.2.0-beta.5(zod@4.6.6)
       '@alpacawork/core':
         specifier: workspace:*
         version: link:../core

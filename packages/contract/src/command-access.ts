@@ -59,7 +59,7 @@ export type Action =
   | { name: 'task.read' }
   /** The tree (task list): a Run reads its own project's. */
   | { name: 'task.list' }
-  /** task new, --plan-file too: --from-user (true), --internal (false), or neither (null). */
+  /** task new, --plan-file too: --from-user (true), --no-from-user (false), or neither (null). */
   | { name: 'task.new'; kind: TaskKind; userRequested: boolean | null }
   | { name: 'task.update'; fields: readonly [UpdateField, ...UpdateField[]] }
   /** The new parent and the Tasks above it, nearest first. */
@@ -305,8 +305,8 @@ export function decide(caller: Caller, action: Action, facts: Facts): Decision |
       { reason: { kind: 'run_acts_only_own_project_and_run_s_project_was_not_read' } });
   // The coordinator always says whose Task it creates: it has no default mark.
   if (action.name === 'task.new' && action.kind === 'task' && caller.kind === 'coordinator' && action.userRequested === null)
-    return new Problem(PROBLEM_CODE.invalidInput, 'The coordinator creates a Task with --from-user or --internal', undefined,
-      { reason: { kind: 'coordinator_creates_task_with_from_user_or_internal' }, issues: [{ path: 'userRequested', code: 'required', message: '--from-user or --internal is required' }] });
+    return new Problem(PROBLEM_CODE.invalidInput, 'The coordinator creates a Task with --from-user or --no-from-user', undefined,
+      { reason: { kind: 'coordinator_creates_task_with_from_user_or_internal' }, issues: [{ path: 'fromUser', code: 'required', message: '--from-user or --no-from-user is required' }] });
   const actor = recordedActor(caller, facts.quote, facts.message);
   const acts = actsOf(action, facts.task, caller);
   for (const act of acts) {
@@ -336,9 +336,9 @@ const UPDATE_FIELDS: readonly UpdateField[] = ['title', 'values', 'cwd', 'color'
 export function commandAction(command: AccessCommand, input: Readonly<Record<string, unknown>>, facts: CommandFacts = {}): Action {
   switch (command) {
     case 'task.new': return { name: command, kind: (input.kind ?? 'task') as TaskKind,
-      userRequested: (input.userRequested ?? null) as boolean | null };
+      userRequested: (input.fromUser ?? null) as boolean | null };
     case 'task.update': {
-      const [first, ...rest] = UPDATE_FIELDS.filter(field => input[field] !== undefined);
+      const [first, ...rest] = UPDATE_FIELDS.filter(field => input[field === 'userRequested' ? 'fromUser' : field] !== undefined);
       if (first === undefined) throw new Error('taskUpdateInput asks for a field to change');
       return { name: command, fields: [first, ...rest] };
     }

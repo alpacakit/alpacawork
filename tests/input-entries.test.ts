@@ -13,7 +13,7 @@ import { Problem } from '@alpacawork/core';
 import { DEFAULT_LIMITS } from '@alpacawork/contract';
 import { ruleHelp, taskReportRules, taskRequestRules } from '@alpacawork/contract/inputs';
 import { MAX_INSTRUCTION_BYTES } from '@alpacawork/raw';
-import { appTree } from '@alpacawork/backend/test-dist/receiver/entries.js';
+import { screenTree } from '@alpacawork/backend/test-dist/receiver/entries.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
@@ -85,7 +85,7 @@ test('CLI and HTTP refuse alike', async t => {
       { path: 'task/report', field: 'state', value: { task: 'P1', state: 'unknown', title: 'Report', opId, expectedTaskHash: digest },
         cli: ['task', 'report', '--task', 'P1', '--state', 'unknown', '--title', 'Report', '--expected-task-hash', digest,
           '--op-id', opId] },
-      { path: 'task/request', field: 'task', value: { task: 'T0', body: 'Work on it.', opId, expectedTaskHash: digest,
+      { path: 'task/request', field: 'task', value: { task: 'T0', instruction: 'Work on it.', opId, expectedTaskHash: digest,
         expectedPlacementRevision: 1 },
       cli: ['task', 'request', '--task', 'T0', '--instruction-file', instruction, '--expected-task-hash', digest,
         '--expected-placement-revision', '1', '--op-id', opId] },
@@ -102,7 +102,7 @@ test('CLI and HTTP refuse alike', async t => {
     };
     const request = (field: string, code: string, value: Record<string, unknown>, cli: string[]): Case => {
       const opId = randomUUID();
-      return { path: 'task/request', field, code, value: { task: 'P1', body: 'Work on it.', ...value, opId },
+      return { path: 'task/request', field, code, value: { task: 'P1', instruction: 'Work on it.', ...value, opId },
         cli: ['task', 'request', '--task', 'P1', '--instruction-file', instruction, ...cli, '--op-id', opId] };
     };
     const versions = { expectedTaskHash: digest, expectedPlacementRevision: 1 };
@@ -118,7 +118,7 @@ test('CLI and HTTP refuse alike', async t => {
       report('urgent', 'incompatible', { state: 'doing', title: 'Report', urgent: 'Read it now' },
         ['--state', 'doing', '--title', 'Report', '--urgent', 'Read it now']),
       report('expectedPlacementRevision', 'required', { state: 'done', aboutRun: 'R1' }, ['--state', 'done', '--about-run', 'R1']),
-      report('estimateMinutes', 'incompatible', { state: 'done', estimateMinutes: 30 }, ['--state', 'done', '--estimate', '30']),
+      report('estimateMinutes', 'incompatible', { state: 'done', estimateMinutes: 30 }, ['--state', 'done', '--estimate-minutes', '30']),
     ];
     const requestCases = [
       request('agent', 'incompatible', { answers: 'L1', agent: 'P1' }, ['--answers', 'L1', '--agent', 'P1']),
@@ -154,8 +154,8 @@ test('CLI-only entries name the rejected option, including file content and stdi
     { args: ['agent', 'assign', '--task', 'P1', '--role', 'responsible', '--profile', 'codex', '--selected', '{',
       '--expected-task-hash', digest], field: 'selected', exit: 2 },
     // Two flags that send the same field, or two that read stdin, are refused before anything is read.
-    { args: ['task', 'new', '--title', 'Both marks', '--parent', project, '--from-user', '--internal'],
-      message: /--from-user and --internal cannot be used together/, exit: 2 },
+    { args: ['task', 'new', '--title', 'Both marks', '--parent', project, '--from-user', '--no-from-user'],
+      message: /--from-user and --no-from-user cannot be used together/, exit: 2 },
     { args: ['task', 'new', '--title', 'Two stdins', '--parent', project, '--values-file', '-',
       '--plan-file', '-'], message: /Only one option can read stdin/, exit: 2 },
   ];
@@ -225,7 +225,7 @@ test('HTTP entries report their public field before touching state', async t => 
 
 test('invalid HTTP entry fields win over unavailable push and index services', () => {
   const handlers = new Map<string, (input: unknown, context: unknown) => unknown>();
-  collectHttpRoutes(appTree).forEach(route => handlers.set(route.path, route.handler as (input: unknown, context: unknown) => unknown));
+  collectHttpRoutes(screenTree).forEach(route => handlers.set(route.path, route.handler as (input: unknown, context: unknown) => unknown));
   for (const { path, input, field } of [
     { path: '/notify/unsubscribe', input: { id: '' }, field: 'id' },
     { path: '/task/view', input: { task: 'T0' }, field: 'task' },
@@ -248,7 +248,7 @@ test('oversized local CLI files and HTTP fields both refuse before writing', asy
     const file = join(root, `${item.path.split('/')[1]}-oversized.md`);
     writeFileSync(file, body);
     const response = await fetch(new URL(`/api/${item.path}`, server.url), { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...item.input, body }) });
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...item.input, instruction: body }) });
     assert.equal(response.status, 400, item.path);
     const http = problemSchema.parse(await response.json()).error;
     const cli = command(server.url, [item.path.split('/')[0]!, item.path.split('/')[1]!, '--task', 'P1',
@@ -258,7 +258,7 @@ test('oversized local CLI files and HTTP fields both refuse before writing', asy
     const fileError = problemSchema.parse(JSON.parse(cli.stderr)).error;
     assert.equal(fileError.code, 'too_large', item.path);
     assert.match(fileError.message, /exceeds/, item.path);
-    assert(http.issues?.some(issue => issue.path === 'body' && issue.code === 'too_big' &&
+    assert(http.issues?.some(issue => issue.path === 'instruction' && issue.code === 'too_big' &&
       issue.params?.maximum === item.limit), item.path);
   }
 });

@@ -37,18 +37,17 @@ import { type ContentfulStatusCode } from 'hono/utils/http-status';
 import { getRequestListener } from '@hono/node-server';
 import { compress } from 'hono/compress';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
-import { cliCommands, type CliCommand } from '@alpacawork/contract/cli-commands';
 import { defaultSettings } from '@alpacawork/contract';
 import { ControlStore, keepControlChanges, keepControlTables, holdControlWriter, restoreControlWal } from '@alpacawork/db';
 import { INDEX_HEARTBEAT_MS, taskReportResultSchema, taskPlacementResultSchema, taskRequestResultSchema,
   taskWriteResultSchema, taskPlanResultSchema, type ControlTreeDTO } from '@alpacawork/contract/control';
 import { type RawValueMap } from '@alpacakit/channels';
-import { appTree, PUBLIC_HOST_PATTERN, type Context, type ServeOptions } from './entries.js';
+import { screenTree, serverCommandTree, serverCommands, PUBLIC_HOST_PATTERN, type Context, type ServeOptions } from './entries.js';
 import { claimOf, identify, jsonHeaders, requestScope, preflightEntryClaim } from './request-scope.js';
 import { startReadThread, type ReadThread } from './read-thread.js';
-import { errorBody, failure, faultReason, FILE_MODE, PROBLEM_CODE, Problem, RETRY, parseInput } from '@alpacawork/core';
+import { errorBody, failure, faultReason, FILE_MODE, PROBLEM_CODE, Problem, RETRY } from '@alpacawork/core';
 import { CONFIG_FILE } from '@alpacawork/raw';
-import { entryActFor, requestLimitFor, SCREEN, writeActFor } from '../entries.js';
+import { entryActFor, requestLimitFor, SCREEN } from '../entries.js';
 import { operationReadActions } from '@alpacawork/contract/access-boundaries';
 import { RunStore } from '@alpacawork/runs';
 import { controlDatabasePath } from '@alpacawork/db';
@@ -559,12 +558,15 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const api = new Hono();
   // JSON answers are compressed when the browser accepts it; the index is mostly repeated keys.
   api.use('/api/*', compress({ encoding: 'gzip' }));
-  const ordinary = new Map(cliCommands.filter(spec => !spec.file && spec.group !== 'operation')
-    .map(spec => [`${spec.method} ${spec.path}`, spec]));
-  const httpRoutes = collectHttpRoutes(appTree);
+  const commandRoutes = collectHttpRoutes(serverCommandTree.tree);
+  const screenRoutes = collectHttpRoutes(screenTree);
+  const httpRoutes = { forEach: (visit: Parameters<typeof screenRoutes.forEach>[0]) => {
+    commandRoutes.forEach(visit);
+    screenRoutes.forEach(visit);
+  } };
   const routeActs = new Map<string, Action | null | undefined>();
   httpRoutes.forEach(route => routeActs.set(`${route.method} /api${route.path}`,
-    ordinary.has(`${route.method} /api${route.path}`) ? null : entryActFor(route.handler)));
+    serverCommands.has(`${route.method} /api${route.path}`) ? null : entryActFor(route.handler)));
   /** Each request's claim and working directory, read before any route; its caller, once resolved (`callerOf`). */
   const scopes = new WeakMap<Request, ReturnType<typeof requestScope> & { caller?: Caller }>();
   const scopeOf = (request: Request) => scopes.get(request)!;
@@ -581,7 +583,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     const url = new URL(c.req.url);
     const cli = c.req.header('x-alpacawork-client') === 'cli';
     scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli,
-      cli ? ordinary.get(`${c.req.method} ${url.pathname}`) : undefined));
+      cli && serverCommands.get(`${c.req.method} ${url.pathname}`)?.implementation.replayFromRun === true));
     const mutation = !['GET','HEAD','OPTIONS'].includes(c.req.method) && url.pathname !== '/api/runtime/quiesce';
     if (mutation) {
       lifecycle.admit();
@@ -639,16 +641,12 @@ export async function startServer(root: string, port: number, options: ServerOpt
   installCoordinatorRoutes(api, root, generation, coordinator, request => {
     authorizeRead(callerOf(request), { name: 'coordinator.screen' });
   }, orderedWrite);
-  const registeredOrdinary = new Set<string>();
   api.get('/api/runtime/recovery',c=>{
     // Identity is information, never a credential. Credential syntax/Run validity still uses the existing caller Owner.
     callerOf(c.req.raw);
     return c.json({protocol:RECOVERY_PROTOCOL,restoreId:restoreId(root)},200,jsonHeaders);
   });
-  const operationGet = cliCommands.find(spec => spec.group === 'operation' && spec.name === 'get')!;
-  api.get(operationGet.path, (c) => {
-    const { opId } = parseInput(operationGet.schema, { opId: c.req.query('opId') }) as { opId: string };
-    const caller = callerOf(c.req.raw);
+  const readOperation = (opId: string, caller: Caller) => {
     const control = new ControlStore(root, { busyTimeoutMs: 1000 }, true);
     try {
       // The operation ID alone names an operation, a command's or a file's; what it saved is read as a read of the
@@ -685,24 +683,24 @@ export async function startServer(root: string, port: number, options: ServerOpt
         const receipt = JSON.parse(String(file.result_json)) as { status: number; body: unknown };
         return { state: 'committed', status: receipt.status, body: receipt.body };
       });
-      return c.json(found, 200, jsonHeaders);
+      return found;
     } finally { control.close(); }
-  });
+  };
   httpRoutes.forEach((route) => {
-    registeredOrdinary.add(`${route.method} /api${route.path}`);
     // A command authorizes itself (its write here, its read in its handler); any other entry declares its act.
-    const spec = ordinary.get(`${route.method} /api${route.path}`), act = spec ? null : entryActFor(route.handler);
+    const spec = serverCommands.get(`${route.method} /api${route.path}`), implementation = spec?.implementation;
+    const writes = spec?.kind === 'write', act = spec ? null : entryActFor(route.handler);
     if (act === undefined) throw new Error(`An HTTP entry that is no CLI command declares its act: ${route.method} /api${route.path}`);
     api.on(route.method, '/api' + route.path, async (c) => {
       const { claim, cwd } = scopeOf(c.req.raw);
       // An entry that is no command is authorized by the act it declares, before its request is read.
       preflightEntryClaim(root, act, claim);
       if (act) authorizeRead(callerOf(c.req.raw), act);
-      const needsInputEvidence = spec?.mutation || spec?.group === 'coordinator reply';
+      const needsInputEvidence = writes || implementation?.inputEvidence;
       const pinned = needsInputEvidence ? callerOf(c.req.raw) : undefined;
       const rawValues = route.method === 'GET' ? undefined
         : route.path === '/presence/away' || route.path === '/presence/resume' ? {}
-        : await body(c.req.raw, requestLimitFor(route.handler));
+        : await body(c.req.raw, implementation?.limit ?? requestLimitFor(route.handler));
       // One admission owns the complete write or referenced-reply read, including imported evidence and refusal records.
       const execute = async () => {
         const refusing: { request?: string; task?: string } = {};
@@ -715,7 +713,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
             });
             await refreshInputEvidence(pinned.runId, {
               ...(typeof source === 'string' ? { sourceRequest: source } : {}),
-              ...(spec?.group === 'coordinator reply' ? { replyTo: c.req.query('message') } : {}),
+              ...implementation?.inputEvidence?.(key => c.req.query(key)),
             });
             readControl(db => {
               if (typeof source === 'string' && deliveredMessages(db, pinned.runId).includes(source)) refusing.request = source;
@@ -729,21 +727,21 @@ export async function startServer(root: string, port: number, options: ServerOpt
               await context.readFrame!();
               return new Response(projection.index(), { headers: jsonHeaders });
             },
-            opId: c.req.header('x-alpacawork-op-id') };
-          if (spec?.mutation) {
+            readOperation, opId: c.req.header('x-alpacawork-op-id') };
+          if (writes) {
             const opId = c.req.header('x-alpacawork-op-id');
             if (!opId || opId.length > 256 || /[\r\n]/.test(opId))
               throw new Problem(PROBLEM_CODE.unavailable, 'Reload the client before checking or sending this operation: X-Alpacawork-Op-Id is required', undefined,
                 { reason: { kind: 'reload_client_before_checking_or_sending_operation_x_alpacawork_op_id_required' } });
             if (values && typeof values === 'object' && 'opId' in values && values.opId !== opId)
               throw new Problem(PROBLEM_CODE.invalidInput, 'Operation ID in body and header must match', undefined, { reason: { kind: 'operation_id_body_and_header_must_match' } });
-            const operation = `${spec.group}/${spec.name}`;
+            const operation = spec.id;
             // Identified once before the write begins, where a Run's session may still be imported (resolveCaller).
             const caller = callerOf(c.req.raw);
-            if (spec.journaled) {
+            if (implementation?.journaled) {
               // It keeps its own operation record, so it is authorized on a read of the control database.
               const { actor } = readControl(db => {
-                const act = writeActFor(route.handler)(values, { root, db, caller, cwd });
+                const act = implementation.act!(values as Record<string, unknown>, { root, db, caller, cwd });
                 return authorize(db, caller, act.action, { task: act.task, quote: null });
               });
               const saved = await route.handler(values as never, { ...requestContext, actor, opId } as never);
@@ -767,15 +765,15 @@ export async function startServer(root: string, port: number, options: ServerOpt
                 const sourceRequest = values && typeof values === 'object' && 'sourceRequest' in values
                   ? values.sourceRequest as string | undefined : undefined;
                 const message = recordMessage(db, current, sourceRequest);
-                const act = writeActFor(route.handler)(values, { root, db, caller: current, cwd }), action = act.action;
+                const act = implementation!.act!(values as Record<string, unknown>, { root, db, caller: current, cwd }), action = act.action;
                 const quote = recordedQuote(current, act.quote);
                 const decision = authorize(db, current, action, { task: act.task, quote, message });
                 const body = await route.handler(values as never,
                   { ...requestContext, caller: () => current, actor: decision.actor, changed: undefined } as never);
                 if (body && typeof body === 'object' && 'task' in body) {
-                  const schema = spec.group === 'agent' ? taskPlacementResultSchema
-                    : spec.name === 'report' ? taskReportResultSchema
-                    : spec.name === 'request' ? taskRequestResultSchema : taskWriteResultSchema;
+                  const schema = spec.id.startsWith('agent/') ? taskPlacementResultSchema
+                    : spec.id === 'task/report' ? taskReportResultSchema
+                    : spec.id === 'task/request' ? taskRequestResultSchema : taskWriteResultSchema;
                   schema.parse(body);
                 } else if (operation === 'task/new') taskPlanResultSchema.parse(body);
                 JSON.stringify(body);
@@ -804,11 +802,9 @@ export async function startServer(root: string, port: number, options: ServerOpt
           throw error;
         }
       };
-      return route.method === 'POST' || spec?.group === 'coordinator reply' ? orderedWrite(execute) : execute();
+      return route.method === 'POST' || implementation?.inputEvidence ? orderedWrite(execute) : execute();
     });
   });
-  for (const key of ordinary.keys()) if (!registeredOrdinary.has(key))
-    throw new Problem(PROBLEM_CODE.invalidRoot, `CLI command route is missing: ${key}`, undefined, { reason: { kind: 'cli_command_route_missing', key: String(key) } });
   const RUNTIME: Action = { name: 'runtime' };
   api.post('/api/runtime/quiesce', async c => {
     authorizeRead(callerOf(c.req.raw), RUNTIME);

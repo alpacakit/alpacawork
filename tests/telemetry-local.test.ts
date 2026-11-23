@@ -17,7 +17,7 @@ import { boundedEvents, buildDayReport, reportFromWorkspace, type Envelope } fro
 import { emptyMarks } from '../apps/backend/test-dist/telemetry/marks.js';
 import { callerVia, countCliWrites, countedCommand, writeOp } from '../apps/backend/test-dist/telemetry/server-writes.js';
 import { Hono } from '../apps/backend/node_modules/hono/dist/index.js';
-import { cliCommands } from '@alpacawork/contract/cli-commands';
+import { commandCatalog } from '@alpacawork/contract/commands';
 import { writeJson } from '../apps/backend/test-dist/telemetry/files.js';
 import { dayRange, deadline, sizeBucket, telemetryEventKey, TELEMETRY_CONSENT_VERSION, TELEMETRY_DAY_MS, TELEMETRY_ENDPOINT,
   TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS } from '@alpacawork/contract/telemetry';
@@ -290,7 +290,7 @@ test('a Run counts as its profile\'s built-in adapter in the current settings, n
 });
 
 test('a CLI write counts as the action authorization reads of it, by the way its caller came', () => {
-  const spec = (name: string) => cliCommands.find(command => `${command.group} ${command.name}` === name)!;
+  const spec = (name: string) => commandCatalog.commands.find(command => command.words.join(' ') === name)!;
   const person = { kind: 'human' } as const, run = { kind: 'run', runId: 'R1', placementId: 'P1', taskId: 'T1', role: 'owner', responsible: true } as const;
   const task = (facts: { baseState?: 'todo' | 'doing' | 'waiting' | 'done'; hold?: boolean }) => () => ({ id: 'T1', baseState: facts.baseState ?? 'doing', hold: facts.hold ?? false, openUserQuestion: false });
   const report = (input: object, caller: typeof person | typeof run, facts: Parameters<typeof task>[0] = {}) => writeOp(spec('task report'), input, caller, task(facts));
@@ -309,10 +309,10 @@ test('a CLI write counts as the action authorization reads of it, by the way its
   assert.equal(writeOp(spec('task new'), { title: 'x', kind: 'project' }, person, task({})), 'w.project');
   assert.equal(writeOp(spec('task comment'), { task: 'T1', body: 'x' }, run, task({})), 'w.comment');
   assert.equal(writeOp(spec('task request'), { task: 'T1', body: 'x', answers: 'L1' }, person, task({})), 'w.message');
-  assert.equal(writeOp(spec('task file-put'), null, run, task({})), 'w.file');
+  assert.equal(writeOp(spec('task file put'), null, run, task({})), 'w.file');
   assert.equal(writeOp(spec('dependency set'), { task: 'T1', after: [] }, run, task({})), null);
   // Each counted command is found by its method and path, a file put by its Task's path; reads are not counted.
-  assert.equal(countedCommand('POST', '/api/tasks/T12/file')?.name, 'file-put');
+  assert.equal(countedCommand('PUT', '/api/tasks/T12/file')?.id, 'task/file/put');
   assert.equal(countedCommand('GET', '/api/tasks/T12/file'), undefined);
   const agentOf = (placement: string) => placement === 'P1' ? 'codex' as const : 'other' as const;
   assert.equal(callerVia(person, agentOf), 'cli');
@@ -325,7 +325,7 @@ test('while sending is on, one CLI comment counts once as w.comment by cli, and 
   const root = isolated(t), paths = { consent: join(root, 'config/telemetry.json'), state: join(root, 'state') };
   const telemetry = service(undefined, paths, () => at);
   telemetry.choose('on', 'screen');
-  const comment = cliCommands.find(command => command.group === 'task' && command.name === 'comment')!;
+  const comment = commandCatalog.commands.find(command => command.id === 'task/comment')!;
   const saved = new Set<string>();
   const app = new Hono();
   app.use('/api/*', countCliWrites(telemetry, { caller: () => ({ kind: 'human' }), task: () => { throw Error('a comment reads no Task'); },

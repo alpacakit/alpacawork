@@ -277,7 +277,7 @@ test('a request that voids the estimate says so once, in new and continued (or j
     const said = prompt.match(/^.*estimate.*void.*$/m)?.[0];
     assert.ok(said, mode);
     assert.match(said, /the owner procedure in the alpacawork skill/);
-    assert.doesNotMatch(said, /task report --state doing --estimate/);
+    assert.doesNotMatch(said, /task report --state doing --estimate-minutes/);
     assert.equal(prompt.split(said).length, 2, 'said once');
     assert.ok(prompt.indexOf(said) < prompt.indexOf('## Request'));
     // A wake by replies leaves the estimate standing, so it says nothing of it.

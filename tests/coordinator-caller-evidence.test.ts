@@ -17,7 +17,7 @@ test('caller cleanup preserves a failed real CLI case, its API and copied databa
 import {callerWorkspace,call} from ${JSON.stringify(fixture)};
 test('intentional caller failure',async t=>{
  const w=callerWorkspace(t),url=await w.start();
- const task=(await call(url,['task','new','--internal','--parent',w.project,'--title','Evidence subject'])).task;
+ const task=(await call(url,['task','new','--no-from-user','--parent',w.project,'--title','Evidence subject'])).task;
  await call(url,['task','get','--task',task.id]);
  throw new Error('intentional capture subject failure');
 });`);

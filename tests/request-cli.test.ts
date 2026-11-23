@@ -123,12 +123,12 @@ test('CLI task request returns the original instruction after review waiting and
 });
 
  test('the adopted task request input keeps annotations out of its public instruction contract', () => {
-  const base = { task: 'T1', body: 'Sent body', opId: 'note-contract', expectedTaskHash: 'a'.repeat(64), expectedPlacementRevision: 1 };
+  const base = { task: 'T1', instruction: 'Sent body', opId: 'note-contract', expectedTaskHash: 'a'.repeat(64), expectedPlacementRevision: 1 };
   assert.equal(taskRequestInput.safeParse(base).success,true);
   assert.equal(taskRequestInput.safeParse({ ...base, title: 'History', description: 'Summary' }).success, false);
   assert.equal(taskRequestInput.safeParse({ ...base, description: 'Summary' }).success, false);
   for (const note of [{ title: 'Ignored' }, { description: 'Ignored' }])
-    assert.equal(taskRequestInput.safeParse({ task: 'T1', body: 'Answer', opId: 'answer', answers: 'question',
+    assert.equal(taskRequestInput.safeParse({ task: 'T1', instruction: 'Answer', opId: 'answer', answers: 'question',
       expectedTaskHash: base.expectedTaskHash, ...note }).success, false);
  });
 

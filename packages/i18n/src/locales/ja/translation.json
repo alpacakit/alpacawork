@@ -147,7 +147,7 @@
       "conversation_session_unavailable": "会話のセッションを利用できません",
       "coordinator_attachment_not_conversation": "コーディネーターの添付ファイルはこの会話にありません",
       "coordinator_conversation_does_not_exist": "コーディネーターの会話がありません",
-      "coordinator_creates_task_with_from_user_or_internal": "コーディネーターはタスクの作成時に--from-userか--internalを指定してください",
+      "coordinator_creates_task_with_from_user_or_internal": "コーディネーターはタスクの作成時に--from-userか--no-from-userを指定してください",
       "coordinator_message_not_conversation": "このコーディネーターのメッセージは指定された会話にありません",
       "coordinator_message_too_large": "コーディネーターのメッセージが大きすぎます",
       "coordinator_request_not_delivered": "このメッセージは現在のコーディネーターのRunに届いていません。",

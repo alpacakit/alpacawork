@@ -18,7 +18,7 @@ test('Done approves a Task snapshot with no responsible, Run target, or placemen
   };
   const view = async (id: string) => (await (await page.request.get(runtime.origin + '/api/task/get?task=' + id)).json());
   const { task: project } = await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result review' });
-  const { task } = await post('task/new', { parent: project.id, userRequested: true, title: 'Earlier review equivalent',
+  const { task } = await post('task/new', { parent: project.id, fromUser: true, title: 'Earlier review equivalent',
     values: { notes: 'The result was completed earlier. Please confirm it again.' } });
   // Isolated historical preparation only. The operation being checked below uses the public API.
   patchTask(runtime.root, task.id, { state: 'done', logs: [{ id: crypto.randomUUID(), kind: 'reported',
@@ -74,7 +74,7 @@ test('a written revision request sends a Task snapshot back without inventing th
     return response.json();
   };
   const { task: project } = await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Historic result revision' });
-  const { task } = await post('task/new', { parent: project.id, userRequested: true, title: 'Snapshot to revise',
+  const { task } = await post('task/new', { parent: project.id, fromUser: true, title: 'Snapshot to revise',
     values: { notes: 'This completed result needs another edit.' } });
   patchTask(runtime.root, task.id, { state: 'done', logs: [{ id: crypto.randomUUID(), kind: 'reported',
     at: new Date().toISOString(), title: 'Historical completion', description: null, actor: { kind: 'human' },

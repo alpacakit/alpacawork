@@ -66,7 +66,7 @@ test('the coordinator places, instructs and stops Runs on a top Task as main; a 
   const w = callerWorkspace(t);
   const url = await w.start();
 
-  const created = (await call(url, ['task', 'new', '--internal', '--parent', w.project, '--title', 'Main task'], main)).task;
+  const created = (await call(url, ['task', 'new', '--no-from-user', '--parent', w.project, '--title', 'Main task'], main)).task;
   const assignment = await call(url, ['agent', 'assign', '--task', created.id, '--role', 'responsible',
     '--profile', 'codex', '--expected-task-hash', created.hash], main);
   const placed = assignment.agent.placement;
@@ -109,7 +109,7 @@ test('the coordinator places, instructs and stops Runs on a top Task as main; a 
 test('a stopped unstarted Run keeps todo but its reconciled boundary invalidates an earlier instruction version', async t => {
   receiverClock(t);
   const w = callerWorkspace(t), url = await w.start();
-  const created = (await call(url, ['task', 'new', '--internal', '--parent', w.project, '--title', 'Stopped boundary CAS'], main)).task;
+  const created = (await call(url, ['task', 'new', '--no-from-user', '--parent', w.project, '--title', 'Stopped boundary CAS'], main)).task;
   const assignment = await call(url, ['agent', 'assign', '--task', created.id, '--role', 'responsible',
     '--profile', 'codex', '--expected-task-hash', created.hash], main);
   const placement = assignment.agent.placement;
@@ -199,7 +199,7 @@ test('Run markers the CLI cannot send whole, and a Task Run\'s own conversation,
   // One gate reads these for every command (entries.ts, credentials.ts): each case once, each command by both refusals.
   for (const [index, { name, env, refused }] of cases.entries()) {
     const commands = [
-      ['task', 'new', '--internal', '--parent', w.project, '--title', `Forbidden: ${name}`],
+      ['task', 'new', '--no-from-user', '--parent', w.project, '--title', `Forbidden: ${name}`],
       ['task', 'report', '--task', task.id, '--state', 'done', '--title', 'Close task', '--expected-task-hash', hash],
       ['run', 'stop', '--run', owner.id],
     ];
@@ -211,7 +211,7 @@ test('Run markers the CLI cannot send whole, and a Task Run\'s own conversation,
   assert.equal(current.log.some((entry: { title: string | null }) => entry.title === 'Close task'), false);
   // Over HTTP, a credential of a Run the server does not have is refused as well.
   const unknown = 'R999';
-  const refused = await post(url, '/api/task/new', { title: 'Forbidden HTTP', parent: w.project, userRequested: false },
+  const refused = await post(url, '/api/task/new', { title: 'Forbidden HTTP', parent: w.project, fromUser: false },
     { authorization: `Alpacawork-Run ${unknown}:${issueRunCredential(w.root, unknown)}` });
   assert.equal(refused.status, 403);
 });
@@ -261,8 +261,8 @@ test('a Run is its credential\'s only while a current placement, an owner only a
   assert.deepEqual([viaHeaders.status, viaHeaders.body.error.code], [403, 'forbidden']);
   assert.match(viaHeaders.body.error.message, /not a current placement/);
 
-  const viaCli = (await call(url, ['task', 'new', '--internal', '--parent', w.project, '--title', 'Via the CLI'], main)).task;
-  const viaHttp = await post(url, '/api/task/new', { title: 'Via HTTP', parent: w.project, userRequested: false },
+  const viaCli = (await call(url, ['task', 'new', '--no-from-user', '--parent', w.project, '--title', 'Via the CLI'], main)).task;
+  const viaHttp = await post(url, '/api/task/new', { title: 'Via HTTP', parent: w.project, fromUser: false },
     conversationHeaders(conversationId));
   assert.equal(viaHttp.status, 200, JSON.stringify(viaHttp.body));
   assert.deepEqual([await actorOf(url, viaCli), await actorOf(url, viaHttp.body.task)], [mainActor, mainActor]);

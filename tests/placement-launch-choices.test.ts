@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { RunStore } from '@alpacawork/runs';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
-import { agentAssignInput } from '@alpacawork/contract/inputs';
+import { agentAssignInput, commandLaunchInput } from '@alpacawork/contract/inputs';
 import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
@@ -56,9 +56,9 @@ async function setup(t: TestContext) {
 test('agent assign decodes selected JSON once and reports malformed selection input', () => {
   const input = { task: 'T3', role: 'responsible', profile: 'choice', expectedTaskHash: 'a'.repeat(64),
     selected: '{"model":"small"}' };
-  assert.deepEqual(agentAssignInput.parse(input).selected, { model: 'small' });
+  assert.deepEqual(commandLaunchInput.parse(agentAssignInput.parse(input)).selected, { model: 'small' });
   for (const selected of ['{', '[]', '{"effort":7}'])
-    assert.equal(agentAssignInput.safeParse({ ...input, selected }).success, false);
+    assert.equal(commandLaunchInput.safeParse({ ...input, selected }).success, false);
 });
 
 test('a request stop takes precedence over a now unavailable placement fallback', async t => {

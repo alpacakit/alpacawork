@@ -2,7 +2,6 @@
 import { DIGEST_PATTERN, RUN_ID_PATTERN } from '@alpacawork/raw';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { RunStore } from '@alpacawork/runs';
-import type { CliCommand } from '@alpacawork/contract/cli-commands';
 import { ACTIONS, decide, runMayDo, type Action, type Act, type Caller } from '../control/authorize.js';
 import { resolveCaller, type CallerClaim } from '../control/credentials.js';
 
@@ -32,9 +31,9 @@ export function claimOf(headers: Headers, report = false): CallerClaim {
   };
 }
 /** What one request claims about its caller and the working directory its CLI sent (`X-Alpacawork-Cwd`). */
-export function requestScope(headers: Headers, cli: boolean, spec: CliCommand | undefined):
+export function requestScope(headers: Headers, cli: boolean, replayFromRun = false):
   { claim: CallerClaim; cwd: string | null } {
-  const claim = claimOf(headers, spec?.group === 'task' && spec.name === 'report');
+  const claim = claimOf(headers, replayFromRun);
   const sent = cli ? headers.get('x-alpacawork-cwd') : null;
   try { return { claim, cwd: sent === null ? null : decodeURIComponent(sent) }; }
   catch { throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid X-Alpacawork-Cwd', undefined, { reason: { kind: 'invalid_x_alpacawork_cwd' } }); }

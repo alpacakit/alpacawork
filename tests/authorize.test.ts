@@ -219,7 +219,7 @@ test('the coordinator says whose Task it creates; a Run never creates the user\'
   assert.ok(allowed(as('own', unstated, child())), 'a Run\'s Task is unmarked');
   assert.ok(allowed(as('human', unstated, project)), 'a person\'s default is the user\'s request');
   assert.ok(allowed(as('coordinator', { name: 'task.new', kind: 'task', userRequested: false }, project)),
-    '--internal needs no quote below a project');
+    '--no-from-user needs no quote below a project');
   assert.ok(allowed(as('policy', { name: 'task.new', kind: 'task', userRequested: true }, child())));
 });
 

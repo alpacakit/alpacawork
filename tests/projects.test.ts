@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { ControlStore } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
-import { taskFileRoute } from '@alpacawork/contract/cli-commands';
+import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import { tryLock, unlock } from '@alpacawork/core';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
 import { AGENTS_TEMPLATE } from '@alpacawork/backend/test-dist/agents-settings.js';

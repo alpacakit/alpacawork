@@ -15,12 +15,12 @@ const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true 
 
 test('the owner reference shows how to report an estimate, once, as a complete command', () => {
   // Checked by the command, not by the skill's wording, so the rule around it can be reworded or translated.
-  const rule = readFileSync(owner, 'utf8').split('\n').filter(line => line.includes('--estimate'));
+  const rule = readFileSync(owner, 'utf8').split('\n').filter(line => line.includes('--estimate-minutes'));
   assert.equal(rule.length, 1, 'one line');
-  assert.match(rule[0]!, /task report --task \S+ --state doing --estimate \d+ --title .* --description-file \S+ --expected-task-hash \S+/);
+  assert.match(rule[0]!, /task report --task \S+ --state doing --estimate-minutes \d+ --title .* --description-file \S+ --expected-task-hash \S+/);
 });
 
 test('no other skill file repeats the estimate rule', () => {
-  const others = files(skills).filter(file => file !== owner && readFileSync(file, 'utf8').includes('--estimate'));
+  const others = files(skills).filter(file => file !== owner && readFileSync(file, 'utf8').includes('--estimate-minutes'));
   assert.deepEqual(others.map(file => relative(skills, file)), []);
 });

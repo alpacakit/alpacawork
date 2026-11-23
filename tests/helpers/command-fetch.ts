@@ -1,7 +1,7 @@
 /** Fixture commands are new one-shot intents unless their body/header already names one. No payload is rewritten. */
 import { randomUUID } from 'node:crypto';
-import { cliCommands } from '@alpacawork/contract/cli-commands';
-const mutations = new Set(cliCommands.filter(command => command.mutation && !command.file).map(command => command.path));
+import { commandCatalog } from '@alpacawork/contract/commands';
+const mutations = new Set(commandCatalog.commands.filter(command => command.kind === 'write' && !command.file).map(command => command.path));
 export const commandHeaders = (input: unknown, headers?: HeadersInit): Headers => {
   const result = new Headers(headers);
   const opId = input && typeof input === 'object' && 'opId' in input ? input.opId : undefined;

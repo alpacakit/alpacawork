@@ -71,7 +71,7 @@ test('the responsible Run saves the same bounded estimate by CLI and HTTP withou
   const h = await fixture(t);
   const descriptionFile = join(h.root, 'estimate-description.md');
   writeFileSync(descriptionFile, 'The estimate is based on the remaining work.');
-  const command = cli(h.root, ['task', 'report', '--task', h.task.id, '--estimate', '30', '--state', 'doing',
+  const command = cli(h.root, ['task', 'report', '--task', h.task.id, '--estimate-minutes', '30', '--state', 'doing',
     '--title', 'First estimate', '--description-file', descriptionFile, '--expected-task-hash', h.task.hash,
     '--op-id', globalThis.crypto.randomUUID()], h.env);
   assert.equal(command.status, 0, command.stderr);
@@ -99,7 +99,7 @@ test('CLI and HTTP reject each invalid estimate, and an estimate with an instruc
   const h = await fixture(t);
   const server = servers.get(h.root)!;
   for (const value of ['0', '-1', '1.5', '10081']) {
-    const command = cli(h.root, ['task', 'report', '--task', h.task.id, '--state', 'doing', '--estimate', value,
+    const command = cli(h.root, ['task', 'report', '--task', h.task.id, '--state', 'doing', '--estimate-minutes', value,
       '--expected-task-hash', h.task.hash, '--op-id', globalThis.crypto.randomUUID()], h.env);
     assert.equal(command.status, 2, `${value}: ${command.stdout} ${command.stderr}`);
     const response = await fetch(new URL('/api/task/report', server), {
@@ -113,12 +113,12 @@ test('CLI and HTTP reject each invalid estimate, and an estimate with an instruc
   // An instruction is task request's, which takes no estimate.
   const bodyFile = join(h.root, 'instruction.txt');
   writeFileSync(bodyFile, 'Instruction');
-  const command = cli(h.root, ['task', 'request', '--task', h.task.id, '--estimate', '30', '--instruction-file', bodyFile,
+  const command = cli(h.root, ['task', 'request', '--task', h.task.id, '--estimate-minutes', '30', '--instruction-file', bodyFile,
     '--expected-task-hash', h.task.hash, '--expected-placement-revision', '1', '--op-id', globalThis.crypto.randomUUID()]);
   assert.equal(command.status, 2, command.stderr);
   const response = await fetch(new URL('/api/task/request', server), {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ task: h.task.id, estimateMinutes: 30, body: 'Instruction', opId: globalThis.crypto.randomUUID(),
+    body: JSON.stringify({ task: h.task.id, estimateMinutes: 30, instruction: 'Instruction', opId: globalThis.crypto.randomUUID(),
       expectedTaskHash: h.task.hash, expectedPlacementRevision: 1 }),
   });
   assert.equal(response.status, 400);

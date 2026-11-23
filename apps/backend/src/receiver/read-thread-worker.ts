@@ -8,35 +8,31 @@ import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { cliCommands, type CliCommand } from '@alpacawork/contract/cli-commands';
 import { errorBody, failure } from '@alpacawork/core';
 import { ControlStore, markControlFileSound } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
 import type { Caller } from '../control/authorize.js';
 import { resolveCaller, resolvingMayImport } from '../control/credentials.js';
-import { appTree, type Context } from './entries.js';
+import { serverCommandTree, serverCommands, type Context } from './entries.js';
 import { claimOf, jsonHeaders, requestScope } from './request-scope.js';
 import type { ReadThreadData } from './read-thread.js';
 
 const { root, port, publicHost, backendPort, soundFile, answers } = workerData as ReadThreadData;
 if (soundFile) markControlFileSound(soundFile);
 
-/** The reads that need only the database and the caller. Anything that needs the main thread's state is not here. */
-const READS = new Set(['task get', 'task list', 'task returns', 'run get', 'field get']);
-const commands = new Map(cliCommands.filter(spec => spec.method === 'GET' && READS.has(`${spec.group} ${spec.name}`)).map(spec => [spec.path, spec]));
-/** Options that read many files or every Task's words: this thread carries every connection, so they wait on the main thread. */
-const HEAVY = new Set(['files', 'usage', 'text', 'in']);
+const commands = new Map([...serverCommands.values()].flatMap(command => command.implementation.readThread
+  ? [[command.path, command.implementation.readThread] as const] : []));
 /** The caller each answered connection was judged with: a connection is judged once, and no import runs here. */
 const judged = new WeakMap<object, Caller>();
 
 const api = new Hono();
 api.use('/api/*', compress({ encoding: 'gzip' }));
 api.use('/api/*', clientContract());
-collectHttpRoutes(appTree).forEach(route => {
+collectHttpRoutes(serverCommandTree.tree).forEach(route => {
   const spec = commands.get(`/api${route.path}`);
   if (route.method !== 'GET' || !spec) return;
   api.get(`/api${route.path}`, async c => {
-    const { cwd } = requestScope(c.req.raw.headers, true, spec);
+    const { cwd } = requestScope(c.req.raw.headers, true);
     const caller = judged.get((c.env as { incoming: { socket: object } }).incoming.socket)!;
     // One read point for the whole answer: on this thread the main thread's commits can fall between its parts.
     const control = new ControlStore(root, { busyTimeoutMs: 1000 }, true);
@@ -69,7 +65,7 @@ function answerable(head: string): Caller | null {
   const [method, target, version] = head.slice(0, end).split(' ');
   if (method !== 'GET' || version !== 'HTTP/1.1' || !target) return null;
   const url = new URL(target, 'http://read.invalid');
-  if (!commands.has(url.pathname) || [...url.searchParams.keys()].some(key => HEAVY.has(key))) return null;
+  if (!commands.get(url.pathname)?.(url.searchParams)) return null;
   const headers = new Headers();
   for (const line of head.slice(end + 2).split('\r\n')) {
     const colon = line.indexOf(':');
@@ -130,7 +126,7 @@ const front = createTcpServer({ noDelay: true, allowHalfOpen: true, pauseOnConne
     const lineEnd = head.indexOf('\r\n');
     const line = lineEnd < 0 ? '' : head.subarray(0, lineEnd).toString('latin1');
     // Most connections are decided by their first line, without waiting for the rest of a head that may be slow to come.
-    if (!answers || head.length > MAX_HEAD || lineEnd >= 0 && !/^GET \/api\/(?:task|run|guide)\//.test(line)) { void settled(null); return; }
+    if (!answers || head.length > MAX_HEAD || lineEnd >= 0 && (!line.startsWith('GET ') || !commands.has(line.slice(4, line.lastIndexOf(' ')).split('?')[0]!))) { void settled(null); return; }
     const end = head.indexOf('\r\n\r\n');
     if (end < 0) return;
     let caller: Caller | null = null;

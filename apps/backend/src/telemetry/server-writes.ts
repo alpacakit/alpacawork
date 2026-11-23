@@ -5,7 +5,7 @@
  * the screen.
  */
 import type { MiddlewareHandler } from 'hono';
-import { cliCommands, type CliCommand } from '@alpacawork/contract/cli-commands';
+import { commandCatalog, type Command } from '@alpacawork/contract/commands';
 import type { TelemetryAgent, TelemetryOp, TelemetryVia } from '@alpacawork/contract/telemetry';
 import { commandAction, reportIntent, type AccessCommand, type Action, type Caller, type TaskFacts } from '../control/authorize.js';
 import type { Mark } from './marks.js';
@@ -37,17 +37,17 @@ const ACTION_OPS: { readonly [Name in Action['name']]?: (action: Extract<Action,
   'file.write': () => 'w.file',
 };
 /** The CLI writes that can count, by method and path (a path's `:name` parts match one segment). */
-const COUNTED = cliCommands.filter(spec => spec.mutation && (!spec.file || spec.file === 'put'))
+const COUNTED = commandCatalog.commands.filter(spec => spec.kind === 'write' && (!spec.file || spec.id === 'task/file/put'))
   .map(spec => ({ spec, path: new RegExp(`^${spec.path.replace(/:[^/]+/g, '[^/]+')}$`) }));
-export function countedCommand(method: string, pathname: string): CliCommand | undefined {
+export function countedCommand(method: string, pathname: string): Command | undefined {
   return COUNTED.find(command => command.spec.method === method && command.path.test(pathname))?.spec;
 }
 /** The action a CLI command's input is, with placeholder facts: only the action's kind decides an op. */
-function actionOf(command: CliCommand, input: Record<string, unknown>): Action {
-  return command.file === 'put' ? { name: 'file.write' }
-    : commandAction(`${command.group}.${command.name}` as AccessCommand, input, { askedTo: null, worker: false, to: [] });
+function actionOf(command: Command, input: Record<string, unknown>): Action {
+  return command.id === 'task/file/put' ? { name: 'file.write' }
+    : commandAction(command.access as AccessCommand, input, { askedTo: null, worker: false, to: [] });
 }
-export function writeOp(command: CliCommand, input: unknown, caller: Caller, task: (id: string) => ReportFacts): TelemetryOp | null {
+export function writeOp(command: Command, input: unknown, caller: Caller, task: (id: string) => ReportFacts): TelemetryOp | null {
   const values = input !== null && typeof input === 'object' ? input as Record<string, unknown> : {};
   const action = actionOf(command, values);
   const target = typeof values.task === 'string' ? values.task : caller.kind === 'run' ? caller.taskId : null;

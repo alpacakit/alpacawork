@@ -21,7 +21,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { bootIdentity, Problem, tryLock } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
-import { cliCommands } from '@alpacawork/contract/cli-commands';
+import { commandCatalog } from '@alpacawork/contract/commands';
 import { problemSchema } from '@alpacawork/contract/problem';
 import { RUN_FILES, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
@@ -54,7 +54,7 @@ export const codexConversation = (conversation: string) => ({ CODEX_THREAD_ID: c
 
 /** A write carries its own operation ID unless one is named; the contract's command table says which commands write. */
 const withOpId = (args: string[]) =>
-  cliCommands.some(spec => spec.mutation && spec.group === args[0] && spec.name === args[1]) && !args.includes('--op-id')
+  commandCatalog.commands.some(spec => spec.kind === 'write' && spec.words.every((word, i) => args[i] === word)) && !args.includes('--op-id')
     ? [...args, '--op-id', randomUUID()] : args;
 /** The CLI against `url` as `env` names the caller (a person when it names no one), with its exit status and output. */
 type CliObservation = { at: string; args: string[]; input: string; end?: string;

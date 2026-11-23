@@ -46,7 +46,7 @@ test('authorized HTTP member delegation preserves the owner estimate through the
   const timer = setTimeout(() => void server.close(), 60000);
   let workerRun: string;
   try {
-    const input = { task: h.task.id, body: 'Planned delegation', opId: randomUUID(), agent: h.worker.id,
+    const input = { task: h.task.id, instruction: 'Planned delegation', opId: randomUUID(), agent: h.worker.id,
       expectedTaskHash: (await h.current()).hash, expectedPlacementRevision: h.worker.revision };
     const post = (authorization?: string) => commandFetch(new URL('/api/task/request', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json', ...(authorization ? { authorization } : {}) }, body: JSON.stringify(input) });

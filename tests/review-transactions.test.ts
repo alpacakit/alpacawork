@@ -277,10 +277,10 @@ for (const decision of ['confirmation', 'send-back'] as const) test(`a ${decisio
 
 test('HTTP send-back rejects a stale Task hash without saving a Request', async t => {
   const h = await setupReview(t, { userRequested: true }), server = await serve(h);
-  const input = sendBack(h, 'Please revise');
+  const { body: instruction, ...input } = sendBack(h, 'Please revise');
   await h.commands.update({ id: h.task.id, values: { notes: 'Concurrent change' }, expectedTaskHash: h.expectedTaskHash });
   const response = await fetch(new URL('/api/task/request', server.url), { method: 'POST',
-    headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
+    headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input, instruction }) });
   assert.equal(response.status, 409);
   const error = await response.json() as { error: { code: string } };
   assert.equal(error.error.code, 'conflict');

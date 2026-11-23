@@ -46,7 +46,7 @@ try { for(const width of args.widths.split(',').map(Number)) {
   await page.locator('[data-section=todo]').scrollIntoViewIfNeeded();await page.waitForTimeout(450);
   let arrived:any;
   await run('arrive-'+round,800,async()=>{
-   const made=arrived=await post('task/new',{parent:'P1',title:'List arrival '+round,userRequested:true});
+   const made=arrived=await post('task/new',{parent:'P1',title:'List arrival '+round,fromUser:true});
    await page.locator('[data-row="'+made.task.id+'"] [data-row-label]').waitFor();
   });
   await run('move-'+round,800,async()=>{await post('task/report',{opId:crypto.randomUUID(),task:arrived.task.id,state:'held',title:'Hold the arriving task',description:'List motion probe',expectedTaskHash:arrived.task.hash});await page.locator('[data-row="'+arrived.task.id+'"]').waitFor();});

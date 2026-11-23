@@ -22,7 +22,7 @@ import type { RunRecord } from '@alpacawork/contract/run';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { RoutingOwner } from '@alpacawork/backend/test-dist/receiver/routing-owner.js';
 import { awaitsReview, problemSchema, userTurn } from '@alpacawork/contract';
-import { cliCommands } from '@alpacawork/contract/cli-commands';
+import { commandCatalog } from '@alpacawork/contract/commands';
 import { Problem } from '@alpacawork/core';
 import { reconcileLinks } from './return-handling.fixture.ts';
 import { stringify } from 'yaml';
@@ -42,7 +42,7 @@ const asRun = (root: string, runId: string) =>
   ({ ALPACAWORK_RUN: runId, ALPACAWORK_RUN_TOKEN: issueRunCredential(root, runId) });
 /** A write carries its own operation ID unless one is named; the contract's command table says which commands write. */
 const withOpId = (args: string[]) =>
-  cliCommands.some(spec => spec.mutation && spec.group === args[0] && spec.name === args[1]) && !args.includes('--op-id')
+  commandCatalog.commands.some(spec => spec.kind === 'write' && spec.words.every((word, i) => args[i] === word)) && !args.includes('--op-id')
     ? [...args, '--op-id', randomUUID()] : args;
 /** The CLI against the fixture's server at `root`; `env` names who calls (a person when it names no one). */
 async function execute(root: string, args: string[], env: NodeJS.ProcessEnv = {}, input = '') {

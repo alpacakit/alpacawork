@@ -10,8 +10,9 @@ import { realpathSync } from 'node:fs';
 import { appRoot } from '../../../scripts/app-root.mjs';
 import { Command, CommanderError } from 'commander';
 import {
-  cliCommands, cliCommandWords, cliGroups, cliWriteHelp, taskFileRoute, type CliCommand, type CliOption,
-} from '@alpacawork/contract/cli-commands';
+  commandFlag, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
+} from '@alpacawork/contract/commands';
+import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import { CLI_EXIT_CODE, defaultPolicy, failureExitCode, openBrowser } from '@alpacawork/cli-kit';
 import { DEFAULT_SERVER_ORIGIN } from '@alpacawork/contract/default-server';
 import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
@@ -25,12 +26,11 @@ import { controlRunFilesSchema } from '@alpacawork/contract/control';
 import { taskIdSchema } from '@alpacawork/contract/fields';
 import { prepareReportDiffs, diffUploadId, type DiffSummary } from './report-diffs.js';
 
-const flag = (key: string) => '--' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase());
 const tooLarge = (name: string, max: number) => new Problem(PROBLEM_CODE.tooLarge, `${name} exceeds ${max} bytes`);
 
 /** A file option's text: the UTF-8 file at its absolute path, or stdin for `-`, at most the option's `max` bytes. */
-async function document(path: string, option: CliOption): Promise<string> {
-  const name = flag(option.key), max = option.max;
+async function document(path: string, option: CommandOption): Promise<unknown> {
+  const name = commandFlag(option), max = option.max;
   if (max === undefined) throw new Error(`${name} has no size limit`);
   if (path !== '-' && !isAbsolute(path))
     throw new Problem(PROBLEM_CODE.invalidInput, `${name} needs an absolute path`);
@@ -40,8 +40,16 @@ async function document(path: string, option: CliOption): Promise<string> {
     if (error instanceof Problem) throw error;
     throw new Problem(PROBLEM_CODE.invalidInput, `Cannot read ${name}`);
   }
-  try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
+  let text: string;
+  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
   catch { throw new Problem(PROBLEM_CODE.invalidInput, `${name} must be UTF-8`); }
+  if (!option.jsonFile) return text;
+  try { return JSON.parse(text) as unknown; }
+  catch {
+    const message = `${name} must contain JSON`;
+    throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+      { issues: [{ path: option.key, code: 'invalid_json', message }] });
+  }
 }
 
 /** A regular file's bytes; more than `max` is too large for the option `name` that names it. */
@@ -94,35 +102,21 @@ function absoluteUrls(value: unknown, origin: string): unknown {
   return result;
 }
 
-/**
- * What a command sends: each flag given, under its wire key, read the way its kind says. Flags that send the same key
- * (--from-user and --internal) exclude each other, and only one flag can read stdin; both are refused before anything
- * is read.
- */
-async function inputFor(spec: CliCommand, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const given = spec.options.filter(option => values[option.key] !== undefined);
-  const wire = (option: CliOption) => option.wire ?? option.key;
-  for (const [at, option] of given.entries()) {
-    const other = given.slice(0, at).find(each => wire(each) === wire(option));
-    if (other) throw new Problem(PROBLEM_CODE.invalidInput,
-      `${flag(other.key)} and ${flag(option.key)} cannot be used together`);
-  }
-  if (given.filter(option => option.kind === 'file' && values[option.key] === '-').length > 1)
+const optionKey = (option: CommandOption) => option.kind === 'file' ? option.key + 'File' : option.key;
+async function inputFor(spec: RemoteCommand, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const given = spec.options.filter(option => !option.local && values[optionKey(option)] !== undefined);
+  if (given.filter(option => option.kind === 'file' && values[optionKey(option)] === '-').length > 1)
     throw new Problem(PROBLEM_CODE.invalidInput, 'Only one option can read stdin');
-  const input: Record<string, unknown> = spec.mutation ? { opId: values.opId } : {};
+  const input: Record<string, unknown> = {};
   for (const option of given) {
-    const value = values[option.key];
-    input[wire(option)] = option.kind === 'boolean' ? option.value ?? true
-      : option.kind === 'file' ? await document(String(value), option) : value;
+    const value = values[optionKey(option)];
+    input[option.key] = option.kind === 'file' ? await document(String(value), option)
+      : option.nullable && value === 'null' ? null : value;
   }
-  const parsed = parseInput(spec.schema, input);
-  return parsed as Record<string, unknown>;
+  return input;
 }
 
-/**
- * A person's command sends its working directory: the server starts a Task created without a parent, and a settings
- * read naming no Task, from the project whose code location on this PC holds it. A Run works in its own Task.
- */
+// A Run uses its own Task. Other callers let the server resolve the project from their working directory.
 function sendWorkingDirectory(headers: Headers): void {
   if (process.env.ALPACAWORK_RUN) return;
   let here: string;
@@ -144,48 +138,40 @@ async function uploadBytes(options: Record<string, unknown>, headers: Headers): 
   return bytes;
 }
 
-async function execute(spec: CliCommand, options: Record<string, unknown>, origin: string): Promise<unknown> {
-  if (spec.mutation) options = { ...options, opId: operationId(options.opId) };
+type CommandContext = { origin: string; options: Record<string, unknown>; opId?: string };
+
+async function execute(spec: RemoteCommand, input: Record<string, unknown>, { origin, options, opId }: CommandContext): Promise<unknown> {
   const headers = actorHeaders(process.env);
   headers.set('X-Alpacawork-Client', 'cli');
   headers.set(CONTRACT_HEADER, String(CLI_CONTRACT));
   sendWorkingDirectory(headers);
-  if (spec.mutation) headers.set('X-Alpacawork-Op-Id', options.opId as string);
+  if (opId) headers.set('X-Alpacawork-Op-Id', opId);
   const send = (path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', input: Record<string, unknown> | Uint8Array | undefined) =>
-    spec.mutation ? writeAttempt(prepareRequest(origin, path, method, input, headers), options.opId as string, origin,undefined,undefined,pinRestore)
+    opId ? writeAttempt(prepareRequest(origin, path, method, input, headers), opId, origin, undefined, undefined, pinRestore)
       : request(origin, path, method, input, headers);
-  if (spec.file === 'get' || spec.file === 'put') {
-    const task = options.task, path = options.path;
-    const wire = parseInput(spec.schema, { task, path, expectedDigest: options.expectedDigest }) as
-      { task: string; path: string };
-    const route = taskFileRoute(wire.task, wire.path);
-    if (spec.file === 'get') {
+  if (spec.file) {
+    const { path, method, query, headers: inputHeaders, body, response } = spec.file;
+    const route = path.replace(/:([^/]+)/g, (_match, key: string) => encodeURIComponent(String(input[key])));
+    const search = new URLSearchParams(query?.map(key => [key, String(input[key])]));
+    const target = search.size > 0 ? `${route}?${search}` : route;
+    for (const [key, name] of Object.entries(inputHeaders ?? {})) {
+      if (input[key] !== undefined) headers.set(name, String(input[key]));
+    }
+    if (response === 'bytes') {
       if (typeof options.output !== 'string' || options.output === '-')
         throw new Problem(PROBLEM_CODE.invalidInput, '--output file path is required');
-      const bytes = await requestBytes(origin, route, headers);
+      const bytes = await requestBytes(origin, target, headers);
       await writeFile(options.output, bytes, { flag: 'wx' });
       return { path: options.output, bytes: bytes.length };
     }
-    const bytes = await uploadBytes(options, headers);
-    if (options.expectedDigest !== undefined) headers.set('X-Alpacawork-Expected-Digest', String(options.expectedDigest));
-    return send(route, 'PUT', bytes);
-  }
-  if (spec.file?.startsWith('attachment-')) {
-    const task = options.task, requestId = options.requestId, name = options.name;
-    parseInput(spec.schema, options);
-    const base = `/api/tasks/${encodeURIComponent(String(task))}/attachments`;
-    if (spec.file === 'attachment-move') {
-      if (typeof options.from !== 'string' || typeof options.to !== 'string')
-        throw new Problem(PROBLEM_CODE.invalidInput, '--from and --to are required');
-      return send(base + '/move', 'POST', { from: options.from, to: options.to, opId: options.opId });
+    if (body === 'bytes') return send(target, method, await uploadBytes(options, headers));
+    if (body === 'json') {
+      const payload: Record<string, unknown> = { ...input, opId };
+      delete payload.task;
+      return send(target, method, payload);
     }
-    if (typeof requestId !== 'string' || typeof name !== 'string' || !requestId || !name)
-      throw new Problem(PROBLEM_CODE.invalidInput, '--request-id and --name are required');
-    const route = `${base}?requestId=${encodeURIComponent(requestId)}&name=${encodeURIComponent(name)}`;
-    if (spec.file === 'attachment-remove') return send(route, 'DELETE', undefined);
-    return send(route, 'POST', await uploadBytes(options, headers));
+    return send(target, method, undefined);
   }
-  const input = await inputFor(spec, options);
   let diffs: DiffSummary[] | undefined;
   if (spec.attachesDiffs && typeof input[spec.attachesDiffs] === 'string') {
     const description = input[spec.attachesDiffs] as string, commands = findDiffCommands(description);
@@ -211,7 +197,7 @@ async function execute(spec: CliCommand, options: Record<string, unknown>, origi
               throw new Problem(PROBLEM_CODE.conflict, `A different file already occupies the report diff path: ${file.path}`);
             continue;
           }
-          const uploadId = diffUploadId(input.opId as string, target, file.digest), uploadHeaders = new Headers(headers);
+          const uploadId = diffUploadId(opId!, target, file.digest), uploadHeaders = new Headers(headers);
           uploadHeaders.set('X-Alpacawork-Op-Id', uploadId);
           uploadHeaders.set('X-Alpacawork-Content-Digest', file.digest);
           uploadHeaders.set('Content-Type', 'application/octet-stream');
@@ -262,6 +248,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     .exitOverride().allowExcessArguments(false).enablePositionalOptions()
     .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork telemetry      This PC\'s usage reporting: status, show or off\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
   program.option('--server <url>', 'Use this server for one command (overrides environment and saved server)');
+  const bound = commandTree<CommandContext>(spec => (input, context) => execute(spec, input, context));
   const selectedServer = () => selectServer(program.opts().server as string | undefined, process.env, installedServer);
   // Local removal delegates to the backend, which owns installation records and deletion policy.
   program.command('uninstall', { hidden: true }).helpOption(false).allowUnknownOption().allowExcessArguments()
@@ -294,8 +281,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
       await verifyServer(server);
       const url = new URL(server), outcome = await openBrowser(url.href, process.env);
       if (outcome === 'opened') { process.stdout.write(`Opened ${url.href} in the browser.\n`); return; }
-      const urlSpec = cliCommands.find(spec => spec.group === 'workspace' && spec.name === 'url')!;
-      const published = (await execute(urlSpec, {}, server) as { publicUrl: string | null }).publicUrl;
+      const urlSpec = bound.commands.find(spec => spec.id === 'workspace/url')!;
+      const published = (await urlSpec.handler({}, { origin: server, options: {} }) as { publicUrl: string | null }).publicUrl;
       if (published) { process.stdout.write(published + '\n'); process.stderr.write('Open the URL in the browser on your own PC.\n'); return; }
       process.stdout.write(url.href + '\n');
       const loopback = url.hostname === 'localhost' || url.hostname === '[::1]' || /^127\./.test(url.hostname);
@@ -305,40 +292,57 @@ async function runMain(args: string[], installedServer?: string): Promise<number
         : 'No browser could be started here. Open the URL in your own browser.\n');
     });
   const groups = new Map<string, Command>();
-  /** The command for the words before a command's name (`task file`), as the contract's table describes it. */
-  const groupOf = (words: string): Command => {
-    const known = groups.get(words);
-    if (known) return known;
-    const description = cliGroups[words];
-    if (description === undefined) throw new Error(`CLI group ${words} has no description`);
-    const at = words.lastIndexOf(' ');
-    const group = (at < 0 ? program : groupOf(words.slice(0, at))).command(words.slice(at + 1))
-      .description(description).addHelpText('after', '\n' + accessHelpPointer);
-    groups.set(words, group);
-    return group;
+  const registerGroups = (node: (typeof bound.tree.root.children)[number], parent: Command, words: string[]) => {
+    for (const child of node.children) {
+      const path = [...words, child.name];
+      if (child.children.length === 0) continue;
+      const group = parent.command(child.name).description(child.description).addHelpText('after', '\n' + accessHelpPointer);
+      groups.set(path.join('/'), group);
+      registerGroups(child, group, path);
+    }
   };
-  for (const spec of cliCommands) {
-    const words = cliCommandWords(spec);
-    const command = groupOf(words.slice(0, -1).join(' ')).command(words.at(-1)!).description(spec.description).allowExcessArguments(false);
-    command.addHelpText('after', () => accessHelp(`${spec.group}.${spec.name}`));
-    if (spec.mutation) command.addHelpText('after', '\n' + cliWriteHelp);
+  registerGroups(bound.tree.root, program, []);
+  for (const spec of bound.commands) {
+    const words = spec.words;
+    const group = groups.get(words.slice(0, -1).join('/'))!;
+    const command = group.command(words.at(-1)!).description(spec.description).allowExcessArguments(false);
+    const writes = spec.kind === 'write';
+    command.addHelpText('after', () => accessHelp(spec.access));
+    if (writes) command.addHelpText('after', '\n' + cliWriteHelp);
     if (spec.help) command.addHelpText('after', spec.help);
     for (const option of spec.options) {
-      const syntax = flag(option.key);
-      if (option.kind === 'boolean') command.option(syntax, option.description);
-      else if (option.kind === 'number') command.option(`${syntax} <value>`, option.description, Number);
+      if (option.key === 'opId' && writes) continue;
+      const syntax = commandFlag(option);
+      if (option.kind === 'boolean') {
+        const negative = syntax.replace(/^--/, '--no-');
+        const positiveOption = syntax.slice(2), negativeOption = negative.slice(2);
+        let first: string | undefined;
+        const mark = (name: string) => () => {
+          if (first && first !== name)
+            throw new Problem(PROBLEM_CODE.invalidInput, `${syntax} and ${negative} cannot be used together`);
+          first = name;
+        };
+        command.option(syntax, option.description).option(negative, 'Disable ' + syntax)
+          .on(`option:${positiveOption}`, mark(syntax)).on(`option:${negativeOption}`, mark(negative));
+      } else if (option.kind === 'number') command.option(`${syntax} <value>`, option.description, (value: string) => {
+        if (option.nullable && value === 'null') return value;
+        if (!/^[0-9]+$/.test(value)) throw new Problem(PROBLEM_CODE.invalidInput, `${syntax} needs a positive integer`);
+        return Number(value);
+      });
       else if (option.kind === 'list') command.option(`${syntax} <value>`, option.description,
         (value: string, previous: string[] = []) => [...previous, ...value.split(',')]);
       else command.option(`${syntax} <${option.kind === 'file' ? 'path' : 'value'}>`, option.description);
     }
-    if (spec.mutation) command.option('--op-id <id>', 'Operation key (random UUID when omitted; specify to check after process loss)');
+    if (writes) command.option('--op-id <id>', 'Operation key (random UUID when omitted; specify to check after process loss)');
     command.action(async (options: Record<string, unknown>) => {
-      const result = await execute(spec, options, (await selectedServer()).server);
+      const opId = writes ? operationId(options.opId) : undefined;
+      const input = spec.parse(await inputFor(spec, { ...options, ...(writes ? { opId } : {}) }));
+      const result = await spec.handler(spec.prepareCli?.(input) ?? input, { origin: (await selectedServer()).server, options, opId });
       if (result !== undefined) process.stdout.write(JSON.stringify(result) + '\n');
       process.exitCode = defaultPolicy.exitCode(result);
     });
   }
-  groupOf('run').command('stop-local').description('Save an offline local-human stop request')
+  groups.get('run')!.command('stop-local').description('Save an offline local-human stop request')
     .addHelpText('after', accessHelp('run.stop-local'))
     .requiredOption('--workspace <root>').requiredOption('--run <id>').requiredOption('--op-id <uuid>')
     .action((values: { workspace: string; run: string; opId: string }) => {

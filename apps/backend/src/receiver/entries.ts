@@ -1,13 +1,15 @@
 import { codecs, defineEntry, defineEntryEndpoint, defineEntryNode, defineEntryTree, defineParameter, optional, required, } from '@alpacakit/channels';
 import { bindHttpEntry } from '@alpacakit/channels/http';
 import { bindCliOptions } from '@alpacawork/cli-kit';
+import { commandTree, type Command, type CommandInput } from '@alpacawork/contract/commands';
 import { hostEpisodeInput } from '@alpacawork/contract';
 import { DEFAULT_SERVER_PORT } from '@alpacawork/contract/default-server';
 import { PUBLIC_HOST_PATTERN, emptyInput, personNoticesSaveInput, personSettingsSetInput, presencePauseInput, presenceReportInput, pushSubscribeInput, pushUnsubscribeInput, serveInput, taskFinishedInput, taskSearchInput, taskShelvedInput, taskTimelineAxisInput, taskTimelineInput } from '@alpacawork/contract/inputs';
 import { PROBLEM_CODE, Problem, parseInput } from '@alpacawork/core';
 import { z } from 'zod';
 import { readProjectShelf } from '../control/project-shelf.js';
-import { SCREEN, authorizeRead, commandGroups, readNode, requireAdmin, requireRoot, withAct, withRequestLimit, writeNode, type Context as TaskContext } from '../entries.js';
+import { SCREEN, authorizeRead, foldersNode, initNode, requireAdmin, requireCaller, requireRoot, taskCommands, withAct, withRequestLimit,
+  type JsonCommandName, type ServerCommand, type Context as TaskContext } from '../entries.js';
 import { type HostMonitor } from '../host/monitor.js';
 import { maintenance } from '../maintenance.js';
 import type { PublishedFrame } from './projection-contract.js';
@@ -76,13 +78,6 @@ export const serve = defineEntryEndpoint(serveEntry, {
   },
   channels: [bindCliOptions(serveEntry.parameters)],
 });
-export const url = defineEntryEndpoint(defineEntry({ name: 'url', parameters: [], project: () => ({}) }), {
-  handler: (input: unknown, context: Context) => {
-    parseInput(emptyInput, input);
-    return workspaceUrl(requireRoot(context));
-  },
-  channels: [bindHttpEntry({ method: 'GET' })],
-});
 
 function requirePush(context: Context): PushStore {
   if (!context.push) throw new Problem(PROBLEM_CODE.unavailable, 'Push notifications are not running', undefined, { reason: { kind: 'push_notifications_not_running' } });
@@ -132,15 +127,6 @@ const pushUnsubscribe = withAct(defineEntryEndpoint(unsubscribeEntry, {
   },
   channels: [bindHttpEntry({ method: 'POST' })],
 }), SCREEN);
-const shelfEntry = defineEntry({ name: 'shelf', parameters: [], project: () => ({}) });
-const projectShelf = defineEntryEndpoint(shelfEntry, {
-  handler: (_input: unknown, context: Context) => {
-    const root = requireRoot(context);
-    authorizeRead(root, context, SCREEN, null);
-    return readProjectShelf(root).catalog();
-  },
-  channels: [bindCliOptions(shelfEntry.parameters), bindHttpEntry({ method: 'GET' })],
-});
 // A page or a search names a project Task as its `scope` to read that project's subtree, nested projects included;
 // naming none, it reads every project.
 const searchEntry = defineEntry({ name: 'search', parameters: [query('text', 'Search text'),
@@ -251,25 +237,6 @@ const resumePresence = withAct(defineEntryEndpoint(empty('resume'), {
  * The person's settings: the one read and the one save the screen and the command line (settings get, settings set)
  * both use. A save from either reaches the screen as a changed revision (personChanged).
  */
-const personSettingsOf = (context: TaskContext) => (context as Context).personSettings!;
-const settingsGetNode = readNode('get', 'Read the person\'s settings and their revision', [], emptyInput,
-  async (root, _input, context) => {
-    authorizeRead(root, context, { name: 'settings.read' }, null);
-    const result = await personSettingsOf(context).get((context as Context).requestLanguage);
-    (context as Context).personChanged?.('settings', result.revision);
-    return result;
-  });
-const settingsSetNode = writeNode('set', 'Save one of the person\'s settings', [
-  defineParameter({ name: 'key', description: 'Setting key', requirement: required(), codec: codecs.string() }),
-  defineParameter({ name: 'value', description: 'Setting value', requirement: required(), codec: codecs.define({ schema: z.json(), shape: { kind: 'string' } }) }),
-  defineParameter({ name: 'expectedRevision', description: 'Current settings revision', requirement: required(), codec: codecs.string() }),
-  defineParameter({ name: 'timeZone', description: 'Browser time zone', requirement: optional(), codec: codecs.string() }),
-], personSettingsSetInput, () => ({ action: { name: 'settings.set' }, task: null }),
-async (_root, input, context) => {
-  const result = await personSettingsOf(context).set(input.key, input.value, input.expectedRevision, input.timeZone);
-  (context as Context).personChanged?.('settings', result.revision);
-  return result;
-});
 const notices = withAct(defineEntryEndpoint(empty('notices'), {
   handler: async (input: unknown, context: Context) => {
     parseInput(emptyInput, input);
@@ -320,9 +287,6 @@ const hostEpisode = withAct(defineEntryEndpoint(hostEpisodeEntry, {
 }), SCREEN);
 
 const sharedNodes = [updateNode, ...firstRunNodes,
-  defineEntryNode({ name: 'project', description: 'Project management', children: [
-    defineEntryNode({ name: 'shelf', description: 'Shelved projects and restore targets', endpoints: [projectShelf] }),
-  ] }),
   defineEntryNode({ name: 'host', description: 'This machine (Machine status)', children: [
     defineEntryNode({ name: 'status', description: 'Current values, the last hour and tight episodes', endpoints: [hostStatus] }),
     defineEntryNode({ name: 'episode', description: 'Minute values around one tight episode', endpoints: [hostEpisode] }),
@@ -333,7 +297,6 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'resume', description: 'Resume notifications', endpoints: [resumePresence] }),
   ] }),
   defineEntryNode({ name: 'task', description: 'Task records and instructions', children: [
-    ...commandGroups.task.children,
     defineEntryNode({ name: 'view', description: 'Opened Task', endpoints: [view] }),
     defineEntryNode({ name: 'history', description: 'Task chronology', endpoints: [history] }),
     defineEntryNode({ name: 'search', description: 'Find Tasks', endpoints: [search] }),
@@ -341,18 +304,15 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'shelved', description: 'Archived and deleted Tasks', endpoints: [shelved] }),
     defineEntryNode({ name: 'timeline-axis', description: 'Full-lifetime time axis activity', endpoints: [timelineAxis] }),
     defineEntryNode({ name: 'timeline', description: 'Visible time range', endpoints: [timeline] }),
-  ] }), commandGroups.dependency, commandGroups.agent, commandGroups.run, commandGroups.field,
-  commandGroups.config,
-  defineEntryNode({ name: 'settings', description: 'Display, notification and reply-language settings (one set per server)', children: [settingsGetNode, settingsSetNode] }),
+  ] }),
   defineEntryNode({ name: 'person', description: 'Personal state', children: [
     defineEntryNode({ name: 'notices', description: 'Read checkpoints', endpoints: [notices], children: [
       defineEntryNode({ name: 'save', description: 'Save read checkpoints', endpoints: [noticesSave] }),
     ] }),
   ] }),
   defineEntryNode({ name: 'workspace', description: 'Workspace operations', children: [
-    ...commandGroups.workspace.children,
+    foldersNode,
     defineEntryNode({ name: 'serve', description: 'Serve the local task UI and API', endpoints: [serve] }),
-    defineEntryNode({ name: 'url', description: 'Read the running workspace UI URL', endpoints: [url] }),
     defineEntryNode({ name: 'live', description: 'Current live projection', endpoints: [live] }),
   ] }),
   defineEntryNode({ name: 'notify', description: 'Notifications and devices', children: [
@@ -361,9 +321,6 @@ const sharedNodes = [updateNode, ...firstRunNodes,
     defineEntryNode({ name: 'subscribe', description: 'Register a device', endpoints: [pushSubscribe] }),
     defineEntryNode({ name: 'unsubscribe', description: 'Remove a device', endpoints: [pushUnsubscribe] }),
   ] }),
-  defineEntryNode({ name: 'coordinator', description: 'Coordinator conversations', children: [
-    ...commandGroups.coordinator.children,
-  ] }),
 ] as const;
 
 const maintenanceEntry = defineEntry({ name: 'maintenance', parameters: [
@@ -371,7 +328,7 @@ const maintenanceEntry = defineEntry({ name: 'maintenance', parameters: [
 ], project: ({ values }) => values });
 /** The backend executable is only for local, stopped-server administration. */
 export const adminNodes = [defineEntryNode({ name: 'workspace', description: 'Local server administration',
-  children: [commandGroups.workspace.children[0]!,
+  children: [initNode,
     defineEntryNode({ name: 'serve', description: 'Serve the local task UI and API', endpoints: [serve] }),
     defineEntryNode({ name: 'maintenance', description: 'Inspect, migrate or compact with serve stopped', endpoints: [defineEntryEndpoint(
       maintenanceEntry,
@@ -381,10 +338,61 @@ export const adminNodes = [defineEntryNode({ name: 'workspace', description: 'Lo
         channels: [bindCliOptions(maintenanceEntry.parameters)] })] }),
   ] })];
 
-export const appTree = defineEntryTree(
+export const screenTree = defineEntryTree(
   defineEntryNode({
     name: 'alpacawork',
     description: 'RAW tasks',
     children: sharedNodes,
   }),
 );
+
+const implementations = {
+  ...taskCommands,
+  'project/shelf': {
+    run: (root, _input, context) => {
+      authorizeRead(root, context, SCREEN, null);
+      return readProjectShelf(root).catalog();
+    },
+  },
+  'workspace/url': {
+    run: root => workspaceUrl(root),
+  },
+  'settings/get': {
+    run: async (root, _input, context) => {
+      authorizeRead(root, context, { name: 'settings.read' }, null);
+      const result = await context.personSettings!.get(context.requestLanguage);
+      context.personChanged?.('settings', result.revision);
+      return result;
+    },
+  },
+  'settings/set': {
+    act: () => ({ action: { name: 'settings.set' }, task: null }),
+    run: async (_root, input, context) => {
+      const values = parseInput(personSettingsSetInput, input);
+      const result = await context.personSettings!.set(values.key, values.value, values.expectedRevision, values.timeZone);
+      context.personChanged?.('settings', result.revision);
+      return result;
+    },
+  },
+  'operation/get': {
+    run: (_root, input, context) => context.readOperation!(input.opId, requireCaller(context)),
+  },
+} satisfies { [Name in JsonCommandName]: ServerCommand<CommandInput<Name>, Context> };
+
+// Entry projection validates the input associated with this key before the erased route adapter calls it.
+const commands = implementations as unknown as Record<JsonCommandName, ServerCommand<Record<string, unknown>, Context>>;
+export const serverCommandTree = commandTree<Context>(command => {
+  if (command.file) return () => { throw new Error('File routes are installed by the byte transport'); };
+  const implementation = commands[command.id as JsonCommandName];
+  if (command.kind === 'write' && !implementation.act) throw new Error(`Missing write action for ${command.id}`);
+  return async (input, context) => {
+    const result = await implementation.run(requireRoot(context), input, context);
+    if (command.kind === 'write') context.changed?.();
+    return result;
+  };
+});
+
+export const serverCommands = new Map<string, Command & { implementation: ServerCommand<Record<string, unknown>, Context> }>(serverCommandTree.commands.flatMap(command =>
+  command.file ? [] : [[`${command.method} ${command.path}`, {
+    ...command, implementation: commands[command.id as JsonCommandName],
+  }] as const]));

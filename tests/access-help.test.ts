@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { privateNodeApp } from './helpers/private-node-app.ts';
-import { cliCommands } from '@alpacawork/contract/cli-commands';
+import { commandCatalog } from '@alpacawork/contract/commands';
 import { CLI_EXIT_CODE } from '@alpacawork/cli-kit';
 import { DEFAULT_SERVER_ORIGIN } from '@alpacawork/contract/default-server';
 import { ACTIONS } from '@alpacawork/contract/command-access';
@@ -23,8 +23,7 @@ function cli(path: string[], backend = false, script?: string) {
   assert.equal(result.stderr, '');
   return result.stdout;
 }
-const ordinary = cliCommands.map(spec => spec.file ? ['task', spec.file.startsWith('attachment-') ? 'attachment' : 'file',
-  spec.file.replace('attachment-', '')] : [...spec.group.split(' '), spec.name]);
+const ordinary = commandCatalog.commands.map(spec => [...spec.words]);
 
 test('all 42 ordinary and 8 backend operation helps expose access without connecting or authorizing', () => {
   const client = [...ordinary, ['server', 'show'], ['server', 'set'], ['server', 'unset'], ['run', 'stop-local']];
@@ -125,7 +124,7 @@ test('skill routes execution to generated Access instead of another permission t
 test('help owns the cwd rule, the exit codes and the default server; options that rely on the rule say where it is', () => {
   const top = cli([]);
   assert.equal(top.match(/cwd rule:/g)?.length, 1);
-  const relying = cliCommands.flatMap(spec => spec.options).filter(option => option.description.includes('cwd rule'));
+  const relying = commandCatalog.commands.flatMap(spec => spec.options).filter(option => option.description.includes('cwd rule'));
   assert.ok(relying.length > 0);
   for (const option of relying) assert.ok(option.description.includes('cwd rule (alpacawork -h)'), option.key);
   const exitCodes = top.split('\n').find(line => line.startsWith('Exit codes:'));
@@ -135,7 +134,7 @@ test('help owns the cwd rule, the exit codes and the default server; options tha
 
 test('--from-user help limits the mark to project-level Tasks and directs added results to the responsible', () => {
   for (const command of ['new', 'update'])
-    assert.match(cli(['task', command]), /only directly\s+below a project, never a child Task/);
+    assert.match(cli(['task', command]), /only\s+directly\s+below a project, never a child Task/);
   assert.match(cli(['task', 'new']), /Only the parent Task’s responsible Run creates children/);
   assert.match(cli(['task', 'new']), /task request/);
 });

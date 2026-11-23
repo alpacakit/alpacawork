@@ -10,7 +10,7 @@ test('a warmed project URL survives parent archive and restore through the stand
   };
   const project = (await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Shelf core fixture' })).task;
   const nested = (await post('task/new', { kind: 'project', color: '#39659b', parent: project.id, title: 'Nested fixture' })).task;
-  const child = (await post('task/new', { parent: nested.id, title: 'Retained child', userRequested: true })).task;
+  const child = (await post('task/new', { parent: nested.id, title: 'Retained child', fromUser: true })).task;
   await page.goto(runtime.origin + '/?agent=1&task=' + child.id);
   await expect(page.locator('[data-reader-task-id]')).toHaveText(child.id);
   const before = await (await page.request.get(runtime.origin + '/api/task/get?task=' + child.id)).json();

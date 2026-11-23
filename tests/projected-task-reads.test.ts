@@ -6,7 +6,7 @@ import { Problem } from '@alpacawork/core';
 import { historyWindow, ProjectedHistory, projectedView } from '@alpacawork/backend/test-dist/receiver/task-reads.js';
 import { recordedRun } from '@alpacawork/backend/test-dist/receiver/projected-records.js';
 import { historyWindowInput } from '@alpacawork/backend/test-dist/receiver/task-read-inputs.js';
-import { appTree } from '@alpacawork/backend/test-dist/receiver/entries.js';
+import { screenTree } from '@alpacawork/backend/test-dist/receiver/entries.js';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
 import { at, bundle, entry, FakeRecords, frame, pv } from './helpers/projection-read-fixture.ts';
 import { record } from './runs-fixtures.ts';
@@ -156,7 +156,7 @@ test('member results and joined Requests take their receiving Run, role, and res
 
 test('task read entries await the supplied published frame and answer with the new DTOs without a database', async () => {
   const routes = new Map<string, { handler: (input: object, context: object) => unknown; parse: (query: Record<string, string[]>) => object }>();
-  collectHttpRoutes(appTree).forEach(route => routes.set(route.path, {
+  collectHttpRoutes(screenTree).forEach(route => routes.set(route.path, {
     handler: route.handler as (input: object, context: object) => unknown, parse: query => route.input.parseQuery(query) as object }));
   const invoke = (name: string, input: object, readFrame: () => unknown) => {
     const route = routes.get(`/task/${name}`)!;

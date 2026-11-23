@@ -8,6 +8,7 @@ import type { Mutate } from './lifecycle.js';
 import type { Hono } from 'hono';
 import { closeSync, readSync } from 'node:fs';
 import { fileKind, fileStreams } from '@alpacawork/contract';
+import { attachmentsPath, taskFilePath } from '@alpacawork/contract/task-file-route';
 import { taskFileInput } from '@alpacawork/contract/inputs';
 import { reportDiffHead } from '@alpacawork/contract/report-diff';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
@@ -63,7 +64,7 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
   const mutate: Mutate = options.mutate ?? (async work => work());
   const journal = new FileJournal(root);
   journal.recover();
-  api.get('/api/tasks/:task/file', async c => {
+  api.get(taskFilePath, async c => {
     // `v` is the revision a reader adds so that a changed file is read again.
     // `part=head`: a diff file's report header alone (reportDiffHead), what its summary reads without the patch's rows.
     const query = queryOf(c.req.raw, ['path', 'frame', 'v', 'part', 'download']);
@@ -126,7 +127,7 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
     await options.authorizeRead(c.req.raw, task);
     return c.json({ roots: codeRoots(root, task) }, 200, BYTE_HEADERS);
   });
-  api.put('/api/tasks/:task/file', async c => {
+  api.put(taskFilePath, async c => {
     const { task, name } = parseInput(taskFileInput,
       { task: c.req.param('task'), name: queryOf(c.req.raw, ['path']).get('path') ?? '' });
     const grant = await options.authorizeWrite(c.req.raw, task);
@@ -154,7 +155,7 @@ const FRAME_SCRIPT = `<script>(()=>{try{localStorage}catch(e){const m=new Map();
 /** Install in place of the old attachment routes so every mutation has a client operation ID. */
 export function installAttachmentFileRoutes(api: Hono, root: string, options: FileRouteOptions) {
   const mutate: Mutate = options.mutate ?? (async work => work());
-  api.post('/api/tasks/:task/attachments',async c=>{
+  api.post(attachmentsPath,async c=>{
     const task=c.req.param('task'), query=queryOf(c.req.raw,['requestId','name']);
     const grant=await options.authorizeWrite(c.req.raw,task);
     const bytes = await boundedBytes(c.req.raw,attachmentLimit(root));
@@ -162,15 +163,15 @@ export function installAttachmentFileRoutes(api: Hono, root: string, options: Fi
       query.get('name') ?? '',bytes,requiredOpId(c.req.raw),grant));
     await options.changed(task); return c.json(result,200);
   });
-  api.delete('/api/tasks/:task/attachments',async c=>{
+  api.delete(attachmentsPath,async c=>{
     const task=c.req.param('task'), query=queryOf(c.req.raw,['requestId','name']);
     const grant=await options.authorizeWrite(c.req.raw,task);
     const result=await mutate(() => removeTaskAttachment(root,task,query.get('requestId') ?? '',
       query.get('name') ?? '',requiredOpId(c.req.raw),grant));
     await options.changed(task); return c.json(result,200);
   });
-  api.post('/api/tasks/:task/attachments/move',async c=>{
-    const task=c.req.param('task'); queryOf(c.req.raw,[]);
+  api.post(attachmentsPath + '/move',async c=>{
+    const task=c.req.param('task')!; queryOf(c.req.raw,[]);
     const grant=await options.authorizeWrite(c.req.raw,task);
     const bytes=await boundedBytes(c.req.raw,1024);
     let input: unknown;

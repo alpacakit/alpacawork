@@ -145,7 +145,7 @@ test('every HTTP act of the table lets exactly its callers through the public en
   const report = (id: string, fields: Record<string, unknown>) =>
     post('/api/task/report', { ...task(id), ...(fields.state === 'done' ? { title: 'Report', description: 'The result is ready.' } : {}), opId: randomUUID(), ...fields }, true);
   const request = (id: string, fields: Record<string, unknown> = {}) => post('/api/task/request',
-    { ...task(id), body: 'Do the work', opId: randomUUID(), expectedPlacementRevision: 1, ...fields }, true);
+    { ...task(id), instruction: 'Do the work', opId: randomUUID(), expectedPlacementRevision: 1, ...fields }, true);
   const settings = await (await fetch(new URL('/api/config/get', h.server.url))).json() as
     { limits: Record<string, unknown>; agentsText: string };
   const rows: { act: string; call: Call; allow: readonly Who[]; note?: string; proxyAct?: string; runAct?: string }[] = [
@@ -161,13 +161,13 @@ test('every HTTP act of the table lets exactly its callers through the public en
       allow: ['A', 'C', 'S', 'R', ...proxies], note: 'its own project\'s, by a responsible Run not held' },
     { act: 'field.use', call: post('/api/field/use', { task: h.other, inherit: true, expectedTaskHash: STALE }, true),
       allow: ['F', ...proxies], note: 'another project\'s' },
-    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: C.id, userRequested: false,
+    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: C.id, fromUser: false,
       expectedParentHash: STALE }, true), allow: ['C'], note: 'below the Run\'s own Task, internal' },
-    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: H.id, userRequested: false,
+    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: H.id, fromUser: false,
       expectedParentHash: STALE }, true), allow: [], note: 'not below a held Task by its Run' },
-    { act: 'task.new', call: post('/api/task/new', { title: 'New', parent: f.project, userRequested: false,
+    { act: 'task.new', call: post('/api/task/new', { title: 'New', parent: f.project, fromUser: false,
       expectedParentHash: STALE }, true), allow: proxies },
-    { act: 'task.new.from_user', call: post('/api/task/new', { title: 'New', parent: f.project, userRequested: true,
+    { act: 'task.new.from_user', call: post('/api/task/new', { title: 'New', parent: f.project, fromUser: true,
       expectedParentHash: STALE }, true), allow: proxies },
     { act: 'task.new.project', call: post('/api/task/new', { title: 'New', kind: 'project', color: '#39659b', parent: f.project,
       expectedParentHash: STALE }, true), allow: proxies },
@@ -183,7 +183,7 @@ test('every HTTP act of the table lets exactly its callers through the public en
       allow: proxies },
     { act: 'task.update.color', call: post('/api/task/update', { ...task(f.project), color: '#abcdef' }, true),
       allow: proxies },
-    { act: 'task.update.userRequested', call: post('/api/task/update', { ...task(C.id), userRequested: true }, true),
+    { act: 'task.update.userRequested', call: post('/api/task/update', { ...task(C.id), fromUser: true }, true),
       allow: proxies },
     { act: 'task.move', call: post('/api/task/move', { ...task(C.id), parent: h.S.id }, true), allow: ['A', ...proxies],
       note: 'below the parent Run\'s own Task' },
@@ -246,9 +246,9 @@ test('every HTTP act of the table lets exactly its callers through the public en
     { act: 'task.request.user', call: request(E.id), allow: proxies,
       note: 'the parent does not retry what the user asked for' },
     { act: 'task.request', call: request(R.id), allow: proxies, note: 'ordinary instruction while waiting' },
-    { act: 'task.answer', call: { ...post('/api/task/request', { task: R.id, body: 'This way', answers: h.askedUser,
+    { act: 'task.answer', call: { ...post('/api/task/request', { task: R.id, instruction: 'This way', answers: h.askedUser,
       opId: randomUUID() }, true), allowed: [200,409] }, allow: proxies, note: 'a question to the user' },
-    { act: 'task.answer', call: { ...post('/api/task/request', { task: C.id, body: 'This way', answers: h.askedA,
+    { act: 'task.answer', call: { ...post('/api/task/request', { task: C.id, instruction: 'This way', answers: h.askedA,
       opId: randomUUID() }, true), allowed: [200,409] }, allow: ['A'], note: 'a question to the parent' },
     { act: 'agent.assign', call: post('/api/agent/assign', { ...task(C.id), role: 'responsible', profile: 'fake' }, true),
       allow: ['A', ...proxies] },
@@ -331,17 +331,17 @@ test('what a Run, the coordinator and a person write, and what a Run reads', asy
     [C.id, false, { kind: 'placement', placementId: C.placementId }]);
   assert.equal((await create('C', { title: 'Beside', parent: A.id })).status, 403);
   for (const who of ['human', ...coordinators, 'A', 'W'] as Who[]) {
-    const child = await create(who, { title: 'Forbidden child', parent: C.id, userRequested: false });
+    const child = await create(who, { title: 'Forbidden child', parent: C.id, fromUser: false });
     assert.equal(child.status, 403, child.text);
     assert.deepEqual(JSON.parse(child.text).error.reason, { kind: 'child_by_its_responsible' });
   }
   for (const who of proxies) {
-    const child = await create(who, { title: 'Forbidden marked child', parent: C.id, userRequested: true });
+    const child = await create(who, { title: 'Forbidden marked child', parent: C.id, fromUser: true });
     assert.equal(child.status, 400, child.text);
     assert.deepEqual(JSON.parse(child.text).error.reason, { kind: 'user_request_belongs_to_top' });
   }
 
-  assert.equal((await create('C', { title: 'Asked', parent: C.id, userRequested: true })).refused?.code, 'forbidden');
+  assert.equal((await create('C', { title: 'Asked', parent: C.id, fromUser: true })).refused?.code, 'forbidden');
   // A person creates a task, the user's request unless internal, and a project, top or nested.
   const asked = await create('human', { title: 'Asked', parent: f.project });
   assert.deepEqual([asked.status, asked.task.userRequested], [200, true]);
@@ -352,8 +352,8 @@ test('what a Run, the coordinator and a person write, and what a Run reads', asy
   // The coordinator says whose Task it creates.
   const unstated = await create('coordinator', { title: 'Unstated', parent: f.project });
   assert.equal(unstated.status, 400);
-  assert.deepEqual(JSON.parse(unstated.text).error.issues.map((issue: { path: string }) => issue.path), ['userRequested']);
-  const internal = await create('coordinator', { title: 'Internal', parent: f.project, userRequested: false });
+  assert.deepEqual(JSON.parse(unstated.text).error.issues.map((issue: { path: string }) => issue.path), ['fromUser']);
+  const internal = await create('coordinator', { title: 'Internal', parent: f.project, fromUser: false });
   assert.deepEqual([internal.status, internal.task.userRequested, currentTaskLog(f.root, internal.task.id)[0]!.actor],
     [200, false, { kind: 'main', provider: 'codex', conversationId: CONVERSATION }]);
   // A person places a top Task's responsible, moves a task within its project and updates it.

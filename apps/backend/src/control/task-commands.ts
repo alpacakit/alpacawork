@@ -88,8 +88,8 @@ export class ControlTaskCommands {
   }
   /**
    * Creates `tasks` as siblings under one parent in one write (one Task, or a --plan-file's), all with one mark of the
-   * user's request: a Run's are not; a person's are unless --internal; the coordinator names it (authorize refuses its
-   * creation without --from-user or --internal); a project never is. A project's parent is a project or none; a task's
+   * user's request: a Run's are not; a person's are unless --no-from-user; the coordinator names it (authorize refuses its
+   * creation without --from-user or --no-from-user); a project never is. A project's parent is a project or none; a task's
    * is a project or a task, and it belongs to that project or to that task's. A Task created without a parent got its
    * default from the entry (`defaultParentAt`). Only the parent’s responsible Run creates its unmarked children.
    */

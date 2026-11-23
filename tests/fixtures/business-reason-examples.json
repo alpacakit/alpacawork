@@ -1319,7 +1319,7 @@
     "reason": {
       "kind": "coordinator_creates_task_with_from_user_or_internal"
     },
-    "en": "When the coordinator creates a task, specify --from-user or --internal"
+    "en": "When the coordinator creates a task, specify --from-user or --no-from-user"
   },
   {
     "reason": {
@@ -1805,7 +1805,7 @@
     "reason": {
       "kind": "question_carries_no_estimate"
     },
-    "en": "A question cannot take --estimate"
+    "en": "A question cannot take --estimate-minutes"
   },
   {
     "reason": {
