@@ -81,19 +81,19 @@ It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installi
 
 ### Common operations
 
-You request tasks in the input box on the screen. To operate alpacawork itself, such as opening the screen, ask Claude Code or Codex opened in a terminal or its app, and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
+You request tasks in the input box on the screen. To open the screen, ask how tasks are going and the like, ask Claude Code or Codex opened in a terminal or its app, and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
 
 | To | Ask the AI | Command |
 | --- | --- | --- |
 | Open the screen | `/alpacawork open the screen` | `alpacawork open` |
 | Check whether it is running | `/alpacawork check whether it is running` | `alpacawork status` |
-| Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
-| Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
-| Ask how tasks are going | `/alpacawork tell me how the tasks in progress are going` | — |
+| Ask how tasks are going | `/alpacawork tell me how the tasks are going` | — |
 | Find a task | `/alpacawork find the task that fixed the README` | — |
+| Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
 | Stop, start or restart | — | `alpacawork stop`, `start`, `restart` |
+| Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
 
-You can also update from Settings on the screen, and ask how tasks are going in the input box on the screen. The commands that read tasks print output meant for the AI, so they are not listed. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md)).
+You can also update from Settings on the screen. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md)).
 
 In Chrome or Edge, you can install it as an app at the end of setup on the screen, or later in Settings → App & phone, and open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with File → Add to Dock in the menu (macOS Sonoma or later).
 
