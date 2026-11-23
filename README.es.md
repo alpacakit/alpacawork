@@ -53,19 +53,19 @@ alpacawork setup
 
 Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de instalarlo, sigue [Primeros pasos](docs/es/getting-started.md) para hacer tu primera solicitud.
 
-### Volver a abrir la pantalla
+### Volver a abrir, detener y actualizar
 
-Si cierras la pantalla, pide a Claude Code o Codex que la abra, así. La IA abre la pantalla en el navegador o te dice su URL.
+Las tareas se piden en el cuadro de entrada de la pantalla. Para operar alpacawork en sí, como abrir la pantalla, pídeselo a Claude Code o Codex y la IA lo hace (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). En una terminal, los comandos de la tabla hacen lo mismo.
 
-```text
-/alpacawork abre la pantalla
-```
+| Para | Pide a la IA | Comando |
+| --- | --- | --- |
+| Abrir la pantalla | `/alpacawork abre la pantalla` | `alpacawork open` |
+| Ver si está en marcha | `/alpacawork mira si está en marcha` | `alpacawork status` |
+| Actualizar a la última versión | `/alpacawork actualiza a la última versión` | `alpacawork deploy npm:alpacawork` |
+| Desinstalar | `/alpacawork desinstala alpacawork` | `alpacawork uninstall` y después `npm uninstall -g alpacawork` |
+| Detener, iniciar o reiniciar | — | `alpacawork stop`, `start`, `restart` |
 
-En Codex, escribe `$alpacawork` en lugar de `/alpacawork`. Desde una terminal, también puedes abrirla con este comando.
-
-```sh
-alpacawork open
-```
+También puedes actualizar desde Configuración en la pantalla. Los detalles están en [Volver a abrir, detener y actualizar](docs/es/manage.md).
 
 En Chrome o Edge, puedes instalarla como app al final de la configuración inicial en la pantalla, o más tarde en Configuración → App y teléfono, y volver a abrirla desde su icono en el Dock o la barra de tareas. En Safari en un Mac, instálala con Archivo → Añadir al Dock en el menú (macOS Sonoma o posterior).
 

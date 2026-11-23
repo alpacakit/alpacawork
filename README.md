@@ -79,19 +79,19 @@ alpacawork setup
 
 It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installing, follow [Getting started](https://github.com/alpacakit/alpacawork/blob/main/docs/getting-started.md) to make your first request.
 
-### Reopen the screen
+### Reopen, stop and update
 
-If you close the screen, ask Claude Code or Codex like this. The AI opens the screen in your browser or tells you its URL.
+You request tasks in the input box on the screen. For alpacawork itself, such as opening the screen, ask Claude Code or Codex and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
 
-```text
-/alpacawork open the screen
-```
+| To | Ask the AI | Command |
+| --- | --- | --- |
+| Open the screen | `/alpacawork open the screen` | `alpacawork open` |
+| Check that it is running | `/alpacawork check that it is running` | `alpacawork status` |
+| Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
+| Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
+| Stop, start or restart | — | `alpacawork stop`, `start`, `restart` |
 
-In Codex, write `$alpacawork` instead of `/alpacawork`. From a terminal, this command opens it too.
-
-```sh
-alpacawork open
-```
+You can also update from Settings on the screen. See [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md) for details.
 
 In Chrome or Edge, you can install it as an app at the end of setup on the screen, or later in Settings → App & phone, and open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with File → Add to Dock in the menu (macOS Sonoma or later).
 
