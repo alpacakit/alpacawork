@@ -9,7 +9,7 @@
   </picture>
 </h1>
 
-<h3 align="center">ひとつの入力欄から、すべてのプロジェクトの AI を動かす。</h3>
+<h3 align="center">ひとつのチャットで、すべての AI エージェントを操作しよう。</h3>
 
 <p align="center">
   頼みごとを書くと、PC の Claude Code や Codex が仕事を分けて同時に進めます。<br/>

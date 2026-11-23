@@ -9,7 +9,7 @@
   </picture>
 </h1>
 
-<h3 align="center">Rode agentes de IA em todos os projetos com um só campo de mensagem.</h3>
+<h3 align="center">Controle todos os seus agentes de IA em um só chat.</h3>
 
 <p align="center">
   Faça um pedido. O Claude Code e o Codex no seu PC o dividem em tarefas e as rodam em paralelo.<br/>

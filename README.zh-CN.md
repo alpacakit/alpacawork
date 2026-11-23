@@ -9,7 +9,7 @@
   </picture>
 </h1>
 
-<h3 align="center">用一个输入框，运行所有项目中的 AI 智能体。</h3>
+<h3 align="center">在一个聊天里，操控所有 AI 智能体。</h3>
 
 <p align="center">
   写下想做的事，你电脑上的 Claude Code 和 Codex 就会拆成多个任务，同时推进。<br/>
