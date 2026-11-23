@@ -29,7 +29,7 @@ async function fixture(clock = Date.now()) {
   let view = viewsOf(source).find(value => value.task.id === 'T1')!;
   vi.stubGlobal('fetch', async (input: string) => {
     const path = new URL(String(input), 'http://fixture').pathname;
-    if (path === '/api/settings/get') return Response.json({ values: {}, revision: index.person.settings });
+    if (path === '/api/commands/settings/get') return Response.json({ values: {}, revision: index.person.settings });
     if (path === '/api/person/notices') return Response.json({ state: null, revision: index.person.notices });
     if (path === '/api/task/view') return Response.json(view);
     if (path === '/api/task/timeline') return Response.json({ rows: [], runs: [], belowRuns: {}, events: [], anchors: {}, placements: [], nextAfter: null, generation: 'a', sourcePv: 0 });

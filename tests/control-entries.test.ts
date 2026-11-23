@@ -113,7 +113,7 @@ async function cli(root: string, ...args: string[]) {
 
 test('move uses the same command through HTTP and CLI', async t => {
   const h = await setup(t);
-  const response = await fetch(new URL('/api/task/move', h.server.url), { method: 'POST', headers: { 'content-type': 'application/json' },
+  const response = await fetch(new URL('/api/commands/task/move', h.server.url), { method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ task: h.child.id, parent: h.project, expectedTaskHash: h.child.hash }) });
   assert.equal(response.status, 200);
   const moved = taskWriteResultSchema.parse(await response.json());
@@ -133,7 +133,7 @@ test('HTTP and CLI refuse a description without a title, or blank report text, w
   writeFileSync(blank, ' \n ');
   for (const [title, descriptionFile] of [[undefined, valid], ['  ', valid], ['Ready', blank]] as const) {
     const description = descriptionFile === undefined ? undefined : readFileSync(descriptionFile, 'utf8');
-    const response = await fetch(new URL('/api/task/report', h.server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/task/report', h.server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ task: h.child.id, state: 'doing', title, description, opId: crypto.randomUUID(),
         expectedTaskHash: h.child.hash }) });
@@ -155,7 +155,7 @@ test('HTTP report confirms the commit without invoking return delivery', async t
   const original = ReturnRouter.prototype.route;
   ReturnRouter.prototype.route = async () => { throw new Error('Injected return routing fault'); };
   try {
-    const response = await fetch(new URL('/api/task/report', h.server.url), {
+    const response = await fetch(new URL('/api/commands/task/report', h.server.url), {
       method: 'POST', headers: { 'content-type': 'application/json', ...run.headers },
       body: JSON.stringify({ task: h.child.id, state: 'doing', title: 'Committed report',
         description: 'The child is under way.', opId: crypto.randomUUID(), expectedTaskHash: run.hash }),
@@ -196,7 +196,7 @@ test('CLI report replays its committed receipt independently of return routing',
 test('report HTTP returns the shared Task and report outcome contract', async t => {
   const h = await setup(t);
   const run = await childRun(t, h);
-  const response = await fetch(new URL('/api/task/report', h.server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/report', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json', ...run.headers },
     body: JSON.stringify({ task: h.child.id, state: 'doing', title: 'Working', description: 'Work continues.',
       opId: crypto.randomUUID(), expectedTaskHash: run.hash }) });
@@ -208,7 +208,7 @@ test('report HTTP returns the shared Task and report outcome contract', async t 
 
 test('request HTTP rejects an arbitrary placement target before admission', async t => {
   const h = await setup(t);
-  const response = await fetch(new URL('/api/task/request', h.server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/request', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.child.id,
       instruction: 'Draft', opId: 'Q1', expectedTaskHash: h.child.hash,
       expectedPlacementRevision: 1, agent: 'P1' }) });
@@ -219,7 +219,7 @@ test('request HTTP rejects an arbitrary placement target before admission', asyn
 
 test('an unassigned Task refuses HTTP request without creating a Run', async t => {
   const h = await setup(t);
-  const response = await fetch(new URL('/api/task/request', h.server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/request', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.child.id,
       instruction: 'Draft', opId: 'Q-unassigned', expectedTaskHash: h.child.hash,
       expectedPlacementRevision: 1 }) });
@@ -233,14 +233,14 @@ test('an unassigned Task refuses HTTP request without creating a Run', async t =
 test('place-agent HTTP creates the current responsible person without launching', async t => {
   const h = await setup(t);
   // A person manages responsibility on a child as well as on a top Task; neither placement launches a Run.
-  const below = await fetch(new URL('/api/agent/assign', h.server.url), { method: 'POST',
+  const below = await fetch(new URL('/api/commands/agent/assign', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.child.id,
       role: 'responsible', profile: 'codex', expectedTaskHash: h.child.hash }) });
   assert.equal(below.status, 200);
   const belowReceipt = taskPlacementResultSchema.parse(await below.json());
   const belowPlacement = placeAgentReceiptSchema.parse(belowReceipt.agent).placement;
   assert.deepEqual([belowPlacement.taskId, belowPlacement.responsible, belowReceipt.task.state], [h.child.id, true, 'todo']);
-  const response = await fetch(new URL('/api/agent/assign', h.server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/agent/assign', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.lone.id,
       role: 'responsible', profile: 'codex', expectedTaskHash: h.lone.hash }) });
   assert.equal(response.status, 200);
@@ -248,7 +248,7 @@ test('place-agent HTTP creates the current responsible person without launching'
   const placed = placeAgentReceiptSchema.parse(firstReceipt.agent);
   assert.deepEqual([placed.agent.id, placed.placement.taskId, placed.placement.responsible],
     [placed.placement.agentId, h.lone.id, true]);
-  const replacement = await fetch(new URL('/api/agent/assign', h.server.url), { method: 'POST',
+  const replacement = await fetch(new URL('/api/commands/agent/assign', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.lone.id,
       role: 'responsible', profile: 'claude', expectedTaskHash: firstReceipt.task.hash,
       replace: placed.placement.id, expectedPlacementRevision: placed.placement.revision }) });
@@ -277,7 +277,7 @@ test('periodic delivery waits for the admitted placement transaction', async t =
     return originalDeliver.apply(this, args);
   };
   try {
-    const response = fetch(new URL('/api/agent/assign', h.server.url), { method: 'POST',
+    const response = fetch(new URL('/api/commands/agent/assign', h.server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.lone.id,
         role: 'responsible', profile: 'codex', expectedTaskHash: h.lone.hash }) });
     await enteredWrite;
@@ -323,7 +323,7 @@ test('HTTP placement waits for an earlier periodic delivery', async t => {
   try {
     h.server.context.changed?.();
     await deliveryStarted;
-    const response = fetch(new URL('/api/agent/assign', h.server.url), { method: 'POST',
+    const response = fetch(new URL('/api/commands/agent/assign', h.server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: h.lone.id,
         role: 'responsible', profile: 'codex', expectedTaskHash: h.lone.hash }) });
     await delay(100);
@@ -351,7 +351,7 @@ test('stalled POST bodies cannot starve periodic delivery or an external SSE upd
   const port = Number(new URL(h.server.url).port);
   const hold = async () => {
     const admitted = new Promise<void>(resolve => h.server.server.once('request', () => resolve()));
-    const request = httpRequest({ host: '127.0.0.1', port, path: '/api/task/new', method: 'POST',
+    const request = httpRequest({ host: '127.0.0.1', port, path: '/api/commands/task/new', method: 'POST',
       headers: { 'content-type': 'application/json', 'content-length': '1000000' } });
     request.on('error', () => {});
     request.write('{');
@@ -407,7 +407,7 @@ test('tree, list and get read the same Tasks with HTTP file URLs', async t => {
   const h = await setup(t);
   const tree = projectedIndexSchema.parse(await (await fetch(new URL('/api/workspace/live', h.server.url))).json());
   const listed = await cli(h.root, 'task', 'list');
-  const task = (await cli(h.root, 'task', 'get', '--task', h.child.id)).task;
+  const task = (await cli(h.root, 'task', 'get', '--task', h.child.id, '--include', 'fields')).task;
   // The screen's index and the CLI name a Task by the same T number.
   const work = (rows: Pick<TaskRowDTO, 'id' | 'kind' | 'parentId' | 'lifecycle' | 'title' | 'state'>[]) =>
     rows.filter(row => row.kind === 'task').map(({ id, kind, parentId, lifecycle, title, state }) =>
@@ -422,12 +422,12 @@ test('tree, list and get read the same Tasks with HTTP file URLs', async t => {
   assert.deepEqual(task, { id: h.child.id, kind: full.kind, projectId: h.project, parentId: h.parent.id,
     userRequested: full.userRequested, folder: new URL(`/api/tasks/${h.child.id}/file?path=`, h.server.url).href,
     lifecycle: full.lifecycle, title: full.title, state: full.state, baseState: full.baseState, hold: full.hold,
-    hash: full.hash, values: full.values, fields: { fields: [...DEFAULT_SCHEMA], from: null } });
+    hash: full.hash, fields: { fields: [...DEFAULT_SCHEMA], from: null } });
   // A body left unread holds serve's close for four seconds.
   const status = async (answer: Promise<Response>) => { const read = await answer; await read.arrayBuffer(); return read.status; };
   assert.equal(await status(fetch(new URL('/api/run', h.server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: '{}' })), 404);
-  for (const path of ['/api/task/get?task=P1', '/api/task/list', '/api/field/get'])
+  for (const path of ['/api/commands/task/get?task=P1', '/api/commands/task/list', '/api/commands/field/get'])
     assert.equal(await status(fetch(new URL(path, h.server.url))), 200, path);
 });
 
@@ -575,7 +575,7 @@ test('an existing SSE subscriber receives CLI task, project and settings commits
     while (!current.placements.some(item => item.id === placementId)) current = await stream.index();
     assert.equal(current.placements.find(item => item.id === placementId)?.agentId, assigned.agent.agent.id);
     const settings = await readServerSettings(h.root);
-    const response = await fetch(new URL('/api/config/set', h.server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/config/set', h.server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ config: JSON.stringify({ limits: { ...settings.limits, parallel: 3 } }),
         agents: settings.agentsText, expectedConfigHash: settings.hash }) });
@@ -641,7 +641,7 @@ test('completion reports require their own title and body through CLI and HTTP b
     const base = { task: target.id, state: 'done', expectedTaskHash: run.hash, values };
     for (const text of [undefined, '', ' \n\t', null]) {
       const input = { ...base, title: 'Ready', description: text, opId: crypto.randomUUID() };
-      const response = await fetch(new URL('/api/task/report', h.server.url), { method: 'POST',
+      const response = await fetch(new URL('/api/commands/task/report', h.server.url), { method: 'POST',
         headers: { 'content-type': 'application/json', ...run.headers }, body: JSON.stringify(input) });
       assert.equal(response.status, 400, JSON.stringify(await response.json()));
       const args = ['task', 'report', '--task', target.id, '--state', 'done', '--title', 'Ready',
@@ -691,5 +691,56 @@ test('a pending projected read asks routing to yield until its response finishes
   } finally {
     continueRead(); continueRoute();
     ReturnRouter.prototype.route = originalRoute; h.server.context.readFrame = originalRead;
+  }
+});
+
+test('config inspection is separate from reads and is drained as an admitted execution', { timeout: 20000 }, async t => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-inspection-')));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, 'config.yaml'), AGENTS);
+  initializeControlFixture(root);
+  const command = join(root, 'probe'), started = join(root, 'started'), release = join(root, 'release');
+  writeFileSync(command, [
+    '#!/bin/sh', 'touch started', 'while [ ! -e release ]; do sleep 0.05; done', 'echo fixture-version', '',
+  ].join('\n'), { mode: 0o700 });
+  const app = await startServer(root, 0, { agentInspection: { cwd: root, env: { PATH: '/usr/bin:/bin' } } });
+  const data = { adapter: 'codex', command };
+  const read = (path: string) => fetch(new URL(path, app.url));
+  const inspect = (restoreId: string) => globalThis.fetch(new URL('/api/commands/config/inspect', app.url), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Restore-Id': restoreId },
+    body: JSON.stringify(data),
+  });
+  try {
+    assert.equal((await read('/api/commands/config/get')).status, 200);
+    assert.equal((await read('/api/commands/config/get?check=true')).status, 400);
+    assert.equal((await inspect(crypto.randomUUID())).status, 409);
+    assert.throws(() => readFileSync(started), { code: 'ENOENT' });
+    const active = inspect('initial');
+    for (let attempt = 0; ; attempt++) {
+      try { readFileSync(started); break; }
+      catch (error) { if (attempt >= 100) throw error; }
+      await delay(25);
+    }
+    let quiesced = false;
+    const drain = globalThis.fetch(new URL('/api/runtime/quiesce', app.url), { method: 'POST' }).then(response => {
+      quiesced = true;
+      return response;
+    });
+    for (let attempt = 0; ; attempt++) {
+      const response = await read('/api/runtime/readiness');
+      if ((await response.json()).state !== 'accepting') break;
+      assert.ok(attempt < 100);
+      await delay(25);
+    }
+    assert.equal(quiesced, false, 'quiesce waits for the admitted inspection');
+    assert.equal((await inspect('initial')).status, 503, 'quiescing refuses another inspection');
+    writeFileSync(release, '');
+    const result = await active;
+    assert.equal(result.status, 200);
+    assert.equal((await result.json()).inspected.version, 'fixture-version');
+    assert.equal((await drain).status, 200);
+  } finally {
+    writeFileSync(release, '');
+    await app.close();
   }
 });

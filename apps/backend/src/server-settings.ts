@@ -120,10 +120,9 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
   } finally { writer?.close(); }
 }
 
-/** Ordinary reads start no executables; an explicit check adds fresh host observations. */
-export async function inspectServerSettings(root: string, input: { adapter?: BuiltinAdapterId; command?: string; check?: boolean } = {}, environment?: InspectionEnvironment): Promise<ServerSettings> {
+/** Fresh host observations for the explicit inspection command. */
+export async function inspectServerSettings(root: string, input: { adapter?: BuiltinAdapterId; command?: string } = {}, environment?: InspectionEnvironment): Promise<ServerSettings> {
   const settings = await readServerSettings(root);
-  if (!input.check) return settings;
   const observations = input.adapter ? {} : await inspectAgents(settings.agents, environment);
   const inspected = input.adapter && input.command !== undefined ? await inspectAgent(input.adapter,
     agentSettingSchemaFor(input.adapter).parse({ command: input.command }), environment, true) : undefined;

@@ -18,41 +18,44 @@ async function call(url: string, path: string, body?: unknown, op?: string) {
     body:body===undefined?undefined:JSON.stringify(body)});
   return {status:response.status,body:await response.json()};
 }
-test('stop HTTP, operation replay and query share the all-target publication gate',async t=>{
+test('operation lookup observes pending stop delivery; only replay completes it',async t=>{
   const h=await setup(t),parent=h.create('plain',{gate:h.gate('hold')}),child=h.create('plain',{gate:h.gate('child')},{role:'worker',placementId:h.memberPlacementId,caller:{run:parent.id}});
   await h.tick();await h.ready(parent);await h.ready(child);h.pauseProjection();
   const launch=attemptOf(h.store,child.id)!,path=executionFolder(h.root,child.id,launch.attemptId),commands=join(path,'commands');
   writeFileSync(commands,'blocked',{mode:0o600});
   const app=await startServer(h.root,0),op=randomUUID();
   try{
-    const first=await call(app.url,'run/stop',{run:parent.id},op);
+    const first=await call(app.url,'commands/run/stop',{run:parent.id},op);
     assert.equal(first.status,503);assert.equal(first.body.error.detail.state,'committed_pending_delivery');
     assert.equal(h.store.get(parent.id)!.stop_requested,true);assert.equal(h.store.get(child.id)!.stop_requested,true);
     const rows=h.store.connection.prepare("SELECT c.*,a.run_no,a.launch_json FROM run_commands c JOIN run_attempts a USING(attempt_id) WHERE type='stop' ORDER BY command_id").all().map(row=>({command_id:row.command_id,json:JSON.stringify(commandOf(row))}));assert.equal(rows.length,2);
     const receipt=()=>h.store.connection.prepare('SELECT status,response_json FROM cli_operations WHERE op_id=?').get(op);
     const saved=receipt();assert.equal(saved!.status,200,'the stop intent and immutable receipt are committed');
-    const again=await call(app.url,'run/stop',{run:parent.id},op);
+    const again=await call(app.url,'commands/run/stop',{run:parent.id},op);
     assert.equal(again.status,503);assert.equal(again.body.error.retry,'check');
     assert.equal(again.body.error.detail.state,'committed_pending_delivery');
     const cli=await cliRun(app.url,['run','stop','--run',parent.id,'--op-id',op]);
     assert.equal(cli.code,3,cli.stdout+cli.stderr);assert.match(cli.stdout+cli.stderr,/committed_pending_delivery/);
-    const query=await call(app.url,'operation/get?opId='+op);assert.equal(query.status,503,'a saved 200 is not observable before delivery');
-    assert.equal(query.body.error.detail.state,'committed_pending_delivery');
+    const query=await call(app.url,'commands/operation/get?opId='+op);assert.equal(query.status,200);
+    assert.equal(query.body.state,'committed_pending_delivery');
     assert.deepEqual(receipt(),saved,'faults and replay never rewrite a committed response');
-    const task=(await call(app.url,'task/get?task='+h.taskId)).body.task,taskOp=randomUUID();
-    const updated=await call(app.url,'task/update',{task:h.taskId,title:'Saved during stop publication fault',expectedTaskHash:task.hash},taskOp);
+    const task=(await call(app.url,'commands/task/get?task='+h.taskId)).body.task,taskOp=randomUUID();
+    const updated=await call(app.url,'commands/task/update',{task:h.taskId,title:'Saved during stop publication fault',expectedTaskHash:task.hash},taskOp);
     assert.equal(updated.status,200,'Task save success does not promise stop publication');
-    const taskQuery=await call(app.url,'operation/get?opId='+taskOp);assert.equal(taskQuery.status,200);
+    const taskQuery=await call(app.url,'commands/operation/get?opId='+taskOp);assert.equal(taskQuery.status,200);
     assert.equal(taskQuery.body.body.task.title,'Saved during stop publication fault');
     rmSync(commands);mkdirSync(commands,{mode:0o700});
-    const replay=await call(app.url,'run/stop',{run:parent.id},op);assert.equal(replay.status,200,JSON.stringify(replay.body));
+    const stillPending=await call(app.url,'commands/operation/get?opId='+op);
+    assert.equal(stillPending.body.state,'committed_pending_delivery');
+    assert.deepEqual(readdirSync(commands), [], 'looking up a receipt does not deliver a stop');
+    const replay=await call(app.url,'commands/run/stop',{run:parent.id},op);assert.equal(replay.status,200,JSON.stringify(replay.body));
     assert.deepEqual(receipt(),saved);assert.deepEqual(replay.body,JSON.parse(String(saved!.response_json)));
     const recoveredCli=await cliRun(app.url,['run','stop','--run',parent.id,'--op-id',op]);assert.equal(recoveredCli.code,0,recoveredCli.stderr);
     assert.deepEqual(h.store.connection.prepare("SELECT c.*,a.run_no,a.launch_json FROM run_commands c JOIN run_attempts a USING(attempt_id) WHERE type='stop' ORDER BY command_id").all().map(row=>({command_id:row.command_id,json:JSON.stringify(commandOf(row))})),rows,'replay does not allocate new commands');
     for(const run of[parent,child]){const launch=attemptOf(h.store,run.id)!;const path=join(executionFolder(h.root,run.id,launch.attemptId),'commands');assert.ok(readdirSync(path).some(name=>JSON.parse(readFileSync(join(path,name),'utf8')).type==='stop'));}
-    const after=await call(app.url,'operation/get?opId='+op);assert.equal(after.status,200);assert.equal(after.body.state,'committed');
+    const after=await call(app.url,'commands/operation/get?opId='+op);assert.equal(after.status,200);assert.equal(after.body.state,'committed');
     assert.equal((await call(app.url,'runtime/quiesce',{})).status,200);
-    assert.equal((await call(app.url,'run/stop',{run:parent.id},randomUUID())).status,503,'new mutations are not admitted after drained');
+    assert.equal((await call(app.url,'commands/run/stop',{run:parent.id},randomUUID())).status,503,'new mutations are not admitted after drained');
   }finally{rmSync(commands,{force:true,recursive:true});mkdirSync(commands,{mode:0o700});await app.close();}
 });
 

@@ -96,7 +96,8 @@ test('public setup reports the running server\'s agent readiness', { skip: proce
 
   const out = await f.run('enter', ['setup', '--public-host', 'pc.tailnet.example']);
   await f.ready(out);
-  const response = await fetch(new URL('/api/config/get?check=true', out.payload!.url!), { headers: { Connection: 'close' } });
+  const response = await fetch(new URL('/api/commands/config/inspect', out.payload!.url!), { method: 'POST',
+    headers: { Connection: 'close', 'Content-Type': 'application/json', 'X-Alpacawork-Restore-Id': 'initial' }, body: '{}' });
   assert.equal(response.status, 200);
   const settings = await response.json();
   assert.notEqual(settings.agents.codex?.enabled ?? !!settings.agents.codex, false, 'the initial config check found Codex signed in');

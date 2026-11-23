@@ -14,8 +14,8 @@ test.use({ autoSwipe: true });
 test.setTimeout(90_000);
 async function post(r: Runtime, path: string, body: object) { const res = await fetch(r.origin + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); expect(res.status, await res.clone().text()).toBe(200); return res.json(); }
 async function task(r: Runtime, p: string, title: string) {
-  const { task } = await post(r, 'task/new', { parent: p, title, values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) });
-  await post(r, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+  const { task } = await post(r, 'commands/task/new', { parent: p, title, values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) });
+  await post(r, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
   patchTask(r.root, task.id, { state: 'doing' }); seedQuestion(r.root, task.id, { to: 'user' });
   return task.id as string;
 }
@@ -35,7 +35,7 @@ const copies = (page: any, words: string) => page.evaluate((w: string) => Object
 for (const width of [1440]) test.describe(`${width}`, () => {
   test.use({ viewport: { width, height: width === 390 ? 844 : 900 }, hasTouch: width === 390, isMobile: width === 390, locale: 'ja-JP' });
   test('a refused answer put aside after its turn moved on comes back only through its entrance, once', async ({ page, runtime }) => {
-    const p = (await post(runtime, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '退避した回答' })).task.id;
+    const p = (await post(runtime, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '退避した回答' })).task.id;
     const a = await task(runtime, p, '請求書の確認'), b = await task(runtime, p, '経費の分類');
     const questions = new Map<string, string>();
     for (const id of [a, b]) {
@@ -92,7 +92,7 @@ for (const width of [1440]) test.describe(`${width}`, () => {
       expect((await conversation(page, runtime)).turns).toHaveLength(0);
       admission.pass();
       // A's question is answered elsewhere: the saved answer belongs to a past turn.
-      await post(runtime, 'task/request', { task: a, answers: question, instruction: 'Answered elsewhere after park', opId: crypto.randomUUID() });
+      await post(runtime, 'commands/task/request', { task: a, answers: question, instruction: 'Answered elsewhere after park', opId: crypto.randomUUID() });
       await empty(page); await page.keyboard.insertText('Bの続きは不要'); await page.locator('[data-ask-send]').click();
       await expect.poll(async () => (await conversation(page, runtime)).turns.at(-1)?.status, { timeout: 30_000 }).toBe('succeeded');
       await goto(page, a); await ensureOpen(page); await page.waitForTimeout(400);

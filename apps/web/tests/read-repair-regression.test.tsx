@@ -315,13 +315,13 @@ test('N5 required session rebinds root, same-root generation and clear with actu
   expect([...counts.values()]).toEqual([1, 1]);
   for (const query of queryClient.getQueryCache().getAll().filter(query => String(query.queryKey[0]).startsWith('person-'))) expect(query.isActive()).toBe(true);
   receiveFullIndex(queryClient, { ...initial, generation: 'new-gen' }); recoverReads(queryClient);
-  await vi.waitFor(() => expect(counts.get('/api/settings/get')).toBe(2));
+  await vi.waitFor(() => expect(counts.get('/api/commands/settings/get')).toBe(2));
   expect(counts.get('/api/person/notices')).toBe(2);
   queryClient.clear(); receiveFullIndex(queryClient, { ...initial, generation: 'new-gen' }); recoverReads(queryClient);
-  await vi.waitFor(() => expect(counts.get('/api/settings/get')).toBe(3));
+  await vi.waitFor(() => expect(counts.get('/api/commands/settings/get')).toBe(3));
   expect(counts.get('/api/person/notices')).toBe(3);
   receiveFullIndex(queryClient, { ...initial, root: '/other-root' }); recoverReads(queryClient);
-  await vi.waitFor(() => expect(counts.get('/api/settings/get')).toBe(4));
+  await vi.waitFor(() => expect(counts.get('/api/commands/settings/get')).toBe(4));
   expect(counts.get('/api/person/notices')).toBe(4);
 });
 
@@ -360,7 +360,7 @@ test('N6 response loss keeps the fixed intent; manual Check alone can resend its
   await expect(sendDirectIntent(queryClient, key, { path: 'task/update', response: 'task', label: old.id }, () => payload, detailWriteBasis(old.id, old.hash))).rejects.toMatchObject({ retry: 'check' });
   receiveFullIndex(queryClient, indexOf(tree({ tasks: [newer] }), index.rev + 1, { view: { [old.id]: 1 } } as never));
   expect(useWriteIntentStore.getState().entries[key]?.status).toBe('unconfirmed');
-  await expect(createApi().request('task/update', taskWriteResultSchema, undefined, payload, 'new-op', detailWriteBasis(old.id, old.hash))).rejects.toMatchObject({ code: 'conflict', retry: 'reread' });
+  await expect(createApi().request('commands/task/update', taskWriteResultSchema, undefined, payload, 'new-op', detailWriteBasis(old.id, old.hash))).rejects.toMatchObject({ code: 'conflict', retry: 'reread' });
   expect(posts).toBe(1);
   await expect(checkDirectIntent(queryClient, key)).resolves.toMatchObject({ task: { values: newer.values } });
   expect(posts).toBe(2); expect(inputs[1]).toEqual(inputs[0]); expect(useWriteIntentStore.getState().entries[key]?.status).toBe('confirmed');
@@ -377,7 +377,7 @@ for (const change of ['payload', 'opId', 'root', 'offline', 'unknown', 'writable
   if (change === 'unknown') useConnection.setState({ state: 'connecting', fresh: false });
   if (change === 'writable') useConnection.setState({ writable: false });
   const fetcher = vi.spyOn(globalThis, 'fetch');
-  const checked = checkWriteIntent<typeof input, unknown>(key, (payload, opId, basis) => createApi().request('task/update', taskWriteResultSchema, undefined,
+  const checked = checkWriteIntent<typeof input, unknown>(key, (payload, opId, basis) => createApi().request('commands/task/update', taskWriteResultSchema, undefined,
     change === 'payload' ? { ...payload, values: { notes: 'changed' } } : payload, change === 'opId' ? 'changed-op' : opId, basis));
   await expect(checked).rejects.toMatchObject({ code: change === 'root' ? 'conflict' : change === 'writable' ? 'forbidden' : 'write_unavailable' }); expect(fetcher).not.toHaveBeenCalled();
 });

@@ -16,8 +16,8 @@ test('browser confirms after a manual skill edit, retries the same operation and
   mkdirSync(oldBackup,{recursive:true});writeFileSync(join(oldBackup,'control.sqlite'),'synthetic unpublished acquisition');
   mkdirSync(join(f.releases,'.release-metadata'));const provenance=join(f.releases,'.release-metadata',obsoleteSource+'.json');writeFileSync(provenance,'{}');
   await f.start();
-  const settings = await f.call('/api/settings/get');
-  assert.equal((await f.call('/api/settings/set', { key: 'language', value: 'en',
+  const settings = await f.call('/api/commands/settings/get');
+  assert.equal((await f.call('/api/commands/settings/set', { key: 'language', value: 'en',
     expectedRevision: settings.body.revision, timeZone: 'Asia/Tokyo' }, { 'X-Alpacawork-Op-Id': randomUUID() })).status, 200);
   const status = await f.call('/api/update/status');
   const origin = new URL(status.url).origin;

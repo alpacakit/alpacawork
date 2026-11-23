@@ -29,8 +29,8 @@ async function fixture(initial: string | null = first.id, bare = false) {
   let source = tree({ tasks: [first, second] });
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => {
     if (String(url).includes('/api/task/view')) return answer(viewsOf(source).find(view => String(url).includes(view.task.id)));
-    if (String(url).includes('/api/field/list')) return answer(fieldList());
-    if (String(url).includes('/api/field/get')) return answer({ task: PROJECT_TASK, from: null, fields: [...DEFAULT_SCHEMA], version: 'v'.repeat(64), schema: {} });
+    if (String(url).includes('/api/commands/field/list')) return answer(fieldList());
+    if (String(url).includes('/api/commands/field/get')) return answer({ task: PROJECT_TASK, from: null, fields: [...DEFAULT_SCHEMA], version: 'v'.repeat(64), schema: {} });
     return refusal(404);
   });
   useDialogStore.getState().openProject(initial);
@@ -102,11 +102,11 @@ test('archive ends only the editing draft and preserves the stored create-projec
 test('two archive presses before rerender send once and the confirmed operation still ends the opening', async () => {
   const f = await fixture();
   const slow = deferred();
-  f.fetcher.mockImplementation(async url => String(url).includes('/api/task/archive') ? slow.promise : refusal(404));
+  f.fetcher.mockImplementation(async url => String(url).includes('/api/commands/task/archive') ? slow.promise : refusal(404));
   fireEvent.click(document.querySelector('[data-project-archive] button')!);
   const submit = document.querySelector('[data-archive-submit]')!;
   act(() => { fireEvent.click(submit); fireEvent.click(submit); });
-  await waitFor(() => expect(f.fetcher.mock.calls.filter(([url]) => String(url).includes('/api/task/archive'))).toHaveLength(1));
+  await waitFor(() => expect(f.fetcher.mock.calls.filter(([url]) => String(url).includes('/api/commands/task/archive'))).toHaveLength(1));
   await act(async () => { slow.answer(written({ ...first, lifecycle: 'archived' })); });
   await waitFor(() => expect(useDialogStore.getState().dialog).toBeNull());
 });
@@ -126,7 +126,7 @@ test.each(['normal', 'Check'] as const)('Escape then a different modal survives 
   const f = await fixture();
   const slow = deferred();
   if (kind === 'Check') await unknown();
-  f.fetcher.mockImplementation(async url => String(url).includes('/api/task/archive') ? slow.promise : refusal(404));
+  f.fetcher.mockImplementation(async url => String(url).includes('/api/commands/task/archive') ? slow.promise : refusal(404));
   fireEvent.click(document.querySelector('[data-project-archive] button')!);
   fireEvent.click(document.querySelector('[data-archive-submit]')!);
   await waitFor(() => expect(useWriteIntentStore.getState().entries[key]?.status).toBe('pending'));
@@ -201,12 +201,12 @@ test('reload retains recovery identity but gives no closing authority over a new
   act(() => useWriteIntentStore.setState(stored));
   // After the reload the page checks the old fixed archive by itself; its answer arrives after a new draft is typed.
   const reads = f.fetcher.getMockImplementation()!, check = deferred();
-  f.fetcher.mockImplementation(async (url, init) => String(url).includes('/api/task/archive') ? check.promise : reads(url, init));
+  f.fetcher.mockImplementation(async (url, init) => String(url).includes('/api/commands/task/archive') ? check.promise : reads(url, init));
   useDialogStore.getState().openProject(first.id);
   render(<TestWorkspace data={screenData(tree({ tasks: [first, second] }))}><DialogHost /><Recovery /></TestWorkspace>);
   await waitFor(() => expect(field()?.value).toBe(first.values?.project_policy));
   typeDraft();
-  await waitFor(() => expect(f.fetcher.mock.calls.some(([url]) => String(url).includes('/api/task/archive'))).toBe(true));
+  await waitFor(() => expect(f.fetcher.mock.calls.some(([url]) => String(url).includes('/api/commands/task/archive'))).toBe(true));
   await act(async () => { check.answer(written({ ...first, lifecycle: 'archived' })); });
   await waitFor(() => expect(useWriteIntentStore.getState().entries[key]?.status).toBe('confirmed'));
   keptDraft();

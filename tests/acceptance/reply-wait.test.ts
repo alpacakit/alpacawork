@@ -54,7 +54,7 @@ test('HTTP: a done report withdraws the outgoing question; owner admission inval
   assert.equal((await h.get(task.id)).questions.find(q0=>q0.id===q)?.state,'withdrawn');
   await h.person(task.id,'held');
   const input={task:task.id,answers:q,instruction:'Additional evidence',opId:randomUUID()};
-  const response=await post(h.server.url,'/api/task/request',input,{'X-Alpacawork-Op-Id':input.opId});
+  const response=await post(h.server.url,'/api/commands/task/request',input,{'X-Alpacawork-Op-Id':input.opId});
   assert.equal(response.status,200,JSON.stringify(response.body));
   assert.deepEqual([response.body.task.baseState,response.body.task.hold,response.body.outcome.answers],['doing',true,q]);
   const queued={...task,runId:response.body.outcome.request.runId};h.end(queued,'cancelled');

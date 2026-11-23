@@ -11,7 +11,7 @@ test('Done sends once without opening the form, and a second press while the rea
   await open(page, runtime, '?task=T112');
   let release!: () => void, sent = 0;
   const gate = new Promise<void>(resolve => { release = resolve; });
-  await page.route('**/api/task/report', async route => { sent++; await gate; await route.continue(); });
+  await page.route('**/api/commands/task/report', async route => { sent++; await gate; await route.continue(); });
   const done = page.locator('[data-task-action-slot] [data-task-done]');
   await done.click();
   await expect(page.getByRole('dialog', { name: 'Change the state of T112' })).toHaveCount(0);
@@ -141,7 +141,7 @@ test.describe('phone task sheet', () => {
   test('the ∨ over Done closes the sheet without reporting', async ({ page, runtime }) => {
     await open(page, runtime, '?agent=1&task=T112');
     let sent = 0;
-    await page.route('**/api/task/report', route => { sent++; return route.continue(); });
+    await page.route('**/api/commands/task/report', route => { sent++; return route.continue(); });
     const close = page.locator('[data-coordinator-fold-row] [data-reader-sheet-close]'), done = page.locator('[data-coordinator-fold-row] [data-task-done]');
     await expect(done).toBeVisible();
     await settleMotion(page);

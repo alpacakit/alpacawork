@@ -30,12 +30,12 @@ test.use({ autoSwipe: true });
 /** A question waiting on the person, opened from the list of the ordinary list (held). */
 async function prepare(page: Page, runtime: Runtime) {
   configureCoordinator(runtime.root);
-  const made = await commandPost(page.request, runtime.origin + '/api/task/new', { data: { title: 'Check swipe recovery' } });
+  const made = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { title: 'Check swipe recovery' } });
   const task = await placeResponsible(page.request, runtime.origin, (await made.json()).task, 'fake');
   // At work, its responsible asks the person the body's question.
   patchTask(runtime.root, task.id, { state: 'doing', values: decideValues(['Which option', ['Option1 Send current input', 'Send to the coordinator'], ['Option2 Decide later', 'Hold it']]) });
   seedQuestion(runtime.root, task.id, { to: 'user', title: 'Please choose an option', description: 'Send the selected result to the coordinator.' });
-  const nextMade = await commandPost(page.request, runtime.origin + '/api/task/new', { data: { title: 'Next review card' } });
+  const nextMade = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { title: 'Next review card' } });
   const next = await placeResponsible(page.request, runtime.origin, (await nextMade.json()).task, 'fake');
   seedReview(runtime.root, next.id, { title: 'Please review', description: 'Swipe left here to hold.' });
   // The question is reached through the ordinary search results.

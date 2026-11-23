@@ -73,7 +73,7 @@ test("saves the upload identity before sending bytes and keeps it after a lost r
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(operationReply("committed"));
   render(<Files draft={reopenedKey} />);
   await waitFor(() => expect(useDraftStore.getState().entries[reopenedKey]!.values.attachments).toBeTruthy());
-  expect(String(fetcher.mock.calls[0]?.[0])).toBe(`/api/operation/get?opId=${encodeURIComponent(upload.opId)}`);
+  expect(String(fetcher.mock.calls[0]?.[0])).toBe(`/api/commands/operation/get?opId=${encodeURIComponent(upload.opId)}`);
   expect(JSON.parse(useDraftStore.getState().entries[reopenedKey]!.values.attachments!)).toEqual([{ ...receipt, name: "note.txt" }]);
   expect(useDraftStore.getState().entries[reopenedKey]!.values.uploadOps).toBeUndefined();
   expect(document.querySelector('[data-attachment-state="saved"]')).toBeTruthy();
@@ -126,7 +126,7 @@ test("an interrupted receipt read uses connection recovery without another uploa
   act(() => useConnection.setState({ offline: false }));
   await waitFor(() => expect(document.querySelector('[data-attachment-state="saved"]')).toBeTruthy());
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual([`/api/operation/get?opId=${opId}`, `/api/operation/get?opId=${opId}`]);
+  expect(fetcher.mock.calls.map(call => String(call[0]))).toEqual([`/api/commands/operation/get?opId=${opId}`, `/api/commands/operation/get?opId=${opId}`]);
   expect(useDraftStore.getState().entries[draft]!.values.uploadOps).toBeUndefined();
   expect(document.querySelector("[data-toast]")).toBeNull();
 });
@@ -196,7 +196,7 @@ test('a pending removal keeps its first click identity when clicked again after 
   await act(async () => { sent.onload?.(new ProgressEvent('load')); });
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   const [, request] = fetcher.mock.calls[0]!;
-  expect(request?.method).toBe('DELETE'); expect(new Headers(request?.headers).get('X-Alpacawork-Restore-Id')).toBe('initial');
+  expect(request?.method).toBe('POST'); expect(new Headers(request?.headers).get('X-Alpacawork-Restore-Id')).toBe('initial');
   const [, id] = JSON.parse(admitted[0]!.slice('alpacawork-write-identity:'.length));
   expect(new Headers(request?.headers).get('X-Alpacawork-Op-Id')).toBe(id);
   expect(useDraftStore.getState().entries[draft]!.values.removeOps).toBeUndefined();
@@ -233,7 +233,7 @@ for (const phase of ['saved', 'uploading'] as const) test(`${phase} removal admi
   fireEvent.click(screen.getByRole('button', { name: 'Remove note.txt' }));
   if (phase === 'uploading') await act(async () => { sent.onload?.(new ProgressEvent('load')); });
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
-  expect(fetcher.mock.calls[0]?.[1]?.method).toBe('DELETE');
+  expect(fetcher.mock.calls[0]?.[1]?.method).toBe('POST');
   await waitFor(() => expect(document.querySelector('[data-attachment="note.txt"]')).toBeNull());
 });
 

@@ -232,6 +232,9 @@ export class StopDeliveryOwner {
   completeOperation(opId: string): void {
     this.gated(() => publish(this.store, `AND ${STOP_COMMANDS} AND operation_id=?`, opId));
   }
+  hasPendingOperation(opId: string, db = this.store.connection): boolean {
+    return db.prepare(`SELECT 1 FROM run_commands WHERE published=0 AND ${STOP_COMMANDS} AND operation_id=?`).get(opId) !== undefined;
+  }
   reserve(id: string, operationId?: string): void {
     const launch = attemptOf(this.store, id);
     if (!launch) return; // queued work has no external execution to stop.
@@ -248,7 +251,7 @@ export class StopDeliveryOwner {
   }
   private gated(publication: () => void): void {
     try { publication(); }
-    catch (cause) { throw new Problem(PROBLEM_CODE.unavailable, 'Stop committed but publication is pending; query or retry the same operation ID', { state: 'committed_pending_delivery' },
+    catch (cause) { throw new Problem(PROBLEM_CODE.unavailable, 'Stop committed but delivery is pending; retry the original write with the same input, operation ID and restore ID', { state: 'committed_pending_delivery' },
       { reason: { kind: 'stop_committed_but_publication_pending_query_or_retry_same_operation_id' }, cause }); }
   }
 }

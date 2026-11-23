@@ -40,16 +40,16 @@ try { for(const width of args.widths.split(',').map(Number)) {
   if(args.slow)await page.evaluate(ms=>document.documentElement.style.setProperty('--motion-base',ms+'ms'),args.slow);
   await run('update-'+round,900,async()=>{
    const view=await(await fetch(runtime.origin+'/api/task/view?task=T2063')).json();
-   await post('task/update',{task:'T2063',title:'Scroll review updated '+round,expectedTaskHash:view.task.hash});
+   await post('commands/task/update',{task:'T2063',title:'Scroll review updated '+round,expectedTaskHash:view.task.hash});
    await page.locator('[data-row=T2063] [data-row-label]').filter({hasText:'Scroll review updated '+round}).waitFor();
   });
   await page.locator('[data-section=todo]').scrollIntoViewIfNeeded();await page.waitForTimeout(450);
   let arrived:any;
   await run('arrive-'+round,800,async()=>{
-   const made=arrived=await post('task/new',{parent:'P1',title:'List arrival '+round,fromUser:true});
+   const made=arrived=await post('commands/task/new',{parent:'P1',title:'List arrival '+round,fromUser:true});
    await page.locator('[data-row="'+made.task.id+'"] [data-row-label]').waitFor();
   });
-  await run('move-'+round,800,async()=>{await post('task/report',{opId:crypto.randomUUID(),task:arrived.task.id,state:'held',title:'Hold the arriving task',description:'List motion probe',expectedTaskHash:arrived.task.hash});await page.locator('[data-row="'+arrived.task.id+'"]').waitFor();});
+  await run('move-'+round,800,async()=>{await post('commands/task/report',{opId:crypto.randomUUID(),task:arrived.task.id,state:'held',title:'Hold the arriving task',description:'List motion probe',expectedTaskHash:arrived.task.hash});await page.locator('[data-row="'+arrived.task.id+'"]').waitFor();});
   await page.locator('[data-span]').selectOption('3600000');await page.waitForTimeout(500);
   await run('zoom-'+round,700,async()=>{await page.locator('[data-span]').selectOption('1800000');});
   await list.focus();await page.keyboard.press('n');await page.waitForTimeout(600);

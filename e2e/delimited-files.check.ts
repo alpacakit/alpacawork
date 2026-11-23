@@ -42,7 +42,7 @@ const BOM = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("名前,
 const UNREADABLE = Buffer.from([0x61, 0x2c, 0x62, 0x0a, 0x81]);
 
 async function prepare(page: Page, runtime: { origin: string; root: string }) {
-  const made = await commandPost(page.request, `${runtime.origin}/api/task/new`, { data: { parent: SAMPLE_PROJECT.id, title: "Tables in files" } });
+  const made = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, { data: { parent: SAMPLE_PROJECT.id, title: "Tables in files" } });
   expect(made.ok(), await made.text()).toBe(true);
   const id = (await made.json()).task.id as string;
   const folder = taskFolder(runtime.root, id);
@@ -199,7 +199,7 @@ test.describe("from a report", () => {
     test.setTimeout(120_000);
     configureCoordinator(runtime.root);
     const id = await prepare(page, runtime);
-    await placeResponsible(page.request, runtime.origin, (await (await page.request.get(`${runtime.origin}/api/task/get?task=${id}`)).json()).task, "fake");
+    await placeResponsible(page.request, runtime.origin, (await (await page.request.get(`${runtime.origin}/api/commands/task/get?task=${id}`)).json()).task, "fake");
     mkdirSync(join(taskFolder(runtime.root, id), "attachments"));
     writeFileSync(join(taskFolder(runtime.root, id), "attachments", "sent.tsv"), "品目\t数量\nみかん\t012\n");
     publishFixtureFiles(runtime.root);
@@ -208,8 +208,8 @@ test.describe("from a report", () => {
       "相対: [対応表](mapping.tsv)、コード: `bom.csv`、",
       `URL: [Shift_JIS](${runtime.origin}/api/tasks/${id}/file?path=sjis.csv)`,
       "", "```csv", "名前,コード", "```"].join("\n") });
-    const current = await (await page.request.get(`${runtime.origin}/api/task/get?task=${id}`)).json();
-    const sent = await commandPost(page.request, `${runtime.origin}/api/task/request`, { data: { task: id, opId: crypto.randomUUID(),
+    const current = await (await page.request.get(`${runtime.origin}/api/commands/task/get?task=${id}`)).json();
+    const sent = await commandPost(page.request, `${runtime.origin}/api/commands/task/request`, { data: { task: id, opId: crypto.randomUUID(),
       instruction: `添付の表です\n\n[sent.tsv](/api/tasks/${id}/file?path=${encodeURIComponent("attachments/sent.tsv")})`,
       expectedTaskHash: current.task.hash, expectedPlacementRevision: current.agents.find((agent: { active: boolean; responsible: boolean }) => agent.active && agent.responsible).revision } });
     expect(sent.ok(), await sent.text()).toBe(true);

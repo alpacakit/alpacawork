@@ -73,8 +73,8 @@ async function keepHeaderShot(page: Page, name: string) {
 }
 
 async function language(page: Page, origin: string, lang: 'en' | 'ja') {
-  const { revision } = await (await page.request.get(origin + '/api/settings/get')).json();
-  const response = await commandPost(page.request, origin + '/api/settings/set', {
+  const { revision } = await (await page.request.get(origin + '/api/commands/settings/get')).json();
+  const response = await commandPost(page.request, origin + '/api/commands/settings/set', {
     data: { key: 'language', value: lang, expectedRevision: revision },
   });
   expect(response.ok(), await response.text()).toBe(true);

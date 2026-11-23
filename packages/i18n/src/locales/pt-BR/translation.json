@@ -443,7 +443,7 @@
       "settings_changed_another_view": "As configurações foram alteradas em outra tela",
       "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project": "Há vários projetos ativos. Especifique um com --{{option}} <ID> ou execute dentro da pasta de trabalho de um projeto (alpacawork task list --kind project)",
       "sqlite_serialization_required": "É necessário um Node com suporte à serialização do SQLite",
-      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "A parada foi confirmada, mas ainda aguarda aplicação. Verifique ou tente novamente com o mesmo ID de operação",
+      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "A parada foi salva e aguarda aplicação. Reenvie a gravação original com a mesma entrada, ID de operação e ID de restauração",
       "stopped_task_requires_new_request": "Reinicie uma tarefa parada com uma nova solicitação do usuário.",
       "subtree_root_does_not_exist": "Raiz da subárvore não encontrada",
       "supply_state_or_withdraw": "Especifique --state ou --withdraw",

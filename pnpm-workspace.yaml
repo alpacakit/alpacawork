@@ -40,7 +40,7 @@ ignoredOptionalDependencies:
   - lightningcss-linux-arm64-gnu
 
 minimumReleaseAgeExclude:
-  - '@alpacakit/channels@0.2.0-beta.5'
+  - '@alpacakit/channels@0.2.0-beta.6'
 
 overrides:
   # ts-morph's glob matcher still requires minimatch 10, which has no patched release.

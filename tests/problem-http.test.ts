@@ -36,7 +36,7 @@ test('current HTTP errors keep their status and retry advice', async () => {
       'too_large', 413, 'fix');
     await expectProblem('task/new', { title: 'One level too far', parent },
       'forbidden', 403, 'fix');
-    const invalidInput = await request(app, 'settings/set', { key: 4, value: 'x', expectedRevision: 'r' });
+    const invalidInput = await request(app, 'commands/settings/set', { key: 4, value: 'x', expectedRevision: 'r' });
     assert.equal(invalidInput.status, 400);
     const invalidBody = problemSchema.parse(invalidInput.body).error;
     assert.equal(invalidBody.code, 'invalid_input');

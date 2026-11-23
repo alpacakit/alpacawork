@@ -17,7 +17,7 @@ afterEach(()=>{queryClient.clear();vi.restoreAllMocks();});
 
 test('a lost Web intent and reloaded same operation keep their original restore ID; a new operation gets the new ID',async()=>{
  const initial=live('initial'),key=intentKey(initial.root,'comment',null),op=crypto.randomUUID();
- const send=(payload:unknown,id:string,basis=workspaceWriteBasis())=>createApi().request('task/comment',z.unknown(),undefined,payload,id,basis);
+ const send=(payload:unknown,id:string,basis=workspaceWriteBasis())=>createApi().request('commands/task/comment',z.unknown(),undefined,payload,id,basis);
  const calls:{id:string|null;epoch:string|null;body:unknown}[]=[];
  let lose=true;
  vi.spyOn(globalThis,'fetch').mockImplementation(async(_url,init)=>{
@@ -52,7 +52,7 @@ test.each([undefined,'{"restoreId":null}','{bad','{"restoreId":"unsupported"}','
  if(pin!==undefined)sessionStorage.setItem(pinKey,pin);
  useWriteIntentStore.setState(readWriteIntents());
  const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(JSON.stringify({state:'unknown_after_restore',restoreId:restored,notFoundProvesUnexecuted:false})));
- const send=vi.fn((payload:unknown,id:string,basis=workspaceWriteBasis())=>createApi().request('task/comment',z.unknown(),undefined,payload,id,basis));
+ const send=vi.fn((payload:unknown,id:string,basis=workspaceWriteBasis())=>createApi().request('commands/task/comment',z.unknown(),undefined,payload,id,basis));
  for(let attempt=0;attempt<2;attempt++)await expect(checkWriteIntent(key,send)).rejects.toMatchObject({code:'write_unavailable',retry:'check'});
  expect(send).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
  expect(useWriteIntentStore.getState().entries[key]).toEqual(record);

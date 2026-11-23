@@ -45,7 +45,7 @@ function serve(onRequest: () => Response | Promise<Response>) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const path = String(url);
     if (path === "/api/workspace/live") return json(indexOf(canonical));
-    if (path === "/api/task/report" && init?.method === "POST") return onRequest();
+    if (path === "/api/commands/task/report" && init?.method === "POST") return onRequest();
     return problemResponse("not_found", "Unknown");
   });
 }
@@ -121,7 +121,7 @@ test("responsible choice distinguishes identical members but leaves a lone membe
 
 test("a person decides who is responsible: a new person replaces the current one, checked against what is shown", async () => {
   serve(() => json({}));
-  vi.mocked(fetch).mockImplementation(async (url, init) => String(url) === "/api/agent/assign" && init?.method === "POST"
+  vi.mocked(fetch).mockImplementation(async (url, init) => String(url) === "/api/commands/agent/assign" && init?.method === "POST"
     ? json({ task: headOf(canonical.tasks.find(task => task.id === "T1")!), agent: placementOps.placeAgent.receipt }) : problemResponse("not_found", "Unknown"));
   const pressResponsible = (data: ReturnType<typeof fixtureScreen>) => {
     const task = data.tasks.find(task => task.id === "T1")!;
@@ -141,8 +141,8 @@ test("a person decides who is responsible: a new person replaces the current one
   fireEvent.change(screen.getByRole("combobox", { name: "Launch profile" }), { target: { value: "claude" } });
   fireEvent.click(screen.getByRole("button", { name: "Change" }));
   await waitFor(() => expect(posted()).toHaveLength(1));
-  expect(posted()[0]!.url).toBe("/api/agent/assign");
-  expect(posted()[0]!.body).toEqual({ task: "T1", role: "responsible", profile: "claude", selected: "{}",
+  expect(posted()[0]!.url).toBe("/api/commands/agent/assign");
+  expect(posted()[0]!.body).toEqual({ task: "T1", role: "responsible", profile: "claude", selected: {},
     expectedTaskHash: "a".repeat(64), replace: "P1", expectedPlacementRevision: 1 });
   expect(useWriteIntentStore.getState().entries[intentKey(canonical.root, "responsible", "T1")]?.payload)
     // The intent keeps the command as it is sent.
@@ -165,7 +165,7 @@ test.each([
   ["pi", [["Model", "fixed-first"], ["Model", "model-with-effort"]], { model: "model-with-effort", effort: "high" }],
 ] as const)("a new responsible person of %s is placed with the model and effort chosen for them (%j)", async (profile, changes, selected) => {
   serve(() => json({}));
-  vi.mocked(fetch).mockImplementation(async (url, init) => String(url) === "/api/agent/assign" && init?.method === "POST"
+  vi.mocked(fetch).mockImplementation(async (url, init) => String(url) === "/api/commands/agent/assign" && init?.method === "POST"
     ? json({ task: headOf(canonical.tasks.find(task => task.id === "T1")!), agent: placementOps.placeAgent.receipt }) : problemResponse("not_found", "Unknown"));
   openReader("T1", "task", { ...r1Ended(), profiles: effortProfiles });
   act(() => openInput({ form: "responsible", taskId: "T1" }));
@@ -186,8 +186,8 @@ test.each([
   expect(screen.queryByRole("combobox", { name: "Effort" }) === null).toBe(!("effort" in selected));
   fireEvent.click(screen.getByRole("button", { name: "Change" }));
   await waitFor(() => expect(posted()).toHaveLength(1));
-  expect(posted()[0]!.url).toBe("/api/agent/assign");
-  expect(posted()[0]!.body).toEqual({ task: "T1", role: "responsible", profile, selected: JSON.stringify(selected),
+  expect(posted()[0]!.url).toBe("/api/commands/agent/assign");
+  expect(posted()[0]!.body).toEqual({ task: "T1", role: "responsible", profile, selected,
     expectedTaskHash: "a".repeat(64), replace: "P1", expectedPlacementRevision: 1 });
 });
 
@@ -215,7 +215,7 @@ test("a refused responsible decision reads the latest versions, keeps the profil
   let writes = 0;
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     if (String(url) === "/api/workspace/live") return json(indexOf(latestTree, 2));
-    if (String(url) === "/api/agent/assign" && init?.method === "POST")
+    if (String(url) === "/api/commands/agent/assign" && init?.method === "POST")
       return ++writes === 1 ? problemResponse("conflict", "Changed")
         : json({ task: headOf(latestTree.tasks[0]!), agent: placementOps.placeAgent.receipt });
     return problemResponse("not_found", "Unknown");
@@ -241,7 +241,7 @@ test("an uncertain responsible decision checks the current placement before anot
   const latest = { ...canonical,
     tasks: canonical.tasks.map(row => row.id === "T1" ? { ...row, hash: "c".repeat(64) } : row),
     placements: canonical.placements.map(person => person.id === "P1" ? { ...person, id: "P-new", profileKey: "claude" } : person) };
-  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url) === "/api/agent/assign"
+  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url) === "/api/commands/agent/assign"
     ? problemResponse("save_unconfirmed") : String(url) === "/api/workspace/live"
       ? json(indexOf(latest, 2)) : problemResponse("not_found"));
   const data = fixtureScreen();
@@ -254,14 +254,14 @@ test("an uncertain responsible decision checks the current placement before anot
   fireEvent.click(screen.getByRole("button", { name: "Read the latest" }));
   await waitFor(() => expect(useWriteIntentStore.getState().entries[intentKey(canonical.root, "responsible", "T1")]).toBeUndefined());
   expect(screen.getByRole("button", { name: "Change" })).toBeTruthy();
-  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/agent/assign")).toHaveLength(1);
+  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/commands/agent/assign")).toHaveLength(1);
 });
 
 test("a responsible decision closes with a reason when the latest task is no longer active", async () => {
   const archived = { ...canonical,
     tasks: canonical.tasks.map(task => task.id === "T1" ? { ...task, lifecycle: "archived" as const } : task) };
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-    if (String(url) === "/api/agent/assign" && init?.method === "POST") return problemResponse("conflict", "Changed");
+    if (String(url) === "/api/commands/agent/assign" && init?.method === "POST") return problemResponse("conflict", "Changed");
     if (String(url) === "/api/workspace/live") return json(indexOf(archived, 2));
     return problemResponse("not_found", "Unknown");
   });
@@ -280,7 +280,7 @@ test("a refused Run close offers a fresh read, then closes with a reason when th
   const ended = { ...canonical, runs: canonical.runs.map(run => run.id === "R1"
     ? { ...run, state: "succeeded" as const, endedAt: "2026-09-29T00:09:00.000Z" } : run) };
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-    if (String(url) === "/api/run/stop" && init?.method === "POST") return problemResponse("conflict", "Changed");
+    if (String(url) === "/api/commands/run/stop" && init?.method === "POST") return problemResponse("conflict", "Changed");
     if (String(url) === "/api/workspace/live") return json(indexOf(ended, 2));
     return problemResponse("not_found", "Unknown");
   });
@@ -299,7 +299,7 @@ test("a refused Run close offers a fresh read, then closes with a reason when th
 test("a refused Run close can be sent again only after the latest Run is read", async () => {
   let writes = 0;
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-    if (String(url) === "/api/run/stop" && init?.method === "POST")
+    if (String(url) === "/api/commands/run/stop" && init?.method === "POST")
       return ++writes === 1 ? problemResponse("conflict", "Changed")
         : json({ cancelled: [], stop_requested: ["R1"] });
     if (String(url) === "/api/workspace/live") return json(indexOf(tree({ ...canonical, runs: canonical.runs.map(run => run.id === "R1" ? { ...run, state: "needs_review" as const } : run) }), 2));
@@ -314,12 +314,12 @@ test("a refused Run close can be sent again only after the latest Run is read", 
   fireEvent.click(screen.getByRole("button", { name: "Close run" }));
   await waitFor(() => expect(posted()).toHaveLength(2));
   expect(posted().map(each => each.body)).toEqual([{ run: "R1" }, { run: "R1" }]);
-  expect(posted().map(each => each.url)).toEqual(["/api/run/stop", "/api/run/stop"]);
+  expect(posted().map(each => each.url)).toEqual(["/api/commands/run/stop", "/api/commands/run/stop"]);
 });
 
 test("a current member can take over as responsible", async () => {
   const member = { ...canonical.placements[2]!, id: "P4", active: true, endedAt: null, revision: 2 };
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/agent/handover"
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/commands/agent/handover"
     ? json({ task: headOf(canonical.tasks.find(task => task.id === "T1")!), agent: placementOps.setResponsible.receipt }) : json({ run: "R1", files: [] }));
   openReader("T1", "task", r1Ended({ ...canonical, placements: [...canonical.placements, member] }));
 
@@ -349,7 +349,7 @@ test("a person moves a task under its project Task, checked against the hash on 
   const moved = { task: { ...canonical.tasks[1]!, parentId: PROJECT_TASK, version: canonical.tasks[1]!.version + 1, hash: 'c'.repeat(64) } };
   const latest = tree({ ...canonical, tasks: canonical.tasks.map(task => task.id === moved.task.id ? moved.task : task) });
   let releaseView!: (response: Response) => void;
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/task/move" ? json({ task: headOf(moved.task) })
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/commands/task/move" ? json({ task: headOf(moved.task) })
     : String(url).startsWith('/api/task/view') ? new Promise(resolve => { releaseView = resolve; }) : json({ run: "R2", files: [] }));
   queryClient.setQueryData(indexKey, indexOf(canonical));
   openReader("T12", "task");
@@ -357,7 +357,7 @@ test("a person moves a task under its project Task, checked against the hash on 
   fireEvent.change(await screen.findByRole("combobox", { name: "New parent" }), { target: { value: PROJECT_TASK } });
   fireEvent.click(screen.getByRole("button", { name: "Move" }));
   await waitFor(() => expect(posted()).toHaveLength(1));
-  expect(posted()[0]).toEqual({ url: "/api/task/move", body: { task: "T12", parent: PROJECT_TASK, expectedTaskHash: "b".repeat(64) } });
+  expect(posted()[0]).toEqual({ url: "/api/commands/task/move", body: { task: "T12", parent: PROJECT_TASK, expectedTaskHash: "b".repeat(64) } });
   expect(useWriteIntentStore.getState().entries[intentKey(canonical.root, "move", "T12")]?.payload)
     .toEqual(posted()[0]!.body);
   await waitFor(() => expect(useWriteIntentStore.getState().entries[intentKey(canonical.root, 'move', 'T12')]?.status).toBe('confirmed'));
@@ -376,7 +376,7 @@ test("a person moves a task under its project Task, checked against the hash on 
 test("an uncertain move checks the server parent before another send", async () => {
   const latest = { ...canonical, tasks: canonical.tasks.map(row => row.id === "T12"
     ? { ...row, parentId: PROJECT_TASK, hash: "c".repeat(64) } : row) };
-  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url) === "/api/task/move"
+  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async url => String(url) === "/api/commands/task/move"
     ? problemResponse("save_unconfirmed") : String(url) === "/api/workspace/live"
       ? json(indexOf(latest, 2)) : problemResponse("not_found"));
   queryClient.setQueryData(indexKey, indexOf(canonical));
@@ -389,13 +389,13 @@ test("an uncertain move checks the server parent before another send", async () 
   fireEvent.click(screen.getByRole("button", { name: "Use the latest version and choose again" }));
   await waitFor(() => expect(useWriteIntentStore.getState().entries[intentKey(canonical.root, "move", "T12")]).toBeUndefined());
   expect(screen.getByRole("combobox", { name: "New parent" })).toBeTruthy();
-  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/task/move")).toHaveLength(1);
+  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/commands/task/move")).toHaveLength(1);
 });
 
 test("a parent change made elsewhere is shown, a move against it is refused, the choice is kept and only an explicit re-base sends again", async () => {
   const conflict = { error: { code: "conflict", message: "Task changed; reload before retrying", retry: "reread", detail: { currentTaskHash: "c".repeat(64), currentPlacementRevision: null, currentHeadRunId: null, preserveDraft: true } } };
   let answer = () => json(conflict, 409);
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/task/move" ? answer() : json({ run: "R2", files: [] }));
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => String(url) === "/api/commands/task/move" ? answer() : json({ run: "R2", files: [] }));
   useViewStore.setState({ selected: "T12", reader: { open: true, pane: "task", returnTo: null } });
   const opened = fixtureScreen();
   const view = render(<TestWorkspace data={opened}><Reader mode="docked" /></TestWorkspace>);

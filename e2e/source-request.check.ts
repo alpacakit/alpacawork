@@ -20,13 +20,13 @@ test('A approval after B is taken confirms A, keeps B empty and shows no false m
     const response = await commandPost(page.request, runtime.origin + '/api/' + path, { data });
     expect(response.ok(), await response.text()).toBe(true); return response.json();
   };
-  const made = (await post('task/new', { parent: SAMPLE_PROJECT.id, title: 'Approval keeps original Request' })).task;
+  const made = (await post('commands/task/new', { parent: SAMPLE_PROJECT.id, title: 'Approval keeps original Request' })).task;
   const task = await placeResponsible(page.request, runtime.origin, made, 'fake');
   const aboutRun = seedReview(runtime.root, task.id, { title: 'Please review', description: 'Confirm the fixed result' });
   await open(page, runtime, `?task=${task.id}`);
   const approvalRequest = coordinatorMessage(page);
   await expect(page.locator('[data-task-done]')).toBeEnabled();
-  const current = await (await page.request.get(runtime.origin + '/api/task/get?task=' + task.id)).json();
+  const current = await (await page.request.get(runtime.origin + '/api/commands/task/get?task=' + task.id)).json();
   await openCoordinator(page);
   await page.locator('[data-one-input]').fill('confirm-review:' + JSON.stringify({ task: task.id, aboutRun, expectedTaskHash: current.task.hash, expectedPlacementRevision: current.agents.find((agent: any) => agent.active && agent.responsible).revision }));
   await page.locator('[data-ask-send]').click();

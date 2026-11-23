@@ -443,7 +443,7 @@
       "settings_changed_another_view": "別の画面で設定が変更されました",
       "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project": "有効なプロジェクトが複数あります。--{{option}} <ID>で指定するか、プロジェクトの作業フォルダで実行してください（alpacawork task list --kind project）",
       "sqlite_serialization_required": "SQLiteのシリアライズに対応したNodeが必要です",
-      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "停止はコミットされましたが、反映を待っています。同じ操作IDで確認するか、やり直してください",
+      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "停止は保存されましたが、反映待ちです。元の書き込みを、同じ入力・操作ID・復元IDで送り直してください",
       "stopped_task_requires_new_request": "停止したタスクは、利用者からの新しい依頼で再開してください。",
       "subtree_root_does_not_exist": "部分木のルートがありません",
       "supply_state_or_withdraw": "--stateか--withdrawを指定してください",

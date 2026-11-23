@@ -7,7 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { attachmentFileUrl, getAttachmentOperation, uploadAttachment, removeAttachment, admitAttachmentRemoval, type AttachmentDestination, type AttachmentOperation } from "@/data/attachments";
+import { attachmentFileUrl, attachmentFromResult, getAttachmentOperation, uploadAttachment, removeAttachment, admitAttachmentRemoval, type AttachmentDestination, type AttachmentOperation } from "@/data/attachments";
 import { ApiError, retryOf } from "@/data/client";
 import { useAttachmentBytes, useWriteDisabled } from "@/data/queries";
 import { attachmentLocation, attachmentsOf, attachmentsValue, kindText, linkSafeName, MAX_ATTACHMENTS, PASTE_AS_FILE_CHARACTERS,
@@ -150,10 +150,9 @@ export function useAttachments(key: string, destination: AttachmentDestination, 
             error: t("attach.checking"), recovery: "checking" }]);
         void getAttachmentOperation(record.opId).then(result => {
           if (result.state === "committed") {
-            if (result.status !== 200 || !result.body.path.startsWith(`attachments/${record.requestId}/`)
-              || result.body.absolutePath !== attachmentFileUrl(destination, result.body.path) || result.body.size !== record.size)
+            const saved = attachmentFromResult(destination, result.body);
+            if (!saved || result.status !== 200 || !saved.path.startsWith(`attachments/${record.requestId}/`) || saved.size !== record.size)
               throw new ApiError(() => t("attach.receiptMismatch"), "invalid_response");
-            const saved = { ...result.body, name: result.body.path.split("/").at(-1)! };
             if (!keepSaved(saved, record.opId)) throw new SaidFailure(t("attach.storageUnavailable"));
             finishUpload(record.opId);
           } else {

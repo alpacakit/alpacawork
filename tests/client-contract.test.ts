@@ -56,7 +56,7 @@ test('the receivers refuse mismatched or missing CLI contracts before reads, com
     db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
       .map(row => [String(row.name), db.prepare(`SELECT * FROM "${row.name}"`).all()])));
   const before = snapshot();
-  const paths = [`/api/task/get?task=${task.id}`, `/api/task/get?task=${task.id}&files=true`,
+  const paths = [`/api/commands/task/get?task=${task.id}`, `/api/commands/task/get?task=${task.id}&include=files`,
     `/api/tasks/${task.id}/file?path=work/note.txt`];
   for (const sent of [null, String(CLI_CONTRACT + 1)]) {
     const headers = { 'X-Alpacawork-Client': 'cli', ...(sent === null ? {} : { [CONTRACT_HEADER]: sent }) };
@@ -69,9 +69,9 @@ test('the receivers refuse mismatched or missing CLI contracts before reads, com
       assert.ok(!('task' in body));
     }
     const opId = randomUUID();
-    const write = await fetch(new URL('/api/task/comment', server.url), { method: 'POST',
+    const write = await fetch(new URL('/api/commands/task/comment', server.url), { method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': opId },
-      body: JSON.stringify({ task: task.id, title: 'Must never be saved', expectedTaskHash: task.hash, opId }) });
+      body: JSON.stringify({ task: task.id, title: 'Must never be saved', expectedTaskHash: task.hash }) });
     assert.equal(write.status, 400);
     assert.equal(problemSchema.parse(await write.json()).error.code, 'invalid_input');
     const replacement = 'Must never replace the file';

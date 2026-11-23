@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import type { DatabaseSync } from 'node:sqlite';
 import { TaskTextMatches, readTaskSearch, type SearchTask, type SearchError } from './task-search.js';
-import type { TaskSearchPlace } from '@alpacawork/contract/inputs';
+import type { TaskGetInclude, TaskSearchPlace } from '@alpacawork/contract/inputs';
 import { dependencyStatus } from './dependencies.js';
 import { ProjectShelf } from './project-shelf.js';
 import { questionSnapshot } from './question-rules.js';
@@ -102,7 +104,7 @@ function sourceFromSnapshot(root: string, snapshot: ControlSnapshot<TaskValues |
     errors: error ? [error] : [] };
 }
 
-type TaskViewOptions = { log?: number; runs?: number; files?: boolean; usage?: boolean;
+type TaskViewOptions = { log?: number; runs?: number; include?: readonly TaskGetInclude[]; files?: boolean; usage?: boolean;
   openObligations?: boolean;
   estimateExamples?: boolean | EstimateCondition;
   /** A question of the Task (its asking log's ID) to include with its full text and state. */
@@ -113,12 +115,14 @@ export async function readTaskView(root: string, id: string, options: TaskViewOp
   let taskIds: string[] | undefined;
   // Usage and open obligations add up other Tasks' Runs and Requests. Any other read of one Task shows its own Runs, and
   // of other Tasks' histories only the questions that concern it, so it reads no more than those.
-  const own = !options.usage && !options.openObligations;
+  const includes = new Set(options.include);
+  const usage = options.usage || includes.has('usage');
+  const own = !usage && !options.openObligations && !includes.has('openObligations');
   let histories: string[] | undefined;
   const project = readControl(root, db => {
     const repository = new TaskRepository(root, db);
     // A direct project usage read includes nested projects' work.
-    if (scope === null && options.usage && db.prepare('SELECT kind FROM tasks WHERE external_id=?').get(id)?.kind === 'project')
+    if (scope === null && usage && db.prepare('SELECT kind FROM tasks WHERE external_id=?').get(id)?.kind === 'project')
       taskIds = repository.relatedIds([id]);
     if (own) histories = questionHistories(db, id);
     return repository.projectFor(id);
@@ -162,7 +166,7 @@ function taskValues(task: SourceTask): TaskValues {
   return task.values as TaskValues;
 }
 
-/** A Task's files by their server-relative URL (`taskFileRoute`); the CLI makes them absolute for its server. */
+/** A Task's files by their server-relative URL (`taskFileRoute`), resolved by the server at the response boundary. */
 function folderFiles(source: ControlSource, task: SourceTask) {
   let files: ReturnType<typeof taskFiles> = new Map();
   try {
@@ -201,7 +205,8 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', undefined, { reason: { kind: 'task_does_not_exist' } });
   const shelf = new ProjectShelf(source.tree.tasks.filter(item => item.meta.kind === 'project')).of(source.tree.owningProject(id));
   const values = taskValues(task);
-  const usage = options.usage ? (() => {
+  const include = new Set(options.include);
+  const usage = options.usage || include.has('usage') ? (() => {
     const now = Date.now();
     const ownRuns = source.runs.filter(run => run.taskId === id);
     const subtreeIds = new Set([id, ...source.tree.descendants(id).map(child => child.id)]);
@@ -211,21 +216,32 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   const responsible = source.placements.find(item => item.taskId === id && item.responsible && item.active);
   const reference = responsible && source.runRecords.filter(run =>
     run.task === id && run.placementId === responsible.id).sort(compareRunIds).at(-1);
+  const wantsEstimates = options.estimateExamples || include.has('estimateExamples');
   const estimateCondition = typeof options.estimateExamples === 'object' ? options.estimateExamples
-    : options.estimateExamples && reference ? { agent: reference.agent, values: reference.launch.values } : null;
+    : wantsEstimates && reference ? { agent: reference.agent, values: reference.launch.values } : null;
   const questionTasks = source.questions;
   const head = responsible ? source.heads.get(responsible.id) ?? null : null;
+  const candidates = source.placements.filter(item => item.taskId === task.id && (item.active || include.has('agents')));
+  const agents = candidates.map(item => {
+    const headRunId = source.conversationHeads.get(item.id) ?? null;
+    const head = headRunId ? source.runRecords.find(run => run.id === headRunId) : undefined;
+    return { ...item, headRunId,
+      ...(source.errors.some(error => error.code === PROBLEM_CODE.runsUnavailable) || headRunId && !head
+        ? {} : { previousValues: head && hasContinuableSession(head) ? { ...head.launch.values } : null }) };
+  });
+  const questions = questionsOf(task.log)
+    .filter(question => include.has('closedQuestions') || question.closing === null)
+    .map(question => questionView(questionTasks.get(task.id)!, question, questionTasks));
   return {
     shelf,
     task: { ...(task.kind === 'project' ? { settings: task.settings } : {}), id: task.id, kind: task.kind, projectId: source.tree.owningProject(task.id), parentId: task.parentId,
       userRequested: task.userRequested, folder: taskFileRoute(task.id), lifecycle: task.lifecycle, title: task.title,
       state: task.state, baseState: task.baseState, hold: task.hold, hash: task.hash,
       // Its values, and the fields of the schema it uses in order with where that comes from (field get reads them).
-      values, fields: schemaFor(source.tree, source.fields.schemas, task.id),
+      ...(Object.keys(values).length ? { values } : {}), ...(include.has('fields') ? { fields: schemaFor(source.tree, source.fields.schemas, task.id) } : {}),
       ...(options.log === undefined ? {} : { log: latest(task.log, options.log) }),
-      ...(options.files ? { files: folderFiles(source, task) } : {}) },
-    // This Task's questions, including closed ones, oldest first; one's full text comes with `question`.
-    questions: questionsOf(task.log).map(q => questionView(questionTasks.get(task.id)!, q, questionTasks)),
+      ...(options.files || include.has('files') ? { files: folderFiles(source, task) } : {}) },
+    questions,
     incomingQuestions: source.errors.length ? null : incomingQuestions(task.id, questionTasks),
     decisionsMade: source.errors.length ? null : decisionsMade(task.id, questionTasks),
     relevantAnswers: source.errors.length ? null : relevantAnswers(task.id, questionTasks),
@@ -233,16 +249,10 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     reviewRun: reviewTarget(task, head, source.runRecords.some(run => run.task === task.id && !isRunEnded(run.state))),
     requestedByUser: requestedByUser(task.log, message => source.said.get(message)),
     ...(options.question === undefined ? {} : { question: questionDetail(source, task, options.question) }),
-    agents: source.placements.filter(item => item.taskId === task.id).map(item => {
-      const headRunId = source.conversationHeads.get(item.id) ?? null;
-      const head = headRunId ? source.runRecords.find(run => run.id === headRunId) : undefined;
-      return { ...item, headRunId,
-        ...(source.errors.some(error => error.code === PROBLEM_CODE.runsUnavailable) || headRunId && !head
-          ? {} : { previousValues: head && hasContinuableSession(head) ? { ...head.launch.values } : null }) };
-    }),
-    ...(options.openObligations ? { openObligations: source.openObligations(task.id) } : {}),
+    agents,
+    ...(options.openObligations || include.has('openObligations') ? { openObligations: source.openObligations(task.id) } : {}),
     ...(usage ? { usage } : {}),
-    ...(options.estimateExamples ? { estimateExamples: estimateCondition
+    ...(wantsEstimates ? { estimateExamples: estimateCondition
       ? (source.estimates?.(estimateCondition) ?? estimateExamples(source, estimateCondition)) : null } : {}),
     ...(options.runs === undefined ? {} : { runs: latest(source.runs.filter(item => item.taskId === task.id)
       .sort(compareRunIds), options.runs) }),
@@ -251,7 +261,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
 }
 
 type TaskListOptions = { under?: string; depth?: number; text?: string;
-  in?: readonly TaskSearchPlace[]; limit?: number;
+  in?: readonly TaskSearchPlace[]; limit?: number; cursor?: string;
   state?: readonly (TaskState | 'all')[]; kind?: TaskKind; all?: boolean };
 
 /** Match one field at a time, so a query cannot span two different facts. */
@@ -316,25 +326,59 @@ export function taskListView(source: Pick<ControlSource, 'tasks' | 'tree' | 'err
     readExtra?.(candidates, found, errors);
   }
   const matching = candidates.filter(task => !found || found.matches.has(task.id));
-  const limit = options.limit ?? 50;
-  const bounded = found ? matching.sort((a, b) => byTaskNumber(b, a)).slice(0, limit) : matching;
-  const selected = new Set(bounded.map(task => task.id));
+  const selected = new Set(matching.map(task => task.id));
   const direct = new Set(selected);
   // Keep the path to each match visible, even when a parent is done or did not match --text or --kind.
-  for (const id of selected) for (const ancestor of ancestors(id) ?? []) {
+  for (const id of direct) for (const ancestor of ancestors(id) ?? []) {
     if (inScope.has(ancestor.id)) selected.add(ancestor.id);
   }
-  const visible = scope.filter(task => selected.has(task.id))
-    .sort((a, b) => a.id === options.under ? -1 : b.id === options.under ? 1 : byTaskNumber(a, b));
+  const positions = new Map(scope.filter(task => selected.has(task.id))
+    .map(task => [task.id, distance(task)!]));
+  const sortPosition = (a: CursorPosition, b: CursorPosition) => a.depth - b.depth || byTaskNumber(a, b);
+  const visible = scope.filter(task => positions.has(task.id))
+    .map(task => ({ task, position: { id: task.id, depth: positions.get(task.id)! } }))
+    .sort((a, b) => sortPosition(a.position, b.position));
+  const filter = filterFingerprint(options);
+  const after = options.cursor === undefined ? null : readCursor(options.cursor, filter);
+  const remaining = after === null ? visible : visible.filter(row => sortPosition(row.position, after) > 0);
+  const page = remaining.slice(0, options.limit ?? 100);
+  const omitted = remaining.length - page.length;
   return {
-    tasks: visible.map(task => {
+    tasks: page.map(({ task }) => {
       const summary = task.kind !== 'project' ? '' : projectSummary(contents?.mode === 'summary' ? contents.summaries.get(task.id)
         : (contents?.mode === 'search' ? contents.values.get(task.id) : task.values)?.[PROJECT_SUMMARY]);
       return { id: task.id, kind: task.kind, parentId: task.parentId, lifecycle: task.lifecycle, title: task.title, state: task.state,
         ...(summary ? { summary } : {}),
         ...(found && direct.has(task.id) ? { match: found.matches.get(task.id)! } : {}) };
     }),
-    ...(found ? { omitted: Math.max(0, matching.length - bounded.length) } : {}),
+    ...(omitted > 0 ? { omitted, cursor: Buffer.from(JSON.stringify({ ...page.at(-1)!.position, filter })).toString('base64url') } : {}),
     errors,
   };
+}
+
+type CursorPosition = { id: string; depth: number };
+const cursorSchema = z.object({ id: z.string().regex(/^[TP][1-9][0-9]*$/), depth: z.number().int().min(0),
+  filter: z.string().regex(/^[0-9a-f]{64}$/) }).strict();
+
+function filterFingerprint(options: TaskListOptions): string {
+  return createHash('sha256').update(JSON.stringify([
+    options.under, options.depth, options.text, [...new Set(options.in)].sort(),
+    [...new Set(options.state)].sort(), options.kind, !!options.all,
+  ])).digest('hex');
+}
+
+function readCursor(encoded: string, filter: string): CursorPosition {
+  let candidate: unknown;
+  try { candidate = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); }
+  catch (cause) {
+    throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid task list cursor', undefined,
+      { cause, issues: [{ path: 'cursor', code: 'invalid_value', message: 'Invalid task list cursor' }] });
+  }
+  const cursor = cursorSchema.safeParse(candidate);
+  if (!cursor.success || cursor.data.filter !== filter) {
+    const message = 'Cursor requires the same task list filters';
+    throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+      { issues: [{ path: 'cursor', code: 'invalid_value', message }] });
+  }
+  return cursor.data;
 }

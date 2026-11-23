@@ -168,7 +168,7 @@ test('a key in the file reaches the agent that lists its name and no other, and 
 
   // Both Runs have ended, so everything a Run records is written before the records are searched.
   await until(() => { const all = runs(h.root); return all.length === 2 && all.every(run => ['succeeded', 'failed', 'cancelled'].includes(run.state)); }, 'both Runs ended');
-  const settings = await server.read('/api/config/get');
+  const settings = await server.read('/api/commands/config/get');
   await server.stop();
   assert.ok(filesHolding(h.root, 'keyed-instruction', path => path === receipts).length > 0, 'the search reads where a Request is recorded');
   for (const value of [SECRET, OTHER]) {

@@ -41,7 +41,6 @@ export interface Context extends TaskContext {
   /** The index Owner already serialized this representation; the HTTP adapter sends its bytes directly. */
   readLive?: () => Promise<Response>;
   personChanged?: (kind: 'settings' | 'notices', revision: string | null) => void;
-  requestLanguage?: string;
 }
 /** `host[:port]` as browsers send it: lower-case, no scheme, no path. */
 export { PUBLIC_HOST_PATTERN };
@@ -368,11 +367,9 @@ const implementations = {
     run: root => workspaceUrl(root),
   },
   'settings/get': {
-    run: async (root, _input, context) => {
+    run: (root, _input, context) => {
       authorizeRead(root, context, { name: 'settings.read' }, null);
-      const result = await context.personSettings!.get(context.requestLanguage);
-      context.personChanged?.('settings', result.revision);
-      return result;
+      return context.personSettings!.get();
     },
   },
   'settings/set': {
@@ -391,12 +388,12 @@ const implementations = {
 
 // Entry projection validates the input associated with this key before the erased route adapter calls it.
 const commands = implementations as unknown as Record<JsonCommandName, ServerCommand<Record<string, unknown>, Context>>;
-export const serverCommandTree = commandTree<Context>(command => {
+export const serverCommandTree = commandTree<Context>((command, verify) => {
   if (command.file) return () => { throw new Error('File routes are installed by the byte transport'); };
   const implementation = commands[command.id as JsonCommandName];
-  if (command.kind === 'write' && !implementation.act) throw new Error(`Missing write action for ${command.id}`);
+  if (command.kind !== 'read' && !implementation.act) throw new Error(`Missing write action for ${command.id}`);
   return async (input, context) => {
-    const result = await implementation.run(requireRoot(context), input, context);
+    const result = verify(await implementation.run(requireRoot(context), input, context));
     if (command.kind === 'write') context.changed?.();
     return result;
   };

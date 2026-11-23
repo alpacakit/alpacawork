@@ -108,7 +108,7 @@ test('HTTP member assignment binds authorization to the request, not a shared se
     ({ authorization: `Alpacawork-Run ${run.id}:${run.env.ALPACAWORK_RUN_TOKEN}` });
   const coordinator = conversationHeaders(conversation, 'codex');
   const post = async (headers: Record<string, string> = {}, quote?: string) =>
-    fetch(new URL('/api/agent/assign', url), { method: 'POST',
+    fetch(new URL('/api/commands/agent/assign', url), { method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify({ task: ownTask.id, role: 'member', profile: 'claude',
         expectedTaskHash: (await tasks.get(ownTask.id)).hash, expectedResponsibleRevision: ownPlacement.revision,

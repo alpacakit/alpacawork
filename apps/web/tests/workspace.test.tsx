@@ -91,7 +91,7 @@ const serveSettings = () => {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const path = String(url);
     // The AI tab reads this PC's config.yaml: its limits and agents.
-    if (path === "/api/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
+    if (path === "/api/commands/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
     const target = new URL(path, "http://screen");
     if (target.pathname === "/api/task/view") {
       const view = viewsOf(served).find((each) => each.task.id === target.searchParams.get("task"));
@@ -101,7 +101,7 @@ const serveSettings = () => {
     if (target.pathname === "/api/task/search") return new Response(snapshotJson(searchAnswer(served.tasks.filter((task) => task.kind === "task").map((task) => task.id))));
     // The coordinator's input stands at the screen's foot from the start, so its conversation is read with the page.
     if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
-    if (path === "/api/settings/get") return new Response(snapshotJson({ values, revision: "person-1" }));
+    if (path === "/api/commands/settings/get") return new Response(snapshotJson({ values, revision: "person-1" }));
     if (path === "/api/person/notices") return new Response(snapshotJson({ state: notices, revision: revision ? String(revision) : null, ...(!notices ? { initialBaselines: Object.fromEntries(indexOf(served).tasks.map(row => [row.id, taskBaseline(row)])) } : {}) }));
     if (path === "/api/person/notices/save") {
       const input = JSON.parse(String(init?.body));
@@ -382,7 +382,7 @@ const sendNamed = async (name: string) => {
   await send(listing({ tasks: [dto(), project({ title: name })] }));
 };
 const configReads = (fetcher: ReturnType<typeof serveSettings>) =>
-  fetcher.mock.calls.filter(([url]) => new URL(String(url), "http://screen").pathname === "/api/config/get").length;
+  fetcher.mock.calls.filter(([url]) => new URL(String(url), "http://screen").pathname === "/api/commands/config/get").length;
 
 // The bar does not read config.yaml for its name: it names the project the index lists. A config.yaml that
 // cannot be read is no concern of the bar's: no retry beside the name, and the name is the index's.
@@ -390,7 +390,7 @@ test("settings that cannot be read leave the bar the index's project name, with 
   const fetcher = serveSettings();
   const respond = fetcher.getMockImplementation()!;
   // config.yaml cannot be read.
-  fetcher.mockImplementation(async (url, init) => new URL(String(url), "http://screen").pathname === "/api/config/get"
+  fetcher.mockImplementation(async (url, init) => new URL(String(url), "http://screen").pathname === "/api/commands/config/get"
     ? problemResponse("read_failed", "Cannot read config.yaml") : respond(url, init));
   mount();
   await sendNamed("Alpaca screen");
@@ -444,7 +444,7 @@ test("a failed initial read says the screen could not be shown and reads both ag
   const respond = fetcher.getMockImplementation()!;
   let personal = 0, notices = 0;
   fetcher.mockImplementation(async (url, init) => {
-    if (String(url) === "/api/settings/get" && personal++ === 0 ||
+    if (String(url) === "/api/commands/settings/get" && personal++ === 0 ||
         String(url) === "/api/person/notices" && notices++ === 0)
       return problemResponse("unavailable");
     return respond(url, init);
@@ -504,14 +504,14 @@ test("a personal settings revision reloads once and an unchanged revision does n
   const fetcher = serveSettings();
   const respond = fetcher.getMockImplementation()!;
   let revision = 'person-1', theme = 'light';
-  fetcher.mockImplementation((url, init) => String(url) === '/api/settings/get'
+  fetcher.mockImplementation((url, init) => String(url) === '/api/commands/settings/get'
     ? Promise.resolve(new Response(snapshotJson({ values: { ...defaultSettings(), theme }, revision })))
     : respond(url, init));
   mount();
   await waitFor(() => expect(fetchEventSource).toHaveBeenCalled());
   await send(listing(), 'a:1', { settings: revision, notices: null, coordinator: { id: 'conversation-1', revision: '0'.repeat(64) } });
   await listed();
-  const calls = () => fetcher.mock.calls.filter(([url]) => String(url) === '/api/settings/get').length;
+  const calls = () => fetcher.mock.calls.filter(([url]) => String(url) === '/api/commands/settings/get').length;
   expect(calls()).toBe(1);
   revision = 'person-2'; theme = 'dark';
   await send(listing(), 'a:2', { settings: revision, notices: null, coordinator: { id: 'conversation-1', revision: '0'.repeat(64) } });
@@ -832,7 +832,7 @@ test('a conversation transport failure stays with the offline surface and reread
 function refuseFirstReads(refusal: () => Response) {
   const fetcher = serveSettings(), respond = fetcher.getMockImplementation()!;
   const state = { failing: true };
-  fetcher.mockImplementation(async (url, init) => state.failing && String(url) === '/api/settings/get' ? refusal() : respond(url, init));
+  fetcher.mockImplementation(async (url, init) => state.failing && String(url) === '/api/commands/settings/get' ? refusal() : respond(url, init));
   return state;
 }
 
@@ -885,7 +885,7 @@ for (const lang of ['en', 'ja'] as const) test(`mark all read failure uses the a
 
 test('one actual native recovery joins required settings/notices reads and conversation refresh once', async () => {
   const fetcher = serveSettings(), respond = fetcher.getMockImplementation()!;
-  const paths = ['/api/settings/get', '/api/person/notices', '/api/coordinator'];
+  const paths = ['/api/commands/settings/get', '/api/person/notices', '/api/coordinator'];
   let failed = false;
   fetcher.mockImplementation(async (url, init) => failed && paths.includes(String(url)) ? problemResponse('unavailable') : respond(url, init));
   mount(); await feed(); await listed();
@@ -917,20 +917,20 @@ test("a workspace held by an update comes back by itself once it can be read aga
   fetcher.mockImplementation(async (url,init) => {
     const path=String(url);
     if(path==="/api/update/status") return Response.json(status);
-    if(maintenance && ["/api/settings/get","/api/person/notices"].includes(path))
+    if(maintenance && ["/api/commands/settings/get","/api/person/notices"].includes(path))
       return Response.json({error:{code:"unavailable",message:"maintenance",retry:"later",reason:{kind:"release_maintenance_incomplete"}}},{status:503});
     return respond(url,init);
   });
   mount(); await feed();
   await waitFor(()=>expect(usePersonalSettings.getState().status).toBe("error"));
   await waitFor(()=>expect(document.querySelector("[data-update-state]")?.textContent).toContain("0.10.0"));
-  const before=fetcher.mock.calls.filter(([url])=>["/api/settings/get","/api/person/notices"].includes(String(url))).length;
+  const before=fetcher.mock.calls.filter(([url])=>["/api/commands/settings/get","/api/person/notices"].includes(String(url))).length;
   // Put back, the release may still say it needs the person (no reason told): the page asks again by itself.
   maintenance=false;
   status={kind:"attention",opId:status.opId,version:"0.10.0"};
   await act(async()=>{queryClient.setQueryData(["update-status",""],status);queryClient.setQueryData(["update-status","/fixture"],status);});
   await new Promise(resolve=>setTimeout(resolve,10_500));
-  const after=fetcher.mock.calls.filter(([url])=>["/api/settings/get","/api/person/notices"].includes(String(url))).length;
+  const after=fetcher.mock.calls.filter(([url])=>["/api/commands/settings/get","/api/person/notices"].includes(String(url))).length;
   expect(after).toBeGreaterThan(before);
   await listed();
 }, 30_000);
@@ -946,7 +946,7 @@ const heldConversationR3 = async () => {
   fetcher.mockImplementation(async(url,init)=>{
     const path=String(url);
     if(path==="/api/update/status")return Response.json(status);
-    if(maintenance && ["/api/settings/get","/api/person/notices"].includes(path))return refused();
+    if(maintenance && ["/api/commands/settings/get","/api/person/notices"].includes(path))return refused();
     return respond(url,init);
   });
   mount();await feed();
@@ -984,7 +984,7 @@ test("a page already showing the workspace turns into the held page when its rea
   fetcher.mockImplementation(async (url, init) => {
     const path = String(url);
     if (path === "/api/update/status") return Response.json({ kind: "attention", opId: "4f9c2c1e-8a8b-4a43-9a4d-6f1d2f0b9c11", version: "0.10.0" });
-    if (maintenance && ["/api/settings/get", "/api/person/notices"].includes(path))
+    if (maintenance && ["/api/commands/settings/get", "/api/person/notices"].includes(path))
       return Response.json({ error: { code: "unavailable", message: "maintenance", retry: "later", reason: { kind: "release_maintenance_incomplete" } } }, { status: 503 });
     return respond(url, init);
   });
@@ -1002,7 +1002,7 @@ test("the held page still says what it waits for while the update status cannot 
   fetcher.mockImplementation(async (url, init) => {
     const path = String(url);
     if (path === "/api/update/status") return problemResponse("unavailable", "status unreadable");
-    if (["/api/settings/get", "/api/person/notices"].includes(path))
+    if (["/api/commands/settings/get", "/api/person/notices"].includes(path))
       return Response.json({ error: { code: "unavailable", message: "maintenance", retry: "later", reason: { kind: "release_maintenance_incomplete" } } }, { status: 503 });
     return respond(url, init);
   });
@@ -1019,7 +1019,7 @@ test("a held page that showed earlier values reads the refused settings again an
   fetcher.mockImplementation(async (url, init) => {
     const path = String(url);
     if (path === "/api/update/status") return Response.json({ kind: "attention", opId: "4f9c2c1e-8a8b-4a43-9a4d-6f1d2f0b9c11", version: "0.10.0" });
-    if (maintenance && ["/api/settings/get", "/api/person/notices"].includes(path))
+    if (maintenance && ["/api/commands/settings/get", "/api/person/notices"].includes(path))
       return Response.json({ error: { code: "unavailable", message: "maintenance", retry: "later", reason: { kind: "release_maintenance_incomplete" } } }, { status: 503 });
     return respond(url, init);
   });
@@ -1028,10 +1028,10 @@ test("a held page that showed earlier values reads the refused settings again an
   maintenance = true;
   await act(async () => { await queryClient.refetchQueries({ type: "active" }); });
   await waitFor(() => expect(queryClient.getQueryState(["person-settings", "/fixture"])?.status).toBe("error"));
-  const before = fetcher.mock.calls.filter(([url]) => String(url) === "/api/settings/get").length;
+  const before = fetcher.mock.calls.filter(([url]) => String(url) === "/api/commands/settings/get").length;
   maintenance = false;
   await act(async () => { await vi.advanceTimersByTimeAsync(10_500); });
-  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/settings/get").length, "10-second retry must reach the server despite retained settings data").toBeGreaterThan(before);
+  expect(fetcher.mock.calls.filter(([url]) => String(url) === "/api/commands/settings/get").length, "10-second retry must reach the server despite retained settings data").toBeGreaterThan(before);
   await listed();
   expect(document.querySelector("[data-version-line]")).toBeNull();
 });

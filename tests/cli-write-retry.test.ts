@@ -213,7 +213,7 @@ test('a real CLI timeout while the first transaction commits late still creates 
   });
   let backendRequests=0;
   const arrived=(request:import('node:http').IncomingMessage)=>{
-    if(request.url==='/api/task/new'&&++backendRequests===2){
+    if(request.url==='/api/commands/task/new'&&++backendRequests===2){
       assert.equal(released,false,'the backend receives the retry before the first transaction commits');
       release();
     }

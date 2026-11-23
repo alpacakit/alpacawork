@@ -138,14 +138,11 @@ export const agentAvailabilitySchema = z.object({
   nextAction: z.string().nullable(), issue: z.string().nullable(),
 }).strict();
 export type AgentAvailability = z.infer<typeof agentAvailabilitySchema>;
-export const agentInspectionSchema = z.object({
+export const agentInspectionInput = z.object({
   adapter: builtinAdapterIdSchema.optional(), command: agentSettingShapeSchema.shape.command,
-  /** Host observations are requested explicitly; ordinary settings reads start no executables. */
-  check: z.boolean().optional(),
 }).strict().superRefine((value, ctx) => {
   if ((value.adapter === undefined) !== (value.command === undefined))
     ctx.addIssue({ code: 'custom', path: ['command'], message: 'adapter and command must be supplied together' });
-  if (value.adapter && !value.check) ctx.addIssue({ code: 'custom', path: ['check'], message: 'Executable inspection requires check' });
   if (value.adapter && value.command !== undefined && AGENT_ADAPTERS[value.adapter].command === null)
     ctx.addIssue({ code: 'custom', path: ['command'], message: 'This adapter uses a bundled runtime and does not accept command' });
 });

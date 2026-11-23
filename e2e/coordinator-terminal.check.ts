@@ -36,12 +36,12 @@ async function prepare(page: Page, runtime: Runtime, explicit = true) {
     const response = await page.request.post(runtime.origin + '/api/' + path, { headers: { 'X-Alpacawork-Op-Id': crypto.randomUUID() }, data });
     expect(response.ok(), await response.text()).toBe(true); return (await response.json()).task as { id: string; hash: string };
   };
-  const task = await post('task/new', { parent: SAMPLE_PROJECT.id, title: 'Check target from ordinary text', values: decideValues(['Approach', ['Option1 Proceed', 'Description'], ['Option2 Wait', 'Description']]) });
-  await post('agent/assign', { task: task.id, role: 'responsible', profile: 'fake', expectedTaskHash: task.hash });
+  const task = await post('commands/task/new', { parent: SAMPLE_PROJECT.id, title: 'Check target from ordinary text', values: decideValues(['Approach', ['Option1 Proceed', 'Description'], ['Option2 Wait', 'Description']]) });
+  await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'fake', expectedTaskHash: task.hash });
   patchTask(runtime.root, task.id, { state: 'doing' });
   seedQuestion(runtime.root, task.id, { to: 'user', title: 'Review', description: 'Plain text instruction' });
-  const next = await post('task/new', { parent: SAMPLE_PROJECT.id, title: 'Next review' });
-  await post('agent/assign', { task: next.id, role: 'responsible', profile: 'fake', expectedTaskHash: next.hash });
+  const next = await post('commands/task/new', { parent: SAMPLE_PROJECT.id, title: 'Next review' });
+  await post('commands/agent/assign', { task: next.id, role: 'responsible', profile: 'fake', expectedTaskHash: next.hash });
   seedReview(runtime.root, next.id, { title: 'Review', description: 'Next' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, runtime, `?agent=1&task=${task.id}`); await openCoordinator(page);

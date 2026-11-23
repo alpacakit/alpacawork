@@ -15,10 +15,10 @@ test('recipients: a retained done Task receives the dialogue and the viewed Task
       const response = await fetch(`${runtime.origin}/api/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const text = await response.text(); assert.equal(response.status, 200, text); return JSON.parse(text);
     };
-    const project = (await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Recipients check' })).task.id;
+    const project = (await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Recipients check' })).task.id;
     const requested = async (title: string) => {
-      const { task } = await post('task/new', { parent: project, title });
-      await post('agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+      const { task } = await post('commands/task/new', { parent: project, title });
+      await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
       return task.id;
     };
     const first = await requested('Retained first'), second = await requested('Retained second');

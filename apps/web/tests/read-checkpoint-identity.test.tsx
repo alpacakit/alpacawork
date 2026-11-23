@@ -27,7 +27,7 @@ async function fixture() {
   const view = viewsOf(source).find(item => item.task.id === 'T1')!;
   vi.stubGlobal('fetch', async (url: string) => {
     const path = new URL(String(url), 'http://fixture').pathname;
-    if (path === '/api/settings/get') return Response.json({ values: {}, revision: index.person.settings });
+    if (path === '/api/commands/settings/get') return Response.json({ values: {}, revision: index.person.settings });
     if (path === '/api/person/notices') return Response.json({ state: null, revision: index.person.notices });
     if (path === '/api/task/view') return Response.json(view);
     throw new Error('Unexpected fixture HTTP ' + url);

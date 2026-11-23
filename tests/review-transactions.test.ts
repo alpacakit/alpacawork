@@ -135,7 +135,7 @@ test('a confirmation has the same Task report outcome through HTTP and CLI', asy
   const h = await setupReview(t, { userRequested: true });
   const server = await serve(h);
   const report = { ...confirmation(h), title: 'Accept review', description: 'The result is checked.' };
-  const response = await fetch(new URL('/api/task/report', server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify(report) });
   assert.equal(response.status, 200);
   const http = await response.json();
@@ -279,7 +279,7 @@ test('HTTP send-back rejects a stale Task hash without saving a Request', async 
   const h = await setupReview(t, { userRequested: true }), server = await serve(h);
   const { body: instruction, ...input } = sendBack(h, 'Please revise');
   await h.commands.update({ id: h.task.id, values: { notes: 'Concurrent change' }, expectedTaskHash: h.expectedTaskHash });
-  const response = await fetch(new URL('/api/task/request', server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/request', server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input, instruction }) });
   assert.equal(response.status, 409);
   const error = await response.json() as { error: { code: string } };
@@ -331,7 +331,7 @@ test('the reviewed Run is the seat\'s latest owner Run, as the ball reads it: a 
 test('over HTTP a review leaves waiting only by its confirmation or send-back', async t => {
   const h = await setupReview(t, { userRequested: true }), server = await serve(h);
   const post = async (body: Record<string, unknown>) => {
-    const response = await fetch(new URL('/api/task/report', server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     return [response.status, (await response.json() as { error: { code: string } }).error.code];
   };

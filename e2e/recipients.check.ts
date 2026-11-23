@@ -24,7 +24,7 @@ const test = base.extend<{ runtime: Runtime; project: string }>({
     try { await use(runtime); } finally { await runtime.stop(); }
   },
   project: async ({ runtime }, use) => {
-    await use((await post<Written>(runtime, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Recipients check' })).task.id);
+    await use((await post<Written>(runtime, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Recipients check' })).task.id);
   },
 });
 test.describe.configure({ timeout: 120_000 });
@@ -37,8 +37,8 @@ async function post<Result>(runtime: Runtime, path: string, body: object): Promi
   return JSON.parse(text) as Result;
 }
 async function requested(runtime: Runtime, project: string, title: string, values?: TaskValues) {
-  const { task } = await post<Written>(runtime, 'task/new', { parent: project, title, ...values === undefined ? {} : { values } });
-  await post(runtime, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+  const { task } = await post<Written>(runtime, 'commands/task/new', { parent: project, title, ...values === undefined ? {} : { values } });
+  await post(runtime, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
   return task.id;
 }
 const DECIDE = decideValues(['Which option', ['Option1 Send current input', 'Send'], ['Option2 Decide later', 'Hold it']]);
@@ -186,7 +186,7 @@ for (const [device, viewport] of [['pc', { width: 1440, height: 900 }]] as ['pc'
 test.describe('project in view', () => {
   test.use({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
   test('the project in view seeds its label and follows the project chosen', async ({ page, runtime, project }) => {
-    const other = (await post<Written>(runtime, 'task/new', { kind: 'project', color: '#9b3939', parent: 'none', title: 'Recipients other' })).task.id;
+    const other = (await post<Written>(runtime, 'commands/task/new', { kind: 'project', color: '#9b3939', parent: 'none', title: 'Recipients other' })).task.id;
     const task = await requested(runtime, project, 'Recipient in project');
     const choose = async (id: string | null) => {
       await page.locator('[data-project-trigger]').click();

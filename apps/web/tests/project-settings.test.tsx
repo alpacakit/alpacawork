@@ -37,10 +37,10 @@ const tasksSchema = () => ({ task: PROJECT_TASK, from: null, fields: [...DEFAULT
 const serverSettings = (hash = OPEN) => ({ hash, agentsText: "agents: {}\n", agents: {}, catalog: adapterCatalog(), limits: { ...DEFAULT_LIMITS } });
 
 const updateCalls = (fetcher: ReturnType<typeof vi.spyOn>) =>
-  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/task/update"));
+  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/commands/task/update"));
 const updateBody = (fetcher: ReturnType<typeof vi.spyOn>, index = 0) => JSON.parse(String((updateCalls(fetcher)[index]?.[1] as RequestInit).body));
 const configCalls = (fetcher: ReturnType<typeof vi.spyOn>) =>
-  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/config/set"));
+  fetcher.mock.calls.filter(([url]: unknown[]) => String(url).includes("/api/commands/config/set"));
 
 /** The dialog's save bar, at the end of its content. */
 const save = () => within(document.querySelector<HTMLElement>("[data-project-save]")!).getByRole("button", { name: "Save" }) as HTMLButtonElement;
@@ -48,11 +48,11 @@ const body = () => document.getElementById("project-policy") as HTMLTextAreaElem
 
 function serve(updates: (Response | (() => Response))[], view = () => goalView("# Goal\n", OPEN)) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
-    if (String(url).includes("/api/config/get")) return answer(serverSettings());
-    if (String(url).includes("/api/field/list")) return answer(fieldList());
-    if (String(url).includes("/api/field/get")) return answer(tasksSchema());
+    if (String(url).includes("/api/commands/config/get")) return answer(serverSettings());
+    if (String(url).includes("/api/commands/field/list")) return answer(fieldList());
+    if (String(url).includes("/api/commands/field/get")) return answer(tasksSchema());
     if (String(url).includes("/api/task/view")) return answer(view());
-    if (String(url).includes("/api/task/update")) {
+    if (String(url).includes("/api/commands/task/update")) {
       const next = updates.length > 1 ? updates.shift()! : updates[0]!;
       return (typeof next === "function" ? next() : next).clone();
     }
@@ -186,10 +186,10 @@ test("fields reordered elsewhere refuse the save; Load the latest shows the new 
   const theirs = ["goal", "conclusion", "policy", "user_instructions", "remaining", "left_running", "conditions", "artifact", "pr", "decide", "notes"];
   const fetcher = serve([written(goal("# Goal\n", SAVED_1))], () => latest ? goalView("# Goal\n", LATEST) : goalView("# Goal\n", OPEN));
   fetcher.mockImplementation(async (url: unknown) => {
-    if (String(url).includes("/api/field/list")) return answer(fieldList());
-    if (String(url).includes("/api/field/get")) return answer(latest ? { ...tasksSchema(), from: PROJECT_TASK, fields: theirs } : tasksSchema());
+    if (String(url).includes("/api/commands/field/list")) return answer(fieldList());
+    if (String(url).includes("/api/commands/field/get")) return answer(latest ? { ...tasksSchema(), from: PROJECT_TASK, fields: theirs } : tasksSchema());
     // Someone set the project's fields after the dialog read them: the hash it sends is old.
-    if (String(url).includes("/api/field/use")) return refusal(409);
+    if (String(url).includes("/api/commands/field/use")) return refusal(409);
     if (String(url).includes("/api/task/view")) return answer(latest ? goalView("# Goal\n", LATEST) : goalView("# Goal\n", OPEN));
     return refusal(404);
   });
@@ -198,7 +198,7 @@ test("fields reordered elsewhere refuse the save; Load the latest shows the new 
   expect(order()).toEqual([...DEFAULT_SCHEMA]);
   fireEvent.click(within(document.querySelector<HTMLElement>('[data-schema-field="forbidden"]')!).getByRole("button", { name: "Remove" }));
   fireEvent.click(save());
-  await waitFor(() => expect(fetcher.mock.calls.some(([url]: unknown[]) => String(url).includes("/api/field/use"))).toBe(true));
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]: unknown[]) => String(url).includes("/api/commands/field/use"))).toBe(true));
   latest = true;
   fireEvent.click(await screen.findByRole("button", { name: "Load the latest" }));
   await waitFor(() => expect(order()).toEqual(theirs));
@@ -221,11 +221,11 @@ test("an unconfirmed save is checked by sending the same operation again", async
 test("fields are moved and taken out in place, a system field cannot be, and their order is saved before the values", async () => {
   const fetcher = serve([written(goal("# Goal\n", SAVED_1))]);
   fetcher.mockImplementation(async (url: unknown, init?: RequestInit) => {
-    if (String(url).includes("/api/field/list")) return answer(fieldList());
-    if (String(url).includes("/api/field/get")) return answer(tasksSchema());
-    if (String(url).includes("/api/field/use")) return answer({ task: headOf(project({ hash: LATEST })) });
+    if (String(url).includes("/api/commands/field/list")) return answer(fieldList());
+    if (String(url).includes("/api/commands/field/get")) return answer(tasksSchema());
+    if (String(url).includes("/api/commands/field/use")) return answer({ task: headOf(project({ hash: LATEST })) });
     if (String(url).includes("/api/task/view")) return answer(goalView("# Goal\n", OPEN));
-    if (String(url).includes("/api/task/update")) return written(goal("# Better\n", SAVED_1));
+    if (String(url).includes("/api/commands/task/update")) return written(goal("# Better\n", SAVED_1));
     return refusal(404);
   });
   await openProject();
@@ -237,8 +237,8 @@ test("fields are moved and taken out in place, a system field cannot be, and the
   fireEvent.click(save());
   await waitFor(() => expect(updateCalls(fetcher)).toHaveLength(1));
   const writes = fetcher.mock.calls.map(([url]: unknown[]) => String(url)).filter((url: string) => /field\/use|task\/update/.test(url));
-  expect(writes.map((url: string) => url.replace(/^.*\/api\//, ""))).toEqual(["field/use", "task/update"]);
-  const sent = JSON.parse(String((fetcher.mock.calls.find(([url]: unknown[]) => String(url).includes("/api/field/use"))![1] as RequestInit).body));
+  expect(writes.map((url: string) => url.replace(/^.*\/api\//, ""))).toEqual(["commands/field/use", "commands/task/update"]);
+  const sent = JSON.parse(String((fetcher.mock.calls.find(([url]: unknown[]) => String(url).includes("/api/commands/field/use"))![1] as RequestInit).body));
   expect(sent).toEqual({ task: PROJECT_TASK, fields: ["policy", "goal", "user_instructions", "conclusion", "remaining", "left_running",
     "conditions", "artifact", "pr", "decide", "notes"], expectedTaskHash: OPEN });
   // The values are written against the hash the schema write answered.
@@ -265,14 +265,14 @@ test("fields are moved and taken out in place, a system field cannot be, and the
   expect(required.disabled).toBe(false);
   fireEvent.click(required);
   fireEvent.click(screen.getByRole("button", { name: "Save for every project" }));
-  const fieldSet = await waitFor(() => { const call = fetcher.mock.calls.find(([url]: unknown[]) => String(url).includes("/api/field/set")); expect(call).toBeTruthy(); return call!; });
+  const fieldSet = await waitFor(() => { const call = fetcher.mock.calls.find(([url]: unknown[]) => String(url).includes("/api/commands/field/set")); expect(call).toBeTruthy(); return call!; });
   expect(JSON.parse(String((fieldSet[1] as RequestInit).body))).toMatchObject({ field: "goal", required: true });
   expect(JSON.parse(String((fieldSet[1] as RequestInit).body))).not.toHaveProperty("title");
 });
 
 test("settings have six tabs, AI holds nothing of a project, and the gear reopens the tab it was last on", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) =>
-    String(url).includes("/api/config/get") ? answer(serverSettings()) : refusal(404));
+    String(url).includes("/api/commands/config/get") ? answer(serverSettings()) : refusal(404));
   render(<TestWorkspace data={screenData(tree())}><DialogHost /></TestWorkspace>);
   act(() => useDialogStore.getState().open("settings", { tab: "ai" }));
   const tabs = await screen.findAllByRole("tab");
@@ -352,10 +352,10 @@ test("the fields hold still while a save is under way, and the next save starts 
   const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
     if (String(url).includes("/api/task/view")) return answer(saved ? viewsOf(tree({ tasks: [dto(), goal("# Goal\n", SAVED_1, { title: "Renamed" })] }))
       .find((view) => view.task.id === PROJECT_TASK) : goalView("# Goal\n", OPEN));
-    if (String(url).includes("/api/task/update")) return saves++ === 0 ? pending.then((response) => response.clone())
+    if (String(url).includes("/api/commands/task/update")) return saves++ === 0 ? pending.then((response) => response.clone())
       : written(goal("# More\n", LATEST, { title: "Renamed" }));
-    if (String(url).includes("/api/field/list")) return answer(fieldList());
-    if (String(url).includes("/api/field/get")) return answer(tasksSchema());
+    if (String(url).includes("/api/commands/field/list")) return answer(fieldList());
+    if (String(url).includes("/api/commands/field/get")) return answer(tasksSchema());
     return refusal(404);
   });
   await openProject();
@@ -421,9 +421,9 @@ test("confirming a lost Task save keeps the refused location as typed, and its n
 
 test("a field read the server does not answer (a page older than the server) is said with a retry, not left loading", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
-    if (String(url).includes("/api/field/get")) return new Response(JSON.stringify({ error: { code: "not_found", message: "Unknown endpoint",
+    if (String(url).includes("/api/commands/field/get")) return new Response(JSON.stringify({ error: { code: "not_found", message: "Unknown endpoint",
       retry: "fix", reason: { kind: "unknown_endpoint" } } }), { status: 404 });
-    if (String(url).includes("/api/field/list")) return answer(fieldList());
+    if (String(url).includes("/api/commands/field/list")) return answer(fieldList());
     if (String(url).includes("/api/task/view")) return answer(goalView("# Goal\n", OPEN));
     return refusal(404);
   });

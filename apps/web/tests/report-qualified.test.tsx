@@ -104,7 +104,7 @@ test('W4 a confirmation token cannot carry a substituted payload',async()=>{
  const {createApi}=await import('../src/data/client');const {taskWriteResultSchema}=await import('@alpacawork/contract/control');
  const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>ok());fetcher.mockClear();
  await act(async()=>{await expect(checkWriteIntent<Record<string,unknown>,unknown>(result.current.key,(payload,op,basis)=>
-  createApi().request('task/report',taskWriteResultSchema,undefined,{...payload,title:'changed'},op,basis))).rejects.toMatchObject({code:'write_unavailable'});});
+  createApi().request('commands/task/report',taskWriteResultSchema,undefined,{...payload,title:'changed'},op,basis))).rejects.toMatchObject({code:'write_unavailable'});});
  expect(fetcher).not.toHaveBeenCalled();
 });
 
@@ -112,7 +112,7 @@ test('save admission checks authority before writing any durable receipt or call
  const data=setup(), basis=detailWriteBasis('T1',data.tasks[0]!.hash);refuseRead(query(),readIndex(client));
  const admitted=vi.fn(), fetcher=vi.spyOn(globalThis,'fetch'), storage=vi.spyOn(Storage.prototype,'setItem');
  expect(()=>sendDirectIntent(client,intentKey('/fixture','task/report','T1'),{path:'task/report',response:'task',label:'Title'},
-  op=>reportRequest(taskReportTarget(data.tasks[0]!,data.people),'approve',{},op),basis,{admitted})).toThrow();
+  ()=>reportRequest(taskReportTarget(data.tasks[0]!,data.people),'approve',{}),basis,{admitted})).toThrow();
  expect(storage).not.toHaveBeenCalled();expect(admitted).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
  expect(useWriteIntentStore.getState().entries).toEqual({});
 });

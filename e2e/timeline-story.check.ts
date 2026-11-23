@@ -103,8 +103,8 @@ for (const [name, width, height] of [['pc', 1440, 1000]] as ['pc' | 'sp390' | 's
       await openCoordinator(page);
       await expect(page.locator(`[data-label="answer"][data-answer-task="${STORY.single}"][data-answer-question="${STORY.singleQuestion}"]`)).toHaveAttribute('data-answer-answer', '1-A');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      const settings = await (await page.request.get(`${runtime.origin}/api/settings/get`)).json();
-      const saved = await commandPost(page.request, `${runtime.origin}/api/settings/set`, {
+      const settings = await (await page.request.get(`${runtime.origin}/api/commands/settings/get`)).json();
+      const saved = await commandPost(page.request, `${runtime.origin}/api/commands/settings/set`, {
         data: { key: 'language', value: 'ja', expectedRevision: settings.revision, timeZone: 'Asia/Tokyo' },
       });
       expect(saved.ok()).toBe(true);
@@ -117,8 +117,8 @@ for (const [name, width, height] of [['pc', 1440, 1000]] as ['pc' | 'sp390' | 's
         await settleMotion(page, reader(page));
         await keepShot(page, `timeline-story-${name}-ja-question-heading`);
       } finally {
-        const current = await (await page.request.get(`${runtime.origin}/api/settings/get`)).json();
-        const restored = await commandPost(page.request, `${runtime.origin}/api/settings/set`, {
+        const current = await (await page.request.get(`${runtime.origin}/api/commands/settings/get`)).json();
+        const restored = await commandPost(page.request, `${runtime.origin}/api/commands/settings/set`, {
           data: { key: 'language', value: 'en', expectedRevision: current.revision, timeZone: 'Asia/Tokyo' },
         });
         expect(restored.ok()).toBe(true);

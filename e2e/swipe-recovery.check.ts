@@ -24,14 +24,14 @@ async function prepare(page: Page, runtime: Runtime, { count = 2, questions = 1,
     const response = await commandPost(page.request, runtime.origin + '/api/' + path, { data });
     expect(response.ok(), await response.text()).toBe(true); return response.json();
   };
-  const { task: project } = await post('task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Swipe' });
+  const { task: project } = await post('commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: 'Swipe' });
   const ids: string[] = [];
   for (let n = 0; n < count; n++) {
-    const { task } = await post('task/new', { parent: project.id, title: n === count - 1 ? firstTitle : `Review card ${count - n}`,
+    const { task } = await post('commands/task/new', { parent: project.id, title: n === count - 1 ? firstTitle : `Review card ${count - n}`,
       ...review ? {} : { values: decideValues(...Array.from({ length: questions }, (_, i): [string, ...[string, string][]] =>
         [`Choose an option ${i + 1}`, ['Option1 Proceed', 'Select it'], ['Option2 Later', 'Put on hold']])) } });
     // The responsible's profile is one the coordinator's config keeps.
-    await post('agent/assign', { task: task.id, role: 'responsible', profile: acting ? 'codex' : 'fake', expectedTaskHash: task.hash });
+    await post('commands/agent/assign', { task: task.id, role: 'responsible', profile: acting ? 'codex' : 'fake', expectedTaskHash: task.hash });
     if (review) seedReview(runtime.root, task.id, { title: 'Please review', description: 'This is a report' });
     else {
       patchTask(runtime.root, task.id, { state: 'doing' });
@@ -63,7 +63,7 @@ async function pay(page: Page, side: 'hold' | 'send') {
   const y = await visibleReaderContentTop(reader(page)) + 45;
   await swipe(page, { x: box.x + (side === 'hold' ? 330 : 70), y }, { x: box.x + (side === 'hold' ? 70 : 330), y });
 }
-const messages = (url: URL) => url.pathname === '/api/coordinator/messages' || url.pathname === '/api/task/report';
+const messages = (url: URL) => url.pathname === '/api/coordinator/messages' || url.pathname === '/api/commands/task/report';
 const stateOf = async (page: Page, runtime: Runtime, id: string) =>
   (await (await page.request.get(runtime.origin + '/api/task/view?task=' + id)).json()).task.state;
 const conversation = async (page: Page, runtime: Runtime) => (await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation;

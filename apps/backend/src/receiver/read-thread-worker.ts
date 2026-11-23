@@ -1,3 +1,4 @@
+import { commandLinks, commandOrigin } from './command-links.js';
 import { clientContract } from './client-contract.js';
 /** See read-thread.ts. Whatever this thread is not sure of goes to the main thread, which answers as it always has. */
 import { connect, createServer as createTcpServer, type Socket } from 'node:net';
@@ -20,26 +21,37 @@ import type { ReadThreadData } from './read-thread.js';
 const { root, port, publicHost, backendPort, soundFile, answers } = workerData as ReadThreadData;
 if (soundFile) markControlFileSound(soundFile);
 
-const commands = new Map([...serverCommands.values()].flatMap(command => command.implementation.readThread
-  ? [[command.path, command.implementation.readThread] as const] : []));
+const commands = new Map<string, (query: Record<string, string[]>) => Record<string, unknown> | null>();
+const eligible = [...serverCommands.values()].filter(command => command.implementation.readThread);
+const readsByPath = new Map(eligible.map(command => [command.path, command.implementation.readThread!]));
+function repeatedQuery(url: URL) {
+  const query: Record<string, string[]> = Object.create(null);
+  for (const [key, value] of url.searchParams) (query[key] ??= []).push(value);
+  return query;
+}
 /** The caller each answered connection was judged with: a connection is judged once, and no import runs here. */
-const judged = new WeakMap<object, Caller>();
+type AcceptedRead = { caller: Caller; input: Record<string, unknown> };
+const judged = new WeakMap<object, AcceptedRead>();
 
 const api = new Hono();
 api.use('/api/*', compress({ encoding: 'gzip' }));
 api.use('/api/*', clientContract());
 collectHttpRoutes(serverCommandTree.tree).forEach(route => {
-  const spec = commands.get(`/api${route.path}`);
-  if (route.method !== 'GET' || !spec) return;
-  api.get(`/api${route.path}`, async c => {
+  const path = '/api' + route.path, read = readsByPath.get(path);
+  if (route.method !== 'GET' || !read) return;
+  commands.set(path, query => {
+    const input = route.input.parseQuery(query) as Record<string, unknown>;
+    return read(input) ? input : null;
+  });
+  api.get(path, async c => {
     const { cwd } = requestScope(c.req.raw.headers, true);
-    const caller = judged.get((c.env as { incoming: { socket: object } }).incoming.socket)!;
+    const { caller, input } = judged.get((c.env as { incoming: { socket: object } }).incoming.socket)!;
     // One read point for the whole answer: on this thread the main thread's commits can fall between its parts.
     const control = new ControlStore(root, { busyTimeoutMs: 1000 }, true);
     try {
-      const result = await control.readAsync(async () => route.handler(route.input.parseQuery(c.req.queries()) as never,
-        { root, caller: () => caller, cwd, requestLanguage: c.req.header('accept-language') } as Context as never));
-      return result instanceof Response ? result : c.json(result, 200, jsonHeaders);
+      const result = await control.readAsync(async () => route.handler(input as never,
+        { root, caller: () => caller, cwd } as Context as never));
+      return result instanceof Response ? result : c.json(commandLinks(result, commandOrigin(c.req.raw, publicHost)), 200, jsonHeaders);
     } finally { control.close(); }
   });
 });
@@ -47,9 +59,12 @@ api.onError((error, c) => c.json(errorBody(error), failure(error).status as Cont
 const answer = getRequestListener(api.fetch, { overrideGlobalObjects: false });
 let answering = 0;
 let finished: (() => void) | undefined;
+const answered = new WeakSet<Socket>();
 const reads = createHttpServer({ keepAliveTimeout: 0 }, (req, res) => {
   // Each connection is judged once, by its first request: the next request on it may be anything.
   res.setHeader('Connection', 'close');
+  if (answered.has(req.socket)) { res.writeHead(400).end(); return; }
+  answered.add(req.socket);
   answering++;
   res.once('close', () => { if (--answering === 0) finished?.(); });
   void answer(req, res);
@@ -60,12 +75,13 @@ const MAX_HEAD = 64 * 1024, HEAD_WAIT_MS = 5_000;
 let hosts: ReadonlySet<string> = new Set();
 
 /** The caller when this thread answers the connection whose first request's head is `head`; else the main thread does. */
-function answerable(head: string): Caller | null {
+function answerable(head: string): AcceptedRead | null {
   const end = head.indexOf('\r\n');
   const [method, target, version] = head.slice(0, end).split(' ');
   if (method !== 'GET' || version !== 'HTTP/1.1' || !target) return null;
   const url = new URL(target, 'http://read.invalid');
-  if (!commands.get(url.pathname)?.(url.searchParams)) return null;
+  const parse = commands.get(url.pathname);
+  if (!parse) return null;
   const headers = new Headers();
   for (const line of head.slice(end + 2).split('\r\n')) {
     const colon = line.indexOf(':');
@@ -73,10 +89,12 @@ function answerable(head: string): Caller | null {
   }
   // A browser's request, another host or anything to refuse is the main thread's to judge.
   if (headers.get('x-alpacawork-client') !== 'cli' || headers.has('origin') || !hosts.has(headers.get('host') ?? '')) return null;
+  const input = parse(repeatedQuery(url));
+  if (input === null) return null;
   const claim = claimOf(headers);
   const store = RunStore.openReadable(root, { busyTimeoutMs: 1000 });
   if (!store) return null;
-  try { return resolvingMayImport(claim, store) ? null : resolveCaller(root, claim, store, false); }
+  try { return resolvingMayImport(claim, store) ? null : { caller: resolveCaller(root, claim, store, false), input }; }
   finally { store.close(); }
 }
 
@@ -96,8 +114,8 @@ function passOn(socket: Socket, head: Buffer): Promise<void> {
   socket.resume();
   return connected;
 }
-function answerHere(socket: Socket, head: Buffer, caller: Caller) {
-  judged.set(socket, caller);
+function answerHere(socket: Socket, head: Buffer, accepted: AcceptedRead) {
+  judged.set(socket, accepted);
   socket.pause();
   socket.unshift(head);
   reads.emit('connection', socket);
@@ -106,7 +124,7 @@ function answerHere(socket: Socket, head: Buffer, caller: Caller) {
 
 const front = createTcpServer({ noDelay: true, allowHalfOpen: true, pauseOnConnect: false }, socket => {
   let head = Buffer.alloc(0);
-  const settled = (caller: Caller | null): Promise<void> => {
+  const settled = (caller: AcceptedRead | null): Promise<void> => {
     clearTimeout(timer);
     undecided.delete(handOver);
     socket.off('data', received);
@@ -129,7 +147,7 @@ const front = createTcpServer({ noDelay: true, allowHalfOpen: true, pauseOnConne
     if (!answers || head.length > MAX_HEAD || lineEnd >= 0 && (!line.startsWith('GET ') || !commands.has(line.slice(4, line.lastIndexOf(' ')).split('?')[0]!))) { void settled(null); return; }
     const end = head.indexOf('\r\n\r\n');
     if (end < 0) return;
-    let caller: Caller | null = null;
+    let caller: AcceptedRead | null = null;
     try { caller = answerable(head.subarray(0, end).toString('latin1')); }
     catch { /* The main thread gives the refusal. */ }
     void settled(caller);

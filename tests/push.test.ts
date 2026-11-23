@@ -440,16 +440,16 @@ describe('serve', () => {
     const away = await raw(base, '/api/presence/away', {}, 'POST');
     assert.equal(away.status, 200);
     assert.equal((away.json() as { state: string }).state, 'away');
-    const current = await (await fetch(base + '/api/settings/get')).json() as { revision: string };
+    const current = await (await fetch(base + '/api/commands/settings/get')).json() as { revision: string };
     // A setting other than the daily quiet hours, so the one-hour pause below cannot run into them at any time of day.
-    const changed = await post(base, '/api/settings/set', { key: 'push.awayAfter', value: '10',
+    const changed = await post(base, '/api/commands/settings/set', { key: 'push.awayAfter', value: '10',
       timeZone: 'Asia/Tokyo', expectedRevision: current.revision }, saving());
     assert.equal(changed.status, 200);
     assert.equal((changed.json() as { values: Record<string, unknown> }).values['push.timeZone'], 'Asia/Tokyo');
-    const absolute = await post(base, '/api/settings/set', { key: 'push.mutedUntil',
+    const absolute = await post(base, '/api/commands/settings/set', { key: 'push.mutedUntil',
       value: '2026-10-14T22:00:00.000Z', expectedRevision: (changed.json() as { revision: string }).revision }, saving());
     assert.equal(absolute.status, 400, 'clients cannot set the pause deadline directly');
-    const quietBypass = await post(base, '/api/settings/set', { key: 'push.quietResumedUntil',
+    const quietBypass = await post(base, '/api/commands/settings/set', { key: 'push.quietResumedUntil',
       value: '2099-01-01T00:00:00.000Z', expectedRevision: (changed.json() as { revision: string }).revision }, saving());
     assert.equal(quietBypass.status, 400, 'clients cannot bypass daily quiet hours');
     const before = Date.now();
@@ -461,13 +461,13 @@ describe('serve', () => {
     assert.ok(Date.parse(pauseStatus.until) <= Date.now() + 60 * 60_000);
     assert.equal(((await (await fetch(base + '/api/workspace/live')).json()) as
       { presence: { state: string } }).presence.state, 'muted');
-    const savedPause = await (await fetch(base + '/api/settings/get')).json() as
+    const savedPause = await (await fetch(base + '/api/commands/settings/get')).json() as
       { values: Record<string, unknown> };
     assert.equal(savedPause.values['push.mutedUntil'], pauseStatus.until);
     const resumed = await raw(base, '/api/presence/resume', {}, 'POST');
     assert.equal(resumed.status, 200);
     assert.equal((resumed.json() as { state: string }).state, 'away');
-    assert.equal(((await (await fetch(base + '/api/settings/get')).json()) as
+    assert.equal(((await (await fetch(base + '/api/commands/settings/get')).json()) as
       { values: Record<string, unknown> }).values['push.mutedUntil'], null);
     assert.equal((await post(base, '/api/presence/pause', { duration: 'invalid', timeZone: 'Asia/Tokyo' })).status, 400);
     assert.equal((await post(base, '/api/presence/pause', { duration: 'hour', timeZone: 'Invalid/Zone' })).status, 400);

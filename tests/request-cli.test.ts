@@ -123,12 +123,12 @@ test('CLI task request returns the original instruction after review waiting and
 });
 
  test('the adopted task request input keeps annotations out of its public instruction contract', () => {
-  const base = { task: 'T1', instruction: 'Sent body', opId: 'note-contract', expectedTaskHash: 'a'.repeat(64), expectedPlacementRevision: 1 };
+  const base = { task: 'T1', instruction: 'Sent body', expectedTaskHash: 'a'.repeat(64), expectedPlacementRevision: 1 };
   assert.equal(taskRequestInput.safeParse(base).success,true);
   assert.equal(taskRequestInput.safeParse({ ...base, title: 'History', description: 'Summary' }).success, false);
   assert.equal(taskRequestInput.safeParse({ ...base, description: 'Summary' }).success, false);
   for (const note of [{ title: 'Ignored' }, { description: 'Ignored' }])
-    assert.equal(taskRequestInput.safeParse({ task: 'T1', instruction: 'Answer', opId: 'answer', answers: 'question',
+    assert.equal(taskRequestInput.safeParse({ task: 'T1', instruction: 'Answer', answers: 'question',
       expectedTaskHash: base.expectedTaskHash, ...note }).success, false);
  });
 
@@ -142,7 +142,7 @@ test('formal CLI retries a lost committed HTTP reply with identical bytes and on
    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));const body=Buffer.concat(chunks).toString();
    const upstream=await fetch(new URL(req.url!,server.url),{method:req.method,headers:req.headers as Record<string,string>,...(body?{body}:{})});
    const response=await upstream.text();
-   if(req.url==='/api/task/request'){
+   if(req.url==='/api/commands/task/request'){
     received.push({body,operation:req.headers['x-alpacawork-op-id'] as string|undefined,status:upstream.status,response});
     if(received.length===1){req.socket.destroy();return;}
    }

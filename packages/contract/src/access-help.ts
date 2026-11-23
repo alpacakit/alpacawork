@@ -84,6 +84,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'agent.release': [example('agent.release', 'Responsible placement', {}, { worker: false }),
     example('agent.release', 'Member placement', {}, { worker: true })],
   'run.stop': [example('run.stop', 'Target Run\'s Task')],
+  'config.inspect': [{ label: 'Inspect executables', action: { name: 'config.inspect' } }],
   'config.set': [{ label: 'Change configuration', action: { name: 'config.set' } }],
   'settings.get': [{ label: 'Read the person\'s settings', action: { name: 'settings.read' } }],
   'settings.set': [{ label: 'Save one of the person\'s settings', action: { name: 'settings.set' } }],

@@ -22,7 +22,7 @@ import { checkpointForReport } from './conversation-context.js';
 import { assertRequiredValues, writtenValues } from './task-values-store.js';
 import { withControlWrite, type ControlTx } from './task-transition.js';
 
-type ReportInput = z.output<typeof taskReportInput>;
+type ReportInput = z.output<typeof taskReportInput> & { opId: string };
 type ReportResult = z.output<typeof taskReportResultSchema>;
 
 function invalid(path: string, message: string, reason: ProblemReason): never {
@@ -30,7 +30,7 @@ function invalid(path: string, message: string, reason: ProblemReason): never {
 }
 
 /** The Task a report is about: --task, or a Run's own Task. The write entry authorizes the report on the same Task. */
-export function reportedTask(input: ReportInput, caller: Caller): string {
+export function reportedTask(input: Pick<ReportInput, 'task'>, caller: Caller): string {
   if (input.task !== undefined) return input.task;
   if (caller.kind === 'run') return caller.taskId;
   return invalid('task', '--task is required; only a Run defaults to its own Task', { kind: 'task_required_only_run_defaults_own_task' });

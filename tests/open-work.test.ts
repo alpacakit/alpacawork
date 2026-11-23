@@ -162,7 +162,7 @@ test('a budgeted saved prompt advertises a formal CLI read that reaches every om
   assert.equal(count(prompt, '## Open work\n'), 1);
   assert.match(prompt, /Open requests: 1401; returns and notices not yet handled: \d+\. Too large to include/);
   assert.ok(!prompt.includes(seeded[0]!.id), 'the full list really exceeded the launch budget');
-  const advertised = prompt.match(/alpacawork (task get --task T\d+ --open-obligations)/);
+  const advertised = prompt.match(/alpacawork (task get --task T\d+ --include openObligations)/);
   assert.ok(advertised, prompt);
   const cli = await withCli(h);
   try {

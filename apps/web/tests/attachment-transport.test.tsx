@@ -14,7 +14,7 @@ function transport() {
   class Xhr {
     upload = {};
     status = 200;
-    responseText = JSON.stringify({ path: 'attachments/request/photo.png', absolutePath: '/file', size: 5 });
+    responseText = JSON.stringify({ path: 'attachments/request/photo.png', absolutePath: '/api/coordinator/file?requestId=request&name=photo.png', size: 5 });
     onload?: () => void;
     open() {}
     setRequestHeader() {}

@@ -9,7 +9,7 @@ test.use({ isolated: true, isMobile: true, hasTouch: true, viewport: { width: 41
 test("pinch-zoomed, a sideways finger on the reader pans the page and answers nothing; at normal scale a left swipe holds", async ({ page, runtime }) => {
   // The hold a left swipe asks for is carried out by the coordinator.
   startFakeCoordinator(runtime.root);
-  const made = await commandPost(page.request, `${runtime.origin}/api/task/new`, { data: { title: "Check swiping while zoomed" } });
+  const made = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, { data: { title: "Check swiping while zoomed" } });
   expect(made.ok(), await made.text()).toBe(true);
   const task = await placeResponsible(page.request, runtime.origin, (await made.json()).task);
   seedReview(runtime.root, task.id, { title: "Please review",

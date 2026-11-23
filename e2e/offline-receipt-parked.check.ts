@@ -19,8 +19,8 @@ test.setTimeout(120_000);
 test.use({ autoSwipe: true });
 async function post(r: Runtime, path: string, body: object) { const res = await fetch(r.origin + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); expect(res.status, await res.clone().text()).toBe(200); return res.json(); }
 async function task(r: Runtime, p: string, title: string) {
-  const { task } = await post(r, 'task/new', { parent: p, title, values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) });
-  await post(r, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+  const { task } = await post(r, 'commands/task/new', { parent: p, title, values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) });
+  await post(r, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
   patchTask(r.root, task.id, { state: 'doing' }); seedQuestion(r.root, task.id, { to: 'user' });
   return task.id as string;
 }
@@ -82,7 +82,7 @@ for (const [width, ways] of [[1280, ['anchor']], [390, ['anchor', 'explicit']]] 
   test(`parked A words in the cut: browsing A restores nothing without a server turn; ${way === 'anchor' ? 'the anchor\'s server turn restores them' : 'its explicit entrance still takes them back'} (${width})`, async ({ page, runtime }, info) => {
     if (!('tasks' in coordinatorMessageSchema.shape))
       throw new Error('FIXTURE main-unintegrated: this build has no explicit recipients or parked reader words (main df179477a)');
-    const p = (await post(runtime, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '退避した回答' })).task.id;
+    const p = (await post(runtime, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '退避した回答' })).task.id;
     const a = await task(runtime, p, '請求書の確認'), b = await task(runtime, p, '経費の分類');
     const questions = new Map<string, string>();
     for (const id of [a, b]) {
@@ -93,7 +93,7 @@ for (const [width, ways] of [[1280, ['anchor']], [390, ['anchor', 'explicit']]] 
       questions.set(id, question.id);
     }
     // C asks nothing, so the deck that main's flow swipes through stays A then B.
-    const c = (await post(runtime, 'task/new', { parent: p, title: '拒否される確認' })).task.id as string;
+    const c = (await post(runtime, 'commands/task/new', { parent: p, title: '拒否される確認' })).task.id as string;
     const live = await holdLive(page.context());
     // C is read first, so its refusal and loss can cut the server facts later.
     await page.goto(runtime.origin + `/?agent=1&project=${p}&task=${c}`); await expect(shown(page)).toHaveText(c);
@@ -187,7 +187,7 @@ for (const [width, ways] of [[1280, ['anchor']], [390, ['anchor', 'explicit']]] 
       expect(((await input(page).textContent()) ?? '').split('PARKED A ORIGINAL').length - 1, 'one original in the input').toBe(1);
       await expect(labelLayer(input(page)).locator('[data-label="answer"]')).toHaveCount(1);
       expect((await conversation(page, runtime)).turns.map((turn: any) => ({ id: turn.id, status: turn.status })), 'browsing/recovery adds no conversation turn').toEqual(beforeCut);
-      expect(posts.filter(path => ['/api/coordinator/messages', '/api/task/report', '/api/task/request'].includes(path)), 'recovery never sends automatically').toEqual([]);
+      expect(posts.filter(path => ['/api/coordinator/messages', '/api/commands/task/report', '/api/commands/task/request'].includes(path)), 'recovery never sends automatically').toEqual([]);
     } finally {
       try { await admission.dispose(); } finally { await live.release(); }
     }

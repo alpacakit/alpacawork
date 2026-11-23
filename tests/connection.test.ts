@@ -99,7 +99,7 @@ test('a stalled request is closed at the declared five seconds, not tens of seco
   const socket = connect(port, '127.0.0.1'); work.adoptSocket(socket); await once(socket, 'connect');
   let data = ''; socket.on('data', d => data += d);
   const began = Date.now();
-  socket.write(`GET /api/field/get HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n`);
+  socket.write(`GET /api/commands/field/get HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n`);
   const closed = await within(once(socket, 'close').then(() => true), 45000, false);
   const elapsed = Date.now() - began;
   socket.destroy();
@@ -121,7 +121,7 @@ test('a subscriber that never reads is dropped once its send buffer exceeds the 
     return response.json();
   };
   // Each round publishes a change: a retitle of a few seeded Tasks.
-  const change=async(round:number)=>{for(const task of seeded.slice(0,4)){const saved=await post('task/update',{task:task.id,title:`Round ${round} ${task.id}`,expectedTaskHash:task.hash});task.hash=saved.task.hash;}};
+  const change=async(round:number)=>{for(const task of seeded.slice(0,4)){const saved=await post('commands/task/update',{task:task.id,title:`Round ${round} ${task.id}`,expectedTaskHash:task.hash});task.hash=saved.task.hash;}};
   const socket=connect(port,'127.0.0.1');work.adoptSocket(socket);await once(socket,'connect');
   // The subscriber never reads, so every published change stays in the server's write buffer.
   socket.write(`GET /api/events HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n\r\n`);
@@ -166,7 +166,7 @@ test('an incomplete POST body is closed before the server can answer', { timeout
     const closed=await within(once(socket,'close').then(()=>true),45000,false);
     socket.destroy();return {closed,status:data.split('\r\n')[0]};
   }
-  const body = await stall(`POST /api/task/request HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{`);
+  const body = await stall(`POST /api/commands/task/request HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{`);
   assert.equal(body.closed,true,'a body that never finishes must not hold a connection open');
   assert.equal(body.status,'HTTP/1.1 408 Request Timeout');
 });

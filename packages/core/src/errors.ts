@@ -61,7 +61,7 @@ export function failure(error: unknown): Problem {
     const path = error.target.kind === 'parameter' ? error.target.parameterName : '';
     const message = redactSecrets(error.message);
     return new Problem(PROBLEM_CODE.invalidInput, message, undefined,
-      { reason: { kind: 'validation_error', issues: error.issues.map(text => ({ path, code: 'invalid_type', diagnostic: redactSecrets(text) })) }, cause: error, issues: error.issues.map(text => ({ path, code: 'invalid_type', message: redactSecrets(text) })) });
+      { reason: { kind: 'validation_error' }, cause: error, issues: error.issues.map(text => ({ path, code: 'invalid_type', message: redactSecrets(text) })) });
   }
   return new Problem(
     PROBLEM_CODE.unavailable,
@@ -78,7 +78,7 @@ export function parseInput<Schema extends ZodType>(schema: Schema, value: unknow
     const issues = toIssues(error.issues);
     const first = issues[0];
     throw new Problem(PROBLEM_CODE.invalidInput, first ? `${first.path ? `${first.path}: ` : ''}${first.message.split('\n')[0]}` : 'Invalid input', undefined,
-      { reason: faultReason(error), cause: error, issues });
+      { reason: { kind: 'validation_error' }, cause: error, issues });
   }
 }
 export function hasCode(error: unknown, code: string): boolean {
@@ -86,9 +86,15 @@ export function hasCode(error: unknown, code: string): boolean {
 }
 export function errorBody(error: unknown) {
   const e = failure(error);
+  const reason = e.reason?.kind === 'validation_error' ? { kind: 'validation_error' as const } : e.reason;
+  const issues = e.issues ?? (e.reason?.kind === 'validation_error' ? e.reason.issues?.map(issue => {
+    const { diagnostic, code, path = '', line, column } = issue;
+    const params = { ...(line === undefined ? {} : { line }), ...(column === undefined ? {} : { column }) };
+    return { code, path, message: diagnostic, ...(Object.keys(params).length ? { params } : {}) };
+  }) : undefined);
   return { error: { code: e.code, message: e.message, retry: e.retry,
-    ...(e.reason ? { reason: e.reason } : {}),
-    ...(e.issues ? { issues: [...e.issues] } : {}), ...(e.detail ? { detail: e.detail } : {}) } };
+    ...(reason ? { reason } : {}),
+    ...(issues ? { issues: [...issues] } : {}), ...(e.detail ? { detail: e.detail } : {}) } };
 }
 
 // Keep each native weak hash table small: resizing one process-wide table can block the event loop.

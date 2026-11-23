@@ -1,3 +1,4 @@
+import { commandFetch as fetch } from './helpers/command-fetch.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
@@ -10,7 +11,7 @@ import { openQuestions } from '@alpacawork/raw';
 
 async function post(url: string, task: { id: string; hash: string }, extra: Record<string, unknown> = {}) {
   const input = { task: task.id, state: 'done', expectedTaskHash: task.hash, opId: randomUUID(), ...extra };
-  const response = await fetch(new URL('/api/task/report', url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/report', url), { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': input.opId }, body: JSON.stringify(input) });
   return { status: response.status, body: await response.json(), input };
 }

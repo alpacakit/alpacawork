@@ -51,7 +51,7 @@ try {
     }
     // New records reach the list and the open task: what they draw must be what a fresh read draws.
     const post = (path: string, data: unknown) => fetch(new URL(path, url), { method: 'POST', headers: Object.fromEntries(commandHeaders(data, { 'content-type': 'application/json' })), body: JSON.stringify(data) });
-    const comment = async (task: string, n: number) => { const { task: held } = await (await fetch(new URL(`/api/task/view?task=${task}`, url))).json(); await post('/api/task/comment', { task, title: `Screen check ${n}`, description: `Words of screen check ${n}.`, expectedTaskHash: held.hash }); };
+    const comment = async (task: string, n: number) => { const { task: held } = await (await fetch(new URL(`/api/task/view?task=${task}`, url))).json(); await post('/api/commands/task/comment', { task, title: `Screen check ${n}`, description: `Words of screen check ${n}.`, expectedTaskHash: held.hash }); };
     await page.locator(`[data-read="${ids[0]}"]`).first().click();
     await page.locator('aside[data-reader-mode] [data-report-feed][data-history-ready="true"]').first().waitFor();
     await comment(ids[0]!, 1); await comment(ids[1]!, 2);

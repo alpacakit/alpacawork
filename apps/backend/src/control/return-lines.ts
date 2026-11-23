@@ -56,7 +56,7 @@ const questionCommand = (taskId: string, questionId: string) =>
 
 /** The one drawer of open work, independent of whether a new conversation or a handover needs it. */
 export function openWorkLines(taskId: string, { requests, returns }: Obligations): { full: string; short: string } {
-  const read = `alpacawork task get --task ${taskId} --open-obligations`;
+  const read = `alpacawork task get --task ${taskId} --include openObligations`;
   const open = requests.map(request => `- ${request.taskId === taskId ? `Member ${request.placementId}` : `Child task ${request.taskId}`}` +
     ` (request ${request.id} "${headline(request.body)}"${request.runId ? `, Run ${request.runId}` : ''})`);
   const waiting = `Returns and notices not yet handled: ${returns.length} — alpacawork task returns --task ${taskId}`;
@@ -93,7 +93,7 @@ function forms(line: ReturnLine): { full: string; short: string } {
       return one(`- Task ${line.taskId}: ${words}: ${line.reason} — alpacawork task get --task ${line.taskId} --log 5`);
     case 'handover': {
       const head = `- Task ${line.taskId}: ${words}: you are now its owner. Current state: ${line.state}. `;
-      return one(`${head}Read the open work in the launch prompt's "Open work" section and with alpacawork task get --task ${line.taskId} --open-obligations, ` +
+      return one(`${head}Read the open work in the launch prompt's "Open work" section and with alpacawork task get --task ${line.taskId} --include openObligations, ` +
         `the questions and values with alpacawork task get --task ${line.taskId}, and the returns and notices with alpacawork task returns --task ${line.taskId}.`);
     }
     case 'work_changed': return one(`- Task ${line.taskId}: ${words} (cause ${line.causeId}) — alpacawork task get --task ${line.taskId} --log 5`);

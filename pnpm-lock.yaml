@@ -29,8 +29,8 @@ importers:
         version: 3.3.1
     devDependencies:
       '@alpacakit/channels':
-        specifier: 0.2.0-beta.5
-        version: 0.2.0-beta.5(zod@4.6.6)
+        specifier: 0.2.0-beta.6
+        version: 0.2.0-beta.6(zod@4.6.6)
       '@alpacawork/backend':
         specifier: workspace:*
         version: link:apps/backend
@@ -119,8 +119,8 @@ importers:
   apps/backend:
     dependencies:
       '@alpacakit/channels':
-        specifier: 0.2.0-beta.5
-        version: 0.2.0-beta.5(zod@4.6.6)
+        specifier: 0.2.0-beta.6
+        version: 0.2.0-beta.6(zod@4.6.6)
       '@alpacawork/cli-kit':
         specifier: workspace:*
         version: link:../../packages/cli-kit
@@ -309,8 +309,8 @@ importers:
   packages/cli-kit:
     dependencies:
       '@alpacakit/channels':
-        specifier: 0.2.0-beta.5
-        version: 0.2.0-beta.5(zod@4.6.6)
+        specifier: 0.2.0-beta.6
+        version: 0.2.0-beta.6(zod@4.6.6)
       '@alpacawork/contract':
         specifier: workspace:*
         version: link:../contract
@@ -327,8 +327,8 @@ importers:
   packages/contract:
     dependencies:
       '@alpacakit/channels':
-        specifier: 0.2.0-beta.5
-        version: 0.2.0-beta.5(zod@4.6.6)
+        specifier: 0.2.0-beta.6
+        version: 0.2.0-beta.6(zod@4.6.6)
       '@alpacawork/core':
         specifier: workspace:*
         version: link:../core
@@ -351,8 +351,8 @@ importers:
   packages/core:
     dependencies:
       '@alpacakit/channels':
-        specifier: 0.2.0-beta.5
-        version: 0.2.0-beta.5(zod@4.6.6)
+        specifier: 0.2.0-beta.6
+        version: 0.2.0-beta.6(zod@4.6.6)
       koffi:
         specifier: 3.3.1
         version: 3.3.1
@@ -424,8 +424,8 @@ importers:
 
 packages:
 
-  '@alpacakit/channels@0.2.0-beta.5':
-    resolution: {integrity: sha512-bopaPqT10Sp6IRIJM2Lllz2NWHTpMlGd6iH0k+eY2/PjQQS20mKauHH6KrdM38/6vdRplqW6vkUOigpSBQKzGA==}
+  '@alpacakit/channels@0.2.0-beta.6':
+    resolution: {integrity: sha512-546gyXDj300FbdqIQujc4DhCskUAybrNL1pZgjOpcsbTbKmGnj1pIjOo8XwQ2aeSMw8Q/Y8lgKcPhTxqHoCo7A==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
       zod: ^4.3.6
@@ -4982,7 +4982,7 @@ ignoredOptionalDependencies:
 
 snapshots:
 
-  '@alpacakit/channels@0.2.0-beta.5(zod@4.6.6)':
+  '@alpacakit/channels@0.2.0-beta.6(zod@4.6.6)':
     dependencies:
       zod: 4.6.6
 

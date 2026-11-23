@@ -88,9 +88,9 @@ function serve() {
     const path = String(url), target = new URL(path, "http://screen");
     calls.push(`${init?.method ?? "GET"} ${path}`);
     if (unreachable) throw new TypeError("Failed to fetch");
-    if (path === "/api/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
+    if (path === "/api/commands/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
     if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, cancelled: [], turns: [] }));
-    if (path === "/api/settings/get") {
+    if (path === "/api/commands/settings/get") {
       if (failing.has("settings")) return problemResponse("unavailable");
       personRevision = (indexNow()?.person.settings ?? personRevision) || personRevision;
       return new Response(snapshotJson({ values: { ...values, language: personalLanguage }, revision: personRevision }));

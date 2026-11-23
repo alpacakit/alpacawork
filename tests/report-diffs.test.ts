@@ -187,7 +187,7 @@ test('the real CLI uploads before reporting, reuses bytes on replay, and sends n
     const bytes = Buffer.concat(chunks), url = req.url!;
     const json = (value: unknown, status = 200) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(value)); };
     if (url === '/api/runtime/recovery') { json({ protocol: RECOVERY_PROTOCOL, restoreId: INITIAL_RESTORE_ID }); return; }
-    if (url.startsWith('/api/run/get')) { json({ run: 'R1', taskId: 'T2', files: [] }); return; }
+    if (url.startsWith('/api/commands/run/get')) { json({ run: 'R1', taskId: 'T2', files: [] }); return; }
     if (req.method === 'GET') {
       const value = stored.get(url);
       if (value) { res.writeHead(200); res.end(value); }
@@ -236,7 +236,7 @@ test('the real CLI uploads before reporting, reuses bytes on replay, and sends n
   const implicit = await run(markdown, null, true);
   assert.equal(implicit.code, 0, implicit.stderr);
   assert.equal(JSON.parse(implicit.stdout).diffs[0].path, summary.path);
-  assert.equal(writes.at(-1)?.url, '/api/task/report');
+  assert.equal(writes.at(-1)?.url, '/api/commands/task/report');
   assert.equal(writes.filter(write => write.method === 'PUT').length, 1);
   const workingTreeCommand = '`git diff HEAD 文書.md`';
   const workingTree = await run(workingTreeCommand, 'T2', false, 'working-tree-path');

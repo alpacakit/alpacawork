@@ -289,10 +289,10 @@ export async function configureVoice(runtime: Runtime, endpoint = "http://127.0.
   // its transport, so it cannot inherit a closed global fetch connection from an earlier command.
   const request = await apiRequest.newContext();
   try {
-    const current = await request.get(`${runtime.origin}/api/settings/get`);
+    const current = await request.get(`${runtime.origin}/api/commands/settings/get`);
     expect(current.ok()).toBe(true);
     const now = await current.json() as { revision: string };
-    const saved = await commandPost(request, `${runtime.origin}/api/settings/set`, {
+    const saved = await commandPost(request, `${runtime.origin}/api/commands/settings/set`, {
       data: { key: "language", value: "en", expectedRevision: now.revision, timeZone: "Asia/Tokyo" } });
     expect(saved.ok()).toBe(true);
   } finally { await request.dispose(); }

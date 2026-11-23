@@ -28,7 +28,7 @@ async function historical(w: Workspace, title = 'Earlier review equivalent', opt
 }
 const reportHttp = (url: string, input: object, headers: Record<string, string> = {}) => {
   const opId = randomUUID();
-  return post(url, '/api/task/report', { ...input, opId }, { ...headers, 'X-Alpacawork-Op-Id': opId });
+  return post(url, '/api/commands/task/report', input, { ...headers, 'X-Alpacawork-Op-Id': opId });
 };
 const get = (url: string, id: string) => call(url, ['task', 'get', '--task', id, '--log', '100']);
 const reportArgs = (id: string, state: string, hash: string) =>

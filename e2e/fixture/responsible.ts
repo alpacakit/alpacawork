@@ -8,7 +8,7 @@ import { commandPost } from '../command-post.ts';
  */
 export async function placeResponsible(request: APIRequestContext, origin: string, task: { id: string; hash: string },
   profile = 'codex'): Promise<{ id: string; hash: string }> {
-  const placed = await commandPost(request, `${origin}/api/agent/assign`, { data: { task: task.id, role: 'responsible', profile,
+  const placed = await commandPost(request, `${origin}/api/commands/agent/assign`, { data: { task: task.id, role: 'responsible', profile,
     expectedTaskHash: task.hash } });
   expect(placed.ok(), await placed.text()).toBe(true);
   return (await placed.json()).task;

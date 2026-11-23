@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { useCallback, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -22,7 +23,7 @@ export function useMobileAccess() {
   const enabled = !!index && reachable;
   const query = useQuery({
     queryKey: ['mobile-access', index?.root, index?.generation],
-    queryFn: ({ signal }) => api.request('workspace/url', mobileAccessSchema, signal),
+    queryFn: ({ signal }) => api.request(commandRoute('workspace/url'), mobileAccessSchema, signal),
     enabled,
     staleTime: 0,
     gcTime: 0,

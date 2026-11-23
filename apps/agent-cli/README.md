@@ -24,7 +24,7 @@ To add an agent, implement `Runtime` from `run.ts` in its own module, register i
 
 ## Using these agents from `config.yaml`
 
-Every agent here is a built-in kind. Configuration only chooses which kinds to use and in which order, the values offered when assigning work, optional edits after the locked `alpacawork-agent <kind>` prefix, and the names of extra environment variables. How a kind is launched, how instructions are taken, how results, sessions and usage are read is owned by this wrapper and the backend adapter, not by configuration. The format is summarised in `alpacawork config get -h`, each kind's default options are in the `catalog` that `alpacawork config get` returns; add `--check` for executable and sign-in observations, and the settings an agent may change are described in the alpacawork skill ([references/config.md](../../skills/alpacawork/references/config.md), Japanese).
+Every agent here is a built-in kind. Configuration only chooses which kinds to use and in which order, the values offered when assigning work, optional edits after the locked `alpacawork-agent <kind>` prefix, and the names of extra environment variables. How a kind is launched, how instructions are taken, how results, sessions and usage are read is owned by this wrapper and the backend adapter, not by configuration. The format is summarised in `alpacawork config get -h`, each kind's default options are in the `catalog` that `alpacawork config get` returns; use `alpacawork config inspect` for executable and sign-in observations, and the settings an agent may change are described in the alpacawork skill ([references/config.md](../../skills/alpacawork/references/config.md), Japanese).
 
 ```yaml
 agents:

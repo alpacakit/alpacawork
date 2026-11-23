@@ -686,7 +686,7 @@
     "reason": {
       "kind": "stop_committed_but_publication_pending_query_or_retry_same_operation_id"
     },
-    "en": "The stop was committed but is waiting to be applied. Check or retry with the same operation ID"
+    "en": "The stop was saved and is waiting to be applied. Resend the original write with the same input, operation ID, and restore ID"
   },
   {
     "reason": {

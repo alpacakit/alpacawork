@@ -39,12 +39,12 @@ async function post(r: Runtime, path: string, body: object) {
   return response.json();
 }
 async function questions(r: Runtime, count: number) {
-  const project = (await post(r, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '開閉の計測' })).task.id;
+  const project = (await post(r, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '開閉の計測' })).task.id;
   const ids: string[] = [];
   for (let i = 0; i < count; i++) {
-    const { task } = await post(r, 'task/new', { parent: project, title: `質問 ${i + 1}`,
+    const { task } = await post(r, 'commands/task/new', { parent: project, title: `質問 ${i + 1}`,
       values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) });
-    await post(r, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+    await post(r, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
     patchTask(r.root, task.id, { state: 'doing' });
     seedQuestion(r.root, task.id, { to: 'user' });
     ids.push(task.id);

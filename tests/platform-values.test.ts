@@ -7,7 +7,7 @@ import { area, run, cli, start, request } from './helpers/platform-http.ts';
 
 test('task update --values-file changes only the fields sent and records each edit in the log', async () => {
   const source = join(area, 'values.json');
-  const before = (await request(await start(), 'task/get?task=T2&log=1000')).body.task;
+  const before = (await request(await start(), 'commands/task/get?task=T2&log=1000')).body.task;
   const initialVersion = (await request(await start(), 'workspace/live')).body.tasks.find((task: { id: string }) => task.id === 'T2').version;
   let expected = before.hash;
   for (const [index, [patch, values]] of ([
@@ -19,7 +19,7 @@ test('task update --values-file changes only the fields sent and records each ed
     const saved = await cli('task', 'update', '--task', 'T2', '--values-file', source, '--expected-task-hash', expected);
     assert.deepEqual(saved.task.values, values);
     assert.equal(saved.task.version, initialVersion + index + 1);
-    const log = (await request(await start(), 'task/get?task=T2&log=1000')).body.task.log;
+    const log = (await request(await start(), 'commands/task/get?task=T2&log=1000')).body.task.log;
     assert.deepEqual(log.slice(0, before.log.length), before.log);
     assert.equal(log.length, before.log.length + index + 1);
     assert.deepEqual([log.at(-1)?.kind, log.at(-1)?.actor, log.at(-1)?.changedFields], ['body_updated', { kind: 'human' }, ['values']]);
@@ -29,7 +29,7 @@ test('task update --values-file changes only the fields sent and records each ed
   writeFileSync(source, JSON.stringify({ conclusion: 'With a title' }));
   const both = await cli('task', 'update', '--task', 'T2', '--title', 'Retitled', '--values-file', source, '--expected-task-hash', expected);
   assert.deepEqual([both.task.title, both.task.values], ['Retitled', { goal: 'Ship it', conclusion: 'With a title' }]);
-  assert.deepEqual((await request(await start(), 'task/get?task=T2&log=1000')).body.task.log.slice(-2).map((entry: { kind: string }) => entry.kind),
+  assert.deepEqual((await request(await start(), 'commands/task/get?task=T2&log=1000')).body.task.log.slice(-2).map((entry: { kind: string }) => entry.kind),
     ['retitled', 'body_updated']);
 });
 
@@ -61,7 +61,7 @@ test('task update --values-file refuses a stale hash, an unknown Task and unread
 test('task update over HTTP takes values as JSON and refuses other shapes without writing', async () => {
   const app = await start();
   let expected = (await cli('task', 'get', '--task', 'T2')).task.hash;
-  const saved = await request(app, 'task/update', { task: 'T2', values: { notes: 'HTTP notes' }, expectedTaskHash: expected });
+  const saved = await request(app, 'commands/task/update', { task: 'T2', values: { notes: 'HTTP notes' }, expectedTaskHash: expected });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.task.values.notes, 'HTTP notes');
   expected = saved.body.task.hash;
@@ -74,7 +74,7 @@ test('task update over HTTP takes values as JSON and refuses other shapes withou
     [{ task: 'T2', body: 'Markdown', expectedTaskHash: expected }, 400, 'invalid_input'],
     [{ task: 'T2', 'values-file': 'local-only', expectedTaskHash: expected }, 400, 'invalid_input'],
   ] as const) {
-    const result = await request(app, 'task/update', input);
+    const result = await request(app, 'commands/task/update', input);
     assert.equal(result.status, status, JSON.stringify(input));
     assert.equal(result.body.error.code, code);
   }

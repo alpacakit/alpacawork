@@ -128,7 +128,7 @@ test('invalidated worker result keeps HTTP finish receipt guard and legal idempo
     const token = issueRunCredential(h.root, wake.runId);
     const input = { task: h.task.id, state: 'done', title: 'Received invalidation', description: 'The result is ready for review.', opId: randomUUID(), expectedTaskHash: (await h.current()).hash };
     const post = async data => {
-      const response = await commandFetch(new URL('/api/task/report', server.url), { method: 'POST',
+      const response = await commandFetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Alpacawork-Run ${wake.runId}:${token}` }, body: JSON.stringify(data) });
       return { status: response.status, body: await response.json() };
     };
