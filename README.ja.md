@@ -55,7 +55,7 @@ alpacawork setup
 
 ### 開き直す・止める・更新する
 
-タスクは画面の入力欄で頼みます。画面を開くなど alpacawork そのものの操作は、Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
+タスクは画面の入力欄で頼みます。画面を開くなど alpacawork そのものの操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
 
 | すること | AI に頼む文 | コマンド |
 | --- | --- | --- |

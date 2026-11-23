@@ -55,7 +55,7 @@ Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois 
 
 ### Abrir de novo, parar e atualizar
 
-As tarefas são pedidas na caixa de entrada da tela. Para operar o próprio alpacawork, como abrir a tela, peça ao Claude Code ou ao Codex e a IA faz isso (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). No terminal, os comandos da tabela fazem o mesmo.
+As tarefas são pedidas na caixa de entrada da tela. Para operar o próprio alpacawork, como abrir a tela, peça ao Claude Code ou ao Codex aberto no terminal ou no app, e a IA faz isso (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). No terminal, os comandos da tabela fazem o mesmo.
 
 | Para | Peça à IA | Comando |
 | --- | --- | --- |

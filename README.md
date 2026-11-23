@@ -81,12 +81,12 @@ It runs on macOS (Apple silicon), Linux (x64) and Windows (WSL2). After installi
 
 ### Reopen, stop and update
 
-You request tasks in the input box on the screen. For alpacawork itself, such as opening the screen, ask Claude Code or Codex and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
+You request tasks in the input box on the screen. To operate alpacawork itself, such as opening the screen, ask Claude Code or Codex opened in a terminal or its app, and the AI does it (in Codex, write `$alpacawork` instead of `/alpacawork`). In a terminal, the commands in the table do the same.
 
 | To | Ask the AI | Command |
 | --- | --- | --- |
 | Open the screen | `/alpacawork open the screen` | `alpacawork open` |
-| Check that it is running | `/alpacawork check that it is running` | `alpacawork status` |
+| Check whether it is running | `/alpacawork check whether it is running` | `alpacawork status` |
 | Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
 | Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
 | Stop, start or restart | — | `alpacawork stop`, `start`, `restart` |

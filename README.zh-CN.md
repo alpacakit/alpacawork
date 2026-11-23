@@ -55,7 +55,7 @@ alpacawork setup
 
 ### 重新打开、停止、更新
 
-任务在界面的输入框中提交。打开界面等对 alpacawork 本身的操作，请 Claude Code 或 Codex 来做，AI 会替你完成（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。在终端中，用表中的命令也能做到同样的事。
+在界面的输入框中委托任务。打开界面等对 alpacawork 本身的操作，交给在终端或应用中打开的 Claude Code 或 Codex 即可（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。在终端中，用表中的命令也能做到同样的事。
 
 | 要做的事 | 对 AI 说 | 命令 |
 | --- | --- | --- |

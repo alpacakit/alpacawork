@@ -55,7 +55,7 @@ Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de ins
 
 ### Volver a abrir, detener y actualizar
 
-Las tareas se piden en el cuadro de entrada de la pantalla. Para operar alpacawork en sí, como abrir la pantalla, pídeselo a Claude Code o Codex y la IA lo hace (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). En una terminal, los comandos de la tabla hacen lo mismo.
+Las tareas se piden en el cuadro de entrada de la pantalla. Para operar alpacawork en sí, como abrir la pantalla, pídeselo a Claude Code o Codex abierto en una terminal o en su app, y la IA lo hace (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). En una terminal, los comandos de la tabla hacen lo mismo.
 
 | Para | Pide a la IA | Comando |
 | --- | --- | --- |
