@@ -9,6 +9,8 @@ const LANES_PER_READ = 200;
  * a second) is read once for the burst, not once per record; a long row costs its whole strip each time.
  */
 export const LANE_READ_GAP = 2000;
+/** How early a row waiting out its gap may go along with another row's read. */
+const LANE_READ_BEAT = 250;
 
 /**
  * Each row's own failure of a read they shared, with the read's failure as its cause: a failure is recorded by its
@@ -66,11 +68,31 @@ export function laneBatches(request: (path: string, signal: AbortSignal) => Prom
       })
       .finally(() => { for (const waiter of waiters) waiter.signal?.removeEventListener('abort', dropped); });
   };
-  // `notBefore`: a row read again goes no earlier (LANE_READ_GAP); what changes meanwhile comes in the one read.
+  // Rows waiting out their gap wait on one timer per range; when it fires, every row due within the next beat goes along,
+  // so rows bumped together still go out as one read (a row let go up to a beat early is still read after its arrival).
+  const delayed = new Map<string, { waiters: { waiter: Waiter; due: number }[]; timer: ReturnType<typeof setTimeout> }>();
+  const release = (range: string) => {
+    const held = delayed.get(range);
+    if (!held) return;
+    const now = Date.now(), going = held.waiters.filter(({ due }) => due <= now + LANE_READ_BEAT);
+    held.waiters = held.waiters.filter(({ due }) => due > now + LANE_READ_BEAT);
+    for (const { waiter } of going) if (!waiter.signal?.aborted) enqueue(range, waiter);
+    if (held.waiters.length) held.timer = setTimeout(() => release(range), Math.min(...held.waiters.map(({ due }) => due)) - now);
+    else delayed.delete(range);
+  };
+  const later = (range: string, waiter: Waiter, wait: number) => {
+    const due = Date.now() + wait, held = delayed.get(range);
+    if (!held) { delayed.set(range, { waiters: [{ waiter, due }], timer: setTimeout(() => release(range), wait) }); return; }
+    const first = Math.min(...held.waiters.map(entry => entry.due));
+    held.waiters.push({ waiter, due });
+    if (due < first) { clearTimeout(held.timer); held.timer = setTimeout(() => release(range), wait); }
+  };
+  // `notBefore`: a row read again goes no earlier (LANE_READ_GAP); what changes meanwhile comes in the one read. The wait
+  // is never longer than the gap, so a clock that was ahead when a strip arrived cannot hold its row back.
   return (lane: string, from: string, to: string, signal?: AbortSignal, notBefore = 0) =>
     new Promise<TaskTimelineLaneDTO>((resolve, reject) => {
-      const waiter = { lane, signal, resolve, reject }, wait = notBefore - Date.now();
-      if (wait > 0) setTimeout(() => { if (!signal?.aborted) enqueue(JSON.stringify([from, to]), waiter); }, wait);
-      else enqueue(JSON.stringify([from, to]), waiter);
+      const waiter = { lane, signal, resolve, reject }, range = JSON.stringify([from, to]);
+      const wait = Math.min(notBefore - Date.now(), LANE_READ_GAP);
+      if (wait > 0) later(range, waiter, wait); else enqueue(range, waiter);
     });
 }

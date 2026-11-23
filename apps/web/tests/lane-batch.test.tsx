@@ -102,7 +102,18 @@ test('a row read again waits out the gap from its last arrival, while a row not 
   const again = read('T1', 'from', 'to', undefined, Date.now() + LANE_READ_GAP), fresh = read('T2', 'from', 'to');
   await vi.advanceTimersByTimeAsync(0);
   expect(request.mock.calls.map(([path]) => asked(path))).toEqual([['T2']]);
-  await vi.advanceTimersByTimeAsync(LANE_READ_GAP);
+  await vi.advanceTimersByTimeAsync(LANE_READ_GAP + 250);
   await Promise.all([again, fresh]);
   expect(request.mock.calls.map(([path]) => asked(path))).toEqual([['T2'], ['T1']]);
+});
+
+test('rows waiting out their gaps go as one read, and a strip stamped ahead of the clock waits no longer than the gap', async () => {
+  vi.useFakeTimers();
+  const request = vi.fn(async (path: string): Promise<TaskTimelineLanesDTO> => ({ lanes: asked(path).map(strip), gone: [] }));
+  const read = laneBatches(request);
+  const reads = [read('T1', 'from', 'to', undefined, Date.now() + LANE_READ_GAP - 100), read('T2', 'from', 'to', undefined, Date.now() + LANE_READ_GAP),
+    read('T3', 'from', 'to', undefined, Date.now() + 24 * 3_600_000)];
+  await vi.advanceTimersByTimeAsync(LANE_READ_GAP + 250);
+  await Promise.all(reads);
+  expect(request.mock.calls.map(([path]) => asked(path).sort())).toEqual([['T1', 'T2', 'T3']]);
 });
