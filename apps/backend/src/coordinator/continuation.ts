@@ -1,9 +1,18 @@
-import type { AiRow } from '@alpacawork/contract';
+import { compileAgentSetting, coordinatorDefaultAgent, coordinatorStartValues, selectionOffer, type AiRow } from '@alpacawork/contract';
 import { compareRunIds, type CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { compareRequestOrder, isUnfinished } from '@alpacawork/runs';
 import { coordinatorLaunchSnapshot, type AgentsSettings } from '../agents-settings.js';
 import { aiLaunchIdentity, distinctAiRows, sameAiLaunch } from '../ai-stack.js';
+
+function coordinatorRows(config: AgentsSettings): readonly AiRow[] {
+  if (config.coordinatorAiStack !== undefined) return config.coordinatorAiStack;
+  const first = coordinatorDefaultAgent(config.agents, config.aiStack);
+  if (!first) return [];
+  const [agent, setting] = first;
+  const offer = selectionOffer(compileAgentSetting(agent, setting));
+  return [{ agent, values: coordinatorStartValues(offer) }];
+}
 
 function preferResume(config: AgentsSettings, row: AiRow, path: string, previous: CoordinatorRunRecord | null) {
   if (previous) {
@@ -20,7 +29,7 @@ function preferResume(config: AgentsSettings, row: AiRow, path: string, previous
 
 /** Choose the same row for admission, warm-up, the skill catalog and the projected conversation. */
 export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly CoordinatorRunRecord[], path = process.env.PATH ?? '') {
-  const rows = distinctAiRows(config, config.coordinatorAiStack ?? []);
+  const rows = distinctAiRows(config, coordinatorRows(config));
   const last = runs.filter(run => run.state === 'succeeded' || isUnfinished(run)).sort(compareRequestOrder).at(-1);
   const resumable = last && (last.session !== null || isUnfinished(last)) ? last : null;
 

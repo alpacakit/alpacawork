@@ -7,6 +7,7 @@ import { detectSetupAgents } from '@alpacawork/backend/test-dist/installation/se
 import { initializeInstallation } from '@alpacawork/backend/test-dist/installation/setup.js';
 import { readControlEnvironment } from '@alpacawork/backend/test-dist/control/tree.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
+import { readServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
 import { randomUUID } from 'node:crypto';
 import { inspectAgentSkillLinks, syncAgentSkillLinks } from '@alpacawork/backend/test-dist/installation/agent-skill-links.js';
 import { skillLinkConflicts, confirmInstallation } from '@alpacawork/backend/test-dist/installation/confirmation.js';
@@ -19,7 +20,7 @@ function fixture(t: TestContext) {
   t.after(() => rmSync(home, { recursive: true, force: true }));
   return { home, root: join(home, '.agents/skills') };
 }
-test('new installations expose detected placement choices and leave the coordinator for setup', async t => {
+test('new installations expose detected placement choices and admit coordinator messages without a saved stack', async t => {
   for (const commands of [[], ['codex'], ['claude'], ['codex', 'claude']]) {
     const { home } = fixture(t), bin = join(home, 'bin'); mkdirSync(bin);
     // The synthetic CLI accepts only the model-free authentication/version checks.
@@ -36,10 +37,26 @@ test('new installations expose detected placement choices and leave the coordina
     const config = readFileSync(join(root, 'config.yaml'), 'utf8');
     const expected = ['claude', 'codex'].filter(command => commands.includes(command));
     assert.deepEqual(readControlEnvironment(root).profiles.map(profile => profile.key), expected);
-    const owner = new CoordinatorConversation(root), conversation = owner.read();
-    const ask = () => owner.ask({ conversationId: conversation.id, id: randomUUID(), text: 'Synthetic first message', attachments: [] });
-    assert.equal(conversation.nextLaunch, null);
-    assert.throws(ask, { code: 'invalid_settings', reason: { kind: 'no_configured_agents' } });
+    const path = process.env.PATH;
+    process.env.PATH = bin;
+    try {
+      const owner = new CoordinatorConversation(root), conversation = owner.read(), id = randomUUID();
+      const ask = () => owner.ask({ conversationId: conversation.id, id, text: 'Synthetic first message', attachments: [] });
+      if (expected.length) {
+        assert.equal(conversation.nextLaunch?.agent, expected[0]);
+        assert.equal(conversation.nextLaunch?.values.effort, 'low');
+        assert.equal(ask().turns.find(turn => turn.id === id)?.status, 'queued');
+      } else {
+        assert.equal(conversation.nextLaunch, null);
+        assert.throws(ask, { code: 'invalid_settings', reason: { kind: 'no_configured_agents' } });
+      }
+    } finally {
+      if (path === undefined) delete process.env.PATH;
+      else process.env.PATH = path;
+    }
+    const settings = await readServerSettings(root);
+    assert.ok(settings.hash);
+    assert.equal(Object.hasOwn(settings, 'coordinatorAiStack'), false);
     await assert.rejects(initializeInstallation({ ...request, env: { ...request.env, PATH: '' } }), { code: 'invalid_root' });
     assert.equal(readFileSync(join(root, 'config.yaml'), 'utf8'), config, 'Later initialization cannot overwrite the saved default');
     assert.equal(existsSync(invoked), false, 'Detection and admission never invoke a model');
