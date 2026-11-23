@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 import { Icon } from "@/components/ui/icon";
 import type { IconName } from "@/components/ui/icon";
 import { duration, easing } from "@/lib/motion";
+import { fingerMark, offerWhileFree, playSteps, SHOW_STEPS } from "@/lib/show-how";
 import { stampInk, stampPaper, stampWords } from "./stamp";
 import { cn } from "@/lib/utils";
 import type { Task } from '@/data/types';
@@ -21,6 +22,8 @@ type SwipeAction = { kind: 'send' | 'hold' | 'done'; verb: string; run: () => Re
  */
 const SWIPE_USE = { send: 'swipe.send', done: 'swipe.done', hold: 'swipe.hold' } as const;
 type Actions = { answer: SwipeAction | null; hold: SwipeAction | null; refuse?: (() => void) | null };
+/** What a stamp says: the way of answering it stands for, in words. */
+type StampMark = Pick<SwipeAction, 'kind' | 'verb'>;
 
 /**
  * How fast the finger was moving when it let go (px/ms), from its last two moves. Held still before letting go, a finger
@@ -170,6 +173,25 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
     // that scrolls across, a link): told so on every move, listened to all along, as a sheet's press is (sheet-press).
     const keep = (event: TouchEvent) => { if (sideways && event.cancelable) event.preventDefault(); };
     const visibility = () => { if (document.visibilityState === 'hidden') reset(); };
+    // Showing how the card is swiped (show-how): carried right and back, then left and back where it can be held, with
+    // the stamp of each side and a finger mark, as a finger carries it; nothing is answered. Offered while the card can
+    // be swiped and no finger is on it; withdrawn, and stopped if it plays, as this card goes or stops being swipeable.
+    let showing: (() => void) | undefined;
+    const withdraw = offerWhileFree("swipe", aside, ended => {
+      reset();
+      const steps = [...SHOW_STEPS.swipeRight, ...latest.current.hold ? SHOW_STEPS.swipeLeft : []];
+      const box = area.getBoundingClientRect(), finger = fingerMark();
+      const x = box.left + box.width / 2, y = box.top + Math.min(box.height / 3, 160);
+      const stop = playSteps(steps, (dx) => {
+        aside.style.transition = "none";
+        aside.style.transform = carried(dx);
+        if (dx) { mark.dataset.swipe = dx > 0 ? "right" : "left"; mark.style.setProperty("--swipe", String(Math.min(1, Math.abs(dx) / reach(aside.offsetWidth)))); }
+        else hide();
+        finger.at(x + dx, y);
+      }, () => { finger.remove(); reset(); showing = undefined; ended(); });
+      showing = stop;
+      return stop;
+    });
     area.addEventListener("pointerdown", down);
     area.addEventListener("pointermove", move, { passive: false });
     area.addEventListener("pointerup", up);
@@ -179,6 +201,8 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('pagehide', reset);
     return () => {
+      showing?.();
+      withdraw();
       reset();
       area.removeEventListener("pointerdown", down);
       area.removeEventListener("pointermove", move);
@@ -201,11 +225,11 @@ const answerIcon: Record<SwipeAction['kind'], IconName> = { send: 'plane', done:
  * line in `--swipe`). It stays where the window is, not on the moving card; it fades in with the finger and, at the line,
  * is pressed in.
  */
-function SwipeStamp({ box, stamp, answer, hold }: Actions & { box: string; stamp: RefObject<HTMLDivElement | null> }) {
+function SwipeStamp({ box, stamp, right, left }: { right: StampMark | null; left: StampMark | null; box: string; stamp: RefObject<HTMLDivElement | null> }) {
   return (
     <div ref={stamp} aria-hidden="true" data-swipe-stamp
       className={cn(box, "group/swipe pointer-events-none border-0 bg-transparent shadow-none [--swipe:0]")}>
-      {([["right", answer], ["left", hold]] as const).map(([side, action]) => action && (
+      {([["right", right], ["left", left]] as const).map(([side, action]) => action && (
         <div key={side} data-swipe-mark={action.kind}
           className={cn("absolute top-[14%] left-1/2 hidden w-max max-w-[78%] flex-col items-center gap-1", stampPaper,
             "transition-[scale] duration-(--motion-base) ease-(--ease-pop) group-data-armed/swipe:scale-105",
@@ -247,5 +271,9 @@ export function ReaderSwipe({ task, box, reading, content, className, enabled }:
   // With no answer on the right to a question asked of the person, a swipe says why: the question left.
   if (!actions.answer && turn?.reason === 'question' && missing?.task === task.id) actions.refuse = refuse;
   useSwipeAnswer(box, reading, stamp, on, actions, `${task.id}:${task.hash}:${turn?.key ?? ""}`);
-  return on ? <SwipeStamp box={className} stamp={stamp} {...actions} /> : null;
+  // The right stamp is the way this turn is answered, drawn even before it can be (shown when the swipe is shown, the
+  // answer not chosen yet); a swipe itself shows it only when it answers.
+  const right: StampMark | null = actions.answer ?? (turn?.reason === 'review' ? { kind: 'done', verb: t('nextQuestion.done') }
+    : turn?.reason === 'question' ? { kind: 'send', verb: t('swipe.send') } : null);
+  return on ? <SwipeStamp box={className} stamp={stamp} right={right} left={actions.hold} /> : null;
 }

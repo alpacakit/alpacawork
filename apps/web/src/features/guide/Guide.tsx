@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -7,23 +7,23 @@ import { Icon } from "@/components/ui/icon";
 import { Sentences } from "@/components/ui/sentences";
 import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
+import { useViewStore } from "@/state/view-store";
+import { showHowReach, useShowHow } from "@/lib/show-how";
 import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
-import { closeGuide, going, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } from "./use-guide";
-
-/** Where settings show the guide again: named in the notice that it is over, however it ended. */
-const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
+import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
+import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
+import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
- * Says that the guide is over when it is read to its end: it never just stops showing. Said once, where the person
- * read its last step: on the screen that shows the guide (`shown`), saw it going and then read to its end (whichever
- * tab stored that), and is the window they are working in. Closed by hand, the close mark says so itself, there alone.
+ * Says that the computer's guide is over when it is read to its end: it never just stops showing (no other guide is
+ * ever over by being read: SCREENS). Said once, where the person read its last step: on a computer's screen (`shown`),
+ * saw it going and then read to its end (whichever tab stored that), and is the window they are working in. Closed by
+ * hand, the close mark says so itself, there alone.
  */
 function useOverNotice(shown: boolean) {
   const { t } = useTranslation("tree");
-  const stage = useDeviceValue(guideStage);
+  const stage = useDeviceValue(guideStages.computer);
   const was = useRef(stage);
   useEffect(() => {
     const before = was.current;
@@ -33,15 +33,15 @@ function useOverNotice(shown: boolean) {
   }, [stage]);
 }
 
-/** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
-function CloseGuide({ className }: { className?: string }) {
+/** The guide's close mark (×): it ends the screen's guide on this browser, and says so in that guide's words (SCREENS), with a way straight back. */
+function CloseGuide({ screen, className }: { screen: GuideScreen; className?: string }) {
   const { t } = useTranslation("tree");
   const close = () => {
     // Closed by one press, it comes back by one press: where it was, while the notice that says so stands.
-    const before = guideStage.get();
-    closeGuide();
-    notify.info(t("guide.closed", shownAgainAt(t as TFunction)),
-      { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
+    const before = guideStages[screen].get();
+    closeGuide(screen);
+    notify.info(SCREENS[screen].closed(t as TFunction),
+      { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide(screen, { stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
     className={cn("flex-none", className)}>
@@ -54,6 +54,8 @@ type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: numbe
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
 /** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
 const STOOD_MS = 150;
+/** How long a balloon stands before the motion of its step (`show`) begins: its words are read first. */
+const SHOW_AFTER_MS = 1000;
 /** How much of a part's top counts as its head: where a tall part is looked for when its middle is out of sight. */
 const HEAD = 40;
 const OPPOSITE: Record<GuideSide, GuideSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
@@ -233,11 +235,12 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
  */
 export function GuideBalloon() {
   useGuideStart();
-  const stage = useGoingGuide();
-  // Started on a phone too (its stage kept for a computer), it is drawn on a computer's screen alone (useGuideShown).
-  const shown = useGuideShown();
-  useOverNotice(shown);
-  return stage && shown && <GoingBalloon stage={stage} />;
+  // Each screen draws its own guide alone (useGuideScreen); one begun on another screen keeps its stage for it.
+  const screen = useGuideScreen();
+  const stage = useGoingGuide(screen ?? "computer");
+  useOverNotice(screen === "computer");
+  // With no step left to say, nothing is read for it (stepsLeft).
+  return stage && screen && stepsLeft(screen, stage.seen).length > 0 && <GoingBalloon key={screen} screen={screen} stage={stage} />;
 }
 
 /**
@@ -259,19 +262,23 @@ function useSkipped() {
   return { skipped, pass };
 }
 
-function GoingBalloon({ stage }: { stage: GoingStage }) {
+function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { entry, again, facts, fresh, ready } = useGuide(stage, skipped);
+  // What the steps left read besides the screen (`reads`), and nothing else.
+  const reads = useMemo(() => new Set(stepsLeft(screen, stage.seen).flatMap(entry => entry.reads ?? [])), [screen, stage]);
+  const { entry, again, facts, fresh, ready } = useGuide(screen, stage, skipped, reads);
   // The steps whose balloon has stood on this page, in this guide (begun again, none has): one stands once it has been
   // on the screen for a moment without a break (STOOD_MS).
   const began = stage.stage === "started" ? stage.at : null;
   const stood = useRef({ began, ids: new Set<string>() });
   if (began !== null && stood.current.began !== began) stood.current = { began, ids: new Set() };
-  useGuideStage(stage, entry, facts, fresh, ready, id => stood.current.ids.has(id));
+  useGuideStage(screen, stage, entry, facts, fresh, ready, id => stood.current.ids.has(id));
   const dialog = useDialogStore((state) => state.dialog);
   const part = entry?.part && !(dialog && dialog.kind !== "input") ? PARTS[entry.part] : null;
   const balloon = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placed | null>(null);
+  // While the step's motion plays (useShowStep), the balloon and its ring stay where they stood.
+  const showing = useShowStep(entry, placed !== null);
   useLayoutEffect(() => {
     if (!part || !entry) { setPlaced(null); return; }
     // Not looked at yet for this step: its first look is always kept, so a step whose part is not on the screen never
@@ -290,9 +297,10 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     const stoodNow = () => {
       standing = null;
       stood.current.ids.add(entry.id);
-      if (doneOnShowing(entry, true)) putAway(entry.id);
+      if (doneOnShowing(entry, true)) putAway(screen, entry.id);
     };
     const update = () => {
+      if (showing.current) return;
       let target = shownPart(part);
       if (!settled) {
         const away = outOfPane(part);
@@ -307,8 +315,11 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
         const holder = target.closest(PARTS[name]);
         return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
-      const next = target && own ? placeBalloon(seenBoxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
-        entry.align, clear) : null;
+      // It stands clear of all the step's motion may take its part through (as far as the sheet grows or shrinks), its
+      // ring on the part.
+      const seen = target ? seenBoxOf(target) : null, reach = entry.show ? showHowReach(entry.show) : 0;
+      const next = seen && own ? { ...placeBalloon({ ...seen, top: seen.top - reach, height: seen.height + 2 * reach }, { width: own.width, height: own.height },
+        { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align, clear), target: seen } : null;
       const looked = !!next && document.visibilityState === "visible";
       if (!looked && standing) { clearTimeout(standing); standing = null; }
       if (looked && !standing && !stood.current.ids.has(entry.id)) standing = setTimeout(stoodNow, STOOD_MS);
@@ -336,9 +347,39 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
     <div ref={balloon} data-guide-balloon={entry.id} data-guide-again={again || undefined} data-guide-side={placed?.side}
       className={cn("pointer-events-none fixed z-(--layer-guide) w-max max-w-[min(31rem,calc(100vw-16px))]", !placed && "invisible")}
       style={placed ? { left: placed.x, top: placed.y } : { left: 0, top: 0 }}>
-      <BalloonBody entry={entry} again={again} placed={placed} />
+      <BalloonBody screen={screen} entry={entry} facts={facts} again={again} placed={placed} />
     </div>
   </>, document.body);
+}
+
+/**
+ * The motion of a step with one (`show`), played by its part's owner (show-how) a moment after its balloon stands and
+ * the owner offers it (a finger lifted, the part able to do it again: offerWhileFree): once each time the balloon stands
+ * on a card, stopped or not. Stopped when the balloon goes, the step changes or another card is opened. Returns whether
+ * it plays now.
+ */
+function useShowStep(entry: GuideEntry | null, standing: boolean) {
+  const showing = useRef(false);
+  const card = useViewStore((state) => state.selected);
+  const kind = entry?.show;
+  const offered = useShowHow((state) => !!kind && !!state[kind]);
+  // The standing it was played in: the step, on the card; none while no balloon with a motion stands.
+  const key = kind && standing ? `${entry!.id}:${card ?? ""}` : null;
+  const played = useRef<string | null>(null);
+  useEffect(() => {
+    if (!key) { played.current = null; return; }
+    if (!offered || played.current === key) return;
+    let stop: (() => void) | undefined;
+    const timer = setTimeout(() => {
+      const play = useShowHow.getState()[kind!];
+      if (!play) return;
+      played.current = key;
+      showing.current = true;
+      stop = play(() => { showing.current = false; });
+    }, SHOW_AFTER_MS);
+    return () => { clearTimeout(timer); stop?.(); showing.current = false; };
+  }, [key, offered]);
+  return showing;
 }
 
 /**
@@ -363,10 +404,10 @@ export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DO
   balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
 /** The balloon's words and buttons: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
-function BalloonBody({ entry, again, placed }: { entry: GuideEntry; again: boolean; placed: Placed | null }) {
+function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScreen; entry: GuideEntry; facts: GuideFacts; again: boolean; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
-  const say = (again && entry.again || entry.say)(t as TFunction);
+  const say = again && entry.again ? entry.again(t as TFunction) : entry.say(t as TFunction, facts);
   const next = !!entry.next && !again;
   // The balloon is as wide as its longest line: words broken at a sentence's or a phrase's end (Sentences) leave no
   // empty room at their right.
@@ -391,7 +432,7 @@ function BalloonBody({ entry, again, placed }: { entry: GuideEntry; again: boole
     return () => { live = false; removeEventListener("resize", fit); };
   }, [say]);
   // Read and put away, by "Got it" or by doing what the step offers: the guide goes on.
-  const read = () => { putAway(entry.id); };
+  const read = () => { putAway(screen, entry.id); };
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };
@@ -402,9 +443,10 @@ function BalloonBody({ entry, again, placed }: { entry: GuideEntry; again: boole
       <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
         <Sentences words={say} />
       </p>
-      <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
+      <CloseGuide screen={screen} className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
-    {(next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
+    {/* Its buttons side by side at the right; one under the other where they do not fit beside each other. */}
+    {(next || entry.action) && <div className="mt-1.5 flex flex-wrap justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
         onClick={() => { read(); entry.action!.run(t as TFunction); }}>{entry.action.label(t as TFunction)}</Button>}
       {next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}

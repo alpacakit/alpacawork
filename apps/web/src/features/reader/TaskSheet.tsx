@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { duration, easing, reducedMotion } from "@/lib/motion";
 import { listenSheetPress, pullsFrom } from "@/lib/sheet-press";
 import { leaveSheet, sheetHand, sheetMotion } from "@/lib/sheet-motion";
+import { fingerMark, offerWhileFree, playSteps, sheetShowWay, SHOW_STEPS } from "@/lib/show-how";
 import { setSheetShare, SHARE_RANGE, sheetShare } from "@/state/sheets";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useTaskActionSlot } from "@/features/coordinator/task-action-slot";
@@ -110,6 +111,30 @@ export function useSheetMotion({ whole, onWhole, onAway, rising, on = true }: {
     return () => { stop(); motion.current?.stop(); };
   }, [on]);
 
+  // Showing how its height is changed (show-how): held as a finger holds it, it grows (or, with no room over it,
+  // shrinks) and comes back where it stands, a finger mark on its grip; then back at rest at the height kept, which it
+  // never changes. Offered while no finger is on the sheet; withdrawn, and stopped if it plays, as the sheet goes or
+  // stops being one.
+  useEffect(() => {
+    const el = frame.current;
+    if (!on || !el) return;
+    let playing: (() => void) | undefined;
+    const withdraw = offerWhileFree("sheet", el, ended => {
+      const grip = el.querySelector("[data-task-sheet-grip]");
+      if (!grip) { ended(); return () => {}; }
+      const hand = moving(), from = hand.shown(), way = sheetShowWay(from, innerHeight), finger = fingerMark();
+      const bar = grip.getBoundingClientRect();
+      hand.hold(from);
+      const stop = playSteps(SHOW_STEPS.sheet, reach => {
+        hand.follow(from + way * reach);
+        finger.at(bar.left + bar.width / 2, bar.top + bar.height / 2 - way * reach);
+      }, () => { finger.remove(); if (el.dataset.sheetHeld !== undefined) hand.stop(); playing = undefined; ended(); });
+      playing = stop;
+      return stop;
+    });
+    return () => { playing?.(); withdraw(); };
+  }, [on]);
+
   return { frame, grip: GRIP, toggleWhole: () => whole ? toShare(share * innerHeight, false) : toWhole() };
 }
 
@@ -168,7 +193,7 @@ export function StandingGrip() {
 function SheetGrip({ control }: { control: SheetControl }) {
   const { t } = useTranslation("reader");
   return <div {...control.grip} tabIndex={-1} data-sheet-handle data-task-sheet-grip title={t("sheet.grip")} className="flex h-3 flex-none items-end justify-center outline-none">
-    <span aria-hidden="true" className="h-1 w-9 rounded-sm bg-line" />
+    <span data-guide-part="grip" className="h-1 w-9 rounded-sm bg-line" />
   </div>;
 }
 

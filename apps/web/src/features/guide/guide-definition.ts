@@ -3,13 +3,19 @@ import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
+import type { ShowHowKind } from "@/lib/show-how";
 import type { GuideStage } from "./guide-state";
 
 /**
  * The getting-started guide, in one place: which parts of the screen it can point at, and its steps in order.
  *
- * How a step is chosen: the first entry of GUIDE, from the top, that is looked at and holds. The entries come in
- * phases, in this order:
+ * There is one guide for each kind of screen (SCREENS), each kept on its own on this browser (guide-state.ts): a
+ * computer's, which takes a new person through their first Task, and a phone's, which tells someone who knows the
+ * computer's screen what only a phone has. A screen looks at its own phases alone, starts its guide by its own rule,
+ * and says its own words as its guide is closed.
+ *
+ * How a step is chosen: the first entry of GUIDE, from the top, that is looked at and holds. A computer's entries come
+ * in phases, in this order:
  * - `first`: the first step (or it shown again), before anything is written or sent;
  * - `now`: what the person has just done: a message the coordinator is still on, words waiting to be sent, a message
  *   just answered in the conversation itself;
@@ -19,6 +25,7 @@ import type { GuideStage } from "./guide-state";
  *   be sent (`closing`), what is left to know;
  * - `work`: other work going on in the list;
  * - `idle`: nothing going on.
+ * A phone's come in one phase, `phone`: each is said once, and the guide is never over by being read.
  * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read: then, and
  * only then, nothing holds while closing (nextStage). Otherwise, when nothing holds, nothing is shown and the guide waits.
  * Words
@@ -36,14 +43,15 @@ import type { GuideStage } from "./guide-state";
  * was shown in, while it stays the step on this page (`standing`). One with a button is done when its button is
  * pressed, or when the guide moves on
  * from it after its balloon stood because its own facts no longer hold (doneOnLeaving); pushed aside while it still
- * holds, it comes back. A step that holds while its part is not on the screen shows nothing and the guide waits for
+ * holds, it comes back. A step whose facts cannot be told now (`unknown`) neither holds nor is left: it shows nothing,
+ * is not done, and the steps after it are chosen as if it were not there. A step that holds while its part is not on the screen shows nothing and the guide waits for
  * that part; one marked `passable` is passed over instead (`skipped`): the next step that holds is shown, and it comes
  * back when its part is seen again.
  *
  * To add a step, add one entry to GUIDE where it belongs in the order and its words to tree.json (every language):
  * - `id`: its name (also what "Got it" remembers);
- * - `phase`: where it belongs (above);
- * - `when`: the facts under which it holds;
+ * - `phase`: where it belongs (above), which says the screen it is shown on;
+ * - `when`: the facts under which it holds (true), no longer holds (false), or cannot be told now (`unknown`);
  * - `part`, `side` and `align`: the part it points at (a name from PARTS), the side of that part its balloon stands on,
  *   and where along that side (middle unless said);
  * - `clear`: parts the balloon never stands over (what is read there stays read): the one holding the part pointed at,
@@ -55,7 +63,10 @@ import type { GuideStage } from "./guide-state";
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
  * - `say`: its words, by its key, written out so the extractor reads it;
- * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next.
+ * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next;
+ * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft);
+ * - `show`: a motion that shows how its part is used (show-how), played by that part's owner a moment after the
+ *   balloon stands, each time it stands; the balloon stays still meanwhile and stands clear of where it takes the part.
  * Nothing else names a step: the balloon and the stored stage read them from here.
  */
 
@@ -105,6 +116,14 @@ export const PARTS = {
   label: ":is([data-coordinator-capsule], [data-composer-frame]) [data-label=task]",
   /** The settings' button at the top right. */
   settings: '[data-guide-part="settings"]',
+  /** That button while no Task is open in the detail: the list is what is seen under it. */
+  settingsOverList: 'body:not(:has(aside[data-reader-mode])) [data-guide-part="settings"]',
+  /** The open Task's own buttons in the row over the input (auto-swipe, Change state, Done), while the conversation is folded. */
+  taskButtons: "[data-coordinator-fold-row] [data-task-action-slot]",
+  /** A phone's Task sheet's grip: the short bar at its top. */
+  grip: '[data-guide-part="grip"]',
+  /** A phone's button that closes the Task's sheet, over the end of that row. */
+  sheetClose: "[data-reader-sheet-close]",
 } as const;
 export type GuidePart = keyof typeof PARTS;
 /** What a row awaiting the person awaits (its `data-row-turn`): an answer to a question, or anything else (a report). */
@@ -119,7 +138,9 @@ export type GuideAlign = "start" | "middle" | "end";
  * step whose part is not on the screen just shows no balloon.
  */
 export type GuideFacts = {
-  /** This browser's stage; never "done" here (a guide that is over shows nothing). */
+  /** The kind of screen the guide is shown on: its guide is the one going on. */
+  screen: GuideScreen;
+  /** This browser's stage of that guide; never "done" here (a guide that is over shows nothing). */
   stage: Exclude<GuideStage, { stage: "done" }>;
   /** The Tasks in the workspace. */
   tasks: number;
@@ -151,6 +172,11 @@ export type GuideFacts = {
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
+  /**
+   * Notifications are off on this browser, as it has itself made sure (pushOff): false whenever that is not made sure
+   * (anything else, or not read yet), and when no step left reads it.
+   */
+  pushOff: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps said: put away by their button, shown (with no button), or left after their balloon stood on the screen. */
@@ -162,12 +188,43 @@ export type GuideFacts = {
 };
 
 /** Where a step belongs in the order steps are chosen in (see the top). */
-export type GuidePhase = "first" | "now" | "turn" | "close" | "work" | "idle";
+export type GuidePhase = "first" | "now" | "turn" | "close" | "work" | "idle" | "phone";
+
+/** The kinds of screen with a guide of their own: a computer's (a wide screen), and a phone's (a narrow one, touched). */
+export type GuideScreen = "computer" | "phone";
+/**
+ * Which guide a screen shows: a computer's on a wide screen, a phone's on a narrow one touched; none on a narrow one with
+ * a pointer (a window made small on a computer).
+ */
+export const guideScreen = (narrow: boolean, coarse: boolean): GuideScreen | null => !narrow ? "computer" : coarse ? "phone" : null;
+/** What a guide starts by: the screen it is seen on, whether the welcome is on the screen, and the Tasks in the whole workspace. */
+export type GuideOpening = { screen: GuideScreen | null; welcome: boolean; tasks: number };
+/** Where settings show the computer's guide again: named as it is closed, and as it is over once read to its end. */
+export const shownAgainAt = (t: TFunction) => ({ settings: t("chrome:appBar.settings"), tab: t("panels:settings.tabs.general"), guide: t("panels:settings.personal.guide") });
+/**
+ * Each screen's guide: the phases it looks at, in order; when it starts by itself on a browser that has never had it
+ * (on any screen: a computer's guide begun on a phone goes on on a computer, and the welcome says so); and what is said
+ * as it is closed by hand. Only a guide with a `close` phase is ever over by being read (nextStage).
+ */
+export const SCREENS: Record<GuideScreen, { phases: readonly GuidePhase[]; starts: (at: GuideOpening) => boolean; closed: (t: TFunction) => string }> = {
+  // A new person's first look: on the welcome, with no Task in the whole workspace (not someone with work elsewhere
+  // opening an empty project). Shown again from settings.
+  computer: { phases: ["first", "now", "turn", "close", "work", "idle"], starts: at => at.welcome && at.tasks === 0,
+    closed: t => t("tree:guide.closed", shownAgainAt(t)) },
+  // The first look on a phone, whatever was done on a computer.
+  phone: { phases: ["phone"], starts: at => at.screen === "phone", closed: t => t("tree:guide.closedPhone") },
+};
+
+/** Whether a step holds: it does, it does not (what it is about is over), or that cannot be told now. */
+export type GuideHolds = boolean | "unknown";
+
+/** What a step reads from outside the screen for itself alone: this browser's own notifications (pushOff). */
+export type GuideRead = "push";
 
 export type GuideEntry = {
   id: string;
   phase: GuidePhase;
-  when: (facts: GuideFacts) => boolean;
+  when: (facts: GuideFacts) => GuideHolds;
   part?: GuidePart;
   clear?: readonly GuidePart[];
   side?: GuideSide;
@@ -176,8 +233,10 @@ export type GuideEntry = {
   passable?: boolean;
   next?: boolean;
   action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
-  say: (t: TFunction) => string;
+  say: (t: TFunction, facts: GuideFacts) => string;
   again?: (t: TFunction) => string;
+  reads?: readonly GuideRead[];
+  show?: ShowHowKind;
 };
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
@@ -195,10 +254,14 @@ const OVER_INPUT = { clear: ["foot", "detail"], side: "top", align: "start" } as
 /** The step at the conversation itself stands right by its button, clear of the foot. */
 const AT_CONVERSATION = { clear: ["foot"], side: "top", align: "start" } as const;
 /**
- * The person has finished a Task here, as the server says, and no words wait in the input: the close is what is left.
- * While words wait, they come first (sent or taken away, the close goes on).
+ * The person has finished a Task here, as the server says, and no words wait in the input: on a screen whose guide has
+ * a close, the close is what is left. While words wait, they come first (sent or taken away, the close goes on).
  */
-export const closing = (f: Pick<GuideFacts, "doneHere" | "drafting">) => f.doneHere && !f.drafting;
+export const closing = (f: Pick<GuideFacts, "screen" | "doneHere" | "drafting">) => hasClose(f.screen) && f.doneHere && !f.drafting;
+/** Whether a screen's guide has a close: only there are the Tasks Done is pressed on kept and read (finishedHere). */
+export const hasClose = (screen: GuideScreen) => SCREENS[screen].phases.includes("close");
+/** What a swipe of the open card does, in the screen's own words: Done, and the hold swipe's. */
+const swipeWords = (t: TFunction) => ({ finish: finish(t), hold: t("reader:swipe.hold") });
 
 export const GUIDE: readonly GuideEntry[] = [
   // The one input there is, and a request to try the whole flow with: the one way on from here.
@@ -269,10 +332,47 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => !f.drafting && !f.busy && !f.settling,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain"), again: t => t("tree:guide.say.sendAgain") },
+  // A phone: a question or a report open in its sheet, the first time: its grip sets its height, shown by the sheet
+  // growing and coming back; then what a swipe of the card does, shown by the card going right and left. The swipe's
+  // stands over the buttons, clear of the input, the conversation's button, what closes the sheet and a question's
+  // choices (what is pressed there stays seen).
+  { id: "phone-grip", phase: "phone", part: "grip", side: "top", next: true, show: "sheet",
+    when: f => f.open === "question" || f.open === "result",
+    say: t => t("tree:guide.say.phoneGrip") },
+  { id: "phone-swipe", phase: "phone", part: "taskButtons", clear: ["foot", "coordinator", "sheetClose", "asked"], side: "top", align: "end", next: true,
+    show: "swipe", when: f => f.open === "question" || f.open === "result",
+    say: (t, f) => t(f.open === "question" ? "tree:guide.say.phoneQuestion" : "tree:guide.say.phoneResult", swipeWords(t)) },
+  // A phone that could receive notifications but does not: where they are turned on. Pointed at over the list alone,
+  // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes. Only made
+  // sure of off holds; anything else cannot be told (turned on, it may be turned off again), so it is put away by its
+  // buttons alone.
+  { id: "phone-notify", phase: "phone", part: "settingsOverList", side: "bottom", align: "end", next: true, reads: ["push"],
+    when: f => f.pushOff || "unknown",
+    action: { label: t => t("tree:guide.openNotifications"), run: () => openSettings("notifications") },
+    say: t => t("tree:guide.say.phoneNotify") },
 ];
 
-/** Whether a phase is looked at: once `closing`, the close takes the place of other work and of nothing going on. */
-const looked = (phase: GuidePhase, f: GuideFacts) => phase === "close" ? closing(f) : phase === "work" || phase === "idle" ? !closing(f) : true;
+/**
+ * Whether a phase is looked at: one of the screen's own; once `closing`, the close takes the place of other work and of
+ * nothing going on.
+ */
+const looked = (phase: GuidePhase, f: GuideFacts) => SCREENS[f.screen].phases.includes(phase)
+  && (phase === "close" ? closing(f) : phase === "work" || phase === "idle" ? !closing(f) : true);
+
+/**
+ * The steps of a screen's guide still to be said, by what it keeps (`seen`): those not said yet, and those with words
+ * for coming round again. None left, the guide shows nothing and reads nothing (a phone's, once each step is read; a
+ * computer's always has some until it is over).
+ */
+export const stepsLeft = (screen: GuideScreen, seen: readonly string[]) =>
+  GUIDE.filter(entry => SCREENS[screen].phases.includes(entry.phase) && (!seen.includes(entry.id) || !!entry.again));
+
+/**
+ * Whether a screen's guide, as `stage` stores it, still has a step left that reads `read` (stepsLeft): asked again just
+ * before reading, against what is stored now, so a step put away in another tab, or the guide ended, reads nothing more.
+ */
+export const stillReads = (screen: GuideScreen, stage: GuideStage | null, read: GuideRead) =>
+  !!stage && stage.stage !== "done" && stepsLeft(screen, stage.seen).some(entry => entry.reads?.includes(read));
 
 /** A step with no button, done by being shown, stays the step in its first words while its balloon stands on this page; one put away by its button does not. */
 const stays = (entry: GuideEntry, facts: Pick<GuideFacts, "standing">) => entry.id === facts.standing && !hasButton(entry);
@@ -288,7 +388,7 @@ export const saidBefore = (entry: GuideEntry, facts: Pick<GuideFacts, "seen" | "
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
   const again = !closing(facts);
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!saidBefore(entry, facts) || again && !!entry.again) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!saidBefore(entry, facts) || again && !!entry.again) && entry.when(facts) === true);
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 
@@ -298,17 +398,14 @@ export const hasButton = (entry: GuideEntry) => !!entry.next || !!entry.action;
 export const doneOnShowing = (entry: GuideEntry, stood: boolean) => stood && !hasButton(entry);
 /**
  * A step with a button is done when the guide moves on from it to another after its balloon stood on the screen
- * (`stood`) because its own facts no longer hold (it was not merely pushed aside by a step above it). One never shown,
- * or passed over while its part is not seen, is not done.
+ * (`stood`) because its own facts no longer hold (it was not merely pushed aside by a step above it, nor are its facts
+ * only not known now). One never shown, or passed over while its part is not seen, is not done.
  */
 export const doneOnLeaving = (left: GuideEntry | null, now: GuideEntry | null, facts: GuideFacts, stood: boolean) =>
-  !!left && left.id !== now?.id && stood && hasButton(left) && !facts.skipped.has(left.id) && !left.when(facts);
+  !!left && left.id !== now?.id && stood && hasButton(left) && !facts.skipped.has(left.id) && left.when(facts) === false;
 
-/**
- * Whether the guide starts by itself: on a browser that has never had it, with the welcome on the screen and no Task in
- * the whole workspace (a new person's first look; not someone with work elsewhere opening an empty project).
- */
-export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: number) => stage === null && welcome && tasks === 0;
+/** Whether a screen's guide starts by itself: on a browser that has never had it, by that screen's rule (SCREENS). */
+export const startsGuide = (screen: GuideScreen, stage: GuideStage | null, at: GuideOpening) => stage === null && SCREENS[screen].starts(at);
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first

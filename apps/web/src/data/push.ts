@@ -84,11 +84,13 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.ready;
   return registration.pushManager.getSubscription();
 }
+/** What starting or stopping push on this browser is known by while it runs (the guide waits for it to end). */
+export const PUSH_CHANGE = ["push-change"] as const;
 /** Ask permission, subscribe with serve's key, and register the subscription. */
 export function useSubscribePush() {
   const client = useQueryClient();
   // The browser's own refusal (its push service) is said as this device not being registered, not as a screen fault.
-  return useMutation({ meta: { errorToast: false },
+  return useMutation({ mutationKey: PUSH_CHANGE, meta: { errorToast: false },
     onError: error => notify.failure(error, { about: "push subscribe", text: error instanceof ApiError ? undefined : i18n.t("panels:push.subscribeFailed") }),
     mutationFn: async () => {
     const permission = await Notification.requestPermission();
@@ -105,7 +107,7 @@ export function useSubscribePush() {
 /** Remove a device from serve; for this browser, also drop its subscription. */
 export function useUnsubscribePush() {
   const client = useQueryClient();
-  return useMutation({ meta: { errorToast: false },
+  return useMutation({ mutationKey: PUSH_CHANGE, meta: { errorToast: false },
     onError: error => notify.failure(error, { about: "push unsubscribe", text: error instanceof ApiError ? undefined : i18n.t("panels:push.unsubscribeFailed") }),
     mutationFn: async (device: Pick<PushDevice, "id"> & { own?: PushSubscription | null }) => {
     if (device.own) await device.own.unsubscribe();
