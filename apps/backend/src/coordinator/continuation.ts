@@ -57,5 +57,5 @@ export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly Coo
     }
   }
   return { row: null, error: refusal ?? new Problem(PROBLEM_CODE.invalidSettings,
-    'Configure an AI for the coordinator in Settings → Server', undefined, { reason: { kind: 'no_configured_agents' } }) };
+    'Configure an AI for the coordinator in Settings → AI', undefined, { reason: { kind: 'no_configured_agents' } }) };
 }

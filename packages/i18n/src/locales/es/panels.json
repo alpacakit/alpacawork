@@ -8,7 +8,7 @@
       "add": "+ Añadir una IA alternativa",
       "addFirst": "+ Añadir la IA de uso normal",
       "agentFor": "Agente de la fila {{n}}",
-      "agentsNote": "Un agente desactivado no se puede elegir en las dos listas de arriba.",
+      "agentsNote": "Un agente desactivado no se puede elegir en «{{tasks}}» ni en «{{input}}».",
       "agentsTitle": "Ajustes de cada agente",
       "down": "Bajar la fila {{n}}",
       "first": "De uso normal",
@@ -37,7 +37,7 @@
     "cancel": "Cancelar",
     "cannotRun": "Esta ruta no se puede ejecutar",
     "choices": "Valores disponibles al pedir trabajo",
-    "choicesHint": "Los valores que se ofrecen en las listas de IA de arriba y en las solicitudes.",
+    "choicesHint": "Los valores que se ofrecen en las listas de IA y en las solicitudes.",
     "collapse": "Contraer {{name}}",
     "coordinatorStack": {
       "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
@@ -106,7 +106,6 @@
     "resume": "Al continuar una conversación",
     "signedOut": "Sin sesión iniciada. En una terminal, ejecuta",
     "start": "Conversación nueva",
-    "title": "Agentes",
     "unusedAdapter": "No disponible para este adaptador",
     "unusedOptions": "No se usa en las opciones de inicio",
     "useAgent": "Activar {{name}}",
@@ -357,7 +356,7 @@
   "push": {
     "denied": "Las notificaciones están bloqueadas para este sitio. Permítelas en la configuración del navegador y vuelve a intentarlo.",
     "devices": "Dispositivos registrados",
-    "hint": "Te avisa de los cambios de las tareas que elijas aquí, incluso con la pantalla cerrada.",
+    "hint": "Te avisa de los cambios elegidos en «{{events}}», incluso con la pantalla cerrada.",
     "noDevices": "No hay ningún dispositivo registrado.",
     "remove": "Quitar",
     "subscribe": "Recibir en este dispositivo",
@@ -397,7 +396,7 @@
       "manualLink": "Cómo configurar Tailscale Serve",
       "manualTitle": "Configurarlo por tu cuenta",
       "notifyAway": "Las notificaciones se pausan mientras usas la app en tu PC o en tu teléfono.",
-      "notifyBody": "Las notificaciones se activan en cada dispositivo. En cada PC y teléfono que deba recibirlas, abre <ui>{{settings}}</ui> → <ui>{{personal}}</ui> → <ui>{{notifications}}</ui>, selecciona <ui>{{subscribe}}</ui> y permite las notificaciones.",
+      "notifyBody": "Las notificaciones se activan en cada dispositivo. En cada PC y teléfono que deba recibirlas, abre <ui>{{settings}}</ui> → <ui>{{notifications}}</ui>, selecciona <ui>{{subscribe}}</ui> y permite las notificaciones.",
       "notifyIos": "En un iPhone o iPad, hazlo en la app abierta desde el icono de la pantalla de inicio. Requiere iOS / iPadOS 16.4 o posterior.",
       "notifyOpen": "Abrir la configuración de notificaciones de este dispositivo",
       "notifyTitle": "Recibir notificaciones",
@@ -421,7 +420,7 @@
     "personal": {
       "aiLanguage": "Idioma de las conversaciones con la IA",
       "awayAfter": "Ausente tras inactividad",
-      "display": "Pantalla",
+      "awayAfterHelp": "Las notificaciones solo se envían mientras estás ausente.",
       "guide": "Guía de primeros pasos",
       "guideHelp": "Vuelve a mostrar la guía del primer uso, desde su primera pantalla.",
       "guideShow": "Mostrar de nuevo",
@@ -434,7 +433,6 @@
       "loadError": "No se pudo cargar la configuración.",
       "loading": "Cargando la configuración…",
       "mutedUntil": "Notificaciones en pausa hasta",
-      "notifications": "Notificaciones",
       "option": {
         "away10": "Tras 10 minutos",
         "away15": "Tras 15 minutos",
@@ -450,13 +448,16 @@
         "zh-CN": "简体中文"
       },
       "previousShown": "Se muestra la configuración anterior.",
+      "pushDevices": "Dispositivos que reciben",
       "pushDone": "Cuando una tarea se completa",
-      "pushFollowup": "Respuestas que requieren tu atención",
+      "pushEvents": "Cuándo se avisa",
+      "pushFollowup": "Cuando llega una respuesta que requiere tu atención",
       "pushHost": "Cuando este equipo tiene mucha carga",
       "pushQuestion": "Cuando una tarea te hace una pregunta",
       "pushReview": "Cuando una tarea queda por revisar",
       "pushScope": "Estas opciones se aplican a todos los dispositivos registrados.",
       "pushStopped": "Cuando una tarea se detiene",
+      "pushTiming": "No molestar",
       "quiet": "Horas de silencio diarias",
       "quietFrom": "Pausar a las",
       "quietHelp": "Cuando terminan, todo lo que siga pendiente se envía en una sola notificación.",
@@ -472,13 +473,11 @@
       "updateConfirm": "Confirmar antes de actualizar"
     },
     "scope": {
-      "personal": "Por ahora, la configuración la comparten todos los que usan este servidor. Los cambios se guardan al instante. Las suscripciones a notificaciones son por dispositivo.",
       "server": "Se aplica a todos los que usan este servidor."
     },
     "server": {
       "advanced": "Opciones avanzadas",
       "advancedNote": "Pensadas para quien administra el servidor. Normalmente no se cambian.",
-      "agentsInUse": "Activados: {{names}}",
       "attachmentHint": "{{min}}–{{max}} · predeterminado {{value}} · se aplica al siguiente archivo adjunto",
       "commandSecondsHint": "Detiene los comandos que duran más. Las ejecuciones de responsables y miembros no se ven afectadas · predeterminado {{value}}",
       "defaultHint": "Predeterminado {{value}}",
@@ -504,8 +503,8 @@
         "attachment_mib": "Tamaño máximo por archivo adjunto (MiB)",
         "automatic_per_placement": "Máximo de solicitudes automáticas a un agente en una tarea",
         "children_per_run": "Máximo de solicitudes por ejecución",
-        "coordinator_command_seconds": "Límite de los comandos del coordinador (segundos)",
-        "coordinator_run_minutes": "Límite de ejecución del coordinador en la app (minutos)",
+        "coordinator_command_seconds": "Límite de los comandos de la IA con la que hablas en el cuadro de texto (segundos)",
+        "coordinator_run_minutes": "Límite de ejecución de la IA con la que hablas en el cuadro de texto (minutos)",
         "depth": "Profundidad máxima de solicitudes",
         "parallel": "Máximo de ejecuciones simultáneas",
         "run_minutes": "Límite de tiempo por ejecución (minutos)"
@@ -515,7 +514,7 @@
         "minimum": "Usa un número entero igual o mayor que {{value}}",
         "range": "Usa un número entero entre {{min}} y {{max}}"
       },
-      "readError": "No se puede leer config.yaml. Corrígelo a mano: {{error}}",
+      "readError": "No se puede leer config.yaml. Corrígelo a mano.",
       "reload": "Cargar lo más reciente",
       "runMinutesHint": "0 significa sin límite · predeterminado {{value}}",
       "save": "Guardar",
@@ -523,15 +522,18 @@
     },
     "status": {
       "dirty": "Cambios sin guardar",
+      "dirtyIn": "Cambios sin guardar ({{places}})",
+      "placeSeparator": ", ",
       "saved": "Guardado"
     },
     "tabs": {
+      "ai": "IA",
       "apps": "App y teléfono",
       "fields": "Campos",
-      "host": "Equipo",
-      "personal": "Personal",
-      "projects": "Proyectos",
-      "server": "Servidor"
+      "general": "General",
+      "host": "Estado del equipo",
+      "notifications": "Notificaciones",
+      "projects": "Proyectos"
     },
     "title": "Configuración",
     "up": "Subir"
@@ -627,7 +629,7 @@
     "retry": "Reintentar",
     "settingNotSaved": {
       "off": "No se pudo guardar la desactivación de “Mostrar esta confirmación la próxima vez”. Comprueba el guardado anterior y vuelve a desactivarla la próxima vez que se te pregunte.",
-      "on": "No se pudo guardar la activación de “Mostrar esta confirmación la próxima vez”. Comprueba el guardado anterior y activa “Confirmar antes de actualizar” en la pestaña Personal."
+      "on": "No se pudo guardar la activación de “Mostrar esta confirmación la próxima vez”. Comprueba el guardado anterior y activa “Confirmar antes de actualizar” en la pestaña General."
     },
     "start": "Actualizar",
     "unavailable": "La actualización no se puede iniciar ahora mismo. Vuelve a intentarlo dentro de un rato."

@@ -8,7 +8,7 @@
       "add": "+ Add a fallback AI",
       "addFirst": "+ Add the AI to use normally",
       "agentFor": "Agent in row {{n}}",
-      "agentsNote": "A disabled agent cannot be chosen in the two lists above.",
+      "agentsNote": "A disabled agent cannot be chosen in “{{tasks}}” or “{{input}}”.",
       "agentsTitle": "Settings for each agent",
       "down": "Move row {{n}} down",
       "first": "Normally used",
@@ -37,7 +37,7 @@
     "cancel": "Cancel",
     "cannotRun": "This path cannot be run",
     "choices": "Values available when requesting work",
-    "choicesHint": "The values offered in the AI lists above and in requests.",
+    "choicesHint": "The values offered in the AI lists and in requests.",
     "collapse": "Collapse {{name}}",
     "coordinatorStack": {
       "lead": "Takes what you send from the input, turns it into tasks and hands them to the AI for tasks. AI 1 normally takes it; only when it stops on a usage limit or capacity do AIs 2, 3… take over in order.",
@@ -106,7 +106,6 @@
     "resume": "Continuing a conversation",
     "signedOut": "Not signed in. In a terminal, run",
     "start": "New conversation",
-    "title": "Agents",
     "unusedAdapter": "Unavailable for this adapter",
     "unusedOptions": "Not used in launch options",
     "useAgent": "Enable {{name}}",
@@ -350,7 +349,7 @@
   "push": {
     "denied": "Notifications are blocked for this site. Allow them in the browser settings, then try again.",
     "devices": "Registered devices",
-    "hint": "Notifies you of the task changes chosen here, even when the screen is closed.",
+    "hint": "Notifies you of the changes chosen under “{{events}}”, even when the screen is closed.",
     "noDevices": "No device is registered.",
     "remove": "Remove",
     "subscribe": "Receive on this device",
@@ -390,7 +389,7 @@
       "manualLink": "How to set up Tailscale Serve",
       "manualTitle": "Set it up yourself",
       "notifyAway": "Notifications pause while you are using the app on your PC or phone.",
-      "notifyBody": "Notifications are turned on for each device. On every PC and phone that should get them, open <ui>{{settings}}</ui> → <ui>{{personal}}</ui> → <ui>{{notifications}}</ui>, press <ui>{{subscribe}}</ui>, and allow notifications.",
+      "notifyBody": "Notifications are turned on for each device. On every PC and phone that should get them, open <ui>{{settings}}</ui> → <ui>{{notifications}}</ui>, press <ui>{{subscribe}}</ui>, and allow notifications.",
       "notifyIos": "On an iPhone or iPad, do this in the app opened from the Home Screen icon. It needs iOS / iPadOS 16.4 or later.",
       "notifyOpen": "Open notification settings for this device",
       "notifyTitle": "Get notifications",
@@ -414,7 +413,7 @@
     "personal": {
       "aiLanguage": "Language for AI conversations",
       "awayAfter": "Away when idle",
-      "display": "Display",
+      "awayAfterHelp": "Notifications are sent only while you are away.",
       "guide": "Getting-started guide",
       "guideHelp": "Shows the first-use guide again, from its first screen.",
       "guideShow": "Show again",
@@ -427,7 +426,6 @@
       "loadError": "Could not load settings.",
       "loading": "Loading settings…",
       "mutedUntil": "Notifications paused until",
-      "notifications": "Notifications",
       "option": {
         "away10": "After 10 minutes",
         "away15": "After 15 minutes",
@@ -443,13 +441,16 @@
         "zh-CN": "简体中文"
       },
       "previousShown": "Showing the previous settings.",
+      "pushDevices": "Receiving devices",
       "pushDone": "When a task is done",
-      "pushFollowup": "Replies that need your attention",
+      "pushEvents": "When to notify",
+      "pushFollowup": "When a reply needs your attention",
       "pushHost": "When this machine is under heavy load",
       "pushQuestion": "When a task asks you a question",
       "pushReview": "When a task is awaiting review",
       "pushScope": "These choices apply to all registered devices.",
       "pushStopped": "When a task is stopped",
+      "pushTiming": "Quiet times",
       "quiet": "Daily quiet hours",
       "quietFrom": "Pause at",
       "quietHelp": "When it ends, anything still waiting is sent in one notification.",
@@ -465,13 +466,11 @@
       "updateConfirm": "Confirm before updating"
     },
     "scope": {
-      "personal": "Settings are currently shared by everyone using this server. Changes save right away. Notification subscriptions are per device.",
       "server": "Applies to everyone using this server."
     },
     "server": {
       "advanced": "Advanced options",
       "advancedNote": "Meant for whoever runs the server. Usually left unchanged.",
-      "agentsInUse": "Enabled: {{names}}",
       "attachmentHint": "{{min}}–{{max}} · default {{value}} · applies to the next attachment",
       "commandSecondsHint": "Stops commands that run longer. Owner and member runs are not affected · default {{value}}",
       "defaultHint": "Default {{value}}",
@@ -497,8 +496,8 @@
         "attachment_mib": "Max size per attachment (MiB)",
         "automatic_per_placement": "Max automatic requests to one agent on a task",
         "children_per_run": "Max requests per run",
-        "coordinator_command_seconds": "Coordinator command limit (seconds)",
-        "coordinator_run_minutes": "In-app coordinator run limit (minutes)",
+        "coordinator_command_seconds": "Command limit of the AI you talk to in the input (seconds)",
+        "coordinator_run_minutes": "Run limit of the AI you talk to in the input (minutes)",
         "depth": "Max request depth",
         "parallel": "Max concurrent runs",
         "run_minutes": "Time limit per run (minutes)"
@@ -508,7 +507,7 @@
         "minimum": "Use a whole number of at least {{value}}",
         "range": "Use a whole number from {{min}} to {{max}}"
       },
-      "readError": "Cannot read config.yaml. Fix it by hand: {{error}}",
+      "readError": "Cannot read config.yaml. Fix it by hand.",
       "reload": "Load the latest",
       "runMinutesHint": "0 means no limit · default {{value}}",
       "save": "Save",
@@ -516,15 +515,18 @@
     },
     "status": {
       "dirty": "Unsaved changes",
+      "dirtyIn": "Unsaved changes ({{places}})",
+      "placeSeparator": ", ",
       "saved": "Saved"
     },
     "tabs": {
+      "ai": "AI",
       "apps": "App & phone",
       "fields": "Fields",
+      "general": "General",
       "host": "Machine status",
-      "personal": "Personal",
-      "projects": "Projects",
-      "server": "Server"
+      "notifications": "Notifications",
+      "projects": "Projects"
     },
     "title": "Settings",
     "up": "Up"
@@ -615,7 +617,7 @@
     "retry": "Try again",
     "settingNotSaved": {
       "off": "Could not save turning off “Show this confirmation next time”. Check the earlier save, then turn it off again the next time you are asked.",
-      "on": "Could not save turning on “Show this confirmation next time”. Check the earlier save, then turn on “Confirm before updating” on the Personal tab."
+      "on": "Could not save turning on “Show this confirmation next time”. Check the earlier save, then turn on “Confirm before updating” on the General tab."
     },
     "start": "Update",
     "unavailable": "The update cannot start right now. Try again in a while."

@@ -132,9 +132,9 @@ test("⌘, and Ctrl+, open the settings from an input, keep them as they are, an
     const field = screen.getByTestId("field");
     field.focus();
     for (const press of [{ metaKey: true }, { ctrlKey: true }]) {
-      useDialogStore.setState({ dialog: null, settingsTab: "server" });
+      useDialogStore.setState({ dialog: null, settingsTab: "notifications" });
       expect(fireEvent.keyDown(field, { key: ",", ...press })).toBe(false);
-      expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server" });
+      expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "notifications" });
     }
     // Already open on a tab of its own, the press leaves it there.
     useDialogStore.setState({ dialog: { kind: "settings", tab: "projects", request: 3 } });
@@ -145,7 +145,7 @@ test("⌘, and Ctrl+, open the settings from an input, keep them as they are, an
     fireEvent.keyDown(document, { key: ",", ctrlKey: true });
     expect(useDialogStore.getState().dialog).toBeNull();
     await act(async () => { await vi.runAllTimersAsync(); });
-    expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server" });
+    expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "notifications" });
     // A comma alone, with Shift or Option, or while an IME is composing, is left to the page.
     for (const press of [{}, { metaKey: true, shiftKey: true }, { ctrlKey: true, altKey: true }, { metaKey: true, isComposing: true }]) {
       useDialogStore.setState({ dialog: null });

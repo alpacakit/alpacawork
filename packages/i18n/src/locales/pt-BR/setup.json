@@ -43,7 +43,7 @@
       "notSentKey": "Nunca enviado",
       "sent": "A versão do alpacawork, o sistema operacional e o tipo de dispositivo, contagens de uso dos recursos, tempos de carregamento das telas, tipos de erro, os tipos de agentes usados e contagens aproximadas de tarefas",
       "sentKey": "Enviado",
-      "stop": "Em Configurações → Servidor → Dados de uso, você pode parar o envio e excluir os dados já enviados",
+      "stop": "Em Configurações → Geral → Dados de uso, você pode parar o envio e excluir os dados já enviados",
       "stopKey": "Parar e excluir"
     }
   },

@@ -90,7 +90,7 @@ async function fixture() {
       do { index = await feed.index(); } while (index.presence.state !== state);
       await act(async () => { receiveFullIndex(queryClient, index); view.rerender(ui()); });
     },
-    showSettings: () => { view.rerender(<TestWorkspace data={data()}><PresenceMenu /><SettingsDialog /><Toaster /></TestWorkspace>); },
+    showSettings: () => { view.rerender(<TestWorkspace data={data()}><PresenceMenu /><SettingsDialog initialTab="notifications" /><Toaster /></TestWorkspace>); },
   };
 }
 const trigger = () => document.querySelector<HTMLButtonElement>('[data-presence-trigger]')!;
@@ -109,7 +109,7 @@ test('a slow browser clock still pauses for one hour from real server time', asy
 
 test('notification menu opens settings and controls persist threshold and quiet hours over real HTTP', async () => {
   const h = await fixture(); fireEvent.click(trigger()); action('settings');
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: 'settings' }); h.showSettings();
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: 'settings', tab: 'notifications', focus: 'notifications' }); h.showSettings();
   expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
   const away = screen.getByLabelText('Away when idle') as HTMLSelectElement;
   const from = screen.getByLabelText('Pause at') as HTMLSelectElement;

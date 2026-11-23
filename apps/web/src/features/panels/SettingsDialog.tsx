@@ -7,20 +7,21 @@ import { useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/di
 import { HostTab } from "./HostTab";
 import { DialogBody } from "@/components/ui/dialog";
 import { PanelDialog } from "./PanelDialog";
-import { PersonalSettingsTab } from "./PersonalSettingsTab";
-import { ServerSettingsTab } from "./ServerSettingsTab";
+import { GeneralSettingsTab, NotificationSettingsTab } from "./PersonalSettingsTab";
+import { AdvancedServerOptions, AiSettingsTab, ServerDraftProvider, ServerFolderLines } from "./ServerSettingsTab";
 import { AppGuideTab } from "./AppGuideTab";
 import { ProjectsSettingsTab } from "./ProjectsSettingsTab";
 import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/update/UpdateView";
 
 /**
- * Settings share one set of values per workspace: Personal saves each value at once; Server is one
- * draft of this PC's config.yaml, read with its hash when the dialog opens and saved with the buttons at its end, the
- * folder the server reads noted at its foot; App & phone guides installing the app and opening it from a phone; Host status is read-only; Projects lists every project, archived ones marked, each
- * opening its own settings, which are the project dialog's, not here. Updates have no tab: their one status line (with
- * its one action) above the tabs and the running version at the foot.
+ * Settings, in tabs named for what they hold, in the order they are looked for. This PC's config.yaml is one draft for
+ * the dialog, read with its hash when it opens: AI shows its AI and agents, General's Advanced options its limits, each
+ * with the same save row, and General ends on the folder the server reads. Notifications and General's own values save
+ * at once; Projects lists every project, archived ones marked, each opening its own settings, which are the project
+ * dialog's, not here; App & phone guides installing the app and opening it from a phone; Host status is read-only.
+ * Updates have no tab: their one status line (with its one action) above the tabs and the running version at the foot.
  */
-export function SettingsDialog({ initialTab = "personal", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
+export function SettingsDialog({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
   const { t } = useTranslation("panels");
   return (
     <PanelDialog title={t("settings.title")} size="large" ownBody>
@@ -30,9 +31,9 @@ export function SettingsDialog({ initialTab = "personal", request, focus }: { in
   );
 }
 
-const TABS = ["personal", "server", "apps", "host", "projects"] as const satisfies readonly SettingsTab[];
+const TABS = ["ai", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
 
-export function SettingsBody({ initialTab = "personal", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
+export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
   const focusNotifications = focus === "notifications";
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
@@ -67,6 +68,7 @@ export function SettingsBody({ initialTab = "personal", request, focus }: { init
     else if (chosen.right > bounds.right) row.scrollLeft += chosen.right - bounds.right;
   }, [tab]);
   return (
+    <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
     <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)} className="min-h-0 flex-1">
       {/* The tabs stay with the head; only the tab shown scrolls under them. */}
       <div className="flex-none px-6 narrow:px-4.5">
@@ -83,26 +85,30 @@ export function SettingsBody({ initialTab = "personal", request, focus }: { init
         </div>
       </div>
       <DialogBody ref={body} className="flex flex-col border-t-0 pt-5">
-      <TabsContent value="personal">
-        <FieldHint className="mb-6">{t("settings.scope.personal")}</FieldHint>
-        <PersonalSettingsTab focusNotifications={focusNotifications} />
+      {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
+      <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
+        <AiSettingsTab />
       </TabsContent>
-      {/* Mounted while hidden so the draft survives switching tabs. */}
-      <TabsContent value="server" forceMount hidden={tab !== "server"}>
-        <ServerSettingsTab focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined} />
+      <TabsContent value="notifications">
+        <NotificationSettingsTab focusNotifications={focusNotifications} />
       </TabsContent>
-      <TabsContent value="host">
-        <HostTab />
+      <TabsContent value="projects">
+        <ProjectsSettingsTab />
+      </TabsContent>
+      <TabsContent value="general" forceMount hidden={tab !== "general"}>
+        <GeneralSettingsTab><AdvancedServerOptions /></GeneralSettingsTab>
+        <ServerFolderLines />
       </TabsContent>
       {availableTabs.includes("apps") && <TabsContent value="apps">
         <AppGuideTab />
       </TabsContent>}
-      <TabsContent value="projects">
-        <ProjectsSettingsTab />
+      <TabsContent value="host">
+        <HostTab />
       </TabsContent>
       {/* At the foot of the box when the tab shown is short, after its last line when it is long. */}
       <div className="mt-auto"><VersionLine /></div>
       </DialogBody>
     </Tabs>
+    </ServerDraftProvider>
   );
 }

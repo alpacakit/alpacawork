@@ -28,7 +28,7 @@ test("the search shortcut focuses an existing query without clearing its results
 // ⌘, (Ctrl+, off a Mac) opens the settings from a text field, and in place of another dialog.
 test("the settings shortcut opens the settings from a field and over another dialog", async ({ page, runtime }) => {
   await page.goto(runtime.origin);
-  const settings = page.getByRole("dialog").filter({ has: page.getByRole("tab", { name: "Server", exact: true }) });
+  const settings = page.getByRole("dialog").filter({ has: page.getByRole("tab", { name: "AI", exact: true }) });
   for (const key of ["Meta+,", "Control+,"]) {
     const search = page.locator("input[data-search-input]:visible");
     await search.click();

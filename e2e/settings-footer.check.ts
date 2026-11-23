@@ -6,20 +6,20 @@ import { test, expect, open } from './fixtures.ts';
 // Saves and refusals go through config/set, so each case has a server of its own.
 test.use({ isolated: true });
 
-async function openServerSettings(page: Page) {
+async function openAdvancedOptions(page: Page) {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('tab', { name: 'Server', exact: true }).click();
+  await page.getByRole('tab', { name: 'General', exact: true }).click();
   await page.locator('#server-advanced > summary').click();
   await expect(page.locator('#limit-attachment_mib')).toBeVisible();
 }
 
-/** The server settings' foot: what is saved, and its two buttons. */
-const foot = (page: Page) => page.locator('[data-settings-foot]');
+/** The save row of the tab shown (here General's Advanced options): what is saved, and its two buttons. */
+const foot = (page: Page) => page.locator('[data-settings-foot]:visible');
 
 test("the settings' foot says what is saved, and its buttons do what they say: discard, save, and a refused save", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await open(page, runtime);
-  await openServerSettings(page);
+  await openAdvancedOptions(page);
   const status = foot(page).getByRole('status');
   const discard = foot(page).getByRole('button', { name: 'Discard changes' }), save = foot(page).getByRole('button', { name: 'Save', exact: true });
   await expect(foot(page)).not.toHaveCSS('position', 'sticky');
@@ -31,12 +31,12 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   // Only the body scrolls: at the end of a long tab the head's close button and the tabs are still in reach.
   expect(await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
-  await expect(page.getByRole('tab', { name: 'Personal', exact: true })).toBeInViewport();
+  await expect(page.getByRole('tab', { name: 'Notifications', exact: true })).toBeInViewport();
 
   const attachment = page.locator('#limit-attachment_mib');
   const before = await attachment.inputValue();
   await attachment.fill('60');
-  await expect(status).toHaveText('Unsaved changes');
+  await expect(status).toHaveText('Unsaved changes (General → Advanced options)');
   await expect(discard).toBeEnabled();
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
   await discard.click();
@@ -54,7 +54,7 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   const refusal = foot(page).locator('..').getByRole('button', { name: 'Load the latest' });
   await expect(refusal).toBeVisible();
   await expect(limit).toHaveValue('60');
-  await expect(status).toHaveText('Unsaved changes');
+  await expect(status).toHaveText('Unsaved changes (General → Advanced options)');
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
   await refusal.click();
   await expect(limit).toHaveValue(limitBefore);

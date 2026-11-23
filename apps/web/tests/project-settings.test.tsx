@@ -270,19 +270,19 @@ test("fields are moved and taken out in place, a system field cannot be, and the
   expect(JSON.parse(String((fieldSet[1] as RequestInit).body))).not.toHaveProperty("title");
 });
 
-test("settings have five tabs, Server holds nothing of a project, and the gear reopens the tab it was last on", async () => {
+test("settings have six tabs, AI holds nothing of a project, and the gear reopens the tab it was last on", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) =>
     String(url).includes("/api/config/get") ? answer(serverSettings()) : refusal(404));
   render(<TestWorkspace data={screenData(tree())}><DialogHost /></TestWorkspace>);
-  act(() => useDialogStore.getState().open("settings", { tab: "server" }));
+  act(() => useDialogStore.getState().open("settings", { tab: "ai" }));
   const tabs = await screen.findAllByRole("tab");
-  expect(tabs.map((tab) => tab.textContent)).toEqual(["Personal", "Server", "App & phone", "Machine status", "Projects"]);
-  await waitFor(() => expect(document.getElementById("server-advanced")).toBeTruthy());
+  expect(tabs.map((tab) => tab.textContent)).toEqual(["AI", "Notifications", "Projects", "General", "App & phone", "Machine status"]);
+  await waitFor(() => expect(document.getElementById("server-limits")).toBeTruthy());
   expect(screen.queryByLabelText("Name")).toBeNull();
   expect(document.getElementById("project-policy")).toBeNull();
   act(() => useDialogStore.getState().close());
   act(() => useDialogStore.getState().open("settings"));
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server" });
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "ai" });
   fireEvent.mouseDown(screen.getByRole("tab", { name: "App & phone" }), { button: 0, ctrlKey: false });
   act(() => useDialogStore.getState().close());
   act(() => useDialogStore.getState().open("settings"));

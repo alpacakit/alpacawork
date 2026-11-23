@@ -353,7 +353,7 @@ test("the input shows the AI its next message goes to, chooses nothing itself, a
   expect(sent).not.toHaveProperty("agent");
   expect(sent).not.toHaveProperty("selected");
   fireEvent.click(shown);
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server", focus: "coordinatorAi" });
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "ai", focus: "coordinatorAi" });
 });
 
 test("the input shows the values its next launch is given as they are, and the agent's name where no model is", async () => {
@@ -377,7 +377,7 @@ test("with no coordinator AI that can run, the input says so where the AI stands
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled).toBe(true);
   expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
   fireEvent.click(none);
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server", focus: "coordinatorAi" });
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "ai", focus: "coordinatorAi" });
 });
 
 test("a send's answer arriving after a newer read of the conversation does not bring the queued turn back", async () => {

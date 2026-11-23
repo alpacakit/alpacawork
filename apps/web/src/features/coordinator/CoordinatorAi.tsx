@@ -21,7 +21,7 @@ export function CoordinatorAi({ next, className }: { next: CoordinatorNextLaunch
   // Its name in full for a reader and a pointer's tip; what is shown is the model alone (where a role name would go).
   const named = label ? t("coordinatorCard.ai.label", { ai: label.full }) : t("coordinatorCard.ai.none");
   return <button type="button" data-coordinator-ai={next ? "" : "none"} title={named} aria-label={named}
-    onClick={() => openSettings("server", "coordinatorAi")}
+    onClick={() => openSettings("ai", "coordinatorAi")}
     className={cn("inline-flex self-start min-h-control-xs min-w-0 max-w-full cursor-pointer items-center gap-1.5 narrow:gap-1 rounded-sm border border-line bg-lit px-2 text-sm text-ink hover:bg-hover active:bg-line",
       className, !label && "text-warn hover:text-warn")}>
     <Icon name={label ? "agent" : "caution"} className={cn("size-3.5 flex-none", label ? "text-muted" : "text-warn")} />

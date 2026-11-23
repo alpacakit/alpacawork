@@ -41,8 +41,9 @@ type Query<T> = { data: T | undefined; isPending: boolean; isError: boolean; isF
 /** A reading surface may reselect its saved position before any explicit acquisition retry. */
 export const ReadRetryContext = createContext<(() => void) | null>(null);
 
-export function ReadFailure({ error, what, note, retry, className, size = "line" }: {
-  error?: unknown; what?: string; note?: string; retry?: () => unknown; className?: string; size?: MessageSize;
+/** `disabled`: the retry can't start now (the same read, or another answer, is already awaited from here or elsewhere). */
+export function ReadFailure({ error, what, note, retry, disabled, className, size = "line" }: {
+  error?: unknown; what?: string; note?: string; retry?: () => unknown; disabled?: boolean; className?: string; size?: MessageSize;
 }) {
   const { t } = useTranslation();
   const reselect = useContext(ReadRetryContext);
@@ -51,7 +52,7 @@ export function ReadFailure({ error, what, note, retry, className, size = "line"
   const reason = error === undefined ? undefined : what && retry ? readFailureReason(error) : problemText(error);
   const why = [reason, note].filter(Boolean).join(" ");
   return <Message data-read-failure tone="error" size={size} className={className} title={what ?? why} description={what ? why || undefined : undefined}
-    action={retry && { label: t("retry"), run: () => { reselect?.(); return retry(); } }} />;
+    action={retry && { label: t("retry"), disabled, run: () => { reselect?.(); return retry(); } }} />;
 }
 
 /** Why a read failed, when serve said why (a reason, or what was wrong in what was asked); nothing when only "try again". */

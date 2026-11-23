@@ -290,7 +290,7 @@
       "new_conversation_required": "Inicia una conversación nueva para cambiar de adaptador",
       "new_workspace_file_invalid": "Archivo del nuevo espacio de trabajo no válido",
       "new_workspace_file_save_unconfirmed": "Puede que el archivo del nuevo espacio de trabajo se haya guardado. Revísalo y vuelve a intentarlo",
-      "no_configured_agents": "No hay ningún agente activado. Instala una IA, inicia sesión en ella y actívala en Configuración → Servidor",
+      "no_configured_agents": "No hay ningún agente activado. Instala una IA, inicia sesión en ella y actívala en Configuración → IA",
       "no_migrations_packaged": "No se incluye ninguna migración. La base de datos existente se conserva",
       "no_project_active_use_id": "No hay ningún proyecto activo. Indica uno con --{{option}} <ID>",
       "no_question_in_decide_value_write_full_question_before_asking": "El valor “Preguntas” (decide) de la tarea está vacío. Escribe ahí la pregunta completa antes de enviar",

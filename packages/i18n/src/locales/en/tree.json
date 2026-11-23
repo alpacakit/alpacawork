@@ -1,7 +1,7 @@
 {
   "guide": {
     "close": "End the getting-started guide",
-    "closed": "The guide has ended. You can show it again from {{settings}}, under “{{guide}}”.",
+    "closed": "The guide has ended. You can show it again from {{settings}} → {{tab}}, under “{{guide}}”.",
     "example": "This is a demo to try the alpacawork flow.\nCreate an HTML page that shows \"Hello\" in two fonts, then ask me which one is better.",
     "moreExample": "Make one more version so I can compare them.",
     "next": "Got it",

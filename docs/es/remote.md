@@ -21,7 +21,7 @@ Para indicar qué corregir, lo más rápido es marcarlo en una captura de pantal
 
 Cuando es tu turno (una pregunta, un informe o una IA detenida), te llega una notificación. Actívalas en cada dispositivo donde quieras recibirlas.
 
-1. Abre “Configuración (el engranaje) → Personal”.
+1. Abre “Configuración (el engranaje) → Notificaciones”.
 2. En “Notificaciones push”, pulsa “Recibir en este dispositivo” y, si el navegador pide permiso, concédelo.
 
 En iPhone, hazlo abriendo la pantalla desde el icono que añadiste a la pantalla de inicio.
@@ -34,8 +34,8 @@ Mientras usas alpacawork no llegan. Empiezan a llegar 30 segundos después de ca
 
   <img src="../images/header-icons.png" alt="La esquina superior derecha de la pantalla, con el botón con forma de persona y el botón del engranaje" width="90">
 
-- Cada noche: activa “Horas de silencio diarias” en “Configuración (el engranaje) → Personal”. Al terminar, los avisos que sigan pendientes llegan juntos en una sola notificación.
-- Por tipo: en la misma sección “Notificaciones”, puedes activar o desactivar cada tipo de aviso. “Cuando una tarea se completa” empieza desactivado.
+- Cada noche: activa “Horas de silencio diarias” en “Configuración (el engranaje) → Notificaciones”. Al terminar, los avisos que sigan pendientes llegan juntos en una sola notificación.
+- Por tipo: en “Cuándo se avisa”, dentro de la misma pestaña “Notificaciones”, puedes activar o desactivar cada tipo de aviso. “Cuando una tarea se completa” empieza desactivado.
 
 ## Si algo no funciona
 

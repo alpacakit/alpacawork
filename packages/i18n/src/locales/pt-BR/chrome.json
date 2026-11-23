@@ -29,7 +29,7 @@
     "hostMinutes_many": "{{count}} min",
     "hostMinutes_other": "{{count}} min",
     "hostOpen": "Ver",
-    "hostTight": "Esta máquina está com carga alta",
+    "hostTight": "Este PC está com carga alta",
     "previousBoth": "Usando as configurações e o estado anteriores.",
     "previousReads": "Mostrando o estado anterior.",
     "previousSettings": "Usando as configurações anteriores.",

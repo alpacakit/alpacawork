@@ -47,7 +47,7 @@ When the server is down and `run stop` cannot be run, a person runs `alpacawork 
 ## config.yaml cannot be read
 
 - The server does not fall back to default values. New Runs do not start, and the screen is treated as unable to write. Runs already running can finish. An update's switch does not go through either, so fix this first.
-- The cause is an unknown key, a missing `agents`, a key in an old form, or a YAML error. The screen shows the reason under "Settings → Server". Once `config.yaml` is fixed on the server machine, the waiting Runs start without a restart.
+- The cause is an unknown key, a missing `agents`, a key in an old form, or a YAML error. The screen shows the reason under "Settings → AI". Once `config.yaml` is fixed on the server machine, the waiting Runs start without a restart.
 
 ## The server does not start
 

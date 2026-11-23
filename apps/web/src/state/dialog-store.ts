@@ -2,8 +2,8 @@ import { create } from "zustand";
 import type { ReaderCard } from "@/features/reader/next-question";
 
 /** The settings dialog's tabs; Host status can be opened from its banner and its push, Projects from the archive notices. */
-export type SettingsTab = "personal" | "server" | "apps" | "host" | "projects";
-/** A part of the settings an opening brings into view and focuses: Notifications (Personal), the input's AI (Server). */
+export type SettingsTab = "ai" | "notifications" | "projects" | "general" | "apps" | "host";
+/** A part of the settings an opening brings into view and focuses: Notifications, the input's AI (AI). */
 export type SettingsFocus = "notifications" | "coordinatorAi";
 
 /**
@@ -70,7 +70,7 @@ const show = (state: Pick<DialogState, "dialog" | "behind">, next: OpenDialog) =
 export const useDialogStore = create<DialogState>((set) => ({
   dialog: null,
   behind: [],
-  settingsTab: "personal",
+  settingsTab: "ai",
   // The open Settings' record names the tab it shows, so kept behind another dialog it comes back there.
   rememberSettingsTab: (tab) => set((state) => ({ settingsTab: tab,
     ...state.dialog?.kind === "settings" && state.dialog.tab !== tab ? { dialog: { ...state.dialog, tab } } : {} })),

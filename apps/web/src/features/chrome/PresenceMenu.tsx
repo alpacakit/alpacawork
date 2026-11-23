@@ -114,7 +114,7 @@ export function PresenceMenu() {
         </div>
         <div role="group" className="mt-1 border-t border-line pt-1">
           {item('settings', t('presence.settings'), () => {
-            setOpen(false); useDialogStore.getState().open('settings', { tab: 'personal', focus: 'notifications' });
+            setOpen(false); useDialogStore.getState().open('settings', { tab: 'notifications', focus: 'notifications' });
           })}
         </div>
       </div>

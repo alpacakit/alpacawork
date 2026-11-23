@@ -40,7 +40,7 @@ test('a counted use leaves the tab only while sending is on, with the screen\'s 
   // Nothing that narrows down the device leaves: no user agent, no size, no time zone.
   const sent = JSON.stringify(uses);
   for (const value of [navigator.userAgent, String(window.innerWidth), Intl.DateTimeFormat().resolvedOptions().timeZone]) expect(sent).not.toContain(value);
-  const settings = { kind: 'settings', tab: 'server' } as const, edit = { kind: 'input', form: 'responsible', taskId: 'T1' } as const;
+  const settings = { kind: 'settings', tab: 'ai' } as const, edit = { kind: 'input', form: 'responsible', taskId: 'T1' } as const;
   expect([dialogUse(settings, null), dialogUse({ ...settings, tab: 'apps' }, settings), dialogUse(edit, settings),
     dialogUse({ ...edit, form: 'move' }, edit), dialogUse(null, edit), dialogUse({ kind: 'run', runId: 'R1' }, null)])
     .toEqual(['open.settings', null, 'form.responsible', 'form.move', null, null]);

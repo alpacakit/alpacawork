@@ -137,11 +137,10 @@ function Notifications() {
   const { t } = useTranslation("panels");
   return <Part id="app-guide-notify" title={t("settings.apps.notifyTitle")}>
     <p><Trans t={t} i18nKey="settings.apps.notifyBody" components={{ ui: <UiName /> }} values={{
-      settings: t("settings.title"), personal: t("settings.tabs.personal"),
-      notifications: t("settings.personal.notifications"), subscribe: t("push.subscribe"),
+      settings: t("settings.title"), notifications: t("settings.tabs.notifications"), subscribe: t("push.subscribe"),
     }} /></p>
     <Button variant="outline" className="mt-3"
-      onClick={() => useDialogStore.getState().open("settings", { tab: "personal", focus: "notifications" })}>
+      onClick={() => useDialogStore.getState().open("settings", { tab: "notifications", focus: "notifications" })}>
       {t("settings.apps.notifyOpen")}
     </Button>
     <FieldHint className="mt-3">{t("settings.apps.notifyIos")}</FieldHint>

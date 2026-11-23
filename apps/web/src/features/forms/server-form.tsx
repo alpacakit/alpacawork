@@ -18,7 +18,7 @@ export type ServerForm<T extends FieldValues> = UseFormReturn<T> & {
   retainCheckFailure: (error: unknown) => boolean;
 };
 
-export function useServerForm<T extends FieldValues>({ schema, defaultValues, submit, onInvalid, rereadBlocks = true, fieldPaths }: {
+export function useServerForm<T extends FieldValues>({ schema, defaultValues, submit, onInvalid, rereadBlocks = true, fieldPaths, issueField }: {
   schema: z.ZodType<T, T>;
   defaultValues?: DefaultValues<T>;
   submit: (values: T) => Promise<unknown>;
@@ -26,6 +26,8 @@ export function useServerForm<T extends FieldValues>({ schema, defaultValues, su
   /** A change made elsewhere stops this form until it reads the latest; false for a form with no such read to lift the stop. */
   rereadBlocks?: boolean;
   fieldPaths?: readonly string[];
+  /** The field a path serve names stands for, when the form draws it under another name or shape; none: said by the form. */
+  issueField?: (path: string) => FieldPath<T> | undefined;
 }): ServerForm<T> {
   const baseResolver = zodResolver(schema) as Resolver<T>;
   const resolver: Resolver<T> = async (values, context, options) => {
@@ -68,6 +70,12 @@ export function useServerForm<T extends FieldValues>({ schema, defaultValues, su
         }
         const unmatched: string[] = [];
         if (error instanceof ApiError) for (const issue of error.issues) {
+          if (issueField) {
+            const field = issueField(issue.path);
+            if (field) { form.setError(field, { type: "server", message: issueText(issue) }); named ??= field; }
+            else unmatched.push(issueText(issue));
+            continue;
+          }
           const path = issue.path as FieldPath<T>;
           const fieldValue = path ? form.getValues(path) : undefined;
           if (path && (fieldPaths === undefined || fieldPaths.includes(path))
@@ -116,8 +124,9 @@ export function FormField<T extends FieldValues, N extends FieldPath<T> = FieldP
   }} />;
 }
 
-export function FormError<T extends FieldValues>({ form, onReread, rereadLabel, checkRequired = false, checkMessage }: {
-  form: ServerForm<T>; onReread?: () => Promise<void>; rereadLabel?: string; checkRequired?: boolean; checkMessage?: string;
+/** `disabled`: reading the latest can't start now (the form's owner already awaits an answer). */
+export function FormError<T extends FieldValues>({ form, onReread, rereadLabel, checkRequired = false, checkMessage, disabled = false }: {
+  form: ServerForm<T>; onReread?: () => Promise<void>; rereadLabel?: string; checkRequired?: boolean; checkMessage?: string; disabled?: boolean;
 }) {
   const { t } = useTranslation("forms");
   const [reading, setReading] = useState(false);
@@ -127,7 +136,7 @@ export function FormError<T extends FieldValues>({ form, onReread, rereadLabel, 
   if (!message) return null;
   return <FieldError className="flex flex-wrap items-center gap-3">
     <span>{message}</span>
-    {(form.blocked || checkRequired) && onReread && <Button type="button" variant="outline" disabled={reading} onClick={() => {
+    {(form.blocked || checkRequired) && onReread && <Button type="button" variant="outline" disabled={reading || disabled} onClick={() => {
       setReading(true);
       setReadError("");
       void onReread().catch(error => {

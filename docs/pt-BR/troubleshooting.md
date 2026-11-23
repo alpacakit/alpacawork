@@ -52,11 +52,11 @@ Se o alpacawork não inicia depois de você atualizar o Node.js, execute `alpaca
 
 - “Você está offline” ou “Aguardando a resposta do alpacawork.”: confira se o alpacawork está rodando (“A tela não abre”, acima). Quando a conexão volta, tudo volta sozinho.
 - “A versão do alpacawork mudou.”: pressione “Recarregar”.
-- “Esta máquina está com carga alta”: em “Ver”, confira o que está pesado e diminua as execuções simultâneas.
+- “Este PC está com carga alta”: em “Ver”, confira o que está pesado e diminua as execuções simultâneas.
 
 ## Os agentes de IA não funcionam
 
-O estado aparece em “Agentes”, em “Configurações (engrenagem) → Servidor”.
+O estado aparece em “Configurações de cada agente”, em “Configurações (engrenagem) → IA”.
 
 - “Login necessário”: execute o comando de login no terminal.
 

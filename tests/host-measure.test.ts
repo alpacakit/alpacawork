@@ -77,7 +77,7 @@ test('the push names what was tight, for how long, and the heaviest Tasks once e
     disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, runs: [run(10, 'T2'), run(30, 'T1'), run(5, 'T1', 'worker'), run(20, 'T3'), run(1, 'T4')],
     outside: { cpu: 1, memoryBytes: GB, names: [] } };
   const event = hostPushEvent({ start: Date.parse('2026-10-15T00:00:00Z'), end: null, kinds: ['cpu'], peak: { cpu: 98, memoryFreePercent: 40, diskFreeBytes: 400 * GB }, runs: [] }, sample, 'ja');
-  assert.deepEqual(event.payload, { title: '端末の負荷が厳しい', body: 'CPU 98% が2分続いています。重い順に T1・T3・T2（Run 5件）',
+  assert.deepEqual(event.payload, { title: 'PC の負荷が厳しい', body: 'CPU 98% が2分続いています。重い順に T1・T3・T2（Run 5件）',
     url: '/?settings=host', tag: `host:${Date.parse('2026-10-15T00:00:00Z')}` });
 });
 

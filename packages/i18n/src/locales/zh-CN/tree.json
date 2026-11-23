@@ -1,7 +1,7 @@
 {
   "guide": {
     "close": "结束入门指引",
-    "closed": "入门指引已结束。可在{{settings}}的“{{guide}}”中再次显示。",
+    "closed": "入门指引已结束。可在{{settings}} → {{tab}}的“{{guide}}”中再次显示。",
     "example": "这是体验 alpacawork 完整流程的演示。\n请制作一个用两种字体显示 \"Hello\" 的 HTML，然后问我哪一种更好。",
     "moreExample": "请再做一个版本，方便我比较。",
     "next": "知道了",

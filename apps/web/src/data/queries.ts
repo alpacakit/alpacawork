@@ -456,7 +456,7 @@ function useStable<T>(value: T): T {
   return held.current;
 }
 /**
- * The server tab reads this PC's config.yaml (its limits and agents) afresh each time it opens and keeps that read as
+ * The AI tab reads this PC's config.yaml (its limits and agents) afresh each time it opens and keeps that read as
  * its draft's base; a change elsewhere meets the save as a conflict. A save answers the file it wrote. A project's
  * name and values are its Task's: read with `useTaskDetail`, saved with a Task update.
  */

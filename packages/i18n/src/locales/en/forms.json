@@ -105,7 +105,7 @@
     "legend": "Owner of this task",
     "model": "Model",
     "newPerson": "New agent",
-    "noProfiles": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → Server",
+    "noProfiles": "No agents are enabled. Install and sign in to an AI, then enable it in Settings → AI",
     "promote": "{{name}} takes over",
     "replaceNote": "{{name}} stops being the owner and stays in History without becoming a member",
     "taskUnavailable": "This task is no longer available. This form was closed.",

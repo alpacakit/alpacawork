@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { personalSettings, quietTimes, type SettingDefinition, type SettingValues } from '@alpacawork/contract';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { SettingControl } from '@/components/settings/SettingControl';
 import { usePersonalSettings, visibleSettingValue } from '@/data/personal-settings';
 import { intentKey, useWriteIntent } from '@/data/write-intent';
 import { PushSection } from './PushSection';
+import { TelemetrySection } from '@/features/telemetry/Telemetry';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { ReadFailure } from "@/components/ui/loadable";
@@ -109,45 +110,66 @@ function GuideRow() {
   </SettingRow>;
 }
 
-/** The definitions own rows; this screen only arranges the current groups. */
-export function PersonalSettingsTab({ definitions = personalSettings, focusNotifications = false }: {
-  definitions?: readonly SettingDefinition[]; focusNotifications?: boolean;
-}) {
+/** What the tabs of these values (General, Notifications) show while the values are read, or when a read fails. */
+function PersonalReadState() {
   const { t } = useTranslation('panels');
   const state = usePersonalSettings();
   // Read again and not read, the last settings read stay shown and in use; out of reach that is the progress line's.
   const read = useReadState(resources.personalSettings(state.root ?? '').queryKey);
   const offline = useConnection((connection) => connection.offline);
   const reloadFailed = state.status === 'ready' && !!read.error && !read.fetching && !offline;
-  const displayEntries: SettingDefinition[] = [];
-  const awayAfterEntries: SettingDefinition[] = [];
-  const notificationEntries: SettingDefinition[] = [];
-  let hasQuietHours = false;
-  definitions.forEach(item => {
-    if (item.key === 'push.quiet') hasQuietHours = true;
-    if (item.owner !== 'person' || item.hidden) return;
-    if (item.group === 'display') displayEntries.push(item);
-    if (item.key === 'push.awayAfter') awayAfterEntries.push(item);
-    if (item.group === 'notifications' && item.key !== 'push.awayAfter' && item.key !== 'push.quiet') {
-      notificationEntries.push(item);
-    }
-  });
-  return <div>
-    <SettingSection id="settings-display" title={t('settings.personal.display')}>
-      {state.status === 'error' && <ReadFailure what={t('settings.personal.loadError')} error={state.loadError ?? undefined}
-        retry={state.root ? () => void state.load(state.root!, true) : undefined} />}
-      {reloadFailed && <ReadFailure what={t('settings.personal.reloadFailed')} error={read.error} note={t('settings.personal.previousShown')}
-        retry={read.retry} />}
-      {(state.status === 'idle' || state.status === 'loading') &&
-        <FieldHint role="status">{t('settings.personal.loading')}</FieldHint>}
-      {displayEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+  return <>
+    {state.status === 'error' && <ReadFailure what={t('settings.personal.loadError')} error={state.loadError ?? undefined}
+      retry={state.root ? () => void state.load(state.root!, true) : undefined} />}
+    {reloadFailed && <ReadFailure what={t('settings.personal.reloadFailed')} error={read.error} note={t('settings.personal.previousShown')}
+      retry={read.retry} />}
+    {(state.status === 'idle' || state.status === 'loading') &&
+      <FieldHint role="status">{t('settings.personal.loading')}</FieldHint>}
+  </>;
+}
+
+const shown = (definitions: readonly SettingDefinition[]) => definitions.filter(item => item.owner === 'person' && !item.hidden);
+
+/**
+ * General: who the values reach, how the screen looks, the guide shown again, then usage data, where settings lists usually keep it; what the
+ * dialog adds (`children`, its Advanced options) closes the list.
+ */
+export function GeneralSettingsTab({ definitions = personalSettings, children }: { definitions?: readonly SettingDefinition[]; children?: ReactNode }) {
+  const { t } = useTranslation('panels');
+  return <>
+    <FieldHint className="mb-6">{t('settings.scope.server')}</FieldHint>
+    <div className="border-b border-line">
+      <PersonalReadState />
+      {shown(definitions).filter(item => item.group === 'display').map(item => <PersonalSettingRow key={item.key} definition={item} />)}
       <GuideRow />
-    </SettingSection>
-    <SettingSection id="settings-notifications" title={t('settings.personal.notifications')} note={t('settings.personal.pushScope')}>
-      {awayAfterEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
-      {hasQuietHours && <QuietHoursRow />}
-      {notificationEntries.map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+      <TelemetrySection />
+      {children}
+    </div>
+  </>;
+}
+
+const TIMING_KEYS = ['push.awayAfter', 'push.quiet'];
+/**
+ * Notifications, in the order they are set up: the devices that receive them (nothing arrives until one is registered),
+ * what is told, then when it is held back.
+ */
+export function NotificationSettingsTab({ definitions = personalSettings, focusNotifications = false }: {
+  definitions?: readonly SettingDefinition[]; focusNotifications?: boolean;
+}) {
+  const { t } = useTranslation('panels');
+  const notifications = shown(definitions).filter(item => item.group === 'notifications');
+  const hasQuietHours = definitions.some(item => item.key === 'push.quiet');
+  return <div>
+    <PersonalReadState />
+    <SettingSection id="settings-notifications" title={t('settings.personal.pushDevices')}>
       <PushSection focusHeading={focusNotifications} />
+    </SettingSection>
+    <SettingSection id="settings-notification-events" title={t('settings.personal.pushEvents')} note={t('settings.personal.pushScope')}>
+      {notifications.filter(item => !TIMING_KEYS.includes(item.key)).map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+    </SettingSection>
+    <SettingSection id="settings-notification-timing" title={t('settings.personal.pushTiming')}>
+      {notifications.filter(item => item.key === 'push.awayAfter').map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+      {hasQuietHours && <QuietHoursRow />}
     </SettingSection>
   </div>;
 }

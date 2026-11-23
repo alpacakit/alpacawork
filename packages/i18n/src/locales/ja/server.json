@@ -22,7 +22,7 @@
     "noRuns": "動いている Run はありません",
     "partSeparator": "・",
     "taskSeparator": "・",
-    "title": "端末の負荷が厳しい"
+    "title": "PC の負荷が厳しい"
   },
   "push": {
     "groupTitle": "{{updateCount}}件の知らせ",

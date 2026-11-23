@@ -10,7 +10,7 @@ import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/cont
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
 
-/** The Server tab owns limits, Jev, typed agents and the AI stacks; config/set receives one derived agents: block. */
+/** The AI and General tabs show limits, Jev, typed agents and the AI stacks of one draft; config/set receives one derived agents: block. */
 export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {

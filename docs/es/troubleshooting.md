@@ -56,7 +56,7 @@ Si no se inicia desde que actualizaste Node.js, ejecuta `alpacawork setup` y pre
 
 ## Los agentes de IA no están disponibles
 
-El estado aparece en “Agentes” de “Configuración (el engranaje) → Servidor”.
+El estado aparece en “Ajustes de cada agente” de “Configuración (el engranaje) → IA”.
 
 - “Requiere iniciar sesión”: ejecuta en una terminal el comando para iniciar sesión.
 

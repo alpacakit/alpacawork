@@ -56,7 +56,7 @@ If it stopped starting after you updated Node.js, run `alpacawork setup` and pre
 
 ## AI agents can't be used
 
-Their state appears under "Agents" in "Settings (the gear) → Server".
+Their state appears under "Settings for each agent" in "Settings (the gear) → AI".
 
 - "Sign-in required": Run the sign-in command in a terminal.
 

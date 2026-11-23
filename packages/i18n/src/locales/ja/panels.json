@@ -8,7 +8,7 @@
       "add": "＋ 代わりの AI を足す",
       "addFirst": "＋ ふだん使う AI を足す",
       "agentFor": "{{n}}行目のエージェント",
-      "agentsNote": "無効にしたエージェントは、上の2つの欄で選べません。",
+      "agentsNote": "無効にしたエージェントは、「{{tasks}}」と「{{input}}」では選べません。",
       "agentsTitle": "エージェントごとの設定",
       "down": "{{n}}行目を下へ",
       "first": "ふだん使う",
@@ -37,7 +37,7 @@
     "cancel": "やめる",
     "cannotRun": "このパスは実行できません",
     "choices": "依頼のときに選べる値",
-    "choicesHint": "上の AI の並びと、依頼のときに選べる候補です。",
+    "choicesHint": "AI の並びと、依頼のときに選べる候補です。",
     "collapse": "{{name}} を閉じる",
     "coordinatorStack": {
       "lead": "入力欄から送った頼みごとを受けてタスクにし、タスクを進める AI に任せます。ふだんは 1 の AI が受け、上限や混雑で止まったときだけ、2、3… の AI が順に引き継ぎます。",
@@ -106,7 +106,6 @@
     "resume": "会話の続き",
     "signedOut": "サインインしていません。端末で",
     "start": "新しい会話",
-    "title": "エージェント",
     "unusedAdapter": "この種類では使えません",
     "unusedOptions": "起動オプションで使われていません",
     "useAgent": "{{name}} を有効にする",
@@ -280,7 +279,7 @@
     "limitPercent": "{{value}}% で厳しい",
     "lineCpu": "CPU · 90% の線",
     "lineMemory": "メモリの空き · 10% の線",
-    "loadError": "端末の状態を読めませんでした。",
+    "loadError": "PC の状態を読めませんでした。",
     "memory": "メモリの空き",
     "memoryNote": "スワップ {{swap}} · 空き {{free}}",
     "moreRuns_other": "ほか {{count}}件の Run · 合計 {{cpu}} · {{memory}}",
@@ -299,7 +298,7 @@
     "span": "{{from}} – {{to}} · {{minutes}}分",
     "tight": "負荷が厳しい",
     "today": "今日",
-    "unsupported": "この端末（{{platform}}）はまだ測れません。",
+    "unsupported": "この PC（{{platform}}）はまだ測れません。",
     "unsupportedHint": "Linux で測れます。",
     "updated": "10秒ごとに更新 · {{time}}",
     "whole": "{{minutes}}分ずっと",
@@ -343,7 +342,7 @@
   "push": {
     "denied": "このサイトの通知がブロックされています。ブラウザーの設定で許可してから、もう一度試してください。",
     "devices": "登録した端末",
-    "hint": "この欄で選んだタスクの変化を、画面を閉じていても通知します。",
+    "hint": "「{{events}}」で選んだ変化を、画面を閉じていても通知します。",
     "noDevices": "登録した端末はありません。",
     "remove": "削除",
     "subscribe": "この端末で受け取る",
@@ -383,7 +382,7 @@
       "manualLink": "Tailscale Serveの設定手順",
       "manualTitle": "自分で設定する場合",
       "notifyAway": "PCやスマホでこのアプリを使っている間は、通知が止まります。",
-      "notifyBody": "通知は端末ごとにオンにします。受け取りたいPCとスマホのそれぞれで<ui>{{settings}}</ui> → <ui>{{personal}}</ui> → <ui>{{notifications}}</ui>を開き、<ui>{{subscribe}}</ui>を押して通知を許可します。",
+      "notifyBody": "通知は端末ごとにオンにします。受け取りたいPCとスマホのそれぞれで<ui>{{settings}}</ui> → <ui>{{notifications}}</ui>を開き、<ui>{{subscribe}}</ui>を押して通知を許可します。",
       "notifyIos": "iPhone・iPadでは、ホーム画面に追加したアイコンから開いた画面で行います。iOS / iPadOS 16.4以降が必要です。",
       "notifyOpen": "この端末の通知設定を開く",
       "notifyTitle": "通知を受け取る",
@@ -407,7 +406,7 @@
     "personal": {
       "aiLanguage": "AI とのやり取りの言語",
       "awayAfter": "操作がないと離席に",
-      "display": "表示",
+      "awayAfterHelp": "離席中にだけ通知を送ります",
       "guide": "はじめかたの案内",
       "guideHelp": "初めて使うときの案内を、最初の画面からもう一度表示します。",
       "guideShow": "もう一度表示",
@@ -420,7 +419,6 @@
       "loadError": "設定を読み込めませんでした。",
       "loading": "設定を読み込み中…",
       "mutedUntil": "通知を止める期限",
-      "notifications": "通知",
       "option": {
         "away10": "10分後",
         "away15": "15分後",
@@ -436,13 +434,16 @@
         "zh-CN": "简体中文"
       },
       "previousShown": "前回の設定を表示しています。",
+      "pushDevices": "受け取る端末",
       "pushDone": "タスクが完了したとき",
-      "pushFollowup": "対応が要る返事",
-      "pushHost": "端末の負荷が厳しいとき",
+      "pushEvents": "タイミング",
+      "pushFollowup": "対応が要る返事が届いたとき",
+      "pushHost": "PC の負荷が厳しいとき",
       "pushQuestion": "タスクがあなたに質問したとき",
       "pushReview": "タスクがレビュー待ちになったとき",
       "pushScope": "この選択は登録したすべての端末に適用されます。",
       "pushStopped": "タスクが中止になったとき",
+      "pushTiming": "送らない時間",
       "quiet": "毎日止める時間帯",
       "quietFrom": "止める時刻",
       "quietHelp": "明けたら、まだ待っている知らせを1通で送ります",
@@ -458,13 +459,11 @@
       "updateConfirm": "アップデート前に確認する"
     },
     "scope": {
-      "personal": "現在、設定は利用者ごとに分かれていません。このサーバーで共有され、変更はすぐに保存されます。通知の受信登録は端末ごとです。",
       "server": "このサーバーを使う全員に反映されます。"
     },
     "server": {
       "advanced": "高度なオプション",
       "advancedNote": "ふだんは変えない項目です。サーバーを動かす人向け。",
-      "agentsInUse": "有効: {{names}}",
       "attachmentHint": "{{min}}〜{{max}}・既定 {{value}}・次の添付から",
       "commandSecondsHint": "超えたコマンドを止めます。責任者・作業者の実行は対象外・既定 {{value}}",
       "defaultHint": "既定 {{value}}",
@@ -490,8 +489,8 @@
         "attachment_mib": "添付ファイル1つの上限（MiB）",
         "automatic_per_placement": "1つのタスクで1エージェントへ自動で届く依頼の上限",
         "children_per_run": "1回の実行が出せる依頼の数",
-        "coordinator_command_seconds": "コーディネーターのコマンドの上限（秒）",
-        "coordinator_run_minutes": "画面のコーディネーターの実行上限（分）",
+        "coordinator_command_seconds": "入力欄で話す AI のコマンドの上限（秒）",
+        "coordinator_run_minutes": "入力欄で話す AI の実行の上限（分）",
         "depth": "依頼をたどれる深さ",
         "parallel": "同時に動かす数",
         "run_minutes": "1回の実行の上限（分）"
@@ -501,7 +500,7 @@
         "minimum": "{{value}} 以上の整数にします",
         "range": "{{min}} 以上 {{max}} 以下の整数にします"
       },
-      "readError": "config.yaml を読めません。手で直してください: {{error}}",
+      "readError": "config.yaml を読めません。手で直してください。",
       "reload": "最新を読み込む",
       "runMinutesHint": "0 は上限なし・既定 {{value}}",
       "save": "保存",
@@ -509,15 +508,18 @@
     },
     "status": {
       "dirty": "未保存の変更があります",
+      "dirtyIn": "未保存の変更があります（{{places}}）",
+      "placeSeparator": "、",
       "saved": "保存済み"
     },
     "tabs": {
+      "ai": "AI",
       "apps": "アプリ・スマホ",
       "fields": "項目",
-      "host": "端末の状態",
-      "personal": "自分",
-      "projects": "プロジェクト",
-      "server": "サーバー"
+      "general": "一般",
+      "host": "PC の状態",
+      "notifications": "通知",
+      "projects": "プロジェクト"
     },
     "title": "設定",
     "up": "上へ"
@@ -603,7 +605,7 @@
     "retry": "再試行",
     "settingNotSaved": {
       "off": "「次回もこの確認を表示する」を外したことを保存できませんでした。前の保存を確かめてから、次の確認でもう一度外してください。",
-      "on": "「次回もこの確認を表示する」を付けたことを保存できませんでした。前の保存を確かめてから、自分タブの「アップデート前に確認する」をオンにしてください。"
+      "on": "「次回もこの確認を表示する」を付けたことを保存できませんでした。前の保存を確かめてから、一般タブの「アップデート前に確認する」をオンにしてください。"
     },
     "start": "アップデート",
     "unavailable": "今はアップデートを始められません。しばらくして、もう一度お試しください。"

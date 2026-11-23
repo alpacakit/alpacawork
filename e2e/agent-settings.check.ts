@@ -12,13 +12,12 @@ test.use({ isolated: true, viewport: { width: 1280, height: 720 } });
 
 async function openAgent(page: Page) {
   await page.getByRole('button', { name: /^Settings/ }).click();
-  await page.getByRole('tab', { name: 'Server', exact: true }).click();
-  await page.locator('#server-agents > summary').click();
+  await page.getByRole('tab', { name: 'AI', exact: true }).click();
   await page.getByRole('button', { name: 'Expand fake' }).click();
   return page.locator('[data-agent-name="fake"]');
 }
-const save = (page: Page) => page.locator('[data-settings-foot]').getByRole('button', { name: 'Save', exact: true });
-const saved = (page: Page) => expect(page.locator('[data-settings-foot]').getByRole('status')).toHaveText('Saved');
+const save = (page: Page) => page.locator('[data-settings-foot]:visible').getByRole('button', { name: 'Save', exact: true });
+const saved = (page: Page) => expect(page.locator('[data-settings-foot]:visible').getByRole('status')).toHaveText('Saved');
 const savedAgent = (root: string) => parse(readFileSync(join(root, 'config.yaml'), 'utf8')).agents.fake;
 
 test('a model added in the settings is kept, offered when asking, and given to the agent; restoring edited launch options asks first', async ({ page, runtime }) => {

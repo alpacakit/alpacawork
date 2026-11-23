@@ -290,7 +290,7 @@
       "new_conversation_required": "要更换适配器，请开始新对话",
       "new_workspace_file_invalid": "新工作区文件无效",
       "new_workspace_file_save_unconfirmed": "新工作区文件可能已保存。请检查后重试",
-      "no_configured_agents": "没有已启用的智能体。请安装并登录一个 AI，然后在“设置 → 服务器”中启用",
+      "no_configured_agents": "没有已启用的智能体。请安装并登录一个 AI，然后在“设置 → AI”中启用",
       "no_migrations_packaged": "未包含任何迁移。现有数据库已保留",
       "no_project_active_use_id": "没有活动项目。请用 --{{option}} <ID> 指定",
       "no_question_in_decide_value_write_full_question_before_asking": "任务的“提问”（decide）字段为空。请先在其中写下完整的提问再发送",

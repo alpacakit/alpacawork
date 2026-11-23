@@ -23,7 +23,11 @@ export const stackTitleKey = (kind: StackKind) => kind === 'tasks' ? 'agentSetti
  * agent may stand on several rows with other models. A row the agents' settings no longer run says so here, as the
  * settings change, and keeps the save back. Both stacks are this one list; only their words differ.
  */
-export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; rows: StackRowDraft[]; agents: AgentDraft[]; onChange: (rows: StackRowDraft[]) => void }) {
+/** `refusedRows`, `refused`: what a save refused, by row (its index) or for the list as a whole, beside what the list finds itself. */
+export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: {
+  kind: StackKind; rows: StackRowDraft[]; agents: AgentDraft[]; onChange: (rows: StackRowDraft[]) => void;
+  refusedRows?: readonly (string | undefined)[]; refused?: string;
+}) {
   const { t } = useTranslation('panels');
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
@@ -47,7 +51,7 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
       </div>
       <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
-          issues={issues.filter(issue => issue.rowId === row.id)} repeats={repeatedRow(rows, index, agents)}
+          issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
           onMove={by => onChange(moveRow(rows, index, by))}
           onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
@@ -56,6 +60,7 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
         <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
           {t(rows.length ? 'agentSettings.aiStack.add' : 'agentSettings.aiStack.addFirst')}</Button>
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
+        {refused && <FieldError className="mt-2">{refused}</FieldError>}
         {/* Only a request names an AI for a task; nothing names one for the input. */}
         {kind === 'tasks' && <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>}
       </div>
@@ -63,8 +68,8 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
   </div>;
 }
 
-function StackRow({ row, index, count, agents, enabled, issues, repeats, onChange, onMove, onRemove }: {
-  row: StackRowDraft; index: number; count: number; agents: AgentDraft[]; enabled: AgentDraft[]; issues: StackIssue[];
+function StackRow({ row, index, count, agents, enabled, issues, refused, repeats, onChange, onMove, onRemove }: {
+  row: StackRowDraft; index: number; count: number; agents: AgentDraft[]; enabled: AgentDraft[]; issues: StackIssue[]; refused?: string;
   repeats: number | null; onChange: (row: StackRowDraft) => void; onMove: (by: -1 | 1) => void; onRemove: () => void;
 }) {
   const { t } = useTranslation('panels');
@@ -80,12 +85,12 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
   // One line on a PC: its number, its agent (the first marked as the default under it), two choices to a line in
   // columns, and its controls. On a phone the choices go under the agent and its controls, one to a line.
-  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
+  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-line px-4 py-3 narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className="flex min-h-control-md items-center justify-end font-mono tabular-nums text-muted">{n}</span>
     <div className="flex min-w-0 items-start gap-x-5 narrow:contents">
       <div className="flex w-32 shrink-0 flex-col items-start gap-1 narrow:col-start-2 narrow:row-start-1 narrow:w-full narrow:flex-row narrow:flex-wrap narrow:items-center narrow:gap-2">
-        <NativeSelect variant="field" className="w-full font-semibold narrow:w-auto narrow:min-w-24 narrow:flex-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || undefined}
+        <NativeSelect variant="field" className="w-full font-semibold narrow:w-auto narrow:min-w-24 narrow:flex-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
           aria-label={t('agentSettings.aiStack.agentFor', { n })}
           onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
           {!listed && <option value={row.agent}>{row.agent}</option>}
@@ -116,8 +121,9 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
       <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
     </div>
-    {(issues.length > 0 || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1">
+    {(issues.length > 0 || refused || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1">
       {issues.map((issue, at) => <FieldError key={at}>{issueText(issue)}</FieldError>)}
+      {refused && <FieldError>{refused}</FieldError>}
       {repeats !== null && <Message size="line" tone="info" quiet title={t('agentSettings.aiStack.repeated', { n: repeats + 1 })} />}
     </div>}
   </li>;
