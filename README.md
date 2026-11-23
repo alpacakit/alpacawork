@@ -89,13 +89,13 @@ You request tasks in the input box on the screen. To open the screen, change set
 | Check whether it is running | `/alpacawork check whether it is running` | `alpacawork status` |
 | Change a setting | `/alpacawork run at most 4 AIs at once` | — |
 | Change the model normally used | `/alpacawork use opus for tasks normally` | — |
-| Make a new model available | `/alpacawork a new version of opus is out; add it to the model settings so I can choose it` | — |
+| Make a new model available | `/alpacawork a new Codex model is out; add it to the model settings so I can choose it` | — |
 | Change the project policy | `/alpacawork add "use opus for design work" to the project policy` | — |
 | Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
 | Stop, start or restart | `/alpacawork restart alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |
 
-You can also change settings, models and the policy in the input box or in Settings on the screen, and update from Settings. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md)).
+You can also change settings and models in the input box or in Settings on the screen, and update from Settings. For the other commands and how to use them, run `alpacawork -h` (details in [Reopen, stop and update](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md)).
 
 Requesting tasks, finding them, answering questions and the like also work from a Claude Code or Codex conversation. See [Use it from Claude Code or Codex](https://github.com/alpacakit/alpacawork/blob/main/docs/chat.md) for how to ask.
 

@@ -63,13 +63,13 @@ As tarefas são pedidas na caixa de entrada da tela. Para abrir a tela, mudar co
 | Ver se está rodando | `/alpacawork veja se está rodando` | `alpacawork status` |
 | Mudar uma configuração | `/alpacawork rode no máximo 4 IAs ao mesmo tempo` | — |
 | Mudar o modelo de uso normal | `/alpacawork use o opus normalmente nas tarefas` | — |
-| Disponibilizar um modelo novo | `/alpacawork saiu uma versão nova do opus; adicione nas configurações de modelos para eu poder escolher` | — |
-| Mudar a política do projeto | `/alpacawork acrescente "o design, com o opus" à política do projeto` | — |
+| Disponibilizar um modelo novo | `/alpacawork saiu um modelo novo do Codex; adicione nas configurações de modelos para eu poder escolher` | — |
+| Mudar a política do projeto | `/alpacawork acrescente "use o opus para o design" à política do projeto` | — |
 | Atualizar para a versão mais recente | `/alpacawork atualize para a versão mais recente` | `alpacawork deploy npm:alpacawork` |
 | Parar, iniciar ou reiniciar | `/alpacawork reinicie o alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `/alpacawork desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |
 
-Configurações, modelos e a política também podem ser mudados na caixa de entrada ou em Configurações na tela, e a atualização também pode ser feita em Configurações. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md)).
+Configurações e modelos também podem ser mudados na caixa de entrada ou em Configurações na tela, e a atualização também pode ser feita em Configurações. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md)).
 
 Pedir tarefas, procurá-las, responder perguntas e coisas assim também funciona numa conversa do Claude Code ou do Codex. Como pedir está em [Usar pelo Claude Code ou Codex](docs/pt-BR/chat.md).
 

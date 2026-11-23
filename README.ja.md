@@ -63,13 +63,13 @@ alpacawork setup
 | 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
 | 設定を変える | `/alpacawork 同時に動かす AI を4つまでにして` | — |
 | ふだん使うモデルを変える | `/alpacawork タスクをふだん opus で進めるようにして` | — |
-| 新しいモデルを使えるようにする | `/alpacawork opus の新しい版が出たので、選べるようにモデルの設定に足して` | — |
+| 新しいモデルを使えるようにする | `/alpacawork Codex の新しいモデルが出たので、選べるようにモデルの設定に足して` | — |
 | プロジェクト方針を変える | `/alpacawork プロジェクト方針に「デザインの作成は opus で」と書き足して` | — |
 | 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
 | 止める・起動する・再起動する | `/alpacawork 再起動して` | `alpacawork stop`・`start`・`restart` |
 | アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |
 
-設定・モデル・方針は画面の入力欄や設定でも変えられ、更新も画面の設定からできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
+設定とモデルは画面の入力欄や設定でも変えられ、更新も画面の設定からできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
 
 タスクを頼む・探す・質問に答えるといった操作も、Claude Code・Codex の会話からできます。頼み方は [Claude Code・Codex から使う](docs/ja/chat.md) にあります。
 
