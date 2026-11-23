@@ -144,22 +144,44 @@ const inFront = (element: Element, across: number, down: number) => {
   return !!front && element.contains(front);
 };
 /**
- * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there: its
- * head scrolled out of the box, within the room the part keeps clear at the box's top for what stays there (its
+ * Where what a pane scrolls is seen in it: its box, less the room it keeps clear at its ends for what stands over them
+ * there (its scroll padding: the list's head, the input and its row over a detail's foot).
+ */
+function seenArea(pane: HTMLElement) {
+  const box = pane.getBoundingClientRect(), room = getComputedStyle(pane);
+  return { top: box.top + (parseFloat(room.scrollPaddingTop) || 0), bottom: box.bottom - (parseFloat(room.scrollPaddingBottom) || 0) };
+}
+/**
+ * What of a part (`box`) is seen in the pane it scrolls in (`seen`, seenArea): the ring goes round that and the balloon
+ * points at it, never over what stands at the pane's ends. All of the part where none of it is seen there.
+ */
+export function seenPart(box: Box, seen: { top: number; bottom: number }): Box {
+  const top = Math.max(box.top, seen.top), bottom = Math.min(box.top + box.height, seen.bottom);
+  return bottom > top ? { ...box, top, height: bottom - top } : box;
+}
+/** `element`'s box as seen in the pane it scrolls in (seenPart); its whole box where it scrolls in none. */
+function seenBoxOf(element: HTMLElement): Box {
+  const pane = scrollerOf(element.parentElement);
+  return pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+}
+/**
+ * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there
+ * (seenArea): its head scrolled out of it, within the room the part keeps clear at its top for what stays there (its
  * scroll margin: a heading that stays at the top takes no press, so it is not seen by what stands in front), or not in
- * front; or, where it would fit in that box whole, reaching past its edge. A part to bring into view; one taller than
- * the box is left where the person has it while its head is seen.
+ * front; or, where it would fit there whole, reaching past its end. A part to bring into view; one taller than that is
+ * left where the person has it while its head is seen.
  */
 function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
-    const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
-    if (!pane) continue;
+    const scroller = scrollerOf(element.parentElement);
+    if (!scroller) continue;
+    const box = element.getBoundingClientRect(), pane = seenArea(scroller);
     const kept = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
     const head = box.top + Math.min(box.height, HEAD) / 2;
     const seen = box.top >= pane.top + kept - 1 && head <= pane.bottom && inFront(element, box.left + box.width / 2, head);
-    if (!seen || box.height <= pane.height && box.bottom > pane.bottom + 1) return element;
+    if (!seen || box.height <= pane.bottom - pane.top && box.bottom > pane.bottom + 1) return element;
   }
   return null;
 }
@@ -256,7 +278,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
         const holder = target.closest(PARTS[name]);
         return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
-      const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
+      const next = target && own ? placeBalloon(seenBoxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear) : null;
       const looked = !!next && document.visibilityState === "visible";
       if (!looked && standing) { clearTimeout(standing); standing = null; }

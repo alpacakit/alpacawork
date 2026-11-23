@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
 import { PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
-import { placeBalloon, roomUnder } from "../src/features/guide/Guide";
+import { placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
@@ -243,6 +243,14 @@ test("a box under the balloon gets room at its end from the balloon's top down, 
   expect(roomUnder(sheet, { top: 600, bottom: 700 })).toBe(244);
   expect(roomUnder(sheet, { top: 250, bottom: 320 })).toBe(594);
   expect(roomUnder(sheet, { top: 100, bottom: 200 })).toBe(0);
+});
+
+test("a part reaching under the input at a detail's foot is pointed at where it is seen, above the input", () => {
+  // A phone's sheet from 282 to 844, keeping 162px at its foot for the input and its row: the question's box runs past that.
+  const question = { left: 37, top: 362, width: 341, height: 448 };
+  expect(seenPart(question, { top: 282, bottom: 682 })).toEqual({ left: 37, top: 362, width: 341, height: 320 });
+  // Seen whole, it is pointed at whole.
+  expect(seenPart({ ...question, height: 200 }, { top: 282, bottom: 682 })).toEqual({ ...question, height: 200 });
 });
 
 test("a row whose turn the person has already answered from here is not theirs, while it still stands in the list", () => {
