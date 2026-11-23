@@ -69,6 +69,15 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       else if (!handled) notify.error([i18n.t(where === 'restored' ? 'ui:coordinatorCard.refusedRestored' : 'ui:coordinatorCard.refusedKept', { reason }), fileWarning].filter(Boolean).join(' '), { id: deliveryNoticeId(root, requestId), from: 'coordinator' });
       return "rejected" as const;
     };
+    /**
+     * The AI the words were fixed for is not the one they go to (the settings changed): the skill catalog this screen
+     * holds for the conversation is that earlier AI's, so it is read again before the words go back, and the next send
+     * marks its skills from the AI they go to now.
+     */
+    const aiChanged = async (error?: unknown) => {
+      await client.invalidateQueries({ queryKey: ['coordinator-skills', root, fixed.conversationId] });
+      return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'), error);
+    };
     try {
       // A fixed request may already be admitted: reconcile that fact before asking for new Task authority.
       if (attempt.checked) {
@@ -93,7 +102,7 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
           if (standings.includes('unknown')) return refuse(skillsUnverified(i18n.t, live));
           // The words were fixed with each skill's mark for the AI they were written to; the server now sends to one that
           // calls it otherwise (its settings changed): the words go back, and sent again they are fixed with its marks.
-          if (serialize(attempt.doc, skillMark(live)) !== fixed.text) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
+          if (serialize(attempt.doc, skillMark(live)) !== fixed.text) return aiChanged();
         }
         if (useConversation.getState().conversation?.id !== fixed.conversationId) return refuse(i18n.t('ui:coordinatorCard.conversationChanged'));
         const original = useDraftStore.getState().entries[outgoingKey(root, requestId)];
@@ -135,7 +144,7 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       // Serve, sending to an AI that calls a skill otherwise than the words do, refused it before taking it, a resend of the
       // same ID included: the words go back, and sent again they are fixed with that AI's marks.
       if (error instanceof ApiError && error.reason?.kind === 'coordinator_ai_changed')
-        return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'), error);
+        return aiChanged(error);
       if (outcome === 'conflict' || certainRefusal && error instanceof ApiError && error.code === 'idempotency_conflict')
         return refuse(i18n.t('ui:coordinatorCard.conflict'), error, true);
       if (certainRefusal) {
