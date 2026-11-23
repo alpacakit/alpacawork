@@ -46,4 +46,4 @@ AI 会读取 alpacawork 的技能，之后这个对话里的 AI 就会作为与�
 | 停止、启动、重启 | `重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
 | 卸载 | `卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
 
-对话中的第一次，要在说法前面加上 `/alpacawork`。设置、模型和项目准则的更改也可以在界面的输入框中提出，更新也可以在界面的设置中进行。停止、启动、重启和卸载无法在界面的输入框中进行，请在这个对话或终端中操作。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](manage.md)）。
+对话中的第一次，要在说法前面加上 `/alpacawork`。设置、模型和项目准则的更改也可以在界面的输入框中提出，更新也可以在界面的设置中进行。停止、重启和卸载无法在界面的输入框中进行，请在这个对话或终端中操作。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](manage.md)）。

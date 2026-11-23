@@ -68,7 +68,7 @@ Se você fechar a tela, peça assim ao Claude Code ou ao Codex aberto no termina
 
 No terminal, `alpacawork open` também abre a tela.
 
-O `/alpacawork` é colocado ao pedir numa conversa do Claude Code ou do Codex, para que a IA leia a skill do alpacawork. Na caixa de entrada da tela do alpacawork, ele não é usado. Como pedir outras operações, como atualizar ou reiniciar, está em [Usar pelo Claude Code ou Codex](docs/pt-BR/chat.md).
+O `/alpacawork` é colocado uma vez, no primeiro pedido de uma conversa do Claude Code ou do Codex, para que a IA leia a skill do alpacawork. Depois disso ele não é usado, nem na caixa de entrada da tela do alpacawork. Como pedir outras operações, como atualizar ou reiniciar, está em [Usar pelo Claude Code ou Codex](docs/pt-BR/chat.md).
 
 No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial na tela, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
 

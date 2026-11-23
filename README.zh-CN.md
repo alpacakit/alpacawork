@@ -60,7 +60,7 @@ alpacawork setup
 
 ### 重新打开界面
 
-关闭界面后，像下面这样请在终端或应用中打开的 Claude Code 或 Codex 打开（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。AI 会在浏览器中打开界面，或告诉你界面的 URL。
+关闭界面后，可以像下面这样，请在终端或应用中打开的 Claude Code 或 Codex 打开界面（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。AI 会在浏览器中打开界面，或告诉你界面的 URL。
 
 ```text
 /alpacawork 打开界面
@@ -68,7 +68,7 @@ alpacawork setup
 
 在终端中，也可以用 `alpacawork open` 打开。
 
-`/alpacawork` 是在 Claude Code 或 Codex 的对话中提出请求时加上的，用来让 AI 读取 alpacawork 的技能。在 alpacawork 界面的输入框中不加。更新、重启等其他操作的说法，见 [从 Claude Code 或 Codex 使用](docs/zh-CN/chat.md)。
+`/alpacawork` 只在 Claude Code 或 Codex 的对话中第一次提出请求时加一次，用来让 AI 读取 alpacawork 的技能。之后不用再加，在 alpacawork 界面的输入框中也不加。更新、重启等其他操作的说法，见 [从 Claude Code 或 Codex 使用](docs/zh-CN/chat.md)。
 
 如果用 Chrome 或 Edge，可以在界面上初始设置的最后，或之后在设置的“应用和手机”中把它安装为应用，然后从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 

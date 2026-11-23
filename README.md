@@ -98,7 +98,7 @@ If you close the screen, ask Claude Code or Codex opened in a terminal or its ap
 
 From a terminal, `alpacawork open` opens it too.
 
-You add `/alpacawork` when you ask from a Claude Code or Codex conversation, so that the AI reads the alpacawork skill. You don't add it in the input box on the alpacawork screen. For how to ask for other operations, such as updating or restarting, see [Use it from Claude Code or Codex](https://github.com/alpacakit/alpacawork/blob/main/docs/chat.md).
+You add `/alpacawork` once, on the first request in a Claude Code or Codex conversation, so that the AI reads the alpacawork skill. You leave it out after that, and in the input box on the alpacawork screen. For how to ask for other operations, such as updating or restarting, see [Use it from Claude Code or Codex](https://github.com/alpacakit/alpacawork/blob/main/docs/chat.md).
 
 In Chrome or Edge, you can install it as an app at the end of setup on the screen, or later in Settings → App & phone, and open it again from its icon in the Dock or the taskbar. In Safari on a Mac, install it with File → Add to Dock in the menu (macOS Sonoma or later).
 
