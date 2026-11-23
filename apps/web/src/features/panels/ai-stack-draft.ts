@@ -20,9 +20,21 @@ const nextId = () => `stack-${sequence++}`;
 
 export const readStack = (rows: readonly AiRow[] | undefined): StackRowDraft[] =>
   (rows ?? []).map(row => ({ id: nextId(), agent: row.agent, values: { ...row.values } }));
-export const writeStack = (rows: readonly StackRowDraft[]): AiRow[] => rows.map(row => ({ agent: row.agent, values: { ...row.values } }));
-
 type Values = Record<string, string | null>;
+/**
+ * A row's values as it is saved and checked: the values of what its agent has to choose now. A row being edited keeps
+ * every value it holds (a choice its agent's options stop naming while they are edited comes back with its value);
+ * only what is saved leaves out a value whose choice is gone. Its agent's settings unread: the row as it is.
+ */
+function savedValues(agents: readonly AgentDraft[], row: StackRowDraft): Values {
+  const agent = agents.find(each => each.name === row.agent), offer = agent && agentOffer(agent);
+  if (!offer) return { ...row.values };
+  const keys = new Set(offer.choices.map(choice => choice.key));
+  return Object.fromEntries(Object.entries(row.values).filter(([key]) => keys.has(key)));
+}
+/** The stack as config/set receives it, and the one form its rows are checked in: each row's saved values. */
+export const writeStack = (rows: readonly StackRowDraft[], agents: readonly AgentDraft[]): AiRow[] =>
+  rows.map(row => ({ agent: row.agent, values: savedValues(agents, row) }));
 /** The contract's refusal of a value, or nothing: the one check serve makes of a row's values. */
 const refuses = (offer: SelectionOffer, values: Readonly<Values>): boolean => {
   try { resolveOfferedSelection(offer, values); return false; }
@@ -70,9 +82,9 @@ const sameValues = (a: Values | null, b: Values) => !!a && Object.keys(a).length
   && Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && b[key] === value);
 /** What a row launches with (the contract's effective values); null while the contract refuses the row. */
 function launched(agents: readonly AgentDraft[], row: StackRowDraft): Values | null {
-  const agent = agents.find(each => each.name === row.agent), offer = agent && agentOffer(agent);
-  if (!offer || refuses(offer, row.values)) return null;
-  return resolveOfferedSelection(offer, row.values).effective;
+  const agent = agents.find(each => each.name === row.agent), offer = agent && agentOffer(agent), values = savedValues(agents, row);
+  if (!offer || refuses(offer, values)) return null;
+  return resolveOfferedSelection(offer, values).effective;
 }
 
 /**
@@ -101,28 +113,13 @@ export function moveRow(rows: readonly StackRowDraft[], index: number, by: -1 | 
   [next[index], next[to]] = [next[to]!, next[index]!];
   return next;
 }
-/**
- * Rows follow their agents as the cards edit them: a row of a renamed agent takes its new name, and a row of an agent
- * whose settings changed keeps only the values of what that agent still has to choose (a choice its launch options
- * no longer name leaves the row too; a value its choice no longer offers stays, to be chosen again). Nothing to
- * follow: `rows` itself.
- */
-export function followAgents(rows: StackRowDraft[], before: AgentsDraft, after: AgentsDraft): StackRowDraft[] {
-  const edited = new Map(before.agents.flatMap(was => {
+/** Agents renamed in their cards keep their rows: each row follows its agent's new name. No rename: `rows` itself. */
+export function followRenames(rows: StackRowDraft[], before: AgentsDraft, after: AgentsDraft): StackRowDraft[] {
+  const renamed = new Map(before.agents.flatMap(was => {
     const now = after.agents.find(agent => agent.id === was.id);
-    return now && now !== was ? [[was.name, now] as const] : [];
+    return now && now.name !== was.name ? [[was.name, now.name] as const] : [];
   }));
-  let changed = false;
-  const followed = rows.map(row => {
-    const agent = edited.get(row.agent), offer = agent && agentOffer(agent);
-    if (!agent) return row;
-    const keys = offer ? new Set(offer.choices.map(choice => choice.key)) : null;
-    const values = keys ? Object.fromEntries(Object.entries(row.values).filter(([key]) => keys.has(key))) : row.values;
-    if (agent.name === row.agent && Object.keys(values).length === Object.keys(row.values).length) return row;
-    changed = true;
-    return { ...row, agent: agent.name, values };
-  });
-  return changed ? followed : rows;
+  return renamed.size ? rows.map(row => renamed.has(row.agent) ? { ...row, agent: renamed.get(row.agent)! } : row) : rows;
 }
 
 /** What keeps the stack from being saved: no row while an agent is enabled, or a row the agents' settings no longer run. */
@@ -133,7 +130,7 @@ export function stackIssues(rows: readonly StackRowDraft[], agents: readonly Age
     const agent = agents.find(each => each.name === row.agent);
     if (!agent) return [{ rowId: row.id, kind: 'missing' }];
     if (agent.enabled === false) return [{ rowId: row.id, kind: 'disabled' }];
-    const offer = agentOffer(agent);
-    return offer ? refusedKeys(offer, row.values).map(key => ({ rowId: row.id, kind: 'value' as const, key, value: row.values[key]! })) : [];
+    const offer = agentOffer(agent), values = savedValues(agents, row);
+    return offer ? refusedKeys(offer, values).map(key => ({ rowId: row.id, kind: 'value' as const, key, value: values[key]! })) : [];
   });
 }

@@ -39,6 +39,6 @@ export function setupSave(loaded: ServerSettings, drafts: AgentsDraft, rows: rea
   if (!chosen && !stack && !coordinator) return null;
   const yaml = serverAgentsYaml({ agents: { ok: true, value: { ...drafts, agents } } });
   if (!yaml.ok) throw new Error("Invalid agent settings");
-  return { config: configYaml({ limits: loaded.limits, ...stack ? { aiStack: readStack(stack) } : {},
+  return { config: configYaml({ limits: loaded.limits, agents: { ok: true, value: { ...drafts, agents } }, ...stack ? { aiStack: readStack(stack) } : {},
     ...coordinator ? { coordinatorAiStack: readStack(coordinator) } : {} }), agents: yaml.value };
 }

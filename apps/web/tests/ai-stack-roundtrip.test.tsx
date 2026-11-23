@@ -8,8 +8,8 @@ import { initializeControlFixture } from '../../../tests/helpers/control-fixture
 import { readServerSettings, saveServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
 import { serverAgentDraftSchema, serverAgentsYaml } from '../src/features/panels/server-agent-draft';
 import { configYaml, serverDraft } from '../src/features/panels/settings-draft';
-import { followAgents, moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
-import { beginDraftOptionsEdit, updateDraftOptions } from '../src/features/panels/agent-settings-draft';
+import { moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
+import { beginDraftOptionsEdit, updateDraftOptions, type AgentDraft } from '../src/features/panels/agent-settings-draft';
 import { optionsBase } from '@alpacawork/contract/agent-adapters';
 
 const roots: string[] = [];
@@ -121,8 +121,15 @@ test('with no tasks\' list saved, editing only the input\'s list saves, for agen
   }
 });
 
-test('a choice taken out of an agent\'s launch options leaves its rows too, and the lists save as they then are', async () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-follow-')));
+/** An agent's card with its launch options edited as the advanced settings do: `edit` rewrites start and resume. */
+function withOptions(card: AgentDraft, adapter: 'claude' | 'copilot', edit: (options: string) => string): AgentDraft {
+  const editing = beginDraftOptionsEdit(card, optionsBase(adapter));
+  return updateDraftOptions(editing, { ...editing.options!, start: edit(editing.options!.start), resume: edit(editing.options!.resume) });
+}
+
+test('a choice taken out of an agent\'s launch options leaves its rows only when saved so, and a value comes back with its choice', async () => {
+  // Copilot's options stop naming the model: the rows keep `model: null` while edited, and are saved without it.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-saved-')));
   roots.push(root);
   initializeControlFixture(root);
   const copilot = [{ agent: 'copilot', values: {} }];
@@ -131,16 +138,27 @@ test('a choice taken out of an agent\'s launch options leaves its rows too, and 
   const draft = serverDraft(read);
   if (!draft.agents.ok) throw new Error('unreadable agents');
   expect(draft.coordinatorAiStack[0]!.values).toHaveProperty('model', null);
-  // The options stop naming the model.
-  const before = draft.agents.value, card = before.agents[0]!;
-  const editing = beginDraftOptionsEdit(card, optionsBase('copilot'));
-  const after = { ...before, agents: [updateDraftOptions(editing, { ...editing.options!, start: '-o {result}', resume: '-o {result} resume {session}' })] };
-  const edited = { ...draft, agents: { ok: true as const, value: after },
-    aiStack: followAgents(draft.aiStack, before, after), coordinatorAiStack: followAgents(draft.coordinatorAiStack, before, after) };
-  expect(edited.coordinatorAiStack[0]!.values).not.toHaveProperty('model');
+  const card = draft.agents.value.agents[0]!;
+  const edited = { ...draft, agents: { ok: true as const, value: { ...draft.agents.value,
+    agents: [withOptions(card, 'copilot', options => options.replace('[-m {model}] ', ''))] } } };
+  expect(edited.coordinatorAiStack[0]!.values).toHaveProperty('model', null);
+  expect(sent(edited).coordinatorAiStack).toEqual([{ agent: 'copilot', values: {} }]);
   expect(serverAgentDraftSchema.safeParse(edited).success).toBe(true);
   const yaml = serverAgentsYaml(edited);
   if (!yaml.ok) throw new Error('unwritable agents');
   const saved = await saveServerSettings(root, configSetInput.parse({ config: configYaml(edited), agents: yaml.value, expectedConfigHash: read.hash }));
   expect(saved.coordinatorAiStack).toEqual([{ agent: 'copilot', values: {} }]);
+
+  // Claude's options lose `[--effort {effort}]` while being edited, then get it back: the row's `low` is still there.
+  const other = serverDraft(await readServerSettings(workspace()));
+  if (!other.agents.ok) throw new Error('unreadable agents');
+  const claudeCard = other.agents.value.agents.find(agent => agent.name === 'claude')!;
+  const cut = withOptions(claudeCard, 'claude', options => options.replace('[--effort {effort}] ', ''));
+  const back = withOptions(cut, 'claude', options => options.replace('[--model {model}] ', '[--model {model}] [--effort {effort}] '));
+  for (const agent of [cut, back]) {
+    const step = { ...other, agents: { ok: true as const, value: { ...other.agents.value,
+      agents: other.agents.value.agents.map(each => each.name === 'claude' ? agent : each) } } };
+    expect(step.coordinatorAiStack[0]!.values).toEqual({ model: 'opus', effort: 'low' });
+    if (agent === back) expect((sent(step).coordinatorAiStack as unknown[])[0]).toEqual({ agent: 'claude', values: { model: 'opus', effort: 'low' } });
+  }
 });

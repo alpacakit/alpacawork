@@ -26,9 +26,10 @@ export function serverDraft(settings: ServerSettings): ServerDraft {
  * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. A stack absent leaves it in
  * config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
  */
-export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack' | 'coordinatorAiStack'>>) {
-  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {},
-    ...draft.coordinatorAiStack ? { coordinatorAiStack: writeStack(draft.coordinatorAiStack) } : {}, /* jev: draft.jev */ },
+export function configYaml(draft: Pick<ServerDraft, 'limits' | 'agents'> & Partial<Pick<ServerDraft, 'aiStack' | 'coordinatorAiStack'>>) {
+  const agents = draft.agents.ok ? draft.agents.value.agents : [];
+  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack, agents) } : {},
+    ...draft.coordinatorAiStack ? { coordinatorAiStack: writeStack(draft.coordinatorAiStack, agents) } : {}, /* jev: draft.jev */ },
     { lineWidth: 0, aliasDuplicateObjects: false });
 }
 /**
