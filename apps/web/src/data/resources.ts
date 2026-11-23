@@ -122,7 +122,8 @@ export const resources = {
   timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
     queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
     queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => readTimelineLane(lane, from, to, signal)),
-    staleTime: Infinity,
+    // The batch the row is read in retries as one read (lane-batch).
+    staleTime: Infinity, retry: false,
   }),
   notices: (root: string) => queryOptions({
     queryKey: ["person-notices", root] as const,

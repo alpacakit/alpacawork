@@ -1,7 +1,7 @@
 import { bindWriteAccess, type WriteBasis } from './connection';
 import { MutationCache, notifyManager, QueryCache, QueryClient } from "@tanstack/react-query";
 import { observeReadProofs } from './read-model';
-import { readDeadlinePassed, requireWriteAccess } from './client';
+import { READ_RETRIES, readDeadlinePassed, readRetryDelay, requireWriteAccess } from './client';
 import { notify, recordFailure } from "@/lib/notify";
 import { later } from "@/lib/later";
 
@@ -20,11 +20,6 @@ declare module "@tanstack/react-query" {
     };
   }
 }
-/**
- * A read the server stayed silent on is asked again a few times, with Query's growing wait, before its failure is said where
- * it is read: a request made while the server is busy would otherwise fail for good moments before it answers again.
- */
-const READ_RETRIES = 3;
 export const queryClient = new QueryClient({
   // A read that fails is said where it is read (a list's line, the reader); its cause is kept here, once a fetch.
   queryCache: new QueryCache({ onError: (error, query) => recordFailure(error, `read ${JSON.stringify(query.queryKey)}`) }),
@@ -39,7 +34,8 @@ export const queryClient = new QueryClient({
     },
   }),
   defaultOptions: {
-    queries: { networkMode: "always", retry: (count, error) => count < READ_RETRIES && readDeadlinePassed(error), refetchOnReconnect: false, refetchOnWindowFocus: false },
+    queries: { networkMode: "always", retry: (count, error) => count < READ_RETRIES && readDeadlinePassed(error), retryDelay: readRetryDelay,
+      refetchOnReconnect: false, refetchOnWindowFocus: false },
     mutations: { networkMode: "always", retry: false },
   },
 });
