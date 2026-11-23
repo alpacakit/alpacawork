@@ -9,7 +9,7 @@
       "save": "Não foi possível salvar as configurações dos agentes."
     },
     "first": "Primeira IA a usar",
-    "firstHint": "Esta IA é usada primeiro, tanto quando você conversa na caixa de entrada quanto quando as tarefas são feitas.",
+    "firstHint": "Esta IA é usada tanto nas conversas com você quanto no trabalho das tarefas. Você pode mudá-la depois nas configurações.",
     "found": "Instalado. Funciona com login feito ou chave de API",
     "how": "Execute este comando em um terminal e siga as instruções para fazer login.",
     "lead": "O alpacawork entrega o trabalho aos agentes de IA que já estão neste PC, como o Claude Code e o Codex. Os que você ativar serão as opções ao escolher a quem pedir.",
@@ -93,7 +93,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Conferido por outra IA antes de você ver",
-        "what": "Antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere e corrige o resultado. Isso consome mais tempo e mais tokens.",
+        "what": "Exceto em trabalhos leves, antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere o resultado, e o que ela aponta é corrigido. Isso consome mais tempo e mais tokens.",
         "when": "ao planejar, ao pedir uma revisão e ao receber apontamentos"
       },
       "askmeclearly": {
@@ -103,7 +103,7 @@
       },
       "doyourjob": {
         "title": "Menos perguntas para você",
-        "what": "A IA pergunta a você só o que apenas você pode decidir, e decide o resto sozinha.",
+        "what": "A IA pergunta a você só o que apenas você pode decidir, e descobre o resto sozinha.",
         "when": "antes de perguntar ao usuário e antes de fazer uma escolha com grandes consequências"
       }
     },
@@ -117,7 +117,7 @@
     },
     "skip": "Continuar sem instalar",
     "title": "Skills para instalar",
-    "where": "Instaladas em {{place}}. O Claude Code também as usa."
+    "where": "Local de instalação: {{place}}. Elas também valem quando você usa o Claude Code fora do alpacawork."
   },
   "steps": {
     "agents": "Agentes",

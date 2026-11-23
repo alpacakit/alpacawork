@@ -9,7 +9,7 @@
       "save": "No se pudo guardar la configuración de los agentes."
     },
     "first": "Primera IA que se usa",
-    "firstHint": "Esta IA se usa primero, tanto cuando hablas en el cuadro de entrada como cuando se trabaja en las tareas.",
+    "firstHint": "Esta IA se usa tanto cuando hablas en el cuadro de entrada como cuando se trabaja en las tareas. Puedes cambiarla más tarde en la configuración.",
     "found": "Instalado. Funciona con sesión o clave de API",
     "how": "Ejecuta este comando en una terminal y sigue las indicaciones para iniciar sesión.",
     "lead": "alpacawork encarga el trabajo a los agentes de IA que ya hay en este PC, como Claude Code y Codex. Los que actives serán las opciones al elegir a quién pedírselo.",
@@ -93,7 +93,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Revisado por otra IA antes de que lo veas",
-        "what": "Antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo revisa y lo corrige. Esto consume más tiempo y más tokens.",
+        "what": "Salvo en trabajos ligeros, antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo comprueba, y se corrige lo que encuentre. Esto consume más tiempo y más tokens.",
         "when": "al planificar, al pedir una revisión y al recibir observaciones"
       },
       "askmeclearly": {
@@ -103,7 +103,7 @@
       },
       "doyourjob": {
         "title": "Menos preguntas para ti",
-        "what": "La IA solo te pregunta lo que únicamente tú puedes decidir, y decide el resto por su cuenta.",
+        "what": "La IA solo te pregunta lo que únicamente tú puedes decidir, y averigua el resto por su cuenta.",
         "when": "antes de preguntar al usuario y antes de tomar una decisión con grandes consecuencias"
       }
     },
@@ -117,7 +117,7 @@
     },
     "skip": "Continuar sin instalar",
     "title": "Skills que instalar",
-    "where": "Se instalan en {{place}}. Claude Code también las usa."
+    "where": "Se instalan en {{place}}. También se aplican cuando usas Claude Code fuera de alpacawork."
   },
   "steps": {
     "agents": "Agentes",

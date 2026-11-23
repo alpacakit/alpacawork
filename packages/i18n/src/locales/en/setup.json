@@ -9,7 +9,7 @@
       "save": "Couldn't save the agent settings."
     },
     "first": "First AI to use",
-    "firstHint": "This AI is used first, both when you talk in the input box and when tasks are worked on.",
+    "firstHint": "This AI is used both when you talk in the input box and when tasks are worked on. You can change it later in the settings.",
     "found": "Installed. Works with a sign-in or an API key",
     "how": "Run this command in a terminal and follow the prompts to sign in.",
     "lead": "alpacawork hands the work to the AI agents already on this PC, such as Claude Code and Codex. The ones you enable become the choices for who to ask.",
@@ -91,7 +91,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Checked by another AI before you see it",
-        "what": "Before you are asked to review a result, an AI other than the one that built it checks and fixes it. This takes more time and tokens.",
+        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens.",
         "when": "when planning, when asking for a review, and when receiving findings"
       },
       "askmeclearly": {
@@ -101,7 +101,7 @@
       },
       "doyourjob": {
         "title": "Fewer questions for you",
-        "what": "The AI asks you only what you alone can decide, and decides the rest on its own.",
+        "what": "The AI asks you only what you alone can decide, and finds out the rest itself.",
         "when": "before asking the user, and before making a choice with large consequences"
       }
     },
@@ -115,7 +115,7 @@
     },
     "skip": "Continue without installing",
     "title": "Skills to install",
-    "where": "Installed in {{place}}. Claude Code uses them too."
+    "where": "Installs to {{place}}. They also apply when you use Claude Code outside alpacawork."
   },
   "steps": {
     "agents": "Agents",
