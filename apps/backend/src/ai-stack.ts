@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
-import { compileAgentSetting, resolveAgentSelection, selectionOffer, type AiRow, type AiStackPrefix } from '@alpacawork/contract';
+import { compileAgentSetting, effectiveAgentValues, resolveAgentSelection, selectionOffer,
+  type AiRow, type AiStackPrefix, type Selection } from '@alpacawork/contract';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { validateAgentSelection, type AgentsSettings } from './agents-settings.js';
 
@@ -52,14 +53,25 @@ export function distinctAiRows(config: AgentsSettings, rows: readonly AiRow[]): 
   return distinctSelections(config, rows).map(({ row }) => row);
 }
 
+type AiLaunchIdentity = { agent: string; effective: Selection };
+
+export function aiLaunchIdentity(config: AgentsSettings, row: AiRow): AiLaunchIdentity {
+  const setting = Object.hasOwn(config.agents, row.agent) ? config.agents[row.agent] : undefined;
+  return { agent: row.agent, effective: effectiveAgentValues(setting ?? {}, row.values) };
+}
+
+export function sameAiLaunch(left: AiLaunchIdentity, right: AiLaunchIdentity): boolean {
+  return left.agent === right.agent && isDeepStrictEqual(left.effective, right.effective);
+}
+
 function distinctSelections(config: AgentsSettings, rows: readonly AiRow[]) {
-  const seen = new Map<string, object[]>();
+  const seen: AiLaunchIdentity[] = [];
   return rows.flatMap(row => {
     const compiled = compileAgentSetting(row.agent, config.agents[row.agent]);
     const selection = resolveAgentSelection(compiled, row.values);
-    const previous = seen.get(row.agent) ?? [];
-    if (previous.some(values => isDeepStrictEqual(values, selection.effective))) return [];
-    seen.set(row.agent, [...previous, selection.effective]);
+    const identity = { agent: row.agent, effective: selection.effective };
+    if (seen.some(previous => sameAiLaunch(previous, identity))) return [];
+    seen.push(identity);
     return [{ row, selection }];
   });
 }

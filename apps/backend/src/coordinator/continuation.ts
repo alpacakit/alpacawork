@@ -1,10 +1,9 @@
-import { isDeepStrictEqual } from 'node:util';
 import type { AiRow } from '@alpacawork/contract';
 import { compareRunIds, type CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { compareRequestOrder, isUnfinished } from '@alpacawork/runs';
 import { coordinatorLaunchSnapshot, type AgentsSettings } from '../agents-settings.js';
-import { distinctAiRows } from '../ai-stack.js';
+import { aiLaunchIdentity, distinctAiRows, sameAiLaunch } from '../ai-stack.js';
 
 function preferResume(config: AgentsSettings, row: AiRow, path: string, previous: CoordinatorRunRecord | null) {
   if (previous) {
@@ -27,9 +26,11 @@ export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly Coo
 
   // A queued or joined turn didn't execute. Availability is the same observed stop cause the Run fallback uses.
   const executed = runs.filter(run => run.started_at !== null && run.state !== 'joined')
-    .sort((a, b) => b.started_at!.localeCompare(a.started_at!) || compareRunIds(b, a));
+    .sort((a, b) => b.started_at!.localeCompare(a.started_at!) || compareRunIds(b, a))
+    .map(run => ({ run, identity: aiLaunchIdentity(config, { agent: run.agent, values: run.launch.values }) }));
   const remaining = rows.filter(row => {
-    const latest = executed.find(run => run.agent === row.agent && isDeepStrictEqual(run.launch.values, row.values));
+    const identity = aiLaunchIdentity(config, row);
+    const latest = executed.find(entry => sameAiLaunch(entry.identity, identity))?.run;
     return !(latest?.state === 'failed' && latest.availability);
   });
   const candidates = remaining.length ? remaining : rows;

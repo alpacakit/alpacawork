@@ -43,6 +43,8 @@ test('the next coordinator turn follows the saved order and the latest observed 
       runs: [run(2, noEffort)], selected: noEffort, continued: run(2, noEffort), following: [last] },
     { name: 'a duplicate exhausted row with a different suppressed value', profiles: suppressedEffort,
       rows: [low, second, high], runs: [run(1, low, 'session_limit'), resumed], selected: second, continued: resumed, following: [] },
+    { name: 'reordering equivalent rows does not retry an exhausted launch', profiles: suppressedEffort,
+      rows: [high, second, low], runs: [run(1, low, 'session_limit'), resumed], selected: second, continued: resumed, following: [] },
     { name: 'all rows exhausted', rows: [first, second], runs: [limited, run(4, second, 'model_capacity')], selected: first, continued: null, following: [second] },
     { name: 'a more recent success clears a recorded limit', rows: [first, second], runs: [limited, run(5, first)], selected: first, continued: run(5, first), following: [second] },
     { name: 'an exhausted row and an unavailable current agent are skipped', rows: [first, unavailable, last],
