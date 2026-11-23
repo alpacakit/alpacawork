@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
@@ -8,7 +8,9 @@ import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
-import { useReceivingPush } from "@/data/push";
+import { currentSubscription, pushSupported } from "@/data/push";
+import { recordFailure } from "@/lib/notify";
+import { useDialogStore } from "@/state/dialog-store";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -22,10 +24,11 @@ import { readerOutcome } from "@/features/reader/submission";
 import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { closing, doneOnLeaving, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
+import { closing, doneOnLeaving, hasClose, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
   type GuideRead, type GuideScreen } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
+const NO_TASKS: readonly string[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
 const UNDER_WAY = new Set(["queued", "sending", "joined", "running"]);
 
@@ -52,6 +55,44 @@ export function coordinatorFacts({ since, turns, sending }: {
     busy, talked: turns.length > 0,
     direct: !busy && latest?.status === "succeeded" && !!latest.result && latest.result.writes.length === 0 && !latest.seen,
   };
+}
+
+/** This browser's own subscription, as last read: being read, the read failed, or read (held or not), with the permission then. */
+export type SubscriptionRead = "reading" | "failed" | { permission: NotificationPermission; subscribed: boolean };
+/**
+ * Notifications are off on this browser, as it has itself made sure: it can receive them (`supported`), the person has
+ * not blocked them, and its subscription was read and there is none. Anything not known (being read, a failed read) is
+ * not off. Whether serve still lists a subscription held here is for Settings, not for the guide.
+ */
+export const pushOff = (supported: boolean, read: SubscriptionRead) =>
+  supported && typeof read === "object" && read.permission !== "denied" && !read.subscribed;
+
+/**
+ * pushOff, read only while `enabled` (a step left reads it): as the screen opens, as each dialog closes (Settings is where
+ * notifications are turned on), and as the page comes back into view (changed in another tab or in the browser's
+ * settings). Each read starts from not known (undefined), and the guide waits until it is done (`ready`): nothing is
+ * said off meanwhile, and the step on it is not left as no longer holding.
+ */
+function usePushOff(enabled: boolean): boolean | undefined {
+  const dialog = useDialogStore((state) => state.dialog !== null);
+  const [read, setRead] = useState<SubscriptionRead>("reading");
+  const [looked, setLooked] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const back = () => { if (document.visibilityState === "visible") setLooked(count => count + 1); };
+    document.addEventListener("visibilitychange", back);
+    return () => document.removeEventListener("visibilitychange", back);
+  }, [enabled]);
+  useEffect(() => {
+    setRead("reading");
+    if (!enabled || dialog || !pushSupported()) return;
+    let live = true;
+    currentSubscription().then((subscription) => { if (live) setRead({ permission: Notification.permission, subscribed: subscription !== null }); },
+      (error: unknown) => { recordFailure(error, "push subscription read"); if (live) setRead("failed"); });
+    return () => { live = false; };
+  }, [enabled, dialog, looked]);
+  if (!enabled || !pushSupported()) return false;
+  return read === "reading" ? undefined : pushOff(true, read);
 }
 
 /** What the input held when the first step was shown again (at `at`), and whether it still holds just that. */
@@ -165,7 +206,9 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
     .map(([task, each]) => JSON.stringify([each.id ?? `turn:${each.turn}`, task]))));
   const doneBefore = useRef<DoneBefore>(null);
   doneBefore.current = doneSince(stage, doneKeys.map(key => { const [press, task] = JSON.parse(key) as [string, string]; return { press, task }; }), doneBefore.current);
-  const fresh = doneBefore.current.fresh;
+  // Kept and read only where the guide has a close (hasClose): a phone's keeps none, and reads no Task for it.
+  const closes = hasClose(screen);
+  const fresh = closes ? doneBefore.current.fresh : NO_TASKS;
   // The Task seen in the detail: open there, and not under the card that says every turn is answered.
   const shown = useViewStore((state) => state.reader.open ? state.selected : null);
   const answeredAll = useSitting(state => state.emptied?.taskId ?? null);
@@ -205,11 +248,11 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
   // Read only while a step left reads it (stepsLeft).
-  const push = useReceivingPush(reads.has("push"));
+  const pushOffHere = usePushOff(reads.has("push"));
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
-  const pressed = [...new Set([...stage.finished ?? [], ...fresh])];
+  const pressed = closes ? [...new Set([...stage.finished ?? [], ...fresh])] : NO_TASKS;
   const finished = finishedHere(pressed, useServerState(pressed, index.byId));
   const doneHere = finished.length > 0;
   // Done pressed on a row still awaiting the person, as this device keeps that press (a load of the page does not lose
@@ -218,9 +261,10 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
   const facts: GuideFacts = { screen, stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
-    push, apps, seen, skipped, standing: standing.current };
-  // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
-  const ready = useConversation(state => state.conversation !== null);
+    pushOff: pushOffHere === true, apps, seen, skipped, standing: standing.current };
+  // Until the conversation is read, what the coordinator has and what the input holds are not known, nor while this
+  // browser's notifications are read for a step left: no step is chosen.
+  const ready = useConversation(state => state.conversation !== null) && pushOffHere !== undefined;
   const entry = ready ? guideEntry(facts) : null;
   const again = !!entry && saidBefore(entry, facts);
   if (ready) standing.current = entry && !again ? entry.id : null;

@@ -1,14 +1,14 @@
 import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
 import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, stepsLeft, type GuideFacts } from "../src/features/guide/guide-definition";
-import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
+import { awaiting, coordinatorFacts, doneSince, foundDraft, pushOff } from "../src/features/guide/use-guide";
 import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
   ({ screen: "computer", stage: started, tasks: 0, doneHere: false, settling: false, soon: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, push: undefined, apps: false, seen: new Set(), standing: null, ...over });
+    open: null, pushOff: false, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
@@ -198,19 +198,19 @@ test("on a phone: an open question or report says its buttons and swipes once, a
   const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, ...over });
   // A card open: its buttons and swipes, in the words for its kind, before notifications; once read, nothing more on it.
   expect(phone({ open: "result" })).toBe("phone-card");
-  expect(phone({ open: "question", push: "off" })).toBe("phone-card");
+  expect(phone({ open: "question", pushOff: true })).toBe("phone-card");
   expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
   // Notifications, while this browser could have them and does not, until read; put aside by a card's step, not done.
-  const notify = guideEntry(facts({ screen: "phone", push: "off" }));
+  const notify = guideEntry(facts({ screen: "phone", pushOff: true }));
   expect(notify?.id).toBe("phone-notify");
-  for (const push of ["on", "blocked", "unsupported", undefined] as const) expect(phone({ push })).toBeNull();
-  expect(phone({ push: "off", seen: read("phone-notify") })).toBeNull();
-  const card = facts({ screen: "phone", open: "question", push: "off" });
+  expect(phone({ pushOff: false })).toBeNull();
+  expect(phone({ pushOff: true, seen: read("phone-notify") })).toBeNull();
+  const card = facts({ screen: "phone", open: "question", pushOff: true });
   expect(doneOnLeaving(notify, guideEntry(card), card, true)).toBe(false);
-  expect(doneOnLeaving(notify, null, facts({ screen: "phone", push: "on" }), true)).toBe(true);
+  expect(doneOnLeaving(notify, null, facts({ screen: "phone", pushOff: false }), true)).toBe(true);
   // None of the computer's steps is shown on a phone, and neither of these on a computer.
   expect(phone({ tasks: 0, questions: 0, results: 0 })).toBeNull();
-  expect(shown({ tasks: 1, results: 1, open: "result", push: "off", seen: read("more", "accept") })).toBe("accept");
+  expect(shown({ tasks: 1, results: 1, open: "result", pushOff: true, seen: read("more", "accept") })).toBe("accept");
   // Once both are read, nothing is left to say or to read for it; a computer's guide always has a step left, and never
   // reads this browser's push state.
   expect(stepsLeft("phone", ["phone-card"]).map(entry => entry.id)).toEqual(["phone-notify"]);
@@ -358,4 +358,15 @@ test("the close holds while the server says a Task pressed Done on here is finis
   expect(guideEntry(held)?.id).toBe("send-again");
   expect(nextStage(turn, guideEntry(held), closing(held))).toBeUndefined();
   expect(shown({ stage: turn, tasks: 1, talked: true, results: 1, open: "result", seen: read("more", "accept") })).toBe("accept");
+});
+
+test("notifications are said off only when this browser has made sure: it can have them, they are not blocked, and its subscription was read and there is none", () => {
+  const read = (subscribed: boolean, permission: NotificationPermission = "default") => ({ permission, subscribed });
+  expect(pushOff(true, read(false))).toBe(true);
+  expect(pushOff(true, read(false, "granted"))).toBe(true);
+  // Not supported, blocked, held here (whatever serve says of it), being read or a read that failed: not said off.
+  expect(pushOff(false, read(false))).toBe(false);
+  expect(pushOff(true, read(false, "denied"))).toBe(false);
+  expect(pushOff(true, read(true, "granted"))).toBe(false);
+  expect([pushOff(true, "reading"), pushOff(true, "failed")]).toEqual([false, false]);
 });

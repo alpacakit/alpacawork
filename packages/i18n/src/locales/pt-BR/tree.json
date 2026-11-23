@@ -28,7 +28,7 @@
       "more": "Depois de conferir o relatório que chegou, você pode continuar pedindo. Experimente pedir mais uma versão para comparar.",
       "phone": "Mesmo longe do computador, você pode responder perguntas pelo celular. Os passos estão em {{settings}}, em “{{apps}}”.",
       "phoneNotify": "As notificações estão desativadas neste celular. Ative-as para ser avisado quando chegar uma pergunta ou um relatório.",
-      "phoneQuestion": "São os mesmos botões do computador. Da esquerda para a direita: “{{auto}}”, “{{state}}” e “{{finish}}”. Escolha uma resposta e deslize esta tela para a direita para enviá-la, ou para a esquerda para “{{hold}}”.",
+      "phoneQuestion": "São os mesmos botões do computador. Da esquerda para a direita: “{{auto}}”, “{{state}}” e “{{finish}}”. Deslize esta tela para a esquerda para “{{hold}}”, ou escolha uma resposta e deslize para a direita para enviá-la.",
       "phoneResult": "São os mesmos botões do computador. Da esquerda para a direita: “{{auto}}”, “{{state}}” e “{{finish}}”. Você também pode deslizar esta tela para a direita para “{{finish}}”, ou para a esquerda para “{{hold}}”.",
       "question": "Sua vez. Abra esta linha para ver a pergunta.",
       "received": "A IA da recepção (o coordenador) recebeu o pedido. Leva um momento para passá-lo a uma IA.",

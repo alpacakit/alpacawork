@@ -28,7 +28,7 @@
       "more": "Once you've looked over the report that came, you can keep asking. Try having it make one more version to compare.",
       "phone": "You can answer questions from your phone when you're away from your desk. The steps are in {{settings}}, under “{{apps}}”.",
       "phoneNotify": "Notifications are off on this phone. Turn them on to be notified when a question or a report arrives.",
-      "phoneQuestion": "The same buttons as on the computer. From the left: “{{auto}}”, “{{state}}” and “{{finish}}”. Choose an answer, then swipe this screen right to send it, or left for “{{hold}}”.",
+      "phoneQuestion": "The same buttons as on the computer. From the left: “{{auto}}”, “{{state}}” and “{{finish}}”. Swipe this screen left for “{{hold}}”, or choose an answer and then swipe right to send it.",
       "phoneResult": "The same buttons as on the computer. From the left: “{{auto}}”, “{{state}}” and “{{finish}}”. You can also swipe this screen right for “{{finish}}”, or left for “{{hold}}”.",
       "question": "Your turn. Press this row to open the question.",
       "received": "The front-desk AI (the coordinator) has it. It takes a moment to pass it to an AI to work on.",

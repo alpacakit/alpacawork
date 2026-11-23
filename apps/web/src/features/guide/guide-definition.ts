@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
-import type { PushReceiving } from "@/data/push";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
@@ -167,8 +166,11 @@ export type GuideFacts = {
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
-  /** Whether this browser receives notifications (receivingPush); undefined while not known, or not read (no step left reads it). */
-  push: PushReceiving | undefined;
+  /**
+   * Notifications are off on this browser, as it has itself made sure (pushOff): false whenever that is not known, and
+   * when no step left reads it.
+   */
+  pushOff: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps said: put away by their button, shown (with no button), or left after their balloon stood on the screen. */
@@ -207,7 +209,7 @@ export const SCREENS: Record<GuideScreen, { phases: readonly GuidePhase[]; start
   phone: { phases: ["phone"], starts: at => at.screen === "phone", closed: t => t("tree:guide.closedPhone") },
 };
 
-/** What a step reads from outside the screen for itself alone: this browser's push state. */
+/** What a step reads from outside the screen for itself alone: this browser's own notifications (pushOff). */
 export type GuideRead = "push";
 
 export type GuideEntry = {
@@ -245,7 +247,9 @@ const AT_CONVERSATION = { clear: ["foot"], side: "top", align: "start" } as cons
  * The person has finished a Task here, as the server says, and no words wait in the input: on a screen whose guide has
  * a close, the close is what is left. While words wait, they come first (sent or taken away, the close goes on).
  */
-export const closing = (f: Pick<GuideFacts, "screen" | "doneHere" | "drafting">) => SCREENS[f.screen].phases.includes("close") && f.doneHere && !f.drafting;
+export const closing = (f: Pick<GuideFacts, "screen" | "doneHere" | "drafting">) => hasClose(f.screen) && f.doneHere && !f.drafting;
+/** Whether a screen's guide has a close: only there are the Tasks Done is pressed on kept and read (finishedHere). */
+export const hasClose = (screen: GuideScreen) => SCREENS[screen].phases.includes("close");
 /** The open Task's buttons and what a swipe of its card does: the buttons' words and the hold swipe's, as the screen has them. */
 const phoneButtons = (t: TFunction) => ({ auto: t("reader:nextQuestion.autoSwipe.label"), state: t("forms:reportForm.statePick"), finish: finish(t),
   hold: t("reader:swipe.hold") });
@@ -328,7 +332,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // A phone that could receive notifications but does not: where they are turned on. Pointed at over the list alone,
   // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes.
   { id: "phone-notify", phase: "phone", part: "settingsOverList", side: "bottom", align: "end", next: true, reads: ["push"],
-    when: f => f.push === "off",
+    when: f => f.pushOff,
     action: { label: t => t("tree:guide.openNotifications"), run: () => openSettings("notifications") },
     say: t => t("tree:guide.say.phoneNotify") },
 ];
