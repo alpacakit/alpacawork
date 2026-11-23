@@ -12,6 +12,7 @@ alpacawork は、PC の Claude Code や Codex に仕事を任せる道具です�
 - [スマートフォンと通知](remote.md)
 - [困ったとき](troubleshooting.md) — タスクが止まった、画面が開かない
 - [開き直す・止める・更新する](manage.md) — URL、更新、アンインストール、データの置き場
+- [Claude Code・Codex から使う](chat.md) — 会話からタスクを頼む・確かめる・答える
 - [言葉とコマンドの一覧](reference.md)
 - [alpacawork の考え方](concept.md)
 - [使用統計データ](telemetry.md)

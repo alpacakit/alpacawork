@@ -55,19 +55,21 @@ alpacawork setup
 
 ### よく使う操作
 
-タスクは画面の入力欄で頼みます。画面を開く、タスクの状況を聞くといった操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
+タスクは画面の入力欄で頼みます。画面を開く、設定を変えるといった操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
 
 | すること | AI に頼む文 | コマンド |
 | --- | --- | --- |
 | 画面を開く | `/alpacawork 画面開いて` | `alpacawork open` |
 | 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
-| タスクの状況を聞く | `/alpacawork タスクの状況を教えて` | — |
-| タスクを探す | `/alpacawork README を直したタスクを探して` | — |
+| 設定を変える | `/alpacawork 同時に動かす AI を4つまでにして` | — |
+| 使うモデルを変える | `/alpacawork 最初に選ばれるモデルを opus にして` | — |
 | 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
-| 止める・起動する・再起動する | — | `alpacawork stop`・`start`・`restart` |
+| 止める・起動する・再起動する | `/alpacawork 再起動して` | `alpacawork stop`・`start`・`restart` |
 | アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |
 
-更新は画面の設定からもできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
+設定とモデルは画面の入力欄や設定でも変えられ、更新も画面の設定からできます。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
+
+タスクを頼む・探す・質問に答えるといった操作も、Claude Code・Codex の会話からできます。頼み方は [Claude Code・Codex から使う](docs/ja/chat.md) にあります。
 
 Chrome か Edge なら、画面でのセットアップの終わりか、あとから設定の「アプリ・スマホ」でアプリとして入れられ、Dock やタスクバーのアイコンから開き直せます。Mac の Safari では、メニューの「ファイル → Dock に追加」（macOS Sonoma 以降）で入れます。
 

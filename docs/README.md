@@ -12,6 +12,7 @@ If you are new, start with "Getting started" below. In about 15 minutes, you'll 
 - [Phone and notifications](remote.md)
 - [Troubleshooting](troubleshooting.md) — a task stopped, the screen doesn't open
 - [Reopen, stop and update](manage.md) — the URL, updating, uninstalling, where your data is
+- [Use it from Claude Code or Codex](chat.md) — request, check and answer tasks from a conversation
 - [Words and commands](reference.md)
 - [The ideas behind alpacawork](concept.md)
 - [Usage data](telemetry.md)

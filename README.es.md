@@ -55,19 +55,21 @@ Funciona en macOS (Apple silicon), Linux (x64) y Windows (WSL2). Después de ins
 
 ### Operaciones habituales
 
-Las tareas se piden en el cuadro de entrada de la pantalla. Para abrir la pantalla, preguntar cómo van las tareas y cosas así, pídeselo a Claude Code o Codex abierto en una terminal o en su app, y la IA lo hace (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). En una terminal, los comandos de la tabla hacen lo mismo.
+Las tareas se piden en el cuadro de entrada de la pantalla. Para abrir la pantalla, cambiar la configuración y cosas así, pídeselo a Claude Code o Codex abierto en una terminal o en su app, y la IA lo hace (en Codex, escribe `$alpacawork` en lugar de `/alpacawork`). En una terminal, los comandos de la tabla hacen lo mismo.
 
 | Para | Pide a la IA | Comando |
 | --- | --- | --- |
 | Abrir la pantalla | `/alpacawork abre la pantalla` | `alpacawork open` |
 | Ver si está en marcha | `/alpacawork mira si está en marcha` | `alpacawork status` |
-| Preguntar cómo van las tareas | `/alpacawork dime cómo van las tareas` | — |
-| Buscar una tarea | `/alpacawork busca la tarea que corrigió el README` | — |
+| Cambiar la configuración | `/alpacawork ejecuta como máximo 4 IA a la vez` | — |
+| Cambiar el modelo | `/alpacawork haz que opus sea el modelo elegido primero` | — |
 | Actualizar a la última versión | `/alpacawork actualiza a la última versión` | `alpacawork deploy npm:alpacawork` |
-| Detener, iniciar o reiniciar | — | `alpacawork stop`, `start`, `restart` |
+| Detener, iniciar o reiniciar | `/alpacawork reinicia alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `/alpacawork desinstala alpacawork` | `alpacawork uninstall` y después `npm uninstall -g alpacawork` |
 
-También puedes actualizar desde Configuración en la pantalla. Los demás comandos y su uso se consultan con `alpacawork -h` (detalles en [Volver a abrir, detener y actualizar](docs/es/manage.md)).
+La configuración y los modelos también se cambian en el cuadro de entrada o en Configuración de la pantalla, y la actualización también se hace desde Configuración. Los demás comandos y su uso se consultan con `alpacawork -h` (detalles en [Volver a abrir, detener y actualizar](docs/es/manage.md)).
+
+Pedir tareas, buscarlas, responder preguntas y cosas así también se hace desde una conversación de Claude Code o Codex. Cómo pedirlo está en [Usarlo desde Claude Code o Codex](docs/es/chat.md).
 
 En Chrome o Edge, puedes instalarla como app al final de la configuración inicial en la pantalla, o más tarde en Configuración → App y teléfono, y volver a abrirla desde su icono en el Dock o la barra de tareas. En Safari en un Mac, instálala con Archivo → Añadir al Dock en el menú (macOS Sonoma o posterior).
 
