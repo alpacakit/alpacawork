@@ -30,7 +30,10 @@ test("a phone's expected report has a flag and a clock, with a suffix only for n
       taskFixture({ id: "T6", state: "waiting", log: [created(now - 30 * minute), report("L2", now - 20 * minute, "doing", 60),
         report("L3", now - 10 * minute, "waiting")], ball: userBall("review", "L3", iso(now - 10 * minute), { aboutRunId: "R1" }) }),
     ];
-    render(<TestWorkspace data={served(tree({ tasks, home: homeFixture([
+    // Each Working task has a Run going on it, so it is at work and its estimate counts.
+    const runs = ["T1", "T21", "T22", "T3", "T4", "T5"].map(taskId => run(`R${taskId.slice(1)}`, { taskId, placementId: `P${taskId.slice(1)}`,
+      state: "running", startedAt: iso(now - 10 * minute), endedAt: null }));
+    render(<TestWorkspace data={served(tree({ tasks, runs, home: homeFixture([
       ...["T1", "T2", "T3", "T4", "T5"].map(taskId => ({ taskId, section: "doing" as const })),
       { taskId: "T6", section: "review" },
     ]) }))}><TimeTree /></TestWorkspace>);
@@ -195,7 +198,7 @@ test.each([false,true])('a Working parent whose own Run does not run uses descen
   const phone=narrowScreen(narrow);
   try {
     const parent=dto({id:'T1',state:'doing'}), child=dto({id:'T2',parentId:'T1',state:'doing',log:[created(now-30*minute),report('L2',now-20*minute,'doing',60)]});
-    const data=served(tree({tasks:[parent,child],
+    const data=served(tree({tasks:[parent,child],runs:[run('R909',{taskId:'T2',placementId:'P909',state:'running',startedAt:iso(now-20*minute),endedAt:null})],
       usage:{T1:{usage:{runs:1,runMs:5*minute,tokens:null,tokensUnknown:1},usageBelow:{runs:1,runMs:7*minute,tokens:null,tokensUnknown:1},runsBelow: [["R909", now-20*minute]]}},
       children:{T1:{live:1,finished:0,states:{todo:0,doing:1,error:0,waiting:0,held:0,done:0,stopped:0},runningBelow:1,below:1}},
       home:homeFixture([{taskId:'T1',section:'doing'}])}));

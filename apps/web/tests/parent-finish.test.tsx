@@ -8,12 +8,12 @@ import { join } from "node:path";
 import { controlTreeSchema, type ControlTaskDTO } from "@alpacawork/contract/control";
 import { queryClient } from "../src/data/query-client";
 import { formatClock } from "../src/domain/time";
-import { finishOf, finishWords, type FinishFacts } from "../src/domain/finish-words";
+import { finishFacts, finishOf, finishWords, type FinishFacts } from "../src/domain/finish-words";
 import { indexTasks } from "../src/domain/tasks";
 import { TimeTree } from "../src/features/tree/TimeTree";
 import { useTimeView } from "../src/state/time-view";
 import { useViewStore } from "../src/state/view-store";
-import { TestWorkspace, dto, logEntry, screenData, serveTimeline, tree, homeFixture } from "./fixtures";
+import { TestWorkspace, dto, logEntry, run, screenData, serveTimeline, tree, homeFixture } from "./fixtures";
 
 /**
  * A parent's finish is what the unfinished tasks under it say (domain/finish-words `finishOf`), on its row in
@@ -27,7 +27,8 @@ const iso = (at: number) => new Date(at).toISOString();
 const clock = (minutes: number) => formatClock(iso(now + minutes * minute));
 
 type Spec = { id: string; parentId?: string; state?: ControlTaskDTO["state"]; asks?: boolean;
-  /** An estimate in minutes, reported `ago` minutes before now. */ estimate?: number; ago?: number; sentBack?: boolean };
+  /** An estimate in minutes, reported `ago` minutes before now. */ estimate?: number; ago?: number; sentBack?: boolean;
+  /** A Working task has a Run going on it, so it is at work, unless it is `idle`. */ idle?: boolean };
 const task = ({ id, parentId, state = "doing", asks, estimate, ago = 0, sentBack }: Spec) => dto({ id, parentId: parentId ?? null,
   path: `tasks/${id}`, title: id, state, log: [
     logEntry({ id: "L1", kind: "created", at: iso(now - 120 * minute), toState: "todo" }),
@@ -44,7 +45,9 @@ const canonical = controlTreeSchema.parse(JSON.parse(readFileSync(join(import.me
 /** A person on each task named in `people`: its responsible, idle, running or with its work stopped in an error. */
 type People = Record<string, "idle" | "running" | "attention">;
 const data = (specs: Spec[], people: People = {}) => {
-  const value = tree({ tasks: specs.map(task), home: homeFixture(specs.filter(spec => !spec.parentId).map(spec => ({ taskId: spec.id, section: "doing" as const }))),
+  const value = tree({ tasks: specs.map(task),
+  runs: specs.filter(spec => (spec.state ?? "doing") === "doing" && !spec.idle).map(spec => run(`R${spec.id.slice(1)}`, { taskId: spec.id,
+    placementId: `P9${spec.id.slice(1)}`, state: "running", startedAt: iso(now - 10 * minute), endedAt: null })), home: homeFixture(specs.filter(spec => !spec.parentId).map(spec => ({ taskId: spec.id, section: "doing" as const }))),
   placements: Object.entries(people).map(([taskId, kind], index) => {
     const displayState = kind === "attention" ? "attention" as const : kind === "running" ? "running" as const : "idle" as const;
     return { ...canonical.placements[0]!, id: `P${index + 10}`, taskId, responsible: true,
@@ -86,9 +89,13 @@ test.each([
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90, ago: 5, sentBack: true })], says: `After ${clock(40)}` },
   { combination: "a child whose person's work stopped makes it not before",
     specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90 })], people: { T12: "attention" }, says: `After ${clock(40)}` },
-  { combination: "a past estimate leads, the earliest one, before later and unknown ends",
+  { combination: "a past estimate does not lead while a later one is ahead",
     specs: [parent(), kid("T11", { estimate: 30, ago: 60 }), kid("T12", { estimate: 20, ago: 30 }), kid("T13", { estimate: 120 }), kid("T14")],
-    says: `~30 min overdue` },
+    says: `After ${clock(120)}` },
+  { combination: "once every estimate is past, it is overdue from the latest",
+    specs: [parent(), kid("T11", { estimate: 30, ago: 60 }), kid("T12", { estimate: 20, ago: 30 })], says: `~10 min overdue` },
+  { combination: "an idle child's estimate does not count, and makes it not before",
+    specs: [parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90, idle: true })], says: `After ${clock(40)}` },
   { combination: "grandchildren count through a child that waits for them",
     specs: [parent(), kid("T11", { state: "doing" }), kid("T111", { parentId: "T11", estimate: 30 }),
       kid("T112", { parentId: "T11", estimate: 100 }), kid("T12", { estimate: 50 })], says: `Expected report ${clock(100)}` },
@@ -139,7 +146,7 @@ test("the long words say how many estimates count, how many have none, or that o
   expect(cardSays([parent(), kid("T11", { estimate: 40 }), kid("T12"), kid("T13", { state: "todo" })]).long)
     .toBe(`Excluding 2 tasks without an estimate, the latest expected report is ${clock(40)}. Not all reports will be in before then`);
   cleanup();
-  expect(cardSays([parent(), kid("T11", { estimate: 30, ago: 60 })]).long).toBe(`A task under it is past the ${clock(-30)} estimate by ~30 min`);
+  expect(cardSays([parent(), kid("T11", { estimate: 30, ago: 60 })]).long).toBe(`Past the latest estimate of this task and the tasks under it (${clock(-30)}) by ~30 min`);
 });
 
 test("an overrun says how far past the estimate it is, no finer than the estimate is said", async () => {
@@ -150,11 +157,11 @@ test("an overrun says how far past the estimate it is, no finer than the estimat
   expect(past(58).short).toBe(`${clock(-58)}から約1時間超過`);
   expect(past(6 * 60 + 10).short).toBe(`${clock(-370)}から約6時間超過`);
   // The long words say it is the estimate that was passed.
-  expect(past(6 * 60 + 10).long).toBe(`下のタスクが${clock(-370)}の見込みを約6時間超過`);
+  expect(past(6 * 60 + 10).long).toBe(`このタスクと下のタスクの一番遅い見込み${clock(-370)}を約6時間超過`);
   expect(past(3 * 24 * 60 + 100).short).toMatch(/から約3日超過$/);
   await i18n.changeLanguage("en");
   expect(past(6 * 60 + 10).short).toBe(`~6 hours past ${clock(-370)}`);
-  expect(past(6 * 60 + 10).long).toBe(`A task under it is past the ${clock(-370)} estimate by ~6 hours`);
+  expect(past(6 * 60 + 10).long).toBe(`Past the latest estimate of this task and the tasks under it (${clock(-370)}) by ~6 hours`);
   expect(past(24 * 60).short).toMatch(/^~1 day past /);
 });
 
@@ -180,9 +187,12 @@ test("a parent's future band says its children's end, or a not-before time", () 
   expect(document.querySelector('[data-row="T1"] svg[data-time-strip] text')?.textContent?.endsWith(`After ${clock(40)}`)).toBe(true);
 });
 
+/** A parent at work whose responsible is not working on it: it waits for the tasks under it. */
+const atWork: FinishFacts = { kind: "unknown", working: false };
+
 test.each([
   { minutes: [NaN], expected: null },
-  { minutes: [NaN, 0, 0, 10], expected: { kind: "subtree", at: now, count: 4, open: 0 } },
+  { minutes: [NaN, 0, 0, 10], expected: { kind: "subtree", at: now + 10 * minute, count: 4, open: 0 } },
   { minutes: [NaN, 10, 10], expected: { kind: "subtree", at: now + 10 * minute, count: 3, open: 0 } },
 ])("subtree aggregation retains invalid and repeated times: $minutes", ({ minutes, expected }) => {
   const children = minutes.map((remaining, i) => ({ id: `T${i + 11}`, remaining }));
@@ -190,7 +200,7 @@ test.each([
   const facts = new Map<string, FinishFacts>(children.map(({ id, remaining }) => [id, {
     kind: "estimate", estimate: { minutes: remaining, usedMinutes: 0, remainingMinutes: remaining, pending: false },
   }]));
-  expect(finishOf("T1", { index, now, factsOf: id => facts.get(id) ?? null })).toEqual(expected);
+  expect(finishOf("T1", { index, now, factsOf: id => facts.get(id) ?? atWork })).toEqual(expected);
 });
 
 test("open children do not hide later estimates at either depth", () => {
@@ -201,6 +211,18 @@ test("open children do not hide later estimates at either depth", () => {
   const estimate: FinishFacts = { kind: "estimate", estimate: {
     minutes: 100, usedMinutes: 0, remainingMinutes: 100, pending: false,
   } };
-  expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : null }))
+  expect(finishOf("T1", { index, now, factsOf: id => id === "T122" ? estimate : id === "T1" ? atWork : null }))
     .toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 2 });
+});
+
+test("a child awaiting the user's answer adds no estimate, even a past one: the parent says the latest at-work estimate, not before", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T12")]).tasks);
+  const estimate = (remainingMinutes: number) => ({ minutes: 30, usedMinutes: 0, remainingMinutes, pending: false });
+  const facts = (position: "doing" | "review", remaining: number | null) => finishFacts({ state: "doing", position, interrupted: false,
+    working: false, estimate: remaining === null ? null : estimate(remaining), since: null });
+  const own = new Map([["T1", facts("doing", null)], ["T11", facts("doing", 40)], ["T12", facts("review", -3 * 24 * 60)]]);
+  expect(own.get("T12")).toBeNull();
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // Its own row says no report time either.
+  expect(finishOf("T12", { index, now, factsOf: id => own.get(id) ?? null })).toBeNull();
 });

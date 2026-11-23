@@ -8,9 +8,9 @@ import type { Task } from "@/data/types";
 import { useConnection } from "@/data/connection";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
 import { capitalized, dayClock } from "@/domain/day-clock";
-import { finishWords } from "@/domain/finish-words";
+import { countsEstimate, finishWords } from "@/domain/finish-words";
 import type { PeopleIndex } from "@/domain/people";
-import { representedWork, runningRunsSaid, saysExpectation, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
+import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
 import { taskWorkTime, workTimeMs } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
@@ -187,12 +187,12 @@ export function StatusNotes({ task, className }: { task: Task; className?: strin
 /**
  * When a task at work is expected to report, in a phone row's quiet line before its one time, as short as a time can be
  * said after a flag: "14:30" (by about then), "14:30+" (not before), "14:30 over" in ink once it has passed, or "?" while
- * the estimate waits for an update; nothing for any other task, one in Awaiting review or Idle (saysExpectation) or one with no estimate.
+ * the estimate waits for an update; nothing for a task not at work (countsEstimate) or one with no estimate.
  * Its press says it in the reader's words. The facts are the reader's and the band's (finishFactsFor), so a past estimate is
  * never said as ahead.
  */
 export function ReportTime({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
-  return saysExpectation(task) ? <ReportWords task={task} people={people} className={className} /> : null;
+  return countsEstimate(task.rowFacts.position) ? <ReportWords task={task} people={people} className={className} /> : null;
 }
 
 /** Its own component, so only a row at work follows the clock and walks the tasks under it. */

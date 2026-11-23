@@ -18,7 +18,7 @@ function ownFinishFacts(taskId: string, people: PeopleIndex, now: number): Finis
   if (!control) return null;
   const since = stateSince(control);
   const placed = placedOn(taskId, people);
-  return finishFacts({ state: control.state,
+  return finishFacts({ state: control.state, position: control.rowFacts.position,
     interrupted: placed.some((placement) => placement.runtime.displayState === "attention"),
     working: placed.some((placement) => placement.runtime.displayState === "running"),
     estimate: estimateOf(control, now), since: since ? Date.parse(since) : null, turn: userTurn(control.ball) !== null });
