@@ -8,7 +8,7 @@ import { api } from "@/data/resources";
 import { beforeWork } from "@/domain/before-work";
 import { crewOf } from "@/domain/people";
 import { useCoarsePointer } from "@/lib/input-capabilities";
-import { usePushOff } from "@/data/push";
+import { usePushState } from "@/data/push";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useConversation } from "@/features/coordinator/coordinator";
@@ -23,7 +23,7 @@ import { useSubmittedTurns } from "@/features/reader/submitted-turns";
 import type { Task } from "@/data/types";
 import { going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { closing, doneOnLeaving, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, turnKind, type GuideEntry, type GuideFacts,
-  type GuideScreen } from "./guide-definition";
+  type GuideRead, type GuideScreen } from "./guide-definition";
 
 const NO_TURNS: readonly CoordinatorTurn[] = [];
 /** A message of the conversation not answered yet: waiting its turn, being handed over, or being worked on. */
@@ -152,7 +152,7 @@ export function useGuideStart() {
  * is the person's turn or being worked on. Only
  * mounted while the guide goes on: it opens the input's draft.
  */
-export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: ReadonlySet<string>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
+export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: ReadonlySet<string>, reads: ReadonlySet<GuideRead>): { entry: GuideEntry | null; again: boolean; facts: GuideFacts; fresh: readonly string[]; ready: boolean } {
   const index = useEveryTaskIndex();
   const rows = useWorkspaceInfo((info) => info.home);
   const home = useWorkspaceInfo((info) => info.counts.home.root);
@@ -204,7 +204,8 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   const labelled = inlines(doc).some(node => node.type === "taskLabel");
   // Settings hold the app and phone steps wherever the pointer is not a touch (SettingsDialog).
   const apps = !useCoarsePointer();
-  const pushOff = usePushOff();
+  // Read only while a step left reads it (stepsLeft).
+  const push = usePushState(reads.has("push"));
   const seen = useMemo(() => new Set(stage.seen), [stage]);
   const coordinator = coordinatorFacts({ since: stage.stage === "started" ? stage.at : null, turns, sending });
   const conversationOpen = useConversation(state => state.expanded);
@@ -217,7 +218,7 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
   const facts: GuideFacts = { screen, stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
-    pushOff, apps, seen, skipped, standing: standing.current };
+    push, apps, seen, skipped, standing: standing.current };
   // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
   const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;

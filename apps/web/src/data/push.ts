@@ -1,6 +1,6 @@
 import { workspaceWriteBasis } from './connection';
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { pushSubscribeResponseSchema, pushUnsubscribeResponseSchema, type PushDevice } from "@alpacawork/contract";
 import { taskAtAddress, type TaskIndex } from "@/domain/tasks";
 import { useDialogStore } from "@/state/dialog-store";
@@ -85,28 +85,45 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return registration.pushManager.getSubscription();
 }
 /**
- * Whether this browser could receive notifications but does not: it can (pushSupported), the person has not blocked
- * them, and it holds no subscription. Read as the screen opens and again as each dialog closes (Settings is where they
- * are turned on); false until it is read, and where the read fails.
+ * This browser's own side of push, read as one: whether the person allows notifications here, and its subscription (a
+ * read that fails counts as none, its failure recorded). Kept while read again, and read again as the window comes back
+ * into view, so a change made elsewhere (in another tab, in the browser's settings) is seen.
  */
-export function usePushOff(): boolean {
-  const dialog = useDialogStore((state) => state.dialog?.kind ?? null);
-  const [off, setOff] = useState(false);
-  useEffect(() => {
-    if (dialog !== null) return;
-    if (!pushSupported() || Notification.permission === "denied") { setOff(false); return; }
-    let live = true;
-    currentSubscription().then((subscription) => { if (live) setOff(subscription === null); },
-      (error: unknown) => { recordFailure(error, "push subscription read"); if (live) setOff(false); });
-    return () => { live = false; };
-  }, [dialog]);
-  return off;
+const pushHere = () => queryOptions({ queryKey: ["push-here"] as const, staleTime: 0, refetchOnWindowFocus: true,
+  queryFn: async (): Promise<{ permission: NotificationPermission; subscription: PushSubscription | null }> => ({
+    permission: Notification.permission,
+    subscription: await currentSubscription().catch((error: unknown) => { recordFailure(error, "push subscription read"); return null; }),
+  }) });
+/** This browser's side of push (pushHere), read only where push is supported and `enabled`. */
+export const usePushHere = (enabled = true) => useQuery({ ...pushHere(), enabled: enabled && pushSupported() });
+
+/**
+ * Whether this browser receives notifications: `unsupported` without push, `blocked` by the person, `on` when it holds a
+ * subscription serve lists among its devices (both sides agree), else `off` (none here, or one serve no longer knows,
+ * removed from another device: offered again). Undefined while either side is not read yet.
+ */
+export type PushState = "unsupported" | "blocked" | "on" | "off";
+export function pushState(supported: boolean, here: { permission: NotificationPermission; subscription: { endpoint: string } | null } | undefined,
+  devices: readonly { endpoint: string }[] | undefined): PushState | undefined {
+  if (!supported) return "unsupported";
+  if (!here) return undefined;
+  if (here.permission === "denied") return "blocked";
+  if (!devices) return undefined;
+  return here.subscription && devices.some((device) => device.endpoint === here.subscription!.endpoint) ? "on" : "off";
+}
+/** This browser's push state (pushState), from what it and serve say; nothing is read unless `enabled`. */
+export function usePushState(enabled = true): PushState | undefined {
+  const here = usePushHere(enabled);
+  const devices = usePushDevices(enabled && pushSupported());
+  return pushState(pushSupported(), here.data, devices.data?.devices);
 }
 /** Ask permission, subscribe with serve's key, and register the subscription. */
 export function useSubscribePush() {
   const client = useQueryClient();
   // The browser's own refusal (its push service) is said as this device not being registered, not as a screen fault.
   return useMutation({ meta: { errorToast: false },
+    // Whatever came of it, the permission and the subscription here are read again.
+    onSettled: () => client.invalidateQueries({ queryKey: pushHere().queryKey }),
     onError: error => notify.failure(error, { about: "push subscribe", text: error instanceof ApiError ? undefined : i18n.t("panels:push.subscribeFailed") }),
     mutationFn: async () => {
     const permission = await Notification.requestPermission();
@@ -124,6 +141,7 @@ export function useSubscribePush() {
 export function useUnsubscribePush() {
   const client = useQueryClient();
   return useMutation({ meta: { errorToast: false },
+    onSettled: () => client.invalidateQueries({ queryKey: pushHere().queryKey }),
     onError: error => notify.failure(error, { about: "push unsubscribe", text: error instanceof ApiError ? undefined : i18n.t("panels:push.unsubscribeFailed") }),
     mutationFn: async (device: Pick<PushDevice, "id"> & { own?: PushSubscription | null }) => {
     if (device.own) await device.own.unsubscribe();

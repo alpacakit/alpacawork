@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -10,7 +10,7 @@ import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
-import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
+import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
 import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
@@ -235,7 +235,8 @@ export function GuideBalloon() {
   const screen = useGuideScreen();
   const stage = useGoingGuide(screen ?? "computer");
   useOverNotice(screen === "computer");
-  return stage && screen && <GoingBalloon key={screen} screen={screen} stage={stage} />;
+  // With no step left to say, nothing is read for it (stepsLeft).
+  return stage && screen && stepsLeft(screen, stage.seen).length > 0 && <GoingBalloon key={screen} screen={screen} stage={stage} />;
 }
 
 /**
@@ -259,7 +260,9 @@ function useSkipped() {
 
 function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStage }) {
   const { skipped, pass } = useSkipped();
-  const { entry, again, facts, fresh, ready } = useGuide(screen, stage, skipped);
+  // What the steps left read besides the screen (`reads`), and nothing else.
+  const reads = useMemo(() => new Set(stepsLeft(screen, stage.seen).flatMap(entry => entry.reads ?? [])), [screen, stage]);
+  const { entry, again, facts, fresh, ready } = useGuide(screen, stage, skipped, reads);
   // The steps whose balloon has stood on this page, in this guide (begun again, none has): one stands once it has been
   // on the screen for a moment without a break (STOOD_MS).
   const began = stage.stage === "started" ? stage.at : null;
@@ -402,7 +405,8 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
       </p>
       <CloseGuide screen={screen} className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
-    {(next || entry.action) && <div className="mt-1.5 flex justify-end gap-2 pr-1">
+    {/* Its buttons side by side at the right; one under the other where they do not fit beside each other. */}
+    {(next || entry.action) && <div className="mt-1.5 flex flex-wrap justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"
         onClick={() => { read(); entry.action!.run(t as TFunction); }}>{entry.action.label(t as TFunction)}</Button>}
       {next && <Button variant="outline" data-guide-next className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15" onClick={read}>{t("guide.next")}</Button>}

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { FieldHint } from "@/components/ui/field";
@@ -6,59 +5,40 @@ import { Message } from "@/components/ui/message";
 import { Label } from "@/components/ui/label";
 import { SETTING_ROW } from "@/components/settings/SettingRow";
 import { cn } from "@/lib/utils";
-import { currentSubscription, pushSupported, usePushDevices, useSubscribePush, useUnsubscribePush } from "@/data/push";
+import { pushState, pushSupported, usePushDevices, usePushHere, useSubscribePush, useUnsubscribePush } from "@/data/push";
 import { formatNoticeTime } from "@/domain/time";
-import { recordFailure } from "@/lib/notify";
 
-type Permission = "default" | "granted" | "denied";
 /**
  * The notification tab in global settings: whether this browser receives Web Push, the button to
  * start or stop, and every registered device with its remove button (a lost
- * device is removed here, since delivery does not go through the tailnet).
+ * device is removed here, since delivery does not go through the tailnet). Whether this browser receives them is
+ * pushState, as the guide reads it too.
  */
 export function PushSection({ focusHeading = false }: { focusHeading?: boolean }) {
   const { t, i18n } = useTranslation("panels");
   const supported = pushSupported();
-  const [permission, setPermission] = useState<Permission>(() => (supported ? Notification.permission : "default"));
-  // undefined: not read yet; null: this browser has no subscription.
-  const [own, setOwn] = useState<PushSubscription | null | undefined>(supported ? undefined : null);
-  // A read that fails counts as no subscription; its failure is recorded whether or not the answer is still wanted.
-  const readOwn = (isCurrent: () => boolean = () => true) => currentSubscription().then((subscription) => { if (isCurrent()) setOwn(subscription); }, (error: unknown) => {
-    recordFailure(error, "push subscription read");
-    if (isCurrent()) setOwn(null);
-  });
-  useEffect(() => {
-    if (!supported) return;
-    let cancelled = false;
-    void readOwn(() => !cancelled);
-    return () => { cancelled = true; };
-  }, [supported]);
+  const here = usePushHere();
   const devices = usePushDevices(supported);
+  const state = pushState(supported, here.data, devices.data?.devices);
+  const own = here.data?.subscription ?? null;
   const subscribe = useSubscribePush();
   const unsubscribe = useUnsubscribePush();
   const busy = subscribe.isPending || unsubscribe.isPending;
-  const start = () => subscribe.mutate(undefined, {
-    onSuccess: (result) => { setPermission(result.permission as Permission); if (result.endpoint) void readOwn(); },
-  });
-  // Subscribed means both sides agree: the browser holds a subscription and serve lists it.
-  // A subscription serve no longer knows (removed from another device) is offered again.
+  const start = () => subscribe.mutate();
   const ownOf = (device: { endpoint: string }) => own && device.endpoint === own.endpoint ? own : null;
-  const ownDevice = devices.data?.devices.find(ownOf);
+  const ownDevice = state === "on" ? devices.data?.devices.find(ownOf) : undefined;
   /** Removing this browser's own device ends its subscription too. */
-  const removeDevice = (device: { id: string; endpoint: string }) => {
-    const mine = ownOf(device);
-    unsubscribe.mutate({ id: device.id, own: mine }, { onSuccess: () => { if (mine) setOwn(null); } });
-  };
+  const removeDevice = (device: { id: string; endpoint: string }) => unsubscribe.mutate({ id: device.id, own: ownOf(device) });
   return (
     <section aria-labelledby="push-title" className="text-base">
       {/* A row of the list it ends: its name and what it says on the left, its one button on the right. */}
       <div className={cn(SETTING_ROW, "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1 narrow:gap-x-4")}>
         <Label asChild><h3 id="push-title" tabIndex={focusHeading ? -1 : undefined} className="m-0 font-normal outline-none">{t("push.title")}</h3></Label>
-        {supported && permission !== "denied" && own !== undefined && devices.data && (ownDevice
+        {(state === "on" || state === "off") && (ownDevice
           ? <Button variant="outline" disabled={busy} onClick={() => removeDevice(ownDevice)} className="row-span-2 narrow:row-span-1">{t("push.unsubscribe")}</Button>
           : <Button disabled={busy} onClick={start} className="row-span-2 narrow:row-span-1">{t("push.subscribe")}</Button>)}
         <FieldHint className="col-start-1 narrow:col-span-2">
-          {!supported ? t("push.unsupported") : permission === "denied" ? t("push.denied") : ownDevice ? t("push.subscribed") : t("push.hint", { events: t("settings.personal.pushEvents") })}
+          {state === "unsupported" ? t("push.unsupported") : state === "blocked" ? t("push.denied") : state === "on" ? t("push.subscribed") : t("push.hint", { events: t("settings.personal.pushEvents") })}
         </FieldHint>
       </div>
       {supported && devices.data && (

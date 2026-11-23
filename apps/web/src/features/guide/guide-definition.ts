@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import { userTurn } from "@alpacawork/contract";
 import type { Task } from "@/data/types";
+import type { PushState } from "@/data/push";
 import { exampleInDraft } from "@/features/coordinator/editor/draft";
 import { openSettings } from "@/state/dialog-store";
 import type { GuideStage } from "./guide-state";
@@ -61,7 +62,8 @@ import type { GuideStage } from "./guide-state";
  * - `action`: one thing the step offers to do from its balloon (its button's words and what it does); doing it puts
  *   the step away;
  * - `say`: its words, by its key, written out so the extractor reads it;
- * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next.
+ * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next;
+ * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft).
  * Nothing else names a step: the balloon and the stored stage read them from here.
  */
 
@@ -165,8 +167,8 @@ export type GuideFacts = {
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
-  /** This browser could receive notifications but does not: it can, the person has not blocked them, and it has not been turned on here. */
-  pushOff: boolean;
+  /** Whether this browser receives notifications (pushState); undefined while not known, or not read (no step left reads it). */
+  push: PushState | undefined;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps said: put away by their button, shown (with no button), or left after their balloon stood on the screen. */
@@ -205,6 +207,9 @@ export const SCREENS: Record<GuideScreen, { phases: readonly GuidePhase[]; start
   phone: { phases: ["phone"], starts: at => at.screen === "phone", closed: t => t("tree:guide.closedPhone") },
 };
 
+/** What a step reads from outside the screen for itself alone: this browser's push state. */
+export type GuideRead = "push";
+
 export type GuideEntry = {
   id: string;
   phase: GuidePhase;
@@ -219,6 +224,7 @@ export type GuideEntry = {
   action?: { label: (t: TFunction) => string; run: (t: TFunction) => void };
   say: (t: TFunction, facts: GuideFacts) => string;
   again?: (t: TFunction) => string;
+  reads?: readonly GuideRead[];
 };
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
@@ -314,15 +320,15 @@ export const GUIDE: readonly GuideEntry[] = [
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain"), again: t => t("tree:guide.say.sendAgain") },
   // A phone: a question or a report open in its sheet, the first time: what its buttons (marks alone there) are, and
-  // what a swipe of its card does. Above the buttons, clear of the input, the conversation's button and what closes
-  // the sheet.
-  { id: "phone-card", phase: "phone", part: "taskButtons", clear: ["foot", "coordinator", "sheetClose"], side: "top", align: "end", next: true,
+  // what a swipe of its card does. Above the buttons, clear of the input, the conversation's button, what closes the
+  // sheet and a question's choices (what is pressed there stays seen).
+  { id: "phone-card", phase: "phone", part: "taskButtons", clear: ["foot", "coordinator", "sheetClose", "asked"], side: "top", align: "end", next: true,
     when: f => f.open === "question" || f.open === "result",
     say: (t, f) => t(f.open === "question" ? "tree:guide.say.phoneQuestion" : "tree:guide.say.phoneResult", phoneButtons(t)) },
   // A phone that could receive notifications but does not: where they are turned on. Pointed at over the list alone,
   // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes.
-  { id: "phone-notify", phase: "phone", part: "settingsOverList", side: "bottom", align: "end", next: true,
-    when: f => f.pushOff,
+  { id: "phone-notify", phase: "phone", part: "settingsOverList", side: "bottom", align: "end", next: true, reads: ["push"],
+    when: f => f.push === "off",
     action: { label: t => t("tree:guide.openNotifications"), run: () => openSettings("notifications") },
     say: t => t("tree:guide.say.phoneNotify") },
 ];
@@ -333,6 +339,14 @@ export const GUIDE: readonly GuideEntry[] = [
  */
 const looked = (phase: GuidePhase, f: GuideFacts) => SCREENS[f.screen].phases.includes(phase)
   && (phase === "close" ? closing(f) : phase === "work" || phase === "idle" ? !closing(f) : true);
+
+/**
+ * The steps of a screen's guide still to be said, by what it keeps (`seen`): those not said yet, and those with words
+ * for coming round again. None left, the guide shows nothing and reads nothing (a phone's, once each step is read; a
+ * computer's always has some until it is over).
+ */
+export const stepsLeft = (screen: GuideScreen, seen: readonly string[]) =>
+  GUIDE.filter(entry => SCREENS[screen].phases.includes(entry.phase) && (!seen.includes(entry.id) || !!entry.again));
 
 /** A step with no button, done by being shown, stays the step in its first words while its balloon stands on this page; one put away by its button does not. */
 const stays = (entry: GuideEntry, facts: Pick<GuideFacts, "standing">) => entry.id === facts.standing && !hasButton(entry);
