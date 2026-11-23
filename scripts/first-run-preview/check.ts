@@ -71,9 +71,9 @@ export async function checkJourney(url: string, root: string, language: string, 
     await page.goto(`${url}welcome?agent=1`);
     expect(new URL(page.url()).pathname).toBe('/');
 
-    // An example from the welcome goes into the input; sent, it becomes a Task with a question, then a result.
+    // The guide's demo request goes into the input; sent, it becomes a Task with a question, then a result.
     await page.goto(`${url}?agent=1&project=${state.project}`);
-    await page.locator('[data-welcome-example="decide"]').click();
+    await page.locator('[data-guide-action]').click();
     await send();
     let id: string | undefined;
     for (let n = 0; n < 150; n++) {
@@ -88,19 +88,19 @@ export async function checkJourney(url: string, root: string, language: string, 
     await page.goto(`${url}?agent=1&project=${state.project}&task=${id}`);
     const question = page.locator('[data-question="1"]');
     await expect(question).toBeVisible();
-    await question.getByRole('button', { name: en ? /Whack/ : /もぐらたたき/ }).click();
+    await question.getByRole('button', { name: en ? /Clean sans-serif/ : /ゴシック体/ }).click();
     await send();
     await expect.poll(async () => {
       const snapshot = await get(`/api/task/get?task=${id}`);
       return { state: snapshot.task.state, question: snapshot.questions.some((question: { state: string }) => question.state === 'open') };
     }, { timeout: 30_000 }).toEqual({ state: 'waiting', question: false });
     // The result names the game that was picked, not the first one offered.
-    assert.match((await get(`/api/task/get?task=${id}`)).task.values.conclusion, en ? /Whack-a-mole/ : /もぐらたたき/);
+    assert.match((await get(`/api/task/get?task=${id}`)).task.values.conclusion, en ? /Clean sans-serif/ : /ゴシック体/);
     await expect(page.locator('[data-task-done]:visible').first()).toBeEnabled();
     await page.locator('[data-task-done]:visible').first().click();
     await expect.poll(async () => (await get(`/api/task/get?task=${id}`)).task.state, { timeout: 15_000 }).toBe('done');
 
-    // Words that are not an example get a reply and no Task: the stand-in never makes up work.
+    // Words that are not the demo get a reply and no Task: the stand-in never makes up work.
     const before = readdirSync(join(root, 'actor-files')).filter(name => /^T\d+\.json$/.test(name));
     const turns = (await get('/api/coordinator')).conversation.turns.length;
     await page.locator('[data-one-input]').click();

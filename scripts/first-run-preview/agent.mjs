@@ -28,25 +28,18 @@ if (!process.env.ALPACAWORK_RUN) process.env.CODEX_THREAD_ID = session;
 emit({ type: 'input.taken', id: first.id });
 const ja = marker.language !== 'en';
 const words = (j, e) => ja ? j : e;
-// The examples that end in a choice: what the stand-in asks, and what its result says once the person has chosen.
+// The demo ends in a choice: what the stand-in asks, and what its result says once the person has chosen.
 const pair = ([j, e]) => words(j, e);
 const asks = {
-  models: { title: ['スネークゲームを選んでください', 'Choose a snake game'], question: ['どのスネークゲームにしますか？', 'Which snake game would you like?'],
-    columns: ['| 候補 | 特徴 |', '| Candidate | What it is like |'],
-    note: ['これは代役 AI による練習です。3つとも作ったことにしています。', 'This is a synthetic AI preview. It treats all 3 as built.'],
+  demo: { title: ['フォントを選んでください', 'Choose a font'], question: ['どちらのフォントが良いですか？', 'Which font do you prefer?'],
+    columns: ['| 案 | 見え方 |', '| Option | How it looks |'],
+    note: ['これは代役 AI による練習です。2つとも作ったことにしています。', 'This is a synthetic AI preview. It treats both as built.'],
     options: [
-      { name: ['黒い盤面', 'Plain board'], detail: ['黒い盤面に緑のヘビだけの、いちばん短い作りです。', 'The shortest build: a green snake on a black board.'], recommended: ['読まずに遊び始められるため。', 'You can start playing without reading anything.'] },
-      { name: ['再開ボタンつき', 'Restart button'], detail: ['ゲームオーバーの後に押せる再開ボタンがあります。', 'Has a button to start again after game over.'] },
-      { name: ['方眼つき', 'Grid lines'], detail: ['盤面に方眼があり、遊び方の説明が付きます。', 'Draws a grid on the board and explains how to play.'] }],
-    result: chosen => words(`スネークゲームは「${chosen}」に決まりました。`, `The snake game is settled: “${chosen}”.`) },
-  decide: { title: ['作るミニゲームを選んでください', 'Choose a mini game to build'], question: ['どのミニゲームを作りますか？', 'Which mini game shall I build?'],
-    columns: ['| 案 | 遊び方 |', '| Idea | How it plays |'],
-    note: ['これは代役 AI による練習です。選んだ後に、作ったことにして報告します。', 'This is a synthetic AI preview. After your choice, it reports the game as built.'],
-    options: [
-      { name: ['神経衰弱', 'Memory match'], detail: ['同じ絵のカードを2枚ずつめくってそろえます。', 'Turn over cards two at a time to find the pairs.'], recommended: ['1回が短く、すぐ遊べるため。', 'A round is short, so you can play right away.'] },
-      { name: ['もぐらたたき', 'Whack-a-mole'], detail: ['出てきたもぐらを時間内にたたきます。', 'Hit the moles that pop up before time runs out.'] },
-      { name: ['15パズル', 'Sliding puzzle'], detail: ['数字のこまを動かして順に並べます。', 'Slide the numbered tiles into order.'] }],
-    result: chosen => words(`ミニゲーム「${chosen}」を作りました。`, `Built the mini game “${chosen}”.`) },
+      { name: ['明朝体', 'Classic serif'], detail: ['細い線と飾りのある、落ち着いた見え方です。', 'Thin strokes with small serifs; a calm look.'], recommended: ['見出しの「Hello」が引き立つため。', 'It makes a one-word heading stand out.'] },
+      { name: ['ゴシック体', 'Clean sans-serif'], detail: ['線の太さがそろった、すっきりした見え方です。', 'Even strokes with no serifs; a plain look.'] }],
+    result: (chosen, again) => again
+      ? words(`比べられるように、「${chosen}」の HTML をもう1パターン作りました。`, `Made one more “${chosen}” HTML page so you can compare.`)
+      : words(`「Hello」を「${chosen}」で表示する HTML を作りました。`, `Made the HTML page showing “Hello” in “${chosen}”.`) },
 };
 const files = join(root, 'actor-files'); mkdirSync(files, { recursive: true, mode: 0o700 });
 let serial = 0;
@@ -98,10 +91,10 @@ try {
       request(referenced, body, question?.id);
       reply = words('担当に伝えました。もう一度結果を出します。', 'I passed your request to the owner, who will return another result.');
     } else {
-      // Only the welcome's examples are scripted; anything else gets a plain reply, so the preview never makes up work.
+      // Only the guide's demo is scripted; anything else gets a plain reply, so the preview never makes up work.
       const example = marker.examples.find(each => body.includes(each.words));
-      if (!example) reply = words('試用の代役 AI です。決まった動きしかできないため、ようこその画面にある例にだけタスクを作って答えます。',
-        'This is the preview\'s stand-in AI. It can only follow a script, so it makes tasks only for the examples on the welcome screen.');
+      if (!example) reply = words('試用の代役 AI です。決まった動きしかできないため、案内のデモの依頼にだけタスクを作って答えます。',
+        'This is the preview\'s stand-in AI. It can only follow a script, so it makes tasks only for the demo request from the guide.');
       else {
         const project = /\bP\d+\b/.exec(body)?.[0] ?? marker.project;
         if (!project) throw new Error('Preview project is not ready');
@@ -133,11 +126,9 @@ try {
       reply = words('候補を質問にまとめました。', 'The choices are ready for you.');
     } else {
       state.revision++; saveState(id, state);
-      const again = state.revision > 1, unmade = words('試用のため、遊べるファイルは作っていません。', 'The preview makes no file to play.');
+      const again = state.revision > 1, unmade = words('試用のため、ファイルは作っていません。', 'The preview makes no file.');
       const ask = asks[state.example];
-      const result = ask ? ask.result(pair(ask.options[state.choice ?? 0].name)) + ' ' + unmade
-        : words(again ? '本日開店。ほっとする一杯をどうぞ。' : '新しいカフェが開店します。香りのよいコーヒーと、ゆっくり過ごせる席を用意して、お待ちしています。',
-          again ? 'Now open. Stop by for a comforting cup.' : 'Our new café is opening. Enjoy aromatic coffee and a quiet place to unwind. We look forward to welcoming you.');
+      const result = ask.result(pair(ask.options[state.choice ?? 0].name), again) + ' ' + unmade;
       const final = words('試用の代役 AI が作った結果です。', 'This result was made by the synthetic preview AI.') + '\n\n' + result;
       cli('task', 'report', '--task', id, '--state', 'done', '--expected-task-hash', current.task.hash,
         '--title', words('結果を確認してください', 'Please review the result'), '--description-file', file(final),
