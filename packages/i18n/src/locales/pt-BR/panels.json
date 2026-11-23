@@ -8,7 +8,7 @@
       "add": "+ Adicionar uma IA alternativa",
       "addFirst": "+ Adicionar a IA de uso normal",
       "agentFor": "Agente da linha {{n}}",
-      "agentsNote": "Um agente desativado não pode ser usado na ordem acima.",
+      "agentsNote": "Um agente desativado não pode ser escolhido nas duas listas acima.",
       "agentsTitle": "Configurações de cada agente",
       "down": "Descer a linha {{n}}",
       "first": "Uso normal",
@@ -41,7 +41,7 @@
     "collapse": "Recolher {{name}}",
     "coordinatorStack": {
       "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Normalmente a IA 1 recebe; só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem.",
-      "title": "IA com quem você fala no campo de mensagem (coordenadora)"
+      "title": "IA com quem você fala no campo de mensagem (coordenador)"
     },
     "defaultsChanged": "As opções de inicialização padrão deste adaptador foram atualizadas",
     "disabled": "Desativado",

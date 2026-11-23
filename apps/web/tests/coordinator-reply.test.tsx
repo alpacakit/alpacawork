@@ -19,7 +19,7 @@ test('the document owns one replaceable reply; putting it in takes Task labels o
   const original = labelled(textDocument('Read [this](/tmp/file).'), { id: 'T315', title: 'Other context' });
   const doc = replyTo(original, reply);
   expect(replyIn(doc)).toEqual(reply); expect(inlines(doc).filter(node => node.type === 'taskLabel')).toEqual([]);
-  expect(serialize(doc, 'codex')).toBe('Read [this](/tmp/file).');
+  expect(serialize(doc)).toBe('Read [this](/tmp/file).');
   expect(answeredQuestions(doc)).toEqual({});
   expect(replyTo(doc, reply)).toBe(doc);
   const next = replyTo(doc, other); expect(replyIn(next)).toEqual(other);

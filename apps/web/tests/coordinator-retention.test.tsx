@@ -18,7 +18,7 @@ function seed() {
 
 const fixed = (text: string) => ({ conversationId: 'conversation', text, attachments: ['a.txt'] });
 const next = (requestId = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument('')), phase: 'prepared', requestId });
-const draftText = (entry: { values: Record<string, string> } | undefined) => entry && serialize(draftDocument(entry.values), '');
+const draftText = (entry: { values: Record<string, string> } | undefined) => entry && serialize(draftDocument(entry.values));
 
 test('the press fixes the request and retains the input in one write; nothing new is sent while it is unresolved, and its answer cannot overwrite the next draft', () => {
   seed();

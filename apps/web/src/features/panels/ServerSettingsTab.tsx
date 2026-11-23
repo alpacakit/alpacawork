@@ -33,11 +33,6 @@ import { configYaml, serverDraft, type ServerDraft } from "./settings-draft";
 
 
 type ConfigPayload = { yaml: string; agents: string; expected: string };
-/** The tab writes each stack's rows; a stack with none (no agent enabled yet) is left in config.yaml as it is. */
-const stackKept = (draft: ServerDraft): Partial<ServerDraft> & Pick<ServerDraft, 'limits'> =>
-  Object.fromEntries(Object.entries(draft).filter(([key, value]) => !(STACK_FIELDS as readonly string[]).includes(key) || (value as unknown[]).length)) as
-    Partial<ServerDraft> & Pick<ServerDraft, 'limits'>;
-
 /** The first row of a stack that keeps a save back: brought into view, its control to fix focused. */
 function focusStackIssue(field: StackField) {
   const stack = document.querySelector<HTMLElement>(`[data-ai-stack="${stackKind(field)}"]`);
@@ -78,7 +73,7 @@ export function ServerSettingsTab({ focusCoordinatorAi }: { focusCoordinatorAi?:
         unfold('agents');
         return false;
       }
-      const config = { yaml: configYaml(stackKept(valid)), agents: agents.value, expected: base.hash };
+      const config = { yaml: configYaml(valid), agents: agents.value, expected: base.hash };
       const saving = intent.submit(() => config, send);
       if (saving === undefined) return false;
       const saved = await saving;
@@ -113,7 +108,7 @@ export function ServerSettingsTab({ focusCoordinatorAi }: { focusCoordinatorAi?:
     // Once the fold has opened and drawn the stack.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const heading = document.getElementById(stackHeadingId('coordinator'));
-      heading?.scrollIntoView?.({ block: 'start' });
+      heading?.closest('section')?.scrollIntoView?.({ block: 'start' });
       heading?.focus({ preventScroll: true });
     }));
   }, [focusCoordinatorAi, ready]);
@@ -276,6 +271,6 @@ function ServerYamlExample({ draft }: { draft: ServerDraft }) {
   const agents = open ? serverAgentsYaml(draft) : undefined;
   return <details className="mt-6 text-base" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <DisclosureSummary className="gap-x-2 text-sm text-muted hover:text-ink"><Caret open={open} />{t('settings.server.yamlExample')}</DisclosureSummary>
-    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(stackKept(draft))}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
+    {agents && (agents.ok ? <YamlTab yaml={`${configYaml(draft)}${agents.value}`} /> : <FieldError>{t('agentSettings.errors.invalidValue')}</FieldError>)}
   </details>;
 }

@@ -26,7 +26,7 @@ export const SEND_ERROR = 'coordinator-send-error';
 export const sendError = (text: string) => notify.error(text, { id: SEND_ERROR, from: 'coordinator' });
 
 /** Where a delivery runs: the input's window and workspace, and how the thread draws a request being sent. */
-export type DeliveryPlace = { root: string; client: QueryClient; surface: Document; profile: string;
+export type DeliveryPlace = { root: string; client: QueryClient; surface: Document;
   draw: <T>(turn: LocalTurn, work: () => Promise<T>) => Promise<T> };
 
 /**
@@ -34,7 +34,7 @@ export type DeliveryPlace = { root: string; client: QueryClient; surface: Docume
  * now until its answer; settled by the snapshot that holds it (coordinator.ts → reconcileOutbox). Not reaching serve,
  * or refused by it, it goes back to the input (or stays refused in the thread); with no answer, it stays unknown.
  */
-export function deliverOutgoing({ root, client, surface, profile, draw }: DeliveryPlace, requestId: string, keepalive = false, leaving = false): Promise<ReaderAdmission> {
+export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, requestId: string, keepalive = false, leaving = false): Promise<ReaderAdmission> {
   const saved = useDraftStore.getState().entries[outgoingKey(root, requestId)];
   if (leaving && (!saved || !simpleOutgoing(saved))) return Promise.resolve('retained');
   const source = { ...workspaceWriteBasis(), root }, boundary = captureReadBoundary(client);
@@ -82,16 +82,16 @@ export function deliverOutgoing({ root, client, surface, profile, draw }: Delive
       if (attempt.checked && useDraftStore.getState().entries[attempt.key]?.values.conflict)
         return refuse(i18n.t('ui:coordinatorCard.conflict'), new ApiError('Message ID belongs to different input', 'idempotency_conflict', 'fix'), true);
       if (!attempt.checked) {
-        const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []);
+        const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs] : []);
         if (skills.length) {
           const live = await readSkillCatalog(fixed.conversationId);
           if (!sameSession()) return 'rejected';
           // What this read found is what the list and the chips then say, for the AI it was read for.
           client.setQueryData(resources.skills(root, live.profile, fixed.conversationId).queryKey, live);
-          // The chips were checked for the AI the input showed; the server now sends to another (its settings changed):
-          // the words go back, to be checked and sent again.
-          if (live.profile !== profile) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
-          const standings = skills.map(name => skillStanding(live, name));
+          const standings = skills.map(skill => skillStanding(live, skill));
+          // The words were fixed with each skill's mark for the AI they were written to; the server now sends to one that
+          // calls it otherwise (its settings changed): the words go back, to be checked and sent again.
+          if (standings.includes('changed')) return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'));
           if (standings.includes('gone')) return refuse(i18n.t('ui:input.skillsChanged'));
           if (standings.includes('unknown')) return refuse(skillsUnverified(i18n.t, live));
         }

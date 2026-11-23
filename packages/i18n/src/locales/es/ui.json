@@ -6,8 +6,8 @@
   },
   "coordinatorCard": {
     "ai": {
-      "label": "IA con la que hablas en el campo de entrada: {{ai}}. Púlsalo para cambiarla en la configuración",
-      "none": "No hay una IA con la que hablar en el campo de entrada, así que no se puede enviar. Púlsalo para abrir la configuración",
+      "label": "IA con la que hablas en el cuadro de texto: {{ai}}. Púlsalo para cambiarla en la configuración",
+      "none": "No hay una IA con la que hablar en el cuadro de texto, así que no se puede enviar. Púlsalo para abrir la configuración",
       "setUp": "Configurar IA"
     },
     "appHint": {
@@ -31,7 +31,7 @@
     "completeHint": "Marcar {{id}} como completada",
     "conflict": "ya llegó otro contenido con el mismo ID",
     "conversationChanged": "La conversación cambió",
-    "coordinatorAiChanged": "No se envió: cambió la IA con la que hablas en el campo de entrada. Revisa las skills y vuelve a enviar.",
+    "coordinatorAiChanged": "No se envió: cambió la IA con la que hablas en el cuadro de texto. Revisa las skills y vuelve a enviar.",
     "copyAnswer": "Copiar respuesta",
     "deliveryRefused": "El agente no pudo recibir el mensaje. Sigue en cola.",
     "done": "Completar",

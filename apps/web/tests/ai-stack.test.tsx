@@ -20,9 +20,9 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
     return <AiStack kind="tasks" rows={rows} agents={agents} onChange={next => { latest = next; setRows(next); }} />;
   }
   render(<Form />);
-  // The first row is the default; it cannot move up, and the only row cannot be removed.
+  // The first row is the default; it cannot move up. Even the only row can be removed (its agent may be switched off).
   expect(screen.getByRole('button', { name: 'Move row 1 up' })).toHaveProperty('disabled', true);
-  expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', false);
   // A fallback added starts as a copy of the last row, focused to be edited: it never picks a model by itself.
   fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback AI' }));
   expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);

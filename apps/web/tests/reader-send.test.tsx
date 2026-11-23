@@ -720,7 +720,7 @@ test('a restored answer reference never promises a Task write, even if its saved
   expect(receiptOf('restored-answer')?.status).toBe('confirmed');
   expect(holdsReaderTurn(useDraftStore.getState().entries, scope.root, readerTurn(task))).toBe(false);
   const follow = captureReaderSend(doc, tasks, 'follow-up');
-  expect(freeze(scope.root, { conversationId: scope.conversationId, text: serialize(doc, 'codex'), attachments: [] },
+  expect(freeze(scope.root, { conversationId: scope.conversationId, text: serialize(doc), attachments: [] },
     { requestId: 'follow-up', doc: JSON.stringify(doc) }, undefined, follow.reader)).toBe('follow-up');
   expect(error).not.toHaveBeenCalled();
 });
@@ -742,7 +742,7 @@ test('fixed answer payload records every named task even when another card is sh
   const other={...task,id:'T4',title:'Second question'};
   const doc=toggleAnswer(choose('Q1',1),other,choiceAnswer(answerTask(other),'Q1',decideOf(twoAsked)[0]!,decideOf(twoAsked)[0]!.choices[0]!));
   const accept=captureReaderSend(doc,[task,other],'multiple');
-  freeze(scope.root,{conversationId:scope.conversationId,text:serialize(doc,'codex'),attachments:[],...answeredQuestions(doc)},{requestId:'multiple',doc:JSON.stringify(doc)},undefined,accept.reader);
+  freeze(scope.root,{conversationId:scope.conversationId,text:serialize(doc),attachments:[],...answeredQuestions(doc)},{requestId:'multiple',doc:JSON.stringify(doc)},undefined,accept.reader);
   accept();
   expect(holdsReaderTurn(useDraftStore.getState().entries,scope.root,readerTurn(task))).toBe(true);
   expect(holdsReaderTurn(useDraftStore.getState().entries,scope.root,readerTurn(other))).toBe(true);

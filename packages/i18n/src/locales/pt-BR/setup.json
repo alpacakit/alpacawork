@@ -9,7 +9,7 @@
       "save": "Não foi possível salvar as configurações dos agentes."
     },
     "first": "Primeira IA a usar",
-    "firstHint": "Ela passa a ser a IA 1 tanto em “IA das tarefas” quanto em “IA com quem você fala no campo de mensagem (coordenadora)” nas configurações. Você pode adicionar IAs alternativas depois nas configurações.",
+    "firstHint": "Ela passa a ser a IA 1 tanto em “IA das tarefas” quanto em “IA com quem você fala no campo de mensagem (coordenador)” nas configurações. Você pode adicionar IAs alternativas depois nas configurações.",
     "found": "Instalado. Funciona com login feito ou chave de API",
     "how": "Execute este comando em um terminal e siga as instruções para fazer login.",
     "lead": "O alpacawork entrega o trabalho aos agentes de IA que já estão neste PC, como o Claude Code e o Codex. Os que você ativar serão as opções ao escolher a quem pedir.",

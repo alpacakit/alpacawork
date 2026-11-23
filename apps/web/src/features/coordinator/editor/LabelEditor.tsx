@@ -118,7 +118,8 @@ function SkillBadge({ node }: LabelProps) {
   const { t } = useTranslation('ui');
   const catalog = useContext(SkillAvailability);
   // Still being read, a catalog has nothing to say about the skill yet.
-  const warning = !catalog || catalog.status === 'loading' ? undefined : { usable: undefined, gone: t('input.skillsChanged'), unknown: skillsUnverified(t, catalog) }[skillStanding(catalog, String(node.attrs.name))];
+  const warning = !catalog || catalog.status === 'loading' ? undefined : { usable: undefined, changed: t('input.skillsChanged'), gone: t('input.skillsChanged'), unknown: skillsUnverified(t, catalog) }[skillStanding(catalog,
+    { name: String(node.attrs.name), invocation: node.attrs.invocation === '$' ? '$' : '/' })];
   return <span className="inline" data-label="skill"><LabelFace kind="skill" contentEditable={false} title={warning} className={cn(warning && 'border-dashed border-warn text-warn')}>
     <SkillMark />{node.attrs.name}</LabelFace></span>;
 }

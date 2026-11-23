@@ -8,7 +8,7 @@
       "add": "+ 添加备选 AI",
       "addFirst": "+ 添加平时使用的 AI",
       "agentFor": "第 {{n}} 行的智能体",
-      "agentsNote": "已停用的智能体不能在上面的顺序中使用。",
+      "agentsNote": "已停用的智能体不能在上面的两个列表中选择。",
       "agentsTitle": "各智能体的设置",
       "down": "将第 {{n}} 行下移",
       "first": "平时使用",
@@ -41,7 +41,7 @@
     "collapse": "收起 {{name}}",
     "coordinatorStack": {
       "lead": "接收你从输入框发送的请求，整理成任务，交给推进任务的 AI。平时由 1 号 AI 接收；只有它因用量上限或容量不足而停止时，才由 2、3… 号 AI 依次接手。",
-      "title": "在输入框对话的 AI（协调者）"
+      "title": "在输入框对话的 AI（协调员）"
     },
     "defaultsChanged": "此适配器的默认启动选项已更新",
     "disabled": "已停用",

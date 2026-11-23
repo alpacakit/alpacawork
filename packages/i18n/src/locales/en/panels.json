@@ -8,7 +8,7 @@
       "add": "+ Add a fallback AI",
       "addFirst": "+ Add the AI to use normally",
       "agentFor": "Agent in row {{n}}",
-      "agentsNote": "A disabled agent cannot be used in the order above.",
+      "agentsNote": "A disabled agent cannot be chosen in the two lists above.",
       "agentsTitle": "Settings for each agent",
       "down": "Move row {{n}} down",
       "first": "Normally used",

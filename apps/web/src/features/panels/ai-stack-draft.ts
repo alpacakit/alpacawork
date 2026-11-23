@@ -44,18 +44,29 @@ export function withRowValue(agent: AgentDraft, row: StackRowDraft, key: string,
     Object.hasOwn(values, choice.key) ? values[choice.key]! : choice.values[0]!])) };
 }
 export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDraft => ({ ...row, agent: agent.name, values: firstValues(agent) });
+/**
+ * Where the input's AI starts when its first row is added (in setup, or in its empty list): the agent's first values at
+ * the lightest effort (`low`), where the agent offers it, since what the input does is short. This is the one place that
+ * lightness is decided.
+ */
+export function coordinatorStart(agent: AgentDraft): Record<string, string | null> {
+  const values = firstValues(agent);
+  const effort = rowChoices(agent, values).find(choice => choice.key === 'effort');
+  return effort?.values.includes('low') ? withRowValue(agent, { id: '', agent: agent.name, values }, 'effort', 'low').values : values;
+}
 
 const same = (a: StackRowDraft, b: StackRowDraft) => a.agent === b.agent && JSON.stringify(Object.entries(a.values).sort()) === JSON.stringify(Object.entries(b.values).sort());
 /**
  * The row "Add a fallback AI" adds: a copy of the last row, to edit from there, so adding never picks a model the person
  * did not choose (one kept for important work, say). Until changed it repeats the row above and is said to go unused.
- * With no row, the first enabled agent as it starts.
+ * With no row, the first enabled agent on `start`'s values (the list's own first values).
  */
-export function newStackRow(agents: readonly AgentDraft[], rows: readonly StackRowDraft[]): StackRowDraft | null {
+export function newStackRow(agents: readonly AgentDraft[], rows: readonly StackRowDraft[],
+  start: (agent: AgentDraft) => Record<string, string | null> = firstValues): StackRowDraft | null {
   const last = rows.at(-1);
   if (last) return { id: nextId(), agent: last.agent, values: { ...last.values } };
   const first = agents.find(agent => agent.enabled !== false);
-  return first ? { id: nextId(), agent: first.name, values: firstValues(first) } : null;
+  return first ? { id: nextId(), agent: first.name, values: start(first) } : null;
 }
 /** The earlier row a row repeats: launched the same, it never runs, as the one above already stopped. */
 export const repeatedRow = (rows: readonly StackRowDraft[], index: number): number | null => {

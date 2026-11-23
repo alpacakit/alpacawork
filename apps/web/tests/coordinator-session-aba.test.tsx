@@ -184,3 +184,29 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       expect.soft(availableInput(useDraftStore.getState().entries, index.root, key)).toEqual(visible.values);
     }
   });
+
+test('a message written with a skill for Claude, whose settings turned to Codex while it waited, is not sent with the Claude mark', async () => {
+  const served = tree({ tasks: [dto({ id: 'T1' })] });
+  const gate = deferred<Response>();
+  let preflighting = false;
+  const fetcher = vi.fn().mockImplementation(async (url: string) => {
+    if (url.startsWith('/api/coordinator/skills') && useOutbox.getState().live.size > 0) { preflighting = true; return gate.promise; }
+    if (url.startsWith('/api/coordinator/skills')) return reply(catalog);
+    return reply(conv());
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const said = vi.spyOn(notify, 'error');
+  render(<TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} profile="claude" /></TestWorkspace>);
+  const input = window.document.querySelector('[data-one-input]') as HTMLElement & { editor: Editor };
+  await waitFor(() => expect(input?.editor).toBeTruthy());
+  await tick();
+  act(() => input.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'use it ' }, { type: 'skillLabel', attrs: skill }] }] }));
+  fireEvent.click(window.document.querySelector('[data-ask-send]')!);
+  await waitFor(() => expect(preflighting).toBe(true));
+  // Meanwhile the input's AI became a Codex profile under another name: the same skill is called with `$` now.
+  await act(async () => { gate.resolve(reply({ status: 'ready', profile: 'codex-team', skills: [{ name: skill.name, invocation: '$', description: 'fixture' }] })); });
+  await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); await tick();
+  expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/messages')).toHaveLength(0);
+  expect(JSON.stringify(input.editor.getJSON())).toContain('use it');
+  expect(said.mock.calls.map(([text]) => String(text)).join('\n')).toContain('changed');
+});

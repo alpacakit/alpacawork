@@ -463,7 +463,7 @@ test('pending words leave the editor immediately; editing identical next words p
   expect(current().getText()).toBe('same');
   const entries = { ...useDraftStore.getState().entries };
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
-  expect(serialize(draftDocument(entries[key]!.values), '')).toBe('same');
+  expect(serialize(draftDocument(entries[key]!.values))).toBe('same');
 });
 
 
@@ -473,7 +473,7 @@ test.each(['reply', 'change', 'intend'] as const)('programmatic %s edits only th
   const id = input.entry.values.requestId!, key = input.key;
   act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: 'original message', replyTo: 'answer-one', attachments: [] }, input.entry.values, { from: key }); });
   const fixed = useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted;
-  expect(serialize(input.doc, '')).toBe('');
+  expect(serialize(input.doc)).toBe('');
   act(() => {
     if (kind === 'reply') replyInDraft({ id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z' });
     else if (kind === 'change') input.change(() => textDocument('new words'));
@@ -482,11 +482,11 @@ test.each(['reply', 'change', 'intend'] as const)('programmatic %s edits only th
       input.intend(task, { task: task.id, action: 'sendback', expectedTaskHash: task.hash }, 'new words');
     }
   });
-  expect(serialize(input.doc, '')).not.toContain('original message');
+  expect(serialize(input.doc)).not.toContain('original message');
   if (kind === 'reply') expect(replyIn(input.doc)?.id).toBe('answer-two');
-  else expect(serialize(input.doc, '')).toContain('new words');
+  else expect(serialize(input.doc)).toContain('new words');
   const visible = input.doc, entries = { ...useDraftStore.getState().entries };
-  expect(serialize(draftDocument(entries[key]!.values), '')).toContain('original message');
+  expect(serialize(draftDocument(entries[key]!.values))).toContain('original message');
   expect(entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
   expect(draftDocument(entries[key]!.values)).toEqual(visible);
@@ -498,7 +498,7 @@ test.each(['delete text', 'delete paragraphs and reply', 'delete empty paragraph
   const original = replyTo(textDocument('retained words\n\n😀'), { id: 'original-answer', answeredAt: '2026-11-05T00:00:00Z' });
   act(() => current().commands.setContent(original));
   const id = input.entry.values.requestId!, key = input.key;
-  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(original, ''), replyTo: 'original-answer', attachments: [] }, input.entry.values, { from: key }); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(original), replyTo: 'original-answer', attachments: [] }, input.entry.values, { from: key }); });
   const fixed = useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted;
   act(() => input.change(() => edit === 'delete empty paragraph' ? textDocument('\n') : edit === 'delete paragraphs and reply'
     ? replyTo(textDocument('next\n\nwords'), { id: 'next-answer', answeredAt: '2026-11-05T00:01:00Z' }) : textDocument('next words')));
@@ -511,12 +511,12 @@ test.each(['delete text', 'delete paragraphs and reply', 'delete empty paragraph
     }
   });
   expect(input.doc).toEqual(parseDocument(current().getJSON()));
-  expect(serialize(input.doc, '')).toBe(edit.startsWith('replace') ? 'replacement\n\nwords' : '');
+  expect(serialize(input.doc)).toBe(edit.startsWith('replace') ? 'replacement\n\nwords' : '');
   act(() => { current().commands.setTextSelection(current().state.doc.content.size - 1); current().commands.insertContent('after'); });
   const visible = input.doc, entries = { ...useDraftStore.getState().entries };
-  expect(serialize(visible, '')).not.toContain('retained words');
-  expect(serialize(visible, '')).toContain('after');
-  expect(serialize(draftDocument(entries[key]!.values), '')).toContain('retained words');
+  expect(serialize(visible)).not.toContain('retained words');
+  expect(serialize(visible)).toContain('after');
+  expect(serialize(draftDocument(entries[key]!.values))).toContain('retained words');
   expect(entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(consumeInput(entries, entries[outgoingKey('/fixture', id)]!)).toBe(true);
   expect(draftDocument(entries[key]!.values)).toEqual(visible);
@@ -535,7 +535,7 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
   act(() => { expect(cancelUnsent('/fixture', id)).toBe('cancelled'); });
   if (recovery !== 'clear before cancelling') {
     expect(replyIn(input.doc)?.id).toBe('answer-two');
-    expect(serialize(input.doc, '')).toBe('');
+    expect(serialize(input.doc)).toBe('');
     expect(useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.taken).toBeUndefined();
     expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(false);
     if (recovery === 'send newer reply before recovery') {
@@ -546,11 +546,11 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
         reconcileOutbox({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: true, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
       });
     } else act(clearReply);
-    expect(serialize(input.doc, '')).toBe('');
+    expect(serialize(input.doc)).toBe('');
     expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(true);
     act(() => { expect(takeBack('/fixture', id, key)).toBe(true); });
   }
-  expect(serialize(input.doc, '')).toBe('original message');
+  expect(serialize(input.doc)).toBe('original message');
   expect(replyIn(input.doc)).toEqual(reply);
   expect(useDraftStore.getState().entries[outgoingKey('/fixture', id)]!.values.submitted).toBe(fixed);
   expect(canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)).toBe(false);

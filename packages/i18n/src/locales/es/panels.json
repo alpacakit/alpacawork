@@ -8,7 +8,7 @@
       "add": "+ Añadir una IA alternativa",
       "addFirst": "+ Añadir la IA de uso normal",
       "agentFor": "Agente de la fila {{n}}",
-      "agentsNote": "Un agente desactivado no se puede usar en el orden de arriba.",
+      "agentsNote": "Un agente desactivado no se puede elegir en las dos listas de arriba.",
       "agentsTitle": "Ajustes de cada agente",
       "down": "Bajar la fila {{n}}",
       "first": "De uso normal",
@@ -40,8 +40,8 @@
     "choicesHint": "Los valores que se ofrecen en las listas de IA de arriba y en las solicitudes.",
     "collapse": "Contraer {{name}}",
     "coordinatorStack": {
-      "lead": "Recibe lo que envías desde el campo de entrada, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
-      "title": "IA con la que hablas en el campo de entrada (coordinadora)"
+      "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
+      "title": "IA con la que hablas en el cuadro de texto (coordinador)"
     },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
     "disabled": "Desactivado",

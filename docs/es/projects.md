@@ -45,7 +45,7 @@ Se usan tus suscripciones y configuraciones actuales de las IA tal como están. 
 
 ## Elegir el modelo
 
-Junto al botón de enviar del cuadro de texto ves el modelo que usa la IA que es tu punto de contacto (por ejemplo `opus(low)`). Al pulsarlo se abre “IA con la que hablas en el campo de entrada (coordinadora)” en “Configuración (el engranaje) → Servidor”, donde eliges esa IA y las IA alternativas que siguen cuando se detiene. Las IA que hacen las tareas se eligen en “IA de las tareas”, en la misma pantalla. Para usar otro modelo en un trabajo concreto, indícalo en la solicitud o en la política (“Haz este trabajo con opus”).
+Junto al botón de enviar del cuadro de texto ves el modelo que usa la IA que es tu punto de contacto (por ejemplo `opus(low)`). Al pulsarlo se abre “IA con la que hablas en el cuadro de texto (coordinador)” en “Configuración (el engranaje) → Servidor”, donde eliges esa IA y las IA alternativas que siguen cuando se detiene. Las IA que hacen las tareas se eligen en “IA de las tareas”, en la misma pantalla. Para usar otro modelo en un trabajo concreto, indícalo en la solicitud o en la política (“Haz este trabajo con opus”).
 
 Para añadir un modelo nuevo, abre su tarjeta en “Agentes” de “Configuración (el engranaje) → Servidor”, añade el nombre del modelo en la fila `model` de “Valores disponibles al pedir trabajo” y pulsa “Guardar”.
 

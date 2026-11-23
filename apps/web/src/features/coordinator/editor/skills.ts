@@ -4,7 +4,7 @@ import { onBackInReach } from '@/data/connection';
 import { resources } from '@/data/resources';
 import { useWorkspaceSelector } from '@/data/workspace-store';
 import { useConversation } from '../coordinator';
-import type { SkillCatalog } from '@/data/skill-catalog';
+import type { Skill, SkillCatalog } from '@/data/skill-catalog';
 import type { TFunction } from 'i18next';
 export type { SkillCatalog } from '@/data/skill-catalog';
 
@@ -29,12 +29,18 @@ export function useCoordinatorSkills(profile: string): SkillCatalog {
   return useSkills(profile, useConversation(state => state.engaged ? state.conversation?.id ?? null : null));
 }
 /**
- * The one judgement of a chosen skill against what its agent can use now: a name its catalog lists goes, for the name is
- * what a message carries and what the CLI resolves. `unknown` is a catalog that says nothing about it, which is not the
- * skill being wrong. The chip and the send both ask here.
+ * The one judgement of a chosen skill against what the agent the next message goes to can use now: a name its catalog
+ * lists, called by the mark the catalog gives it (`invocation`), goes, for the name and its mark are what a message
+ * carries and what the CLI resolves. `changed`: the catalog lists the name under another mark (that agent is not the one
+ * the skill was chosen for). `unknown` is a catalog that says nothing about it, which is not the skill being wrong. The
+ * chip and the send both ask here.
  */
-export const skillStanding = (catalog: Pick<SkillCatalog, 'status' | 'skills'>, name: string): 'usable' | 'gone' | 'unknown' =>
-  catalog.status !== 'ready' ? 'unknown' : catalog.skills.some(skill => skill.name === name) ? 'usable' : 'gone';
+export const skillStanding = (catalog: Pick<SkillCatalog, 'status' | 'skills'>, chosen: Pick<Skill, 'name' | 'invocation'>):
+  'usable' | 'changed' | 'gone' | 'unknown' => {
+  if (catalog.status !== 'ready') return 'unknown';
+  const listed = catalog.skills.find(skill => skill.name === chosen.name);
+  return !listed ? 'gone' : listed.invocation === chosen.invocation ? 'usable' : 'changed';
+};
 /** Why a catalog says nothing about the skills: in the list, on a chip and for a send that cannot go. */
 export const skillsUnverified = (t: TFunction, catalog: SkillCatalog) =>
   catalog.reason ? t(`ui:input.skillReasons.${catalog.reason}`, { defaultValue: t('ui:input.skillsUnavailable') }) : t('ui:input.skillsUnavailable');

@@ -58,7 +58,7 @@ test.each([undefined, '{"restoreId":null}', '{bad', '{"restoreId":"unsupported"}
   const record = JSON.stringify(useDraftStore.getState().entries), fetcher = vi.spyOn(globalThis, 'fetch');
   expect(begin(root, id)).toBeNull(); expect(outgoingDisplay(item, false)).toMatchObject({ stage: 'unknown', blocked: true });
   expect(outgoingBlock(root, id)).toBeTruthy(); expect(nextDelivery(useDraftStore.getState().entries, root, conversationId)).toBeNull();
-  const resend = () => deliverOutgoing({ root, client: queryClient, surface: document, profile: 'fake', draw: (_turn, work) => work() }, id);
+  const resend = () => deliverOutgoing({ root, client: queryClient, surface: document, draw: (_turn, work) => work() }, id);
   expect(await resend()).toBe('rejected'); flushLeavingOutbox(root);
   await expect(askCoordinator({ ...fixed, id }, workspaceWriteBasis())).rejects.toMatchObject({ code: 'write_unavailable' });
   expect(fetcher).not.toHaveBeenCalled(); expect(JSON.stringify(useDraftStore.getState().entries)).toBe(record);

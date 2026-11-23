@@ -8,7 +8,7 @@ import { FieldError } from '@/components/ui/field';
 import { useChoiceText } from '@/features/forms/choice-text';
 import { cn } from '@/lib/utils';
 import type { AgentDraft } from './agent-settings-draft';
-import { moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
+import { coordinatorStart, firstValues, moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
 
 /** Which of config.yaml's two AI stacks a list edits: the one tasks run on (`aiStack`), or the input's (`coordinatorAiStack`). */
 export type StackKind = 'tasks' | 'coordinator';
@@ -27,7 +27,7 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
   const { t } = useTranslation('panels');
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
-  const added = newStackRow(agents, rows);
+  const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : firstValues);
   // A row just added is edited from its first choice (its model), which takes the focus.
   const list = useRef<HTMLOListElement>(null);
   const [focusRow, setFocusRow] = useState<string | null>(null);
@@ -38,10 +38,11 @@ export function AiStack({ kind, rows, agents, onChange }: { kind: StackKind; row
     setFocusRow(null);
   }, [focusRow]);
   return <div className="flex flex-col gap-2">
-    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 rounded-lg border border-line bg-raised">
+    {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
+    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
-        <h3 id={stackHeadingId(kind)} tabIndex={-1} className="scroll-mt-4 text-base font-semibold">{t(stackTitleKey(kind))}</h3>
+        <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
         <p className="mt-1 text-sm text-muted">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
       <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
@@ -113,7 +114,7 @@ function StackRow({ row, index, count, agents, enabled, issues, repeats, onChang
         onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
       <Button type="button" variant="quiet" size="icon" disabled={index === count - 1} aria-label={t('agentSettings.aiStack.down', { n })} title={t('agentSettings.aiStack.down', { n })}
         onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" disabled={count === 1} aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
+      <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
     </div>
     {(issues.length > 0 || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1">

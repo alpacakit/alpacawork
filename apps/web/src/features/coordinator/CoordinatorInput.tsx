@@ -168,7 +168,7 @@ export function CoordinatorInput({ launch, profile }: {
     meaning: Pick<Fixed, 'intent' | 'answers'>,
     values: Record<string, string>, input?: { from: string }, card: ReaderCard | null = useSitting.getState().card) => {
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
-    const fixed: Fixed = { conversationId, text: serialize(doc, profile), ...(tasks.length ? { tasks } : {}),
+    const fixed: Fixed = { conversationId, text: serialize(doc), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
       attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };
@@ -233,7 +233,7 @@ export function CoordinatorInput({ launch, profile }: {
     const requestId = crypto.randomUUID(), doc = textDocument(text);
     return fix(conversation.id, doc, [], { intent }, { doc: JSON.stringify(doc), requestId }, undefined, card) ?? 'rejected';
   };
-  const place = { root, client, surface, profile, draw: shownConversation.send };
+  const place = { root, client, surface, draw: shownConversation.send };
   const deliver = (requestId: string, keepalive?: boolean, leaving?: boolean) => deliverOutgoing(place, requestId, keepalive, leaving);
   const latestDeliver = useRef(deliver);
   latestDeliver.current = deliver;

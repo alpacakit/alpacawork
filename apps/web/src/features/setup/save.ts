@@ -1,20 +1,11 @@
 import type { AiRow, ServerSettings } from "@alpacawork/contract";
 import type { AgentDraft, AgentsDraft } from "@/features/panels/agent-settings-draft";
-import { firstValues, readStack, rowChoices, withRowValue } from "@/features/panels/ai-stack-draft";
+import { coordinatorStart, firstValues, readStack } from "@/features/panels/ai-stack-draft";
 import { serverAgentsYaml } from "@/features/panels/server-agent-draft";
 import { configYaml } from "@/features/panels/settings-draft";
 import { chosenAgents, type AgentSwitches, type StartAgent } from "./rules";
 
 type Values = Record<string, string | null>;
-/**
- * Where the input's AI starts when setup adds its row: the agent's first values at the lightest effort (`low`), where
- * the agent offers it, since what the input does is short. This is the one place that lightness is decided.
- */
-export function coordinatorStart(agent: AgentDraft): Values {
-  const values = firstValues(agent);
-  const effort = rowChoices(agent, values).find(choice => choice.key === "effort");
-  return effort?.values.includes("low") ? withRowValue(agent, { id: "", agent: agent.name, values }, "effort", "low").values : values;
-}
 
 /**
  * An AI stack once setup's choices apply, or null when the saved one already matches: the first AI chosen here is row 1
