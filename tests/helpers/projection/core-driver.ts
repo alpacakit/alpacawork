@@ -70,7 +70,7 @@ export async function coreDriver() {
       capabilities: ['database-replay', 'workspace-records', 'derive-affected', 'aggregate', 'required-view-pv', 'view-history', 'search-timeline-axis', 'bounded-audit'],
       publication: publication.publication,
       resync: publication.resync,
-      repair: publication.repair,
+      ownerRepair: publication.repair,
       retry: publication.retry,
       observe: async () => ({ incremental: observation(reader, cache, aggregate, reads), full: full() }),
       async write(operation) {

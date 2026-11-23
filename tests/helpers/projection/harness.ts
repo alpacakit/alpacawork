@@ -161,9 +161,10 @@ export interface HarnessDriver {
   publication?: { verify(): Promise<{ incremental: Observation; full: Observation; applied: number; floor: number }> };
   /** Routing adapters run a full residual pass and compare business effects with a separate full-routing workspace. */
   routing?: { verify(operation: Operation): Promise<{ residualWrites: number; targeted: unknown; full: unknown; dependencyProbes?: readonly DependencyProbe[]; coverage?: Readonly<Record<string, number>> }> };
-  /** The adapter corrupts only derived values, runs the bounded audit/repair, and returns observations from that point,
-   * with what was served before the repair. */
-  repair?: { verify(): Promise<{ repaired: Observation; full: Observation; previous: Observation }> };
+  /** The adapter corrupts only derived values, runs the bounded audit/repair, and returns observations from that point. */
+  repair?: { verify(): Promise<{ repaired: Observation; full: Observation }> };
+  /** The server publication owner's audit repairs a corrupted frame: what it publishes, and what was served before. */
+  ownerRepair?: { verify(): Promise<{ repaired: Observation; full: Observation; previous: Observation }> };
   /** A derivation fails for a written Task and is retried: what was served before the write, while the derivation
    * failed, and what the retry publishes. */
   retry?: { verify(): Promise<{ before: Observation; failed: Observation; retried: Observation; full: Observation }> };
@@ -238,8 +239,12 @@ export async function auditReplay(driver: HarnessDriver, seed: number, steps = 2
     }
   }
   if (driver.repair) {
-    try { const result = await driver.repair.verify(); check('aggregate-repair', null, () => assertEquivalent(result.repaired, result.full, result.previous)); }
+    try { const result = await driver.repair.verify(); check('aggregate-repair', null, () => assertEquivalent(result.repaired, result.full)); }
     catch (error) { check('aggregate-repair', null, () => { throw error; }); }
+  }
+  if (driver.ownerRepair) {
+    try { const result = await driver.ownerRepair.verify(); check('owner-repair', null, () => assertEquivalent(result.repaired, result.full, result.previous)); }
+    catch (error) { check('owner-repair', null, () => { throw error; }); }
   }
   if (driver.retry) {
     try { const result = await driver.retry.verify();
@@ -253,7 +258,7 @@ export async function auditReplay(driver: HarnessDriver, seed: number, steps = 2
       check('resynchronization', null, () => assertEquivalent(result.recovered, result.full));
     } catch (error) { check('resynchronization', null, () => { throw error; }); }
   }
-  return { seed, requested: steps, written, publicationSteps, routingSteps, routingCoverage, dependencyChecks: checks, issues, enabled: [...driver.capabilities, ...(driver.publication ? ['server-catch-up', 'atomic-publication', 'arrival-floor'] : []), ...(driver.routing ? ['routing', 'seat-reads'] : []), ...(driver.repair ? ['aggregate-repair'] : []), ...(driver.retry ? ['derivation-retry'] : []), ...(driver.resync ? ['resynchronization'] : [])],
+  return { seed, requested: steps, written, publicationSteps, routingSteps, routingCoverage, dependencyChecks: checks, issues, enabled: [...driver.capabilities, ...(driver.publication ? ['server-catch-up', 'atomic-publication', 'arrival-floor'] : []), ...(driver.routing ? ['routing', 'seat-reads'] : []), ...(driver.repair ? ['aggregate-repair'] : []), ...(driver.ownerRepair ? ['owner-repair'] : []), ...(driver.retry ? ['derivation-retry'] : []), ...(driver.resync ? ['resynchronization'] : [])],
     operations: Object.fromEntries(operationKinds.map(kind => [kind, operations(seed, written).filter(op => op.kind === kind).length])),
     pending: ['server-catch-up', 'bounded-audit', 'resynchronization'].filter(name => !driver.capabilities.includes(name)
       && !(name === 'server-catch-up' && driver.publication) && !(name === 'resynchronization' && driver.resync)) };
