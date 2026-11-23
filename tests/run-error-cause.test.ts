@@ -206,7 +206,8 @@ test('the shared diagnostic keeps the reset words and redacts general errors bef
     { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'another ending is not a usage limit');
   assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: "You've hit your context window limit. Compact the conversation to continue." }),
     { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, 'a context window is not a usage limit');
-  for (const other of ["You've hit your MCP tool call limit", "You've hit your Context Window limit · resets Nov 30, 12am (UTC)"])
+  for (const other of ["You've hit your MCP tool call limit", "You've hit your Context Window limit · resets Nov 30, 12am (UTC)",
+    "You've hit your Context Window limit. Switch to another model with a larger context window."])
     assert.equal(project(jsonl({ type: 'result', session_id: session, is_error: true, result: other }),
       { launch: claudeLaunch, session: { provider: null, id: session } })?.cause, undefined, `${other} is not a model's usage limit`);
   // Claude's wording since late 2026, with the reset it reported in its own rejected limit event.

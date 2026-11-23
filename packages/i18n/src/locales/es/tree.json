@@ -67,9 +67,9 @@
   "status": {
     "cause": {
       "modelCapacity": "Modelo saturado",
-      "modelLimit": "Límite de uso del modelo",
-      "sessionLimit": "Límite de uso de 5 horas",
-      "weeklyLimit": "Límite de uso semanal"
+      "modelLimit": "Límite de modelo",
+      "sessionLimit": "Límite de 5 h",
+      "weeklyLimit": "Límite semanal"
     },
     "causeUntil": "hasta {{when}}",
     "children": "Subtareas {{progress}}",

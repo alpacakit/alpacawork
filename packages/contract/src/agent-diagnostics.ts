@@ -3,11 +3,12 @@ import { redactSecrets } from '@alpacawork/core';
 type Cause = NonNullable<RunFailure['cause']>;
 /**
  * Claude says a usage limit as "You've hit your <scope> limit · resets <when>. …": a weekly or 5-hour session scope, or
- * a model by its name ("Fable"), which Claude always tells to switch to another model ("You've reached your Fable limit.
- * Switch to another model, …"). Other limits ("context window", "MCP tool call") are not a usage limit.
+ * a model by its name ("Fable"), whose words always offer another model or usage credits ("You've reached your Fable limit.
+ * Switch to another model, or manage usage credits …"). Other limits ("context window", "MCP tool call") are not a usage
+ * limit, even when they suggest another model.
  */
 const PERIOD_LIMIT = /^You've (?:hit|reached) your (weekly|session) limit(?: · resets [^\r\n]+)?$/;
-const MODEL_LIMIT = /^You've (?:hit|reached) your [A-Z][\w.\- ]{0,40}? limit(?: · resets [^\r\n]+?)?\. Switch to another model\b[^\r\n]*$/;
+const MODEL_LIMIT = /^You've (?:hit|reached) your [A-Z][\w.\- ]{0,40}? limit(?: · resets [^\r\n]+?)?\. Switch to another model, or manage usage credits\b[^\r\n]*$/;
 function causeOf(message: unknown): Cause | undefined {
   if (message === 'Selected model is at capacity. Please try a different model.' ||
     message === 'Error running remote compact task: Selected model is at capacity. Please try a different model.')

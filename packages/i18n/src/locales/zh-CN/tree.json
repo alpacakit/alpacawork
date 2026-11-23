@@ -62,12 +62,12 @@
   },
   "status": {
     "cause": {
-      "modelCapacity": "模型容量不足",
-      "modelLimit": "模型用量上限",
-      "sessionLimit": "5 小时用量上限",
-      "weeklyLimit": "每周用量上限"
+      "modelCapacity": "模型繁忙",
+      "modelLimit": "模型上限",
+      "sessionLimit": "5 小时上限",
+      "weeklyLimit": "每周上限"
     },
-    "causeUntil": "（至 {{when}}）",
+    "causeUntil": "至 {{when}}",
     "children": "子任务 {{progress}}",
     "failure": {
       "conversationBusy": "对话被占用",
