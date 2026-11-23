@@ -13,6 +13,7 @@ import { current, lanesAbove as lanesAboveFor, pageRow, recordEvents, recordedEv
 import { controlTaskView } from '../control/task-dto.js';
 import type { PublishedFrame } from './projection-contract.js';
 import { aggregateRowFacts } from './row-facts.js';
+import { readsRow } from './screen-derive.js';
 
 /** What rows' strips and axis read: the rows' ancestors and subtrees, from one published frame. */
 type PageReadState = {
@@ -20,7 +21,6 @@ type PageReadState = {
   placements: Kept<PlacementDTO>;
   tree?: { tasks: ControlTreeDTO['tasks'] };
   rows: ReadonlyMap<string, { value: TaskRowDTO }>;
-  resourceVersion: string;
   historyEvents: (id: string) => ReturnType<typeof recordEvents>;
 };
 const eventsFor = (state: PageReadState, task: ControlTreeDTO['tasks'][number]) => state.historyEvents(task.id);
@@ -64,7 +64,7 @@ export function timelineAxis(state: PageReadState, lanes: readonly string[]): Ta
     else earliest = Math.min(earliest, span.from);
     if (span) spans.push([span.from, span.to]);
   }
-  return { busy: joinBusy(spans), earliest: Number.isFinite(earliest) ? earliest : null, version: state.resourceVersion };
+  return { busy: joinBusy(spans), earliest: Number.isFinite(earliest) ? earliest : null };
 }
 
 type TimelineEvent = TaskTimelineLaneDTO['events'][number];
@@ -207,22 +207,18 @@ export class ProjectedPages {
     const runs: Kept<ControlRunDTO> = new Map(), placements: Kept<PlacementDTO> = new Map();
     const records = frame.records;
     for (const id of new Set(lanes.flatMap(id => [...records.ancestors(id), ...records.subtree(id)]))) {
-      const bundle = records.bundle(id);
-      if (!bundle || !this.held(frame, id)) continue;
-      const derived = frame.derived(id)!;
+      const bundle = records.bundle(id), derived = frame.derived(id);
+      if (!bundle || !readsRow(records, id, derived)) continue;
       rows.set(id, { value: projectedRow(frame, id), json: '' });
       tasks.push({ ...controlTaskView(bundle.task), files: [...bundle.files ?? []] });
       for (const run of derived.runs) runs.set(run.id, { value: run, json: '' });
       for (const placement of derived.placements) placements.set(placement.id, { value: placement, json: '' });
     }
-    return { resourceVersion: lanesVersion(frame, lanes), tree: { tasks }, rows, runs, placements,
+    return { tree: { tasks }, rows, runs, placements,
       historyEvents: id => recordedEvents(records, id) };
   }
 
-  /** A Task rows are read for: one in a listed project. */
-  private held(frame: PublishedFrame, id: string) {
-    return !!frame.records.bundle(id) && frame.records.shelf().listed.has(frame.records.projectOf(id));
-  }
+  private held(frame: PublishedFrame, id: string) { return readsRow(frame.records, id, frame.derived(id)); }
 
   /** Search only indexes matching IDs and their order; rows and ancestor facts are made for the returned page. */
   search(frame: PublishedFrame, text: string, scope: string | null, after?: string, limit = 40): TaskProjectedSearchDTO {
@@ -267,15 +263,18 @@ export class ProjectedPages {
         ? writeCursor({ generation: frame.generation, version, id: ids.at(-1)! }) : null };
   }
 
-  /** The axis of up to 200 rows, as new as the newest of their versions. */
+  /**
+   * The axis of up to 200 rows, as new as the newest of their versions. A row the server does not read (gone, or its
+   * project shelved) adds nothing, as it is left out of the strips (`gone`), until the screen's list catches up.
+   */
   timelineAxis(frame: PublishedFrame, input: { lanes: string }): TaskProjectedTimelineAxisDTO {
     this.invalidate(frame);
     const lanes = [...new Set(input.lanes.split(',').filter(Boolean))].sort(), key = lanes.join(',');
-    if (lanes.length > 200 || lanes.some(id => !this.held(frame, id))) throw invalidLanes();
-    const held = this.axes.get(key);
-    if (held) return held.value;
-    const { version: _version, ...axis } = timelineAxis(this.readState(frame, lanes), lanes);
-    const value = { ...axis, generation: frame.generation, sourcePv: frame.pv };
+    if (lanes.length > 200) throw invalidLanes();
+    const cached = this.axes.get(key);
+    if (cached) return cached.value;
+    const read = lanes.filter(id => this.held(frame, id));
+    const value = { ...timelineAxis(this.readState(frame, read), read), generation: frame.generation, sourcePv: frame.pv };
     this.axes.set(key, { lanes, version: lanesVersion(frame, lanes), value });
     if (this.axes.size > 16) this.axes.delete(this.axes.keys().next().value!);
     return value;
@@ -300,7 +299,9 @@ export class ProjectedPages {
     }
     const missing = asked.filter(id => held(id) && !values.has(id));
     if (missing.length) for (const [id, lane] of timelineLanes(this.readState(frame, missing), missing, from, to)) {
-      const value = { ...lane, row: frame.derived(id)!.row, generation: frame.generation, sourcePv: frame.pv };
+      const derived = frame.derived(id);
+      if (!derived) continue;
+      const value = { ...lane, row: derived.row, generation: frame.generation, sourcePv: frame.pv };
       values.set(id, value);
       this.lanes.set(key(id), { lane: id, version: lanesVersion(frame, [id]), value });
     }

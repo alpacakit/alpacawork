@@ -960,18 +960,6 @@
   },
   {
     "reason": {
-      "kind": "scope_task_does_not_exist"
-    },
-    "en": "Task for the view scope not found"
-  },
-  {
-    "reason": {
-      "kind": "task_outside_scope"
-    },
-    "en": "The task is outside the view scope"
-  },
-  {
-    "reason": {
       "kind": "invalid_search_cursor"
     },
     "en": "Invalid search cursor"

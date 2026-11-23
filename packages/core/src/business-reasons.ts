@@ -247,8 +247,6 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('project_does_not_exist') }).strict(),
   z.object({ kind: z.literal('parent_task_does_not_exist') }).strict(),
   z.object({ kind: z.literal('invalid_visible_task_ids') }).strict(),
-  z.object({ kind: z.literal('scope_task_does_not_exist') }).strict(),
-  z.object({ kind: z.literal('task_outside_scope') }).strict(),
   z.object({ kind: z.literal('invalid_search_cursor') }).strict(),
   z.object({ kind: z.literal('search_changed_read_from_first_page') }).strict(),
   z.object({ kind: z.literal('request_exceeds_kib'), limit: z.string() }).strict(),

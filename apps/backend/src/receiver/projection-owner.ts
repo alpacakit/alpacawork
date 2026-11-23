@@ -6,7 +6,7 @@ import { structuralFallback } from './projection-fallback.js';
 import { ControlStore, type ChangeKey, type ChangeLog, type ChangeSeq } from '@alpacawork/db';
 import { faultReason, Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { IndexPatchDTO, ProjectedIndexDTO, ProjectionVersion, RequiredPvDTO } from '@alpacawork/contract/control';
-import type { TaskDerived, TaskBundle, PublishedFrame, RecordsReader, RoutingWorkSet, AffectedSet, Facet, AggregateContribution } from './projection-contract.js';
+import { FACETS, type TaskDerived, type TaskBundle, type PublishedFrame, type RecordsReader, type RoutingWorkSet, type AffectedSet, type Facet, type AggregateContribution } from './projection-contract.js';
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from './workspace-records.js';
 import { RecordsMap } from './records-map.js';
 import { affected, deriveTask, rescope, searchScopes } from './screen-derive.js';
@@ -248,19 +248,20 @@ export class ProjectionOwner {
     const readable = usableRecords(records, () => good, id => { if (evaluateTasks.has(id)) derive(id); });
     const previous = before && usableRecords(before.records, () => before.good);
     const rows = { before: (id: string) => before?.derived(id), after: derive };
-    let effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(['row','view','history','files','membership','page','search','timeline','seat','push'])])),
+    let effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(FACETS)])),
       scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(before ? records.taskIds() : []) }, meta: true }
       // A repaired or retried Task is a changed owner: what reads it follows the same relations as for a write.
       : affected({ ...change!, owners: new Set([...change!.owners, ...repairing.keys(), ...retrying]), before: previous!, after: readable }, rows);
-    // The Tasks this publication gives facets of its own; their scopes follow from the same rule (rescope).
+    // The Tasks this publication gives facets of its own (the one way to): their scopes follow from the same rule (rescope).
     const forced = new Set<string>();
+    const mark = (id: string, facets: readonly Facet[] = FACETS) => {
+      forced.add(id);
+      (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set<Facet>([...(effects.tasks.get(id) ?? []), ...facets]));
+    };
     if (before && runRecordsAvailable(before.records) !== runRecordsAvailable(records))
-      for (const id of records.taskIds()) { forced.add(id); (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id,
-        new Set<Facet>([...(effects.tasks.get(id) ?? []), 'row','view','history','membership','page','search','timeline','push'])); }
-    for (const [id] of repairing) { forced.add(id); (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push'])); }
-    for (const id of new Set([...retrying, ...failed])) {
-      forced.add(id); (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push']));
-    }
+      for (const id of records.taskIds()) mark(id, ['row','view','history','membership','page','search','timeline','push']);
+    for (const [id] of repairing) mark(id);
+    for (const id of new Set([...retrying, ...failed])) mark(id);
     for (const id of effects.tasks.keys()) evaluateTasks.add(id);
     let values = full ? new RecordsMap<TaskDerived>() : before!.values;
     const changes = new Map<string, { before: TaskDerived['contribution'] | undefined; after: TaskDerived['contribution'] | undefined }>();
@@ -270,7 +271,7 @@ export class ProjectionOwner {
       const old = before?.derived(id);
       let value = derive(id);
       if (failed.has(id)) {
-        forced.add(id); (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push']));
+        mark(id);
         // Failed derivation retains only that Task's last contribution. Facts
         // successfully acquired for the other Tasks still publish together. Its facts follow the records as a full
         // build reads them, so a project taken off the list takes its row out of the home order even then.

@@ -447,10 +447,10 @@ export function timelineRunOf({ id, taskId, placementId, state, createdAt, start
 export function timelinePlacementOf({ id, taskId, responsible }: PlacementDTO): z.infer<typeof timelinePlacementSchema> {
   return { id, taskId, responsible };
 }
-/** Full-lifetime axis activity for the requested lanes and their folded descendants. */
+/** The rows' full-lifetime axis activity: their own records' marks and the Runs of their subtrees. */
 export const taskTimelineAxisSchema = z.object({
   busy: z.array(z.tuple([z.number().int(), z.number().int().nullable()])),
-  earliest: z.number().int().nullable(), version: z.string().min(1),
+  earliest: z.number().int().nullable(),
 }).strict();
 export type TaskTimelineAxisDTO = z.infer<typeof taskTimelineAxisSchema>;
 
@@ -918,5 +918,5 @@ export type TaskTimelineLaneDTO = z.infer<typeof taskTimelineLaneSchema>;
  */
 export const taskTimelineLanesSchema = z.object({ lanes: z.array(taskTimelineLaneSchema), gone: z.array(taskIdSchema) }).strict();
 export type TaskTimelineLanesDTO = z.infer<typeof taskTimelineLanesSchema>;
-export const taskProjectedTimelineAxisSchema = taskTimelineAxisSchema.omit({ version: true }).extend(projectionSourceFields).strict();
+export const taskProjectedTimelineAxisSchema = taskTimelineAxisSchema.extend(projectionSourceFields).strict();
 export type TaskProjectedTimelineAxisDTO = z.infer<typeof taskProjectedTimelineAxisSchema>;

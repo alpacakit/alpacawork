@@ -587,11 +587,18 @@ function listedRow(derived: TaskDerived | undefined): string {
 /** What a Task's view shows of its derived facts: its row (its ball too), placements and Runs, without activity. */
 const viewFacts = (derived: TaskDerived | undefined) => JSON.stringify(derived ? [derived.row, withoutActivity(derived)] : null);
 /**
+ * Whether rows' strips and axis read a Task: one that exists in a listed project and has derived facts. The strip reader
+ * and the versions that say when a strip is old both ask here.
+ */
+export function readsRow(reader: RecordsReader, task: TaskId, derived: TaskDerived | undefined): derived is TaskDerived {
+  return !!derived && !!reader.bundle(task) && reader.shelf().listed.has(reader.projectOf(task));
+}
+/**
  * What the strips and axis of the rows above a Task read of it (belowRuns, busy, earliest): its Runs' spans, whether it
  * is read at all (it exists in a listed project) and where it sits.
  */
 const readAbove = (reader: RecordsReader, derived: TaskDerived | undefined, task: TaskId) =>
-  !reader.bundle(task) || !reader.shelf().listed.has(reader.projectOf(task)) ? null
+  !readsRow(reader, task, derived) ? null
     : JSON.stringify([derived?.runs.map(run => [run.id, run.state, run.createdAt, run.startedAt, run.endedAt]) ?? [], reader.ancestors(task)]);
 
 /**
