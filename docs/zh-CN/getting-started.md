@@ -65,11 +65,11 @@ alpacawork open
 
 初始设置完成后，会出现“欢迎使用 alpacawork”，以及委托变成任务并推进的流程图。在第一件委托完成之前，界面的关键位置会出现气泡提示。
 
-<img src="../images/welcome.png" alt="“Welcome to alpacawork”（欢迎使用 alpacawork）界面：委托变成任务并排进列表的 4 格图，指向下方输入框的气泡“This is the only input box. All your instructions go here.”（输入框只有这一个。所有指示都从这里发出。），以及“Insert a demo prompt”（放入演示提示词）按钮" width="560">
+<img src="../images/welcome.png" alt="“Welcome to alpacawork”（欢迎使用 alpacawork）界面：委托变成任务并排进列表的 4 格图，指向下方输入框的气泡“This is the only input box. All your instructions go here.”（输入框只有这一个。所有指示都从这里发出。），以及“Insert a demo prompt”（插入演示提示词）按钮" width="560">
 
 在界面下方的输入框里写下想做的事并发送。
 
-只是试一试的话，按气泡里的“放入演示提示词”，把放入的文字直接发送。这个委托是让 AI 制作一个用两种字体显示“Hello”的 HTML，然后问你哪一种更好。
+只是试一试的话，按气泡里的“插入演示提示词”，把放入的文字直接发送。这个委托是让 AI 制作一个用两种字体显示“Hello”的 HTML，然后问你哪一种更好。
 
 如果是已有的仓库，第一次请委托一件不改写文件的事。
 
@@ -92,7 +92,7 @@ AI 发来提问或报告后，任务会移到“待验收”。点这一行打�
 <img src="../images/list-waiting.png" alt="列表中的“Awaiting review”（待验收）标题，以及它下面的一行任务" width="336">
 
 - 如果是提问，点一个选项，回答就会进入输入框。直接发送就成为你的回答（只点选项不会送达）。也可以不选选项，发送别的消息。回答后 AI 会继续推进，完成后会发来报告。
-- 如果是报告，读过没问题，就按界面下方的“完成”（对勾图标）。想让它修改或想接着委托时，保持任务打开，在输入框里写好发送（演示的话，按气泡里的“放入演示提示词”，会放入“请再做一个版本，方便我比较。”）。
+- 如果是报告，读过没问题，就按界面下方的“完成”（对勾图标）。想让它修改或想接着委托时，保持任务打开，在输入框里写好发送（演示的话，按气泡里的“插入演示提示词”，会放入“请再做一个版本，方便我比较。”）。
 
 <img src="../images/action-bar.png" alt="打开任务时排在下方的按钮：“Auto-swipe”（自动滑动）、“Change state”（更改状态）和“Done”（完成）" width="338">
 
