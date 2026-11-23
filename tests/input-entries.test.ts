@@ -8,10 +8,11 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { commandCatalog, commandRuleHelp } from '@alpacawork/contract/commands';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
 import { Problem } from '@alpacawork/core';
 import { DEFAULT_LIMITS } from '@alpacawork/contract';
-import { ruleHelp, taskReportRules, taskRequestRules } from '@alpacawork/contract/inputs';
+import { taskReportRules, taskRequestRules } from '@alpacawork/contract/inputs';
 import { MAX_INSTRUCTION_BYTES } from '@alpacawork/raw';
 import { screenTree } from '@alpacawork/backend/test-dist/receiver/entries.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
@@ -49,13 +50,15 @@ async function fixture(t: TestContext) {
 type Case = { path: string; field: string; code?: string; value: Record<string, unknown>; cli: string[] };
 /** POSTs `value` (a GET for run/get) and runs `cli`: both refuse with the same Problem, naming `field`. */
 async function sameRefusal(server: { url: string }, item: Case) {
-  const get = item.path === 'run/get';
+  const get = item.path === 'commands/run/get';
   const url = new URL(`/api/${item.path}`, server.url);
   if (get) for (const [key, value] of Object.entries(item.value)) url.searchParams.set(key, String(value));
   const response = await fetch(url, { method: get ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json' }, ...(get ? {} : { body: JSON.stringify(item.value) }) });
   assert.equal(response.status, 400, item.path);
   const fromHttp = problemSchema.parse(await response.json()).error;
+  assert.notEqual(fromHttp.issues, undefined);
+  assert.ok(!Object.hasOwn(fromHttp.reason ?? {}, 'issues'));
   assert.equal(fromHttp.code, 'invalid_input', item.path);
   assert(fromHttp.issues?.some(issue => issue.path === item.field && (item.code === undefined || issue.code === item.code)),
     `${item.path} ${item.field}: ${JSON.stringify(fromHttp.issues)}`);
@@ -73,23 +76,23 @@ test('CLI and HTTP refuse alike', async t => {
     const opId = randomUUID();
     const instruction = file('instruction.md', 'Work on it.');
     for (const item of [
-      { path: 'task/new', field: 'title', value: { title: 'x'.repeat(201), parent: 'P1' },
+      { path: 'commands/task/new', field: 'title', value: { title: 'x'.repeat(201), parent: 'P1' },
         cli: ['task', 'new', '--title', 'x'.repeat(201), '--parent', 'P1'] },
-      { path: 'task/report', field: 'task', value: { task: 'T0', state: 'doing', title: 'Report', opId, expectedTaskHash: digest },
+      { path: 'commands/task/report', field: 'task', value: { task: 'T0', state: 'doing', title: 'Report', opId, expectedTaskHash: digest },
         cli: ['task', 'report', '--task', 'T0', '--state', 'doing', '--title', 'Report', '--expected-task-hash', digest,
           '--op-id', opId] },
       // Unknown states remain invalid on both entries; todo/error are valid hold restoration inputs.
-      { path: 'task/report', field: 'askTo', value: { task: 'P1', state: 'waiting', askTo: 'requester', opId, expectedTaskHash: digest },
+      { path: 'commands/task/report', field: 'askTo', value: { task: 'P1', state: 'waiting', askTo: 'requester', opId, expectedTaskHash: digest },
         cli: ['task', 'report', '--task', 'P1', '--state', 'waiting', '--ask-to', 'requester', '--expected-task-hash', digest,
           '--op-id', opId] },
-      { path: 'task/report', field: 'state', value: { task: 'P1', state: 'unknown', title: 'Report', opId, expectedTaskHash: digest },
+      { path: 'commands/task/report', field: 'state', value: { task: 'P1', state: 'unknown', title: 'Report', opId, expectedTaskHash: digest },
         cli: ['task', 'report', '--task', 'P1', '--state', 'unknown', '--title', 'Report', '--expected-task-hash', digest,
           '--op-id', opId] },
-      { path: 'task/request', field: 'task', value: { task: 'T0', instruction: 'Work on it.', opId, expectedTaskHash: digest,
+      { path: 'commands/task/request', field: 'task', value: { task: 'T0', instruction: 'Work on it.', opId, expectedTaskHash: digest,
         expectedPlacementRevision: 1 },
       cli: ['task', 'request', '--task', 'T0', '--instruction-file', instruction, '--expected-task-hash', digest,
         '--expected-placement-revision', '1', '--op-id', opId] },
-      { path: 'run/get', field: 'run', value: { run: 'R0' }, cli: ['run', 'get', '--run', 'R0'] },
+      { path: 'commands/run/get', field: 'run', value: { run: 'R0' }, cli: ['run', 'get', '--run', 'R0'] },
     ]) await sameRefusal(server, item);
   });
   await t.test('report and request refuse each of their own input rules, and -h states each rule', async () => {
@@ -97,12 +100,12 @@ test('CLI and HTTP refuse alike', async t => {
     const description = file('description.md', 'Done.');
     const report = (field: string, code: string, value: Record<string, unknown>, cli: string[]): Case => {
       const opId = randomUUID();
-      return { path: 'task/report', field, code, value: { task: 'P1', ...value, opId, expectedTaskHash: digest },
+      return { path: 'commands/task/report', field, code, value: { task: 'P1', ...value, opId, expectedTaskHash: digest },
         cli: ['task', 'report', '--task', 'P1', ...cli, '--expected-task-hash', digest, '--op-id', opId] };
     };
     const request = (field: string, code: string, value: Record<string, unknown>, cli: string[]): Case => {
       const opId = randomUUID();
-      return { path: 'task/request', field, code, value: { task: 'P1', instruction: 'Work on it.', ...value, opId },
+      return { path: 'commands/task/request', field, code, value: { task: 'P1', instruction: 'Work on it.', ...value, opId },
         cli: ['task', 'request', '--task', 'P1', '--instruction-file', instruction, ...cli, '--op-id', opId] };
     };
     const versions = { expectedTaskHash: digest, expectedPlacementRevision: 1 };
@@ -128,7 +131,8 @@ test('CLI and HTTP refuse alike', async t => {
     assert.deepEqual([reportCases.length, requestCases.length], [taskReportRules.length, taskRequestRules.length]);
     for (const item of [...reportCases, ...requestCases]) await sameRefusal(server, item);
     // The same tables are what -h says of each command.
-    for (const [verb, rules] of [['report', ruleHelp(taskReportRules)], ['request', ruleHelp(taskRequestRules)]] as const) {
+    for (const [verb, rules] of (['report', 'request'] as const).map(name =>
+      [name, commandRuleHelp(commandCatalog.commands.find(command => command.id === `task/${name}`)!, true)] as const)) {
       const help = command(server.url, ['task', verb, '-h']);
       assert.equal(help.status, 0, help.stderr);
       for (const line of rules) assert.ok(help.stdout.includes(line), `task ${verb} -h: ${line}`);
@@ -148,7 +152,7 @@ test('CLI-only entries name the rejected option, including file content and stdi
       message: /--values-file/, exit: 2 },
     { args: ['task', 'update', '--task', 'P1', '--values-file', file('not-json.json', '- goal: x'), '--expected-task-hash', digest],
       field: 'values', exit: 2 },
-    // The CLI sends --selected as written; the receiving entry parses its JSON once and names it.
+    // The CLI names the option when its JSON cannot be decoded.
     { args: ['task', 'request', '--task', 'P1', '--instruction-file', instruction, '--selected', '{',
       '--expected-task-hash', digest, '--expected-placement-revision', '1'], field: 'selected', exit: 2 },
     { args: ['agent', 'assign', '--task', 'P1', '--role', 'responsible', '--profile', 'codex', '--selected', '{',
@@ -185,9 +189,9 @@ test('agent assign exposes and sends selected JSON over the public CLI and rejec
   assert.equal(placed.status, 0, placed.stderr);
   const current = await new ControlTaskStore(root).get(task.id);
   assert.deepEqual(current.meta.log.at(-1)?.launchValues, selected);
-  const response = await fetch(new URL('/api/agent/assign', server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/agent/assign', server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: task.id, role: 'responsible',
-      profile: 'codex', selected: '{"model":"missing"}', expectedTaskHash: current.hash }) });
+      profile: 'codex', selected: { model: 'missing' }, expectedTaskHash: current.hash }) });
   assert.equal(response.status, 400);
   assert.equal(problemSchema.parse(await response.json()).error.code, 'invalid_input');
   assert.equal((await new ControlTaskStore(root).get(task.id)).hash, current.hash);
@@ -201,8 +205,8 @@ test('HTTP entries report their public field before touching state', async t => 
   const cases: { path: string; method: 'GET' | 'POST'; field: string; value: Record<string, unknown> }[] = [
     { path: 'task/view', method: 'GET', field: 'task', value: { task: 'T0' } },
     { path: 'task/search', method: 'GET', field: 'limit', value: { text: '', limit: 0 } },
-    { path: 'config/set', method: 'POST', field: '', value: { config: 'limits: [', agents: 'agents: {}', expectedConfigHash: digest } },
-    { path: 'settings/set', method: 'POST', field: 'key', value: { key: 'unknown', value: true, expectedRevision: 'r' } },
+    { path: 'commands/config/set', method: 'POST', field: '', value: { config: 'limits: [', agents: 'agents: {}', expectedConfigHash: digest } },
+    { path: 'commands/settings/set', method: 'POST', field: 'key', value: { key: 'unknown', value: true, expectedRevision: 'r' } },
     { path: 'person/notices/save', method: 'POST', field: 'state', value: { state: {}, expectedRevision: null } },
     { path: 'notify/subscribe', method: 'POST', field: 'subscription', value: { subscription: {
       endpoint: 'https://example.com/push', keys: { p256dh: 'a', auth: 'b' } }, label: 'device' } },
@@ -241,19 +245,19 @@ test('invalid HTTP entry fields win over unavailable push and index services', (
 test('oversized local CLI files and HTTP fields both refuse before writing', async t => {
   const { root, server } = await fixture(t);
   for (const item of [
-    { path: 'task/request', option: '--instruction-file', limit: MAX_INSTRUCTION_BYTES,
+    { path: 'commands/task/request', option: '--instruction-file', limit: MAX_INSTRUCTION_BYTES,
       input: { task: 'P1', expectedTaskHash: digest, opId: 'oversized-test', expectedPlacementRevision: 1 } },
   ]) {
     const body = 'x'.repeat(item.limit + 1);
-    const file = join(root, `${item.path.split('/')[1]}-oversized.md`);
+    const file = join(root, `${item.path.split('/').at(-1)}-oversized.md`);
     writeFileSync(file, body);
     const response = await fetch(new URL(`/api/${item.path}`, server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...item.input, instruction: body }) });
     assert.equal(response.status, 400, item.path);
     const http = problemSchema.parse(await response.json()).error;
-    const cli = command(server.url, [item.path.split('/')[0]!, item.path.split('/')[1]!, '--task', 'P1',
+    const cli = command(server.url, [item.path.split('/').at(-2)!, item.path.split('/').at(-1)!, '--task', 'P1',
       item.option, file, '--expected-task-hash', digest,
-      ...(item.path === 'task/request' ? ['--op-id', 'oversized-test', '--expected-placement-revision', '1'] : [])]);
+      ...(item.path === 'commands/task/request' ? ['--op-id', 'oversized-test', '--expected-placement-revision', '1'] : [])]);
     assert.equal(cli.status, 2, `${item.path}: ${cli.stderr}`);
     const fileError = problemSchema.parse(JSON.parse(cli.stderr)).error;
     assert.equal(fileError.code, 'too_large', item.path);
@@ -265,7 +269,7 @@ test('oversized local CLI files and HTTP fields both refuse before writing', asy
 
 test('config set gives CLI and HTTP the same screen field paths', async t => {
   const { server } = await fixture(t);
-  const current = await (await fetch(new URL('/api/config/get', server.url))).json() as { hash: string };
+  const current = await (await fetch(new URL('/api/commands/config/get', server.url))).json() as { hash: string };
   const limits = { ...DEFAULT_LIMITS };
   const valid = { limits };
   const examples: { field: string; code?: string; config: string; agents: string; line?: number }[] = [
@@ -282,7 +286,7 @@ test('config set gives CLI and HTTP the same screen field paths', async t => {
   ];
   for (const { field, code, config, agents, line } of examples) {
     const input = { config, agents, expectedConfigHash: current.hash };
-    const response = await fetch(new URL('/api/config/set', server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/config/set', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
     assert.equal(response.status, 400, field);
     const http = problemSchema.parse(await response.json()).error;
@@ -310,7 +314,7 @@ test('task new and update save values through CLI and HTTP, only the fields sent
   assert.equal(viaCli.status, 0, viaCli.stderr);
   const cliTask = JSON.parse(viaCli.stdout).task as { id: string; hash: string; values: unknown };
   assert.deepEqual(cliTask.values, values);
-  const response = await fetch(new URL('/api/task/new', server.url), { method: 'POST',
+  const response = await fetch(new URL('/api/commands/task/new', server.url), { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'By HTTP', parent: project, values }) });
   assert.equal(response.status, 200, await response.clone().text());
   const httpTask = (await response.json() as { task: { id: string } }).task;
@@ -326,7 +330,7 @@ test('values that do not fit the schema are refused alike over CLI and HTTP, nam
   const { root, server, project, file } = await fixture(t);
   for (const [field, values] of [['unknown', { unknown: 'x' }], ['goal', { goal: 'x'.repeat(401) }],
     ['policy.1', { policy: ['ok', 42] }], ['decide.0.decide_question', { decide: [{ decide_question: ' ' }] }]] as const) {
-    const response = await fetch(new URL('/api/task/new', server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/task/new', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Invalid', parent: project, values }) });
     assert.equal(response.status, 400, field);
     const http = problemSchema.parse(await response.json()).error;

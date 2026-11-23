@@ -55,7 +55,7 @@ async function fixture(conversation: CoordinatorConversation = answered()) {
   vi.spyOn(server, 'withdraw').mockImplementation(() => current); vi.spyOn(server, 'sendNow').mockImplementation(() => current);
   vi.spyOn(server, 'markSeen').mockImplementation(async (_id, seen) => ({ conversationId: current.id, seen: [...seen] }));
   const app = new Hono(); installCoordinatorRoutes(app, '/fixture', 'a', server, () => {});
-  app.get('/api/settings/get', (c: any) => c.json({ values: {}, revision: 'settings0' }));
+  app.get('/api/commands/settings/get', (c: any) => c.json({ values: {}, revision: 'settings0' }));
   app.get('/api/person/notices', (c: any) => c.json({ state: null, revision: null }));
   const calls: { path: string; method: string }[] = [];
   vi.stubGlobal('fetch', async (path: string, init?: RequestInit) => {

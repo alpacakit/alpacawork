@@ -87,7 +87,7 @@ test('HTTP receipt fault rolls back the Request, Run, reference and Task revisio
   console.log('LEASE', JSON.stringify({ pid: process.pid, root: h.root, url: server.url, deadline: new Date(Date.now() + 60000).toISOString() }));
   const timer = setTimeout(() => void server.close(), 60000);
   const post = async ({ body, ...input }: typeof input) => {
-    const r = await commandFetch(new URL('/api/task/request', server.url), { method: 'POST',
+    const r = await commandFetch(new URL('/api/commands/task/request', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input, instruction: body }) });
     return { status: r.status, body: await r.json() };
   };

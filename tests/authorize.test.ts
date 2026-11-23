@@ -140,6 +140,7 @@ const cases: { act: Act; action: Action; task: TaskFacts | null; allow: readonly
   { act: 'run.stop', action: { name: 'run.stop' }, task: child(), allow: ['parent', ...proxies] },
   { act: 'run.stop', action: { name: 'run.stop' }, task: top(), allow: ['human', ...coordinators] },
   { act: 'file.write', action: { name: 'file.write' }, task: child(), allow: ['own', 'worker', 'human'] },
+  { act: 'config.inspect', action: { name: 'config.inspect' }, task: null, allow: proxies },
   { act: 'config.set', action: { name: 'config.set' }, task: null, allow: proxies },
   ...(['settings.read', 'settings.set'] as const).map(act => ({ act, action: { name: act }, task: null, allow: proxies,
     note: 'the person\'s own settings: a Run hears the user only through quoted words' })),
@@ -214,7 +215,7 @@ test('the coordinator says whose Task it creates; a Run never creates the user\'
   for (const who of coordinators) {
     const result = as(who, unstated, child());
     assert.ok(result instanceof Problem && result.code === 'invalid_input', who);
-    assert.deepEqual(result.issues?.map(issue => issue.path), ['userRequested']);
+    assert.deepEqual(result.issues?.map(issue => issue.path), ['fromUser']);
   }
   assert.ok(allowed(as('own', unstated, child())), 'a Run\'s Task is unmarked');
   assert.ok(allowed(as('human', unstated, project)), 'a person\'s default is the user\'s request');

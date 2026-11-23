@@ -16,7 +16,7 @@ The `alpacawork-backend` typed on the server machine belongs to the version inst
 | Which server the CLI sends to | `alpacawork server show` |
 | The state a Run ended in, and the reason | The Run's `state` and `reason` in `alpacawork task get --task <ID> --runs <count>` |
 | A Run's reply, and the agent's error text | `alpacawork run get --run <ID>` |
-| Returns that arrived, and requests not yet handled | `alpacawork task returns --task <ID>`, `alpacawork task get --task <ID> --open-obligations` |
+| Returns that arrived, and requests not yet handled | `alpacawork task returns --task <ID>`, `alpacawork task get --task <ID> --include openObligations` |
 | The server's output | On Linux, `journalctl --user -u alpacawork.service`. On macOS there is no output file; `launchctl print gui/$(id -u)/alpacawork.service` shows only the status |
 | How an update has progressed | `switch.json` and `.updates/controller.log` in the releases folder |
 

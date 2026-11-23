@@ -46,9 +46,9 @@ test('complete uses one direct report with the displayed Run and versions, defau
   await act(async () => { await complete; });
   expect(fetcher).toHaveBeenCalledOnce();
   const [url, init] = fetcher.mock.calls[0]!;
-  expect(url).toBe('/api/task/report');
+  expect(url).toBe('/api/commands/task/report');
   expect(JSON.parse(String(init!.body))).toEqual({ task: 'T12', state: 'done', aboutRun: 'R2', expectedPlacementRevision: 3,
-    expectedTaskHash: task.hash, opId: sent.operationId, title: 'Done', description: 'Reviewed the result.' });
+    expectedTaskHash: task.hash, title: 'Done', description: 'Reviewed the result.' });
   expect(new Headers(init!.headers).get('X-Alpacawork-Op-Id')).toBe(sent.operationId);
   expect([...new Headers(init!.headers).keys()].sort()).toEqual(['content-type','x-alpacawork-op-id','x-alpacawork-restore-id']);
   expect(new Headers(init!.headers).get('X-Alpacawork-Restore-Id')).toBe('initial');
@@ -77,7 +77,7 @@ for (const choice of ['approve', 'hold', 'unhold', 'stop'] as const) test(`${cho
   const data = sample(), task = data.tasks[0]!;
   const shown = choice === 'unhold' ? { ...task, state: 'held' as const, hold: true, allowedActions: taskActionsOf({ ...task, hold: true, userRequested: true }),
     stateLog: [...task.stateLog, { ...task.stateLog[0]!, id: 'H', fromState: 'waiting' as const, toState: 'held' as const }] } : task;
-  const input = reportRequest(taskReportTarget(shown, data.people), choice, { title: 'My title' }, 'operation');
+  const input = reportRequest(taskReportTarget(shown, data.people), choice, { title: 'My title' });
   expect(input.state).toBe(({ approve: 'done', hold: 'held', unhold: 'waiting', stop: 'stopped' } as const)[choice]);
   expect(input.title).toBe('My title'); expect(input.description).not.toBe(''); expect(input).not.toHaveProperty('aboutRun');
 });

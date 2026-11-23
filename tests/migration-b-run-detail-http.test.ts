@@ -13,9 +13,9 @@ test('Run texts come from DB detail reads', async () => {
     };
     assert.ok(!(await (await get('/api/workspace/live')).text()).includes(expected));
     assert.ok(!(await (await get('/api/task/view?task=T111')).text()).includes(expected));
-    const reply = await (await get('/api/run/get?run=R1')).json();
+    const reply = await (await get('/api/commands/run/get?run=R1')).json();
     assert.deepEqual(reply.files, [{ kind: 'result', source: 'alpacawork.sqlite', state: 'present', bytes: Buffer.byteLength(expected), text: expected }]);
-    const prompt = await (await get('/api/run/get?run=R1&kind=prompt')).json();
+    const prompt = await (await get('/api/commands/run/get?run=R1&kind=prompt')).json();
     assert.equal(prompt.files[0].source, 'alpacawork.sqlite');
     assert.equal(prompt.files[0].state, 'present');
     assert.equal(prompt.files[0].text, 'Reconcile invoices from 12 synthetic vendors and check for differences and duplicates.');

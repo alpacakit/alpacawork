@@ -15,11 +15,13 @@ function synthetic(run: (root: string) => Promise<void>) {
 }
 test('personal settings initialize once, save with CAS, and reject invalid or corrupt input', synthetic(async (root) => {
   const settings = createPersonSettings(root);
-  const first = await settings.get('ja-JP,ja;q=0.9,en;q=0.8');
+  await settings.initializeLanguage('ja-JP,ja;q=0.9,en;q=0.8');
+  const first = settings.get();
   assert.equal(first.values.language, 'ja');
   assert.equal(first.values['depth.desktop'], undefined);
   assert.equal(first.values['depth.mobile'], undefined);
-  assert.deepEqual(await settings.get('en-US'), first);
+  assert.equal(await settings.initializeLanguage('en-US'), null);
+  assert.deepEqual(settings.get(), first);
   const changed = await settings.set('theme', 'dark', first.revision);
   assert.equal(changed.values.theme, 'dark');
   await assert.rejects(settings.set('push.done', true, first.revision), { status: 409 });
@@ -37,21 +39,22 @@ test('personal settings initialize once, save with CAS, and reject invalid or co
   const path = join(root, '.alpacawork', 'personal-settings.json');
   assert.equal(statSync(path).mode & 0o777, 0o600);
   writeFileSync(path, '{bad');
-  await assert.rejects(settings.get(), { status: 503 });
+  assert.throws(() => settings.get(), { status: 503 });
 }));
 
 test('a read that names no language saves nothing, so the screen still chooses its language from the browser', synthetic(async (root) => {
   const settings = createPersonSettings(root), path = join(root, '.alpacawork', 'personal-settings.json');
-  for (const header of [undefined, '*']) {
-    const read = await settings.get(header);
-    assert.equal(read.values.language, 'en');
-    assert.equal(existsSync(path), false);
-    assert.equal(read.revision, (await settings.get(header)).revision);
-  }
+  const read = settings.get();
+  assert.equal(read.values.language, 'en');
+  assert.equal(existsSync(path), false);
+  assert.equal(settings.get().revision, read.revision);
+  assert.equal(await settings.initializeLanguage('*'), null);
+  assert.equal(existsSync(path), false);
   // A save before the screen ever opened starts from that read's revision, and leaves the screen's language open.
   await assert.rejects(settings.set('theme', 'dark', 'stale'), { status: 409 });
   const saved = await settings.set('ai.language', 'fr-CA', (await settings.get()).revision);
-  const opened = await settings.get('ja-JP,ja;q=0.9');
+  await settings.initializeLanguage('ja-JP,ja;q=0.9');
+  const opened = settings.get();
   assert.equal(opened.values.language, 'ja');
   assert.equal(opened.values['ai.language'], 'fr-CA');
   assert.notEqual(opened.revision, saved.revision);
@@ -59,7 +62,7 @@ test('a read that names no language saves nothing, so the screen still chooses i
 
 test('a stored reply language is read in its canonical form, and one that is no tag leaves only itself unset', synthetic(async (root) => {
   const path = join(root, '.alpacawork', 'personal-settings.json');
-  await createPersonSettings(root).get('en');
+  await createPersonSettings(root).initializeLanguage('en');
   const write = (tag: string) => writeFileSync(path, JSON.stringify({ version: 1, revision: 'r', value: { language: 'ja', 'ai.language': tag } }));
   write('ja-jp');
   assert.equal(createPersonSettings(root).values()['ai.language'], 'ja-JP');
@@ -76,7 +79,7 @@ for (const invalid of [null, [], 'invalid', { theme: 'purple' }, { 'push.mutedUn
     const file = JSON.stringify({ version: 1, revision: 'fixture', value: invalid });
     writeFileSync(path, file);
     const settings = createPersonSettings(root);
-    await assert.rejects(settings.get(), { status: 503 });
+    assert.throws(() => settings.get(), { status: 503 });
     assert.throws(() => settings.values(), { status: 503 });
     await assert.rejects(settings.set('theme', 'light', 'fixture'), { status: 503 });
     assert.equal(readFileSync(path, 'utf8'), file, 'invalid settings must not be overwritten');
@@ -120,9 +123,9 @@ test('one extra registration enables default, validation and saving without a ke
   const definitions: readonly SettingDefinition[] = [...personalSettings,
     { key: 'testExtra', group: 'display', owner: 'person', kind: 'toggle', defaultValue: false,
       labelKey: 'settings.personal.pushDone' }];
-  await createPersonSettings(root).get('en-US');
+  await createPersonSettings(root).initializeLanguage('en-US');
   const settings = createPersonSettings(root, definitions);
-  const first = await settings.get('en-US');
+  const first = settings.get();
   assert.equal(first.values.testExtra, false);
   const saved = await settings.set('testExtra', true, first.revision);
   assert.equal((await settings.get()).values.testExtra, true);
@@ -148,7 +151,7 @@ test('notice checkpoint and reads are separate from settings and require current
 
 test('existing person files can be read while the RAW write lock is held', synthetic(async (root) => {
   const settings = createPersonSettings(root), notices = createNoticeState(root);
-  await settings.get();
+  await settings.initializeLanguage('en');
   await notices.save({ version: 4, checkpoint: { at: '2026-10-02T00:00:00.000Z', tasks: {} }, reads: {} }, null);
   const writer = new FileWriter(root);
   try {

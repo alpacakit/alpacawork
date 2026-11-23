@@ -65,6 +65,10 @@
       "types": "./dist/problem.d.ts",
       "default": "./dist/problem.js"
     },
+    "./command-path": {
+      "types": "./dist/command-path.d.ts",
+      "default": "./dist/command-path.js"
+    },
     "./commands": {
       "types": "./dist/commands.d.ts",
       "default": "./dist/commands.js"
@@ -164,7 +168,7 @@
   "dependencies": {
     "@alpacawork/core": "workspace:*",
     "@alpacawork/raw": "workspace:*",
-    "@alpacakit/channels": "0.2.0-beta.5",
+    "@alpacakit/channels": "0.2.0-beta.6",
     "get-east-asian-width": "1.7.0",
     "re2js": "2.8.7",
     "yaml": "2.9.1",

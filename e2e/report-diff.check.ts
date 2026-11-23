@@ -297,7 +297,7 @@ test('CLI submits a frozen diff and a placed patch to the server; the report sti
   writeFileSync(patch, git('format-patch', '-1', '--stdout', '--no-signature') + '\n');
   const cli = (...args: string[]) => cliSync(runtime.origin, args, env);
   const get = () => {
-    const result = cli('task', 'get', '--task', 'T112', '--log', '20', '--files');
+    const result = cli('task', 'get', '--task', 'T112', '--log', '20', '--include', 'files');
     expect(result.code, result.stderr).toBe(0);
     return JSON.parse(result.stdout).task as { hash: string; log: { title: string; description: string }[]; files: { name: string }[] };
   };

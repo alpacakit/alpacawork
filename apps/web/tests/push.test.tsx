@@ -40,7 +40,7 @@ function pushBrowser(options: { permission?: NotificationPermission; subscribed?
     if (path === "telemetry/status") return reply({ state: "blocked", blockedBy: "fixture", digest: null });
     if (path === "environment-file") return reply({ path: "/fixture-home/.config/alpacawork/env", state: "absent", applied: 0, skipped: [] });
     if (path === "notify/devices") return reply({ devices });
-    if (path.split("?")[0] === "config/get") return reply({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n", agents: {}, catalog: adapterCatalog() });
+    if (path.split("?")[0] === "commands/config/get" || path === "commands/config/inspect") return reply({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n", agents: {}, catalog: adapterCatalog() });
     if (path === `task/view?task=${PROJECT_TASK}`) return reply(viewsOf(tree()).find((view) => view.task.id === PROJECT_TASK));
     if (path === "notify/key") return reply({ key: "B" + "A".repeat(86) });
     if (path === "notify/subscribe") { devices.push({ id: "1234567890abcdef", label: body.label, endpoint: body.subscription.endpoint, created_at: "2026-09-27T02:00:00Z" }); return reply({ id: "1234567890abcdef" }); }
@@ -113,5 +113,5 @@ test("the notifications tab shows the existing subscription without disturbing t
   expect(browser.pushManager.subscribe).not.toHaveBeenCalled();
   expect(browser.own.unsubscribe).not.toHaveBeenCalled();
   // Opening settings reads update and usage status and the environment file's too, never a write or subscription change.
-  expect(browser.calls.every((call) => ["notify/devices", "config/get", "update/status", "telemetry/status", "environment-file"].includes(call.path.split("?")[0]!))).toBe(true);
+  expect(browser.calls.every((call) => ["notify/devices", "commands/config/get", "commands/config/inspect", "update/status", "telemetry/status", "environment-file"].includes(call.path.split("?")[0]!))).toBe(true);
 });

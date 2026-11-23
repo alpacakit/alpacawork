@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
 import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskProjectedTimelineSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedTimelineDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
@@ -41,7 +42,7 @@ const fileBytesRead = (root: string, taskId: string, name: string, revision: str
 export const resources = {
   projectShelf: (root: string) => queryOptions({
     queryKey: ['project-shelf', root] as const,
-    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request('project/shelf', projectShelfSchema, signal)),
+    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request(commandRoute('project/shelf'), projectShelfSchema, signal)),
     staleTime: Infinity,
   }),
   skills: (root: string, profile: string, conversation: string | null) => queryOptions({
@@ -130,13 +131,13 @@ export const resources = {
   }),
   personalSettings: (root: string) => queryOptions({
     queryKey: ["person-settings", root] as const,
-    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request("settings/get", personalSettingsResponseSchema, signal)),
+    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request(commandRoute("settings/get"), personalSettingsResponseSchema, signal)),
     staleTime: Infinity,
   }),
   /** This PC's config.yaml: its limits and agents. */
   serverSettings: (root: string) => queryOptions({
     queryKey: ["server-settings", root] as const,
-    queryFn: ({ signal }) => api.request("config/get", serverSettingsSchema, signal),
+    queryFn: ({ signal }) => api.request(commandRoute("config/get"), serverSettingsSchema, signal),
     staleTime: Infinity,
   }),
   /** Each agent's executable and sign-in status. It runs the agents' own checks (a second or more), so it is read apart
@@ -144,14 +145,13 @@ export const resources = {
    * one is not asked again (each ask runs every check once more). */
   agentStatus: (root: string) => queryOptions({
     queryKey: ["agent-status", root] as const,
-    queryFn: ({ signal }) => api.readWithin("config/get?check=true", serverSettingsSchema, AGENT_CHECK_READ_MS, signal),
+    queryFn: ({ signal }) => api.runWithin(commandRoute('config/inspect'), serverSettingsSchema, {}, AGENT_CHECK_READ_MS, signal),
     staleTime: 0, retry: false,
   }),
   /** The version of a typed executable path. */
   agentExecutable: (root: string, adapter: string, command: string) => queryOptions({
     queryKey: ["agent-executable", root, adapter, command] as const,
-    queryFn: async ({ signal }) => (await api.readWithin(`config/get?check=true&adapter=${encodeURIComponent(adapter)}&command=${encodeURIComponent(command)}`,
-      serverSettingsSchema, AGENT_CHECK_READ_MS, signal)).inspected ?? null,
+    queryFn: async ({ signal }) => (await api.runWithin(commandRoute('config/inspect'), serverSettingsSchema, { adapter, command }, AGENT_CHECK_READ_MS, signal)).inspected ?? null,
     staleTime: 0, retry: false,
   }),
   pushDevices: () => queryOptions({ queryKey: ["push-devices"] as const,
@@ -175,7 +175,7 @@ export const resources = {
     staleTime: end === null ? 60_000 : Infinity, refetchInterval: end === null ? 60_000 : false }),
   /** A Run's final reply, read when History opens a member's result: a committed reply never changes, so it is read once. */
   runResult: (root: string, run: string) => queryOptions({ queryKey: ["run-result", root, run] as const,
-    queryFn: ({ signal }) => api.request(`run/get?${new URLSearchParams({ run })}`, controlRunFilesSchema, signal),
+    queryFn: ({ signal }) => api.request(`${commandRoute('run/get')}?${new URLSearchParams({ run })}`, controlRunFilesSchema, signal),
     staleTime: Infinity, gcTime: 5 * 60_000, retry: false }),
   pushKey: () => queryOptions({ queryKey: ["push-key"] as const,
     queryFn: ({ signal }) => api.request("notify/key", pushKeySchema, signal), staleTime: 60_000 }),

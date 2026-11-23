@@ -5,7 +5,7 @@ import { controlTaskHead } from './task-dto.js';
  */
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { RequestReceipt, taskRequestResultSchema } from '@alpacawork/contract/control';
-import type { taskRequestInput, commandLaunchInput } from '@alpacawork/contract/inputs';
+import type { taskRequestInput } from '@alpacawork/contract/inputs';
 import { questionsOf, type TaskActor } from '@alpacawork/raw';
 import { questionSnapshot, replyQuestion, assertQuestionReplyApplicable } from './question-rules.js';
 import type { z } from 'zod';
@@ -16,7 +16,7 @@ import { ControlTaskStore, TaskRepository } from './task-store.js';
 import { withControlWrite } from './task-transition.js';
 
 /** A request as its entry parsed it (the contract's taskRequestInput). */
-type TaskRequestInput = Omit<z.output<typeof taskRequestInput>, 'instruction' | 'selected' | 'aiStack'> & z.output<typeof commandLaunchInput> & { body: string };
+type TaskRequestInput = Omit<z.output<typeof taskRequestInput>, 'instruction'> & { body: string; opId: string };
 /** The committed Task with the Request's receipt or the answer (the contract's taskRequestResultSchema). */
 type TaskRequestResult = z.output<typeof taskRequestResultSchema>;
 

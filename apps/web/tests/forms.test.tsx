@@ -91,7 +91,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
   const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const path = String(url);
-    if (path === '/api/task/report' && init?.method === 'POST') {
+    if (path === '/api/commands/task/report' && init?.method === 'POST') {
       const input = JSON.parse(String(init.body)); reports.push(input);
       const done = () => json({ task: headOf(dto({ id: input.task, state: input.state })), outcome: { kind: 'recorded' } });
       return holdReports ? new Promise<Response>(resolve => pending.push(result => resolve(result.refused.length
@@ -203,7 +203,7 @@ test("✔ sends Review OK of the reviewed Run directly with the versions shown",
   // versions, as the screen showed them.
   expect(reports[0]).toMatchObject({ task: "T12", state: "done", aboutRun: "R2", expectedTaskHash: "b".repeat(64), expectedPlacementRevision: 3 });
   // The Task changes only when the coordinator writes it, quoting the user: the screen sends no Task write.
-  expect(fetcher.mock.calls.filter(([, init]) => init?.method === "POST").map(([url]) => String(url))).toEqual(["/api/task/report"]);
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === "POST").map(([url]) => String(url))).toEqual(["/api/commands/task/report"]);
 });
 
 test("a ✔ the coordinator did not carry out (refused for an older version) brings its card back, with a notice to open it", async () => {

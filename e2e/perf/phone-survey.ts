@@ -95,7 +95,7 @@ try {
   }
   writeFileSync(join(out,'process-tree-start.txt'),processes());
   if (args.catalog) {
-    const reply=await fetch(url+'/api/task/new',{method:'POST',headers:{'content-type':'application/json','x-alpacawork-op-id':crypto.randomUUID()},body:JSON.stringify({kind:'project',color:'#795548',parent:'none',title:'Synthetic secondary project'})});
+    const reply=await fetch(url+'/api/commands/task/new',{method:'POST',headers:{'content-type':'application/json','x-alpacawork-op-id':crypto.randomUUID()},body:JSON.stringify({kind:'project',color:'#795548',parent:'none',title:'Synthetic secondary project'})});
     const result=await reply.json();if(!reply.ok)throw Error(JSON.stringify(result));writeFileSync(join(out,'secondary-project.json'),JSON.stringify(result,null,2));
   }
   const countsStore=new ControlStore(root,{busyTimeoutMs:1000},true);

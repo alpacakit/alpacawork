@@ -278,8 +278,8 @@ try {
       const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, app.url))).json();
       const n = updateN++;
       // A report and a change the list shows take turns: the title says when the update reached the screen.
-      const response = n % 2 ? await post('/api/task/update', { task, title: `Measured report ${n}`, expectedTaskHash: current.hash })
-        : await post('/api/task/comment', { task, title: `Reported ${n}`, description: `Measured body ${n}.`, expectedTaskHash: current.hash });
+      const response = n % 2 ? await post('/api/commands/task/update', { task, title: `Measured report ${n}`, expectedTaskHash: current.hash })
+        : await post('/api/commands/task/comment', { task, title: `Reported ${n}`, description: `Measured body ${n}.`, expectedTaskHash: current.hash });
       if (!response.ok) throw new Error(`Update ${task}: ${response.status} ${await response.text()}`);
       if (n % 2) posted.set(String(n), Date.now());
     };

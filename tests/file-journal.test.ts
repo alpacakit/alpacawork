@@ -206,12 +206,12 @@ test('HTTP adapter receives exact bytes and requires caller authorization', () =
   assert.equal(ranged.headers.get('content-range'),`bytes 4-7/${video.length}`);
   assert.deepEqual(Buffer.from(await ranged.arrayBuffer()),video.subarray(4,8));
   const attachmentUrl=`http://localhost/api/tasks/${task}/attachments?requestId=draft1&name=a.txt`;
+  assert.equal((await app.request(attachmentUrl,{method:'POST',body:'attached'})).status,400);
   const attachmentId=randomUUID();
   const upload=()=>app.request(attachmentUrl,{method:'POST',headers:{'X-Alpacawork-Op-Id':attachmentId},body:'attached'});
   const uploaded=await upload();
   assert.equal(uploaded.status,200);
   assert.deepEqual(await (await upload()).json(),await uploaded.json());
-  assert.equal((await app.request(attachmentUrl,{method:'DELETE'})).status,400);
 }));
 
 test('unprovable recovery keeps needs_review and holds the path', () => fixture((root, task) => {
@@ -315,7 +315,7 @@ test('DB Task folder is listed in tree and task get files', () => fixture(async 
   try { assert.deepEqual(taskFiles(writer,[folder]).get(folder)?.map(file=>file.name),['index.md','notes/proof.txt']); }
   finally { writer.close(); }
   assert.equal(folder,`tasks/${task}`);
-  const view=taskView(await readControlSource(root),task,{files:true});
+  const view=taskView(await readControlSource(root),task,{ include: ['files'] });
   assert.deepEqual(view.task.files?.map(file=>file.path),
     [taskFileRoute(task,'index.md'),taskFileRoute(task,'notes/proof.txt')]);
   const tree=await readControlTree(root);

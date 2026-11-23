@@ -87,7 +87,7 @@ async function holdControl(root: string) {
     test.setTimeout(60_000);
     // A person places the responsible of a top Task only (its parent is the project), and one not yet at work, so
     // placing it starts no Run: a new request of the person's.
-    const made = await fetch(`${runtime.origin}/api/task/new`, { method: "POST", headers: { "Content-Type": "application/json" },
+    const made = await fetch(`${runtime.origin}/api/commands/task/new`, { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parent: SAMPLE_PROJECT.id, title: "Choose an agent" }) });
     expect(made.ok, await made.clone().text()).toBe(true);
     const task = ((await made.json()) as { task: { id: string } }).task.id;
@@ -104,7 +104,7 @@ async function holdControl(root: string) {
       const section = reader.locator("[data-responsible-section]");
       await section.getByRole("radio", { name: "New agent" }).check();
       await section.getByRole("combobox", { name: "Launch profile" }).selectOption(profile);
-      const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/agent/assign' && response.request().method() === 'POST');
+      const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/commands/agent/assign' && response.request().method() === 'POST');
       await section.getByRole("button", { name: /^(Assign|Change)$/ }).click();
       await expect(section).toHaveCount(0, { timeout: 15_000 });
       expect((await saved).ok()).toBe(true);
@@ -187,7 +187,7 @@ async function holdControl(root: string) {
     for (const kid of initial.filter(each => depthBelow(each.id) >= 0 && each.state !== "done" && each.state !== "stopped")
       .sort((a, b) => depthBelow(b.id) - depthBelow(a.id))) {
       const current = (await served()).tasks.find(each => each.id === kid.id)!;
-      const moved = await fetch(`${runtime.origin}/api/task/move`, { method: "POST", headers: { "content-type": "application/json" },
+      const moved = await fetch(`${runtime.origin}/api/commands/task/move`, { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ task: kid.id, parent: SAMPLE_PROJECT.id, expectedTaskHash: current.hash }) });
       expect(moved.status, await moved.text()).toBe(200);
     }
@@ -199,7 +199,7 @@ async function holdControl(root: string) {
     /** An agent's retitle (`task update --title`); the screen only reads titles. */
     const retitle = async (title: string) => {
       const row = (await served()).tasks.find(each => each.id === task)!;
-      const response = await fetch(`${runtime.origin}/api/task/update`, { method: "POST", headers: { "content-type": "application/json" },
+      const response = await fetch(`${runtime.origin}/api/commands/task/update`, { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ task, title, expectedTaskHash: row.hash }) });
       expect(response.status, await response.text()).toBe(200);
     };

@@ -90,7 +90,7 @@ export type Action =
   | { name: 'update.review' | 'update.confirm' | 'update.cancel' }
   /** settings get and settings set: the person's own settings, the screen's and the AI's reply language. */
   | { name: 'settings.read' | 'settings.set' }
-  | { name: 'screen' | 'coordinator.screen' | 'runtime' | 'config.set' | 'admin' | 'release' };
+  | { name: 'screen' | 'coordinator.screen' | 'runtime' | 'config.inspect' | 'config.set' | 'admin' | 'release' };
 
 /**
  * Who a grant names. own: the Task's responsible Run. parent: the responsible Run of the Task's parent. placement: a
@@ -180,6 +180,7 @@ export const ACTIONS = {
   'screen': { grants: [['human']] },
   'coordinator.screen': { grants: [['human']] },
   'runtime': { grants: [['human']] },
+  'config.inspect': { grants: [['user']] },
   'config.set': { grants: [['user']] },
   /**
    * The person's settings, read and saved by the person and the coordinator that talks with them. A Run hears the user

@@ -12,7 +12,7 @@ const atomicReasonSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('file_missing'), path: z.string() }).strict(),
   z.object({ kind: z.literal('config_section_missing'), path: z.string(), section: z.string() }).strict(),
   z.object({ kind: z.literal('config_invalid'), path: z.string(), issues: z.array(diagnosticIssue) }).strict(),
-  z.object({ kind: z.literal('validation_error'), issues: z.array(diagnosticIssue) }).strict(),
+  z.object({ kind: z.literal('validation_error'), issues: z.array(diagnosticIssue).optional() }).strict(),
   z.object({ kind: z.literal('system_error'), code: z.string(), syscall: z.string().optional(), path: z.string().optional(),
     dest: z.string().optional(), diagnostic: z.string() }).strict(),
   z.object({ kind: z.literal('unexpected_error'), name: z.string(), diagnostic: z.string() }).strict(),

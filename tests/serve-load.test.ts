@@ -71,8 +71,8 @@ test('read marks, settings and the coordinator conversation publish current meta
   const saved = await fetch(new URL('/api/person/notices/save', server.url),
     json({ expectedRevision: notices.revision, state: { version: 4, checkpoint: { at: new Date().toISOString(), tasks: {} }, reads: {} } }));
   assert.equal(saved.status, 200, await saved.clone().text());
-  const settings = await (await fetch(new URL('/api/settings/get', server.url))).json();
-  const changedSettings = await fetch(new URL('/api/settings/set', server.url),
+  const settings = await (await fetch(new URL('/api/commands/settings/get', server.url))).json();
+  const changedSettings = await fetch(new URL('/api/commands/settings/set', server.url),
     json({ key: 'theme', value: 'dark', expectedRevision: settings.revision }));
   assert.equal(changedSettings.status, 200);
   const settingsSaved = await changedSettings.json();
@@ -138,7 +138,7 @@ test('project field changes reach nested tasks while preserving the root project
   const server = await start();
   const rootVersion = server.feed()!.current!.requiredPv.view.P1;
   const fields = [...DEFAULT_SCHEMA].reverse();
-  const changed = await fetch(new URL('/api/field/use', server.url), json({ task: project, fields,
+  const changed = await fetch(new URL('/api/commands/field/use', server.url), json({ task: project, fields,
     expectedTaskHash: (await new ControlTaskStore(root).get(project)).hash }));
   assert.equal(changed.status, 200, await changed.clone().text());
   const response = await fetch(new URL(`/api/task/view?task=${child.id}`, server.url));
@@ -181,7 +181,7 @@ test('a failed records read is retried without another write and keeps the last 
   const hook = t.mock.method(DatabaseWorkspaceRecords.prototype, 'advance', function(this: DatabaseWorkspaceRecords, ...args: Parameters<typeof advance>) {
     throw new Error('temporary records read failure');
   });
-  const created = await fetch(new URL('/api/task/new', server.url), json({ title: 'Retry without another write', parent: project }));
+  const created = await fetch(new URL('/api/commands/task/new', server.url), json({ title: 'Retry without another write', parent: project }));
   assert.equal(created.status, 200);
   const current = await fetch(new URL('/api/workspace/live', server.url));
   assert.equal(current.status, 503);

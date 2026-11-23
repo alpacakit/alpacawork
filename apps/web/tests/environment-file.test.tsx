@@ -22,7 +22,7 @@ async function openServer(file: EnvironmentFile, language: "en" | "ja") {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) => {
     const answer = (value: unknown) => new Response(JSON.stringify(value));
     if (String(url).includes("/api/environment-file")) return answer(file);
-    if (String(url).includes("/api/config/get")) return answer({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n", agents: {}, catalog: adapterCatalog() });
+    if (String(url).includes("/api/commands/config/get")) return answer({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n", agents: {}, catalog: adapterCatalog() });
     if (String(url).includes("/api/update/status")) return answer({ kind: "none" });
     if (String(url).includes("/api/telemetry/status")) return answer({ state: "blocked", blockedBy: "test", digest: null });
     throw new Error(`Unexpected settings request: ${String(url)}`);

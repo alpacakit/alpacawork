@@ -57,9 +57,9 @@ test('real CLI/API creates P/T on one sequence and refuses wrong-kind IDs withou
     assert.equal(ok(['task', 'new', '--kind', 'project', '--color', '#39659b', '--parent', 'P2', '--title', 'Deeper']).task.id, 'P4');
     assert.notEqual(cli(['task', 'get', '--task', 'T1']).code, 0);
     // The CLI sends the ID as written; the one entry takes the real one and refuses each other form.
-    const known = await fetch(new URL('/api/task/get?task=P1', server.url)); await known.arrayBuffer(); assert.equal(known.status, 200);
+    const known = await fetch(new URL('/api/commands/task/get?task=P1', server.url)); await known.arrayBuffer(); assert.equal(known.status, 200);
     for (const id of ['T2', 'T4', 'P3', 'P999', 'P01', 'Pabc-def'])
-      assert.notEqual((await fetch(new URL(`/api/task/get?task=${id}`, server.url))).status, 200, id);
+      assert.notEqual((await fetch(new URL(`/api/commands/task/get?task=${id}`, server.url))).status, 200, id);
     const db = new DatabaseSync(controlDatabasePath(root), { readOnly: true });
     try {
       assert.deepEqual(db.prepare('SELECT number,external_id FROM tasks ORDER BY number').all().map(row => [row.number, row.external_id]), [[1, 'P1'], [2, 'P2'], [3, 'T3'], [4, 'P4']]);

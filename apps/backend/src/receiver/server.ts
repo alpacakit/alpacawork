@@ -36,12 +36,12 @@ import { z } from 'zod';
 import { type ContentfulStatusCode } from 'hono/utils/http-status';
 import { getRequestListener } from '@hono/node-server';
 import { compress } from 'hono/compress';
-import { collectHttpRoutes } from '@alpacakit/channels/http';
+import { collectHttpRoutes, type HttpRegistration } from '@alpacakit/channels/http';
 import { defaultSettings } from '@alpacawork/contract';
 import { ControlStore, keepControlChanges, keepControlTables, holdControlWriter, restoreControlWal } from '@alpacawork/db';
-import { INDEX_HEARTBEAT_MS, taskReportResultSchema, taskPlacementResultSchema, taskRequestResultSchema,
-  taskWriteResultSchema, taskPlanResultSchema, type ControlTreeDTO } from '@alpacawork/contract/control';
+import { INDEX_HEARTBEAT_MS, type ControlTreeDTO } from '@alpacawork/contract/control';
 import { type RawValueMap } from '@alpacakit/channels';
+import { commandLinks, commandOrigin } from './command-links.js';
 import { screenTree, serverCommandTree, serverCommands, PUBLIC_HOST_PATTERN, type Context, type ServeOptions } from './entries.js';
 import { claimOf, identify, jsonHeaders, requestScope, preflightEntryClaim } from './request-scope.js';
 import { startReadThread, type ReadThread } from './read-thread.js';
@@ -563,13 +563,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
   api.use('/api/*', compress({ encoding: 'gzip' }));
   const commandRoutes = collectHttpRoutes(serverCommandTree.tree);
   const screenRoutes = collectHttpRoutes(screenTree);
-  const httpRoutes = { forEach: (visit: Parameters<typeof screenRoutes.forEach>[0]) => {
-    commandRoutes.forEach(visit);
-    screenRoutes.forEach(visit);
-  } };
   const routeActs = new Map<string, Action | null | undefined>();
-  httpRoutes.forEach(route => routeActs.set(`${route.method} /api${route.path}`,
-    serverCommands.has(`${route.method} /api${route.path}`) ? null : entryActFor(route.handler)));
+  screenRoutes.forEach(route => routeActs.set(`${route.method} /api${route.path}`, entryActFor(route.handler)));
   /** Each request's claim and working directory, read before any route; its caller, once resolved (`callerOf`). */
   const scopes = new WeakMap<Request, ReturnType<typeof requestScope> & { caller?: Caller }>();
   const scopeOf = (request: Request) => scopes.get(request)!;
@@ -585,14 +580,28 @@ export async function startServer(root: string, port: number, options: ServerOpt
   api.use('/api/*', async (c, next) => {
     const url = new URL(c.req.url);
     const cli = c.req.header('x-alpacawork-client') === 'cli';
-    scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli,
-      cli && serverCommands.get(`${c.req.method} ${url.pathname}`)?.implementation.replayFromRun === true));
+    const command = serverCommands.get(`${c.req.method} ${url.pathname}`);
+    scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli, cli && command?.implementation.replayFromRun === true));
     const mutation = !['GET','HEAD','OPTIONS'].includes(c.req.method) && url.pathname !== '/api/runtime/quiesce';
     if (mutation) {
       lifecycle.admit();
       // Resolve credentials without session-import side effects before the common restore gate.
       readControl(db=>identifyIn(root,db,scopeOf(c.req.raw).claim));
-      assertRestoredMutation(root,c.req.header(RESTORE_HEADER)??null,c.req.header('X-Alpacawork-Op-Id')??null,operationRecorded);
+      const sentRestoreId = c.req.header(RESTORE_HEADER) ?? null;
+      const operationId = c.req.header('X-Alpacawork-Op-Id') ?? null;
+      if (command?.kind === 'run') {
+        if (sentRestoreId === null) {
+          const message = 'Restore ID is required to execute a command';
+          throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+            { reason: { kind: 'validation_error' }, issues: [{ path: RESTORE_HEADER, code: 'required', message }] });
+        }
+        if (operationId !== null) {
+          const message = 'An execution does not take an operation ID';
+          throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
+            { reason: { kind: 'validation_error' }, issues: [{ path: 'X-Alpacawork-Op-Id', code: 'invalid_value', message }] });
+        }
+      }
+      assertRestoredMutation(root, sentRestoreId, operationId, operationRecorded);
     }
     if(!['/api/update/status','/api/update/review','/api/update/confirm','/api/update/cancel','/api/runtime/readiness','/api/runtime/preflight','/api/runtime/quiesce','/api/runtime/recovery'].includes(url.pathname)&&releaseAdmission(root)==='maintenance')
       throw new Problem(PROBLEM_CODE.unavailable,'Release maintenance is incomplete',undefined,{reason:{kind:'release_maintenance_incomplete'}});
@@ -635,6 +644,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
         authorize(db, identifyIn(root, db, claim), { name: 'file.write' }, { task, quote: null });
     },
     changed: attachmentChanged,
+    links: (request: Request, value: unknown) => commandLinks(value, commandOrigin(request, publicHost)),
     mutate: <T>(work: () => T | Promise<T>) => lifecycle.run(work),
   };
   installTaskFileRoutes(api, root, fileOptions);
@@ -665,7 +675,10 @@ export async function startServer(root: string, port: number, options: ServerOpt
         if (row) {
           const body: unknown = JSON.parse(String(row.response_json));
           read([...fileTasks, ...receiptTasks(root, db, body)]);
-          stopDelivery.completeOperation(opId);
+          if (stopDelivery.hasPendingOperation(opId, db)) return {
+            state: 'committed_pending_delivery',
+            message: 'Retry the original write with the same input, operation ID and restore ID.',
+          };
           return { state: 'committed', status: Number(row.status), body };
         }
         if (!file) {
@@ -689,13 +702,14 @@ export async function startServer(root: string, port: number, options: ServerOpt
       return found;
     } finally { control.close(); }
   };
-  httpRoutes.forEach((route) => {
-    // A command authorizes itself (its write here, its read in its handler); any other entry declares its act.
-    const spec = serverCommands.get(`${route.method} /api${route.path}`), implementation = spec?.implementation;
-    const writes = spec?.kind === 'write', act = spec ? null : entryActFor(route.handler);
+  function register<Values extends RawValueMap, Input>(route: HttpRegistration<Values, Input, Context, unknown>,
+    spec?: ReturnType<typeof serverCommands.get>) {
+    const implementation = spec?.implementation;
+    const writes = spec?.kind === 'write', runs = spec?.kind === 'run', act = spec ? null : entryActFor(route.handler);
     if (act === undefined) throw new Error(`An HTTP entry that is no CLI command declares its act: ${route.method} /api${route.path}`);
     api.on(route.method, '/api' + route.path, async (c) => {
       const { claim, cwd } = scopeOf(c.req.raw);
+      const links = (value: unknown) => spec ? commandLinks(value, commandOrigin(c.req.raw, publicHost)) : value;
       // An entry that is no command is authorized by the act it declares, before its request is read.
       preflightEntryClaim(root, act, claim);
       if (act) authorizeRead(callerOf(c.req.raw), act);
@@ -724,20 +738,28 @@ export async function startServer(root: string, port: number, options: ServerOpt
           }
           const values = route.method === 'GET' ? route.input.parseQuery(c.req.queries()) : route.input.parse(rawValues!);
           const requestContext = { ...context, caller: () => callerOf(c.req.raw), cwd,
-            requestLanguage: c.req.header('accept-language'),
             readFrame: context.readFrame,
             readLive: async () => {
               await context.readFrame!();
               return new Response(projection.index(), { headers: jsonHeaders });
             },
-            readOperation, opId: c.req.header('x-alpacawork-op-id') };
+            readOperation, opId: c.req.header('x-alpacawork-op-id'),
+            grantFileWrite: (task: string) => fileOptions.authorizeWrite(c.req.raw, task),
+            fileChanged: attachmentChanged };
+          if (runs) {
+            const caller = callerOf(c.req.raw);
+            const { actor } = readControl(db => {
+              const action = implementation!.act!(values as Record<string, unknown>, { root, db, caller, cwd });
+              return authorize(db, caller, action.action, { task: action.task, quote: null });
+            });
+            const output = await route.handler(values as never, { ...requestContext, actor } as never);
+            return c.json(links(output), 200, jsonHeaders);
+          }
           if (writes) {
             const opId = c.req.header('x-alpacawork-op-id');
             if (!opId || opId.length > 256 || /[\r\n]/.test(opId))
               throw new Problem(PROBLEM_CODE.unavailable, 'Reload the client before checking or sending this operation: X-Alpacawork-Op-Id is required', undefined,
                 { reason: { kind: 'reload_client_before_checking_or_sending_operation_x_alpacawork_op_id_required' } });
-            if (values && typeof values === 'object' && 'opId' in values && values.opId !== opId)
-              throw new Problem(PROBLEM_CODE.invalidInput, 'Operation ID in body and header must match', undefined, { reason: { kind: 'operation_id_body_and_header_must_match' } });
             const operation = spec.id;
             // Identified once before the write begins, where a Run's session may still be imported (resolveCaller).
             const caller = callerOf(c.req.raw);
@@ -748,7 +770,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
                 return authorize(db, caller, act.action, { task: act.task, quote: null });
               });
               const saved = await route.handler(values as never, { ...requestContext, actor, opId } as never);
-              return c.json(saved, 200, jsonHeaders);
+              return c.json(links(saved), 200, jsonHeaders);
             }
             const control = new ControlStore(root);
             try {
@@ -773,26 +795,17 @@ export async function startServer(root: string, port: number, options: ServerOpt
                 const decision = authorize(db, current, action, { task: act.task, quote, message });
                 const body = await route.handler(values as never,
                   { ...requestContext, caller: () => current, actor: decision.actor, changed: undefined } as never);
-                if (body && typeof body === 'object' && 'task' in body) {
-                  const schema = spec.id.startsWith('agent/') ? taskPlacementResultSchema
-                    : spec.id === 'task/report' ? taskReportResultSchema
-                    : spec.id === 'task/request' ? taskRequestResultSchema : taskWriteResultSchema;
-                  schema.parse(body);
-                } else if (operation === 'task/new') taskPlanResultSchema.parse(body);
-                JSON.stringify(body);
                 return { status: 200, body };
               });
               // The Owner applies the same success contract to fresh and immutable replayed receipts.
               stopDelivery.completeOperation(opId);
-              return c.json(receipt.body, receipt.status as ContentfulStatusCode, jsonHeaders);
+              return c.json(links(receipt.body), receipt.status as ContentfulStatusCode, jsonHeaders);
             } finally { control.close(); }
           }
-          if (route.method === 'GET' && ['/task/view', '/task/history', '/task/search',
-              '/task/finished', '/task/shelved', '/task/timeline', '/task/timeline-axis'].includes(route.path)) {
-            if (route.path === '/task/view') await openedTask(c.req.query('task') ?? c.req.query('address'));
-          }
+          if (!spec && route.path === '/task/view' && route.method === 'GET')
+            await openedTask(c.req.query('task') ?? c.req.query('address'));
           const result = await route.handler(values as never, requestContext as never);
-          return result instanceof Response ? result : c.json(result, 200, jsonHeaders);
+          return result instanceof Response ? result : c.json(links(result), 200, jsonHeaders);
         } catch (error) {
           // The mutation transaction has rolled back. Preserve the actual failure, including unknown/check snapshots.
           if (refusing.request !== undefined && refusing.task !== undefined) {
@@ -805,9 +818,16 @@ export async function startServer(root: string, port: number, options: ServerOpt
           throw error;
         }
       };
-      return route.method === 'POST' || implementation?.inputEvidence ? orderedWrite(execute) : execute();
+      if (runs) return lifecycle.run(execute);
+      return writes || !spec && route.method === 'POST' || implementation?.inputEvidence ? orderedWrite(execute) : execute();
     });
+  }
+  commandRoutes.forEach(route => {
+    const spec = serverCommands.get(`${route.method} /api${route.path}`);
+    if (!spec) throw new Error(`Missing command registration for ${route.method} ${route.path}`);
+    register(route, spec);
   });
+  screenRoutes.forEach(route => register(route));
   const RUNTIME: Action = { name: 'runtime' };
   api.post('/api/runtime/quiesce', async c => {
     authorizeRead(callerOf(c.req.raw), RUNTIME);
@@ -895,6 +915,14 @@ export async function startServer(root: string, port: number, options: ServerOpt
           res.writeHead(302, { Location: pathname + url.search, 'Cache-Control': 'no-store' });
           res.end();
           return;
+        }
+        // Choose the first screen language on navigation, before the page reads the settings.
+        const language = req.headers['accept-language'];
+        if (language && lifecycle.state === 'accepting' && releaseAdmission(root) === 'accepting') {
+          try {
+            const revision = await lifecycle.run(() => personSettings.initializeLanguage(language));
+            if (revision) context.personChanged?.('settings', revision);
+          } catch { /* An unreadable settings file is reported by the settings read. */ }
         }
         // Both addresses are the one packaged page; any other address has no page of its own.
         if (serveAsset('/', req.headers, res)) return;

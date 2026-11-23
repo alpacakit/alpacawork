@@ -25,7 +25,7 @@ for(const mode of ['stop-pause','stop-before-publication'])test(`${mode}: no sto
  const h=await setup(t),parent=h.create('plain',{gate:h.gate('parent')}),child=h.create('plain',{gate:h.gate('child')},{role:'worker',placementId:h.memberPlacementId,caller:{run:parent.id}});
  await h.tick();await h.ready(parent);await h.ready(child);h.pauseProjection();h.store.close();
  const marker=join(h.root,'stop-boundary.json'),gate=join(h.root,'publish-release'),server=await subject(h.root,mode,marker,gate),op=randomUUID();
- const stop=call(server.info.url,'run/stop',{run:parent.id},op);void stop.catch(()=>undefined);
+ const stop=call(server.info.url,'commands/run/stop',{run:parent.id},op);void stop.catch(()=>undefined);
  try{
   await until(()=>existsSync(marker),'stop transaction committed');
   const stored=RunStore.openReadable(h.root,{busyTimeoutMs:1000})!;let commands:any[];
@@ -33,12 +33,12 @@ for(const mode of ['stop-pause','stop-before-publication'])test(`${mode}: no sto
   if(mode==='stop-pause'){
    let stopReturned=false,drained=false;void stop.then(()=>{stopReturned=true});const draining=call(server.info.url,'runtime/quiesce',{}).then(r=>{drained=true;return r});
    await delay(100);assert.equal(stopReturned,false);assert.equal(drained,false,'in-flight committed stop must block drained');
-   assert.equal((await call(server.info.url,'task/new',{title:'not admitted',parent:'P1'},randomUUID())).status,503);
+   assert.equal((await call(server.info.url,'commands/task/new',{title:'not admitted',parent:'P1'},randomUUID())).status,503);
    writeFileSync(gate,'');assert.equal((await stop).status,200);assert.equal((await draining).status,200);
    for(const row of commands!){const value=JSON.parse(row.json),path=join(h.root,'.alpacawork/runs',value.runId,'protocol',row.attempt_id,'commands',String(row.seq).padStart(12,'0')+'.json');assert.deepEqual(JSON.parse(readFileSync(path,'utf8')),value)}
   }else{
    await server.exited;await assert.rejects(stop);let observedListening=false;
-   const app=await startServer(h.root,0);try{for(const row of commands!){const c=JSON.parse(row.json);assert.ok(existsSync(join(h.root,'.alpacawork/runs',c.runId,'protocol',row.attempt_id,'commands',String(row.seq).padStart(12,'0')+'.json')))}observedListening=true;assert.equal((await call(app.url,'operation/get?opId='+op)).status,200);assert.equal((await call(app.url,'run/stop',{run:parent.id},op)).status,200)}finally{await app.close()}
+   const app=await startServer(h.root,0);try{for(const row of commands!){const c=JSON.parse(row.json);assert.ok(existsSync(join(h.root,'.alpacawork/runs',c.runId,'protocol',row.attempt_id,'commands',String(row.seq).padStart(12,'0')+'.json')))}observedListening=true;assert.equal((await call(app.url,'commands/operation/get?opId='+op)).status,200);assert.equal((await call(app.url,'commands/run/stop',{run:parent.id},op)).status,200)}finally{await app.close()}
    assert.equal(observedListening,true);
   }
   console.log(JSON.stringify({proof:'stop-commit-gate',mode,servePid:server.child.pid,marker:JSON.parse(readFileSync(marker,'utf8')),targets:commands!.map(row=>({attempt:row.attempt_id,seq:row.seq,command:JSON.parse(row.json)}))}));

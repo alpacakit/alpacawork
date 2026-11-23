@@ -18,10 +18,10 @@ test('formal HTTP switches the same FORMAT and DB while an existing Run keeps wo
  const file=join(f.workspace,'config.yaml'),config=parse(readFileSync(file,'utf8'));config.agents.synthetic=fixtureAgentSetting('claude');writeFileSync(file,stringify(config));
  const preload=join(f.root,'agent-path.mjs');writeFileSync(preload,'process.env.PATH='+JSON.stringify(installAgentStub(f.root,'claude',[process.execPath,agent]))+';');
  await f.start(f.workspace,[preload]);
- const act=(path:string,body:any)=>f.call(path,body,{'X-Alpacawork-Op-Id':body.opId??randomUUID(),'X-Alpacawork-Restore-Id':'initial'});
- const task=ok(await act('/api/task/new',{parent:'P1',title:'Synthetic update wait',userRequested:false})).task;
- const assigned=ok(await act('/api/agent/assign',{task:task.id,role:'responsible',profile:'synthetic',expectedTaskHash:task.hash}));
- ok(await act('/api/task/request',{task:task.id,instruction:'Wait for the local fixture gate',opId:randomUUID(),expectedTaskHash:assigned.task.hash,expectedPlacementRevision:assigned.agent.placement.revision}));
+ const act=(path:string,body:any)=>f.call(path,body,{'X-Alpacawork-Op-Id':randomUUID(),'X-Alpacawork-Restore-Id':'initial'});
+ const task=ok(await act('/api/commands/task/new',{parent:'P1',title:'Synthetic update wait',fromUser:false})).task;
+ const assigned=ok(await act('/api/commands/agent/assign',{task:task.id,role:'responsible',profile:'synthetic',expectedTaskHash:task.hash}));
+ ok(await act('/api/commands/task/request',{task:task.id,instruction:'Wait for the local fixture gate',expectedTaskHash:assigned.task.hash,expectedPlacementRevision:assigned.agent.placement.revision}));
  await until(async()=>existsSync(started),Boolean);
  const status=async()=>ok(await f.call('/api/update/status')),available=await until(status,s=>s.kind==='available');
  const review=ok(await f.call('/api/update/review?candidateId='+available.candidateId)),input={opId:randomUUID(),candidateId:available.candidateId,reviewDigest:review.reviewDigest};

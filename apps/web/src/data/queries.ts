@@ -1,3 +1,4 @@
+import { commandRoute } from '@alpacawork/contract/command-path';
 import { readExecution, readPageFailed, requestOlder } from './read-demand';
 import { listedPlacement, listedRun, readQuery, readIndex, serverReadFacts, isWrittenRead, readerPresentation, taskReadState, type TaskRead, requiredReadKeys, subscribeReads } from './read-model';
 import { fetchAcceptedResource, ensureReadAnchor, readerTaskRow, readState, recoverReads } from './resources';
@@ -474,7 +475,7 @@ export function useSaveServerSettings(meta?: WriteOptions) {
   return useMutation({ meta, mutationFn: async ({ yaml, agents, expected, opId, basis }: { yaml: string; agents: string; expected: string; opId?: string; basis?: WriteBasis }): Promise<ServerSettings> => {
     const wire = { expectedConfigHash: expected, config: yaml, agents };
     const access = bindIntentTransport(basis ?? workspaceWriteBasis(), { yaml, agents, expected }, wire, opId);
-    const settings = await api.request("config/set", serverSettingsSchema, undefined, wire, opId, access);
+    const settings = await api.request(commandRoute("config/set"), serverSettingsSchema, undefined, wire, opId, access);
     client.setQueryData(resources.serverSettings(root).queryKey, settings);
     // The saved agents may run another executable: their status is read again.
     void client.invalidateQueries({ queryKey: resources.agentStatus(root).queryKey });

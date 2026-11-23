@@ -43,9 +43,14 @@ export const projectShelfSchema = z.object({ revision: digestSchema, projects: z
   id: projectIdSchema, title: z.string(), color: projectColorSchema, parentId: projectIdSchema.nullable(), lifecycle: taskLifecycleSchema,
   hash: digestSchema, shelf: projectShelfInfoSchema }).strict()) }).strict();
 export type ProjectShelfDTO = z.infer<typeof projectShelfSchema>;
+export const workspaceUrlSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('serving'), localUrl: z.url(), publicUrl: z.url().nullable() }).strict(),
+  z.object({ status: z.literal('unavailable'), localUrl: z.null(), publicUrl: z.null() }).strict(),
+  z.object({ status: z.literal('unverified'), localUrl: z.null(), publicUrl: z.null() }).strict(),
+]);
 export const attachmentResultSchema = z.object({
   path: z.string().regex(/^attachments\/[A-Za-z0-9][A-Za-z0-9_-]{0,99}\/.+$/),
-  absolutePath: z.string().startsWith('/'),
+  absolutePath: z.union([z.string().startsWith('/api/'), z.url({ protocol: /^https?$/ })]),
   size: z.number().int().nonnegative(),
 }).strict();
 export type AttachmentResult = z.infer<typeof attachmentResultSchema>;

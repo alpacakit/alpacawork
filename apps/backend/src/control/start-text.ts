@@ -213,7 +213,7 @@ function examplesPart(source: LaunchSource, taskId: string, condition: EstimateC
   ];
   return { full: () => section(heading, [...lines, JSON.stringify(source.estimates?.(condition) ?? estimateExamples(source, condition))]),
     short: section(heading, [...lines,
-      `The examples are too large to include. Get them with alpacawork task get --task ${taskId} --estimate-examples.`]) };
+      `The examples are too large to include. Get them with alpacawork task get --task ${taskId} --include estimateExamples.`]) };
 }
 
 const READ_GUIDE = section('Reading records', [

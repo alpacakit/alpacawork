@@ -1,3 +1,4 @@
+import { commandFetch as fetch } from './helpers/command-fetch.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import type { RunRecord } from '@alpacawork/contract/run';
@@ -68,7 +69,7 @@ const read = async (url: string, path: string) => {
 
 test('Q3: old assets without a fixed ID cannot execute a DB mutation or create a receipt', async t => {
   const h = await fixture(t);
-  const response = await fetch(new URL('/api/task/update', h.app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  const response = await globalThis.fetch(new URL('/api/commands/task/update', h.app.url), { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ task: h.task.id, title: 'Must not save', expectedTaskHash: h.task.hash }) });
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.retry, 'check');
@@ -89,7 +90,7 @@ test('HTTP and CLI share immutable admission; one Task codec, no after snapshot,
     if (writing) { snapshots++; if (!taskIds) wholeProjects++; } return snapshot.call(this, project, taskIds);
   });
   const input = { task: h.task.id, title: 'Committed', expectedTaskHash: h.task.hash };
-  const first = await post(h.app.url, 'task/update', input, opId);
+  const first = await post(h.app.url, 'commands/task/update', input, opId);
   assert.equal(first.status, 200);
   const saved = taskWriteResultSchema.parse(first.body).task;
   // A write answers the Task it saved; its folder is only in task get/view.
@@ -99,38 +100,42 @@ test('HTTP and CLI share immutable admission; one Task codec, no after snapshot,
   // reads the saved Task alone.
   assert.equal(wholeProjects, 0, 'an update reads no whole project');
   assert.equal(snapshots, 2, 'no snapshot after the write; the response is targeted');
-  const next = await post(h.app.url, 'task/update', { task: h.task.id, title: 'Another writer', expectedTaskHash: saved.hash });
+  const next = await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Another writer', expectedTaskHash: saved.hash });
   assert.equal(next.status, 200);
   const cli = await cliRun(h.app.url, ['task', 'update', '--task', h.task.id, '--title', 'Committed', '--expected-task-hash', h.task.hash, '--op-id', opId]);
   assert.equal(cli.code, 0, cli.stderr);
   assert.deepEqual(JSON.parse(cli.stdout), first.body);
-  assert.deepEqual((await post(h.app.url, 'task/update', input, opId)).body, first.body);
-  assert.equal((await post(h.app.url, 'task/update', { ...input, title: 'Different' }, opId)).body.error.code, 'idempotency_conflict');
-  assert.equal((await post(h.app.url, 'task/update', input)).status, 409);
+  assert.deepEqual((await post(h.app.url, 'commands/task/update', input, opId)).body, first.body);
+  assert.equal((await post(h.app.url, 'commands/task/update', { ...input, title: 'Different' }, opId)).body.error.code, 'idempotency_conflict');
+  assert.equal((await post(h.app.url, 'commands/task/update', input)).status, 409);
   assert.equal((await read(h.app.url, `task/view?task=${h.task.id}`)).body.task.hash, next.body.task.hash);
 });
 
-test('body/report ID must equal transport ID; response and receipt faults roll back before commit', async t => {
+test('operation IDs belong in headers; response and receipt faults roll back before commit', async t => {
   const h = await fixture(t);
-  assert.equal((await post(h.app.url, 'task/report', { task: h.task.id, opId: 'body-id', state: 'doing',
-    title: 'Mismatch', description: 'Not saved', expectedTaskHash: h.task.hash }, 'header-id')).status, 400);
+  const idInBody = await globalThis.fetch(new URL('/api/commands/task/report', h.app.url), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': 'header-id' },
+    body: JSON.stringify({ task: h.task.id, opId: 'header-id', state: 'doing',
+      title: 'Report', description: 'Must not be saved', expectedTaskHash: h.task.hash }),
+  });
+  assert.equal(idInBody.status, 400);
   const db = new ControlStore(h.root);
   db.write(connection => connection.exec(`CREATE TRIGGER reject_receipt BEFORE INSERT ON cli_operations BEGIN SELECT RAISE(ABORT,'receipt fault'); END`));
   db.close();
-  assert.ok((await post(h.app.url, 'task/update', { task: h.task.id, title: 'Rollback', expectedTaskHash: h.task.hash })).status >= 500);
+  assert.ok((await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Rollback', expectedTaskHash: h.task.hash })).status >= 500);
   assert.equal((await new ControlTaskStore(h.root).get(h.task.id)).hash, h.task.hash);
   const drop = new ControlStore(h.root); drop.write(connection => connection.exec('DROP TRIGGER reject_receipt')); drop.close();
   const get = TaskRepository.prototype.get;
   t.mock.method(TaskRepository.prototype, 'get', function(this: TaskRepository, id: string) {
     const task = get.call(this, id); return { ...task, meta: { ...task.meta, title: '' } };
   });
-  assert.ok((await post(h.app.url, 'task/update', { task: h.task.id, title: 'Bad response', expectedTaskHash: h.task.hash })).status >= 500);
+  assert.ok((await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Bad response', expectedTaskHash: h.task.hash })).status >= 500);
   assert.equal((await new ControlTaskStore(h.root).get(h.task.id)).hash, h.task.hash);
 });
 
 test('a failed catch-up preserves its published frame and current GETs fail until their arrival floor is available', async t => {
   const h = await fixture(t);
-  const made = await post(h.app.url, 'task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Other' });
+  const made = await post(h.app.url, 'commands/task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Other' });
   assert.equal(made.status, 200);
   const other = String(made.body.task.id);
   const otherTask = (await new ControlTaskCommands(h.root, { kind: 'human' }).create({ parentId: other, userRequested: null,
@@ -141,8 +146,8 @@ test('a failed catch-up preserves its published frame and current GETs fail unti
   const fault = t.mock.method(DatabaseWorkspaceRecords.prototype, 'advance', function(this: DatabaseWorkspaceRecords, ...args: Parameters<typeof advance>) {
     throw new Error('captured Task read failed');
   });
-  assert.equal((await post(h.app.url, 'task/update', { task: otherTask.id, title: 'Other changed', expectedTaskHash: otherTask.hash })).status, 200);
-  assert.equal((await post(h.app.url, 'task/update', { task: h.task.id, title: 'Healthy new', expectedTaskHash: h.task.hash })).status, 200);
+  assert.equal((await post(h.app.url, 'commands/task/update', { task: otherTask.id, title: 'Other changed', expectedTaskHash: otherTask.hash })).status, 200);
+  assert.equal((await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Healthy new', expectedTaskHash: h.task.hash })).status, 200);
   assert.equal((await read(h.app.url, 'workspace/live')).status, 503);
   assert.equal((await read(h.app.url, `task/view?task=${otherTask.id}`)).status, 503);
   assert.equal((await read(h.app.url, `task/view?task=${h.task.id}`)).status, 503);
@@ -168,7 +173,7 @@ test('a current GET observes its commit floor while an older response still hold
   const oldRead = read(h.app.url, `task/view?task=${h.task.id}`);
   await entered.promise;
   try {
-    const saved = await post(h.app.url, 'task/update', { task: h.task.id, title: 'During old read', expectedTaskHash: h.task.hash });
+    const saved = await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'During old read', expectedTaskHash: h.task.hash });
     assert.equal(saved.status, 200, 'a captured read cannot own the writer lane');
     const current = await read(h.app.url, `task/view?task=${h.task.id}`);
     assert.equal(current.status, 200);
@@ -188,17 +193,17 @@ test('Q6: response never finishing cannot block the next writer or a current GET
   const h = await fixture(t), end = ServerResponse.prototype.end;
   const held: ServerResponse[] = [];
   t.mock.method(ServerResponse.prototype, 'end', function(this: ServerResponse, ...args: any[]) {
-    if (!held.length && this.req.url?.startsWith('/api/task/update')) { held.push(this); return this; }
+    if (!held.length && this.req.url?.startsWith('/api/commands/task/update')) { held.push(this); return this; }
     return (end as any).apply(this, args);
   });
-  const slow = post(h.app.url, 'task/update', { task: h.task.id, title: 'Slow socket write', expectedTaskHash: h.task.hash });
+  const slow = post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Slow socket write', expectedTaskHash: h.task.hash });
   const deadline = performance.now() + 3000;
   while (!held.length && performance.now() < deadline) await delay(5);
   assert.equal(held.length, 1);
   try {
     const current = taskProjectedViewSchema.parse((await read(h.app.url, `task/view?task=${h.task.id}`)).body).task;
     assert.equal(current.title, 'Slow socket write');
-    assert.equal((await post(h.app.url, 'task/update', { task: h.task.id, title: 'Next writer', expectedTaskHash: current.hash })).status, 200);
+    assert.equal((await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Next writer', expectedTaskHash: current.hash })).status, 200);
   } finally { end.call(held[0]!); await slow; }
 });
 
@@ -217,7 +222,7 @@ test('Q6: quiesce ends GET waiters, drains accepted reads, and late finish canno
     gate.release(); assert.equal((await quiesce).status, 200);
     const count = reads;
     assert.equal((await read(h.app.url, `task/view?task=${h.task.id}`)).status, 503);
-    assert.equal((await post(h.app.url, 'task/update', { task: h.task.id, title: 'No admission', expectedTaskHash: h.task.hash })).status, 503);
+    assert.equal((await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'No admission', expectedTaskHash: h.task.hash })).status, 503);
     await delay(20); assert.equal(reads, count);
   } finally { gate.release(); }
 });
@@ -229,7 +234,7 @@ test('Q7: Push save fault cannot reject committed writes or block screen/SSE; ne
   const opId = randomUUID();
   // A person stops the Task they asked for: the home list's row, noticed as stopped.
   const input = { task: h.task.id, opId, state: 'stopped', title: 'Stop now', description: 'Check', expectedTaskHash: h.task.hash };
-  const saved = await post(h.app.url, 'task/report', input, opId);
+  const saved = await post(h.app.url, 'commands/task/report', input, opId);
   assert.equal(saved.status, 200);
   assert.equal((await read(h.app.url, `task/view?task=${h.task.id}`)).body.task.hash, saved.body.task.hash);
   const index = await read(h.app.url, 'workspace/live'); assert.equal(index.status, 200);
@@ -246,7 +251,7 @@ test('Q7: Push save fault cannot reject committed writes or block screen/SSE; ne
 test('gate postcommit fault retains the immutable saved result', async t => {
   const h = await fixture(t);
   t.mock.method(StopDeliveryOwner.prototype, 'gate', () => { throw Error('delivery gate fault'); });
-  const result = await post(h.app.url, 'task/update', { task: h.task.id, title: 'Saved despite delivery fault', expectedTaskHash: h.task.hash });
+  const result = await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Saved despite delivery fault', expectedTaskHash: h.task.hash });
   assert.equal(result.status, 200);
   assert.equal((await new ControlTaskStore(h.root).get(h.task.id)).hash, result.body.task.hash);
   t.mock.restoreAll();
@@ -285,7 +290,7 @@ test('Q6: an admitted mutation may commit during quiesce without registering ano
   });
   const snapshot = TaskRepository.prototype.snapshot;
   t.mock.method(TaskRepository.prototype, 'snapshot', function(this: TaskRepository, project?: string, taskIds?: readonly string[]) { if (!taskIds) reads++; return snapshot.call(this, project, taskIds); });
-  const saved = post(h.app.url, 'task/update', { task: h.task.id, title: 'Accepted before quiesce', expectedTaskHash: h.task.hash });
+  const saved = post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Accepted before quiesce', expectedTaskHash: h.task.hash });
   await entered.promise;
   try {
     const stop = post(h.app.url, 'runtime/quiesce', {}); await delay(20);
@@ -313,7 +318,7 @@ test('Q7: delivery completed after another observe/save is committed to the curr
   const h = await fixture(t, { pushSender: async () => { calls++; entered.release(); await gate.promise; return { status: 201 }; } });
   await post(h.app.url, 'notify/subscribe', { subscription, label: 'First label' });
   const opId = randomUUID();
-  await post(h.app.url, 'task/report', { task: h.task.id, state: 'stopped',
+  await post(h.app.url, 'commands/task/report', { task: h.task.id, state: 'stopped',
     title: 'Notify once', description: 'Stopped', opId, expectedTaskHash: h.task.hash }, opId);
   await Promise.race([entered.promise, delay(5000).then(() => { throw Error('delivery did not start'); })]);
   try {
@@ -334,10 +339,10 @@ test('Q7: delivery completed after another observe/save is committed to the curr
 
 test('Run authentication is checked before every receipt replay', async t => {
   const h = await fixture(t), opId = randomUUID();
-  const first = await post(h.app.url, 'task/update', { task: h.task.id, title: 'Default commit', expectedTaskHash: h.task.hash }, opId);
+  const first = await post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Default commit', expectedTaskHash: h.task.hash }, opId);
   assert.equal(first.status, 200);
-  assert.equal((await read(h.app.url, `operation/get?opId=${opId}`)).body.body.task.title, 'Default commit');
-  const response = await fetch(new URL('/api/task/update', h.app.url), { method: 'POST', headers: {
+  assert.equal((await read(h.app.url, `commands/operation/get?opId=${opId}`)).body.body.task.title, 'Default commit');
+  const response = await fetch(new URL('/api/commands/task/update', h.app.url), { method: 'POST', headers: {
     'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': opId, Authorization: `Alpacawork-Run R1:${'a'.repeat(64)}` },
     body: JSON.stringify({ task: h.task.id, title: 'Default commit', expectedTaskHash: h.task.hash }) });
   assert.equal(response.status, 403, 'even an exact receipt replay cannot bypass Run authentication');
@@ -353,7 +358,7 @@ test('Q6: a pass queued behind a mutation does not start business work after qui
   t.mock.method(ControlStore.prototype, 'writeOperationAsync', function(this: ControlStore, input: any, callback: () => Promise<any>) {
     return original.call(this, input, async () => { const result = await callback(); entered.release(); await gate.promise; return result; });
   });
-  const mutation = post(h.app.url, 'task/update', { task: h.task.id, title: 'Admitted', expectedTaskHash: h.task.hash });
+  const mutation = post(h.app.url, 'commands/task/update', { task: h.task.id, title: 'Admitted', expectedTaskHash: h.task.hash });
   await entered.promise;
   try {
     await clock.advance(1000);
@@ -407,8 +412,8 @@ test('Return publication reads each inserted result by identity without reloadin
       return callback(tx);
     });
   });
-  assert.equal((await post(h.app.url, 'workspace/returns', {})).status, 200);
-  const published = await read(h.app.url, `task/returns?task=${h.task.id}`);
+  assert.equal((await post(h.app.url, 'commands/workspace/returns', {})).status, 200);
+  const published = await read(h.app.url, `commands/task/returns?task=${h.task.id}`);
   assert.equal(published.status, 200);
   assert.equal(published.body.returns.length, 12);
 });
@@ -416,7 +421,7 @@ test('Return publication reads each inserted result by identity without reloadin
 
 test('Run reconciliation preserves unrelated task bundles and detail versions', async t => {
   const clock = receiverClock(t), h = await fixture(t);
-  const made = await post(h.app.url, 'task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Untouched' });
+  const made = await post(h.app.url, 'commands/task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Untouched' });
   assert.equal(made.status, 200);
   const other = String(made.body.task.id);
   const runs = new RunStore(h.root, { busyTimeoutMs: 1000 });
@@ -489,7 +494,7 @@ test('Q7: quiesce drains an accepted Push tick still reading its notice input', 
 
 test('completion routing acknowledges only its captured protocol progress without invalidating unrelated tasks', async t => {
   const clock = receiverClock(t), h = await fixture(t);
-  const made = await post(h.app.url, 'task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Untouched' });
+  const made = await post(h.app.url, 'commands/task/new', { kind: 'project', color: '#39659b', parent: ROOT_PROJECT, title: 'Untouched' });
   assert.equal(made.status, 200);
   const other = String(made.body.task.id);
   const runs = new RunStore(h.root, { busyTimeoutMs: 1000 }); t.after(() => runs.close());
@@ -580,7 +585,7 @@ test('Task creation validates the branch and parent without reading unrelated hi
     if (!taskIds) throw new Error('unrelated full history read');
     return snapshot.call(this, project, taskIds);
   });
-  const top = await post(h.app.url, 'task/new', { parent: h.project, title: 'No unrelated history' });
+  const top = await post(h.app.url, 'commands/task/new', { parent: h.project, title: 'No unrelated history' });
   assert.equal(top.status, 200, 'a Task below its project needs the branch, not every existing history');
   const commands = new ControlTaskCommands(h.root, { kind: 'placement', placementId: owner.id });
   const child = (await commands.create({ parentId: h.task.id, userRequested: false,
@@ -588,6 +593,6 @@ test('Task creation validates the branch and parent without reading unrelated hi
   assert.equal(child.parentId, h.task.id);
   await assert.rejects(commands.create({ parentId: h.task.id, userRequested: false,
     tasks: [{ title: 'Stale parent' }], expectedParentHash: '0'.repeat(64) }), { code: 'conflict' });
-  assert.equal((await read(h.app.url, 'task/get?task=' + child.id)).body.task.title, 'With current parent');
+  assert.equal((await read(h.app.url, 'commands/task/get?task=' + child.id)).body.task.title, 'With current parent');
 
 });

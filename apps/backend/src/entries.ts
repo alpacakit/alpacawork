@@ -14,6 +14,8 @@ import {
 } from '@alpacakit/channels';
 import { bindHttpEntry } from '@alpacakit/channels/http';
 import { z } from 'zod';
+import type { WriteGrant } from './control/file-journal.js';
+import { removeTaskAttachment, moveTaskAttachments } from './control/task-files.js';
 import type { CommandInput, CommandName } from '@alpacawork/contract/commands';
 import { replySource, replyPage } from './coordinator/reply.js';
 import { mayReadReply } from './coordinator/messages.js';
@@ -21,14 +23,14 @@ import { initializeInstallation } from './installation/setup.js';
 import { InstallationStore, installationPath } from './installation/store.js';
 import { bindCliOptions, textParameter } from '@alpacawork/cli-kit';
 import { defaultParentAt, projectAtCwd, writeProjectLocation } from './control/project-settings.js';
-import { inspectServerSettings, saveServerSettings } from './server-settings.js';
+import { inspectServerSettings, readServerSettings, saveServerSettings } from './server-settings.js';
 import { PROBLEM_CODE, Problem, parseInput } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
 import { type TaskActor } from '@alpacawork/raw';
 import { requestStop } from './runs/entry.js';
 import { readRunFiles } from './runs/view.js';
-import { commandLaunchInput, taskPlanInput, emptyInput, configSetInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
+import { emptyInput, configSetInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
 import { deleteField, listFields, readSchema, setField } from './control/field-commands.js';
 import { now } from '@alpacawork/raw';
 import { ReturnRouter } from './control/return-router.js';
@@ -67,6 +69,8 @@ export interface Context {
    */
   opId?: string;
   readOperation?: (opId: string, caller: Caller) => unknown;
+  grantFileWrite?: (task: string) => WriteGrant;
+  fileChanged?: (task: string) => Promise<void>;
   /** A person's CLI working directory (its real path, `X-Alpacawork-Cwd`; null when not sent), for the cwd rule (`projectAtCwd`). */
   cwd?: string | null;
 }
@@ -298,7 +302,7 @@ export const foldersNode = defineEntryNode({ name: 'folders',
       textParameter('name', 'New folder name')], 'POST', makeFolderInput,
       async (root, input) => makeFolder(root, input)), SCREEN)] })] });
 
-export type JsonCommandName = Exclude<CommandName, `task/${'file' | 'attachment'}/${string}`>;
+export type JsonCommandName = Exclude<CommandName, `task/file/${string}` | 'task/attachment/put'>;
 export type ServerCommand<Input, C extends Context = Context> = {
   run: (root: string, input: Input, context: C) => unknown;
   act?: (input: Input, reading: WriteReading) => WriteAct;
@@ -306,7 +310,7 @@ export type ServerCommand<Input, C extends Context = Context> = {
   journaled?: true;
   replayFromRun?: true;
   inputEvidence?: (query: (name: string) => string | undefined) => { replyTo?: string };
-  readThread?: (query: URLSearchParams) => boolean;
+  readThread?: (input: Input) => boolean;
 };
 type LocalCommands = Exclude<JsonCommandName, `settings/${string}` | 'project/shelf' | 'workspace/url' | 'operation/get'>;
 
@@ -319,25 +323,21 @@ function lifecycleCommand(action: 'archive' | 'delete' | 'restore'): ServerComma
   };
 }
 
-const optionalCount = (value?: string) => value === undefined ? undefined : Number(value);
-
 export const taskCommands = {
   'task/get': {
     run: async (root, input, context) => {
       const { readScope } = authorizeRead(root, context, { name: 'task.read' }, input.task);
-      return readTaskView(root, input.task, { log: optionalCount(input.log), runs: optionalCount(input.runs),
-        files: input.files === true, usage: input.usage === true, estimateExamples: input.estimateExamples === true,
-        question: input.question, openObligations: input.openObligations === true }, readScope);
+      return readTaskView(root, input.task, { log: input.log, runs: input.runs, question: input.question, include: input.include }, readScope);
     },
-    readThread: query => !['files', 'usage'].some(key => query.has(key)),
+    readThread: ({ include }) => !include?.some(key => ['files', 'usage', 'openObligations', 'estimateExamples'].includes(key)),
   },
   'task/list': {
     run: async (root, input, context) => {
       const { readScope } = authorizeRead(root, context, { name: 'task.list' }, null);
-      return readTaskListView(root, { under: input.under, depth: optionalCount(input.depth), text: input.text, in: input.in, limit: optionalCount(input.limit), state: input.state,
+      return readTaskListView(root, { under: input.under, depth: input.depth, text: input.text, in: input.in, limit: input.limit, cursor: input.cursor, state: input.state,
         all: input.all === true, kind: input.kind }, readScope);
     },
-    readThread: query => !['text', 'in'].some(key => query.has(key)),
+    readThread: ({ text, in: places }) => !text && !places?.length,
   },
   'task/returns': {
     run: async (root, input, context) =>
@@ -351,7 +351,7 @@ export const taskCommands = {
     run: async (root, input, context) => {
       const parentId = readControl(root, db =>
         creationParent(root, db, input.parent, requireCaller(context), context.cwd ?? null));
-      const { plan } = parseInput(taskPlanInput, { plan: input.plan });
+      const { plan } = input;
       const { tasks } = await new ControlTaskCommands(root, requireActor(context)).create({ kind: input.kind, color: input.color, parentId,
         userRequested: input.fromUser ?? null, tasks: plan ?? [{ title: input.title!, values: input.values }],
         expectedParentHash: input.expectedParentHash });
@@ -379,7 +379,7 @@ export const taskCommands = {
       return { action: commandAction('task.report', input), task, quote: input.quote };
     },
     run: async (root, input, context) =>
-    new TaskReportService(root).report(input, requireActor(context), requireCaller(context)),
+    new TaskReportService(root).report({ ...input, opId: operationId(context) }, requireActor(context), requireCaller(context)),
     limit: DOCUMENT_REQUEST_LIMIT,
     replayFromRun: true,
   },
@@ -392,8 +392,8 @@ export const taskCommands = {
       const question = replyQuestion(input.task, new TaskRepository(root, db).get(input.task).meta.log, answers);
       return taskAct('task.request', input, { askedTo: question.asked.askedTo, closed: question.closing !== null });
     },
-    run: async (root, { instruction, selected, aiStack, ...input }, context) =>
-      new TaskRequestService(root).request({ ...input, body: instruction, ...parseInput(commandLaunchInput, { selected, aiStack }) },
+    run: async (root, { instruction, ...input }, context) =>
+      new TaskRequestService(root).request({ ...input, body: instruction, opId: operationId(context) },
         requireActor(context), requireCaller(context)),
     limit: LARGE_REQUEST_LIMIT,
   },
@@ -430,7 +430,7 @@ export const taskCommands = {
     act: input => taskAct('agent.assign', input),
     run: async (root, input, context) => {
       const commands = new PlacementCommands(root), actor = requireActor(context);
-      const launch = parseInput(commandLaunchInput, input);
+      const launch = { selected: input.selected, aiStack: input.aiStack };
       const agent = input.role === 'responsible'
         ? await commands.placeNewResponsible({ taskId: input.task, profileKey: input.profile,
           ...launch,
@@ -504,7 +504,31 @@ export const taskCommands = {
     run: async (root, input) => deleteField(root, input.field),
   },
   'config/get': {
+    run: root => readServerSettings(root),
+  },
+  'config/inspect': {
+    act: () => ({ action: { name: 'config.inspect' }, task: null }),
     run: (root, input, context) => inspectServerSettings(root, input, context.agentInspection),
+  },
+  'task/attachment/remove': {
+    journaled: true,
+    act: ({ task }) => ({ action: { name: 'file.write' }, task }),
+    run: async (root, input, context) => {
+      const result = await removeTaskAttachment(root, input.task, input.requestId, input.name,
+        operationId(context), context.grantFileWrite!(input.task));
+      await context.fileChanged!(input.task);
+      return result;
+    },
+  },
+  'task/attachment/move': {
+    journaled: true,
+    act: ({ task }) => ({ action: { name: 'file.write' }, task }),
+    run: async (root, input, context) => {
+      const result = await moveTaskAttachments(root, input.task, input.from, input.to,
+        operationId(context), context.grantFileWrite!(input.task));
+      await context.fileChanged!(input.task);
+      return result;
+    },
   },
   'config/set': {
     act: () => ({ action: { name: 'config.set' }, task: null }),

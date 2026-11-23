@@ -12,7 +12,7 @@ try{for(const width of [1440,390]){
  const runtime=await start(undefined,undefined,resolve('.local/list-motion-runtime',basename(output)+'-'+width+'-'+Date.now()));
  try{for(let round=0;round<3;round++){
   const post=async(path:string,data:object)=>{const r=await fetch(runtime.origin+'/api/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});assert.equal(r.status,200,await r.clone().text());return r.json();};
-  const made=await post('task/new',{parent:'P1',title:'Visible new report '+round,fromUser:true});
+  const made=await post('commands/task/new',{parent:'P1',title:'Visible new report '+round,fromUser:true});
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:true,isMobile:width<700,locale:'en-US',timezoneId:'Asia/Tokyo',serviceWorkers:'block'});
   try{const page=await context.newPage();await installProbe(page);await page.goto(runtime.origin+'/?agent=1&zoom=1800000');await page.locator('[data-time-tree]').waitFor();
    if(width<700&&await page.locator('header [data-strips]').getAttribute('aria-pressed')!=='true')await page.locator('header [data-strips]').click();
@@ -33,7 +33,7 @@ try{for(const width of [1440,390]){
    },made.task.id);
    let samples:any[]=[];
    const run=await measurer(page,context,{output,width,throttle,extra:{freshTaskScope:true}},results);
-   const measured=await run('new-mark-'+round,650,async()=>{await post('task/report',{task:made.task.id,state:'done',title:'New report',description:'Visible new report',opId:crypto.randomUUID(),expectedTaskHash:made.task.hash});
+   const measured=await run('new-mark-'+round,650,async()=>{await post('commands/task/report',{task:made.task.id,state:'done',title:'New report',description:'Visible new report',opId:crypto.randomUUID(),expectedTaskHash:made.task.hash});
     await page.waitForFunction(()=>window.listMotion.animations.some(a=>a.props.includes('scale')));samples=await page.evaluate(()=>(window as any).newMarkSamples);},animations=>animations.filter(a=>a.props.includes('scale')).length===1 && samples.length===1 && samples.every(s=>s.task===made.task.id));
    // Geometry is read after the measured interval; it cannot add a layout to that interval.
    const visible=await page.evaluate(()=>(window as any).newMarkGlyphs.map((glyph:Element)=>{

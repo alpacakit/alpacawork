@@ -17,9 +17,9 @@ for (const operation of ['config', 'lifecycle', 'stop'] as const)
   test(`${operation}: real hook passes the intent ID in transport and preserves the command input shape`, async () => {
     const fixed = `fixed-${operation}`;
     const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/config/set')) return new Response(JSON.stringify({ hash: 'c'.repeat(64),
+      if (String(url).includes('/api/commands/config/set')) return new Response(JSON.stringify({ hash: 'c'.repeat(64),
         agentsText: 'agents: {}\n', agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } }));
-      if (String(url).includes('/api/run/stop')) return new Response(JSON.stringify({ cancelled: [], stop_requested: [], already_finished: [] }));
+      if (String(url).includes('/api/commands/run/stop')) return new Response(JSON.stringify({ cancelled: [], stop_requested: [], already_finished: [] }));
       return new Response(JSON.stringify({ task: headOf(dto({ id: 'T1', version: 2 })), outcome: { kind: 'recorded', opId: fixed } }));
     });
     const hook = renderHook(() => ({ config: useSaveServerSettings(), lifecycle: useLifecycle(), stop: useStopRun() }), { wrapper });

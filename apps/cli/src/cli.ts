@@ -10,14 +10,16 @@ import { realpathSync } from 'node:fs';
 import { appRoot } from '../../../scripts/app-root.mjs';
 import { Command, CommanderError } from 'commander';
 import {
-  commandFlag, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
+  commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
 } from '@alpacawork/contract/commands';
+import { commandPath } from '@alpacawork/contract/command-path';
+import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
 import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import { CLI_EXIT_CODE, defaultPolicy, failureExitCode, openBrowser } from '@alpacawork/cli-kit';
 import { DEFAULT_SERVER_ORIGIN } from '@alpacawork/contract/default-server';
 import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { operationId, writeAttempt } from './write-attempt.js';
-import { actorHeaders, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
+import { actorHeaders, LostAnswer, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
 import { saveServer, selectServer, unsetServer, verifyServer } from './endpoint.js';
 import { MAX_FILE_BYTES } from '@alpacawork/contract';
 import { stopLocal } from '@alpacawork/contract/local-stop';
@@ -43,10 +45,13 @@ async function document(path: string, option: CommandOption): Promise<unknown> {
   let text: string;
   try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
   catch { throw new Problem(PROBLEM_CODE.invalidInput, `${name} must be UTF-8`); }
-  if (!option.jsonFile) return text;
+  return option.jsonFile ? jsonInput(option, text) : text;
+}
+
+function jsonInput(option: CommandOption, text: string): unknown {
   try { return JSON.parse(text) as unknown; }
   catch {
-    const message = `${name} must contain JSON`;
+    const message = `${commandFlag(option)} must contain JSON`;
     throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
       { issues: [{ path: option.key, code: 'invalid_json', message }] });
   }
@@ -91,17 +96,6 @@ async function readStdin(max: number, name: string): Promise<Uint8Array> {
   return Buffer.concat(chunks);
 }
 
-function absoluteUrls(value: unknown, origin: string): unknown {
-  if (Array.isArray(value)) return value.map(item => absoluteUrls(item, origin));
-  if (typeof value !== 'object' || value === null) return value;
-  const result: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value)) {
-    result[key] = (key === 'folder' || key === 'path') && typeof item === 'string' && item.startsWith('/api/')
-      ? new URL(item, origin).href : absoluteUrls(item, origin);
-  }
-  return result;
-}
-
 const optionKey = (option: CommandOption) => option.kind === 'file' ? option.key + 'File' : option.key;
 async function inputFor(spec: RemoteCommand, values: Record<string, unknown>): Promise<Record<string, unknown>> {
   const given = spec.options.filter(option => !option.local && values[optionKey(option)] !== undefined);
@@ -111,6 +105,8 @@ async function inputFor(spec: RemoteCommand, values: Record<string, unknown>): P
   for (const option of given) {
     const value = values[optionKey(option)];
     input[option.key] = option.kind === 'file' ? await document(String(value), option)
+      : option.kind === 'json' ? jsonInput(option, String(value))
+      : option.jsonScalar && (value === 'true' || value === 'false' || value === 'null') ? JSON.parse(value)
       : option.nullable && value === 'null' ? null : value;
   }
   return input;
@@ -125,7 +121,7 @@ function sendWorkingDirectory(headers: Headers): void {
 }
 
 /** The bytes of --file to upload, with the headers that describe them set on `headers`. */
-async function uploadBytes(options: Record<string, unknown>, headers: Headers): Promise<Uint8Array> {
+async function uploadBytes(options: Record<string, unknown>, headers: Headers, contentDigest?: string): Promise<Uint8Array> {
   if (typeof options.file !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, '--file is required');
   let bytes: Uint8Array;
   try { bytes = await boundedFile(options.file, MAX_FILE_BYTES, '--file'); }
@@ -133,7 +129,7 @@ async function uploadBytes(options: Record<string, unknown>, headers: Headers): 
     if (error instanceof Problem) throw error;
     throw new Problem(PROBLEM_CODE.invalidInput, 'Cannot read --file');
   }
-  headers.set('X-Alpacawork-Content-Digest', createHash('sha256').update(bytes).digest('hex'));
+  if (contentDigest) headers.set(contentDigest, createHash('sha256').update(bytes).digest('hex'));
   headers.set('Content-Type', 'application/octet-stream');
   return bytes;
 }
@@ -150,7 +146,7 @@ async function execute(spec: RemoteCommand, input: Record<string, unknown>, { or
     opId ? writeAttempt(prepareRequest(origin, path, method, input, headers), opId, origin, undefined, undefined, pinRestore)
       : request(origin, path, method, input, headers);
   if (spec.file) {
-    const { path, method, query, headers: inputHeaders, body, response } = spec.file;
+    const { path, method, query, headers: inputHeaders, contentDigest, body, response } = spec.file;
     const route = path.replace(/:([^/]+)/g, (_match, key: string) => encodeURIComponent(String(input[key])));
     const search = new URLSearchParams(query?.map(key => [key, String(input[key])]));
     const target = search.size > 0 ? `${route}?${search}` : route;
@@ -164,20 +160,25 @@ async function execute(spec: RemoteCommand, input: Record<string, unknown>, { or
       await writeFile(options.output, bytes, { flag: 'wx' });
       return { path: options.output, bytes: bytes.length };
     }
-    if (body === 'bytes') return send(target, method, await uploadBytes(options, headers));
-    if (body === 'json') {
-      const payload: Record<string, unknown> = { ...input, opId };
-      delete payload.task;
-      return send(target, method, payload);
-    }
+    if (body === 'bytes') return send(target, method, await uploadBytes(options, headers, contentDigest));
     return send(target, method, undefined);
+  }
+  if (spec.kind === 'run') {
+    const identity = recoveryIdentitySchema.parse(await request(origin, '/api/runtime/recovery', 'GET', undefined, headers));
+    headers.set(RESTORE_HEADER, identity.restoreId);
+    try { return await send(spec.path, spec.method, input); }
+    catch (error) {
+      if (!(error instanceof LostAnswer)) throw error;
+      throw new Problem(PROBLEM_CODE.unavailable, 'Execution result unknown; the server did not return a complete answer',
+        { state: 'result_unknown' }, { cause: error });
+    }
   }
   let diffs: DiffSummary[] | undefined;
   if (spec.attachesDiffs && typeof input[spec.attachesDiffs] === 'string') {
     const description = input[spec.attachesDiffs] as string, commands = findDiffCommands(description);
     if (commands.length) {
       const run = process.env.ALPACAWORK_RUN;
-      const ownTask = run ? controlRunFilesSchema.parse(await request(origin, '/api/run/get', 'GET', { run }, headers)).taskId : undefined;
+      const ownTask = run ? controlRunFilesSchema.parse(await request(origin, commandPath('run/get'), 'GET', { run }, headers)).taskId : undefined;
       const task = typeof input.task === 'string' ? input.task : ownTask;
       if (ownTask && ownTask !== task) diffs = commands.map(found => ({ command: found.command, attached: false,
         reason: 'A Run can attach files only to its own Task; this report is for another Task' }));
@@ -209,7 +210,7 @@ async function execute(spec: RemoteCommand, input: Record<string, unknown>, { or
     }
   }
   const result = await send(spec.path, spec.method, input);
-  return absoluteUrls(diffs ? { ...(result as Record<string, unknown>), diffs } : result, origin);
+  return diffs ? { ...(result as Record<string, unknown>), diffs } : result;
 }
 
 export async function main(args = process.argv.slice(2), local: { server?: string } = {}): Promise<number> {
@@ -292,7 +293,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
         : 'No browser could be started here. Open the URL in your own browser.\n');
     });
   const groups = new Map<string, Command>();
-  const registerGroups = (node: (typeof bound.tree.root.children)[number], parent: Command, words: string[]) => {
+  const registerGroups = (node: (typeof bound.cliRoot.children)[number], parent: Command, words: string[]) => {
     for (const child of node.children) {
       const path = [...words, child.name];
       if (child.children.length === 0) continue;
@@ -301,7 +302,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
       registerGroups(child, group, path);
     }
   };
-  registerGroups(bound.tree.root, program, []);
+  registerGroups(bound.cliRoot, program, []);
   for (const spec of bound.commands) {
     const words = spec.words;
     const group = groups.get(words.slice(0, -1).join('/'))!;
@@ -309,9 +310,9 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     const writes = spec.kind === 'write';
     command.addHelpText('after', () => accessHelp(spec.access));
     if (writes) command.addHelpText('after', '\n' + cliWriteHelp);
+    if (spec.rules?.length) command.addHelpText('after', '\n' + commandRuleHelp(spec, true).join('\n'));
     if (spec.help) command.addHelpText('after', spec.help);
     for (const option of spec.options) {
-      if (option.key === 'opId' && writes) continue;
       const syntax = commandFlag(option);
       if (option.kind === 'boolean') {
         const negative = syntax.replace(/^--/, '--no-');
@@ -336,8 +337,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     if (writes) command.option('--op-id <id>', 'Operation key (random UUID when omitted; specify to check after process loss)');
     command.action(async (options: Record<string, unknown>) => {
       const opId = writes ? operationId(options.opId) : undefined;
-      const input = spec.parse(await inputFor(spec, { ...options, ...(writes ? { opId } : {}) }));
-      const result = await spec.handler(spec.prepareCli?.(input) ?? input, { origin: (await selectedServer()).server, options, opId });
+      const input = spec.parse(await inputFor(spec, options));
+      const result = await spec.handler(input, { origin: (await selectedServer()).server, options, opId });
       if (result !== undefined) process.stdout.write(JSON.stringify(result) + '\n');
       process.exitCode = defaultPolicy.exitCode(result);
     });

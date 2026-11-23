@@ -443,7 +443,7 @@
       "settings_changed_another_view": "设置已在其他界面中更改",
       "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project": "有多个活动项目。请用 --{{option}} <ID> 指定其中一个，或在项目的工作文件夹内执行（alpacawork task list --kind project）",
       "sqlite_serialization_required": "需要支持 SQLite 序列化的 Node",
-      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "停止已提交，但尚未生效。请用同一个操作 ID 检查或重试",
+      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "停止操作已保存，正在等待生效。请使用相同的输入、操作 ID 和恢复 ID 重发原写入请求",
       "stopped_task_requires_new_request": "已停止的任务需要用户发出新的委托才能重新开始。",
       "subtree_root_does_not_exist": "未找到子树的根任务",
       "supply_state_or_withdraw": "请指定 --state 或 --withdraw",

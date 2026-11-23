@@ -164,7 +164,7 @@ test('HTTP CLI help performs no work and exposes the server selector', async () 
   assert.match(reportHelp.stdout, /--description-file <path>/);
   assert.match(reportHelp.stdout, /--op-id <id>/);
   assert.match(reportHelp.stdout, /--estimate-minutes <value>/);
-  assert.match(reportHelp.stdout, /no --estimate-minutes\b/);
+  assert.match(reportHelp.stdout, /Omit --estimate-minutes\b/);
   const fieldHelp = (await run(['field', 'set', '-h'])).stdout;
   for (const flag of ['--many', '--no-many', '--required', '--no-required'])
     assert.match(fieldHelp, new RegExp(`^\\s+${flag}\\s{2,}`, 'm'));
@@ -362,8 +362,8 @@ test('serve accepts explicit ephemeral port, keeps CLI-only operations private a
   assert.deepEqual(Object.keys(startup).sort(),["connection","root","url"]);
   const base = new URL(startup.url).origin;
   assert.ok(new URL(base).port);
-  assert.equal(await httpStatus(base + '/api/field/get'), 200);
-  assert.equal(await httpStatus(base + '/api/field/get?root=other'), 400);
+  assert.equal(await httpStatus(base + '/api/commands/field/get'), 200);
+  assert.equal(await httpStatus(base + '/api/commands/field/get?root=other'), 400);
   assert.equal(await httpStatus(base + '/api/field/get-rules'), 404);
   assert.equal((await run(['schema', 'get-rules'])).code, 2);
   for (const operation of ['workspace', 'serve', 'capture', 'flush'])
@@ -375,7 +375,7 @@ test('serve accepts explicit ephemeral port, keeps CLI-only operations private a
   clearTimeout(watchdog);
   assert.equal(code, 0, stderr);
   assert.equal(signal, null);
-  await assert.rejects(fetch(base + '/api/field/get'));
+  await assert.rejects(fetch(base + '/api/commands/field/get'));
 });
 
 for (const explicit of [false, true]) test(`a Run cannot serve another workspace through ${explicit ? '--workspace' : 'ALPACAWORK_WORKSPACE'}`, async () => {

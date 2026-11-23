@@ -1,3 +1,4 @@
+import { commandFetch as fetch } from './helpers/command-fetch.ts';
 /**
  * Who may do what, through the public HTTP entries: every HTTP act of authorize's table (ACTIONS, its only source)
  * tried by every caller over HTTP, as the server identifies them: a Run by its credential, the coordinator by its
@@ -115,10 +116,10 @@ async function actors(t: TestContext) {
     const body = request.body === undefined ? undefined
       : JSON.stringify({ ...request.body,
         // Only the target's own Run asks; a manager can return a held review without question options.
-        ...(RUNS.includes(who as typeof RUNS[number]) && request.path === '/api/task/report' && request.body.state === 'waiting' && request.body.task === runs[who as typeof RUNS[number]].id
+        ...(RUNS.includes(who as typeof RUNS[number]) && request.path === '/api/commands/task/report' && request.body.state === 'waiting' && request.body.task === runs[who as typeof RUNS[number]].id
           ? { askTo: 'user' } : {}), ...(quote === undefined ? {} : { quote }) });
     const response = await fetch(new URL(request.path, server.url), { method: request.method, body,
-      headers: { 'content-type': 'application/json', ...headers(who), ...(request.method === 'GET' ? {} : {
+      headers: { 'content-type': 'application/json', ...headers(who), ...(request.method === 'GET' ? {} : request.execution ? { 'x-alpacawork-restore-id': 'initial' } : {
         'x-alpacawork-op-id': typeof request.body?.opId === 'string' ? request.body.opId : randomUUID() }),
       ...request.headers } });
     const text = await response.text();
@@ -133,7 +134,7 @@ async function actors(t: TestContext) {
  * one), and what an allowed caller gets past authorize: by default the refusal of the stale version it names.
  */
 type Call = { method: 'GET' | 'POST' | 'PUT'; path: string; body?: Record<string, unknown>; quotes?: boolean;
-  headers?: Record<string, string>; allowed?: readonly number[] };
+  headers?: Record<string, string>; execution?: true; allowed?: readonly number[] };
 const get = (path: string): Call => ({ method: 'GET', path, allowed: [200] });
 const post = (path: string, body: Record<string, unknown>, quotes = false): Call =>
   ({ method: 'POST', path, body: { ...body }, quotes });
@@ -143,54 +144,54 @@ test('every HTTP act of the table lets exactly its callers through the public en
   const { A, C, H, R, R2, E, E2, E3, worker, f } = h;
   const task = (id: string) => ({ task: id, expectedTaskHash: STALE });
   const report = (id: string, fields: Record<string, unknown>) =>
-    post('/api/task/report', { ...task(id), ...(fields.state === 'done' ? { title: 'Report', description: 'The result is ready.' } : {}), opId: randomUUID(), ...fields }, true);
-  const request = (id: string, fields: Record<string, unknown> = {}) => post('/api/task/request',
+    post('/api/commands/task/report', { ...task(id), ...(fields.state === 'done' ? { title: 'Report', description: 'The result is ready.' } : {}), opId: randomUUID(), ...fields }, true);
+  const request = (id: string, fields: Record<string, unknown> = {}) => post('/api/commands/task/request',
     { ...task(id), instruction: 'Do the work', opId: randomUUID(), expectedPlacementRevision: 1, ...fields }, true);
-  const settings = await (await fetch(new URL('/api/config/get', h.server.url))).json() as
+  const settings = await (await fetch(new URL('/api/commands/config/get', h.server.url))).json() as
     { limits: Record<string, unknown>; agentsText: string };
   const rows: { act: string; call: Call; allow: readonly Who[]; note?: string; proxyAct?: string; runAct?: string }[] = [
-    { act: 'task.read', call: get(`/api/task/get?task=${C.id}`), allow: everyone.filter(who => who !== 'F'),
+    { act: 'task.read', call: get(`/api/commands/task/get?task=${C.id}`), allow: everyone.filter(who => who !== 'F'),
       note: 'a Run reads its own project only' },
-    { act: 'task.list', call: get('/api/task/list'), allow: everyone },
-    { act: 'field.list', call: get('/api/field/list'), allow: everyone },
-    { act: 'field.set', call: { ...post('/api/field/set', { field: 'actor_note', title: 'Note', type: 'text' }, true), allowed: [200] },
+    { act: 'task.list', call: get('/api/commands/task/list'), allow: everyone },
+    { act: 'field.list', call: get('/api/commands/field/list'), allow: everyone },
+    { act: 'field.set', call: { ...post('/api/commands/field/set', { field: 'actor_note', title: 'Note', type: 'text' }, true), allowed: [200] },
       allow: proxies, note: 'a definition every project shares' },
-    { act: 'field.delete', call: { ...post('/api/field/delete', { field: 'never_defined' }, true), allowed: [404] },
+    { act: 'field.delete', call: { ...post('/api/commands/field/delete', { field: 'never_defined' }, true), allowed: [404] },
       allow: proxies },
-    { act: 'field.use', call: post('/api/field/use', { task: f.project, inherit: true, expectedTaskHash: STALE }, true),
+    { act: 'field.use', call: post('/api/commands/field/use', { task: f.project, inherit: true, expectedTaskHash: STALE }, true),
       allow: ['A', 'C', 'S', 'R', ...proxies], note: 'its own project\'s, by a responsible Run not held' },
-    { act: 'field.use', call: post('/api/field/use', { task: h.other, inherit: true, expectedTaskHash: STALE }, true),
+    { act: 'field.use', call: post('/api/commands/field/use', { task: h.other, inherit: true, expectedTaskHash: STALE }, true),
       allow: ['F', ...proxies], note: 'another project\'s' },
-    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: C.id, fromUser: false,
+    { act: 'task.new.child', call: post('/api/commands/task/new', { title: 'New', parent: C.id, fromUser: false,
       expectedParentHash: STALE }, true), allow: ['C'], note: 'below the Run\'s own Task, internal' },
-    { act: 'task.new.child', call: post('/api/task/new', { title: 'New', parent: H.id, fromUser: false,
+    { act: 'task.new.child', call: post('/api/commands/task/new', { title: 'New', parent: H.id, fromUser: false,
       expectedParentHash: STALE }, true), allow: [], note: 'not below a held Task by its Run' },
-    { act: 'task.new', call: post('/api/task/new', { title: 'New', parent: f.project, fromUser: false,
+    { act: 'task.new', call: post('/api/commands/task/new', { title: 'New', parent: f.project, fromUser: false,
       expectedParentHash: STALE }, true), allow: proxies },
-    { act: 'task.new.from_user', call: post('/api/task/new', { title: 'New', parent: f.project, fromUser: true,
+    { act: 'task.new.from_user', call: post('/api/commands/task/new', { title: 'New', parent: f.project, fromUser: true,
       expectedParentHash: STALE }, true), allow: proxies },
-    { act: 'task.new.project', call: post('/api/task/new', { title: 'New', kind: 'project', color: '#39659b', parent: f.project,
+    { act: 'task.new.project', call: post('/api/commands/task/new', { title: 'New', kind: 'project', color: '#39659b', parent: f.project,
       expectedParentHash: STALE }, true), allow: proxies },
-    { act: 'task.update.title', call: post('/api/task/update', { ...task(C.id), title: 'Renamed' }, true),
+    { act: 'task.update.title', call: post('/api/commands/task/update', { ...task(C.id), title: 'Renamed' }, true),
       allow: ['C', 'A', ...proxies] },
-    { act: 'task.update.values', call: post('/api/task/update', { ...task(C.id), values: { notes: 'New notes' } }, true),
+    { act: 'task.update.values', call: post('/api/commands/task/update', { ...task(C.id), values: { notes: 'New notes' } }, true),
       allow: ['C', 'A', ...proxies] },
-    { act: 'task.update.values', call: post('/api/task/update', { ...task(H.id), values: { notes: 'New notes' } }, true),
+    { act: 'task.update.values', call: post('/api/commands/task/update', { ...task(H.id), values: { notes: 'New notes' } }, true),
       allow: ['A', ...proxies], note: 'a held Task\'s Run writes no values' },
-    { act: 'task.update.values', call: post('/api/task/update', { ...task(f.project), values: { project_policy: 'New policy' } }, true),
+    { act: 'task.update.values', call: post('/api/commands/task/update', { ...task(f.project), values: { project_policy: 'New policy' } }, true),
       allow: proxies, note: 'a project\'s policy is the user\'s words' },
-    { act: 'task.update.cwd', call: post('/api/task/update', { ...task(f.project), cwd: tmpdir() }, true),
+    { act: 'task.update.cwd', call: post('/api/commands/task/update', { ...task(f.project), cwd: tmpdir() }, true),
       allow: proxies },
-    { act: 'task.update.color', call: post('/api/task/update', { ...task(f.project), color: '#abcdef' }, true),
+    { act: 'task.update.color', call: post('/api/commands/task/update', { ...task(f.project), color: '#abcdef' }, true),
       allow: proxies },
-    { act: 'task.update.userRequested', call: post('/api/task/update', { ...task(C.id), fromUser: true }, true),
+    { act: 'task.update.userRequested', call: post('/api/commands/task/update', { ...task(C.id), fromUser: true }, true),
       allow: proxies },
-    { act: 'task.move', call: post('/api/task/move', { ...task(C.id), parent: h.S.id }, true), allow: ['A', ...proxies],
+    { act: 'task.move', call: post('/api/commands/task/move', { ...task(C.id), parent: h.S.id }, true), allow: ['A', ...proxies],
       note: 'below the parent Run\'s own Task' },
-    { act: 'task.move', call: post('/api/task/move', { ...task(C.id), parent: f.project }, true), allow: proxies,
+    { act: 'task.move', call: post('/api/commands/task/move', { ...task(C.id), parent: f.project }, true), allow: proxies,
       note: 'out from below the parent Run\'s own Task' },
     ...(['archive', 'delete', 'restore'] as const).map(action =>
-      ({ act: `task.${action}`, call: post(`/api/task/${action}`, task(C.id), true),
+      ({ act: `task.${action}`, call: post(`/api/commands/task/${action}`, task(C.id), true),
         allow: proxies })),
     { act: 'task.checkpoint', call: report(C.id, { state: 'doing', values: { notes: 'Latest snapshot' } }), allow: ['C'] },
     { act: 'task.checkpoint', call: report(H.id, { state: 'doing', values: { notes: 'Latest snapshot' } }), allow: [], note: 'not while held' },
@@ -229,12 +230,12 @@ test('every HTTP act of the table lets exactly its callers through the public en
     { act: 'task.report.held', call: report(R.id, { state: 'held' }), allow: proxies },
     { act: 'task.withdraw', call: report(C.id, { withdraw: h.askedA }), allow: ['C'] },
     { act: 'task.withdraw', call: report(H.id, { withdraw: h.held }), allow: ['H'], note: 'while held too' },
-    { act: 'task.comment', call: post('/api/task/comment', { ...task(C.id), title: 'Note' }, true), allow: everyone.filter(who => who !== 'F') },
-    { act: 'task.comment', call: post('/api/task/comment', { ...task(H.id), title: 'Note' }, true), allow: everyone.filter(who => who !== 'F'),
+    { act: 'task.comment', call: post('/api/commands/task/comment', { ...task(C.id), title: 'Note' }, true), allow: everyone.filter(who => who !== 'F') },
+    { act: 'task.comment', call: post('/api/commands/task/comment', { ...task(H.id), title: 'Note' }, true), allow: everyone.filter(who => who !== 'F'),
       note: 'records throughout the project, even while the Run own Task is held' },
-    { act: 'task.comment.urgent', call: post('/api/task/comment', { ...task(C.id), title: 'Note', urgent: 'Now' }, true),
+    { act: 'task.comment.urgent', call: post('/api/commands/task/comment', { ...task(C.id), title: 'Note', urgent: 'Now' }, true),
       allow: ['C'] },
-    { act: 'task.comment.urgent', call: post('/api/task/comment', { ...task(H.id), title: 'Note', urgent: 'Now' }, true),
+    { act: 'task.comment.urgent', call: post('/api/commands/task/comment', { ...task(H.id), title: 'Note', urgent: 'Now' }, true),
       allow: ['H'], note: 'an urgent note is a record too' },
     { act: 'task.request', call: request(C.id), allow: ['A', ...proxies] },
     { act: 'task.request', call: request(A.id), allow: ['human', ...coordinators],
@@ -246,29 +247,29 @@ test('every HTTP act of the table lets exactly its callers through the public en
     { act: 'task.request.user', call: request(E.id), allow: proxies,
       note: 'the parent does not retry what the user asked for' },
     { act: 'task.request', call: request(R.id), allow: proxies, note: 'ordinary instruction while waiting' },
-    { act: 'task.answer', call: { ...post('/api/task/request', { task: R.id, instruction: 'This way', answers: h.askedUser,
+    { act: 'task.answer', call: { ...post('/api/commands/task/request', { task: R.id, instruction: 'This way', answers: h.askedUser,
       opId: randomUUID() }, true), allowed: [200,409] }, allow: proxies, note: 'a question to the user' },
-    { act: 'task.answer', call: { ...post('/api/task/request', { task: C.id, instruction: 'This way', answers: h.askedA,
+    { act: 'task.answer', call: { ...post('/api/commands/task/request', { task: C.id, instruction: 'This way', answers: h.askedA,
       opId: randomUUID() }, true), allowed: [200,409] }, allow: ['A'], note: 'a question to the parent' },
-    { act: 'agent.assign', call: post('/api/agent/assign', { ...task(C.id), role: 'responsible', profile: 'fake' }, true),
+    { act: 'agent.assign', call: post('/api/commands/agent/assign', { ...task(C.id), role: 'responsible', profile: 'fake' }, true),
       allow: ['A', ...proxies] },
-    { act: 'agent.assign', call: post('/api/agent/assign', { ...task(A.id), role: 'responsible', profile: 'fake' }, true),
+    { act: 'agent.assign', call: post('/api/commands/agent/assign', { ...task(A.id), role: 'responsible', profile: 'fake' }, true),
       allow: ['human', ...coordinators], note: 'a top Task' },
-    { act: 'agent.handover', call: post('/api/agent/handover', { ...task(C.id), agent: worker.id,
+    { act: 'agent.handover', call: post('/api/commands/agent/handover', { ...task(C.id), agent: worker.id,
       expectedPlacementRevision: 1 }, true), allow: ['A', ...proxies] },
-    { act: 'agent.handover', call: post('/api/agent/handover', { ...task(A.id), agent: A.placementId,
+    { act: 'agent.handover', call: post('/api/commands/agent/handover', { ...task(A.id), agent: A.placementId,
       expectedPlacementRevision: 1 }, true), allow: ['human', ...coordinators] },
-    { act: 'agent.release', call: post('/api/agent/release', { ...task(C.id), agent: C.placementId,
+    { act: 'agent.release', call: post('/api/commands/agent/release', { ...task(C.id), agent: C.placementId,
       expectedPlacementRevision: 1 }, true), allow: ['A', ...proxies], note: 'the parent\'s responsible or user proxy releases its child\'s' },
-    { act: 'agent.release', call: post('/api/agent/release', { ...task(A.id), agent: A.placementId,
+    { act: 'agent.release', call: post('/api/commands/agent/release', { ...task(A.id), agent: A.placementId,
       expectedPlacementRevision: 1 }, true), allow: ['human', ...coordinators] },
-    { act: 'agent.assign.worker', call: post('/api/agent/assign', { ...task(C.id), role: 'member', profile: 'fake',
+    { act: 'agent.assign.worker', call: post('/api/commands/agent/assign', { ...task(C.id), role: 'member', profile: 'fake',
       expectedResponsibleRevision: 1 }, true), allow: ['C', ...proxies] },
-    { act: 'agent.assign.worker', call: post('/api/agent/assign', { ...task(H.id), role: 'member', profile: 'fake',
+    { act: 'agent.assign.worker', call: post('/api/commands/agent/assign', { ...task(H.id), role: 'member', profile: 'fake',
       expectedResponsibleRevision: 1 }, true), allow: proxies, note: 'the held Run does not manage placements; the user proxy does' },
-    { act: 'agent.release.worker', call: post('/api/agent/release', { ...task(C.id), agent: worker.id,
+    { act: 'agent.release.worker', call: post('/api/commands/agent/release', { ...task(C.id), agent: worker.id,
       expectedPlacementRevision: 1, expectedResponsibleRevision: 1 }, true), allow: ['C', ...proxies] },
-    { act: 'agent.release.worker', call: post('/api/agent/release', { ...task(H.id), agent: h.helper.id,
+    { act: 'agent.release.worker', call: post('/api/commands/agent/release', { ...task(H.id), agent: h.helper.id,
       expectedPlacementRevision: 1, expectedResponsibleRevision: 1 }, true), allow: proxies, note: 'the held Run does not manage placements; the user proxy does' },
     { act: 'file.write', call: { method: 'PUT', path: `/api/tasks/${C.id}/file?path=notes.txt`,
       headers: { 'x-alpacawork-content-digest': STALE }, allowed: [400] }, allow: ['C', 'W', 'human'],
@@ -284,21 +285,23 @@ test('every HTTP act of the table lets exactly its callers through the public en
       note: 'voice input, with no voice settings here' },
     { act: 'screen', call: get('/api/environment-file'), allow: ['human'], note: 'what the server read of its environment file is the settings screen\'s' },
     { act: 'coordinator.screen', call: get('/api/coordinator'), allow: ['human'] },
-    { act: 'config.set', call: post('/api/config/set', { config: stringify({ limits: settings.limits }),
+    { act: 'config.inspect', call: { ...post('/api/commands/config/inspect', { adapter: 'codex', command: `${f.root}/missing-probe` }),
+      execution: true, allowed: [200] }, allow: proxies },
+    { act: 'config.set', call: post('/api/commands/config/set', { config: stringify({ limits: settings.limits }),
       agents: settings.agentsText, expectedConfigHash: STALE }), allow: proxies },
     // These two change what they stop: the first allowed stop ends the queued Run, a later one finds none.
-    { act: 'run.stop', call: { ...post('/api/run/stop', { run: h.stops.C }, true), allowed: [200, 404] }, allow: ['A', ...proxies],
+    { act: 'run.stop', call: { ...post('/api/commands/run/stop', { run: h.stops.C }, true), allowed: [200, 404] }, allow: ['A', ...proxies],
       note: 'run stop carries the same verified proxy quote as other Task management' },
-    { act: 'run.stop', call: { ...post('/api/run/stop', { run: h.stops.A }, true), allowed: [200, 404] },
+    { act: 'run.stop', call: { ...post('/api/commands/run/stop', { run: h.stops.A }, true), allowed: [200, 404] },
       allow: ['human', ...coordinators], note: 'a top Task' },
-    { act: 'settings.read', call: get('/api/settings/get'), allow: proxies, note: 'the person\'s own settings' },
-    { act: 'settings.set', call: post('/api/settings/set', { key: 'theme', value: 'dark', expectedRevision: STALE }),
+    { act: 'settings.read', call: get('/api/commands/settings/get'), allow: proxies, note: 'the person\'s own settings' },
+    { act: 'settings.set', call: post('/api/commands/settings/set', { key: 'theme', value: 'dark', expectedRevision: STALE }),
       allow: proxies },
     { act: 'runtime', call: get('/api/runtime/preflight'), allow: ['human'] },
     { act: 'runtime', call: get('/api/runtime/readiness'), allow: ['human'] },
     { act: 'runtime', call: get('/api/runtime/diagnostics'), allow: ['human'] },
     // The pass a person retries changes nothing here; the quiesce stops writes, so it comes last.
-    { act: 'admin', call: { ...post('/api/workspace/returns', {}), allowed: [200] }, allow: ['human'] },
+    { act: 'admin', call: { ...post('/api/commands/workspace/returns', {}), allowed: [200] }, allow: ['human'] },
     { act: 'runtime', call: { ...post('/api/runtime/quiesce', {}), allowed: [200] }, allow: ['human'] },
   ];
   for (const { act, call, allow, note, proxyAct, runAct } of rows) {
@@ -321,7 +324,7 @@ test('what a Run, the coordinator and a person write, and what a Run reads', asy
   const h = await actors(t);
   const { A, C, F, f } = h;
   const create = async (who: Who, body: Record<string, unknown>) => {
-    const result = await h.call(who, post('/api/task/new', body, true));
+    const result = await h.call(who, post('/api/commands/task/new', body, true));
     return { ...result, task: result.status === 200 ? JSON.parse(result.text).task : null };
   };
   // A Run creates below its own Task only, and never the user's request.
@@ -357,24 +360,24 @@ test('what a Run, the coordinator and a person write, and what a Run reads', asy
   assert.deepEqual([internal.status, internal.task.userRequested, currentTaskLog(f.root, internal.task.id)[0]!.actor],
     [200, false, { kind: 'main', provider: 'codex', conversationId: CONVERSATION }]);
   // A person places a top Task's responsible, moves a task within its project and updates it.
-  const placed = await h.call('human', post('/api/agent/assign', { task: asked.task.id, role: 'responsible',
+  const placed = await h.call('human', post('/api/commands/agent/assign', { task: asked.task.id, role: 'responsible',
     profile: 'fake', expectedTaskHash: asked.task.hash }));
   assert.equal(placed.status, 200, placed.text);
-  const moved = await h.call('human', post('/api/task/move', { task: internal.task.id, parent: asked.task.id,
+  const moved = await h.call('human', post('/api/commands/task/move', { task: internal.task.id, parent: asked.task.id,
     expectedTaskHash: internal.task.hash }));
   assert.equal(moved.status, 200, moved.text);
-  const renamed = await h.call('human', post('/api/task/update', { task: internal.task.id, title: 'Renamed',
+  const renamed = await h.call('human', post('/api/commands/task/update', { task: internal.task.id, title: 'Renamed',
     expectedTaskHash: JSON.parse(moved.text).task.hash }));
   assert.equal(renamed.status, 200, renamed.text);
   // A Run reads its own project only: another project's Tasks are not in its list, and one of them is not read.
-  const ids = async (who: Who) => (JSON.parse((await h.call(who, get('/api/task/list?all=true'))).text)
+  const ids = async (who: Who) => (JSON.parse((await h.call(who, get('/api/commands/task/list?all=true'))).text)
     .tasks as { id: string }[]).map(task => task.id);
   const [own, foreign, everything] = [await ids('C'), await ids('F'), await ids('human')];
   assert.ok(own.includes(C.id) && !own.includes(F.id), own.join());
   assert.ok(foreign.includes(F.id) && !foreign.includes(C.id) && !foreign.includes(A.id), foreign.join());
   assert.ok(everything.includes(C.id) && everything.includes(F.id));
-  assert.equal((await h.call('F', get(`/api/task/get?task=${C.id}`))).status, 403);
-  assert.equal((await h.call('F', get(`/api/task/get?task=${F.id}`))).status, 200);
+  assert.equal((await h.call('F', get(`/api/commands/task/get?task=${C.id}`))).status, 403);
+  assert.equal((await h.call('F', get(`/api/commands/task/get?task=${F.id}`))).status, 200);
 });
 
 test('the services write as the actor authorize decided: who may act is decided there alone', async t => {
@@ -403,7 +406,7 @@ test('owners and workers record on other project Tasks with their Run and placem
   const h = await actors(t);
   for (const who of ['C', 'W'] as const) {
     const before = await h.f.get(h.S.id);
-    const result = await h.call(who, post('/api/task/comment', { task: h.S.id, title: 'Integration note',
+    const result = await h.call(who, post('/api/commands/task/comment', { task: h.S.id, title: 'Integration note',
       expectedTaskHash: before.hash }));
     assert.equal(result.status, 200, result.text);
     const after = await h.f.get(h.S.id);
@@ -422,9 +425,9 @@ test('owners and workers record on other project Tasks with their Run and placem
     assert.equal(event.runId, h.runs[who].runId);
     assert.equal(event.kind, 'comment');
     for (const request of [
-      post('/api/task/comment', { task: h.S.id, title: 'Wake', urgent: 'Now', expectedTaskHash: after.hash }),
-      post('/api/task/report', { task: h.S.id, state: 'doing', title: 'Work', opId: randomUUID(), expectedTaskHash: after.hash }),
-      post('/api/task/comment', { task: h.F.id, title: 'Foreign', expectedTaskHash: (await h.f.get(h.F.id)).hash }),
+      post('/api/commands/task/comment', { task: h.S.id, title: 'Wake', urgent: 'Now', expectedTaskHash: after.hash }),
+      post('/api/commands/task/report', { task: h.S.id, state: 'doing', title: 'Work', opId: randomUUID(), expectedTaskHash: after.hash }),
+      post('/api/commands/task/comment', { task: h.F.id, title: 'Foreign', expectedTaskHash: (await h.f.get(h.F.id)).hash }),
     ]) {
       const refused = await h.call(who, request);
       assert.equal(refused.status, 403, refused.text);

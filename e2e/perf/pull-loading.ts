@@ -84,7 +84,7 @@ const liveRuntime=runtime;
    await measure('release-'+round,async()=>{await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(600);assert.equal(await page.locator('[data-pull-mark]').getAttribute('data-phase'),'refreshing');});
    await measure('loading-'+round,async()=>{
     const view=await(await fetch(liveRuntime.origin+'/api/task/view?task=T2063')).json();
-    const r=await fetch(liveRuntime.origin+'/api/task/update',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({task:'T2063',title:'Loading update '+round,expectedTaskHash:view.task.hash})});assert.equal(r.status,200,await r.clone().text());
+    const r=await fetch(liveRuntime.origin+'/api/commands/task/update',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({task:'T2063',title:'Loading update '+round,expectedTaskHash:view.task.hash})});assert.equal(r.status,200,await r.clone().text());
     await page.waitForTimeout(400);gateClosed=false;openGate();
     await page.locator('[data-row=T2063] [data-row-label]').filter({hasText:'Loading update '+round}).waitFor();
     await page.waitForFunction(()=>document.querySelector('[data-pull-mark]')!.getAttribute('data-phase')==='done');

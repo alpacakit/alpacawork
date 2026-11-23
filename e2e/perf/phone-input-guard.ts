@@ -41,7 +41,7 @@ for (let calm = Date.now(), began = Date.now(); Date.now() - calm < 3000 && Date
 const post = (path: string, data: unknown) => fetch(new URL(path, origin), { method: 'POST', headers: Object.fromEntries(commandHeaders(data, { 'content-type': 'application/json' })), body: JSON.stringify(data) });
 const titled = async (task: string, title: string) => {
   const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, origin))).json();
-  const response = await post('/api/task/update', { task, title, expectedTaskHash: current.hash });
+  const response = await post('/api/commands/task/update', { task, title, expectedTaskHash: current.hash });
   if (!response.ok) throw new Error(`Title ${task}: ${response.status} ${await response.text()}`);
 };
 

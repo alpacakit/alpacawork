@@ -1,3 +1,4 @@
+import { commandFetch as fetch, commandBody } from './helpers/command-fetch.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { test } from 'node:test';
@@ -20,7 +21,7 @@ test('human HTTP reports confirm a Run, hold, restore and stop; stale hashes pre
   const post = async (state: string, fields: Record<string, unknown> = {}) => {
     const task = await new ControlTaskStore(h.root).get(h.task.id), opId = randomUUID();
     const input = { task: task.id, state, expectedTaskHash: task.hash, opId, ...fields };
-    const response = await fetch(new URL('/api/task/report', server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/task/report', server.url), { method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': opId }, body: JSON.stringify(input) });
     const output = await response.json(); evidence.push({ input, status: response.status, output });
     return { response, output };
@@ -58,7 +59,7 @@ test('an idle proxy connection still carries human review reports after the back
   const agent = new ProxyPool({ keepAlive: true, maxSockets: 1 });
   t.after(() => agent.destroy());
   const send = (input?: Record<string, unknown>) => new Promise<{ status: number; body: any; socket: Socket; reused: boolean }>((resolve, reject) => {
-    const req = request(new URL(input ? '/api/task/report' : '/api/runtime/readiness', server.url), {
+    const req = request(new URL(input ? '/api/commands/task/report' : '/api/runtime/readiness', server.url), {
       agent, method: input ? 'POST' : 'GET', signal: AbortSignal.timeout(10_000),
       headers: input ? { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': String(input.opId) } : {},
     }, res => {
@@ -69,7 +70,7 @@ test('an idle proxy connection still carries human review reports after the back
         catch (error) { reject(error); }
       });
     });
-    req.on('error', reject); req.end(input ? JSON.stringify(input) : undefined);
+    req.on('error', reject); req.end(input ? JSON.stringify(commandBody(input)) : undefined);
   });
   const warm = await send(); assert.equal(warm.status, 200);
   // Node 24's default is 5 seconds plus its 1 second buffer. Waiting past it makes the old

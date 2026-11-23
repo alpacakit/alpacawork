@@ -22,7 +22,7 @@ const test = base.extend<{ runtime: Runtime; project: string }>({
     try { await use(runtime); } finally { await runtime.stop(); }
   },
   project: async ({ runtime }, use) => {
-    await use((await post<Written>(runtime, "task/new", { kind: "project", color: '#39659b', parent: "none", title: "Auto-swipe check" })).task.id);
+    await use((await post<Written>(runtime, "commands/task/new", { kind: "project", color: '#39659b', parent: "none", title: "Auto-swipe check" })).task.id);
   },
 });
 test.describe.configure({ timeout: 90_000 });
@@ -36,8 +36,8 @@ async function post<Result>(runtime: Runtime, path: string, body: object): Promi
 }
 const DECIDE = decideValues(['Which option', ['Option1 Send current input', 'Send'], ['Option2 Decide later', 'Hold it']]);
 async function requested(runtime: Runtime, project: string, title: string, values?: TaskValues) {
-  const { task } = await post<Written>(runtime, "task/new", { parent: project, title, ...values === undefined ? {} : { values } });
-  await post(runtime, "agent/assign", { task: task.id, role: "responsible", profile: "codex", expectedTaskHash: task.hash });
+  const { task } = await post<Written>(runtime, "commands/task/new", { parent: project, title, ...values === undefined ? {} : { values } });
+  await post(runtime, "commands/agent/assign", { task: task.id, role: "responsible", profile: "codex", expectedTaskHash: task.hash });
   return task.id;
 }
 /** A question to the user, asked at work. */

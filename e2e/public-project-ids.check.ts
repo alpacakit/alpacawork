@@ -6,11 +6,11 @@ test.use({ isolated: true });
 for (const width of [1440]) test(`public project IDs across URL, choices and labels at ${width}px`, async ({ page, runtime }) => {
   await page.setViewportSize({ width, height: 900 });
   await open(page, runtime);
-  const added = await commandPost(page.request, `${runtime.origin}/api/task/new`, { data: { kind: 'project', color: '#39659b', parent: 'none', title: SAMPLE_PROJECT.title } });
+  const added = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, { data: { kind: 'project', color: '#39659b', parent: 'none', title: SAMPLE_PROJECT.title } });
   expect(added.ok(), await added.text()).toBe(true);
   const project = (await added.json()).task;
   expect(project.id).toMatch(/^P[1-9]\d*$/);
-  const longResponse = await commandPost(page.request, `${runtime.origin}/api/task/new`, { data: { kind: 'project', color: '#39659b', parent: 'none', title: 'A'.repeat(180) } });
+  const longResponse = await commandPost(page.request, `${runtime.origin}/api/commands/task/new`, { data: { kind: 'project', color: '#39659b', parent: 'none', title: 'A'.repeat(180) } });
   expect(longResponse.ok(), await longResponse.text()).toBe(true);
   const longProject = (await longResponse.json()).task;
   await page.goto(`${runtime.origin}/?project=P1&task=T111&agent=1`);

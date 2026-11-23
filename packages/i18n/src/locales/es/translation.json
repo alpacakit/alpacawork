@@ -443,7 +443,7 @@
       "settings_changed_another_view": "La configuración cambió en otra vista",
       "several_projects_active_use_id_or_run_inside_project_s_code_location_alpacawork_task_list_kind_project": "Hay varios proyectos activos. Indica uno con --{{option}} <ID>, o ejecuta el comando dentro de la carpeta de trabajo de un proyecto (alpacawork task list --kind project)",
       "sqlite_serialization_required": "Se requiere una versión de Node compatible con la serialización de SQLite",
-      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "La detención se confirmó, pero está a la espera de aplicarse. Compruébala o reintenta con el mismo ID de operación",
+      "stop_committed_but_publication_pending_query_or_retry_same_operation_id": "La detención se guardó y está pendiente de aplicarse. Reenvía la escritura original con la misma entrada, ID de operación e ID de restauración",
       "stopped_task_requires_new_request": "Para reiniciar una tarea detenida hace falta una nueva solicitud del usuario.",
       "subtree_root_does_not_exist": "No se encontró la raíz del subárbol",
       "supply_state_or_withdraw": "Indica --state o --withdraw",

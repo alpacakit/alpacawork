@@ -8,7 +8,7 @@ for (const [width, fail] of [[390, true]] as const) test(`unread dot leaves on t
   await open(page, runtime);
   // Wait for the baseline's initial save before introducing unread news.
   await expect.poll(async () => (await (await page.request.get(runtime.origin + '/api/person/notices')).json()).revision).not.toBeNull();
-  const response = await commandPost(page.request, runtime.origin + '/api/task/new', { data: { title: 'Immediate read dot' } });
+  const response = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { title: 'Immediate read dot' } });
   expect(response.status()).toBe(200);
   const { task } = await response.json();
   const row = page.locator(`[data-row="${task.id}"]`);
@@ -38,7 +38,7 @@ for (const [width, fail] of [[390, true]] as const) test(`unread dot leaves on t
     await row.locator('[data-row-head]').click();
     await expect.poll(() => page.evaluate(() => (window as any).readFrames.length)).toBeGreaterThanOrEqual(30);
     expect(await page.evaluate(() => (window as any).readFrames)).toEqual(Array(30).fill({ present: true, unread: false }));
-    const update = await commandPost(page.request, runtime.origin + '/api/task/new', { data: { title: 'Unrelated list refresh while read is pending' } });
+    const update = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { title: 'Unrelated list refresh while read is pending' } });
     expect(update.status()).toBe(200);
     const updated = await update.json();
     await expect(page.locator(`[data-row="${updated.task.id}"]`)).toBeVisible();

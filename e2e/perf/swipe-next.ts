@@ -46,14 +46,14 @@ const QUESTION = decideValues(['色を選んでください', ['A 青', '青に�
 const section = (n: number) => `### 確認 ${n}\n結果の**要点**と読み物、表を含む報告です。前後を同じ条件で比べました。\n\n| 項目 | 値 |\n| --- | --- |\n| 確認 | 合格 |\n\n- 次の点検\n- 残りの作業\n\n`;
 /** One project of `count` cards of `kind`, each with its history; returns its cards in the order the list shows. */
 async function deck(r: Runtime, kind: Kind, content: Content, count: number) {
-  const project = (await post(r, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: `${kind}-${content}` })).task.id;
+  const project = (await post(r, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: `${kind}-${content}` })).task.id;
   const ids: string[] = [];
   const heavy = content === 'heavy';
   // The body is written straight to the record below: the command keeps a field to its size, and the heavy body is longer.
   const notes = Array.from({ length: heavy ? 30 : 2 }, (_, n) => section(n)).join('') + '![画面](screen.png)';
   for (let i = 0; i < count; i++) {
-    const { task } = await post(r, 'task/new', { parent: project, title: `${kind} ${content} ${i + 1}`, ...kind === 'answer' ? { values: QUESTION } : {} });
-    await post(r, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+    const { task } = await post(r, 'commands/task/new', { parent: project, title: `${kind} ${content} ${i + 1}`, ...kind === 'answer' ? { values: QUESTION } : {} });
+    await post(r, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
     copyFileSync(new URL('../fixture/wide-report.png', import.meta.url), taskFolder(r.root, task.id) + '/screen.png');
     const db = new ControlStore(r.root, { busyTimeoutMs: 1000 }, true);
     const placement = (() => { try { return db.read(sql => String(sql.prepare("SELECT id FROM placements WHERE task_id=? AND responsible=1").get(task.id)!.id)); } finally { db.close(); } })();
@@ -151,7 +151,7 @@ try {
       page.on('request', request => { if (request.method() === 'POST') posting++; });
       page.on('requestfinished', request => { if (request.method() === 'POST') posting--; });
       page.on('requestfailed', request => { if (request.method() === 'POST') posting--; });
-      page.on('response', async response => { if (new URL(response.url()).pathname === '/api/task/report' && response.status() !== 200) console.error('report', response.status(), (await response.text().catch(() => '')).slice(0, 400)); });
+      page.on('response', async response => { if (new URL(response.url()).pathname === '/api/commands/task/report' && response.status() !== 200) console.error('report', response.status(), (await response.text().catch(() => '')).slice(0, 400)); });
       await installProbe(page);
       const cdp = await context.newCDPSession(page);
       await cdp.send('Performance.enable');

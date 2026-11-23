@@ -65,7 +65,7 @@ export async function checkJourney(url: string, root: string, language: string, 
     expect(new URL(page.url()).pathname).toBe('/');
     const state = (await get('/api/first-run')).state;
     assert.ok(state.finishedAt, 'Setup was not recorded as finished');
-    const saved = (await get(`/api/task/get?task=${state.project}`)).task;
+    const saved = (await get(`/api/commands/task/get?task=${state.project}`)).task;
     assert.equal(saved.title, 'Preview project');
     assert.equal(saved.values.project_policy ?? '', '');
     await page.goto(`${url}welcome?agent=1`);
@@ -84,21 +84,21 @@ export async function checkJourney(url: string, root: string, language: string, 
       await delay(100);
     }
     assert.ok(id, 'The coordinator did not create an example Task');
-    await expect.poll(async () => (await get(`/api/task/get?task=${id}`)).questions.some((question: { state: string }) => question.state === 'open'), { timeout: 25_000 }).toBe(true);
+    await expect.poll(async () => (await get(`/api/commands/task/get?task=${id}`)).questions.some((question: { state: string }) => question.state === 'open'), { timeout: 25_000 }).toBe(true);
     await page.goto(`${url}?agent=1&project=${state.project}&task=${id}`);
     const question = page.locator('[data-question="1"]');
     await expect(question).toBeVisible();
     await question.getByRole('button', { name: en ? /Clean sans-serif/ : /ゴシック体/ }).click();
     await send();
     await expect.poll(async () => {
-      const snapshot = await get(`/api/task/get?task=${id}`);
+      const snapshot = await get(`/api/commands/task/get?task=${id}`);
       return { state: snapshot.task.state, question: snapshot.questions.some((question: { state: string }) => question.state === 'open') };
     }, { timeout: 30_000 }).toEqual({ state: 'waiting', question: false });
     // The result names the font that was picked, not the first one offered.
-    assert.match((await get(`/api/task/get?task=${id}`)).task.values.conclusion, en ? /Clean sans-serif/ : /ゴシック体/);
+    assert.match((await get(`/api/commands/task/get?task=${id}`)).task.values.conclusion, en ? /Clean sans-serif/ : /ゴシック体/);
     await expect(page.locator('[data-task-done]:visible').first()).toBeEnabled();
     await page.locator('[data-task-done]:visible').first().click();
-    await expect.poll(async () => (await get(`/api/task/get?task=${id}`)).task.state, { timeout: 15_000 }).toBe('done');
+    await expect.poll(async () => (await get(`/api/commands/task/get?task=${id}`)).task.state, { timeout: 15_000 }).toBe('done');
 
     // Words that are not the demo get a reply and no Task: the stand-in never makes up work.
     const before = readdirSync(join(root, 'actor-files')).filter(name => /^T\d+\.json$/.test(name));

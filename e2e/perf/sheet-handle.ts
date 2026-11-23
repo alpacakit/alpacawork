@@ -133,7 +133,7 @@ try {
       while (running) {
         const task = n % 2 ? ids[n % ids.length]! : openId;
         const { task: current } = await (await fetch(new URL(`/api/task/view?task=${task}`, app.url))).json();
-        await post('/api/task/comment', { task, title: `Live report ${n}`, description: `Live body ${n}.`, expectedTaskHash: current.hash }).catch(() => {});
+        await post('/api/commands/task/comment', { task, title: `Live report ${n}`, description: `Live body ${n}.`, expectedTaskHash: current.hash }).catch(() => {});
         n++;
         await new Promise(done => setTimeout(done, 700));
       }

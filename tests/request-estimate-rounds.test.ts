@@ -48,7 +48,7 @@ test('authorized HTTP member delegation preserves the owner estimate through the
   try {
     const input = { task: h.task.id, instruction: 'Planned delegation', opId: randomUUID(), agent: h.worker.id,
       expectedTaskHash: (await h.current()).hash, expectedPlacementRevision: h.worker.revision };
-    const post = (authorization?: string) => commandFetch(new URL('/api/task/request', server.url), { method: 'POST',
+    const post = (authorization?: string) => commandFetch(new URL('/api/commands/task/request', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json', ...(authorization ? { authorization } : {}) }, body: JSON.stringify(input) });
     assert.equal((await post()).status, 403, 'a person cannot instruct the member');
     const token = issueRunCredential(h.root, first.runId);

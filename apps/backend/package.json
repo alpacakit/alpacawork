@@ -12,7 +12,7 @@
     "build:diagnostic": "vite build --mode diagnostic --config vite.config.ts && chmod +x dist/backend.js"
   },
   "dependencies": {
-    "@alpacakit/channels": "0.2.0-beta.5",
+    "@alpacakit/channels": "0.2.0-beta.6",
     "@alpacawork/cli-kit": "workspace:*",
     "@alpacawork/contract": "workspace:*",
     "@alpacawork/core": "workspace:*",

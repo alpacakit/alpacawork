@@ -22,12 +22,12 @@ test('project catalog uses screen authorization over HTTP and CLI while project-
   };
 
   await t.test('HTTP denies the whole screen catalog to a Run, as it denies other screen reads', async () => {
-    for (const path of [`/api/task/get?task=${foreign.id}`, `/api/task/view?task=${foreign.id}`, '/api/workspace/live', '/api/project/shelf']) {
+    for (const path of [`/api/commands/task/get?task=${foreign.id}`, `/api/task/view?task=${foreign.id}`, '/api/workspace/live', '/api/commands/project/shelf']) {
       const result = await read(path, headers);
       assert.equal(result.status, 403, path);
       assert.equal(result.body.error.code, 'forbidden', path);
       assert.equal(result.body.error.reason.kind, 'authorization_required', path);
-      assert.equal(result.body.error.detail.action, path.startsWith('/api/task/get') ? 'task.read' : 'screen', path);
+      assert.equal(result.body.error.detail.action, path.startsWith('/api/commands/task/get') ? 'task.read' : 'screen', path);
     }
   });
   await t.test('real CLI denies the same catalog to a Run', async () => {
@@ -40,7 +40,7 @@ test('project catalog uses screen authorization over HTTP and CLI while project-
     assert.equal(result.stdout, '');
   });
   await t.test('a person can read the complete archived catalog over HTTP and real CLI', async () => {
-    const http = await read('/api/project/shelf');
+    const http = await read('/api/commands/project/shelf');
     assert.equal(http.status, 200);
     const cli = await run(url, ['project', 'shelf']);
     assert.equal(cli.code, 0, cli.stderr);
@@ -54,7 +54,7 @@ test('project catalog uses screen authorization over HTTP and CLI while project-
     }
   });
   await t.test('the same Run credential still reads its own task over HTTP and real CLI', async () => {
-    const http = await read(`/api/task/get?task=${own.id}`, headers);
+    const http = await read(`/api/commands/task/get?task=${own.id}`, headers);
     assert.equal(http.status, 200);
     assert.equal(http.body.task.id, own.id);
     const cli = await run(url, ['task', 'get', '--task', own.id], held.env);

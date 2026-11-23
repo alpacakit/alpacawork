@@ -197,7 +197,7 @@ test('HTTP run stop from the parent responsible Run stops a child and records wh
   const grandRun = runningRun(h.root, grandchild.id, grandOwner.placement.id);
   const server = await h.start();
   const stop = async (body: { run: string }) => {
-    const response = await fetch(new URL('/api/run/stop', server.url), { method: 'POST',
+    const response = await fetch(new URL('/api/commands/run/stop', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json',
         authorization: `Alpacawork-Run ${h.run.id}:${issueRunCredential(h.root, h.run.id)}` }, body: JSON.stringify(body) });
     return { status: response.status, body: await response.json() as { error?: { code: string } } };

@@ -27,10 +27,10 @@ const test = base.extend({ page: async ({ page }, use) => {
 test.setTimeout(60000);
 if (process.env.OPTIMISTIC_READER_EVIDENCE) test.use({ video: 'on' });
 async function post(r: Runtime, path: string, body: object) { const response = await fetch(r.origin + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); expect(response.status, await response.clone().text()).toBe(200); return response.json(); }
-const project = async (r: Runtime) => (await post(r, 'task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '統合後の確認' })).task.id;
+const project = async (r: Runtime) => (await post(r, 'commands/task/new', { kind: 'project', color: '#39659b', parent: 'none', title: '統合後の確認' })).task.id;
 async function task(r: Runtime, p: string, review = false) {
-    const { task } = await post(r, 'task/new', { parent: p, title: review ? '最後のレビュー' : '最後の質問', ...(!review ? { values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) } : {}) });
-    await post(r, 'agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
+    const { task } = await post(r, 'commands/task/new', { parent: p, title: review ? '最後のレビュー' : '最後の質問', ...(!review ? { values: decideValues(['色を選んでください', ['A 青', '青にする'], ['B 赤', '赤にする']]) } : {}) });
+    await post(r, 'commands/agent/assign', { task: task.id, role: 'responsible', profile: 'codex', expectedTaskHash: task.hash });
     if (review)
         seedReview(r.root, task.id, { description: '確認してください' });
     else {

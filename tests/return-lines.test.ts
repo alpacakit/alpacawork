@@ -56,7 +56,7 @@ test('a handover carries state and retrieval commands; the common open-work draw
   const notice = returnLines([handover()], MAX_INSTRUCTION_BYTES);
   assert.deepEqual(notice.ids, ['RETh']);
   assert.match(notice.body, /Current state: doing/);
-  assert.ok(notice.body.includes('alpacawork task get --task T2 --open-obligations'));
+  assert.ok(notice.body.includes('alpacawork task get --task T2 --include openObligations'));
   assert.ok(notice.body.includes('alpacawork task get --task T2, '));
   assert.ok(notice.body.includes('alpacawork task returns --task T2'));
   assert.doesNotMatch(notice.body, /Open requests|[Rr]eturns and notices not yet handled/);
@@ -65,14 +65,14 @@ test('a handover carries state and retrieval commands; the common open-work draw
   const { full, short } = openWorkLines('T2', { requests, returns: [waiting('RET1'), waiting('RET2')] });
   assert.match(full, /Open requests: 2\n- Member W1 \(request work "Fix the build"\)\n- Child task T3 \(request ask "Write the docs", Run R7\)\n/);
   assert.match(full, /Returns and notices not yet handled: 2 — alpacawork task returns --task T2\n/);
-  assert.ok(full.endsWith('Request texts, recipients and Runs: alpacawork task get --task T2 --open-obligations'));
+  assert.ok(full.endsWith('Request texts, recipients and Runs: alpacawork task get --task T2 --include openObligations'));
   assert.match(short, /Open requests: 2; returns and notices not yet handled: 2\. Too large to include/);
-  assert.ok(short.includes('alpacawork task get --task T2 --open-obligations'));
+  assert.ok(short.includes('alpacawork task get --task T2 --include openObligations'));
   assert.doesNotMatch(short, /Write the docs|Fix the build/);
   const empty = openWorkLines('T2', { requests: [], returns: [] }).full;
   assert.match(empty, /^No open requests\./);
   assert.doesNotMatch(empty, /task returns/, 'nothing left undelivered names no command for it');
-  assert.ok(empty.includes('--open-obligations'), 'the empty list still has its authoritative read command');
+  assert.ok(empty.includes('--include', 'openObligations'), 'the empty list still has its authoritative read command');
 });
 
 test("a worker's end and a child's are told in their own words, with the command that reads each", () => {

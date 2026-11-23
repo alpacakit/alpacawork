@@ -36,11 +36,11 @@ test('F: HTTP stop UPDATE failure returns 503 and leaves its target unchanged', 
   const h = await setup(t), target = h.seed({}, 'running', { token: 'stop-target' }), app = await h.server();
   h.sql(db => db.exec("CREATE TRIGGER fail_update BEFORE UPDATE ON runs BEGIN SELECT RAISE(ABORT, 'B8 UPDATE failure'); END"));
   let result: Awaited<ReturnType<typeof http>>;
-  try { result = await http(app.url, 'run/stop', { run: target.id }); }
+  try { result = await http(app.url, 'commands/run/stop', { run: target.id }); }
   finally { h.sql(db => db.exec('DROP TRIGGER fail_update')); }
   assert.equal(result.status, 503); assert.equal(result.body.error.code, 'runs_unavailable'); assert.match(result.body.error.message, /B8 UPDATE failure/);
   assert.deepEqual(h.getStore().get(target.id), target); assert.equal(receipts(h.root).length, 0);
-  assert.equal((await http(app.url, 'run/stop', { run: target.id })).status, 200);
+  assert.equal((await http(app.url, 'commands/run/stop', { run: target.id })).status, 200);
   assert.equal(h.getStore().get(target.id)!.stop_requested, true); h.integrity();
 });
 

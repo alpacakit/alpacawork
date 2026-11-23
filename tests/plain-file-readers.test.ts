@@ -53,7 +53,7 @@ const probe = `
     else if (reader === 'tree') assert.ok(await readControlTree(root));
     else if (reader === 'answer') assert.deepEqual(captureAnswerFiles(root, 'synthetic', 'synthetic',
       '[pipe](' + pipe + ')').map(file => file.state), ['unavailable']);
-    else if (reader === 'person') await assert.rejects(createPersonSettings(root).get(), {code: 'unavailable'});
+    else if (reader === 'person') assert.throws(() => createPersonSettings(root).get(), {code: 'unavailable'});
     else throw new Error('Unknown reader');
     phase('read-done');
     assert.ok(performance.now() - started <= 5000, 'reader exceeded its 5-second budget');

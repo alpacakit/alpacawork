@@ -61,7 +61,7 @@ test('the coordinator quoting the user answers the user\'s question', async t =>
     '--instruction-file', w.file('answer.md', 'Option A'), '--quote', words], asCoordinator);
   assert.equal(result.outcome.kind, 'answered');
   assert.deepEqual(await quoteOf(w.root, result.task), words);
-  assert.deepEqual((await call(url, ['task', 'get', '--task', asked.task])).questions.map(q=>q.state), ['answered']);
+  assert.deepEqual((await call(url, ['task', 'get', '--task', asked.task, '--include', 'closedQuestions'])).questions.map(q=>q.state), ['answered']);
 });
 
 // The same explicit confirmation must reach ReviewService before and after a newer Run starts.

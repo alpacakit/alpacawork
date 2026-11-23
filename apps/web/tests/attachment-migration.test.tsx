@@ -92,8 +92,8 @@ async function fixture() {
   return { root, origin, request, get, conversation, uploads, loaded, deletions, nextUploadReply: () => once(uploadReplies, 'load'),
     loseDeletion: () => { loseDeletion = true; }, hold: () => { gate = new Promise<void>(resolve => { release = resolve; }); }, release: () => release(),
     limit: async (mib: number) => {
-      const response = await request('config/get'); const config = await response.json();
-      const saved = await request('config/set', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': crypto.randomUUID() },
+      const response = await request('commands/config/get'); const config = await response.json();
+      const saved = await request('commands/config/set', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Alpacawork-Op-Id': crypto.randomUUID() },
         body: snapshotJson({ config: stringify({ limits: { ...config.limits, attachment_mib: mib } }), agents: config.agentsText, expectedConfigHash: config.hash }) });
       expect(saved.status, await saved.clone().text()).toBe(200);
       const index = await (await request('workspace/live')).json();

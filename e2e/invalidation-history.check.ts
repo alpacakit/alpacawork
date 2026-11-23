@@ -78,9 +78,9 @@ for (const [language, width] of [['en', 1440]] as ['en' | 'ja', number][]) test.
     await parentRead.click(); await settleMotion(page); await expect(row).toContainText(reason);
     await page.keyboard.press('Escape'); await settleMotion(page); await expect(parentRead).toBeFocused();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    expect(posts.filter(p => ['/api/run/stop', '/api/task/report'].includes(p))).toEqual([]);
+    expect(posts.filter(p => ['/api/commands/run/stop', '/api/commands/task/report'].includes(p))).toEqual([]);
     await info.attach('scope-history-observed', { body: JSON.stringify({ language, width, task: h.y.id, requester: h.x.id,
       runId: h.child.runId, requestId: h.requestId, eventKey: key, expectedReason: reason, bounds, words,
-      history: api, stopOrReportPosts: posts.filter(p => ['/api/run/stop', '/api/task/report'].includes(p)) }), contentType: 'application/json' });
+      history: api, stopOrReportPosts: posts.filter(p => ['/api/commands/run/stop', '/api/commands/task/report'].includes(p)) }), contentType: 'application/json' });
   });
 });

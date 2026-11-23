@@ -25,12 +25,12 @@ test.describe('updated detail idle read ahead 1440', () => {
     keys.catch(() => {}); // Awaited below; a case that fails before then closes the page under it.
     const notices = await (await page.request.get(`${runtime.origin}/api/person/notices`)).json();
     const { task } = await (await page.request.get(`${runtime.origin}/api/task/view?task=T113`)).json();
-    const changed = await commandPost(page.request, `${runtime.origin}/api/task/update`, {
+    const changed = await commandPost(page.request, `${runtime.origin}/api/commands/task/update`, {
       data: { task: 'T113', values: { notes: 'Idle-prefetched latest body.' }, title: 'Idle-prefetched task', expectedTaskHash: task.hash },
     });
     expect(changed.ok(), await changed.text()).toBe(true);
     const latest = (await changed.json()).task;
-    const commented = await commandPost(page.request, `${runtime.origin}/api/task/comment`, {
+    const commented = await commandPost(page.request, `${runtime.origin}/api/commands/task/comment`, {
       data: { task: 'T113', title: 'Idle-prefetched latest timeline', description: 'Latest chronology acquired before opening.', expectedTaskHash: latest.hash },
     });
     expect(commented.ok(), await commented.text()).toBe(true);

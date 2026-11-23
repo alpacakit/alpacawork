@@ -43,10 +43,10 @@ const dotDrawnWhole = (page: Page) => page.locator("h1 [data-turn-elsewhere]").e
  * made in it, read once they have the decide item).
  */
 async function addProject(page: Page, runtime: Runtime, parent = "none") {
-  const { task: project } = await post(page, runtime, "task/new", { kind: "project", color: '#39659b', parent, title: "Mobile rewrite" });
+  const { task: project } = await post(page, runtime, "commands/task/new", { kind: "project", color: '#39659b', parent, title: "Mobile rewrite" });
   const tasks: string[] = [];
   for (const title of ["Mob waits", "Mob asks"]) {
-    const { task } = await post(page, runtime, "task/new", { parent: project.id, title });
+    const { task } = await post(page, runtime, "commands/task/new", { parent: project.id, title });
     await placeResponsible(page.request, runtime.origin, task);
     tasks.push(task.id);
   }

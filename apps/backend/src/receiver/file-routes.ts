@@ -8,14 +8,15 @@ import type { Mutate } from './lifecycle.js';
 import type { Hono } from 'hono';
 import { closeSync, readSync } from 'node:fs';
 import { fileKind, fileStreams } from '@alpacawork/contract';
-import { attachmentsPath, taskFilePath } from '@alpacawork/contract/task-file-route';
+import { byteBinding } from '@alpacawork/contract/commands';
+import { taskIdSchema } from '@alpacawork/contract';
 import { taskFileInput } from '@alpacawork/contract/inputs';
 import { reportDiffHead } from '@alpacawork/contract/report-diff';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
 import { requirePublished, FileJournal, fileDigest, type WriteGrant } from '../control/file-journal.js';
 import { attachmentLimit, fileTooLarge } from '../agents-settings.js';
 import { codeRoots, readCodeBytes, readCodeFile } from '../control/code-files.js';
-import { openTaskFile, saveTaskAttachment, removeTaskAttachment, moveTaskAttachments } from '../control/task-files.js';
+import { openTaskFile, saveTaskAttachment } from '../control/task-files.js';
 
 export async function boundedBytes(request: Request, limit: number): Promise<Buffer> {
   const declared=Number(request.headers.get('content-length'));
@@ -58,16 +59,18 @@ type FileRouteOptions = {
   authorizeWrite: (request: Request, task: string) => WriteGrant | Promise<WriteGrant>;
   changed: (task: string) => void | Promise<void>;
   mutate?: Mutate;
+  links?: (request: Request, value: unknown) => unknown;
 };
 
 export function installTaskFileRoutes(api: Hono, root: string, options: FileRouteOptions) {
   const mutate: Mutate = options.mutate ?? (async work => work());
   const journal = new FileJournal(root);
   journal.recover();
-  api.get(taskFilePath, async c => {
+  const downloadFile = byteBinding('task/file/get');
+  api.on(downloadFile.method, downloadFile.path, async c => {
     // `v` is the revision a reader adds so that a changed file is read again.
     // `part=head`: a diff file's report header alone (reportDiffHead), what its summary reads without the patch's rows.
-    const query = queryOf(c.req.raw, ['path', 'frame', 'v', 'part', 'download']);
+    const query = queryOf(c.req.raw, [...downloadFile.query!, 'frame', 'v', 'part', 'download']);
     const { task, name } = parseInput(taskFileInput,
       { task: c.req.param('task'), name: query.get('path') ?? '' });
     await options.authorizeRead(c.req.raw, task);
@@ -127,16 +130,17 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
     await options.authorizeRead(c.req.raw, task);
     return c.json({ roots: codeRoots(root, task) }, 200, BYTE_HEADERS);
   });
-  api.put(taskFilePath, async c => {
+  const uploadFile = byteBinding('task/file/put');
+  api.on(uploadFile.method, uploadFile.path, async c => {
     const { task, name } = parseInput(taskFileInput,
-      { task: c.req.param('task'), name: queryOf(c.req.raw, ['path']).get('path') ?? '' });
+      { task: c.req.param('task'), name: queryOf(c.req.raw, uploadFile.query!).get('path') ?? '' });
     const grant = await options.authorizeWrite(c.req.raw, task);
     const opId = requiredOpId(c.req.raw);
     const bytes = await boundedBytes(c.req.raw, attachmentLimit(root));
     const digest = fileDigest(bytes);
-    if (c.req.header('X-Alpacawork-Content-Digest') !== digest)
+    if (c.req.header(uploadFile.contentDigest!) !== digest)
       throw new Problem(PROBLEM_CODE.invalidInput, 'Content digest differs', undefined, { reason: { kind: 'content_digest_differs' } });
-    const expectedDigest = c.req.header('X-Alpacawork-Expected-Digest');
+    const expectedDigest = c.req.header(uploadFile.headers!.expectedDigest!);
     if (expectedDigest !== undefined && !/^[0-9a-f]{64}$/.test(expectedDigest))
       throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid expected digest', undefined, { reason: { kind: 'invalid_expected_digest' } });
     const result = { path: name, bytes: bytes.length, digest };
@@ -155,34 +159,14 @@ const FRAME_SCRIPT = `<script>(()=>{try{localStorage}catch(e){const m=new Map();
 /** Install in place of the old attachment routes so every mutation has a client operation ID. */
 export function installAttachmentFileRoutes(api: Hono, root: string, options: FileRouteOptions) {
   const mutate: Mutate = options.mutate ?? (async work => work());
-  api.post(attachmentsPath,async c=>{
-    const task=c.req.param('task'), query=queryOf(c.req.raw,['requestId','name']);
+  const uploadAttachment = byteBinding('task/attachment/put');
+  api.on(uploadAttachment.method, uploadAttachment.path, async c => {
+    const task = parseInput(taskIdSchema, c.req.param('task')), query = queryOf(c.req.raw, uploadAttachment.query!);
     const grant=await options.authorizeWrite(c.req.raw,task);
     const bytes = await boundedBytes(c.req.raw,attachmentLimit(root));
     const result=await mutate(() => saveTaskAttachment(root,task,query.get('requestId') ?? '',
       query.get('name') ?? '',bytes,requiredOpId(c.req.raw),grant));
-    await options.changed(task); return c.json(result,200);
-  });
-  api.delete(attachmentsPath,async c=>{
-    const task=c.req.param('task'), query=queryOf(c.req.raw,['requestId','name']);
-    const grant=await options.authorizeWrite(c.req.raw,task);
-    const result=await mutate(() => removeTaskAttachment(root,task,query.get('requestId') ?? '',
-      query.get('name') ?? '',requiredOpId(c.req.raw),grant));
-    await options.changed(task); return c.json(result,200);
-  });
-  api.post(attachmentsPath + '/move',async c=>{
-    const task=c.req.param('task')!; queryOf(c.req.raw,[]);
-    const grant=await options.authorizeWrite(c.req.raw,task);
-    const bytes=await boundedBytes(c.req.raw,1024);
-    let input: unknown;
-    try { input=JSON.parse(bytes.toString('utf8')); }
-    catch { throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid attachment move', undefined, { reason: { kind: 'invalid_attachment_move' } }); }
-    if (!input || typeof input!=='object' || !('from' in input) || !('to' in input) ||
-      typeof input.from!=='string' || typeof input.to!=='string')
-      throw new Problem(PROBLEM_CODE.invalidInput, 'Attachment move needs from and to request IDs', undefined,
-        { reason: { kind: 'attachment_move_needs_from_and_request_ids' } });
-    const from=input.from, to=input.to;
-    const result=await mutate(() => moveTaskAttachments(root,task,from,to,requiredOpId(c.req.raw),grant));
-    await options.changed(task); return c.json(result,200);
+    await options.changed(task);
+    return c.json(options.links?.(c.req.raw, result) ?? result, 200);
   });
 }

@@ -6,7 +6,7 @@ import type { Runtime } from './server.ts';
 test.use({ isolated: true });
 const intents = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('alpacawork-write-intents-v5') ?? '{"entries":{}}').entries);
 /** A project is made as a Task of kind project: its write is a task/new. */
-const creating = (url: string) => new URL(url).pathname === '/api/task/new';
+const creating = (url: string) => new URL(url).pathname === '/api/commands/task/new';
 const projectTitles = async (page: Page, runtime: Runtime) =>
   controlIndexSchema.parse(await (await page.request.get(runtime.origin + '/api/workspace/live')).json()).projects.map(project => project.title);
 async function projectDialog(page: Page) {

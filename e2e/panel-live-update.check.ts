@@ -24,7 +24,7 @@ test('sending and live updates preserve the closed reader and a visible task bod
     await page.locator('[data-coordinator-card] [data-ask-send]').tap();
     await expect(page.locator('[data-coordinator-turn=succeeded]')).toHaveCount(n + 1);
     const { task } = await (await page.request.get(`${runtime.origin}/api/task/view?task=T111`)).json();
-    const changed = await commandPost(page.request, `${runtime.origin}/api/task/update`, {
+    const changed = await commandPost(page.request, `${runtime.origin}/api/commands/task/update`, {
       data: { task: 'T111', title: `Updated ${n}`, expectedTaskHash: task.hash },
     });
     expect(changed.ok(), await changed.text()).toBe(true);
@@ -45,7 +45,7 @@ test('a failed History requalification offers recovery instead of an empty body'
   await page.route('**/api/task/history?task=T111&*', route => route.fulfill({ status: 503,
     json: { error: { code: 'busy', message: 'History is temporarily unavailable', retry: 'later' } } }));
   const { task } = await (await page.request.get(`${runtime.origin}/api/task/view?task=P1`)).json();
-  const changed = await commandPost(page.request, `${runtime.origin}/api/task/update`, {
+  const changed = await commandPost(page.request, `${runtime.origin}/api/commands/task/update`, {
     data: { task: 'P1', values: { project_policy: 'Project instructions changed' }, expectedTaskHash: task.hash },
   });
   expect(changed.ok(), await changed.text()).toBe(true);
@@ -80,7 +80,7 @@ test.describe('computer', () => {
     // The read again takes a while, as over a network: the finished task's list rows wait for it meanwhile.
     await page.route('**/api/task/**', async route => { await new Promise(done => setTimeout(done, 300)); await route.continue(); });
     const { task } = await (await page.request.get(`${runtime.origin}/api/task/view?task=T1141`)).json();
-    const changed = await commandPost(page.request, `${runtime.origin}/api/task/update`, {
+    const changed = await commandPost(page.request, `${runtime.origin}/api/commands/task/update`, {
       data: { task: 'T1141', title: 'Read again', expectedTaskHash: task.hash },
     });
     expect(changed.ok(), await changed.text()).toBe(true);

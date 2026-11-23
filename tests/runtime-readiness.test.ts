@@ -59,7 +59,7 @@ test('initial release ignores configured voice and Jev while keeping settings us
   writeFileSync(join(root, 'config.yaml'), valid + 'voice: {provider: local, endpoint: "http://127.0.0.1:9/v", model: m}\njev: {endpoint: "http://127.0.0.1:9/decision"}\n', { mode: 0o600 });
   server = await startServer(root, 0);
   assert.equal((await (await fetch(new URL('/', server.url))).text()).includes('name="alpacawork-voice"'), false);
-  const settings = await (await fetch(new URL('/api/config/get', server.url))).json();
+  const settings = await (await fetch(new URL('/api/commands/config/get', server.url))).json();
   assert.equal(Object.hasOwn(settings, 'jev'), false);
   const { readJevSettings, evaluateJev } = await import('../apps/backend/test-dist/jev.js');
   assert.equal(readJevSettings(root), null);
@@ -71,7 +71,7 @@ test('initial release ignores configured voice and Jev while keeping settings us
   assert.equal((await voice.json()).error.code, 'not_found');
   const { commandFetch } = await import('./helpers/command-fetch.ts');
   for (const section of ['voice', 'jev']) {
-    const refused = await commandFetch(new URL('/api/config/set', server.url), { method: 'POST',
+    const refused = await commandFetch(new URL('/api/commands/config/set', server.url), { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         config: `limits: ${JSON.stringify(settings.limits)}\n${section}: {}\n`,
         agents: settings.agentsText, expectedConfigHash: settings.hash,

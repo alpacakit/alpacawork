@@ -31,7 +31,7 @@ type Live = { tasks: Array<{ id: string; state: string; hash: string; ball: Ball
 const live = async (page: Page, runtime: Runtime) => await (await page.request.get(`${runtime.origin}/api/workspace/live`)).json() as Live;
 /** A top Task of the sample's project, with its responsible placed. */
 async function placed(page: Page, runtime: Runtime, title: string, values?: TaskValues): Promise<string> {
-  const { task } = await post(page, runtime, "task/new", { parent: SAMPLE_PROJECT.id, title, ...values === undefined ? {} : { values } });
+  const { task } = await post(page, runtime, "commands/task/new", { parent: SAMPLE_PROJECT.id, title, ...values === undefined ? {} : { values } });
   return (await placeResponsible(page.request, runtime.origin, task)).id;
 }
 /** A top Task whose responsible's Run reported done on the user's request: a review waiting on the user. Returns its Run. */
@@ -50,7 +50,7 @@ async function question(page: Page, runtime: Runtime, title: string, asked: { ti
 }
 /** A person holds the Task themselves (task report --state held is the user's to ask for). */
 const hold = async (page: Page, runtime: Runtime, id: string, words: { title: string; description: string }) =>
-  post(page, runtime, "task/report", { task: id, state: "held", opId: crypto.randomUUID(), ...words, expectedTaskHash: (await view(page, runtime, id)).hash });
+  post(page, runtime, "commands/task/report", { task: id, state: "held", opId: crypto.randomUUID(), ...words, expectedTaskHash: (await view(page, runtime, id)).hash });
 
 test("holding a confirmation advances the reader and restores the original turn from the list", async ({ page, runtime }) => {
   test.setTimeout(90_000);
@@ -135,7 +135,7 @@ for (const origin of ["review"] as ("review" | "question")[]) test(`the state fo
   await page.setViewportSize({ width: origin === "review" ? 390 : 1440, height: 900 });
   await open(page, runtime, `?agent=1&task=${id}`);
   const sent: Record<string, any>[] = [];
-  await page.route(url => url.pathname === "/api/task/report", async route => {
+  await page.route(url => url.pathname === "/api/commands/task/report", async route => {
     sent.push(route.request().postDataJSON());
     if (sent.length === 1) await route.fulfill({ status: 503, contentType: "application/json",
       body: JSON.stringify({ error: { code: "save_unconfirmed", message: "Unknown restoration result", retry: "check" } }) });

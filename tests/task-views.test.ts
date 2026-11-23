@@ -130,18 +130,21 @@ test('task get returns the Task with its kind, project, mark, questions and revi
     const h = await setup(t);
     const plain = (await cli(h.root, ['task', 'get', '--task', h.child.id]));
     assert.equal(plain.code, 0);
-    assert.deepEqual(Object.keys(plain.json), ['shelf', 'task', 'questions', 'incomingQuestions', 'decisionsMade', 'relevantAnswers', 'reviewRun', 'requestedByUser', 'agents', 'errors', 'dependencies']);
+    assert.deepEqual(Object.keys(plain.json).sort(), ['agents', 'decisionsMade', 'dependencies', 'errors', 'incomingQuestions',
+        'questions', 'relevantAnswers', 'requestedByUser', 'reviewRun', 'shelf', 'task']);
     assert.deepEqual(plain.json.shelf, { listed: true, shelvedBy: [], restoreTarget: null });
     assert.deepEqual(plain.json.dependencies, { after: [], started: false, waiting: false });
-    assert.deepEqual(Object.keys(plain.json.task), ['id', 'kind', 'projectId', 'parentId', 'userRequested', 'folder', 'lifecycle',
-        'title', 'state', 'baseState', 'hold', 'hash', 'values', 'fields']);
-    assert.deepEqual([plain.json.task.values, plain.json.task.fields], [{}, { fields: [...DEFAULT_SCHEMA], from: null }]);
+    assert.deepEqual(Object.keys(plain.json.task).sort(), ['baseState', 'folder', 'hash', 'hold', 'id', 'kind', 'lifecycle',
+        'parentId', 'projectId', 'state', 'title', 'userRequested']);
+    assert.equal(plain.json.task.values, undefined);
+    const fields = await cli(h.root, ['task', 'get', '--task', h.child.id, '--include', 'fields']);
+    assert.deepEqual(fields.json.task.fields, { fields: [...DEFAULT_SCHEMA], from: null });
     assert.deepEqual([plain.json.task.baseState, plain.json.task.hold], ['todo', false]);
     // The agents' own Task: no question, nothing under review, and not the user's.
     assert.deepEqual([plain.json.task.kind, plain.json.task.projectId, plain.json.task.userRequested], ['task', h.project, false]);
     assert.deepEqual([plain.json.questions, plain.json.reviewRun, plain.json.requestedByUser], [[], null, null]);
     assert.ok(!('openObligations' in plain.json), 'full open work is an explicit read, not default context');
-    const open = await cli(h.root, ['task', 'get', '--task', h.child.id, '--open-obligations']);
+    const open = await cli(h.root, ['task', 'get', '--task', h.child.id, '--include', 'openObligations']);
     assert.equal(open.code, 0, open.stderr);
     assert.deepEqual(open.json.openObligations, { requests: [], returns: [] });
     assert.deepEqual(open.json.errors, []);
@@ -155,7 +158,7 @@ test('task get returns the Task with its kind, project, mark, questions and revi
     const folder = join(h.root, 'tasks', h.child.id);
     mkdirSync(folder, { recursive: true });
     writeFileSync(join(folder, 'note.txt'), 'artifact');
-    const more = (await cli(h.root, ['task', 'get', '--task', h.child.id, '--log', '1', '--runs', '2', '--files']));
+    const more = (await cli(h.root, ['task', 'get', '--task', h.child.id, '--log', '1', '--runs', '2', '--include', 'files']));
     assert.equal(more.json.task.log.length, 1);
     assert.equal(more.json.task.log[0].kind, 'created');
     assert.deepEqual(more.json.runs, []);
@@ -202,9 +205,9 @@ test('task get lists open questions and --question gives one\'s full text as fix
     const other = await cli(h.root, ['task', 'get', '--task', h.child.id, '--question', questionId]);
     assert.equal(other.code, 2);
     assert.equal(other.error.error.code, 'not_found');
-    assert.equal((await fetch(new URL(`/api/task/get?task=${h.child.id}&question=${questionId}`, await url(h.root)))).status, 404);
+    assert.equal((await fetch(new URL(`/api/commands/task/get?task=${h.child.id}&question=${questionId}`, await url(h.root)))).status, 404);
 });
-test('task get --usage adds own and all descendant Run totals only on request', async (t) => {
+test('task get --include usage adds own and all descendant Run totals only on request', async (t) => {
     const h = await setup(t);
     const counters = (input: number) => ({ input, cacheRead: 0, cacheWrite: 0, output: 1 });
     const placements = new Map([h.child.id, h.grandchild.id].map(taskId => [taskId, responsibleOf(h.root, taskId).id]));
@@ -225,7 +228,7 @@ test('task get --usage adds own and all descendant Run totals only on request', 
     const ordinary = (await cli(h.root, ['task', 'get', '--task', h.child.id]));
     assert.equal(ordinary.code, 0, JSON.stringify(ordinary.error));
     assert.equal('usage' in ordinary.json, false);
-    const result = (await cli(h.root, ['task', 'get', '--task', h.child.id, '--usage']));
+    const result = (await cli(h.root, ['task', 'get', '--task', h.child.id, '--include', 'usage']));
     assert.equal(result.code, 0, JSON.stringify(result.error));
     assert.deepEqual([result.json.usage.own.tokens.input, result.json.usage.subtree.tokens.input], [10, 30]);
     assert.deepEqual([result.json.usage.own.runMs, result.json.usage.subtree.runMs], [60000, 120000]);
@@ -374,8 +377,8 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
     let allBytes = Buffer.byteLength('{}') + await valueBytes(h.project);
     for (const task of notes.keys()) allBytes += await valueBytes(task.id);
     const full = await readControlSource(h.root);
-    for (const options of [{}, { log: 2, runs: 1 }, { usage: true },
-        { files: true }, { estimateExamples: true }, { openObligations: true }])
+    for (const options of [{}, { log: 2, runs: 1 }, { include: ['usage'] as const },
+        { include: ['files'] as const }, { include: ['estimateExamples'] as const }, { include: ['openObligations'] as const }])
         assert.deepEqual(await readTaskView(h.root, h.child.id, options, null), {
             ...taskView(full, h.child.id, options), dependencies: { after: [], started: false, waiting: false },
         });
@@ -384,8 +387,8 @@ test('formal CLI reads only needed Task text and keeps full search and snapshot 
         assert.deepEqual(await readTaskListView(h.root, options, null), taskListView(full, options));
     // A person reads the whole workspace: the two projects and the four Tasks. The bytes are counted on the thread that reads.
     for (const [options, view] of [[[], {}], [['--log', '0', '--runs', '0'], { log: 0, runs: 0 }],
-        [['--usage'], { usage: true }], [['--files'], { files: true }], [['--estimate-examples'], { estimateExamples: true }],
-        [['--open-obligations'], { openObligations: true }]] as const) {
+        [['--include', 'usage'], { include: ['usage'] as const }], [['--include', 'files'], { include: ['files'] as const }], [['--include', 'estimateExamples'], { include: ['estimateExamples'] as const }],
+        [['--include', 'openObligations'], { include: ['openObligations'] as const }]] as const) {
         const result = await cli(h.root, ['task', 'get', '--task', h.child.id, ...options]);
         assert.equal(result.code, 0, result.stderr);
         assert.equal(result.json.task.values.notes, notes.get(h.child)!.trim());
@@ -421,11 +424,11 @@ test('task get retains project Run diagnostics while metadata lists avoid unrela
     runs.close();
     const db = new DatabaseSync(controlDatabasePath(h.root));
     t.after(() => db.close());
-    const read = () => readTaskView(h.root, h.child.id, { openObligations: true }, null);
+    const read = () => readTaskView(h.root, h.child.id, { include: ['openObligations'] as const }, null);
     assert.deepEqual((await read()).errors, []);
     assert.equal((await cli(h.root, ['task', 'get', '--task', h.child.id])).code, 0, 'read once before the sibling\'s corruption');
     db.prepare("UPDATE runs SET record=json_set(record,'$.agent','Invalid Agent') WHERE id=?").run(Number(records[1]!.id.slice(1)));
-    const get = await cli(h.root, ['task', 'get', '--task', h.child.id, '--runs', '3', '--usage', '--estimate-examples', '--open-obligations']);
+    const get = await cli(h.root, ['task', 'get', '--task', h.child.id, '--runs', '3', '--include', 'usage', '--include', 'estimateExamples', '--include', 'openObligations']);
     assert.equal(get.code, 4, get.stderr);
     assert.equal(get.json.errors[0].code, 'runs_unavailable');
     assert.equal(get.json.agents[0].runtime.displayState, 'unknown');
@@ -445,7 +448,7 @@ test('task get retains project Run diagnostics while metadata lists avoid unrela
     assert.throws(() => db.prepare("UPDATE task_log SET entry='null' WHERE task_id=(SELECT id FROM tasks WHERE external_id=?)")
         .run(h.sibling.id), /immutable/);
     assert.throws(() => db.prepare("UPDATE requests SET author='{}' WHERE id=?").run(records[1]!.requestId), /immutable/);
-    const recovered = await cli(h.root, ['task', 'get', '--task', h.child.id, '--open-obligations']);
+    const recovered = await cli(h.root, ['task', 'get', '--task', h.child.id, '--include', 'openObligations']);
     assert.equal(recovered.code, 0, recovered.stderr);
     assert.deepEqual(recovered.json.openObligations, { requests: [], returns: [] });
     assert.deepEqual(recovered.json.errors, []);
@@ -487,18 +490,17 @@ test('formal CLI retains SQLite conversion failures in unrelated non-body Task c
 
 test('task list validates opt-in scopes and positive limits through the CLI', async t => {
     const h = await setup(t);
-    for (const args of [['--in', 'history'], ['--limit', '2'], ['--text', 'Child', '--in', 'prompt'],
+    for (const args of [['--in', 'history'], ['--text', 'Child', '--in', 'prompt'],
         ['--text', 'Child', '--limit', '0'], ['--text', 'Child', '--limit', '-1'],
         ['--text', 'Child', '--limit', '1.5'], ['--text', '', '--in', 'history']]) {
         assert.equal((await cli(h.root, ['task', 'list', ...args])).code, 2, args.join(' '));
     }
     // The program itself exits with the refusal's status.
     assert.equal((await cliRun(await url(h.root), ['task', 'list', '--in', 'history'])).code, 2);
-    const result = await cli(h.root, ['task', 'list', '--text', 'Child', '--in', 'history,runs', '--in', 'files', '--limit', '1']);
+    const result = await cli(h.root, ['task', 'list', '--text', 'Child', '--in', 'history,runs', '--in', 'files', '--limit', '10']);
     assert.equal(result.code, 0, result.stderr);
-    assert.equal(result.json.omitted, 1);
-    assert.deepEqual(result.json.tasks.filter((task: any) => task.match).map((task: any) => task.id), [h.grandchild.id]);
-    assert.equal(result.json.tasks.find((task: any) => task.id === h.child.id).match, undefined);
+    assert.ok(result.json.tasks.length <= 10);
+    assert.deepEqual(result.json.tasks.filter((task: any) => task.match).map((task: any) => task.id), [h.child.id, h.grandchild.id]);
     assert.equal(result.json.tasks.at(-1).match.kind, 'title');
 });
 
@@ -597,18 +599,30 @@ test('task list files/work respect document boundaries, visibility, ordinary har
         'a Run in another project never opens this Task folder');
 });
 
-test('task list caps matching Tasks at 50 by numeric ID while preserving the path', async t => {
+test('task list pages ancestors and matching siblings without repeating earlier rows', async t => {
     const h = await setup(t);
     const created = (await h.commands.create({ parentId: h.child.id, userRequested: false,
         tasks: Array.from({ length: 55 }, (_, index) => ({ title: `limitneedle ${index}`, values: { notes: 'bodyneedle' } })) })).tasks;
-    const result = await cli(h.root, ['task', 'list', '--text', 'LIMITNEEDLE']);
-    assert.equal(result.code, 0, result.stderr);
-    assert.equal(result.json.omitted, 5);
-    assert.deepEqual(result.json.tasks.filter((task: any) => task.match).map((task: any) => task.id), created.slice(5).map(task => task.id));
-    assert.equal(result.json.tasks.find((task: any) => task.id === h.child.id).match, undefined);
+    const query = { text: 'limitneedle', limit: 25 };
+    const first = await cli(h.root, ['task', 'list', '--text', query.text, '--limit', String(query.limit)]);
+    assert.equal(first.code, 0, first.stderr);
+    assert.equal(first.json.tasks.length, 25);
+    assert.equal(first.json.tasks.find((task: any) => task.id === h.child.id).match, undefined);
+    const appended = (await h.commands.create({ parentId: h.child.id, userRequested: false,
+        tasks: [{ title: 'limitneedle new sibling' }] })).tasks[0]!;
+    const seen = first.json.tasks.filter((task: any) => task.match).map((task: any) => task.id);
+    let cursor = first.json.cursor;
+    await assert.rejects(readTaskListView(h.root, { ...query, text: 'other', cursor }, null), { code: 'invalid_input' });
+    while (cursor) {
+        const page = await readTaskListView(h.root, { ...query, cursor }, null);
+        assert.ok(page.tasks.length <= query.limit);
+        seen.push(...page.tasks.filter(row => row.match).map(row => row.id));
+        cursor = page.cursor;
+    }
+    assert.deepEqual(seen, [...created, appended].map(task => task.id));
     const byId = await readTaskListView(h.root, { text: created.at(-1)!.id }, null);
     assert.equal(byId.tasks.at(-1)!.match!.kind, 'id');
-    const byBody = await readTaskListView(h.root, { text: 'bodyneedle', in: ['history'], limit: 1 }, null);
+    const byBody = await readTaskListView(h.root, { text: 'bodyneedle', in: ['history'] }, null);
     assert.equal(byBody.tasks.at(-1)!.match!.kind, 'values', '--in always adds to the base fields');
     assert.equal((await readTaskListView(h.root, { text: '0bodyneedle' }, null)).tasks.length, 0, 'one query cannot span fields');
 });

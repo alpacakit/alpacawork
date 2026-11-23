@@ -55,9 +55,9 @@ const holdMainThread = (ms: number) => Atomics.wait(new Int32Array(new SharedArr
 
 test('a command\'s read is answered while the main thread is held; anything else waits for it', async t => {
   const { server, task } = await serve(t);
-  const read = firstByte(new URL(`/api/task/get?task=${task}`, server.url).href, CLI);
-  const list = firstByte(new URL('/api/task/list', server.url).href, CLI);
-  const screen = firstByte(new URL(`/api/task/get?task=${task}`, server.url).href);
+  const read = firstByte(new URL(`/api/commands/task/get?task=${task}`, server.url).href, CLI);
+  const list = firstByte(new URL('/api/commands/task/list', server.url).href, CLI);
+  const screen = firstByte(new URL(`/api/commands/task/get?task=${task}`, server.url).href);
   holdMainThread(3_000);
   const [got, listed, shown] = await Promise.all([read, list, screen]);
   assert.equal(got.status, 200);
@@ -101,9 +101,9 @@ async function serveWithRun(t: Parameters<typeof serve>[0], session: { provider:
 test('a Run\'s reads and a conversation\'s are answered while the main thread is held', async t => {
   const { server, task, headers } = await serveWithRun(t, { provider: 'codex', id: 'session-1' });
   const url = (path: string) => new URL(path, server.url).href;
-  const reads = [`/api/task/get?task=${task}`, '/api/task/list', `/api/task/returns?task=${task}`, '/api/run/get?run=R1'].map(path =>
+  const reads = [`/api/commands/task/get?task=${task}`, '/api/commands/task/list', `/api/commands/task/returns?task=${task}`, '/api/commands/run/get?run=R1'].map(path =>
     firstByte(url(path), { ...CLI, ...headers }));
-  const conversation = firstByte(url(`/api/task/get?task=${task}`), { ...CLI, 'x-alpacawork-provider': 'claude', 'x-alpacawork-conversation': 'outside' });
+  const conversation = firstByte(url(`/api/commands/task/get?task=${task}`), { ...CLI, 'x-alpacawork-provider': 'claude', 'x-alpacawork-conversation': 'outside' });
   holdMainThread(3_000);
   for (const read of [...await Promise.all(reads), await conversation]) {
     assert.equal(read.status, 200);
@@ -113,7 +113,7 @@ test('a Run\'s reads and a conversation\'s are answered while the main thread is
 
 test('a conversation an import could change is resolved on the main thread, as before', async t => {
   const { server, task } = await serveWithRun(t, null);
-  const read = await fetch(new URL(`/api/task/get?task=${task}`, server.url), { headers: { ...CLI, 'x-alpacawork-provider': 'claude', 'x-alpacawork-conversation': 'outside' } });
+  const read = await fetch(new URL(`/api/commands/task/get?task=${task}`, server.url), { headers: { ...CLI, 'x-alpacawork-provider': 'claude', 'x-alpacawork-conversation': 'outside' } });
   assert.equal(read.status, 200);
 });
 
@@ -126,7 +126,7 @@ test('a Run\'s own project bounds what the thread answers', async t => {
   const headers = runningRun(t, root, task!.id, { provider: 'codex', id: 'session-2' });
   const server = await startServer(root, 0);
   t.after(async () => { await server.close(); rmSync(root, { recursive: true, force: true }); });
-  const read = (id: string, extra: Record<string, string>) => fetch(new URL(`/api/task/get?task=${id}`, server.url), { headers: extra });
+  const read = (id: string, extra: Record<string, string>) => fetch(new URL(`/api/commands/task/get?task=${id}`, server.url), { headers: extra });
   const refused = await read(other!.id, { ...CLI, ...headers });
   const same = await read(other!.id, headers);
   assert.equal(refused.status, same.status);
@@ -191,7 +191,7 @@ test('a request that arrives while the service closes neither ends the thread no
   // TCP connect only completes the kernel handshake; the listener may not have accepted it yet.
   // Begin this request, then complete a later connection through the same listener before closing.
   // The first request's remaining headers still arrive during shutdown.
-  socket.write(`GET /api/task/get?task=${task} HTTP/1.1\r\n`);
+  socket.write(`GET /api/commands/task/get?task=${task} HTTP/1.1\r\n`);
   const ready = await fetch(new URL('/api/identity', server.url));
   assert.equal(ready.status, 200); await ready.arrayBuffer();
   const closed = server.close();
@@ -207,14 +207,14 @@ test('the thread\'s answer and the main thread\'s are the same', async t => {
     const response = await fetch(new URL(path, server.url), { headers });
     return { status: response.status, type: response.headers.get('content-type'), cache: response.headers.get('cache-control'), body: await response.json() };
   };
-  for (const path of [`/api/task/get?task=${task}`, `/api/task/get?task=${task}&log=5&runs=2`, '/api/task/list', `/api/task/returns?task=${task}`,
-    '/api/field/get', '/api/task/get?task=T999999', '/api/run/get?run=R999999', '/api/task/get'])
+  for (const path of [`/api/commands/task/get?task=${task}`, `/api/commands/task/get?task=${task}&log=5&runs=2`, '/api/commands/task/list', `/api/commands/task/returns?task=${task}`,
+    '/api/commands/field/get', '/api/commands/task/get?task=T999999', '/api/commands/run/get?run=R999999', '/api/commands/task/get'])
     assert.deepEqual(await read(path, CLI), await read(path), path);
 });
 
 test('what is refused is refused as before, on either thread', async t => {
   const { server, task } = await serve(t);
-  const path = new URL(`/api/task/get?task=${task}`, server.url);
+  const path = new URL(`/api/commands/task/get?task=${task}`, server.url);
   const { port } = path;
   const raw = (headers: string) => new Promise<string>((resolve, reject) => {
     const client = spawn('node', ['-e', `const s=require('net').connect(${port},'127.0.0.1');let o='';s.on('data',d=>o+=d);s.on('close',()=>console.log(o));s.write(${JSON.stringify(`GET ${path.pathname}${path.search} HTTP/1.1\r\n${headers}Connection: close\r\n\r\n`)})`], { stdio: ['ignore', 'pipe', 'inherit'] });

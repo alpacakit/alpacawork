@@ -138,7 +138,7 @@ test("a project whose parent project is archived (not listed) stands at the top,
   vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
     const url = new URL(String(input), "http://screen");
     const answer = url.pathname === "/api/task/view" ? viewsOf(value).find((view) => view.task.id === url.searchParams.get("task"))
-      : url.pathname === "/api/field/get" ? schemaOfTasks(url) : url.pathname === "/api/field/list" ? fieldList()
+      : url.pathname === "/api/commands/field/get" ? schemaOfTasks(url) : url.pathname === "/api/commands/field/list" ? fieldList()
       : url.pathname === "/api/task/timeline" ? { rows: [], runs: [], events: [], anchors: {}, placements: [], nextAfter: null }
       : { hash: "b".repeat(64), agentsText: "agents: {}\n", agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } };
     return new Response(JSON.stringify(answer), { headers: { "Content-Type": "application/json" } });
@@ -290,7 +290,7 @@ test("the project in settings is chosen by its title and public ID; it cannot be
   vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
     const url = new URL(String(input), "http://screen");
     const answer = url.pathname === "/api/task/view" ? viewsOf(value).find((view) => view.task.id === url.searchParams.get("task"))
-      : url.pathname === "/api/field/get" ? schemaOfTasks(url) : url.pathname === "/api/field/list" ? fieldList()
+      : url.pathname === "/api/commands/field/get" ? schemaOfTasks(url) : url.pathname === "/api/commands/field/list" ? fieldList()
       : { hash: "b".repeat(64), agentsText: "agents: {}\n", agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS, run_minutes: 120 } };
     return new Response(JSON.stringify(answer), { headers: { "Content-Type": "application/json" } });
   });
@@ -313,7 +313,7 @@ test("a new project is named and put in the project chosen (the one in view at f
   const value = projectsTree();
   queryClient.setQueryData(indexKey, indexOf(value));
   vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
-    if (String(input) !== "/api/task/new" || init?.method !== "POST") return new Response("{}");
+    if (String(input) !== "/api/commands/task/new" || init?.method !== "POST") return new Response("{}");
     // The feed lists the new project as the answer arrives.
     queryClient.setQueryData(indexKey, indexOf(tree({ tasks: [...value.tasks, made] })));
     return new Response(JSON.stringify({ task: headOf(made) }), { headers: { "Content-Type": "application/json" } });
@@ -330,7 +330,7 @@ test("a new project is named and put in the project chosen (the one in view at f
   fireEvent.change(document.getElementById("project-new-name")!, { target: { value: "Mobile tools" } });
   fireEvent.click(screen.getByRole("button", { name: i18n.t("panels:project.create") }));
   await waitFor(() => expect(useViewStore.getState().project).toBe("P400"));
-  const sent = vi.mocked(globalThis.fetch).mock.calls.filter(([input, init]) => String(input) === "/api/task/new" && init?.method === "POST");
+  const sent = vi.mocked(globalThis.fetch).mock.calls.filter(([input, init]) => String(input) === "/api/commands/task/new" && init?.method === "POST");
   expect(sent).toHaveLength(1);
   expect(JSON.parse(String(sent[0]![1]!.body))).toEqual({ kind: "project", color: newProjectColor(PROJECTS.map(project => project.settings!.color)), parent: "P200", title: "Mobile tools" });
   expect(useDialogStore.getState().dialog).toBeNull();
@@ -347,7 +347,7 @@ async function madeBeforeListed() {
   await waitFor(() => expect(document.getElementById("project-new-name")).not.toBeNull());
   fireEvent.change(document.getElementById("project-new-name")!, { target: { value: "Mobile tools" } });
   fireEvent.click(screen.getByRole("button", { name: i18n.t("panels:project.create") }));
-  await waitFor(() => expect(vi.mocked(globalThis.fetch).mock.calls.some(([input]) => String(input) === "/api/task/new")).toBe(true));
+  await waitFor(() => expect(vi.mocked(globalThis.fetch).mock.calls.some(([input]) => String(input) === "/api/commands/task/new")).toBe(true));
   // The answer is taken in; the list has not heard of the project.
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
   expect(useViewStore.getState().project).toBeNull();

@@ -23,7 +23,7 @@ const client = () => {
 function serve() {
   vi.stubGlobal('fetch', async (url: string) => {
     const path = new URL(String(url), 'http://fixture').pathname;
-    if (path === '/api/settings/get') return Response.json({ values: {}, revision: index.person.settings });
+    if (path === '/api/commands/settings/get') return Response.json({ values: {}, revision: index.person.settings });
     if (path === '/api/person/notices') return Response.json({ state: null, revision: index.person.notices });
     if (path === '/api/task/view') return Response.json(view);
     if (path === '/api/task/history') return Response.json({ generation: 'a', sourcePv: 0, events: [...events].reverse(),
