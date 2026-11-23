@@ -330,7 +330,7 @@
     "policy": "Project policy",
     "policyCount_one": "{{count}} character",
     "policyCount_other": "{{count}} characters",
-    "policyExample": "For example:\nPurpose: let people book on our booking site from their phone without getting lost\nHow we work: before changing a screen, show a sample and ask first\nNever: publish to production without approval",
+    "policyExample": "For example:\nHow we work: before changing a screen, show a sample and ask first\nNever: publish to production without approval",
     "policyNote": "What you write here is given as written to every agent in this project and the projects inside it.",
     "policyVsAgentsMd": {
       "detail": "The difference: agents get it only when they work through alpacawork. Instructions they should follow outside alpacawork too stay in AGENTS.md or CLAUDE.md.",
