@@ -13,7 +13,8 @@
  *   it. The project under the panel is noted too, so the list come back behind a closed panel opens nothing; a project
  *   opened starts the panel's record afresh, so a Task opened over it next is new.
  * - The screen leaving a Task whose label is all the draft holds (files aside) takes that label off, in either phase, so
- *   nothing is left to go to a Task no longer in view: the panel closing on it, or the project in view changing from it.
+ *   nothing is left to go to a Task no longer in view: the panel closing on it or the card saying every turn there is
+ *   answered taking its place, or the project in view changing from it.
  *   Anything else in it keeps the draft as it is.
  *
  * A locally submitted send leaves the current labels as prepared context; its body is retained only for delivery/recovery.
