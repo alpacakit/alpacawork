@@ -57,7 +57,7 @@ Siga as quatro etapas da tela, em ordem.
 
 <img src="../images/setup-project.png" alt="A última etapa da configuração inicial. Há os campos “Name” e “Working folder”, e o botão “Choose” ao lado de “Working folder”" width="480">
 
-Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Local do código”. Se for só para experimentar, deixe o “Local do código” vazio (a IA trabalha na pasta de dados, `~/alpacawork`). Você pode começar com a política do projeto de exemplo, como está.
+Um projeto é uma pasta em que a IA trabalha, junto com as regras para trabalhar nela (a política do projeto). Para usar um repositório que você já tem, escolha a pasta dele como “Local do código”. Se for só para experimentar, deixe o “Local do código” vazio (a IA trabalha na pasta de dados, `~/alpacawork`). Você pode começar sem escrever uma política do projeto.
 
 Ao pressionar “Concluir configuração”, o Chrome e o Edge perguntam se você quer instalar o alpacawork como app. Pressione “Instalar e começar” para poder abri-lo de novo pelo ícone no Dock ou na barra de tarefas. Se escolher “Começar no navegador”, você pode instalar depois com “Instalar” em “Configurações (engrenagem) → App e celular”. No Safari do Mac, instale com “Arquivo → Adicionar ao Dock” no menu (macOS Sonoma ou posterior).
 

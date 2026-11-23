@@ -55,7 +55,7 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
   const { isDirty, isSubmitting } = useFormState({ control: form.control });
   const title = useWatch({ control: form.control, name: "title" }) ?? "";
   const skills = useSkills();
-  // The recommended policy goes in when the project has none, and follows the skills installed and the display language
+  // The skills' lines go in when the project has no policy, and follows the skills installed and the display language
   // for as long as it is what was put in (going back to install another adds its line); once the person changes it,
   // emptied included, it is theirs.
   const offered = useRef<string | null>(null);
@@ -91,9 +91,12 @@ function ProjectForm({ project, projects, active, busy, failed, onBack, onFinish
   </FormProvider>;
 }
 
-/** The recommended rules, then one line per installed skill: when it is used, in the display language. */
+/**
+ * One line per installed skill, saying when it is used, in the display language; nothing when none is installed. The
+ * rules are the person's own to write. The lines stay because agents reach for an installed skill far less often when
+ * the policy does not name it.
+ */
 function recommendedPolicy(t: TFunction<"setup">, installed: readonly SkillName[]): string {
   const lines = installed.map(name => t("project.policySkillLine", { skill: name, when: t(`skills.items.${name}.when`) }));
-  // The skills go in a section of their own after the rules, set off by a blank line like the rules' own sections.
-  return [t("project.policyStart"), ...lines.length ? ["", t("project.policySkills"), ...lines] : []].join("\n");
+  return lines.length ? [t("project.policySkills"), ...lines].join("\n") : "";
 }
