@@ -97,9 +97,9 @@ for (const key of ['DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS']) if
 // Preserve only the fact that setup was launched over SSH, so it does not try a
 // browser on the server. The preview needs no remote address or account details.
 for (const key of ['SSH_CONNECTION', 'SSH_CLIENT', 'SSH_TTY']) if (process.env[key]) env[key] = '1';
-// The welcome's examples, as the stand-in agent recognizes them: it follows its script only for these.
-const examples = Object.entries(JSON.parse(readFileSync(join(repo, `packages/i18n/src/locales/${values.lang}/tree.json`), 'utf8')).welcome.examples as Record<string, { label: string; words: string }>)
-  .map(([name, example]) => ({ name, label: example.label, words: example.words }));
+// The guide's demo request, as the stand-in agent recognizes it: it follows its script only for this one.
+const demo = JSON.parse(readFileSync(join(repo, `packages/i18n/src/locales/${values.lang}/tree.json`), 'utf8')).guide.example as string;
+const examples = [{ name: 'demo', label: japanese ? '"Hello" を2種類のフォントで表示する' : 'Show "Hello" in two fonts', words: demo.split('\n').at(-1)! }];
 const marker = { root, home, port, language: values.lang, examples, exampleDelayMs: values.check ? 4000 : 12000, project: null as string | null, pid: process.pid, start: identity(process.pid), expiresAt: Date.now() + minutes * 60_000, watchdog: null as { pid: number; start: string | null } | null };
 writeFileSync(join(root, 'preview.json'), JSON.stringify(marker), { mode: 0o600 });
 let child: ReturnType<typeof spawn> | undefined, watchdog: ReturnType<typeof spawn> | undefined, stopped = false, systemctl: string | undefined, detached = false;
