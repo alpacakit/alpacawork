@@ -1,5 +1,5 @@
 import type { AiRow } from '@alpacawork/contract';
-import { InvalidAgentSelection, offeredChoices, resolveOfferedSelection, type SelectionOffer } from '@alpacawork/contract/agent-selection';
+import { InvalidAgentSelection, coordinatorStartValues, offeredChoices, resolveOfferedSelection, type SelectionOffer } from '@alpacawork/contract/agent-selection';
 import { agentOffer, type AgentDraft, type AgentsDraft } from './agent-settings-draft';
 
 /**
@@ -68,15 +68,10 @@ export function startValues(agent: AgentDraft): Values {
 /** Sets one choice of a row. The others stay, those the chosen model leaves out too, as the contract keeps them. */
 export const withRowValue = (row: StackRowDraft, key: string, value: string | null): StackRowDraft => ({ ...row, values: { ...row.values, [key]: value } });
 export const withRowAgent = (agent: AgentDraft, row: StackRowDraft): StackRowDraft => ({ ...row, agent: agent.name, values: startValues(agent) });
-/**
- * Where the input's AI starts when its first row is added (in setup, or in its empty list): the agent's start, at the
- * lightest effort (`low`) where its first model uses an effort that offers it, since what the input does is short. This
- * is the one place that lightness is decided.
- */
+/** Where the input's AI starts on `agent`: the contract's one rule (`coordinatorStartValues`), read from the agent's card. */
 export function coordinatorStart(agent: AgentDraft): Values {
-  const offer = agentOffer(agent), values = startValues(agent);
-  const effort = offer && offeredChoices(offer, values.model ?? null).find(choice => choice.key === 'effort');
-  return effort?.active && effort.candidates.includes('low') ? { ...values, effort: 'low' } : values;
+  const offer = agentOffer(agent);
+  return offer ? coordinatorStartValues(offer) : {};
 }
 const sameValues = (a: Values | null, b: Values) => !!a && Object.keys(a).length === Object.keys(b).length
   && Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && b[key] === value);

@@ -15,7 +15,7 @@ export function configureCoordinator(root: string) {
   const path = installAgentStub(root, 'claude', [process.execPath, fake]);
   const setting = fixtureAgentSetting('claude');
   setting.params.model = ['opus', 'sonnet']; setting.params.effort = ['medium', 'high'];
-  // The fake goes first, and is the input's AI (writeFixtureConfig).
+  // The fake goes first: with no tasks' or input's stack saved, the input runs on the first enabled agent.
   const { coordinatorAiStack: _input, ...kept } = existing;
   writeFixtureConfig(root, stringify({ ...kept, agents: { fake: setting, ...existing.agents } }, { lineWidth: 0 }));
   return path;
