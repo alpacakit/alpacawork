@@ -1,13 +1,13 @@
 import { createElement, type ReactNode } from 'react';
-import { cleanup, renderHook } from '@testing-library/react';
+import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { TaskTimelineLaneDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
 import { laneBatches } from '../src/data/lane-batch';
-import { DeadlinePassed } from '../src/data/client';
+import { ApiError, DeadlinePassed } from '../src/data/client';
 import { useConnection } from '../src/data/connection';
 import { queryClient } from '../src/data/query-client';
-import { resources } from '../src/data/resources';
+import { api, resources } from '../src/data/resources';
 import { useLaneReads } from '../src/data/timeline-lanes';
 import { fixtureReceipt } from './read-fixtures';
 import { dto, indexOf, timelineLaneAnswer, tree } from './fixtures';
@@ -15,7 +15,7 @@ import { dto, indexOf, timelineLaneAnswer, tree } from './fixtures';
 const value = tree({ tasks: [dto({ id: 'T1' }), dto({ id: 'T2', path: 'tasks/T2' }), dto({ id: 'T3', path: 'tasks/T3' })] });
 const strip = (lane: string) => timelineLaneAnswer(value, lane) as unknown as TaskTimelineLaneDTO;
 const asked = (path: string) => new URL(path, 'http://fixture').searchParams.get('lanes')!.split(',');
-afterEach(() => { cleanup(); queryClient.clear(); vi.useRealTimers(); useConnection.setState({ offline: false }); });
+afterEach(() => { cleanup(); queryClient.clear(); vi.useRealTimers(); vi.restoreAllMocks(); useConnection.setState({ offline: false }); });
 
 test('rows asked in one turn go as one read; rows left for size are asked again; a row the server lacks is a missing Task', async () => {
   const request = vi.fn(async (path: string): Promise<TaskTimelineLanesDTO> => {
@@ -71,4 +71,12 @@ test('offline, the rows in view are drawn from the last range this list read, no
   const view = renderHook(() => useLaneReads('/fixture', ['T1'], { from: 'later', to: 'now' }, true, true), { wrapper });
   expect(view.result.current.shown.map(lane => lane.lane)).toEqual(['T1']);
   expect(view.result.current.absent).toBe(false);
+});
+
+test('a row\'s failed read is drawn as soon as it fails', async () => {
+  fixtureReceipt(['index'], indexOf(value));
+  vi.spyOn(api, 'request').mockRejectedValue(new ApiError('Timeline unavailable', 'unavailable', 'later'));
+  const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children);
+  const view = renderHook(() => useLaneReads('/fixture', ['T1'], { from: 'from', to: 'to' }, false, true), { wrapper });
+  await waitFor(() => expect(view.result.current.error).toMatchObject({ code: 'unavailable' }));
 });

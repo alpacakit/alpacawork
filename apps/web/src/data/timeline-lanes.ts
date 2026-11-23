@@ -45,8 +45,10 @@ export function useLaneReads(root: string, lanes: readonly string[], range: { fr
     const query = client.getQueryCache().find({ queryKey, exact: true });
     return query?.state.status === 'error' && !isDatedRead(assessRead(client, query)) ? [query] : [];
   });
-  // Retry reads again every row failed when it is pressed, not only those failed when it was drawn.
-  return { shown: held.current, error: failed()[0]?.state.error ?? null,
+  // A read's failure is drawn as it comes: reading each status here subscribes this screen to it (Query redraws only for
+  // what was read). Retry reads again every row failed when it is pressed, not only those failed when it was drawn.
+  const failing = results.some(result => result.status === 'error');
+  return { shown: held.current, error: failing ? failed()[0]?.state.error ?? null : null,
     absent: offline && enabled && !results.some(result => result.data !== undefined || result.isFetching),
     retry: () => void recoverReads(client, failed().map(query => query.queryKey)) };
 }
