@@ -70,7 +70,9 @@ for (const acquired of [true]) scrollTest(`timeline read failure is explicit and
     failing = true;
     const box = (await page.locator('[data-time-tree]').boundingBox())!;
     await page.mouse.move(box.x + 420, box.y + 300);
-    await page.mouse.wheel(0, 65);
+    // Far enough to bring rows not read yet into view (a row's strip is read once, so scrolling among read rows reads
+    // nothing), near enough to keep T2063 drawn.
+    await page.mouse.wheel(0, 250);
   }
   const failure = page.locator('[data-timeline-read] [data-read-failure]');
   await expect(failure).toBeVisible();
