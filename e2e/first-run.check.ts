@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { initialFirstRun } from "@alpacawork/contract";
+import { initialFirstRun, PROJECT_POLICY } from "@alpacawork/contract";
 import { archiveFixtureProject } from "./fixture-writes.ts";
 import { test, expect } from "./fixtures.ts";
 import type { Runtime } from "./server.ts";
@@ -70,10 +70,11 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     // Moving on, the setup says what went in.
     await expect(page.locator("[data-toast]").filter({ hasText: "Installed 1 skill" })).toBeVisible();
 
-    // 4 Project: settings' own rows, the policy naming the installed skill.
+    // 4 Project: the bundled skill is installed and the policy starts empty.
     const project = setup.locator('[data-setup-panel="project"]');
-    await expect(project.locator("#project-policy")).toHaveValue(/alpacawork-betterquality/);
-    await expect(project.locator("#project-policy")).not.toHaveValue(/askmeclearly/);
+    const policy = width === 1440 ? "" : "Use the repository guide.";
+    await expect(project.locator("#project-policy")).toHaveValue("");
+    if (policy) await project.locator("#project-policy").fill(policy);
     await project.locator("#project-name").fill("My project");
     await project.locator("[data-setup-finish]").click();
 
@@ -90,6 +91,8 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     expect(config.agentsText).toMatch(/^\s*grok:/m);
     const saved = await (await page.request.get(`${runtime.origin}/api/first-run`)).json();
     expect(saved.state.finishedAt).not.toBeNull();
+    const savedProject = await (await page.request.get(`${runtime.origin}/api/task/get?task=${sample}`)).json();
+    expect(savedProject.task.values[PROJECT_POLICY] ?? "").toBe(policy);
     await page.screenshot({ path: test.info().outputPath(`welcome-${width}.png`) });
   });
 }

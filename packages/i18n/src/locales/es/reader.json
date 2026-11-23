@@ -195,8 +195,9 @@
   },
   "intent": {
     "continue": "Continuar {{id}}",
-    "retry": "Reintentar {{id}}",
-    "sendback": "Devolver {{id}}"
+    "retry": "Continúa con {{id}}, por favor.",
+    "sendback": "Devolver {{id}}",
+    "switch": "Elige otro modelo u otro agente y continúa, por favor."
   },
   "markdownBody": {
     "copyCode": "Copiar código",

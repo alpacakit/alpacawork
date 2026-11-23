@@ -325,10 +325,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Tente novamente mais tarde ou com outro modelo, ou pare",
-      "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Tente novamente com outro modelo ou depois que o limite for renovado, ou pare",
-      "sessionLimit": "O agente atingiu o limite de uso de 5 horas, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare",
-      "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Tente novamente depois que o limite for renovado, ou pare"
+      "modelCapacity": "O modelo estava sobrecarregado, por isso a execução falhou. Continue com a mesma IA mais tarde, continue com outra IA, ou pare",
+      "modelLimit": "O agente atingiu o limite de uso do modelo, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare",
+      "sessionLimit": "O agente atingiu o limite de uso de 5 horas, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare",
+      "weeklyLimit": "O agente atingiu o limite semanal de uso, por isso a execução falhou. Continue com a mesma IA depois que o limite for renovado, continue com outra IA, ou pare"
     },
     "causeReason": {
       "modelCapacity": "O modelo está sobrecarregado",
@@ -358,7 +358,7 @@
     "reason": {
       "children": "A execução atingiu o limite de solicitações. Revise o trabalho e envie outra instrução se precisar",
       "depth": "Limite de profundidade de solicitações atingido. Revise o resultado e envie uma nova instrução se precisar",
-      "failed": "A execução do agente falhou ou terminou sem relatório. Escolha entre tentar novamente ou parar",
+      "failed": "A execução do agente falhou ou terminou sem relatório. Escolha entre continuar ou parar",
       "limit_one": "As trocas automáticas pararam no limite ({{count}} aguardando)",
       "limit_many": "As trocas automáticas pararam no limite ({{count}} aguardando)",
       "limit_other": "As trocas automáticas pararam no limite ({{count}} aguardando)",
@@ -368,8 +368,9 @@
       "responsibleUnavailable": "Não foi possível iniciar a solicitação ao responsável. Verifique a atribuição do responsável e o perfil de inicialização e envie a instrução novamente",
       "unconfirmed": "Não foi possível confirmar se a resposta chegou ao agente. Verifique o resultado e envie uma instrução se precisar"
     },
-    "retry": "Tentar novamente",
-    "stop": "Parar"
+    "retry": "Continuar com a mesma IA",
+    "stop": "Parar",
+    "switch": "Continuar com outra IA"
   },
   "undo": {
     "offer": {

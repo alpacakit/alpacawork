@@ -8,6 +8,9 @@ import type { ReasonedTurn } from "@/domain/lead";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
 import { problemReasonText } from "@/data/client";
 import { intentAbout, sendIntent, useIntentReady } from "@/features/coordinator/reader-send";
+import { focusCoordinator, useInputDraft } from "@/features/coordinator/editor/draft";
+import { hasReaderOperation } from "@/features/coordinator/editor/document";
+import { Icon } from "@/components/ui/icon";
 import { useReaderCard } from "./next-question";
 
 /** A refused wake's code (wakeBlock's), as its words are named; another code is a refusal said in general. */
@@ -32,8 +35,9 @@ export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, cause?: Err
 /**
  * Why the user's turn came when it is not a review or a question (the ball's reason): automatic wakes stopped at their
  * limit (how many wait behind it), a delivery whose receipt is unknown, a refused wake (its code), a failure of what the
- * user asked. Where the turn is answered (the reader names its `task`), the limit offers Continue and a failure Retry and
- * Stop: requests go to the coordinator, Stop reports directly. A failure's known `cause` names what it was.
+ * user asked. Where the turn is answered (the reader names its `task`), the limit offers Continue and a failure
+ * Continue with the same AI, with another AI, or Stop: requests go to the coordinator, Stop reports directly. A failure's
+ * known `cause` names what it was.
  */
 export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTurn; task?: Task; cause?: ErrorCause | null; className?: string }) {
   const { t } = useTranslation("ui");
@@ -45,18 +49,30 @@ export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTur
   </span>;
 }
 
-type TurnAction = "continue" | "retry" | "stop";
-/** Continue on a limit, Retry and Stop on a failure; other turns are answered elsewhere. */
-const turnActions = (turn: ReasonedTurn): readonly TurnAction[] => turn.reason === "limit" ? ["continue"] : turn.reason === "failed" ? ["retry", "stop"] : [];
+type TurnAction = "continue" | "retry" | "switch" | "stop";
+/** Continue on a limit; on a failure, continue with the same AI or another, or Stop; other turns are answered elsewhere. */
+const turnActions = (turn: ReasonedTurn): readonly TurnAction[] => turn.reason === "limit" ? ["continue"] : turn.reason === "failed" ? ["retry", "switch", "stop"] : [];
 
-/** The turn's buttons: requests carry their intent; Stop reports directly with the displayed Task versions. */
+/**
+ * The turn's buttons: Continue and Continue with the same AI send their intent at once; Continue with another AI puts
+ * its line in the input, as a send-back does, for the person to say which AI before sending; Stop reports directly
+ * with the displayed Task versions.
+ */
 function TurnActions({ actions, task }: { actions: readonly TurnAction[]; task: Task }) {
   const { t } = useTranslation("ui");
   const people = useReaderPeople(task.id);
   const card = useReaderCard();
   const ready = useIntentReady(task);
+  const draft = useInputDraft();
   const report = useTaskReport(task, people, card);
-  const words: Record<TurnAction, string> = { continue: t("turn.continue"), retry: t("turn.retry"), stop: t("turn.stop") };
+  const words: Record<TurnAction, string> = { continue: t("turn.continue"), retry: t("turn.retry"), switch: t("turn.switch"), stop: t("turn.stop") };
+  const press = (action: TurnAction) => {
+    if (action === "stop") report.submit("stop");
+    else if (action === "switch") { if (draft.intend(task, intentAbout(task, action, people), t("reader:intent.switch"))) focusCoordinator(); }
+    else sendIntent(intentAbout(task, action, people), card);
+  };
+  const disabled = (action: TurnAction) => action === "stop" ? !report.ready
+    : action === "switch" ? !ready || draft.locked || hasReaderOperation(draft.doc) : !ready;
   return <span className="mt-2 flex flex-wrap gap-2">{actions.map((action) => <Button key={action} variant="outline" data-turn-action={action} className="min-h-6 px-2 text-xs"
-    disabled={action === 'stop' ? !report.ready : !ready} onClick={() => { if (action === 'stop') report.submit('stop'); else sendIntent(intentAbout(task, action, people), card); }}>{words[action]}</Button>)}</span>;
+    disabled={disabled(action)} onClick={() => press(action)}>{action === "switch" && <Icon name="edit" className="size-3.5" />}{words[action]}</Button>)}</span>;
 }

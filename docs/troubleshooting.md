@@ -8,7 +8,7 @@ Don't delete the data folder (`~/alpacawork`) or record files yourself to start 
 
 A task under "Needs attention" has an AI run that stopped. Open it to see the reason under the title.
 
-- "Failed": Press "Retry" or "Stop". If you want it done differently, write that in the input box and send it instead of pressing a button. If the reason is a usage limit or a busy model, press "Retry" after the limit resets, or ask in the input box: "Retry with a different model." It doesn't restart by itself when the limit resets.
+- "Failed": Press "Continue with the same AI", "Continue with another AI" or "Stop". If you want it done differently, write that in the input box and send it instead of pressing a button. If the model was busy, press "Continue with the same AI" after a while; if it hit a usage limit, press it after the limit resets. To go on without waiting, press "Continue with another AI", add which AI to use to the line it puts in the input box, and send it. It doesn't restart by itself when the limit resets.
 - "Limit hit": The automatic back-and-forth between AIs reached its set number of times (20 at first). If it's fine to go on, press "Continue".
 - Reasons with no button ("Receipt unconfirmed", "No launch profile" and so on): Read the message shown, and give an instruction in the input box, such as "Continue." What they mean is in [Why a task stopped](reference.md#why-a-task-stopped).
 
@@ -31,7 +31,7 @@ The sending status appears above the input box. Press it to open the conversatio
 
 ## The PC restarted or went to sleep
 
-When you log in to the PC, alpacawork starts by itself, and your tasks are as you left them. Work that was going on before the restart stops. For a task that moved to "Needs attention", open it and press "Retry". It doesn't restart by itself.
+When you log in to the PC, alpacawork starts by itself, and your tasks are as you left them. Work that was going on before the restart stops. For a task that moved to "Needs attention", open it and press "Continue with the same AI". It doesn't restart by itself.
 
 No work gets done while the PC is asleep. A laptop stops when you close the lid.
 
@@ -69,7 +69,7 @@ Their state appears under "Agents" in "Settings (the gear) → Server".
 - "Not found": Install it if you haven't. If it is installed, set where it is in "Executable" on its card.
 - "No agents are enabled": Turn on the AIs to use.
 
-After fixing it, use "Retry" to move the tasks that had stopped.
+After fixing it, use "Continue with the same AI" to move the tasks that had stopped.
 
 ## The install stops
 

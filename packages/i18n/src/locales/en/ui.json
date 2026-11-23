@@ -314,10 +314,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "The model was at capacity, so the run failed. Retry later or with another model, or stop",
-      "modelLimit": "The agent hit its model's usage limit, so the run failed. Retry with another model or after the limit resets, or stop",
-      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Retry after the limit resets, or stop",
-      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Retry after the limit resets, or stop"
+      "modelCapacity": "The model was at capacity, so the run failed. Continue with the same AI later, continue with another AI, or stop",
+      "modelLimit": "The agent hit its model's usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop",
+      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop",
+      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop"
     },
     "causeReason": {
       "modelCapacity": "The model is at capacity",
@@ -347,7 +347,7 @@
     "reason": {
       "children": "The run reached its request limit. Review the work and send a separate instruction if needed",
       "depth": "Request depth limit reached. Review the result and send a new instruction if needed",
-      "failed": "The agent run failed or ended without a report. Choose to retry or stop",
+      "failed": "The agent run failed or ended without a report. Choose to continue or stop",
       "limit_one": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "limit_other": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "noProfile": "There is no launch profile for this agent. Check the settings and send an instruction",
@@ -356,8 +356,9 @@
       "responsibleUnavailable": "Could not start the request to the owner. Check the owner assignment and launch profile, then resend the instruction",
       "unconfirmed": "Couldn't confirm whether the reply reached the agent. Check the result and send an instruction if needed"
     },
-    "retry": "Retry",
-    "stop": "Stop"
+    "retry": "Continue with the same AI",
+    "stop": "Stop",
+    "switch": "Continue with another AI"
   },
   "undo": {
     "offer": {
