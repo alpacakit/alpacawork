@@ -8,7 +8,7 @@ No borres tú la carpeta de datos (`~/alpacawork`) ni los archivos de registro p
 
 En las tareas de “Requiere atención”, la ejecución de la IA se detuvo. Al abrirla, el motivo aparece bajo el título.
 
-- “Falló”: pulsa “Seguir con la misma IA”, “Seguir con otra IA” o “Detener”. Si quieres que cambie la forma de hacerlo, en lugar de pulsar un botón, escríbelo en el cuadro de texto y envíalo. Si el motivo es el límite de uso o que el modelo está saturado, pulsa “Seguir con la misma IA” cuando se restablezca el límite, o pulsa “Seguir con otra IA”, añade qué IA usar a la frase que aparece en el cuadro de texto y envíala. Aunque el límite se restablezca, no se reanuda sola.
+- “Falló”: pulsa “Seguir con la misma IA”, “Seguir con otra IA” o “Detener”. Si quieres que cambie la forma de hacerlo, en lugar de pulsar un botón, escríbelo en el cuadro de texto y envíalo. Si el modelo estaba saturado, pulsa “Seguir con la misma IA” más tarde; si se alcanzó el límite de uso, púlsalo cuando el límite se restablezca. Para seguir sin esperar, pulsa “Seguir con otra IA”, añade qué IA usar a la frase que aparece en el cuadro de texto y envíala. Aunque el límite se restablezca, no se reanuda sola.
 - “Límite alcanzado”: los intercambios automáticos entre IA llegaron al número fijado (20 al principio). Si te parece bien que siga, pulsa “Continuar”.
 - Motivos sin botones (“Recepción sin confirmar”, “Sin perfil de inicio”, etc.): lee el texto que aparece y da una instrucción en el cuadro de texto, como “Continúa”. Su significado está en [Motivos de detención](reference.md#motivos-de-detención).
 

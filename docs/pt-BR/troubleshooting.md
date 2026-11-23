@@ -8,7 +8,7 @@ Não apague por conta própria a pasta de dados (`~/alpacawork`) nem os arquivos
 
 Em uma tarefa em “Requer atenção”, a execução da IA parou. Ao abrir, o motivo aparece abaixo do título.
 
-- “Falhou”: pressione “Continuar com a mesma IA”, “Continuar com outra IA” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o motivo for o limite de uso ou o modelo congestionado, pressione “Continuar com a mesma IA” quando o limite de uso for renovado, ou pressione “Continuar com outra IA”, acrescente qual IA usar à frase que aparece no campo de mensagem e envie. Mesmo depois que o limite é renovado, o trabalho não é retomado sozinho.
+- “Falhou”: pressione “Continuar com a mesma IA”, “Continuar com outra IA” ou “Parar”. Se quiser que a IA faça de outro jeito, escreva no campo de mensagem e envie, em vez de usar os botões. Se o modelo estava congestionado, pressione “Continuar com a mesma IA” mais tarde; se o limite de uso foi atingido, pressione depois que o limite for renovado. Para continuar sem esperar, pressione “Continuar com outra IA”, acrescente qual IA usar à frase que aparece no campo de mensagem e envie. Mesmo depois que o limite é renovado, o trabalho não é retomado sozinho.
 - “Limite atingido”: a troca automática entre as IAs chegou ao número fixo de vezes (no início, 20). Se quiser que continue, pressione “Continuar”.
 - Motivos sem botões (“Recebimento não confirmado”, “Sem perfil de inicialização” e outros): leia o texto mostrado e dê uma instrução no campo de mensagem, como “Continue”. O significado de cada um está em [Motivos de parada](reference.md#motivos-de-parada).
 

@@ -322,9 +322,9 @@
   "run": {
     "cause": {
       "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Sigue con la misma IA más tarde, sigue con otra IA, o detén la tarea",
-      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea",
-      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea",
-      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea"
+      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea",
+      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea",
+      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Sigue con la misma IA cuando el límite se restablezca, sigue con otra IA, o detén la tarea"
     },
     "causeReason": {
       "modelCapacity": "El modelo está al límite de su capacidad",

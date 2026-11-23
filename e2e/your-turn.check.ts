@@ -40,7 +40,7 @@ for (const width of [1440]) test(`a failed question keeps the question mark, wor
   // The question stays the user's turn, yet the failure is still said under the title with its continue and Stop actions.
   const failure = reader.locator('[data-turn-reason="failed"]');
   await expect(failure).toBeVisible();
-  await expect(failure.locator('[data-turn-action]')).toHaveText(['Continue with same AI', 'Continue with another AI', 'Stop']);
+  await expect(failure.locator('[data-turn-action]')).toHaveText(['Continue with the same AI', 'Continue with another AI', 'Stop']);
   const detail = await (await page.request.get(`${runtime.origin}/api/task/view?task=${asking.id}`)).json();
   expect(detail.questions.some((item: { id: string }) => item.id === question)).toBe(true);
   await keepShot(page, `your-turn-question-${width}`);

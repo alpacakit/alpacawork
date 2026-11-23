@@ -525,7 +525,7 @@ test('a persisted submission disables the original failure actions but not anoth
  const task=data.tasks[0]!,other=data.tasks[1]!,id=crypto.randomUUID();
  freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],selected:{},attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
  withInput(data,<><TurnReason turn={reasonedTurn(task.ball)!} task={task}/><TurnReason turn={reasonedTurn(other.ball)!} task={other}/></>);
- const retry=screen.getAllByRole('button',{name:'Continue with same AI'}),another=screen.getAllByRole('button',{name:'Continue with another AI'}),stop=screen.getAllByRole('button',{name:'Stop'});
+ const retry=screen.getAllByRole('button',{name:'Continue with the same AI'}),another=screen.getAllByRole('button',{name:'Continue with another AI'}),stop=screen.getAllByRole('button',{name:'Stop'});
  expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((another[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);
  await waitFor(()=>expect((retry[1] as HTMLButtonElement).disabled).toBe(false));expect((stop[1] as HTMLButtonElement).disabled).toBe(false);
 });
