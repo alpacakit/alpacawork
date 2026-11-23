@@ -39,7 +39,7 @@ to README.md#install): keep those headings, or change the links with them.
   </picture>
 </h1>
 
-<h3 align="center">Run AI agents across all your projects from one input box.</h3>
+<h3 align="center">Run all your AI agents from one chat.</h3>
 
 <p align="center">
   Write a request. Claude Code and Codex on your machine split it into tasks and run them in parallel.<br/>

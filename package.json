@@ -1,7 +1,7 @@
 {
   "name": "alpacawork",
   "version": "0.1.5",
-  "description": "Run AI agents across all your projects from one input box. Open-source task management for Claude Code, Codex and other coding agents: an AI assigns your requests to agents on your own PC and tracks their progress. Works from your phone too.",
+  "description": "Run all your AI agents from one chat. Open-source task management for Claude Code, Codex and other coding agents: an AI assigns your requests to agents on your own PC and tracks their progress. Works from your phone too.",
   "keywords": [
     "ai-agents", "ai", "claude-code", "codex", "coding-agents", "ai-coding", "agentic-coding",
     "agent-orchestration", "orchestration", "parallel-agents", "multi-agent", "task-management",
