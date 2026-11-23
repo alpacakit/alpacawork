@@ -57,7 +57,7 @@ export class AgentLimitsMonitor {
     catch { return { adapter: id, state: 'unavailable', windows: [], observedAt: null }; }
     // The launch prefix the agent runs under, with the bundled bridge in place of its name.
     const prefix = commandPrefix(id, command);
-    const argv = description.prefix.length === 1 ? prefix : [...probeArgv(id, null, environment), ...prefix.slice(2)];
+    const argv = description.prefix.length === 1 ? prefix : [...probeArgv(id, null, environment), ...prefix.slice(description.prefix.length)];
     const names = [...description.fixedEnv, ...(setting.env ?? description.defaultEnv)].sort();
     const key = JSON.stringify([argv, names]);
     const now = this.now(), known = this.known.get(key);

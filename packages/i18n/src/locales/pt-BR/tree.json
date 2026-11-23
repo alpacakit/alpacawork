@@ -110,8 +110,9 @@
       "report": "Previsão do relatório"
     },
     "tokens": {
-      "cacheRead": "Leituras de cache",
-      "cacheWrite": "Gravações de cache",
+      "cache": "Cache (contexto relido)",
+      "cacheRead": "Leituras",
+      "cacheWrite": "Gravações",
       "heading": "Tokens usados (com as tarefas abaixo)",
       "input": "Entrada",
       "output": "Saída",

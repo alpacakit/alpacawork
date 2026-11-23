@@ -99,8 +99,9 @@
       "report": "预计报告时间"
     },
     "tokens": {
-      "cacheRead": "缓存读取",
-      "cacheWrite": "缓存写入",
+      "cache": "缓存（再次读取的上下文）",
+      "cacheRead": "读取",
+      "cacheWrite": "写入",
       "heading": "已用令牌（含下级任务）",
       "input": "输入",
       "output": "输出",

@@ -133,13 +133,16 @@ function TokenLines({ task }: { task: Task }) {
   const { tokens, unknown } = subtreeTokens(task.usage, task.usageBelow);
   if (!tokens) return null;
   const count = new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 });
-  const lines = (["input", "output", "cacheRead", "cacheWrite"] as const).map(key => ({ key, label: t(`status.tokens.${key}`), value: count.format(tokens[key]) }));
+  const rows = (keys: readonly (keyof typeof tokens)[], quiet = false) =>
+    <dl className={cn("m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1", quiet && "text-muted")}>{keys.map(key =>
+      <div key={key} data-work-token={key} className="contents">
+        <dt className={quiet ? undefined : "text-muted"}>{t(`status.tokens.${key}`)}</dt>
+        <dd className={cn("m-0 text-right tabular-nums", !quiet && "font-medium")}>{count.format(tokens[key])}</dd></div>)}</dl>;
   return <section data-work-tokens className="mt-3 border-t border-line pt-2">
     <p className="m-0 text-xs font-medium text-muted">{t("status.tokens.heading")}</p>
-    <dl className="m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{lines.map(line => <div key={line.key} data-work-token={line.key}
-      className={cn("contents", line.key.startsWith("cache") && "text-muted")}>
-      <dt className={line.key.startsWith("cache") ? undefined : "text-muted"}>{line.label}</dt>
-      <dd className={cn("m-0 text-right tabular-nums", !line.key.startsWith("cache") && "font-medium")}>{line.value}</dd></div>)}</dl>
+    {rows(["input", "output"])}
+    <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.cache")}</p>
+    {rows(["cacheRead", "cacheWrite"], true)}
     <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.scope")}</p>
     {unknown > 0 && <p className="m-0 text-xs text-muted">{t("status.tokens.unknown", { count: unknown })}</p>}
   </section>;

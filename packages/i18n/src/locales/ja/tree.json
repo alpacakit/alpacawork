@@ -99,8 +99,9 @@
       "report": "報告の見込み"
     },
     "tokens": {
-      "cacheRead": "キャッシュ読み",
-      "cacheWrite": "キャッシュ書き",
+      "cache": "キャッシュ（読み直した会話の分）",
+      "cacheRead": "読み",
+      "cacheWrite": "書き",
       "heading": "使ったトークン（配下のタスクも含めて）",
       "input": "入力",
       "output": "出力",

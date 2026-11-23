@@ -110,8 +110,9 @@
       "report": "Informe previsto"
     },
     "tokens": {
-      "cacheRead": "Lecturas de caché",
-      "cacheWrite": "Escrituras de caché",
+      "cache": "Caché (contexto releído)",
+      "cacheRead": "Lecturas",
+      "cacheWrite": "Escrituras",
       "heading": "Tokens usados (con las tareas inferiores)",
       "input": "Entrada",
       "output": "Salida",
