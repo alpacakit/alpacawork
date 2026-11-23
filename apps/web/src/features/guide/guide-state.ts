@@ -3,8 +3,8 @@ import { useViewStore } from "@/state/view-store";
 
 /**
  * How far this browser is through the getting-started guide: started (at the moment it began, so a request sent
- * afterwards is known as this guide's first one; `intro` while its first screen stands in the list's place whatever
- * the work, until another step holds), got as far as the person's turn (with the steps read and put away
+ * afterwards is known as this guide's first one; `intro` while its first step is shown again whatever the work, until
+ * another step holds), got as far as the person's turn (with the steps read and put away
  * since: `seen`), or over (finished or closed). `finished`: the Tasks the person pressed Done on since it began. Nothing stored is a browser that has never seen it.
  */
 export type GuideStage = { stage: "started"; at: number; seen: readonly string[]; intro?: true; finished?: readonly string[] }
@@ -24,8 +24,8 @@ export const guideStage = deviceValue<GuideStage | null>("alpacawork.guide", jso
 /** Ends the guide for good on this browser: closed by hand, or read to its end. */
 export const closeGuide = () => { guideStage.set({ stage: "done" }); };
 /**
- * Settings' "Show again": the guide starts over from its first screen, whatever the work, with nothing it keeps on this
- * browser read (the steps put away); the detail closes so that screen is seen.
+ * Settings' "Show again": the guide starts over from its first step, whatever the work, with nothing it keeps on this
+ * browser read (the steps put away); the detail closes, so that step is seen over the list, which stays as it is.
  */
 export const restartGuide = () => {
   guideStage.set({ stage: "started", at: Date.now(), seen: [], intro: true });

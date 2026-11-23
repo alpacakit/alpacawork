@@ -68,10 +68,8 @@ function useWaitingAnswer(task: TaskDetail, question: string | null) {
    */
   const offered = (question: Question) => offeredChoices(question,
     { stop: t("answer.stop"), other: t(question.choices.length ? "answer.other" : "answer.write") });
-  // Recommended sits on its button's top edge: it takes no width, stays with its own button, and reads apart from what is
-  // chosen (filled). The button holds it, so it is read with the choice's name. It rises 1rem over the edge, and its
-  // button keeps that 1rem over itself (room), so the label is clear of what is above it by the gap that place already
-  // has: the words before the choices, or the choice before. The other choices keep their gaps as they are.
+  // Recommended stands inside its button, after the choice's name: read with the name it belongs to, never between one
+  // choice's words and the next button. Outlined, it reads apart from what is chosen (filled).
   const choices = (question: Question, className: string, onFollow: (id: string) => void) => {
     const offeredChoices = offered(question);
     // Share the collection for display; event handlers still read through on() when pressed.
@@ -80,12 +78,12 @@ function useWaitingAnswer(task: TaskDetail, question: string | null) {
       const selected = on(question, choice, answers), recommended = choice.recommended !== null, other = isOther(question, choice);
       return <div key={choice.answer}
         className={cn("min-w-0", choice.text && "w-full")}><Button variant="outline"
-        aria-pressed={selected} className={cn("relative whitespace-normal text-left", className, recommended && "mt-4",
+        aria-pressed={selected} className={cn("whitespace-normal text-left", className,
           other && !selected && "border-dashed bg-transparent text-muted hover:text-ink", selected && "border-turn bg-picked hover:bg-picked-hover")}
         disabled={disabled} onMouseDown={keepFocus} onClick={answer(question, choice)}>
         {other && <Icon name="edit" className="size-3.5 flex-none text-muted" />}{choice.name}
         {recommended && <span data-recommended
-          className="pointer-events-none absolute -top-4 left-2 rounded-full border border-turn bg-lit px-1.5 text-xs whitespace-nowrap text-turn">{t("brief.recommended")}</span>}
+          className="ml-1.5 flex-none rounded-full border border-turn bg-lit px-1.5 text-xs whitespace-nowrap text-turn">{t("brief.recommended")}</span>}
         {isStop(question, choice) && <Icon name="close" aria-label={t("answer.stopMark")} className="ml-1.5 size-3.5 flex-none text-muted" />}
       </Button>
         {choice.text ? <div className="mt-type-close pl-2.5"><MarkdownBody text={choice.text} task={task} onFollow={onFollow} report /></div> : null}
@@ -93,10 +91,7 @@ function useWaitingAnswer(task: TaskDetail, question: string | null) {
       </div>;
     });
   };
-  // A row of choices side by side: the room over the picked one does not stretch the others in its row taller, they
-  // stand on the row's foot with it.
-  const row = (question: Question) => cn("flex flex-wrap gap-1.5", question.choices.some(choice => choice.recommended !== null) && "items-end");
-  return { asked, choices, row };
+  return { asked, choices };
 }
 
 /** The open Task as the feed holds it now, whole: its rows hold only what they draw of it (ReportFeed), and answering
@@ -115,7 +110,7 @@ export function FeedWaitingActions({ question, onFollow }: { question: string; o
  */
 export function WaitingReportActions({ task, question, onFollow }: { task: TaskDetail; question: string; onFollow: (id: string) => void }) {
   const { t } = useTranslation("reader");
-  const { asked, choices, row } = useWaitingAnswer(task, question);
+  const { asked, choices } = useWaitingAnswer(task, question);
   const refused = useAskedChoice(state => state.asked);
   if (!asked) return null;
   const { questions } = asked, count = questions.length;
@@ -124,7 +119,7 @@ export function WaitingReportActions({ task, question, onFollow }: { task: TaskD
       className={cn("scroll-my-20 py-2", at > 0 && "mt-1 border-t border-rule pt-3")}>
       <p data-question-number className="m-0 text-xs text-muted tabular-nums">{t("answer.question", { total: count, n: at + 1 })}</p>
       <h3 className="m-0 mt-type-close text-md font-semibold">{question.ask}</h3>
-      <div role="group" aria-label={question.ask} className={cn("mt-type-block", row(question))}>
+      <div role="group" aria-label={question.ask} className="mt-type-block flex flex-wrap gap-1.5">
         {choices(question, "h-auto min-h-control-sm bg-lit px-2.5 py-1 text-sm narrow:min-h-11", onFollow)}</div>
       {/* Why a right swipe did not send: said here, under what is left to choose (askChoice). */}
       <p data-ask-hint role="status" className="m-0 text-sm text-turn not-empty:mt-1.5">

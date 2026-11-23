@@ -10,7 +10,7 @@ import type { GuideStage } from "./guide-state";
  *
  * How a step is chosen: the first entry of GUIDE, from the top, that is looked at and holds. The entries come in
  * phases, in this order:
- * - `first`: the first screen (or it shown again), before anything is written or sent;
+ * - `first`: the first step (or it shown again), before anything is written or sent;
  * - `now`: what the person has just done: a message the coordinator is still on, words waiting to be sent, a message
  *   just answered in the conversation itself;
  * - `turn`: the person's turn: what is open in the detail (a question, a report, a Task being worked on), then the rows
@@ -18,15 +18,16 @@ import type { GuideStage } from "./guide-state";
  * - `close`: while the server says a Task they pressed Done on since the guide began is finished and no words wait to
  *   be sent (`closing`), what is left to know;
  * - `work`: other work going on in the list;
- * - `idle`: nothing going on.
+ * - `idle`: nothing going on. What the guide falls back to while it goes on: its step is shown whenever it holds,
+ *   done or not, so the guide never stands showing nothing between the person's messages.
  * Once `closing`, the `work` and `idle` phases are not looked at, so the guide is over when the close is read: then, and
  * only then, nothing holds while closing (nextStage). Otherwise, when nothing holds, nothing is shown and the guide waits.
  * Words
  * waiting to be sent sit between a question's answer and the label (`turn`) and the rest of `turn`; a message answered
  * in the conversation, after the rows awaiting the person.
  *
- * Every step is shown once. One with no button is done as soon as its balloon has stood on the screen: it goes on
- * standing while it stays the step on this page (`standing`), and is never the step again once the guide has moved on
+ * Every step but the `idle` one is shown once. One with no button is done as soon as its balloon has stood on the
+ * screen: it goes on standing while it stays the step on this page (`standing`), and is never the step again once the guide has moved on
  * from it or the page is loaded again. One with a button is done when its button is pressed, or when the guide moves on
  * from it after its balloon stood because its own facts no longer hold (doneOnLeaving); pushed aside while it still
  * holds, it comes back. A step that holds while its part is not on the screen shows nothing and the guide waits for
@@ -84,9 +85,9 @@ export const PARTS = {
   detail: "aside[data-reader-mode]",
   /** The open questions in the detail, in their box: each one's number, what it asks and its choices. */
   asked: "[data-waiting-report-actions]",
-  /** The detail while it lies over the page (a phone's sheet, or taking the whole screen), not beside the list. */
+  /** The detail while it lies over the page (over the list, or taking the whole screen), not beside the list. */
   detailOver: 'aside[data-reader-mode]:not([data-reader-mode="docked"])',
-  /** Done, which accepts a report (a word on a computer, a mark on a phone), once it can be pressed. */
+  /** Done, which accepts a report, once it can be pressed. */
   finish: "[data-task-done]:not(:disabled)",
   /** The project's name at the top left, which opens the projects' menu. */
   project: "[data-project-trigger]",
@@ -134,12 +135,10 @@ export type GuideFacts = {
   conversationOpen: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
   busy: boolean;
-  /** The input holds something to send (written since the first screen was shown again, while it is). */
+  /** The input holds something to send (written since the first step was shown again, while it is). */
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
-  /** A phone's width. */
-  narrow: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
   apps: boolean;
   /** Steps done: put away by their button, shown (with no button), or left after their balloon stood on the screen. */
@@ -202,14 +201,13 @@ export const GUIDE: readonly GuideEntry[] = [
   { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
     say: t => t("tree:guide.say.answer") },
   // A report open with nothing written yet: more can be asked after it, with one more to try; then, with words
-  // written, the label that goes with them (OVER_INPUT). Not on a phone's width, where a balloon over the input stands
-  // over the report itself.
+  // written, the label that goes with them (OVER_INPUT).
   { id: "more", phase: "turn", turn: true, passable: true, part: "input", ...OVER_INPUT, next: true,
-    when: f => f.open === "result" && !f.drafting && !f.narrow,
+    when: f => f.open === "result" && !f.drafting,
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.moreExample")) },
     say: t => t("tree:guide.say.more") },
   { id: "label", phase: "turn", turn: true, passable: true, part: "label", ...OVER_INPUT,
-    when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more") && !f.narrow,
+    when: f => f.open === "result" && f.drafting && f.labelled && f.seen.has("more"),
     say: t => t("tree:guide.say.label") },
   // Words in the input: they wait to be sent. Right by the send button: beside the input where there is room, else
   // over the buttons at its foot (never over the words written).
@@ -238,15 +236,17 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
   { id: "phone", phase: "close", passable: true, part: "settings", side: "bottom", align: "end", next: true,
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
-    when: f => f.apps && !f.narrow,
+    when: f => f.apps,
     say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
   // Other work: a Task left with no AI on it waits for the person, nothing there is the AI's yet.
   { id: "unassigned", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
     say: t => t("tree:guide.say.unassigned") },
   { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
     say: t => t("tree:guide.say.working", { section: turnSection(t) }) },
-  // Nothing going on and nothing written: a request is to be written.
+  // Nothing going on and nothing written: a request is to be written, with the request to try the whole flow with (as
+  // on the first step). Shown whenever nothing else holds (the `idle` phase).
   { id: "send-again", phase: "idle", part: "input", ...AT_INPUT, align: "end", when: f => f.stage.stage === "started" && !f.drafting,
+    action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.sendAgain") },
 ];
 
@@ -262,7 +262,7 @@ const stays = (entry: GuideEntry, facts: GuideFacts) => entry.id === facts.stand
  * none when none holds (the guide waits, or is over while closing: nextStage).
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!facts.seen.has(entry.id) || stays(entry, facts)) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (entry.phase === "idle" || !facts.seen.has(entry.id) || stays(entry, facts)) && entry.when(facts));
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 
@@ -286,7 +286,7 @@ export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: n
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
- * screen once another step than that screen's holds (something written or sent); over once no step holds while
+ * step once another step than that one holds (something written or sent); over once no step holds while
  * `closing` (the close is read). What else it keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
  */
 export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null, closing: boolean): GuideStage | undefined {

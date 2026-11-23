@@ -154,7 +154,7 @@ test("task, answer and skill labels remain readable and clickable in the timelin
     ask: 'T3（Screen preview） 1-Option1 /alpacawork Send these words unchanged too.', answer: 'Done', answeredAt: '2026-10-15T12:00:03Z',
   })]} skills={[{ name: 'alpacawork' }]} retry={() => {}} /></TestWorkspace>);
   const task = screen.getByRole('button', { name: /T3\s*Screen preview/ });
-  expect(screen.getByText('1 Option1')).toBeTruthy();
+  expect(document.querySelector('[data-label=answer]')?.textContent).toBe('1 Option1');
   expect(screen.getByText('alpacawork')).toBeTruthy();
   expect(screen.getByText('Send these words unchanged too.', { exact: false })).toBeTruthy();
   fireEvent.click(task);

@@ -415,7 +415,7 @@
       "awayAfter": "Away when idle",
       "awayAfterHelp": "Notifications are sent only while you are away.",
       "guide": "Getting-started guide",
-      "guideHelp": "Shows the first-use guide again, from its first screen.",
+      "guideHelp": "Shows the first-use guide again, from its first step.",
       "guideShow": "Show again",
       "issue": {
         "conflict": "Changed in another view. Check the latest value.",

@@ -11,7 +11,7 @@
       "accept": "If you're happy with it, finish the task with this button ({{finish}}). If you'd like something else done next, you can send more instructions instead.",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
       "answer": "Choose an option and it goes into the input box. Send it as is to answer. You can also send a different message without choosing one.",
-      "conversation": "Chats with the front-desk AI are disposable. Once they pile up, open the conversation at a good stopping point and clear it with “{{clear}}”. Before that, ask for anything worth keeping to be made a task.",
+      "conversation": "Chats with the front-desk AI are disposable. Once they pile up, at a good stopping point, press the line showing its last reply to open the conversation, and clear it with “{{clear}}”. Before that, ask for anything worth keeping to be made a task.",
       "direct": "The front-desk AI answers short requests right here. Hand it a job, and it becomes a task in the list.",
       "label": "This label hints to the AI which task or project you mean. Without it, the AI works it out from the conversation.",
       "more": "You can keep asking after a report. Try having it make one more version to compare.",
@@ -135,6 +135,7 @@
     "yourTurn": "Your turn"
   },
   "welcome": {
+    "guideOnComputer": "The getting-started guide is shown on a wider screen, such as a computer's.",
     "lead": "A place to hand work to a team of AIs.",
     "picture": {
       "listed": "They're listed. What needs you shows up under “{{section}}”",

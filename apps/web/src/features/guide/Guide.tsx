@@ -10,7 +10,7 @@ import { useDialogStore } from "@/state/dialog-store";
 import { notify } from "@/lib/notify";
 import { closeGuide, guideStage, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, doneOnShowing, type GuideAlign, type GuideEntry, type GuideSide } from "./guide-definition";
-import { useGoingGuide, useGuide, useGuideStage, useGuideStart } from "./use-guide";
+import { useGoingGuide, useGuide, useGuideShown, useGuideStage, useGuideStart } from "./use-guide";
 
 /** The guide's close mark (×): it ends the guide on this browser, and says where settings show it again, with a way straight back. */
 function CloseGuide({ className }: { className?: string }) {
@@ -23,7 +23,7 @@ function CloseGuide({ className }: { className?: string }) {
       { id: "guide-closed", action: { label: t("guide.reopen"), run: () => { moveGuide({ stage: "done" }, before ?? { stage: "done" }); notify.hide("guide-closed"); } } });
   };
   return <Button variant="quiet" size="icon" data-guide-close aria-label={t("guide.close")} title={t("guide.close")} onClick={close}
-    className={cn("flex-none narrow:size-11 narrow:min-h-11", className)}>
+    className={cn("flex-none", className)}>
     <Icon name="close" className="size-4" />
   </Button>;
 }
@@ -144,30 +144,57 @@ const inFront = (element: Element, across: number, down: number) => {
   return !!front && element.contains(front);
 };
 /**
- * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there: its
- * head scrolled out of the box, within the room the part keeps clear at the box's top for what stays there (its
+ * Where what a pane scrolls is seen in it: its box, less the room it keeps clear at its ends for what stands over them
+ * there (its scroll padding: the list's head, the input and its row over a detail's foot).
+ */
+function seenArea(pane: HTMLElement) {
+  const box = pane.getBoundingClientRect(), room = getComputedStyle(pane);
+  return { top: box.top + (parseFloat(room.scrollPaddingTop) || 0), bottom: box.bottom - (parseFloat(room.scrollPaddingBottom) || 0) };
+}
+/**
+ * What of a part (`box`) is seen in the pane it scrolls in (`seen`, seenArea): the ring goes round that and the balloon
+ * points at it, never over what stands at the pane's ends. All of the part where none of it is seen there.
+ */
+export function seenPart(box: Box, seen: { top: number; bottom: number }): Box {
+  const top = Math.max(box.top, seen.top), bottom = Math.min(box.top + box.height, seen.bottom);
+  return bottom > top ? { ...box, top, height: bottom - top } : box;
+}
+/** `element`'s box as seen in the pane it scrolls in (seenPart); its whole box where it scrolls in none. */
+function seenBoxOf(element: HTMLElement): Box {
+  const pane = scrollerOf(element.parentElement);
+  return pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+}
+/**
+ * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there
+ * (seenArea): its head scrolled out of it, within the room the part keeps clear at its top for what stays there (its
  * scroll margin: a heading that stays at the top takes no press, so it is not seen by what stands in front), or not in
- * front; or, where it would fit in that box whole, reaching past its edge. A part to bring into view; one taller than
- * the box is left where the person has it while its head is seen.
+ * front; or, where it would fit there whole, reaching past its end. A part to bring into view; one taller than that is
+ * left where the person has it while its head is seen.
  */
 function outOfPane(selector: string): HTMLElement | null {
   for (const element of document.querySelectorAll<HTMLElement>(selector)) {
     if (element.closest("[inert], [aria-hidden=true]")) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
-    const box = element.getBoundingClientRect(), pane = scrollerOf(element.parentElement)?.getBoundingClientRect();
-    if (!pane) continue;
+    const scroller = scrollerOf(element.parentElement);
+    if (!scroller) continue;
+    const box = element.getBoundingClientRect(), pane = seenArea(scroller);
     const kept = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
     const head = box.top + Math.min(box.height, HEAD) / 2;
     const seen = box.top >= pane.top + kept - 1 && head <= pane.bottom && inFront(element, box.left + box.width / 2, head);
-    if (!seen || box.height <= pane.height && box.bottom > pane.bottom + 1) return element;
+    if (!seen || fitsIn(box.height, pane) && box.bottom > pane.bottom + 1) return element;
   }
   return null;
 }
-/** Brings `element` into the box it scrolls in: whole where it fits there, else from its head. */
+/** Brings `element` into what the box it scrolls in shows (seenArea): whole where it fits there, else from its head. */
 function bringIn(element: HTMLElement) {
   const pane = scrollerOf(element.parentElement);
-  element.scrollIntoView({ block: pane && element.getBoundingClientRect().height > pane.clientHeight ? "start" : "nearest" });
+  element.scrollIntoView({ block: bringInAt(element.getBoundingClientRect().height, pane ? seenArea(pane) : null) });
 }
+/** Whether a part of `height` fits whole in what its pane shows (`seen`, seenArea). */
+const fitsIn = (height: number, seen: { top: number; bottom: number }) => height <= seen.bottom - seen.top;
+/** Where a part of `height` is brought in its pane (`seen`, seenArea; none where it scrolls in none): whole where it fits, else from its head. */
+export const bringInAt = (height: number, seen: { top: number; bottom: number } | null): ScrollLogicalPosition =>
+  seen && !fitsIn(height, seen) ? "start" : "nearest";
 const boxOf = (element: Element): Box => {
   const box = element.getBoundingClientRect();
   return { left: box.left, top: box.top, width: box.width, height: box.height };
@@ -186,7 +213,9 @@ const same = (a: Placed | null | undefined, b: Placed | null) => a === b || !!a 
 export function GuideBalloon() {
   useGuideStart();
   const stage = useGoingGuide();
-  return stage && <GoingBalloon stage={stage} />;
+  // Started on a phone too (its stage kept for a computer), it is drawn on a computer's screen alone (useGuideShown).
+  const shown = useGuideShown();
+  return stage && shown && <GoingBalloon stage={stage} />;
 }
 
 /**
@@ -256,7 +285,7 @@ function GoingBalloon({ stage }: { stage: GoingStage }) {
         const holder = target.closest(PARTS[name]);
         return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
-      const next = target && own ? placeBalloon(boxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
+      const next = target && own ? placeBalloon(seenBoxOf(target), { width: own.width, height: own.height }, { width: innerWidth, height: innerHeight }, entry.side ?? "top",
         entry.align, clear) : null;
       const looked = !!next && document.visibilityState === "visible";
       if (!looked && standing) { clearTimeout(standing); standing = null; }
@@ -342,11 +371,11 @@ function BalloonBody({ entry, placed }: { entry: GuideEntry; placed: Placed | nu
   // The arrow on the edge facing the part, a square turned to a point, as the balloon's own colour.
   const arrow: CSSProperties = side === "top" ? { top: "100%", left: placed?.arrow } : side === "bottom" ? { bottom: "100%", left: placed?.arrow }
     : side === "left" ? { left: "100%", top: placed?.arrow } : { right: "100%", top: placed?.arrow };
-  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float narrow:py-1">
+  return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     <div className="flex items-start gap-1">
-      <p ref={words} className="m-0 flex-1 py-1.5 text-sm narrow:py-2.5">
+      <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
         <Sentences words={say} />
       </p>
       <CloseGuide className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />

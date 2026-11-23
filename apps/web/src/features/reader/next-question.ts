@@ -64,6 +64,8 @@ type Sitting = {
   sent: { card: ReaderCard; answer: Answer; order: readonly string[] } | null;
   /** An empty bundle reached by this person's send, with one animation to consume. Never restored from server state. */
   emptied: { taskId: string; animate: boolean } | null;
+  /** The Task the reader last moved on from, by an answer or Done sent from it: a new record each time. */
+  retired: { taskId: string } | null;
   /** Changes when a displayed card is left, even if closing and reopening are batched in one paint. */
   cardVersion: number;
   /** The card the reader shows now. */
@@ -72,7 +74,7 @@ type Sitting = {
   shelf: Shelf;
 };
 
-const idle: Sitting = { outcomeKey: JSON.stringify([]), departures: {}, order: [], sent: null, emptied: null, cardVersion: 0, card: null, shelf: "review" };
+const idle: Sitting = { outcomeKey: JSON.stringify([]), departures: {}, order: [], sent: null, emptied: null, retired: null, cardVersion: 0, card: null, shelf: "review" };
 export const useSitting = create<Sitting>(() => idle);
 
 /**
@@ -220,7 +222,7 @@ export function moveOn(waiting: readonly string[]) {
   const from = sent.card.taskId;
   if (!onScreen(sent.card, from)) { useSitting.setState({ sent: null }); return null; }
   const next = upNext(sent.order, waiting, from)[0] ?? null;
-  useSitting.setState({ sent: null, emptied: next ? null : { taskId: from, animate: true } });
+  useSitting.setState({ sent: null, emptied: next ? null : { taskId: from, animate: true }, retired: { taskId: from } });
   projectDepartures();
   return next;
 }

@@ -23,6 +23,17 @@ export function decideOf(items: readonly Record<string, unknown>[]): Question[] 
   });
 }
 
+/**
+ * A written answer `<n>-<word>` as the screen says it: the question's number, and its word, the app's own two (Stop,
+ * Other) by the names the screen gives them in the reader's language. Null when the words are not an answer.
+ */
+export function readAnswer(answer: string, names: { stop: string; other: string }): { n: string; word: string } | null {
+  const found = /^([1-9]\d*)-(\S+)$/.exec(answer);
+  if (!found) return null;
+  const word = found[2]!;
+  return { n: found[1]!, word: word === OTHER_WORD ? names.other : word === STOP_WORD ? names.stop : word };
+}
+
 /** An answer is Stop or Other by its word, wherever it is read. */
 export const isOtherAnswer = (answer: { n: string; answer: string }) => answer.answer === answerKey(answer.n, OTHER_WORD);
 export const isStop = (question: Question, choice: Choice) => choice.answer === answerKey(question.n, STOP_WORD);

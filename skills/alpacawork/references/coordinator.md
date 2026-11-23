@@ -35,6 +35,12 @@
 - If the settings cannot be read, reply in the language of the user's own words, or in English when there are none, and save nothing.
 - When the user asks for another reply language, save it to `ai.language` first, then reply in it. When the user asks for another language for one reply only, follow that and do not save it.
 
+## Words in a reply
+
+- Write a reply in what the user sees on the screen. Name a task by its ID and title. Leave out Run IDs, hashes, revisions and other values that only commands take.
+- When you point the user to a button, use the name the screen shows. The button that accepts a result is Done.
+- A project with no code location is ordinary (setup leaves it empty for trying things out); its agents work in the workspace's folder. Bring up the code location only when the request needs an existing repository.
+
 ## Showing images, videos and files in a reply
 
 - Before saying "I showed the image" or "it can be played", verify it on the conversation or report screen the user reads and through the reference used for serving. The existence of the image file, a local image display, or the saving of a Markdown string does not count as passing on its own. Verify the rendering of an image, the playback of a video, the link to an ordinary file, and the reference after a reload, on the route that delivers them.
@@ -70,7 +76,7 @@ Before an action, read Access in the command's `-h`. Also when you relay the wit
 
 ## Relaying the user's words
 
-State reports made on the screen (accepting with OK, putting on hold, taking off hold, stopping) are written directly with `task report` as a person; they do not arrive in this conversation, and they stay in the task's History as a person's action. Requests, answers to questions, send-backs, Continue, Continue with the same AI and Continue with another AI go through the conversation. For an action received in words in the conversation, the coordinator writes it in the user's place, quoting the user's words.
+State reports made on the screen (accepting with Done, putting on hold, taking off hold, stopping) are written directly with `task report` as a person; they do not arrive in this conversation, and they stay in the task's History as a person's action. Requests, answers to questions, send-backs, Continue, Continue with the same AI and Continue with another AI go through the conversation. For an action received in words in the conversation, the coordinator writes it in the user's place, quoting the user's words.
 
 - Before relaying new words, add to, replace or delete from the top task's "User instructions", following how `field get` says to write the field. The request text is the user's words for that task, verbatim, plus only what the owner cannot read from them or the records: which task or part they are about, how they bear on other tasks (what waits on what), and, as facts, what the words rely on from your conversation with the user (an option you showed, an attachment, something agreed there, what "it" or a short reply such as "merge it" points to). Mark your reading of unclear words as yours. Do not restate the words as a purpose, done conditions or a way of working, in the request text or in the task's values; the owner sets those.
 - You can quote only the user's current message and the scope of delegation written in the project policy. Put those words in `--quote` verbatim (if they are long, cut out the part that is the basis without changing a character). Which original words you quote, and how far an approval reaches, are governed by this skill's rules; keep to them yourself. Do not put an earlier message, your own judgment, or words from another conversation in `--quote`.
@@ -94,7 +100,7 @@ State reports made on the screen (accepting with OK, putting on hold, taking off
 
 ### Commands
 
-- For the user's words about a task awaiting review: if they mean OK, make them an acceptance (`task report --state done --about-run`); otherwise pass them to the owner as an ordinary instruction (once they are passed, the task is no longer awaiting review). If in doubt, check with the user.
+- For the user's words about a task awaiting review: if they accept the result, make them an acceptance (`task report --state done --about-run`); otherwise pass them to the owner as an ordinary instruction (once they are passed, the task is no longer awaiting review). If in doubt, check with the user.
 
 Use the CLI commands below for acceptance, putting on hold and stopping when you are asked in words. Take a task off hold by recording in `--quote` the user's words or the scope of delegation in the project policy (the "Take off hold" item below).
 
@@ -103,8 +109,8 @@ For an action received in the conversation, record the user's words with `--quot
 | The user's intent | `action` of the screen action | Command |
 |---|---|---|
 | Save as an answer | Judge by reading the draft and the full text | `task request --task T --answers <question ID> --instruction-file -` (no version) |
-| OK (accepting a Run's result) | — (the screen reports directly) | `task report --task T --state done --about-run <Run> --expected-task-hash <hash> --expected-placement-revision <revision>` |
-| OK (accepting a result with no Run) | — (the screen reports directly) | `task report --task T --state done --expected-task-hash <the hash shown>` (do not supply a Run) |
+| Done (accepting a Run's result) | — (the screen reports directly) | `task report --task T --state done --about-run <Run> --expected-task-hash <hash> --expected-placement-revision <revision>` |
+| Done (accepting a result with no Run) | — (the screen reports directly) | `task report --task T --state done --expected-task-hash <the hash shown>` (do not supply a Run) |
 | Put a done result back to awaiting review | — | `task report --task T --state waiting --expected-task-hash <hash>` (only a done task the user requested) |
 | Fix, add or discuss (whether or not the result has a Run) | Read the words received | `task request --task T --instruction-file - --expected-task-hash <latest hash> --expected-placement-revision <latest revision>` (an owner is required; past Run and submission IDs go in the request text as context) |
 | Hold | — (the screen reports directly) | `task report --task T --state held --expected-task-hash <hash>` |

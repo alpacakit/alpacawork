@@ -5,6 +5,7 @@ import { readerPresentation, subscribeReads } from '@/data/read-model';
 import { useServerTasks } from '@/data/queries';
 import { coordinatorIntentSchema } from '@alpacawork/contract/coordinator';
 import { readerTurn } from '@/features/reader/submission';
+import { useSitting } from '@/features/reader/next-question';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -76,7 +77,12 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   // index holds it. Until then nothing is observed, so a reload is not taken for the list showing every project, nor a
   // Task still awaited for the project behind it. The draft decides what an opening does (lifecycle.ts).
   const ready = useViewStore(state => state.navigationReady);
-  const panel = useViewStore(readerShows);
+  // The reader moving on from a Task it was answered from (next-question's `retired`: to the next waiting Task, or to
+  // the card saying every turn there is answered) is the screen leaving that Task. That card stands in the panel in
+  // place of the Task it was on, which it no longer shows.
+  const retired = useSitting(state => state.retired);
+  const answered = useSitting(state => state.emptied?.taskId ?? null);
+  const showing = useViewStore(readerShows), panel = showing === answered ? null : showing;
   const project = useViewStore(state => state.project);
   const index = useEveryTaskIndex();
   const client = useQueryClient(), root = JSON.parse(draft.key)[0] as string;
@@ -84,7 +90,7 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
   const presentation = useSyncExternalStore(changed => subscribeReads(client, changed),
     () => panel ? readerPresentation(client, root, panel).kind : 'absent');
   // The screen leaving a Task, on either layer: the panel closing on it (its ×, Esc, Back, a swipe, the address; a Task
-  // still being looked up is no close), or the project in view changing from it. A move from one Task in the panel to
+  // still being looked up is no close) or the reader moving on from it, or the project in view changing from it. A move from one Task in the panel to
   // another, or the panel opening over the list, is an opening alone. The draft decides what leaving does
   // (lifecycle.ts). Before the observing below, which then sees the draft leaving left.
   useEffect(() => useViewStore.subscribe((state, before) => {
@@ -92,6 +98,7 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
     if (was && !readerShows(state)) draft.close(was);
     if (before.project && before.project !== state.project) draft.close(before.project);
   }), [draft.key]);
+  useEffect(() => { if (retired) draft.close(retired.taskId); }, [retired, draft.key]);
   useEffect(() => {
     // Observe after the editor's mount lifecycle; its initial transaction must precede canonical draft seeding.
     // Browsing only observes a composing draft. Recovery may fill a prepared input; the notice's explicit Open

@@ -408,7 +408,7 @@
       "awayAfter": "无操作时视为离开",
       "awayAfterHelp": "仅在离开时发送通知。",
       "guide": "入门指引",
-      "guideHelp": "从第一个画面开始，再次显示首次使用时的指引。",
+      "guideHelp": "从第一步开始，再次显示首次使用时的指引。",
       "guideShow": "再次显示",
       "issue": {
         "conflict": "已在别处更改。请查看最新的值。",

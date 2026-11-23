@@ -20,8 +20,6 @@ import type { Task, TaskDetail, WorkspaceInfo } from "./types";
 import type { TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { canSendWrites, useConnection, basisForRead, workspaceWriteBasis, type WriteBasis } from "./connection";
 import { gathering, useViewStore } from "@/state/view-store";
-import { useDeviceValue } from "@/lib/device-storage";
-import { guideStage } from "@/features/guide/guide-state";
 import { ApiError } from './client';
 import { receiveServerFacts } from "../state/read-store";
 
@@ -224,22 +222,20 @@ export type ListPlace = "loading" | "search" | "lookup" | "no-projects" | "welco
 /**
  * The one rule for what the list's place shows, read by the page (Workbench) and the list (TimeTree). Until the first
  * index arrives nothing is known: no index is not "no project" and not empty. How work starts shows while the project
- * in view (or every project) holds no Task at all, as the index counts them, and nothing else takes the place; or,
- * whatever the work, while the getting-started guide shows its first screen again (`intro`).
+ * in view (or every project) holds no Task at all, as the index counts them, and nothing else takes the place. The
+ * getting-started guide shown again takes no place of the list's: the work in it stays in view.
  */
-export function listPlace(searching: boolean, project: string | null, info: WorkspaceInfo | null, intro = false): ListPlace {
+export function listPlace(searching: boolean, project: string | null, info: WorkspaceInfo | null): ListPlace {
   if (searching) return "search";
   if (!info) return "loading";
   if (project && !info.projects.some((item) => item.id === project)) return "lookup";
   if (!info.projects.length) return "no-projects";
-  return intro || info.counts.tasks[project ?? "root"] === 0 ? "welcome" : "list";
+  return info.counts.tasks[project ?? "root"] === 0 ? "welcome" : "list";
 }
 export function useListPlace(): ListPlace {
   const searching = useViewStore(gathering);
   const project = useViewStore((state) => state.project);
-  const guide = useDeviceValue(guideStage);
-  const intro = guide?.stage === "started" && !!guide.intro;
-  return useFrameSelector((data) => listPlace(searching, project, data?.info ?? null, intro));
+  return useFrameSelector((data) => listPlace(searching, project, data?.info ?? null));
 }
 type HomeList = { rows: WorkspaceInfo["home"]; counts: WorkspaceInfo["counts"]["home"][string] };
 const NO_HOME_COUNTS: HomeList["counts"] = { doing: 0, error: 0, review: 0, awaited: 0, held: 0, todo: 0 };

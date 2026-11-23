@@ -238,3 +238,14 @@ test('repeat folding compares both ends with their original missing agent normal
   expect(rows(row({ text: 'Same words' }), row({ text: 'Same words' }))).toHaveLength(1);
   expect(rows(row({ text: 'Same words', author: { kind: 'human' } }), row({ text: 'Same words' }))).toHaveLength(2);
 });
+
+test('a question asked of the person is answered by them, though the coordinator writes their answer', () => {
+  const asked = row({ kind: 'question', author: owner, askedTo: 'user' });
+  const answer = row({ kind: 'answer', author: { kind: 'main' }, by: 'main', answers: asked.id, text: '', answerText: '1-other B のままで', mark: null });
+  expect(rows(answer, asked)[1]!.outcome).toEqual({ kind: 'answered', who: 'you', at: answer.at });
+  // Other is answered by the person's own words, not by the word the app keeps for it.
+  expect(answerLine('1-other B のままで')).toBe('B のままで');
+  expect(answerLine('1-other\nB のままで')).toBe('B のままで');
+  expect(answerLine('1-A 2-other 太くする')).toBe('A 太くする');
+  expect(answerLine('1-A 2-other\n太くする')).toBe('A 太くする');
+});

@@ -25,9 +25,9 @@ import { queryClient } from "../src/data/query-client";
 import { receivePatch, resources } from "../src/data/resources";
 import { historyCursor } from "@alpacawork/contract";
 /** Where a jump in the column goes: the row it brings into view (the glide itself is scroll-report's). */
-const jump = vi.hoisted(() => ({ to: (_target: HTMLElement) => {} }));
+const jump = vi.hoisted(() => ({ to: (_target: HTMLElement, _block?: string) => {} }));
 vi.mock("../src/features/reader/scroll-report", () => ({
-  scrollReport: (target: HTMLElement, _block: string, landed?: () => void) => { jump.to(target); landed?.(); },
+  scrollReport: (target: HTMLElement, block: string, landed?: () => void) => { jump.to(target, block); landed?.(); },
 }));
 
 beforeAll(() => startI18n());
@@ -172,6 +172,31 @@ test("jumping to an older report scrolls after the open card has finished shrink
     frame.mockRestore();
     vi.useRealTimers();
     useTimeView.getState().pick("", null);
+  }
+});
+
+test("a new report that is the user's turn, arriving while the column is read below its top and History is still reading, is brought to its heading", async () => {
+  const asked = { id: "Lask", kind: "question" as const, open: false, at: "2026-10-10T10:00:00Z", title: "Which font?", summary: "A or B" };
+  const reported = { id: "Lreport", kind: "review" as const, at: "2026-10-10T11:00:00Z", state: "waiting" as const, title: "Done", summary: "A long body" };
+  const feed = (events: Parameters<typeof historyFixture>[0], ball: ReturnType<typeof userBall> | null) => {
+    const data = screenData(tree({ tasks: [taskFixture({ state: ball ? "waiting" : "doing", ball })], placements: [idle()], history: { T1: historyFixture(events) } }));
+    return <TestWorkspace data={data}><div data-reader-content ref={area => { if (area) Object.defineProperty(area, "scrollTop", { value: 400, configurable: true }); }}>
+      <ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></div></TestWorkspace>;
+  };
+  const scroll = vi.fn();
+  jump.to = scroll;
+  // History is read again and that read never ends: what the feed draws meanwhile is what it holds.
+  const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {}));
+  try {
+    const view = render(feed([asked], null));
+    await waitFor(() => expect(document.querySelector('[data-report-key="log:T1:Lask"]')).not.toBeNull());
+    act(() => { void queryClient.invalidateQueries({ queryKey: ["task-history"] }); });
+    view.rerender(feed([reported, asked], userBall("review", "Lreport", at)));
+    // The column goes to the start of the report's row: its heading, at the top of what is read.
+    await waitFor(() => expect(scroll).toHaveBeenCalledWith(document.querySelector('li[data-report-key="log:T1:Lreport"]'), "start"));
+  } finally {
+    jump.to = () => {};
+    fetcher.mockRestore();
   }
 });
 

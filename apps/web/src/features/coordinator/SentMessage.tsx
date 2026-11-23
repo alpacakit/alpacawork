@@ -1,6 +1,8 @@
 import { splitMessage, type MessagePart } from './editor/wire';
 import { useEveryTaskIndex, useReferenceRow } from '@/data/queries';
 import { Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { readAnswer } from '@/domain/questions';
 import { followTask } from './follow-task';
 import { useTaskCardOn } from './TaskCard';
 import { SkillMark } from './LabelFace';
@@ -45,12 +47,20 @@ function SentTaskLabel({ id, title, token }: { id: string; title?: string; token
     className={`${badgeClass} max-w-44 bg-hover`}><span className="shrink-0 text-ink tabular-nums">{id}</span><span className={`${taskTitleClass} text-muted`}>{task?.title ?? title}</span></button>{card}</>;
 }
 
+/** An answer in a sent message reads as its chip did in the input: the question's number, then its word. */
+function SentAnswer({ token }: { token: string }) {
+  const { t } = useTranslation("reader");
+  const answer = readAnswer(token, { stop: t("answer.stop"), other: t("answer.other") });
+  return <span data-label="answer" className={cn(badgeClass, 'rounded-full border border-turn px-2 text-ink')}>
+    {answer ? <><span className="text-xs text-turn">{answer.n}</span>{" "}{answer.word}</> : token}</span>;
+}
+
 export function SentMessage({ parts }: { parts: readonly MessagePart[] }) {
   return <span className="whitespace-pre-wrap">{parts.map((part, at) => {
     const token = part.text;
     if (part.kind === 'task') return <span key={at} className={labelPlaceClass}><SentTaskLabel id={part.id!} title={part.title} token={token} /></span>;
     if (part.kind === 'skill') return <span key={at} className={labelPlaceClass}><span data-label="skill" className={cn(badgeClass, 'border border-lit-line bg-lit pl-0.5 text-ink')}><SkillMark />{token.slice(1)}</span></span>;
-    if (part.kind === 'answer') return <span key={at} className={labelPlaceClass}><span data-label="answer" className={cn(badgeClass, 'rounded-full border border-turn px-2 text-ink')}>{token.replace('-', ' ')}</span></span>;
+    if (part.kind === 'answer') return <span key={at} className={labelPlaceClass}><SentAnswer token={token} /></span>;
     return <Fragment key={at}>{token}</Fragment>;
   })}</span>;
 }

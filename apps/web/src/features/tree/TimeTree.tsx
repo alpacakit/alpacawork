@@ -188,8 +188,8 @@ export function TimeTree() {
   // Done: the finished rows of the project in view (its nested projects' included), as the index pages and counts them.
   const project = useViewStore((state) => state.project);
   const closedCounts = useClosedCounts();
-  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place; so does
-  // the getting-started guide's first screen, shown again, in place of every section (useListPlace).
+  // A scope holding no Task at all (one asked by an agent included) says how work starts in the list's place
+  // (useListPlace).
   const welcome = useListPlace() === "welcome";
   const finishedOptions = resources.finished(info.root, null, project);
   const finished = useInfiniteQuery({ ...finishedOptions, enabled: doneOpen });

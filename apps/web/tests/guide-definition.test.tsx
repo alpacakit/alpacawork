@@ -2,22 +2,20 @@ import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
 import { PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, nextStage, startsGuide, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft } from "../src/features/guide/use-guide";
-import { placeBalloon, roomUnder } from "../src/features/guide/Guide";
+import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
 const facts = (over: Partial<GuideFacts>): GuideFacts =>
   ({ stage: started, tasks: 0, doneHere: false, conversationOpen: false, skipped: new Set(), talked: false, direct: false, questions: 0, results: 0, working: 0, unowned: 0, labelled: false, sent: false, busy: false, drafting: false,
-    open: null, narrow: false, apps: false, seen: new Set(), standing: null, ...over });
+    open: null, apps: false, seen: new Set(), standing: null, ...over });
 const shown = (over: Partial<GuideFacts>) => guideEntry(facts(over))?.id ?? null;
 const read = (...ids: string[]) => new Set(ids);
 
-test("the first request goes from the input, on a computer or a phone, to the coordinator and its Task", () => {
-  for (const narrow of [false, true]) {
-    expect(shown({ narrow })).toBe("send");
-    expect(shown({ narrow, drafting: true })).toBe("send-ready");
-    expect(shown({ narrow, sent: true, busy: true })).toBe("received");
-  }
+test("the first request goes from the input to the coordinator and its Task", () => {
+  expect(shown({})).toBe("send");
+  expect(shown({ drafting: true })).toBe("send-ready");
+  expect(shown({ sent: true, busy: true })).toBe("received");
   expect(shown({ tasks: 1, working: 1, sent: true })).toBe("working");
   // Answered in the conversation with no Task, the guide says once that that is where the reply is; then back to writing.
   expect(shown({ sent: true, talked: true, direct: true })).toBe("direct");
@@ -44,8 +42,6 @@ test("a report open: more can be asked first, then its label once while somethin
   expect(shown({ ...report, drafting: true })).toBe("send-ready");
   expect(shown({ ...report, seen: read("more"), drafting: true, labelled: true })).toBe("label");
   expect(shown({ ...report, seen: read("more") })).toBe("accept");
-  // On a phone's width the balloon over the input would stand over the report: straight to Done.
-  expect(shown({ ...report, narrow: true })).toBe("accept");
 });
 
 test("words in the input point at sending them wherever the guide is, but for a question's answer and the label", () => {
@@ -154,9 +150,8 @@ test("once Done is pressed here the guide closes in steps read once each, before
   const read_ = facts({ ...done, working: 1, unowned: 1, seen: read("conversation", "another-repository") });
   expect(guideEntry(read_)).toBeNull();
   expect(nextStage(turn, null, closing(read_))).toEqual({ stage: "done" });
-  // Where settings hold the steps to answering from a phone, pointing at them once is the last step; never on a phone.
+  // Where settings hold the steps to answering from a phone, pointing at them once is the last step.
   expect(shown({ ...done, apps: true, seen: read("conversation", "another-repository") })).toBe("phone");
-  expect(shown({ ...done, apps: true, narrow: true, seen: read("conversation", "another-repository") })).toBeNull();
 });
 
 test("shown again over a list with nothing going on, the guide begins at sending a request", () => {
@@ -243,6 +238,30 @@ test("a box under the balloon gets room at its end from the balloon's top down, 
   expect(roomUnder(sheet, { top: 600, bottom: 700 })).toBe(244);
   expect(roomUnder(sheet, { top: 250, bottom: 320 })).toBe(594);
   expect(roomUnder(sheet, { top: 100, bottom: 200 })).toBe(0);
+});
+
+test("a part reaching under the input at a detail's foot is pointed at where it is seen, above the input", () => {
+  // A phone's sheet from 282 to 844, keeping 162px at its foot for the input and its row: the question's box runs past that.
+  const question = { left: 37, top: 362, width: 341, height: 448 };
+  expect(seenPart(question, { top: 282, bottom: 682 })).toEqual({ left: 37, top: 362, width: 341, height: 320 });
+  // Seen whole, it is pointed at whole.
+  expect(seenPart({ ...question, height: 200 }, { top: 282, bottom: 682 })).toEqual({ ...question, height: 200 });
+});
+
+test("a part taller than what its pane shows above the input is brought in from its head, though the whole pane could hold it", () => {
+  // A phone's sheet 562px tall, 400px of it seen above the input and its row: a 448px question is brought to its head.
+  const seen = { top: 282, bottom: 682 };
+  expect(bringInAt(448, seen)).toBe("start");
+  expect(bringInAt(300, seen)).toBe("nearest");
+});
+
+test("after each of two replies that make no Task, the step at the input is shown again, its button used or not", () => {
+  const first = facts({ sent: true, talked: true, seen: read("send", "received", "direct") });
+  expect(shown(first)).toBe("send-again");
+  // Its demo request put in and replaced by another question, sent and answered in the conversation: put away and left.
+  const second = facts({ sent: true, talked: true, seen: read("send", "received", "direct", "send-again", "send-ready") });
+  expect(shown(second)).toBe("send-again");
+  expect(shown({ ...second, standing: null })).toBe("send-again");
 });
 
 test("a row whose turn the person has already answered from here is not theirs, while it still stands in the list", () => {
