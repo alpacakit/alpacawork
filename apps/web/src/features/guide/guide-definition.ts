@@ -42,14 +42,15 @@ import type { GuideStage } from "./guide-state";
  * was shown in, while it stays the step on this page (`standing`). One with a button is done when its button is
  * pressed, or when the guide moves on
  * from it after its balloon stood because its own facts no longer hold (doneOnLeaving); pushed aside while it still
- * holds, it comes back. A step that holds while its part is not on the screen shows nothing and the guide waits for
+ * holds, it comes back. A step whose facts cannot be told now (`unknown`) neither holds nor is left: it shows nothing,
+ * is not done, and the steps after it are chosen as if it were not there. A step that holds while its part is not on the screen shows nothing and the guide waits for
  * that part; one marked `passable` is passed over instead (`skipped`): the next step that holds is shown, and it comes
  * back when its part is seen again.
  *
  * To add a step, add one entry to GUIDE where it belongs in the order and its words to tree.json (every language):
  * - `id`: its name (also what "Got it" remembers);
  * - `phase`: where it belongs (above), which says the screen it is shown on;
- * - `when`: the facts under which it holds;
+ * - `when`: the facts under which it holds (true), no longer holds (false), or cannot be told now (`unknown`);
  * - `part`, `side` and `align`: the part it points at (a name from PARTS), the side of that part its balloon stands on,
  *   and where along that side (middle unless said);
  * - `clear`: parts the balloon never stands over (what is read there stays read): the one holding the part pointed at,
@@ -167,8 +168,8 @@ export type GuideFacts = {
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
   /**
-   * Notifications are off on this browser, as it has itself made sure (pushOff): false whenever that is not known, and
-   * when no step left reads it.
+   * Notifications are off on this browser, as it has itself made sure (pushOff): false whenever that is not made sure
+   * (anything else, or not read yet), and when no step left reads it.
    */
   pushOff: boolean;
   /** Settings hold the guide to the installed app and the phone here (not on a touch screen). */
@@ -209,13 +210,16 @@ export const SCREENS: Record<GuideScreen, { phases: readonly GuidePhase[]; start
   phone: { phases: ["phone"], starts: at => at.screen === "phone", closed: t => t("tree:guide.closedPhone") },
 };
 
+/** Whether a step holds: it does, it does not (what it is about is over), or that cannot be told now. */
+export type GuideHolds = boolean | "unknown";
+
 /** What a step reads from outside the screen for itself alone: this browser's own notifications (pushOff). */
 export type GuideRead = "push";
 
 export type GuideEntry = {
   id: string;
   phase: GuidePhase;
-  when: (facts: GuideFacts) => boolean;
+  when: (facts: GuideFacts) => GuideHolds;
   part?: GuidePart;
   clear?: readonly GuidePart[];
   side?: GuideSide;
@@ -330,9 +334,11 @@ export const GUIDE: readonly GuideEntry[] = [
     when: f => f.open === "question" || f.open === "result",
     say: (t, f) => t(f.open === "question" ? "tree:guide.say.phoneQuestion" : "tree:guide.say.phoneResult", phoneButtons(t)) },
   // A phone that could receive notifications but does not: where they are turned on. Pointed at over the list alone,
-  // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes.
+  // so a card opened over it puts it aside (the card's step first) and it comes back as the card closes. Only made
+  // sure of off holds; anything else cannot be told (turned on, it may be turned off again), so it is put away by its
+  // buttons alone.
   { id: "phone-notify", phase: "phone", part: "settingsOverList", side: "bottom", align: "end", next: true, reads: ["push"],
-    when: f => f.pushOff,
+    when: f => f.pushOff || "unknown",
     action: { label: t => t("tree:guide.openNotifications"), run: () => openSettings("notifications") },
     say: t => t("tree:guide.say.phoneNotify") },
 ];
@@ -366,7 +372,7 @@ export const saidBefore = (entry: GuideEntry, facts: Pick<GuideFacts, "seen" | "
  */
 export function guideEntry(facts: GuideFacts): GuideEntry | null {
   const again = !closing(facts);
-  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!saidBefore(entry, facts) || again && !!entry.again) && entry.when(facts));
+  const holding = GUIDE.filter(entry => looked(entry.phase, facts) && (!saidBefore(entry, facts) || again && !!entry.again) && entry.when(facts) === true);
   return holding.find(entry => !facts.skipped.has(entry.id)) ?? holding[0] ?? null;
 }
 
@@ -376,11 +382,11 @@ export const hasButton = (entry: GuideEntry) => !!entry.next || !!entry.action;
 export const doneOnShowing = (entry: GuideEntry, stood: boolean) => stood && !hasButton(entry);
 /**
  * A step with a button is done when the guide moves on from it to another after its balloon stood on the screen
- * (`stood`) because its own facts no longer hold (it was not merely pushed aside by a step above it). One never shown,
- * or passed over while its part is not seen, is not done.
+ * (`stood`) because its own facts no longer hold (it was not merely pushed aside by a step above it, nor are its facts
+ * only not known now). One never shown, or passed over while its part is not seen, is not done.
  */
 export const doneOnLeaving = (left: GuideEntry | null, now: GuideEntry | null, facts: GuideFacts, stood: boolean) =>
-  !!left && left.id !== now?.id && stood && hasButton(left) && !facts.skipped.has(left.id) && !left.when(facts);
+  !!left && left.id !== now?.id && stood && hasButton(left) && !facts.skipped.has(left.id) && left.when(facts) === false;
 
 /** Whether a screen's guide starts by itself: on a browser that has never had it, by that screen's rule (SCREENS). */
 export const startsGuide = (screen: GuideScreen, stage: GuideStage | null, at: GuideOpening) => stage === null && SCREENS[screen].starts(at);

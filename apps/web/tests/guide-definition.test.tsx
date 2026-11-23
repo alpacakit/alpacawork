@@ -194,20 +194,15 @@ test("a phone has a guide of its own: started on a phone's first look whatever t
   expect(startsGuide("phone", { stage: "done" }, { screen: "phone", welcome: false, tasks: 12 })).toBe(false);
 });
 
-test("on a phone: an open question or report says its buttons and swipes once, and notifications are pointed at only while they could be on and are not", () => {
+test("on a phone: an open question or report says its buttons and swipes once, and notifications are pointed at once", () => {
   const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, ...over });
   // A card open: its buttons and swipes, in the words for its kind, before notifications; once read, nothing more on it.
   expect(phone({ open: "result" })).toBe("phone-card");
   expect(phone({ open: "question", pushOff: true })).toBe("phone-card");
   expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
-  // Notifications, while this browser could have them and does not, until read; put aside by a card's step, not done.
-  const notify = guideEntry(facts({ screen: "phone", pushOff: true }));
-  expect(notify?.id).toBe("phone-notify");
-  expect(phone({ pushOff: false })).toBeNull();
+  // Notifications, while made sure to be off, until put away.
+  expect(phone({ pushOff: true })).toBe("phone-notify");
   expect(phone({ pushOff: true, seen: read("phone-notify") })).toBeNull();
-  const card = facts({ screen: "phone", open: "question", pushOff: true });
-  expect(doneOnLeaving(notify, guideEntry(card), card, true)).toBe(false);
-  expect(doneOnLeaving(notify, null, facts({ screen: "phone", pushOff: false }), true)).toBe(true);
   // None of the computer's steps is shown on a phone, and neither of these on a computer.
   expect(phone({ tasks: 0, questions: 0, results: 0 })).toBeNull();
   expect(shown({ tasks: 1, results: 1, open: "result", pushOff: true, seen: read("more", "accept") })).toBe("accept");
@@ -360,13 +355,26 @@ test("the close holds while the server says a Task pressed Done on here is finis
   expect(shown({ stage: turn, tasks: 1, talked: true, results: 1, open: "result", seen: read("more", "accept") })).toBe("accept");
 });
 
-test("notifications are said off only when this browser has made sure: it can have them, they are not blocked, and its subscription was read and there is none", () => {
+test("while notifications cannot be told to be off, their step is not chosen and an open card's step is", () => {
+  const phone = (over: Partial<GuideFacts>) => shown({ screen: "phone", tasks: 3, questions: 1, results: 1, pushOff: false, ...over });
+  expect(phone({})).toBeNull();
+  expect(phone({ open: "question" })).toBe("phone-card");
+  expect(phone({ open: "result", seen: read("phone-card") })).toBeNull();
+});
+
+test("a step stood and then not to be told now is not put away; one whose facts no longer hold is, as on a computer", () => {
+  const notify = guideEntry(facts({ screen: "phone", pushOff: true }));
+  expect(notify?.id).toBe("phone-notify");
+  expect(doneOnLeaving(notify, null, facts({ screen: "phone", pushOff: false }), true)).toBe(false);
+  const card = facts({ screen: "phone", open: "question", pushOff: false });
+  expect(doneOnLeaving(notify, guideEntry(card), card, true)).toBe(false);
+  const conversation = guideEntry(facts({ stage: turn, doneHere: true, tasks: 1, talked: true }));
+  expect(doneOnLeaving(conversation, null, facts({ stage: turn, doneHere: true, tasks: 1, talked: false }), true)).toBe(true);
+});
+
+test("notifications are off only when this browser made sure: it can have them, they are not blocked, and its subscription was read and there is none", () => {
   const read = (subscribed: boolean, permission: NotificationPermission = "default") => ({ permission, subscribed });
-  expect(pushOff(true, read(false))).toBe(true);
-  expect(pushOff(true, read(false, "granted"))).toBe(true);
-  // Not supported, blocked, held here (whatever serve says of it), being read or a read that failed: not said off.
-  expect(pushOff(false, read(false))).toBe(false);
-  expect(pushOff(true, read(false, "denied"))).toBe(false);
-  expect(pushOff(true, read(true, "granted"))).toBe(false);
-  expect([pushOff(true, "reading"), pushOff(true, "failed")]).toEqual([false, false]);
+  expect([pushOff(true, read(false)), pushOff(true, read(false, "granted"))]).toEqual([true, true]);
+  expect([pushOff(false, read(false)), pushOff(true, read(false, "denied")), pushOff(true, read(true, "granted")), pushOff(true, "reading"), pushOff(true, "failed")])
+    .toEqual([false, false, false, false, false]);
 });

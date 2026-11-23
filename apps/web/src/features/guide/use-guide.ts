@@ -69,11 +69,10 @@ export const pushOff = (supported: boolean, read: SubscriptionRead) =>
 
 /**
  * pushOff, read only while `enabled` (a step left reads it): as the screen opens, as each dialog closes (Settings is where
- * notifications are turned on), and as the page comes back into view (changed in another tab or in the browser's
- * settings). Each read starts from not known (undefined), and the guide waits until it is done (`ready`): nothing is
- * said off meanwhile, and the step on it is not left as no longer holding.
+ * notifications are turned on), and as the page comes back into view or into focus (changed in another tab or in the
+ * browser's settings). Each read starts from not made sure (false), and only the read begun last is used.
  */
-function usePushOff(enabled: boolean): boolean | undefined {
+function usePushOff(enabled: boolean): boolean {
   const dialog = useDialogStore((state) => state.dialog !== null);
   const [read, setRead] = useState<SubscriptionRead>("reading");
   const [looked, setLooked] = useState(0);
@@ -81,18 +80,19 @@ function usePushOff(enabled: boolean): boolean | undefined {
     if (!enabled) return;
     const back = () => { if (document.visibilityState === "visible") setLooked(count => count + 1); };
     document.addEventListener("visibilitychange", back);
-    return () => document.removeEventListener("visibilitychange", back);
+    addEventListener("focus", back);
+    return () => { document.removeEventListener("visibilitychange", back); removeEventListener("focus", back); };
   }, [enabled]);
   useEffect(() => {
     setRead("reading");
     if (!enabled || dialog || !pushSupported()) return;
-    let live = true;
-    currentSubscription().then((subscription) => { if (live) setRead({ permission: Notification.permission, subscribed: subscription !== null }); },
-      (error: unknown) => { recordFailure(error, "push subscription read"); if (live) setRead("failed"); });
-    return () => { live = false; };
+    // A read begun after this one makes this one's answer moot.
+    let latest = true;
+    currentSubscription().then((subscription) => { if (latest) setRead({ permission: Notification.permission, subscribed: subscription !== null }); },
+      (error: unknown) => { recordFailure(error, "push subscription read"); if (latest) setRead("failed"); });
+    return () => { latest = false; };
   }, [enabled, dialog, looked]);
-  if (!enabled || !pushSupported()) return false;
-  return read === "reading" ? undefined : pushOff(true, read);
+  return enabled && pushOff(pushSupported(), read);
 }
 
 /** What the input held when the first step was shown again (at `at`), and whether it still holds just that. */
@@ -261,10 +261,9 @@ export function useGuide(screen: GuideScreen, stage: GoingStage, skipped: Readon
   // The step standing on this page in its first words, as it was last chosen: it goes on in them while it holds.
   const standing = useRef<string | null>(null);
   const facts: GuideFacts = { screen, stage, tasks, doneHere, settling, questions, results, working, unowned, ...coordinator, soon, conversationOpen, labelled, drafting, open,
-    pushOff: pushOffHere === true, apps, seen, skipped, standing: standing.current };
-  // Until the conversation is read, what the coordinator has and what the input holds are not known, nor while this
-  // browser's notifications are read for a step left: no step is chosen.
-  const ready = useConversation(state => state.conversation !== null) && pushOffHere !== undefined;
+    pushOff: pushOffHere, apps, seen, skipped, standing: standing.current };
+  // Until the conversation is read, what the coordinator has and what the input holds are not known: no step is chosen.
+  const ready = useConversation(state => state.conversation !== null);
   const entry = ready ? guideEntry(facts) : null;
   const again = !!entry && saidBefore(entry, facts);
   if (ready) standing.current = entry && !again ? entry.id : null;
