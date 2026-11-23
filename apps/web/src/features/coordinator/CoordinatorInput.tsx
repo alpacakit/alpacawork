@@ -12,7 +12,7 @@ import type { Editor } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceStore } from '@/data/workspace-store';
+import { useWorkspaceSelector, useWorkspaceStore } from '@/data/workspace-store';
 import { notify } from '@/lib/notify';
 import { countUse } from '@/features/telemetry/count';
 import { acknowledgeReaderSend, captureReaderSubmission, cancelLocalReaderSend, readerSendReadiness, retryReaderIntent, useReaderSend, type SendScope, type SentIntent } from './reader-send';
@@ -73,7 +73,8 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
   const operation = editableIntent(draft.entry.values, draft.doc);
   const retryMeaning = operation.kind === 'intent' ? operation.intent : null;
   const retryPeople = useReaderPeople(retryMeaning?.task ?? null);
-  const root = workspace.getState().info.root;
+  // Selected, not read once: the input is memoized and must be drawn again for another workspace.
+  const root = useWorkspaceSelector(data => data.info.root);
   // What each request sent from here may retire in the reader, captured at its press; a recovered one has none.
   // Serve out of reach (or the workspace not taking writes): what goes to it waits, sending above all (canSend). Writing
   // does not wait for serve: what is written is the device's own (draft-store). Only a workspace that takes no writes at
