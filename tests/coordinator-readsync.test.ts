@@ -18,7 +18,7 @@ import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-impor
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 import { openIndexStream } from './index-stream.ts';
 
-const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') } });
+const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') }, coordinatorAiStack: [{ agent: 'fake', values: {} }] });
 
 function fixture(t: TestContext) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-readsync-')));
@@ -33,7 +33,7 @@ function fixture(t: TestContext) {
   const ask = async () => {
     const request = crypto.randomUUID();
     const snapshot = await conversation.ask({ conversationId: conversation.read().id, id: request,
-      text: 'Read this reply', attachments: [], selected: {} });
+      text: 'Read this reply', attachments: [] });
     coordinatorConversationSchema.parse(snapshot);
     return request;
   };

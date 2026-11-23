@@ -23,12 +23,12 @@ export function useAgentChoice(initial?: { profile: string; selected: Values }) 
   const [profile, setProfile] = useState(initial?.profile ?? offers[0]?.key ?? "");
   const [changes, setChanges] = useState<Values>(initial?.selected ?? {});
   const offer = offers.find(item => item.key === profile);
-  const view = offer ? launchSelection(offer.offer, { kind: "new", hints: {} }, changes) : { choices: [], shown: {}, send: {}, problems: [] };
+  const view = offer ? launchSelection(offer.offer, changes) : { choices: [], shown: {}, problems: [] };
   const chooseProfile = (key: string, overrides: Values = {}) => { setProfile(key); setChanges(overrides); };
   // A change the settings stop offering stays to choose again (launchSelection), even when another row changes.
   const setSelected = (update: Values) => setChanges(before => ({ ...before, ...update }));
   return { profiles: offers, profile, choices: view.choices, selected: view.shown, problems: view.problems, ready: selectionReady(view),
-    send: view.send, setSelected, chooseProfile };
+    setSelected, chooseProfile };
 }
 
 export function AgentChoiceFields({ choice, disabled = false }: {

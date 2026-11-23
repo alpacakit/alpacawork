@@ -45,7 +45,12 @@ export const resources = {
   }),
   skills: (root: string, profile: string, conversation: string | null) => queryOptions({
     queryKey: ['coordinator-skills', root, conversation, profile] as const,
-    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => readSkillCatalog(profile, conversation!, signal)),
+    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, async () => {
+      const catalog = await readSkillCatalog(conversation!, signal);
+      // Kept under the AI it was asked for: an answer for another (the settings changed meanwhile) is not that one's.
+      if (catalog.profile !== profile) throw new ApiError('Skill catalog answered a different profile', 'invalid_response', 'later');
+      return catalog;
+    }),
     staleTime: 0,
   }),
   coordinator: (client: QueryClient, root: string, receive: (fetch: () => Promise<CoordinatorSnapshot>) => Promise<CoordinatorSnapshot>) => queryOptions({
@@ -392,11 +397,13 @@ function readTimeline<T>(client: QueryClient, key: QueryKey, scope: string | nul
   }
   return readResource(client, key, fetch);
 }
-/** What this agent can use now, read fresh: for the shared Query, and on its own for a send, which outlives who is looking. */
-export async function readSkillCatalog(profile: string, conversation: string, signal?: AbortSignal) {
-  const catalog = await api.request(`coordinator/skills?conversationId=${encodeURIComponent(conversation)}&agent=${encodeURIComponent(profile)}`, skillCatalogSchema, signal);
-  if (catalog.profile !== profile) throw new ApiError('Skill catalog answered a different profile', 'invalid_response', 'later');
-  return catalog;
+/**
+ * What the AI the conversation's next message goes to can use now, read fresh: for the shared Query, and on its own for
+ * a send, which outlives who is looking. The server answers for its own next AI (`profile`), which a send compares
+ * with the one its chips were checked for.
+ */
+export function readSkillCatalog(conversation: string, signal?: AbortSignal) {
+  return api.request(`coordinator/skills?conversationId=${encodeURIComponent(conversation)}`, skillCatalogSchema, signal);
 }
 /** Reject responses from a former scope/query and GETs overtaken by a local write. */
 async function readResource<T>(client: QueryClient, key: QueryKey, fetch: () => Promise<T>): Promise<T> {

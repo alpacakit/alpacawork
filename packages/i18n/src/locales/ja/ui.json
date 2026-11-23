@@ -5,6 +5,11 @@
     "undo": "元に戻す"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "入力欄で話す AI: {{ai}}。押すと設定で変えられます",
+      "none": "入力欄で話す AI がないため、送れません。押すと設定を開きます",
+      "setUp": "AI を設定"
+    },
     "appHint": {
       "close": "この案内を閉じる",
       "detail": "PC にアプリとして入れる・スマホから開く",
@@ -26,6 +31,7 @@
     "completeHint": "{{id}}を完了にします",
     "conflict": "同じIDで別の内容が届いています",
     "conversationChanged": "会話が切り替わりました",
+    "coordinatorAiChanged": "入力欄で話す AI が変わったため、送りませんでした。スキルを確かめてから、もう一度送ってください",
     "copyAnswer": "返事をコピー",
     "deliveryRefused": "エージェントが受け取れなかったため、列で待っています。",
     "done": "完了",
@@ -59,8 +65,6 @@
     "heightHint": "上下に動かして高さを変える（すばやく上で全画面、下で閉じる）",
     "interrupted": "送る前に中断されました",
     "joinedCount_other": "あと {{count}} 件",
-    "launchChoiceChanged": "送ったときのモデルなどの選択は、今は送れません。選び直して送ってください",
-    "launchChoiceUnresendable": "送ったときのモデルなどの選択は今は送り直せません。届いたかどうかは確認が取れしだい表示します",
     "loadFailed": "会話を読み込めませんでした",
     "loading": "会話を読み込んでいます…",
     "loadingWanted": "読み込みが終わると開きます…",

@@ -78,7 +78,7 @@ export function problemReasonText(reason: ProblemReason): string {
     case 'host_failure': return i18n.t(`problem.host.${reason.operation}`, { cause: problemReasonText(reason.cause) });
     case 'system_error': return [i18n.t('problem.reason.system_error', { ...reason, syscall: reason.syscall ?? '', path: reason.path ?? '', dest: reason.dest ?? '' }), technical(reason.diagnostic)].join(' · ');
     case 'unexpected_error': return [i18n.t('problem.reason.unexpected_error', { name: reason.name }), technical(reason.diagnostic)].join(' · ');
-    // The resolver's evidence: what each previous value needs, as the picker says it (choice-text.ts).
+    // The resolver's evidence: what each previous value needs, as a launch choice says it (choice-text.ts).
     // Choosing again is the general advice, unless the conversation cannot go on: then only how to start anew is said.
     case 'selection_required': {
       const said = problemsToSay(reason.problems);

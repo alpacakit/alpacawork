@@ -12,27 +12,20 @@ import { notify } from "../src/lib/notify";
 import { markCoordinatorSeen, type CoordinatorTurn } from "../src/data/coordinator";
 import { rememberWriteIdentity } from "../src/data/write-identity";
 import { useConnection } from "../src/data/connection";
-import type { ControlTreeDTO } from "@alpacawork/contract/control";
-import { applyLaunchMemory, type LaunchMemory } from "@alpacawork/contract/agent-selection";
-import { useConversationChanges, useLaunchPicker, useLaunchRecord } from "../src/features/forms/launch-choice";
-import { screenData, TestWorkspace, tree, dto, openReference, launchProfile } from "./fixtures";
+import { screenData, TestWorkspace, tree, dto, openReference } from "./fixtures";
 import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
 import { appHintDone } from '../src/features/coordinator/app-hint';
 import { useDialogStore } from '../src/state/dialog-store';
 
-const empty = { id: "conversation-1", agent: null, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
+const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],
   attachments: [], status: "running", waiting: false, answer: null, seen: false, answeredAt: null, error: null, result: null };
-/** The fetches a test answers, and serve's launch memory: a save is answered with the record as saved (seen by `fetcher` too). */
+/** The fetches a test answers; the skills catalog is answered for the AI the conversation goes to. */
 function stubFetch(fetcher: (...args: any[]) => any) {
-  let memory: LaunchMemory = { agent: null, values: {}, version: 0 };
   vi.stubGlobal("fetch", (url: string, ...args: any[]) => {
     if (url.startsWith("/api/coordinator/skills")) return Promise.resolve(reply({ status: "unavailable", profile: "claude", skills: [], reason: "test profile" }));
-    if (url !== "/api/launch-memory") return fetcher(url, ...args);
-    fetcher(url, ...args);
-    memory = applyLaunchMemory(memory, JSON.parse(args[0].body).change);
-    return Promise.resolve(new Response(JSON.stringify({ memory }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    return fetcher(url, ...args);
   });
 }
 function writeEditor(text: string) {
@@ -49,7 +42,7 @@ beforeEach(() => {
   // Store-only transport cases begin after a new admission has fixed the original epoch.
   for (const id of ["turn-1", "next"]) rememberWriteIdentity("/fixture", id, "initial");
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); useLaunchPicker.setState({ open: false }); useLaunchRecord.setState({ record: null, saving: [] }); useConversationChanges.setState({ conversation: null, agent: null, changes: {} }); setConversationState({ conversation: null, open: true, expanded: false, engaged: false, read: true, error: null }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); setConversationState({ conversation: null, open: true, expanded: false, engaged: false, read: true, error: null }); });
 
 test('selecting another Task leaves an unengaged conversation thread alone, while new turns and language still redraw it', async () => {
   await i18n.changeLanguage('en');
@@ -183,10 +176,10 @@ test("a server accepted message appears and a later read supplies its answer", a
   stubFetch(fetcher);
   await useConversation.getState().refresh();
   screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }));
-  await useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: "turn-1", text: "T13 ?", tasks: ["T13"], attachments: [], selected: { model: "opus" } });
+  await useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: "turn-1", text: "T13 ?", tasks: ["T13"], attachments: [] });
   expect(useConversation.getState().conversation?.turns[0]?.status).toBe("running");
   expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ conversationId: "conversation-1", id: "turn-1", text: "T13 ?", tasks: ["T13"],
-    attachments: [], selected: { model: "opus" } });
+    attachments: [] });
   await useConversation.getState().refresh();
   expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("Checked");
   expect(useConversation.getState().read).toBe(false);
@@ -208,13 +201,13 @@ test("clear replaces the conversation and ignores a stale read", async () => {
   let release!: (value: Response) => void;
   const stale = new Promise<Response>(resolve => { release = resolve; });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply({ ...empty, turns: [turn] }))
-    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
+    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
   await useConversation.getState().refresh();
   const pending = useConversation.getState().refresh();
   await useConversation.getState().clear();
   release(reply({ ...empty, turns: [turn] }));
   await pending;
-  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
 });
 
 test("the input standing at the foot does not warm a new conversation up; opening the conversation warms it once", async () => {
@@ -231,7 +224,7 @@ test("the input standing at the foot does not warm a new conversation up; openin
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
   const warms = fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm");
   expect(warms).toHaveLength(1);
-  expect(JSON.parse(warms[0]![1].body)).toEqual({ conversationId: "conversation-1", selected: {}, agent: "claude" });
+  expect(JSON.parse(warms[0]![1].body)).toEqual({ conversationId: "conversation-1" });
   // Already warming, a later open does not ask again.
   act(() => { useConversation.getState().setExpanded(false); useConversation.getState().setExpanded(true); });
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator").length).toBeGreaterThan(1));
@@ -336,10 +329,10 @@ test("a late refusal of an earlier conversation's warm-up neither replaces the s
     : JSON.parse(String(init?.body)).conversationId === "conversation-a" ? earlier : refused());
   stubFetch(fetcher);
   setConversationState({ conversation: { ...empty, id: "conversation-a" }, open: true, warmRefused: null });
-  const asking = useConversation.getState().warm({});
+  const asking = useConversation.getState().warm();
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
   setConversationState({ conversation: { ...empty, id: "conversation-b" } });
-  await act(() => useConversation.getState().warm({}));
+  await act(() => useConversation.getState().warm());
   expect(useConversation.getState().warmRefused).toBe("conversation-b");
   refuseEarlier(); await act(() => asking);
   expect(useConversation.getState().warmRefused).toBe("conversation-b");
@@ -354,7 +347,7 @@ test("with no adapter configured the warm-up is asked all the same, and its refu
   await act(() => useConversation.getState().refresh());
   act(() => useConversation.getState().setExpanded(true));
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
-  expect(JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/warm")![1]!.body as string).agent).toBeUndefined();
+  expect(JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/warm")![1]!.body as string)).toEqual({ conversationId: empty.id });
   await waitFor(() => expect(document.querySelector("[data-coordinator-warm]")?.textContent).toBe("コーディネーターの起動に失敗しました。"));
 });
 
@@ -374,164 +367,46 @@ test("an answer is drawn by the reports' Markdown and task references open the t
   expect(openTask).toHaveBeenCalledWith("T1", { reader: true });
 });
 
-/** The screen's data with the person's launch memory as the index brings it. */
-const remembering = (memory: Omit<LaunchMemory, "version">) => { const data = screenData(tree({ profiles: launchProfiles })); return { ...data, info: { ...data.info, launchMemory: { ...memory, version: 0 } } }; };
-const launchProfiles: ControlTreeDTO["profiles"] = [launchProfile("claude", { model: ["opus", "fable"], effort: ["high", "max"] }),
-  launchProfile("codex", { model: ["gpt-6.1-sol", "gpt-6-astra"], effort: ["low", "xhigh"] })];
-test("the coordinator input offers every adapter and sends its chosen model and effort", async () => {
+test("the input shows the AI its next message goes to, chooses nothing itself, and opens the settings onto that AI when pressed", async () => {
   await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, turns: [] }));
+  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, nextLaunch: { agent: "claude", values: { model: "opus", effort: "low" } } }));
   stubFetch(fetcher);
-  render(<TestWorkspace data={remembering({ agent: "codex", values: { claude: { model: "fable", effort: "low" } } })}><CoordinatorCard /></TestWorkspace>);
-  useConversation.getState().setOpen(true);
-  // A new conversation starts with the last agent chosen on any screen, its first model and its lightest effort.
-  const picker = await screen.findByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "gpt-6.1-sol(low)" }) });
-  fireEvent.click(picker);
-  // The kept model comes back on its agent; the kept effort is no longer offered, so its first value is used.
-  fireEvent.click(screen.getByRole("radio", { name: /fable/ }));
-  expect(screen.getByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "fable(high)" }) })).toBeTruthy();
-  // It can switch to either configured Codex model.
-  expect(screen.getByText("gpt-6.1-sol")).toBeTruthy();
-  fireEvent.click(screen.getByRole("radio", { name: /gpt-6-astra/ }));
-  expect(screen.queryByRole("radio", { name: "max" })).toBeNull();
-  fireEvent.click(screen.getByRole("radio", { name: "xhigh" }));
-  // Each choice is kept on the server, for the next new conversation on any screen: the row chosen, each time.
-  const saved = () => fetcher.mock.calls.filter(([url]) => url === "/api/launch-memory").map(([, init]) => JSON.parse(init.body).change);
-  await waitFor(() => expect(saved().slice(-2)).toEqual([{ kind: "choose", agent: "codex", values: { model: "gpt-6-astra" } },
-    { kind: "choose", agent: "codex", values: { effort: "xhigh" } }]));
-  writeEditor("Continued");
-  // The send waits until the choices are saved.
-  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled).toBe(false));
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
-  const sent = fetcher.mock.calls.find(([url]) => url === "/api/coordinator/messages")!;
-  expect(JSON.parse(sent[1].body)).toMatchObject({ text: "Continued", agent: "codex", selected: { model: "gpt-6-astra", effort: "xhigh" } });
-});
-
-test("a message going on in the conversation sends only what is changed in its picker, not this device's last choice", async () => {
-  await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues: { model: "fable", effort: "high" },
-    turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={remembering({ agent: "codex", values: { claude: { model: "opus", effort: "max" } } })}><CoordinatorCard /></TestWorkspace>);
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
   useConversation.getState().setOpen(true);
   await act(() => useConversation.getState().refresh());
-  const sent = () => fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/messages").map(([, init]) => JSON.parse(init.body));
-  // The conversation's agent and its previous values, not the device's last ones.
-  fireEvent.click(await screen.findByRole("button", { name: /^fable\(high\)/ }));
-  fireEvent.click(screen.getByRole("radio", { name: "max" }));
-  writeEditor("Think harder");
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  await waitFor(() => expect(sent()).toHaveLength(1));
-  expect(sent()[0]).toMatchObject({ agent: "claude", selected: { effort: "max" } });
-  expect(sent()[0].selected).not.toHaveProperty("model");
-});
-
-test("a message with no agent left to take it says so, does not go, and leads to the agent settings", async () => {
-  await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues: { model: "opus", effort: "high" },
-    turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: [] }))}><CoordinatorCard /></TestWorkspace>);
-  useConversation.getState().setOpen(true);
-  await act(() => useConversation.getState().refresh());
-  expect(await screen.findByText(i18n.t("forms:agentPicker.brief.none"))).toBeTruthy();
-  writeEditor("Continue please");
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  expect(await screen.findByText(i18n.t("forms:agentPicker.problem.none"))).toBeTruthy();
-  expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
-  fireEvent.click(screen.getByRole("button", { name: i18n.t("forms:agentPicker.openSettings") }));
-  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server" });
-});
-
-test("a message whose conversation's previous model is no longer offered does not go: the picker opens to choose again", async () => {
-  await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues: { model: "sonnet", effort: "max" }, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles: launchProfiles }))}><CoordinatorCard /></TestWorkspace>);
-  useConversation.getState().setOpen(true);
-  await act(() => useConversation.getState().refresh());
-  // Closed, the chip says what to do in one short line; the whole reason is its title.
-  const said = await screen.findByRole("alert");
-  expect(said.textContent).toBe(i18n.t("forms:agentPicker.brief.select_value", { row: i18n.t("forms:responsibleForm.model") }));
-  expect(said.getAttribute("title")).toMatch(/sonnet/);
-  writeEditor("Go on");
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  expect(document.querySelector("[data-agent-picker-menu]")).not.toBeNull();
-  expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
-  // Chosen again, it goes with that choice only.
-  fireEvent.click(screen.getByRole("radio", { name: /^fable/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
-  expect(JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/messages")![1].body).selected).toEqual({ model: "fable" });
-});
-
-test("a failed turn sent again with a previous model no longer offered does not go until chosen again, then goes once", async () => {
-  await i18n.changeLanguage("en");
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString() };
-  const previousValues = { model: "sonnet", effort: "max" };
-  setConversationState({ conversation: { ...empty, agent: "claude", previousValues, turns: [failed] }, open: true, expanded: true, read: true });
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "claude", previousValues, turns: [failed, { ...turn, id: "retry-1", status: "queued", waiting: true }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })], profiles: launchProfiles }))}><CoordinatorCard /></TestWorkspace>);
-  const posts = () => fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/messages").map(([, init]) => JSON.parse(init.body));
-  fireEvent.click(await screen.findByRole("button", { name: "Send again" }));
-  await waitFor(() => expect(document.querySelector("[data-agent-picker-menu]")).not.toBeNull());
-  expect(posts()).toEqual([]);
-  fireEvent.click(screen.getByRole("radio", { name: /^fable/ }));
-  // Sent once the choice is saved.
-  await waitFor(() => expect(useLaunchRecord.getState().saving).toEqual([]));
-  fireEvent.click(screen.getByRole("button", { name: "Send again" }));
-  await waitFor(() => expect(posts()).toHaveLength(1));
-  expect(posts()[0]).toMatchObject({ agent: "claude", selected: { model: "fable" } });
-});
-
-test("a message sent again after an unknown result goes with the choice it was first sent with", async () => {
-  await i18n.changeLanguage("en");
-  const done = { ...empty, agent: "claude", previousValues: { model: "opus", effort: "high" }, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] };
-  let lost = true;
-  const fetcher = vi.fn().mockImplementation(async (url: string) => {
-    if (url === "/api/coordinator/messages" && lost) { lost = false; throw new TypeError("network"); }
-    return reply(done);
-  });
-  stubFetch(fetcher);
-  render(<TestWorkspace data={remembering({ agent: "claude", values: { claude: { model: "fable", effort: "max" } } })}><CoordinatorCard /></TestWorkspace>);
-  useConversation.getState().setOpen(true);
-  await act(() => useConversation.getState().refresh());
-  fireEvent.click(await screen.findByRole("button", { name: /^opus\(high\)/ }));
-  fireEvent.click(screen.getByRole("radio", { name: "max" }));
-  writeEditor("Continued");
-  fireEvent.click(screen.getByRole("button", { name: "Send" }));
-  // Unknown, its line says so and the conversation keeps it to resend.
-  await screen.findByText("Couldn't confirm whether it arrived.");
-  act(() => useConversation.getState().setExpanded(true));
-  // Chosen anew in between, the chip changes; the message sent again does not.
-  fireEvent.click(screen.getByRole("radio", { name: "high" }));
-  fireEvent.click(screen.getByRole("button", { name: "Send again" }));
-  const sent = () => fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/messages").map(([, init]) => JSON.parse(init.body));
-  await waitFor(() => expect(sent()).toHaveLength(2));
-  expect(sent()[1].id).toBe(sent()[0].id);
-  expect(sent()[1].selected).toEqual({ effort: "max" });
-});
-
-test("after changing to a model without effort, the coordinator input sends no effort", async () => {
-  await i18n.changeLanguage("en");
-  const profiles: ControlTreeDTO["profiles"] = [launchProfile("pi", { model: ["model-with-effort", "fixed-first"], effort: ["high", "low", "medium"] },
-    ["effort"], { "fixed-first": ["effort"] })];
-  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, agent: "pi", previousValues: { model: "model-with-effort", effort: "high" }, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ profiles }))}><CoordinatorCard /></TestWorkspace>);
-  useConversation.getState().setOpen(true);
-  await act(() => useConversation.getState().refresh());
-  fireEvent.click(await screen.findByRole("button", { name: i18n.t("forms:agentPicker.pickerLabel", { agent: "model-with-effort(high)" }) }));
-  fireEvent.click(screen.getByRole("radio", { name: /fixed-first/ }));
-  expect(screen.queryByRole("radio", { name: "low" })).toBeNull();
+  const shown = await waitFor(() => { const chip = document.querySelector<HTMLElement>("[data-coordinator-ai]"); expect(chip?.textContent).toBe("opus(low)"); return chip!; });
   writeEditor("Continued");
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(true));
   const sent = JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/messages")![1].body);
-  expect(sent).toMatchObject({ agent: "pi" });
-  expect(sent.selected).toEqual({ model: "fixed-first" });
+  expect(sent).not.toHaveProperty("agent");
+  expect(sent).not.toHaveProperty("selected");
+  fireEvent.click(shown);
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server", focus: "coordinatorAi" });
+});
+
+test("the input shows the values its next launch is given as they are, and the agent's name where no model is", async () => {
+  await i18n.changeLanguage("en");
+  stubFetch(vi.fn().mockImplementation(async () => reply({ ...empty, nextLaunch: { agent: "copilot", values: {} } })));
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
+  useConversation.getState().setOpen(true);
+  await act(() => useConversation.getState().refresh());
+  await waitFor(() => expect(document.querySelector("[data-coordinator-ai]")?.textContent).toBe("copilot"));
+});
+
+test("with no coordinator AI that can run, the input says so where the AI stands, sends nothing and leads to the settings", async () => {
+  await i18n.changeLanguage("en");
+  const fetcher = vi.fn().mockImplementation(async () => reply({ ...empty, nextLaunch: null }));
+  stubFetch(fetcher);
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
+  useConversation.getState().setOpen(true);
+  await act(() => useConversation.getState().refresh());
+  const none = await waitFor(() => { const chip = document.querySelector<HTMLElement>('[data-coordinator-ai="none"]'); expect(chip).not.toBeNull(); return chip!; });
+  writeEditor("Continue please");
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Send" }).disabled).toBe(true);
+  expect(fetcher.mock.calls.some(([url]) => url === "/api/coordinator/messages")).toBe(false);
+  fireEvent.click(none);
+  expect(useDialogStore.getState().dialog).toMatchObject({ kind: "settings", tab: "server", focus: "coordinatorAi" });
 });
 
 test("a send's answer arriving after a newer read of the conversation does not bring the queued turn back", async () => {
@@ -540,7 +415,7 @@ test("a send's answer arriving after a newer read of the conversation does not b
   const delayed = new Promise<Response>((resolve) => { release = resolve; });
   const done = { ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "final answer", answeredAt: new Date().toISOString() }] };
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/messages") ? delayed : reply(done)));
-  const pending = useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: turn.id, text: turn.ask, attachments: [], selected: {} });
+  const pending = useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: turn.id, text: turn.ask, attachments: [] });
   announceConversation("a:answered");
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer"));
   release(reply({ ...empty, turns: [{ ...turn, status: "queued", waiting: true }] }));
@@ -558,7 +433,7 @@ test("a send that fails takes nothing from a read sent before it: the read's ans
     return delayed;
   }));
   announceConversation("a:send-failed");
-  await expect(useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: "next", text: "next", attachments: [], selected: {} })).rejects.toThrow();
+  await expect(useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: "next", text: "next", attachments: [] })).rejects.toThrow();
   release(reply(done));
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer"));
 });
@@ -574,7 +449,7 @@ test("a warm-up that fails takes nothing from a read sent before it", async () =
     return delayed;
   }));
   announceConversation("a:warm-failed");
-  await useConversation.getState().warm({});
+  await useConversation.getState().warm();
   release(reply(done));
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("elsewhere"));
   expect(useConversation.getState().error).toBeNull();

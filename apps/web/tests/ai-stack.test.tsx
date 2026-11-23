@@ -17,22 +17,22 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   let latest: StackRowDraft[] = [];
   function Form() {
     const [rows, setRows] = useState(readStack([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }]));
-    return <AiStack rows={rows} agents={agents} onChange={next => { latest = next; setRows(next); }} />;
+    return <AiStack kind="tasks" rows={rows} agents={agents} onChange={next => { latest = next; setRows(next); }} />;
   }
   render(<Form />);
-  // The first row is the default; it cannot move up, and the only row cannot be removed.
+  // The first row is the default; it cannot move up. Even the only row can be removed (its agent may be switched off).
   expect(screen.getByRole('button', { name: 'Move row 1 up' })).toHaveProperty('disabled', true);
-  expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', false);
   // A fallback added starts as a copy of the last row, focused to be edited: it never picks a model by itself.
   fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback AI' }));
-  expect(writeStack(latest)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
+  expect(writeStack(latest, agents)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   expect(document.activeElement).toBe(screen.getByLabelText('Model in row 2'));
   // It repeats row 1, and the row says so.
   expect(document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')[1]!.dataset.repeats).toBe('1');
   fireEvent.change(screen.getByLabelText('Agent in row 2'), { target: { value: 'codex' } });
   fireEvent.change(screen.getByLabelText('Effort in row 2'), { target: { value: 'high' } });
   fireEvent.click(screen.getByRole('button', { name: 'Move row 2 up' }));
-  expect(writeStack(latest)).toEqual([{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
+  expect(writeStack(latest, agents)).toEqual([{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   expect(document.querySelector('[data-ai-stack-row="codex"] [data-ai-stack-first]')).not.toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Remove row 2' }));
   expect(latest.map(row => row.agent)).toEqual(['codex']);
@@ -44,7 +44,7 @@ test('a row the agents no longer run is said on the row and keeps the stack from
   const issues = stackIssues([...rows, ...readStack([{ agent: 'codex', values: { model: 'gpt-6.2-sol' } }])], disabled);
   expect(issues.map(issue => issue.kind)).toEqual(['value', 'missing', 'disabled']);
   expect(stackIssues([], agents).map(issue => issue.kind)).toEqual(['empty']);
-  render(<AiStack rows={rows} agents={agents} onChange={() => {}} />);
+  render(<AiStack kind="tasks" rows={rows} agents={agents} onChange={() => {}} />);
   // Each row the agents no longer run is marked, with its reason under it.
   const shown = [...document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')];
   expect(shown.map(row => row.hasAttribute('data-invalid'))).toEqual([true, true]);

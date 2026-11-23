@@ -20,7 +20,7 @@ import { coordinatorFileRunChanges } from './coordinator-file-runs.js';
 import type { WatchedRunUpdate } from './workspace-file-thread.js';
 
 export type ProjectionMeta = Required<IndexPatchDTO['meta']>;
-export type PersonalProjection = Pick<ProjectionMeta, 'person' | 'presence' | 'host' | 'coordinatorWork' | 'launchMemory'> & { errors?: ProjectionMeta['errors'] };
+export type PersonalProjection = Pick<ProjectionMeta, 'person' | 'presence' | 'host' | 'coordinatorWork'> & { errors?: ProjectionMeta['errors'] };
 export interface ProjectionOptions {
   root: string; generation: string; log: ChangeLog; observations?: WorkspaceObservations;
   personal(): Promise<PersonalProjection>;
@@ -322,7 +322,7 @@ export class ProjectionOwner {
           depth: readable.ancestors(project.id).length, color: usable.settings!.color, cwd: this.locations[project.id] || null, counts: aggregate.menu(project.id) }] : [];
       });
     const meta: ProjectionMeta = { ...environment, projects, projectShelfVersion: records.shelf().revision, staleIds: [...taskFailures.keys()],
-      person: personal.person, presence: personal.presence, host: personal.host, coordinatorWork: personal.coordinatorWork, launchMemory: personal.launchMemory,
+      person: personal.person, presence: personal.presence, host: personal.host, coordinatorWork: personal.coordinatorWork,
       errors: [...environment.errors, ...personal.errors ?? [], ...[...taskFailures.values()].map(failure => failure.error)] };
     let next: HeldFrame = { generation: this.options.generation, pv, applied: through, records, values, structural, good, aggregate,
       derived: id => values.get(id), requiredPv: required.next, patch: null, meta, rev: (before?.rev ?? 0) + 1 };

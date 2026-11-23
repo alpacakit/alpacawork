@@ -22,7 +22,7 @@ import { decideOf } from '../src/domain/questions';
 const asked = [decideItem('Proceed?', [['Yes', 'Proceed']])];
 const question = decideOf(asked)[0]!;
 const flush = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
-const conversation = {id:'review7',agent:'claude',warm: 'none' as const, busy: false,cancelled:[],turns:[{id:'old',at,ask:'before',attachments:[],status:'succeeded', waiting: false,answer:'before',seen:false,answeredAt:at,error:null,result:{writes:[],refused:[]}}]};
+const conversation = {id:'review7',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const, busy: false,cancelled:[],turns:[{id:'old',at,ask:'before',attachments:[],status:'succeeded', waiting: false,answer:'before',seen:false,answeredAt:at,error:null,result:{writes:[],refused:[]}}]};
 import { fakeNavigation, sessionHistory } from './navigation-fake';
 import { closeReaderStep, closeImage } from '../src/state/history-step';
 let nav: ReturnType<typeof fakeNavigation>;

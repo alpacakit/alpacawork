@@ -11,7 +11,7 @@ import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
 import { useConversation, readConversationSnapshot } from './coordinator';
 import { replyIn, inlines } from './editor/document';
-import { begin, sendableSelection, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
+import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
 import { skillStanding, skillsUnverified } from './editor/skills';
 import { readSkillCatalog, resources } from '@/data/resources';
@@ -26,7 +26,7 @@ export const SEND_ERROR = 'coordinator-send-error';
 export const sendError = (text: string) => notify.error(text, { id: SEND_ERROR, from: 'coordinator' });
 
 /** Where a delivery runs: the input's window and workspace, and how the thread draws a request being sent. */
-export type DeliveryPlace = { root: string; client: QueryClient; surface: Document; profile: string;
+export type DeliveryPlace = { root: string; client: QueryClient; surface: Document;
   draw: <T>(turn: LocalTurn, work: () => Promise<T>) => Promise<T> };
 
 /**
@@ -34,7 +34,7 @@ export type DeliveryPlace = { root: string; client: QueryClient; surface: Docume
  * now until its answer; settled by the snapshot that holds it (coordinator.ts → reconcileOutbox). Not reaching serve,
  * or refused by it, it goes back to the input (or stays refused in the thread); with no answer, it stays unknown.
  */
-export function deliverOutgoing({ root, client, surface, profile, draw }: DeliveryPlace, requestId: string, keepalive = false, leaving = false): Promise<ReaderAdmission> {
+export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, requestId: string, keepalive = false, leaving = false): Promise<ReaderAdmission> {
   const saved = useDraftStore.getState().entries[outgoingKey(root, requestId)];
   if (leaving && (!saved || !simpleOutgoing(saved))) return Promise.resolve('retained');
   const source = { ...workspaceWriteBasis(), root }, boundary = captureReadBoundary(client);
@@ -79,19 +79,15 @@ export function deliverOutgoing({ root, client, surface, profile, draw }: Delive
           return sameSession() && acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';
       }
       if (!sameSession()) return 'rejected';
-      // Kept from an earlier version, a choice today's API no longer takes is not sent. Unsent, its words go back to be
-      // sent anew; posted, this cannot prove it did not arrive: it stays unknown under its own ID (outgoingDisplay says why)
-      // until a read settles it (deliveryOutcome).
-      if (!sendableSelection(fixed)) return attempt.checked ? 'retained' : refuse(i18n.t('ui:coordinatorCard.launchChoiceChanged'));
       if (attempt.checked && useDraftStore.getState().entries[attempt.key]?.values.conflict)
         return refuse(i18n.t('ui:coordinatorCard.conflict'), new ApiError('Message ID belongs to different input', 'idempotency_conflict', 'fix'), true);
       if (!attempt.checked) {
         const skills = inlines(attempt.doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []);
         if (skills.length) {
-          const agent = fixed.agent ?? profile, live = await readSkillCatalog(agent, fixed.conversationId);
+          const live = await readSkillCatalog(fixed.conversationId);
           if (!sameSession()) return 'rejected';
-          // What this read found is what the list and the chips then say.
-          client.setQueryData(resources.skills(root, agent, fixed.conversationId).queryKey, live);
+          // What this read found is what the list and the chips then say, for the AI it was read for.
+          client.setQueryData(resources.skills(root, live.profile, fixed.conversationId).queryKey, live);
           const standings = skills.map(name => skillStanding(live, name));
           if (standings.includes('gone')) return refuse(i18n.t('ui:input.skillsChanged'));
           if (standings.includes('unknown')) return refuse(skillsUnverified(i18n.t, live));
@@ -133,6 +129,11 @@ export function deliverOutgoing({ root, client, surface, profile, draw }: Delive
       }
       if (outcome === 'cancelled' || useDraftStore.getState().entries[attempt.key]?.values.last === 'withdraw') return 'retained';
       if (outcome === 'accepted') return acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';
+      // Serve, the one judge of a skill's mark, refused words that call a skill otherwise than the AI they go to does (its
+      // settings changed meanwhile), a resend of the same ID included: the words go back, and sent again they are fixed
+      // with that AI's marks.
+      if (error instanceof ApiError && error.reason?.kind === 'skill_invocation_mismatch')
+        return refuse(i18n.t('ui:coordinatorCard.coordinatorAiChanged'), error);
       if (outcome === 'conflict' || certainRefusal && error instanceof ApiError && error.code === 'idempotency_conflict')
         return refuse(i18n.t('ui:coordinatorCard.conflict'), error, true);
       if (certainRefusal) {

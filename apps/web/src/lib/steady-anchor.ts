@@ -5,8 +5,8 @@ type Box = { x: number; y: number; width: number; height: number };
 /**
  * The anchor an open popover follows. The popover's place is decided when it opens, against what opened it; after that
  * it follows that element only where the element moves as a whole (the page scrolls, the keyboard pushes the input up,
- * something above it grows). When the element itself changes size (the model picker's label goes from "opus(high)" to a
- * longer name, which can also push it left or onto another line), the popover stays where it is, so what the person was
+ * something above it grows). When the element itself changes size (its label grows to a longer name, which can also
+ * push it left or onto another line), the popover stays where it is, so what the person was
  * about to press under it does not move away.
  *
  * `read` gives the element as it is now; `reset` forgets the place, so the next opening takes it afresh.

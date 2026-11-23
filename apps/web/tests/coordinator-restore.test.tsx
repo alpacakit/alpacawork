@@ -23,8 +23,8 @@ import { edited } from '../src/features/coordinator/editor/lifecycle';
 import { indexOf, tree } from './fixtures';
 import { snapshotJson } from './conversation-fixture';
 const root = '/coordinator-restore', conversationId = 'same-conversation', restored = '1f347e6d-caba-4994-aa45-a9cf99182996';
-const fixed = { conversationId, text: 'frozen words', selected: {}, attachments: [] };
-const conversation = { id: conversationId, agent: null, warm: 'none', busy: false, cancelled: [], turns: [] };
+const fixed = { conversationId, text: 'frozen words', attachments: [] };
+const conversation = { id: conversationId, nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [] };
 function live(restoreId: string) { receiveFullIndex(queryClient, { ...indexOf(tree({ root })), restoreId, generation: restoreId }); useConnection.setState({ state: 'live', offline: false }); }
 function admitted(id = crypto.randomUUID()) {
   const from = draftKey(root, 'coordinator', conversationId), values = { requestId: id, doc: JSON.stringify(textDocument(fixed.text)) };
@@ -58,7 +58,7 @@ test.each([undefined, '{"restoreId":null}', '{bad', '{"restoreId":"unsupported"}
   const record = JSON.stringify(useDraftStore.getState().entries), fetcher = vi.spyOn(globalThis, 'fetch');
   expect(begin(root, id)).toBeNull(); expect(outgoingDisplay(item, false)).toMatchObject({ stage: 'unknown', blocked: true });
   expect(outgoingBlock(root, id)).toBeTruthy(); expect(nextDelivery(useDraftStore.getState().entries, root, conversationId)).toBeNull();
-  const resend = () => deliverOutgoing({ root, client: queryClient, surface: document, profile: 'fake', draw: (_turn, work) => work() }, id);
+  const resend = () => deliverOutgoing({ root, client: queryClient, surface: document, draw: (_turn, work) => work() }, id);
   expect(await resend()).toBe('rejected'); flushLeavingOutbox(root);
   await expect(askCoordinator({ ...fixed, id }, workspaceWriteBasis())).rejects.toMatchObject({ code: 'write_unavailable' });
   expect(fetcher).not.toHaveBeenCalled(); expect(JSON.stringify(useDraftStore.getState().entries)).toBe(record);

@@ -51,7 +51,7 @@ test('seeded real operations cover writers and every committed row change has it
   after(() => { if (previousPath === undefined) delete process.env.PATH; else process.env.PATH = previousPath; });
   const setting = fixtureAgentSetting('claude');
   setting.params = Object.fromEntries(Object.keys(setting.params).map(key => [key, []]));
-  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting } }));
+  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting }, coordinatorAiStack: [{ agent: 'fake', values: {} }] }));
   const journal = keepControlChanges(root, new ChangeLog(1024)); after(journal.close);
   const audit = changeAudit(root, journal.log); after(audit.close);
   const observed = observeWriteSites(inventory); after(observed.close);
@@ -140,10 +140,10 @@ test('seeded real operations cover writers and every committed row change has it
 
   const coordinator = new CoordinatorConversation(root);
   const conversation = await step('open conversation', () => coordinator.read());
-  await step('warm conversation', () => coordinator.warm(conversation.id, {}, 'fake'));
+  await step('warm conversation', () => coordinator.warm(conversation.id));
   const messageId = randomUUID();
   await step('coordinator message', () => coordinator.ask({ id: messageId, conversationId: conversation.id,
-    text: 'Inspect the synthetic task', attachments: [], tasks: [second.id], selected: {}, agent: 'fake' }));
+    text: 'Inspect the synthetic task', attachments: [], tasks: [second.id] }));
   const messageRun = runs.coordinatorRuns(conversation.id).find(run => run.requestId === messageId)!;
   await step('link explicit recipients', () => control.write(db => linkMessage(db, messageRun)));
   await step('record refusal after a rolled-back mutation', () => {

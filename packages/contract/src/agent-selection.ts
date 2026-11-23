@@ -40,10 +40,13 @@ export function selectionOffer(compiled: CompiledAgentSetting): SelectionOffer {
   });
   return { choices, without: compiled.setting.without, params: Object.keys(compiled.setting.params) };
 }
+function suppressedParams(offer: Pick<SelectionOffer, 'without'>, model: string | null) {
+  const without = offer.without ?? {};
+  return new Set(model !== null && Object.hasOwn(without, model) ? without[model] : []);
+}
 /** The offer's rows, each active unless `model` omits it. */
 export function offeredChoices(offer: SelectionOffer, model: string | null = null): AgentChoice[] {
-  const without = offer.without ?? {};
-  const suppressed = new Set(model !== null && Object.hasOwn(without, model) ? without[model] : []);
+  const suppressed = suppressedParams(offer, model);
   return offer.choices.map(choice => ({ ...choice, active: !suppressed.has(choice.key) }));
 }
 export function agentChoices(compiled: CompiledAgentSetting, model: string | null = null): AgentChoice[] {
@@ -56,8 +59,14 @@ export type ResolvedAgentSelection = {
   effective: Selection;
   choices: AgentChoice[];
 };
+
+/** Project selected values without revalidating candidates or filling in defaults for a saved Run. */
+export function effectiveAgentValues(offer: Pick<SelectionOffer, 'without'>, values: Selection): Selection {
+  const suppressed = suppressedParams(offer, values.model ?? null);
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, suppressed.has(key) ? null : value]));
+}
+
 /** Explicit commands → conversation's previous values → defaults for newly introduced keys.
- * Remembered launch hints (launchMemory) are not conversation history: callers must not pass them as previous.
  * A removed/unused old key requires a new conversation; never silently discard it.
  */
 export function resolveAgentSelection(compiled: CompiledAgentSetting, explicit: Selection = {}, previous: Selection = {}): ResolvedAgentSelection {
@@ -90,42 +99,5 @@ export function resolveOfferedSelection(offer: SelectionOffer, explicit: Selecti
   const values: Selection = Object.fromEntries(choices.map(choice => [choice.key,
     Object.hasOwn(explicit, choice.key) ? explicit[choice.key]! : Object.hasOwn(previous, choice.key) ? previous[choice.key]! : choice.initial]));
   const activeChoices = offeredChoices(offer, values.model ?? null);
-  const effective = { ...values };
-  for (const choice of activeChoices) if (!choice.active) effective[choice.key] = null;
-  return { values, effective, choices: activeChoices };
-}
-/**
- * Where the person's next new coordinator conversation starts: the agent last chosen in the screen's input, and by
- * agent the values last chosen for it (null: "none", a written -). One record on the server, so every device that
- * uses it starts from the same choices. Hints only: the config may have outgrown them (launch-selection drops those).
- */
-export const launchMemorySchema = z.object({
-  agent: z.string().min(1).nullable(), values: z.record(z.string().min(1), selectionSchema),
-  /** One more with each save that changes the record: of two copies (a save's answer, the index), the larger is newer. */
-  version: z.number().int().nonnegative(),
-}).strict();
-export type LaunchMemory = z.infer<typeof launchMemorySchema>;
-export const emptyLaunchMemory: LaunchMemory = { agent: null, values: {}, version: 0 };
-/**
- * `choose`: the input picked `agent`, and these values for it: only the rows chosen in that act, so a choice made on
- * another device for another row stays, and a row never chosen keeps following the config. `forget-agent`: setup chose
- * where a new launch starts.
- */
-export const launchMemoryChangeSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('choose'), agent: z.string().min(1), values: selectionSchema }).strict(),
-  z.object({ kind: z.literal('forget-agent') }).strict(),
-]);
-export type LaunchMemoryChange = z.infer<typeof launchMemoryChangeSchema>;
-export const launchMemoryRequestSchema = z.object({ change: launchMemoryChangeSchema }).strict();
-export const launchMemoryResponseSchema = z.object({ memory: launchMemorySchema }).strict();
-/**
- * A choice sets only the rows it names, over what is kept; every other row and agent stays as it was. The version
- * goes up by one when the record changes, and stays when the change leaves it as it was.
- */
-export function applyLaunchMemory(memory: LaunchMemory, change: LaunchMemoryChange): LaunchMemory {
-  const agent = change.kind === 'forget-agent' ? null : change.agent;
-  const values = change.kind === 'forget-agent' ? memory.values
-    : { ...memory.values, [change.agent]: { ...memory.values[change.agent], ...change.values } };
-  const same = agent === memory.agent && JSON.stringify(values) === JSON.stringify(memory.values);
-  return same ? memory : { agent, values, version: memory.version + 1 };
+  return { values, effective: effectiveAgentValues(offer, values), choices: activeChoices };
 }

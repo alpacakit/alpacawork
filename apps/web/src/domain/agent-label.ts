@@ -72,36 +72,6 @@ export function visibleAgentNames(fullNames: readonly string[], known: readonly 
   return [...new Set(fullNames)].map(full => byFull.get(full) ?? full);
 }
 
-/** The candidate inventory drives both the picker rows and the selected heading. `models`: a kind's model candidates
- * (no "none"); a kind without any is drawn by its own name. */
-export function agentModelChoices(profiles: readonly { key: string; models: readonly string[] }[]) {
-  return profiles.flatMap(profile =>
-    (profile.models.length ? profile.models : [undefined]).map(model => ({ profile: profile.key, model, name: model ?? profile.key })));
-}
-
-/**
- * The name a choice is listed by under its kind's name: told apart only from that kind's other models. `name` may
- * carry the launch's effort (agentModelName).
- */
-export function listedLabel(choices: ReturnType<typeof agentModelChoices>, profile: string, name: ModelName): ModelLabel {
-  const peers = choices.filter(choice => choice.profile === profile).map(choice => choice.name);
-  return modelLabel(typeof name === "string" ? name : name.full, typeof name === "string" ? peers : [...peers, name]);
-}
-
-/**
- * The kind a chosen model is named with where no group says it (the closed picker): a name an earlier kind lists too
- * would read as that kind's, so the later kind's name goes before it. The first kind to list a name keeps it bare.
- */
-export function kindToName(choices: ReturnType<typeof agentModelChoices>, profile: string, model: string | null | undefined): string | null {
-  if (model == null) return null;
-  const mine = listedLabel(choices, profile, model).short;
-  for (const choice of choices) {
-    if (choice.profile === profile) return null;
-    if (choice.model !== undefined && listedLabel(choices, choice.profile, choice.name).short === mine) return profile;
-  }
-  return null;
-}
-
 export const runAgentLabel = (run: Pick<ControlRunDTO, "agent" | "modelId" | "effort">): string =>
   agentLabel(run.modelId, run.effort, run.agent);
 
@@ -166,4 +136,14 @@ export function selectionAgentLabels(placements: readonly PlacementDTO[], people
     return [placement.id, { ...agent, name: prefix + agent.name, suffix: agent.suffix + tail,
       short: prefix + text, full: prefix + agent.full + tail }];
   }));
+}
+
+/**
+ * What a launch's values are called: the model and its effort, or the agent's name where it has no model. An effort
+ * left out (`-`) is not asked for, so it is left out with its brackets, never said "unknown" as a Run record says of an
+ * effort nobody knows.
+ */
+export function launchName(agent: string, values: Readonly<Record<string, string | null>>): Exclude<ModelName, string> {
+  const model = values.model ?? agent;
+  return values.effort == null ? { model, full: model } : agentModelName(values.model, values.effort, agent);
 }

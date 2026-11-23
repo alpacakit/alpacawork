@@ -146,7 +146,7 @@ test('rejecting an older receipt does not cancel a newer explicit retry on the s
 test('explicit conversation refresh waits for the common live anchor and its own acquired empty read', async () => {
   useConversation.setState(useConversation.getInitialState(), true);
   useConversation.setState({ root: '/fixture' });
-  const snapshot = conversationSnapshot({ id: 'anchored', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const snapshot = conversationSnapshot({ id: 'anchored', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
   const held = readIndex(queryClient)!, index = { ...held, person: { ...held.person, coordinator: { id: snapshot.conversation.id, revision: snapshot.revision } } };
   receiveFullIndex(queryClient, index); cutReadScope(queryClient);
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => String(url).endsWith('/workspace/live') ? json(index) : json(snapshot));
@@ -159,7 +159,7 @@ for (const order of ['index-before-receipt', 'receipt-before-index'] as const) t
   useConversation.setState(useConversation.getInitialState(), true);
   const index = readIndex(queryClient)!, root = index.root;
   useConversation.setState({ root, open: true });
-  const conversation = { id: 'replacement-session', agent: 'fake', warm: 'none' as const, busy: true, cancelled: [], turns: [{
+  const conversation = { id: 'replacement-session', nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: true, cancelled: [], turns: [{
     id: 'request', at: '2026-10-27T09:00:00Z', ask: 'wait', attachments: [], status: 'queued' as const,
     waiting: false, answer: '', answeredAt: null, seen: false, error: null, result: null,
   }] };
@@ -180,7 +180,7 @@ for (const order of ['index-before-receipt', 'receipt-before-index'] as const) t
   try {
     await useConversation.getState().refresh();
     rememberWriteIdentity(root, 'request', 'initial');
-    const sending = useConversation.getState().ask({ conversationId: conversation.id, id: 'request', text: 'wait', attachments: [], selected: { model: 'opus' }, agent: 'fake' });
+    const sending = useConversation.getState().ask({ conversationId: conversation.id, id: 'request', text: 'wait', attachments: [] });
     const reading = useConversation.getState().refresh();
     await waitFor(() => expect(gets).toBe(2));
     const publish = () => {

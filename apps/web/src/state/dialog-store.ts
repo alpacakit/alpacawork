@@ -3,6 +3,8 @@ import type { ReaderCard } from "@/features/reader/next-question";
 
 /** The settings dialog's tabs; Host status can be opened from its banner and its push, Projects from the archive notices. */
 export type SettingsTab = "personal" | "server" | "apps" | "host" | "projects";
+/** A part of the settings an opening brings into view and focuses: Notifications (Personal), the input's AI (Server). */
+export type SettingsFocus = "notifications" | "coordinatorAi";
 
 /**
  * The one thing open at a time: a modal dialog (settings,
@@ -11,7 +13,7 @@ export type SettingsTab = "personal" | "server" | "apps" | "host" | "projects";
  */
 export type OpenDialog =
   /** `request` counts openings, so asking for a tab while the dialog is open moves it there without remounting it. */
-  | { kind: "settings"; tab?: SettingsTab; focusNotifications?: boolean; request?: number }
+  | { kind: "settings"; tab?: SettingsTab; focus?: SettingsFocus; request?: number }
   | { kind: "diagnostics" }
   /**
    * A project's settings: Create project (`project` left out), or one project's (`null`: every project is shown, and
@@ -45,7 +47,7 @@ type DialogState = {
   settingsTab: SettingsTab;
   rememberSettingsTab: (tab: SettingsTab) => void;
   openRun: (target: RunFormTarget) => void;
-  open: (kind: "settings" | "diagnostics", options?: { tab?: SettingsTab; focusNotifications?: boolean }) => void;
+  open: (kind: "settings" | "diagnostics", options?: { tab?: SettingsTab; focus?: SettingsFocus }) => void;
   /** Create project with no `project`; a project's settings with its ID, or `null` to choose it there. */
   openProject: (project?: string | null) => void;
   openInput: (input: Omit<OpenInput, "kind">) => void;
@@ -83,9 +85,10 @@ export const useDialogStore = create<DialogState>((set) => ({
 }));
 
 /**
- * Opens the settings: at `tab`, or left out, at the tab they were last on.
+ * Opens the settings: at `tab`, or left out, at the tab they were last on; `focus` brings that part into view.
  */
-export const openSettings = (tab?: SettingsTab) => useDialogStore.getState().open("settings", tab ? { tab } : undefined);
+export const openSettings = (tab?: SettingsTab, focus?: SettingsFocus) =>
+  useDialogStore.getState().open("settings", tab ? { tab, ...focus ? { focus } : {} } : undefined);
 
 /** The open dialog's Back: back to the dialog it was opened from, or none when nothing is behind it. */
 export const useDialogBack = (): (() => void) | undefined => {

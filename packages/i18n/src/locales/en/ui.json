@@ -5,6 +5,11 @@
     "undo": "Undo"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "AI you talk to in the input: {{ai}}. Press to change it in the settings",
+      "none": "There is no AI to talk to in the input, so nothing can be sent. Press to open the settings",
+      "setUp": "Set up AI"
+    },
     "appHint": {
       "close": "Close this tip",
       "detail": "Install it on your PC, or open it on your phone",
@@ -26,6 +31,7 @@
     "completeHint": "Mark {{id}} as done",
     "conflict": "different content already arrived under the same ID",
     "conversationChanged": "The conversation changed",
+    "coordinatorAiChanged": "Not sent: the AI you talk to in the input has changed. Check the skills, then send again.",
     "copyAnswer": "Copy reply",
     "deliveryRefused": "The agent could not take the message. It remains queued.",
     "done": "Done",
@@ -62,8 +68,6 @@
     "interrupted": "Interrupted before sending",
     "joinedCount_one": "+{{count}} more",
     "joinedCount_other": "+{{count}} more",
-    "launchChoiceChanged": "The model and other choices it was sent with can't be sent now. Choose again and send",
-    "launchChoiceUnresendable": "The model and other choices it was sent with can't be resent now. Whether it arrived will show once confirmed",
     "loadFailed": "Could not load the conversation",
     "loading": "Loading the conversation…",
     "loadingWanted": "Opens once it is loaded…",

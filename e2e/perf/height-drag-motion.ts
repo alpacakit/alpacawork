@@ -33,7 +33,7 @@ const output = resolve(positionals[0] ?? '/tmp/height-drag-motion.json');
 const throttle = Number(args.throttle), rounds = Number(args.rounds);
 mkdirSync(dirname(output), { recursive: true });
 const answer = Array.from({ length: 25 }, (_, n) => `### Item ${n}\nText with explanations and **checks**.\n\n- Result ${n}\n- Next review\n\n`).join('');
-const conversation = coordinatorConversationSchema.parse({ id: 'height-drag', agent: 'claude', warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'height-drag', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
   turns: Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
     answer, answeredAt: `2026-01-01T00:${String(i).padStart(2, '0')}:30Z` })) });

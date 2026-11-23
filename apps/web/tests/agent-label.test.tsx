@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import type { PlacementDTO } from "@alpacawork/contract/control";
-import { agentModelChoices, agentModelName, kindToName, listedLabel, modelLabel, placementAgentLabel, selectionAgentLabels, visibleAgentNames } from "../src/domain/agent-label";
+import { agentModelName, modelLabel, placementAgentLabel, selectionAgentLabels, visibleAgentNames } from "../src/domain/agent-label";
 import { indexPeople } from "../src/domain/people";
 import { at, dto, indexOf, run, tree } from "./fixtures";
 
@@ -48,12 +48,6 @@ test("display scopes exclude other tasks and inactive model fields", () => {
   const profiles = [{ key: "pi", models: [shown.model] }, { key: "other", models: [unrelated.model] }];
   const current = profiles[0]!.models;
   expect(modelLabel(current[0]!, current).short).toBe("sonnet");
-});
-
-test("picker candidates include fallback profile names, so both rows and the heading can distinguish them", () => {
-  const options = agentModelChoices([{ key: "sol", models: [] }, { key: "pi", models: ["bedrock/sol"] }]);
-  expect(options.map(option => option.name)).toEqual(["sol", "bedrock/sol"]);
-  expect(options.map(option => modelLabel(option.name, options.map(each => each.name)).short)).toEqual(["sol", "bedrock/sol"]);
 });
 
 test("a missing model after the provider separator keeps the original nonempty name", () => {
@@ -104,17 +98,4 @@ test("selection labels add only enough placement ID to distinguish identical vis
   expect(labels.get(distinct.id)!.short).toBe("gpt-6-astra(high)");
   const withRoles = selectionAgentLabels([original, other], people, (placement) => placement.id === original.id ? " · Owner" : " · Member");
   expect([...withRoles.values()].map(label => label.short)).toEqual(["gpt-6-sol(high) · Owner", "gpt-6-sol(high) · Member"]);
-});
-
-test("the closed picker names a model as its kind lists it, with the kind only where an earlier kind lists the same name", () => {
-  const choices = agentModelChoices([{ key: "claude", models: ["opus", "fable"] }, { key: "claude-chrome", models: ["opus"] },
-    { key: "pi", models: ["openai/opus", "bedrock/sol", "vertexai/sol"] }, { key: "bare", models: [] }]);
-  expect(kindToName(choices, "claude", "opus")).toBeNull();
-  expect(kindToName(choices, "claude-chrome", "opus")).toBe("claude-chrome");
-  expect(kindToName(choices, "claude", "fable")).toBeNull();
-  expect(kindToName(choices, "bare", null)).toBeNull();
-  // Under its kind a provider is said only between that kind's own models.
-  expect(listedLabel(choices, "pi", agentModelName("openai/opus", "high", "pi")).short).toBe("opus(high)");
-  expect(kindToName(choices, "pi", "openai/opus")).toBe("pi");
-  expect(listedLabel(choices, "pi", "bedrock/sol").short).toBe("bedrock/sol");
 });

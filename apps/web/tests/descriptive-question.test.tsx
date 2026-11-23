@@ -21,7 +21,7 @@ for (const [values, expected] of [
       const wire = serialize({ type: 'doc', content: [{ type: 'paragraph', content: [
         { type: 'taskLabel', attrs: { id: task, title } },
         { type: 'answerLabel', attrs: badge },
-      ] }] }, 'codex');
+      ] }] });
       expect(wire).toBe(`${task}（${title}） ${choice.answer}`);
       const parts = splitMessage(wire, new Set(), new Map([[task, title]]));
       expect(parts.filter(part => part.kind === 'task').map(part => part.id)).toEqual([task]);

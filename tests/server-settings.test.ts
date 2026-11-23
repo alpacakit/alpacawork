@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { checkAgentsText, DEFAULT_LIMITS, DEFAULT_SCHEMA, type Limits } from '@alpacawork/contract';
 import { configSetInput } from '@alpacawork/contract/inputs';
 import { Problem, errorBody, parseInput } from '@alpacawork/core';
@@ -17,6 +17,8 @@ import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { readSchema } from '@alpacawork/backend/test-dist/control/field-commands.js';
+import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
+import { RunStore } from '@alpacawork/runs';
 
 const AGENTS = stringify({ agents: { claude: {
   ...fixtureAgentSetting('claude'), params: { model: ['opus', 'sonnet'], effort: [] },
@@ -88,6 +90,60 @@ test('the settings screen saves limits.attachment_mib from 1 to 500 MiB', async 
       (error: any) => error.code === 'invalid_input' && error.issues?.some((issue: { path: string }) => issue.path === 'limits.attachment_mib'));
 });
 
+test('both AI stacks round-trip every selected value while the next launch displays applied values', async t => {
+  const agents = stringify({ agents: {
+    claude: { command: process.execPath, without: { opus: ['effort'] } }, copilot: {}, pi: {},
+  } });
+  const { root } = setup(t, agents);
+  const written = [{ agent: 'claude', values: { model: 'opus', effort: 'low' } },
+    { agent: 'copilot', values: {} }, { agent: 'pi', values: {} }];
+  const expected = [written[0], { agent: 'copilot', values: { model: null } },
+    { agent: 'pi', values: { model: null, effort: 'high' } }];
+  const writeStacks = (hash: string | null, aiStack: unknown, coordinatorAiStack: unknown) =>
+    save(root, { config: stringify({ limits: DEFAULT_LIMITS, aiStack, coordinatorAiStack }, { aliasDuplicateObjects: false }), agents, expectedConfigHash: hash });
+  const before = await readServerSettings(root);
+  const saved = await writeStacks(before.hash, written, written);
+  const read = await readServerSettings(root);
+  assert.deepEqual(read, saved);
+  assert.deepEqual(read.aiStack, expected);
+  assert.deepEqual(read.coordinatorAiStack, expected);
+  assert.deepEqual(parse(file(root)).aiStack, written);
+  assert.deepEqual(parse(file(root)).coordinatorAiStack, written);
+  assert.deepEqual(await writeStacks(read.hash, read.aiStack, read.coordinatorAiStack), saved);
+
+  const owner = new CoordinatorConversation(root), conversation = owner.read();
+  assert.deepEqual(conversation.nextLaunch, { agent: 'claude', values: { model: 'opus' } });
+  owner.ask({ conversationId: conversation.id, id: crypto.randomUUID(), text: 'Synthetic message', attachments: [] });
+  const store = new RunStore(root, { busyTimeoutMs: 1000 });
+  try {
+    const launch = store.coordinatorRuns(conversation.id)[0]!.launch;
+    assert.deepEqual(launch.values, expected[0]!.values);
+    assert.ok(!launch.argv.includes('--effort'));
+  } finally { store.close(); }
+});
+
+test('removing a candidate is refused at the row that still selects it, even if the model omits it', async t => {
+  const low = { agent: 'claude', values: { model: 'opus', effort: 'low' } };
+  const agents = { claude: { without: { opus: ['effort'] } }, pi: {} };
+  const edited = stringify({ agents: { ...agents, claude: { ...agents.claude, params: { effort: ['medium', 'high'] } } } });
+  for (const key of ['aiStack', 'coordinatorAiStack'] as const) {
+    const original = stringify({ agents, [key]: [{ agent: 'pi', values: {} }, low] });
+    const { root } = setup(t, original);
+    const before = await readServerSettings(root);
+    assert.deepEqual(before[key]?.[1], low);
+    const config = stringify({ limits: before.limits, [key]: before[key] });
+    await assert.rejects(save(root, { config, agents: edited, expectedConfigHash: before.hash }), (error: unknown) => {
+      const { code, reason } = errorBody(error).error;
+      assert.equal(code, 'invalid_settings');
+      assert.equal(reason?.kind, 'config_invalid');
+      assert.equal(reason.path, 'config.yaml');
+      assert.deepEqual(reason.issues.map(issue => [issue.code, issue.path]), [['invalid_selection', `${key}.1.values.effort`]]);
+      return true;
+    });
+    assert.equal(file(root), original);
+  }
+});
+
 test('a project\'s name, values and fields are its Task\'s; config.yaml and its hash stay', async t => {
   const { root, project } = setup(t);
   const before = await readServerSettings(root);
@@ -144,9 +200,12 @@ test('HTTP reads and saves the server settings against the config.yaml hash', as
   const server = await startServer(root, 0);
   try {
     const got = await (await fetch(new URL('/api/config/get', server.url))).json() as { hash: string; agentsText: string };
-    const post = (expectedConfigHash: string) => httpStatus(new URL('/api/config/set', server.url), { method: 'POST',
+    const post = (expectedConfigHash: string, stacks = {}) => httpStatus(new URL('/api/config/set', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ config: rest({ parallel: 5 }), agents: got.agentsText, expectedConfigHash }) });
+      body: JSON.stringify({ config: stringify({ limits: { ...limits, parallel: 5 }, ...stacks }), agents: got.agentsText, expectedConfigHash }) });
+    for (const key of ['aiStack', 'coordinatorAiStack']) {
+      assert.equal(await post(got.hash, { [key]: [{ agent: 'claude', values: { model: 'unoffered' } }] }), 400);
+    }
     assert.equal(await post(got.hash), 200);
     assert.equal(await post(got.hash), 409);
   } finally { await server.close(); }

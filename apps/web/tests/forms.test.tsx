@@ -85,7 +85,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const asked: CoordinatorMessageInput[] = [];
   const reports: any[] = [], pending: ((result: CoordinatorResult) => void)[] = [];
   let status: CoordinatorConversation["turns"][number]["status"] = "running", result: CoordinatorResult | null = null;
-  const conversation = (): CoordinatorConversation => ({ id: "c1", agent: null, warm: 'none' as const, busy: false, cancelled: [],
+  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
     turns: asked.map((input) => ({ id: input.id, at, ask: input.text, tasks: input.tasks, attachments: input.attachments,
       ...(input.intent ? { intent: input.intent } : {}), status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result })) });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
@@ -102,7 +102,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
     return problemResponse("not_found");
   });
   setConversationState({ conversation: conversation(), open: true, expanded: false, engaged: false, read: true, error: null });
-  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ selected: {}, picker: null, saving: false }} profile="claude" /><Toaster /></TestWorkspace>);
+  const view = render(<TestWorkspace data={data}><DirectRecovery />{children}<TaskActionSlot /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></TestWorkspace>);
   // The coordinator's Run ends, and the server says what its messages did (`outcome`).
   return { view, asked, reports, fetcher, finish: async (outcome: CoordinatorResult) => { status = "succeeded"; result = outcome; await act(async () => { pending.splice(0).forEach(resolve => resolve(outcome)); }); await act(async () => { await useConversation.getState().refresh(); }); } };
 }
@@ -523,7 +523,7 @@ test('a submitted reader turn disables its state form while another Task remains
 test('a persisted submission disables the original failure actions but not another Task', async()=>{
  const data=screenData(tree({tasks:[taskFixture({id:'T1',state:'waiting',ball:userBall('failed','L1',at)}),taskFixture({id:'T2',state:'waiting',ball:userBall('failed','L2',at)})]}));
  const task=data.tasks[0]!,other=data.tasks[1]!,id=crypto.randomUUID();
- freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],selected:{},attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
+ freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
  withInput(data,<><TurnReason turn={reasonedTurn(task.ball)!} task={task}/><TurnReason turn={reasonedTurn(other.ball)!} task={other}/></>);
  const retry=screen.getAllByRole('button',{name:'Continue with the same AI'}),another=screen.getAllByRole('button',{name:'Continue with another AI'}),stop=screen.getAllByRole('button',{name:'Stop'});
  expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((another[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);

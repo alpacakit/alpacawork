@@ -2,31 +2,34 @@ import { detailWriteBasis, type WriteBasis } from "@/data/connection";
 import type { QueryClient } from "@tanstack/react-query";
 import { stringify } from "yaml";
 import { z } from "zod";
-import { DEFAULT_FIELDS, PROJECT_POLICY, PROJECT_SUMMARY, compileAgentSetting, hardLimit, enabledAgents, projectColorSchema, resolveAgentSelection, titleSchema,
+import { DEFAULT_FIELDS, PROJECT_POLICY, PROJECT_SUMMARY, hardLimit, projectColorSchema, titleSchema,
   type ServerSettings, type ValuesPatch } from "@alpacawork/contract";
 import { readServerAgents, serverAgentDraftSchema } from './server-agent-draft';
-import { readStack, writeStack } from './ai-stack-draft';
+import { newStackRow, readStack, writeStack } from './ai-stack-draft';
 import { taskWriteResultSchema, type ControlTaskHeadDTO } from "@alpacawork/contract/control";
 import { writeTask } from "@/data/task-write";
 import { markRead } from "@/state/read-store";
 
-/** The Server tab owns limits, Jev, typed agents and the AI stack; config/set receives one derived agents: block. */
+/** The Server tab owns limits, Jev, typed agents and the AI stacks; config/set receives one derived agents: block. */
 export type ServerDraft = z.infer<typeof serverAgentDraftSchema>;
 
 export function serverDraft(settings: ServerSettings): ServerDraft {
-  // When there is no saved stack, the settings editor starts with the agent the server uses by default.
-  const first = settings.aiStack === undefined ? enabledAgents(settings.agents)[0] : undefined;
-  const rows = first ? [{ agent: first[0], values: resolveAgentSelection(compileAgentSetting(...first)).values }] : settings.aiStack;
-  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents: readServerAgents(settings.agentsText),
-    aiStack: readStack(rows) };
+  const agents = readServerAgents(settings.agentsText);
+  // With no saved tasks' stack, the editor starts it as its own "Add" does: the first enabled agent on its start values.
+  const added = settings.aiStack === undefined && agents.ok ? newStackRow(agents.value.agents, []) : null;
+  // The input's stack is shown as saved: none saved is none set, which the input says until one is added here.
+  return { limits: { ...settings.limits }, /* jev: { ...settings.jev }, */ agents,
+    aiStack: added ? [added] : readStack(settings.aiStack), coordinatorAiStack: readStack(settings.coordinatorAiStack) };
 }
 /**
- * The limits, the AI stack and Jev config/set writes beside the agents block; the YAML example shows the same text.
- * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. `aiStack` absent leaves the
- * stack in config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
+ * The limits, the AI stacks and Jev config/set writes beside the agents block; the YAML example shows the same text.
+ * Jev always goes with them, so an emptied endpoint reaches the server and turns Jev off. A stack absent leaves it in
+ * config.yaml as it is; given, it is written, an empty one too (setup going on with no agent clears it).
  */
-export function configYaml(draft: Pick<ServerDraft, 'limits'> & Partial<Pick<ServerDraft, 'aiStack'>>) {
-  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack) } : {}, /* jev: draft.jev */ },
+export function configYaml(draft: Pick<ServerDraft, 'limits' | 'agents'> & Partial<Pick<ServerDraft, 'aiStack' | 'coordinatorAiStack'>>) {
+  const agents = draft.agents.ok ? draft.agents.value.agents : [];
+  return stringify({ limits: draft.limits, ...draft.aiStack ? { aiStack: writeStack(draft.aiStack, agents) } : {},
+    ...draft.coordinatorAiStack ? { coordinatorAiStack: writeStack(draft.coordinatorAiStack, agents) } : {}, /* jev: draft.jev */ },
     { lineWidth: 0, aliasDuplicateObjects: false });
 }
 /** The most a project's summary may hold: what the server takes for its field (about 30% over the size aimed for). */

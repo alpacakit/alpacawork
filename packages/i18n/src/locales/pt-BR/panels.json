@@ -8,9 +8,8 @@
       "add": "+ Adicionar uma IA alternativa",
       "addFirst": "+ Adicionar a IA de uso normal",
       "agentFor": "Agente da linha {{n}}",
-      "agentsNote": "Um agente desativado não pode ser usado na ordem acima.",
+      "agentsNote": "Um agente desativado não pode ser escolhido nas duas listas acima.",
       "agentsTitle": "Configurações de cada agente",
-      "coordinatorNote": "A IA com quem você fala na caixa de entrada começa cada conversa nova com o modelo que você escolheu por último no menu dela (a IA 1 até você escolher um). Se ela parar por limite de uso ou de capacidade, as alternativas continuam na ordem acima.",
       "down": "Descer a linha {{n}}",
       "first": "Uso normal",
       "issue": {
@@ -19,14 +18,14 @@
         "missing": "Não há agente chamado {{agent}}. Escolha outro agente ou remova esta linha.",
         "value": "{{row}} “{{value}}” não é um valor de {{agent}}. Escolha de novo."
       },
-      "lead": "Normalmente roda a IA 1. Só quando ela para por limite de uso ou de capacidade, as alternativas 2, 3… continuam em ordem; se a última também parar, o trabalho para e você é avisado.",
+      "lead": "Normalmente a IA 1 faz as tarefas. Só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem. Se a última também parar, o trabalho para e você é avisado.",
       "namedOnly": "Um modelo que não está aqui nunca é usado como alternativa por conta própria. Ele só é usado quando um pedido o nomeia.",
       "notOffered": "{{value}} (não é um valor)",
       "remove": "Remover a linha {{n}}",
       "repeated": "Igual à linha {{n}}, por isso esta linha nunca é usada.",
-      "saveRefused": "Não foi salvo: “IA das tarefas e ordem das alternativas” tem uma linha que não pode ser usada. Corrija a linha marcada em vermelho e salve de novo.",
+      "saveRefused": "Não foi salvo: “{{list}}” tem algo a corrigir. Corrija o que está marcado em vermelho e salve de novo.",
       "showRow": "Ir para a linha",
-      "title": "IA das tarefas e ordem das alternativas",
+      "title": "IA das tarefas",
       "up": "Subir a linha {{n}}",
       "valueFor": "{{row}} da linha {{n}}"
     },
@@ -38,8 +37,12 @@
     "cancel": "Cancelar",
     "cannotRun": "Não é possível executar o arquivo neste caminho",
     "choices": "Valores disponíveis ao solicitar trabalho",
-    "choicesHint": "Os valores oferecidos acima e no menu do campo de entrada.",
+    "choicesHint": "Os valores oferecidos nas listas de IA acima e nas solicitações.",
     "collapse": "Recolher {{name}}",
+    "coordinatorStack": {
+      "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Normalmente a IA 1 recebe; só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem.",
+      "title": "IA com quem você fala no campo de mensagem (coordenador)"
+    },
     "defaultsChanged": "As opções de inicialização padrão deste adaptador foram atualizadas",
     "disabled": "Desativado",
     "duplicateName": "{{name}} já existe. Escolha outro nome.",

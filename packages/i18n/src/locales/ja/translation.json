@@ -143,7 +143,6 @@
       "conversation_belongs_alpacawork_run": "この会話はalpacaworkのRunに属しています",
       "conversation_has_changed": "会話が変更されました",
       "conversation_head_changed": "会話の最新のRunが変更されました。再読み込みしてからやり直してください",
-      "conversation_id_required": "会話IDが必要です",
       "conversation_requires_review_before_another_request": "次の依頼を送る前に会話の確認が必要です",
       "conversation_session_unavailable": "会話のセッションを利用できません",
       "coordinator_attachment_not_conversation": "コーディネーターの添付ファイルはこの会話にありません",

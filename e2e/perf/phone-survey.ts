@@ -118,7 +118,7 @@ try {
     });
     writeFileSync(join(out,'count-patches.json'),JSON.stringify(patches,null,2));
   }
-  const conversation = { id: 'interaction-latency', agent: 'claude', warm: 'none', busy: false, cancelled: [],
+  const conversation = { id: 'interaction-latency', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [],
     turns: Array.from({ length: 40 }, (_, i) => ({ id: `turn-${i}`, at: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(),
       ask: `Measured request ${i} about T2 and T3`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
       answer: Array.from({ length: i === 39 ? Number(args.paragraphs) : 2 }, (_, n) => `### Result ${n}\nT2 continues after T3. **Check** the report and its result.\n\n- First point\n- Second point\n`).join(''),

@@ -1,24 +1,11 @@
 {
   "agentPicker": {
-    "brief": {
-      "gone": "頼む相手を選び直してください",
-      "new_conversation": "「{{action}}」で始め直してください",
-      "none": "有効なエージェントがありません",
-      "select_value": "{{row}}を選び直してください"
-    },
     "next": {
-      "anew": "新しい会話で始める必要があります",
-      "clear": "「{{action}}」で新しく始めてください"
+      "anew": "新しい会話で始める必要があります"
     },
     "none": "なし",
-    "notOffered": "このモデルでは選べません",
-    "openSettings": "エージェントの設定を開く",
-    "pickerLabel": "{{agent}}。押すと替えられます",
-    "pickerTitle": "頼む相手",
     "problem": {
-      "gone": "{{agent}} は今の設定では使えません。頼む相手を選び直してください",
       "invalid_value": "{{row}}の前の値 {{previous}} は今は選べません。選び直してください",
-      "none": "使えるエージェントがありません。エージェントの設定で、エージェントにサインインしてから有効にしてください。",
       "null_required": "{{row}}は今は「なし」にできません。値を選んでください",
       "removed": "{{row}}（前の値 {{previous}}）は設定から消えたため、この会話は続けられません。{{next}}",
       "unused": "{{row}}（前の値 {{previous}}）は今の起動オプションで使われないため、この会話は続けられません。{{next}}"

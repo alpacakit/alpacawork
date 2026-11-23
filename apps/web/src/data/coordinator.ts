@@ -1,4 +1,3 @@
-import type { Selection } from "@alpacawork/contract/agent-settings";
 import { basisForRead, workspaceWriteBasis, type WriteBasis } from './connection';
 import { canCheckWrite } from "./write-intent";
 import { i18n } from "@alpacawork/i18n";
@@ -18,8 +17,8 @@ export const askCoordinator = (input: CoordinatorMessageInput, basis = coordinat
   if (!canCheckWrite(basis.root, input.id)) return Promise.reject(new ApiError(() => i18n.t('forms:writeFailure.unproven'), 'write_unavailable', 'fix'));
   return api.request("coordinator/messages", coordinatorSnapshotSchema, undefined, input, input.id, basis, keepalive);
 };
-export const warmCoordinator = (conversationId: string, selected: Selection, agent?: string) =>
-  api.request("coordinator/warm", coordinatorSnapshotSchema, undefined, { conversationId, selected, agent }, undefined, workspaceWriteBasis());
+export const warmCoordinator = (conversationId: string) =>
+  api.request("coordinator/warm", coordinatorSnapshotSchema, undefined, { conversationId }, undefined, workspaceWriteBasis());
 export const clearCoordinator = (conversationId: string) =>
   api.request("coordinator/clear", coordinatorSnapshotSchema, undefined, { conversationId }, undefined, workspaceWriteBasis());
 export const coordinatorMessageAction = (action: "withdraw" | "send-now", conversationId: string, id: string) =>

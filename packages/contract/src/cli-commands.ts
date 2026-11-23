@@ -349,7 +349,7 @@ export const cliCommands: readonly CliCommand[] = [
       help: help('A default field, or one a project or another field still uses, is refused.') }),
   command('workspace', 'returns', 'POST', 'Retry returns and wakes now', emptyInput, [], { mutation: true }),
   command('workspace', 'url', 'GET', 'Read the running workspace UI URL', emptyInput, []),
-  command('config', 'get', 'GET', 'Read limits and agents; optionally check executable and sign-in status', agentInspectionSchema,
+  command('config', 'get', 'GET', 'Read limits, agents and AI stacks; optionally check executable and sign-in status', agentInspectionSchema,
     [text('adapter', 'Adapter to inspect with --command'), text('command', 'Absolute executable path to inspect (version only; requires --adapter)'),
       boolean('check', `Check executable paths, versions and sign-in status (up to ${AGENT_CHECK_MS / 1000} seconds)`)],
     { help: help(agentsHelp,
@@ -357,7 +357,7 @@ export const cliCommands: readonly CliCommand[] = [
       'Ordinary reads start no executables. Add --check for host observations. availability is keyed by profile; detected is keyed by adapter. Each has command, version, candidates (path and version on server PATH), status (ready, signed_out, unknown, not_found), nextAction and issue. Observations are fresh and never saved; all checks share one 10-second deadline without calling a model.',
       'With --check --adapter codex --command /absolute/path/to/codex, inspected returns a version-only observation for that path. Existing settings and accepted Runs are unchanged.') }),
   command('config', 'set', 'POST', 'Save the screen\'s part of config.yaml', configSetShape, [
-    text('config', 'limits as YAML'), text('agents', 'The agents block as written'),
+    text('config', 'Limits and optional aiStack and coordinatorAiStack as YAML'), text('agents', 'The agents block as written'),
     text('expectedConfigHash', 'Current config.yaml hash'),
   ], { mutation: true, journaled: true, help: help(agentsHelp,
     'The agents block is saved as written. Delete a setting to follow the defaults in future updates.',

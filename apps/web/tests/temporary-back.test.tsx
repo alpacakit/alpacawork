@@ -13,7 +13,7 @@ import { textDocument, taskLabel } from '../src/features/coordinator/editor/docu
 import { TestWorkspace, dto, screenData, tree, narrowScreen, at } from './fixtures';
 import * as reads from '../src/state/read-store';
 const flush = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 25)); });
-const conversation = {id:'audit',agent:null,warm: 'none' as const, busy: false,cancelled: [],turns:[]};
+const conversation = {id:'audit',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const, busy: false,cancelled: [],turns:[]};
 const f = (name:string) => ({name,size:10,at,revision:'r1'});
 let mobile:ReturnType<typeof narrowScreen>;
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });
@@ -34,16 +34,6 @@ const mount=(tasks=[dto({id:'T1',files:[f('notes.txt'),f('files/note.txt')]}),dt
 async function unfold(){fireEvent.click(document.querySelector('[data-coordinator-pill]')!);await flush();expect(document.querySelector('[data-coordinator-card]:not([data-coordinator-folded])')).toBeTruthy();}
 async function reader(){act(()=>useViewStore.getState().openTask('T1',{reader:true}));await flush();}
 
-test('the model picker closes on browser Back, with the conversation folded',async()=>{
- mount();await reader();act(()=>useViewStore.getState().openTask('T2',{reader:true}));await flush();
- fireEvent.click(document.querySelector('[data-coordinator-write]')!);await flush();
- await unfold();
- fireEvent.click(document.querySelector('[data-agent-picker]')!);await flush();
- expect(document.querySelector('[data-agent-picker-menu]')).toBeTruthy();
- await act(async()=>{history.back();await new Promise(resolve=>setTimeout(resolve,35));});await flush();
- expect(document.querySelector('[data-coordinator-card]:not([data-coordinator-folded])')).toBeNull();
- expect(document.querySelector('[data-agent-picker-menu]')).toBeNull();
-});
 test('task badge card closes on browser Back, with the conversation folded',async()=>{
  mount();await reader();act(()=>useViewStore.getState().openTask('T2',{reader:true}));await flush();
  fireEvent.click(document.querySelector('[data-coordinator-write]')!);await flush();

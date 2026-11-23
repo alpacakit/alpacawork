@@ -918,12 +918,6 @@
   },
   {
     "reason": {
-      "kind": "conversation_id_required"
-    },
-    "en": "Conversation ID is required"
-  },
-  {
-    "reason": {
       "kind": "attachment_move_needs_request_ids"
     },
     "en": "Moving an attachment needs request IDs"

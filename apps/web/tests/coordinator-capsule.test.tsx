@@ -26,7 +26,7 @@ function draft(document: Document, attachments = '[]') {
     source.listeners.forEach(listener => listener());
   });
 }
-beforeEach(() => { useReaderSend.setState({ sendDraft: null }); setConversationState({ conversation: { id: 'test', agent: null, warm: 'none' as const, busy: false, cancelled: [], turns: [] }, error: null, wanted: false, trying: false }); });
+beforeEach(() => { useReaderSend.setState({ sendDraft: null }); setConversationState({ conversation: { id: 'test', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }, error: null, wanted: false, trying: false }); });
 afterEach(() => { cleanup(); document.querySelector('meta[name="alpacawork-voice"]')?.remove(); });
 
 test('the projection reads structured labels, orders recipients before choices and leaves the document intact', () => {

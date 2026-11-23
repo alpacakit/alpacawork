@@ -5,6 +5,11 @@
     "undo": "Deshacer"
   },
   "coordinatorCard": {
+    "ai": {
+      "label": "IA con la que hablas en el cuadro de texto: {{ai}}. Púlsalo para cambiarla en la configuración",
+      "none": "No hay una IA con la que hablar en el cuadro de texto, así que no se puede enviar. Púlsalo para abrir la configuración",
+      "setUp": "Configurar IA"
+    },
     "appHint": {
       "close": "Cerrar esta sugerencia",
       "detail": "Instálala en tu PC o ábrela desde el teléfono",
@@ -26,6 +31,7 @@
     "completeHint": "Marcar {{id}} como completada",
     "conflict": "ya llegó otro contenido con el mismo ID",
     "conversationChanged": "La conversación cambió",
+    "coordinatorAiChanged": "No se envió: cambió la IA con la que hablas en el cuadro de texto. Revisa las skills y vuelve a enviar.",
     "copyAnswer": "Copiar respuesta",
     "deliveryRefused": "El agente no pudo recibir el mensaje. Sigue en cola.",
     "done": "Completar",
@@ -65,8 +71,6 @@
     "joinedCount_one": "+{{count}} más",
     "joinedCount_many": "+{{count}} más",
     "joinedCount_other": "+{{count}} más",
-    "launchChoiceChanged": "El modelo y las demás opciones con las que se envió ya no se pueden enviar. Elige de nuevo y envía",
-    "launchChoiceUnresendable": "El modelo y las demás opciones con las que se envió ya no permiten reenviarlo. Cuando se confirme, se mostrará si llegó",
     "loadFailed": "No se pudo cargar la conversación",
     "loading": "Cargando la conversación…",
     "loadingWanted": "Se abrirá cuando termine de cargar…",

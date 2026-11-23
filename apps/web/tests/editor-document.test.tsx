@@ -13,15 +13,15 @@ test('the exact specified example is sent in document order', () => {
   let value = labelled(textDocument('Short labels are easier to read.'), task);
   value = toggleAnswer(value, task, choice('2', 'Option2'));
   value = toggleAnswer(value, task, choice('1', 'Option1'));
-  expect(serialize(value, 'claude')).toBe('T3（Choose task labels and how suggestions open） 1-Option1 2-Option2 Short labels are easier to read.');
+  expect(serialize(value)).toBe('T3（Choose task labels and how suggestions open） 1-Option1 2-Option2 Short labels are easier to read.');
 });
 test('text spaces, URLs, paths, paragraphs and Japanese are preserved', () => {
   const text = 'keep  two  spaces /home/me\nhttps://example.com/a\n\n日本語';
-  expect(serialize(textDocument(text), 'codex')).toBe(text);
+  expect(serialize(textDocument(text))).toBe(text);
 });
 test('an answer separated by prose or another task retains its task ID', () => {
   const value = doc(taskLabel(task), { type: 'text', text: 'Regarding,' }, { type: 'answerLabel', attrs: choice('1', 'Option1') });
-  expect(serialize(value, 'claude')).toContain('Regarding, T3 1-Option1');
+  expect(serialize(value)).toContain('Regarding, T3 1-Option1');
 });
 test('one question has at most one answer; pressing the same choice removes it', () => {
   const before = toggleAnswer(labelled(emptyDocument(), task), task, choice('1', 'Option1'));
@@ -37,7 +37,7 @@ test('Other is one question’s answer like its choices: it replaces that questi
   expect(answersIn(value, 'T4').map(a => a.answer)).toEqual(['1-Option1']);
   expect(answersIn(value, task.id).map(a => a.answer)).toEqual(['1-Option1', '2-other']);
   // Other stands at the draft's end, named with its task after another task's answers.
-  expect(serialize(value, '')).toBe(`T3（${task.title}） 1-Option1 T4（Other） 1-Option1 T3 2-other`);
+  expect(serialize(value)).toBe(`T3（${task.title}） 1-Option1 T4（Other） 1-Option1 T3 2-other`);
   expect(answersIn(toggleAnswer(value, task, choice('2', 'Option1')), task.id).map(a => a.answer)).toEqual(['1-Option1', '2-Option1']);
   expect(answersIn(toggleAnswer(value, task, choice('2', 'other')), task.id).map(a => a.answer)).toEqual(['1-Option1']);
 });
@@ -46,12 +46,12 @@ test('Other goes at the draft’s end with the words written after it; a choice 
   let value = toggleAnswer(labelled(emptyDocument(), task), task, choice('1', 'other'));
   value = { ...value, content: [{ ...value.content[0]!, content: [...value.content[0]!.content!, { type: 'text', text: 'NAS に置いて' }] }] };
   value = toggleAnswer(value, task, choice('2', 'Option1'));
-  expect(serialize(value, '')).toBe(`T3（${task.title}） 2-Option1 1-other NAS に置いて`);
+  expect(serialize(value)).toBe(`T3（${task.title}） 2-Option1 1-other NAS に置いて`);
   // Words already written stay before an Other chosen afterwards: what follows it is written for it.
   let later = toggleAnswer(labelled(emptyDocument(), task), task, choice('1', 'Option1'));
   later = { ...later, content: [{ ...later.content[0]!, content: [...later.content[0]!.content!, { type: 'text', text: '補足' }] }] };
   later = toggleAnswer(later, task, choice('2', 'other'));
-  expect(serialize(later, '')).toBe(`T3（${task.title}） 1-Option1 補足 T3 2-other`);
+  expect(serialize(later)).toBe(`T3（${task.title}） 1-Option1 補足 T3 2-other`);
 });
 test('Other answers only with words after it, before the next chip', () => {
   const bare = toggleAnswer(labelled(emptyDocument(), task), task, choice('1', 'other'));
@@ -66,16 +66,16 @@ test('Other answers only with words after it, before the next chip', () => {
 });
 test('deleting a task label cannot detach the identity of its remaining answer', () => {
   const value = toggleAnswer(emptyDocument(), task, choice('1', 'Option1'));
-  expect(serialize(filterDocument(value, n => n.type !== 'taskLabel'), '')).toBe('T3 1-Option1');
+  expect(serialize(filterDocument(value, n => n.type !== 'taskLabel'))).toBe('T3 1-Option1');
 });
 test('a badge inserted in a later paragraph receives answers in that same paragraph', () => {
   const value: Document = { type: 'doc', content: [...textDocument('Previous text').content, { type: 'paragraph', content: [taskLabel(task), { type: 'text', text: 'Following text' }] }] };
-  expect(serialize(toggleAnswer(value, task, choice('1', 'Option1')), '')).toBe(`Previous text\nT3（${task.title}） 1-Option1 Following text`);
+  expect(serialize(toggleAnswer(value, task, choice('1', 'Option1')))).toBe(`Previous text\nT3（${task.title}） 1-Option1 Following text`);
 });
-test('only selected skill nodes use the target’s invocation syntax', () => {
-  const value = doc({ type: 'text', text: '/path/$file' }, { type: 'skillLabel', attrs: { name: 'alpacawork', invocation: '/' } });
-  expect(serialize(value, 'codex')).toBe('/path/$file $alpacawork');
-  expect(serialize(value, 'claude')).toBe('/path/$file /alpacawork');
+test('only selected skill nodes are marked, by the mark their catalog gave them, whatever the agent is named', () => {
+  const skill = (invocation: '/' | '$') => doc({ type: 'text', text: '/path/$file' }, { type: 'skillLabel', attrs: { name: 'alpacawork', invocation } });
+  expect(serialize(skill('$'))).toBe('/path/$file $alpacawork');
+  expect(serialize(skill('/'))).toBe('/path/$file /alpacawork');
 });
 test('labels alone do not enable send; answers do', () => {
   const value = labelled(emptyDocument(), task);
@@ -107,7 +107,7 @@ test('the same number of another question of the Task is another answer: choosin
 // The wire text of Q1's and Q2's same choice is the same; what goes with it says which questions it answers.
 test("a draft's choices go with every question they answer, each by its Task and ID; words alone name none", () => {
   const draft = (question: string) => toggleAnswer(labelled(emptyDocument(), task), task, { ...choice('1', 'Option1'), question });
-  expect(serialize(draft('Q1'), '')).toBe(serialize(draft('Q2'), ''));
+  expect(serialize(draft('Q1'))).toBe(serialize(draft('Q2')));
   expect(answeredQuestions(draft('Q1'))).toEqual({ answers: [{ task: task.id, question: 'Q1' }] });
   expect(answeredQuestions(draft('Q2'))).toEqual({ answers: [{ task: task.id, question: 'Q2' }] });
   expect(answeredQuestions(toggleAnswer(draft('Q2'), task, { ...choice('2', 'Option2'), question: 'Q2' }))).toEqual({ answers: [{ task: task.id, question: 'Q2' }] });
@@ -115,7 +115,7 @@ test("a draft's choices go with every question they answer, each by its Task and
   const other = { id: 'T9', title: 'Other' };
   const both = toggleAnswer(toggleAnswer(draft('Q1'), task, { ...choice('1', 'Option2'), question: 'Q2' }), other, { ...choice('1', 'Option1'), task: other.id, question: 'Q7' });
   // In the words' order: T9's label goes before T3's.
-  expect(serialize(both, '')).toMatch(/^T9（Other） 1-Option1 T3（.*） 1-Option1 1-Option2/);
+  expect(serialize(both)).toMatch(/^T9（Other） 1-Option1 T3（.*） 1-Option1 1-Option2/);
   expect(answeredQuestions(both)).toEqual({ answers: [{ task: 'T9', question: 'Q7' }, { task: task.id, question: 'Q1' }, { task: task.id, question: 'Q2' }] });
   expect(answeredQuestions(labelled(textDocument('words'), task))).toEqual({});
 });
@@ -145,7 +145,7 @@ test('two tasks keep separate answers and labels after a schema round trip', () 
   value = toggleAnswer(value, other, { ...choice('1', 'other'), task: other.id, question: 'Qother' });
   expect(answersIn(value, task.id).map(answer => answer.answer)).toEqual(['1-Option1']);
   expect(answersIn(value, other.id).map(answer => answer.answer)).toEqual(['1-other']);
-  const sent = serialize(filterDocument(value, node => node.type !== 'taskLabel'), 'codex');
+  const sent = serialize(filterDocument(value, node => node.type !== 'taskLabel'));
   expect(sent).toContain('T3 1-Option1'); expect(sent).toContain('T13 1-other');
 });
 
@@ -190,7 +190,7 @@ test('a choice of what the question fixed goes into the draft naming that questi
   let value = toggleAnswer(labelled(emptyDocument(), task), task, local);
   value = toggleAnswer(value, task, choiceAnswer(answerTask(task), 'Q1', second!, second!.choices[0]!));
   expect(answersIn(value, task.id).map(answer => [answer.question, answer.n])).toEqual([['Q1', '1'], ['Q1', '2']]);
-  expect(serialize(value, 'claude')).toBe(`T3（${task.title}） 1-Option1 2-Blue`);
+  expect(serialize(value)).toBe(`T3（${task.title}） 1-Option1 2-Blue`);
   // Only the draft holds it: pressing the same choice again takes it out.
   expect(answersIn(toggleAnswer(value, task, local), task.id).map(answer => answer.n)).toEqual(['2']);
 });

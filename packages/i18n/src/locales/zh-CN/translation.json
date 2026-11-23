@@ -143,7 +143,6 @@
       "conversation_belongs_alpacawork_run": "此对话属于 alpacawork 的运行",
       "conversation_has_changed": "对话已发生更改",
       "conversation_head_changed": "对话的最新运行已变化。请重新加载后重试",
-      "conversation_id_required": "需要对话 ID",
       "conversation_requires_review_before_another_request": "发送下一条委托前，需要先检查此对话",
       "conversation_session_unavailable": "对话的会话不可用",
       "coordinator_attachment_not_conversation": "协调员的附件不在此对话中",

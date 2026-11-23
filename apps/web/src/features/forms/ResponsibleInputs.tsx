@@ -71,7 +71,7 @@ function ResponsibleFields({ task }: { task: Task }) {
       ? { path: "agent/handover", payload: { task: task.id, agent: member.id,
           expectedTaskHash: opening.hash, expectedPlacementRevision: member.revision } }
       : { path: "agent/assign", payload: { task: task.id, role: "responsible",
-          profile: value.profile, selected: JSON.stringify(agent.send), expectedTaskHash: opening.hash,
+          profile: value.profile, selected: JSON.stringify(agent.selected), expectedTaskHash: opening.hash,
           ...(responsible ? { replace: responsible.id, expectedPlacementRevision: responsible.revision } : {}) } };
   };
   const schema = z.object({ agent: z.string(), profile: z.string() }).superRefine((value, context) => {
