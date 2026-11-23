@@ -1,5 +1,8 @@
-import { expect, test } from "vitest";
-import { listPlace } from "../src/data/queries";
+import { expect, onTestFinished, test } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { listPlace, useListPlace } from "../src/data/queries";
+import { guideStage, restartGuide } from "../src/features/guide/guide-state";
+import { TestWorkspace } from "./fixtures";
 import type { WorkspaceInfo } from "../src/data/types";
 
 const info = (projects: { id: string }[]) => ({ projects, counts: { tasks: { root: 1 } } }) as unknown as WorkspaceInfo;
@@ -11,7 +14,9 @@ test("before the first index the list's place is loading, not the no-project pag
   expect(listPlace(false, null, info([{ id: "P1" }]))).toBe("list");
 });
 
-test("the guide's first screen, shown again, takes the list's place whatever the work; a search still comes first", () => {
-  expect(listPlace(false, null, info([{ id: "P1" }]), true)).toBe("welcome");
-  expect(listPlace(true, null, info([{ id: "P1" }]), true)).toBe("search");
+test("the guide shown again from settings leaves the list in place: the work in it, Done too, stays in view", () => {
+  onTestFinished(() => { guideStage.set(null); });
+  restartGuide();
+  const place = renderHook(() => useListPlace(), { wrapper: ({ children }) => <TestWorkspace>{children}</TestWorkspace> });
+  expect(place.result.current).toBe("list");
 });

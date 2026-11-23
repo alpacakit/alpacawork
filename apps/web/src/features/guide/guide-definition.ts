@@ -10,7 +10,7 @@ import type { GuideStage } from "./guide-state";
  *
  * How a step is chosen: the first entry of GUIDE, from the top, that is looked at and holds. The entries come in
  * phases, in this order:
- * - `first`: the first screen (or it shown again), before anything is written or sent;
+ * - `first`: the first step (or it shown again), before anything is written or sent;
  * - `now`: what the person has just done: a message the coordinator is still on, words waiting to be sent, a message
  *   just answered in the conversation itself;
  * - `turn`: the person's turn: what is open in the detail (a question, a report, a Task being worked on), then the rows
@@ -134,7 +134,7 @@ export type GuideFacts = {
   conversationOpen: boolean;
   /** The coordinator is still on what the person sent (about to send, handing over, or working on it). */
   busy: boolean;
-  /** The input holds something to send (written since the first screen was shown again, while it is). */
+  /** The input holds something to send (written since the first step was shown again, while it is). */
   drafting: boolean;
   /** The Task seen in the detail: the person's turn on it (a question, or anything else), or being worked on. */
   open: "question" | "result" | "working" | null;
@@ -286,7 +286,7 @@ export const startsGuide = (stage: GuideStage | null, welcome: boolean, tasks: n
 
 /**
  * The stage to store as a guide going on moves: the person's turn once a step of theirs (`turn`) holds; past its first
- * screen once another step than that screen's holds (something written or sent); over once no step holds while
+ * step once another step than that one holds (something written or sent); over once no step holds while
  * `closing` (the close is read). What else it keeps (`seen`, `finished`) goes along. Undefined: nothing to store.
  */
 export function nextStage(stage: Exclude<GuideStage, { stage: "done" }>, entry: GuideEntry | null, closing: boolean): GuideStage | undefined {

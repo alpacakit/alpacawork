@@ -51,11 +51,11 @@ export function coordinatorFacts({ since, turns, sending }: {
   };
 }
 
-/** What the input held when the first screen was shown again (at `at`), and whether it still holds just that. */
+/** What the input held when the first step was shown again (at `at`), and whether it still holds just that. */
 type FoundDraft = { at: number; written: string; same: boolean } | null;
 /**
- * While the first screen is shown again, what the input already held then is not the person writing: only a change to
- * it is, so that screen stays until they write, send or close it. `written` is the input as it is now.
+ * While the first step is shown again, what the input already held then is not the person writing: only a change to
+ * it is, so that step stays until they write, send or close it. `written` is the input as it is now.
  */
 export function foundDraft(stage: GoingStage, written: string, before: FoundDraft): FoundDraft {
   if (stage.stage !== "started" || !stage.intro) return null;
