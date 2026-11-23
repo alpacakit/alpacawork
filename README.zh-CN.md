@@ -53,7 +53,7 @@ alpacawork setup
 
 运行环境为 macOS（Apple 芯片）、Linux（x64）或 Windows（WSL2）。安装之后，按照[入门指南](docs/zh-CN/getting-started.md)发出第一个委托。
 
-### 重新打开、停止、更新
+### 常用操作
 
 在界面的输入框中委托任务。打开界面等对 alpacawork 本身的操作，交给在终端或应用中打开的 Claude Code 或 Codex 即可（在 Codex 中，把 `/alpacawork` 换成 `$alpacawork`）。在终端中，用表中的命令也能做到同样的事。
 
@@ -63,9 +63,11 @@ alpacawork setup
 | 查看是否在运行 | `/alpacawork 看看是否在运行` | `alpacawork status` |
 | 更新到最新版本 | `/alpacawork 更新到最新版本` | `alpacawork deploy npm:alpacawork` |
 | 卸载 | `/alpacawork 卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
+| 询问任务进展 | `/alpacawork 告诉我进行中任务的进展` | — |
+| 查找任务 | `/alpacawork 找一下修改 README 的任务` | — |
 | 停止、启动、重启 | — | `alpacawork stop`、`start`、`restart` |
 
-也可以在界面的设置中更新。详见 [重新打开、停止、更新](docs/zh-CN/manage.md)。
+也可以在界面的设置中更新，任务进展也可以在界面的输入框中询问。读取任务的命令输出是给 AI 看的，所以没有列出。其他命令及用法可用 `alpacawork -h` 查看（详见 [重新打开、停止、更新](docs/zh-CN/manage.md)）。
 
 如果用 Chrome 或 Edge，可以在界面上初始设置的最后，或之后在设置的“应用和手机”中把它安装为应用，然后从程序坞或任务栏的图标重新打开。Mac 上的 Safari 则在菜单中选择“文件 → 添加到程序坞”安装（macOS Sonoma 或更高版本）。
 

@@ -53,7 +53,7 @@ alpacawork setup
 
 Os requisitos são macOS (Apple silicon), Linux (x64) ou Windows (WSL2). Depois de instalar, siga os [Primeiros passos](docs/pt-BR/getting-started.md) para fazer a sua primeira solicitação.
 
-### Abrir de novo, parar e atualizar
+### Operações comuns
 
 As tarefas são pedidas na caixa de entrada da tela. Para operar o próprio alpacawork, como abrir a tela, peça ao Claude Code ou ao Codex aberto no terminal ou no app, e a IA faz isso (no Codex, escreva `$alpacawork` no lugar de `/alpacawork`). No terminal, os comandos da tabela fazem o mesmo.
 
@@ -63,9 +63,11 @@ As tarefas são pedidas na caixa de entrada da tela. Para operar o próprio alpa
 | Ver se está rodando | `/alpacawork veja se está rodando` | `alpacawork status` |
 | Atualizar para a versão mais recente | `/alpacawork atualize para a versão mais recente` | `alpacawork deploy npm:alpacawork` |
 | Desinstalar | `/alpacawork desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |
+| Perguntar como vão as tarefas | `/alpacawork me diga como vão as tarefas em andamento` | — |
+| Encontrar uma tarefa | `/alpacawork encontre a tarefa que corrigiu o README` | — |
 | Parar, iniciar ou reiniciar | — | `alpacawork stop`, `start`, `restart` |
 
-Você também pode atualizar em Configurações na tela. Os detalhes estão em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md).
+Você também pode atualizar em Configurações na tela e perguntar como vão as tarefas na caixa de entrada da tela. Os comandos que leem tarefas mostram uma saída feita para a IA, por isso não estão aqui. Os outros comandos e o uso deles podem ser vistos com `alpacawork -h` (detalhes em [Abrir de novo, parar e atualizar](docs/pt-BR/manage.md)).
 
 No Chrome ou no Edge, você pode instalá-la como app no final da configuração inicial na tela, ou depois em Configurações → App e celular, e abri-la de novo pelo ícone no Dock ou na barra de tarefas. No Safari do Mac, instale com Arquivo → Adicionar ao Dock no menu (macOS Sonoma ou posterior).
 

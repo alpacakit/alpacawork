@@ -53,7 +53,7 @@ alpacawork setup
 
 動作環境は macOS（Apple シリコン）、Linux（x64）、Windows（WSL2）です。入れたあとは [はじめかた](docs/ja/getting-started.md) に沿って、最初の1件を頼みます。
 
-### 開き直す・止める・更新する
+### よく使う操作
 
 タスクは画面の入力欄で頼みます。画面を開くなど alpacawork そのものの操作は、ターミナルやアプリで開いた Claude Code か Codex に頼むと AI が行います（Codex では `/alpacawork` を `$alpacawork` に変えます）。ターミナルでは表のコマンドでも同じことができます。
 
@@ -63,9 +63,11 @@ alpacawork setup
 | 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
 | 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
 | アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |
+| タスクの状況を聞く | `/alpacawork 作業中のタスクの状況を教えて` | — |
+| タスクを探す | `/alpacawork README を直したタスクを探して` | — |
 | 止める・起動する・再起動する | — | `alpacawork stop`・`start`・`restart` |
 
-更新は画面の設定からもできます。詳しくは [開き直す・止める・更新する](docs/ja/manage.md) にあります。
+更新は画面の設定からもでき、タスクの状況は画面の入力欄でも聞けます。タスクを読むコマンドは出力が AI 向けなので載せていません。ほかのコマンドと使い方は `alpacawork -h` で確かめられます（詳しくは [開き直す・止める・更新する](docs/ja/manage.md)）。
 
 Chrome か Edge なら、画面でのセットアップの終わりか、あとから設定の「アプリ・スマホ」でアプリとして入れられ、Dock やタスクバーのアイコンから開き直せます。Mac の Safari では、メニューの「ファイル → Dock に追加」（macOS Sonoma 以降）で入れます。
 
