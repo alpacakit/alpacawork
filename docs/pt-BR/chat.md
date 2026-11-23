@@ -1,6 +1,6 @@
 # Usar pelo Claude Code ou Codex
 
-Além da caixa de entrada da tela, você pode operar o alpacawork numa conversa do Claude Code ou do Codex aberta no terminal ou no app. Use quando quiser pedir e conferir tarefas na sua conversa de sempre, sem abrir a tela.
+Além da caixa de entrada da tela, você pode operar o alpacawork numa conversa do Claude Code ou do Codex aberta no terminal ou no app.
 
 ## Como começar
 
@@ -12,7 +12,7 @@ No início da conversa, faça um pedido com `/alpacawork` na frente (`$alpacawor
 
 A IA lê a skill do alpacawork e, a partir daí, a IA dessa conversa atua como o mesmo ponto de contato da caixa de entrada da tela (o coordenador). Do segundo pedido em diante, você pode deixar de lado o `/alpacawork`.
 
-O trabalho que você pede é feito pelas IAs que o alpacawork inicia. Fechar esta conversa não o interrompe.
+O trabalho que você pede é feito pelas IAs que o alpacawork inicia. Fechar esta conversa não o interrompe. Perguntas e relatórios chegam em "Aguardando revisão" na tela, não nesta conversa. Para conferi-los aqui, peça algo como "me conte, uma por uma e de forma breve, as tarefas aguardando revisão".
 
 ## Exemplos do que pedir
 

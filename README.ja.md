@@ -62,7 +62,7 @@ alpacawork setup
 | 画面を開く | `/alpacawork 画面開いて` | `alpacawork open` |
 | 動いているか見る | `/alpacawork 動いているか見て` | `alpacawork status` |
 | 設定を変える | `/alpacawork 同時に動かす AI を4つまでにして` | — |
-| 使うモデルを変える | `/alpacawork 最初に選ばれるモデルを opus にして` | — |
+| ふだん使うモデルを変える | `/alpacawork タスクをふだん opus で進めるようにして` | — |
 | 最新の版に更新する | `/alpacawork 最新の版に更新して` | `alpacawork deploy npm:alpacawork` |
 | 止める・起動する・再起動する | `/alpacawork 再起動して` | `alpacawork stop`・`start`・`restart` |
 | アンインストールする | `/alpacawork アンインストールして` | `alpacawork uninstall` のあと `npm uninstall -g alpacawork` |

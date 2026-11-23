@@ -12,7 +12,7 @@ alpacawork 是把工作交给电脑上的 Claude Code 或 Codex 的工具。在�
 - [手机与通知](remote.md)
 - [遇到问题时](troubleshooting.md) — 任务停住了、界面打不开
 - [重新打开、停止、更新](manage.md) — URL、更新、卸载、数据存放位置
-- [从 Claude Code 或 Codex 使用](chat.md) — 在对话中委托、确认、回答任务
+- [从 Claude Code 或 Codex 使用](chat.md) — 在对话中委托、确认任务，回答提问
 - [用语与命令一览](reference.md)
 - [alpacawork 的设计理念](concept.md)
 - [使用数据](telemetry.md)

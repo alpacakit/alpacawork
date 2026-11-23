@@ -62,7 +62,7 @@ As tarefas são pedidas na caixa de entrada da tela. Para abrir a tela, mudar co
 | Abrir a tela | `/alpacawork abra a tela` | `alpacawork open` |
 | Ver se está rodando | `/alpacawork veja se está rodando` | `alpacawork status` |
 | Mudar uma configuração | `/alpacawork rode no máximo 4 IAs ao mesmo tempo` | — |
-| Mudar o modelo | `/alpacawork deixe o opus como o modelo escolhido primeiro` | — |
+| Mudar o modelo de uso normal | `/alpacawork use o opus normalmente nas tarefas` | — |
 | Atualizar para a versão mais recente | `/alpacawork atualize para a versão mais recente` | `alpacawork deploy npm:alpacawork` |
 | Parar, iniciar ou reiniciar | `/alpacawork reinicie o alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Desinstalar | `/alpacawork desinstale o alpacawork` | `alpacawork uninstall` e depois `npm uninstall -g alpacawork` |

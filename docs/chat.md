@@ -1,6 +1,6 @@
 # Use it from Claude Code or Codex
 
-Besides the input box on the screen, you can operate alpacawork from a Claude Code or Codex conversation opened in a terminal or its app. Use this when you want to request and check tasks inside your usual conversation, without opening the screen.
+Besides the input box on the screen, you can operate alpacawork from a Claude Code or Codex conversation opened in a terminal or its app.
 
 ## Getting started
 
@@ -12,7 +12,7 @@ At the start of the conversation, make one request with `/alpacawork` in front (
 
 The AI reads the alpacawork skill, and from then on the AI in that conversation acts as the same point of contact as the input box on the screen (the coordinator). From the second request on, you can leave out `/alpacawork`.
 
-The work you request is carried out by the AIs that alpacawork starts. Closing this conversation does not stop it.
+The work you request is carried out by the AIs that alpacawork starts. Closing this conversation does not stop it. Questions and reports arrive under "Awaiting review" on the screen, not in this conversation. To check them here, ask something like "tell me about each task awaiting review, briefly, one at a time".
 
 ## Examples of what to ask
 

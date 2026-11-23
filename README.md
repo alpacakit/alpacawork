@@ -88,7 +88,7 @@ You request tasks in the input box on the screen. To open the screen, change set
 | Open the screen | `/alpacawork open the screen` | `alpacawork open` |
 | Check whether it is running | `/alpacawork check whether it is running` | `alpacawork status` |
 | Change a setting | `/alpacawork run at most 4 AIs at once` | — |
-| Change the model | `/alpacawork make opus the model chosen first` | — |
+| Change the model normally used | `/alpacawork use opus for tasks normally` | — |
 | Update to the latest version | `/alpacawork update to the latest version` | `alpacawork deploy npm:alpacawork` |
 | Stop, start or restart | `/alpacawork restart alpacawork` | `alpacawork stop`, `start`, `restart` |
 | Uninstall | `/alpacawork uninstall alpacawork` | `alpacawork uninstall`, then `npm uninstall -g alpacawork` |

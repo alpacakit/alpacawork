@@ -62,7 +62,7 @@ alpacawork setup
 | 打开界面 | `/alpacawork 打开界面` | `alpacawork open` |
 | 查看是否在运行 | `/alpacawork 看看是否在运行` | `alpacawork status` |
 | 更改设置 | `/alpacawork 同时最多运行 4 个 AI` | — |
-| 更改模型 | `/alpacawork 把默认选中的模型改成 opus` | — |
+| 更改平时使用的模型 | `/alpacawork 让任务平时用 opus 来做` | — |
 | 更新到最新版本 | `/alpacawork 更新到最新版本` | `alpacawork deploy npm:alpacawork` |
 | 停止、启动、重启 | `/alpacawork 重启 alpacawork` | `alpacawork stop`、`start`、`restart` |
 | 卸载 | `/alpacawork 卸载 alpacawork` | `alpacawork uninstall`，然后 `npm uninstall -g alpacawork` |
