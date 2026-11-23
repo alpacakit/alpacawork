@@ -8,8 +8,7 @@ import { Sentences } from "@/components/ui/sentences";
 import { cn } from "@/lib/utils";
 import { useDialogStore } from "@/state/dialog-store";
 import { useViewStore } from "@/state/view-store";
-import { reducedMotion } from "@/lib/motion";
-import { showHowRise, useShowHow } from "@/lib/show-how";
+import { showHowReach, useShowHow } from "@/lib/show-how";
 import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
@@ -316,9 +315,10 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
         const holder = target.closest(PARTS[name]);
         return (holder ? [holder] : shownParts(PARTS[name])).map(boxOf);
       }) : [];
-      // It stands clear of all the step's motion takes its part through (as far up as the sheet grows), its ring on the part.
-      const seen = target ? seenBoxOf(target) : null, rise = entry.show ? showHowRise(entry.show) : 0;
-      const next = seen && own ? { ...placeBalloon({ ...seen, top: seen.top - rise, height: seen.height + rise }, { width: own.width, height: own.height },
+      // It stands clear of all the step's motion may take its part through (as far as the sheet grows or shrinks), its
+      // ring on the part.
+      const seen = target ? seenBoxOf(target) : null, reach = entry.show ? showHowReach(entry.show) : 0;
+      const next = seen && own ? { ...placeBalloon({ ...seen, top: seen.top - reach, height: seen.height + 2 * reach }, { width: own.width, height: own.height },
         { width: innerWidth, height: innerHeight }, entry.side ?? "top", entry.align, clear), target: seen } : null;
       const looked = !!next && document.visibilityState === "visible";
       if (!looked && standing) { clearTimeout(standing); standing = null; }
@@ -353,25 +353,32 @@ function GoingBalloon({ screen, stage }: { screen: GuideScreen; stage: GoingStag
 }
 
 /**
- * The motion of a step with one (`show`), played by its part's owner (show-how) a moment after its balloon stands, once
- * each time it stands and on each card; not where motion is reduced. Stopped when the balloon goes, the step changes or
- * another card is opened. Returns whether it plays now.
+ * The motion of a step with one (`show`), played by its part's owner (show-how) a moment after its balloon stands and
+ * the owner offers it (a finger lifted, the part able to do it again: offerWhileFree): once each time the balloon stands
+ * on a card, stopped or not. Stopped when the balloon goes, the step changes or another card is opened. Returns whether
+ * it plays now.
  */
 function useShowStep(entry: GuideEntry | null, standing: boolean) {
   const showing = useRef(false);
   const card = useViewStore((state) => state.selected);
   const kind = entry?.show;
+  const offered = useShowHow((state) => !!kind && !!state[kind]);
+  // The standing it was played in: the step, on the card; none while no balloon with a motion stands.
+  const key = kind && standing ? `${entry!.id}:${card ?? ""}` : null;
+  const played = useRef<string | null>(null);
   useEffect(() => {
-    if (!kind || !standing || reducedMotion()) return;
+    if (!key) { played.current = null; return; }
+    if (!offered || played.current === key) return;
     let stop: (() => void) | undefined;
     const timer = setTimeout(() => {
-      const play = useShowHow.getState()[kind];
+      const play = useShowHow.getState()[kind!];
       if (!play) return;
+      played.current = key;
       showing.current = true;
       stop = play(() => { showing.current = false; });
     }, SHOW_AFTER_MS);
     return () => { clearTimeout(timer); stop?.(); showing.current = false; };
-  }, [entry?.id, kind, standing, card]);
+  }, [key, offered]);
   return showing;
 }
 

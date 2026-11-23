@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 import { Icon } from "@/components/ui/icon";
 import type { IconName } from "@/components/ui/icon";
 import { duration, easing } from "@/lib/motion";
-import { fingerMark, offerShowHow, playSteps, SHOW_STEPS } from "@/lib/show-how";
+import { fingerMark, offerWhileFree, playSteps, SHOW_STEPS } from "@/lib/show-how";
 import { stampInk, stampPaper, stampWords } from "./stamp";
 import { cn } from "@/lib/utils";
 import type { Task } from '@/data/types';
@@ -174,10 +174,10 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
     const keep = (event: TouchEvent) => { if (sideways && event.cancelable) event.preventDefault(); };
     const visibility = () => { if (document.visibilityState === 'hidden') reset(); };
     // Showing how the card is swiped (show-how): carried right and back, then left and back where it can be held, with
-    // the stamp of each side and a finger mark, as a finger carries it; nothing is answered. Withdrawn, and stopped if it
-    // plays, as this card goes or stops being swipeable.
+    // the stamp of each side and a finger mark, as a finger carries it; nothing is answered. Offered while the card can
+    // be swiped and no finger is on it; withdrawn, and stopped if it plays, as this card goes or stops being swipeable.
     let showing: (() => void) | undefined;
-    const withdraw = offerShowHow("swipe", ended => {
+    const withdraw = offerWhileFree("swipe", aside, ended => {
       reset();
       const steps = [...SHOW_STEPS.swipeRight, ...latest.current.hold ? SHOW_STEPS.swipeLeft : []];
       const box = area.getBoundingClientRect(), finger = fingerMark();

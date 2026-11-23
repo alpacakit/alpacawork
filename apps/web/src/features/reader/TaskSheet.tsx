@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { duration, easing, reducedMotion } from "@/lib/motion";
 import { listenSheetPress, pullsFrom } from "@/lib/sheet-press";
 import { leaveSheet, sheetHand, sheetMotion } from "@/lib/sheet-motion";
-import { fingerMark, offerShowHow, playSteps, SHOW_STEPS } from "@/lib/show-how";
+import { fingerMark, offerWhileFree, playSteps, sheetShowWay, SHOW_STEPS } from "@/lib/show-how";
 import { setSheetShare, SHARE_RANGE, sheetShare } from "@/state/sheets";
 import { useDeviceValue } from "@/lib/device-storage";
 import { useTaskActionSlot } from "@/features/coordinator/task-action-slot";
@@ -111,21 +111,23 @@ export function useSheetMotion({ whole, onWhole, onAway, rising, on = true }: {
     return () => { stop(); motion.current?.stop(); };
   }, [on]);
 
-  // Showing how its height is changed (show-how): held as a finger holds it, it grows and comes back where it stands,
-  // a finger mark on its grip; then back at rest at the height kept, which it never changes. Withdrawn, and stopped if
-  // it plays, as the sheet goes or stops being one.
+  // Showing how its height is changed (show-how): held as a finger holds it, it grows (or, with no room over it,
+  // shrinks) and comes back where it stands, a finger mark on its grip; then back at rest at the height kept, which it
+  // never changes. Offered while no finger is on the sheet; withdrawn, and stopped if it plays, as the sheet goes or
+  // stops being one.
   useEffect(() => {
-    if (!on) return;
+    const el = frame.current;
+    if (!on || !el) return;
     let playing: (() => void) | undefined;
-    const withdraw = offerShowHow("sheet", ended => {
-      const el = frame.current, grip = el?.querySelector("[data-task-sheet-grip]");
-      if (!el || !grip) { ended(); return () => {}; }
-      const hand = moving(), from = hand.shown(), finger = fingerMark();
+    const withdraw = offerWhileFree("sheet", el, ended => {
+      const grip = el.querySelector("[data-task-sheet-grip]");
+      if (!grip) { ended(); return () => {}; }
+      const hand = moving(), from = hand.shown(), way = sheetShowWay(from, innerHeight), finger = fingerMark();
       const bar = grip.getBoundingClientRect();
       hand.hold(from);
-      const stop = playSteps(SHOW_STEPS.sheet, rise => {
-        hand.follow(from + rise);
-        finger.at(bar.left + bar.width / 2, bar.top + bar.height / 2 - rise);
+      const stop = playSteps(SHOW_STEPS.sheet, reach => {
+        hand.follow(from + way * reach);
+        finger.at(bar.left + bar.width / 2, bar.top + bar.height / 2 - way * reach);
       }, () => { finger.remove(); if (el.dataset.sheetHeld !== undefined) hand.stop(); playing = undefined; ended(); });
       playing = stop;
       return stop;

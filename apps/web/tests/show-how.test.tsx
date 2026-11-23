@@ -3,7 +3,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { useSheetMotion } from "../src/features/reader/TaskSheet";
 import { useSwipeAnswer } from "../src/features/reader/swipe-answer";
-import { useShowHow } from "../src/lib/show-how";
+import { sheetShowWay, useShowHow } from "../src/lib/show-how";
 import { sheetShare, setSheetShare } from "../src/state/sheets";
 
 /** The guide's motions (show-how), played by the sheet and the card themselves: they change nothing, and a finger ends them. */
@@ -24,7 +24,7 @@ function Sheet() {
   return <div ref={control.frame} data-frame><div data-task-sheet-grip /></div>;
 }
 
-test("the sheet grows and comes back as it is shown, keeps the height it stood at, and stops at a finger's touch", () => {
+test("the sheet is not shown while a finger is on it, grows and comes back once it is lifted, keeps its height, and stops at a touch", () => {
   vi.stubGlobal("innerHeight", 844);
   setSheetShare(0.6);
   render(<Sheet />);
@@ -32,6 +32,11 @@ test("the sheet grows and comes back as it is shown, keeps the height it stood a
   frame.getAnimations = () => [];
   vi.spyOn(frame, "getBoundingClientRect").mockImplementation(() => ({ top: 844 - Number.parseFloat(frame.style.height) }) as DOMRect);
   const ended = vi.fn();
+  // A finger already on the sheet: nothing is offered to play until it is lifted.
+  const finger = (type: string) => { const event = new Event(type, { bubbles: true }); Object.assign(event, { pointerId: 7 }); return event; };
+  act(() => { frame.dispatchEvent(finger("pointerdown")); });
+  expect(useShowHow.getState().sheet).toBeUndefined();
+  act(() => { window.dispatchEvent(finger("pointerup")); });
   act(() => { useShowHow.getState().sheet!(ended); });
   pass(16); pass(600);
   // Grown by about 48 px, held as a finger holds it.
@@ -63,4 +68,8 @@ test("the card goes right and left with each side's stamp as it is shown, and no
   pass(2000); pass(16);
   expect(ended).toHaveBeenCalledOnce();
   expect([card.style.transform, stamp.dataset.swipe, run.mock.calls.length]).toEqual(["", undefined, 0]);
+});
+
+test("the sheet is shown growing where the screen has room over it, else shrinking", () => {
+  expect([sheetShowWay(500, 844), sheetShowWay(796, 844), sheetShowWay(797, 844), sheetShowWay(844, 844)]).toEqual([1, 1, -1, -1]);
 });
