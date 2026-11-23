@@ -98,7 +98,8 @@ export function records(bundles: readonly TaskBundle[], extras: Extras = {}): Re
     catalog: () => new Map(),
     schemaOf: () => ({ fields: [], from: null }),
     seatSettings: () => ({ profiles: new Set(['fake']), automaticLimit: 20 }),
-    shelf: () => { throw new Error('No shelf in these records'); },
+    // Every project these records hold is listed: the strips and searches above a Task read only that.
+    shelf: () => ({ listed: new Set([...byId.keys()].filter(id => kind(id) === 'project')) }) as unknown as ReturnType<RecordsReader['shelf']>,
     environment: () => ({ root: '/workspace', profiles: [], attachmentBytes: 0, errors: [], writable: true }),
   };
 }
