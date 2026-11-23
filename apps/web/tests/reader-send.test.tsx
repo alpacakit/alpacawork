@@ -381,7 +381,7 @@ test('a press says its one line in the screen\'s words, with what the person wro
   const card = useSitting.getState().card;
   expect(await sendIntent(intent, card, '  Reviewed  ')).toBe('retained');
   expect(post).toHaveBeenLastCalledWith(intent, card, 'Continue T3\n\nReviewed');
-  for (const [action, line] of [['continue', 'Continue T3'], ['retry', 'Retry T3']] as const) {
+  for (const [action, line] of [['continue', 'Continue T3'], ['retry', 'Please continue T3.']] as const) {
     await sendIntent({ ...intent, action }, card);
     expect(post).toHaveBeenLastCalledWith({ ...intent, action }, card, line);
   }
@@ -444,7 +444,7 @@ test('each press is carried out by the record its command leaves, leading where 
     toHeld: wrote('reported', { toState: 'held' }), toStopped: wrote('reported', { toState: 'stopped' }),
     toWaiting: wrote('reported', { toState: 'waiting' }), toDoing: wrote('reported', { toState: 'doing' }),
     accepted: wrote('request_accepted'), answer: wrote('answered', { question: 'Q1' }) };
-  const carries: Record<SentIntent['action'], keyof typeof writes> = { sendback: 'accepted', continue: 'accepted', retry: 'accepted' };
+  const carries: Record<SentIntent['action'], keyof typeof writes> = { sendback: 'accepted', continue: 'accepted', retry: 'accepted', switch: 'accepted' };
   for (const [action, carried] of Object.entries(carries) as [SentIntent['action'], keyof typeof writes][])
     for (const [name, write] of Object.entries(writes)) {
       const id = `${action}-${name}`, shown = reviewing;

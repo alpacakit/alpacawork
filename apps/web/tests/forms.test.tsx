@@ -336,13 +336,13 @@ test("H holds the open task regardless of its ball; an already held task sends n
   expect(heldInput.reports).toEqual([]);
 });
 
-test("why the user's turn came is said by the ball: at the limit Continue, on a failure Retry and Stop, requests go to the coordinator", async () => {
+test("why the user's turn came is said by the ball: at the limit Continue, on a failure continue with the same AI or another, or Stop", async () => {
   const limit = userBall("limit", "K1", at, { count: 3 });
   const failed = userBall("failed", "F1", at);
   const blocked = userBall("blocked", "B1", at, { code: "too_deep" });
   for (const [ball, words, actions] of [
     [limit, i18n.t("ui:turn.reason.limit", { count: 3 }), ["continue"]],
-    [failed, i18n.t("ui:turn.reason.failed"), ["retry", "stop"]],
+    [failed, i18n.t("ui:turn.reason.failed"), ["retry", "switch", "stop"]],
     [blocked, i18n.t("ui:turn.reason.depth"), []],
   ] as const) {
     const data = screenData(tree({ tasks: [taskFixture({ state: "doing", ball })] }));
@@ -364,6 +364,25 @@ test("why the user's turn came is said by the ball: at the limit Continue, on a 
       .toEqual(actions.slice(0,1).map((action) => [action, i18n.t(`reader:intent.${action}`, { id: "T1" })]));
     cleanup();
   }
+});
+
+test("Continue with another AI only puts its line in the input; Continue with the same AI then sends its own line", async () => {
+  const data = screenData(tree({ tasks: [taskFixture({ state: "error", ball: userBall("failed", "F1", at) })] }));
+  const task = data.tasks[0]!;
+  const { asked } = withInput(data, <TurnReason turn={reasonedTurn(task.ball)!} task={task} />);
+  await waitFor(() => expect(useReaderSend.getState().post).not.toBeNull());
+  const button = (action: string) => document.querySelector<HTMLButtonElement>(`[data-turn-action="${action}"]`)!;
+  fireEvent.click(button("switch"));
+  const field = screen.getByRole("textbox", { name: "Message the coordinator" });
+  await waitFor(() => expect(field.textContent).toContain(i18n.t("reader:intent.switch")));
+  await act(async () => {});
+  expect(asked).toEqual([]);
+  // The line is already there: a second press would add nothing.
+  expect(button("switch").disabled).toBe(true);
+  fireEvent.click(button("retry"));
+  await waitFor(() => expect(asked).toHaveLength(1));
+  expect([asked[0]!.intent?.action, asked[0]!.text]).toEqual(["retry", i18n.t("reader:intent.retry", { id: "T1" })]);
+  expect(field.textContent).toContain(i18n.t("reader:intent.switch"));
 });
 
 test("TurnReason Stop reports directly with the displayed task version and no coordinator message", async () => {
@@ -506,7 +525,7 @@ test('a persisted submission disables the original failure actions but not anoth
  const task=data.tasks[0]!,other=data.tasks[1]!,id=crypto.randomUUID();
  freeze(data.info.root,{conversationId:'c1',text:'Retry T1',tasks:['T1'],selected:{},attachments:[],intent:{task:'T1',action:'retry'}},{requestId:id,doc:JSON.stringify(textDocument('Retry T1'))},undefined,[{...readerTurn(task),kind:'intent',title:task.title,answer:'send',expectedWrites:[]}]);
  withInput(data,<><TurnReason turn={reasonedTurn(task.ball)!} task={task}/><TurnReason turn={reasonedTurn(other.ball)!} task={other}/></>);
- const retry=screen.getAllByRole('button',{name:'Retry'}),stop=screen.getAllByRole('button',{name:'Stop'});
- expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);
+ const retry=screen.getAllByRole('button',{name:'Continue with same AI'}),another=screen.getAllByRole('button',{name:'Continue with another AI'}),stop=screen.getAllByRole('button',{name:'Stop'});
+ expect((retry[0] as HTMLButtonElement).disabled).toBe(true);expect((another[0] as HTMLButtonElement).disabled).toBe(true);expect((stop[0] as HTMLButtonElement).disabled).toBe(true);
  await waitFor(()=>expect((retry[1] as HTMLButtonElement).disabled).toBe(false));expect((stop[1] as HTMLButtonElement).disabled).toBe(false);
 });

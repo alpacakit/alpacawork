@@ -15,14 +15,14 @@ const COORDINATOR_ATTACHMENT_LIMIT = 20;
 /** Immutable historical operation data. This is not an executable input contract. */
 export const recordedOperationSchema = z.record(z.string(), z.json());
 /**
- * A request on the screen (send back, continue, retry), for the coordinator to carry out: the Task, the Run or question
+ * A request on the screen (send back, continue, continue with the same AI or another), for the coordinator to carry out: the Task, the Run or question
  * it was about, and the versions the screen showed when it was pressed. The coordinator passes those to `--expected-*`
  * as they are. Its words are only the message's own; serve never makes words of an intent. A draft's choices are not a
  * press: the questions they answer go as the message's `answers`.
  */
 export const coordinatorIntentSchema = z.object({
   task: taskIdSchema,
-  action: z.enum(['sendback', 'continue', 'retry']),
+  action: z.enum(['sendback', 'continue', 'retry', 'switch']),
   aboutRun: runIdSchema.optional(), question: logIdSchema.optional(),
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: z.number().int().positive().optional(),
 }).strict();

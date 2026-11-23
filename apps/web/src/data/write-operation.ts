@@ -18,7 +18,7 @@ type Operation = { grace: 'deferred' | 'immediate'; restore: 'input' | 'card' | 
 const immediate: Operation = { grace: 'immediate', restore: 'none', mark: 'info' };
 const operation = (copy: keyof typeof words, restore: Operation['restore'] = 'form', mark: Operation['mark'] = 'success'): Operation => ({ grace: 'deferred', restore, copy, mark });
 const message = operation('message', 'input', 'info');
-const actions: Record<string, Operation> = { message, sendback: message, continue: message, retry: message,
+const actions: Record<string, Operation> = { message, sendback: message, continue: message, retry: message, switch: message,
   'report:approve': operation('approve','card'), 'report:hold': operation('hold','card'), 'report:unhold': operation('unhold','card') };
 const operations: Record<string, Operation> = {
   move: operation('move'), responsible: operation('responsible'),
@@ -31,7 +31,7 @@ const operationName = (facts: OperationFacts) => facts.subject.action === 'write
 export const writeOperation = (facts: OperationFacts): Operation =>
   (facts.subject.action === 'write' ? operations : actions)[operationName(facts)] ?? immediate;
 /** What a write counts as in usage data: the operation's name, the same at every place the screen admits it. */
-const uses: Record<string, TelemetryOp> = { message: 'w.message', sendback: 'w.sendback', continue: 'w.continue', retry: 'w.retry',
+const uses: Record<string, TelemetryOp> = { message: 'w.message', sendback: 'w.sendback', continue: 'w.continue', retry: 'w.retry', switch: 'w.switch',
   'report:approve': 'w.approve', 'report:hold': 'w.hold', 'report:unhold': 'w.unhold', 'task/move': 'w.move',
   move: 'w.move', responsible: 'w.responsible', 'agent/assign': 'w.responsible', 'agent/handover': 'w.responsible',
   'project/new': 'w.project', 'task/archive': 'w.archive', 'task/delete': 'w.delete', 'task/restore': 'w.restore', 'report:stop': 'w.stop', 'run/stop': 'w.runStop' };

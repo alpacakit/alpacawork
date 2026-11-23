@@ -8,7 +8,7 @@ No borres tú la carpeta de datos (`~/alpacawork`) ni los archivos de registro p
 
 En las tareas de “Requiere atención”, la ejecución de la IA se detuvo. Al abrirla, el motivo aparece bajo el título.
 
-- “Falló”: pulsa “Reintentar” o “Detener”. Si quieres que cambie la forma de hacerlo, en lugar de pulsar un botón, escríbelo en el cuadro de texto y envíalo. Si el motivo es el límite de uso o que el modelo está saturado, pulsa “Reintentar” cuando se restablezca el límite, o pide en el cuadro de texto “Reinténtalo con otro modelo”. Aunque el límite se restablezca, no se reanuda sola.
+- “Falló”: pulsa “Seguir con la misma IA”, “Seguir con otra IA” o “Detener”. Si quieres que cambie la forma de hacerlo, en lugar de pulsar un botón, escríbelo en el cuadro de texto y envíalo. Si el motivo es el límite de uso o que el modelo está saturado, pulsa “Seguir con la misma IA” cuando se restablezca el límite, o pulsa “Seguir con otra IA”, añade qué IA usar a la frase que aparece en el cuadro de texto y envíala. Aunque el límite se restablezca, no se reanuda sola.
 - “Límite alcanzado”: los intercambios automáticos entre IA llegaron al número fijado (20 al principio). Si te parece bien que siga, pulsa “Continuar”.
 - Motivos sin botones (“Recepción sin confirmar”, “Sin perfil de inicio”, etc.): lee el texto que aparece y da una instrucción en el cuadro de texto, como “Continúa”. Su significado está en [Motivos de detención](reference.md#motivos-de-detención).
 
@@ -31,7 +31,7 @@ El estado del envío aparece encima del cuadro de texto. Al pulsarlo, se abre la
 
 ## Reiniciaste el PC o entró en suspensión
 
-Cuando inicias sesión en el PC, alpacawork se inicia solo y las tareas siguen como estaban. El trabajo que estaba en marcha antes de reiniciar se detiene. Abre las tareas que pasaron a “Requiere atención” y pulsa “Reintentar”. No se reanudan solas.
+Cuando inicias sesión en el PC, alpacawork se inicia solo y las tareas siguen como estaban. El trabajo que estaba en marcha antes de reiniciar se detiene. Abre las tareas que pasaron a “Requiere atención” y pulsa “Seguir con la misma IA”. No se reanudan solas.
 
 Durante la suspensión, el trabajo no avanza. Un portátil se detiene al cerrar la tapa.
 
@@ -69,7 +69,7 @@ El estado aparece en “Agentes” de “Configuración (el engranaje) → Servi
 - “No encontrado”: si no está instalado, instálalo. Si lo está, indica su ruta en “Ejecutable” de la tarjeta.
 - “No hay ningún agente activado”: activa las IA que vas a usar.
 
-Después de arreglarlo, haz avanzar las tareas detenidas con “Reintentar”.
+Después de arreglarlo, haz avanzar las tareas detenidas con “Seguir con la misma IA”.
 
 ## La instalación se detiene
 

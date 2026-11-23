@@ -171,8 +171,9 @@
   },
   "intent": {
     "continue": "{{id}} を続ける",
-    "retry": "{{id}} をやり直す",
-    "sendback": "{{id}} を差し戻す"
+    "retry": "{{id}} の続きを行ってください。",
+    "sendback": "{{id}} を差し戻す",
+    "switch": "他のモデル、またはエージェントで続きを行ってください。"
   },
   "markdownBody": {
     "copyCode": "コードをコピー",

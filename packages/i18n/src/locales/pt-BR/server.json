@@ -38,7 +38,7 @@
         "short": "Concluída"
       },
       "failed": {
-        "body": "Parou por um erro. Decida se quer tentar novamente",
+        "body": "Parou por um erro. Decida se quer continuar ou parar",
         "short": "Erro"
       },
       "limit": {

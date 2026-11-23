@@ -59,7 +59,7 @@ Pressing "Done" opens the next task awaiting review. "Change state", for putting
 
 Open a task under "Needs attention" to see why it stopped and the buttons for what to do next.
 
-- Press "Retry" or "Stop".
+- Press "Continue with same AI", "Continue with another AI" or "Stop". "Continue with another AI" puts a line in the input box; add which AI to use, then send it.
 - If "Continue" appears, press it if it's fine to continue.
 - If there are no buttons, follow the message shown and give an instruction in the input box.
 

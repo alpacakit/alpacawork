@@ -321,10 +321,10 @@
   },
   "run": {
     "cause": {
-      "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Reintenta más tarde o con otro modelo, o detén la tarea",
-      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Reintenta con otro modelo o cuando el límite se restablezca, o detén la tarea",
-      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Reintenta cuando el límite se restablezca, o detén la tarea",
-      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Reintenta cuando el límite se restablezca, o detén la tarea"
+      "modelCapacity": "El modelo estaba al límite de su capacidad, así que la ejecución falló. Sigue con la misma IA más tarde, sigue con otra IA, o detén la tarea",
+      "modelLimit": "El agente alcanzó el límite de uso de su modelo, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea",
+      "sessionLimit": "El agente alcanzó su límite de uso de 5 horas, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea",
+      "weeklyLimit": "El agente alcanzó su límite de uso semanal, así que la ejecución falló. Sigue con otra IA, sigue con la misma IA cuando el límite se restablezca, o detén la tarea"
     },
     "causeReason": {
       "modelCapacity": "El modelo está al límite de su capacidad",
@@ -354,7 +354,7 @@
     "reason": {
       "children": "La ejecución alcanzó su límite de solicitudes. Revisa el trabajo y envía una instrucción aparte si hace falta",
       "depth": "Se alcanzó el límite de profundidad de las solicitudes. Revisa el resultado y envía una nueva instrucción si hace falta",
-      "failed": "La ejecución del agente falló o terminó sin informe. Elige si reintentar o detener",
+      "failed": "La ejecución del agente falló o terminó sin informe. Elige si seguir o detener",
       "limit_one": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_many": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_other": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
@@ -364,8 +364,9 @@
       "responsibleUnavailable": "No se pudo iniciar la solicitud al responsable. Comprueba la asignación del responsable y el perfil de inicio, y reenvía la instrucción",
       "unconfirmed": "No se pudo confirmar si la respuesta llegó al agente. Comprueba el resultado y envía una instrucción si hace falta"
     },
-    "retry": "Reintentar",
-    "stop": "Detener"
+    "retry": "Seguir con la misma IA",
+    "stop": "Detener",
+    "switch": "Seguir con otra IA"
   },
   "undo": {
     "offer": {
