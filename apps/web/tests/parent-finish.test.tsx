@@ -10,6 +10,7 @@ import { queryClient } from "../src/data/query-client";
 import { formatClock } from "../src/domain/time";
 import { finishFacts, finishOf, finishWords, type OwnFinish } from "../src/domain/finish-words";
 import { indexTasks } from "../src/domain/tasks";
+import { finishFactsFor } from "../src/features/people/labels";
 import { TimeTree } from "../src/features/tree/TimeTree";
 import { useTimeView } from "../src/state/time-view";
 import { useViewStore } from "../src/state/view-store";
@@ -28,7 +29,11 @@ const clock = (minutes: number) => formatClock(iso(now + minutes * minute));
 
 type Spec = { id: string; parentId?: string; state?: ControlTaskDTO["state"]; asks?: boolean;
   /** An estimate in minutes, reported `ago` minutes before now. */ estimate?: number; ago?: number; sentBack?: boolean;
-  /** A Working task has a Run going on it, so it is at work, unless it is `idle`. */ idle?: boolean };
+  /**
+   * A Working task's own Run goes on it while no Working task under it does the work, or its person is running; else it is
+   * at work through the tasks under it. An `idle` one has none, and nothing under it at work.
+   */ idle?: boolean;
+  /** A Run of its own goes on it whatever is under it. */ ownRun?: boolean };
 const task = ({ id, parentId, state = "doing", asks, estimate, ago = 0, sentBack }: Spec) => dto({ id, parentId: parentId ?? null,
   path: `tasks/${id}`, title: id, state, log: [
     logEntry({ id: "L1", kind: "created", at: iso(now - 120 * minute), toState: "todo" }),
@@ -46,7 +51,8 @@ const canonical = controlTreeSchema.parse(JSON.parse(readFileSync(join(import.me
 type People = Record<string, "idle" | "running" | "attention">;
 const data = (specs: Spec[], people: People = {}) => {
   const value = tree({ tasks: specs.map(task),
-  runs: specs.filter(spec => (spec.state ?? "doing") === "doing" && !spec.idle).map(spec => run(`R${spec.id.slice(1)}`, { taskId: spec.id,
+  runs: specs.filter(spec => (spec.state ?? "doing") === "doing" && !spec.idle && (spec.ownRun || people[spec.id] === "running"
+    || !specs.some(each => each.parentId === spec.id && (each.state ?? "doing") === "doing"))).map(spec => run(`R${spec.id.slice(1)}`, { taskId: spec.id,
     placementId: `P9${spec.id.slice(1)}`, state: "running", startedAt: iso(now - 10 * minute), endedAt: null })), home: homeFixture(specs.filter(spec => !spec.parentId).map(spec => ({ taskId: spec.id, section: "doing" as const }))),
   placements: Object.entries(people).map(([taskId, kind], index) => {
     const displayState = kind === "attention" ? "attention" as const : kind === "running" ? "running" as const : "idle" as const;
@@ -258,4 +264,25 @@ test("a row not started says what the tasks under it say, and nothing of its own
     expect(finishOf("T11", { index, now, factsOf: () => unstarted })).toBeNull();
     expect(finishOf("T1", { index, now, factsOf: () => unstarted })).toBeNull();
   }
+});
+
+test("work under a task waiting on the user is read on every row above it, the waiting task an end left unsaid", () => {
+  const index = indexTasks(data([parent(), kid("T11"), kid("T111", { parentId: "T11" })]).tasks);
+  const estimate = { minutes: 40, usedMinutes: 0, remainingMinutes: 40, pending: false };
+  const atWork = finishFacts({ state: "doing", position: "doing", interrupted: false, working: true, estimate, since: null });
+  const held = finishFacts({ state: "held", position: "held", interrupted: false, working: false, estimate: null, since: null });
+  const failed = finishFacts({ state: "doing", position: "error", interrupted: true, working: false, estimate: null, since: null });
+  // A held row says the time of the work under it, not before.
+  expect(finishOf("T11", { index, now, factsOf: id => id === "T111" ? atWork : held })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 1 });
+  // A failed child says it stopped; its parent reads the time of the work under it.
+  const own = new Map([["T1", held], ["T11", failed], ["T111", atWork]]);
+  expect(finishOf("T11", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "stopped" });
+  expect(finishOf("T1", { index, now, factsOf: id => own.get(id) ?? null })).toEqual({ kind: "subtree", at: now + 40 * minute, count: 1, open: 2 });
+  // With no time under it, a waiting row says nothing.
+  expect(finishOf("T1", { index, now, factsOf: id => id === "T111" ? held : own.get(id) ?? null })).toBeNull();
+});
+
+test("a task whose own Run runs is working, though a Run of its person needs attention", () => {
+  const value = data([parent(), kid("T11", { ownRun: true }), kid("T111", { parentId: "T11", estimate: 100 })], { T11: "attention" });
+  expect(finishFactsFor("T1", indexTasks(value.tasks), value.people, now)).toEqual({ kind: "subtree", at: now + 100 * minute, count: 1, open: 1 });
 });

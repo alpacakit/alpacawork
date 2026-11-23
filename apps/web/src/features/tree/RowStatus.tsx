@@ -8,7 +8,7 @@ import type { Task } from "@/data/types";
 import { useConnection } from "@/data/connection";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
 import { capitalized, dayClock } from "@/domain/day-clock";
-import { countsEstimate, finishWords } from "@/domain/finish-words";
+import { finishWords } from "@/domain/finish-words";
 import type { PeopleIndex } from "@/domain/people";
 import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
 import { taskWorkTime, workTimeMs } from "@/domain/usage";
@@ -187,15 +187,15 @@ export function StatusNotes({ task, className }: { task: Task; className?: strin
 /**
  * When a task at work is expected to report, in a phone row's quiet line before its one time, as short as a time can be
  * said after a flag: "14:30" (by about then), "14:30+" (not before), "14:30 over" in ink once it has passed, or "?" while
- * the estimate waits for an update; nothing for a task waiting on the user (countsEstimate) or one with no estimate.
+ * the estimate waits for an update; nothing on an Awaiting review row (saysRuns, as the time view's band) or with no time.
  * Its press says it in the reader's words. The facts are the reader's and the band's (finishFactsFor), so a past estimate is
  * never said as ahead.
  */
 export function ReportTime({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
-  return countsEstimate(task.rowFacts.position) ? <ReportWords task={task} people={people} className={className} /> : null;
+  return saysRuns(task) ? <ReportWords task={task} people={people} className={className} /> : null;
 }
 
-/** Its own component, so only a row at work follows the clock and walks the tasks under it. */
+/** Its own component, so only a row that may say a time follows the clock and walks the tasks under it. */
 function ReportWords({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
   const { t } = useTranslation("tree");
   const { t: pt, i18n } = useTranslation("people");
