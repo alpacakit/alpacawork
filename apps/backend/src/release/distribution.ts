@@ -1,7 +1,7 @@
 import { appRoot } from '../app-paths.js';
 /** One Owner for executable distribution assembly, copying and sealing. No publication or service effects. */
 import { accessSync, constants, chmodSync, cpSync, mkdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { releaseKind, type ReleaseKind } from './edition.js';
@@ -48,7 +48,8 @@ function seal(root: string, manifest: ReturnType<typeof readManifest>, expected:
 /** destination must be absent, with an existing parent in the caller's unpublished stage. */
 function destination(root: string): void { mkdirSync(root, { mode: 0o700 }); }
 export function assembleDistribution(builtRoot: string, root: string, expected: DistributionIdentity): DistributionImage {
-  if (readFileSync(join(builtRoot, 'SOURCE'), 'utf8').trim() !== expected.source || releaseKind(builtRoot) !== expected.edition)
+  const source = readFileSync(join(builtRoot, 'SOURCE'), 'utf8').trim();
+  if (source !== expected.source || releaseKind(builtRoot) !== expected.edition)
     throw new Error('Build SOURCE/edition differs from the request');
   const targets = parseTargets(expected.targets.join(','));
   destination(root);
@@ -56,14 +57,15 @@ export function assembleDistribution(builtRoot: string, root: string, expected: 
   for (const app of ['backend', 'cli', 'agent-cli']) copyTree(join(builtRoot, 'apps', app, 'dist'), join(root, 'apps', app, 'dist'));
   copyTree(join(builtRoot, 'apps/backend/public'), join(root, 'apps/backend/public'));
   copyTree(join(builtRoot, 'skills'), join(root, 'skills'));
-  copyTree(join(builtRoot, 'docs'), join(root, 'docs'));
+  const docs = join(builtRoot, 'docs'), images = join(docs, 'images') + sep;
+  copyTree(docs, join(root, 'docs'), file => !file.startsWith(images) || !file.endsWith('.gif'));
   copyTree(join(builtRoot, 'apps/launcher'), join(root, 'bin'));
   for (const bin of ['alpacawork.mjs', 'backend.mjs', 'agent.mjs']) chmodSync(join(root, 'bin', bin), 0o755);
   for (const file of ['LICENSE', 'SECURITY.md']) if (existsSync(join(builtRoot, file))) copyTree(join(builtRoot, file), join(root, file));
   writeThirdPartyNotices(builtRoot, root);
   const bundled = runtimeClosure(builtRoot, root, targets), original = readManifest(builtRoot);
   if (existsSync(join(builtRoot, 'README.md')))
-    writeFileSync(join(root, 'README.md'), npmReadme(readFileSync(join(builtRoot, 'README.md'), 'utf8'), original.name, original.version,
+    writeFileSync(join(root, 'README.md'), npmReadme(readFileSync(join(builtRoot, 'README.md'), 'utf8'), original.name, original.version, source,
       (original.repository as { url?: string } | undefined)?.url, file => existsSync(join(root, file))));
   return seal(root, { name: original.name, version: original.version, type: 'module', engines: original.engines,
     // What the npm page shows. npm Trusted Publishing requires repository.url to name the publishing GitHub repository.

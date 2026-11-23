@@ -10,14 +10,15 @@ export function regular(path: string): void {
   const stat = lstatSync(path);
   if (!stat.isFile() || stat.nlink !== 1) throw new Error(`Package file must be regular and unshared: ${path}`);
 }
-export function copyTree(source: string, target: string): void {
+export function copyTree(source: string, target: string, includeFile: (path: string) => boolean = () => true): void {
   const stat = lstatSync(source);
   if (stat.isDirectory()) {
     mkdirSync(target, { recursive: true, mode: 0o755 });
     for (const name of readdirSync(source).sort()) {
-      if (name !== 'node_modules' && name !== '.git') copyTree(join(source, name), join(target, name));
+      if (name !== 'node_modules' && name !== '.git') copyTree(join(source, name), join(target, name), includeFile);
     }
   } else {
+    if (!includeFile(source)) return;
     regular(source); mkdirSync(dirname(target), { recursive: true, mode: 0o755 });
     copyFileSync(source, target); chmodSync(target, stat.mode & 0o755);
   }
