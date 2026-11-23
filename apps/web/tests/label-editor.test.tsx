@@ -12,7 +12,6 @@ import { Reader } from '../src/features/reader/Reader';
 import { LabelEditor } from '../src/features/coordinator/editor/LabelEditor';
 import { CoordinatorCard } from '../src/features/coordinator/CoordinatorCard';
 import { useViewStore } from '../src/state/view-store';
-import { useSitting } from '../src/features/reader/next-question';
 import { replyInDraft, useInputDraft } from '../src/features/coordinator/editor/draft';
 import { useConversation } from '../src/features/coordinator/coordinator';
 import { taskLabel, textDocument, replyTo, replyIn, inlines, emptyDocument, hasContent, type Document } from '../src/features/coordinator/editor/document';
@@ -267,22 +266,6 @@ test('the project Task the screen is narrowed to seeds a task badge, removable l
   expect(badge.querySelector('[data-project-tile]')).not.toBeNull();
   expect(badge.querySelector(`[aria-label="Remove ${PROJECT_TASK}"]`)).not.toBeNull();
   expect(document.querySelector('[data-label=project]')).toBeNull();
-});
-
-test('the card saying every turn is answered takes the place of the Task it was on: that Task\'s label goes, as when the panel closes', async () => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(snapshotJson(url.startsWith('/api/coordinator/skills')
-    ? { status: 'unavailable', profile: 'claude', skills: [], reason: 'test' }
-    : { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
-  onTestFinished(() => { vi.unstubAllGlobals(); useViewStore.setState(useViewStore.getInitialState()); useSitting.setState({ emptied: null }); });
-  const data = screenData(tree({ tasks: [dto()] }));
-  useViewStore.setState({ project: null, navigationReady: true });
-  act(() => useViewStore.getState().openReader('T1'));
-  setConversationState({ open: true, read: true, error: null });
-  render(<TestWorkspace data={data}><CoordinatorCard /></TestWorkspace>);
-  const labels = () => [...document.querySelectorAll<HTMLElement>('[data-label=task]')].map(label => label.textContent);
-  await waitFor(() => expect(labels().join()).toContain('T1'));
-  act(() => useSitting.setState({ emptied: { taskId: 'T1', animate: false } }));
-  await waitFor(() => expect(labels().join()).not.toContain('T1'));
 });
 
 test('a task-only draft shows its recipient after the label without writing to the draft', async () => {

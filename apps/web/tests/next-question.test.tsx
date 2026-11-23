@@ -18,6 +18,9 @@ import { Reader } from "../src/features/reader/Reader";
 import { EmptyDeck } from "../src/features/reader/NextQuestion";
 import { TaskActionSlot } from "../src/features/coordinator/task-action-slot";
 import { CoordinatorInput } from "../src/features/coordinator/CoordinatorInput";
+import { CoordinatorCard } from "../src/features/coordinator/CoordinatorCard";
+import { useInputDraft } from "../src/features/coordinator/editor/draft";
+import { inlines } from "../src/features/coordinator/editor/document";
 import { useConversation } from "../src/features/coordinator/coordinator";
 import { useTitleKeys } from "../src/features/forms/title-keys";
 import type { Task } from "../src/data/types";
@@ -262,6 +265,27 @@ test("✔ sends Review OK to the API; once locally saved the card is stamped and
   const flight = await flightOf(card);
   expect(String(flight.keyframes.at(-1)!.transform)).toMatch(/^translate\(\d/);
   expect(document.querySelector("[data-toast]")).toBeNull();
+});
+
+test.each([
+  ["the next waiting Task", [waits("T1", 1), waits("T2", 2)], "T2"],
+  ["the card saying every turn is answered", [waits("T1", 1)], "T1"],
+] as const)("Done moving the reader on to %s takes the finished Task's label off a draft holding only it", async (_, tasks, after) => {
+  let input: ReturnType<typeof useInputDraft> | undefined;
+  function Draft() { input = useInputDraft(); return null; }
+  serve();
+  shownData = screenOf([...tasks]);
+  useViewStore.setState({ navigationReady: true });
+  act(() => useViewStore.getState().openTask("T1", { reader: true }));
+  render(<TestWorkspace data={shownData}><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorCard /><Draft /><Toaster /></TestWorkspace>);
+  const labels = () => inlines(input!.doc).flatMap(node => node.type === "taskLabel" ? [node.attrs.id] : []);
+  await waitFor(() => expect(labels()).toEqual(["T1"]));
+  // Words typed and taken away again: the draft is the person's, holding the label alone.
+  act(() => input!.change(doc => ({ ...doc, content: [...doc.content, { type: "paragraph", content: [{ type: "text", text: "x" }] }] })));
+  act(() => input!.change(doc => ({ ...doc, content: doc.content.slice(0, -1) })));
+  approve();
+  await waitFor(() => expect(shown()).toBe(after));
+  await waitFor(() => expect(labels()).not.toContain("T1"));
 });
 
 test("a ✔ the server refused (an older version) keeps the successor and offers the task again", async () => {
