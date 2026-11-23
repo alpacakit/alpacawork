@@ -53,13 +53,18 @@ to README.md#install): keep those headings, or change the links with them.
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 </p>
 
-<!-- The intro video goes here once it is uploaded on github.com: one line holding the URL GitHub gives. Then move the picture below to the end of the features list. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.gif">
+    <img src="docs/images/hero.gif" alt="A request typed into one input box goes to the coordinator, which adds tasks to three projects (Website, Mobile app, Marketing) and places an AI such as opus · high or gpt-5 · high on each; one task asks a question, you answer, and every task finishes" width="640">
+  </picture>
+</p>
+
+alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 <p align="center">
   <img src="docs/images/pc-phone-dark.png" alt="alpacawork in a PC browser, with a list of ten tasks in progress and three awaiting review beside an open task's report, and a phone on the right showing the same report" width="820">
 </p>
-
-alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 ## Install
 
