@@ -197,7 +197,7 @@ export interface AggregateContribution {
   readonly running: boolean;
   /** An active placement with a running or queued Run (workingBelow). */
   readonly working: boolean;
-  /** A queued, running or needs-review Run (the home list's working). */
+  /** A running Run (the home list's working). */
   readonly homeWorking: boolean;
   /** Its ended Runs' usage, known and unknown Runs counted. */
   readonly usage: UsageTotal;
