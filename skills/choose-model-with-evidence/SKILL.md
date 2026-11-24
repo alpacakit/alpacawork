@@ -7,7 +7,7 @@ description: Use alpacawork outcomes to choose a model and effort for the owner 
 
 Use the user's named choice first. Otherwise, read the project policy for the purpose, starting model and effort, and permitted changes. Follow the policy's requirements for how the work is done. Use this skill before assigning, replacing, or starting a new conversation for the owner of a user-requested task. A continuation uses its existing selection.
 
-Estimate the weight from the difficulty and impact of the owner's judgment. Use the project's wording for purpose and weight. Read the evidence before choosing.
+Copy the purpose from the exact row name in the policy's model table. Estimate the weight from the difficulty and impact of the owner's judgment. Use the policy's fixed labels for the three weights. If it leaves them unnamed, use `light`, `ordinary`, or `heavy`. Use the same labels in the read and the first instruction.
 
 ```sh
 alpacawork analysis owner-choices --project <project> --purpose "<purpose>" --weight "<weight>"
@@ -15,9 +15,11 @@ alpacawork analysis owner-choices --project <project> --purpose "<purpose>" --we
 
 Send both `--purpose` and `--weight` with `alpacawork task request` on the first instruction to the owner. Later requests and handovers use the context recorded with that instruction, when present.
 
+Use the policy's starting choice whenever the policy gives no permission to change it.
+
 ## Find the current choice
 
-The command shows the five latest pass or rework judgments for each choice, newest first. Open a rework judgment before relying on it. Check whether the original request was unmet. Skip cases that only added scope or introduced a new preference. Apply this filter when deciding whether to raise effort, return to a stronger choice, or try a lighter choice again. When the cause is unclear, use the policy choice without trying a lighter one.
+The command shows the five latest pass or rework judgments for each choice, newest first. Before relying on a rework judgment, read the task's history with `alpacawork task get --task <task> --log 100` and check whether the original request was unmet. Skip cases that only added scope or introduced a new preference. Apply this filter when deciding whether to raise effort, return to a stronger choice, or try a lighter choice again. When the cause is unclear, use the policy choice without trying a lighter one.
 
 1. Start at the policy's starting choice.
 2. While the choice's two latest usable judgments are both rework, go one permitted step up.

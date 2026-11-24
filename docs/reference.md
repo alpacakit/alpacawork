@@ -91,8 +91,12 @@ When sending the first instruction to the owner of a user-requested Task, `task 
 and `--weight` together. Use the project's policy labels. The read command uses the same labels and groups witnessed
 owner launches through the first acceptance, send-back, review-time instruction or stop. Mixed choices are counted
 in the totals. Each row shows up to five pass or rework judgments, pending task IDs and median cost for completed
-judged cases. Costs sum Run time and measured output tokens across the Task and its descendants, including repair.
+judged cases. Costs sum Run time and measured output tokens across the Task and its descendants, including Runs
+after acceptance. Pending task IDs can include cases whose owner choice is still unknown.
 An early rework remains reworked here if the Task is later stopped without acceptance. Task analysis counts it as stopped.
+
+To use the optional selection guidance, copy `skills/choose-model-with-evidence` from the repository into your agent's
+skills directory.
 
 Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods.
 Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The server's time zone can be
