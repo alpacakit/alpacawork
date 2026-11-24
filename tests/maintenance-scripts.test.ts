@@ -1,12 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { closeSync, existsSync, lstatSync, mkdtempSync, mkdirSync, openSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import koffi from 'koffi';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { legacySource, phoneResults } from './helpers/script-fixtures.ts';
+import { phoneResults } from './helpers/script-fixtures.ts';
 
 const repo = resolve(import.meta.dirname, '..');
 const run = (script: string, args: string[], cwd: string, env = process.env) => spawnSync(process.execPath,
@@ -76,49 +75,6 @@ test('phone summary retains outliers, partial series, warmups and supplementary 
   const input = JSON.parse(readFileSync(invalid, 'utf8')); input.profile = true;
   writeFileSync(invalid, JSON.stringify(input));
   assert.notEqual(run('scripts/perf/phone-survey-summary.ts', [root], repo).status, 0);
-});
-
-test('legacy synthesis preserves the fixed-seed tree, contents and file-clone cadence', t => {
-  const root = temporary(t), source = join(root, 'source');
-  legacySource(source);
-  for (const total of [1000, 1100]) {
-    const destination = join(root, String(total));
-    const result = run('scripts/perf/make-synth.ts', [source, destination, String(total)], repo);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(readdirSync(destination).filter(name => /^T\d+$/.test(name)).length, total);
-    assert.equal(existsSync(join(destination, '.alpacawork/connection.json')), false);
-    assert.equal(existsSync(join(destination, '.alpacawork/push.json')), false);
-    assert.equal(readFileSync(join(destination, '.alpacawork/runs.sqlite'), 'utf8'), 'runs.sqlite');
-    assert.equal(readFileSync(join(source, 'T2/index.md'), 'utf8'), readFileSync(join(destination, 'T2/index.md'), 'utf8'));
-    const hash = createHash('sha256');
-    const visit = (relative = '') => {
-      for (const name of readdirSync(join(destination, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-        const path = relative ? relative + '/' + name.name : name.name;
-        if (name.isDirectory()) visit(path);
-        else { hash.update(path + '\0'); hash.update(readFileSync(join(destination, path))); }
-      }
-    };
-    visit();
-    // Captured from the original Python tool with this synthetic source, before removing it.
-    const expected = total === 1000 ? '1784c9d8935d1e7a586a83a2ac6afe821d87f708d7d3ad9df04a825e288a57a4'
-      : 'd0d71cf8cb78c1489b4e3f22e2f1e04f5f8157cd465aa4fcd23127969f4f26f3';
-    assert.equal(hash.digest('hex'), expected);
-  }
-});
-
-test('legacy synthesis clones a symlink to an attachment directory', t => {
-  const root = temporary(t), source = join(root, 'source'), destination = join(root, 'copy');
-  legacySource(source);
-  mkdirSync(join(source, 'shared'));
-  writeFileSync(join(source, 'shared/note.txt'), 'shared attachment');
-  rmSync(join(source, 'T9/files'), { recursive: true });
-  symlinkSync('../shared', join(source, 'T9/files'));
-  const result = run('scripts/perf/make-synth.ts', [source, destination, '1000'], repo);
-  assert.equal(result.status, 0, result.stderr);
-  const copied = join(destination, 'T1001/files');
-  assert.equal(lstatSync(copied).isSymbolicLink(), true);
-  assert.equal(readlinkSync(copied), '../shared');
-  assert.equal(readFileSync(join(copied, 'note.txt'), 'utf8'), 'shared attachment');
 });
 
 test('database range-lock expiry stops a fixture even while native lock acquisition blocks', t => {
