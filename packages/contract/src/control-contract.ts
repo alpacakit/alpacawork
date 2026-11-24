@@ -16,7 +16,7 @@ import { taskBaseStateSchema } from './fields.js';
 import { reportMark } from './report-mark.js';
 import { TASK_LIFECYCLES, TASK_STATE } from '@alpacawork/raw/task-enums';
 import { taskActorSchema as actorSchema, taskLogSchema } from '@alpacawork/raw/task-log-schema';
-import { agentNameSchema, runActivityKindSchema, runActivitySchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
+import { agentNameSchema, runActivityKindSchema, runActivityViewSchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
 import { bodyMarkSchema, descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, logIdSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema } from './fields.js';
 import { errorEntrySchema, problemErrorSchema } from './problem.js';
 import { hostNoticeSchema } from './host-contract.js';
@@ -212,7 +212,7 @@ export const controlRunSchema = z.object({
   into: runIdSchema.nullable(),
   /** Whether the agent takes further instructions on its input while it works. */
   takesInput: z.boolean(),
-  activity: runActivitySchema.nullable(),
+  activity: runActivityViewSchema.nullable(),
   createdAt: z.iso.datetime({ offset: true }), startedAt: z.iso.datetime({ offset: true }).nullable(),
   endedAt: z.iso.datetime({ offset: true }).nullable(),
   usage: z.object({ run: tokenCountersSchema.nullable(), includesEarlier: z.boolean() }).strict().nullable(),

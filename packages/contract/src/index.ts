@@ -37,6 +37,7 @@ export { projectColorSchema } from '@alpacawork/raw/project-settings';
 
 export * from './agent-settings.js';
 export * from './agent-limits.js';
+export * from './agent-context.js';
 export * from './ai-stack.js';
 export * from './agent-launch.js';
 export * from './agent-selection.js';

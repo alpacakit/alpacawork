@@ -9,6 +9,7 @@ import { launchAgent, launchArgv, runScope } from './launch-agent.js';
 import { EventJournal, executionFolder, identityOf, readLaunch, readCommands, names } from './execution-files.js';
 import { runtimeAdapter, unavailableRuntimeMessage } from '../agents/registry.js';
 import { OutputActivityReader } from './activity.js';
+import { recordReportedContext } from '../agents/context-reported.js';
 import { appendReceipt, endOutcome, publishCompletion, readEnd, runExpired, type Outcome } from './result-observation.js';
 import { CommandWatch } from './command-watch.js';
 import { terminateAgent } from './termination.js';
@@ -112,7 +113,10 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     journal.append('started', processIdentity(child.pid!));
     transfer(channel, snapshot.initialInputId, id, snapshot.prompt);
     let session = snapshot.invocation.session?.id ?? null, finished = false;
-    const activity = new OutputActivityReader(adapter);
+    const launch = snapshot.invocation.launch;
+    const activity = new OutputActivityReader(adapter, undefined,
+      update => { try { recordReportedContext(root, launch.adapter, launch.values.model ?? null, update); }
+        catch (error) { console.error('Reported context could not be kept', error); } });
     const takeReceipts = () => {
       for (const receipt of channel.poll(folder, session).receipts) {
         const prior = observedInputs.get(receipt.id);

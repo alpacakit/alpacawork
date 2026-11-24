@@ -1,7 +1,9 @@
 /** A published reader survives later writes; the next reader agrees with a fresh read of the same database. */
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { parse, stringify } from 'yaml';
+import { runFolder } from '@alpacawork/contract/run';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -308,4 +310,21 @@ test('History reverse references cover exactly the Tasks named across all own an
     }
   }
   for (const id of records.taskIds()) assert.deepEqual(records.historyReferrers(id), [...expected.get(id) ?? []].sort(), id);
+});
+
+test('a context window written in the settings reaches every working Run\'s ring on the settings change alone', t => {
+  const h = fixture(t);
+  h.db.prepare(`UPDATE runs SET record=json_set(record,'$.state','running','$.ended_at',NULL,'$.exit',NULL,'$.reason',NULL,
+    '$.agent','codex','$.launch.adapter','codex','$.launch.values',json('{"model":"gpt-6.2-sol"}')) WHERE id=4`).run();
+  mkdirSync(runFolder(h.root, 'R4'), { recursive: true });
+  writeFileSync(join(runFolder(h.root, 'R4'), 'activity.json'), JSON.stringify({ at, kind: 'output', toolName: null, doing: null, note: null,
+    context: { usedTokens: 150_000, compacted: false, observedAt: at } }));
+  const before = emptyWorkspaceRecords(h.root).load(h.db, pv(1));
+  const window = (records: DatabaseWorkspaceRecords) => records.bundle('T5')!.runFiles!.get('R4')!.activity!.context;
+  assert.deepEqual([window(before)!.windowTokens, window(before)!.windowFrom], [475_000, 'default']);
+  const file = join(h.root, 'config.yaml'), config = parse(readFileSync(file, 'utf8')) ?? {};
+  config.agents = { ...config.agents, codex: { ...config.agents?.codex, context: { 'gpt-6.2-sol': { window: 300_000 } } } };
+  writeFileSync(file, stringify(config));
+  const after = before.advance(h.db, [{ kind: 'config', id: 'config.yaml' }], pv(2)).next;
+  assert.deepEqual([window(after)!.windowTokens, window(after)!.windowFrom], [300_000, 'setting']);
 });
