@@ -40,6 +40,19 @@
     "choices": "依頼のときに選べる値",
     "choicesHint": "上の AI の一覧と、依頼のときに選べる候補です。",
     "collapse": "{{name}} を閉じる",
+    "context": {
+      "from": "{{value}}（{{source}}）",
+      "hint": "タスクの詳細に出る、会話の使用量の円の上限（トークン数）です。空欄なら AI が知らせた値か既定値を使います。",
+      "noModel": "モデル指定なし",
+      "source": {
+        "default": "既定",
+        "reported": "AI の報告",
+        "setting": "設定"
+      },
+      "title": "会話の上限",
+      "unset": "未設定",
+      "windowOf": "{{model}} の上限（トークン）"
+    },
     "coordinatorStack": {
       "lead": "入力欄から送った頼みごとを受けてタスクにし、タスクを進める AI に任せます。",
       "title": "入力欄で話す AI（コーディネーター）"
@@ -57,6 +70,7 @@
     "envNames": "追加で渡す環境変数",
     "envPlaceholder": "ANTHROPIC_API_KEY など",
     "errors": {
+      "contextModel": "会話の上限に、このエージェントのモデルに無い名前があります。その欄を空にしてください。",
       "dashFirst": "「-」は先頭にだけ書けます。先頭へ移してください。",
       "duplicateAgent": "{{name}} はもうあります。別の名前を付けてください。",
       "duplicateEnv": "{{name}} は重複しています。1つだけ残してください。",

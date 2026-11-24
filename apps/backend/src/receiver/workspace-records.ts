@@ -24,7 +24,7 @@ import { RunStore, parseStoredPlacement, unclosedSent, type StoredRequest } from
 import type { TaskLog } from '@alpacawork/raw';
 import { dialoguesOf, requestedByUser, saidAt, markMessages } from '../coordinator/messages.js';
 import { readProjectionTask } from '../control/task-store.js';
-import { readRunActivity } from '../runs/activity.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
 import { readAgentsSettings } from '../agents-settings.js';
@@ -233,7 +233,7 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
     if (run.task === null) return { activity: null, errorCause: undefined };
     const observed = this.observations.runFiles?.(run);
     return observed ? structuredClone(observed) : {
-      activity: run.state === 'running' ? readRunActivity(runFolder(this.root, run.id)) : null,
+      activity: run.state === 'running' ? readRunActivityView(this.root, run) : null,
       errorCause: failureAvailability(readRunFailure(this.root, run)),
     };
   }
@@ -513,7 +513,14 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
         next.definitions = definition ? next.definitions.set(key.id, definition) : next.definitions.delete(key.id);
       }
       if (key.kind === 'project_field') projectFacts = next.readSchema(db, key.id) || projectFacts;
-      if (key.kind === 'config') next.config = next.configuration();
+      if (key.kind === 'config') {
+        next.config = next.configuration();
+        // A model's context window written in config.yaml changes every working Run's ring at once.
+        for (const [id, fact] of this.runs) if (fact.record.state === 'running') {
+          changedRuns.add(asRunId(id));
+          if (fact.record.task) need(fact.record.task, 'runs');
+        }
+      }
       if (key.kind === 'conversation') messages.add(key.id);
       if (key.kind === 'person' || key.kind === 'config' || key.kind === 'conversation') continue;
       if (key.kind === 'input') inputIds.add(key.id);

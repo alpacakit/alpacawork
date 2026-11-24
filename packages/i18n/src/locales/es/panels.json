@@ -40,6 +40,19 @@
     "choices": "Valores disponibles al pedir trabajo",
     "choicesHint": "Los valores que se ofrecen en las listas de IA y en las solicitudes.",
     "collapse": "Contraer {{name}}",
+    "context": {
+      "from": "{{value}} ({{source}})",
+      "hint": "El 100 % del círculo que muestra el uso de una conversación en el detalle de una tarea, en tokens. Si se deja vacío, se usa la cifra que informó la IA o el valor predeterminado.",
+      "noModel": "Sin modelo elegido",
+      "source": {
+        "default": "predeterminado",
+        "reported": "informado por la IA",
+        "setting": "definido aquí"
+      },
+      "title": "Límites de contexto",
+      "unset": "Sin definir",
+      "windowOf": "Ventana de contexto de {{model}} (tokens)"
+    },
     "coordinatorStack": {
       "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas.",
       "title": "IA con la que hablas en el cuadro de texto (coordinador)"
@@ -57,6 +70,7 @@
     "envNames": "Variables de entorno adicionales",
     "envPlaceholder": "p. ej. ANTHROPIC_API_KEY",
     "errors": {
+      "contextModel": "Un límite de contexto nombra un modelo que este agente ya no incluye. Vacía ese campo.",
       "dashFirst": "“-” solo puede ir en primer lugar. Muévelo al principio.",
       "duplicateAgent": "{{name}} ya existe. Elige otro nombre.",
       "duplicateEnv": "{{name}} aparece más de una vez. Deja solo una.",

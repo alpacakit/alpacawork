@@ -26,7 +26,7 @@ test('every place shows one paced work name and the seconds since sending: held 
     coordinatorWork: work && { conversation: 'conversation', turn: turn.id, name: 'command' as const, count: 1, ...work } } });
   function RunWork() {
     const text = useActivityText();
-    return <span data-testid="run">{text({ at: turn.at, kind: 'output', toolName: null, note: null,
+    return <span data-testid="run">{text({ at: turn.at, kind: 'output', toolName: null, note: null, context: null,
       doing: { at: turn.at, toolName: 'Bash', command: 'task.new' } })}</span>;
   }
   const page = (data: ReturnType<typeof at>, open = true) =>
