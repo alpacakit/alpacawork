@@ -1,11 +1,13 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
+import { QueryObserver } from '@tanstack/react-query';
 import { startI18n } from '@alpacawork/i18n';
 import { DEFAULT_LIMITS } from '@alpacawork/contract';
 import { headOf, TestWorkspace, dto, run } from './fixtures';
 import { useSaveServerSettings, useStopRun } from '../src/data/queries';
 import { useLifecycle } from '../src/features/forms/lifecycle';
 import { queryClient } from '../src/data/query-client';
+import { resources } from '../src/data/resources';
 import { useWriteIntentStore } from '../src/data/write-intent';
 
 beforeAll(() => startI18n());
@@ -40,3 +42,23 @@ for (const operation of ['config', 'lifecycle', 'stop'] as const)
     } else expect(header).toBe(fixed);
     expect(JSON.parse(String(request[1]?.body))).not.toHaveProperty('opId');
   });
+
+test('a saved config reads the plan limits again, so an agent turned off leaves the bar at once', async () => {
+  let saved = false;
+  const agent = (adapter: 'claude' | 'codex') => ({ adapter, state: 'ok', windows: [], account: null, observedAt: '2026-11-24T00:00:00.000Z' });
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    if (String(url).includes('/api/limits')) return new Response(JSON.stringify({ agents: saved ? [agent('claude')] : [agent('claude'), agent('codex')] }));
+    saved = true;
+    return new Response(JSON.stringify({ hash: 'c'.repeat(64), agentsText: 'agents: {}\n', agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } }));
+  });
+  // The bar shows the limits of the agents enabled before the save.
+  const bar = new QueryObserver(queryClient, resources.agentLimits('/fixture'));
+  const shown = () => bar.getCurrentResult().data?.agents.map(entry => entry.adapter);
+  const stop = bar.subscribe(() => {});
+  try {
+    await vi.waitFor(() => expect(shown()).toEqual(['claude', 'codex']));
+    const hook = renderHook(() => useSaveServerSettings(), { wrapper });
+    await act(async () => { await hook.result.current.mutateAsync({ yaml: 'limits: {}', agents: 'agents: {}', expected: 'a'.repeat(64), opId: 'save' }); });
+    await vi.waitFor(() => expect(shown()).toEqual(['claude']));
+  } finally { stop(); }
+});

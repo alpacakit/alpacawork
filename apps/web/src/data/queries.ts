@@ -5,12 +5,12 @@ import { fetchAcceptedResource, ensureReadAnchor, readerTaskRow, readState, reco
 import type { ReadAssessment } from './read-model';
 import { sendDirectIntent } from "./direct-write";
 import { bindIntentTransport, intentKey } from "./write-intent";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { attachmentBytes, DEFAULT_LIMITS, serverSettingsSchema, type ServerSettings } from "@alpacawork/contract";
 import { taskRowFields, taskWriteResultSchema, type ProjectedIndexDTO, type ControlRunDTO } from "@alpacawork/contract/control";
 import { descendants, indexTasks, withinProjectFilter, type TaskIndex } from "@/domain/tasks";
-import { api, indexKey, resources } from "./resources";
+import { api, indexKey, readAgentLimits, resources } from "./resources";
 export { api } from "./resources";
 import { rowTask } from "./map";
 import { useFrameSelector, useWorkspaceSelector } from "./workspace-store";
@@ -477,10 +477,32 @@ export function useSaveServerSettings(meta?: WriteOptions) {
     const access = bindIntentTransport(basis ?? workspaceWriteBasis(), { yaml, agents, expected }, wire, opId);
     const settings = await api.request(commandRoute("config/set"), serverSettingsSchema, undefined, wire, opId, access);
     client.setQueryData(resources.serverSettings(root).queryKey, settings);
-    // The saved agents may run another executable: their status is read again.
+    // The saved agents may run another executable, and an agent turned on or off joins or leaves the bar's plan limits:
+    // both are read again.
     void client.invalidateQueries({ queryKey: resources.agentStatus(root).queryKey });
+    void client.invalidateQueries({ queryKey: resources.agentLimits(root).queryKey });
     return settings;
   } });
+}
+
+/**
+ * Read the plan limits again now. No model is called, so it costs no tokens: each agent answers in a second or two. It is
+ * a read, not a write: it replaces the bar's own read (one in flight is dropped, so an older answer cannot land after it)
+ * and its failure is the caller's to say.
+ */
+export function useRefreshAgentLimits(): { refresh: () => Promise<void>; refreshing: boolean } {
+  const client = useQueryClient();
+  const root = useFrameSelector((data) => data?.info.root ?? "");
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    const options = resources.agentLimits(root);
+    setRefreshing(true);
+    try {
+      await client.cancelQueries({ queryKey: options.queryKey });
+      await client.fetchQuery({ ...options, queryFn: ({ signal }) => readAgentLimits(true, signal), staleTime: 0 });
+    } finally { setRefreshing(false); }
+  };
+  return { refresh, refreshing };
 }
 
 /** The stopped Run reaches the screen with the feed's next delta. */

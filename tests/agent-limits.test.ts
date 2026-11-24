@@ -10,16 +10,18 @@ import { copilotLimitWindows, copilotUsage } from '../apps/agent-cli/test-dist/c
 
 const reset = '2026-11-29T15:00:00.000Z';
 
-test('Claude: the week, the 5-hour session and each model\'s own week, from the control response alone', () => {
+test('Claude: the week, the 5-hour session, each model\'s own week and the signed-in account, from the control responses alone', () => {
   const answer = { type: 'control_response', response: { subtype: 'success', request_id: 'limits', response: { rate_limits_available: true,
     rate_limits: { five_hour: null, seven_day: { utilization: 63, resets_at: reset }, seven_day_opus: null,
       model_scoped: [{ display_name: 'Fable', utilization: 77, resets_at: reset }] } } } };
-  const stdout = [JSON.stringify({ type: 'system', subtype: 'init' }), JSON.stringify(answer)].join('\n');
-  assert.deepEqual(claudeLimits.read(stdout), [
+  const account = { type: 'control_response', response: { subtype: 'success', request_id: 'account', response: { account: { email: 'someone@example.com' } } } };
+  const stdout = [JSON.stringify({ type: 'system', subtype: 'init' }), JSON.stringify(account), JSON.stringify(answer)].join('\n');
+  assert.deepEqual(claudeLimits.read(stdout), { account: 'someone@example.com', windows: [
     { kind: 'weekly', minutes: 10_080, model: null, usedPercent: 63, resetsAt: reset },
-    { kind: 'weekly', minutes: 10_080, model: 'Fable', usedPercent: 77, resetsAt: reset }]);
-  // An API key has no plan limits to read.
-  assert.deepEqual(claudeLimits.read(JSON.stringify({ ...answer, response: { ...answer.response, response: { rate_limits_available: false } } })), []);
+    { kind: 'weekly', minutes: 10_080, model: 'Fable', usedPercent: 77, resetsAt: reset }] });
+  // An API key has no plan limits to read, and an answer without the account names no one.
+  assert.deepEqual(claudeLimits.read(JSON.stringify({ ...answer, response: { ...answer.response, response: { rate_limits_available: false } } })),
+    { windows: [], account: null });
 });
 
 test('Codex: each window says its own length; a missing secondary is no window', () => {
@@ -58,7 +60,9 @@ process.stdin.resume(); process.stdin.on('end', () => console.log(JSON.stringify
   writeFileSync(bridge, `import { appendFileSync, existsSync } from 'node:fs';
 appendFileSync(${JSON.stringify(calls)}, process.argv.slice(2).join(' ') + '\\n');
 if (existsSync(${JSON.stringify(join(root, 'fail'))})) process.exit(2);
-console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: 9, resetsAt: null }] }));\n`);
+const used = existsSync(${JSON.stringify(join(root, 'used'))}) ? 20 : 9;
+const account = existsSync(${JSON.stringify(join(root, 'long'))}) ? 'x'.repeat(300) : 'someone';
+console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: used, resetsAt: null }], account }));\n`);
   let now = 0;
   const config = { agents: { grok: { enabled: true }, codex: { enabled: true }, claude: { enabled: true }, 'claude-chrome': { adapter: 'claude', enabled: true },
     off: { adapter: 'copilot', enabled: false } }, aiStack: [{ agent: 'claude' }] };
@@ -72,9 +76,20 @@ test('one entry per kind of agent, the task stack\'s first, then the other enabl
   const first = await f.monitor.read();
   assert.deepEqual(first.agents.map(agent => [agent.adapter, agent.state]), [['claude', 'ok'], ['grok', 'unsupported'], ['codex', 'ok']]);
   assert.equal(first.agents[0]!.windows[0]!.usedPercent, 50);
+  assert.equal(first.agents.find(agent => agent.adapter === 'codex')!.account, 'someone');
   assert.match(f.calls().find(call => call.startsWith('codex')) ?? '', /^codex --command .*\/codex --limits$/);
   await f.monitor.read();
   assert.equal(f.calls().length, 2);
+  // The screen's refresh asks every agent again while the last answers are still fresh, and answers with their new
+  // answers; two refreshes at once ask each agent once.
+  writeFileSync(join(f.root, 'used'), '');
+  const [refreshed] = await Promise.all([f.monitor.read({ fresh: true }), f.monitor.read({ fresh: true })]);
+  assert.equal(refreshed.agents.find(agent => agent.adapter === 'codex')!.windows[0]!.usedPercent, 20);
+  assert.equal(f.calls().length, 4);
+  // An account name the contract refuses is left out; the limits stay.
+  writeFileSync(join(f.root, 'long'), '');
+  const codex = (await f.monitor.read({ fresh: true })).agents.find(agent => agent.adapter === 'codex')!;
+  assert.deepEqual([codex.state, codex.account, codex.windows.length], ['ok', null, 1]);
 });
 
 test('a failed read keeps the last windows and their time; an agent never read says it could not be', async t => {
@@ -89,5 +104,5 @@ test('a failed read keeps the last windows and their time; an agent never read s
   const fresh = fixture(t);
   appendFileSync(join(fresh.root, 'fail'), '');
   assert.deepEqual((await fresh.monitor.read()).agents.find(agent => agent.adapter === 'codex'),
-    { adapter: 'codex', state: 'unavailable', windows: [], observedAt: null });
+    { adapter: 'codex', state: 'unavailable', windows: [], account: null, observedAt: null });
 });

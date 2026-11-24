@@ -249,6 +249,8 @@ export const fieldUseRules: readonly InputRule<z.output<typeof fieldUseShape>>[]
 ];
 export const fieldUseInput = fieldUseShape.superRefine((value, context) => checkRules(value, context, fieldUseRules));
 export const emptyInput = z.object({});
+/** The bar's plan limits; `fresh` asks every agent again now. */
+export const agentLimitsReadInput = z.object({ fresh: z.boolean().optional() }).strict();
 
 export const configSetShape = z.object({ config: z.string(), agents: z.string(), expectedConfigHash: digestSchema });
 /**

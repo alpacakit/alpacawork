@@ -25,6 +25,9 @@
     "readAgo_one": "Updated {{count}} min ago",
     "readAgo_other": "Updated {{count}} min ago",
     "readNow": "Updated just now",
+    "refresh": "Read again now",
+    "refreshFailed": "Could not read the AI plan limits again",
+    "refreshing": "Reading…",
     "reset": {
       "at": "Resets {{when}}",
       "inHours": "Resets in {{hours}}h {{minutes}}m",

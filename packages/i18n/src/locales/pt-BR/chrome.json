@@ -27,6 +27,9 @@
     "readAgo_many": "Atualizado há {{count}} min",
     "readAgo_other": "Atualizado há {{count}} min",
     "readNow": "Atualizado agora",
+    "refresh": "Ler de novo agora",
+    "refreshFailed": "Não foi possível ler de novo os limites de uso da IA",
+    "refreshing": "Lendo…",
     "reset": {
       "at": "Reinicia em {{when}}",
       "inHours": "Reinicia em {{hours}}h {{minutes}}min",

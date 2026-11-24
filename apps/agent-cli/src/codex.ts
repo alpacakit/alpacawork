@@ -1,6 +1,6 @@
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
-import { limitWindow, type LimitWindow } from '@alpacawork/contract/agent-limits';
+import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 /** Codex-specific exec options and app-server protocol. */
 import { type ChildProcessByStdio } from 'node:child_process';
@@ -253,11 +253,14 @@ export function codexUsage(value: unknown): AgentUsage | null {
     cacheRead: read, cacheWrite: write, output: total.outputTokens });
 }
 
-/** The account's own limit windows (`account/rateLimits/read`); no thread is opened and no model is called. */
-export async function codexLimits(command: string): Promise<LimitWindow[]> {
+/** The account's own limit windows (`account/rateLimits/read`) and who it is (`account/read`); no thread is opened and
+ * no model is called. */
+export async function codexLimits(command: string): Promise<LimitsReport> {
   const server = spawn(command, ['app-server'], { stdio: ['pipe', 'pipe', 'ignore'] });
   try {
-    const result = await new Promise<unknown>((resolve, reject) => {
+    const [limits, account] = await new Promise<[unknown, unknown]>((resolve, reject) => {
+      // The two answers may come in either order.
+      const answers = new Map<number, unknown>();
       let buffered = '';
       const write = (message: object) => server.stdin.write(`${JSON.stringify(message)}\n`);
       server.once('error', reject);
@@ -270,13 +273,21 @@ export async function codexLimits(command: string): Promise<LimitWindow[]> {
           try { message = JSON.parse(buffered.slice(0, end)); } catch { message = {}; }
           buffered = buffered.slice(end + 1);
           if (message.error && (message.id === 1 || message.id === 2)) reject(new Error(message.error.message ?? 'app-server error'));
-          else if (message.id === 1) { write({ method: 'initialized', params: {} }); write({ id: 2, method: 'account/rateLimits/read', params: {} }); }
-          else if (message.id === 2) resolve(message.result);
+          else if (message.id === 1) {
+            write({ method: 'initialized', params: {} });
+            write({ id: 2, method: 'account/rateLimits/read', params: {} });
+            write({ id: 3, method: 'account/read', params: { refreshToken: false } });
+          } else if (message.id === 2 || message.id === 3) {
+            // Who is signed in is beside the limits: its failure leaves the account unnamed, not the limits unread.
+            answers.set(message.id, message.error ? null : message.result);
+            if (answers.size === 2) resolve([answers.get(2), answers.get(3)]);
+          }
         }
       });
       write({ id: 1, method: 'initialize', params: INITIALIZE });
     });
-    return codexLimitWindows(result);
+    const email = usageRecord(usageRecord(account).account).email;
+    return { windows: codexLimitWindows(limits), account: typeof email === 'string' && email ? email : null };
   } finally { server.kill('SIGTERM'); }
 }
 
