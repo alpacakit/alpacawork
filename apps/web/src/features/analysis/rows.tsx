@@ -146,7 +146,7 @@ function Frame({ scale, height, children }: { scale: Scale; height: string; chil
  * bin is not whole, the ground lit while the day is pointed at anywhere in the group. `uncounted` bins (before counting
  * began) lie on a hatched ground, with nothing drawn on them.
  */
-function Bins({ row, uncounted, children }: { row: number; uncounted?: (at: number) => boolean; children: (at: number) => ReactNode }) {
+function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: (at: number) => boolean; partial?: (at: number) => boolean; children: (at: number) => ReactNode }) {
   const group = useGroup();
   const wide = group.bucket !== "day";
   return <div className="grid h-full auto-cols-[minmax(0,1fr)] grid-flow-col items-end">
@@ -159,7 +159,7 @@ function Bins({ row, uncounted, children }: { row: number; uncounted?: (at: numb
         className={cn("relative flex h-full flex-col-reverse gap-0.5 opacity-50 transition-opacity duration-(--motion-base) ease-out",
           wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
           lit(bin, group.span) && "opacity-100", group.hovered === at && "bg-rule opacity-100",
-          !bin.complete && "outline outline-dashed outline-lit-line -outline-offset-1",
+          (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
           off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
           edge && "border-e border-lit-line")}>
         {!off && children(at)}
@@ -169,11 +169,13 @@ function Bins({ row, uncounted, children }: { row: number; uncounted?: (at: numb
 }
 
 /** Bars of one or more parts a bin, stacked from the foot. */
-export function BarChart({ row, height, scale, values, uncounted, grow }: {
-  row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; uncounted?: (at: number) => boolean; grow?: boolean;
+export function BarChart({ row, height, scale, values, uncounted, partial, grow }: {
+  row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; uncounted?: (at: number) => boolean;
+  /** Bins only part of which is counted (counting began inside them): boxed as a bin not whole is. */
+  partial?: (at: number) => boolean; grow?: boolean;
 }) {
   return <Frame scale={scale} height={height}>
-    <Bins row={row} uncounted={uncounted}>{at => values(at).map(([color, value], part, all) => value > 0 &&
+    <Bins row={row} uncounted={uncounted} partial={partial}>{at => values(at).map(([color, value], part, all) => value > 0 &&
       <i key={part} style={{ height: `${Math.min(100, value / scale.top * 100)}%` }}
         className={cn("block flex-none origin-bottom rounded-[1px]", color, part === all.length - 1 && "rounded-t-[3px]", grow && "animate-bar")} />)}</Bins>
   </Frame>;

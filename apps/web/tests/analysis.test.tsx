@@ -4,7 +4,7 @@ import { comparison, delta, parts, share, shareDelta } from "../src/features/ana
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
 import { lineDots } from "../src/features/analysis/rows";
-import { tipPlace } from "../src/features/analysis/parts";
+import { tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
@@ -136,4 +136,13 @@ test("the arrows move from the span chosen now, not from the answer still on scr
   expect(stepChosen({ period: "today" }, head, 1)).toBeNull();
   expect(stepChosen({ from: "2026-11-11", to: "2026-11-17" }, head, 1)).toEqual({ period: "7d" });
   expect(stepChosen({ period: "all" }, head, -1)).toBeNull();
+});
+
+test("a day's window stands beside its bar, on the side with room, and never past the screen", () => {
+  const screen = { screenWidth: 1440, screenHeight: 900 };
+  expect(tipBeside({ left: 600, right: 620, top: 300, width: 220, height: 160, ...screen })).toEqual({ left: 628, top: 300, maxHeight: null });
+  // Near the right edge it goes left of the bar; near the foot it moves up; taller than the screen it is held to it.
+  expect(tipBeside({ left: 1380, right: 1400, top: 300, width: 220, height: 160, ...screen }).left).toBe(1152);
+  expect(tipBeside({ left: 600, right: 620, top: 820, width: 220, height: 160, ...screen }).top).toBe(736);
+  expect(tipBeside({ left: 600, right: 620, top: 100, width: 220, height: 1200, ...screen })).toEqual({ left: 628, top: 4, maxHeight: 892 });
 });
