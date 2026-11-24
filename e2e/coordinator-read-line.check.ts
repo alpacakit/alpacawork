@@ -208,6 +208,9 @@ test('a background tab keeps a reply unread when shown again, until the next inp
     expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
     await page.bringToFront();
     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    // Shown again, the page draws the reply; it stays unread until an input there.
+    await expect(page.locator('[data-coordinator-turn=running]')).toHaveCount(0);
+    await expect(page.locator('[data-ask-answer]')).toHaveCount(2);
     await page.waitForTimeout(300);
     expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
     await page.keyboard.press('Shift');
@@ -323,7 +326,8 @@ test('at work folded history is read too; the new answer moves nothing', async (
   writeFileSync(gate, '');
   await answered(page, runtime, 4);
   await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, false]);
-  // The answer that came in while nobody acted is read by the next input.
+  // The answer that came in while nobody acted is read by the next input once it is drawn.
+  await expect(page.locator('[data-coordinator-turn=running]')).toHaveCount(0);
   await page.keyboard.press('Shift');
   await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, true]);
   await page.waitForTimeout(300);
@@ -346,7 +350,7 @@ test.describe('send, answer, close and open again', () => {
       await sendHere('markdown-answer IN-SIGHT');
       await answered(page, runtime, 3);
       // Shown, it is read by the next input on the page.
-      await expect(page.locator('[data-coordinator-turn]').last()).toContainText('IN-SIGHT');
+      await expect(page.locator('[data-coordinator-turn=running]')).toHaveCount(0);
       await page.keyboard.press('Shift');
       await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
       await page.screenshot({ path: info.outputPath(`1-answered-in-sight-${width}.png`) });
