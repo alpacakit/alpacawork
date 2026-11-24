@@ -4,10 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { heaviestText, type HostEpisode, type HostKind, type HostStatus } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
-import { FieldHint } from "@/components/ui/field";
 import { useWorkspaceInfo } from "@/data/queries";
 import { resources } from "@/data/resources";
-import { episodeReasons, formatGigabytes, formatPercent, spanMinutes, sparkShape, type SparkPoint } from "@/domain/host";
+import { episodeReasons, formatGigabytes, formatPercent, formatVramFree, gpuModels, spanMinutes, sparkShape, type SparkPoint } from "@/domain/host";
 import { calendarDayOffset, formatCalendarDate, formatClock } from "@/domain/time";
 import { cn } from "@/lib/utils";
 import { useMoveToTask } from "./use-move-to-task";
@@ -35,41 +34,29 @@ export function HostTab() {
   return <Measured status={status.data} />;
 }
 
+type Sample = NonNullable<Measured["sample"]>;
+type Gpu = Sample["gpus"][number];
+
 function Measured({ status }: { status: Measured }) {
   const { t, i18n } = useTranslation("panels");
   const locale = i18n.language;
   const [openEpisode, setOpenEpisode] = useState<number | null>(null);
   const { facts, sample, current, limits } = status;
-  const load = sample?.load?.[0];
-  const loadText = load === undefined ? "—"
-    : new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(load);
-  const diskLimit = new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", useGrouping: false, maximumFractionDigits: 0 })
-    .format(limits.diskFreeBytes / 1024 ** 3);
-  const tight = new Set<HostKind>(current?.kinds ?? []);
   const now = sample?.at ?? Date.now();
   const models = [...sample?.runs.slice(0, 3) ?? [], ...status.episodes.find(episode => episode.id === openEpisode)?.runs ?? []]
     .flatMap(run => run.model ? [run.model] : []);
+  const gpus = sample?.gpus ?? [];
   return (
     <div data-host-status>
-      {facts && <FieldHint>{t("host.facts", { hostname: facts.hostname, os: facts.os, cores: facts.cores, memory: formatGigabytes(facts.memoryBytes, locale) })}</FieldHint>}
       {current
-        ? <Message tone="caution" size="line" live className="mt-type-close mb-3" title={t("host.tight")}
+        ? <Message tone="caution" size="line" live className="mb-1" title={t("host.tight")}
           description={t("host.since", { time: formatClock(iso(current.start)), minutes: spanMinutes(current.start, now) })} />
-        : !status.error && <p role="status" className="mt-type-close mb-3 text-md font-semibold">{t("host.calm")}</p>}
+        : !status.error && <p role="status" className="m-0 text-lg font-semibold">{t("host.calm")}</p>}
+      {facts && <p className="m-0 mb-3 truncate text-xs text-muted">
+        {[t("host.facts", { hostname: facts.hostname, cores: facts.cores, memory: formatGigabytes(facts.memoryBytes, locale) }),
+          ...gpus.length ? [gpuModels(gpus)] : []].join(" · ")}</p>}
       {!sample ? <Message tone="waiting" size="line" live title={t("host.firstSample")} /> : <>
-        <Meter label={t("host.cpu")} value={formatPercent(sample.cpu, locale)} tight={tight.has("cpu")}
-          line={<Spark points={status.history.map((point) => ({ at: point.at, value: point.cpu }))} window={{ from: now - HOUR, to: now }}
-            line={limits.cpu} tightBelow={false} step={SAMPLE} />}
-          note={t("host.cpuNote", { load: loadText, cores: facts?.cores ?? "—" })} limit={t("host.limitPercent", { value: limits.cpu })} />
-        <Meter label={t("host.memory")} value={formatPercent(100 * sample.memory.availableBytes / sample.memory.totalBytes, locale)} tight={tight.has("memory")}
-          line={<Spark points={status.history.map((point) => ({ at: point.at, value: point.memoryFreePercent }))} window={{ from: now - HOUR, to: now }}
-            line={limits.memoryFreePercent} tightBelow step={SAMPLE} />}
-          note={t("host.memoryNote", { swap: formatGigabytes(sample.memory.swapUsedBytes, locale), free: formatGigabytes(sample.memory.availableBytes, locale) })}
-          limit={t("host.limitPercent", { value: limits.memoryFreePercent })} />
-        <Meter label={t("host.disk")} value={formatGigabytes(sample.disk.freeBytes, locale)} tight={tight.has("disk")}
-          note={t("host.diskNote", { total: formatGigabytes(sample.disk.totalBytes, locale) })} limit={t("host.limitBytes", { value: diskLimit })} />
-        <Meter label={t("host.runs")} value={<>{sample.runs.length}{status.parallel !== null &&
-          <span className="text-sm font-normal text-muted"> / {status.parallel}</span>}</>} tight={false} />
+        <Tiles status={status} sample={sample} now={now} />
         <Heavy sample={sample} models={models} />
       </>}
       <Episodes episodes={status.episodes} now={now} limits={limits} models={models} open={openEpisode} setOpen={setOpenEpisode} />
@@ -81,28 +68,101 @@ function Measured({ status }: { status: Measured }) {
   );
 }
 
-function Meter({ label, value, tight, line, note, limit }: { label: string; value: ReactNode; tight: boolean; line?: ReactNode; note?: string; limit?: string }) {
+/**
+ * The last frame widens over what its row leaves empty, three across on a wide screen and two on a phone: 4 frames
+ * end a row of three with one, 5 with two; an odd count ends a row of two with one.
+ */
+function lastSpan(count: number) {
+  const wide = count % 3 === 1 ? "col-span-3" : count % 3 === 2 ? "col-span-2" : "";
+  const narrow = count % 2 === 1 ? "narrow:col-span-2" : wide ? "narrow:col-span-1" : "";
+  return cn(wide, narrow);
+}
+
+/** The numbers, one small frame each: CPU, memory, each GPU, disk and the Runs. */
+function Tiles({ status, sample, now }: { status: Measured; sample: Sample; now: number }) {
+  const { t, i18n } = useTranslation("panels");
+  const locale = i18n.language;
+  const { limits, parallel } = status;
+  const tight = new Set<HostKind>(status.current?.kinds ?? []);
+  const window = { from: now - HOUR, to: now };
+  const gpus = sample.gpus;
+  const tiles: ReactNode[] = [
+    <Tile key="cpu" label={t("host.cpu")} value={formatPercent(sample.cpu, locale)} tight={tight.has("cpu")}
+      chart={<Spark points={status.history.map((point) => ({ at: point.at, value: point.cpu }))} window={window}
+        line={limits.cpu} tightBelow={false} step={SAMPLE} live />} />,
+    <Tile key="memory" label={t("host.memory")} value={formatPercent(100 * sample.memory.availableBytes / sample.memory.totalBytes, locale)}
+      side={formatGigabytes(sample.memory.availableBytes, locale)} tight={tight.has("memory")}
+      chart={<Spark points={status.history.map((point) => ({ at: point.at, value: point.memoryFreePercent }))} window={window}
+        line={limits.memoryFreePercent} tightBelow step={SAMPLE} live />} />,
+    ...gpus.map((gpu, index) => <GpuTile key={gpu.id} gpu={gpu} label={gpus.length > 1 ? t("host.gpuNumbered", { index }) : t("host.gpu")} />),
+    <Tile key="disk" label={t("host.disk")} value={formatGigabytes(sample.disk.freeBytes, locale)} side={`/ ${formatGigabytes(sample.disk.totalBytes, locale)}`}
+      tight={tight.has("disk")}
+      chart={<Bar share={100 * (1 - sample.disk.freeBytes / sample.disk.totalBytes)} tick={100 * (1 - limits.diskFreeBytes / sample.disk.totalBytes)}
+        tight={tight.has("disk")} className="mt-2" />} />,
+    <Tile key="runs" label={t("host.runs")} tight={false}
+      value={<>{sample.runs.length}{parallel !== null && <span className="text-sm font-normal text-muted"> / {parallel}</span>}</>}
+      chart={parallel !== null && <Bar share={100 * sample.runs.length / parallel} className="mt-2" />} />,
+  ];
+  const span = lastSpan(tiles.length);
   return (
-    <div data-host-meter className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 border-t border-line py-2">
-      <span>{label}</span>
-      <span className={cn("text-md font-medium tabular-nums", tight && "text-warn")}>{value}</span>
-      {line && <div className="col-span-2 mt-1">{line}</div>}
-      {(note || limit) && <div className="col-span-2 flex flex-wrap gap-x-2 text-xs text-muted">
-        <span className="whitespace-nowrap">{note}</span><span className="ml-auto whitespace-nowrap">{limit}</span>
-      </div>}
+    <div className="grid grid-cols-3 gap-2 narrow:grid-cols-2">
+      {tiles.map((tile, index) => index === tiles.length - 1 && span ? <div key="last" className={cn("grid", span)}>{tile}</div> : tile)}
+    </div>
+  );
+}
+
+/** One GPU: how busy it is, its VRAM taken and free, and what holds the most of it. Parts the machine cannot read are left out. */
+function GpuTile({ gpu, label }: { gpu: Gpu; label: string }) {
+  const { t, i18n } = useTranslation("panels");
+  const locale = i18n.language;
+  const users = gpu.users?.map(user => [user.taskId, user.name, formatGigabytes(user.memoryBytes, locale)].filter(Boolean).join(" ")).join(" · ");
+  return <Tile label={label} value={formatPercent(gpu.utilization, locale)} tight={false} gpu={gpu.id} note={users || undefined}
+    chart={gpu.memory && <>
+      <Bar share={100 * gpu.memory.usedBytes / gpu.memory.totalBytes} className="mt-2" />
+      <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-1 text-xs whitespace-nowrap">
+        <span className="text-muted">{t("host.vramFree")}</span><span className="ml-auto tabular-nums">{formatVramFree(gpu.memory, locale)}</span>
+      </div>
+    </>} />;
+}
+
+function Tile({ label, value, side, tight, chart, note, gpu }: { label: string; value: ReactNode; side?: string; tight: boolean;
+  chart?: ReactNode; note?: string; gpu?: string }) {
+  return (
+    <div data-host-meter data-host-gpu={gpu} className="flex min-w-0 flex-col rounded-lg border border-line px-3 pt-2 pb-2.5">
+      <span className="truncate text-xs text-muted">{label}</span>
+      <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}
+        {side && <span className="ml-1.5 text-sm font-normal text-muted">{side}</span>}</span>
+      {chart && <div className="mt-0.5">{chart}</div>}
+      {note && <span title={note} className="mt-1 truncate text-xs text-muted">{note}</span>}
+    </div>
+  );
+}
+
+/** A thin bar: how much of something is taken, with a tick where it turns tight. */
+function Bar({ share, tick, tight = false, className }: { share: number; tick?: number; tight?: boolean; className?: string }) {
+  const percent = (value: number) => `${Math.max(0, Math.min(100, value))}%`;
+  return (
+    <div aria-hidden className={cn("relative h-1.5 rounded-full bg-line", className)}>
+      <div className={cn("h-full rounded-full", tight ? "bg-warn" : "bg-ink")} style={{ width: percent(share) }} />
+      {tick !== undefined && <div className="absolute -top-0.5 -bottom-0.5 w-px bg-soft" style={{ left: percent(tick) }} />}
     </div>
   );
 }
 
 const SPARK_WIDTH = 354;
-function Spark({ points, window, line, tightBelow, step, height = 28 }: { points: readonly SparkPoint[]; window: { from: number; to: number };
-  line: number; tightBelow: boolean; step: number; height?: number }) {
+/** A line over its window with what it has taken tinted, the limit dashed, and (`live`) a dot at the newest value. */
+function Spark({ points, window, line, tightBelow, step, height = 30, live = false }: { points: readonly SparkPoint[]; window: { from: number; to: number };
+  line: number; tightBelow: boolean; step: number; height?: number; live?: boolean }) {
   const shape = sparkShape(points, window, line, tightBelow, SPARK_WIDTH, height, step);
   return (
-    <svg aria-hidden viewBox={`0 0 ${SPARK_WIDTH} ${height}`} preserveAspectRatio="none" className="block w-full" style={{ height }}>
+    <svg aria-hidden viewBox={`0 0 ${SPARK_WIDTH} ${height}`} preserveAspectRatio="none" className="block w-full overflow-visible" style={{ height }}>
       {shape.bands.map((band, index) => <rect key={index} x={band.x} y={0} width={band.width} height={height} className="fill-strain" />)}
-      <line x1={0} x2={SPARK_WIDTH} y1={shape.lineY} y2={shape.lineY} className="stroke-soft" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      {shape.areas.map((area, index) => <path key={index} d={area} className="fill-usage" />)}
+      <line x1={0} x2={SPARK_WIDTH} y1={height - 0.5} y2={height - 0.5} className="stroke-line" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      <line x1={0} x2={SPARK_WIDTH} y1={shape.lineY} y2={shape.lineY} className="stroke-soft" strokeDasharray="2 4" strokeWidth={1} vectorEffect="non-scaling-stroke" />
       {shape.paths.map((path, index) => <path key={index} d={path} fill="none" className="stroke-ink" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />)}
+      {live && shape.last && <line x1={shape.last.x} x2={shape.last.x} y1={shape.last.y} y2={shape.last.y} className="stroke-ink" strokeWidth={5}
+        strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
     </svg>
   );
 }
@@ -130,24 +190,46 @@ function RunRow({ run, cpu, memory, detail, mark }: { run: { taskId: string | nu
   );
 }
 
-function Heavy({ sample, models }: { sample: NonNullable<Measured["sample"]>; models: readonly string[] }) {
+/**
+ * What takes the machine now, heaviest first: the three heaviest Runs and everything outside alpacawork in one order,
+ * then the other Runs together. CPU and memory each keep a column, so the numbers read down the rows.
+ */
+function Heavy({ sample, models }: { sample: Sample; models: readonly string[] }) {
   const { t, i18n } = useTranslation("panels");
+  const moveTo = useMoveToTask();
   const top = sample.runs.slice(0, 3), rest = sample.runs.slice(3);
   const sum = (key: "cpu" | "memoryBytes") => rest.some(run => run[key] === null) ? null : rest.reduce((total, run) => total + run[key]!, 0);
+  const columns = "grid-cols-[minmax(0,1fr)_3.25rem_4.5rem] items-baseline gap-x-2";
+  const row = cn("grid w-full border-t border-line py-1.5 text-left", columns);
+  const numbers = (cpu: number | null, memory: number | null) => <>
+    <span className="text-right tabular-nums">{formatPercent(cpu, i18n.language)}</span>
+    <span className="text-right tabular-nums">{formatGigabytes(memory, i18n.language)}</span></>;
+  const rows = [...top.map(run => ({ run, cpu: run.cpu, memory: run.memoryBytes })), { run: null, cpu: sample.outside.cpu, memory: sample.outside.memoryBytes }]
+    .sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1) || (b.memory ?? -1) - (a.memory ?? -1));
   return (
     <section aria-labelledby="host-heavy">
-      <Heading id="host-heavy" title={t("host.heavy")} note={t("host.heavyNote")} />
+      <h3 className={cn("mt-8 mb-2 grid text-base font-semibold", columns)}>
+        <span id="host-heavy">{t("host.heavy")}</span>
+        <span className="text-right text-xs font-normal text-muted">{t("host.cpu")}</span>
+        <span className="text-right text-xs font-normal text-muted">{t("host.memoryColumn")}</span></h3>
       {!sample.runs.length && <Message tone="empty" size="line" icon="runningRuns" className="border-t border-line py-2" title={t("host.noRuns")} />}
-      {top.map((run) => <RunRow key={run.runId} run={run} mark={run.runId} cpu={run.cpu} memory={run.memoryBytes}
-        detail={runDetail(run, heaviestText(run.heaviest), t("host.worker"), models)} />)}
-      <div data-host-outside className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 border-t border-line py-1.5">
-        <span className="text-muted">{t("host.outside")}</span>
-        <span className="text-right tabular-nums">{formatPercent(sample.outside.cpu, i18n.language)} · {formatGigabytes(sample.outside.memoryBytes, i18n.language)}</span>
-        {sample.outside.names.length > 0 &&
-          <span className="col-span-2 truncate text-xs text-muted">{t("host.outsideNames", { names: sample.outside.names.join(" · ") })}</span>}
-      </div>
-      {rest.length > 0 && <p className="m-0 border-t border-line py-2 text-sm text-muted">
-        {t("host.moreRuns", { count: rest.length, cpu: formatPercent(sum("cpu"), i18n.language), memory: formatGigabytes(sum("memoryBytes"), i18n.language) })}</p>}
+      {rows.map(({ run }) => {
+        if (!run) return <div key="outside" data-host-outside className={row}>
+          <span>{t("host.outside")}</span>
+          {numbers(sample.outside.cpu, sample.outside.memoryBytes)}
+          {sample.outside.names.length > 0 &&
+            <span className="col-span-3 truncate text-xs text-muted">{t("host.outsideNames", { names: sample.outside.names.join(" · ") })}</span>}
+        </div>;
+        const detail = runDetail(run, heaviestText(run.heaviest), t("host.worker"), models);
+        return <Button key={run.runId} variant="ghost" data-host-run={run.runId} onClick={() => { if (run.taskId !== null) moveTo(run.taskId); }}
+          className={cn(row, "justify-stretch gap-y-0 rounded-none px-0 text-base whitespace-normal")}>
+          <span className="truncate">{run.taskId !== null && <span className="mr-1.5 text-muted tabular-nums">{run.taskId}</span>}{runName(run, t("ui:role.coordinator"))}</span>
+          {numbers(run.cpu, run.memoryBytes)}
+          <span title={detail.full} aria-label={detail.full} className="col-span-3 truncate text-xs text-muted">{detail.short}</span>
+        </Button>;
+      })}
+      {rest.length > 0 && <div data-host-more className={cn(row, "text-sm text-muted")}>
+        <span>{t("host.moreRuns", { count: rest.length })}</span>{numbers(sum("cpu"), sum("memoryBytes"))}</div>}
     </section>
   );
 }
@@ -195,7 +277,7 @@ function Episode({ episode, now, limits, models, open, onToggle }: { episode: Ho
       <Button variant="ghost" aria-expanded={open} onClick={onToggle}
         className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline justify-stretch gap-x-2.5 gap-y-0 rounded-none px-0 py-2 text-left text-base whitespace-normal hover:bg-transparent">
         <span className="tabular-nums">{span}<span aria-hidden className="ml-1 text-xs text-soft">{open ? "⌄" : "›"}</span></span>
-        <span className="text-right text-sm text-warn">{reasons}</span>
+        <span className={cn("text-right text-sm", episode.end === null ? "text-warn" : "text-muted")}>{reasons}</span>
         <span className="col-span-2 truncate text-xs text-muted">{who}</span>
       </Button>
       {open && <EpisodeDetail episode={episode} now={now} limits={limits} models={models} />}
