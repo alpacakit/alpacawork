@@ -260,18 +260,18 @@ test('a shelving refusal about a different Task is invalid and cannot withdraw t
 test('an active timeline selection retired by the shelf is not sent again; a later valid selection recovers', async () => {
   const base = indexOf(source()); receiveFullIndex(client, base);
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => jsonAnswer({busy: [], earliest: null, generation: 'a', sourcePv: readIndex(client)!.sourcePv}));
-  const options = resources.timelineAxis(base.root, null, ['T9'], []);
+  const options = resources.timelineAxis(base.root, ['T9']);
   await client.fetchQuery(options);
   const observer = new QueryObserver(client, options), stop = observer.subscribe(() => {});
   try {
     // Hiding the project changes the time line, but its lane is gone: it is not asked for.
-    const raised = { ...base.requiredPv, timeline: { root: 1 as never } };
+    const raised = { ...base.requiredPv, timeline: { T9: 1 as never } };
     receiveFullIndex(client, { ...hidden(base), sourcePv: 1 as never, requiredPv: raised });
     await new Promise(resolve => setTimeout(resolve, 80));
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(readState(client, options.queryKey).assessment.project).toBe(false);
     // Restored, the lane is back and the time line changed again.
-    receiveFullIndex(client, {...base, rev: base.rev + 2, sourcePv: 2 as never, requiredPv: { ...base.requiredPv, timeline: { root: 2 as never } }});
+    receiveFullIndex(client, {...base, rev: base.rev + 2, sourcePv: 2 as never, requiredPv: { ...base.requiredPv, timeline: { T9: 2 as never } }});
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(readState(client, options.queryKey).assessment.project).toBe(true));
   } finally { stop(); }

@@ -58,10 +58,14 @@ export class ReadResources {
         const result = put('search', `${name}:${text}`, (point, readers) => readers.pages.search(point, text, scope, undefined, 3), name);
         if (result.nextAfter) put('search', `${name}:${text}:next`, (point, readers) => readers.pages.search(point, text, scope, result.nextAfter!, 3), name);
       }
-      const visible = scope ?? 'P1';
-      put('timeline', name, (point, readers) => readers.pages.timeline(point, { scope: name, visible, folded: visible,
-        from: '2026-01-01T00:00:00Z', to: '2027-01-01T00:00:00Z', limit: 1000 }));
-      put('axis', name, (point, readers) => readers.pages.timelineAxis(point, { scope: name, lanes: visible, folded: visible }));
+    }
+    // Each listed row's strip and axis: what changes in one must raise that row's version.
+    const shelf = frame.records.shelf();
+    for (const id of frame.records.taskIds()) {
+      if (!shelf.listed.has(frame.records.projectOf(id))) continue;
+      put('timeline', id, (point, readers) => readers.pages.timeline(point, { lanes: id,
+        from: '2026-01-01T00:00:00Z', to: '2027-01-01T00:00:00Z' }).lanes[0] ?? null);
+      put('axis', id, (point, readers) => readers.pages.timelineAxis(point, { lanes: id }));
     }
     for (const id of frame.records.taskIds()) put('page', closedPageScope('finished', id, null), (point, readers) => readers.pages.finished(point, id, null, undefined, 3));
     return resources;

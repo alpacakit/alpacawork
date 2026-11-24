@@ -13,7 +13,7 @@ for (const kind of ['search', 'axis'] as const) for (const dbUnavailable of [fal
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   observeReadProofs(client);
   if (dbUnavailable) await restoreReadPersistence(client);
-  const options = kind === 'search' ? resources.taskSearch('/workspace', 'words', null) : resources.timelineAxis('/workspace', null, [], []);
+  const options = kind === 'search' ? resources.taskSearch('/workspace', 'words', null) : resources.timelineAxis('/workspace', []);
   const lifetime = kind === 'search' ? 60_000 : READ_BUNDLE_AGE;
   const fetcher = vi.spyOn(api, 'request').mockResolvedValue(kind === 'search' ? searchAnswer([]) : { ranges: [], start: null, end: null });
   const observer = new QueryObserver(client, options as any);
@@ -40,7 +40,7 @@ for (const kind of ['search', 'axis'] as const) for (const dbUnavailable of [fal
 for (const kind of ['search', 'axis'] as const) test(`${kind} protects an inactive fetch until it settles`, async () => {
   vi.useFakeTimers();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); observeReadProofs(client);
-  const options = kind === 'search' ? resources.taskSearch('/workspace', 'words', null) : resources.timelineAxis('/workspace', null, [], []);
+  const options = kind === 'search' ? resources.taskSearch('/workspace', 'words', null) : resources.timelineAxis('/workspace', []);
   let release!: (value: unknown) => void;
   vi.spyOn(api, 'request').mockImplementation(() => new Promise(resolve => { release = resolve; }));
   const fetch = client.fetchQuery(options as any);

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { routingDriver } from './helpers/projection/routing-driver.ts';
 import { coreDriver } from './helpers/projection/core-driver.ts';
-import { auditReplay, operationKinds, operations, assertEquivalent, assertDependencies, meaning } from './helpers/projection/harness.ts';
+import { auditReplay, coverageSteps, operationKinds, operations, assertEquivalent, assertDependencies, meaning } from './helpers/projection/harness.ts';
 
 test('seeded small-fixture writes keep records, read resources, routing and freshness proofs equivalent', async t => {
   const fixture = await coreDriver(); t.after(() => fixture.close());
   const routing = await routingDriver(); t.after(() => routing.close());
-  const steps = operationKinds.length;
+  const steps = coverageSteps;
   const result = await auditReplay({ ...fixture.driver, routing: routing.adapter }, 901, steps);
   if (process.env.PROJECTION_REPLAY_REPORT) writeFileSync(process.env.PROJECTION_REPLAY_REPORT, JSON.stringify(result, null, 2) + '\n');
   t.diagnostic(JSON.stringify({ ...result, issues: result.issues.length }));

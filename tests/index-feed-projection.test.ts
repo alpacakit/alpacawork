@@ -10,11 +10,15 @@ import assert from 'node:assert/strict';
 import { setupIndexFixture as setup } from './helpers/index-fixture.ts';
 import {
   bodyHash, controlRunSchema, placementSchema, taskHistoryWindowSchema as taskHistorySchema,
-  taskProjectedTimelineSchema as taskTimelineSchema, timelineNoteOf, type ControlTreeDTO,
+  taskTimelineLaneSchema, timelineNoteOf, type ControlTreeDTO,
 } from '@alpacawork/contract/control';
 import { canonicalValues, PARENT_VISIBLE_EVENTS, RESULT_HEAD_LENGTH, resultHead, type Ball, type TaskValues } from '@alpacawork/contract';
 import { readControlTree } from './helpers/control-tree.ts';
 import { snapshotReads } from './helpers/snapshot-projection.ts';
+
+/** One row's strip over a range, as the time view reads it. */
+const stripOf = (feed: ReturnType<typeof snapshotReads>, lane: string, from: string, to: string) =>
+  taskTimelineLaneSchema.parse(feed.timeline({ lanes: lane, from, to }).lanes[0]);
 
 type Task = ControlTreeDTO['tasks'][number];
 type Log = Task['log'][number];
@@ -146,7 +150,7 @@ test('instructions have one Request row, including review send-backs, across pag
   assert.deepEqual(pages.flat().filter(event => event.kind !== 'request').map(event => [event.id, event.kind]), [['answer', 'answer']]);
   assert.equal(new Set(pages.flat().map(event => event.id)).size, 83);
   publish(requests);
-  const notes = feed.timeline({ scope: 'root', visible: child.id, folded: '', from: at, to: '2026-10-20T11:40:00Z', limit: 200 }).events
+  const notes = stripOf(feed, child.id, at, '2026-10-20T11:40:00Z').events
     .flatMap(item => item.kind === 'note' ? [item.event] : []);
   assert.equal(notes.filter(note => note.id === requests[0]!.id).length, 1, 'time view uses the same single instruction');
 });
@@ -197,12 +201,10 @@ test('a failure is one row: a Run in trouble its own, an entry into error that n
   const rows = (events: { kind: string; id: string; title: string }[]) => events.map(event => [event.kind, event.id, event.title]);
   assert.deepEqual(rows(taskHistorySchema.parse(feed.history(child.id)).events),
     [['error', 'LENDR3', 'stopped'], ['error', 'LENDR2', 'no_report'], ['error', 'R1', 'failed']]);
-  // Its parent sees each failure, in its history and in the time view of its folded lane, from the same events.
+  // Its parent sees each failure in its history, and its own strip shows each, from the same events.
   assert.deepEqual(rows(taskHistorySchema.parse(feed.history(h.parent.id)).events
     .filter(event => event.fromChild)), [['error', 'LENDR3', 'stopped'], ['error', 'LENDR2', 'no_report'], ['error', 'R1', 'failed']]);
-  const lane = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: h.parent.id, folded: h.parent.id,
-    from: at(0), to: at(9), limit: 200 }));
-  assert.deepEqual(lane.events.flatMap(event => event.kind === 'note' ? [[event.event.kind, event.event.id]] : []),
+  assert.deepEqual(stripOf(feed, child.id, at(0), at(9)).events.flatMap(event => event.kind === 'note' ? [[event.event.kind, event.event.id]] : []),
     [['error', 'R1'], ['error', 'LENDR2'], ['error', 'LENDR3']]);
 });
 
@@ -218,17 +220,15 @@ test('the time view\'s notes are the history events: Requests and dialogues too,
   const feed = snapshotReads();
   feed.update(h.screen({ ...tree, tasks: tree.tasks.map(task => task.id === child.id ? { ...task, log } : task),
     requests: [request], dialogues: [{ taskId: child.id, messageId: 'TURN1', at: at(3), words: 'Is it done?', answer: 'Yes' }] }));
-  const page = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: child.id, folded: '', from: at(0), to: at(9),
-    limit: 200 }));
+  const page = stripOf(feed, child.id, at(0), at(9));
   const notes = page.events.flatMap(event => event.kind === 'note' ? [event.event] : []);
   const history = taskHistorySchema.parse(feed.history(child.id)).events;
   assert.deepEqual(notes.map(note => [note.kind, note.id]), [['request', 'Q1'], ['comment', 'Lcomment'], ['dialogue', 'TURN1']]);
   assert.deepEqual(notes, [...history].reverse().map(timelineNoteOf));
   assert.ok(notes.every(note => !('title' in note) && !('summary' in note)));
-  // A folded parent's lane has only what a parent sees of it: no comment, Request or dialogue of the child.
-  const folded = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: h.parent.id, folded: h.parent.id,
-    from: at(0), to: at(9), limit: 200 }));
-  assert.deepEqual(folded.events.filter(event => event.taskId === child.id), []);
+  // The parent's strip has only what a parent sees of it: no comment, Request or dialogue of the child.
+  const above = stripOf(feed, h.parent.id, at(0), at(9)).events.flatMap(event => event.kind === 'note' ? [event.event.id] : []);
+  assert.deepEqual(above.filter(id => ['Q1', 'Lcomment', 'TURN1'].includes(id)), []);
 });
 
 test('a row names its oldest open question; the view carries the Task\'s questions with what each fixed when it was asked', async t => {
@@ -278,14 +278,14 @@ test('the time view keeps question identity and time without hover-only closure 
   const feed = snapshotReads();
   feed.update(h.screen({ ...tree, tasks: tree.tasks.map(task => task.id === child.id
     ? { ...task, state: 'stopped' as const, log } : task) }));
-  const lane = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: child.id, folded: '', from: at(0), to: at(45), limit: 200 }));
+  const lane = stripOf(feed, child.id, at(0), at(45));
   const questions = lane.events.flatMap(event => event.kind === 'log' && event.entry.kind === 'asked' ? [event.entry] : []);
   assert.deepEqual(questions.map(question => question.id), ['Lq1', 'Lq2', 'Lq3', 'Lq4']);
   for (const question of questions) assert.deepEqual(Object.keys(question).sort(), ['actor', 'at', 'fromState', 'id', 'kind', 'toState']);
   assert.ok(feed.history(child.id).events.some(event => event.kind === 'question' && event.open === true));
 });
 
-test('a dense timeline keeps every record as one note and the work line exact', async t => {
+test('a dense strip keeps every record as one note and the work line exact', async t => {
   const h = await setup(t);
   const tree = await readControlTree(h.root);
   const parent = tree.tasks.find(task => task.id === h.parent.id)!;
@@ -299,22 +299,15 @@ test('a dense timeline keeps every record as one note and the work line exact', 
   assert.ok(feed.row(parent.id).stateLog.length <= 5);
 
   assert.equal(feed.row(parent.id).usage?.runs, 300);
-  const page = (after?: string) => taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: parent.id, folded: '',
-    from: '2026-01-01T00:00:00.000Z', to: '2026-01-02T00:00:00.000Z', limit: 200, ...(after ? { after } : {}) }));
-  const first = page();
-  assert.equal(first.runs.length, 300, 'the first page carries every Run of the range while the notes take more than one page');
-  assert.equal(first.runs[0]?.startedAt, '2026-01-01T00:00:00.000Z');
-  const notes: string[] = [], entries: string[] = [];
-  let events = 0;
-  for (let current = first; ; current = page(current.nextAfter!)) {
-    notes.push(...current.events.flatMap(event => event.kind === 'note' ? [event.event.id] : []));
-    entries.push(...current.events.flatMap(event => event.kind === 'log' ? [event.entry.id] : []));
-    events += current.events.length;
-    if (!current.nextAfter) break;
-  }
+  const lane = stripOf(feed, parent.id, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z');
+  const notes = lane.events.flatMap(event => event.kind === 'note' ? [event.event.id] : []);
+  const entries = lane.events.flatMap(event => event.kind === 'log' ? [event.entry.id] : []);
+  const worked = lane.events.flatMap(event => event.kind === 'run' ? [event.run] : []);
   assert.deepEqual(notes, logs.map(log => log.id), 'each record is one note in time order: none is summarized or made up');
   assert.deepEqual(entries, logs.map(log => log.id), 'and the work line has each of its states');
-  assert.equal(events, 2 * logs.length + runs.length);
+  assert.equal(worked.length, runs.length, 'and every Run of the range');
+  assert.equal(worked[0]?.startedAt, '2026-01-01T00:00:00.000Z');
+  assert.equal(lane.events.length, 2 * logs.length + runs.length);
 });
 
 test('a finished row keeps its waiting anchor when the visible time range has no state change', async t => {
@@ -328,13 +321,12 @@ test('a finished row keeps its waiting anchor when the visible time range has no
   const feed = snapshotReads();
   feed.update(h.screen({ ...original, tasks: original.tasks.map(item => item.id === task.id
     ? { ...item, state: 'done' as const, log: [created, waiting, finished] } : item) }));
-  const page = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: task.id, folded: '',
-    from: '2026-10-07T10:30:00.000Z', to: '2026-10-07T11:30:00.000Z', limit: 200 }));
-  assert.equal(page.anchors[task.id]?.id, waiting.id);
-  assert.ok(page.rows.some(row => row.id === task.id));
+  const page = stripOf(feed, task.id, '2026-10-07T10:30:00.000Z', '2026-10-07T11:30:00.000Z');
+  assert.equal(page.anchor?.id, waiting.id);
+  assert.equal(page.row.id, task.id);
 });
 
-test('a dense window keeps its earlier state only as an anchor', async t => {
+test('a window keeps its earlier state only as an anchor', async t => {
   const h = await setup(t);
   const original = await readControlTree(h.root);
   const task = original.tasks.find(item => item.id === h.parent.id)!;
@@ -344,13 +336,11 @@ test('a dense window keeps its earlier state only as an anchor', async t => {
   const feed = snapshotReads();
   feed.update(h.screen({ ...original, tasks: original.tasks.map(item => item.id === task.id
     ? { ...item, state: 'doing' as const, log: [prior, ...reports] } : item) }));
-  const page = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: task.id, folded: '',
-    from: '2026-01-01T00:00:00.000Z', to: '2026-01-02T00:00:00.000Z', limit: 10 }));
-  assert.equal(page.anchors[task.id]?.id, prior.id);
+  const page = stripOf(feed, task.id, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z');
+  assert.equal(page.anchor?.id, prior.id);
   // Each state is a fact of the line and a note, side by side in time.
   assert.deepEqual(page.events.map(event => event.kind === 'log' ? event.entry.id : event.kind === 'note' ? event.event.id : ''),
-    reports.slice(0, 5).flatMap(report => [report.id, report.id]));
-  assert.ok(page.nextAfter, 'the later notes are on the next page');
+    reports.flatMap(report => [report.id, report.id]));
 });
 
 test('the opened view carries only the latest report while History owns the chronology', async t => {
@@ -365,29 +355,6 @@ test('the opened view carries only the latest report while History owns the chro
     ? { ...item, log: [task.log[0]!, report, ...later] } : item) }));
   assert.deepEqual(feed.view(task.id).task.log.map(item => item.id), ['Lreport']);
   assert.equal(feed.history(task.id).events.length, 1 + later.length);
-});
-
-test('identical log IDs on different folded children are each a note of their own', async t => {
-  const h = await setup(t);
-  const tree = await readControlTree(h.root);
-  const child = tree.tasks.find(task => task.id === h.child.id)!;
-  const reports = Array.from({ length: 25 }, (_, n) => entry(n === 24 ? 'Lshared' : `Lchild${n}`,
-    new Date(Date.UTC(2026, 0, 1, 0, n)).toISOString(), { toState: 'done' }));
-  const sibling = like(child, 'T999', { state: 'done', log: [entry('Lshared', '2026-01-01T00:01:00.000Z', { toState: 'done' }),
-    entry('Lsibling', '2026-01-01T00:26:00.000Z', { toState: 'done' })] });
-  const feed = snapshotReads();
-  feed.update(h.screen({ ...tree, tasks: [...tree.tasks.map(task => task.id === child.id
-    ? { ...task, state: 'done' as const, log: reports } : task), sibling] }));
-  const notes: string[] = [];
-  let after: string | undefined;
-  do {
-    const page = taskTimelineSchema.parse(feed.timeline({ scope: 'root', visible: h.parent.id, folded: h.parent.id,
-      from: '2026-01-01T00:00:00.000Z', to: '2026-01-02T00:00:00.000Z', limit: 10, ...(after ? { after } : {}) }));
-    notes.push(...page.events.flatMap(event => event.kind === 'log' ? [`${event.taskId}:${event.entry.id}`] : []));
-    after = page.nextAfter ?? undefined;
-  } while (after);
-  assert.equal(new Set(notes).size, reports.length + sibling.log.length);
-  assert.ok(notes.includes(`${child.id}:Lshared`) && notes.includes(`${sibling.id}:Lshared`));
 });
 
 test('history sorts and filters mixed-case equal-time IDs in the same order', async t => {
@@ -421,24 +388,22 @@ test('axis activity is complete and independent of drawing windows, pages and re
   const feed = snapshotReads();
   feed.update(h.screen({ ...tree, tasks: tree.tasks.map(row => row.id === task.id ? task : row),
     runs: [runOf('R99999', task.id, 'running', iso(-2 * day))] }));
-  const input = { scope: 'root', lanes: task.id, folded: '' };
+  const input = { lanes: task.id };
   const before = feed.timelineAxis(input);
   assert.equal(before.earliest, base - 10 * day);
   assert.ok(before.busy.some(([from, to]) => from === base - 2 * day && to === null));
   assert.ok(before.busy.some(([from, to]) => from <= base - 8.5 * day && to !== null && to >= base - 8.5 * day), 'a human completion is an activity mark');
   assert.ok(!before.busy.some(([from, to]) => from <= base - 8 * day && to !== null && to >= base - 8 * day), 'ordinary human notes are not marks');
-  const caused = feed.timeline({ scope: 'root', visible: task.id, folded: '', from: iso(-9 * day - 1), to: iso(-9 * day + 1), limit: 200 });
+  const caused = stripOf(feed, task.id, iso(-9 * day - 1), iso(-9 * day + 1));
   assert.ok(caused.events.some(event => event.kind === 'note' && event.event.id === 'Lcause' && event.event.at === iso(-9 * day)));
   assert.ok(caused.events.some(event => event.kind === 'log' && event.entry.id === 'Lcause'));
   for (const range of [[-3 * day, 0], [-10 * day, 10 * day], [-5 * day, -4 * day]].reverse()) {
-    const first = feed.timeline({ scope: 'root', visible: task.id, folded: '', from: iso(range[0]!), to: iso(range[1]!), limit: 10 });
-    if (first.nextAfter) feed.timeline({ scope: 'root', visible: task.id, folded: '', from: iso(range[0]!), to: iso(range[1]!), limit: 200, after: first.nextAfter });
+    feed.timeline({ lanes: task.id, from: iso(range[0]!), to: iso(range[1]!), limit: 10 });
     assert.deepEqual(feed.timelineAxis(input), before);
   }
-  const folded = feed.timelineAxis({ scope: 'root', lanes: h.parent.id, folded: h.parent.id });
-  assert.ok(folded.earliest! <= before.earliest!, 'a closed child older than the parent still determines the axis start');
-  assert.throws(() => feed.timelineAxis({ scope: 'root', lanes: Array(201).fill(task.id).join(','), folded: '' }));
-  assert.throws(() => feed.timelineAxis({ scope: task.id, lanes: h.parent.id, folded: '' }));
+  const rows = feed.timelineAxis({ lanes: `${h.parent.id},${task.id}` });
+  assert.ok(rows.earliest! <= before.earliest!, 'a closed child older than the parent still determines the axis start');
+  assert.throws(() => feed.timelineAxis({ lanes: Array(201).fill(0).map((_, n) => `T${n + 1}`).join(',') }));
 });
 
 test('History projects authors, recipients, answer words and causal delivery links from the tree, including joined Runs', async t => {
@@ -516,11 +481,11 @@ test('History projects authors, recipients, answer words and causal delivery lin
   assert.deepEqual(feed.history(child.id).events.find(event => event.id === 'Lparent')?.author,
     { kind: 'parent', taskId: parent.id, profileKey: 'fake' });
   assert.ok(byId.get('turn1')?.wordsKey);
-  const notes = feed.timeline({ scope: 'root', visible: parent.id, folded: parent.id, from: at(0), to: at(9), limit: 200 })
+  const notes = stripOf(feed, child.id, at(0), at(9))
     .events.flatMap(event => event.kind === 'note' ? [event.event] : []);
   assert.ok(notes.every(note => Object.keys(note).every(key => ['id', 'kind', 'taskId', 'at', 'state', 'mark', 'displayed'].includes(key))),
     'the list receives a compact display result, never causal/authorship/answer links or text');
-  assert.equal(notes.find(note => note.id === 'Lask')?.displayed, false, 'the server applies the shared causal fold rule');
+  assert.equal(notes.find(note => note.id === 'Lanswer')?.displayed, false, 'the server applies the shared causal fold rule');
 });
 
 test('History preserves complete fixed answer text from captured records', async t => {
@@ -575,12 +540,10 @@ test('History and timeline take human question membership from the same certifie
     assert.equal(event.open, true);
     assert.equal(event.askedTo, 'user');
     assert.equal(event.userQuestion, membership, 'an open human recipient does not certify membership when the read was partial');
-    const parentNote=feed.timeline({scope:'root',visible:h.parent.id,folded:h.parent.id,
-      from:'2026-10-24T11:59:00Z',to:'2026-10-24T12:01:00Z',limit:200}).events
+    const parentNote=stripOf(feed,h.parent.id,'2026-10-24T11:59:00Z','2026-10-24T12:01:00Z').events
       .find(item=>item.kind==='note'&&item.event.id===question.id);
     assert.equal(parentNote,undefined,'child human questions are absent from parent notes too');
-    const note=feed.timeline({scope:'root',visible:child.id,folded:child.id,
-      from:'2026-10-24T11:59:00Z',to:'2026-10-24T12:01:00Z',limit:200}).events
+    const note=stripOf(feed,child.id,'2026-10-24T11:59:00Z','2026-10-24T12:01:00Z').events
       .find(item=>item.kind==='note'&&item.event.id===question.id);
     assert.ok(note?.kind==='note');
     assert.ok(!('userQuestion' in note.event),'question membership stays on the detail boundary');

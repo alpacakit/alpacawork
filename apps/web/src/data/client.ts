@@ -148,9 +148,15 @@ function throwIfPast(deadline: AbortSignal, signal: AbortSignal | undefined, cau
   if (deadline.aborted && !signal?.aborted) throw new DeadlinePassed(cause, data);
 }
 /**
+ * A read the server stayed silent on is asked again a few times, with a growing wait, before its failure is said where
+ * it is read: a request made while the server is busy would otherwise fail for good moments before it answers again.
+ */
+export const READ_RETRIES = 3;
+export const readRetryDelay = (failures: number) => Math.min(30_000, 1000 * 2 ** failures);
+/**
  * A read the server stayed silent on until the deadline. It wrote nothing and nothing was said about it, and a server
- * that is busy answers soon after, so it is one to ask again (query-client). A connection that fails at once is the feed's
- * to report, and a server's own "later" is an answer: both are said where they are read.
+ * that is busy answers soon after, so it is one to ask again (query-client, lane-batch). A connection that fails at once
+ * is the feed's to report, and a server's own "later" is an answer: both are said where they are read.
  */
 export function readDeadlinePassed(error: unknown): boolean {
   return error instanceof DeadlinePassed && error.retry === "later";

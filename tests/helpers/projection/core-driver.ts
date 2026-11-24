@@ -6,14 +6,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { ControlStore, holdControlWriter, type ChangeSeq } from '@alpacawork/db';
 import type { ProjectionVersion, RequiredPvDTO } from '@alpacawork/contract/control';
-import { affected, deriveTask } from '@alpacawork/backend/test-dist/receiver/screen-derive.js';
-import { raiseRequiredPv, aggregateResources, timelineScopes, type AggregateResources } from '@alpacawork/backend/test-dist/receiver/index-rows.js';
+import { affected, deriveTask, searchScopes } from '@alpacawork/backend/test-dist/receiver/screen-derive.js';
+import { raiseRequiredPv, aggregateResources, type AggregateResources } from '@alpacawork/backend/test-dist/receiver/index-rows.js';
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from '@alpacawork/backend/test-dist/receiver/workspace-records.js';
 import { createScreenAggregate, repairScreenAggregate, updateScreenAggregate, type AggregateSnapshot, type AggregateFacts } from '@alpacawork/backend/test-dist/receiver/screen-aggregate.js';
 import type { AffectedSet, TaskDerived, RecordsReader, Facet, PublishedFrame } from '@alpacawork/backend/test-dist/receiver/projection-contract.js';
 import { createOriginal, copyWorkspace, removeWorkspace, profiles } from '../../../scripts/dev-fixtures/fixture.ts';
 import { trace, oldOwnerRecords, oldOwnerFrame, assertEquivalent, type HarnessDriver, type Observation, type DependencyProbe } from './harness.ts';
-import { mutate, mutationState } from './mutations.ts';
+import { mutate, mutationState, nestProject } from './mutations.ts';
 import { ReadResources, recordsMeaning, tracedReads } from './resources.ts';
 import { publicationDriver } from './publication-driver.ts';
 
@@ -32,6 +32,7 @@ export async function coreDriver() {
       files: id => { if (failFiles) throw new Error('Synthetic records read failure'); return state.externalFiles.get(id) ?? []; },
       runFiles: run => ({ activity: null, errorCause: state.causes.get(run.id) }),
     };
+    nestProject(store);
     publication = await publicationDriver(root, store, observations, state);
     let pv = 0;
     const load = () => store.read(db => emptyWorkspaceRecords(root, observations).load(db, pv as ProjectionVersion));
@@ -69,6 +70,8 @@ export async function coreDriver() {
       capabilities: ['database-replay', 'workspace-records', 'derive-affected', 'aggregate', 'required-view-pv', 'view-history', 'search-timeline-axis', 'bounded-audit'],
       publication: publication.publication,
       resync: publication.resync,
+      ownerRepair: publication.repair,
+      retry: publication.retry,
       observe: async () => ({ incremental: observation(reader, cache, aggregate, reads), full: full() }),
       async write(operation) {
         const before = reader, beforeCache = cache, beforeAggregate = aggregate;
@@ -104,7 +107,7 @@ export async function coreDriver() {
         }
         cache = nextCache;
         const updated = updateScreenAggregate(aggregate, contributions, facts(reader, cache)); aggregate = updated.next;
-        const aggregated = aggregateResources(updated.changed, id => reader.scopes(id), timelineScopes(id => reader.ancestors(id)));
+        const aggregated = aggregateResources(updated.changed, id => searchScopes(reader, id));
         required = raiseRequiredPv(required, impact, pv as ProjectionVersion, aggregated).next;
         // A resource's version rises for what the records changed (affected) and for what the aggregates changed: a
         // read of an aggregate value is checked against both, as the version is raised from both.
@@ -146,5 +149,5 @@ export async function coreDriver() {
 /** An affected set with the scopes an aggregate update changed added to its own. */
 function withAggregate(set: AffectedSet, aggregated: AggregateResources): AffectedSet {
   return { ...set, scopes: { page: new Set([...set.scopes.page, ...aggregated.page]), search: new Set([...set.scopes.search, ...aggregated.search]),
-    timeline: new Set([...set.scopes.timeline, ...aggregated.timeline ?? []]) } };
+    timeline: set.scopes.timeline } };
 }

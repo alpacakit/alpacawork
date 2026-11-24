@@ -61,8 +61,9 @@ import { goesDownByItself } from "./foot";
 function useCoordinatorLaunch() {
   const read = useFrameSelector(data => data !== null);
   const conversation = useConversation(state => state.conversation);
-  const next = conversation?.nextLaunch ?? null;
-  return { next, ready: read && conversation !== null };
+  const next = conversation?.nextLaunch ?? null, ready = read && conversation !== null;
+  // The same object while it says the same: the input is not drawn again for each update the footer observes.
+  return useMemo(() => ({ next, ready }), [next, ready]);
 }
 const CoordinatorFooter = memo(function CoordinatorFooter() {
   const launch = useCoordinatorLaunch();

@@ -1,4 +1,4 @@
-import type { ProjectedIndexDTO, ControlRunDTO, PlacementDTO, TaskRowDTO, TaskProjectedTimelineDTO } from "@alpacawork/contract/control";
+import type { ProjectedIndexDTO, ControlRunDTO, PlacementDTO, TaskRowDTO, TaskTimelineLaneDTO } from "@alpacawork/contract/control";
 import { runFailureResolution } from "@alpacawork/contract/run";
 import type { TimelineLog, TimelineRun } from "./history";
 
@@ -137,11 +137,11 @@ export function placedOn(taskId: string, people: PeopleIndex): PlacementDTO[] {
 export type TimeTaskRow = Omit<TaskRowDTO, "stateLog"> & { stateLog: TimelineLog[] };
 export type TimePeopleIndex = {
   tasks: ReadonlyMap<string, TimeTaskRow>;
-  placements: ReadonlyMap<string, TaskProjectedTimelineDTO["placements"][number]>;
+  placements: ReadonlyMap<string, TaskTimelineLaneDTO["placements"][number]>;
   runsByTask: ReadonlyMap<string, TimelineRun[]>;
 };
 export function indexTimePeople(tasks: TimeTaskRow[], runs: TimelineRun[],
-  placements: TaskProjectedTimelineDTO["placements"]): TimePeopleIndex {
+  placements: TaskTimelineLaneDTO["placements"]): TimePeopleIndex {
   return { tasks: new Map(tasks.map(task => [task.id, task])),
     placements: new Map(placements.map(placement => [placement.id, placement])), runsByTask: groupBy(runs, run => run.taskId) };
 }

@@ -1,27 +1,31 @@
 import { readDataSize } from './read-json';
 export { readSize, readDataSize } from './read-json';
-import { readGroup, readTaskId, readUsedAt, READ_BUNDLE_AGE, READ_MAX_BYTES, READ_MAX_TASKS, readLifetime } from './read-model';
+import { getReadProof, readGroup, readTaskId, readUsedAt, READ_BUNDLE_AGE, READ_MAX_BYTES, READ_MAX_TASKS, readLifetime } from './read-model';
 import { type Query, type QueryClient, type QueryKey } from '@tanstack/react-query';
 
 const memoryBytes = (query: Query) => readDataSize(query.state.data, data => ({ key: query.queryKey, data }));
 export function representedReadIds(key: QueryKey, data: unknown): string[] {
-  if (['task-finished', 'task-shelved', 'task-search', 'task-timeline'].includes(String(key[0])))
+  if (['task-finished', 'task-shelved', 'task-search'].includes(String(key[0])))
     return ((data as { pages?: { rows?: { id: string }[] }[] } | undefined)?.pages ?? []).flatMap(page => (page.rows ?? []).map(row => row.id));
+  if (isTimelineLane(key)) return [String(key[3])];
   const id = readTaskId(key);
   return id ? [id] : [];
 }
+const isTimelineLane = (key: QueryKey) => key[0] === 'task-timeline' && key[2] === 'lane' && key.length === 6;
 /**
- * Whether a stored chronology window adds nothing to `later`: the same list and start, read after it to its end, ending
- * no earlier. The window's end moves with the clock, so without this each turn of it leaves one more whole copy for every
- * restart to prove.
+ * Whether a row's strip read for an earlier range gives way to `later`: the same row's strip, read no earlier, over a range
+ * the clock has moved on: the earlier range reached the moment it was read, and the later one ends later and still
+ * overlaps it. The range's end moves with the clock, so without this each turn of it would keep one more copy of each
+ * row to project, sweep and prove on every restart. A range zoomed or panned to (a past looked at, or one ending no later)
+ * adds what it does not share and stays; one held for a reader now (active) is the caller's to keep.
  */
-export function coversTimelineWindow(later: { key: QueryKey; data: unknown; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
-  // [kind, root, scope, visible, folded, from, to, ...]: everything but the end names the same list and start.
-  const window = (key: QueryKey) => key[0] === 'task-timeline' && key.length >= 7;
-  return later.key !== earlier.key && window(later.key) && window(earlier.key) && later.key.length === earlier.key.length
-    && later.key.every((part, at) => at === 6 || part === earlier.key[at])
-    && String(later.key[6]) >= String(earlier.key[6]) && later.acquiredAt >= earlier.acquiredAt
-    && (later.data as { pages?: { nextAfter?: string | null }[] }).pages?.at(-1)?.nextAfter === null;
+export function coversTimelineWindow(later: { key: QueryKey; acquiredAt: number }, earlier: { key: QueryKey; acquiredAt: number }) {
+  // [kind, root, 'lane', lane, from, to]: the same row of the same list.
+  return later.key !== earlier.key && isTimelineLane(later.key) && isTimelineLane(earlier.key)
+    && later.key.slice(0, 4).every((part, at) => part === earlier.key[at]) && later.acquiredAt >= earlier.acquiredAt
+    // The earlier range reached the moment it was read (it followed the clock), not a past the reader looked at.
+    && (!Number.isFinite(earlier.acquiredAt) || String(earlier.key[5]) >= new Date(earlier.acquiredAt).toISOString())
+    && String(later.key[5]) > String(earlier.key[5]) && String(later.key[4]) <= String(earlier.key[5]);
 }
 type RetentionItem<T> = { value: T; key: QueryKey; hash: string; data: unknown; usedAt: number; bytes: number; required: boolean; protected: boolean };
 /** One group/deadline/rank/budget policy. Adapters decide which values are eligible and what protection means. */
@@ -60,7 +64,19 @@ export function startReadRetention(client: QueryClient) {
     if (running) return;
     running = true;
     try {
-      const queries = client.getQueryCache().getAll().filter(query => readLifetime(query.queryKey) !== undefined);
+      const all = client.getQueryCache().getAll().filter(query => readLifetime(query.queryKey) !== undefined);
+      // An idle strip of a row gives way to another acquired strip of the same row the clock moved on (coversTimelineWindow).
+      // When it was read is its proof's, as in the checkpoint (a restored strip keeps the time it was read).
+      const window = (query: Query) => ({ key: query.queryKey, acquiredAt: query.state.data === undefined ? 0 : getReadProof(query)?.acquiredAt ?? query.state.dataUpdatedAt });
+      const rows = new Map<string, Query[]>();
+      for (const query of all) if (isTimelineLane(query.queryKey) && query.state.data !== undefined) {
+        const row = JSON.stringify(query.queryKey.slice(0, 4)), held = rows.get(row);
+        if (held) held.push(query); else rows.set(row, [query]);
+      }
+      const superseded = new Set(all.filter(query => !query.isActive() && query.state.fetchStatus === 'idle' && isTimelineLane(query.queryKey)
+        && (rows.get(JSON.stringify(query.queryKey.slice(0, 4))) ?? []).some(later => coversTimelineWindow(window(later), window(query)))));
+      for (const query of superseded) client.removeQueries({ queryKey: query.queryKey, exact: true });
+      const queries = all.filter(query => !superseded.has(query));
       const selection = selectGroups(queries.map(query => ({ value: query, key: query.queryKey, hash: query.queryHash, data: query.state.data,
         // The selector keeps protected groups outside the memory budget. Size a
         // payload only when that same policy actually needs its byte count.

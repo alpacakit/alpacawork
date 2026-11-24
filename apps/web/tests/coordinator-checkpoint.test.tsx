@@ -85,7 +85,7 @@ async function restored() {
 test('actual snapshot API → read owner → checkpoint → new client → normal projection', async () => {
   const h = await fixture();
   const acquired = getReadProof(readQuery(queryClient, ['coordinator', h.index.root])!)!.acquiredAt;
-  const disk = h.storage.read(); expect(disk.control.format).toBe(16);
+  const disk = h.storage.read(); expect(disk.control.format).toBe(17);
   const next = await restored(), read = coordinatorReadState(next, h.index.root);
   expect(read.snapshot?.conversation).toEqual(h.snapshot.conversation);
   expect(read.assessment).toMatchObject({ display: true, project: false, acquiredAt: acquired });

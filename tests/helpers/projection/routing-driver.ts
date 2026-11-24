@@ -13,7 +13,7 @@ import { seatFactsOf } from '@alpacawork/backend/test-dist/control/wake.js';
 import { affected, recordsSource } from '@alpacawork/backend/test-dist/receiver/screen-derive.js';
 import { emptyWorkspaceRecords } from '@alpacawork/backend/test-dist/receiver/workspace-records.js';
 import { createOriginal, copyWorkspace, removeWorkspace, profiles } from '../../../scripts/dev-fixtures/fixture.ts';
-import { mutate, mutationState } from './mutations.ts';
+import { mutate, mutationState, nestProject } from './mutations.ts';
 import { meaning, trace, oldOwnerRecords, type HarnessDriver, type Operation } from './harness.ts';
 
 export async function routingDriver() {
@@ -28,7 +28,9 @@ export async function routingDriver() {
       config.agents.fixture.enabled = true;
       config.agents.fixture.params = Object.fromEntries(Object.keys(config.agents.fixture.params).map(key => [key, []]));
       writeFileSync(join(root, 'config.yaml'), stringify(config));
-      const release = holdControlWriter(root), store = new ControlStore(root), journal = keepControlChanges(root);
+      const release = holdControlWriter(root), store = new ControlStore(root);
+      nestProject(store);
+      const journal = keepControlChanges(root);
       journal.log.register('replay');
       cleanups.push(() => { journal.close(); store.close(); release(); removeWorkspace(root); });
       const state = mutationState();

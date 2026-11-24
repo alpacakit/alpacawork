@@ -7,7 +7,11 @@ import { isRunEnded } from '@alpacawork/contract/run';
 import { launchSchema } from '@alpacawork/contract/run-protocol';
 import { openQuestions } from '@alpacawork/raw';
 import { DEFAULT_SCHEMA } from '@alpacawork/contract';
-import { coordinatorRecord } from '../../runs-fixtures.ts';
+import { coordinatorRecord, record } from '../../runs-fixtures.ts';
+import { inertFixtureLaunch } from '../agent-stub.ts';
+import { randomUUID } from 'node:crypto';
+import { runRecordSchema } from '@alpacawork/contract/run';
+import { taskHash } from '@alpacawork/db';
 import type { ControlStore, ChangeKey } from '@alpacawork/db';
 import type { RunId } from '@alpacawork/contract';
 import type { ControlRunDTO } from '@alpacawork/contract/control';
@@ -20,6 +24,33 @@ export interface MutationState {
   fresh: boolean;
 }
 export const mutationState = (): MutationState => ({ externalFiles: new Map(), causes: new Map(), lowAutomaticLimit: false, fresh: false });
+/**
+ * A project nested in P1 (P15) holding a finished Task (T16) whose ended Run spans an hour: the strips and axis above read that
+ * Run only while P15 is listed, so shelving P15 and taking it back change them.
+ */
+export function nestProject(store: ControlStore) {
+  const project = randomUUID(), task = randomUUID(), at = '2026-01-02T00:00:00.000Z', ended = '2026-01-02T01:00:00.000Z';
+  const created = (id: string) => JSON.stringify({ id, kind: 'created', at, title: 'Synthetic nested record',
+    description: null, actor: { kind: 'human' }, fromState: null, toState: 'todo', userRequested: false });
+  store.write(db => {
+    db.prepare(`INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold,user_requested,settings,revision,created_at,updated_at)
+      SELECT ?,'project',15,id,NULL,'Nested synthetic project','active','todo',0,0,settings,1,created_at,updated_at FROM tasks WHERE external_id='P1'`).run(project);
+    db.prepare(`INSERT INTO project_fields(project_task_id,position,field_id) SELECT ?,position,field_id FROM project_fields
+      WHERE project_task_id=(SELECT id FROM tasks WHERE external_id='P1')`).run(project);
+    db.prepare(`INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold,user_requested,settings,revision,created_at,updated_at)
+      SELECT ?,'task',16,?,?,'Nested synthetic task','active','done',0,0,NULL,1,created_at,updated_at FROM tasks WHERE external_id='P1'`).run(task, project, project);
+    const log = db.prepare('INSERT INTO task_log(id,task_id,ordinal,entry) VALUES(?,?,0,?)');
+    log.run('nested-created-15', project, created('nested-created-15'));
+    log.run('nested-created-16', task, created('nested-created-16'));
+    db.prepare(`INSERT INTO placements(id,task_id,agent_id,profile_key,responsible,revision,started_at) VALUES('nested-placement','T16','fixture-agent','fixture',1,1,?)`).run(at);
+    db.prepare(`INSERT INTO requests(id,task_id,placement_id,placement_revision,task_hash,mode,body,purpose,author,submitted_at,delivery_state)
+      VALUES('nested-request','T16','nested-placement',1,?,'new','Synthetic nested work','instruction','{"kind":"human"}',?,'queued')`).run(taskHash(task, 1), at);
+    db.prepare("INSERT INTO runs(id,record,prompt,result,result_state) VALUES(900,?,'Synthetic nested prompt','Synthetic nested result','present')").run(
+      JSON.stringify(runRecordSchema.parse(record('R900', { task: 'T16', placementId: 'nested-placement', requestId: 'nested-request', agent: 'fixture',
+        role: 'owner', caller: null, cwd: '/synthetic-fixture-workspace', state: 'succeeded', created_at: at, started_at: at, ended_at: ended,
+        exit: { code: 0, signal: null }, launch: inertFixtureLaunch('codex') }))));
+  });
+}
 export function mutate(store: ControlStore, before: RecordsReader, operation: Operation, state: MutationState) {
   const bundles = [...before.taskIds()].map(id => before.bundle(id)!);
   const workspaceId = store.read(db => db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()!.id);
@@ -32,7 +63,7 @@ export function mutate(store: ControlStore, before: RecordsReader, operation: Op
     server: null, ancestors: [], release: null,
   }));
   const raw = (run: TaskBundle['runs'][number]) => { const { resultHead: _head, ...record } = run as TaskBundle['runs'][number] & { resultHead?: string }; return record; };
-  const keys: ChangeKey[] = [], id = `T${operation.target}`, own = before.bundle(id)!;
+  const keys: ChangeKey[] = [], id = operation.task ?? `T${operation.target}`, own = before.bundle(id)!;
   const at = new Date(Date.parse('2026-11-16T00:00:00Z') + operation.step * 1000).toISOString();
   const ownRun = raw(own.runs[0] ?? bundles.flatMap(b => b.runs)[operation.variant % 7]!);
   const runOwner = ownRun.task!;

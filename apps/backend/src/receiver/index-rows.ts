@@ -37,22 +37,17 @@ export function composeRow(derived: TaskDerived, aggregate: ScreenAggregate): Ta
     rowFacts: aggregateRowFacts(derived, aggregate) };
 }
 /** The row the live index carries: only the log entries its current state is drawn from. */
-export const liveRow = (row: TaskRowDTO): TaskRowDTO => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });
+export const liveRow = <R extends Pick<TaskRowDTO, 'stateLog' | 'state' | 'baseState'>>(row: R): R => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });
 
 /** The resources the aggregates changed: the closed pages whose rows or order moved, and the search scopes of their Tasks. */
-export type AggregateResources = { readonly page: ReadonlySet<string>; readonly search: ReadonlySet<string>; readonly timeline?: ReadonlySet<string> };
+export type AggregateResources = { readonly page: ReadonlySet<string>; readonly search: ReadonlySet<string> };
 /**
- * What an aggregate update changed, as resources: its changed pages, and the search and timeline scopes of the Tasks
- * whose aggregate values (child counts, movedAt, usage below) moved, since both return their rows with those values.
- * `timelineOf` names a Task's timeline scopes (`root`, itself and its ancestors).
+ * What an aggregate update changed, as resources: its changed pages, and the search scopes of the Tasks whose aggregate
+ * values (child counts, movedAt, usage below) moved, since both return their rows with those values.
  */
-export function aggregateResources(changed: AggregateChanges, scopesOf: (task: TaskId) => readonly string[],
-  timelineOf: (task: TaskId) => readonly string[] = () => []): AggregateResources {
-  return { page: changed.pages, search: new Set([...changed.tasks].flatMap(task => [...scopesOf(task)])),
-    timeline: new Set([...changed.tasks].flatMap(task => [...timelineOf(task)])) };
+export function aggregateResources(changed: AggregateChanges, scopesOf: (task: TaskId) => readonly string[]): AggregateResources {
+  return { page: changed.pages, search: new Set([...changed.tasks].flatMap(task => [...scopesOf(task)])) };
 }
-/** A Task's timeline scopes: every project's (`root`), its own and each of its ancestors'. */
-export const timelineScopes = (ancestors: (task: TaskId) => readonly TaskId[]) => (task: TaskId): string[] => ['root', task, ...ancestors(task)];
 /** The Tasks a patch compares: those a batch affected, and those whose aggregate values or home position moved. */
 export const patchCandidates = (affected: AffectedSet, changed: AggregateChanges): Set<TaskId> =>
   new Set([...affected.tasks.keys(), ...changed.tasks]);
@@ -65,7 +60,7 @@ export const patchCandidates = (affected: AffectedSet, changed: AggregateChanges
 export function raiseRequiredPv(previous: RequiredPvDTO, affected: AffectedSet, pv: ProjectionVersion,
   aggregate: AggregateResources = { page: new Set(), search: new Set() }): { next: RequiredPvDTO; patch: IndexPatchDTO['requiredPv'] } {
   const raised = { view: [] as string[], history: [] as string[], page: [...new Set([...affected.scopes.page, ...aggregate.page])],
-    timeline: [...new Set([...affected.scopes.timeline, ...aggregate.timeline ?? []])], search: [...new Set([...affected.scopes.search, ...aggregate.search])] };
+    timeline: [...affected.scopes.timeline], search: [...new Set([...affected.scopes.search, ...aggregate.search])] };
   for (const [task, facets] of affected.tasks) {
     if (facets.has('view')) raised.view.push(task);
     if (facets.has('history')) raised.history.push(task);

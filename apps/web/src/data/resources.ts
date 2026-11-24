@@ -1,8 +1,8 @@
 import { commandRoute } from '@alpacawork/contract/command-path';
 import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
-import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskProjectedTimelineSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedTimelineDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
-import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type InfiniteData, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
+import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
+import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
 import { ApiError, createApi, retryOf } from "./client";
 import { readCoordinator, type CoordinatorSnapshot } from './coordinator';
 import { historyResource, missingHistoryRange, trimClosedHistory } from './history-resource';
@@ -13,6 +13,7 @@ import { decodeText } from "@/domain/text-bytes";
 import { DIFF_LIMITS } from "@alpacawork/contract/report-diff";
 import { z } from "zod";
 import { taskCodeUrl, taskFileUrl } from "./task-file-url";
+import { LANE_READ_GAP, laneBatches } from "./lane-batch";
 
 const codeRootsSchema = z.object({ roots: z.array(z.string()) });
 
@@ -22,6 +23,7 @@ import { skillCatalogSchema } from './skill-catalog';
 type Query = QueryRecord<any, any, any, any>;
 export const api = createApi();
 const readLiveIndex = (signal?: AbortSignal) => api.request("workspace/live", projectedIndexSchema, signal);
+const readTimelineLane = laneBatches((path, signal) => api.request(path, taskTimelineLanesSchema, signal));
 
 /**
  * What the screen reads, each with its key, how it is fetched and how long it is kept.
@@ -106,23 +108,26 @@ export const resources = {
     getNextPageParam: (page) => page.nextAfter ?? undefined,
     staleTime: Infinity,
   }),
-  timelineAxis: (root: string, scope: string | null, lanes: string[], folded: string[]) => queryOptions({
-    queryKey: ["task-timeline", root, "axis", scope ?? "root", lanes.join(","), folded.join(",")] as const,
-    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, scope, lanes, () => api.request(`task/timeline-axis?scope=${encodeURIComponent(scope ?? "root")}`
-      + `&lanes=${encodeURIComponent(lanes.join(","))}&folded=${encodeURIComponent(folded.join(","))}`, taskProjectedTimelineAxisSchema, signal)),
+  /** The rows' full-lifetime activity (the axis): read again when any of its rows' versions moves. */
+  timelineAxis: (root: string, lanes: string[]) => queryOptions({
+    queryKey: ["task-timeline", root, "axis", lanes.join(",")] as const,
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, lanes, () => api.request(`task/timeline-axis?lanes=${encodeURIComponent(lanes.join(","))}`,
+      taskProjectedTimelineAxisSchema, signal)),
     staleTime: Infinity,
   }),
-  timeline: (root: string, scope: string | null, visible: string[], folded: string[], from: string, to: string) => infiniteQueryOptions({
-    queryKey: ["task-timeline", root, scope ?? "root", [...new Set(visible)].sort().join(","), [...new Set(folded)].sort().join(","), from, to] as const,
-    placeholderData: (previous: InfiniteData<TaskProjectedTimelineDTO> | undefined, query) =>
-      query?.queryKey[1] === root && query.queryKey[2] === (scope ?? "root") ? previous : undefined,
-    queryFn: ({ client, queryKey, signal, pageParam }) => readTimeline(client, queryKey, scope, visible, () => api.request(`task/timeline?scope=${encodeURIComponent(scope ?? "root")}`
-      + `&visible=${encodeURIComponent([...new Set(visible)].sort().join(","))}&folded=${encodeURIComponent([...new Set(folded)].sort().join(","))}`
-      + `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=2000`
-      + (typeof pageParam === "string" ? `&after=${encodeURIComponent(pageParam)}` : ""), taskProjectedTimelineSchema, signal)),
-    initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextAfter ?? undefined,
-    staleTime: Infinity,
+  /**
+   * One row's time strip over a range, whole. It is read again only when its row's version moves; the rows asked for
+   * together go out as one read (lane-batch).
+   */
+  timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
+    queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => {
+      // A strip read again waits out the gap from its last arrival (lane-batch).
+      const held = readQuery(client, queryKey)?.state;
+      return readTimelineLane(lane, from, to, signal, held?.data === undefined ? 0 : held.dataUpdatedAt + LANE_READ_GAP);
+    }),
+    // The batch the row is read in retries as one read (lane-batch).
+    staleTime: Infinity, retry: false,
   }),
   notices: (root: string) => queryOptions({
     queryKey: ["person-notices", root] as const,
@@ -337,6 +342,15 @@ export function assessRead(client: QueryClient, query: Query) {
   }
   return base;
 }
+/**
+ * The newest read under `prefix` that can be shown, among those `accept` takes: what stands in for the read of what is in
+ * view while that one has not arrived (a restart out of reach, a range or a set of rows not read yet).
+ */
+export function newestHeldRead(client: QueryClient, prefix: QueryKey, accept: (query: Query) => boolean = () => true) {
+  return client.getQueryCache().findAll({ queryKey: prefix })
+    .filter(query => query.state.data !== undefined && accept(query) && assessRead(client, query).display)
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0];
+}
 const writtenRows = new WeakMap<object, TaskRowDTO>();
 /** Reader-only row; never enters serverReadFacts, counts, people or the current index. */
 export function readerTaskRow(client: QueryClient, root: string, id: string) {
@@ -395,11 +409,11 @@ export function admitResourceRead(client: QueryClient, started: ReturnType<typeo
 }
 /** A lane selection belongs to the server's current rows. An index can retire it before React replaces the
  * observer's key; refreshing that old selection would ask the server for IDs it has already removed. */
-function readTimeline<T>(client: QueryClient, key: QueryKey, scope: string | null, lanes: readonly string[], fetch: () => Promise<T>) {
+function readTimeline<T>(client: QueryClient, key: QueryKey, lanes: readonly string[], fetch: () => Promise<T>) {
   const facts = serverReadFacts(client);
   if (facts && facts.root === key[1]) {
     const rows = new Set(facts.tasks.map(row => row.id));
-    if (scope !== null && !rows.has(scope) || lanes.some(id => !rows.has(id))) return discardResourceRead(readQuery(client, key));
+    if (lanes.some(id => !rows.has(id))) return discardResourceRead(readQuery(client, key));
   }
   return readResource(client, key, fetch);
 }

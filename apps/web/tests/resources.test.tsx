@@ -7,7 +7,7 @@ import { InfiniteQueryObserver, QueryObserver, type InfiniteData } from "@tansta
 import type { ControlTaskDTO, IndexPatchDTO, ProjectedIndexDTO, TaskProjectedPageDTO, TaskPageRowDTO, TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { queryClient } from "../src/data/query-client";
 import { applyIndexPatch, indexKey, receivePatch, resources, showWrittenTask } from "../src/data/resources";
-import { headOf, at, dto, homeFixture, indexOf, logEntry, decideItem, questionFixture, rowOf, run, searchAnswer, served0, taskFixture, tree, userBall, viewsOf, PROJECT_TASK } from "./fixtures";
+import { headOf, at, dto, homeFixture, indexOf, logEntry, decideItem, questionFixture, rowOf, run, searchAnswer, served0, taskFixture, timelineLaneAnswer, tree, userBall, viewsOf, PROJECT_TASK } from "./fixtures";
 import { taskDetail } from "../src/data/queries";
 import { displayReadFacts, readerPresentation } from '../src/data/read-model';
 import { serverReadFacts } from '../src/data/read-model';
@@ -53,16 +53,9 @@ test("each resource has its own key under the workspace root", () => {
   expect(indexKey).toEqual(["index"]);
 });
 
-test("the time window key contains its inputs but not the live revision", () => {
-  expect(resources.timeline("/r", null, ["T1"], [], "2026-10-13T00:00:00.000Z", "2026-10-13T01:00:00.000Z").queryKey)
-    .toEqual(["task-timeline", "/r", "root", "T1", "",
-    "2026-10-13T00:00:00.000Z", "2026-10-13T01:00:00.000Z"]);
-});
-
-test("the time window uses the same cache for the same visible IDs in another order", () => {
-  const first = resources.timeline("/r", null, ["T2", "T1", "T2"], ["T2", "T1"], "from", "to");
-  const second = resources.timeline("/r", null, ["T1", "T2"], ["T1", "T2"], "from", "to");
-  expect(first.queryKey).toEqual(second.queryKey);
+test("a row's strip key contains its row and range but not the live revision", () => {
+  expect(resources.timelineLane("/r", "T1", "2026-10-13T00:00:00.000Z", "2026-10-13T01:00:00.000Z").queryKey)
+    .toEqual(["task-timeline", "/r", "lane", "T1", "2026-10-13T00:00:00.000Z", "2026-10-13T01:00:00.000Z"]);
 });
 
 test("a text file is reused by revision and read again for a new revision", async () => {
@@ -351,7 +344,7 @@ test("a patch reads again only what it made old, and each keeps what it shows wh
   const index = indexOf(value);
   fixtureReceipt(indexKey, index);
   const window = { pages: [{ events: [], nextBefore: null }], pageParams: [null] };
-  const timeline = (scope: string | null) => resources.timeline(index.root, scope, ["T1"], [], "from", "to").queryKey;
+  const strip = (lane: string) => resources.timelineLane(index.root, lane, "from", "to").queryKey;
   const held = {
     view1: [resources.taskView(index.root, "T1").queryKey, viewsOf(value)[0]],
     view2: [resources.taskView(index.root, "T2").queryKey, viewsOf(value)[1]],
@@ -359,19 +352,20 @@ test("a patch reads again only what it made old, and each keeps what it shows wh
     history2: [resources.history(index.root, "T2").queryKey, { ...window }],
     search: [resources.taskSearch(index.root, "one", null).queryKey, { pages: [searchAnswer(["T1"])], pageParams: [null] }],
     page: [resources.finished(index.root, null).queryKey, { pages: [pageOf([])], pageParams: [null] }],
-    timeline: [timeline(null), { pages: [{ rows: [], runs: [], belowRuns: {}, events: [], anchors: {}, placements: [], nextAfter: null, ...served0 }], pageParams: [null] }],
+    strip1: [strip("T1"), timelineLaneAnswer(value, "T1")],
+    strip2: [strip("T2"), timelineLaneAnswer(value, "T2")],
   } as const;
   const data = Object.fromEntries(Object.entries(held).map(([name, [key, value]]) => [name, fixtureReceipt(key, value)]));
-  receivePatch(queryClient, raise(index, { view: ["T2"], history: ["T1"], search: ["root"], page: ["finished:root"], timeline: ["root"] }));
+  receivePatch(queryClient, raise(index, { view: ["T2"], history: ["T1"], search: ["root"], page: ["finished:root"], timeline: ["T2"] }));
   const old = (name: keyof typeof held) => queryClient.getQueryState(held[name][0])?.isInvalidated;
-  expect([old("view1"), old("view2"), old("history1"), old("history2"), old("search"), old("page"), old("timeline")])
-    .toEqual([false, true, true, false, true, true, true]);
+  expect([old("view1"), old("view2"), old("history1"), old("history2"), old("search"), old("page"), old("strip1"), old("strip2")])
+    .toEqual([false, true, true, false, true, true, false, true]);
   for (const name of Object.keys(held) as (keyof typeof held)[]) expect(queryClient.getQueryData(held[name][0])).toBe(data[name]);
   // A patch that raises nothing they read leaves them all as they were.
   queryClient.clear();
   fixtureReceipt(indexKey, index);
   for (const [key, value] of Object.values(held)) fixtureReceipt(key, value);
-  receivePatch(queryClient, raise(index, { view: ["T9"], history: ["T9"], search: ["P999"], page: ["finished:T9"], timeline: ["P999"] }));
+  receivePatch(queryClient, raise(index, { view: ["T9"], history: ["T9"], search: ["P999"], page: ["finished:T9"], timeline: ["T9"] }));
   for (const name of Object.keys(held) as (keyof typeof held)[]) expect(old(name)).toBe(false);
 });
 

@@ -68,7 +68,6 @@ test('equal GETs have distinct acquisitions while manual/select/placeholder inpu
   const observer = new QueryObserver(client, { ...options, select: data => data.revision, placeholderData: person });
   const stop = observer.subscribe(() => {}); expect(observer.getCurrentResult().data).toBe('s1');
   client.setQueryData(options.queryKey, { ...person }); expect(query.state.data).toBe(first); expect(observer.getCurrentResult().data).toBe('s1');
-  expect(client.getQueryDefaults(['task-search']).structuralSharing).toBeUndefined(); expect(client.getQueryDefaults(['task-timeline']).structuralSharing).toBeUndefined();
   stop(); observer.destroy();
 });
 

@@ -6,10 +6,10 @@ import { structuralFallback } from './projection-fallback.js';
 import { ControlStore, type ChangeKey, type ChangeLog, type ChangeSeq } from '@alpacawork/db';
 import { faultReason, Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { IndexPatchDTO, ProjectedIndexDTO, ProjectionVersion, RequiredPvDTO } from '@alpacawork/contract/control';
-import type { TaskDerived, TaskBundle, PublishedFrame, RecordsReader, RoutingWorkSet, AffectedSet, Facet, AggregateContribution } from './projection-contract.js';
+import { FACETS, type TaskDerived, type TaskBundle, type PublishedFrame, type RecordsReader, type RoutingWorkSet, type AffectedSet, type Facet, type AggregateContribution } from './projection-contract.js';
 import { emptyWorkspaceRecords, type DatabaseWorkspaceRecords, type WorkspaceObservations } from './workspace-records.js';
 import { RecordsMap } from './records-map.js';
-import { affected, deriveTask } from './screen-derive.js';
+import { affected, deriveTask, rescope, searchScopes } from './screen-derive.js';
 import { aggregateFactsOf } from './workspace-aggregate-facts.js';
 import { createScreenAggregate, updateScreenAggregate, repairScreenAggregate, type AggregateSnapshot, type AggregateFacts, type AggregateRepair } from './screen-aggregate.js';
 import { aggregateResources, composeRow, IndexPatcher, liveRow, patchCandidates, raiseRequiredPv, type PatchSource } from './index-rows.js';
@@ -247,15 +247,21 @@ export class ProjectionOwner {
     // or a history reference must not recursively derive the reference graph; only affected Tasks join this set.
     const readable = usableRecords(records, () => good, id => { if (evaluateTasks.has(id)) derive(id); });
     const previous = before && usableRecords(before.records, () => before.good);
-    const effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(['row','view','history','files','membership','page','search','timeline','seat','push'])])),
-      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(['root', ...records.shelf().listed]) }, meta: true }
-      : affected({ ...change!, before: previous!, after: readable }, { before: id => before?.derived(id), after: derive });
+    const rows = { before: (id: string) => before?.derived(id), after: derive };
+    let effects: AffectedSet = full ? { tasks: new Map([...records.taskIds()].map(id => [id, new Set<Facet>(FACETS)])),
+      scopes: { page: new Set(), search: new Set(['root', ...records.shelf().listed]), timeline: new Set(before ? records.taskIds() : []) }, meta: true }
+      // A repaired or retried Task is a changed owner: what reads it follows the same relations as for a write.
+      : affected({ ...change!, owners: new Set([...change!.owners, ...repairing.keys(), ...retrying]), before: previous!, after: readable }, rows);
+    // The Tasks this publication gives facets of its own (the one way to): their scopes follow from the same rule (rescope).
+    const forced = new Set<string>();
+    const mark = (id: string, facets: readonly Facet[] = FACETS) => {
+      forced.add(id);
+      (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set<Facet>([...(effects.tasks.get(id) ?? []), ...facets]));
+    };
     if (before && runRecordsAvailable(before.records) !== runRecordsAvailable(records))
-      for (const id of records.taskIds()) (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id,
-        new Set<Facet>([...(effects.tasks.get(id) ?? []), 'row','view','history','membership','page','search','timeline','push']));
-    for (const [id] of repairing) (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push']));
-    for (const id of new Set([...retrying, ...failed]))
-      (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push']));
+      for (const id of records.taskIds()) mark(id, ['row','view','history','membership','page','search','timeline','push']);
+    for (const [id] of repairing) mark(id);
+    for (const id of new Set([...retrying, ...failed])) mark(id);
     for (const id of effects.tasks.keys()) evaluateTasks.add(id);
     let values = full ? new RecordsMap<TaskDerived>() : before!.values;
     const changes = new Map<string, { before: TaskDerived['contribution'] | undefined; after: TaskDerived['contribution'] | undefined }>();
@@ -265,7 +271,7 @@ export class ProjectionOwner {
       const old = before?.derived(id);
       let value = derive(id);
       if (failed.has(id)) {
-        (effects.tasks as Map<string, ReadonlySet<Facet>>).set(id, new Set(['row','view','history','files','membership','page','search','timeline','seat','push']));
+        mark(id);
         // Failed derivation retains only that Task's last contribution. Facts
         // successfully acquired for the other Tasks still publish together. Its facts follow the records as a full
         // build reads them, so a project taken off the list takes its row out of the home order even then.
@@ -306,7 +312,8 @@ export class ProjectionOwner {
       const result = repair.length ? repairScreenAggregate(before!.aggregate, repair, changes, facts) : updateScreenAggregate(before!.aggregate, changes, facts);
       aggregate = result.next; changed = result.changed;
     }
-    const resources = aggregateResources(changed, id => [...new Set([...(previous?.bundle(id) ? previous.scopes(id) : []), ...(readable.bundle(id) ? readable.scopes(id) : [])])]);
+    const resources = aggregateResources(changed, id => [...new Set([...(previous?.bundle(id) ? searchScopes(previous, id) : []), ...(readable.bundle(id) ? searchScopes(readable, id) : [])])]);
+    if (!full && forced.size) effects = rescope(effects, forced, previous!, readable, rows);
     const required = raiseRequiredPv(full ? emptyRequired() : before!.requiredPv, effects, pv, resources);
     if (full && before) for (const kind of Object.keys(required.next) as (keyof RequiredPvDTO)[])
       for (const id of Object.keys(before.requiredPv[kind])) { required.next[kind][id] = pv; required.patch[kind].upsert[id] = pv; }

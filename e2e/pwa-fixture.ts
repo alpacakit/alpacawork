@@ -85,7 +85,7 @@ export async function controlledPwa(page: Page) {
       };
     });
   });
-  await expect.poll(async () => { const saved = await checkpoint(); return saved?.format === 14 && saved.queries > 0 && saved.origin === new URL(page.url()).origin; },
+  await expect.poll(async () => { const saved = await checkpoint(); return !!saved && saved.queries > 0 && saved.origin === new URL(page.url()).origin; },
     { timeout: 20_000 }).toBe(true);
   await test.info().attach('formal-pwa-ready', { contentType: 'application/json', body: JSON.stringify({
     controller: await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL), checkpoint: await checkpoint() }) });

@@ -133,7 +133,7 @@ export function recordHistory(taskId: string, entries: readonly (Pick<TaskLog, "
 }
 /**
  * The server's answer to the time view's reads (GET /api/task/timeline), for the tree a test made, put in the cache as
- * each read is made (so the screen reads it at once): each Task it asks for (listed or below a folded one) with its
+ * each read is made (so the screen reads it at once): each row it asks for with its
  * notes, the History events the test stated (`history`). It answers until the test ends.
  */
 export const fixtureHistory = new WeakMap<PeopleIndex, Record<string, HistoryEvent[]>>();
@@ -147,23 +147,25 @@ function lanesAbove(value: AxisFixture, listed: string[], id: string) {
     if (listed.includes(parent)) above.push(parent);
   return above;
 }
-function timelineIds(value: AxisFixture, listed: string[], folded: string[]) {
-  const below = (id: string): boolean => { const parent = value.tasks.find(task => task.id === id)?.parentId; return !!parent && (folded.includes(parent) || below(parent)); };
-  return value.tasks.map(task => task.id).filter(id => listed.includes(id) || below(id));
-}
-/** The same complete chronology answer for cached component fixtures and mock HTTP callers. */
-export function timelineAnswer(value: AxisFixture, listed: string[], folded: string[]) {
-  const events = timelineIds(value, listed, folded).flatMap(id => (value.history?.[id] ?? [])
-    .map(event => ({ kind: "note" as const, taskId: id, event: timelineNoteOf(event) })));
-  const belowRuns: Record<string, [string, number, number][]> = {};
+/** One row's strip, the same for cached component fixtures and mock HTTP callers: its notes, the History events the
+ * test stated (`history`), and the ended Runs below it. */
+export function timelineLaneAnswer(value: AxisFixture, lane: string) {
+  const task = value.tasks.find(task => task.id === lane)!;
+  const { movedAt: _movedAt, usageBelow: _usageBelow, runsBelow: _runsBelow, rowFacts: _rowFacts, ...row } = rowOf(task);
+  const events = (value.history?.[lane] ?? []).map(event => ({ kind: "note" as const, taskId: lane, event: timelineNoteOf(event) }));
+  const belowRuns: [string, number, number][] = [];
   for (const run of value.runs) {
     const span = runSpan(run, null);
-    if (span && span.to !== null) for (const lane of lanesAbove(value, listed, run.taskId)) (belowRuns[lane] ??= []).push([run.id, span.from, span.to]);
+    if (span && span.to !== null && lanesAbove(value, [lane], run.taskId).length) belowRuns.push([run.id, span.from, span.to]);
   }
-  return { rows: [], runs: [], belowRuns, events, anchors: {}, placements: [], nextAfter: null, ...served0 };
+  return { lane, row, anchor: null, events, belowRuns, placements: [], ...served0 };
 }
-export function timelineAxisAnswer(value: AxisFixture, listed: string[], folded: string[]) {
-  const ids = timelineIds(value, listed, folded);
+/** The server's answer to GET /api/task/timeline for these rows. */
+export const timelineAnswer = (value: AxisFixture, lanes: string[]) => ({
+  lanes: lanes.filter(lane => value.tasks.some(task => task.id === lane)).map(lane => timelineLaneAnswer(value, lane)),
+  gone: lanes.filter(lane => !value.tasks.some(task => task.id === lane)) });
+export function timelineAxisAnswer(value: AxisFixture, listed: string[]) {
+  const ids = value.tasks.map(task => task.id).filter(id => listed.includes(id));
   const spans: [number, number | null][] = [];
   const starts: number[] = [];
   for (const task of value.tasks.filter(task => ids.includes(task.id))) {
@@ -190,13 +192,13 @@ export function serveTimeline(value: Served) {
     const key = event.query.queryKey;
     if (event.type !== "added" || key[0] !== "task-timeline" || key[1] !== value.root) return;
     const split = (ids: unknown) => String(ids).split(",").filter(Boolean);
-    const axis = key[2] === "axis";
-    const listed = split(key[axis ? 4 : 3]), folded = split(key[axis ? 5 : 4]);
-    if (axis) {
-      queryClient.setQueryData(key, timelineAxisAnswer(value, listed, folded));
+    if (key[2] === "axis") {
+      queryClient.setQueryData(key, timelineAxisAnswer(value, split(key[3])));
       return;
     }
-    queryClient.setQueryData(key, { pages: [timelineAnswer(value, listed, folded)], pageParams: [null] });
+    // A row of another tree served meanwhile is that tree's to answer.
+    if (!value.tasks.some(task => task.id === key[3])) return;
+    queryClient.setQueryData(key, timelineLaneAnswer(value, String(key[3])));
     const index = queryClient.getQueryData<ProjectedIndexDTO>(['index']);
     if (index) recordReadProof(event.query, captureReadProof(index, key));
   });

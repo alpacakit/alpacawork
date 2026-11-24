@@ -106,7 +106,7 @@ test('the Workspace frame, Reader and coordinator card stay mounted while server
     if (path === '/api/person/notices') return new Response(snapshotJson({ state: null, revision: null, initialBaselines: Object.fromEntries(indexOf(served).tasks.map(row => [row.id, taskBaseline(row)])) }));
     if (path.startsWith('/api/task/timeline-axis?')) {
       const params = new URL(path, 'http://fixture/').searchParams;
-      return new Response(snapshotJson(timelineAxisAnswer(served, params.get('lanes')!.split(','), params.get('folded')!.split(',').filter(Boolean))));
+      return new Response(snapshotJson(timelineAxisAnswer(served, params.get('lanes')!.split(','))));
     }
     return problemResponse('not_found', 'Not found');
   });

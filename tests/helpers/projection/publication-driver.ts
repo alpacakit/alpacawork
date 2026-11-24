@@ -19,7 +19,10 @@ export async function publicationDriver(root: string, store: ControlStore, obser
   const personal = (): PersonalProjection => ({
     person: { settings: null, notices: state.fresh ? 'b'.repeat(64) : null, coordinator: null },
     presence: { state: 'away', until: null }, host: null, coordinatorWork: null });
+  // A Task whose derivation fails until the retry check lets it succeed.
+  let failing: string | undefined;
   const owner = new ProjectionOwner({ root, log, observations, generation: 'publication-replay', locations: () => ({}),
+    derive: (records, id) => { if (id === failing) throw new Error('Synthetic derivation failure'); return deriveTask(records, id); },
     personal: async () => { await pause; return personal(); },
     published(frame, _previous, _work, full) { publications.push({ frame, full }); },
     timing(event) { if (event.step === 'projection-audit') ticks.push({ tasks: Number(event.tasks) }); },
@@ -58,6 +61,13 @@ export async function publicationDriver(root: string, store: ControlStore, obser
     }, resources: readers.read(frame) };
   }
   function pair(frame = owner.current!) { return { incremental: observe(frame, reads, true), full: observe(full(frame)) }; }
+  function record(title: string) {
+    const id = `retry-record-${log.latest}`;
+    store.write(db => db.prepare(`INSERT INTO task_log(id,task_id,ordinal,entry)
+      SELECT ?,id,(SELECT coalesce(max(ordinal),-1)+1 FROM task_log WHERE task_id=tasks.id),? FROM tasks WHERE external_id='T5'`).run(id,
+      JSON.stringify({ id, kind: 'reported', at: '2026-06-01T00:00:00.000Z', title, description: 'Fictional replay.', actor: { kind: 'human' }, fromState: null, toState: null })));
+    return log.append([{ kind: 'log', id }]);
+  }
   function title(value: string) {
     store.write(db => db.prepare("UPDATE tasks SET title=?,revision=revision+1 WHERE external_id='T5'").run(value));
     return log.append([{ kind: 'task', id: 'T5' }]);
@@ -83,7 +93,7 @@ export async function publicationDriver(root: string, store: ControlStore, obser
       const target = 'P1', node = (aggregate as unknown as { nodes: { get(id: string): object } }).nodes.get(target);
       Object.assign(node, { belowWorking: 5000, belowActive: 5000, moved: 9999999999999 });
       assert.equal(aggregate.workingBelow(target), 5000);
-      const corrupted = meaning(observe(held));
+      const served = observe(held), corrupted = meaning(served);
       const start = ticks.length, limit = 2;
       // Both database and published cursors must have time to visit every Task, using bounded ticks.
       for (let i = 0; i < [...held.records.taskIds()].length * 2 + 4; i++) {
@@ -97,7 +107,24 @@ export async function publicationDriver(root: string, store: ControlStore, obser
       assert.deepEqual(meaning(observe(held)), corrupted, 'repair changed the held damaged frame in place');
       assert.notEqual(owner.current, held, 'audit must request a catch-up publication');
       const result = pair();
-      return { repaired: result.incremental, full: result.full };
+      return { repaired: result.incremental, full: result.full, previous: served };
+    } },
+    retry: { async verify() {
+      const before = observe(await owner.read(log.latest));
+      failing = 'T5';
+      let failed: Observation;
+      try {
+        // A title and a record of T5 published while its derivation fails: T5 keeps its last facts, and that is what is served.
+        title('Synthetic title behind a failed derivation');
+        failed = observe(await owner.read(record('Synthetic record behind a failed derivation')));
+        assert.ok(JSON.parse(owner.index()).staleIds.includes('T5'), 'the derivation must actually fail');
+      } finally { failing = undefined; }
+      // The failure's own backoff (250 ms), then the retry publishes T5's facts again.
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await owner.catchUp();
+      assert.deepEqual(JSON.parse(owner.index()).staleIds, [], 'the retry must succeed');
+      const result = pair();
+      return { before, failed, retried: result.incremental, full: result.full };
     } },
     resync: { async verify() {
       await owner.read(log.latest);

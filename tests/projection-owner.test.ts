@@ -252,6 +252,8 @@ test('Run readability changes preserve reconciliation for Tasks whose own facts 
   assert.equal(degraded.derived('T5')!.row.title, 'Fresh facts during degraded execution');
   assert.ok(JSON.parse(owner.index()).errors.some((error: { code: string }) => error.code === 'runs_unavailable'));
   assert.ok(work!.tasks.has('T5'), 'degraded execution does not discard the Task mutation from reconciliation');
+  // Every Task's Runs leave its strip while they cannot be read, not only the written Task's.
+  assert.equal(degraded.requiredPv.timeline.T4, degraded.pv, 'an unwritten Task\'s strip is made old');
   h.db.prepare('UPDATE runs SET record=? WHERE id=1').run(row.record);
   const recovered = await owner.read(h.log.append([{ kind: 'run', id: 'R1' }]));
   assert.equal(recovered.applied, h.log.latest);

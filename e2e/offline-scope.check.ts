@@ -102,7 +102,7 @@ for (const width of [1280]) test(`acquired list/detail/timeline/chat survive off
   await expect(next.getByText('The time view is not saved on this device.', { exact: false })).toHaveCount(0);
   await expect(next.getByText('Could not load extraction settings.', { exact: true })).toHaveCount(0);
   await bind(next);
-  expect(await next.evaluate(() => (window as any).scopedClient.getQueryCache().getAll().some((query: any) => query.queryKey[0] === 'task-timeline' && query.queryKey.length === 7 && query.isActive() && query.state.data !== undefined))).toBe(true);
+  expect(await next.evaluate(() => (window as any).scopedClient.getQueryCache().getAll().some((query: any) => query.queryKey[0] === 'task-timeline' && query.queryKey[2] === 'lane' && query.isActive() && query.state.data !== undefined))).toBe(true);
   await expect(next.locator('[data-offline-mark]').first()).toBeVisible();
   await shot(next, 'offline-restarted-list-timeline');
   await openCoordinator(next); await revealReplies(next);

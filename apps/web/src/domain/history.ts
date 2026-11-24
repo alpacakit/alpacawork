@@ -1,4 +1,4 @@
-import type { TaskHistoryDTO, TaskProjectedTimelineDTO } from "@alpacawork/contract/control";
+import type { TaskHistoryDTO, TaskTimelineLaneDTO } from "@alpacawork/contract/control";
 import { isRunInTrouble } from "@alpacawork/contract/run";
 
 /** What an event's mark is read from: a log entry as the index has it, or a run. */
@@ -13,9 +13,9 @@ export type MarkSource = { log?: TimelineLog; run?: TimelineRun;
   /** The record that stopped the task, while it is still stopped (standingRecord). */
   stopped?: boolean };
 
-export type TimelineLog = Extract<TaskProjectedTimelineDTO["events"][number], { kind: "log" }>["entry"];
-export type TimelineRun = TaskProjectedTimelineDTO["runs"][number];
-export type TimelineNote = Extract<TaskProjectedTimelineDTO["events"][number], { kind: "note" }>["event"];
+export type TimelineLog = Extract<TaskTimelineLaneDTO["events"][number], { kind: "log" }>["entry"];
+export type TimelineRun = Extract<TaskTimelineLaneDTO["events"][number], { kind: "run" }>["run"];
+export type TimelineNote = Extract<TaskTimelineLaneDTO["events"][number], { kind: "note" }>["event"];
 
 /** One record of a Task's History, as the server projects it. */
 export type HistoryEvent = TaskHistoryDTO["events"][number];

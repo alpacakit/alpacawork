@@ -13,7 +13,7 @@ import { gunzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import {
   projectedIndexSchema, controlTreeSchema,
-  taskHistoryWindowSchema, taskProjectedPageSchema, taskProjectedSearchSchema, taskProjectedTimelineSchema, taskProjectedViewSchema,
+  taskHistoryWindowSchema, taskProjectedPageSchema, taskProjectedSearchSchema, taskTimelineLanesSchema, taskProjectedViewSchema,
 } from '@alpacawork/contract/control';
 import { DEFAULT_SCHEMA, fieldCatalog, renderContext } from '@alpacawork/contract';
 import { PROBLEM_CODE } from '@alpacawork/core';
@@ -159,22 +159,22 @@ test('finished Tasks are fetched as bounded pages, a parent\'s children or a sco
   const byId = taskProjectedViewSchema.parse(await (await fetch(new URL(`/api/task/view?task=${finished[0]!.id}`, app.url))).json());
   const byAddress = taskProjectedViewSchema.parse(await (await fetch(new URL(`/api/task/view?address=${finished[0]!.id}`, app.url))).json());
   assert.deepEqual({ row: byId.row, ancestors: byId.ancestors }, { row: byAddress.row, ancestors: byAddress.ancestors }, 'row-click and URL reads own the same row and closed ancestry');
-  // The visible Tasks' records come in pages of the limit, each page cursor leading to the next until none is left.
-  const events: ReturnType<typeof taskProjectedTimelineSchema.parse>['events'] = [];
-  for (let after: string | null = '', pages = 0; after !== null; pages++) {
-    assert.ok(pages < finished.length, 'the cursor reaches the last page');
-    const time = taskProjectedTimelineSchema.parse(await (await fetch(new URL(
-      `/api/task/timeline?scope=${parent}&visible=${encodeURIComponent(finished.map(item => item.id).join(','))}&folded=&from=2020-01-01T00%3A00%3A00.000Z&to=2100-01-01T00%3A00%3A00.000Z&limit=10${after ? `&after=${after}` : ''}`, app.url))).json());
-    assert.ok(time.events.length <= 10, 'a page holds at most its limit');
-    events.push(...time.events);
-    after = time.nextAfter;
+  // The rows' strips come whole, as many as fit the limit; the rows not answered are asked for again until none is left.
+  const strips = async (lanes: string[], from: string, to: string) => taskTimelineLanesSchema.parse(await (await fetch(new URL(
+    `/api/task/timeline?lanes=${encodeURIComponent(lanes.join(','))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=10`, app.url))).json());
+  const events: ReturnType<typeof taskTimelineLanesSchema.parse>['lanes'][number]['events'] = [];
+  for (let asked = finished.map(item => item.id), reads = 0; asked.length; reads++) {
+    assert.ok(reads < finished.length, 'each answer holds at least one row');
+    const answer = await strips(asked, '2020-01-01T00:00:00.000Z', '2100-01-01T00:00:00.000Z');
+    assert.ok(answer.lanes.length === 1 || answer.lanes.reduce((n, lane) => n + lane.events.length, 0) <= 10, 'an answer holds at most its limit, or one whole row');
+    events.push(...answer.lanes.flatMap(lane => lane.events));
+    asked = asked.filter(id => !answer.lanes.some(lane => lane.lane === id));
   }
   assert.ok(events.every(event => event.kind === 'log'));
   assert.ok(events.length >= finished.length && events.length <= 2 * finished.length, 'each visible Task\'s records, once');
-  const quiet = taskProjectedTimelineSchema.parse(await (await fetch(new URL(
-    `/api/task/timeline?scope=root&visible=${h.parent.id}&folded=&from=2050-01-01T00%3A00%3A00.000Z&to=2050-01-02T00%3A00%3A00.000Z&limit=10`, app.url))).json());
-  assert.ok(quiet.rows.some(row => row.id === h.parent.id), 'an ongoing row is available even with no in-window event');
-  assert.ok(quiet.anchors[h.parent.id], 'the state before the window is paged as an anchor');
+  const [quiet] = (await strips([h.parent.id], '2050-01-01T00:00:00.000Z', '2050-01-02T00:00:00.000Z')).lanes;
+  assert.equal(quiet?.row.id, h.parent.id, 'an ongoing row is available even with no in-window event');
+  assert.ok(quiet?.anchor, 'the state before the window is sent as an anchor');
   assert.equal((await fetch(new URL('/api/task/finished?parent=root&limit=21', app.url))).status, 400);
   assert.equal((await fetch(new URL('/api/task/finished?parent=T997', app.url))).status, 404);
   const run = controlRunFixture('R999', { task: descendant.id, placementId: 'P999', agent: 'codex',
@@ -538,35 +538,3 @@ test('JSON and the event stream are gzip-compressed only for a client that accep
   assert.match(unzipped.body.toString(), /event: index/);
 });
 
-test('timeline page cursors retain an unchanged scope and require a restart after its published version changes', async t => {
-  const h = await setup(t);
-  const tree = await readControlTree(h.root);
-  const app = await h.start();
-  await h.project(tree);
-  const visible = encodeURIComponent(tree.tasks.map(task => task.id).join(','));
-  const read = (after?: string) => fetch(new URL(`/api/task/timeline?scope=root&visible=${visible}&folded=&from=2020-01-01T00%3A00%3A00.000Z&to=2100-01-01T00%3A00%3A00.000Z&limit=1${after ? `&after=${after}` : ''}`, app.url));
-  const first = taskProjectedTimelineSchema.parse(await (await read()).json());
-  assert.ok(first.nextAfter, 'more than one page to read');
-  const whole = async (after: string | null) => {
-    const events = [];
-    while (after) {
-      const response = await read(after);
-      assert.equal(response.status, 200);
-      const page = taskProjectedTimelineSchema.parse(await response.json());
-      assert.equal(page.sourcePv, first.sourcePv, 'unchanged pages read the same prepared frame');
-      events.push(...page.events); after = page.nextAfter;
-    }
-    return events;
-  };
-  const untouched = await whole(first.nextAfter);
-  await h.project({ ...tree, tasks: tree.tasks.map(task => task.id === h.child.id ? { ...task, title: 'Updated meanwhile' } : task) });
-  assert.ok(untouched.length > 0);
-  assert.equal((await read(first.nextAfter!)).status, 409, 'a changed timeline starts from the first page');
-  const after = taskProjectedTimelineSchema.parse(await (await read()).json());
-  assert.ok(after.sourcePv > first.sourcePv, 'a new chain reads the update');
-  // A cursor whose list is no longer held is refused as ever, so its reader starts again.
-  const gone = Buffer.from(JSON.stringify({ version: 'gone', offset: 1 })).toString('base64url');
-  const refused = await read(gone);
-  assert.equal(refused.status, 409);
-  assert.equal((await refused.json()).error.retry, 'reread');
-});
