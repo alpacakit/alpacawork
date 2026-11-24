@@ -86,15 +86,25 @@ export function BarPanel({ bins, bucket, span, today, values, tipOf, unit, unitN
  * The share that went through without a fix, a point a bin. A point on fewer than ten accepted tasks is drawn faint
  * (one task moves it a lot), and so is the line to it.
  */
+/**
+ * Where the share line is drawn, a point a bin (x and y in percent of the panel): a bin with nothing accepted has no
+ * share, so no point, and the line breaks there rather than bridging it. A point on fewer than ten is faint, and so is
+ * a line that touches one.
+ */
+export function shareLine(points: { passed: number; accepted: number }[]) {
+  const dots = points.map((point, i) => point.accepted ? { x: (i + 0.5) / points.length * 100, y: 100 - point.passed / point.accepted * 100, faint: point.accepted < 10 } : null);
+  const lines = dots.flatMap((point, i) => {
+    const before = i > 0 ? dots[i - 1] : null;
+    return point && before ? [{ from: before, to: point, faint: point.faint || before.faint }] : [];
+  });
+  return { dots, lines };
+}
+
 export function RatePanel({ bins, bucket, span, today, points, onPick }: {
   bins: Bin[]; bucket: Bucket; span: Days; today: string; points: { passed: number; accepted: number }[]; onPick: Pick;
 }) {
   const { t } = useTranslation("analysis");
-  const at = points.map((point, i) => point.accepted ? { x: (i + 0.5) / bins.length * 100, y: 100 - point.passed / point.accepted * 100, faint: point.accepted < 10 } : null);
-  const lines = at.flatMap((point, i) => {
-    const before = at.slice(0, i).reverse().find(Boolean);
-    return point && before ? [{ from: before, to: point, faint: point.faint || before.faint }] : [];
-  });
+  const { lines } = shareLine(points);
   const words = (point: { passed: number; accepted: number }) => !point.accepted ? t("chart.none")
     : point.accepted < 10 ? t("chart.shareTipFew", point)
       : t("chart.sharePercentTip", { ...point, share: `${Math.round(point.passed / point.accepted * 100)}%` });

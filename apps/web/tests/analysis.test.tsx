@@ -3,6 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, readAnalysis, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
 import { settleSpan } from "../src/features/analysis/AnalysisView";
+import { shareLine } from "../src/features/analysis/charts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
@@ -86,4 +87,11 @@ test("a span is asked for as a named period where it is one, and kept as one whe
   expect(settleSpan({ from: "2026-11-17", to: "2026-11-23" }, "2026-11-23")).toEqual({ period: "7d" });
   expect(settleSpan({ from: "2026-11-23", to: "2026-11-23" }, "2026-11-23")).toEqual({ period: "today" });
   expect(settleSpan({ from: "2026-11-10", to: "2026-11-16" }, "2026-11-23")).toEqual({ from: "2026-11-10", to: "2026-11-16" });
+});
+
+test("the share line has no point where nothing was accepted and does not bridge it; few accepted is faint", () => {
+  const { dots, lines } = shareLine([{ passed: 9, accepted: 10 }, { passed: 0, accepted: 0 }, { passed: 0, accepted: 2 }, { passed: 5, accepted: 10 }]);
+  expect(dots.map(dot => dot && { y: Math.round(dot.y), faint: dot.faint })).toEqual([{ y: 10, faint: false }, null, { y: 100, faint: true }, { y: 50, faint: false }]);
+  expect(lines.map(line => [line.from, line.to].map(dot => dots.indexOf(dot)))).toEqual([[2, 3]]);
+  expect(lines[0]!.faint).toBe(true);
 });
