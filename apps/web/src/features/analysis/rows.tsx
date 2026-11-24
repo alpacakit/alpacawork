@@ -177,7 +177,8 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
   return { top, label: unitName ? t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) : written };
 }
 
-const lit = (bin: Bin, span: Days) => bin.from >= span.from && bin.to <= span.to;
+/** Whether a bin meets the chosen span at all (a week or month it falls inside, partly or whole). */
+const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from;
 
 /** The frame every chart is drawn in: its height, the mark over its top, the middle line and the foot line. */
 function Frame({ row, scale, height, children }: { row: number; scale: Scale; height: string; children: ReactNode }) {

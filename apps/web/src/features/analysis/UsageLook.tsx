@@ -86,7 +86,8 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
     <div key={grow}>
       {taskPoints && finished && <Row left={<>
-        <RowName>{t("tasks.finished")}</RowName>
+        <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={tasks?.counts.previous?.finished ?? null} length={length}
+          onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", finished.passed, { set: "passed", value: "lead" }) },
           { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", finished.reworked, { set: "reworked", value: "lead" }) },

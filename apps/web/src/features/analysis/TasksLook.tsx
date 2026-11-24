@@ -88,7 +88,8 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
     <div key={grow}>
       <Row left={<>
-        <RowName>{t("tasks.finished")}</RowName>
+        <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={before?.finished ?? null} length={length}
+          onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", now.passed, { set: "passed", value: "lead" }) },
           { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", now.reworked, { set: "reworked", value: "lead" }) },
@@ -101,7 +102,13 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       </Row>
       <Row left={<>
         <RowName>{t("chart.share")}</RowName>
-        <div className="mt-1 flex items-baseline gap-2 text-xs text-muted">{t("tasks.accepted")}{part("tasks", now.accepted, { set: "accepted", value: null })}</div>
+        <button type="button" onClick={() => open({ set: "accepted", value: null })} disabled={!now.accepted}
+          className="text-xl font-semibold underline decoration-lit-line underline-offset-5 hover:decoration-ink disabled:no-underline">{share(now.share)}</button>
+        <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
+          {before ? <><span className="whitespace-nowrap">{previousName(length)} {share(before.share)}</span>
+            {shareGap && <b className="font-normal whitespace-nowrap text-muted">{shareGap}</b>}</> : t("previous.none", { span: previousName(length) })}
+        </div>
+        <div className="mt-2 flex items-baseline gap-2 text-xs text-muted">{t("tasks.accepted")}{part("tasks", now.accepted, { set: "accepted", value: null })}</div>
       </>}>
         <LineChart row={1} height="h-18 narrow:h-14" scale={scales.share} color="done"
           values={points.map(p => p.counts.accepted ? p.counts.passed / p.counts.accepted : null)} faint={i => at(i).counts.accepted < 10} />
