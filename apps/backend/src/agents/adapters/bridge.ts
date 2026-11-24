@@ -107,12 +107,13 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
             return { ...base, outcome: { state: 'needs_review', reason: 'conversation_busy' } };
         } catch { /* The existing special-case evidence is unproved. */ }
       }
+      // The reply file is the agent's own last reply whatever the outcome. Keeping every readable reply lets
+      // completion commit exactly what the file holds, so run-file cleanup finds it identical and removes it.
       const reply = resultFile(folder);
-      if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit',
-        ...(reply.result !== null ? { result: reply.result } : { resultState: reply.rejection! }) } };
-      if (outcomeRejection || !sameSession || !session || ended !== 'completed' || reply.rejection)
-        return { ...base, outcome: { state: 'failed', reason: 'output',
-          ...(outcomeRejection || reply.rejection ? { resultState: outcomeRejection ?? reply.rejection! } : {}) } };
+      const replied = reply.result !== null ? { result: reply.result } : { resultState: reply.rejection! };
+      if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit', ...replied } };
+      if (outcomeRejection || !sameSession || !session || ended !== 'completed' || reply.result === null)
+        return { ...base, outcome: { state: 'failed', reason: 'output', ...replied } };
       return { ...base, outcome: { state: 'succeeded', session, result: reply.result } };
     },
   };

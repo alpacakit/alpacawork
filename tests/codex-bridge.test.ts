@@ -54,8 +54,9 @@ test('exec options, JSONL, result file and exit; an instruction during a turn is
     assert.deepEqual(inputEvents, ['input.accepted', 'input.taken']);
   }
   assert.deepEqual(b.events().find(event => event.type === 'item.completed').item,
-    { type: 'agent_message', id: 'm-turn-1', text: 'reply turn-1', phase: 'final_answer' });
-  assert.equal(b.events().find(event => event.type === 'item.started').item.type, 'command_execution');
+    { type: 'agent_message', id: 'm-turn-1', text: 'reply turn-1' });
+  // Provider fields such as a command's whole output never cross the boundary: one oversized line voids the Run.
+  assert.deepEqual(b.events().find(event => event.type === 'item.started').item, { type: 'command_execution', id: 'c-turn-1', command: 'true' });
   assert.deepEqual(b.events().find(event => event.type === 'turn.completed').usage,
     { scope: 'conversation', counters: { input: 5, cacheRead: 4, cacheWrite: 1, output: 2 } });
   assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');

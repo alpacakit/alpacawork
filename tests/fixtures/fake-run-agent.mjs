@@ -88,6 +88,7 @@ if (branch) {
     written += Buffer.byteLength(line);
   }
   if (plan.brokenLine) process.stdout.write('{broken json\n');
+  if (plan.oversizedLine) process.stdout.write(`${JSON.stringify({ type: 'item.completed', item: { type: 'command_execution', output: 'x'.repeat(2 * 1024 * 1024) } })}\n`);
   const cliResult = plan.cliTaskGet ? spawnSync(process.execPath,
     [plan.cliPath, 'task', 'get', '--task', plan.cliTaskGet], { encoding: 'utf8', timeout: 10_000 }) : null;
   const output = cliResult ? JSON.stringify({ code: cliResult.status, body: cliResult.stdout, error: cliResult.stderr,
