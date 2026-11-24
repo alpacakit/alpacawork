@@ -19,10 +19,9 @@ export const agentContextSchema = z.object({
   observedAt: z.iso.datetime({ offset: true }),
 }).strict();
 export type AgentContext = z.infer<typeof agentContextSchema>;
-/** What one observation says: the fill, and the model's window or compaction point when the agent names them. A field it
- * leaves out keeps its last value. */
-export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true })
-  .extend({ windowTokens: limit, compactAtTokens: limit }).partial().strict();
+/** What one observation says: the fill, and the model's window when the agent names it. A field it leaves out keeps its
+ * last value. */
+export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).extend({ windowTokens: limit }).partial().strict();
 export type ContextUpdate = z.infer<typeof contextUpdateSchema>;
 
 /** The latest fill after one more observation (the window is the model's: see resolveContextLimits). */
@@ -31,8 +30,8 @@ export function mergeContext(previous: AgentContext | null, update: ContextUpdat
   return { usedTokens, compacted, observedAt };
 }
 
-/** One model's window and compaction point, as a person writes them, as an agent reported them, or as shipped. */
-export const modelContextSchema = z.object({ window: limit.optional(), compact_at: limit.optional() }).strict();
+/** One model's context window, as a person writes it, as an agent reported it, or as shipped. */
+export const modelContextSchema = z.object({ window: limit.optional() }).strict();
 export type ModelContext = z.infer<typeof modelContextSchema>;
 /** A model's key in each record: the chosen candidate, or `-` when none was chosen. */
 export const modelKey = (model: string | null | undefined): string => model || '-';
@@ -40,27 +39,20 @@ export const modelKey = (model: string | null | undefined): string => model || '
 /** Where a resolved limit came from, in the order they are looked at: what a person wrote wins over what the agent said. */
 export const CONTEXT_SOURCES = ['setting', 'reported', 'default'] as const;
 export type ContextSource = (typeof CONTEXT_SOURCES)[number];
-export type ContextLimits = { windowTokens: number | null; compactAtTokens: number | null;
-  windowFrom: ContextSource | null; compactAtFrom: ContextSource | null };
+export type ContextLimits = { windowTokens: number | null; windowFrom: ContextSource | null };
 
-/** The one place a model's window and compaction point are decided; a point at or past the window is no point. */
+/** The one place a model's window is decided. */
 export function resolveContextLimits(layers: Partial<Record<ContextSource, ModelContext | undefined>>): ContextLimits {
-  const pick = (field: keyof ModelContext) => {
-    for (const source of CONTEXT_SOURCES) {
-      const value = layers[source]?.[field];
-      if (value !== undefined) return { value, from: source };
-    }
-    return { value: null, from: null };
-  };
-  const window = pick('window'), compactAt = pick('compact_at');
-  const point = compactAt.value !== null && window.value !== null && compactAt.value >= window.value ? { value: null, from: null } : compactAt;
-  return { windowTokens: window.value, windowFrom: window.from, compactAtTokens: point.value, compactAtFrom: point.from };
+  for (const source of CONTEXT_SOURCES) {
+    const value = layers[source]?.window;
+    if (value !== undefined) return { windowTokens: value, windowFrom: source };
+  }
+  return { windowTokens: null, windowFrom: null };
 }
 
 /** A working Run's fill as the screen reads it: the Run's own figure with its model's resolved limits. */
 export const contextViewSchema = agentContextSchema.extend({
-  windowTokens: limit.nullable(), compactAtTokens: limit.nullable(),
-  windowFrom: z.enum(CONTEXT_SOURCES).nullable(), compactAtFrom: z.enum(CONTEXT_SOURCES).nullable(),
+  windowTokens: limit.nullable(), windowFrom: z.enum(CONTEXT_SOURCES).nullable(),
 }).strict();
 export type ContextView = z.infer<typeof contextViewSchema>;
 

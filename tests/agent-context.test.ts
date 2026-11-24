@@ -4,6 +4,8 @@ import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { contextPercent, resolveContextLimits } from '@alpacawork/contract/agent-context';
+import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
+import { agentSettingSchemaFor } from '@alpacawork/contract/agent-settings';
 import { readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { contextLimitsFor, recordReportedContext } from '@alpacawork/backend/test-dist/agents/context-limits.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
@@ -17,7 +19,7 @@ function reader(t: TestContext, adapter: keyof typeof adapters) {
   const folder = mkdtempSync(join(tmpdir(), 'agent-context-'));
   t.after(() => rmSync(folder, { recursive: true, force: true }));
   // What the agent says of its model's window goes to the model's record; the Run keeps its fill.
-  const said: { windowTokens?: number; compactAtTokens?: number } = {};
+  const said: { windowTokens?: number } = {};
   const activity = new OutputActivityReader(adapters[adapter], undefined, update => Object.assign(said, update));
   const emit = (...rows: unknown[]) => {
     for (const row of rows) appendFileSync(join(folder, 'stdout.log'), JSON.stringify(row) + '\n');
@@ -25,7 +27,7 @@ function reader(t: TestContext, adapter: keyof typeof adapters) {
     const context = readRunActivity(folder)?.context ?? null;
     return context && { ...context, windowTokens: said.windowTokens ?? null };
   };
-  return emit;
+  return Object.assign(emit, { doing: () => readRunActivity(folder)?.doing ?? null });
 }
 
 test('Claude: the main conversation\'s last call against the window its turn names; sub-agents and compactions apart', t => {
@@ -47,8 +49,12 @@ test('Claude: the main conversation\'s last call against the window its turn nam
 test('a bridge\'s context updates merge: a field one leaves out keeps its last value, and an unknown fill is unknown', t => {
   const emit = reader(t, 'codex');
   emit({ type: 'thread.started', thread_id: 'thread' });
+  emit({ type: 'item.started', item: { type: 'command_execution', id: 'c1', command: 'pnpm test' } });
+  const doing = emit.doing();
+  assert.ok(doing);
   const first = emit({ type: 'context.updated', context: codexContext({ last: { totalTokens: 17_311 }, total: { totalTokens: 34_550 }, modelContextWindow: 475_000 }) })!;
   assert.deepEqual([first.usedTokens, first.windowTokens], [17_311, 475_000]);
+  assert.deepEqual(emit.doing(), doing, 'the step shown stays while only the fill changes');
   const after = emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } })!;
   assert.deepEqual([after.usedTokens, after.windowTokens, after.compacted], [null, 475_000, true]);
   assert.equal(contextPercent(after as never), null);
@@ -68,12 +74,13 @@ test('each bridge reads its agent\'s own report of the fill', () => {
   assert.deepEqual(grokContext({ input_tokens: 10, cache_read_input_tokens: 200, cache_creation_input_tokens: 0, output_tokens: 5 }), { usedTokens: 215, compacted: false });
 });
 
-test('a model\'s window: what a person wrote, else what its agent reported, else what ships; a point past the window is none', () => {
-  assert.deepEqual(resolveContextLimits({ setting: { window: 300_000 }, reported: { window: 475_000, compact_at: 400_000 }, default: { window: 1 } }),
-    { windowTokens: 300_000, windowFrom: 'setting', compactAtTokens: null, compactAtFrom: null });
-  assert.deepEqual(resolveContextLimits({ reported: { window: 475_000 }, default: { window: 256_000, compact_at: 217_600 } }),
-    { windowTokens: 475_000, windowFrom: 'reported', compactAtTokens: 217_600, compactAtFrom: 'default' });
-  assert.deepEqual(resolveContextLimits({}), { windowTokens: null, windowFrom: null, compactAtTokens: null, compactAtFrom: null });
+test('a model\'s window: what a person wrote, else what its agent reported, else what ships', () => {
+  assert.deepEqual(resolveContextLimits({ setting: { window: 300_000 }, reported: { window: 475_000 }, default: { window: 1 } }),
+    { windowTokens: 300_000, windowFrom: 'setting' });
+  assert.deepEqual(resolveContextLimits({ setting: {}, reported: { window: 475_000 }, default: { window: 256_000 } }),
+    { windowTokens: 475_000, windowFrom: 'reported' });
+  assert.deepEqual(resolveContextLimits({ default: { window: 256_000 } }), { windowTokens: 256_000, windowFrom: 'default' });
+  assert.deepEqual(resolveContextLimits({}), { windowTokens: null, windowFrom: null });
 });
 
 test('what an agent reported is kept per kind of agent and model, read for every profile of that kind, and a person\'s value wins', t => {
@@ -89,4 +96,13 @@ test('what an agent reported is kept per kind of agent and model, read for every
   assert.deepEqual(JSON.parse(readFileSync(record, 'utf8')), { codex: { 'gpt-6.1-sol': { window: 475_000 } } });
   assert.equal(contextLimitsFor(root, run('codex')).windowTokens, 475_000);
   assert.deepEqual([contextLimitsFor(root, run('mine')).windowTokens, contextLimitsFor(root, run('mine')).windowFrom], [300_000, 'setting']);
+});
+
+test('a window is written only for a model the agent lists, and what ships is for listed models', () => {
+  const parse = (context: unknown) => agentSettingSchemaFor('codex').safeParse({ params: { model: ['gpt-6.2-sol'] }, context });
+  assert.ok(parse({ 'gpt-6.2-sol': { window: 300_000 }, '-': { window: 200_000 } }).success);
+  const stale = parse({ 'gpt-5': { window: 300_000 } });
+  assert.ok(!stale.success && stale.error.issues.some(issue => issue.path.join('.') === 'context.gpt-5' && issue.message === 'Unknown model candidate'));
+  for (const adapter of Object.values(AGENT_ADAPTERS))
+    for (const model of Object.keys(adapter.contextDefaults)) assert.ok(adapter.defaultParams.model?.includes(model), `${adapter.id} ${model}`);
 });

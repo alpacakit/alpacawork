@@ -30,9 +30,10 @@
   },
   "context": {
     "compacted": "The conversation was just compacted. The next reply says how much is used.",
-    "label": "Context {{figure}} (used {{used}} / limit {{window}})",
-    "noWindow": "Unknown",
-    "title": "Context",
+    "label": "Conversation context {{figure}} (used {{used}} / limit {{window}})",
+    "noWindow": "Not set",
+    "setWindow": "Enter this model's limit under Context limits in the agent's settings to see a percent.",
+    "title": "Conversation context",
     "tokens_one": "{{tokens}} token",
     "tokens_other": "{{tokens}} tokens",
     "used": "Used",

@@ -24,7 +24,7 @@ const words = (value: unknown): string | null => {
   return /[\uD800-\uDBFF]$/.test(clipped) ? clipped.slice(0, -1) : clipped;
 };
 export class OutputActivityReader {
-  /** `reported`: what the agent said of its model's window or compaction point, for the model's own record. */
+  /** `reported`: what the agent said of its model's window, for the model's own record. */
   constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
     private readonly reported: (update: ContextUpdate) => void = () => {}) {
     this.recent = new RecentWork();
@@ -64,7 +64,7 @@ export class OutputActivityReader {
     const update = this.adapter.context(value);
     if (update) {
       this.context = mergeContext(this.context, update, received);
-      if (update.windowTokens !== undefined || update.compactAtTokens !== undefined) this.reported(update);
+      if (update.windowTokens !== undefined) this.reported(update);
     }
     const event = this.project(value, received);
     if (event) { this.latest = event; this.dirty = true; }
@@ -113,7 +113,7 @@ export class OutputActivityReader {
   }
 }
 
-/** A working Run's activity for the screen: its fill with its model's window and compaction point. */
+/** A working Run's activity for the screen: its fill with its model's window. */
 export function readRunActivityView(root: string, run: Pick<ReadRunRecord, 'id' | 'agent' | 'launch'>): RunActivityView | null {
   const activity = readRunActivity(runFolder(root, run.id));
   if (!activity) return null;

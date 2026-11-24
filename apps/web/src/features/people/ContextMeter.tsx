@@ -25,7 +25,7 @@ export function ContextMeter({ context, press }: { context: ContextView; press: 
   const label = t("context.label", { figure: shown, used, window });
   const face = <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
-    <span className={cn("min-w-[3ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
+    <span className={cn("min-w-[4ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
   </>;
   if (!press) return <span data-context-meter title={label} aria-label={label} className="inline-flex items-center gap-1 text-xs">{face}</span>;
   // The line under it opens and closes on a press: the meter's own press stops there. Its hover and touch room reach
@@ -43,6 +43,7 @@ export function ContextMeter({ context, press }: { context: ContextView; press: 
         <dt className="text-muted">{t("context.window")}</dt><dd className="m-0 text-right tabular-nums">{window}</dd>
       </dl>
       {figure.waiting && <p className="m-0 mt-2 text-xs text-muted">{t("context.compacted")}</p>}
+      {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
     </PopoverContent>
   </Popover>;
 }

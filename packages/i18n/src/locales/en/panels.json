@@ -40,19 +40,17 @@
     "choicesHint": "The values offered in the AI lists and in requests.",
     "collapse": "Collapse {{name}}",
     "context": {
-      "compactAt": "Compacts at",
       "from": "{{value}} ({{source}})",
-      "hint": "Left empty, the figure the AI reported or the default is used. A number you enter is used instead.",
-      "model": "Model",
+      "hint": "The 100% of the ring that shows a conversation's use in a task's detail. Left empty, the figure the AI reported or the default is used.",
       "noModel": "No model chosen",
-      "none": "Unknown",
       "source": {
         "default": "default",
-        "reported": "reported",
-        "setting": "reported"
+        "reported": "reported by the AI",
+        "setting": "set here"
       },
       "title": "Context limits",
-      "window": "Window (tokens)"
+      "unset": "Not set",
+      "windowOf": "Context window of {{model}} (tokens)"
     },
     "coordinatorStack": {
       "lead": "Takes what you send from the input, turns it into tasks and hands them to the AI for tasks. AI 1 normally takes it; only when it stops on a usage limit or capacity do AIs 2, 3… take over in order.",
@@ -71,8 +69,7 @@
     "envNames": "Additional environment variables",
     "envPlaceholder": "e.g. ANTHROPIC_API_KEY",
     "errors": {
-      "contextCompactAt": "The compaction point must be below the window.",
-      "contextModel": "A context limit names a model this agent does not list.",
+      "contextModel": "A context limit names a model this agent no longer lists. Empty that field.",
       "dashFirst": "“-” can only go first. Move it to the start.",
       "duplicateAgent": "{{name}} already exists. Choose another name.",
       "duplicateEnv": "{{name}} appears more than once. Keep one copy.",

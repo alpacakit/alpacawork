@@ -40,19 +40,17 @@
     "choicesHint": "AI の並びと、依頼のときに選べる候補です。",
     "collapse": "{{name}} を閉じる",
     "context": {
-      "compactAt": "自動で圧縮する位置",
       "from": "{{value}}（{{source}}）",
-      "hint": "空欄なら、AI が知らせた値か既定値を使います。数字を入れると、その値を使います。",
-      "model": "モデル",
+      "hint": "タスクの詳細に出る、会話の使用量の円の上限です。空欄なら AI が知らせた値か既定値を使います。",
       "noModel": "モデル指定なし",
-      "none": "不明",
       "source": {
         "default": "既定",
-        "reported": "自動",
-        "setting": "自動"
+        "reported": "AI の報告",
+        "setting": "設定"
       },
       "title": "会話の上限",
-      "window": "上限（トークン）"
+      "unset": "未設定",
+      "windowOf": "{{model}} の上限（トークン）"
     },
     "coordinatorStack": {
       "lead": "入力欄から送った頼みごとを受けてタスクにし、タスクを進める AI に任せます。ふだんは 1 の AI が受け、上限や混雑で止まったときだけ、2、3… の AI が順に引き継ぎます。",
@@ -71,8 +69,7 @@
     "envNames": "追加で渡す環境変数",
     "envPlaceholder": "ANTHROPIC_API_KEY など",
     "errors": {
-      "contextCompactAt": "自動で圧縮する位置は、上限より小さくしてください。",
-      "contextModel": "会話の上限に、このエージェントのモデルに無い名前があります。",
+      "contextModel": "会話の上限に、このエージェントのモデルに無い名前があります。その欄を空にしてください。",
       "dashFirst": "「-」は先頭にだけ書けます。先頭へ移してください。",
       "duplicateAgent": "{{name}} はもうあります。別の名前を付けてください。",
       "duplicateEnv": "{{name}} は重複しています。1つだけ残してください。",

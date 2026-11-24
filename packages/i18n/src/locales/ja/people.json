@@ -30,9 +30,10 @@
   },
   "context": {
     "compacted": "会話を圧縮した直後です。次の応答で使用量が分かります。",
-    "label": "コンテキスト {{figure}}（使用 {{used}}／上限 {{window}}）",
-    "noWindow": "不明",
-    "title": "コンテキスト",
+    "label": "会話の使用量 {{figure}}（使用 {{used}}／上限 {{window}}）",
+    "noWindow": "未設定",
+    "setWindow": "エージェントの設定の「会話の上限」にこのモデルの上限を入れると、割合が出ます。",
+    "title": "会話の使用量",
     "tokens_other": "{{tokens}} トークン",
     "used": "使用",
     "waiting": "計測待ち",

@@ -30,9 +30,10 @@
   },
   "context": {
     "compacted": "A conversa acabou de ser compactada. A próxima resposta dirá quanto está em uso.",
-    "label": "Contexto {{figure}} (usado {{used}} / limite {{window}})",
-    "noWindow": "Desconhecido",
-    "title": "Contexto",
+    "label": "Contexto da conversa {{figure}} (usado {{used}} / limite {{window}})",
+    "noWindow": "Não definido",
+    "setWindow": "Informe o limite deste modelo em Limites de contexto, nas configurações do agente, para ver uma porcentagem.",
+    "title": "Contexto da conversa",
     "tokens_one": "{{tokens}} token",
     "tokens_many": "{{tokens}} tokens",
     "tokens_other": "{{tokens}} tokens",
