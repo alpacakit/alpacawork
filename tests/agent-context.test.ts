@@ -7,7 +7,8 @@ import { contextPercent, resolveContextLimits } from '@alpacawork/contract/agent
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
 import { agentSettingSchemaFor } from '@alpacawork/contract/agent-settings';
 import { readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
-import { contextLimitsFor, recordReportedContext } from '@alpacawork/backend/test-dist/agents/context-limits.js';
+import { contextLimitsFor } from '@alpacawork/backend/test-dist/agents/context-limits.js';
+import { recordReportedContext } from '@alpacawork/backend/test-dist/agents/context-reported.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS as adapters } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { codexContext } from '../apps/agent-cli/test-dist/codex.js';

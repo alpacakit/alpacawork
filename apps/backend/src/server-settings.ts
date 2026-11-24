@@ -15,7 +15,7 @@ import { parseConfig, requireConfigBytes } from './config.js';
 import { parseAgentsSettings } from './agents-settings.js';
 import { inspectAgents, inspectAgent, type InspectionEnvironment } from './agents/availability.js';
 import { FileWriter } from './raw/storage.js';
-import { readReportedContexts } from './agents/context-limits.js';
+import { readReportedContexts } from './agents/context-reported.js';
 import { requirePublished, FileJournal } from './control/file-journal.js';
 
 const decode = (bytes: Uint8Array) => new TextDecoder('utf-8', { fatal: true }).decode(bytes);

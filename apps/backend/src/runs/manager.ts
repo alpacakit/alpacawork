@@ -9,7 +9,7 @@ import { launchAgent, launchArgv, runScope } from './launch-agent.js';
 import { EventJournal, executionFolder, identityOf, readLaunch, readCommands, names } from './execution-files.js';
 import { runtimeAdapter, unavailableRuntimeMessage } from '../agents/registry.js';
 import { OutputActivityReader } from './activity.js';
-import { recordReportedContext } from '../agents/context-limits.js';
+import { recordReportedContext } from '../agents/context-reported.js';
 import { appendReceipt, endOutcome, publishCompletion, readEnd, runExpired, type Outcome } from './result-observation.js';
 import { CommandWatch } from './command-watch.js';
 import { terminateAgent } from './termination.js';

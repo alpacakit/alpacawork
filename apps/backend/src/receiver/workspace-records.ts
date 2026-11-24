@@ -24,7 +24,7 @@ import { RunStore, parseStoredPlacement, unclosedSent, type StoredRequest } from
 import type { TaskLog } from '@alpacawork/raw';
 import { dialoguesOf, requestedByUser, saidAt, markMessages } from '../coordinator/messages.js';
 import { readProjectionTask } from '../control/task-store.js';
-import { readRunActivityView } from '../runs/activity.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
 import { readAgentsSettings } from '../agents-settings.js';

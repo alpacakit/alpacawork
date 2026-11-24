@@ -1,6 +1,5 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
-import { RUN_FILES, RUN_NOTE_LIMIT, runActivitySchema, runFolder, type ReadRunRecord, type RunActivity, type RunActivityView } from '@alpacawork/contract/run';
-import { contextLimitsFor } from '../agents/context-limits.js';
+import { RUN_FILES, RUN_NOTE_LIMIT, runActivitySchema, runFolder, type RunActivity } from '@alpacawork/contract/run';
 import { mergeContext, type AgentContext, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
@@ -111,13 +110,6 @@ export class OutputActivityReader {
     }
     return projected;
   }
-}
-
-/** A working Run's activity for the screen: its fill with its model's window. */
-export function readRunActivityView(root: string, run: Pick<ReadRunRecord, 'id' | 'agent' | 'launch'>): RunActivityView | null {
-  const activity = readRunActivity(runFolder(root, run.id));
-  if (!activity) return null;
-  return { ...activity, context: activity.context && { ...activity.context, ...contextLimitsFor(root, run) } };
 }
 
 export function readRunActivity(folder: string): RunActivity | null {

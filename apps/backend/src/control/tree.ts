@@ -6,7 +6,8 @@ import { runFolder, type ReadRunRecord, type RunActivityView, type RunRecord } f
 import type { PlacementStore } from './placements.js';
 import { projectPlacementRuntimes } from './runtime.js';
 import { recordedRun } from '../runs/run-view.js';
-import { readRunActivity, readRunActivityView } from '../runs/activity.js';
+import { readRunActivity } from '../runs/activity.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { failureAvailability, runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
