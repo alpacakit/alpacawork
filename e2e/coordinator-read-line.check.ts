@@ -116,7 +116,7 @@ test('reading during a delayed opening refresh keeps its position', async ({ pag
   } finally { release(); }
 });
 
-test('a reply that comes while the conversation is open is read without any input (initial GET held)', async ({ page, runtime }) => {
+test('a reply that comes while the conversation is open stays unread until the next input there (initial GET held)', async ({ page, runtime }) => {
   await seed(page, runtime, 1);
   let releaseFirstRead!: () => void;
   let firstReadStarted = false;
@@ -132,11 +132,16 @@ test('a reply that comes while the conversation is open is read without any inpu
   await expect(page.locator('[data-coordinator-turn]')).toHaveCount(1);
   await settleMotion(page);
   let posted = 0; page.on('request', request => { if (new URL(request.url()).pathname === '/api/coordinator/read') posted++; });
-  await send(page, runtime, 'markdown-answer automatic while attending');
-  // No additional click, wheel or key occurs after the request was sent by the API.
-  await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen, { timeout: 20_000 }).toBe(true);
-  expect(posted).toBeGreaterThan(0);
+  await send(page, runtime, 'markdown-answer arrives while nobody acts');
+  // Sent by the API: nothing happens on the page while the reply arrives and is shown.
+  await expect(page.locator('[data-ask-answer]')).toHaveCount(2, { timeout: 20_000 });
+  await page.waitForTimeout(400);
+  expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
+  expect(posted).toBe(0);
+  await page.keyboard.press('Shift');
+  await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
   const count = posted;
+  expect(count).toBeGreaterThan(0);
   await page.waitForTimeout(400);
   expect(posted).toBe(count); // Notification -> GET must not create a write cycle.
 });

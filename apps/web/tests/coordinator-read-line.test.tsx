@@ -68,6 +68,7 @@ test("arrivals stay shown while old history remains independently folded", async
   show(five.map(turn => ({ ...turn, seen: true })));
   act(() => setConversationState({ conversation: conversation([...five.map(turn => ({ ...turn, seen: true })), answered(6)]) }));
   expect(shape()).toBe('Eoo');
+  fireEvent.keyDown(document);
   await waitFor(() => expect(useConversation.getState().read).toBe(true));
 });
 

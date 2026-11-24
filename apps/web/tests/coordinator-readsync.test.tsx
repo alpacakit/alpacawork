@@ -307,6 +307,7 @@ test("the open conversation reads folded history beyond one transport batch and 
   expect(pending()).toHaveLength(260); expect(seen()).toEqual([]);
   const after = [...turns.slice(0, -1), turn("still-running"), turn("arrived-after-click")];
   setConversationState({ conversation: snapshot(after) });
+  fireEvent.pointerDown(document);
   first.resolve(post(JSON.parse(fetcher.mock.calls[0]![1].body).seen));
   await waitFor(() => expect(pending()).toEqual([]));
   expect(seen()).toEqual(after.map(turn => turn.id));
@@ -336,6 +337,7 @@ test("a reply read in the open conversation is sent once", async () => {
   render(<Reading />); fireEvent.pointerDown(document);
   try {
     setConversationState({ conversation: snapshot([turn("a", { seen: true }), turn("b")]) });
+    fireEvent.pointerDown(document);
     await waitFor(() => expect(seen()).toEqual(["a", "b"])); await flush();
     expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/read")).map(([, init]) => JSON.parse(init.body).seen)).toEqual([["b"]]);
   } finally { cleanup(); }
