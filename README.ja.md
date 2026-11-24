@@ -37,7 +37,7 @@
 alpacawork は、あなたの PC に入っている Claude Code や Codex に仕事を割り振って動かす道具（AI ハーネス）です。やりたいことを1つの入力欄に書くと、窓口の AI（コーディネーター）がタスクにして担当の AI に割り振り、進み具合を管理します。あなたがするのは、頼む、質問に答える、できあがりを確かめる、の3つです。スマートフォンからも同じように使えます。
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark-ja.png" alt="PC のブラウザで、作業中の10件と確認待ちの3件が並ぶ一覧と、開いたタスクの報告を横に並べた alpacawork。右に、同じ報告を開いたスマートフォン" width="820">
+  <img src="docs/images/demo-dark-ja.gif" alt="スマートフォンの入力欄に依頼を1つ書いて送ると、PC の一覧に3つのタスクができて並行で進む。届いた報告を確かめて右へスワイプで完了にし、AI の質問には案を選んで答える。最後に、スマートフォンと PC を並べた全体" width="800">
 </p>
 
 ## インストール
@@ -89,6 +89,7 @@ alpacawork setup
 - [はじめかた](docs/ja/getting-started.md) — 入れて、1件頼んで、確かめるまで
 - [ドキュメントの入口](docs/ja/README.md) — 使いかた、設定、困ったときなど、全ページの一覧
 - 不具合の報告は [Issues](https://github.com/alpacakit/alpacawork/issues) へお願いします
+- リリースのお知らせは、X の [@codemafia0000](https://x.com/codemafia0000) で発信しています
 
 ## ライセンス
 
