@@ -236,19 +236,20 @@ test('README responsive pictures use this package version and require a reposito
   assert.throws(() => rewrite('<source srcset="docs/images/missing.gif">'), /repository/);
 });
 
-test('assembly omits documentation image GIFs and pins the packaged README to their source commit',
+test('assembly omits documentation animations and pins the packaged README to their source commit',
   { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)' }, t => {
     const f = fixture(t);
     const manifestPath = join(f.built, 'package.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     const repository = { type: 'git', url: 'git+https://github.com/fixture/project.git' };
     writeFileSync(manifestPath, JSON.stringify({ ...manifest, repository }));
-    const gifs = ['docs/images/hero.gif', 'docs/images/hero-dark.gif'];
-    for (const gif of gifs) writeFileSync(join(f.built, gif), 'synthetic GIF');
+    const gifs = ['docs/images/hero.gif', 'docs/images/hero-dark.gif', 'docs/images/demo-dark.webp'];
+    for (const gif of gifs) writeFileSync(join(f.built, gif), 'synthetic animation');
     writeFileSync(join(f.built, 'README.md'), `<picture>
 <source media="(prefers-color-scheme: dark)" srcset="${gifs[1]}">
 <img src="${gifs[0]}" alt="Overview">
 </picture>
+<img src="${gifs[2]}" alt="Demo">
 ![Example](docs/images/example.png)
 `);
 
@@ -260,5 +261,6 @@ test('assembly omits documentation image GIFs and pins the packaged README to th
     const github = `https://raw.githubusercontent.com/fixture/project/${f.expected.source}`;
     assert.ok(readme.includes(`src="${github}/${gifs[0]}"`), readme);
     assert.ok(readme.includes(`srcset="${github}/${gifs[1]}"`), readme);
+    assert.ok(readme.includes(`src="${github}/${gifs[2]}"`), readme);
     assert.ok(readme.includes('https://unpkg.com/fixture@1.0.0/docs/images/example.png'), readme);
 });

@@ -2,7 +2,7 @@
 Use repository-root paths for local files (docs/images/logo.png, LICENSE) so they open on every
 branch. Link to the guides in this README with absolute GitHub URLs so the npm copy opens the
 rendered guides and their section links. Put pictures in docs/images/. The package omits GIFs
-from that directory. Write links and pictures as inline Markdown links or as double-quoted src,
+and WebPs from that directory. Write links and pictures as inline Markdown links or as double-quoted src,
 srcset or href attributes. Image descriptors in srcset are preserved.
 Other forms are not rewritten for npm.
 npm resolves no relative path, so the release rewrites each one in the packaged copy
