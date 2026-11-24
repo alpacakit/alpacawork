@@ -41,7 +41,7 @@
     "collapse": "Contraer {{name}}",
     "context": {
       "from": "{{value}} ({{source}})",
-      "hint": "El 100 % del círculo que muestra el uso de una conversación en el detalle de una tarea. Si se deja vacío, se usa la cifra que informó la IA o el valor predeterminado.",
+      "hint": "El 100 % del círculo que muestra el uso de una conversación en el detalle de una tarea, en tokens. Si se deja vacío, se usa la cifra que informó la IA o el valor predeterminado.",
       "noModel": "Sin modelo elegido",
       "source": {
         "default": "predeterminado",

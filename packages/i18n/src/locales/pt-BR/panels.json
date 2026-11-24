@@ -41,7 +41,7 @@
     "collapse": "Recolher {{name}}",
     "context": {
       "from": "{{value}} ({{source}})",
-      "hint": "Os 100% do círculo que mostra o uso de uma conversa no detalhe de uma tarefa. Se ficar vazio, usa o valor informado pela IA ou o padrão.",
+      "hint": "Os 100% do círculo que mostra o uso de uma conversa no detalhe de uma tarefa, em tokens. Se ficar vazio, usa o valor informado pela IA ou o padrão.",
       "noModel": "Nenhum modelo escolhido",
       "source": {
         "default": "padrão",

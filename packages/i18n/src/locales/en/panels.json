@@ -41,7 +41,7 @@
     "collapse": "Collapse {{name}}",
     "context": {
       "from": "{{value}} ({{source}})",
-      "hint": "The 100% of the ring that shows a conversation's use in a task's detail. Left empty, the figure the AI reported or the default is used.",
+      "hint": "The 100% of the ring that shows a conversation's use in a task's detail, in tokens. Left empty, the figure the AI reported or the default is used.",
       "noModel": "No model chosen",
       "source": {
         "default": "default",

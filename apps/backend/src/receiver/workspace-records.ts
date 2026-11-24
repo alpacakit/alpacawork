@@ -516,7 +516,10 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
       if (key.kind === 'config') {
         next.config = next.configuration();
         // A model's context window written in config.yaml changes every working Run's ring at once.
-        for (const [id, fact] of this.runs) if (fact.record.state === 'running') changedRuns.add(asRunId(id));
+        for (const [id, fact] of this.runs) if (fact.record.state === 'running') {
+          changedRuns.add(asRunId(id));
+          if (fact.record.task) need(fact.record.task, 'runs');
+        }
       }
       if (key.kind === 'conversation') messages.add(key.id);
       if (key.kind === 'person' || key.kind === 'config' || key.kind === 'conversation') continue;

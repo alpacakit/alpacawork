@@ -28,7 +28,8 @@ function reader(t: TestContext, adapter: keyof typeof adapters) {
     const context = readRunActivity(folder)?.context ?? null;
     return context && { ...context, windowTokens: said.windowTokens ?? null };
   };
-  return Object.assign(emit, { doing: () => readRunActivity(folder)?.doing ?? null });
+  const shown = () => { const now = readRunActivity(folder); return now && { kind: now.kind, toolName: now.toolName, doing: now.doing }; };
+  return Object.assign(emit, { shown });
 }
 
 test('Claude: the main conversation\'s last call against the window its turn names; sub-agents and compactions apart', t => {
@@ -51,11 +52,12 @@ test('a bridge\'s context updates merge: a field one leaves out keeps its last v
   const emit = reader(t, 'codex');
   emit({ type: 'thread.started', thread_id: 'thread' });
   emit({ type: 'item.started', item: { type: 'command_execution', id: 'c1', command: 'pnpm test' } });
-  const doing = emit.doing();
-  assert.ok(doing);
+  const step = emit.shown();
+  assert.deepEqual([step?.kind, step?.toolName], ['tool_start', 'command_execution']);
+  assert.ok(step?.doing);
   const first = emit({ type: 'context.updated', context: codexContext({ last: { totalTokens: 17_311 }, total: { totalTokens: 34_550 }, modelContextWindow: 475_000 }) })!;
   assert.deepEqual([first.usedTokens, first.windowTokens], [17_311, 475_000]);
-  assert.deepEqual(emit.doing(), doing, 'the step shown stays while only the fill changes');
+  assert.deepEqual(emit.shown(), step, 'the step shown stays while only the fill changes');
   const after = emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } })!;
   assert.deepEqual([after.usedTokens, after.windowTokens, after.compacted], [null, 475_000, true]);
   assert.equal(contextPercent(after as never), null);

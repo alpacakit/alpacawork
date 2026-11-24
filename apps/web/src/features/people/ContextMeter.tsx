@@ -33,7 +33,7 @@ export function ContextMeter({ context, press }: { context: ContextView; press: 
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger data-context-meter aria-label={label} title={label} onClick={event => event.stopPropagation()}
       onKeyDown={event => event.stopPropagation()}
-      className="relative z-1 -mx-1 inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 text-xs outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 narrow:-my-3.5 narrow:min-h-11">
+      className="relative z-1 -mx-1 inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 text-xs outline-none pointer-fine:hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 narrow:-my-3.5 narrow:min-h-11">
       {face}
     </PopoverTrigger>
     <PopoverContent align="end" className="w-64 p-3 text-sm" onClick={event => event.stopPropagation()}>

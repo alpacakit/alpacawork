@@ -47,7 +47,8 @@ const result = '-o {result}';
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
     id: 'claude', command: 'claude', limits: true,
-    // As Claude Code 2.1.330 reported them (a turn's `modelUsage.contextWindow`).
+    // As Claude Code 2.1.330 reported them on one account (a turn's `modelUsage.contextWindow`); a plan with another
+    // window corrects them with its first turn's report.
     contextDefaults: { opus: { window: 1_000_000 }, fable: { window: 1_000_000 } }, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
     defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],

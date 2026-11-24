@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
 import { resolveContextLimits } from '@alpacawork/contract/agent-context';
@@ -43,6 +43,8 @@ export function AgentContextRows({ agent, onChange, issues, reported }: {
 }) {
   const { t, i18n } = useTranslation('panels');
   const id = useId();
+  // The field being typed in shows its bare digits, so the caret stays where it is; the others show grouped figures.
+  const [typing, setTyping] = useState<string | null>(null);
   const adapter = draftAdapter(agent);
   if (!adapter) return null;
   const count = new Intl.NumberFormat(i18n.language);
@@ -58,7 +60,8 @@ export function AgentContextRows({ agent, onChange, issues, reported }: {
           const written = agent.context?.[model]?.window;
           return <label key={model} data-context-model={model} className="contents">
             <span className="min-w-0 truncate font-mono text-sm" title={name}>{name}</span>
-            <Input id={`${id}-${index}`} inputMode="numeric" className="text-right tabular-nums" value={written === undefined ? '' : count.format(written)}
+            <Input id={`${id}-${index}`} inputMode="numeric" className="text-right tabular-nums" value={written === undefined ? '' : typing === model ? String(written) : count.format(written)}
+              onFocus={() => setTyping(model)} onBlur={() => setTyping(null)}
               placeholder={shown.windowTokens === null ? t('agentSettings.context.unset')
                 : t('agentSettings.context.from', { value: count.format(shown.windowTokens), source: t(`agentSettings.context.source.${shown.windowFrom}`) })}
               aria-label={t('agentSettings.context.windowOf', { model: name })} aria-invalid={errors.some(issue => issue.path?.includes(model)) || undefined}
