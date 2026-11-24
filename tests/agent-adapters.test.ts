@@ -126,7 +126,7 @@ test('damaged and oversized lines do not hide later receipts or manufacture a su
   f.append({ type: 'thread.started', thread_id: 'session' }, { type: 'input.taken', id: 'one' }, { type: 'turn.completed', usage: null });
   f.reply('present');
   assert.deepEqual(channel.poll(f.folder, 'session').taken, ['run']);
-  assert.deepEqual(adapters.codex.read(start, f.folder, exit).outcome, { state: 'failed', reason: 'output', resultState: 'too_large' });
+  assert.deepEqual(adapters.codex.read(start, f.folder, exit).outcome, { state: 'failed', reason: 'output', result: 'present' });
 });
 
 test('missing, oversized, invalid UTF-8 and non-file replies fail at the actual bounded file boundary', t => {
@@ -201,7 +201,8 @@ test('only a verified later completion supersedes a damaged JSONL line for outco
     writeFileSync(stdout, prefix + '{broken\n' + json({ type: 'other' }));
     assert.equal(read().outcome.state, 'failed', `${id}: no completion`);
     writeFileSync(stdout, prefix + 'x'.repeat(MAX_LINE + 1) + '\n{broken\n' + end);
-    assert.deepEqual(read().outcome, { state: 'failed', reason: 'output', resultState: 'too_large' }, `${id}: oversized then damaged`);
+    assert.deepEqual(read().outcome, { state: 'failed', reason: 'output',
+      ...id === 'claude' ? { resultState: 'too_large' } : { result: 'bridge reply' } }, `${id}: oversized then damaged`);
   }
   writeFileSync(stdout, bridgeStart + bridgeEnd + '{broken\n' + json({ type: 'turn.completed', parent_tool_use_id: 'child' }));
   assert.equal(adapters.codex.read(resume, f.folder, exit).outcome.state, 'failed', 'a child completion cannot repair the root stream');

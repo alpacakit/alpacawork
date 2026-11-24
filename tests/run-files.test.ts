@@ -17,6 +17,7 @@ import { controlRunFilesSchema } from '@alpacawork/contract/control';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
+import { projectedView } from '@alpacawork/backend/test-dist/receiver/task-reads.js';
 import { PushStore } from '@alpacawork/backend/test-dist/receiver/push.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readRunFiles } from '@alpacawork/backend/test-dist/runs/view.js';
@@ -77,7 +78,7 @@ async function setup(t: TestContext, seed = true, seedResult?: string) {
   }
   async function screenView() {
     app ??= await startServer(root, 0);
-    return app.feed()!.view(taskId);
+    return projectedView(app.feed()!.current!, taskId);
   }
   return { root, folder, id, taskId, http, cli, screenIndex, screenView };
 }
@@ -179,8 +180,8 @@ test('serve recovery removes only temporary files matching a completed Run in DB
 
 test('serve starts with conflicting temporary output, preserves evidence and reports review alongside a healthy Run', async t => {
   let observations = 0, deliveries = 0;
-  const observe = PushStore.prototype.observe, tick = PushStore.prototype.tick;
-  t.mock.method(PushStore.prototype, 'observe', function (this: PushStore, ...args: Parameters<PushStore['observe']>) {
+  const observe = PushStore.prototype.observeChanged, tick = PushStore.prototype.tick;
+  t.mock.method(PushStore.prototype, 'observeChanged', function (this: PushStore, ...args: Parameters<PushStore['observeChanged']>) {
     observations++; return observe.apply(this, args);
   });
   t.mock.method(PushStore.prototype, 'tick', function (this: PushStore, ...args: Parameters<PushStore['tick']>) {

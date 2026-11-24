@@ -7,6 +7,7 @@ import type { ContextUpdate } from './agent-context.js';
 export const agentUsageSchema = z.object({ scope: z.enum(['conversation', 'run']), counters: tokenCountersSchema }).strict();
 export type AgentUsage = z.infer<typeof agentUsageSchema>;
 export type BridgeInstruction = { id: string; text: string };
+export type BridgeItem = { type: string; [key: string]: unknown };
 export type BridgeEvent =
   | { type: 'thread.started'; thread_id: string }
   | { type: 'input.accepted' | 'input.taken'; id: string }
@@ -19,4 +20,4 @@ export type BridgeEvent =
   /** How full the main conversation is, as the agent last said (contextUpdateSchema). */
   | { type: 'context.updated'; context: ContextUpdate }
   | { type: 'error'; message: string }
-  | { type: 'item.started' | 'item.completed'; item: { type: string; [key: string]: unknown } };
+  | { type: 'item.started' | 'item.completed'; item: BridgeItem };
