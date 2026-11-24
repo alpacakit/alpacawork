@@ -232,6 +232,7 @@ export const controlRequestSchema = z.object({
   recipientRole: runRoleSchema.nullable(),
   mode: requestModeSchema, body: z.string().min(1),
   submittedAt: z.iso.datetime({ offset: true }), deliveryState: deliveryStateSchema,
+  lentTaskId: taskIdSchema.optional(), loanEndedAt: z.iso.datetime({ offset: true }).optional(),
 }).strict();
 /** Status of each Task's latest final owner Run; fetch its text by Run ID when opened. */
 export const controlReplySchema = z.object({
@@ -632,6 +633,7 @@ export const requestInputSchema = z.object({
   requestId: z.string().min(1), expectedTaskHash: digestSchema,
   expectedPlacementRevision: z.number().int().positive(), expectedHeadRunId: runIdSchema.nullable().optional(),
   targetPlacementId: z.string().min(1).optional(),
+  lendTask: taskIdSchema.optional(),
   selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
 }).strict().refine(input => input.description === undefined || input.title !== undefined,
   { path: ['title'], message: 'A request description requires a title' });

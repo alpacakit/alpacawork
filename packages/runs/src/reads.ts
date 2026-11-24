@@ -71,6 +71,10 @@ export interface StoredRequest {
   id: string; taskId: string; placementId: string; placementRevision: number; taskHash: string;
   waitCycleId: string | null;
   answersQuestion?: string | null;
+  lentTaskId?: string;
+  loanRequestId?: string;
+  loanEndedAt?: string;
+  returnTaskId?: string;
   headRunId: RunId | null; aboutRunId: RunId | null; mode: RequestMode; body: string; purpose: RequestPurpose;
   author: TaskActor; submittedAt: string; deliveryState: DeliveryState; runId: RunId | null;
 }
@@ -114,7 +118,7 @@ export function parseStoredPlacement(row: Record<string, unknown>): StoredPlacem
     active: endedAt === null, revision: Number(row.revision), startedAt: String(row.started_at), endedAt };
 }
 export interface ReturnDelivery {
-  wakeRequestId: string; reservedAt: string; receivedAt: string | null; consumedAt: string | null;
+  wakeRequestId: string; priorSeat?: true; reservedAt: string; receivedAt: string | null; consumedAt: string | null;
   releasedAt: string | null; releaseReason: string | null;
 }
 /**
@@ -137,8 +141,8 @@ type StoredRunFile = { record: RuntimeRunRecord; text: string | null; state: Run
 /** Shared SQL for a request's current Run rather than all its historical trials. */
 export const currentRequestRun = (request: string) => `SELECT id FROM runs WHERE request_id = ${request} ORDER BY attempt DESC LIMIT 1`;
 const REQUEST_IMMUTABLE_COLUMNS = `q.id, q.task_id, q.placement_id, q.placement_revision, q.task_hash,
-  q.wait_cycle_id, q.answers_question, q.head_run_id, q.about_run_id, q.mode, q.body, q.purpose, q.author, q.submitted_at`;
-const REQUEST_CURRENT_COLUMNS = `CAST(q.rowid AS TEXT) AS request_row, q.delivery_state,
+  q.wait_cycle_id, q.answers_question, q.lent_task_id, q.loan_request_id, q.head_run_id, q.about_run_id, q.mode, q.body, q.purpose, q.author, q.submitted_at`;
+const REQUEST_CURRENT_COLUMNS = `CAST(q.rowid AS TEXT) AS request_row, q.delivery_state, q.return_task_id, q.loan_ended_at,
   (${currentRequestRun('q.id')}) AS run_number`;
 const REQUEST_SELECT = `SELECT ${REQUEST_IMMUTABLE_COLUMNS}, ${REQUEST_CURRENT_COLUMNS} FROM requests q`;
 const REQUEST_CURRENT_SELECT = `SELECT q.id,q.placement_revision, ${REQUEST_CURRENT_COLUMNS} FROM requests q`;
@@ -152,13 +156,15 @@ function storedValue<const T extends readonly string[]>(values: T, value: unknow
   if (found === undefined) throw new Error(`Unknown stored value ${String(value)}`);
   return found;
 }
-type ImmutableRequest = Omit<StoredRequest, 'deliveryState' | 'runId'>;
+type ImmutableRequest = Omit<StoredRequest, 'deliveryState' | 'runId' | 'returnTaskId' | 'loanEndedAt'>;
 /** A Request's author is one of few texts, read again with every Request. */
 const storedAuthor = storedJsonDecoder(actorSchema);
 function immutableRequest(row: Record<string, unknown>): ImmutableRequest {
   return { id: String(row.id), taskId: String(row.task_id), placementId: String(row.placement_id),
     placementRevision: Number(row.placement_revision), taskHash: String(row.task_hash),
     waitCycleId: nullable(row.wait_cycle_id), answersQuestion: nullable(row.answers_question),
+    ...(row.lent_task_id == null ? {} : { lentTaskId: String(row.lent_task_id) }),
+    ...(row.loan_request_id == null ? {} : { loanRequestId: String(row.loan_request_id) }),
     headRunId: row.head_run_id === null ? null : runIdSchema.parse(row.head_run_id),
     aboutRunId: row.about_run_id === null ? null : runIdSchema.parse(row.about_run_id),
     mode: requestModeSchema.parse(row.mode), body: String(row.body), purpose: requestPurposeSchema.parse(row.purpose),
@@ -170,6 +176,8 @@ function invalidRequest(row: Record<string, unknown>, cause: unknown): Error {
 function parseRequest(row: Record<string, unknown>, immutable?: ImmutableRequest): StoredRequest {
   try {
     return { ...(immutable ?? immutableRequest(row)),
+      ...(row.loan_ended_at == null ? {} : { loanEndedAt: String(row.loan_ended_at) }),
+      ...(row.return_task_id == null ? {} : { returnTaskId: String(row.return_task_id) }),
       deliveryState: deliveryStateSchema.parse(row.delivery_state),
       runId: row.run_number === null ? null : runIdOf(row.run_number) };
   } catch (cause) {
@@ -371,7 +379,22 @@ class SentLedger {
 /** A single read of the shared links supplies both outgoing candidates and requester ownership. */
 export function admissionFacts(db: DatabaseSync, root: string, seats: readonly string[]): AdmissionFacts {
   const kept = keptOf(root || controlRoot(db) || '', 'sent_ledger', () => new SentLedger())?.at(db, seats);
-  if (kept) return kept;
+  const facts = kept ?? databaseAdmissionFacts(db, seats);
+  // The ledger indexes immutable senders. A handback changes only the live obligation.
+  const selected = JSON.stringify(seats);
+  for (const row of db.prepare(`WITH selected(id) AS (SELECT value FROM json_each(?)), changed AS (
+    SELECT q.id,q.wait_cycle_id,q.return_task_id FROM selected s JOIN requests q ON q.return_task_id=s.id
+    UNION SELECT q.id,q.wait_cycle_id,q.return_task_id FROM selected s JOIN wait_cycles c ON c.task_id=s.id
+      JOIN requests q ON q.wait_cycle_id=c.id WHERE q.return_task_id IS NOT NULL
+  ) SELECT q.id,q.return_task_id,c.task_id AS sender FROM changed q JOIN wait_cycles c ON c.id=q.wait_cycle_id
+    WHERE NOT EXISTS (SELECT 1 FROM returns r WHERE r.request_id=q.id)`).all(selected)) {
+    const sent = facts.sent.get(String(row.sender)), id = String(row.id), index = sent?.indexOf(id) ?? -1;
+    if (index >= 0) sent!.splice(index, 1);
+    facts.sent.get(String(row.return_task_id))?.push(id);
+  }
+  return facts;
+}
+function databaseAdmissionFacts(db: DatabaseSync, seats: readonly string[]): AdmissionFacts {
   const callers = new Map(seats.map(seat => [seat, new Set<string>()]));
   for (const row of db.prepare(`SELECT DISTINCT r.task_id,caller.task_id AS caller FROM runs r
     JOIN runs caller ON caller.id=CAST(substr(r.caller_run,2) AS INTEGER)
@@ -502,13 +525,15 @@ function decodeReturns(db: DatabaseSync, rows: Record<string, unknown>[]): Store
   if (!rows.length) return [];
   return storageOperation(() => {
     const ids = JSON.stringify(rows.map(row => String(row.id)));
-    const deliveries = db.prepare(`SELECT * FROM return_deliveries WHERE return_id IN (SELECT value FROM json_each(?))
+    const deliveries = db.prepare(`SELECT d.*,q.task_id IS NOT r.to_task_id AS prior_seat FROM return_deliveries d
+      JOIN requests q ON q.id=d.wake_request_id JOIN returns r ON r.id=d.return_id
+      WHERE d.return_id IN (SELECT value FROM json_each(?))
       ORDER BY reserved_at,wake_request_id`).all(ids);
     const resolutions = db.prepare(`SELECT * FROM return_resolutions WHERE return_id IN (SELECT value FROM json_each(?))`).all(ids);
     const deliveriesByReturn = new Map<string, StoredReturn['deliveries']>();
     for (const item of deliveries) {
       const key = String(item.return_id), group = deliveriesByReturn.get(key) ?? [];
-      group.push({ wakeRequestId: String(item.wake_request_id), reservedAt: String(item.reserved_at),
+      group.push({ wakeRequestId: String(item.wake_request_id), ...(item.prior_seat ? { priorSeat: true as const } : {}), reservedAt: String(item.reserved_at),
         receivedAt: nullable(item.received_at), consumedAt: nullable(item.consumed_at), releasedAt: nullable(item.released_at),
         releaseReason: nullable(item.release_reason) });
       deliveriesByReturn.set(key, group);

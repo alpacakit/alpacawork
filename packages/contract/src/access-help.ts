@@ -5,7 +5,7 @@ import { commandAction, decide, actsOf, SEAT_TEXT, CONDITION_TEXT, type AccessCo
 import { operationReadActions, operationReadHelp, replyAccess, reportCallerRules, urgentRecipient, localCaller } from './access-boundaries.js';
 import { localStopCaller } from './local-stop.js';
 
-type Example = { label: string; action: Action; task?: Partial<TaskFacts>; asked?: boolean;
+type Example = { label: string; action: Action; task?: Partial<TaskFacts>; asked?: boolean; requestLoan?: true;
   /** The Task is the project above the Run callers' own (P0, above T1). */ above?: boolean };
 const example = (command: AccessCommand, label: string, input: Record<string, unknown> = {},
   facts: CommandFacts = {}, task?: Partial<TaskFacts>): Example =>
@@ -61,7 +61,9 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
     example('task.report', '--state stopped (review or failed user-requested Task)', { state: 'stopped' }, {}, failure),
   ],
   'task.request': [
-    example('task.request', 'Instruction to responsible', {}),
+    example('task.request', 'Instruction to responsible without a loan', {}),
+    { label: "Instruction using the caller's open loan", action: { name: 'task.request', worker: false, borrowable: true },
+      requestLoan: true },
     example('task.request', '--agent <member>', { agent: 'P4' }, { worker: true }),
     example('task.request', 'Instruction to failed user-requested Task', {}, {}, failure),
     example('task.request', '--answers (question addressed to user)', { answers: 'Q1' }, { askedTo: null, closed: false }),
@@ -107,7 +109,7 @@ const taskFor = (item: Example): TaskFacts => ({ id: 'T3', parentId: 'T2', proje
 function permits(item: Example, person: Person, ownHeld: boolean): boolean {
   const caller = callers[person], task = taskFor(item);
   const result = decide(caller, item.action, { task: item.action.name === 'task.list' ? null : task,
-    quote: null, runProject: caller.kind === 'run' ? (person === 'foreign' ? 'T10' : 'T1') : null,
+    quote: null, requestLoan: item.requestLoan, runProject: caller.kind === 'run' ? (person === 'foreign' ? 'T10' : 'T1') : null,
     runProjectsAbove: caller.kind === 'run' && person !== 'foreign' ? ['P0'] : [],
     runState: caller.kind !== 'run' ? null : ownHeld || (caller.taskId === task.id && task.hold) ? 'held' : 'doing' });
   return !(result instanceof Problem);

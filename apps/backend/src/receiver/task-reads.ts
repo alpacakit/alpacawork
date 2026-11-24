@@ -200,6 +200,13 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
     .map(entry => [entry.id, entry]));
   for (const request of context.requestsByTask.get(task.id) ?? []) if (request.purpose !== 'return_continuation') {
     const record = references.get(request.id);
+    if (request.lentTaskId) {
+      const loan = { task: request.lentTaskId, phase: 'granted' as const };
+      events.push({ ...event(`loan:${request.id}`, 'changed', request.submittedAt, '', '', null, request.author), loan });
+      if (request.loanEndedAt)
+        events.push({ ...event(`loan-ended:${request.id}`, 'changed', request.loanEndedAt, '', ''),
+          loan: { ...loan, phase: 'ended' } });
+    }
     const recipient = placements.get(request.placementId);
     const accepted = context.firstRun(request);
     // The request row shows the original recipient. The handoff row shows the replacement.
@@ -230,7 +237,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       wordsKey: createHash('sha256').update(dialogue.words).digest('hex'), ...dialogue.answerFiles ? { answerFiles: dialogue.answerFiles } : {} });
   // A parent's History also shows what was asked of its child, so an exchange between them reads from both ends.
   // A child's instructions to its own members are that child's work, read in its own History as its other records are.
-  return fromChild ? events.filter(item => withRequests && item.kind === 'request' && item.recipient?.role !== 'member' || PARENT_VISIBLE_EVENTS.has(item.kind) && item.kind !== 'review' &&
+  return fromChild ? events.filter(item => withRequests && (item.loan || item.kind === 'request' && item.recipient?.role !== 'member') || PARENT_VISIBLE_EVENTS.has(item.kind) && item.kind !== 'review' &&
     !(item.kind === 'question' && item.askedTo === 'user')) : events;
 }
 
@@ -565,6 +572,7 @@ export class ProjectedHistory {
     const window = historyWindow(this.events(frame, id), request);
     const named = new Set(window.events.flatMap(event => [event.taskId, ...(event.author?.kind === 'parent' ? [event.author.taskId] : []),
       ...(event.dependencies ? [...event.dependencies.after, ...event.dependencies.previous] : []),
+      ...(event.loan ? [event.loan.task] : []),
       ...(event.askedTo && event.askedTo !== 'user' ? [event.askedTo] : []), ...(event.causes ?? []).map(cause => cause.taskId)]));
     const bundles = [...named].flatMap(key => {
       const bundle = frame.records.bundle(key);

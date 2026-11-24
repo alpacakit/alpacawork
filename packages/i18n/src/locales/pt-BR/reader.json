@@ -325,6 +325,10 @@
     "listQuestions_one": "Lista com {{count}} pergunta para você",
     "listQuestions_many": "Lista com {{count}} perguntas para você",
     "listQuestions_other": "Lista com {{count}} perguntas para você",
+    "loan": {
+      "ended": "Fim do empréstimo para {{task}}",
+      "granted": "Permissão emprestada para instruir {{task}}"
+    },
     "questions_one": "Pergunta para você · {{count}}",
     "questions_many": "Perguntas para você · {{count}}",
     "questions_other": "Perguntas para você · {{count}}",

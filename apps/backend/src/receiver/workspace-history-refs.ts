@@ -44,7 +44,7 @@ export function historyReferrersOf(records: RecordsReader, named: TaskId, candid
     for (const request of bundle.requests) {
       if (request.purpose === 'return_continuation') continue;
       const parentAuthor = request.author.kind === 'placement' ? records.placementOwner(request.author.placementId) : undefined;
-      if (named !== id && (parentAuthor === id || parentAuthor !== named)) continue;
+      if (named !== id && request.lentTaskId !== named && (parentAuthor === id || parentAuthor !== named)) continue;
       const runId = records.runByRequest(request.id), role = runId ? records.run(runId)?.role : undefined;
       const placement = bundle.placements.find(value => value.id === request.placementId);
       add(id, role ? role !== 'worker' : placement?.responsible !== false);

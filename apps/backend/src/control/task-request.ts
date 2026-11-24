@@ -6,7 +6,7 @@ import { controlTaskHead } from './task-dto.js';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { RequestReceipt, taskRequestResultSchema } from '@alpacawork/contract/control';
 import type { taskRequestInput } from '@alpacawork/contract/inputs';
-import { questionsOf, type TaskActor } from '@alpacawork/raw';
+import { digest, questionsOf, type TaskActor } from '@alpacawork/raw';
 import { questionSnapshot, replyQuestion, assertQuestionReplyApplicable } from './question-rules.js';
 import type { z } from 'zod';
 import type { Caller } from './authorize.js';
@@ -38,25 +38,36 @@ export class TaskRequestService {
     if (input.answers !== undefined) {
       const questionId = input.answers;
       return withControlWrite(this.root, (tx, db) => {
-        const { runs } = tx, tasks = new TaskRepository(this.root, db), task = tasks.get(input.task);
+        const { runs } = tx, tasks = new TaskRepository(this.root, db);
+        let task = tasks.get(input.task);
         const question = replyQuestion(task.id, task.meta.log, questionId);
         // The same answer replay stays an answer, even though its first commit closed the question.
-        if (question.closing === null || question.closing.id === input.opId && question.closing.kind === 'answered') {
+        if (input.lendTask === undefined &&
+          (question.closing === null || question.closing.id === input.opId && question.closing.kind === 'answered')) {
           answer(tx, { actor, taskId: input.task, questionId, body: input.body, opId: input.opId });
           return { task: controlTaskHead(tasks.get(input.task)), outcome: { kind: 'answered' as const, opId: input.opId } };
         }
-        assertQuestionReplyApplicable(task.id, question, questionSnapshot(tasks.related(task.id).tasks));
+        const closing = question.closing?.kind ?? 'answered';
+        if (question.closing) assertQuestionReplyApplicable(task.id, question, questionSnapshot(tasks.related(task.id).tasks));
+        else {
+          // The answer and its instruction commit together. Only the instruction wakes the borrower.
+          if (runs.getRequest(input.opId) || db.prepare('SELECT 1 FROM task_log WHERE id=?').get(input.opId))
+            throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID already has different input');
+          answer(tx, { actor, taskId: task.id, questionId, body: input.body,
+            opId: `LANS${digest(Buffer.from(input.opId))}` }, 'instruction');
+          task = tasks.get(task.id);
+        }
         const previous = runs.getRequest(input.opId), placement = runs.responsiblePlacement(task.id);
         if (!placement) throw new Problem(PROBLEM_CODE.responsibleMissing, 'Task needs a responsible placement',
           { task: task.id, questions: questionsOf(task.meta.log).filter(q => q.closing === null).map(q => q.asked.id) },
           { reason: { kind: 'task_needs_responsible_placement' } });
         let request: RequestReceipt;
         try { request = new RequestService(this.root).requestIn({ taskId: input.task, body: input.body, requestId: input.opId,
-          expectedTaskHash: previous?.taskHash ?? task.hash,
+          lendTask: input.lendTask, expectedTaskHash: previous?.taskHash ?? task.hash,
           expectedPlacementRevision: previous?.placementRevision ?? placement.revision },
         { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined,
           answersQuestion: { id: questionId, title: question.asked.title!,
-            state: question.closing.kind === 'answered' ? 'answered' : 'withdrawn' } }, db);
+            state: closing === 'answered' ? 'answered' : 'withdrawn' } }, db);
         } catch (error) {
           if (!(error instanceof Problem)) throw error;
           throw new Problem(error.code, error.message, {
@@ -74,7 +85,7 @@ export class TaskRequestService {
     const request = await new RequestService(this.root).request({ taskId: input.task, body: input.body, requestId: input.opId,
       expectedTaskHash, expectedPlacementRevision, expectedHeadRunId: input.expectedHeadRun,
       targetPlacementId: input.agent, mode: input.newConversation ? 'new' : undefined,
-      selected: input.selected, aiStack: input.aiStack, cwd: input.cwd },
+      selected: input.selected, aiStack: input.aiStack, cwd: input.cwd, lendTask: input.lendTask },
     { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined });
     return { task: controlTaskHead(await new ControlTaskStore(this.root).get(input.task)),
       outcome: { kind: 'request_accepted', opId: input.opId, request } };

@@ -284,6 +284,7 @@ const definitions = {
     file('instruction', MAX_INSTRUCTION_BYTES, 'The instruction or answer'),
     text('answers', 'ID of the question this answers'),
     text('agent', 'Member placement receiving the instruction'),
+    text('lendTask', 'Another direct child the recipient may instruct while this request is open (parent responsible only)'),
     boolean('newConversation', 'Begin a new conversation'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),
@@ -293,6 +294,8 @@ const definitions = {
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
+    'Use --lend-task for a direct child that serves the recipient’s work with no current work requested by the user. You can also lend when answering the recipient’s question.',
+    'As the borrower, request the lent Task normally. Act on each result and report the combined outcome to your parent. If a request is refused, use its reason to ask your parent for help.',
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.') }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',

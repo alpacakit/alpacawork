@@ -178,13 +178,14 @@ export const taskReportInput = taskReportShape.superRefine((value, context) =>
  * question (`answers`), all in `instruction`. Revisions are shared with the answer path, never an alias.
  */
 export const taskRequestShape = z.object({ task: taskIdSchema, instruction: instructionSchema, answers: logIdSchema.optional(),
-  agent: nonempty.optional(), newConversation: z.boolean().optional(),
+  agent: nonempty.optional(), lendTask: taskIdSchema.optional(), newConversation: z.boolean().optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
   expectedHeadRun: runIdSchema.optional() });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
+  { kind: 'forbidden', scope: 'With {agent}', applies: value => value.agent !== undefined, keys: ['lendTask'] },
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
     keys: ['agent', 'newConversation',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',

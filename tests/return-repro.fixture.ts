@@ -261,4 +261,4 @@ async function fixture(t: TestContext, limit = 20, sleepy = false) {
 }
 
 
-export { config, cli, pass, requestAttempt, asyncPass, fixture, userBall };
+export { asRun, call, config, cli, pass, requestAttempt, asyncPass, fixture, userBall };

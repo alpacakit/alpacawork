@@ -21,6 +21,8 @@ import { assignedSession, launchSnapshot, readAgentsSettings } from '../agents-s
 import { TaskRepository, TaskTree, controlSnapshotView } from './task-store.js';
 import { readTaskContexts } from './task-context.js';
 import { TaskTransition } from './task-transition.js';
+import { assertDependencyAcyclic, dependencyStatus } from './dependencies.js';
+import { assertLendableSibling, loanFor, userRequestedLoanTarget } from './request-loans.js';
 import { ReturnLifecycle } from './return-lifecycle.js';
 import { returnLinesOf } from './return-lines.js';
 import { requestAuthor, requestBodyFits, startText } from './start-text.js';
@@ -59,6 +61,7 @@ function sameRequest(saved: StoredRequest, input: RequestInput): boolean {
   return saved.taskId === input.taskId &&
     (input.targetPlacementId === undefined || saved.placementId === input.targetPlacementId) &&
     saved.placementRevision === input.expectedPlacementRevision && saved.taskHash === input.expectedTaskHash &&
+    saved.lentTaskId === input.lendTask &&
     (input.expectedHeadRunId === undefined || saved.headRunId === input.expectedHeadRunId) &&
     (input.mode === undefined || saved.mode === input.mode) && saved.body === input.body;
 }
@@ -122,7 +125,7 @@ export class RequestService {
     if (!requestBodyFits(input.body))
       throw new Problem(PROBLEM_CODE.tooLarge, 'Request text exceeds 160 KiB', undefined, { reason: { kind: 'request_text_exceeds_160_kib' } });
     requestInputSchema.refine(value => context.purpose !== 'return_continuation' ||
-      value.title === undefined && value.description === undefined,
+      value.title === undefined && value.description === undefined && value.lendTask === undefined,
       { path: ['title'], message: 'A return continuation has no Task note' }).parse(input);
     const cwd = input.cwd === undefined ? undefined : launchDirectory(this.root, input.cwd);
     // Whoever may instruct the placement chooses what its next Run starts with; automatic returns do not.
@@ -190,6 +193,29 @@ export class RequestService {
           const resolvesUnknown = context.purpose !== 'return_continuation' && placement.responsible && speaksForUser(context.actor);
           assertRotationResolved(rotation, resolvesUnknown, input.mode);
           const lifecycle = new ReturnLifecycle(db, tx, snapshot.tasks, project, undefined, this.root);
+          const parentInstruction = callerRun?.role === 'owner' && callerRun.task === task.meta.parentId;
+          const borrow = !parentInstruction && callerRun?.role === 'owner' && placement.responsible &&
+            context.purpose === 'instruction' && !context.answersQuestion
+            ? loanFor(db, callerRun.task, task.id) : undefined;
+          if (input.lendTask !== undefined) {
+            if (!parentInstruction || !placement.responsible || context.purpose !== 'instruction')
+              throw new Problem(PROBLEM_CODE.forbidden, 'Only the parent responsible may lend when instructing a direct child', undefined,
+                { reason: { kind: 'loan_requires_parent_responsible' } });
+            assertLendableSibling(db, callerRun.task, task.id, input.lendTask);
+          }
+          const loanTarget = input.lendTask ?? (borrow === undefined ? undefined : task.id);
+          if (loanTarget !== undefined) {
+            const target = loanTarget === task.id ? task : tasks.get(loanTarget);
+            const targetReturns = target === task ? lifecycle : new ReturnLifecycle(db, tx, [target], project, undefined, this.root);
+            if (target.meta.userRequested || targetReturns.hasUserWork(target)) userRequestedLoanTarget(target.id);
+          }
+          if (borrow !== undefined) {
+            const order = dependencyStatus(db, task.id);
+            if (order.waiting)
+              throw new Problem(PROBLEM_CODE.conflict, `${task.id} is waiting for its dependencies to finish`, { after: order.after },
+                { reason: { kind: 'loan_target_waits_for_dependencies', task: task.id } });
+            assertDependencyAcyclic(db, { requester: callerRun!.task, target: task.id });
+          }
           // On the user's behalf, what the responsible may not have taken goes again, ending the queued Runs it rode in,
           // before the conversation is read: this Request neither waits for nor resumes them.
           if (resolvesUnknown) lifecycle.resendUnconfirmed(task.id, placement.id);
@@ -289,6 +315,7 @@ export class RequestService {
             aiPrefix: input.aiStack,
             aiStack: freezeAiStack(settings.config, { agent: profile, values: launch.launch.values },
               carriesFallback && !input.aiStack ? plan.slice(standingPosition + 1) : plan),
+            lentTaskId: input.lendTask, loanRequestId: borrow,
             answersQuestion: context.purpose === 'instruction' ? context.answersQuestion?.id ?? null : null };
           // Project inherited work before inserting this admission: its Request has no Run/caller witness yet.
           const openObligations = placement.responsible ? lifecycle.openObligations(task.id) : undefined;

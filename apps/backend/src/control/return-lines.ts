@@ -16,7 +16,7 @@ import type { ReturnClosure, ReturnNotice } from './return-rules.js';
 export type ReturnLine = { id: string } & (
   /** A Request closed: by a worker's Run, or by the child Task it asked, with why it failed or stopped. */
   | { outcome: ReturnClosure; request: Pick<StoredRequest, 'id' | 'body'>;
-    from: { by: 'worker'; placementId: string; runId: RunId | null; reason?: string | null } | { by: 'child'; taskId: string; reason: string | null } }
+    from: { by: 'worker'; placementId: string; runId: RunId | null; reason?: string | null } | { by: 'child'; taskId: string; reason: string | null; borrowed?: true } }
   /** A question a Task asked, with its full text (contract questionText of what it fixed). */
   | { outcome: 'question'; taskId: string; questionId: string; title: string; text: string }
   | { outcome: 'urgent'; taskId: string; reason: string }
@@ -57,7 +57,8 @@ const questionCommand = (taskId: string, questionId: string) =>
 /** The one drawer of open work, independent of whether a new conversation or a handover needs it. */
 export function openWorkLines(taskId: string, { requests, returns }: Obligations): { full: string; short: string } {
   const read = `alpacawork task get --task ${taskId} --include openObligations`;
-  const open = requests.map(request => `- ${request.taskId === taskId ? `Member ${request.placementId}` : `Child task ${request.taskId}`}` +
+  const open = requests.map(request => `- ${request.taskId === taskId ? `Member ${request.placementId}`
+    : `${request.loanRequestId && !request.returnTaskId ? "Sibling" : "Child"} task ${request.taskId}`}` +
     ` (request ${request.id} "${headline(request.body)}"${request.runId ? `, Run ${request.runId}` : ''})`);
   const waiting = `Returns and notices not yet handled: ${returns.length} — alpacawork task returns --task ${taskId}`;
   return {
@@ -106,7 +107,7 @@ function forms(line: ReturnLine): { full: string; short: string } {
           (line.from.reason ? ` (cause: ${oneLine(line.from.reason, 200)})` : '') +
           (line.from.runId === null ? '' : ` — alpacawork run get --run ${line.from.runId}`));
       const reason = line.from.reason === null ? '' : ` (cause: ${oneLine(line.from.reason, 200)})`;
-      return one(`- Child task ${line.from.taskId}: ${words}${reason} (${request}) — alpacawork task get --task ${line.from.taskId}`);
+      return one(`- ${line.from.borrowed ? "Sibling" : "Child"} task ${line.from.taskId}: ${words}${reason} (${request}) — alpacawork task get --task ${line.from.taskId}`);
     }
   }
 }
@@ -177,7 +178,8 @@ export function returnLinesOf(lifecycle: ReturnLifecycle, rows: readonly StoredR
       const workerReason = failure?.kind === 'launch_aborted' ? failure.cause?.message ?? null : null;
       return { id: row.id, outcome: row.outcome, request: { id: request.id, body: request.body },
         from: worker ? { by: 'worker', placementId: request.placementId, runId: row.boundaryRunId, ...(workerReason ? { reason: workerReason } : {}) }
-          : { by: 'child', taskId: request.taskId, reason: why } };
+          : { by: 'child', taskId: request.taskId, reason: why,
+            ...(request.loanRequestId && !request.returnTaskId ? { borrowed: true } : {}) } };
     }
     const { log, task } = required(cause, 'cause log');
     switch (row.outcome) {

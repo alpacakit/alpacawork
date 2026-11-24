@@ -292,6 +292,10 @@
     "goQuestionAt": "回答：{{at}} {{title}}",
     "jumpToLatest": "跳到最新",
     "listQuestions_other": "给你的 {{count}} 个提问的列表",
+    "loan": {
+      "ended": "向「{{task}}」发出请求的权限已结束借用",
+      "granted": "已出借向「{{task}}」发出请求的权限"
+    },
     "questions_other": "给你的提问 · {{count}}",
     "questionsUnavailable": "无法读取提问。",
     "received": "此任务已收到",

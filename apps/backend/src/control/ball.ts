@@ -8,7 +8,7 @@ import { currentReview, isTaskReview, isSeatContinuation, reviewTarget } from '@
 import type { RunId } from '@alpacawork/contract/fields';
 import { openQuestions, type ControlTask, type TaskLifecycle, type TaskState } from '@alpacawork/raw';
 import type { StoredRequest } from '@alpacawork/runs';
-import { requesterOf, requesterSeat } from './return-rules.js';
+import { movedBorrowedRequest, requesterOf, requesterSeat, taskFailure, userWorkFailed } from './return-rules.js';
 import { seatFactsOf, wakeBlock, type SeatSource, type WakeBlock } from './wake.js';
 
 import type { BallFacts } from '@alpacawork/contract/task-policy';
@@ -35,14 +35,12 @@ export interface BallSource extends SeatSource {
 export function ballFactsOf(source: BallSource, taskId: string): BallFacts {
   const task = source.task(taskId);
   if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
-  const { lifecycle, state, baseState, log } = task.meta, latest = [...log].reverse();
+  const { lifecycle, state, baseState, log } = task.meta;
   const mark = currentReview(task.meta, source.moving(taskId));
-  // Returning a hold restores the existing failure; a Run that fails while held is a new linked failure.
-  const failed = baseState === 'error' ? latest.find(entry => entry.toState === 'error' &&
-    (entry.kind !== 'reported' || entry.fromState !== 'held')) : undefined;
+  const failed = baseState === 'error' ? taskFailure(log) : undefined;
   const responsible = source.responsible(taskId), seat = seatFactsOf(source, taskId);
   const requester = requesterOf(taskId, source.requestsTo(taskId), source.facts);
-  const failureSeat = failed ? failureRequester(source, taskId, failed.runId) : undefined;
+  const failureSeat = failed ? failureRequester(source, taskId, failed.id, failed.runId) : undefined;
   const seatId = failureSeat === undefined ? requester : failureSeat;
   const questions = source.questions;
   const asking = !failed || seatId === null ? undefined : source.task(seatId);
@@ -67,9 +65,11 @@ export function ballFactsOf(source: BallSource, taskId: string): BallFacts {
  * requesterSeat), the user for theirs. That Request closed with the Run, so requesterOf no longer reads it. Undefined
  * for another failure, or a continuation's Run (its seat went on by itself), which requesterOf alone decides.
  */
-function failureRequester(source: BallSource, taskId: string, runId: string | undefined): string | null | undefined {
+function failureRequester(source: BallSource, taskId: string, cause: string, runId: string | undefined): string | null | undefined {
   const requestId = runId === undefined ? undefined : source.facts.runs.get(runId)?.requestId;
   const request = source.requestsTo(taskId).find(item => item.id === requestId);
   if (!request || isSeatContinuation(request.purpose)) return undefined;
+  if (request.loanRequestId !== undefined && userWorkFailed(taskId, cause, source.requestsTo(taskId), source.facts)) return null;
+  if (movedBorrowedRequest(request, source.facts)) return undefined;
   return requesterSeat(request, source.facts);
 }

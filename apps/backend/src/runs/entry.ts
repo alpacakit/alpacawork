@@ -26,6 +26,7 @@ type StopResult = { result: { cancelled: string[]; stop_requested: string[] }; l
 function calledFrom(store: RunStore, tx: RunTransaction, roots: readonly RunId[]): RunRecord[] {
   return store.connection.prepare(`WITH RECURSIVE below(id) AS (SELECT value FROM json_each(?)
     UNION SELECT r.id FROM runs r JOIN below b ON r.caller_run = 'R' || b.id
+      JOIN requests q ON q.id=r.request_id WHERE q.return_task_id IS NULL
     UNION SELECT next.id FROM runs current JOIN below b ON current.id=b.id
       JOIN runs next ON 'R'||next.id=json_extract(current.record,'$.supersededBy')) SELECT id FROM below ORDER BY id`)
     .all(JSON.stringify(roots.map(runNumber))).flatMap(row => tx.get(`R${Number(row.id)}`) ?? []);

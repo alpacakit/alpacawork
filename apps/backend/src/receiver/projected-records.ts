@@ -11,6 +11,8 @@ export function recordedRequests(records: RecordsReader, task: string): ControlR
     return { id: saved.id, taskId: saved.taskId, placementId: saved.placementId, runId: saved.runId,
       recipientRole: run?.task === saved.taskId && run.placementId === saved.placementId ? run.role : null,
       aboutRunId: saved.aboutRunId, purpose: saved.purpose, author: saved.author, mode: saved.mode,
-      body: saved.body, submittedAt: saved.submittedAt, deliveryState: saved.deliveryState };
+      body: saved.body, submittedAt: saved.submittedAt, deliveryState: saved.deliveryState,
+      ...(saved.lentTaskId ? { lentTaskId: saved.lentTaskId } : {}),
+      ...(saved.loanEndedAt ? { loanEndedAt: saved.loanEndedAt } : {}) };
   });
 }

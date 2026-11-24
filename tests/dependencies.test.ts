@@ -126,14 +126,14 @@ test('move calls the same cycle check and rolls back the parent and History', as
 });
 
 test('public HTTP uses ordinary task.request authority; CLI set/clear and task get expose the result', async t => {
+  let server: Awaited<ReturnType<typeof startServer>>;
+  t.after(() => server?.close());
   const f = await taskFlow(t), parent = await f.task('Parent'), rp = await f.work(parent),
     child = await f.task('Child', { parentId: parent.id }), a = await f.task('A'), outsider = await f.task('Outsider'), ro = await f.work(outsider);
   const interval = globalThis.setInterval;
   globalThis.setInterval = ((callback: Parameters<typeof setInterval>[0], ms?: number, ...args: unknown[]) =>
     interval(callback, ms === POLL_INTERVAL_MS ? 3_600_000 : ms, ...args)) as typeof setInterval;
-  let server: Awaited<ReturnType<typeof startServer>>;
   try { server = await startServer(f.root, 0); } finally { globalThis.setInterval = interval; }
-  t.after(() => server.close());
   const post = async (verb: 'set' | 'clear', target: string, seat?: typeof rp, fields = {}) => {
     const opId = randomUUID();
     const response = await fetch(new URL(`/api/commands/dependency/${verb}`, server.url), { method: 'POST',

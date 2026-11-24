@@ -22,8 +22,8 @@ import type { TaskDecisionFacts } from './routing-facts.js';
 import { isUnfinished, PROJECT_REQUESTS_SQL, type ReturnDelivery, type RunTransaction, type StoredPlacement, type StoredRequest,
   type StoredReturn } from '@alpacawork/runs';
 import { resolveUncertainInputs } from '../runs/execution-control.js';
-import { arrivingRequests, awaitsClosure, closureOf, cycleClosed, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
-  returnFacts, returnIdOf, openRequestsBySeat, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
+import { arrivingRequests, awaitsClosure, closureOf, cycleClosed, isOpen, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
+  returnFacts, returnIdOf, openRequestsBySeat, taskFailure, userWorkFailed, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
 import { failedDeliveryBlocked, seatFailed, seatRunBefore } from './wake.js';
 
 /** What a return's delivery and resolution facts make of it; there is no writable status. */
@@ -43,7 +43,7 @@ type ReleaseReason = 'not_delivered' | 'unsuccessful' | 'seat_failed' | 'resent_
 export function returnDisposition(row: StoredReturn): ReturnDisposition {
   if (row.resolution || row.deliveries.some(d => d.consumedAt)) return 'disposed';
   if (row.deliveries.some(d => !d.releasedAt)) return 'in_flight';
-  return row.deliveries.some(d => d.releaseReason !== 'not_delivered') ? 'carried' : 'pending';
+  return row.deliveries.some(d => !d.priorSeat && d.releaseReason !== 'not_delivered') ? 'carried' : 'pending';
 }
 export function activeDelivery(row: StoredReturn) { return row.deliveries.find(d => !d.releasedAt && !d.consumedAt); }
 
@@ -367,6 +367,7 @@ export class ReturnLifecycle {
   }
   private reconcileSelected(work?: RoutingTasks): { runs: RunRecord[]; requests: StoredRequest[]; returns: StoredReturn[] } {
     this.reconcileDeliveries(work);
+    this.settleLoans([...work?.tasks ?? this.routing.tasks], new Date().toISOString());
     this.close(this.requests, work);
     const [condition, parameters]: [string, string[]] = work
       ? ['AND task_id IN (SELECT value FROM json_each(?))', [JSON.stringify([...work.tasks])]]
@@ -405,8 +406,8 @@ export class ReturnLifecycle {
    * (question, answer, urgent), task-reports (urgent), task-commands and TaskTransition (work_changed) and placement-commands (handover)
    * call it.
    */
-  notice(kind: ReturnNotice, toTaskId: string, causeLogId: string): void {
-    const id = returnIdOf({ causeLogId, outcome: kind });
+  notice(kind: ReturnNotice, toTaskId: string, causeLogId: string, multipleDestinations = false): void {
+    const id = returnIdOf({ causeLogId, outcome: kind, ...(multipleDestinations ? { toTaskId } : {}) });
     this.change({ kind: 'return', id }, 'INSERT INTO returns(id,to_task_id,outcome,cause_log_id,created_at) VALUES (?,?,?,?,?)',
       id, toTaskId, kind, causeLogId, new Date().toISOString());
   }
@@ -417,7 +418,82 @@ export class ReturnLifecycle {
   private workChangedSelected(taskId: string, causeLogId: string): void {
     const facts = this.facts;
     const requests = this.requests.filter(request => request.taskId === taskId && facts.runOf.get(request.id)?.role === 'owner');
-    for (const seat of openRequestsBySeat(requests, facts).keys()) this.notice('work_changed', seat, causeLogId);
+    const seats = openRequestsBySeat(requests, facts);
+    for (const seat of seats.keys()) this.notice('work_changed', seat, causeLogId, seats.size > 1);
+  }
+  /** An open direct user instruction or a failure of that work awaiting the user. */
+  hasUserWork(task: TaskDecisionFacts): boolean {
+    const view = this.seat(task.id), facts = view.facts;
+    if (view.requests.some(request => request.taskId === task.id && speaksForUser(request.author) &&
+      facts.runOf.get(request.id)?.role === 'owner' && isOpen(request, facts))) return true;
+    if (task.meta.baseState !== 'error') return false;
+    const cause = taskFailure(task.meta.log);
+    return cause !== undefined && userWorkFailed(task.id, cause.id, view.requests, facts);
+  }
+
+  /** A moved B may still be running when its instruction closes. Its new parent handles a later failure. */
+  notifyMovedLoanFailure(task: TaskDecisionFacts, entry: TaskLog): void {
+    const run = entry.runId ? this.tx.get(entry.runId) : undefined;
+    const request = run ? this.tx.getRequest(run.requestId) : undefined;
+    if (!request?.loanRequestId || this.tx.getReturn(returnIdOf({ requestId: request.id }))?.outcome !== 'moved') return;
+    const view = this.seat(task.id);
+    if (userWorkFailed(task.id, entry.id, view.requests, view.facts)) return;
+    const parent = view.facts.tasks.get(task.meta.parentId ?? '');
+    if (parent?.kind === 'task' && parent.responsible) this.notice('work_changed', parent.id, entry.id);
+  }
+  /**
+   * Apply the ordinary request closure at the write that can end a loan or its borrowed work. The
+   * caller supplies fresh Task facts; a replaced responsible still holds the same recipient seat.
+   */
+  settleLoans(changed: readonly string[], at: string): void {
+    const selected = JSON.stringify(changed);
+    const grants = this.db.prepare(`SELECT q.id,c.task_id AS lender FROM requests q
+      JOIN wait_cycles c ON c.id=q.wait_cycle_id WHERE q.task_id IN (SELECT value FROM json_each(?))
+      AND q.lent_task_id IS NOT NULL AND q.loan_ended_at IS NULL`).all(selected);
+    for (const grant of grants) {
+      const loan = this.tx.getRequest(String(grant.id))!;
+      const closure = closureOf(loan, this.facts);
+      if (!closure && loan.deliveryState !== DELIVERY_STATE.aborted && !this.facts.closedRequests.has(loan.id)) continue;
+      this.endLoan(loan, String(grant.lender), at, closure?.outcome === 'succeeded');
+    }
+    const borrowed = this.db.prepare(`SELECT q.id FROM requests q
+      WHERE q.task_id IN (SELECT value FROM json_each(?)) AND q.loan_request_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM returns r WHERE r.request_id=q.id)`).all(selected);
+    if (borrowed.length) this.close([...this.tx.getRequests(borrowed.map(row => String(row.id))).values()]);
+  }
+  private endLoan(loan: StoredRequest, lender: string, at: string, completed: boolean): void {
+    this.change({ kind: 'request', id: loan.id }, 'UPDATE requests SET loan_ended_at=? WHERE id=?', at, loan.id);
+    if (completed) return; // The ordinary finish guard already requires the borrower to have taken every return.
+    const uses = this.db.prepare(`SELECT q.id,r.id AS result FROM requests q LEFT JOIN returns r ON r.request_id=q.id
+      WHERE q.loan_request_id=? AND q.delivery_state<>'aborted'`).all(loan.id);
+    if (!uses.length) return;
+    this.reconcileDeliveries({ tasks: new Set([loan.taskId]) });
+    for (const use of uses) {
+      const id = String(use.id);
+      const result = use.result === null ? undefined : this.tx.getReturn(String(use.result));
+      if (result && returnDisposition(result) === 'disposed') continue;
+      this.change({ kind: 'request', id }, 'UPDATE requests SET return_task_id=? WHERE id=?', lender, id);
+      if (result) {
+        const delivery = activeDelivery(result);
+        if (delivery) {
+          this.release(result.id, delivery.wakeRequestId, 'not_delivered');
+          this.cancelUndeliveredWake(delivery.wakeRequestId);
+        }
+        this.change({ kind: 'return', id: result.id }, 'UPDATE returns SET to_task_id=?,hold_reason=NULL WHERE id=?', lender, result.id);
+      }
+    }
+    this.runsChanged();
+  }
+
+  /** A saved but unsent continuation contains the old destination's result text. Draw its input again. */
+  private cancelUndeliveredWake(requestId: string): void {
+    const request = this.tx.getRequest(requestId);
+    if (!request?.runId || !isSeatContinuation(request.purpose)) return;
+    const run = this.tx.get(request.runId);
+    if (run?.state !== 'queued') return;
+    this.tx.abortRequest(run, requestId);
+    for (const row of this.rows) this.release(row.id, requestId, 'not_delivered');
+    this.runsChanged();
   }
   /**
    * A Request on the user's behalf to a Task's responsible sends again what its agent may not have taken: the
