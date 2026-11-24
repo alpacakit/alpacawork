@@ -70,9 +70,9 @@ En una terminal, también se abre con `alpacawork open`.
 
 ## Qué hace
 
-Mira el flujo completo, desde la petición hasta el resultado, en las pantallas reales (98 segundos, sin sonido).
+Mira el flujo completo, desde la petición hasta el resultado, en las pantallas reales (unos 100 segundos, sin sonido).
 
-https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
+https://github.com/user-attachments/assets/967f1b2d-dc77-4c3d-97ed-1a8048095cbb
 
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.
 - **Una IA gestiona varias IA a la vez.** Para añadir o cambiar algo en el trabajo en curso, solo tienes que decírselo al coordinador. Escribe “En las tres tareas en curso, comprueba también cómo se ve en el teléfono” y el coordinador se lo indica a cada IA que trabaja en ellas.

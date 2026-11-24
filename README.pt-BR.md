@@ -70,9 +70,9 @@ No terminal, `alpacawork open` também abre a tela.
 
 ## O que ele faz
 
-Veja o fluxo completo, do pedido ao resultado, nas telas reais (98 segundos, sem som).
+Veja o fluxo completo, do pedido ao resultado, nas telas reais (cerca de 100 segundos, sem som).
 
-https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
+https://github.com/user-attachments/assets/21326312-73ba-4cd7-86da-3d5e7192b6e9
 
 - **Peça tudo em um único campo de mensagem.** O coordenador transforma cada solicitação em uma tarefa e a delega a uma IA. Você não precisa trocar de chat nem de IA a cada trabalho.
 - **Uma IA gerencia várias IAs ao mesmo tempo.** Para acrescentar ou mudar algo em um trabalho em andamento, basta dizer ao coordenador. Escreva “Nas três tarefas em andamento, verifique também o layout no celular”, e o coordenador passa essa instrução a cada IA que trabalha nelas.

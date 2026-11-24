@@ -19,7 +19,8 @@ The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages
 larger than a heading can; its alt text carries the name.
 The pictures and videos show made-up data on the dark-theme screens. The demo under the introduction
 is an animated WebP drawn as a rounded card with alpha, so it sits on light and dark pages alike
-(demo-dark.webp; demo-dark-ja.webp in README.ja.md, which shows the Japanese screens, as its video does).
+(demo-dark.webp). Each README shows the screens in its own language: demo-dark-<lang>.webp in the
+translations, and each plays its own upload of the demo video.
 The diagram at the top is drawn in each README's language (hero.gif, hero-dark.gif for this file;
 hero-<lang>.gif, hero-dark-<lang>.gif for the others) and switches with the page theme in a <picture>;
 its first and last frames are the finished picture.
@@ -102,7 +103,7 @@ In a terminal, `alpacawork open` also opens it.
 
 ## What it does
 
-See the whole flow, from request to done, on the real screens (98 seconds, no sound).
+See the whole flow, from request to done, on the real screens (about 100 seconds, no sound).
 
 https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
 

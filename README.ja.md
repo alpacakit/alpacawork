@@ -70,7 +70,7 @@ alpacawork setup
 
 ## できること
 
-依頼から完了までの流れを、実際の画面で見られます（98秒、音なし）。
+依頼から完了までの流れを、実際の画面で見られます（約100秒、音なし）。
 
 https://github.com/user-attachments/assets/00353d76-ca96-432a-adb0-ed971e72fe25
 
