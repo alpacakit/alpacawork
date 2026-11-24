@@ -6,19 +6,19 @@
     "addRow": "+ Adicionar linha",
     "aiStack": {
       "add": "+ Adicionar uma IA alternativa",
-      "addFirst": "+ Adicionar a IA de uso normal",
+      "addFirst": "+ Adicionar a IA principal",
       "agentFor": "Agente da linha {{n}}",
       "agentsNote": "Um agente desativado não pode ser escolhido em “{{tasks}}” nem em “{{input}}”.",
       "agentsTitle": "Configurações de cada agente",
       "down": "Descer a linha {{n}}",
-      "first": "Uso normal",
+      "first": "Principal",
       "issue": {
         "disabled": "{{agent}} está desativado. Ative-o ou remova esta linha.",
-        "empty": "Adicione a IA de uso normal.",
+        "empty": "Adicione a IA principal.",
         "missing": "Não há agente chamado {{agent}}. Escolha outro agente ou remova esta linha.",
         "value": "{{row}} “{{value}}” não é um valor de {{agent}}. Escolha de novo."
       },
-      "lead": "Normalmente a IA 1 faz as tarefas. Só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem. Se a última também parar, o trabalho para e você é avisado.",
+      "lead": "A IA principal faz as tarefas. Só quando ela para por limite de uso ou de capacidade, as IAs alternativas abaixo dela continuam, de cima para baixo. Se todas pararem, o trabalho para e você é avisado.",
       "namedOnly": "Um modelo que não está aqui nunca é usado como alternativa por conta própria. Ele só é usado quando um pedido o nomeia.",
       "notOffered": "{{value}} (não é um valor)",
       "remove": "Remover a linha {{n}}",
@@ -40,7 +40,7 @@
     "choicesHint": "Os valores oferecidos nas listas de IA e nas solicitações.",
     "collapse": "Recolher {{name}}",
     "coordinatorStack": {
-      "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Normalmente a IA 1 recebe; só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem.",
+      "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Aqui também, só quando a IA principal para por limite de uso ou de capacidade, as IAs alternativas abaixo dela continuam, de cima para baixo.",
       "title": "IA com quem você fala no campo de mensagem (coordenador)"
     },
     "defaultsChanged": "As opções de inicialização padrão deste adaptador foram atualizadas",

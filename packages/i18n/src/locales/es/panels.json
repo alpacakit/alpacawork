@@ -6,19 +6,19 @@
     "addRow": "+ Añadir fila",
     "aiStack": {
       "add": "+ Añadir una IA alternativa",
-      "addFirst": "+ Añadir la IA de uso normal",
+      "addFirst": "+ Añadir la IA principal",
       "agentFor": "Agente de la fila {{n}}",
       "agentsNote": "Un agente desactivado no se puede elegir en «{{tasks}}» ni en «{{input}}».",
       "agentsTitle": "Ajustes de cada agente",
       "down": "Bajar la fila {{n}}",
-      "first": "De uso normal",
+      "first": "Principal",
       "issue": {
         "disabled": "{{agent}} está desactivado. Actívalo o quita esta fila.",
-        "empty": "Añade la IA de uso normal.",
+        "empty": "Añade la IA principal.",
         "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
         "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
       },
-      "lead": "Normalmente la IA 1 hace las tareas. Solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden. Si también se detiene la última, el trabajo se detiene y se te avisa.",
+      "lead": "La IA principal hace las tareas. Solo si se detiene por un límite de uso o de capacidad, las IA alternativas de las filas de abajo toman el relevo, de arriba abajo. Si se detienen todas, el trabajo se detiene y se te avisa.",
       "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
       "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar la fila {{n}}",
@@ -40,7 +40,7 @@
     "choicesHint": "Los valores que se ofrecen en las listas de IA y en las solicitudes.",
     "collapse": "Contraer {{name}}",
     "coordinatorStack": {
-      "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
+      "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Aquí también, solo si la IA principal se detiene por un límite de uso o de capacidad, las IA alternativas de las filas de abajo toman el relevo, de arriba abajo.",
       "title": "IA con la que hablas en el cuadro de texto (coordinador)"
     },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
