@@ -4,7 +4,7 @@ import type { CoordinatorTurn } from "@/data/coordinator";
 import { useEveryTaskIndex } from "@/data/queries";
 import { resolveReference } from "@/domain/tasks";
 import { taskTokens } from "./editor/wire";
-import { useContext, useEffect, useLayoutEffect, useReducer, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useLayoutEffect, useReducer, useState, useSyncExternalStore } from 'react';
 import { WorkspaceContext } from '@/data/workspace-store';
 import { useConversation } from './coordinator';
 import { paceKey, workPacer, type Pace } from './work-pace';
@@ -12,6 +12,7 @@ import { workNameWords } from '@/domain/work-words';
 import { causeReason, limitName } from '@/domain/run-labels';
 import { agentLabel } from '@/domain/agent-label';
 import { RunSteps } from '@/features/people/RunSteps';
+import { Icon } from '@/components/ui/icon';
 import { MarkdownBody } from '@/features/reader/MarkdownBody';
 import { followTask } from './follow-task';
 
@@ -50,15 +51,22 @@ const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
 const idle = { subscribe: () => () => {}, snapshot: () => none, committed: (_version: number) => {} };
 
-/** The running turn's latest steps as they are, for the open conversation; the folded one keeps to the rounded words. */
+/**
+ * What the running turn is doing, in the open conversation: its latest words and its latest step on one line; a press on
+ * that line opens the step in full with the steps before it, and another folds it. The folded conversation keeps to the rounded words.
+ */
 export function WorkingSteps({ turn }: { turn: { id: string } }) {
   const store = useContext(WorkspaceContext);
   const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
   const conversation = useConversation(state => state.conversation?.id);
+  const [open, setOpen] = useState(false);
   if (!work || work.conversation !== conversation || work.turn !== turn.id) return null;
   return <>
     {work.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={work.words} task={null} variant="note" onFollow={followTask} /></div>}
-    <RunSteps steps={work.steps} brief={false} last={5} className="mb-2" />
+    {work.steps.length > 0 && <button type="button" data-working-steps aria-expanded={open}
+      onClick={() => setOpen(!open)} className="group/steps mb-2 flex w-full min-w-0 cursor-pointer items-start gap-2 rounded-sm text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
+      <RunSteps steps={work.steps} open={open} trail={3} className="min-w-0 flex-1" />
+      <Icon name="down" className={`mt-0.5 size-3.5 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${open ? "rotate-180" : ""}`} /></button>}
   </>;
 }
 const noStore = () => () => {};

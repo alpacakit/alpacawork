@@ -13,7 +13,7 @@ export type WorkName = z.infer<typeof workNameSchema>;
 export const workLabelSchema = z.object({ name: workNameSchema, count: z.number().int().positive() }).strict();
 export type WorkLabel = z.infer<typeof workLabelSchema>;
 /** How many of the latest steps a Run keeps for display, and how much of each. */
-export const RUN_STEP_LIMIT = 12;
+export const RUN_STEP_LIMIT = 6;
 export const RUN_STEP_TEXT_LIMIT = 240;
 /**
  * One thing an agent did, as its own tool call says it: the first line of what it ran, read or searched (`more`

@@ -10,43 +10,60 @@ const FILE_TOOLS = new Set(["Read", "Edit", "Write", "NotebookEdit", "file_chang
 /** What came back says something of these alone (a command's output, what a search found); a read file's first line does not. */
 const RESULT_TOOLS = new Set(["Bash", "command_execution", "Grep", "Glob"]);
 
-/**
- * An agent's latest steps as its own tool calls say them: the tool and what it ran, read or searched. `brief` keeps
- * each step to one line (the agent's own words for it when it gave them, as two commands that start alike read apart
- * by those) and shows the last `last` of them; otherwise each step says both, and the first line of what came back.
- * `newestFirst` where the place it stands in reads downward into the past (History); a conversation reads the other way.
- */
-export function RunSteps({ steps, brief, last, newestFirst, className }: { steps: readonly RunStep[]; brief: boolean; last?: number; newestFirst?: boolean; className?: string }) {
+/** Going, done or failed, told by the mark's shape as well as its colour. */
+function Mark({ state }: { state: RunStep["state"] }) {
+  return <span aria-hidden data-run-step-mark className={cn("w-3 flex-none text-center font-sans", state === "running" ? "motion-safe:animate-pulse" : state === "failed" ? "text-error" : "text-muted")}>
+    {state === "running" ? <span className="inline-block size-1.5 translate-y-[-1px] rounded-full bg-current" /> : state === "failed" ? "✗" : "✓"}</span>;
+}
+const tone = (step: RunStep) => step.state === "running" ? "text-ink" : "text-soft";
+
+/** One step on one line: the tool, the agent's own words for it when it gave them, then as much of what it ran as fits. */
+function StepLine({ step }: { step: RunStep }) {
+  return <div className={cn("flex min-w-0 items-baseline gap-1.5", tone(step))}>
+    <Mark state={step.state} /><span className="flex-none font-medium">{toolName(step.tool)}</span>
+    {step.about && <span dir="auto" className="max-w-[62%] flex-none truncate">{step.about}</span>}
+    {FILE_TOOLS.has(step.tool)
+      ? <span dir="rtl" className="min-w-0 truncate text-left font-mono"><bdi>{step.text}</bdi></span>
+      : <span dir="auto" className={cn("min-w-0 truncate font-mono", step.about && "text-muted")}>{step.text}</span>}
+  </div>;
+}
+/** What came back, on one line: its first line and how many follow. */
+function StepResult({ step }: { step: RunStep }) {
   const { t } = useTranslation("people");
-  const latest = last === undefined ? steps : steps.slice(-last), shown = newestFirst ? [...latest].reverse() : latest;
-  if (!shown.length) return null;
-  return <ol data-run-steps className={cn("m-0 flex list-none flex-col p-0 text-xs", brief ? "gap-0.5" : "gap-1.5", className)}>
-    {shown.map(step => {
-      const lines = step.more > 0 ? <span className="flex-none font-sans text-muted">{t("now.step.moreLines", { count: step.more })}</span> : null;
-      // Going, done or failed is told by the mark's shape as well as its colour.
-      const mark = <span aria-hidden data-run-step-mark className={cn("w-3 flex-none text-center font-sans", step.state === "running" ? "motion-safe:animate-pulse" : step.state === "failed" ? "text-error" : "text-muted")}>
-        {step.state === "running" ? <span className="inline-block size-1.5 translate-y-[-1px] rounded-full bg-current" /> : step.state === "failed" ? "✗" : "✓"}</span>;
-      const tone = step.state === "running" ? "text-ink" : "text-soft";
-      const tool = <span className="flex-none font-medium">{toolName(step.tool)}</span>;
-      if (brief) return <li key={step.id} data-run-step={step.state} className={cn("flex min-w-0 items-baseline gap-1.5", tone)}>
-        {mark}{tool}
-        {step.about ? <span dir="auto" className="min-w-0 truncate">{step.about}</span>
-          : FILE_TOOLS.has(step.tool) ? <span dir="rtl" className="min-w-0 truncate text-left font-mono"><bdi>{step.text}</bdi></span>
-          : <><span dir="auto" className="min-w-0 truncate font-mono">{step.text}</span>{lines}</>}
-      </li>;
-      const result = step.result && (step.state === "failed" || RESULT_TOOLS.has(step.tool)) ? step.result : null;
-      return <li key={step.id} data-run-step={step.state} className={cn("grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-1.5", tone)}>
-        {mark}
-        <div className="flex min-w-0 items-baseline gap-1.5">{tool}
-          {step.about ? <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{step.about}</span>
-            : <span dir="auto" className="line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{step.text} {lines}</span>}</div>
-        {step.about && <div dir="auto" className="col-start-2 line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{step.text} {lines}</div>}
-        {result && <div className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
-          <span aria-hidden className="flex-none">⎿</span>
-          <span dir="auto" className="min-w-0 truncate font-mono">{result.text}</span>
-          {result.more > 0 && <span className="flex-none">{t("now.step.moreLines", { count: result.more })}</span>}
-        </div>}
-      </li>;
-    })}
-  </ol>;
+  if (!step.result || step.state !== "failed" && !RESULT_TOOLS.has(step.tool)) return null;
+  return <div className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
+    <span aria-hidden className="flex-none">⎿</span>
+    <span dir="auto" className="min-w-0 truncate font-mono">{step.result.text}</span>
+    {step.result.more > 0 && <span className="flex-none">{t("now.step.moreLines", { count: step.result.more })}</span>}
+  </div>;
+}
+/** One step read in full: what it ran as written (a long line wraps to three, further lines are counted), and what came back. */
+function StepDetail({ step }: { step: RunStep }) {
+  const { t } = useTranslation("people");
+  const text = <>{step.text} {step.more > 0 && <span className="font-sans text-muted">{t("now.step.moreLines", { count: step.more })}</span>}</>;
+  return <div className={cn("grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-1.5", tone(step))}>
+    <Mark state={step.state} />
+    <div className="flex min-w-0 items-baseline gap-1.5"><span className="flex-none font-medium">{toolName(step.tool)}</span>
+      {step.about ? <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{step.about}</span>
+        : <span dir="auto" className="line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{text}</span>}</div>
+    {step.about && <div dir="auto" className="col-start-2 line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{text}</div>}
+    <StepResult step={step} />
+  </div>;
+}
+
+/**
+ * What an agent is doing, from its own tool calls. Folded, the latest step alone on one line, so the place it stands
+ * in keeps its height while steps go by. Open, that step in full and the `trail` steps before it, one line each (a
+ * failed one keeps what came back). `newestFirst` where the place reads downward into the past (History); a
+ * conversation reads the other way.
+ */
+export function RunSteps({ steps, open, trail = 5, newestFirst, className }: { steps: readonly RunStep[]; open: boolean; trail?: number; newestFirst?: boolean; className?: string }) {
+  const latest = steps.at(-1);
+  if (!latest) return null;
+  if (!open) return <div data-run-steps="folded" data-run-step={latest.state} className={cn("min-w-0 text-xs", className)}><StepLine step={latest} /></div>;
+  const before = trail > 0 ? steps.slice(-(trail + 1), -1) : [];
+  const rows = [...before.map(step => <li key={step.id} data-run-step={step.state} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-1.5">
+    <div className="col-span-2 min-w-0"><StepLine step={step} /></div>{step.state === "failed" && <StepResult step={step} />}</li>),
+    <li key={latest.id} data-run-step={latest.state} data-run-step-latest className="min-w-0"><StepDetail step={latest} /></li>];
+  return <ol data-run-steps="open" className={cn("m-0 flex list-none flex-col gap-1 p-0 text-xs", className)}>{newestFirst ? rows.reverse() : rows}</ol>;
 }

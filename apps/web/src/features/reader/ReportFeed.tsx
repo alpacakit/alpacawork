@@ -990,7 +990,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {steps.length > 0 && <RunSteps steps={steps} brief={!open} last={open ? undefined : 3} newestFirst className={`${cell} mt-1.5`} />}
+    {steps.length > 0 && <RunSteps steps={steps} open={open} trail={lead ? undefined : 0} newestFirst className={`${cell} mt-1.5`} />}
     {lead && <span className="col-start-3 row-start-1 flex items-center self-center justify-self-end"><DisclosureChevron open={open} /></span>}
   </div>;
 }
