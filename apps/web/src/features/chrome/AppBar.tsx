@@ -32,8 +32,9 @@ import { UpdateMark, useGearLabel } from "@/features/update/UpdateView";
 // that stands above the name's line is drawn whole.
 const SLOT = "min-w-0 w-[min(20rem,28cqw)] flex-none compactbar:w-auto compactbar:flex-1 narrow:me-2";
 // The buttons' side is at least as wide as the name's, so the search box stands in the middle of the bar and stays there
-// when a button comes late (the plan limits, read after the first index) or goes (the offline mark). Over a narrow list
-// (a task open beside it) the search box takes that room instead, so the buttons keep their even gaps to it. Without the
+// when a button comes late (the plan limits, read after the first index) or goes (the offline mark). In a bar under 60rem
+// (a narrow window, or a task open beside the list) the search box takes that room instead, so the buttons keep their
+// even gaps to it. Without the
 // search box the name takes the room and the buttons are as wide as they are.
 const BUTTONS = "flex min-w-[min(20rem,28cqw)] flex-none items-center justify-end gap-1.5 compactbar:min-w-0 @max-[60rem]:min-w-0 narrow:gap-0";
 const NAME = "min-w-0 text-left text-lg font-semibold";
@@ -78,11 +79,11 @@ export function AppBar() {
         </Button>
         <PresenceMenu />
         {/* The gear ends its icon on the list's right edge, as each line's last icon does (press-end); on a phone its 36px place
-            reaches to the screen's edge. */}
+            ends at the screen's edge, so its icon ends as near the edge as the name starts from the other. */}
         <Button
           variant="ghost"
           size="bar"
-          className="press-end narrow:me-[-0.5rem] narrow:w-9"
+          className="press-end narrow:me-[-0.75rem] narrow:w-9"
           aria-label={gearLabel}
           title={gearLabel}
           data-guide-part="settings"
