@@ -9,7 +9,7 @@ import { touch } from '@alpacawork/db';
 import { Problem, PROBLEM_CODE, toIssues, type Issue } from '@alpacawork/core';
 import { catalogProblems, DEFAULT_SCHEMA, PROJECT_SCHEMA, fieldCatalog, fieldDefSchema, isDefaultField, shippedField,
   missingRequired, schemaOf, schemaProblems, applyValues, type FieldCatalog, type FieldDef, type FieldProblem, type TaskValues } from '@alpacawork/contract';
-import type { TaskKind } from '@alpacawork/raw';
+import { speaksForUser, type TaskActor, type TaskKind } from '@alpacawork/raw';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import type { TaskTree } from './task-store.js';
 
@@ -142,8 +142,6 @@ export function readTaskFields(db: DatabaseSync): TaskFields {
 
 /** A list of fields and the project whose own schema it is (null: the default schema, or a project's own values). */
 export type EffectiveSchema = { fields: readonly string[]; from: string | null };
-/** The fixed schema of a project's own values, whatever its Tasks use. */
-export const PROJECT_VALUES: EffectiveSchema = { fields: PROJECT_SCHEMA, from: null };
 type SchemaTree = TaskTree<{ id: string; meta: BranchTask & { kind: TaskKind } }>;
 /**
  * The fields the Tasks in and below `taskId` use: its nearest project's own schema, else the nearest above with one,
@@ -152,9 +150,12 @@ type SchemaTree = TaskTree<{ id: string; meta: BranchTask & { kind: TaskKind } }
 export function tasksSchema(tree: SchemaTree, schemas: ReadonlyMap<string, readonly string[]>, taskId: string): EffectiveSchema {
   return schemaAlong([...tree.projects(taskId)].reverse(), schemas);
 }
-/** The fields of a Task's own values: the fixed project schema, or the schema a task uses (tasksSchema). */
+/** The fields of a Task’s own values, including the project metadata fields on a project. */
 export function schemaFor(tree: SchemaTree, schemas: ReadonlyMap<string, readonly string[]>, taskId: string): EffectiveSchema {
-  return tree.byId.get(taskId)?.meta.kind === 'project' ? PROJECT_VALUES : tasksSchema(tree, schemas, taskId);
+  return ownSchema(tree.byId.get(taskId)?.meta.kind, tasksSchema(tree, schemas, taskId));
+}
+export function ownSchema(kind: TaskKind | undefined, schema: EffectiveSchema): EffectiveSchema {
+  return kind === 'project' ? { ...schema, fields: [...PROJECT_SCHEMA, ...schema.fields] } : schema;
 }
 /** tasksSchema along a path upward (TaskRepository.ancestry: the Task first, then each one above it). */
 export function schemaAlong(path: readonly { id: string; meta: { kind: TaskKind } }[],
@@ -199,13 +200,15 @@ export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskVa
  * names each wrong value in its issues (`conditions.2`). A field outside the schema cannot be written.
  */
 export function patchedValues(taskId: string, current: TaskValues, patch: unknown, schema: EffectiveSchema,
-  catalog: FieldCatalog): TaskValues {
+  catalog: FieldCatalog, actor: TaskActor): TaskValues {
   const parsed = schemaOf(schema.fields, catalog).safeParse(patch);
   if (!parsed.success) throw new Problem(PROBLEM_CODE.invalidInput, `${taskId}'s values do not fit its fields`, { task: taskId },
     { reason: { kind: 'values_invalid', task: taskId }, issues: toIssues(parsed.error.issues.flatMap((issue): typeof parsed.error.issues =>
       // A field the schema does not have is named at its own path, as a wrong value is.
       issue.code === 'unrecognized_keys' ? issue.keys.map(key => ({ ...issue, path: [...issue.path, key], message: `Unknown field ${key}` }))
         : [issue])) });
+  if (!speaksForUser(actor) && PROJECT_SCHEMA.some(field => Object.hasOwn(parsed.data, field)))
+    throw new Problem(PROBLEM_CODE.forbidden, 'A person or coordinator sets the project summary and policy', { task: taskId });
   return applyValues(current, parsed.data, catalog);
 }
 /**
@@ -214,7 +217,7 @@ export function patchedValues(taskId: string, current: TaskValues, patch: unknow
  */
 export function assertRequiredValues(db: DatabaseSync, path: readonly { id: string; meta: { kind: TaskKind } }[],
   taskId: string, values: TaskValues): void {
-  const { catalog, schemas } = readTaskFields(db), missing = missingRequired(schemaAlong(path, schemas).fields, values, catalog);
+  const { catalog, schemas } = readTaskFields(db), missing = missingRequired(ownSchema(path[0]?.meta.kind, schemaAlong(path, schemas)).fields, values, catalog);
   if (missing.length) throw new Problem(PROBLEM_CODE.invalidInput,
     `${taskId} cannot be reported done until ${missing.join(', ')} ${missing.length === 1 ? 'has a value' : 'have values'}`, { task: taskId, fields: missing },
     { reason: { kind: 'required_values_missing', task: taskId, fields: missing.join(', ') },
@@ -225,7 +228,7 @@ export function assertRequiredValues(db: DatabaseSync, path: readonly { id: stri
  * its TaskRepository.ancestry) and applied to its current values.
  */
 export function writtenValues(db: DatabaseSync, path: readonly { id: string; meta: { kind: TaskKind } }[],
-  task: { id: string; values: TaskValues }, patch: unknown): TaskValues {
+  task: { id: string; values: TaskValues }, patch: unknown, actor: TaskActor): TaskValues {
   const { catalog, schemas } = readTaskFields(db);
-  return patchedValues(task.id, task.values, patch, path[0]?.meta.kind === 'project' ? PROJECT_VALUES : schemaAlong(path, schemas), catalog);
+  return patchedValues(task.id, task.values, patch, ownSchema(path[0]?.meta.kind, schemaAlong(path, schemas)), catalog, actor);
 }

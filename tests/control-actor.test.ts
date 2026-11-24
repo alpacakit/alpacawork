@@ -50,7 +50,10 @@ const proxies: Who[] = ['human', 'coordinator', 'policy', 'utterance'];
  * and one on A are what run stop stops. The server's own passes are off, so nothing launches or settles.
  */
 async function actors(t: TestContext) {
-  const f = await taskFlow(t);
+  let cleanup!: () => void;
+  let close: (() => Promise<void>) | undefined;
+  const f = await taskFlow({ after: fn => { cleanup = fn; } });
+  t.after(async () => { try { await close?.(); } finally { cleanup(); } });
   await f.commands.update({ id: f.project, values: { project_policy: `Development\n${POLICY}` },
     expectedTaskHash: (await f.get(f.project)).hash });
   const other = (await f.commands.create({ kind: 'project', color: '#39659b', parentId: 'P1', userRequested: null,
@@ -103,7 +106,7 @@ async function actors(t: TestContext) {
     interval(callback, ms === POLL_INTERVAL_MS ? 3_600_000 : ms, ...args)) as typeof setInterval;
   let server: Awaited<ReturnType<typeof startServer>>;
   try { server = await startServer(f.root, 0); } finally { globalThis.setInterval = interval; }
-  t.after(() => server.close());
+  close = () => server.close();
   const runs: Record<(typeof RUNS)[number], Seat> = { A: a, C: c, W: w, S: s, H: h, R: r, F: runF };
   /** Who calls: a Run by its credential, the coordinator by its conversation, or a person. */
   const headers = (who: Who): Record<string, string> => who === 'human' ? {}
@@ -152,6 +155,7 @@ test('every HTTP act of the table lets exactly its callers through the public en
   const rows: { act: string; call: Call; allow: readonly Who[]; note?: string; proxyAct?: string; runAct?: string }[] = [
     { act: 'task.read', call: get(`/api/commands/task/get?task=${C.id}`), allow: everyone.filter(who => who !== 'F'),
       note: 'a Run reads its own project only' },
+    { act: 'task.read.work', call: get(`/api/commands/task/returns?task=${C.id}`), allow: everyone.filter(who => who !== 'F') },
     { act: 'task.list', call: get('/api/commands/task/list'), allow: everyone },
     { act: 'field.list', call: get('/api/commands/field/list'), allow: everyone },
     { act: 'field.set', call: { ...post('/api/commands/field/set', { field: 'actor_note', title: 'Note', type: 'text' }, true), allowed: [200] },
@@ -315,9 +319,10 @@ test('every HTTP act of the table lets exactly its callers through the public en
         `${label}: ${result.text}`);
     }
   }
-  // Every HTTP act was tried. `release` is a local-backend-only entry and its grants are exercised through
-  // requireLocal in release-authority.test.ts; there is no release HTTP operation to send here.
-  assert.deepEqual([...new Set(rows.map(row => row.act))].sort(), Object.keys(ACTIONS).filter(act => act !== 'release').sort());
+  // A loan requires a real grant; request-loans.test.ts exercises it through the public entry.
+  // release-authority.test.ts covers the local-only release entry.
+  const coveredElsewhere = new Set(['release', 'task.request.borrowed']);
+  assert.deepEqual([...new Set(rows.map(row => row.act))].sort(), Object.keys(ACTIONS).filter(act => !coveredElsewhere.has(act)).sort());
 });
 
 test('what a Run, the coordinator and a person write, and what a Run reads', async t => {
@@ -417,11 +422,10 @@ test('owners and workers record on other project Tasks with their Run and placem
     assert.equal(entry.runId, h.runs[who].runId);
     assert.equal(entry.toState, null);
     assert.equal(entry.urgentReason, undefined);
-    const history = await h.call('human', get(`/api/task/history?task=${h.S.id}`));
+    const history = await h.call('human', get(`/api/task/history?task=${h.S.id}&mode=latest`));
     assert.equal(history.status, 200, history.text);
     const event = JSON.parse(history.text).events.find((event: { id: string }) => event.id === entry.id);
-    // The writing Run is linked; the fake agent records no model or effort, so both are null, not left out.
-    assert.deepEqual(event.author, { kind: 'parent', taskId: h.C.id, profileKey: 'fake', modelId: null, effort: null });
+    assert.deepEqual(event.author, { kind: 'parent', taskId: h.C.id, profileKey: 'fake' });
     assert.equal(event.runId, h.runs[who].runId);
     assert.equal(event.kind, 'comment');
     for (const request of [

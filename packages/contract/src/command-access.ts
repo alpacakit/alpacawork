@@ -34,6 +34,8 @@ export type TaskFacts = {
   baseState: TaskBaseState; hold: boolean;
   /** Derived from the Task's own log; absence does not authorize question completion. */
   openUserQuestion?: boolean;
+  /** Direct user work under a project is outside the project's parent authority. */
+  parentManages?: boolean;
 };
 /** What a decision reads besides the caller and the action. */
 export type Facts = {
@@ -59,7 +61,7 @@ type UpdateField = 'title' | 'values' | 'cwd' | 'color' | 'userRequested';
 /** What the caller asks to do, with what decides who may do it. */
 export type Action =
   /** One Task: task get, task returns, a question's text, a file read; run get reads its Run's Task. */
-  | { name: 'task.read' }
+  | { name: 'task.read' | 'task.read.work' }
   /** The tree (task list): a Run reads its own project's. */
   | { name: 'task.list' }
   /** task new, --plan-file too: --from-user (true), --no-from-user (false), or neither (null). */
@@ -121,6 +123,7 @@ export type Row = { readonly grants: readonly Grant[]; readonly whileHeld?: true
 export const ACTIONS = {
   /** A Run reads its own project, and the projects above it whose policies its launches carry. */
   'task.read': { grants: [['run', 'same_project'], ['run', 'project_above'], ['user']], whileHeld: true },
+  'task.read.work': { grants: [['run', 'same_project'], ['user']], whileHeld: true },
   'task.list': { grants: [['run'], ['user']], whileHeld: true },
   /** Directly below a project. Children have their own grant. */
   'task.new': { grants: [['own'], ['user']] },
@@ -128,13 +131,13 @@ export const ACTIONS = {
   /** A task requested by the user, as the person or coordinator records it. */
   'task.new.from_user': { grants: [['user']] },
   'task.new.project': { grants: [['user']] },
-  'task.update.title': { grants: [['own'], ['parent'], ['user']] },
-  /** A Task's values; a project's are its summary and its policy. */
-  'task.update.values': { grants: [['own'], ['parent'], ['user']] },
+  'task.update.title': { grants: [['own'], ['parent', 'same_project'], ['user']] },
+  /** Working values, plus a project's summary and policy when the user's proxy sets them. */
+  'task.update.values': { grants: [['own'], ['parent', 'same_project'], ['user']] },
   'task.update.cwd': { grants: [['user']] },
   'task.update.color': { grants: [['user']] },
   'task.update.userRequested': { grants: [['user']] },
-  'task.move': { grants: [['parent', 'within'], ['user']] },
+  'task.move': { grants: [['parent', 'same_project', 'within'], ['user']] },
   'task.archive': { grants: [['user']] },
   'task.delete': { grants: [['user']] },
   'task.restore': { grants: [['user']] },
@@ -148,14 +151,14 @@ export const ACTIONS = {
   /** The user's proxy completes a Task awaiting review or an answer to its own question to the user, held or not.
    * An explicit review target retains its meaning; ReviewService checks freshness when a review is required. */
   'task.confirm': { grants: [['user']] },
-  'task.report.stopped': { grants: [['own'], ['parent'], ['user']] },
-  'task.report.restore': { grants: [['parent', 'held'], ['user', 'held']] },
+  'task.report.stopped': { grants: [['own'], ['parent', 'same_project'], ['user']] },
+  'task.report.restore': { grants: [['parent', 'same_project', 'held'], ['user', 'held']] },
   'task.report.held': { grants: [['user']] },
   'task.withdraw': { grants: [['own']], whileHeld: true },
   'task.comment': { grants: [['run', 'same_project'], ['user']], whileHeld: true },
   'task.comment.urgent': { grants: [['own']], whileHeld: true },
   /** A parent responsible, person or coordinator instructs the Task's responsible. */
-  'task.request': { grants: [['parent'], ['user']] },
+  'task.request': { grants: [['parent', 'same_project'], ['user']] },
   'task.request.borrowed': { grants: [['responsible', 'same_project']] },
   'task.request.worker': { grants: [['own']] },
   /**
@@ -165,12 +168,12 @@ export const ACTIONS = {
   'task.request.user': { grants: [['user']] },
   'task.report.stopped.user': { grants: [['user']] },
   'task.answer': { grants: [['asked']] },
-  'agent.assign': { grants: [['parent'], ['user']] },
-  'agent.handover': { grants: [['parent'], ['user']] },
-  'agent.release': { grants: [['parent'], ['user']] },
+  'agent.assign': { grants: [['parent', 'same_project'], ['user']] },
+  'agent.handover': { grants: [['parent', 'same_project'], ['user']] },
+  'agent.release': { grants: [['parent', 'same_project'], ['user']] },
   'agent.assign.worker': { grants: [['own'], ['user']] },
   'agent.release.worker': { grants: [['own'], ['user']] },
-  'run.stop': { grants: [['parent'], ['user']] },
+  'run.stop': { grants: [['parent', 'same_project'], ['user']] },
   'file.write': { grants: [['placement'], ['human']], whileHeld: true },
   'field.list': { grants: [['run'], ['user']], whileHeld: true },
   /** Field definitions are shared by every project: only a person or the coordinator changes them. */
@@ -259,7 +262,7 @@ const responsibleRun = (caller: Caller, taskId: string | null | undefined) =>
 function seated(seat: Seat, caller: Caller, actor: TaskActor, action: Action, task: TaskFacts | null): boolean {
   switch (seat) {
     case 'own': return responsibleRun(caller, task?.id);
-    case 'parent': return responsibleRun(caller, task?.parentId);
+    case 'parent': return task?.parentManages !== false && responsibleRun(caller, task?.parentId);
     case 'placement': return caller.kind === 'run' && (caller.role === 'worker' || caller.responsible) &&
       caller.taskId === task?.id;
     // An answer goes to the question's askedTo, fixed when it was asked: the user's proxy, or that Task's responsible.

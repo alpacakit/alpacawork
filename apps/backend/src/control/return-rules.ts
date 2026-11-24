@@ -9,7 +9,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { hasRequesterSeat, isSeatContinuation, type RETURN_CLOSURES, type RETURN_NOTICES } from '@alpacawork/contract';
 import { DELIVERY_STATE, type DeliveryState, type RequestPurpose } from '@alpacawork/contract/control';
 import { carrierOf, isRunEnded, runNumber, type ReadRunRecord } from '@alpacawork/contract/run';
-import { speaksForUser, type TaskKind, type TaskLifecycle, type TaskLog, type TaskState, type TaskActor } from '@alpacawork/raw';
+import { speaksForUser, type TaskKind, type TaskLifecycle, type TaskBaseState, type TaskLog, type TaskState, type TaskActor } from '@alpacawork/raw';
 
 /** Where a return or a question goes: a seat's Task ID, or null for the user. */
 export type Seat = string | null;
@@ -17,13 +17,13 @@ export type ReturnClosure = (typeof RETURN_CLOSURES)[number];
 export type ReturnNotice = (typeof RETURN_NOTICES)[number];
 /** A Request as these rules read it. */
 export type RequestFacts = { id: string; taskId: string; purpose: RequestPurpose; author: TaskActor; submittedAt: string;
-  deliveryState: DeliveryState; returnTaskId?: string; loanRequestId?: string };
+  deliveryState: DeliveryState; returnTaskId?: string };
 /** A Run as these rules read it: the Run that carried a Request, and the Run that called it. */
 export type RunFacts = Pick<ReadRunRecord, 'id' | 'task' | 'role' | 'requestId' | 'caller' | 'state' | 'reason' | 'into' |
-  'stop_requested' | 'ended_at' | 'attempt' | 'supersededBy'>;
+  'stop_requested' | 'started_at' | 'ended_at' | 'attempt' | 'supersededBy'>;
 /** A Task as these rules read it; `responsible` is whether an active responsible placement holds it now. */
 export type TaskFacts = { id: string; kind: TaskKind; parentId: string | null; lifecycle: TaskLifecycle;
-  userRequested: boolean; log: readonly TaskLog[]; responsible: boolean };
+  userRequested: boolean; log: readonly TaskLog[]; responsible: boolean; baseState?: TaskBaseState };
 /** One read point's facts, indexed once: Runs by ID and by the Request each carried, Tasks by ID. */
 export type ReturnFacts = { runs: ReadonlyMap<string, RunFacts>; runOf: ReadonlyMap<string, RunFacts>;
   tasks: ReadonlyMap<string, TaskFacts>; closedRequests: ReadonlySet<string> };
@@ -60,7 +60,7 @@ export function requesterSeat(request: RequestFacts, facts: ReturnFacts): Seat {
 /**
  * A Task's requester, where its urgent notes and failure go: the user for a Task the user asked for, or
  * while a Request from the user to its responsible is open; else the seat of the latest open Request to its
- * responsible; else its parent Task, or the user when the parent is a project. It only chooses the Request:
+ * responsible; else its parent seat, or the user when no project responsible is available. It only chooses the Request:
  * requesterSeat names the seat for its closing return. Questions choose a separate fixed destination. The Task is read
  * from the same facts its Requests' closures are.
  */
@@ -79,9 +79,28 @@ export function requesterOf(taskId: string, requests: readonly RequestFacts[], f
   const parent = task.parentId === null ? null : facts.tasks.get(task.parentId);
   if (task.parentId !== null && !parent) throw new Problem(PROBLEM_CODE.parentUnavailable, 'Logical parent cannot be read', { task: task.id }, { reason: { kind: 'logical_parent_cannot_read' } });
   const result = evaluate(TASK_POLICY.requester, { userRequested: task.userRequested, openHuman, latestSeat: latest?.seat ?? null,
-    parentId: parent?.kind === 'task' ? parent.id : null });
+    parentId: task.kind === 'task' && parent && (parent.kind === 'task' || canHandleFailure(parent.id, facts)) ? parent.id : null });
   if (result.seat === undefined) throw new Error('Requester policy omitted its destination');
   return result.seat;
+}
+
+export function canHandleFailure(seat: Seat, facts: ReturnFacts): boolean {
+  if (seat === null) return true;
+  const task = facts.tasks.get(seat);
+  return !!task?.responsible && task.lifecycle === 'active' && task.baseState !== 'done' && task.baseState !== 'stopped';
+}
+
+/** The instruction that failed keeps its requester; if its authority ended, the current parent or user takes over. */
+export function failureRequester(taskId: string, cause: TaskLog, requests: readonly RequestFacts[], facts: ReturnFacts): Seat {
+  if (userControlsWork(taskId, cause.id, requests, facts)) return null;
+  const run = cause.runId === undefined ? undefined : facts.runs.get(cause.runId);
+  const original = run && requests.find(request => request.id === run.requestId);
+  if (original && !isSeatContinuation(original.purpose) && closureOf(original, facts)?.outcome !== 'moved') {
+    const sender = requesterSeat(original, facts);
+    if (canHandleFailure(sender, facts)) return sender;
+  }
+  const destination = requesterOf(taskId, requests, facts);
+  return canHandleFailure(destination, facts) ? destination : null;
 }
 
 /**
@@ -124,22 +143,29 @@ export function closureOf(request: RequestFacts, facts: ReturnFacts): Closure | 
   const task = facts.tasks.get(request.taskId);
   if (!task) return { outcome: 'closed', runId: null, causeLogId: null };
   const since = Date.parse(request.submittedAt);
-  const cancelled = run.state === 'cancelled' && run.reason === 'scope_invalidated' && run.ended_at !== null;
+  // A queued or unconfirmed instruction has not contributed to a successful report.
+  const receipt = run.state === 'joined' ? run.ended_at : run.started_at;
+  const receivedAt = receipt === null ? null : Date.parse(receipt);
+  const scopeInvalidated = run.state === 'cancelled' && run.reason === 'scope_invalidated';
+  const stoppedBeforeReceipt = run.state === 'cancelled' && run.reason === 'stopped' && receivedAt === null;
+  const stoppedAt = (scopeInvalidated || stoppedBeforeReceipt) && run.ended_at !== null ? Date.parse(run.ended_at) : null;
   for (const entry of task.log) {
     const outcome = logClosure(entry);
     // Most history entries cannot close a Request. Compare times only for a closing candidate.
-    if (outcome && !(Date.parse(entry.causeAt ?? entry.at) < since)) {
-      if (cancelled && Date.parse(run.ended_at!) < Date.parse(entry.causeAt ?? entry.at)) break;
-      return { outcome, runId: null, causeLogId: entry.id };
+    if (!outcome) continue;
+    const boundary = Date.parse(entry.causeAt ?? entry.at);
+    if (boundary < since) continue;
+    if (stoppedAt !== null && stoppedAt < boundary) break;
+    if (outcome === 'succeeded') {
+      const carrier = run.into ?? run.id;
+      if (receivedAt === null || receivedAt > boundary ||
+          (entry.runId && receivedAt === boundary && runNumber(carrier) > runNumber(entry.runId))) continue;
     }
+    return { outcome, runId: null, causeLogId: entry.id };
   }
-  if (cancelled) return { outcome: 'stopped', runId: run.id, causeLogId: null };
-  return task.lifecycle !== 'active' || !task.responsible ? { outcome: 'closed', runId: null, causeLogId: null } : null;
-}
-
-/** A move already told the borrower, and revoked its ability to handle a later failure of this instruction. */
-export function movedBorrowedRequest(request: RequestFacts, facts: ReturnFacts): boolean {
-  return request.loanRequestId !== undefined && closureOf(request, facts)?.outcome === 'moved';
+  if (!scopeInvalidated && (task.lifecycle !== 'active' || !task.responsible))
+    return { outcome: 'closed', runId: null, causeLogId: null };
+  return stoppedAt === null ? null : { outcome: 'stopped', runId: run.id, causeLogId: null };
 }
 
 /** Returning a hold restores the existing failure, while an owner boundary can record a new one. */
@@ -148,10 +174,11 @@ export function taskFailure(log: readonly TaskLog[]): TaskLog | undefined {
     (entry.kind !== 'reported' || entry.fromState !== 'held'));
 }
 
-/** Work requested directly by a person and closed by this same failure. The loan cannot resume it. */
-export function userWorkFailed(task: string, cause: string, requests: readonly RequestFacts[], facts: ReturnFacts): boolean {
-  return requests.some(request => request.taskId === task && speaksForUser(request.author) && awaitsClosure(request) &&
-    facts.runOf.get(request.id)?.role === 'owner' && closureOf(request, facts)?.causeLogId === cause);
+/** A user's Task, an open direct instruction, or an instruction closed by the current failure. */
+export function userControlsWork(taskId: string, failureId: string | undefined, requests: readonly RequestFacts[], facts: ReturnFacts): boolean {
+  return !!facts.tasks.get(taskId)?.userRequested || requests.some(request => request.taskId === taskId &&
+    speaksForUser(request.author) && awaitsClosure(request) && facts.runOf.get(request.id)?.role === 'owner' &&
+    (isOpen(request, facts) || failureId !== undefined && closureOf(request, facts)?.causeLogId === failureId));
 }
 
 /** A Run that ended its own work; a joined Run ended in the Run it joined. */

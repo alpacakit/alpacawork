@@ -11,6 +11,7 @@ const example = (command: AccessCommand, label: string, input: Record<string, un
   facts: CommandFacts = {}, task?: Partial<TaskFacts>): Example =>
   ({ label, action: commandAction(command, input, facts), task, asked: facts.askedTo !== undefined && facts.askedTo !== null });
 const read: Example[] = [{ label: 'Read', action: { name: 'task.read' } }];
+const readWork: Example[] = [{ label: 'Read', action: { name: 'task.read.work' } }];
 /** A read a Run may also make of the projects above its own: their policies reach its launches. */
 const readUp: Example[] = [...read, { label: 'Read a project above the Run\'s own (Task here means that project)',
   action: { name: 'task.read' }, task: { id: 'P0', kind: 'project', parentId: null, project: 'P0' }, above: true }];
@@ -23,7 +24,7 @@ const failure = { state: 'error', baseState: 'error', userRequested: true } as c
 const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   deploy: [{label:'Local deployment (Run acts on its own Task)',action:{name:'release'}}],
   'project.shelf': [{ label: 'Project catalog', action: { name: 'screen' } }],
-  'task.get': readUp, 'task.returns': readUp, 'run.get': readUp, 'field.get': readUp,
+  'task.get': readUp, 'field.get': readUp, 'task.returns': readWork, 'run.get': readWork,
   'field.list': [{ label: 'Read field definitions', action: { name: 'field.list' } }],
   'field.set': [{ label: 'Add or change a field definition', action: { name: 'field.set' } }],
   'field.delete': [{ label: 'Delete a field definition', action: { name: 'field.delete' } }],

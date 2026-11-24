@@ -4,11 +4,11 @@ import { questionSnapshot, questionApplicable } from './question-rules.js';
  * the list, unread marks, push and the hold check read it; the wake rules never do, since the ball reads their block.
  */
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { currentReview, isTaskReview, isSeatContinuation, reviewTarget } from '@alpacawork/contract';
+import { currentReview, isTaskReview, reviewTarget } from '@alpacawork/contract';
 import type { RunId } from '@alpacawork/contract/fields';
 import { openQuestions, type ControlTask, type TaskLifecycle, type TaskState } from '@alpacawork/raw';
 import type { StoredRequest } from '@alpacawork/runs';
-import { movedBorrowedRequest, requesterOf, requesterSeat, taskFailure, userWorkFailed } from './return-rules.js';
+import { failureRequester, requesterOf, taskFailure } from './return-rules.js';
 import { seatFactsOf, wakeBlock, type SeatSource, type WakeBlock } from './wake.js';
 
 import type { BallFacts } from '@alpacawork/contract/task-policy';
@@ -39,9 +39,8 @@ export function ballFactsOf(source: BallSource, taskId: string): BallFacts {
   const mark = currentReview(task.meta, source.moving(taskId));
   const failed = baseState === 'error' ? taskFailure(log) : undefined;
   const responsible = source.responsible(taskId), seat = seatFactsOf(source, taskId);
-  const requester = requesterOf(taskId, source.requestsTo(taskId), source.facts);
-  const failureSeat = failed ? failureRequester(source, taskId, failed.id, failed.runId) : undefined;
-  const seatId = failureSeat === undefined ? requester : failureSeat;
+  const requests = source.requestsTo(taskId);
+  const seatId = failed ? failureRequester(taskId, failed, requests, source.facts) : requesterOf(taskId, requests, source.facts);
   const questions = source.questions;
   const asking = !failed || seatId === null ? undefined : source.task(seatId);
   const requesterAskedUser = !!asking && openQuestions(asking.meta.log)
@@ -53,23 +52,9 @@ export function ballFactsOf(source: BallSource, taskId: string): BallFacts {
       runId: reviewTarget(task.meta, responsible && source.head(responsible.id)) } : null,
     failure: failed ? { logId: failed.id, at: failed.at } : null,
     openQuestions: openQuestions(log).filter(q => questionApplicable(task.id, q, questions)).map(asked => ({ id: asked.id, askedTo: asked.askedTo, at: asked.at })),
-    requester: requester === null || failureSeat === null ? 'user' : 'parent',
+    requester: seatId === null ? 'user' : 'parent',
     requesterAskedUser,
     block: wakeBlock(seat),
     openRequests: seat.openRequests,
   };
-}
-
-/**
- * Who a failure goes to when the Run whose end failed the Task is known: the seat that sent its Request (return-rules
- * requesterSeat), the user for theirs. That Request closed with the Run, so requesterOf no longer reads it. Undefined
- * for another failure, or a continuation's Run (its seat went on by itself), which requesterOf alone decides.
- */
-function failureRequester(source: BallSource, taskId: string, cause: string, runId: string | undefined): string | null | undefined {
-  const requestId = runId === undefined ? undefined : source.facts.runs.get(runId)?.requestId;
-  const request = source.requestsTo(taskId).find(item => item.id === requestId);
-  if (!request || isSeatContinuation(request.purpose)) return undefined;
-  if (request.loanRequestId !== undefined && userWorkFailed(taskId, cause, source.requestsTo(taskId), source.facts)) return null;
-  if (movedBorrowedRequest(request, source.facts)) return undefined;
-  return requesterSeat(request, source.facts);
 }

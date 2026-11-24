@@ -82,7 +82,7 @@ function recalculate(node: Node): Node {
     running: active ? Number(own.running) + node.belowRunning : 0,
     working: active ? Number(own.working) + node.belowWorking : 0,
     live: Number(active && !isFinished(own.state)) + node.childLive,
-    homeWork: !!own && active && own.kind === 'task' && (own.homeWorking || node.childHome > 0),
+    homeWork: !!own && active && (own.homeWorking || own.kind === 'task' && node.childHome > 0),
     usage: addUsage(node.belowUsage, ownUsage(own), 1), moved: Math.max(own?.movedAt ?? 0, node.childMoved.first()?.[0].at ?? -Infinity) };
 }
 function replaceOwn(node: Node, own: AggregateContribution | undefined): Node {

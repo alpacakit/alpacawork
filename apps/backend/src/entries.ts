@@ -341,7 +341,7 @@ export const taskCommands = {
   },
   'task/returns': {
     run: async (root, input, context) =>
-    readTaskReturns(root, input, authorizeRead(root, context, { name: 'task.read' }, input.task).readScope ?? undefined),
+    readTaskReturns(root, input, authorizeRead(root, context, { name: 'task.read.work' }, input.task).readScope ?? undefined),
     readThread: () => true,
   },
   'task/new': {
@@ -471,7 +471,7 @@ export const taskCommands = {
   },
   'run/get': {
     run: async (root, input, context) => {
-      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      authorizeRead(root, context, { name: 'task.read.work' }, readControl(root, db => runTask(root, db, input.run)));
       return readRunFiles(root, input.run, input.kind ?? 'result');
     },
     readThread: () => true,

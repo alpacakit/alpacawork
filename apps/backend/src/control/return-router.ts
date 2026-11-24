@@ -127,7 +127,7 @@ export class ReturnRouter {
     let tasks: string[];
     try { tasks = control.read(db => {
       if (typeof which === 'object') return [...routingTasks(db, which.project).tasks];
-      return db.prepare(`SELECT external_id FROM tasks WHERE kind='task' AND project_task_id IN
+      return db.prepare(`SELECT external_id FROM tasks WHERE coalesce(project_task_id, id) IN
         (SELECT id FROM tasks WHERE kind='project' AND lifecycle='active') ORDER BY number`)
         .all().map(row => String(row.external_id));
     }); } finally { control.close(); }

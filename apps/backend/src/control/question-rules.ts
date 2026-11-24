@@ -24,8 +24,9 @@ export function validQuestionDestination(taskId: string, destination: string | n
   const task = tasks.get(taskId);
   if (!task) return false;
   if (destination === null) return true;
+  if (task.kind === 'project') return false;
   const target = tasks.get(destination);
-  if (!target || target.kind !== 'task' || target.lifecycle !== 'active' || target.id === task.id ||
+  if (!target || target.lifecycle !== 'active' || target.id === task.id ||
       containingProject(task, tasks) !== containingProject(target, tasks)) return false;
   const seen = new Set<string>([task.id]);
   let parent = task.parentId;
@@ -36,11 +37,31 @@ export function validQuestionDestination(taskId: string, destination: string | n
   }
   return false;
 }
-/** Called on the write transaction's tree, both when asking and before answering. */
-export function questionDestination(askTo: string, taskId: string, tasks: ReadonlyMap<string, QuestionNode>): string | null {
+function canAsk(taskId: string, destination: string | null, tasks: ReadonlyMap<string, QuestionNode>,
+  responsible: (id: string) => boolean): boolean {
+  return validQuestionDestination(taskId, destination, tasks) &&
+    (destination === null || tasks.get(destination)?.kind !== 'project' || responsible(destination));
+}
+
+/** The current destinations a Run can choose, nearest ancestor first. */
+export function questionDestinations(taskId: string, tasks: ReadonlyMap<string, QuestionNode>,
+  responsible: (id: string) => boolean): (QuestionNode | null)[] {
+  const destinations: (QuestionNode | null)[] = [null];
+  const seen = new Set([taskId]);
+  for (let id = tasks.get(taskId)?.parentId; id && !seen.has(id); id = tasks.get(id)?.parentId) {
+    seen.add(id);
+    const node = tasks.get(id);
+    if (node && canAsk(taskId, id, tasks, responsible)) destinations.push(node);
+  }
+  return destinations;
+}
+
+/** Rechecks the chosen destination against the write transaction's current tree and placements. */
+export function questionDestination(askTo: string, taskId: string, tasks: ReadonlyMap<string, QuestionNode>,
+  responsible: (id: string) => boolean = () => false): string | null {
   const destination = askTo === 'user' ? null : askTo;
-  if (!validQuestionDestination(taskId, destination, tasks))
-    throw new Problem(PROBLEM_CODE.invalidInput, 'Question destination must be an active strict ancestor Task in the same project, or user',
+  if (!canAsk(taskId, destination, tasks, responsible))
+    throw new Problem(PROBLEM_CODE.invalidInput, 'Ask the user, a strict ancestor Task in the same project, or the project responsible',
       { task: taskId, destination: askTo }, { reason: { kind: 'question_destination_invalid' } });
   return destination;
 }

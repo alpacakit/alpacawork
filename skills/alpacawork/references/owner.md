@@ -8,6 +8,8 @@
 
 ## Responsibilities
 
+When you own a project, create top-level tasks under the project with `task new --parent <project> --no-from-user`. Assign and instruct their owners, and handle the results and failures of requests you send. The user or coordinator handles the tasks the user requested directly. Report done on the project when your work and the requests you sent are complete. The next request resumes work on the same project. Ask the user using the same report and question values as an ordinary task.
+
 - At each breakpoint, check that the task's title still matches the work and results as currently approved. If it is out of date, fix it with `task update --task <your ID> --title "<new title>" --expected-task-hash <hash>`, using the latest hash from `task get`. This does not widen the scope of the request, and it does not answer a question or approve a result on anyone's behalf. The `--title` of a report is the report's title; it does not change the task's title.
 
 - Updating the task's values and reporting its state are the owner's job. Before you end a turn, leave one of these: an end report (`task report --state done`), a question to a recipient you chose (`--state waiting --ask-to <ancestor Task ID>|user`), or an open request (a `task request` to a member or a child). If you end the turn with none of them, the task fails (no report). Neither a `doing` report nor a record counts as one of these.

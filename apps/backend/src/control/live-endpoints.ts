@@ -15,9 +15,9 @@ function admissions(db: DatabaseSync, root: string, seats: readonly string[]): A
 /** Incoming accounting starts at the last user reset; live work and outgoing obligations are retained explicitly. */
 export function liveRequestIds(db: DatabaseSync, root: string, seats: readonly string[], extra: readonly string[] = []): string[] {
   const facts = admissions(db, root, seats), sent = seats.flatMap(seat => facts.sent.get(seat) ?? []);
-  const ancestry = db.prepare(`WITH RECURSIVE up(seed,id,external_id,parent_id) AS (
-    SELECT external_id,id,external_id,parent_id FROM tasks WHERE external_id IN (SELECT value FROM json_each(?))
-    UNION SELECT up.seed,t.id,t.external_id,t.parent_id FROM up JOIN tasks t ON t.id=up.parent_id
+  const ancestry = db.prepare(`WITH RECURSIVE up(seed,id,external_id,parent_id,kind) AS (
+    SELECT external_id,id,external_id,parent_id,kind FROM tasks WHERE external_id IN (SELECT value FROM json_each(?))
+    UNION SELECT up.seed,t.id,t.external_id,t.parent_id,t.kind FROM up JOIN tasks t ON t.id=up.parent_id WHERE up.kind='task'
   ) SELECT seed,external_id FROM up`).all(JSON.stringify(seats));
   const resets = latestUserRequests(db, root, [...new Set(ancestry.map(row => String(row.external_id)))]);
   const bySeat = new Map<string, { id: string; at: string }>();

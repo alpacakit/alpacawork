@@ -164,7 +164,7 @@ export function* stateLinksSteps(tx: StateLinkReads, work: RoutingTasks | string
   yield;
   const snapshot = { tasks: yield* routingContextSteps(tx.store.root, tx.store.connection, scope, context) }, tree = new TaskTree(snapshot.tasks);
   yield;
-  const working = snapshot.tasks.filter(task => scope.tasks.has(task.id) && task.meta.lifecycle === 'active' && task.meta.kind !== 'project');
+  const working = snapshot.tasks.filter(task => scope.tasks.has(task.id) && task.meta.lifecycle === 'active');
   const taskFacts = new Map(working.map(task => [task.id, logFacts(task)]));
   const owned = new Map<string, RunRecord[]>();
   // Select only boundary facts before decoding records. A later Task state can settle an unwritten boundary too.

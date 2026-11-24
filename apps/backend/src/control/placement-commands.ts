@@ -49,10 +49,6 @@ export class PlacementCommands {
     return withControlWrite(this.root, (tx, db) => {
       const repository = new TaskRepository(this.root, db);
       const task = repository.get(id);
-      // placements_task_kind refuses too, but PlacementStore would report that as runs_unavailable.
-      if (task.meta.kind === 'project')
-        throw new Problem(PROBLEM_CODE.invalidInput, 'A project cannot have a responsible or a member', undefined,
-          { reason: { kind: 'project_cannot_have_responsible_or_member' } });
       if (task.meta.lifecycle !== 'active')
         throw new Problem(PROBLEM_CODE.notFound, 'Active task does not exist', undefined, { reason: { kind: 'active_task_does_not_exist' } });
       if (task.hash !== expectedTaskHash)

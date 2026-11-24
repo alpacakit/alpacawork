@@ -81,7 +81,7 @@ export function databaseEstimateExamples(root: string, db: DatabaseSync, conditi
     const candidates = db.prepare(`SELECT t.external_id,l.at,julianday(l.at) AS sort_at FROM task_log l INDEXED BY task_log_handoffs
       CROSS JOIN tasks t ON t.id=l.task_id
       WHERE json_extract(l.entry,'$.toState') IN ('done','waiting')
-      ${project === undefined ? '' : 'AND t.project_task_id=(SELECT id FROM tasks WHERE external_id=?)'} ORDER BY julianday(l.at) DESC`);
+      ${project === undefined ? '' : 'AND coalesce(t.project_task_id, t.id)=(SELECT id FROM tasks WHERE external_id=?)'} ORDER BY julianday(l.at) DESC`);
     const boundaryTime = db.prepare('SELECT julianday(?) AS at');
     for (const row of candidates.iterate(...(project === undefined ? [] : [project]))) {
       // SQLite rounds fractional timestamps to milliseconds. Exhaust its whole

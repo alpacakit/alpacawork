@@ -44,7 +44,7 @@ const userFailure = child({ state: 'error', userRequested: true });
 
 const as = (who: Who, action: Action, task: TaskFacts | null): Decision | Problem => {
   const { caller, quote, runProject, runState } = CALLERS[who];
-  return decide(caller, action, { task, runProject, quote,
+  return decide(caller, action, { task, runProject, quote, requestLoan: who === 'sibling',
     runState: caller.kind === 'run' && caller.taskId === task?.id ? task.state : runState });
 };
 const allowed = (result: Decision | Problem): result is Decision => !(result instanceof Problem);
@@ -56,6 +56,7 @@ const cases: { act: Act; action: Action; task: TaskFacts | null; allow: readonly
   { act: 'task.read', action: { name: 'task.read' }, task: child(), allow: everyone.filter(who => who !== 'foreign') },
   { act: 'task.read', action: { name: 'task.read' }, task: project, allow: everyone.filter(who => who !== 'foreign'),
     note: 'a Run reads its own project Task' },
+  { act: 'task.read.work', action: { name: 'task.read.work' }, task: project, allow: everyone.filter(who => who !== 'foreign') },
   { act: 'task.list', action: { name: 'task.list' }, task: null, allow: everyone },
   { act: 'task.new.child', action: { name: 'task.new', kind: 'task', userRequested: false }, task: child(),
     allow: ['own'], note: 'below the Run\'s own Task, unmarked' },
@@ -123,6 +124,9 @@ const cases: { act: Act; action: Action; task: TaskFacts | null; allow: readonly
     allow: proxies },
   { act: 'task.request', action: { name: 'task.request', worker: false }, task: review, allow: ['parent', ...proxies],
     note: 'ordinary input to a review uses the same parent/user instruction authority' },
+  { act: 'task.request.borrowed', action: { name: 'task.request', worker: false, borrowable: true },
+    task: child(), allow: ['parent', 'sibling', ...proxies],
+    refusals: { own: 'task.request', heldParent: 'task.request', worker: 'task.request', foreign: 'task.request' } },
   { act: 'task.request.worker', action: { name: 'task.request', worker: true }, task: child(), allow: ['own'] },
   { act: 'task.request.worker', action: { name: 'task.request', worker: true }, task: held, allow: [] },
   { act: 'task.answer', action: { name: 'task.answer', askedTo: null }, task: child(), allow: proxies },

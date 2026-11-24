@@ -68,7 +68,7 @@ export class TaskReportService {
     // A retried report (its operation already logged) writes nothing anew; its receipt is the first one's.
     const replayed = task.meta.log.some(each => each.id === input.opId);
     const path = new TaskRepository(this.root, tx.store.connection).ancestry(task.id);
-    const written = input.values !== undefined && !replayed ? writtenValues(tx.store.connection, path, task, input.values) : undefined;
+    const written = input.values !== undefined && !replayed ? writtenValues(tx.store.connection, path, task, input.values, actor) : undefined;
     const checkpoint = written !== undefined
       ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation) : undefined;
     if (!reportCallerRules.askTo.allows(input, caller))

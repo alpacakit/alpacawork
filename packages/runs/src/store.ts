@@ -220,7 +220,7 @@ export class RunStore {
               throw new Problem(PROBLEM_CODE.notFound, 'Referenced run does not exist', { run: ref }, { reason: { kind: 'referenced_run_does_not_exist' } });
           // The runs triggers check that a coordinator Run's Request and resumed Run are of its conversation.
           const task = record.task === null ? null
-            : this.db.prepare(`SELECT id FROM tasks WHERE external_id = ? AND kind = 'task'`).get(record.task);
+            : this.db.prepare(`SELECT id FROM tasks WHERE external_id = ?`).get(record.task);
           if (task === undefined) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', undefined, { reason: { kind: 'task_does_not_exist' } });
           this.db.prepare('INSERT INTO runs(id,record,prompt) VALUES (?,?,?)').run(n, JSON.stringify(record), prompt);
           touch(this.db, { kind: 'run', id: record.id });
@@ -236,7 +236,7 @@ export class RunStore {
             (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author,
               submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, lent_task_id, loan_request_id)
             SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
-              WHERE external_id = ? AND kind = 'task'`).run(request.id, request.placementId,
+              WHERE external_id = ?`).run(request.id, request.placementId,
             request.placementRevision, request.taskHash, request.waitCycleId, request.headRunId, request.aboutRunId ?? null, request.mode, request.body,
             request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null,
             request.lentTaskId ?? null, request.loanRequestId ?? null, request.taskId).changes);

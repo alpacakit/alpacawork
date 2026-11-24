@@ -90,7 +90,7 @@ test('same marker16 with a longer packaged history requires explicit maintenance
   next.migrateExistingDatabase(commonFile, 'control', options);
   next.openControlDatabase(commonRoot, options).close();
   assert.equal(next.inspectDatabaseHistory(commonFile, 'control', options).length, controlSchemaManifest().history.length + 1);
-  for (const sql of ['DELETE FROM __drizzle_migrations WHERE id=1', 'UPDATE __drizzle_migrations SET id=id+10 WHERE id=1']) {
+  for (const sql of ['DELETE FROM __drizzle_migrations WHERE id=1', 'UPDATE __drizzle_migrations SET id=(SELECT max(id)+1 FROM __drizzle_migrations) WHERE id=1']) {
     const other = workspace(t); next.openControlDatabase(other, options, false, true).close(); edit(other, sql); const before = snapshot(other);
     assert.throws(() => next.migrateExistingDatabase(controlDatabasePath(other), 'control', options), /history/); assert.deepEqual(snapshot(other), before);
   }
@@ -234,4 +234,51 @@ test('substituting cache identity for existence makes the same public-opener pre
   assert.notEqual(mutant, code, 'substitute the production creation decision'); writeFileSync(file, mutant);
   const subject = await import(pathToFileURL(file).href) as typeof import('@alpacawork/db');
   withoutBirthtime(t, root, () => assert.throws(() => detectsExistingSource(subject.openControlDatabase, root), { code: 'ERR_ASSERTION' }));
+});
+
+test('the preceding control schema migrates project work without changing existing identities or history', async t => {
+  const { taskFlow } = await import('./task-flow.fixture.ts');
+  const source = await taskFlow(t);
+  const parent = await source.work(await source.task('Review intake'));
+  const child = await source.work(await source.task('Inventory', { parentId: parent.id }), parent);
+  const question = await source.ask(child, parent.id);
+
+  const root = workspace(t), packageDir = join(root, 'previous-db');
+  mkdirSync(packageDir);
+  cpSync(new URL('../packages/db/dist', import.meta.url), join(packageDir, 'dist'), { recursive: true });
+  cpSync(new URL('../packages/db/drizzle', import.meta.url), join(packageDir, 'drizzle'), { recursive: true });
+  symlinkSync(new URL('../node_modules', import.meta.url).pathname, join(root, 'node_modules'));
+  const last = packagedMigrations('control').at(-1)!;
+  assert.match(last.name, /project_responsible$/);
+  rmSync(join(packageDir, 'drizzle', 'control', last.name), { recursive: true });
+  const previous: typeof import('@alpacawork/db') = await import(pathToFileURL(join(packageDir, 'dist/index.js')).href);
+  const old = previous.openControlDatabase(root, options, false, true);
+  const before = new Map<string, unknown[]>();
+  const preserved = ['tasks', 'field_defs', 'task_values', 'agents', 'placements', 'wait_cycles', 'requests',
+    'runs', 'task_start_grants', 'task_log', 'task_log_question', 'log_texts', 'returns', 'return_deliveries'];
+  try {
+    old.prepare('ATTACH DATABASE ? AS fixture').run(controlDatabasePath(source.root));
+    old.exec('BEGIN');
+    for (const table of preserved) {
+      const columns = old.prepare(`PRAGMA table_info(${table})`).all().map(column => String(column.name)).join(',');
+      old.exec(`INSERT INTO ${table}(${columns}) SELECT ${columns} FROM fixture.${table}`);
+      before.set(table, old.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all());
+    }
+    old.exec('COMMIT');
+    assert.deepEqual(old.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.throws(() => old.prepare("UPDATE tasks SET base_state='doing' WHERE external_id=?").run(source.project));
+  } finally { old.close(); }
+
+  assert.throws(() => openControlDatabase(root, options), /explicit stopped-server maintenance/);
+  migrateExistingDatabase(controlDatabasePath(root), 'control', options);
+  const migrated = openControlDatabase(root, options);
+  try {
+    for (const [table, rows] of before)
+      assert.deepEqual(migrated.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(), rows, table);
+    assert.deepEqual(migrated.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.equal(migrated.prepare('PRAGMA foreign_keys').get()!.foreign_keys, 1);
+    assert.ok(migrated.prepare('SELECT 1 FROM returns WHERE cause_log_id=? AND to_task_id=?').get(question, parent.id));
+    migrated.prepare("UPDATE tasks SET base_state='done' WHERE external_id=?").run(source.project);
+    assert.equal(migrated.prepare('SELECT state FROM tasks WHERE external_id=?').get(source.project)?.state, 'done');
+  } finally { migrated.close(); }
 });

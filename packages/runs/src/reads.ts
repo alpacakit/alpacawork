@@ -40,7 +40,7 @@ const TASK_REQUEST_SQL = 'task_id IS NOT NULL';
  * A project's own Tasks: those whose nearest project is the project Task whose ID (T42) is the one parameter
  * (index tasks_project). A nested project's Tasks are that project's, not its parent's.
  */
-const PROJECT_TASKS = 'FROM tasks WHERE project_task_id = (SELECT id FROM tasks WHERE external_id = ?)';
+const PROJECT_TASKS = 'FROM tasks WHERE coalesce(project_task_id, id) = (SELECT id FROM tasks WHERE external_id = ?)';
 /** The one SQL form of a project's Runs. */
 const PROJECT_RUNS_SQL = `task_id IN (SELECT external_id ${PROJECT_TASKS})`;
 /** The one SQL form of a project's rows that name their Task by its ID: placements, Requests and wait cycles. */

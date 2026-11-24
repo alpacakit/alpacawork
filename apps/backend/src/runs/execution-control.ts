@@ -180,6 +180,8 @@ export function planInputs(store: RunStore): void {
       const closed = !!store.connection.prepare('SELECT diagnostic FROM run_attempts WHERE attempt_id=?').get(launch.attemptId)?.diagnostic ||
         inputs.some(i => inputUnsettled(i.state));
       if (!takesInput(run, closed)) continue;
+      if (run.role === 'owner' && store.connection.prepare(`SELECT 1 FROM tasks
+        WHERE external_id=? AND base_state IN ('done','stopped','waiting')`).get(run.task)) continue;
       const lane: readonly RuntimeRunRecord[] = run.role === 'coordinator'
         ? tx.coordinatorRuns(run.conversationId) : tx.conversationRuns(run.placementId);
       for (const next of lane) {

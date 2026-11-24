@@ -7,7 +7,7 @@ import { TASK_POLICY, evaluate, type StartFacts } from '@alpacawork/contract/tas
 export function startPath(db: DatabaseSync, taskId: string): StartFacts['path'] {
   const tree = new TaskTree(new TaskRepository('', db).ancestry(taskId)), task = tree.byId.get(taskId);
   if (!task) throw new Error('Start Task does not exist');
-  const path = [task, ...tree.ancestors(taskId)].filter(item => item.meta.kind === 'task');
+  const path = [task, ...tree.ancestors(taskId).filter(item => item.meta.kind === 'task')];
   const stops = new Map(db.prepare('SELECT task_id,stop_id FROM task_stop_epochs WHERE task_id IN (SELECT value FROM json_each(?))')
     .all(JSON.stringify(path.map(item => item.id))).map(row => [String(row.task_id), String(row.stop_id)]));
   return path.map(item => ({ taskId: item.id,

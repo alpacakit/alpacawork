@@ -22,8 +22,8 @@ import type { TaskDecisionFacts } from './routing-facts.js';
 import { isUnfinished, PROJECT_REQUESTS_SQL, type ReturnDelivery, type RunTransaction, type StoredPlacement, type StoredRequest,
   type StoredReturn } from '@alpacawork/runs';
 import { resolveUncertainInputs } from '../runs/execution-control.js';
-import { arrivingRequests, awaitsClosure, closureOf, cycleClosed, isOpen, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
-  returnFacts, returnIdOf, openRequestsBySeat, taskFailure, userWorkFailed, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
+import { arrivingRequests, awaitsClosure, canHandleFailure, closureOf, cycleClosed, failureRequester, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
+  returnFacts, returnIdOf, openRequestsBySeat, taskFailure, userControlsWork, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
 import { failedDeliveryBlocked, seatFailed, seatRunBefore } from './wake.js';
 
 /** What a return's delivery and resolution facts make of it; there is no writable status. */
@@ -421,25 +421,25 @@ export class ReturnLifecycle {
     const seats = openRequestsBySeat(requests, facts);
     for (const seat of seats.keys()) this.notice('work_changed', seat, causeLogId, seats.size > 1);
   }
-  /** An open direct user instruction or a failure of that work awaiting the user. */
+  /** Whether the user controls this Task, an open instruction, or the current failure. */
   hasUserWork(task: TaskDecisionFacts): boolean {
     const view = this.seat(task.id), facts = view.facts;
-    if (view.requests.some(request => request.taskId === task.id && speaksForUser(request.author) &&
-      facts.runOf.get(request.id)?.role === 'owner' && isOpen(request, facts))) return true;
-    if (task.meta.baseState !== 'error') return false;
-    const cause = taskFailure(task.meta.log);
-    return cause !== undefined && userWorkFailed(task.id, cause.id, view.requests, facts);
+    const failure = task.meta.baseState === 'error' ? taskFailure(task.meta.log) : undefined;
+    return userControlsWork(task.id, failure?.id, view.requests, facts);
   }
 
-  /** A moved B may still be running when its instruction closes. Its new parent handles a later failure. */
-  notifyMovedLoanFailure(task: TaskDecisionFacts, entry: TaskLog): void {
-    const run = entry.runId ? this.tx.get(entry.runId) : undefined;
-    const request = run ? this.tx.getRequest(run.requestId) : undefined;
-    if (!request?.loanRequestId || this.tx.getReturn(returnIdOf({ requestId: request.id }))?.outcome !== 'moved') return;
+  /** Closing returns go to their senders. If a failure now belongs to another seat, give it a notice too. */
+  notifyFailure(task: TaskDecisionFacts, entry: TaskLog): void {
     const view = this.seat(task.id);
-    if (userWorkFailed(task.id, entry.id, view.requests, view.facts)) return;
-    const parent = view.facts.tasks.get(task.meta.parentId ?? '');
-    if (parent?.responsible) this.notice('work_changed', parent.id, entry.id);
+    const origin = entry.runId ? this.tx.get(entry.runId) : null;
+    const returned = origin && this.tx.getReturn(returnIdOf({ requestId: origin.requestId }));
+    if (returned?.causeLogId === entry.id && canHandleFailure(returned.toTaskId, view.facts)) return;
+    const target = failureRequester(task.id, entry, view.requests, view.facts);
+    if (target === null) return;
+    const incoming = view.requests.filter(request => request.taskId === task.id && awaitsClosure(request));
+    const routed = incoming.some(request => closureOf(request, view.facts)?.causeLogId === entry.id &&
+      requesterSeat(request, view.facts) === target);
+    if (!routed) this.notice('work_changed', target, entry.id);
   }
   /**
    * Apply the ordinary request closure at the write that can end a loan or its borrowed work. The
