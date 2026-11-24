@@ -60,14 +60,13 @@ function acceptedTotals(units: readonly Unit[]): AnalysisAcceptedTotals {
   return { leadMedianMs: median(leads), submits, questions, prs: prs.size, time };
 }
 function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
-  let live = 0, newConversations = 0;
+  let newConversations = 0;
   const tasks = new Set<string>();
   for (const { root, run } of items) {
     tasks.add(root);
-    if (run.live) live++;
     if (first.has(run.id)) newConversations++;
   }
-  const { runs, runMs, tokens, tokensUnknown } = sumRunUsage(items.map(item => item.run), now);
+  const { runs, runMs, tokens, tokensUnknown, live } = sumRunUsage(items.map(item => item.run), now);
   return { launches: runs, runMs, live, newConversations, tokensUnknown, tasks: tasks.size,
     tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
 }
@@ -115,15 +114,15 @@ class ScopedAnalysis {
     this.allows = matchingProject(facts, project, ownProject);
     // Convert all instants at this read point using one shared date formatter.
     let first = Infinity;
-    for (const unit of facts.units.values()) if (unit.node.requested && this.allows(unit.node.project!)) {
-      first = Math.min(first, Date.parse(unit.outcome.requestedAt));
-      if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
-    }
-    for (const run of facts.launches) {
-      const root = facts.usageRootOf.get(run.task), unit = root && facts.units.get(root);
-      if (unit && this.allows(unit.node.project!)) {
+    for (const unit of facts.units.values()) {
+      if (!this.allows(unit.node.project!)) continue;
+      if (unit.node.requested) {
+        first = Math.min(first, Date.parse(unit.outcome.requestedAt));
+        if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
+      }
+      for (const run of unit.launches) {
         first = Math.min(first, run.started);
-        this.datedLaunches.push({ root, run, day: this.date(run.started) });
+        this.datedLaunches.push({ root: unit.node.id, run, day: this.date(run.started) });
       }
     }
     this.firstDay = Number.isFinite(first) ? this.date(Math.min(first, now)) : null;

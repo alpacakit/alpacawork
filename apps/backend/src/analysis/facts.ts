@@ -13,11 +13,11 @@ export type TaskNode = {
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
   childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
-  firstAgent: string; firstModel: string; launches: Launch[]; clock: ReturnType<typeof clocks> | null;
+  firstAgent: string; firstModel: string; launches: readonly Launch[]; clock: ReturnType<typeof clocks> | null;
 };
 export type AnalysisFacts = {
   nodes: ReadonlyMap<string, TaskNode>; units: ReadonlyMap<string, Unit>; rootOf: ReadonlyMap<string, string>;
-  usageRootOf: ReadonlyMap<string, string>; launches: readonly Launch[]; first: ReadonlySet<string>;
+  usageRootOf: ReadonlyMap<string, string>; first: ReadonlySet<string>;
 };
 
 const readNodes = (db: DatabaseSync) => db.prepare(`SELECT t.id AS internal,t.external_id AS id,t.title,
@@ -79,18 +79,18 @@ function* textLeaves(value: unknown): Generator<string> {
 }
 
 function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<string, TaskLog[]>,
-  values: ReadonlyMap<string, ReadonlySet<string>>, byTask: ReadonlyMap<string, StoredRun[]>, memberIds: readonly string[]): Unit {
+  values: ReadonlyMap<string, ReadonlySet<string>>, ownRuns: readonly StoredRun[], launches: readonly Launch[],
+  memberIds: readonly string[]): Unit {
   const log = logs.get(node.id) ?? [], outcome = taskOutcome(log, node.state, node.created);
-  const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>(), launches: Launch[] = [];
+  const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>();
   for (const id of ids) {
     const history = logs.get(id) ?? [];
     if (id !== node.id) childQuestions.push(...userQuestions(history));
     for (const link of values.get(id) ?? []) prs.add(link);
     const reports = history.filter(entry => entry.kind === 'reported').flatMap(entry => [entry.title ?? '', entry.description ?? '']);
     for (const link of prLinks(reports)) prs.add(link);
-    for (const item of byTask.get(id) ?? []) if (item.launch) launches.push(item.launch);
   }
-  const firstOwner = (byTask.get(node.id) ?? []).reduce<RunEvidence | null>((earliest, { run }) => {
+  const firstOwner = ownRuns.reduce<RunEvidence | null>((earliest, { run }) => {
     if (run.role !== 'owner') return earliest;
     if (!earliest) return run;
     const time = Date.parse(run.created_at) - Date.parse(earliest.created_at);
@@ -164,27 +164,39 @@ export class FactsCache {
     }
     const { rootOf, usageRootOf, members } = ancestry(nodes);
     const byTask = new Map<string, StoredRun[]>(), launches: Launch[] = [];
+    const launchesByRoot = new Map<string, Launch[]>();
     for (const item of this.runs.values()) {
       const group = byTask.get(item.run.task);
       if (group) group.push(item);
       else byTask.set(item.run.task, [item]);
-      if (item.launch) launches.push(item.launch);
+      const run = item.launch;
+      if (!run) continue;
+      launches.push(run);
+      const root = usageRootOf.get(run.task);
+      if (!root) continue;
+      const groupRuns = launchesByRoot.get(root);
+      if (groupRuns) groupRuns.push(run);
+      else launchesByRoot.set(root, [run]);
     }
     const dirty = new Set(full ? [...members.keys()] : []);
     if (placementIds.length)
       for (const row of db.prepare('SELECT DISTINCT task_id FROM placements WHERE id IN (SELECT value FROM json_each(?))')
         .all(JSON.stringify(placementIds))) taskIds.add(String(row.task_id));
-    for (const id of taskIds) {
-      const before = previous?.rootOf.get(id), after = rootOf.get(id);
-      if (before) dirty.add(before);
-      if (after) dirty.add(after);
-    }
-    // A move or deletion can affect every Task underneath the changed row.
-    if (!full)
-      for (const [id, root] of previous!.rootOf) {
-        const next = rootOf.get(id);
-        if (root !== next) { dirty.add(root); if (next) dirty.add(next); }
+    if (!full) {
+      const scopes = [[previous!.rootOf, rootOf], [previous!.usageRootOf, usageRootOf]] as const;
+      for (const [previousRoots, nextRoots] of scopes) {
+        for (const id of taskIds) {
+          const before = previousRoots.get(id), after = nextRoots.get(id);
+          if (before) dirty.add(before);
+          if (after) dirty.add(after);
+        }
+        // A move or deletion can affect every Task underneath the changed row.
+        for (const [id, root] of previousRoots) {
+          const next = nextRoots.get(id);
+          if (root !== next) { dirty.add(root); if (next) dirty.add(next); }
+        }
       }
+    }
     const units = full ? new Map<string, Unit>() : new Map(previous!.units);
     const workers = new Map<string, string[]>();
     if (dirty.size)
@@ -195,9 +207,10 @@ export class FactsCache {
       }
     for (const id of dirty) {
       const node = nodes.get(id), group = members.get(id);
-      if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values, byTask, workers.get(id) ?? []));
+      if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values,
+        byTask.get(id) ?? [], launchesByRoot.get(id) ?? [], workers.get(id) ?? []));
       else units.delete(id);
     }
-    return { nodes, units, rootOf, usageRootOf, launches, first: firstConversations(launches) };
+    return { nodes, units, rootOf, usageRootOf, first: firstConversations(launches) };
   }
 }

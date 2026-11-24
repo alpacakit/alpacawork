@@ -95,10 +95,10 @@ Task counts use Tasks the user directly requested. The rework count uses instruc
 
 AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
 children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed
-time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. The
-response counts launches without stored token counts separately. Skill, tool and MCP breakdowns report how many launches
-have been tallied. Skill file reads issued as part of compound shell commands are excluded. Task completion dates and
-launch dates use the time zone echoed in the result.
+time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. Live
+Runs are tracked separately from launches whose token count is unavailable. Skill, tool and MCP breakdowns report how
+many launches have been tallied. Skill file reads issued as part of compound shell commands are excluded. Task
+completion dates and launch dates use the time zone echoed in the result.
 
 For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from` and
 `--to` dates. Pass the breakdown row's `--by` and `--key` to limit the list to that row. Tool and MCP keys are JSON

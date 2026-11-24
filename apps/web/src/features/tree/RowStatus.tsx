@@ -127,7 +127,7 @@ function WorkTime({ task, at }: { task: Task; at?: number | null }) {
     className={still ? "text-muted" : "text-working"} />;
 }
 
-/** Recorded tokens for this task and its descendants. */
+/** Recorded tokens from finished Runs on this task and its descendants. */
 function TokenLines({ task }: { task: Task }) {
   const { t, i18n } = useTranslation("tree");
   const { tokens, unknown } = subtreeTokens(task.usage, task.usageBelow);
@@ -143,6 +143,7 @@ function TokenLines({ task }: { task: Task }) {
     {rows(["input", "output"])}
     <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.cache")}</p>
     {rows(["cacheRead", "cacheWrite"], true)}
+    <p className="m-0 mt-2 text-xs text-muted">{t("status.tokens.scope")}</p>
     {unknown > 0 && <p className="m-0 text-xs text-muted">{t("status.tokens.unknown", { count: unknown })}</p>}
   </section>;
 }

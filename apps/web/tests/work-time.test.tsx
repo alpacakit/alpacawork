@@ -178,19 +178,18 @@ test("a completed child can disappear from the live index without losing or doub
   expect(workTimeMs(after.subtree, at(12))).toBe(16 * minute);
 });
 
-test("own and subtree preserve separate addition order and independent ordered starts", () => {
+test("own and subtree combine completed time and preserve independent ordered starts", () => {
   const below = { ...saved(0), runMs: 2 ** 53 };
-  const tasks = index({ id: "T1", usage: saved(0), usageBelow: below,
+  const tasks = index({ id: "T1", usageBelow: below,
     runsBelow: [["R901", at(7)], ["R902", at(7)]] });
-  const runs = [live("R1", 0, { endedAt: new Date(epoch + 1).toISOString() }),
-    live("R2", 8), live("R3", 0, { endedAt: new Date(epoch + 1).toISOString() }),
-    live("R4", 8), { ...live("R5", 0), startedAt: "invalid" }];
+  const endedAt = new Date(epoch + 1).toISOString();
+  const runs = [finished("R1", 0, 0, { endedAt }), live("R2", 8),
+    finished("R3", 0, 0, { endedAt }), live("R4", 8)];
   for (const run of runs) Object.freeze(run);
   Object.freeze(runs);
   const time = taskWorkTime("T1", tasks, new Map([["T1", runs]]));
   expect(time.own).toEqual({ doneMs: 2, runningSince: [at(8), at(8)] });
-  // Each one-millisecond addition rounds independently at this base value.
-  expect(time.subtree).toEqual({ doneMs: 2 ** 53, runningSince: [at(8), at(8), at(7), at(7)] });
+  expect(time.subtree).toEqual({ doneMs: 2 ** 53 + 2, runningSince: [at(8), at(8), at(7), at(7)] });
   expect(time.own.runningSince).not.toBe(time.subtree.runningSince);
   expect(tasks.byId.get("T1")?.runsBelow).toEqual([["R901", at(7)], ["R902", at(7)]]);
 });

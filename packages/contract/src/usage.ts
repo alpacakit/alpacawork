@@ -47,19 +47,21 @@ export type UsageTotal = {
 };
 
 export function sumUsage(runs: readonly UsageSource[], now: number | null): UsageTotal {
-  return sumRunUsage(runs.map(runUsage), now);
+  const { live: _live, ...total } = sumRunUsage(runs.map(runUsage), now);
+  return total;
 }
 
-export function sumRunUsage(runs: Iterable<RunContribution | null>, now: number | null): UsageTotal {
-  let count = 0, runMs = 0, tokensUnknown = 0;
+export function sumRunUsage(runs: Iterable<RunContribution | null>, now: number | null): UsageTotal & { live: number } {
+  let count = 0, runMs = 0, live = 0, tokensUnknown = 0;
   let tokens: TokenCounters | null = null;
   for (const usage of runs) {
     if (!usage) continue;
     count++;
     runMs += runUsageMs(usage, now);
+    if (usage.live) { live++; continue; }
     if (!usage.tokens) { tokensUnknown++; continue; }
     tokens ??= { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
     for (const key of TOKEN_COUNTER_KEYS) tokens[key] += usage.tokens[key];
   }
-  return { runs: count, runMs, tokens, tokensUnknown };
+  return { runs: count, runMs, tokens, tokensUnknown, live };
 }

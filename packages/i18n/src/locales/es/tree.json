@@ -129,6 +129,7 @@
       "heading": "Tokens usados (con las tareas inferiores)",
       "input": "Entrada",
       "output": "Salida",
+      "scope": "Solo ejecuciones terminadas.",
       "unknown_one": "{{count}} ejecución más no tiene recuento.",
       "unknown_many": "{{count}} ejecuciones más no tienen recuento.",
       "unknown_other": "{{count}} ejecuciones más no tienen recuento."

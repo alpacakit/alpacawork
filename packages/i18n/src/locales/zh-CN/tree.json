@@ -118,6 +118,7 @@
       "heading": "已用令牌（含下级任务）",
       "input": "输入",
       "output": "输出",
+      "scope": "仅计已结束的运行。",
       "unknown_other": "另有 {{count}} 次运行没有计数。"
     },
     "turn": {
