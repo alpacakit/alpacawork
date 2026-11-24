@@ -18,8 +18,9 @@ import { TONE_FILL, TONE_TEXT, UsageRing, percentText } from "@/components/ui/us
 /* Hallmark · component: plan limits in the bar · genre: modern-minimal · theme: the app's own tokens (working, warn, error, line) */
 
 /**
- * One window in the menu: its name, how full it is, and under them when it resets. The reset has the row's whole width,
- * so a long one (a weekday and a time, in any language) stays on its line.
+ * One window in the menu: its name, how full it is, and close under them when it resets, so the reset reads as this
+ * window's and not the next one's. The reset has the row's whole width, so a long one (a weekday and a time, in any
+ * language) stays on its line.
  */
 function WindowRow({ window, now, scoped }: { window: LimitWindow; now: number; scoped: boolean }) {
   const { t, i18n } = useTranslation("chrome");
@@ -27,7 +28,7 @@ function WindowRow({ window, now, scoped }: { window: LimitWindow; now: number; 
   const reset = resetWords(window.resetsAt, now, i18n.language, t);
   // The label's and the percent's boxes are trimmed to their letters (capitals over the baseline), so centring the line
   // centres what is drawn: the bar stands level with the words, not with their line boxes (which sit about 1px lower).
-  return <li data-limit-window={window.kind} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-1.5">
+  return <li data-limit-window={window.kind} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_2.5rem] items-center gap-x-3 gap-y-2">
     <span className="[text-box:trim-both_cap_alphabetic]">{windowLabel(window, t, scoped)}</span>
     <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
       <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />
@@ -43,14 +44,14 @@ function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
   const name = AGENT_NAMES[agent.adapter].short;
   const note = agent.state === "unsupported" ? t("limits.unsupported") : agent.state === "unavailable" ? t("limits.unavailable")
     : agent.windows.length === 0 ? t("limits.none") : null;
-  return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
+  return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h3 className="m-0 text-sm font-semibold">{name}</h3>
       {/* Whose limits these are: the account the agent is signed in as, cut to the menu's width (whole in the tooltip). */}
       {agent.account && <span data-limit-account className="min-w-0 max-w-full truncate text-xs text-muted" title={agent.account}>{agent.account}</span>}
       {note && <p className="m-0 text-sm text-muted">{note}</p>}
     </div>
-    {!note && <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">{agent.windows.map((window, at) =>
+    {!note && <ul className="m-0 flex list-none flex-col gap-5 p-0 text-sm">{agent.windows.map((window, at) =>
       <WindowRow key={at} window={window} now={now} scoped={besideModelWindow(window, agent.windows)} />)}</ul>}
   </section>;
 }
@@ -92,16 +93,19 @@ export function LimitsMenu() {
       <span className={cn("text-sm font-medium tabular-nums", shown.window ? TONE_TEXT[tone] : "text-muted")}>
         {shown.window ? percentText(percent) : "—"}</span>
     </Button>
-    {open && <Popup open onOpenChange={setOpen} label={t("limits.title")} align="end" className="w-80 p-3" anchorRef={trigger}
+    {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top
+        edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the
+        percents under it end (a phone's sheet closes with × beside it, and keeps it in). */}
+    {open && <Popup open onOpenChange={setOpen} label={t("limits.title")} align="end" className="w-88 p-4 pt-3" anchorRef={trigger}
       heading={<span className="flex items-center justify-between gap-3"><span>{t("limits.title")}</span>
         <span className="flex items-center gap-1 text-xs font-normal text-muted">
           <span aria-live="polite">{refreshing ? t("limits.refreshing") : read}</span>
           <Button variant="ghost" size="icon" data-limits-refresh aria-label={t("limits.refresh")} title={t("limits.refresh")}
             disabled={refreshing} onClick={() => void refresh().catch(error =>
-              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="size-7 text-muted hover:text-ink narrow:size-9">
+              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="-mr-2 size-7 text-muted hover:text-ink narrow:mr-0 narrow:size-9">
             <Icon name="reload" className={cn("size-3.5", refreshing && "animate-spin")} /></Button>
         </span></span>}>
-      <div data-limits-menu lang={i18n.language}>
+      <div data-limits-menu lang={i18n.language} className="pt-2">
         {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} now={now} />)}
       </div>
     </Popup>}
