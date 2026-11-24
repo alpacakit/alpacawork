@@ -94,15 +94,17 @@ Both commands return `ever` for the same scope from the first day of the record 
 for `--period all` and is `null` when the scope has no records.
 
 Task counts use Tasks the user directly requested. The rework count uses instructions addressed to the top-level Task. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
-Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. Related PRs are deduplicated
-within each bucket and across the selected period for the period total, so one PR can appear in multiple buckets.
+Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. A related PR counts once,
+on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
+use that same day.
 
 AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
 children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed
 time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. Live
 Runs are tracked separately from launches whose token count is unavailable. Skill, tool and MCP breakdowns expose the
-collection start date in `since` after the first tally is available in scope. They include launches dated on or after
-`since` that ended at or after collection began. `counted` gives calls and distinct launches for the selected period.
+collection start date in `since` after the first tally is available in scope. Tallies cover ended Runs whose launch
+and end were both at or after the exact collection start time. `counted` gives calls and distinct launches for the
+selected period.
 For skills, the launch count covers launches that used at least one skill and `calls` is zero. `breakdown.series`
 aligns with the usage trend points. Buckets wholly before `since` and comparisons that start before `since` are `null`.
 Shell reads of skill files are counted once per skill per tool call, including

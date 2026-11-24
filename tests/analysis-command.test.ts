@@ -26,7 +26,7 @@ const rowId = (n: number) => 'T' + n;
 const project = 'P' + 1;
 const actor = { kind: 'human' } as const;
 const instant = (second: number) => new Date(Date.UTC(2026, 8, 25, 0, 0, second)).toISOString();
-const tallySince = instant(22);
+const tallySince = instant(0);
 const link = 'https://github.com/fictional/app/pull/1';
 
 function setup(root: string) {
@@ -148,8 +148,20 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(accepted.reduce((sum, point) => sum + point[key], 0), daily.accepted.value[key]);
       for (const key of ['review', 'answer', 'ai', 'other'] as const)
         assert.equal(accepted.reduce((sum, point) => sum + point.time[key], 0), daily.accepted.value.time[key]);
-      assert.deepEqual(accepted.map(point => point.prs), [1, 1]);
-      assert.equal(daily.accepted.value.prs, 1);
+      await t.test('related PRs count on the first acceptance day in both the trend and period totals', async () => {
+        assert.deepEqual(accepted.map(point => point.prs), [1, 0]);
+        assert.equal(accepted.reduce((sum, point) => sum + point.prs, 0), daily.accepted.value.prs);
+        const laterRange = { ...acceptanceRange, from: acceptanceRange.to };
+        const later = await read<AnalysisTasksView>('tasks', laterRange);
+        assert.equal(later.accepted.value.prs, 0);
+        assert.equal(later.accepted.previous?.prs, 1);
+        assert.equal(later.ever?.accepted.prs, 1);
+        const links = await read<AnalysisUnitList>('list', { from: laterRange.from, to: laterRange.to, timeZone: 'UTC',
+          set: 'accepted', value: 'prs' });
+        assert.deepEqual(links.rows.map(row => [row.id, row.value]), [[rowId(3), 1]]);
+        const detail = await read<AnalysisUnitValues>('task', { task: rowId(3), timeZone: 'UTC' });
+        assert.deepEqual(detail.prs, [link]);
+      });
       const lead = await read<AnalysisUnitList>('list', { from: acceptanceRange.from, to: acceptanceRange.to,
         timeZone: 'UTC', set: 'accepted', value: 'lead' });
       const medians = accepted.map(point => point.leadMedianMs);
@@ -221,15 +233,15 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(result.rows.reduce((sum, row) => sum + (row.value ?? 0), 0), expected, value);
       }
 
-      // Startup recovers only eligible tallies, including a Run that started earlier on the first collection day.
+      // Wait for the worker to recover tallies, including the Run that started exactly at the collection cutoff.
       let localTools: AnalysisUsageView | undefined;
       for (let tries = 0; tries < 80; tries++) {
         localTools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool', timeZone: 'America/Los_Angeles' });
-        if (localTools.breakdown?.counted?.value.launches === 3) break;
+        if (localTools.breakdown?.rows.some(row => row.key === JSON.stringify(['fixture', 'command_execution']))) break;
         await new Promise(resolve => setTimeout(resolve, 25));
       }
       assert.equal(localTools?.breakdown?.since, '2026-09-24');
-      assert.deepEqual(localTools?.breakdown?.counted?.value, { calls: 5, launches: 3 });
+      assert.deepEqual(localTools?.breakdown?.counted?.value, { calls: 4, launches: 2 });
       const tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
       const tool = tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'command_execution']));
       assert.equal(tool?.calls, 1);
@@ -255,6 +267,19 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const early = await read<AnalysisUnitList>('list', { from: '2026-09-24', to: '2026-09-24', timeZone: 'UTC',
         set: 'used', by: 'tool', key: crossingKey, value: 'calls' });
       assert.equal(early.total, 0);
+      await t.test('a Run started before collection is excluded from tool totals, lists and task detail', async () => {
+        for (const timeZone of ['UTC', 'America/Los_Angeles']) {
+          const [aggregate, list, unit] = await Promise.all([
+            read<AnalysisUsageView>('usage', { ...trend, by: 'tool', timeZone }),
+            read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: crossingKey, value: 'calls', timeZone }),
+            read<AnalysisUnitValues>('task', { task: rowId(3), timeZone }),
+          ]);
+          assert.ok(!aggregate.breakdown?.rows.some(row => row.key === crossingKey), timeZone);
+          assert.equal(list.total, 0, timeZone);
+          assert.deepEqual(unit.tools, [], timeZone);
+          assert.deepEqual(unit.tallied, { runs: 0, of: 0, since: aggregate.breakdown?.since }, timeZone);
+        }
+      });
       const older = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
       assert.equal(older.v, TALLY_VERSION - 1);
       const saved = JSON.parse(readFileSync(join(runFolder(root, 'R4'), RUN_FILES.tally), 'utf8'));

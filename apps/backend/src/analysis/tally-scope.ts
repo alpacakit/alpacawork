@@ -22,9 +22,10 @@ export function openTallyScope(root: string): number {
 }
 
 const terminal = RUN_ENDED_STATES.filter(state => state !== RUN_STATE.joined).map(state => `'${state}'`).join(',');
+const startedAtMs = "round(unixepoch(json_extract(record,'$.started_at'), 'subsec') * 1000)";
 const endedAtMs = "round(unixepoch(json_extract(record,'$.ended_at'), 'subsec') * 1000)";
 
-/** Shared by the worker's file selection and the reader's coverage denominator. Bind the start time in milliseconds. */
+/** Shared by collection and reads. Bind the exact collection start in milliseconds. */
 export const tallyEligible = `task_id IS NOT NULL AND state IN (${terminal})
-  AND json_extract(record,'$.pids.agent') IS NOT NULL AND json_extract(record,'$.started_at') IS NOT NULL
-  AND ${endedAtMs} >= ?`;
+  AND json_extract(record,'$.pids.agent') IS NOT NULL
+  AND min(${startedAtMs}, ${endedAtMs}) >= ?`;
