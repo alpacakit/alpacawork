@@ -28,6 +28,7 @@ import { recoverExecution } from './recovery.js';
 import { RunReviewState } from './reviews.js';
 import { dirname, join } from 'node:path';
 import { releaseForEntry } from '@alpacawork/core';
+import { settleCompaction } from './compactions.js';
 
 interface SettleSummary { launched: RunId[]; lost: RunId[]; closed: RunId[]; failed: RunId[]; skipped: { run: RunId; reason: string }[] }
 export interface RunLaunch { id: RunId; lockFd: number; attemptId?: string; releaseLock?: () => void }
@@ -306,6 +307,7 @@ function failUnlaunched(store: RunStore, tx: RunTransaction, id: RunId, attempt:
   if (run?.state !== 'running') return;
   tx.update({ ...run, state: 'failed', reason: 'launch', ended_at: new Date().toISOString() });
   releaseReserved(store.connection, attempt, { evidence: 'manager_spawn_failed_before_transfer' });
+  settleCompaction(store.connection, attempt, null, new Date().toISOString());
   const fault = cause instanceof Error ? { message: cause.message, code: 'code' in cause ? String(cause.code) : null }
     : typeof cause === 'object' && cause ? cause : { message: String(cause), code: null };
   store.connection.prepare('UPDATE run_attempts SET diagnostic=? WHERE attempt_id=?').run(JSON.stringify({ kind: 'launch_aborted',

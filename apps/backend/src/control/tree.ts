@@ -13,6 +13,8 @@ import { failureAvailability, runErrorCause } from '@alpacawork/contract/agent-d
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
 import { agentProfile, attachmentLimitOf, readAgentsSettings } from '../agents-settings.js';
 import { runtimeAdapter } from '../agents/registry.js';
+import { latestCompactions } from '../runs/compactions.js';
+import { readControl } from './task-store.js';
 
 type ReadError = { code: string; message: string; path: string; reason?: ProblemReason };
 const runsUnavailable = (error: Problem): ReadError =>
@@ -44,9 +46,10 @@ export function projectPlacements(root: string, placed: ReturnType<PlacementStor
   const byTask = new Map(tasks.map(task => [task.id, runtimeTask(task)]));
   const activity = (id: RunRecord['id']) => readRunActivity(runFolder(root, id));
   const runtimes = projectPlacementRuntimes(placed, byTask, runs, activity);
+  const compactions = readControl(root, db => latestCompactions(db, placed.map(placement => placement.id)));
   return placed.map(placement => ({ ...placement,
     responsible: placement.active && placement.responsible,
-    runtime: runtimes.get(placement.id)! }));
+    runtime: runtimes.get(placement.id)!, compaction: compactions.get(placement.id) ?? null }));
 }
 
 /** Workspace facts exist independently of any listed project. */

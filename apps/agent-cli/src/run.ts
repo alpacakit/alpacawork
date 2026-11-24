@@ -1,12 +1,17 @@
 import { createHash } from 'node:crypto';
 
-import type { BridgeEvent, BridgeInstruction } from '@alpacawork/contract/agent-bridge';
+import type { BridgeEvent, BridgeInstruction, CompactionRequest } from '@alpacawork/contract/agent-bridge';
 export type Instruction = BridgeInstruction;
+/** How compacting a conversation ended; `message` is the agent's own account of a failure. */
+export type CompactionResult = { compacted: true } | { compacted: false; message: string };
 /** RPC admission is not a receipt. Once deliver is called, failure cannot prove non-delivery. */
 export type Admission = { state: 'transferred' } | { state: 'uncertain'; message: string };
 export type Runtime = {
   start(): Promise<void>;
   deliver(input: Instruction): Promise<Admission>;
+  /** Compact the conversation with its own model while no turn runs. It is no turn: no turn events, receipts or result file.
+   * `instructions` is for an agent that takes them; one that cannot use them ignores them. */
+  compact(instructions: string | null): Promise<CompactionResult>;
   idle(): boolean;
   turns(): number;
   failed(): boolean;
@@ -87,23 +92,36 @@ export function run(create: (io: RuntimeIO) => Runtime): void {
   // Read before start: an instruction seen before a failed start is provably not sent. Only this chain calls deliver.
   const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   let buffered = '';
+  // Compaction comes before its instruction's transfer: the instruction is provably not sent while it runs, and a failed
+  // compaction is told and never keeps the instruction from its turn.
+  const compact = async (request: CompactionRequest): Promise<void> => {
+    let result: CompactionResult;
+    if (!runtime.idle()) result = { compacted: false, message: 'Compaction was skipped because a turn is running' };
+    else try { result = await runtime.compact(request.instructions); }
+    catch (error) { result = { compacted: false, message: error instanceof Error ? error.message : String(error) }; }
+    if (finishing) return;
+    emit(result.compacted ? { type: 'compaction.completed' } : { type: 'compaction.failed', message: result.message });
+  };
   const acceptLine = (line: string): void => {
-    let value: { id?: unknown; text?: unknown };
+    let value: { id?: unknown; text?: unknown; compact?: unknown };
     try { value = JSON.parse(line); } catch { value = {}; }
-    if (typeof value.id !== 'string' || typeof value.text !== 'string' || !value.text) {
+    const request = compactionRequest(value?.compact);
+    if (typeof value?.id !== 'string' || typeof value.text !== 'string' || !value.text || request === false) {
       process.stderr.write('alpacawork-agent: ignored an input line without id and text\n'); return;
     }
     const input = { id: value.id, text: value.text };
+    const digest = createHash('sha256').update(JSON.stringify([input.text, request])).digest('hex');
     const prior = pending.get(input.id);
     if (prior) {
-      if (prior.contentDigest !== createHash('sha256').update(input.text).digest('hex')) fatal(new Error(`Input ID reused with different content: ${input.id}`));
+      if (prior.contentDigest !== digest) fatal(new Error(`Input ID reused with different content: ${input.id}`));
       // No second deliver, even when the first admission response was lost.
       return;
     }
     received++;
-    const record: Pending = { contentDigest: createHash('sha256').update(input.text).digest('hex'), transferStarted: false, admitted: false, outcome: null };
+    const record: Pending = { contentDigest: digest, transferStarted: false, admitted: false, outcome: null };
     pending.set(input.id, record);
     work = work.then(async () => {
+      if (request && !finishing) await compact(request);
       if (finishing) { outcome(input.id, 'Bridge closed before transfer'); return; }
       record.transferStarted = true;
       let admission: Admission;
@@ -130,4 +148,12 @@ export function run(create: (io: RuntimeIO) => Runtime): void {
   });
   process.stdin.once('close', () => { stdinOpen = false; idle(false); });
   work = new Promise<void>(resolve => resolve(runtime.start())).catch(fatal);
+}
+
+/** An input line's optional `compact`: null when absent, false when malformed. */
+function compactionRequest(value: unknown): CompactionRequest | null | false {
+  if (value === undefined) return null;
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const { instructions } = value as { instructions?: unknown };
+  return instructions === null || typeof instructions === 'string' ? { instructions } : false;
 }

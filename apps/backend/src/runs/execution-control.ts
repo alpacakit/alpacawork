@@ -19,6 +19,7 @@ import { invocationForRun, type AgentInvocation } from './launch-agent.js';
 import { identityOf, publishCommand, publishLaunch, executionFolder } from './execution-files.js';
 import { releaseForEntry, packageVersionForEntry } from '@alpacawork/core';
 import { executionObligations, executionReference } from './execution-obligations.js';
+import { claimCompaction } from './compactions.js';
 
 /**
  * The folder a coordinator's agent works in: empty and its own (0700, made by the scheduler before it reserves the
@@ -55,8 +56,10 @@ export function reserveAttempt(store: RunStore, tx: RunTransaction, run: Runtime
   const coordinator = run.role === 'coordinator';
   const warm = coordinator && !!db.prepare('SELECT 1 FROM coordinator_conversations WHERE warm_request_id=?').get(run.requestId);
   const runMinutes = !coordinator ? limits.run_minutes : warm ? WARM_MINUTES : limits.coordinator_run_minutes;
+  const attemptId = randomUUID();
+  const compaction = coordinator ? null : claimCompaction(db, run.id, attemptId, invocation, new Date().toISOString());
   const launch = launchSchema.parse({ protocol: 1, workspaceId, runId: run.id,
-    attemptId: randomUUID(), cwd: coordinator ? coordinatorCwd(store.root) : run.cwd, invocation, prompt: String(row.prompt),
+    attemptId, compaction, cwd: coordinator ? coordinatorCwd(store.root) : run.cwd, invocation, prompt: String(row.prompt),
     initialInputId: randomUUID(), format: protocolFingerprint(), runMinutes, commandSeconds: coordinator ? limits.coordinator_command_seconds : null,
     credential: coordinator ? null : issueRunCredential(store.root, run.id), entry, version: packageVersionForEntry(entry), server, ancestors, release: releaseForEntry(entry) });
   const { prompt: _prompt, ...storedLaunch } = launch;

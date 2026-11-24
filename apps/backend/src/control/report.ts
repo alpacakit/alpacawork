@@ -70,7 +70,7 @@ export class TaskReportService {
     const path = new TaskRepository(this.root, tx.store.connection).ancestry(task.id);
     const written = input.values !== undefined && !replayed ? writtenValues(tx.store.connection, path, task, input.values) : undefined;
     const checkpoint = written !== undefined
-      ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation) : undefined;
+      ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation, input.compactFocus) : undefined;
     if (!reportCallerRules.askTo.allows(input, caller))
       invalid('askTo', 'Only a Run asking a question chooses --ask-to', { kind: 'only_question_run_chooses_ask_to' });
     const report = { actor, taskId: task.id, opId: input.opId, expectedTaskHash: input.expectedTaskHash };
@@ -103,14 +103,14 @@ export class TaskReportService {
       if (input.askTo === undefined)
         invalid('askTo', 'A question requires --ask-to <ancestor Task ID>|user', { kind: 'question_requires_ask_to' });
       ask(tx, { ...report, askTo: input.askTo, runId: reportingRun(caller), title: input.title!, description: input.description!,
-        values: input.values, written, nextConversation: input.nextConversation, checkpoint });
+        values: input.values, written, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
       return false;
     }
     // Finishing needs every required field: checked on the values the report itself leaves, never on a partial write.
     if (intent.code === 'report_done' && !replayed) assertRequiredValues(tx.store.connection, path, task.id, written ?? task.values);
     reportState(tx, { ...report, runId: caller.kind === 'run' ? caller.runId : null, state, intent: intent.code,
       title: input.title, description: input.description, estimateMinutes: input.estimateMinutes,
-      urgentReason: input.urgent, values: input.values, written, nextConversation: input.nextConversation, checkpoint });
+      urgentReason: input.urgent, values: input.values, written, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
     return false;
   }
 }

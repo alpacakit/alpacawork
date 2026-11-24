@@ -10,12 +10,14 @@ import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, resultFile, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
 import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
+import type { CompactionOutcome } from '@alpacawork/contract/run-protocol';
 
 // Non-tool items do not attest to external work. Unknown item kinds with a lifecycle require a completion.
 const codexTextItems = new Set(['agent_message', 'agent_configuration', 'reasoning', 'plan']);
 
 export const bridgeInput: InputProtocol = {
-  encode: (id, text): BridgeInstruction => ({ id, text }),
+  encode: (id, text, compaction): BridgeInstruction[] =>
+    [{ id, text, ...compaction ? { compact: { instructions: compaction.instructions } } : {} }],
   receipt(value) {
     const row = object(value);
     if (typeof row.id !== 'string') return null;
@@ -59,11 +61,15 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
     read(invocation, folder, exit) {
       let session: string | null = null, ended: 'completed' | 'failed' | null = null;
       let usage: AgentUsage | null = null, failure: RunFailure | undefined, invalid = false, invalidDiagnostic = false;
-      let diagnosticSession: string | null = null;
+      let diagnosticSession: string | null = null, compaction: CompactionOutcome | null = null;
       const tools = new ToolResults();
       const { rejection, outcomeRejection } = scanOutput(folder, value => {
         if (value === null || typeof value !== 'object' || Array.isArray(value)) invalidDiagnostic = true;
         const row = object(value);
+        // A bridge says how the compaction its first instruction carried ended, before that instruction's turn.
+        if (invocation.compaction !== null && row.type === 'compaction.completed') compaction = { state: 'compacted', message: null };
+        if (invocation.compaction !== null && row.type === 'compaction.failed')
+          compaction = { state: 'failed', message: typeof row.message === 'string' ? row.message.slice(0, 2000) : null };
         // A diagnostic event must belong to the root and to the selected conversation.
         const diagnosticOwner = row.parent_tool_use_id == null && (row.session_id == null ||
           row.session_id === (invocation.session ?? (row.type === 'thread.started' ? row.thread_id : diagnosticSession)));
@@ -98,7 +104,7 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
         }
       });
       const sameSession = !invalid && (!invocation.session || invocation.session === session);
-      const base = { session: sameSession ? session : null, usage: sameSession ? usage : null,
+      const base = { session: sameSession ? session : null, usage: sameSession ? usage : null, compaction,
         ...(!rejection && !invalidDiagnostic && diagnosticSession &&
           (!invocation.session || invocation.session === diagnosticSession) && failure ? { failure, toolsSettled: tools.complete && ended === 'failed' && id === 'codex' } : {}) };
       if (id === 'codex' && invocation.mode === 'resume' && exit.code === 1 && exit.signal === null) {
@@ -107,12 +113,13 @@ export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
             return { ...base, outcome: { state: 'needs_review', reason: 'conversation_busy' } };
         } catch { /* The existing special-case evidence is unproved. */ }
       }
+      // The reply file is the agent's own last reply whatever the outcome. Keeping every readable reply lets
+      // completion commit exactly what the file holds, so run-file cleanup finds it identical and removes it.
       const reply = resultFile(folder);
-      if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit',
-        ...(reply.result !== null ? { result: reply.result } : { resultState: reply.rejection! }) } };
-      if (outcomeRejection || !sameSession || !session || ended !== 'completed' || reply.rejection)
-        return { ...base, outcome: { state: 'failed', reason: 'output',
-          ...(outcomeRejection || reply.rejection ? { resultState: outcomeRejection ?? reply.rejection! } : {}) } };
+      const replied = reply.result !== null ? { result: reply.result } : { resultState: reply.rejection! };
+      if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit', ...replied } };
+      if (outcomeRejection || !sameSession || !session || ended !== 'completed' || reply.result === null)
+        return { ...base, outcome: { state: 'failed', reason: 'output', ...replied } };
       return { ...base, outcome: { state: 'succeeded', session, result: reply.result } };
     },
   };

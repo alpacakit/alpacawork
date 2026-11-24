@@ -4,6 +4,7 @@
  * once without one) and fails when `fail` is set. With `child`, a sub-agent thread runs a whole turn of its own
  * first, as Codex's spawn_agent does, and the fake logs `{ child: 'done' }` after it. A steer whose text contains
  * "refuse", or one without an active turn, is an error. Every notification names its thread, as app-server does.
+ * thread/compact/start runs a compaction-only turn, which fails with FAKE_CODEX_COMPACT_FAIL as its message when set.
  */
 import { appendFileSync, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -28,7 +29,7 @@ async function run(id, plan) {
     log({ child: 'done' });
   }
   while (plan.gate && !existsSync(plan.gate)) await delay(20);
-  notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true' } });
+  notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true', aggregatedOutput: 'provider output' } });
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.
@@ -54,6 +55,19 @@ createInterface({ input: process.stdin }).on('line', line => {
   else if (method === 'account/read') reply({ account: process.env.FAKE_CODEX_NO_ACCOUNT ? null : { type: 'chatgpt' } });
   else if (method === 'thread/start') { thread = 'thread-new'; reply({ thread: { id: thread } }); }
   else if (method === 'thread/resume') { thread = params.threadId; reply({ thread: { id: thread } }); }
+  else if (method === 'thread/compact/start') {
+    reply({});
+    const id = 'turn-compact', failure = process.env.FAKE_CODEX_COMPACT_FAIL;
+    notify('turn/started', { turn: { id } });
+    notify('item/started', { item: { type: 'contextCompaction', id: 'compaction' } });
+    if (failure) {
+      notify('error', { error: { message: failure }, willRetry: false, turnId: id });
+      notify('turn/completed', { turn: { id, status: 'failed', error: { message: failure } } });
+    } else {
+      notify('item/completed', { item: { type: 'contextCompaction', id: 'compaction' } });
+      notify('turn/completed', { turn: { id, status: 'completed' } });
+    }
+  }
   else if (method === 'turn/start') {
     let fault = {}; try { fault = JSON.parse(params.input[0].text); } catch {}
     log({ processedInput: params.clientUserMessageId });

@@ -32,6 +32,7 @@ import { FileWriter } from '../raw/storage.js';
 import { ownerHeadsOf } from './wake.js';
 import { returnFacts } from './return-rules.js';
 import { openObligationsOf, type Obligations } from './return-lifecycle.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 
 type ReadError = { code: string; message: string; path: string; reason?: ProblemReason };
 type SourceTask = ReturnType<typeof controlSnapshotView>['tasks'][number];
@@ -64,6 +65,18 @@ export type ControlSource = {
  * When the `messages` were submitted, and the fixed text of the answer that closed `question` (if one did); a read
  * asking neither opens nothing.
  */
+/** How full a conversation last was: its head's figure, else the latest one an earlier Run of it said (a head queued,
+ * just started, or ended without saying). */
+function lastContext(source: Pick<ControlSource, 'root' | 'runRecords'>, head: ControlSource['runRecords'][number]) {
+  const seen = new Set<string>();
+  for (let run: typeof head | undefined = head; run && !seen.has(run.id);
+    run = run.resumes ? source.runRecords.find(each => each.id === run!.resumes) : undefined) {
+    seen.add(run.id);
+    const context = readRunActivityView(source.root, run)?.context;
+    if (context) return context;
+  }
+  return null;
+}
 function readWords(root: string, messages: readonly string[], question?: string): Words {
   if (!messages.length && question === undefined) return NO_WORDS;
   return readControl(root, db => {
@@ -222,7 +235,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   const agents = candidates.map(item => {
     const headRunId = source.conversationHeads.get(item.id) ?? null;
     const head = headRunId ? source.runRecords.find(run => run.id === headRunId) : undefined;
-    return { ...item, headRunId,
+    return { ...item, headRunId, context: head ? lastContext(source, head) : null,
       ...(source.errors.some(error => error.code === PROBLEM_CODE.runsUnavailable) || headRunId && !head
         ? {} : { previousValues: head && hasContinuableSession(head) ? { ...head.launch.values } : null }) };
   });
