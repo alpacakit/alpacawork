@@ -7,6 +7,7 @@ import { useDialogStore } from "./dialog-store";
 import { markRead } from "./read-store";
 import { fitReaderWidth, readerWidth } from "./screen-settings";
 import { useTimeView } from "./time-view";
+import type { AnalysisPlace } from "@/features/analysis/place";
 
 /**
  * What the reader is looking at: the list's project, the search,
@@ -32,7 +33,9 @@ export type ReaderPane = "task" | "files" | "about";
  */
 export type Navigation = { project: string | null; task: string | null; taskAddress: string | null; full: boolean; pane: ReaderPane; path: string | null; query: string; image: string | null;
   /** A file read over the reader in the viewer (viewer-target.ts: a Task's file, or one of its code locations): a surface as `image` is. */
-  view: string | null; event: string | null; turnSequence?: boolean };
+  view: string | null; event: string | null; turnSequence?: boolean;
+  /** The analysis face and what is open on it; null on the list of tasks. While it is shown no task is open. */
+  analysis: AnalysisPlace | null };
 /** The task the navigation's reader shows, known or waited for. */
 export const readerOn = (navigation: Navigation) => navigation.task ?? navigation.taskAddress;
 /** A place in the reader: a task and what of it is shown (Reports, About, Files and the folder or file open there). */
@@ -120,6 +123,12 @@ type ViewState = {
   openTaskFile: (taskId: string, path: string) => void;
   /** Open a folder or file of `taskId` in the current rule tab. */
   setFilePath: (taskId: string, path: string) => void;
+  /** The analysis face and what is open on it (`Navigation.analysis`). */
+  analysis: AnalysisPlace | null;
+  /** Shows the analysis at a place, closing the task open; null goes back to the list of tasks. */
+  showAnalysis: (place: AnalysisPlace | null) => void;
+  /** A task opened from the analysis: the list of tasks, with that task open. */
+  openFromAnalysis: (id: string) => void;
   /** Apply a validated URL as one transition, without the side effects of the individual navigation actions. */
   applyNavigation: (navigation: Navigation) => void;
 };
@@ -286,9 +295,13 @@ export const useViewStore = create<ViewState>((set, get) => ({
       filePath: { taskId, path: opening.path }, reader: { ...state.reader, open: true, pane: "files", whole: state.reader.open && state.reader.whole } }));
   }),
   setFilePath: intent((taskId, path) => set({ filePath: { taskId, path } }), true),
+  analysis: null,
+  showAnalysis: intent((analysis) => set((state) => analysis && state.reader.open
+    ? { analysis, selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : { analysis })),
+  openFromAnalysis: intent((id) => { set({ analysis: null }); get().openTask(id, { reader: true, pane: "task" }); }),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {
-    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence } = navigation;
+    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis } = navigation;
     endReaderInput(task); openedByPress = false;
     if (task) markRead(task);
     // The reader shows the task the URL names, or waits for it while it is looked up (`awaitedTask`).
@@ -300,7 +313,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
       return {
         // A URL with no task says nothing of the reader's width (full belongs to the task): going back to the list from
         // a task opened full keeps it for the next one, as closing it does.
-        project, query, readerFull: shown ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
+        project, query, analysis, readerFull: shown ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
         selected: task, image, view, event,
         reader: { ...state.reader, open: !!shown, address: task ? null : taskAddress, pane, returnTo: shown === state.selected ? state.reader.returnTo : null, turnSequence,
           whole: !!shown && state.reader.open && state.reader.whole },
@@ -320,5 +333,5 @@ export function screenNavigation(): Navigation {
   return { project: view.project, task, taskAddress, full: view.readerFull, pane: view.reader.pane, image: shown ? view.image : null, view: shown ? view.view : null, turnSequence: view.reader.turnSequence,
     event: shown && view.reader.pane === "task" ? view.event : null,
     path: shown && view.filePath?.taskId === shown && view.reader.pane === "files" ? view.filePath.path || null : null,
-    query: view.query };
+    query: view.query, analysis: view.analysis };
 }

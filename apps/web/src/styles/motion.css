@@ -120,6 +120,15 @@
      to the thin line a chosen value has. The ring is a line (an outline), not a shadow: the site has one shadow. It is
      drawn by a layer over the value (its ::after), so the value's own outline stays the focus's. */
   --animate-noted: motion-noted 1.6s var(--ease-out) both;
+  /* A chart's bar: grows up from its foot when the chart is drawn for another span, look or step of time. */
+  --animate-bar: motion-bar var(--motion-slow) var(--ease-out) both;
+  @keyframes motion-bar { from { scale: 1 0; } }
+  /* The analysis's window: comes in from the side it stands on, as the reader does. */
+  --animate-side: motion-side var(--motion-slow) var(--ease-out) both;
+  @keyframes motion-side { from { opacity: 0; translate: var(--motion-shift-far) 0; } }
+  /* A new mark beside Done: drops into its place. */
+  --animate-land: motion-land var(--motion-slow) var(--ease-pop) both;
+  @keyframes motion-land { from { opacity: 0; translate: 0 calc(-1 * var(--motion-shift-far)); } }
   @keyframes motion-noted { from, 60% { outline: 2px solid var(--color-ink); } to { outline: 1px solid var(--color-line); } }
   @keyframes motion-fade { from { opacity: 0; } }
   @keyframes motion-rise { from { opacity: 0; translate: 0 var(--motion-shift); } }

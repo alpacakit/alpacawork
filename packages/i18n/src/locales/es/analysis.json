@@ -1,0 +1,242 @@
+{
+  "breakdown": {
+    "all_many": "Las {{count}} filas",
+    "all_one": "Las {{count}} filas",
+    "all_other": "Las {{count}} filas",
+    "tallied": "Contado con los registros de {{runs}} de {{of}} arranques",
+    "title": "Desglose",
+    "top": "Solo las primeras"
+  },
+  "bucket": {
+    "day": "Por día",
+    "label": "Intervalo",
+    "month": "Por mes",
+    "ongoing": "en curso",
+    "partial_many": "{{count}} días",
+    "partial_one": "{{count}} día",
+    "partial_other": "{{count}} días",
+    "week": "Por semana"
+  },
+  "chart": {
+    "finished": "Tareas terminadas",
+    "finishedTip": "{{total}}: sin correcciones {{passed}} · corregidas {{reworked}} · detenidas {{stopped}}",
+    "none": "Ninguna aceptada",
+    "share": "Proporción sin correcciones",
+    "sharePercentTip": "{{passed}} de {{accepted}} aceptadas · {{share}}",
+    "shareTip": "{{passed}} de {{accepted}} aceptadas",
+    "shareTipFew": "{{passed}} de {{accepted}} aceptadas (menos de 10)",
+    "value": "Valor del gráfico"
+  },
+  "colon": ": ",
+  "day": "{{weekday}} {{day}}",
+  "def": {
+    "after": "Las instrucciones añadidas durante el trabajo no cuentan. La proporción se muestra a partir de 10 tareas aceptadas.",
+    "conversationName": "Conversaciones nuevas",
+    "conversationText": "Conversaciones iniciadas por primera vez en este período",
+    "dayName": "Fechas",
+    "inputName": "Entrada",
+    "inputText": "Sin lecturas ni escrituras de caché",
+    "launchName": "Arranques",
+    "launchText": "Veces que se inició un agente (sin las entradas a uno ya en marcha)",
+    "lead": "Tareas aceptadas que cumplen las tres condiciones:",
+    "leadName": "Tiempo",
+    "leadText": "Desde la petición hasta la primera aceptación",
+    "modelName": "Modelo",
+    "modelText": "El primer modelo al que se encargó",
+    "one": "Enviada a revisión una vez como máximo",
+    "prName": "PR relacionados",
+    "prText": "PR que aparecen en las tareas aceptadas; el mismo PR cuenta una vez",
+    "runName": "Tiempo de ejecución",
+    "runText": "Tiempo total en marcha, sumando los paralelos",
+    "skillName": "Skills",
+    "skillText": "Arranques que llamaron a la skill o leyeron sus documentos",
+    "three": "Ninguna instrucción después de aceptarla (si llega, deja de contar)",
+    "tokensUnknown_many": "{{count}} arranques sin registro de tokens no están en los tokens",
+    "tokensUnknown_one": "{{count}} arranque sin registro de tokens no está en los tokens",
+    "tokensUnknown_other": "{{count}} arranques sin registro de tokens no están en los tokens",
+    "toolName": "Herramientas",
+    "toolText": "Sin las llamadas dentro de subagentes",
+    "two": "Sin devoluciones ni instrucciones añadidas durante la revisión"
+  },
+  "face": {
+    "analysis": "Análisis",
+    "label": "Vista",
+    "use": "Usar"
+  },
+  "home": {
+    "label": "{{marks}}. Abrir el análisis",
+    "marks_many": "{{count}} terminadas hoy · {{passed}} sin correcciones",
+    "marks_one": "{{count}} terminada hoy · {{passed}} sin correcciones",
+    "marks_other": "{{count}} terminadas hoy · {{passed}} sin correcciones"
+  },
+  "list": {
+    "back": "Lista",
+    "close": "Cerrar",
+    "day": "Día",
+    "empty": "No hay tareas",
+    "more_many": "{{count}} más",
+    "more_one": "{{count}} más",
+    "more_other": "{{count}} más",
+    "outcome": "Resultado",
+    "task": "Tarea",
+    "title": "{{title}} {{n}} {{unit}}"
+  },
+  "look": {
+    "label": "Qué ver",
+    "tasks": "Tareas",
+    "usage": "Uso de la IA"
+  },
+  "outcome": {
+    "none": "En curso",
+    "passed": "Sin correcciones",
+    "reworked": "Corregida",
+    "stopped": "Detenida"
+  },
+  "period": {
+    "28d": "Últimos 28 días",
+    "7d": "Últimos 7 días",
+    "all": "Todo",
+    "days_many": "{{count}} días",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "earlier": "Período anterior",
+    "label": "Período",
+    "later": "Período siguiente",
+    "today": "Hoy"
+  },
+  "previous": {
+    "day": "Día anterior",
+    "days_many": "{{count}} días anteriores",
+    "days_one": "{{count}} día anterior",
+    "days_other": "{{count}} días anteriores",
+    "none": "{{span}}: sin registros"
+  },
+  "range": "{{from}} – {{to}}",
+  "same": "igual",
+  "sep": " · ",
+  "tasks": {
+    "accepted": "Aceptadas",
+    "by": {
+      "agent": "Tipo de IA",
+      "model": "Modelo",
+      "project": "Proyecto"
+    },
+    "cols": {
+      "accepted": "Aceptadas",
+      "finished": "Terminadas",
+      "lead": "Tiempo (mediana)",
+      "passed": "Sin correcciones",
+      "share": "Proporción sin correcciones",
+      "submits": "Revisiones por tarea"
+    },
+    "few": "Menos de 10 tareas aceptadas",
+    "finished": "Tareas terminadas",
+    "grass": "Tareas terminadas por día",
+    "grassFew": "Menos",
+    "grassMany": "Más",
+    "grassTip_many": "{{day}}  {{count}} tareas terminadas",
+    "grassTip_one": "{{day}}  {{count}} tarea terminada",
+    "grassTip_other": "{{day}}  {{count}} tareas terminadas",
+    "howCounted": "Cómo se cuenta",
+    "passed": "Sin correcciones",
+    "reworked": "Corregidas",
+    "stopped": "Detenidas"
+  },
+  "time": {
+    "ai": "IA trabajando",
+    "answer": "Esperando tu respuesta",
+    "other": "Otro",
+    "review": "Esperando tu revisión",
+    "total": "Tiempo total {{time}}",
+    "you": "Tu turno"
+  },
+  "unit": {
+    "hours": "h",
+    "join": "{{value}} {{unit}}",
+    "joinTight": "{{value}} {{unit}}",
+    "minutes": "min",
+    "points": " pts",
+    "scales": [
+      {
+        "at": 1000000000,
+        "digits": 1,
+        "unit": "mil M"
+      },
+      {
+        "at": 1000000,
+        "digits": 1,
+        "unit": "M"
+      },
+      {
+        "at": 1000,
+        "digits": 0,
+        "unit": "mil"
+      }
+    ],
+    "taskCount_many": "tareas",
+    "taskCount_one": "tarea",
+    "taskCount_other": "tareas",
+    "tasks_many": "tareas",
+    "tasks_one": "tarea",
+    "tasks_other": "tareas",
+    "times_many": "veces",
+    "times_one": "vez",
+    "times_other": "veces"
+  },
+  "until": {
+    "lead": "Tiempo (mediana)",
+    "prs": "PR relacionados",
+    "prsList": "Con PR relacionados",
+    "questions": "Preguntas para ti",
+    "questionsList": "Con preguntas",
+    "submits": "Enviadas a revisión",
+    "title": "Hasta la aceptación"
+  },
+  "usage": {
+    "by": {
+      "agent": "Tipo de IA",
+      "mcp": "MCP",
+      "model": "Modelo",
+      "skill": "Skill",
+      "tool": "Herramienta"
+    },
+    "cache": "Caché",
+    "calls": "Llamadas",
+    "heads": {
+      "agent": "IA que trabajó",
+      "mcp": "MCP",
+      "model": "Modelo que trabajó",
+      "skill": "Skill",
+      "tool": "Herramienta"
+    },
+    "includesWorking": "Incluye las tareas en curso",
+    "input": "Entrada",
+    "launches": "Arranques",
+    "newConversations": "Conversaciones nuevas",
+    "none": "Sin registros",
+    "output": "Salida",
+    "runMs": "Tiempo de ejecución",
+    "tasks": "Tareas",
+    "tokens": "Tokens"
+  },
+  "values": {
+    "accepted": "Aceptada {{at}}",
+    "band": {
+      "doing": "En curso",
+      "paused": "En pausa",
+      "yours": "Tu turno"
+    },
+    "conversations": "Conversaciones nuevas",
+    "inputCache": "Entrada + caché",
+    "marks": {
+      "instruction": "Instrucción",
+      "sendBack": "Devolución"
+    },
+    "models": "Modelo que trabajó",
+    "open": "Abrir la tarea",
+    "skills": "Skills",
+    "stopped": "Detenida {{at}}",
+    "tools": "Herramientas",
+    "usage": "Uso de la IA"
+  }
+}

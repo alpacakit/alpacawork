@@ -1,0 +1,231 @@
+{
+  "breakdown": {
+    "all_one": "All {{count}} row",
+    "all_other": "All {{count}} rows",
+    "tallied": "Counted from the records of {{runs}} of {{of}} launches",
+    "title": "Break down",
+    "top": "Top rows only"
+  },
+  "bucket": {
+    "day": "Daily",
+    "label": "Step",
+    "month": "Monthly",
+    "ongoing": "in progress",
+    "partial_one": "{{count}} day",
+    "partial_other": "{{count}} days",
+    "week": "Weekly"
+  },
+  "chart": {
+    "finished": "Finished tasks",
+    "finishedTip": "{{total}}: no fixes {{passed}} · fixed {{reworked}} · stopped {{stopped}}",
+    "none": "None accepted",
+    "share": "Share with no fixes",
+    "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
+    "shareTip": "{{passed}} of {{accepted}} accepted",
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)",
+    "value": "Value drawn"
+  },
+  "colon": ": ",
+  "day": "{{weekday}} {{day}}",
+  "def": {
+    "after": "Instructions added while it worked do not count. The share is shown from 10 accepted tasks.",
+    "conversationName": "New conversations",
+    "conversationText": "Conversations first launched in this span",
+    "dayName": "Dates",
+    "inputName": "Input",
+    "inputText": "Cache reads and writes excluded",
+    "launchName": "Launches",
+    "launchText": "Times an agent was started (input passed to one already running excluded)",
+    "lead": "Accepted tasks that meet all three:",
+    "leadName": "Time taken",
+    "leadText": "From the request to the first acceptance",
+    "modelName": "Model",
+    "modelText": "The model first given the task",
+    "one": "Sent for review at most once",
+    "prName": "Related PRs",
+    "prText": "PRs that appear in the accepted tasks; the same PR counts once",
+    "runName": "Run time",
+    "runText": "Total time running, parallel runs added",
+    "skillName": "Skills",
+    "skillText": "Launches that called the skill or read its documents",
+    "three": "No instruction after acceptance (one coming later takes it out)",
+    "tokensUnknown_one": "{{count}} launch without a token record is not in the tokens",
+    "tokensUnknown_other": "{{count}} launches without a token record are not in the tokens",
+    "toolName": "Tools",
+    "toolText": "Calls inside subagents excluded",
+    "two": "No send-back and no added instruction while in review"
+  },
+  "face": {
+    "analysis": "Analysis",
+    "label": "Face",
+    "use": "Use"
+  },
+  "home": {
+    "label": "{{marks}}. Open the analysis",
+    "marks_one": "{{count}} finished today · {{passed}} with no fixes",
+    "marks_other": "{{count}} finished today · {{passed}} with no fixes"
+  },
+  "list": {
+    "back": "List",
+    "close": "Close",
+    "day": "Day",
+    "empty": "No tasks here",
+    "more_one": "{{count}} more",
+    "more_other": "{{count}} more",
+    "outcome": "Outcome",
+    "task": "Task",
+    "title": "{{title}} {{n}} {{unit}}"
+  },
+  "look": {
+    "label": "View",
+    "tasks": "Tasks",
+    "usage": "AI usage"
+  },
+  "outcome": {
+    "none": "Working",
+    "passed": "No fixes",
+    "reworked": "Fixed",
+    "stopped": "Stopped"
+  },
+  "period": {
+    "28d": "Last 28 days",
+    "7d": "Last 7 days",
+    "all": "All time",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "earlier": "Earlier span",
+    "label": "Span",
+    "later": "Later span",
+    "today": "Today"
+  },
+  "previous": {
+    "day": "Day before",
+    "days_one": "{{count}} day before",
+    "days_other": "{{count}} days before",
+    "none": "{{span}}: no records"
+  },
+  "range": "{{from}} – {{to}}",
+  "same": "same",
+  "sep": " · ",
+  "tasks": {
+    "accepted": "Accepted",
+    "by": {
+      "agent": "AI kind",
+      "model": "Model",
+      "project": "Project"
+    },
+    "cols": {
+      "accepted": "Accepted",
+      "finished": "Finished",
+      "lead": "Time taken (median)",
+      "passed": "No fixes",
+      "share": "Share with no fixes",
+      "submits": "Reviews per task"
+    },
+    "few": "Fewer than 10 accepted tasks",
+    "finished": "Finished tasks",
+    "grass": "Finished tasks by day",
+    "grassFew": "Fewer",
+    "grassMany": "More",
+    "grassTip_one": "{{day}}  {{count}} task finished",
+    "grassTip_other": "{{day}}  {{count}} tasks finished",
+    "howCounted": "How it is counted",
+    "passed": "Through with no fixes",
+    "reworked": "Fixed",
+    "stopped": "Stopped"
+  },
+  "time": {
+    "ai": "AI at work",
+    "answer": "Awaiting your answer",
+    "other": "Other",
+    "review": "Awaiting your review",
+    "total": "Total time taken {{time}}",
+    "you": "Your turn"
+  },
+  "unit": {
+    "hours": "h",
+    "join": "{{value}} {{unit}}",
+    "joinTight": "{{value}}{{unit}}",
+    "minutes": "min",
+    "points": " pts",
+    "scales": [
+      {
+        "at": 1000000000,
+        "digits": 1,
+        "unit": "B"
+      },
+      {
+        "at": 1000000,
+        "digits": 1,
+        "unit": "M"
+      },
+      {
+        "at": 1000,
+        "digits": 0,
+        "unit": "K"
+      }
+    ],
+    "taskCount_one": "task",
+    "taskCount_other": "tasks",
+    "tasks_one": "task",
+    "tasks_other": "tasks",
+    "times_one": "time",
+    "times_other": "times"
+  },
+  "until": {
+    "lead": "Time taken (median)",
+    "prs": "Related PRs",
+    "prsList": "With related PRs",
+    "questions": "Questions to you",
+    "questionsList": "With questions",
+    "submits": "Sent for review",
+    "title": "Until accepted"
+  },
+  "usage": {
+    "by": {
+      "agent": "AI kind",
+      "mcp": "MCP",
+      "model": "Model",
+      "skill": "Skill",
+      "tool": "Tool"
+    },
+    "cache": "Cache",
+    "calls": "Calls",
+    "heads": {
+      "agent": "AI that ran",
+      "mcp": "MCP",
+      "model": "Model that ran",
+      "skill": "Skill",
+      "tool": "Tool"
+    },
+    "includesWorking": "Tasks still at work included",
+    "input": "Input",
+    "launches": "Launches",
+    "newConversations": "New conversations",
+    "none": "No records",
+    "output": "Output",
+    "runMs": "Run time",
+    "tasks": "Tasks",
+    "tokens": "Tokens"
+  },
+  "values": {
+    "accepted": "Accepted {{at}}",
+    "band": {
+      "doing": "Working",
+      "paused": "Paused",
+      "yours": "Your turn"
+    },
+    "conversations": "New conversations",
+    "inputCache": "Input + cache",
+    "marks": {
+      "instruction": "Instruction",
+      "sendBack": "Send-back"
+    },
+    "models": "Model that ran",
+    "open": "Open task",
+    "skills": "Skills",
+    "stopped": "Stopped {{at}}",
+    "tools": "Tools",
+    "usage": "AI usage"
+  }
+}

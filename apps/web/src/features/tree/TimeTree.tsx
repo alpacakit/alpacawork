@@ -7,6 +7,7 @@ import { useTimelineAxis } from "@/data/timeline-axis";
 import { useLaneReads, useTimelineLanes } from "@/data/timeline-lanes";
 import { errorText } from "@/data/client";
 import { createContext, Fragment, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { TodayMarks } from "@/features/analysis/FaceSwitch";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
@@ -534,6 +535,7 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           <span className="font-normal tabular-nums text-muted">{section.count}</span>
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
+        {section.section === "done" && <TodayMarks />}
       </h2>
     </div>
   </div>;

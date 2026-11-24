@@ -1,0 +1,215 @@
+{
+  "breakdown": {
+    "all_other": "全部 {{count}} 行",
+    "tallied": "根据 {{of}} 次启动中 {{runs}} 次的记录统计",
+    "title": "分类查看",
+    "top": "只看前几行"
+  },
+  "bucket": {
+    "day": "按日",
+    "label": "间隔",
+    "month": "按月",
+    "ongoing": "进行中",
+    "partial_other": "{{count}} 天",
+    "week": "按周"
+  },
+  "chart": {
+    "finished": "结束的任务",
+    "finishedTip": "{{total}} 个：无需返工 {{passed}}・有返工 {{reworked}}・中止 {{stopped}}",
+    "none": "无验收",
+    "share": "无需返工的比例",
+    "sharePercentTip": "验收的 {{accepted}} 个中 {{passed}} 个・{{share}}",
+    "shareTip": "验收的 {{accepted}} 个中 {{passed}} 个",
+    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）",
+    "value": "柱状图的值"
+  },
+  "colon": "：",
+  "day": "{{day}}（{{weekday}}）",
+  "def": {
+    "after": "工作中追加的指示不计入。比例在验收 10 个以上时才显示。",
+    "conversationName": "新会话",
+    "conversationText": "在此期间首次启动的会话",
+    "dayName": "日期",
+    "inputName": "输入",
+    "inputText": "不含缓存的读写",
+    "launchName": "启动",
+    "launchText": "启动代理的次数（不含传给运行中代理的输入）",
+    "lead": "验收的任务中，满足以下三项的任务。",
+    "leadName": "耗时",
+    "leadText": "从请求到首次验收",
+    "modelName": "模型",
+    "modelText": "首次委托的模型",
+    "one": "提交确认最多 1 次",
+    "prName": "相关 PR",
+    "prText": "验收任务中出现的 PR，同一个 PR 只计 1 次",
+    "runName": "运行时间",
+    "runText": "运行时长的合计，并行部分也相加",
+    "skillName": "技能",
+    "skillText": "调用了技能或读取了技能文档的启动",
+    "three": "验收后没有收到指示（收到则不计入）",
+    "tokensUnknown_other": "没有令牌记录的 {{count}} 次启动不计入令牌",
+    "toolName": "工具",
+    "toolText": "不含子代理内的调用",
+    "two": "确认中没有退回也没有追加指示"
+  },
+  "face": {
+    "analysis": "分析",
+    "label": "界面",
+    "use": "使用"
+  },
+  "home": {
+    "label": "{{marks}}。打开分析",
+    "marks_other": "今天完成 {{count}} 个・无需返工 {{passed}} 个"
+  },
+  "list": {
+    "back": "列表",
+    "close": "关闭",
+    "day": "日",
+    "empty": "没有相应的任务",
+    "more_other": "还有 {{count}} 个",
+    "outcome": "结果",
+    "task": "任务",
+    "title": "{{title}} {{n}} {{unit}}"
+  },
+  "look": {
+    "label": "查看内容",
+    "tasks": "任务",
+    "usage": "AI 使用量"
+  },
+  "outcome": {
+    "none": "进行中",
+    "passed": "无需返工",
+    "reworked": "有返工",
+    "stopped": "中止"
+  },
+  "period": {
+    "28d": "最近 28 天",
+    "7d": "最近 7 天",
+    "all": "全部期间",
+    "days_other": "{{count}} 天",
+    "earlier": "上一期间",
+    "label": "期间",
+    "later": "下一期间",
+    "today": "今天"
+  },
+  "previous": {
+    "day": "前一天",
+    "days_other": "前 {{count}} 天",
+    "none": "{{span}}：无记录"
+  },
+  "range": "{{from}}～{{to}}",
+  "same": "相同",
+  "sep": "・",
+  "tasks": {
+    "accepted": "已验收",
+    "by": {
+      "agent": "AI 种类",
+      "model": "模型",
+      "project": "项目"
+    },
+    "cols": {
+      "accepted": "已验收",
+      "finished": "已结束",
+      "lead": "耗时（中位数）",
+      "passed": "无需返工",
+      "share": "无需返工的比例",
+      "submits": "每个任务的确认次数"
+    },
+    "few": "验收的任务不足 10 个",
+    "finished": "结束的任务",
+    "grass": "每日结束的任务",
+    "grassFew": "少",
+    "grassMany": "多",
+    "grassTip_other": "{{day}}　结束的任务 {{count}} 个",
+    "howCounted": "统计方式",
+    "passed": "无需返工即通过",
+    "reworked": "有返工",
+    "stopped": "中止"
+  },
+  "time": {
+    "ai": "AI 运行",
+    "answer": "等待回答",
+    "other": "其他",
+    "review": "等待确认",
+    "total": "耗时合计 {{time}}",
+    "you": "轮到你"
+  },
+  "unit": {
+    "hours": "小时",
+    "join": "{{value}} {{unit}}",
+    "joinTight": "{{value}}{{unit}}",
+    "minutes": "分钟",
+    "points": " 个百分点",
+    "scales": [
+      {
+        "at": 100000000,
+        "digits": 1,
+        "unit": "亿"
+      },
+      {
+        "at": 10000,
+        "digits": 0,
+        "unit": "万"
+      }
+    ],
+    "taskCount_other": "个任务",
+    "tasks_other": "个",
+    "times_other": "次"
+  },
+  "until": {
+    "lead": "耗时（中位数）",
+    "prs": "相关 PR",
+    "prsList": "有相关 PR",
+    "questions": "向你提出的问题",
+    "questionsList": "有提问",
+    "submits": "提交确认次数",
+    "title": "到验收为止"
+  },
+  "usage": {
+    "by": {
+      "agent": "AI 种类",
+      "mcp": "MCP",
+      "model": "模型",
+      "skill": "技能",
+      "tool": "工具"
+    },
+    "cache": "缓存",
+    "calls": "调用",
+    "heads": {
+      "agent": "运行的 AI",
+      "mcp": "MCP",
+      "model": "运行的模型",
+      "skill": "技能",
+      "tool": "工具"
+    },
+    "includesWorking": "包括进行中的任务",
+    "input": "输入",
+    "launches": "启动",
+    "newConversations": "新会话",
+    "none": "无记录",
+    "output": "输出",
+    "runMs": "运行时间",
+    "tasks": "任务",
+    "tokens": "令牌"
+  },
+  "values": {
+    "accepted": "{{at}} 验收",
+    "band": {
+      "doing": "进行中",
+      "paused": "暂停",
+      "yours": "轮到你"
+    },
+    "conversations": "新会话",
+    "inputCache": "输入＋缓存",
+    "marks": {
+      "instruction": "指示",
+      "sendBack": "退回"
+    },
+    "models": "运行的模型",
+    "open": "打开任务",
+    "skills": "技能",
+    "stopped": "{{at}} 中止",
+    "tools": "工具",
+    "usage": "AI 使用量"
+  }
+}

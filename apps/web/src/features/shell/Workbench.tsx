@@ -25,6 +25,7 @@ import { useDocumentTitle } from "@/features/chrome/use-document-title";
 import { useGlobalShortcuts } from "@/features/chrome/use-shortcuts";
 import { ListNavigationProvider } from "@/features/tree/list-navigation";
 import { TimeTree } from "@/features/tree/TimeTree";
+import { AnalysisView } from "@/features/analysis/AnalysisView";
 import { useDeviceValue } from "@/lib/device-storage";
 import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
@@ -92,6 +93,7 @@ export function Workbench() {
   const narrow = useNarrow();
   const noneSelected = useViewStore((state) => shownInReader(state) === null);
   const project = useViewStore(state => state.project);
+  const analysis = useViewStore(state => state.analysis);
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
   const readerOpen = useReaderOpen();
@@ -152,7 +154,7 @@ export function Workbench() {
             {place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
-              : <TimeTree />}
+              : analysis ? <AnalysisView place={analysis} /> : <TimeTree />}
           </div>
           <Reader mode={mode} overlapping={overlapping} canDock={canDock} />
         </>}</IndexRegions>

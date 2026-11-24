@@ -18,6 +18,7 @@ import { rememberNavigation, resumeLanding, type Resume } from "./resume";
 import { addressesIn, screenSettings, setUrlValue, urlValue } from "./screen-settings";
 import { applyTimeViewUrl, useTimeView } from "./time-view";
 import { attachScreen, navigate, onPersonMove, showScreen, type Write } from "@/lib/history";
+import { ANALYSIS_KEYS, analysisValues, readAnalysis } from "@/features/analysis/place";
 
 /** The same screen showing another URL of it (a link pressed), for the intent applying it to write as its step. */
 let showAt: ((url: URL) => void) | null = null;
@@ -135,7 +136,9 @@ function detailOf(task: string | null, row: Parameters<typeof taskDetail>[0] | u
  */
 function readNavigation(url: URL, index: TaskIndex, root: string, projects: Projects, missing: ReadonlySet<string>,
   turnSequence = isTurnSequenceNavigation()): Navigation {
-  const requestedTask = urlValue("task", url);
+  // The analysis face shows no task: one the URL names beside it is left out.
+  const analysis = readAnalysis(url.searchParams);
+  const requestedTask = analysis ? null : urlValue("task", url);
   const row = requestedTask ? taskAtAddress(requestedTask, index) ?? readerTask(queryClient, root, requestedTask) : undefined;
   const refusal = requestedTask ? readQuery(queryClient, ['task', root, requestedTask])?.state.error : undefined;
   const task = row?.id ?? (refusal instanceof ApiError && refusal.code === 'forbidden' ? requestedTask : null);
@@ -162,7 +165,7 @@ function readNavigation(url: URL, index: TaskIndex, root: string, projects: Proj
     image: shown ? validImage(image, pane, path, detail, root) : null,
     view: validView(view),
     event: shown && pane === "task" ? validEvent(urlValue("event", url)) : null,
-    query: urlValue("q", url) ?? "", turnSequence };
+    query: urlValue("q", url) ?? "", turnSequence, analysis };
 }
 
 /**
@@ -183,7 +186,7 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   // The navigation's keys are written afresh in one order, so one navigation has one URL whatever URL it came from
   // (the repair below compares them). Only full/partial mode belongs to the URL.
   // A task and the project are named by their Task IDs.
-  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event"] as const) setUrlValue(key, null, url);
+  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event", ...ANALYSIS_KEYS] as const) setUrlValue(key, null, url);
   const task = readerOn(navigation);
   const full = !!task && navigation.full;
   if (navigation.project) setUrlValue("project", navigation.project, url);
@@ -195,6 +198,7 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   if (task && navigation.image) setUrlValue("image", navigation.image, url);
   if (task && navigation.view) setUrlValue("view", navigation.view, url);
   if (task && navigation.pane === "task" && navigation.event) setUrlValue("event", navigation.event, url);
+  for (const [key, value] of analysisValues(navigation.analysis)) setUrlValue(key, value, url);
   return url;
 }
 

@@ -14,6 +14,7 @@ import { SearchField } from "./SearchField";
 import { PresenceMenu } from './PresenceMenu';
 import { LimitsMenu } from './LimitsMenu';
 import { ProjectMenu } from "./ProjectMenu";
+import { FaceSwitch } from "@/features/analysis/FaceSwitch";
 import { OfflineMark } from "./OfflineMark";
 import { useOfflineShown } from "@/data/reach";
 import { UpdateMark, useGearLabel } from "@/features/update/UpdateView";
@@ -54,7 +55,9 @@ export function AppBar() {
   return (
     <header className={cn("@container flex min-h-bar w-full flex-none items-center gap-3 px-6 py-2 narrow:min-h-13.5 narrow:gap-0.5 narrow:px-3 max-[360px]:px-2",
       readerOpen && !narrow && "pr-[calc(var(--window-reserve)+36px)]")}>
-      {ready ? <ProjectMenu className={cn(SLOT, NAME)} /> : <RegionSkeleton shape="title" className={SLOT} />}
+      {/* The name, then the faces of the screen beside it (FaceSwitch): the name gives way to them when the room runs short. */}
+      {ready ? <div className={cn(SLOT, "flex items-center gap-3 narrow:gap-2")}><ProjectMenu className={NAME} /><FaceSwitch className="flex-none" /></div>
+        : <RegionSkeleton shape="title" className={SLOT} />}
       <SearchField className="mx-auto w-full max-w-120 min-w-50 flex-[1_0_200px] compactbar:hidden" />
       <div className={BUTTONS}>
         {/* What the bar reports comes first, beside the name: out of reach, the screen's one offline mark; then how much
