@@ -6,28 +6,29 @@
     "addRow": "+ Añadir fila",
     "aiStack": {
       "add": "+ Añadir una IA alternativa",
-      "addFirst": "+ Añadir la IA de uso normal",
-      "agentFor": "Agente de la fila {{n}}",
-      "agentsNote": "Un agente desactivado no se puede elegir en «{{tasks}}» ni en «{{input}}».",
+      "addFirst": "+ Añadir la IA principal",
+      "agentFor": "{{role}}: Agente",
+      "agentsNote": "Un agente desactivado no se puede elegir en las dos listas de arriba.",
       "agentsTitle": "Ajustes de cada agente",
-      "down": "Bajar la fila {{n}}",
-      "first": "De uso normal",
+      "down": "Bajar {{role}}",
+      "fallback": "Alternativa {{n}}",
+      "first": "Principal",
       "issue": {
         "disabled": "{{agent}} está desactivado. Actívalo o quita esta fila.",
-        "empty": "Añade la IA de uso normal.",
+        "empty": "Añade la IA principal.",
         "missing": "No hay ningún agente llamado {{agent}}. Elige otro agente o quita esta fila.",
         "value": "{{row}} «{{value}}» no es un valor de {{agent}}. Vuelve a elegir."
       },
-      "lead": "Normalmente la IA 1 hace las tareas. Solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden. Si también se detiene la última, el trabajo se detiene y se te avisa.",
-      "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
+      "lead": "Solo si la IA principal se detiene por un límite de uso o de capacidad, las alternativas toman el relevo, de arriba abajo. Si se detienen todas, el trabajo se detiene y se te avisa.",
+      "namedOnly": "Una IA que no está aquí solo se usa cuando una solicitud la nombra.",
       "notOffered": "{{value}} (no es un valor)",
-      "remove": "Quitar la fila {{n}}",
-      "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
+      "remove": "Quitar {{role}}",
+      "repeated": "Igual que {{role}}, así que esta fila nunca se usa.",
       "saveRefused": "No se guardó: “{{list}}” tiene algo que corregir. Corrige lo marcado en rojo y vuelve a guardar.",
       "showRow": "Ir a la fila",
       "title": "IA de las tareas",
-      "up": "Subir la fila {{n}}",
-      "valueFor": "{{row}} de la fila {{n}}"
+      "up": "Subir {{role}}",
+      "valueFor": "{{role}}: {{row}}"
     },
     "authNeeded": "Se requiere autenticación. Inicia sesión en {{adapter}} en el PC del servidor",
     "authNeededCommand": "Se requiere autenticación. En el PC del servidor, ejecuta <code>{{command}}</code>",
@@ -53,7 +54,7 @@
       "windowOf": "Ventana de contexto de {{model}} (tokens)"
     },
     "coordinatorStack": {
-      "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
+      "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas.",
       "title": "IA con la que hablas en el cuadro de texto (coordinador)"
     },
     "defaultsChanged": "Se actualizaron las opciones de inicio predeterminadas de este adaptador",
