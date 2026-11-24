@@ -9,27 +9,13 @@ import { notify } from "@/lib/notify";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { barLimit, besideModelWindow, limitTone, readWords, resetWords, windowLabel, type LimitTone } from "@/domain/limits";
+import { barLimit, besideModelWindow, limitTone, readWords, resetWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { cn } from "@/lib/utils";
+import { TONE_FILL, TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
 
 /* Hallmark · component: plan limits in the bar · genre: modern-minimal · theme: the app's own tokens (working, warn, error, line) */
-
-const TONE_TEXT: Record<LimitTone, string> = { normal: "", near: "text-warn", spent: "text-error" };
-const TONE_FILL: Record<LimitTone, string> = { normal: "bg-working", near: "bg-warn", spent: "bg-error" };
-const TONE_STROKE: Record<LimitTone, string> = { normal: "stroke-working", near: "stroke-warn", spent: "stroke-error" };
-const percentText = (value: number) => `${Math.round(value)}%`;
-
-/** A ring filled as far as the window is used: the bar's mark, wide or narrow. Empty at 0 and while the figure is unknown. */
-function Ring({ percent, tone }: { percent: number; tone: LimitTone }) {
-  const r = 6, length = 2 * Math.PI * r;
-  return <svg aria-hidden viewBox="0 0 16 16" className="size-4 flex-none -rotate-90">
-    <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" className="stroke-line" />
-    {percent > 0 && <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" strokeLinecap="round" className={TONE_STROKE[tone]}
-      strokeDasharray={`${length * Math.min(100, percent) / 100} ${length}`} />}
-  </svg>;
-}
 
 /**
  * One window in the menu: its name, how full it is, and under them when it resets. The reset has the row's whole width,
@@ -97,7 +83,7 @@ export function LimitsMenu() {
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
       aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-2.5">
-      <Ring percent={percent} tone={tone} />
+      <UsageRing percent={percent} tone={tone} />
       {/* Which agent and which of its windows the figure is: a computer has the room; a phone keeps the figure. The
           window's name goes first, where the buttons' side of the bar (AppBar BUTTONS) no longer holds it and it would
           take the search box's room. */}

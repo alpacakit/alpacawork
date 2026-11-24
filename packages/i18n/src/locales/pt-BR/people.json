@@ -28,6 +28,18 @@
     "tomorrow": "amanhã {{clock}}",
     "yesterday": "ontem {{clock}}"
   },
+  "context": {
+    "compacted": "A conversa acabou de ser compactada. A próxima resposta dirá quanto está em uso.",
+    "label": "Contexto {{figure}} (usado {{used}} / limite {{window}})",
+    "noWindow": "Desconhecido",
+    "title": "Contexto",
+    "tokens_one": "{{tokens}} token",
+    "tokens_many": "{{tokens}} tokens",
+    "tokens_other": "{{tokens}} tokens",
+    "used": "Usado",
+    "waiting": "Medindo",
+    "window": "Limite"
+  },
   "day": {
     "date": "{{weekday}}, {{date}}",
     "tomorrow": "Amanhã",

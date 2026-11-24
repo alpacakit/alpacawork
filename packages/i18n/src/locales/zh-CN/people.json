@@ -28,6 +28,16 @@
     "tomorrow": "明天 {{clock}}",
     "yesterday": "昨天 {{clock}}"
   },
+  "context": {
+    "compacted": "对话刚刚被压缩。下一次回复后会显示用量。",
+    "label": "上下文 {{figure}}（已用 {{used}} / 上限 {{window}}）",
+    "noWindow": "未知",
+    "title": "上下文",
+    "tokens_other": "{{tokens}} 个令牌",
+    "used": "已用",
+    "waiting": "等待计量",
+    "window": "上限"
+  },
   "day": {
     "date": "{{date}} {{weekday}}",
     "tomorrow": "明天",
