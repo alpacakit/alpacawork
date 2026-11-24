@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
 import { subscribeStep } from "@/state/history-step";
-import { daysBetween, dayLabel, monthLabel, spanLabel, ticks, weekday } from "./format";
+import { daysBetween, dayLabel, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
 import { tipBeside } from "./parts";
 import type { Bucket } from "./contract";
@@ -23,7 +23,9 @@ export const LEFT = "col-span-3", RIGHT = "col-span-9 min-w-0";
 
 /** Four numbers across the top, three columns each; on a phone two by two. */
 export function Leads({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-4 gap-x-6 narrow:grid-cols-2 narrow:gap-x-3 narrow:gap-y-5">{children}</div>;
+  // Each number spans four shared rows (its name, value, the span before, the whole record), so neighbours' lines stand
+  // level even where one of them wraps; a phone's second pair stands a step below the first.
+  return <div className="grid grid-cols-4 gap-x-6 narrow:grid-cols-2 narrow:gap-x-3 [&>*:nth-child(n+3)]:narrow:mt-5">{children}</div>;
 }
 
 /**
@@ -32,11 +34,11 @@ export function Leads({ children }: { children: ReactNode }) {
  */
 export function Lead({ name, value, beside, compare, ever }: { name: ReactNode; value: ReactNode; beside?: ReactNode; compare: ReactNode; ever?: string | null }) {
   const { t } = useTranslation("analysis");
-  return <div className="min-w-0">
-    <div className="flex items-center text-xs whitespace-nowrap text-muted">{name}</div>
-    <div className="flex h-[45px] items-center gap-5 narrow:h-[33px] narrow:gap-3">{value}{beside}</div>
-    {compare}
-    {ever && <div className="text-xs whitespace-nowrap text-soft">{t("lead.ever", { value: ever })}</div>}
+  return <div className="row-span-4 grid min-w-0 grid-rows-subgrid">
+    <div className="flex min-w-0 flex-wrap items-center text-xs text-muted">{name}</div>
+    <div className="flex h-[45px] min-w-0 items-center gap-5 narrow:h-[33px] narrow:gap-3">{value}{beside}</div>
+    <div className="min-w-0">{compare}</div>
+    <div className="text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
   </div>;
 }
 
@@ -166,7 +168,7 @@ type Scale = { top: number; label: string };
 export function useScale(largest: number, unit: number, unitName: string, wholeOnly: boolean): Scale {
   const { t } = useTranslation("analysis");
   const marks = ticks(Math.max(0, largest), unit, wholeOnly), top = marks[marks.length - 1] || unit;
-  const written = (Math.round(top / unit * 100) / 100).toLocaleString();
+  const written = numberText(Math.round(top / unit * 100) / 100);
   return { top, label: unitName ? t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) : written };
 }
 

@@ -11,6 +11,8 @@ export type Kind = "tasks" | "times" | "plain" | "hours" | "tokens";
 const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
 const whole = (value: number) => Math.round(value).toLocaleString(locale());
+/** A number in the screen's language (not the browser's), to two places at most. */
+export const numberText = (value: number) => value.toLocaleString(locale(), { maximumFractionDigits: 2 });
 const fixed = (value: number, digits: number) => value.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const HOUR = 3_600_000;
 

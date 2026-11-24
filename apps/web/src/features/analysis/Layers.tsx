@@ -8,7 +8,7 @@ import { useNarrow, useViewStore } from "@/state/view-store";
 import { useWorkspaceInfo } from "@/data/queries";
 import { cn } from "@/lib/utils";
 import { useUnitList, useUnitValues } from "./data";
-import { duration, format, instant, spanLabel } from "./format";
+import { duration, format, instant, numberText, spanLabel } from "./format";
 import { listColumn, listTitle, listUnit, writeValue } from "./lists";
 import { PointerTip, Square, tip } from "./parts";
 import type { ListRow, UnitValues } from "./contract";
@@ -78,7 +78,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
   return <div className="animate-rise">
-    <h3 className="text-xl font-semibold">{t("list.title", { title: listTitle(list), n: first.total.toLocaleString(), unit: listUnit(list, first.total) })}</h3>
+    <h3 className="text-xl font-semibold">{t("list.title", { title: listTitle(list), n: numberText(first.total), unit: listUnit(list, first.total) })}</h3>
     <p className="mt-0.5 text-xs text-soft">{[member, span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
     {rows.length ? <>
       <div className="mt-4 grid h-7 grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)] items-center gap-x-3 border-b border-rule text-xs text-soft">
@@ -136,7 +136,7 @@ function UnitPane({ unit }: { unit: string }) {
       {values.time.other >= 60_000 && <span className="inline-flex items-center"><Square className="bg-rest" />{t("time.other")}<b className="ms-1.5 font-semibold text-ink">{duration(values.time.other)}</b></span>}
     </p>
     {facts.length > 0 && <p className="mt-2 flex flex-wrap gap-x-4.5 gap-y-1 text-muted">
-      {facts.map(([name, n]) => <span key={name}>{name}<b className="ms-1.5 font-semibold text-ink">{n.toLocaleString()}</b></span>)}</p>}
+      {facts.map(([name, n]) => <span key={name}>{name}<b className="ms-1.5 font-semibold text-ink">{numberText(n)}</b></span>)}</p>}
     {used.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.usage")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{used.map(([name, text]) => <span key={name}>{name}<b className="ms-1.5 font-semibold text-ink">{text}</b></span>)}</p>
@@ -160,7 +160,7 @@ function UnitPane({ unit }: { unit: string }) {
     {values.tools.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.tools")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{values.tools.slice(0, 8).map(tool =>
-        <span key={tool.name}>{tool.name}<b className="ms-1.5 font-semibold text-ink">{tool.calls.toLocaleString()}</b></span>)}</p>
+        <span key={tool.name}>{tool.name}<b className="ms-1.5 font-semibold text-ink">{numberText(tool.calls)}</b></span>)}</p>
     </>}
     <p className="mt-7"><Button variant="outline" onClick={() => useViewStore.getState().openFromAnalysis(values.unit.id)}>{t("values.open")}</Button></p>
   </div>;
