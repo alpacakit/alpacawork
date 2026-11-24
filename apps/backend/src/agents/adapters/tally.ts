@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { literalInvocation } from '../../runs/shell-command.js';
+import { simpleInvocations } from '../../runs/shell-command.js';
 import { object } from './output.js';
 
-export const TALLY_VERSION = 1;
+export const TALLY_VERSION = 2;
 const name = z.string().regex(/^[A-Za-z0-9_.:/@+ -]{1,160}$/);
 const count = z.number().int().nonnegative();
 export const tallySchema = z.strictObject({
@@ -16,14 +16,33 @@ export type Tally = z.infer<typeof tallySchema>;
 const bridgeProviders = new Set(['codex', 'pi', 'copilot', 'grok']);
 export const supportsTally = (adapter: string) => adapter === 'claude' || bridgeProviders.has(adapter);
 const nonTools = new Set(['agent_message', 'user_message', 'reasoning', 'error', 'agent_configuration', 'context_compaction', 'plan', 'plan_update']);
-const readVerbs = new Set(['cat', 'sed', 'head', 'tail', 'nl', 'less']);
+const readVerbs = new Set(['cat', 'sed', 'head', 'tail', 'nl', 'less', 'more', 'wc', 'grep', 'rg', 'awk', 'bat']);
 const safeName = (value: unknown) => typeof value === 'string' && name.safeParse(value).success ? value : null;
 const skillPathName = (path: string) => /(?:^|\/)skills\/([A-Za-z0-9_.-]+)\/(?:SKILL\.md|references\/[A-Za-z0-9_./-]+\.md)$/.exec(path)?.[1];
-const skillReads = (command: unknown) => {
-  const [verb, ...args] = literalInvocation(command) ?? [];
-  if (!verb || !readVerbs.has(verb.split('/').at(-1)!)) return new Set<string>();
-  return new Set(args.flatMap(arg => skillPathName(arg) ?? []));
-};
+function editsInPlace(args: (string | null)[]) {
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === '--') break;
+    if (!arg) continue;
+    if (/^(?:--in-place(?:=|$)|-[^-efli]*i)/.test(arg)) return true;
+    // The next word is an option argument for these flags when no value is attached.
+    if (/^(?:--(?:expression|file|line-length)|-[^-efli]*[efl])$/.test(arg)) index++;
+  }
+  return false;
+}
+
+function skillReads(command: unknown) {
+  const skills = new Set<string>();
+  for (const [program, ...args] of simpleInvocations(command)) {
+    const verb = program?.split('/').at(-1);
+    if (!verb || !readVerbs.has(verb) || verb === 'sed' && editsInPlace(args)) continue;
+    for (const arg of args) {
+      const skill = arg && skillPathName(arg);
+      if (skill) skills.add(skill);
+    }
+  }
+  return skills;
+}
 const bump = (map: Record<string, number>, key: string) => { map[key] = (map[key] ?? 0) + 1; };
 function mcpKey(name: string) {
   const [prefix, server, ...tool] = name.split('__');

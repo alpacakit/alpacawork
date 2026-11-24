@@ -1,4 +1,4 @@
-/** Recognize one literal invocation, never execute or guess a shell program. */
+/** Recognize shell invocations from text without executing them. */
 import { commandCatalog } from '@alpacawork/contract/commands';
 import { workCommandSchema, type WorkCommand } from '@alpacawork/contract/run';
 
@@ -52,13 +52,81 @@ function literalWords(text: string): string[] | null {
   return words;
 }
 
-export function literalInvocation(value: unknown): string[] | null {
-  if (typeof value !== 'string' || value.length > 64 * 1024 || value.includes('\0')) return null;
-  let words = literalWords(value);
-  // Codex emits a single shell wrapper. Its script still goes through the same conservative recognizer.
+function shellText(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 64 * 1024 && !value.includes('\0');
+}
+
+function wrappedScript(words: string[] | null): string | null {
+  // Codex emits a single shell wrapper around the original command.
   if (words?.length === 3 && /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh)$/.test(words[0]!) && ['-c', '-lc'].includes(words[1]!))
-    words = literalWords(words[2]!);
-  return words;
+    return words[2]!;
+  return null;
+}
+
+export function literalInvocation(value: unknown): string[] | null {
+  if (!shellText(value)) return null;
+  const words = literalWords(value), script = wrappedScript(words);
+  return script === null ? words : literalWords(script);
+}
+
+function afterHereDoc(text: string, offset: number, end: string, stripTabs: boolean): number | null {
+  while (offset < text.length) {
+    const newline = text.indexOf('\n', offset);
+    const line = text.slice(offset, newline < 0 ? text.length : newline);
+    offset = newline < 0 ? text.length : newline + 1;
+    if ((stripTabs ? line.replace(/^\t+/, '') : line) === end) return offset;
+  }
+  return null;
+}
+
+const shellTokens = [
+  /[ \t]+|#[^\n]*/,
+  /(?<boundary>\r?\n|&&|\|\||[;|])/,
+  /(?<redirect>\d*(?:&>>?|<<<|<<-?|>>|<>|<&|>&|>\||[<>]))/,
+  /(?<word>(?:'[^']*'|"(?:(?:\\[\s\S])|[^"\\])*"|\\[\s\S]|[^\x00-\x20'"\\;&|<>()\x60])+)/,
+].map(pattern => pattern.source).join('|');
+
+/** Yield simple commands for usage tallies. Unknown words keep their position as null. */
+export function* simpleInvocations(value: unknown): Generator<(string | null)[]> {
+  if (!shellText(value)) return;
+  const text = wrappedScript(literalWords(value)) ?? value;
+  const token = new RegExp(shellTokens, 'y');
+  let words: (string | null)[] = [], redirect: string | undefined;
+  const hereDocs: { end: string; stripTabs: boolean }[] = [];
+  while (token.lastIndex < text.length) {
+    const match = token.exec(text);
+    if (!match) return; // Do not read through unsupported shell syntax.
+    const { boundary, redirect: operator, word } = match.groups!;
+    if (boundary) {
+      if (redirect) return;
+      if (words.length) yield words;
+      words = [];
+      if (boundary.endsWith('\n')) {
+        for (const { end, stripTabs } of hereDocs) {
+          const offset = afterHereDoc(text, token.lastIndex, end, stripTabs);
+          if (offset === null) return;
+          token.lastIndex = offset;
+        }
+        hereDocs.length = 0;
+      }
+    } else if (operator) {
+      if (redirect) return;
+      redirect = operator;
+    } else if (word !== undefined) {
+      // Keep a home-relative path as written. The tally needs only its skill name.
+      const parsed = literalWords(word.startsWith('~/') ? "'~'" + word.slice(1) : word);
+      if (parsed?.length === 0) continue; // Escaped newline.
+      if (!parsed && /\$\(|\x60/.test(word)) return;
+      const argument = parsed?.[0] ?? null;
+      if (!redirect) words.push(argument);
+      else if (/^\d*<<-?$/.test(redirect)) {
+        if (argument === null) return;
+        hereDocs.push({ end: argument, stripTabs: redirect.endsWith('-') });
+      }
+      redirect = undefined;
+    }
+  }
+  if (words.length && !redirect && !hereDocs.length) yield words;
 }
 
 export function commandOf(value: unknown): WorkCommand | null {

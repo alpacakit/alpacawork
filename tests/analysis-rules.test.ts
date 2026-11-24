@@ -183,3 +183,38 @@ test('Claude and bridge tally each observed tool once, with skill, MCP and deleg
     assert.equal(counts.model, 'test-model');
   }
 });
+
+test('Claude and bridge tally skill reads in compound shell commands', () => {
+  const commands = [
+    "cat '/sample/skills/first/SKILL.md'\ncat '/sample/skills/second/references/owner.md'",
+    "echo 'text; cat /sample/skills/quoted/SKILL.md | more' ; cat ~/.example/skills/third/references/owner.md",
+    'wc -l ~/.example/skills/fourth/SKILL.md; sed -n 1,200p ~/.example/skills/fourth/SKILL.md',
+    'cat /sample/skills/fifth/SKILL.md | head -80; grep -n "^#" /sample/skills/sixth/SKILL.md | head -40',
+    'more /sample/skills/seventh/SKILL.md && rg text /sample/skills/eighth/SKILL.md || awk 1 /sample/skills/ninth/SKILL.md',
+    'bat /sample/skills/tenth/SKILL.md > /sample/skills/output/SKILL.md',
+    'sed -i 1p /sample/skills/edit/SKILL.md; sed -ni.bak 1p /sample/skills/edit/SKILL.md; sed --in-place 1p /sample/skills/edit/SKILL.md',
+    'cp /sample/skills/copy/SKILL.md /sample/skills/destination/SKILL.md; mv old /sample/skills/move/SKILL.md',
+    'cat "not;a|path" # cat /sample/skills/comment/SKILL.md\ncat /sample/skills/after-comment/SKILL.md',
+    "cat <<'NOTE' > /sample/skills/output/SKILL.md\ncat /sample/skills/here-doc/SKILL.md\nNOTE\ncat \\\n /sample/skills/after-here-doc/SKILL.md",
+  ];
+  const expected = Object.fromEntries([
+    'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
+    'after-comment', 'after-here-doc',
+  ].map(skill => [skill, { call: 0, read: 1 }]));
+  for (const adapter of ['claude', 'codex']) {
+    const parser = new TallyParser(adapter, adapter, null);
+    for (const [index, command] of commands.entries()) {
+      const id = String(index);
+      if (adapter === 'claude') {
+        parser.observe({ type: 'assistant', message: { content: [
+          { type: 'tool_use', id, name: 'Bash', input: { command } },
+        ] } });
+      } else {
+        const script = "/bin/bash -lc '" + command.replaceAll("'", "'\\''") + "'";
+        parser.observe({ type: 'item.started', item: { id, type: 'command_execution', command: script } });
+        parser.observe({ type: 'item.completed', item: { id, type: 'command_execution', command: script } });
+      }
+    }
+    assert.deepEqual({ ...parser.finish('complete').skills }, expected, adapter);
+  }
+});

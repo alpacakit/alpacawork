@@ -78,6 +78,10 @@ function setup(root: string) {
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, RUN_FILES.stdout), JSON.stringify({ type: 'item.started', item: { id: 'example', type: 'command_execution',
     command: 'cat /fictional/skills/example/SKILL.md' } }) + '\n');
+  writeFileSync(join(folder, RUN_FILES.tally), JSON.stringify({
+    v: TALLY_VERSION - 1, provider: 'fixture', model: null, tools: { command_execution: 1 }, mcp: {}, skills: {},
+    subagentTools: 0, state: 'complete',
+  }));
   const cached = runFolder(root, 'R3');
   mkdirSync(cached, { recursive: true });
   writeFileSync(join(cached, RUN_FILES.tally), JSON.stringify({
@@ -176,7 +180,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(result.rows.reduce((sum, row) => sum + (row.value ?? 0), 0), expected, value);
       }
 
-      // A startup scan publishes both existing tallies and newly backfilled counts.
+      // A startup scan reuses current tallies and rebuilds outdated ones from stdout.
       let tools: AnalysisUsageView | undefined;
       for (let tries = 0; tries < 80; tries++) {
         tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
@@ -190,6 +194,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const counted = await read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
       assert.equal(counted.rows[0]?.value, 1);
       const saved = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
+      assert.equal(saved.v, TALLY_VERSION);
       assert.deepEqual(saved.skills, { example: { call: 0, read: 1 } });
       assert.equal(saved.tools.command_execution, 1);
 
