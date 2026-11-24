@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
@@ -13,24 +13,43 @@ export type Row = { key: string; name: string; tag?: string; bar: number; cells:
  * pointed at). On a phone it shows the name and one column, chosen from that column's own heading. The first ten rows
  * stand; the rest come with a press.
  */
+/**
+ * A table `width` pixels wide on the page's grid (12 columns, 24px apart): the name and its bar over the left three
+ * columns and the gap after them, each number a seventh of the right nine.
+ */
+export function grid(width: number) {
+  const column = (width - 11 * 24) / 12;
+  return { name: Math.max(0, 3 * column + 3 * 24 - 112), number: (9 * column + 8 * 24) / 7 };
+}
+
 export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: string; head: string; columns: string[]; rows: Row[]; limit?: number }) {
   const { t } = useTranslation("analysis");
   const all = useChoices(state => state.all);
   const [shown, setShown] = useState<Record<string, number>>({});
   const on = shown[id] ?? 0;
   const narrow = useNarrow();
+  const box = useRef<HTMLTableElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const self = box.current;
+    if (!self) return;
+    const measure = () => setWidth(self.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(self);
+    return () => watch.disconnect();
+  }, [rows.length > 0]);
   const most = Math.max(1, ...rows.map(row => row.bar));
   const visible = all ? rows : rows.slice(0, limit);
   if (!rows.length) return <p className="text-soft">{t("usage.none")}</p>;
   const column = (at: number) => cn("text-end narrow:hidden", at === on && "narrow:table-cell narrow:w-auto");
   // On a computer the table stands on the page's grid: the name and its bar over the left three columns and the gap after
   // them, the numbers over the right nine, a seventh of them each, from the left.
-  const unit = "(100% - 264px)";
   return <>
-    <table className="w-full table-fixed border-collapse narrow:table-auto">
-      {!narrow && <colgroup>
-        <col style={{ width: `calc(${unit} / 4 - 40px)` }} /><col style={{ width: "112px" }} />
-        {columns.map(name => <col key={name} style={{ width: `calc((${unit} * 0.75 + 192px) / 7)` }} />)}<col />
+    <table ref={box} className="w-full table-fixed border-collapse narrow:table-auto">
+      {!narrow && width > 0 && <colgroup>
+        <col style={{ width: grid(width).name }} /><col style={{ width: 112 }} />
+        {columns.map(name => <col key={name} style={{ width: grid(width).number }} />)}<col />
       </colgroup>}
       <thead><tr className="h-7 text-xs text-soft">
         <th className="text-start font-normal">{head}</th>
