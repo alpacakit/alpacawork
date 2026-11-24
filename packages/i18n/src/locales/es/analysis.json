@@ -221,12 +221,17 @@
   },
   "values": {
     "accepted": "Aceptada {{at}}",
+    "afterAccept": "Instrucciones tras aceptar",
+    "answers": "Respondidas",
+    "atReview": "Instrucciones en revisión",
     "band": {
       "doing": "En curso",
       "paused": "En pausa",
       "yours": "Tu turno"
     },
+    "children": "Subtareas",
     "conversations": "Conversaciones nuevas",
+    "duringWork": "Instrucciones durante el trabajo",
     "inputCache": "Entrada + caché",
     "marks": {
       "instruction": "Instrucción",
@@ -234,9 +239,11 @@
     },
     "models": "Modelo que trabajó",
     "open": "Abrir la tarea",
+    "sendBacks": "Devoluciones",
     "skills": "Skills",
     "stopped": "Detenida {{at}}",
     "tools": "Herramientas",
-    "usage": "Uso de la IA"
+    "usage": "Uso de la IA",
+    "workers": "Miembros"
   }
 }

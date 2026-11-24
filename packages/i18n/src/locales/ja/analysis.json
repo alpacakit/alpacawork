@@ -194,12 +194,17 @@
   },
   "values": {
     "accepted": "{{at}} 受け入れ",
+    "afterAccept": "受け入れ後の指示",
+    "answers": "答えた",
+    "atReview": "確認中の指示",
     "band": {
       "doing": "作業中",
       "paused": "止まっていた",
       "yours": "あなたの番"
     },
+    "children": "子タスク",
     "conversations": "新しい会話",
+    "duringWork": "作業中の指示",
     "inputCache": "入力＋キャッシュ",
     "marks": {
       "instruction": "指示",
@@ -207,9 +212,11 @@
     },
     "models": "動いたモデル",
     "open": "タスクを開く",
+    "sendBacks": "差し戻し",
     "skills": "スキル",
     "stopped": "{{at}} 中止",
     "tools": "ツール",
-    "usage": "AI の使用量"
+    "usage": "AI の使用量",
+    "workers": "担当"
   }
 }

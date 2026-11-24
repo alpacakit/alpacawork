@@ -51,7 +51,7 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
         <Button variant="ghost" size="icon" aria-label={t("list.close")} title={t("list.close")} data-layer-focus={back ? undefined : ""}
           onClick={() => closeAnalysisLayer(0)}><Icon name="close" /></Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-5 pb-6 narrow:px-4">
+      <div data-analysis-layer className="min-h-0 flex-1 overflow-auto px-5 narrow:px-4">
         {place.unit ? <UnitPane key={place.unit} unit={place.unit} />
           : place.list && <ListPane key={JSON.stringify(place.list)} place={place} project={project} days={days} />}
       </div>
@@ -108,11 +108,15 @@ function UnitPane({ unit }: { unit: string }) {
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const usage = values.usage;
-  const facts = [[t("until.submits"), values.submits], [t("until.questions"), values.questions]].filter(([, n]) => n) as [string, number][];
+  const facts = ([[t("until.submits"), values.submits], [t("values.sendBacks"), values.sendBacks], [t("values.atReview"), values.instructionsAtReview],
+    [t("values.afterAccept"), values.instructionsAfterAccept], [t("values.duringWork"), values.instructionsDuringWork],
+    [t("until.questions"), values.questions], [t("values.answers"), values.answers]] as [string, number][]).filter(([, n]) => n);
   const used = ([
     [t("usage.launches"), usage.launches && format("times", usage.launches)],
     [t("usage.runMs"), usage.runMs && duration(usage.runMs)],
     [t("values.conversations"), usage.newConversations && format("plain", usage.newConversations)],
+    [t("values.workers"), values.workers && format("plain", values.workers)],
+    [t("values.children"), values.children && format("plain", values.children)],
     [t("usage.output"), usage.tokens.output && format("tokens", usage.tokens.output)],
     [t("values.inputCache"), usage.tokens.input + usage.tokens.cache && format("tokens", usage.tokens.input + usage.tokens.cache)],
   ] as [string, string | 0][]).filter(([, text]) => text) as [string, string][];

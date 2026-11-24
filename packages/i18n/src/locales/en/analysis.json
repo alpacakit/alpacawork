@@ -210,12 +210,17 @@
   },
   "values": {
     "accepted": "Accepted {{at}}",
+    "afterAccept": "Instructions after acceptance",
+    "answers": "Answered",
+    "atReview": "Instructions in review",
     "band": {
       "doing": "Working",
       "paused": "Paused",
       "yours": "Your turn"
     },
+    "children": "Child tasks",
     "conversations": "New conversations",
+    "duringWork": "Instructions while working",
     "inputCache": "Input + cache",
     "marks": {
       "instruction": "Instruction",
@@ -223,9 +228,11 @@
     },
     "models": "Model that ran",
     "open": "Open task",
+    "sendBacks": "Send-backs",
     "skills": "Skills",
     "stopped": "Stopped {{at}}",
     "tools": "Tools",
-    "usage": "AI usage"
+    "usage": "AI usage",
+    "workers": "Members"
   }
 }

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useViewStore } from "@/state/view-store";
+import { NARROW_QUERY, useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { Seg } from "./parts";
 import { analysisHome, type AnalysisPlace } from "./place";
@@ -35,11 +35,30 @@ export function TodayMarks() {
   const seen = useRef<Set<string> | null>(null);
   const fresh = new Set(seen.current ? rows.filter(row => !seen.current!.has(row.id)).map(row => row.id) : []);
   useEffect(() => { if (data) seen.current = new Set(data.rows.map(row => row.id)); }, [data]);
+  // As many marks as the title column has room for, the latest; the earlier ones are counted before them (+N).
+  const place = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(Infinity);
+  useLayoutEffect(() => {
+    const box = place.current;
+    if (!box) return;
+    const measure = () => setRoom(box.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, [rows.length > 0]);
   if (!rows.length) return null;
+  const step = matchMedia(NARROW_QUERY).matches ? 8 : 10, chrome = 22, count = 32;
+  const fit = Math.floor((room - chrome) / step);
+  const shown = rows.length <= fit ? rows : rows.slice(rows.length - Math.max(0, Math.floor((room - chrome - count) / step)));
+  const hidden = rows.length - shown.length;
   const words = t("home.marks", { count: rows.length, passed: rows.filter(row => row.outcome === "passed").length });
-  return <button type="button" aria-label={t("home.label", { marks: words })} title={words}
-    onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}
-    className="ms-2.5 flex min-w-0 items-center gap-0.5 overflow-hidden rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
-    {rows.map(row => <i key={row.id} className={cn("block h-3 w-2 flex-none rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
-  </button>;
+  return <div ref={place} className="flex min-w-0 flex-1">
+    <button type="button" aria-label={t("home.label", { marks: words })} title={words}
+      onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}
+      className="ms-2.5 flex min-w-0 items-center gap-0.5 rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
+      {hidden > 0 && <span className="me-1 text-xs font-normal text-muted tabular-nums">+{hidden}</span>}
+      {shown.map(row => <i key={row.id} className={cn("block h-3 w-2 flex-none rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
+    </button>
+  </div>;
 }

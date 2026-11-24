@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { BarRoom } from "@/features/chrome/Bar";
+import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
@@ -60,8 +61,10 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const canEarlier = !!days && !!head?.firstDay && stepSpan(days, -1).from >= head.firstDay;
   const canLater = !!days && !!head && stepSpan(days, 1).to <= head.today;
 
-  return <div ref={setRoot} className="flex flex-1 flex-col pb-12">
-    <BarRoom />
+  // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
+  return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}
+    className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
+    <div className="pb-12"><BarRoom />
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-6">
       <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, rules: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
         items={[["tasks", t("look.tasks")], ["usage", t("look.usage")]]} />
@@ -86,7 +89,8 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
         : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />
           : usage.data && <UsageLook view={usage.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />}
     </div>
+    </div></div>
     <Layers place={place} project={project} days={days} />
     <PointerTip root={root} />
-  </div>;
+  </>;
 }

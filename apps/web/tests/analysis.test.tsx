@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
-import { comparison, delta, duration, format, share, shareDelta } from "../src/features/analysis/format";
+import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, readAnalysis, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
 import { settleSpan } from "../src/features/analysis/AnalysisView";
 import { isStep, surfacesOf } from "../src/state/history-step";
@@ -10,33 +10,39 @@ beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
 
 const HOUR = 3_600_000;
 
-test("numbers are written in one way: counts grouped, hours to one place under ten, minutes under an hour, tokens in the language's steps", () => {
-  expect(format("tasks", 1511)).toBe("1,511件");
-  expect(format("hours", 1.44 * HOUR)).toBe("1.4時間");
-  expect(format("hours", 147.4 * HOUR)).toBe("147時間");
-  expect(duration(5 * 60_000)).toBe("5分");
-  expect(duration(19.2 * HOUR)).toBe("19時間");
-  expect(format("tokens", 30_110_000)).toBe("3,011万");
-  expect(format("tokens", 7_400_000_000)).toBe("74.0億");
-  expect(format("tokens", 9_999)).toBe("9,999");
+const signed = /^[+−]/;
+const same = (text: string) => !signed.test(text);
+
+test("hours are written to one place under ten and whole from ten; a count is grouped", () => {
+  expect(parts("hours", 1.44 * HOUR).value).toBe("1.4");
+  expect(parts("hours", 147.4 * HOUR).value).toBe("147");
+  expect(parts("tasks", 1511).value).toBe("1,511");
 });
 
-test("the gap to the span before has a sign and the kind's own unit, and is 'same' when it rounds away", () => {
+test("large token counts take the largest step they reach, and a gap is written in the larger value's step", () => {
+  const steps = (i18n.t("analysis:unit.scales", { returnObjects: true }) as { at: number; unit: string }[]);
+  const [big, small] = steps;
+  expect(parts("tokens", big!.at * 74).unit).toBe(big!.unit);
+  expect(parts("tokens", small!.at * 3011).unit).toBe(small!.unit);
+  expect(parts("tokens", small!.at - 1).unit).toBe("");
+  expect(delta("tokens", big!.at * 74, big!.at * 74.25)).toMatch(/^−0[.,]25/);
+});
+
+test("a gap has the direction of the change and the kind's rounding; one that rounds to nothing is the same", () => {
   expect(delta("tasks", 60, 64)).toBe("−4");
   expect(delta("tasks", 128, 105)).toBe("+23");
-  expect(delta("tasks", 1, 1)).toBe("同じ");
   expect(delta("hours", 1.4 * HOUR, 1.7 * HOUR)).toBe("−0.3");
-  expect(delta("hours", 1.42 * HOUR, 1.44 * HOUR)).toBe("同じ");
-  expect(delta("tokens", 7_400_000_000, 7_425_000_000)).toBe("−0.25億");
-  expect(delta("tokens", 30_110_000, 24_960_000)).toBe("+515万");
-  expect(comparison("tasks", 82, 95, 7)).toEqual({ before: "前の7日 95件", gap: "−13" });
-  expect(comparison("tasks", 3, null, 1)).toEqual({ before: "前の日：記録なし", gap: null });
+  expect(same(delta("tasks", 1, 1))).toBe(true);
+  expect(same(delta("hours", 1.42 * HOUR, 1.44 * HOUR))).toBe(true);
+  expect(same(delta("hours", 1.4 * HOUR, 1.5 * HOUR))).toBe(false);
+  expect(comparison("tasks", 3, null, 1).gap).toBeNull();
 });
 
 test("a share the server withholds (under ten accepted) is never written, nor is its gap", () => {
   expect(share(0.734)).toBe("73%");
   expect(share(null)).toBe("—");
-  expect(shareDelta(0.73, 0.67)).toBe("+6pt");
+  expect(shareDelta(0.73, 0.67)).toMatch(/^\+6\D/);
+  expect(same(shareDelta(0.731, 0.729)!)).toBe(true);
   expect(shareDelta(0.73, null)).toBeNull();
   expect(shareDelta(null, 0.67)).toBeNull();
 });

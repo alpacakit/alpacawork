@@ -35,6 +35,12 @@ html:has([data-reader-mode="sheet"]) { --foot-ground: var(--lit); }
   padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
   scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
 }
+/* What a number of the analysis opens (features/analysis/Layers.tsx) stands as the reader does: its end comes clear of the
+ * coordinator, one gap more than the room under its last row. */
+[data-analysis-layer] {
+  padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap) + 1.5rem);
+  scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
+}
 /* A phone's task sheet closes from over the input's row (TaskActions SheetClose): its end comes clear of that too. */
 html:has([data-reader-sheet-close]) [data-reader-mode="sheet"] [data-reader-content] {
   padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap) + var(--sheet-close-room));

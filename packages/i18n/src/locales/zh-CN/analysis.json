@@ -194,12 +194,17 @@
   },
   "values": {
     "accepted": "{{at}} 验收",
+    "afterAccept": "验收后的指示",
+    "answers": "已回答",
+    "atReview": "确认中的指示",
     "band": {
       "doing": "进行中",
       "paused": "暂停",
       "yours": "轮到你"
     },
+    "children": "子任务",
     "conversations": "新会话",
+    "duringWork": "工作中的指示",
     "inputCache": "输入＋缓存",
     "marks": {
       "instruction": "指示",
@@ -207,9 +212,11 @@
     },
     "models": "运行的模型",
     "open": "打开任务",
+    "sendBacks": "退回",
     "skills": "技能",
     "stopped": "{{at}} 中止",
     "tools": "工具",
-    "usage": "AI 使用量"
+    "usage": "AI 使用量",
+    "workers": "成员"
   }
 }
