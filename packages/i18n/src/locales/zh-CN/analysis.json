@@ -2,10 +2,8 @@
   "breakdown": {
     "all_other": "全部 {{count}} 行",
     "since": "自 {{date}} 起统计",
-    "tallied": "根据 {{of}} 次启动中 {{runs}} 次的记录统计",
     "title": "分类查看",
-    "top": "只看前几行",
-    "untallied_other": "尚未统计 {{count}} 次启动的记录"
+    "top": "只看前几行"
   },
   "bucket": {
     "day": "按日",
@@ -16,14 +14,15 @@
     "week": "按周"
   },
   "chart": {
+    "fewShare": "{{accepted}} 个中 {{passed}} 个",
     "finished": "结束的任务",
     "finishedTip": "{{total}} 个：无需返工 {{passed}}・有返工 {{reworked}}・中止 {{stopped}}",
     "none": "无验收",
+    "notCounted": "未统计",
     "share": "无需返工的比例",
     "sharePercentTip": "验收的 {{accepted}} 个中 {{passed}} 个・{{share}}",
     "shareTip": "验收的 {{accepted}} 个中 {{passed}} 个",
-    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）",
-    "value": "柱状图的值"
+    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
@@ -32,6 +31,10 @@
     "conversationName": "新会话",
     "conversationText": "在此期间首次启动的会话",
     "dayName": "日期",
+    "everName": "至今",
+    "everText": "从记录的第一天到今天",
+    "finishedName": "结束的任务",
+    "finishedText": "与“任务”相同的数",
     "inputName": "输入",
     "inputText": "不含缓存的读写",
     "launchName": "启动",
@@ -49,6 +52,8 @@
     "skillName": "技能",
     "skillText": "调用了技能或读取了技能文档的启动",
     "three": "验收后没有收到指示（收到则不计入）",
+    "tokensName": "令牌",
+    "tokensText": "输出＋输入＋缓存的读写，包括进行中的任务",
     "tokensUnknown_other": "没有令牌记录的 {{count}} 次启动不计入令牌",
     "toolName": "工具",
     "toolText": "不含子代理内的调用",
@@ -62,6 +67,9 @@
   "home": {
     "label": "{{marks}}。打开分析",
     "marks_other": "今天完成 {{count}} 个・无需返工 {{passed}} 个"
+  },
+  "lead": {
+    "ever": "至今 {{value}}"
   },
   "list": {
     "back": "列表",
@@ -134,7 +142,7 @@
     "answer": "等待回答",
     "other": "其他",
     "review": "等待确认",
-    "total": "耗时合计 {{time}}",
+    "total": "耗时合计",
     "you": "轮到你"
   },
   "unit": {
@@ -185,13 +193,15 @@
       "skill": "技能",
       "tool": "工具"
     },
-    "includesWorking": "包括进行中的任务",
     "input": "输入",
+    "inputTokens": "输入令牌",
     "launches": "启动",
     "newConversations": "新会话",
     "none": "无记录",
     "output": "输出",
+    "outputTokens": "输出令牌",
     "runMs": "运行时间",
+    "skillLaunches": "使用技能的启动",
     "tasks": "任务",
     "tokens": "令牌"
   },

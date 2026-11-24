@@ -15,10 +15,9 @@ import type { Bucket } from "./contract";
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-export type UsageMetric = "launches" | "runMs" | "newConversations" | "output" | "input" | "cache";
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; metric: UsageMetric; all: boolean; rules: boolean; grow: number };
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; rules: boolean; grow: number };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", metric: "launches", all: false, rules: false, grow: 0,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, rules: false, grow: 0,
   choose: (next) => set(next),
 }));
 
@@ -45,11 +44,11 @@ export const Square = ({ className }: { className: string }) =>
   <i aria-hidden className={cn("me-1.5 inline-block size-2 flex-none rounded-xs", className)} />;
 
 /** A value with its unit drawn small beside it; pressed, it opens the tasks behind it. */
-export function Value({ kind, value, big, onOpen }: { kind: Kind; value: number | null; big?: boolean; onOpen?: () => void }) {
+export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold", big ? "text-display" : "text-xl")}>{written.value}</b>
-    {written.unit && <span className="text-muted">{written.unit}</span>}
+    <b className={cn("font-semibold", big ? "text-display" : small ? "text-base" : "text-xl")}>{written.value}</b>
+    {written.unit && <span className={cn("text-muted", small && "text-xs")}>{written.unit}</span>}
   </>;
   const shape = "inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm";
   if (!onOpen || !value) return <span className={shape}>{body}</span>;
@@ -70,10 +69,10 @@ export function Compare({ kind, value, previous, length, children }: { kind: Kin
 }
 
 /** A number: its name, the value, and the span before on one line. */
-export function Num({ label, square, kind, value, previous, length, onOpen, after }: {
-  label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode;
+export function Num({ label, square, kind, value, previous, length, onOpen, after, className = "w-43 narrow:w-auto" }: {
+  label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode; className?: string;
 }) {
-  return <div className="w-43 min-w-0 narrow:w-auto">
+  return <div className={cn("min-w-0", className)}>
     <div className="flex items-center text-xs whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
     {value === null ? <div className="text-xs text-soft">&nbsp;</div> : <Compare kind={kind} value={value} previous={previous} length={length} />}
@@ -160,6 +159,18 @@ export function tipPlace({ top, bottom, height, screen, margin = 4, gap = 6 }: {
   if (height <= above) return { top: top - gap - height, maxHeight: null };
   if (height <= below) return { top: bottom + gap, maxHeight: null };
   return above > below ? { top: margin, maxHeight: Math.max(0, above) } : { top: bottom + gap, maxHeight: Math.max(0, below) };
+}
+/**
+ * Where a day's window stands beside the bar pointed at (the same rule held sideways): right of it where it fits, else
+ * left; level with the bar's top, moved up as far as it must to stay on the screen, its height held to the screen.
+ */
+export function tipBeside({ left, right, top, width, height, screenWidth, screenHeight, margin = 4, gap = 8 }: {
+  left: number; right: number; top: number; width: number; height: number; screenWidth: number; screenHeight: number; margin?: number; gap?: number;
+}) {
+  const x = right + gap + width <= screenWidth - margin ? right + gap : Math.max(margin, left - gap - width);
+  const room = screenHeight - 2 * margin;
+  const y = Math.max(margin, Math.min(top, screenHeight - margin - Math.min(height, room)));
+  return { left: x, top: y, maxHeight: height > room ? room : null };
 }
 function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: string; x: number; top: number; bottom: number;
   tipRef: React.RefObject<HTMLDivElement | null>; onEnter: () => void; onLeave: () => void }) {

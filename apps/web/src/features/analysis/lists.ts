@@ -13,9 +13,9 @@ const COLUMN: Record<ListValue, string> = {
   lead: "until.title", submits: "until.submits", questions: "until.questions", prs: "until.prs",
   you: "time.you", ai: "time.ai", other: "time.other",
   launches: "usage.launches", runMs: "usage.runMs", newConversations: "usage.newConversations",
-  output: "usage.output", input: "usage.input", cache: "usage.cache", calls: "usage.calls",
+  tokens: "usage.tokens", output: "usage.output", input: "usage.input", cache: "usage.cache", calls: "usage.calls",
 };
-const USAGE = new Set<ListValue>(["launches", "runMs", "newConversations", "output", "input", "cache", "calls"]);
+const USAGE = new Set<ListValue>(["launches", "runMs", "newConversations", "tokens", "output", "input", "cache", "calls"]);
 
 export function listTitle(list: ListPlace): string {
   if (list.value === "questions") return word("until.questionsList");
@@ -34,6 +34,6 @@ export function writeValue(value: ListValue, amount: number): string {
     case "submits": case "launches": case "calls": return format("times", amount);
     case "questions": case "prs": return format("tasks", amount);
     case "newConversations": return format("plain", amount);
-    case "output": case "input": case "cache": return format("tokens", amount);
+    case "tokens": case "output": case "input": case "cache": return format("tokens", amount);
   }
 }

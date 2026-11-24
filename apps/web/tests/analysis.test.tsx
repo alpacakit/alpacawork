@@ -2,7 +2,8 @@ import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
-import { axisLabels, shareLine } from "../src/features/analysis/charts";
+import { axisLabels } from "../src/features/analysis/charts";
+import { lineDots } from "../src/features/analysis/rows";
 import { tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -89,8 +90,8 @@ test("a span is asked for as a named period where it is one, and kept as one whe
   expect(settleSpan({ from: "2026-11-10", to: "2026-11-16" }, "2026-11-23")).toEqual({ from: "2026-11-10", to: "2026-11-16" });
 });
 
-test("the share line has no point where nothing was accepted and does not bridge it; few accepted is faint", () => {
-  const { dots, lines } = shareLine([{ passed: 9, accepted: 10 }, { passed: 0, accepted: 0 }, { passed: 0, accepted: 2 }, { passed: 5, accepted: 10 }]);
+test("a line has no point where a bin has none and does not bridge it; a faint point's lines are faint", () => {
+  const { dots, lines } = lineDots([0.9, null, 0, 0.5], 1, at => at === 2);
   expect(dots.map(dot => dot && { y: Math.round(dot.y), faint: dot.faint })).toEqual([{ y: 10, faint: false }, null, { y: 100, faint: true }, { y: 50, faint: false }]);
   expect(lines.map(line => [line.from, line.to].map(dot => dots.indexOf(dot)))).toEqual([[2, 3]]);
   expect(lines[0]!.faint).toBe(true);

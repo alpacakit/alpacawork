@@ -2,10 +2,8 @@
   "breakdown": {
     "all_other": "すべて {{count}}行",
     "since": "{{date}}から集計",
-    "tallied": "{{of}}回のうち {{runs}}回分の記録から数えた",
     "title": "分けて見る",
-    "top": "上位だけ",
-    "untallied_other": "{{count}}回の起動の記録を、まだ数えていません"
+    "top": "上位だけ"
   },
   "bucket": {
     "day": "日ごと",
@@ -16,14 +14,15 @@
     "week": "週ごと"
   },
   "chart": {
+    "fewShare": "{{accepted}}件のうち {{passed}}件",
     "finished": "終わったタスク",
     "finishedTip": "{{total}}件：手直しなし {{passed}}・手直しあり {{reworked}}・中止 {{stopped}}",
     "none": "受け入れなし",
+    "notCounted": "数えていない",
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
-    "value": "棒にする値"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
@@ -32,6 +31,10 @@
     "conversationName": "新しい会話",
     "conversationText": "この期間に最初に起動した会話",
     "dayName": "日付",
+    "everName": "これまで",
+    "everText": "記録の最初の日から今日まで",
+    "finishedName": "終わったタスク",
+    "finishedText": "「タスク」と同じ数",
     "inputName": "入力",
     "inputText": "キャッシュの読み書きは除く",
     "launchName": "起動",
@@ -49,6 +52,8 @@
     "skillName": "スキル",
     "skillText": "呼び出したか、スキルの文書を読んだ起動",
     "three": "受け入れた後に指示が来ていない（来たら外れる）",
+    "tokensName": "トークン",
+    "tokensText": "出力＋入力＋キャッシュの読み書き。作業中のタスクの分も含む",
     "tokensUnknown_other": "トークンの記録がない起動 {{count}}回は、トークンに含まない",
     "toolName": "ツール",
     "toolText": "サブエージェント内の呼び出しは含まない",
@@ -62,6 +67,9 @@
   "home": {
     "label": "{{marks}}。分析を開く",
     "marks_other": "今日 {{count}}件完了・手直しなし {{passed}}件"
+  },
+  "lead": {
+    "ever": "これまで {{value}}"
   },
   "list": {
     "back": "一覧",
@@ -134,7 +142,7 @@
     "answer": "答え待ち",
     "other": "ほか",
     "review": "確認待ち",
-    "total": "かかった時間の合計 {{time}}",
+    "total": "かかった時間の合計",
     "you": "あなたの番"
   },
   "unit": {
@@ -185,13 +193,15 @@
       "skill": "スキル",
       "tool": "ツール"
     },
-    "includesWorking": "作業中のタスクの分も含む",
     "input": "入力",
+    "inputTokens": "入力トークン",
     "launches": "起動",
     "newConversations": "新しい会話",
     "none": "記録なし",
     "output": "出力",
+    "outputTokens": "出力トークン",
     "runMs": "実行時間",
+    "skillLaunches": "スキルを使った起動",
     "tasks": "タスク",
     "tokens": "トークン"
   },

@@ -75,11 +75,12 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       </div>
     </div>
     {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
-    <Shown current={answerOf<unknown>(query)?.current ?? true}>
+    {/* The usage look draws the tasks' answer too (its finished tasks): both must be for what is chosen now. */}
+    <Shown current={(answerOf<unknown>(query)?.current ?? true) && (place.look === "tasks" || (answerOf<unknown>(tasks)?.current ?? true))}>
       {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
         : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
         : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />
-          : usage.data && <UsageLook view={usage.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />}
+          : usage.data && <UsageLook view={usage.data} tasks={tasks.data ?? null} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />}
     </Shown>
     </div></div>
     <Layers place={place} project={project} days={days} />

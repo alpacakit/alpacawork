@@ -3,11 +3,8 @@
     "all_one": "All {{count}} row",
     "all_other": "All {{count}} rows",
     "since": "Collection began on {{date}}",
-    "tallied": "Counted from the records of {{runs}} of {{of}} launches",
     "title": "Break down",
-    "top": "Top rows only",
-    "untallied_one": "The records of {{count}} launch are not counted yet",
-    "untallied_other": "The records of {{count}} launches are not counted yet"
+    "top": "Top rows only"
   },
   "bucket": {
     "day": "Daily",
@@ -19,14 +16,15 @@
     "week": "Weekly"
   },
   "chart": {
+    "fewShare": "{{passed}} of {{accepted}}",
     "finished": "Finished tasks",
     "finishedTip": "{{total}}: no fixes {{passed}} · fixed {{reworked}} · stopped {{stopped}}",
     "none": "None accepted",
+    "notCounted": "Not counted",
     "share": "Share with no fixes",
     "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
     "shareTip": "{{passed}} of {{accepted}} accepted",
-    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)",
-    "value": "Value drawn"
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
@@ -35,6 +33,10 @@
     "conversationName": "New conversations",
     "conversationText": "Conversations first launched in this span",
     "dayName": "Dates",
+    "everName": "So far",
+    "everText": "From the first day of records to today",
+    "finishedName": "Finished tasks",
+    "finishedText": "The same number as under Tasks",
     "inputName": "Input",
     "inputText": "Cache reads and writes excluded",
     "launchName": "Launches",
@@ -52,6 +54,8 @@
     "skillName": "Skills",
     "skillText": "Launches that called the skill or read its documents",
     "three": "No instruction after acceptance (one coming later takes it out)",
+    "tokensName": "Tokens",
+    "tokensText": "Output + input + cache reads and writes, tasks still at work included",
     "tokensUnknown_one": "{{count}} launch without a token record is not in the tokens",
     "tokensUnknown_other": "{{count}} launches without a token record are not in the tokens",
     "toolName": "Tools",
@@ -67,6 +71,9 @@
     "label": "{{marks}}. Open the analysis",
     "marks_one": "{{count}} finished today · {{passed}} with no fixes",
     "marks_other": "{{count}} finished today · {{passed}} with no fixes"
+  },
+  "lead": {
+    "ever": "So far {{value}}"
   },
   "list": {
     "back": "List",
@@ -143,7 +150,7 @@
     "answer": "Awaiting your answer",
     "other": "Other",
     "review": "Awaiting your review",
-    "total": "Total time taken {{time}}",
+    "total": "Total time taken",
     "you": "Your turn"
   },
   "unit": {
@@ -202,13 +209,15 @@
       "skill": "Skill",
       "tool": "Tool"
     },
-    "includesWorking": "Tasks still at work included",
     "input": "Input",
+    "inputTokens": "Input tokens",
     "launches": "Launches",
     "newConversations": "New conversations",
     "none": "No records",
     "output": "Output",
+    "outputTokens": "Output tokens",
     "runMs": "Run time",
+    "skillLaunches": "Launches using a skill",
     "tasks": "Tasks",
     "tokens": "Tokens"
   },

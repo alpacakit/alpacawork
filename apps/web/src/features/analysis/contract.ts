@@ -28,5 +28,5 @@ export type Group = typeof TASK_GROUPS[number] | typeof USAGE_GROUPS[number];
 export const LIST_SETS = ["passed", "reworked", "stopped", "accepted", "finished", "used"] as const;
 export type ListSet = typeof LIST_SETS[number];
 export const TASK_VALUES = ["lead", "submits", "questions", "prs", "you", "ai", "other"] as const;
-export const USAGE_VALUES = ["launches", "runMs", "newConversations", "output", "input", "cache", "calls"] as const;
+export const USAGE_VALUES = ["launches", "runMs", "newConversations", "tokens", "output", "input", "cache", "calls"] as const;
 export type ListValue = typeof TASK_VALUES[number] | typeof USAGE_VALUES[number];
