@@ -42,7 +42,6 @@
     "test:node": "node scripts/testing/queue.ts node -- node --test --test-concurrency=16 tests/*.test.ts",
     "test:acceptance": "pnpm build && pnpm test:acceptance:run",
     "test:real-agents": "pnpm build && node scripts/testing/queue.ts node -- node tests/acceptance/real-agents.mjs",
-    "perf": "pnpm build && node scripts/testing/queue.ts e2e -- node e2e/perf/all.mjs",
     "test:quick": "node scripts/testing/run.ts quick",
     "test:e2e:smoke": "node scripts/testing/run.ts smoke",
     "test:acceptance:run": "node scripts/testing/queue.ts node -- node --test --test-concurrency=1 --test-timeout=300000 tests/acceptance/*.test.ts",
