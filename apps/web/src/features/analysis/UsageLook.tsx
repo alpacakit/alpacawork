@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, format, type Kind } from "./format";
+import { daysBetween, delta, format, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, Parts, Row, RowName, useScale } from "./rows";
-import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { BarChart, ChartGroup, DayAxis, Lead, Leads, lineTop, Parts, Row, RowName, useScale, type DayList, type RowSay } from "./rows";
+import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
 
 type Days = { from: string; to: string };
@@ -41,7 +41,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const finished = tasks?.counts.value ?? null;
 
   const leads = <Leads>
-    <Lead name={<>{t("usage.tokens")}<RulesToggle /></>} value={<Value big kind="tokens" value={tokens(now)} onOpen={() => open({ set: "used", value: "tokens" })} />}
+    <Lead name={<><Square className="bg-working" />{t("usage.tokens")}<RulesToggle /></>} value={<Value big kind="tokens" value={tokens(now)} onOpen={() => open({ set: "used", value: "tokens" })} />}
       compare={<Compare kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length} />}
       ever={ever && format("tokens", tokens(ever))} />
     <Lead name={t("usage.runMs")} value={<Value big kind="hours" value={now.runMs} onOpen={() => open({ set: "used", value: "runMs" })} />}
@@ -57,35 +57,56 @@ export function UsageLook({ view, tasks, days, open, zone }: {
 
   const points = view.series.points, today = view.head.today;
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
-  const largest = (key: ValueKey) => Math.max(0, ...points.map(p => VALUES[key].read(p.counts)));
-  const scaleOf = (key: ValueKey) => {
-    const kind = VALUES[key].kind, top = largest(key);
+  // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
+  const amount = { tokens: (i: number) => tokens(points[i]!.counts), runMs: (i: number) => points[i]!.counts.runMs, launches: (i: number) => points[i]!.counts.launches };
+  type Amount = keyof typeof amount;
+  const kinds: Record<Amount, Kind> = { tokens: "tokens", runMs: "hours", launches: "times" };
+  const finishedOn = (i: number) => taskPoints?.[i]?.counts.finished ?? 0;
+  const steady = (i: number) => finishedOn(i) >= 10;
+  const perFinished = (key: Amount) => points.map((_, i) => taskPoints && finishedOn(i) ? amount[key](i) / finishedOn(i) : null);
+  const unitOf = (kind: Kind, top: number): [number, string, boolean] => {
     const steps = t("unit.scales", { returnObjects: true }) as unknown as { at: number; unit: string }[];
     const step = kind === "tokens" && Array.isArray(steps) ? steps.find(each => top >= each.at) ?? null : null;
-    return kind === "hours" ? [HOUR, t("unit.hours"), false] as const
-      : step ? [step.at, step.unit, false] as const
-        : [1, kind === "times" ? t("unit.times", { count: 2 }) : "", true] as const;
+    return kind === "hours" ? [HOUR, t("unit.hours"), false] : step ? [step.at, step.unit, false] : [1, kind === "times" ? t("unit.times", { count: 2 }) : "", true];
   };
-  const scale = (key: ValueKey) => { const [unit, name, wholeOnly] = scaleOf(key); return [largest(key), unit, name, wholeOnly] as const; };
+  const largest = (key: Amount) => Math.max(0, ...points.map((_, i) => amount[key](i)));
+  const scaleArgs = (key: Amount) => { const [unit, name, wholeOnly] = unitOf(kinds[key], largest(key)); return [largest(key), unit, name, wholeOnly] as const; };
   const scales = {
     finished: useScale(Math.max(0, ...(taskPoints ?? []).map(p => p.counts.finished)), 1, t("unit.tasks", { count: 2 }), true),
-    output: useScale(...scale("output")), input: useScale(...scale("input")), cache: useScale(...scale("cache")),
-    runMs: useScale(...scale("runMs")), launches: useScale(...scale("launches")), newConversations: useScale(...scale("newConversations")),
+    tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
   };
-  const names: Record<ValueKey, string> = { output: t("usage.outputTokens"), input: t("usage.inputTokens"), cache: t("usage.cache"),
-    runMs: t("usage.runMs"), launches: t("usage.launches"), newConversations: t("usage.newConversations") };
-  const order: ValueKey[] = ["output", "input", "cache", "runMs", "launches", "newConversations"];
+  const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady);
+    return { values, top, label: t("line.unit", { value: format(kinds[key], top) }), faint: (i: number) => !steady(i) }; };
+  const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: overlay("launches") } : null;
   const finishedParts = useFinishedParts();
-  const lines = [
-    ...taskPoints ? [{ name: t("tasks.finished"), value: (i: number) => format("tasks", taskPoints[i]!.counts.finished),
-      parts: (i: number) => finishedParts(taskPoints[i]!.counts) }] : [],
-    // The day's token total, said once above its three parts (it has no chart of its own).
-    { name: t("usage.tokens"), value: (i: number) => format("tokens", tokens(points[i]!.counts)) },
-    ...order.map(key => ({ name: names[key], value: (i: number) => format(VALUES[key].kind, VALUES[key].read(points[i]!.counts)) })),
-  ];
+  const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
+  const finishedBase = (i: number) => t("window.finished", { count: finishedOn(i) });
+  const perLine = (key: Amount) => overlays ? { name: t("line.perFinished"), base: finishedBase,
+    value: (i: number) => { const v = perFinished(key)[i]; return v === null || v === undefined ? "—" : format(kinds[key], v); } } : undefined;
   const first = taskPoints ? 1 : 0;
+  const say: RowSay[] = [
+    ...taskPoints ? [{ name: t("tasks.finished"), total: (i: number) => format("tasks", finishedOn(i)), list: onBin("finished", null),
+      parts: (i: number) => finishedParts(taskPoints[i]!.counts) }] : [],
+    { name: t("usage.tokens"), total: i => format("tokens", amount.tokens(i)), list: onBin("used", "tokens"), line: perLine("tokens"),
+      parts: i => { const c = points[i]!.counts.tokens;
+        return [{ color: "", name: t("usage.output"), value: format("tokens", c.output) }, { color: "", name: t("usage.input"), value: format("tokens", c.input) },
+          { color: "", name: t("usage.cache"), value: format("tokens", c.cache) }]; } },
+    { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
+    { name: t("usage.launches"), total: i => format("times", amount.launches(i)), list: onBin("used", "launches"), line: perLine("launches"),
+      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("plain", points[i]!.counts.newConversations) }] },
+  ];
+  // The span's amounts per finished task on the left, against the span before.
+  const spanPer = (value: number, base: number | undefined) => base ? value / base : null;
+  const perNow = (key: "tokens" | "runMs" | "launches") => spanPer(key === "tokens" ? tokens(now) : now[key], finished?.finished);
+  const perBefore = (key: "tokens" | "runMs" | "launches") => before ? spanPer(key === "tokens" ? tokens(before) : before[key], tasks?.counts.previous?.finished) : null;
+  const perEntry = (key: "tokens" | "runMs" | "launches") => {
+    const value = perNow(key), previous = perBefore(key);
+    return taskPoints ? { name: t("line.perFinished"), value: <b className="font-semibold">{value === null ? "—" : format(kinds[key], value)}</b>,
+      gap: value !== null && previous !== null ? <span className="text-muted">{delta(kinds[key], value, previous)}</span> : null } : undefined;
+  };
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
-  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
+  const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
+  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
       {taskPoints && finished && <Row left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={tasks?.counts.previous?.finished ?? null} length={length}
@@ -93,19 +114,38 @@ export function UsageLook({ view, tasks, days, open, zone }: {
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", finished.passed, { set: "passed", value: "lead" }) },
           { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", finished.reworked, { set: "reworked", value: "lead" }) },
-          { color: "bg-stopped", name: t("outcome.stopped"), value: part("tasks", finished.stopped, { set: "stopped", value: null }) }]} />
+          { color: "bg-stopped-part", name: t("outcome.stopped"), value: part("tasks", finished.stopped, { set: "stopped", value: null }) }]} />
       </>}>
         <BarChart row={0} height="h-22 narrow:h-18" scale={scales.finished} grow
-          values={i => [["bg-done", taskPoints[i]!.counts.passed], ["bg-reworked", taskPoints[i]!.counts.reworked], ["bg-stopped", taskPoints[i]!.counts.stopped]]} />
+          values={i => [["bg-done", taskPoints[i]!.counts.passed], ["bg-reworked", taskPoints[i]!.counts.reworked], ["bg-stopped-part", taskPoints[i]!.counts.stopped]]} />
         <DayAxis />
       </Row>}
-      {/* Every row says its own value for the span, those the lead numbers say too: a row is read the same way everywhere. */}
-      {order.map((key, at) => <Row key={key} left={<Num className="" label={names[key]} kind={VALUES[key].kind} value={VALUES[key].read(now)} previous={before ? VALUES[key].read(before) : null} length={length}
-          onOpen={() => open({ set: "used", value: key })} />}>
-        <BarChart row={first + 1 + at} height={key === "newConversations" ? "h-14 narrow:h-11" : "h-16 narrow:h-12"} scale={scales[key]} grow
-          values={i => [["bg-muted", VALUES[key].read(points[i]!.counts)]]} />
-        {at === order.length - 1 && <DayAxis />}
-      </Row>)}
+      <Row left={<>
+        <Num className="" label={t("usage.tokens")} kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length}
+          onOpen={() => open({ set: "used", value: "tokens" })} />
+        <Parts items={[
+          { color: "", name: t("usage.output"), value: part("tokens", now.tokens.output, { set: "used", value: "output" }) },
+          { color: "", name: t("usage.input"), value: part("tokens", now.tokens.input, { set: "used", value: "input" }) },
+          { color: "", name: t("usage.cache"), value: part("tokens", now.tokens.cache, { set: "used", value: "cache" }) }]} line={perEntry("tokens")} />
+      </>}>
+        <BarChart row={first} height="h-30 narrow:h-22" scale={scales.tokens} tone="working" grow overlay={overlays?.tokens} values={i => [["", amount.tokens(i)]]} />
+      </Row>
+      <Row left={<>
+        <Num className="" label={t("usage.runMs")} kind="hours" value={now.runMs} previous={before?.runMs ?? null} length={length}
+          onOpen={() => open({ set: "used", value: "runMs" })} />
+        <Parts line={perEntry("runMs")} />
+      </>}>
+        <BarChart row={first + 1} height="h-20 narrow:h-16" scale={scales.runMs} tone="working" grow overlay={overlays?.runMs} values={i => [["", amount.runMs(i)]]} />
+      </Row>
+      <Row left={<>
+        <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={before?.launches ?? null} length={length}
+          onOpen={() => open({ set: "used", value: "launches" })} />
+        <Parts items={[{ color: "", name: t("usage.newConversations"), value: part("plain", now.newConversations, { set: "used", value: "newConversations" }) }]}
+          line={perEntry("launches")} />
+      </>}>
+        <BarChart row={first + 2} height="h-20 narrow:h-16" scale={scales.launches} tone="working" grow overlay={overlays?.launches} values={i => [["", amount.launches(i)]]} />
+        <DayAxis />
+      </Row>
     </div>
   </ChartGroup>;
 
@@ -161,14 +201,18 @@ function Breakdown({ view, group, days, open, choose }: {
   const series = breakdown?.series ?? null, points = view.series.points;
   const scale = useScale(Math.max(0, ...(series ?? []).map(value => value ? read(value) : 0)), 1, t("unit.times", { count: 2 }), true);
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
+  const valueOf = by === "skill" ? "launches" as const : "calls" as const;
   const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}
-    lines={[{ name, value: i => series[i] ? format("times", read(series[i]!)) : t("chart.notCounted") }]}>
+    rows={[{ name, total: i => series[i] ? format("times", read(series[i]!)) : t("chart.notCounted"),
+      // A bin before counting began has no tasks to open.
+      list: (bin, at) => series[at] === null ? null : { set: "used", value: valueOf, group: by, member: null, from: bin.from, to: bin.to } }]}
+    open={list => open({ set: list.set, value: list.value, group: list.group ?? null, member: null, days: { from: list.from, to: list.to } })}>
     <Row className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
       : <Num className="" label={name} kind="times" value={breakdown?.counted ? read(breakdown.counted.value) : 0}
         previous={breakdown?.counted?.previous ? read(breakdown.counted.previous) : null} length={daysBetween(days.from, days.to)}
         onOpen={() => open({ set: "used", value: by === "skill" ? "launches" : "calls", group: by, member: null })} />}>
       <BarChart row={0} height="h-16 narrow:h-12" scale={scale} uncounted={i => series[i] === null}
-        partial={i => points[i]!.from < since && points[i]!.to >= since} values={i => [["bg-muted", series[i] ? read(series[i]!) : 0]]} />
+        partial={i => points[i]!.from < since && points[i]!.to >= since} tone="working" values={i => [["", series[i] ? read(series[i]!) : 0]]} />
       <DayAxis strong={sinceAt >= 0 ? { at: sinceAt, day: since } : null} />
     </Row>
   </ChartGroup>;

@@ -51,7 +51,7 @@ export function Parts({ items = [], line }: { items?: { color: string; name: str
   line?: { name: string; value: ReactNode; gap?: ReactNode } }) {
   return <div className="mt-2 grid w-max grid-cols-[max-content_max-content_max-content] items-baseline gap-x-4 gap-y-1 narrow:flex narrow:w-auto narrow:flex-wrap narrow:gap-x-4">
     {items.map(item => <div key={item.name} className="contents narrow:flex narrow:items-baseline narrow:gap-2">
-      <span className="flex items-center text-base whitespace-nowrap text-muted"><i aria-hidden className={cn("me-2 inline-block size-2 flex-none rounded-xs", item.color)} />{item.name}</span>
+      <span className="flex items-center text-base whitespace-nowrap text-muted">{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none rounded-xs", item.color)} />}{item.name}</span>
       <span className="text-base">{item.value}</span>
       <span className="text-xs text-soft tabular-nums">{item.share ?? ""}</span>
     </div>)}
@@ -84,7 +84,7 @@ export type RowSay = {
   name: string; total: (at: number) => string;
   parts?: (at: number) => { color: string; name: string; value: string; share?: string }[];
   line?: { name: string; value: (at: number) => string; base: (at: number) => string };
-  list?: (bin: Bin) => DayList | null;
+  list?: (bin: Bin, at: number) => DayList | null;
 };
 /** The tasks behind a row on one bin: its list, for the bin's days (`from`–`to`). */
 export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string };
@@ -122,7 +122,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const point = (at: number | null, row = -1, box?: Pointed["box"]) => setPointed(previous => at === null || !box ? null
     // Between two charts the window keeps the row last pointed at.
     : { at, row: row >= 0 ? row : previous?.row ?? 0, box });
-  const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!) ?? null;
+  const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!, at) ?? null;
   const press = (at: number, row: number) => { const list = listOf(at, row); if (list) { close(); open(list); } };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
   return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, point, press }}>
@@ -197,7 +197,7 @@ function DayWindow({ day, say, at, box, narrow, onList }: { day: string; say: Ro
     <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-md font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
     {parts.length > 0 && <div className="mt-1.5 grid grid-cols-[auto_auto_auto] gap-x-4 gap-y-0.5">
       {parts.map(part => <div key={part.name} className="contents">
-        <span className="flex items-center whitespace-nowrap text-muted"><i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />{part.name}</span>
+        <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
         <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums">{part.value}</span>
         <span className="text-end whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}</span>
       </div>)}
