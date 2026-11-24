@@ -1,8 +1,8 @@
 /**
  * What the screen knows of each agent's plan limits. The one place they are read, kept and ordered: each adapter only
  * says how its agent reports them (`AgentAdapter.limits`). An agent is asked only while someone reads, at most once per
- * `freshMs`, within the agents' check deadline; a read returns what is known at once and refreshes behind it, and waits
- * only for an agent never read yet.
+ * `freshMs`, within the agents' check deadline, or at once when the screen asks to refresh; a read returns what is known
+ * at once and refreshes behind it, and waits only for an agent never read yet or a refresh.
  * Accounts are per kind of agent (profiles share the server's sign-in), so the first profile of each kind is asked.
  */
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
@@ -41,13 +41,14 @@ export class AgentLimitsMonitor {
   constructor(private readonly options: { config: () => Promise<LimitsConfig | null>; environment?: InspectionEnvironment;
     now?: () => number; freshMs?: number }) {}
 
-  async read(): Promise<AgentLimitsResponse> {
+  /** `fresh`: asked from the screen's refresh: every agent is asked again now and the answer waits for them. */
+  async read({ fresh = false }: { fresh?: boolean } = {}): Promise<AgentLimitsResponse> {
     const config = await this.options.config();
     if (!config) return { agents: [] };
-    return { agents: await Promise.all(limitsAgents(config).map(([id, setting]) => this.agent(id, setting))) };
+    return { agents: await Promise.all(limitsAgents(config).map(([id, setting]) => this.agent(id, setting, fresh))) };
   }
 
-  private async agent(id: BuiltinAdapterId, setting: AgentSetting): Promise<AgentLimits> {
+  private async agent(id: BuiltinAdapterId, setting: AgentSetting, fresh: boolean): Promise<AgentLimits> {
     const reader = runtimeAdapter(id)?.limits;
     if (!reader) return { adapter: id, state: 'unsupported', windows: [], account: null, observedAt: null };
     const environment = this.options.environment ?? { cwd: process.cwd(), env: process.env };
@@ -61,14 +62,14 @@ export class AgentLimitsMonitor {
     const names = [...description.fixedEnv, ...(setting.env ?? description.defaultEnv)].sort();
     const key = JSON.stringify([argv, names]);
     const now = this.now(), known = this.known.get(key);
-    if (known && now - known.at < (this.options.freshMs ?? LIMITS_FRESH_MS)) return known.limits;
+    if (!fresh && known && now - known.at < (this.options.freshMs ?? LIMITS_FRESH_MS)) return known.limits;
     let refresh = this.pending.get(key);
     if (!refresh) {
       refresh = this.ask(key, id, [...argv, ...reader.args], names, environment, reader, known)
         .finally(() => this.pending.delete(key));
       this.pending.set(key, refresh);
     }
-    return known ? known.limits : (await refresh).limits;
+    return known && !fresh ? known.limits : (await refresh).limits;
   }
 
   private async ask(key: string, id: BuiltinAdapterId, argv: string[], names: string[], environment: InspectionEnvironment,

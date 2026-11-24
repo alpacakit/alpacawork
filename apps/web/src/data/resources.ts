@@ -41,6 +41,10 @@ const fileBytesRead = (root: string, taskId: string, name: string, revision: str
   staleTime: Infinity,
 });
 
+/** The bar's plan limits; `fresh` has the server ask every agent again now instead of answering what it knows. */
+export const readAgentLimits = (fresh: boolean, signal?: AbortSignal) =>
+  api.readWithin(fresh ? "limits?fresh=true" : "limits", agentLimitsResponseSchema, AGENT_CHECK_READ_MS, signal);
+
 export const resources = {
   projectShelf: (root: string) => queryOptions({
     queryKey: ['project-shelf', root] as const,
@@ -169,7 +173,7 @@ export const resources = {
   /** Each kind of agent's plan limits. The server asks an agent at most every 5 minutes, within the agents' check
    * deadline (a first read waits for it); reading each minute while the screen is shown brings a fresh answer within a minute of it. */
   agentLimits: (root: string) => queryOptions({ queryKey: ["agent-limits", root] as const,
-    queryFn: ({ signal }) => api.readWithin("limits", agentLimitsResponseSchema, AGENT_CHECK_READ_MS, signal),
+    queryFn: ({ signal }) => readAgentLimits(false, signal),
     staleTime: 60_000, refetchInterval: 60_000 }),
   /** Host status: read again every sample (10 s) while the tab is open. */
   hostStatus: (root: string) => queryOptions({ queryKey: ["host-status", root] as const,

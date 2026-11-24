@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { useRefreshAgentLimits } from "@/data/queries";
+import { notify } from "@/lib/notify";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
@@ -74,6 +77,8 @@ export function LimitsMenu() {
   // The bar is drawn before the first index: the limits are read once it names the workspace.
   const root = useFrameSelector(data => data?.info.root ?? null);
   const limits = useQuery({ ...resources.agentLimits(root ?? ""), enabled: !!root });
+  // A refresh asks every agent again now: no model is called, so it costs no tokens, only a second or two.
+  const refresh = useRefreshAgentLimits();
   useNow();
   const now = Date.now();
   const [open, setOpen] = useState(false);
@@ -100,8 +105,14 @@ export function LimitsMenu() {
         {shown.window ? percentText(percent) : "—"}</span>
     </Button>
     {open && <Popup open onOpenChange={setOpen} label={t("limits.title")} align="end" className="w-80 p-3" anchorRef={trigger}
-      heading={<span className="flex items-baseline justify-between gap-3"><span>{t("limits.title")}</span>
-        {read && <span className="text-xs font-normal text-muted">{read}</span>}</span>}>
+      heading={<span className="flex items-center justify-between gap-3"><span>{t("limits.title")}</span>
+        <span className="flex items-center gap-1 text-xs font-normal text-muted">
+          <span aria-live="polite">{refresh.isPending ? t("limits.refreshing") : read}</span>
+          <Button variant="ghost" size="icon" data-limits-refresh aria-label={t("limits.refresh")} title={t("limits.refresh")}
+            disabled={refresh.isPending} onClick={() => refresh.mutate(undefined, {
+              onError: error => notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }) })} className="size-7 text-muted hover:text-ink narrow:size-9">
+            <Icon name="reload" className={cn("size-3.5", refresh.isPending && "animate-spin")} /></Button>
+        </span></span>}>
       <div data-limits-menu lang={i18n.language}>
         {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} now={now} />)}
       </div>

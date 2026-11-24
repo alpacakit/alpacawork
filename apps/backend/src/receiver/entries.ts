@@ -5,7 +5,7 @@ import { bindCliOptions } from '@alpacawork/cli-kit';
 import { commandTree, type Command, type CommandInput } from '@alpacawork/contract/commands';
 import { hostEpisodeInput } from '@alpacawork/contract';
 import { DEFAULT_SERVER_PORT } from '@alpacawork/contract/default-server';
-import { PUBLIC_HOST_PATTERN, emptyInput, personNoticesSaveInput, personSettingsSetInput, presencePauseInput, presenceReportInput, pushSubscribeInput, pushUnsubscribeInput, serveInput, taskFinishedInput, taskSearchInput, taskShelvedInput, taskTimelineAxisInput, taskTimelineInput } from '@alpacawork/contract/inputs';
+import { PUBLIC_HOST_PATTERN, agentLimitsReadInput, emptyInput, personNoticesSaveInput, personSettingsSetInput, presencePauseInput, presenceReportInput, pushSubscribeInput, pushUnsubscribeInput, serveInput, taskFinishedInput, taskSearchInput, taskShelvedInput, taskTimelineAxisInput, taskTimelineInput } from '@alpacawork/contract/inputs';
 import { PROBLEM_CODE, Problem, parseInput } from '@alpacawork/core';
 import { z } from 'zod';
 import { readProjectShelf } from '../control/project-shelf.js';
@@ -274,11 +274,13 @@ const hostStatus = withAct(defineEntryEndpoint(empty('status'), {
   }, channels: [bindHttpEntry({ method: 'GET' })],
 }), SCREEN);
 /** Each kind of agent's plan limits, in the screen's order. */
-const agentLimits = withAct(defineEntryEndpoint(empty('limits'), {
-  handler: (input: unknown, context: Context) => {
-    parseInput(emptyInput, input);
-    return context.limits!.read();
-  }, channels: [bindHttpEntry({ method: 'GET' })],
+const agentLimitsEntry = defineEntry({ name: 'limits', parameters: [
+  defineParameter({ name: 'fresh', description: 'Ask every agent again now (no model is called)', codec: codecs.boolean(), requirement: optional() }),
+], project: ({ values }) => values });
+const agentLimits = withAct(defineEntryEndpoint(agentLimitsEntry, {
+  handler: (input: ReturnType<typeof agentLimitsEntry.project>, context: Context) =>
+    context.limits!.read({ fresh: parseInput(agentLimitsReadInput, input).fresh === true }),
+  channels: [bindHttpEntry({ method: 'GET' })],
 }), SCREEN);
 const hostEpisodeEntry = defineEntry({ name: 'episode', parameters: [
   defineParameter({ name: 'id', description: 'Episode ID', requirement: required(), codec: codecs.string() }),

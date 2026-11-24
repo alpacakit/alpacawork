@@ -27,6 +27,9 @@
     "readAgo_many": "Actualizado hace {{count}} min",
     "readAgo_other": "Actualizado hace {{count}} min",
     "readNow": "Actualizado ahora",
+    "refresh": "Leer de nuevo ahora",
+    "refreshFailed": "No se pudieron leer de nuevo",
+    "refreshing": "Leyendo…",
     "reset": {
       "at": "Se restablece el {{when}}",
       "inHours": "Se restablece en {{hours}} h {{minutes}} min",

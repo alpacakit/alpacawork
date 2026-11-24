@@ -78,6 +78,9 @@ test('one entry per kind of agent, the task stack\'s first, then the other enabl
   assert.match(f.calls().find(call => call.startsWith('codex')) ?? '', /^codex --command .*\/codex --limits$/);
   await f.monitor.read();
   assert.equal(f.calls().length, 2);
+  // The screen's refresh asks every agent again while the last answers are still fresh, and answers once they reply.
+  await f.monitor.read({ fresh: true });
+  assert.equal(f.calls().length, 4);
 });
 
 test('a failed read keeps the last windows and their time; an agent never read says it could not be', async t => {

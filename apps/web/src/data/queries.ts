@@ -10,7 +10,7 @@ import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient, ty
 import { attachmentBytes, DEFAULT_LIMITS, serverSettingsSchema, type ServerSettings } from "@alpacawork/contract";
 import { taskRowFields, taskWriteResultSchema, type ProjectedIndexDTO, type ControlRunDTO } from "@alpacawork/contract/control";
 import { descendants, indexTasks, withinProjectFilter, type TaskIndex } from "@/domain/tasks";
-import { api, indexKey, resources } from "./resources";
+import { api, indexKey, readAgentLimits, resources } from "./resources";
 export { api } from "./resources";
 import { rowTask } from "./map";
 import { useFrameSelector, useWorkspaceSelector } from "./workspace-store";
@@ -483,6 +483,14 @@ export function useSaveServerSettings(meta?: WriteOptions) {
     void client.invalidateQueries({ queryKey: resources.agentLimits(root).queryKey });
     return settings;
   } });
+}
+
+/** Read the plan limits again now. No model is called, so it costs no tokens: each agent answers in a second or two. */
+export function useRefreshAgentLimits() {
+  const client = useQueryClient();
+  const root = useFrameSelector((data) => data?.info.root ?? "");
+  return useMutation({ mutationFn: () => readAgentLimits(true),
+    onSuccess: limits => client.setQueryData(resources.agentLimits(root).queryKey, limits) });
 }
 
 /** The stopped Run reaches the screen with the feed's next delta. */
