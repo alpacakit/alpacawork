@@ -47,7 +47,7 @@ export function Value({ kind, value, big, onOpen }: { kind: Kind; value: number 
     {written.unit && <span className="text-muted">{written.unit}</span>}
   </>;
   const shape = "inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm";
-  if (!onOpen || value === null) return <span className={shape}>{body}</span>;
+  if (!onOpen || !value) return <span className={shape}>{body}</span>;
   return <button type="button" onClick={onOpen}
     className={cn(shape, "underline decoration-line decoration-1 underline-offset-5 transition-[text-decoration-color] hover:decoration-ink active:translate-y-px")}>{body}</button>;
 }
