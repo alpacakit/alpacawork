@@ -1,5 +1,6 @@
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
 import type { LimitsReport } from '@alpacawork/contract/agent-limits';
+import type { ContextUpdate } from '@alpacawork/contract/agent-context';
 import type { AgentExit, ReaderResult } from '../../runs/readers/result.js';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 import type { ActivityEvent } from '../../runs/activity-events.js';
@@ -30,6 +31,8 @@ export type AgentAdapter = {
   read(invocation: AdapterInvocation, folder: string, exit: AgentExit): AdapterObservation;
   earlySession(invocation: Pick<AdapterInvocation, 'mode' | 'session'>, folder: string): string | null;
   activity(value: unknown, received: string): ActivityEvent[];
+  /** What one output row says of how full the main conversation is; null when it says nothing of it. */
+  context(value: unknown): ContextUpdate | null;
   skillCatalogContext(input: Pick<CatalogInput, 'argv' | 'env' | 'session'>): SkillCatalogContext;
   limits: LimitsProbe | null;
 };

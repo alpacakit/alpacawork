@@ -8,6 +8,7 @@ import { requiredValue, unknownOption, withUsage } from './options.js';
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
 import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
+import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 
 type Options = { model: string | null; output: string | null; resume: string | null; serverUrl: string | null };
 const USAGE = 'Usage: alpacawork-agent copilot [-m MODEL] [-o FILE] [--server-url URL] [resume SESSION]';
@@ -143,6 +144,8 @@ export class CopilotRuntime implements Runtime {
     if (event.type === 'assistant.usage') { this.calls.push(event.data); return; }
     if (event.type === 'session.compaction_complete') { if (event.data.compactionTokensUsed) this.calls.push(event.data.compactionTokensUsed); return; }
     if (event.agentId) return;
+    const context = copilotContext(event.type, event.data);
+    if (context) { this.io.emit({ type: 'context.updated', context }); return; }
     if (event.type === 'user.message' && event.data.messageId) {
       const pending = this.waiting.get(event.data.messageId);
       if (!pending) return;
@@ -215,6 +218,17 @@ export class CopilotRuntime implements Runtime {
     if (this.health) clearInterval(this.health);
     this.health = null;
   }
+}
+
+/** The fill the SDK counts before each model call, against the prompt's limit; a compaction's own figure after it. */
+export function copilotContext(type: string, value: unknown): ContextUpdate | null {
+  const data = usageRecord(value);
+  if (type === 'session.usage_info') {
+    const used = callTokens(data.currentTokens), limit = callTokens(data.tokenLimit);
+    return used === null ? null : { usedTokens: used, compacted: false, ...limit ? { windowTokens: limit } : {} };
+  }
+  if (type === 'session.compaction_complete') return { usedTokens: callTokens(data.postCompactionTokens), compacted: true };
+  return null;
 }
 
 /** Model calls summed. The SDK's input count includes the cache's reads and writes, as Codex's does. */

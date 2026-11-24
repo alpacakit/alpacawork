@@ -54,7 +54,7 @@ test('a live activity change reaches the SSE index without a Run database commit
     const stream = await openIndexStream(new URL('/api/events', server.url), controller.signal);
     await stream.index();
     writeFileSync(join(runFolder(h.root, h.run.id), 'activity.json'), JSON.stringify({
-      at: '2026-10-05T03:43:14.000Z', kind: 'tool_start', toolName: 'Bash', doing: null, note: null }));
+      at: '2026-10-05T03:43:14.000Z', kind: 'tool_start', toolName: 'Bash', doing: null, note: null, context: null }));
     const changed = await Promise.race([
       (async () => {
         for (;;) {

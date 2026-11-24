@@ -47,9 +47,11 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
         <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
-        <p className="mt-1 text-sm text-muted">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
+        <p className="mt-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
-      <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
+      {/* On a PC the rows share their columns, so each one's role is as wide as the longest, and the agents as the longest
+          name they offer (up to a limit), and every agent and value starts on one line. */}
+      <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 grid list-none grid-cols-[max-content_fit-content(12rem)_minmax(0,1fr)_auto] p-0 narrow:block">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
@@ -62,7 +64,7 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
         {refused && <FieldError className="mt-2">{refused}</FieldError>}
         {/* Only a request names an AI for a task; nothing names one for the input. */}
-        {kind === 'tasks' && <p className="mt-3 text-sm text-muted">{t('agentSettings.aiStack.namedOnly')}</p>}
+        {kind === 'tasks' && <p className="mt-3 text-sm text-pretty text-muted [word-break:auto-phrase]">{t('agentSettings.aiStack.namedOnly')}</p>}
       </div>
     </section>
   </div>;
@@ -74,7 +76,9 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
 }) {
   const { t } = useTranslation('panels');
   const text = useChoiceText();
-  const n = index + 1;
+  // A row is named by its role, which goes with its place: the controls and fields say it, the role shown is not read twice.
+  const role = (at: number) => at === 0 ? t('agentSettings.aiStack.first') : t('agentSettings.aiStack.fallback', { n: at });
+  const name = role(index);
   const agent = agents.find(each => each.name === row.agent);
   const listed = enabled.some(each => each.name === row.agent);
   const choices = agent ? rowChoices(agent, row.values) : [];
@@ -83,48 +87,43 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
   const issueText = (issue: StackIssue) => issue.kind === 'missing' ? t('agentSettings.aiStack.issue.missing', { agent: row.agent })
     : issue.kind === 'disabled' ? t('agentSettings.aiStack.issue.disabled', { agent: row.agent })
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
-  // One line on a PC: its number, its agent (the first marked as the default under it), two choices to a line in
-  // columns, and its controls. On a phone the choices go under the agent and its controls, one to a line.
+  // One line on a PC: its role (the primary, or which fallback), its agent, two choices to a line in columns, and its
+  // controls. On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
-    className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 border-t border-line px-4 py-3 narrow:gap-x-2 narrow:px-3">
-    <span aria-hidden className="flex min-h-control-md items-center justify-end font-mono tabular-nums text-muted">{n}</span>
-    <div className="flex min-w-0 items-start gap-x-5 narrow:contents">
-      <div className="flex w-32 shrink-0 flex-col items-start gap-1 narrow:col-start-2 narrow:row-start-1 narrow:w-full narrow:flex-row narrow:flex-wrap narrow:items-center narrow:gap-2">
-        <NativeSelect variant="field" className="w-full font-semibold narrow:w-auto narrow:min-w-24 narrow:flex-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
-          aria-label={t('agentSettings.aiStack.agentFor', { n })}
-          onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
-          {!listed && <option value={row.agent}>{row.agent}</option>}
-          {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
-        </NativeSelect>
-        {index === 0 && <span data-ai-stack-first className="shrink-0 whitespace-nowrap rounded-full border border-line px-2 text-sm text-muted">{t('agentSettings.aiStack.first')}</span>}
-      </div>
-      {choices.length > 0 && <div className="grid min-w-0 flex-1 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-center gap-x-3 gap-y-2 narrow:col-span-2 narrow:col-start-2 narrow:row-start-2 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
-        {choices.map((choice, at) => {
-          const { value, refused } = choice;
-          return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
-            <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
-            <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
-              aria-label={t('agentSettings.aiStack.valueFor', { n, row: text.row(choice.key) })}
-              onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
-              {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
-              {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
-            </NativeSelect>
-          </label>;
-        })}
-      </div>}
-    </div>
-    <div className="col-start-3 row-start-1 flex items-center">
-      <Button type="button" variant="quiet" size="icon" disabled={index === 0} aria-label={t('agentSettings.aiStack.up', { n })} title={t('agentSettings.aiStack.up', { n })}
+    className="col-span-4 grid grid-cols-subgrid items-baseline gap-x-2 border-t border-line px-4 py-3 narrow:grid-cols-[minmax(0,1fr)_auto] narrow:gap-x-2 narrow:px-3">
+    <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
+    <NativeSelect variant="field" className="w-full min-w-28 font-semibold narrow:col-span-2 narrow:row-start-2 narrow:mt-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
+      aria-label={t('agentSettings.aiStack.agentFor', { role: name })}
+      onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
+      {!listed && <option value={row.agent}>{row.agent}</option>}
+      {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
+    </NativeSelect>
+    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
+      {choices.map((choice, at) => {
+        const { value, refused } = choice;
+        return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
+          <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
+          <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
+            aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(choice.key) })}
+            onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
+            {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
+            {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
+          </NativeSelect>
+        </label>;
+      })}
+    </div>}
+    <div className="col-start-4 row-start-1 flex min-h-control-md items-center self-start narrow:col-start-2">
+      <Button type="button" variant="quiet" size="icon" disabled={index === 0} aria-label={t('agentSettings.aiStack.up', { role: name })} title={t('agentSettings.aiStack.up', { role: name })}
         onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" disabled={index === count - 1} aria-label={t('agentSettings.aiStack.down', { n })} title={t('agentSettings.aiStack.down', { n })}
+      <Button type="button" variant="quiet" size="icon" disabled={index === count - 1} aria-label={t('agentSettings.aiStack.down', { role: name })} title={t('agentSettings.aiStack.down', { role: name })}
         onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { n })} title={t('agentSettings.aiStack.remove', { n })}
+      <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { role: name })} title={t('agentSettings.aiStack.remove', { role: name })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
     </div>
-    {(issues.length > 0 || refused || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1">
+    {(issues.length > 0 || refused || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1 self-start narrow:col-start-1">
       {issues.map((issue, at) => <FieldError key={at}>{issueText(issue)}</FieldError>)}
       {refused && <FieldError>{refused}</FieldError>}
-      {repeats !== null && <Message size="line" tone="info" quiet title={t('agentSettings.aiStack.repeated', { n: repeats + 1 })} />}
+      {repeats !== null && <Message size="line" tone="info" quiet title={t('agentSettings.aiStack.repeated', { role: role(repeats) })} />}
     </div>}
   </li>;
 }

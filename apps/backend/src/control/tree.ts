@@ -2,11 +2,12 @@
 import { enabledAgents, type ControlRunDTO, type ControlTreeDTO } from '@alpacawork/contract';
 import { CONFIG_FILE } from '@alpacawork/raw';
 import { RunStore, type ReadRunSnapshot } from '@alpacawork/runs';
-import { runFolder, type ReadRunRecord, type RunActivity, type RunRecord } from '@alpacawork/contract/run';
+import { runFolder, type ReadRunRecord, type RunActivityView, type RunRecord } from '@alpacawork/contract/run';
 import type { PlacementStore } from './placements.js';
 import { projectPlacementRuntimes } from './runtime.js';
 import { recordedRun } from '../runs/run-view.js';
 import { readRunActivity } from '../runs/activity.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { failureAvailability, runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { Problem, PROBLEM_CODE, faultReason, type ProblemReason } from '@alpacawork/core';
@@ -20,7 +21,7 @@ const runsUnavailable = (error: Problem): ReadError =>
   ({ code: PROBLEM_CODE.runsUnavailable, message: error.message, reason: error.reason ?? faultReason(error), path: '.alpacawork/alpacawork.sqlite' });
 
 /** What a Run's screen facts read beside its record, from its folder: its activity and its failure's cause. */
-export type RunFolderFacts = { readonly activity: RunActivity | null; readonly errorCause: ControlRunDTO['errorCause'] | undefined };
+export type RunFolderFacts = { readonly activity: RunActivityView | null; readonly errorCause: ControlRunDTO['errorCause'] | undefined };
 /**
  * A Run as the screen shows it, with its folder's facts: the one mapping of a Run record to the screen's Run. The
  * projection passes the facts its records captured (TaskBundle.runFiles); controlRuns reads them from the folder.
@@ -34,7 +35,7 @@ export function runView(run: ReadRunRecord, files: RunFolderFacts | undefined): 
 /** The screen's Runs of `records`, their folder facts read now. */
 export function controlRuns(root: string, records: readonly ReadRunRecord[]): ControlRunDTO[] {
   return records.map(run => runView(run, { errorCause: failureAvailability(readRunFailure(root, run)),
-    activity: run.state === 'running' ? readRunActivity(runFolder(root, run.id)) : null }));
+    activity: run.state === 'running' ? readRunActivityView(root, run) : null }));
 }
 /** What a placement's runtime reads of its Task: the wire type leaves out a toState the record holds as null. */
 const runtimeTask = (task: Pick<ControlTreeDTO['tasks'][number], 'state' | 'log'>) =>

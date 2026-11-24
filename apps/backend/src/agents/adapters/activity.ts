@@ -48,6 +48,8 @@ export function claudeActivity(value: unknown, received: string): ActivityEvent[
 export function bridgeActivity(value: unknown, received: string): ActivityEvent[] {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
   const row = object(value), at = eventAt(row, received);
+  // How full the conversation is says nothing of the work: the step shown stays (runs/activity keeps the fill apart).
+  if (row.type === 'context.updated') return [];
   if (row.type === 'error' || row.type === 'turn.failed') return [{ at, kind: 'error' }];
   if (row.type === 'turn.completed') return [{ at, kind: 'result' }];
   const item = object(row.item);

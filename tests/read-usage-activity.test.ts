@@ -13,7 +13,7 @@ test('activity maps tool result to the original tool', t => {
   stdout([{ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'shell' }] } },
     { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1' }] } }]);
   activity.poll(folder);
-  assert.deepEqual(readRunActivity(folder), { at: readRunActivity(folder)?.at, kind: 'tool_end', toolName: 'shell', doing: null, note: null });
+  assert.deepEqual(readRunActivity(folder), { at: readRunActivity(folder)?.at, kind: 'tool_end', toolName: 'shell', doing: null, note: null, context: null });
 });
 
 test('the latest direct words survive tool activity and helper output', t => {

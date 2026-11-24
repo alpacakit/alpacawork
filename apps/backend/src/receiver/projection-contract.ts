@@ -9,7 +9,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ChangeKey, ChangeSeq } from '@alpacawork/db';
 export type { ChangeSeq } from '@alpacawork/db';
 import type { ControlTask } from '@alpacawork/raw';
-import type { Ball, FieldCatalog, ReadRunRecord, RunId, RunResultState, UsageTotal, RunActivity } from '@alpacawork/contract';
+import type { Ball, FieldCatalog, ReadRunRecord, RunId, RunResultState, UsageTotal, RunActivityView } from '@alpacawork/contract';
 import type { ControlIndexDTO, ControlRunDTO, ControlTreeDTO, IndexPatchDTO, PlacementDTO, ProjectionVersion,
   RequiredPvDTO, TaskViewRowDTO } from '@alpacawork/contract/control';
 import type { RunSnapshot, StoredPlacement, StoredRequest, StoredReturn } from '@alpacawork/runs';
@@ -32,7 +32,7 @@ export type Facet = typeof FACETS[number];
 
 /** Optional folder facts captured by the records layer, never reread during derivation. */
 export interface RunFileRecord {
-  readonly activity: RunActivity | null;
+  readonly activity: RunActivityView | null;
   readonly errorCause: ControlRunDTO['errorCause'] | undefined;
 }
 

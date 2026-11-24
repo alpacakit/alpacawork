@@ -37,7 +37,7 @@ You can point to a task by its number (such as T12) or by words from its title. 
 | Open the screen | `open the screen` | `alpacawork open` |
 | Check whether it is running | `check whether it is running` | `alpacawork status` |
 | Change a setting | `run at most 4 AIs at once` | — |
-| Change the model normally used | `use opus for tasks normally` | — |
+| Change the primary model | `use opus for tasks normally` | — |
 | Make a new model available | `a new Codex model is out; add it to the model settings so I can choose it` | — |
 | Change the project policy | `add "use opus for design work" to the project policy` | — |
 | Update to the latest version | `update to the latest version` | `alpacawork deploy npm:alpacawork` |
