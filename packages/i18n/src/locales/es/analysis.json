@@ -1,7 +1,7 @@
 {
   "breakdown": {
-    "all_many": "Las {{count}} filas",
     "all_one": "Las {{count}} filas",
+    "all_many": "Las {{count}} filas",
     "all_other": "Las {{count}} filas",
     "since": "Recuento desde el {{date}}",
     "title": "Desglose",
@@ -12,8 +12,8 @@
     "label": "Intervalo",
     "month": "Por mes",
     "ongoing": "en curso",
-    "partial_many": "{{count}} días",
     "partial_one": "{{count}} día",
+    "partial_many": "{{count}} días",
     "partial_other": "{{count}} días",
     "week": "Por semana"
   },
@@ -62,8 +62,8 @@
     "three": "Ninguna instrucción después de aceptarla (si llega, deja de contar)",
     "tokensName": "Tokens",
     "tokensText": "Salida + entrada + lecturas y escrituras de caché, incluidas las tareas en curso",
-    "tokensUnknown_many": "{{count}} arranques sin registro de tokens no están en los tokens",
     "tokensUnknown_one": "{{count}} arranque sin registro de tokens no está en los tokens",
+    "tokensUnknown_many": "{{count}} arranques sin registro de tokens no están en los tokens",
     "tokensUnknown_other": "{{count}} arranques sin registro de tokens no están en los tokens",
     "toolName": "Herramientas",
     "toolText": "Sin las llamadas dentro de subagentes",
@@ -76,8 +76,8 @@
   },
   "home": {
     "label": "{{marks}}. Abrir el análisis",
-    "marks_many": "{{count}} terminadas hoy · {{passed}} sin correcciones",
     "marks_one": "{{count}} terminada hoy · {{passed}} sin correcciones",
+    "marks_many": "{{count}} terminadas hoy · {{passed}} sin correcciones",
     "marks_other": "{{count}} terminadas hoy · {{passed}} sin correcciones"
   },
   "lead": {
@@ -101,8 +101,8 @@
     "close": "Cerrar",
     "day": "Día",
     "empty": "No hay tareas",
-    "more_many": "{{count}} más",
     "more_one": "{{count}} más",
+    "more_many": "{{count}} más",
     "more_other": "{{count}} más",
     "outcome": "Resultado",
     "task": "Tarea",
@@ -123,8 +123,8 @@
     "28d": "Últimos 28 días",
     "7d": "Últimos 7 días",
     "all": "Todo",
-    "days_many": "{{count}} días",
     "days_one": "{{count}} día",
+    "days_many": "{{count}} días",
     "days_other": "{{count}} días",
     "earlier": "Período anterior",
     "label": "Período",
@@ -133,8 +133,8 @@
   },
   "previous": {
     "day": "Día anterior",
-    "days_many": "{{count}} días anteriores",
     "days_one": "{{count}} día anterior",
+    "days_many": "{{count}} días anteriores",
     "days_other": "{{count}} días anteriores"
   },
   "range": "{{from}} – {{to}}",
@@ -160,8 +160,8 @@
     "grass": "Tareas terminadas por día",
     "grassFew": "Menos",
     "grassMany": "Más",
-    "grassTip_many": "{{day}}  {{count}} tareas terminadas",
     "grassTip_one": "{{day}}  {{count}} tarea terminada",
+    "grassTip_many": "{{day}}  {{count}} tareas terminadas",
     "grassTip_other": "{{day}}  {{count}} tareas terminadas",
     "howCounted": "Cómo se cuenta",
     "noAgent": "Sin IA asignada",
@@ -200,14 +200,14 @@
         "unit": "mil"
       }
     ],
-    "taskCount_many": "tareas",
     "taskCount_one": "tarea",
+    "taskCount_many": "tareas",
     "taskCount_other": "tareas",
-    "tasks_many": "tareas",
     "tasks_one": "tarea",
+    "tasks_many": "tareas",
     "tasks_other": "tareas",
-    "times_many": "veces",
     "times_one": "vez",
+    "times_many": "veces",
     "times_other": "veces"
   },
   "until": {
@@ -276,11 +276,11 @@
     "workers": "Miembros"
   },
   "window": {
-    "accepted_many": "{{count}} aceptadas",
     "accepted_one": "{{count}} aceptada",
+    "accepted_many": "{{count}} aceptadas",
     "accepted_other": "{{count}} aceptadas",
-    "finished_many": "{{count}} terminadas",
     "finished_one": "{{count}} terminada",
+    "finished_many": "{{count}} terminadas",
     "finished_other": "{{count}} terminadas",
     "list": "Lista de tareas"
   }
