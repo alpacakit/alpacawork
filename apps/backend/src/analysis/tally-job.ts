@@ -3,8 +3,8 @@ import type { ChangeLog } from '@alpacawork/db';
 import { backendEntry } from '../app-paths.js';
 import type { Tally } from '../agents/adapters/tally.js';
 
-export function startTallyJob(root: string, changes: ChangeLog, tallies: Map<string, Tally>) {
-  const worker = new Worker(backendEntry('analysis/tally-worker'), { workerData: { root } });
+export function startTallyJob(root: string, tallySince: number, changes: ChangeLog, tallies: Map<string, Tally>) {
+  const worker = new Worker(backendEntry('analysis/tally-worker'), { workerData: { root, tallySince } });
   const release = changes.register('analysis-tally');
   const unsubscribe = changes.subscribe(() => {
     const read = changes.read('analysis-tally');

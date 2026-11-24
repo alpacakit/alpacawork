@@ -9,12 +9,12 @@ import type { AnalysisAcceptedTotals, AnalysisBucket, AnalysisDays, AnalysisHead
 import { authorize, type Caller } from '../control/authorize.js';
 import { readControl } from '../control/task-store.js';
 import type { Tally } from '../agents/adapters/tally.js';
-import { FactsCache, type AnalysisFacts, type Unit } from './facts.js';
+import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, modelLabel, shareOf, unitMarks, type Launch } from './rules.js';
+import { clocks, emptyClock, modelLabel, shareOf, unitMarks } from './rules.js';
 
 type DatedUnit = { day: string; unit: Unit };
-type DatedLaunch = { day: string; root: string; run: Launch };
+type DatedLaunch = { day: string; root: string; run: FactLaunch };
 type Group<T> = { key: string; label: string; items: T[] };
 type DimensionValue = { key: string; label: string };
 const group = <T>(items: Iterable<T>, keys: (item: T) => readonly DimensionValue[]): Map<string, Group<T>> => {
@@ -108,7 +108,8 @@ class ScopedAnalysis {
   private readonly allows: (project: string) => boolean;
 
   constructor(private readonly facts: AnalysisFacts, readonly project: string | null, ownProject: string | null,
-    private readonly timeZone: string, readonly now: number, private readonly tallies: ReadonlyMap<string, Tally>) {
+    private readonly timeZone: string, readonly now: number, private readonly tallySince: number,
+    private readonly tallies: ReadonlyMap<string, Tally>) {
     this.date = calendar(timeZone);
     this.today = this.date(now);
     this.allows = matchingProject(facts, project, ownProject);
@@ -155,7 +156,7 @@ class ScopedAnalysis {
     }));
   }
 
-  private calls(run: Launch, by: AnalysisUsageBy | undefined, key: string | undefined): number {
+  private calls(run: FactLaunch, by: AnalysisUsageBy | undefined, key: string | undefined): number {
     const tally = this.tallies.get(run.id);
     if (!tally || !key || by !== 'tool' && by !== 'mcp') return 0;
     const [, name] = JSON.parse(key) as [string, string];
@@ -163,10 +164,11 @@ class ScopedAnalysis {
   }
 
   private tallyCoverage(items: readonly DatedLaunch[]) {
-    return { runs: items.filter(({ run }) => {
+    const eligible = items.filter(({ run }) => run.tallyEligible);
+    return { runs: eligible.filter(({ run }) => {
       const tally = this.tallies.get(run.id);
       return tally && tally.state !== 'unsupported';
-    }).length, of: items.length };
+    }).length, of: eligible.length, since: this.date(this.tallySince) };
   }
 
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
@@ -287,7 +289,9 @@ export class AnalysisReader {
   private readonly facts: FactsCache;
   readonly tallies = new Map<string, Tally>();
   private readonly timeZone = serverZone();
-  constructor(private readonly root: string, journal?: ChangeLog) { this.facts = new FactsCache(root, journal); }
+  constructor(private readonly root: string, private readonly tallySince: number, journal?: ChangeLog) {
+    this.facts = new FactsCache(root, tallySince, journal);
+  }
   close() { this.facts.close(); }
 
   private scoped<T>(input: { project?: string; timeZone?: string }, caller: Caller, apply: (view: ScopedAnalysis) => T): T {
@@ -299,7 +303,8 @@ export class AnalysisReader {
     if (readScope !== null && input.project !== undefined && input.project !== readScope)
       throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
     const facts = this.facts.read(db);
-    return apply(new ScopedAnalysis(facts, readScope ?? input.project ?? null, readScope, input.timeZone ?? this.timeZone, Date.now(), this.tallies));
+    return apply(new ScopedAnalysis(facts, readScope ?? input.project ?? null, readScope, input.timeZone ?? this.timeZone,
+      Date.now(), this.tallySince, this.tallies));
   }
   tasks(input: AnalysisTasksInput, caller: Caller) { return this.scoped(input, caller, view => view.tasks(input)); }
   usage(input: AnalysisUsageInput, caller: Caller) { return this.scoped(input, caller, view => view.usage(input)); }

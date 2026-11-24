@@ -8,17 +8,17 @@ import { readControl } from '../control/task-store.js';
 import { supportsTally, TallyParser, tallySchema, type Tally } from '../agents/adapters/tally.js';
 import { JsonlReader } from '../runs/readers/jsonl.js';
 import { writeRunFile } from '../runs/files.js';
+import { tallyEligible } from './tally-scope.js';
 
 const MAX_STDOUT = 128 * 1024 * 1024;
 const MAX_TALLY = 8 * 1024 * 1024;
 const BATCH_SIZE = 32;
-const { root } = workerData as { root: string };
+const { root, tallySince } = workerData as { root: string; tallySince: number };
 const port = parentPort!;
 type TallyRun = { id: string; provider: string; adapter: string; session: string | null };
 const runSource = `SELECT 'R' || id AS id, json_extract(record,'$.agent') AS provider,
   json_extract(record,'$.launch.adapter') AS adapter, session_id AS session
-  FROM runs WHERE task_id IS NOT NULL AND state IN ('succeeded','failed','cancelled')
-    AND json_extract(record,'$.pids.agent') IS NOT NULL AND json_extract(record,'$.started_at') IS NOT NULL`;
+  FROM runs WHERE ${tallyEligible}`;
 const pending = new Set<string>(), done = new Set<string>();
 let history: TallyRun[] = [], recent: TallyRun[] = [], running = false, stopped = false;
 
@@ -72,7 +72,7 @@ function loadPending() {
   }
   try {
     return readControl(root, db => db.prepare(runSource + ' AND runs.id IN (SELECT value FROM json_each(?))')
-      .all(JSON.stringify(ids.map(runNumber))) as TallyRun[]);
+      .all(tallySince, JSON.stringify(ids.map(runNumber))) as TallyRun[]);
   } catch {
     port.postMessage({ issue: ids.join(', ') });
     return [];
@@ -101,7 +101,7 @@ function work() {
 
 function rescan() {
   history = readControl(root, db => db.prepare(runSource + " ORDER BY julianday(json_extract(record,'$.ended_at')), runs.id")
-    .all() as TallyRun[]).filter(run => !done.has(run.id));
+    .all(tallySince) as TallyRun[]).filter(run => !done.has(run.id));
 }
 
 port.on('message', (message: { stop?: true; rescan?: true; ids?: string[] }) => {

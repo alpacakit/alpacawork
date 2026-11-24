@@ -64,7 +64,7 @@ const series = <T extends z.ZodType>(counts: T) => z.strictObject({
 });
 const group = { key: z.string(), label: z.string() };
 const times = z.strictObject({ review: count, answer: count, ai: count, other: count });
-const tallied = z.strictObject({ runs: count, of: count });
+const tallied = z.strictObject({ runs: count, of: count, since: analysisDaySchema });
 const tallyTool = z.strictObject({ name: z.string(), calls: count });
 
 export const analysisTaskCountsSchema = z.strictObject({

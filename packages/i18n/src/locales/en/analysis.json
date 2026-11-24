@@ -2,6 +2,7 @@
   "breakdown": {
     "all_one": "All {{count}} row",
     "all_other": "All {{count}} rows",
+    "since": "Collection began on {{date}}",
     "tallied": "Counted from the records of {{runs}} of {{of}} launches",
     "title": "Break down",
     "top": "Top rows only",

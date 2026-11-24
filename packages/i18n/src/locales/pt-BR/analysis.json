@@ -3,6 +3,7 @@
     "all_one": "Todas as {{count}} linhas",
     "all_many": "Todas as {{count}} linhas",
     "all_other": "Todas as {{count}} linhas",
+    "since": "Contagem desde {{date}}",
     "tallied": "Contado com os registros de {{runs}} de {{of}} inícios",
     "title": "Detalhar",
     "top": "Só as primeiras",

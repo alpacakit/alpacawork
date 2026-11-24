@@ -3,6 +3,7 @@
     "all_one": "Las {{count}} filas",
     "all_many": "Las {{count}} filas",
     "all_other": "Las {{count}} filas",
+    "since": "Recuento desde el {{date}}",
     "tallied": "Contado con los registros de {{runs}} de {{of}} arranques",
     "title": "Desglose",
     "top": "Solo las primeras",

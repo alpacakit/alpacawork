@@ -12,6 +12,7 @@ import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
 import type { AnalysisTasksView, AnalysisUnitList, AnalysisUnitValues, AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { AnalysisReader } from '@alpacawork/backend/test-dist/analysis/reads.js';
+import { openTallyScope } from '@alpacawork/backend/test-dist/analysis/tally-scope.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
@@ -25,6 +26,7 @@ const rowId = (n: number) => 'T' + n;
 const project = 'P' + 1;
 const actor = { kind: 'human' } as const;
 const instant = (second: number) => new Date(Date.UTC(2026, 8, 25, 0, 0, second)).toISOString();
+const tallySince = instant(22);
 const link = 'https://github.com/fictional/app/pull/1';
 
 function setup(root: string) {
@@ -82,6 +84,10 @@ function setup(root: string) {
     v: TALLY_VERSION - 1, provider: 'fixture', model: null, tools: { command_execution: 1 }, mcp: {}, skills: {},
     subagentTools: 0, state: 'complete',
   }));
+  const recent = runFolder(root, 'R4');
+  mkdirSync(recent, { recursive: true });
+  writeFileSync(join(recent, RUN_FILES.stdout), JSON.stringify({ type: 'item.started', item: { id: 'recent', type: 'command_execution',
+    command: 'cat /fictional/skills/recent/SKILL.md' } }) + '\n');
   const cached = runFolder(root, 'R3');
   mkdirSync(cached, { recursive: true });
   writeFileSync(join(cached, RUN_FILES.tally), JSON.stringify({
@@ -99,6 +105,9 @@ test('analysis commands share selection, contribution and tally rules over a sma
     copyWorkspace(original, root);
     rootCreated = true;
     setup(root);
+    const clock = t.mock.method(Date, 'now', () => Date.parse(tallySince));
+    try { assert.equal(openTallyScope(root), Date.parse(tallySince)); }
+    finally { clock.mock.restore(); }
     const app = await startServer(root, 0);
     try {
       const read = async <T>(verb: string, params: Record<string, string>): Promise<T> => {
@@ -180,7 +189,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(result.rows.reduce((sum, row) => sum + (row.value ?? 0), 0), expected, value);
       }
 
-      // A startup scan reuses current tallies and rebuilds outdated ones from stdout.
+      // Startup recovers only eligible tallies, including a Run that started before the cutoff.
       let tools: AnalysisUsageView | undefined;
       for (let tries = 0; tries < 80; tries++) {
         tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
@@ -190,12 +199,16 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const tool = tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'command_execution']));
       assert.equal(tool?.calls, 1);
       assert.equal(tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'image_view']))?.calls, 2);
-      assert.deepEqual(tools?.breakdown?.tallied, { runs: 2, of: 4 });
+      assert.deepEqual(tools?.breakdown?.tallied, { runs: 2, of: 3, since: '2026-09-25' });
+      const localTools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool', timeZone: 'America/Los_Angeles' });
+      assert.equal(localTools.breakdown?.tallied?.since, '2026-09-24');
       const counted = await read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
       assert.equal(counted.rows[0]?.value, 1);
-      const saved = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
+      const older = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
+      assert.equal(older.v, TALLY_VERSION - 1);
+      const saved = JSON.parse(readFileSync(join(runFolder(root, 'R4'), RUN_FILES.tally), 'utf8'));
       assert.equal(saved.v, TALLY_VERSION);
-      assert.deepEqual(saved.skills, { example: { call: 0, read: 1 } });
+      assert.deepEqual(saved.skills, { recent: { call: 0, read: 1 } });
       assert.equal(saved.tools.command_execution, 1);
 
       const { ALPACAWORK_RUN: _run, ALPACAWORK_RUN_TOKEN: _token, ...env } = process.env;
@@ -214,7 +227,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
     const shown = await new ControlTaskStore(root).get(id);
 
     const journal = new ChangeLog(), changes = keepControlChanges(root, journal), tables = keepControlTables(root);
-    const reader = new AnalysisReader(root, journal);
+    const reader = new AnalysisReader(root, Date.parse(tallySince), journal);
     const store = new ControlStore(root, { busyTimeoutMs: 1000 });
     try {
       const params = { period: 'all', bucket: 'week' } as const;

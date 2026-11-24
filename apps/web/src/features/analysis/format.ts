@@ -74,6 +74,7 @@ export const daysBetween = (from: string, to: string) => Math.round((utc(to).get
 /** Monday 0 … Sunday 6. */
 export const weekday = (day: string) => (utc(day).getUTCDay() + 6) % 7;
 const fmt = (options: Intl.DateTimeFormatOptions, zone = "UTC") => new Intl.DateTimeFormat(locale(), { ...options, timeZone: zone });
+export const dateLabel = (day: string) => fmt({ dateStyle: "medium" }).format(utc(day));
 export const dayLabel = (day: string) => fmt({ month: "numeric", day: "numeric" }).format(utc(day));
 export const monthLabel = (day: string) => fmt({ month: "short" }).format(utc(day));
 export const weekdayLabel = (day: string) => fmt({ weekday: "short" }).format(utc(day));

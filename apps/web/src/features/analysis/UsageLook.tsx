@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, format, type Kind } from "./format";
+import { dateLabel, daysBetween, format, type Kind } from "./format";
 import { BarPanel } from "./charts";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell } from "./TasksLook";
@@ -63,7 +63,7 @@ export function UsageLook({ view, days, open, pick, zone }: { view: UsageView; d
         : [...[...RUNS, ...TOKENS].map(key => cell(METRICS[key].kind, METRICS[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
     return { key: row.key, name: row.label, bar: counted && group !== "skill" ? row.calls ?? 0 : c.launches, cells };
   });
-  const tallied = view.breakdown?.tallied;
+  const tallied = counted ? view.breakdown?.tallied : null;
 
   return <>
     <div className="flex flex-wrap gap-x-10 gap-y-5 narrow:block">
@@ -98,10 +98,10 @@ export function UsageLook({ view, days, open, pick, zone }: { view: UsageView; d
     </div>
     <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose({ usageGroup: next as UsageGroup, all: false })}
       items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
-      {/* Skills, tools and MCP are counted from each launch's record in the background: until one is, there is nothing to show. */}
-      {counted && tallied && tallied.runs === 0 ? <p className="text-soft">{t("breakdown.untallied", { count: tallied.of })}</p> : <>
+      {tallied && <p className="mb-2 text-xs text-soft">{t("breakdown.since", { date: dateLabel(tallied.since) })}</p>}
+      {tallied && tallied.of > 0 && tallied.runs === 0 ? <p className="text-soft">{t("breakdown.untallied", { count: tallied.of })}</p> : <>
         <BreakdownTable id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />
-        {counted && tallied && tallied.runs < tallied.of && <p className="mt-2 text-xs text-soft">{t("breakdown.tallied", tallied)}</p>}
+        {tallied && tallied.runs < tallied.of && <p className="mt-2 text-xs text-soft">{t("breakdown.tallied", tallied)}</p>}
       </>}
     </Section>
   </>;

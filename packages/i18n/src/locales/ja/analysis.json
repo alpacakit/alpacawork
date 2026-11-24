@@ -1,6 +1,7 @@
 {
   "breakdown": {
     "all_other": "すべて {{count}}行",
+    "since": "{{date}}から集計",
     "tallied": "{{of}}回のうち {{runs}}回分の記録から数えた",
     "title": "分けて見る",
     "top": "上位だけ",

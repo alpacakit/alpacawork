@@ -96,8 +96,9 @@ Task counts use Tasks the user directly requested. The rework count uses instruc
 AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
 children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed
 time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. Live
-Runs are tracked separately from launches whose token count is unavailable. Skill, tool and MCP breakdowns report how
-many launches have been tallied. Shell reads of skill files are counted once per skill per tool call, including
+Runs are tracked separately from launches whose token count is unavailable. For skills, tools and MCP, `tallied.of`
+includes only launches that ended at or after collection began, and `tallied.since` gives that start date in the result's
+time zone. Shell reads of skill files are counted once per skill per tool call, including
 reads in sequences and pipelines. Redirection targets and in-place edits are excluded. Task completion dates
 and launch dates use the time zone echoed in the result.
 

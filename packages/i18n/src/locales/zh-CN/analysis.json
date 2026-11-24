@@ -1,6 +1,7 @@
 {
   "breakdown": {
     "all_other": "全部 {{count}} 行",
+    "since": "自 {{date}} 起统计",
     "tallied": "根据 {{of}} 次启动中 {{runs}} 次的记录统计",
     "title": "分类查看",
     "top": "只看前几行",

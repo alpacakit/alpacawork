@@ -5,6 +5,7 @@ import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { taskLogs } from '../control/task-history.js';
 import { clocks, firstConversations, launchOf, modelLabel, modelOf, prLinks, taskOutcome, userQuestions,
   type Launch, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
+import { tallyEligible } from './tally-scope.js';
 
 export type TaskNode = {
   internal: string; id: string; title: string; parent: string | null; project: string | null;
@@ -13,8 +14,9 @@ export type TaskNode = {
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
   childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
-  firstAgent: string; firstModel: string; launches: readonly Launch[]; clock: ReturnType<typeof clocks> | null;
+  firstAgent: string; firstModel: string; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
 };
+export type FactLaunch = Launch & { tallyEligible: boolean };
 export type AnalysisFacts = {
   nodes: ReadonlyMap<string, TaskNode>; units: ReadonlyMap<string, Unit>; rootOf: ReadonlyMap<string, string>;
   usageRootOf: ReadonlyMap<string, string>; first: ReadonlySet<string>;
@@ -27,16 +29,17 @@ const readNodes = (db: DatabaseSync) => db.prepare(`SELECT t.id AS internal,t.ex
 
 const runFromRow = (row: Record<string, unknown>) => {
   const run = JSON.parse(String(row.record)) as RunEvidence;
-  return { run, launch: launchOf(run) };
+  const launch = launchOf(run);
+  return { run, launch: launch && { ...launch, tallyEligible: row.tally_eligible === 1 } };
 };
 type StoredRun = ReturnType<typeof runFromRow>;
 
-function runRows(db: DatabaseSync, ids?: Set<string>) {
-  const prefix = 'SELECT record FROM runs WHERE task_id IS NOT NULL';
-  if (!ids) return db.prepare(prefix).all();
+function runRows(db: DatabaseSync, tallySince: number, ids?: Set<string>) {
+  const prefix = `SELECT record, (${tallyEligible}) AS tally_eligible FROM runs WHERE task_id IS NOT NULL`;
+  if (!ids) return db.prepare(prefix).all(tallySince);
   if (!ids.size) return [];
   return db.prepare(prefix + ' AND id IN (SELECT value FROM json_each(?))')
-    .all(JSON.stringify([...ids].map(id => Number(id.slice(1)))));
+    .all(tallySince, JSON.stringify([...ids].map(id => Number(id.slice(1)))));
 }
 
 function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
@@ -79,7 +82,7 @@ function* textLeaves(value: unknown): Generator<string> {
 }
 
 function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<string, TaskLog[]>,
-  values: ReadonlyMap<string, ReadonlySet<string>>, ownRuns: readonly StoredRun[], launches: readonly Launch[],
+  values: ReadonlyMap<string, ReadonlySet<string>>, ownRuns: readonly StoredRun[], launches: readonly FactLaunch[],
   memberIds: readonly string[]): Unit {
   const log = logs.get(node.id) ?? [], outcome = taskOutcome(log, node.state, node.created);
   const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>();
@@ -116,7 +119,7 @@ export class FactsCache {
   private runs = new Map<string, StoredRun>();
   private workspace: unknown;
   private readonly release?: () => void;
-  constructor(private readonly root: string, private readonly journal?: ChangeLog) {
+  constructor(private readonly root: string, private readonly tallySince: number, private readonly journal?: ChangeLog) {
     this.release = journal?.register('analysis');
   }
 
@@ -158,13 +161,13 @@ export class FactsCache {
     for (const [id, links] of valuesLinks(db, full ? tasks : tasks.filter(node => valuesIds.has(node.internal)))) {
       this.values.set(id, links); taskIds.add(id);
     }
-    for (const row of runRows(db, full ? undefined : runIds)) {
+    for (const row of runRows(db, this.tallySince, full ? undefined : runIds)) {
       const item = runFromRow(row);
       this.runs.set(item.run.id, item); taskIds.add(item.run.task);
     }
     const { rootOf, usageRootOf, members } = ancestry(nodes);
     const byTask = new Map<string, StoredRun[]>(), launches: Launch[] = [];
-    const launchesByRoot = new Map<string, Launch[]>();
+    const launchesByRoot = new Map<string, FactLaunch[]>();
     for (const item of this.runs.values()) {
       const group = byTask.get(item.run.task);
       if (group) group.push(item);
