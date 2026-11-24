@@ -51,11 +51,21 @@ test("a press before the conversation has loaded reads what its own first read b
   setConversationState({ conversation: null });
   render(<Harness />);
   act(() => setConversationState({ expanded: true, opening: opening([], 1) }));
-  const taken = useConversation.getState().opening!;
-  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first")]), opening: { ...taken, settled: true } }));
+  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first")]) }));
   expect(read()).toEqual(["first"]);
   act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first", true), reply("later")]) }));
   expect(read()).toEqual(["first"]);
+});
+
+test("a press before the conversation has loaded reads nothing when it first arrives at a page out of sight", () => {
+  setConversationState({ conversation: null });
+  render(<Harness />);
+  act(() => setConversationState({ expanded: true, opening: opening([], 1) }));
+  show("hidden");
+  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first")]) }));
+  show("visible");
+  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first"), reply("later")]) }));
+  expect(read()).toEqual([]);
 });
 
 test("a pending presentation refresh cannot keep completed replies unread", () => {

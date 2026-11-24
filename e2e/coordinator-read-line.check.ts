@@ -188,8 +188,9 @@ test('a separate conversation window reads through its own input and document', 
 });
 
 // Playwright emulates focused tabs by default. This check runs separately with --headed under Xvfb, so a tab in the
-// background is really out of sight: what comes meanwhile is read when the page is shown again.
-test('a background tab keeps a reply unread until the page is shown again', async ({ page, runtime }, info) => {
+// background is really out of sight: what comes meanwhile stays unread when the page is shown again (a tab before it
+// may have closed by itself), until the next input there.
+test('a background tab keeps a reply unread when shown again, until the next input there', async ({ page, runtime }, info) => {
   test.skip(info.project.use.headless !== false, 'Run --headed under Xvfb to exercise actual browser focus');
   const session = await page.context().newCDPSession(page);
   await seed(page, runtime, 1); await readUpTo(page, runtime, 1); await openCoordinator(page);
@@ -207,6 +208,9 @@ test('a background tab keeps a reply unread until the page is shown again', asyn
     expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
     await page.bringToFront();
     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    await page.waitForTimeout(300);
+    expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
+    await page.keyboard.press('Shift');
     await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
   } finally { await otherSession.detach(); await other.close(); await session.detach(); }
 });

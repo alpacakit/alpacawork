@@ -29,45 +29,53 @@ export function learn(taken: Opening, turns: readonly CoordinatorTurn[], request
  */
 const ACTIONS = ["pointerdown", "keydown", "wheel", "touchstart", "beforeinput"] as const;
 
-/** The opening whose press is still owed what its own first fresh read brings (`opening` settles on it). */
-let owed: number | null = null;
+/**
+ * A press that opened the conversation before any was loaded, in the workspace it was pressed in: owed the first
+ * conversation to arrive there, which is what it shows the person who pressed. Dropped when that conversation arrives
+ * at a page out of sight, at folding, and at another workspace.
+ */
+let owed: { root: string } | null = null;
 
 /**
  * An open conversation on a visible page reads the completed replies shown when a person acts: the press that opens
- * it reads every completed reply it holds, including folded history, and what its own first fresh read brings; any
- * later input on the page reads what has arrived since. Every screen shares one read state, so a reply that reaches
- * a page nobody acts on (a desktop tab stays "visible" while its person is away, or comes back into view when a tab
- * before it closes) stays unread.
+ * it reads every completed reply it holds (including folded history), or, pressed before one was loaded, the first
+ * one to arrive; any later input on the page reads what has arrived since. Every screen shares one read state, so a
+ * reply that reaches a page nobody acts on (a desktop tab stays "visible" while its person is away, or comes back into
+ * view when a tab before it closes) stays unread.
  */
 export function useConversationReading(doc: Document, rootScope: string, conversationId: string | null) {
   useEffect(() => {
     const read = () => {
       const state = useConversation.getState();
       if (!state.expanded || !state.conversation || state.root !== rootScope || state.conversation?.id !== conversationId
-        || doc.visibilityState !== "visible") return false;
+        || doc.visibilityState !== "visible") return;
       state.observeSeen(state.conversation.turns.filter(isUnread).map(turn => turn.id));
-      return true;
     };
-    // Also at mount: a conversation first loaded by the press arrives with a new ID, so with a new subscription.
-    const settle = () => {
-      const { expanded, opening } = useConversation.getState();
-      if (expanded && opening?.settled && opening.id === owed && read()) owed = null;
+    // Taken by the subscription drawing the conversation (it arrives with a new ID, so a new subscription: at mount).
+    const claim = () => {
+      const state = useConversation.getState();
+      if (!owed || !state.conversation || state.conversation.id !== conversationId || state.root !== rootScope) return;
+      owed = null;
+      read();
     };
-    const act = () => { read(); };
     const leave = () => useConversation.getState().flushSeen(true);
     const visibility = () => { if (doc.visibilityState !== "visible") leave(); };
     const stop = useConversation.subscribe((next, before) => {
+      if (owed && (!next.expanded || next.root !== owed.root)) owed = null;
       // Opening is always a person's press (the line, a pull or a drag), taken after its pointerdown has passed.
-      if (next.expanded && !before.expanded) { owed = next.opening?.id ?? null; read(); }
-      settle();
+      if (next.expanded && !before.expanded) {
+        owed = next.conversation ? null : { root: next.root };
+        read();
+      }
+      claim();
     });
-    for (const type of ACTIONS) doc.addEventListener(type, act, { capture: true, passive: true });
+    for (const type of ACTIONS) doc.addEventListener(type, read, { capture: true, passive: true });
     doc.addEventListener("visibilitychange", visibility);
     doc.defaultView?.addEventListener("pagehide", leave);
-    settle();
+    claim();
     return () => {
       stop();
-      for (const type of ACTIONS) doc.removeEventListener(type, act, { capture: true });
+      for (const type of ACTIONS) doc.removeEventListener(type, read, { capture: true });
       doc.removeEventListener("visibilitychange", visibility);
       doc.defaultView?.removeEventListener("pagehide", leave);
     };
