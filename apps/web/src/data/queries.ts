@@ -231,7 +231,10 @@ export function listPlace(searching: boolean, project: string | null, info: Work
   if (!info) return "loading";
   if (project && !info.projects.some((item) => item.id === project)) return "lookup";
   if (!info.projects.length) return "no-projects";
-  return info.counts.tasks[project ?? "root"] === 0 ? "welcome" : "list";
+  // A project with no Tasks yet can itself be at work, ask or fail: its home row keeps the list in place.
+  const scope = project ?? "root", home = info.counts.home[scope];
+  const listing = !!home && Object.values(home).some((count) => count > 0);
+  return info.counts.tasks[scope] === 0 && !listing ? "welcome" : "list";
 }
 export function useListPlace(): ListPlace {
   const searching = useViewStore(gathering);
