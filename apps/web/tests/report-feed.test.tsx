@@ -824,6 +824,14 @@ test("a question that says what stopping means offers Stop after its choices, an
   await waitFor(() => expect(answers().map(answer => answer.answer)).toEqual(["1-stop", "2-other"]));
 });
 
+test("a project's question offers no Stop, as a project cannot stop", () => {
+  const data = screenData(tree({ tasks: [taskFixture({ kind: "project", id: "P100", state: "doing", ball: userBall("question", "Q1", at, { questionId: "Q1" }) })],
+    questions: [questionFixture({ id: "Q1", taskId: "P100", decide: [decideItem("Storage location", [["OptionA", "Local"]], { decide_stop: "Nothing is stored" })] })] }));
+  render(<TestWorkspace data={data}><WaitingReportActions task={data.tasks.find(each => each.id === "P100")!} question="Q1" onFollow={() => {}} /></TestWorkspace>);
+  const group = document.querySelector<HTMLElement>('[data-question="1"] [role=group]')!;
+  expect(within(group).getAllByRole("button").map(button => button.textContent)).toEqual(["OptionA", "Other"]);
+});
+
 test("a question's choice, read from what was fixed when it was asked, goes into the instruction composer naming that question", async () => {
   // Choosing also opens the real composer, whose focus handoff reads its conversation.
   // Supply that boundary; a relative URL cannot reach a server in jsdom.

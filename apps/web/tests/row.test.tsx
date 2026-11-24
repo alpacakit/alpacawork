@@ -464,3 +464,15 @@ test("at the limit the brief says only why your turn came; a question is its lin
   expect(asks.textContent).toBe(`${i18n.t("ui:turn.question")}${question}`);
   expect(asked.querySelector("[data-turn-reason]")).toBeNull();
 });
+
+test("a project's own row, listed while its responsible asks the user, opens the project to that question as a Task's row does", async () => {
+  const asked = logEntry({ id: "L2", kind: "asked", askedTo: null, title: "Which one?", description: "Please answer", actor: { kind: "placement", placementId: "P1" } });
+  const owner = taskFixture({ kind: "project", id: PROJECT_TASK, state: "doing", log: [logEntry(), asked], ball: asking() });
+  const question = listed("Which one?", PROJECT_TASK);
+  const view = render(<TestWorkspace data={screenData(tree({ tasks: [owner, taskFixture({ state: "todo" })], questions: [question],
+    userQuestions: { [PROJECT_TASK]: [{ ...question, destination: { kind: "user" as const }, taskTitle: "default" }] },
+    home: homeFixture([{ taskId: PROJECT_TASK, section: "review" }, { taskId: "T1", section: "todo" }]) }))}><TimeTree /><Reader mode="docked" /></TestWorkspace>);
+  const row = view.container.querySelector<HTMLElement>(`[data-section="review"] + ol [data-row="${PROJECT_TASK}"] [data-read]`)!;
+  fireEvent.click(row);
+  await waitFor(() => expect(document.body.textContent).toContain("Which one?"));
+});

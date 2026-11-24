@@ -11,9 +11,11 @@ const causeKey: Record<CauseKind, string> = { model_capacity: "modelCapacity", w
  * The sentence said for the user's turn on that failure. While a limit's reset is still ahead it says when, so the
  * person can tell whether waiting for the same AI is worth it; a reset already past is not said.
  */
-export const causeSentence = (error: ErrorCause, t: TFunction<"ui">, now: number, locale: string) => {
+export const causeSentence = (error: ErrorCause, t: TFunction<"ui">, now: number, locale: string, stoppable = true) => {
   const reset = resetWords(error.resetsAt ?? null, now, locale, t as (key: string, options?: Record<string, unknown>) => string);
-  return reset ? t("ui:run.causeWithReset", { reason: causeReason(error.cause, t), reset }) : t(`ui:run.cause.${causeKey[error.cause]}`);
+  // What cannot stop (a project) is offered only ways to continue, and its sentence names no stop.
+  const tail = stoppable ? "" : "NoStop";
+  return reset ? t(`ui:run.causeWithReset${tail}`, { reason: causeReason(error.cause, t), reset }) : t(`ui:run.cause${tail}.${causeKey[error.cause]}`);
 };
 /** The same cause as a short reason, said where a failure's line already says that it failed (the coordinator's turn). */
 export const causeReason = (cause: CauseKind, t: TFunction<"ui">) => t(`ui:run.causeReason.${causeKey[cause]}`);

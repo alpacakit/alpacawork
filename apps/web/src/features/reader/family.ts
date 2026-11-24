@@ -8,8 +8,14 @@ import { panelPosition } from "./reader-panel";
  * file owns the panel's rules; FamilyTree draws them.
  */
 
-/** The work right under the project that `id` is in: the family's root. */
-export const familyRoot = (id: string, index: TaskIndex): Task | undefined => pathTo(id, index)[0];
+/**
+ * The work right under the project that `id` is in: the family's root. A project has none: its work is the list's,
+ * which lists the project's own Tasks when the project is chosen.
+ */
+export const familyRoot = (id: string, index: TaskIndex): Task | undefined => {
+  const top = pathTo(id, index)[0];
+  return top?.kind === "task" ? top : undefined;
+};
 
 /**
  * How many tasks the family holds, its root included; one means there is no family to show. The server counts every

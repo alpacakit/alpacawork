@@ -318,6 +318,12 @@
       "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop",
       "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Continue with the same AI after the limit resets, continue with another AI, or stop"
     },
+    "causeNoStop": {
+      "modelCapacity": "The model was at capacity, so the run failed. Continue with the same AI later, or continue with another AI",
+      "modelLimit": "The agent hit its model's usage limit, so the run failed. Continue with the same AI after the limit resets, or continue with another AI",
+      "sessionLimit": "The agent hit its 5-hour usage limit, so the run failed. Continue with the same AI after the limit resets, or continue with another AI",
+      "weeklyLimit": "The agent hit its weekly usage limit, so the run failed. Continue with the same AI after the limit resets, or continue with another AI"
+    },
     "causeReason": {
       "modelCapacity": "The model is at capacity",
       "modelLimit": "Model usage limit reached",
@@ -325,6 +331,7 @@
       "weeklyLimit": "Weekly usage limit reached"
     },
     "causeWithReset": "{{reason}} ({{reset}}). Continue with the same AI after the limit resets, continue with another AI, or stop",
+    "causeWithResetNoStop": "{{reason}} ({{reset}}). Continue with the same AI after the limit resets, or continue with another AI",
     "limitName": {
       "modelCapacity": "model capacity",
       "modelLimit": "the model's usage limit",
@@ -348,6 +355,7 @@
       "children": "The run reached its request limit. Review the work and send a separate instruction if needed",
       "depth": "Request depth limit reached. Review the result and send a new instruction if needed",
       "failed": "The agent run failed or ended without a report. Choose to continue or stop",
+      "failedNoStop": "The agent run failed or ended without a report. Choose how to continue",
       "limit_one": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "limit_other": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "noProfile": "There is no launch profile for this agent. Check the settings and send an instruction",

@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { useReaderPeople } from "@/data/queries";
 import type { Task } from "@/data/types";
+import { stoppable } from "@/domain/tasks";
 import type { ReasonedTurn } from "@/domain/lead";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
 import { problemReasonText } from "@/data/client";
@@ -27,24 +28,28 @@ export const turnReasonKey = (turn: ReasonedTurn) => turn.reason === "blocked" ?
  * A turn's reason in a sentence; only the limit says a count (how many wait behind it), a failure whose cause is
  * known (failureCause) says that cause's sentence (causeWords) instead, and a refused wake says the business reason serve kept with it.
  */
-export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, causeWords?: string | null) => turn.reason === "limit"
+export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, causeWords?: string | null, stoppable = true) => turn.reason === "limit"
   ? t("turn.reason.limit", { count: turn.count ?? 0 })
   // A refused wake whose business reason serve kept (selection_required and the rest) is said as any refusal's reason is.
   : turn.reason === "blocked" && turn.problemReason ? problemReasonText(turn.problemReason)
-  : turn.reason === "failed" && causeWords ? causeWords : t(`turn.reason.${turnReasonKey(turn)}`);
+  : turn.reason === "failed" && causeWords ? causeWords
+  // A failure of what cannot stop (a project) offers only ways to continue, and its sentence says no more.
+  : turn.reason === "failed" && !stoppable ? t("turn.reason.failedNoStop") : t(`turn.reason.${turnReasonKey(turn)}`);
+
 
 /**
  * Why the user's turn came when it is not a review or a question (the ball's reason): automatic wakes stopped at their
  * limit (how many wait behind it), a delivery whose receipt is unknown, a refused wake (its code), a failure of what the
- * user asked. Where the turn is answered (the reader names its `task`), the limit offers Continue and a failure
+ * user asked. `about` is the Task it is said of, where it is not answered (a project cannot stop, so its failure says no stop).
+ * Where the turn is answered (the reader names its `task`), the limit offers Continue and a failure
  * Continue with the same AI, with another AI, or Stop: requests go to the coordinator, Stop reports directly. A failure's
  * known `cause` names what it was.
  */
-export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTurn; task?: Task; cause?: ErrorCause | null; className?: string }) {
+export function TurnReason({ turn, task, about = task, cause, className }: { turn: ReasonedTurn; task?: Task; about?: Task; cause?: ErrorCause | null; className?: string }) {
   const { t, i18n } = useTranslation("ui");
   const now = useNow();
-  const words = turnSentence(turn, t, cause ? causeSentence(cause, t, now, i18n.language) : null);
-  const actions = task ? turnActions(turn) : [];
+  const words = turnSentence(turn, t, cause ? causeSentence(cause, t, now, i18n.language, stoppable(about)) : null, stoppable(about));
+  const actions = task ? turnActions(turn).filter(action => action !== "stop" || stoppable(task)) : [];
   // The buttons stand on their own row under the sentence, so the sentence keeps its line height to its last line.
   return <span data-turn-reason={turn.reason} data-turn-cause={turn.reason === "failed" && cause ? cause.cause : undefined} className={className}>
     {actions.length ? <><span className="block">{words}</span><TurnActions actions={actions} task={task!} /></> : words}
@@ -52,7 +57,7 @@ export function TurnReason({ turn, task, cause, className }: { turn: ReasonedTur
 }
 
 type TurnAction = "continue" | "retry" | "switch" | "stop";
-/** Continue on a limit; on a failure, continue with the same AI or another, or Stop; other turns are answered elsewhere. */
+/** Continue on a limit; on a failure, continue with the same AI or another, or Stop where the server allows a stop (a project cannot stop); other turns are answered elsewhere. */
 const turnActions = (turn: ReasonedTurn): readonly TurnAction[] => turn.reason === "limit" ? ["continue"] : turn.reason === "failed" ? ["retry", "switch", "stop"] : [];
 
 /**
