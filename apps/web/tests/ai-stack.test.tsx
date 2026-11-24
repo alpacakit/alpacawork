@@ -33,7 +33,8 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   fireEvent.change(screen.getByLabelText('Effort in row 2'), { target: { value: 'high' } });
   fireEvent.click(screen.getByRole('button', { name: 'Move row 2 up' }));
   expect(writeStack(latest, agents)).toEqual([{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
-  expect(document.querySelector('[data-ai-stack-row="codex"] [data-ai-stack-first]')).not.toBeNull();
+  // The role goes with the place: the row moved up is now the primary.
+  expect(document.querySelector('[data-ai-stack-row="codex"]')!.textContent).toContain('Primary');
   fireEvent.click(screen.getByRole('button', { name: 'Remove row 2' }));
   expect(latest.map(row => row.agent)).toEqual(['codex']);
 });

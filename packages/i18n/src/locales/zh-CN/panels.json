@@ -11,6 +11,7 @@
       "agentsNote": "已停用的智能体不能在“{{tasks}}”和“{{input}}”中选择。",
       "agentsTitle": "各智能体的设置",
       "down": "将第 {{n}} 行下移",
+      "fallback": "备选 {{n}}",
       "first": "首选",
       "issue": {
         "disabled": "{{agent}} 已停用。请启用它，或删除这一行。",
@@ -22,7 +23,7 @@
       "namedOnly": "不在这里的模型不会被自动用作备选，只在请求中指定时才会使用。",
       "notOffered": "{{value}}（不是可选值）",
       "remove": "删除第 {{n}} 行",
-      "repeated": "与第 {{n}} 行相同，因此这一行不会被使用。",
+      "repeated": "与{{role}}相同，因此这一行不会被使用。",
       "saveRefused": "未保存：“{{list}}”中有需要修正的地方。请修正标红的地方后再次保存。",
       "showRow": "前往该行",
       "title": "推进任务的 AI",

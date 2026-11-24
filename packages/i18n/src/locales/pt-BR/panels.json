@@ -11,6 +11,7 @@
       "agentsNote": "Um agente desativado não pode ser escolhido em “{{tasks}}” nem em “{{input}}”.",
       "agentsTitle": "Configurações de cada agente",
       "down": "Descer a linha {{n}}",
+      "fallback": "Alternativa {{n}}",
       "first": "Principal",
       "issue": {
         "disabled": "{{agent}} está desativado. Ative-o ou remova esta linha.",
@@ -22,7 +23,7 @@
       "namedOnly": "Um modelo que não está aqui nunca é usado como alternativa por conta própria. Ele só é usado quando um pedido o nomeia.",
       "notOffered": "{{value}} (não é um valor)",
       "remove": "Remover a linha {{n}}",
-      "repeated": "Igual à linha {{n}}, por isso esta linha nunca é usada.",
+      "repeated": "Igual a {{role}}, por isso esta linha nunca é usada.",
       "saveRefused": "Não foi salvo: “{{list}}” tem algo a corrigir. Corrija o que está marcado em vermelho e salve de novo.",
       "showRow": "Ir para a linha",
       "title": "IA das tarefas",

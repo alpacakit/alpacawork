@@ -11,6 +11,7 @@
       "agentsNote": "A disabled agent cannot be chosen in “{{tasks}}” or “{{input}}”.",
       "agentsTitle": "Settings for each agent",
       "down": "Move row {{n}} down",
+      "fallback": "Fallback {{n}}",
       "first": "Primary",
       "issue": {
         "disabled": "{{agent}} is disabled. Enable it or remove this row.",
@@ -22,7 +23,7 @@
       "namedOnly": "A model not listed here is never used as a fallback on its own. It is used only when a request names it.",
       "notOffered": "{{value}} (not a value)",
       "remove": "Remove row {{n}}",
-      "repeated": "Same as row {{n}}, so this row is never used.",
+      "repeated": "Same as {{role}}, so this row is never used.",
       "saveRefused": "Not saved: “{{list}}” has something to fix. Fix what is marked in red, then save again.",
       "showRow": "Go to the row",
       "title": "AI for tasks",

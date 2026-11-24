@@ -11,6 +11,7 @@
       "agentsNote": "Un agente desactivado no se puede elegir en «{{tasks}}» ni en «{{input}}».",
       "agentsTitle": "Ajustes de cada agente",
       "down": "Bajar la fila {{n}}",
+      "fallback": "Alternativa {{n}}",
       "first": "Principal",
       "issue": {
         "disabled": "{{agent}} está desactivado. Actívalo o quita esta fila.",
@@ -22,7 +23,7 @@
       "namedOnly": "Un modelo que no está aquí nunca se usa como alternativa por sí solo. Solo se usa cuando una solicitud lo nombra.",
       "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar la fila {{n}}",
-      "repeated": "Igual que la fila {{n}}, así que esta fila nunca se usa.",
+      "repeated": "Igual que {{role}}, así que esta fila nunca se usa.",
       "saveRefused": "No se guardó: “{{list}}” tiene algo que corregir. Corrige lo marcado en rojo y vuelve a guardar.",
       "showRow": "Ir a la fila",
       "title": "IA de las tareas",
