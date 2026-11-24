@@ -62,8 +62,9 @@ export function Value({ kind, value, big, onOpen }: { kind: Kind; value: number 
 /** The line under a number: the same span just before, and the gap. */
 export function Compare({ kind, value, previous, length, children }: { kind: Kind; value: number; previous: number | null; length: number; children?: ReactNode }) {
   const line = comparison(kind, value, previous, length);
-  return <div className="text-xs whitespace-nowrap text-soft">
-    {children ?? line.before}{line.gap && <b className="ms-2.5 font-normal text-muted">{line.gap}</b>}
+  // The span before and the gap each stay whole; where a language makes them long, the gap goes under.
+  return <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
+    <span className="whitespace-nowrap">{children ?? line.before}</span>{line.gap && <b className="font-normal whitespace-nowrap text-muted">{line.gap}</b>}
   </div>;
 }
 

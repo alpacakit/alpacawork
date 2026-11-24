@@ -39,9 +39,9 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
         <b className="text-lg font-semibold">{share(now.share)}</b>
       </span>}
     </div>
-    <div className="text-xs whitespace-nowrap text-soft">
-      {before ? <>{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}
-        <b className="ms-2.5 font-normal text-muted">{shareGap === null ? countGap : `${countGap === t("same") ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}${t("sep")}${shareGap}`}</b></>
+    <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
+      {before ? <><span className="whitespace-nowrap">{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}</span>
+        <b className="font-normal whitespace-nowrap text-muted">{shareGap === null ? countGap : `${countGap === t("same") ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}${t("sep")}${shareGap}`}</b></>
         : t("previous.none", { span: previousName(length) })}
     </div>
   </div>;
