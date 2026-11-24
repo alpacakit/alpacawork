@@ -60,13 +60,20 @@ export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: 
 }
 
 /** The line under a number: the same span just before, and the gap. */
-export function Compare({ kind, value, previous, length, children }: { kind: Kind; value: number; previous: number | null; length: number; children?: ReactNode }) {
+/**
+ * The line under a number: the same span just before, and the gap; nothing when there is no span before to compare with.
+ * A gap whose direction says better or worse (`better`: which way is better) is green that way and orange the other.
+ */
+export function Compare({ kind, value, previous, length, better }: { kind: Kind; value: number; previous: number | null; length: number; better?: "up" | "down" }) {
   const line = comparison(kind, value, previous, length);
-  // The span before and the gap each stay whole; where a language makes them long, the gap goes under.
+  if (!line) return null;
   return <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
-    <span className="whitespace-nowrap">{children ?? line.before}</span>{line.gap && <b className="font-normal whitespace-nowrap text-muted">{line.gap}</b>}
+    <span className="whitespace-nowrap">{line.before}</span>{line.gap && <b className={cn("font-normal whitespace-nowrap", gapTone(value, previous!, better))}>{line.gap}</b>}
   </div>;
 }
+/** The colour of a gap: green toward better, orange toward worse, grey when the direction says neither (or no change). */
+export const gapTone = (value: number, previous: number, better?: "up" | "down") =>
+  !better || value === previous ? "text-muted" : (value > previous) === (better === "up") ? "text-done" : "text-turn";
 
 /** A number: its name, the value, and the span before on one line. */
 export function Num({ label, square, kind, value, previous, length, onOpen, after, className = "w-43 narrow:w-auto" }: {
@@ -75,7 +82,7 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
   return <div className={cn("min-w-0", className)}>
     <div className="flex items-center text-xs whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
-    {value === null ? <div className="text-xs text-soft">&nbsp;</div> : <Compare kind={kind} value={value} previous={previous} length={length} />}
+    {value !== null && <Compare kind={kind} value={value} previous={previous} length={length} />}
     {after}
   </div>;
 }

@@ -39,7 +39,8 @@ test("a gap has the direction of the change and the kind's rounding; one that ro
   expect(same(delta("tasks", 1, 1))).toBe(true);
   expect(same(delta("hours", 1.42 * HOUR, 1.44 * HOUR))).toBe(true);
   expect(same(delta("hours", 1.4 * HOUR, 1.5 * HOUR))).toBe(false);
-  expect(comparison("tasks", 3, null, 1).gap).toBeNull();
+  // No span before: nothing is said (no "no record" line).
+  expect(comparison("tasks", 3, null, 1)).toBeNull();
 });
 
 test("a share the server withholds (under ten accepted) is never written, nor is its gap", () => {

@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, decimalText, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, LineChart, Parts, Row, RowName, useScale } from "./rows";
-import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { BarChart, ChartGroup, DayAxis, Lead, Leads, lineTop, Parts, Row, useScale, type DayList, type RowSay } from "./rows";
+import { Compare, gapTone, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { TasksView } from "./contract";
 import type { ListPlace } from "./place";
 
@@ -41,10 +41,10 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <button type="button" onClick={() => open({ set: "accepted", value: null })}
           className="text-lg font-semibold underline decoration-lit-line underline-offset-4 hover:decoration-ink">{share(now.share)}</button>
       </span>}
-      compare={<div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
-        {before ? <><span className="whitespace-nowrap">{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}</span>
-          <b className="font-normal whitespace-nowrap text-muted">{shareGap === null ? countGap : `${countGap === t("same") ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}${t("sep")}${shareGap}`}</b></>
-          : t("previous.none", { span: previousName(length) })}
+      compare={before && <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
+        <span className="whitespace-nowrap">{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}</span>
+        <b className="font-normal whitespace-nowrap text-muted">{countGap === t("same") || shareGap === null ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}
+          {shareGap !== null && <>{t("sep")}<span className={gapTone(now.share!, before.share!, "up")}>{shareGap}</span></>}</b>
       </div>}
       ever={ever && `${format("tasks", ever.counts.passed)}${ever.counts.share !== null ? `${t("sep")}${share(ever.counts.share)}` : ""}`} />
     <Lead name={t("tasks.finished")} value={<Value big kind="tasks" value={now.finished} onOpen={() => open({ set: "finished", value: null })} />}
@@ -60,32 +60,67 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
 
   const points = view.series.points, today = view.head.today;
   const at = (i: number) => points[i]!;
-  const median = (i: number) => at(i).accepted.leadMedianMs;
   const spent = (i: number) => { const time = at(i).accepted.time; return [time.review + time.answer, time.ai, time.other] as const; };
+  const total_ = (i: number) => spent(i).reduce((a, b) => a + b, 0);
+  const steady = (i: number) => at(i).counts.accepted >= 10;
+  const finishedParts = useFinishedParts();
+  // The per-task lines: the share without fixes (of the tasks accepted), the median time, and checks and questions per task.
+  const per = (amount: (i: number) => number) => points.map((p, i) => p.counts.accepted ? amount(i) / p.counts.accepted : null);
+  const lines = {
+    share: per(i => at(i).counts.passed), median: points.map(p => p.accepted.leadMedianMs),
+    submits: per(i => at(i).accepted.submits), questions: per(i => at(i).accepted.questions),
+  };
+  const tops = { median: lineTop(lines.median, steady), submits: lineTop(lines.submits, steady), questions: lineTop(lines.questions, steady) };
   const scales = {
     finished: useScale(Math.max(0, ...points.map(p => p.counts.finished)), 1, t("unit.tasks", { count: 2 }), true),
-    share: { top: 1, label: "100%" },
-    median: useScale(Math.max(0, ...points.map(p => p.accepted.leadMedianMs ?? 0)), HOUR, t("unit.hours"), false),
-    total: useScale(Math.max(0, ...points.map((_, i) => spent(i).reduce((a, b) => a + b, 0))), HOUR, t("unit.hours"), false),
+    total: useScale(Math.max(0, ...points.map((_, i) => total_(i))), HOUR, t("unit.hours"), false),
     submits: useScale(Math.max(0, ...points.map(p => p.accepted.submits)), 1, t("unit.times", { count: 2 }), true),
     questions: useScale(Math.max(0, ...points.map(p => p.accepted.questions)), 1, t("unit.tasks", { count: 2 }), true),
     prs: useScale(Math.max(0, ...points.map(p => p.accepted.prs)), 1, "", true),
   };
-  const finishedParts = useFinishedParts();
-  const shareWords = (i: number) => { const c = at(i).counts;
-    return c.share !== null ? share(c.share) : c.accepted ? t("chart.fewShare", { passed: c.passed, accepted: c.accepted }) : "—"; };
-  const lines = [
-    { name: t("tasks.finished"), value: (i: number) => format("tasks", at(i).counts.finished), parts: (i: number) => finishedParts(at(i).counts) },
-    { name: t("chart.share"), value: shareWords },
-    { name: t("until.lead"), value: (i: number) => median(i) === null ? "—" : format("hours", median(i)!) },
-    { name: t("time.total"), value: (i: number) => format("hours", spent(i).reduce((a, b) => a + b, 0)),
-      parts: (i: number): [string, string][] => { const [y, a, o] = spent(i); return [[t("time.you"), format("hours", y)], [t("time.ai"), format("hours", a)], [t("time.other"), format("hours", o)]]; } },
-    { name: t("until.submits"), value: (i: number) => format("times", at(i).accepted.submits) },
-    { name: t("until.questions"), value: (i: number) => format("tasks", at(i).accepted.questions) },
-    { name: t("until.prs"), value: (i: number) => format("plain", at(i).accepted.prs) },
+  const perTask = (value: string) => t("line.unit", { value });
+  const overlays = {
+    share: { values: lines.share, top: 1, label: "100%", faint: (i: number) => !steady(i) },
+    median: { values: lines.median, top: tops.median, label: perTask(format("hours", tops.median)), faint: (i: number) => !steady(i) },
+    submits: { values: lines.submits, top: tops.submits, label: perTask(format("times", tops.submits)), faint: (i: number) => !steady(i) },
+    questions: { values: lines.questions, top: tops.questions, label: perTask(format("tasks", tops.questions)), faint: (i: number) => !steady(i) },
+  };
+  const acceptedBase = (i: number) => t("window.accepted", { count: at(i).counts.accepted });
+  const ratio = (value: number | null, kind: Kind) => value === null ? "—" : kind === "plain" ? share(value) : format(kind, value);
+  const perText = (value: number | null) => value === null ? "—" : decimalText(value, 2);
+  const share_ = (part: number, whole: number) => whole ? share(part / whole) : "";
+  const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
+  const say: RowSay[] = [
+    { name: t("tasks.finished"), total: i => format("tasks", at(i).counts.finished), list: onBin("finished", null),
+      parts: i => finishedParts(at(i).counts),
+      line: { name: t("chart.share"), value: i => at(i).counts.share !== null ? share(at(i).counts.share) : "—",
+        base: i => t("chart.shareTip", { accepted: at(i).counts.accepted, passed: at(i).counts.passed }) } },
+    { name: t("time.total"), total: i => format("hours", total_(i)), list: onBin("accepted", "lead"),
+      parts: i => { const [y, a, o] = spent(i), all = total_(i);
+        return [{ color: "bg-turn", name: t("time.you"), value: format("hours", y), share: share_(y, all) },
+          { color: "bg-working", name: t("time.ai"), value: format("hours", a), share: share_(a, all) },
+          { color: "bg-rest", name: t("time.other"), value: format("hours", o), share: share_(o, all) }]; },
+      line: { name: t("line.median"), value: i => ratio(lines.median[i]!, "hours"), base: acceptedBase } },
+    { name: t("until.submits"), total: i => format("times", at(i).accepted.submits), list: onBin("accepted", "submits"),
+      line: { name: t("line.perTask"), value: i => perText(lines.submits[i]!), base: acceptedBase } },
+    { name: t("until.questions"), total: i => format("tasks", at(i).accepted.questions), list: onBin("accepted", "questions"),
+      line: { name: t("line.perTask"), value: i => perText(lines.questions[i]!), base: acceptedBase } },
+    { name: t("until.prs"), total: i => format("plain", at(i).accepted.prs), list: onBin("accepted", "prs") },
   ];
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
-  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
+  // The per-task numbers of the span on the left, against the span before.
+  const perSpan = (amount: number, base: number) => base ? amount / base : null;
+  const submitsPer = perSpan(accepted.submits, now.accepted), submitsPerBefore = acceptedBefore && before ? perSpan(acceptedBefore.submits, before.accepted) : null;
+  const questionsPer = perSpan(accepted.questions, now.accepted), questionsPerBefore = acceptedBefore && before ? perSpan(acceptedBefore.questions, before.accepted) : null;
+  const gap = (value: number | null, previous: number | null, kind: "pt" | "hours" | "per", better?: "up" | "down") => {
+    if (value === null || previous === null) return null;
+    const text = kind === "pt" ? shareDelta(value, previous) : kind === "hours" ? delta("hours", value, previous) : perGap(value, previous);
+    return <span className={gapTone(value, previous, better)}>{text}</span>;
+  };
+  const perGap = (value: number, previous: number) => { const g = Math.round((value - previous) * 100) / 100;
+    return g === 0 ? t("same") : `${g > 0 ? "+" : "−"}${decimalText(Math.abs(g), 2)}`; };
+  const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
+  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
       <Row left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={before?.finished ?? null} length={length}
@@ -93,53 +128,47 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", now.passed, { set: "passed", value: "lead" }) },
           { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", now.reworked, { set: "reworked", value: "lead" }) },
-          { color: "bg-stopped", name: t("outcome.stopped"), value: part("tasks", now.stopped, { set: "stopped", value: null }) }]} />
+          { color: "bg-stopped-part", name: t("outcome.stopped"), value: part("tasks", now.stopped, { set: "stopped", value: null }) }]}
+          line={{ name: t("chart.share"), value: <ShareValue value={now.share} onOpen={now.accepted ? () => open({ set: "accepted", value: null }) : undefined} />,
+            gap: before && gap(now.share, before.share, "pt", "up") }} />
         <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
       </>}>
-        <BarChart row={0} height="h-52 narrow:h-24" scale={scales.finished} grow
-          values={i => [["bg-done", at(i).counts.passed], ["bg-reworked", at(i).counts.reworked], ["bg-stopped", at(i).counts.stopped]]} />
+        <BarChart row={0} height="h-76 narrow:h-32" scale={scales.finished} grow overlay={overlays.share}
+          values={i => [["bg-done", at(i).counts.passed], ["bg-reworked", at(i).counts.reworked], ["bg-stopped-part", at(i).counts.stopped]]} />
         <DayAxis />
       </Row>
-      <Row left={<>
-        <RowName>{t("chart.share")}</RowName>
-        <button type="button" onClick={() => open({ set: "accepted", value: null })} disabled={!now.accepted}
-          className="text-xl font-semibold underline decoration-lit-line underline-offset-5 hover:decoration-ink disabled:no-underline">{share(now.share)}</button>
-        <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
-          {before ? <><span className="whitespace-nowrap">{previousName(length)} {share(before.share)}</span>
-            {shareGap && <b className="font-normal whitespace-nowrap text-muted">{shareGap}</b>}</> : t("previous.none", { span: previousName(length) })}
-        </div>
-        <div className="mt-2 flex items-baseline gap-2 text-xs text-muted">{t("tasks.accepted")}{part("tasks", now.accepted, { set: "accepted", value: null })}</div>
-      </>}>
-        <LineChart row={1} height="h-18 narrow:h-14" scale={scales.share} color="done"
-          values={points.map(p => p.counts.accepted ? p.counts.passed / p.counts.accepted : null)} faint={i => at(i).counts.accepted < 10} />
-      </Row>
       <Row left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3>
-        <Num className="" label={t("until.lead")} kind="hours" value={accepted.leadMedianMs} previous={acceptedBefore?.leadMedianMs ?? null} length={length}
-          onOpen={() => open({ set: "accepted", value: "lead" })} /></>}>
-        <LineChart row={2} height="h-18 narrow:h-14" scale={scales.median} color="muted" values={points.map(p => p.accepted.leadMedianMs)} />
-      </Row>
-      <Row left={<>
-        <RowName>{t("time.total")}</RowName>
-        <Value kind="hours" value={total} onOpen={() => open({ set: "accepted", value: "lead" })} />
+        <Num className="" label={t("time.total")} kind="hours" value={total} previous={acceptedBefore ? acceptedBefore.time.review + acceptedBefore.time.answer + acceptedBefore.time.ai + acceptedBefore.time.other : null}
+          length={length} onOpen={() => open({ set: "accepted", value: "lead" })} />
         <Parts items={[
-          { color: "bg-turn", name: t("time.you"), value: part("hours", you, { set: "accepted", value: "you" }) },
-          { color: "bg-working", name: t("time.ai"), value: part("hours", time.ai, { set: "accepted", value: "ai" }) },
-          { color: "bg-rest", name: t("time.other"), value: part("hours", time.other, { set: "accepted", value: "other" }) }]} />
+          { color: "bg-turn", name: t("time.you"), value: part("hours", you, { set: "accepted", value: "you" }), share: share_(you, total) },
+          { color: "bg-working", name: t("time.ai"), value: part("hours", time.ai, { set: "accepted", value: "ai" }), share: share_(time.ai, total) },
+          { color: "bg-rest", name: t("time.other"), value: part("hours", time.other, { set: "accepted", value: "other" }), share: share_(time.other, total) }]}
+          line={{ name: t("line.median"), value: <Value small kind="hours" value={accepted.leadMedianMs} onOpen={() => open({ set: "accepted", value: "lead" })} />,
+            gap: gap(accepted.leadMedianMs, acceptedBefore?.leadMedianMs ?? null, "hours") }} />
       </>}>
-        <BarChart row={3} height="h-26 narrow:h-20" scale={scales.total}
+        <BarChart row={1} height="h-30 narrow:h-22" scale={scales.total} overlay={overlays.median}
           values={i => { const [y, a, o] = spent(i); return [["bg-turn", y], ["bg-working", a], ["bg-rest", o]]; }} />
       </Row>
-      <Row left={<Num className="" label={t("until.submits")} kind="times" value={accepted.submits} previous={acceptedBefore?.submits ?? null} length={length}
-        onOpen={() => open({ set: "accepted", value: "submits" })} />}>
-        <BarChart row={4} height="h-14 narrow:h-11" scale={scales.submits} values={i => [["bg-muted", at(i).accepted.submits]]} />
+      <Row left={<>
+        <Num className="" label={t("until.submits")} kind="times" value={accepted.submits} previous={acceptedBefore?.submits ?? null} length={length}
+          onOpen={() => open({ set: "accepted", value: "submits" })} />
+        <Parts line={{ name: t("line.perTask"), value: <PerValue value={submitsPer} unit={t("unit.times", { count: 2 })} onOpen={() => open({ set: "accepted", value: "submits" })} />,
+          gap: gap(submitsPer, submitsPerBefore, "per", "down") }} />
+      </>}>
+        <BarChart row={2} height="h-16 narrow:h-13" scale={scales.submits} tone="turn" overlay={overlays.submits} values={i => [["", at(i).accepted.submits]]} />
       </Row>
-      <Row left={<Num className="" label={t("until.questions")} kind="tasks" value={accepted.questions} previous={acceptedBefore?.questions ?? null} length={length}
-        onOpen={() => open({ set: "accepted", value: "questions" })} />}>
-        <BarChart row={5} height="h-14 narrow:h-11" scale={scales.questions} values={i => [["bg-muted", at(i).accepted.questions]]} />
+      <Row left={<>
+        <Num className="" label={t("until.questions")} kind="tasks" value={accepted.questions} previous={acceptedBefore?.questions ?? null} length={length}
+          onOpen={() => open({ set: "accepted", value: "questions" })} />
+        <Parts line={{ name: t("line.perTask"), value: <PerValue value={questionsPer} unit={t("unit.tasks", { count: 2 })} onOpen={() => open({ set: "accepted", value: "questions" })} />,
+          gap: gap(questionsPer, questionsPerBefore, "per") }} />
+      </>}>
+        <BarChart row={3} height="h-16 narrow:h-13" scale={scales.questions} tone="turn" overlay={overlays.questions} values={i => [["", at(i).accepted.questions]]} />
       </Row>
       <Row left={<Num className="" label={t("until.prs")} kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length}
         onOpen={() => open({ set: "accepted", value: "prs" })} />}>
-        <BarChart row={6} height="h-14 narrow:h-11" scale={scales.prs} values={i => [["bg-muted", at(i).accepted.prs]]} />
+        <BarChart row={4} height="h-16 narrow:h-13" scale={scales.prs} tone="muted" values={i => [["", at(i).accepted.prs]]} />
         <DayAxis />
       </Row>
     </div>
@@ -197,9 +226,24 @@ export function cell(kind: Kind, value: number, open: () => void): Cell {
   return { text: written.value, unit: written.unit, open: value ? open : undefined };
 }
 
-/** The parts of a day's finished tasks, as its window says them under the total. */
+/** The parts of a day's finished tasks, as its window says them under the total, in the colours they are drawn in. */
 export function useFinishedParts() {
   const { t } = useTranslation("analysis");
-  return (counts: { passed: number; reworked: number; stopped: number }): [string, string][] => [
-    [t("outcome.passed"), format("tasks", counts.passed)], [t("outcome.reworked"), format("tasks", counts.reworked)], [t("outcome.stopped"), format("tasks", counts.stopped)]];
+  return (counts: { passed: number; reworked: number; stopped: number }) => [
+    { color: "bg-done", name: t("outcome.passed"), value: format("tasks", counts.passed) },
+    { color: "bg-reworked", name: t("outcome.reworked"), value: format("tasks", counts.reworked) },
+    { color: "bg-stopped-part", name: t("outcome.stopped"), value: format("tasks", counts.stopped) }];
+}
+
+/** The share without fixes, large enough to read beside its name, opening the accepted tasks. */
+function ShareValue({ value, onOpen }: { value: number | null; onOpen?: () => void }) {
+  if (!onOpen || value === null) return <b className="font-semibold">{share(value)}</b>;
+  return <button type="button" onClick={onOpen} className="group/open inline-flex items-baseline gap-0.5 font-semibold underline decoration-lit-line underline-offset-4 hover:decoration-ink">
+    {share(value)}</button>;
+}
+/** An amount per task (two places), with its unit, opening its tasks. */
+function PerValue({ value, unit, onOpen }: { value: number | null; unit: string; onOpen: () => void }) {
+  if (value === null) return <b className="font-semibold">—</b>;
+  return <button type="button" onClick={onOpen} className="inline-flex items-baseline gap-0.5 underline decoration-lit-line underline-offset-4 hover:decoration-ink">
+    <b className="font-semibold">{decimalText(value, 2)}</b><span className="text-xs text-muted">{unit}</span></button>;
 }

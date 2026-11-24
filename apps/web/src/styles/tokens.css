@@ -234,7 +234,11 @@
      green; one accepted after fixes a quiet grey between ink and the ground; stopped is stop's. The days of the
      finished-task calendar deepen from the ground to done in four steps. The time that is neither yours nor the AI's
      (rest) is a line's grey: the light theme's line is too faint on its ground, so it takes the edge's. */
-  --color-reworked: color-mix(in oklab, var(--ink) 34%, var(--bg));
+  /* Colours say whose hand a task took: done's green went through without a fix, your turn's orange took your hand
+     (reworked), stop's pink stopped. Each is also lighter in that order (reworked 26% toward the ground, a stopped part
+     38%), so they are told apart without the hue. */
+  --color-reworked: color-mix(in oklab, var(--turn) 74%, var(--bg));
+  --color-stopped-part: color-mix(in oklab, var(--stopped) 62%, var(--bg));
   --color-rest: var(--rest-time);
   /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
   --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);

@@ -6,7 +6,8 @@ import { subscribeStep } from "@/state/history-step";
 import { daysBetween, dayLabel, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
 import { tipBeside } from "./parts";
-import type { Bucket } from "./contract";
+import { Icon } from "@/components/ui/icon";
+import type { Bucket, Group, ListSet, ListValue } from "./contract";
 
 /**
  * The analysis laid out on one grid: 12 columns, 24px apart (a phone stacks them). A row gives its left 3 columns to a
@@ -42,13 +43,23 @@ export function Lead({ name, value, beside, compare, ever }: { name: ReactNode; 
   </div>;
 }
 
-/** The parts of a row's whole, each its colour, name and number (a way into its tasks), the numbers in one column. */
-export function Parts({ items }: { items: { color: string; name: string; value: ReactNode }[] }) {
-  return <div className="mt-2 grid w-max grid-cols-[max-content_max-content] items-baseline gap-x-4 gap-y-1 narrow:flex narrow:w-auto narrow:flex-wrap narrow:gap-x-4">
+/**
+ * The parts of a row's whole, each its colour, name and number (a way into its tasks) and, where it means something, its
+ * share of the whole; then the row's per-task line (─●), its value and its gap to the span before.
+ */
+export function Parts({ items = [], line }: { items?: { color: string; name: string; value: ReactNode; share?: string }[];
+  line?: { name: string; value: ReactNode; gap?: ReactNode } }) {
+  return <div className="mt-2 grid w-max grid-cols-[max-content_max-content_max-content] items-baseline gap-x-4 gap-y-1 narrow:flex narrow:w-auto narrow:flex-wrap narrow:gap-x-4">
     {items.map(item => <div key={item.name} className="contents narrow:flex narrow:items-baseline narrow:gap-2">
       <span className="flex items-center text-base whitespace-nowrap text-muted"><i aria-hidden className={cn("me-2 inline-block size-2 flex-none rounded-xs", item.color)} />{item.name}</span>
       <span className="text-base">{item.value}</span>
+      <span className="text-xs text-soft tabular-nums">{item.share ?? ""}</span>
     </div>)}
+    {line && <div className="contents narrow:flex narrow:w-full narrow:items-baseline narrow:gap-2">
+      <span className={cn("flex items-center text-base whitespace-nowrap text-muted", items.length > 0 && "mt-2 narrow:mt-1")}><LineMark />{line.name}</span>
+      <span className={cn("text-base", items.length > 0 && "mt-2 narrow:mt-1")}>{line.value}</span>
+      <span className={cn("text-xs", items.length > 0 && "mt-2 narrow:mt-1")}>{line.gap}</span>
+    </div>}
   </div>;
 }
 
@@ -64,21 +75,34 @@ export function Row({ left, children, className }: { left: ReactNode; children?:
 export const RowName = ({ children }: { children: ReactNode }) => <div className="text-xs text-muted">{children}</div>;
 
 /* ── one group of charts on the same days: what is pointed at, and the window that says it ── */
-/** A row's line in a day's window: its value, and for a stacked row the value of each of its parts. */
-type Line = { name: string; value: (at: number) => string; parts?: (at: number) => [string, string][] };
+/**
+ * What a row says of one of its days, in the window beside it: the row's name and total, its parts in the colours it
+ * draws them in (with their share where it means something), its per-task line and that line's base, and the tasks a
+ * press opens (`list`, for the bin's days).
+ */
+export type RowSay = {
+  name: string; total: (at: number) => string;
+  parts?: (at: number) => { color: string; name: string; value: string; share?: string }[];
+  line?: { name: string; value: (at: number) => string; base: (at: number) => string };
+  list?: (bin: Bin) => DayList | null;
+};
+/** The tasks behind a row on one bin: its list, for the bin's days (`from`–`to`). */
+export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string };
 type Pointed = { at: number; row: number; box: { left: number; right: number; top: number } };
-type Group = { bins: Bin[]; span: Days; bucket: Bucket; lines: Line[]; hovered: number | null; narrow: boolean;
-  point: (at: number | null, row?: number, box?: Pointed["box"]) => void };
-const GroupContext = createContext<Group | null>(null);
+type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean;
+  point: (at: number | null, row?: number, box?: Pointed["box"]) => void; press: (at: number, row: number) => void };
+const GroupContext = createContext<GroupState | null>(null);
 
 /**
- * The charts drawn on the same days (`bins`), and what the window says of each day (`lines`, in the rows' order).
- * A day is read, never chosen, from a chart: pointed at (or pressed, under a finger) it lights in every row and its
- * window says every row's value; the span changes only from the period's switch. Its whole column through every row is
- * the place to point at, and the chosen span lies as a faint band through every row. Another step of time, a scroll or
- * a move to another step closes the window.
+ * The charts drawn on the same days (`bins`), and what each row says of a day (`rows`, by the row's number). A day is
+ * read, never chosen, from a chart: pointed at (pressed, under a finger) its column lights through every row and the
+ * window beside it says the row pointed at, alone; pressed on a computer it opens that row's tasks of that day (under a
+ * finger, from the window). The span changes only from the period's switch. Between two charts the window stays with
+ * the row last pointed at. Another step of time, a scroll or a move to another step closes it.
  */
-export function ChartGroup({ bins, span, today, bucket, lines, children }: { bins: Bin[]; span: Days; today: string; bucket: Bucket; lines: Line[]; children: ReactNode }) {
+export function ChartGroup({ bins, span, today, bucket, rows, open, children }: {
+  bins: Bin[]; span: Days; today: string; bucket: Bucket; rows: RowSay[]; open: (list: DayList) => void; children: ReactNode;
+}) {
   const [pointed, setPointed] = useState<Pointed | null>(null);
   const narrow = useNarrow();
   const binName = useBinName();
@@ -90,29 +114,38 @@ export function ChartGroup({ bins, span, today, bucket, lines, children }: { bin
   useEffect(() => {
     if (!pointed) return;
     addEventListener("scroll", close, true);
-    // Under a finger the window stays until a press elsewhere.
-    const away = (event: PointerEvent) => { if (!(event.target as Element | null)?.closest?.("[data-day-column]")) close(); };
+    // Under a finger the window stays until a press elsewhere (its own way into the tasks is inside it).
+    const away = (event: PointerEvent) => { if (!(event.target as Element | null)?.closest?.("[data-day-column], [data-day-window]")) close(); };
     if (narrow) addEventListener("pointerdown", away, true);
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
-  const point = (at: number | null, row = 0, box?: Pointed["box"]) => setPointed(at === null || !box ? null : { at, row, box });
-  const shown = pointed && bins[pointed.at] ? pointed : null;
-  return <GroupContext value={{ bins, span, bucket, lines, hovered: shown?.at ?? null, narrow, point }}>
+  const point = (at: number | null, row = -1, box?: Pointed["box"]) => setPointed(previous => at === null || !box ? null
+    // Between two charts the window keeps the row last pointed at.
+    : { at, row: row >= 0 ? row : previous?.row ?? 0, box });
+  const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!) ?? null;
+  const press = (at: number, row: number) => { const list = listOf(at, row); if (list) { close(); open(list); } };
+  const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
+  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, point, press }}>
     <div className="relative" onMouseLeave={narrow ? undefined : close}>
       {!narrow && <Columns layer="back" />}
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {shown && <DayWindow name={binName(bins[shown.at]!, today)} lines={lines.map(line => [line.name, line.value(shown.at), line.parts?.(shown.at) ?? []] as const)}
-      strong={shown.row} box={shown.box} />}
+    {shown && <DayWindow day={binName(bins[shown.at]!, today)} say={rows[shown.row]!} at={shown.at} box={shown.box} narrow={narrow}
+      onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null} />}
   </GroupContext>;
 }
 const useGroup = () => useContext(GroupContext)!;
 
+/** The chart row under a point of the screen (its `data-chart-row`), or -1 between charts. */
+function rowAt(x: number, y: number, self: Element) {
+  const under = (document.elementsFromPoint?.(x, y) ?? []).find(element => element !== self && element instanceof HTMLElement && element.closest("[data-chart-row]"));
+  return Number((under as HTMLElement | undefined)?.closest<HTMLElement>("[data-chart-row]")?.dataset.chartRow ?? -1);
+}
+
 /**
  * The group's day columns over the charts' nine grid columns, through every row (a computer's). Behind the charts:
- * the chosen span's band and the day pointed at. In front: a column a day that takes the pointer, saying which row it
- * stands over by the chart under it (`data-chart-row`).
+ * the chosen span's band and the day pointed at. In front: a column a day that takes the pointer and the press.
  */
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
@@ -121,14 +154,12 @@ function Columns({ layer }: { layer: "back" | "front" }) {
     <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? () => group.point(null) : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
-        : <span key={bin.from} data-day-column="" className="pointer-events-auto"
+        : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => {
-            const self = event.currentTarget, under = (document.elementsFromPoint?.(event.clientX, event.clientY) ?? [])
-              .find(element => element !== self && element instanceof HTMLElement && element.closest("[data-chart-row]"));
-            const row = Number((under as HTMLElement | undefined)?.closest<HTMLElement>("[data-chart-row]")?.dataset.chartRow ?? -1);
-            const box = self.getBoundingClientRect();
-            if (group.hovered !== at || row >= 0) group.point(at, row, { left: box.left, right: box.right, top: event.clientY - 12 });
-          }} />)}
+            const box = event.currentTarget.getBoundingClientRect();
+            group.point(at, rowAt(event.clientX, event.clientY, event.currentTarget), { left: box.left, right: box.right, top: event.clientY - 12 });
+          }}
+          onClick={event => { const row = rowAt(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row); }} />)}
     </div>
   </div>;
 }
@@ -143,8 +174,12 @@ function useBinName() {
   };
 }
 
-/** The window beside a pointed day: its days, then every row's value, the row pointed at in ink. Kept on the screen. */
-function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonly [string, string, [string, string][]])[]; strong: number; box: Pointed["box"] }) {
+/**
+ * The window beside a pointed day: the day, the row's name and total (large), its parts with their colours, its
+ * per-task line and base, and the way to its tasks. Kept on the screen; under a finger its way to the tasks is a press.
+ */
+function DayWindow({ day, say, at, box, narrow, onList }: { day: string; say: RowSay; at: number; box: Pointed["box"]; narrow: boolean; onList: (() => void) | null }) {
+  const { t } = useTranslation("analysis");
   const self = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const window = self.current;
@@ -154,19 +189,34 @@ function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonl
       screenWidth: innerWidth, screenHeight: innerHeight });
     window.style.left = `${place.left}px`; window.style.top = `${place.top}px`;
     if (place.maxHeight !== null) window.style.maxHeight = `${place.maxHeight}px`;
-  }, [name, lines, strong, box]);
-  return <div ref={self} role="presentation" className="pointer-events-none fixed z-(--layer-popover) max-w-[calc(100vw-8px)] overflow-hidden rounded-md border border-line bg-raised px-2.5 py-2 text-xs shadow-float">
-    <div className="mb-1 font-semibold text-ink">{name}</div>
-    <div className="grid grid-cols-[auto_auto] gap-x-6 gap-y-0.5">
-      {lines.map(([label, value, parts], at) => <div key={label} className={cn("contents", at === strong ? "font-semibold text-ink" : "text-muted")}>
-        <span className="whitespace-nowrap">{label}</span><span className="text-end whitespace-nowrap tabular-nums">{value}</span>
-        {/* A stacked row's parts, each under its total. */}
-        {parts.map(([part, amount]) => <div key={part} className="contents font-normal">
-          <span className="ps-3 whitespace-nowrap">{part}</span><span className="text-end whitespace-nowrap tabular-nums">{amount}</span></div>)}
+  }, [day, say, at, box]);
+  const parts = say.parts?.(at) ?? [];
+  return <div ref={self} role="presentation" data-day-window="" className={cn("fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-xs shadow-float",
+    !narrow && "pointer-events-none")}>
+    <div className="text-soft">{day}</div>
+    <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-md font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
+    {parts.length > 0 && <div className="mt-1.5 grid grid-cols-[auto_auto_auto] gap-x-4 gap-y-0.5">
+      {parts.map(part => <div key={part.name} className="contents">
+        <span className="flex items-center whitespace-nowrap text-muted"><i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />{part.name}</span>
+        <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums">{part.value}</span>
+        <span className="text-end whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}</span>
       </div>)}
-    </div>
+    </div>}
+    {say.line && <div className="mt-2 border-t border-rule pt-2">
+      <div className="flex items-baseline justify-between gap-6"><span className="flex items-center text-muted"><LineMark />{say.line.name}</span>
+        <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
+      <div className="ps-5 text-soft">{say.line.base(at)}</div>
+    </div>}
+    {onList && (narrow
+      ? <button type="button" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted">{t("window.list")}<Icon name="right" className="size-3" /></button>
+      : <div className="mt-2 flex items-center gap-1 border-t border-rule pt-2 text-muted">{t("window.list")}<Icon name="right" className="size-3" /></div>)}
   </div>;
 }
+
+/** The mark of a per-task line (─●), as its name is drawn wherever the line is named. */
+export const LineMark = () => <svg aria-hidden viewBox="0 0 16 8" className="me-2 h-2 w-4 flex-none overflow-visible">
+  <line x1="0" y1="4" x2="16" y2="4" className="stroke-ink [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-ink stroke-bg [stroke-width:1]" />
+</svg>;
 
 /* ── a chart: the scale's one mark over its top line, a line across its middle, bins over the group's days ── */
 type Scale = { top: number; label: string };
@@ -181,11 +231,12 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
 /** Whether a bin meets the chosen span at all (a week or month it falls inside, partly or whole). */
 const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from;
 
-/** The frame every chart is drawn in: its height, the mark over its top, the middle line and the foot line. */
-function Frame({ row, scale, height, children }: { row: number; scale: Scale; height: string; children: ReactNode }) {
+/** The frame every chart is drawn in: its height, the bars' mark over its top left, the line's over its top right. */
+function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: string; height: string; children: ReactNode }) {
   return <div data-chart-row={row} className="pt-4 narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
@@ -194,9 +245,9 @@ function Frame({ row, scale, height, children }: { row: number; scale: Scale; he
 }
 
 /**
- * The bins of a chart over its group's days: each a press that chooses its days, lit while chosen, a dashed box when the
- * bin is not whole, the ground lit while the day is pointed at anywhere in the group. `uncounted` bins (before counting
- * began) lie on a hatched ground, with nothing drawn on them.
+ * The bins of a chart over its group's days: lit within the chosen span and pale outside it (40%, paler than any bar
+ * inside), a dashed box when the bin is not whole, lit while pointed at. Under a finger a bin is the press that says its
+ * day. `uncounted` bins (before counting began) lie on a hatched ground, with nothing drawn on them, and open nothing.
  */
 function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: (at: number) => boolean; partial?: (at: number) => boolean; children: (at: number) => ReactNode }) {
   const group = useGroup();
@@ -205,7 +256,7 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
     {group.bins.map((bin, at) => {
       const off = uncounted?.(at) ?? false;
       const edge = off && !(uncounted?.(at + 1) ?? true);
-      const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-50 transition-opacity duration-(--motion-base) ease-out",
+      const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-40 transition-opacity duration-(--motion-base) ease-out",
         wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
         lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
@@ -213,31 +264,70 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
         (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
         off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
         edge && "border-e border-lit-line");
-      if (!group.narrow) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
-      return <button key={bin.from} type="button" data-day-column="" aria-label={`${spanLabel(bin.from, bin.to)} ${group.lines[row]?.value(at) ?? ""}`}
+      if (!group.narrow || off) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
+      return <button key={bin.from} type="button" data-day-column="" aria-label={`${spanLabel(bin.from, bin.to)} ${group.rows[row]?.total(at) ?? ""}`}
         onClick={event => { const box = event.currentTarget.getBoundingClientRect();
           group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top }); }}
-        className={look}>{!off && children(at)}</button>;
+        className={look}>{children(at)}</button>;
     })}
   </div>;
 }
 
-/** Bars of one or more parts a bin, stacked from the foot. */
-export function BarChart({ row, height, scale, values, uncounted, partial, grow }: {
-  row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; uncounted?: (at: number) => boolean;
+/** The per-task line over a chart's bars: its value a bin (null: none), its top, and which bins rest on fewer than ten. */
+export type Overlay = { values: (number | null)[]; top: number; label: string; faint: (at: number) => boolean };
+
+/** A bar's colour for a one-colour row: its tone, deeper the taller it stands (45% at the foot to the full colour at the top). */
+const toneOf = (tone: Tone, share: number) => `color-mix(in oklab, var(--${tone}) ${Math.round(45 + 55 * Math.max(0, Math.min(1, share)))}%, var(--bg))`;
+export type Tone = "turn" | "working" | "muted";
+
+/**
+ * A row's chart: the bin's amount as bars (stacked parts in their colours, or one colour deeper with the amount), and,
+ * over them, the amount per task as a line in ink on its own scale. Within the chosen span the line is solid with
+ * points; outside it, thin and pale with none; where bins are narrower than 12px it has no points. A point resting on
+ * fewer than ten tasks is hollow, its line dotted.
+ */
+export function BarChart({ row, height, scale, values, tone, overlay, uncounted, partial, grow }: {
+  row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; tone?: Tone; overlay?: Overlay;
+  uncounted?: (at: number) => boolean;
   /** Bins only part of which is counted (counting began inside them): boxed as a bin not whole is. */
   partial?: (at: number) => boolean; grow?: boolean;
 }) {
-  return <Frame row={row} scale={scale} height={height}>
+  const group = useGroup();
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const self = box.current;
+    if (!self) return;
+    const measure = () => setWidth(self.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(self);
+    return () => watch.disconnect();
+  }, []);
+  const line = overlay ? lineDots(overlay.values, overlay.top, overlay.faint) : null;
+  const inSpan = (at: number) => lit(group.bins[at]!, group.span);
+  const points = width / Math.max(1, group.bins.length) >= 12;
+  return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{at => values(at).map(([color, value], part, all) => value > 0 &&
-      <i key={part} style={{ height: `${Math.min(100, value / scale.top * 100)}%` }}
-        className={cn("block flex-none origin-bottom rounded-[1px]", color, part === all.length - 1 && "rounded-t-[3px]", grow && "animate-bar")} />)}</Bins>
-  </Frame>;
+      <i key={part} style={{ height: `${Math.min(100, value / scale.top * 100)}%`, ...tone ? { background: toneOf(tone, value / scale.top) } : {} }}
+        className={cn("block flex-none origin-bottom rounded-[1px]", !tone && color, part === all.length - 1 && "rounded-t-[3px]", grow && "animate-bar")} />)}</Bins>
+    {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+      {line.lines.map(({ from, to, faint }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
+        return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
+          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1.5] [stroke-opacity:.45]", faint && "[stroke-dasharray:2_4]")} />; })}
+    </svg>}
+    {line && points && <div aria-hidden className="pointer-events-none absolute inset-0">
+      {line.dots.map((dot, at) => dot && (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
+        className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
+          dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />)}
+    </div>}
+  </Frame></div>;
 }
 
 /**
- * A level a bin, as points joined by a line (the share without fixes, the median time): a bin with none has no point and
- * the line breaks there. A faint point (too few to lean on) is drawn hollow, and so is the line that touches it.
+ * A level a bin, as points joined by a line (the share without fixes, a median, an amount per task): a bin with none has
+ * no point and the line breaks there. A faint point (too few to lean on) is drawn hollow, and so is the line that
+ * touches it. A value over the top stands on the top.
  */
 export function lineDots(values: (number | null)[], top: number, faint: (at: number) => boolean = () => false) {
   const dots = values.map((value, at) => value === null ? null
@@ -248,19 +338,16 @@ export function lineDots(values: (number | null)[], top: number, faint: (at: num
   });
   return { dots, lines };
 }
-export function LineChart({ row, height, scale, values, faint, color }: {
-  row: number; height: string; scale: Scale; values: (number | null)[]; faint?: (at: number) => boolean; color: "done" | "muted";
-}) {
-  const { dots, lines } = lineDots(values, scale.top, faint);
-  return <Frame row={row} scale={scale} height={height}>
-    <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      {lines.map(({ from, to, faint: pale }) => <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
-        className={cn("[stroke-linecap:round] [stroke-width:2]", color === "done" ? "stroke-done" : "stroke-muted", pale && "[stroke-dasharray:2_4] [stroke-opacity:.4]")} />)}
-    </svg>
-    <Bins row={row}>{at => dots[at] && <em style={{ bottom: `${100 - dots[at]!.y}%` }}
-      className={cn("absolute start-1/2 -ms-1 -mb-1 size-2 rounded-full ring-2 ring-bg", color === "done" ? "bg-done" : "bg-muted",
-        dots[at]!.faint && cn("border-[1.5px] bg-bg opacity-65", color === "done" ? "border-done" : "border-muted"))} />}</Bins>
-  </Frame>;
+
+/**
+ * The top of a per-task line's scale: round, and set by the bins resting on ten tasks or more (one task's large value
+ * must not flatten every other day), or by every bin when none does.
+ */
+export function lineTop(values: (number | null)[], steady: (at: number) => boolean): number {
+  const kept = values.filter((value, at) => value !== null && steady(at)) as number[];
+  const from = kept.length ? kept : values.filter((value): value is number => value !== null);
+  const marks = ticks(Math.max(0, ...from), 1, false);
+  return marks[marks.length - 1] || 1;
 }
 
 /** The days under a chart: as many names as its width holds; one day (`strong`, where counting began) in ink and bold. */

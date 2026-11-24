@@ -83,7 +83,7 @@ const SCREEN_KEYS = {
   theme: { storage: false }, settings: { storage: false },
   // The analysis face and what is open on it (features/analysis/place.ts).
   face: { storage: false }, look: { storage: false }, span: { storage: false }, list: { storage: false },
-  measure: { storage: false }, group: { storage: false }, member: { storage: false }, unit: { storage: false },
+  measure: { storage: false }, group: { storage: false }, member: { storage: false }, bin: { storage: false }, unit: { storage: false },
 } as const;
 type ScreenKey = keyof typeof SCREEN_KEYS;
 type SettingKey = { [K in ScreenKey]: typeof SCREEN_KEYS[K] extends { storage: true } ? K : never }[ScreenKey];

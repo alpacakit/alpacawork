@@ -124,9 +124,9 @@ test("a conversion under way when the face changes is dropped, and its confirmat
 
 test("a day's window closes when the charts change to another step of time, whatever day was pointed at", () => {
   const days = (count: number) => Array.from({ length: count }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
-  const lines = [{ name: "終わったタスク", value: (at: number) => `${at}件` }];
+  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}件` }];
   const group = (bucket: "day" | "week", bins: ReturnType<typeof days>) =>
-    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket={bucket} lines={lines}><div /></ChartGroup>;
+    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket={bucket} rows={rows} open={() => {}}><div /></ChartGroup>;
   const view = render(group("day", days(30)));
   const columns = view.container.querySelectorAll("[data-day-column]");
   fireEvent.mouseMove(columns[29]!, { clientX: 10, clientY: 10 });

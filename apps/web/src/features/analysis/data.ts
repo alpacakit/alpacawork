@@ -35,7 +35,9 @@ export function useUsageView(project: string | null, span: Span, bucket: Bucket,
 export const LIST_PAGE = 100;
 export function useUnitList(project: string | null, span: Span, list: ListPlace | null) {
   const root = useWorkspaceInfo(info => info.root);
-  const input = list ? { ...scope(project, span), set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : null;
+  // A list opened from a chart's bin is for that bin's days; one opened from a number, for the span.
+  const days = list?.days ? { project, from: list.days.from, to: list.days.to } : scope(project, span);
+  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : null;
   return useInfiniteQuery({ queryKey: ["analysis", root, "list", input], enabled: !!input, initialPageParam: null as string | null,
     queryFn: ({ signal, pageParam }) => api.request(route("list", { ...input!, cursor: pageParam }), unitListSchema, signal),
     getNextPageParam: page => page.cursor });

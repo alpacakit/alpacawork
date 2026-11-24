@@ -78,9 +78,11 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const span = first?.head.period ?? days;
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
+  // A list of a chart's bin says its days first, above what it lists; a number's list says its span under it.
   return <div className="animate-rise">
+    {list.days && <p className="text-xs text-soft">{spanLabel(list.days.from, list.days.to)}</p>}
     <h3 className="text-xl font-semibold">{t("list.title", { title: listTitle(list), n: numberText(first.total), unit: listUnit(list, first.total) })}</h3>
-    <p className="mt-0.5 text-xs text-soft">{[member, span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
+    <p className="mt-0.5 text-xs text-soft">{[member, !list.days && span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
     {rows.length ? <>
       <div className="mt-4 grid h-7 grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)] items-center gap-x-3 border-b border-rule text-xs text-soft">
         <span>{t("list.task")}</span><span /><span className="text-end">{t("list.day")}{!list.value && " ▼"}</span>

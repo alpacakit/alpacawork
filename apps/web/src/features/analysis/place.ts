@@ -10,7 +10,11 @@ export type Look = "tasks" | "usage";
 /** A span: one of the named periods ending today, or whole days chosen on a chart or stepped to. */
 export type Span = { period: Period } | { from: string; to: string };
 /** A list: the tasks of one number. `group`/`member`: the row of a breakdown it was opened from. */
-export type ListPlace = { set: ListSet; value: ListValue | null; group: Group | null; member: string | null };
+/**
+ * A list: the tasks of one number. `group`/`member`: the row of a breakdown it was opened from. `days`: the bin of a
+ * chart it was opened from (its own days, whatever span is chosen); none for a number of the span.
+ */
+export type ListPlace = { set: ListSet; value: ListValue | null; group: Group | null; member: string | null; days?: { from: string; to: string } | null };
 export type AnalysisPlace = { look: Look; span: Span; list: ListPlace | null; unit: string | null };
 
 export const DEFAULT_SPAN: Span = { period: "7d" };
@@ -39,6 +43,7 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
   const list: ListPlace | null = set ? {
     set, value: oneOf<ListValue>([...TASK_VALUES, ...USAGE_VALUES], url.get("measure")),
     group: oneOf<Group>([...TASK_GROUPS, ...USAGE_GROUPS], url.get("group")), member: url.get("member"),
+    days: (() => { const [from, to] = url.get("bin")?.split("~") ?? []; return from && to && DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null; })(),
   } : null;
   // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
   // tools, MCP: every launch that used one).
@@ -49,7 +54,7 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
 
 /** The breakdowns whose whole has a list of its own (every launch that used any of them). */
 const WHOLE_GROUPS = new Set<Group>(["skill", "tool", "mcp"]);
-export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "unit"] as const;
+export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "unit"] as const;
 /** The URL's values for a place, in one order, the defaults left out. */
 export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KEYS[number], string][] {
   if (!place) return [];
@@ -59,6 +64,7 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
   if (place.list) {
     out.push(["list", place.list.set]);
     if (place.list.value) out.push(["measure", place.list.value]);
+    if (place.list.days) out.push(["bin", `${place.list.days.from}~${place.list.days.to}`]);
     if (place.list.group) out.push(["group", place.list.group]);
     if (place.list.group && place.list.member !== null) out.push(["member", place.list.member]);
   }

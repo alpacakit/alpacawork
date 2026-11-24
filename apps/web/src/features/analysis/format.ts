@@ -93,8 +93,9 @@ export const instant = (iso: string, zone: string) =>
 export const previousName = (length: number) => length === 1 ? word("previous.day") : word("previous.days", { count: length });
 
 /** The line under a number: the same span just before and the gap, or that there is no record of it. */
-export function comparison(kind: Kind, current: number, previous: number | null, length: number): { before: string; gap: string | null } {
-  if (previous === null) return { before: word("previous.none", { span: previousName(length) }), gap: null };
+/** The line under a number: the same span just before and the gap; null when there is none to compare with (nothing is said). */
+export function comparison(kind: Kind, current: number, previous: number | null, length: number): { before: string; gap: string | null } | null {
+  if (previous === null) return null;
   return { before: `${previousName(length)} ${format(kind, previous)}`, gap: delta(kind, current, previous) };
 }
 
