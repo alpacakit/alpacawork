@@ -33,7 +33,7 @@ function priorContext(db: DatabaseSync, run: RuntimeRunRecord, first: number) {
 }
 
 const newConversationText = (prompt: string): string =>
-  prompt.replace(/^(\[alpacawork\] Request for task T\d+) \(continuing the same conversation\)\./, '$1.');
+  prompt.replace(/^(\[alpacawork\] Request for task [TP]\d+) \(continuing the same conversation\)\./, '$1.');
 
 function nextPrompt(db: DatabaseSync, run: RuntimeRunRecord, cause: string): string | undefined {
   const first = db.prepare('SELECT id,prompt FROM runs WHERE request_id=? AND attempt=0').get(run.requestId);

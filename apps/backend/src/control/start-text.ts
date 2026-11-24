@@ -8,7 +8,7 @@ import { questionView, incomingQuestions, relevantAnswers } from './question-vie
  */
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { digest, MAX_INSTRUCTION_BYTES, questionsOf, type ChildObservations, type ChildVersions } from '@alpacawork/raw';
-import { eventOf, PARENT_VISIBLE_EVENTS, isReviewMark, type HistoryEventKind } from '@alpacawork/contract';
+import { eventOf, PARENT_VISIBLE_EVENTS, isProjectValue, isReviewMark, renderContext, type HistoryEventKind } from '@alpacawork/contract';
 import { terminal } from '@alpacawork/contract/task-policy';
 import { isRunInTrouble } from '@alpacawork/contract/run';
 import { PROTOCOL_LIMITS } from '@alpacawork/contract/run-protocol';
@@ -28,7 +28,7 @@ type LaunchTask = ControlSnapshot['tasks'][number];
  * estimate examples are scored from.
  */
 export type LaunchSource = Pick<ControlSource, 'tasks' | 'runRecords' | 'errors'> & { tree: TaskTree<LaunchTask>;
-  contexts: TaskContexts; estimates?: ControlSource['estimates'] };
+  contexts: TaskContexts; responsible?: (id: string) => boolean; estimates?: ControlSource['estimates'] };
 export const requestBodyFits = (body: string) => Buffer.byteLength(body) <= MAX_INSTRUCTION_BYTES;
 
 const size = (text: string) => Buffer.byteLength(text);
@@ -58,9 +58,14 @@ function taskOf(tree: LaunchSource['tree'], taskId: string): LaunchTask {
   if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
   return task;
 }
+function workContext(source: LaunchSource, task: LaunchTask): string {
+  const { contexts } = source;
+  const fields = contexts.schemaOf(task.id).fields.filter(id => !isProjectValue(id));
+  return renderContext(fields, contexts.valuesOf(task.id), contexts.catalog);
+}
 /** A Task's identity and its context: what a launch says of the Task and of its parent. */
 const taskLine = (source: LaunchSource, task: LaunchTask) => {
-  const context = source.contexts.context(task.id);
+  const context = task.meta.kind === 'project' ? workContext(source, task) : source.contexts.context(task.id);
   return JSON.stringify({ id: task.id, title: task.meta.title, state: task.meta.state, ...context ? { context } : {} });
 };
 /** A Task's identity and context; when they do not fit, its identity and the command reading it. */
@@ -70,9 +75,10 @@ function taskPart(source: LaunchSource, task: LaunchTask, heading: string): Part
       `Too large to include. Read it with alpacawork task get --task ${task.id}.`]) };
 }
 /** The parent whose context a Task's text also carries: none when it is a project, whose context the chain carries. */
-function parentOf(tree: LaunchSource['tree'], task: LaunchTask): LaunchTask | null {
-  const parent = tree.ancestors(task.id)[0];
-  return parent?.meta.kind === 'task' ? parent : null;
+function parentOf(source: LaunchSource, task: LaunchTask): LaunchTask | null {
+  if (task.meta.kind === 'project') return null;
+  const parent = source.tree.ancestors(task.id)[0];
+  return parent && (parent.meta.kind === 'task' || source.responsible?.(parent.id)) ? parent : null;
 }
 
 /**
@@ -106,7 +112,7 @@ const chainChanged = (tree: LaunchSource['tree'], task: LaunchTask, since: numbe
  */
 function userInstructionsPart(source: LaunchSource, task: LaunchTask, since: number | null, ownCarried: boolean): Part | null {
   const { tree } = source;
-  const ancestry = [task, ...tree.ancestors(task.id)].filter(each => each.meta.kind === 'task');
+  const ancestry = [task, ...tree.ancestors(task.id).filter(each => each.meta.kind === 'task')];
   const top = ancestry.at(-1);
   if (!top || top.id === task.id && ownCarried) return null;
   // As with the policy chain, value/schema updates and moves invalidate the admission-time context.
@@ -151,7 +157,7 @@ function childLine(source: LaunchSource, taskId: string, child: LaunchTask, sinc
 /** What changed below since the conversation's previous Request; in a new conversation, the children not finished. */
 function childrenPart(source: LaunchSource, taskId: string, since: number | null, versions?: ChildVersions,
   observed?: ChildObservations, previous?: ChildObservations): Part | null {
-  const children = source.tree.children(taskId).filter(child => child.meta.lifecycle !== 'deleted');
+  const children = source.tree.children(taskId).filter(child => child.meta.kind === 'task' && child.meta.lifecycle !== 'deleted');
   const supplied = children.flatMap(child => {
     const lines = childLine(source, taskId, child, since, versions);
     return lines.length ? [{ child, lines: versions ? lines.map(line => `${line} (${previous?.[child.id] === child.hash ? 'shown before' : 'new'}; version ${child.hash})`) : lines }] : [];
@@ -177,7 +183,7 @@ function childrenPart(source: LaunchSource, taskId: string, since: number | null
  */
 function ownPart(source: LaunchSource, task: LaunchTask, held: string | undefined,
   supplied: ((version: string) => void) | undefined): Part | null {
-  const heading = 'Task', context = source.contexts.context(task.id);
+  const heading = 'Task', context = task.meta.kind === 'project' ? workContext(source, task) : source.contexts.context(task.id);
   if (!context) return null;
   const full = section(heading, [
     'The task record as of when this request was accepted, before the request is applied. Check it against the request and the current records, and update your judgment.',
@@ -301,7 +307,7 @@ export function startText({ source, taskId, responsible, mode, at, body, conditi
   if (!responsible) {
     const head = `[alpacawork] Request for task ${taskId}. You are a member of this task. Do not change the task's values, state, questions or placements. Put anything you need decided in your final reply, with your result and what you verified. If you have not read the alpacawork skill (including after the conversation was compacted), read it before you go on.\n` + language +
       `Below are the records as of ${at}, when the request was accepted. When you need the task's values, read them with alpacawork task get --task ${taskId}.\n\n`;
-    const parent = continued ? null : parentOf(tree, task);
+    const parent = continued ? null : parentOf(source, task);
     const guide = continued ? '' : READ_GUIDE;
     const instructions = userInstructionsPart(source, task, continued ? sinceAt : null, !continued);
     const [projects, original, own, above] = fit(head + message + guide,
@@ -316,7 +322,7 @@ export function startText({ source, taskId, responsible, mode, at, body, conditi
       OWNER_SKILL_GUIDE + language +
       `Below are the records as of ${at}, when the request was accepted. For the current questions, placements and other records, read alpacawork task get --task ${taskId}.\n\n`;
   const guide = continued ? '' : READ_GUIDE + WRITE_GUIDE;
-  const parent = continued ? null : parentOf(tree, task);
+  const parent = continued ? null : parentOf(source, task);
   const openWork = questionPart(source, taskId, sinceAt, carried);
   const instructions = userInstructionsPart(source, task, continued ? sinceAt : null, true);
   const [projects, kept, questions, obligations, original, own, changes, above, examples] = fit(head + message + guide, [

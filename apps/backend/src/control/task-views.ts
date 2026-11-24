@@ -13,7 +13,7 @@ import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from 
  * A read takes the scope authorize gave its caller (readScope: a Run's project) and compares no membership itself.
  */
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
-import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
+import { isProjectValue, PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
 import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
@@ -127,12 +127,16 @@ export async function readTaskView(root: string, id: string, options: TaskViewOp
   });
   const read = scope ?? project;
   // authorize supplies a project for a Run; a direct connection derives the Task's own.
-  const snapshot = await new ControlTaskStore(root).viewSnapshot({ task: id }, taskIds === undefined ? read : undefined, taskIds, histories ?? 'all');
+  const inheritedPolicy = scope !== null && scope !== project;
+  const snapshot = await new ControlTaskStore(root).viewSnapshot({ task: id }, taskIds === undefined ? read : undefined, taskIds,
+    inheritedPolicy ? 'none' : histories ?? 'all');
   const task = snapshot.tasks.find(item => item.id === id);
-  const words = readWords(root, markMessages(task ? [task.meta.log] : []), options.question);
+  if (inheritedPolicy && task?.values) task.values = Object.fromEntries(Object.entries(task.values)
+    .filter(([key]) => isProjectValue(key)));
+  const words = readWords(root, markMessages(task ? [task.meta.log] : []), inheritedPolicy ? undefined : options.question);
   const view = taskView(own
     ? sourceFromSnapshot(root, snapshot, read, words, [id], scope)
-    : sourceFromSnapshot(root, snapshot, taskIds === undefined ? read : null, words, taskIds, scope), id, options);
+    : sourceFromSnapshot(root, snapshot, taskIds === undefined ? read : null, words, taskIds, scope), id, inheritedPolicy ? {} : options);
   return { ...view, dependencies: readControl(root, db => dependencyStatus(db, id)) };
 }
 /**

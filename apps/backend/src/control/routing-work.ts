@@ -12,7 +12,7 @@ export type RoutingTasks = Pick<RoutingWorkSet, 'tasks'>;
 /** The project entry points still in use during integration expand once, outside the scoped routing path. */
 export function routingTasks(db: DatabaseSync, work: RoutingTasks | string): RoutingTasks {
   if (typeof work !== 'string') return work;
-  return { tasks: new Set(db.prepare(`SELECT external_id FROM tasks WHERE project_task_id=
+  return { tasks: new Set(db.prepare(`SELECT external_id FROM tasks WHERE coalesce(project_task_id, id)=
     (SELECT id FROM tasks WHERE external_id=?) ORDER BY number`).all(work).map(row => String(row.external_id))) };
 }
 

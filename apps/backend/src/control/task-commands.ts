@@ -14,7 +14,7 @@ import { initialControlDocument, now, validateTaskSettings, type ControlTask, ty
   type TaskLog } from '@alpacawork/raw';
 import { awaitsReview } from '@alpacawork/contract';
 import { taskAtWork, PlacementStore } from './placements.js';
-import { PROJECT_VALUES, patchedValues, readTaskFields, schemaAlong, schemaFor, writeProjectSchema } from './task-values-store.js';
+import { ownSchema, patchedValues, readTaskFields, schemaAlong, schemaFor, writeProjectSchema } from './task-values-store.js';
 import { TaskRepository, TaskTree, assertActive, assertAtHash, type ControlSnapshot } from './task-store.js';
 import { TaskTransition, returnsAt, withControlWrite, type ControlTx } from './task-transition.js';
 
@@ -112,7 +112,7 @@ export class ControlTaskCommands {
       if (kind === 'task') markFits(parent!.meta.kind, userRequested);
       // A new task takes its parent's schema; a project has a fixed schema for its own values.
       const fields = readTaskFields(tx.store.connection);
-      const schema = kind === 'project' ? PROJECT_VALUES : schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas);
+      const schema = ownSchema(kind, schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas));
       const ids = input.tasks.map(draft => writer.create(kind, id => {
         const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor });
         const values = draft.values === undefined ? {} : patchedValues(id, {}, draft.values, schema, fields.catalog);
@@ -178,7 +178,7 @@ export class ControlTaskCommands {
       } else if (input.action === 'archive' && task.meta.kind === 'project') {
         assertActive(task);
         // Below a project are nested projects and their Tasks, which the project's own snapshot does not hold.
-        const below = new TaskTree(writer.branch()).descendants(task.id);
+        const below = [task, ...new TaskTree(writer.branch()).descendants(task.id)];
         const working = below.filter(item => {
           if (item.meta.lifecycle !== 'active') return false;
           const meta = item.meta.baseState === 'waiting'

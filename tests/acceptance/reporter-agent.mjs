@@ -13,7 +13,7 @@ const emit = value => process.stdout.write(JSON.stringify(value) + '\n');
 const fail = message => { throw new Error(message); };
 emit({ type: 'system', subtype: 'init', session_id: session });
 
-const task = /^\[alpacawork\] Request for task (T\d+)\b/.exec(prompt)?.[1] ?? fail('The start text names no Task');
+const task = /^\[alpacawork\] Request for task ([TP]\d+)\b/.exec(prompt)?.[1] ?? fail('The start text names no Task');
 // alpacawork's start text carries the request text on the line after the request heading.
 const lines = prompt.split('\n'), request = lines[lines.indexOf('## Request') + 1];
 

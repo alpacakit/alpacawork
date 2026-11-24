@@ -30,10 +30,10 @@ test('ordinary history does not add timestamp comparisons to a child Request clo
   const entries = Array.from({ length: 2048 }, (_, i) => log(`Lnote${i}`, i));
   const finish = log('Lfinish', 2049, { toState: 'done' });
   const ask = request('ask', 'T3');
-  const facts = returnFacts([task('T3', { log: [...entries, finish] })], [childRun()]);
+  const facts = returnFacts([task('T3', { log: [...entries, finish] })], [childRun({ state: 'running', started_at: time })]);
   const parse = t.mock.method(Date, 'parse');
   assert.deepEqual(closureOf(ask, facts), { outcome: 'succeeded', runId: null, causeLogId: 'Lfinish' });
-  assert.equal(parse.mock.callCount(), 2, 'only the Request and its closing candidate need time comparisons');
+  assert.equal(parse.mock.callCount(), 3, 'the admission, receipt and closing candidate are the only time comparisons');
 });
 
 test('a Request comes from the user unless a placement sent it, and a continuation has no requester', () => {
@@ -70,7 +70,7 @@ test('a worker Request closes when its actual Run ends, including a stopped star
 
 test('a child Request closes at the first finish its Task records after the Request came', () => {
   const ask = request('ask', 'T3', 'placement', { submittedAt: at(10) });
-  const facts = (child: TaskFacts) => returnFacts([project, task('T2'), child], [seatRun, childRun()]);
+  const facts = (child: TaskFacts) => returnFacts([project, task('T2'), child], [seatRun, childRun({ state: 'running', started_at: at(10) })]);
   const close = (...entries: TaskLog[]) => closureOf(ask, facts(task('T3', { parentId: 'T2', log: entries })));
   assert.equal(close(log('Lbefore', 5, { toState: 'done' }),
     log('Llate', 20, { kind: 'linked', toState: 'error', causeAt: at(5) })), null, 'what happened before it came');
@@ -129,7 +129,7 @@ test('the requester is the user for the user\'s Task or open Request, else the o
   const ask = request('ask', 'T3');
   assert.equal(requesterOf('T3', [ask], facts({})), 'T2');
   assert.equal(requesterOf('T3', [ask], facts({ userRequested: true })), null);
-  const personRun = record('R5', { task: 'T3', requestId: 'person' });
+  const personRun = record('R5', { task: 'T3', requestId: 'person', state: 'running', started_at: time });
   for (const origin of ['human', 'main', 'review'] as const)
     assert.equal(requesterOf('T3', [ask, request('person', 'T3', origin)], facts({}, personRun)), null, origin);
   assert.equal(requesterOf('T3', [ask, request('person', 'T3', 'human')],
@@ -199,7 +199,7 @@ test('a closing return is named by its Request and a notice by its cause and kin
 
 test('scope-invalidated child work competes with Task closure at its actual boundary time', () => {
   const ask = request('ask', 'T3');
-  const cancelled = childRun({ state: 'cancelled', reason: 'scope_invalidated', ended_at: at(20) });
+  const cancelled = childRun({ state: 'cancelled', reason: 'scope_invalidated', started_at: time, ended_at: at(20) });
   const close = (run: RunRecord, ...entries: TaskLog[]) => closureOf(ask,
     returnFacts([project, task('T2'), task('T3', { log: entries })], [seatRun, run]));
   assert.deepEqual(close(cancelled), { outcome: 'stopped', runId: cancelled.id, causeLogId: null });

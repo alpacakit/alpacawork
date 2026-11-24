@@ -50,9 +50,9 @@
   },
   {
     "file": "packages/runs/src/store.ts",
-    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
+    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, lent_task_id, loan_request_id) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ?",
     "table": "requests",
-    "line": 236,
+    "line": 235,
     "status": "touch"
   },
   {

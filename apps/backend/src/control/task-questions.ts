@@ -78,12 +78,16 @@ export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; task
   const decide = (written ?? task.values).decide as FieldItem[] | undefined;
   if (!decide?.length) throw new Problem(PROBLEM_CODE.invalidInput, 'The Task has no question in its decide value; write the full question there before asking', { task: task.id },
     { reason: { kind: 'no_question_in_decide_value_write_full_question_before_asking' } });
-  const project = tasks.projectFor(task.id), askedTo = questionDestination(input.askTo, task.id, questionSnapshot(tasks.related(task.id).tasks));
+  const project = tasks.projectFor(task.id), askedTo = questionDestination(input.askTo, task.id, questionSnapshot(tasks.related(task.id).tasks),
+    id => tx.runs.responsiblePlacements(project, [id]).length > 0);
   transition.appendRecord(tx, task.id, { id: input.opId, kind: 'asked', at: now(), title: input.title,
     description: input.description, actor: input.actor, fromState: null, toState: null, runId: input.runId, askedTo,
     decide, operationFingerprint: fingerprint, ...(checkpoint ? { checkpoint } : {}) }, undefined,
     written === undefined ? undefined : { values: written });
-  if (askedTo !== null) notify(tx, project, 'question', askedTo, input.opId);
+  if (askedTo !== null) {
+    transition.reopenForQuestion(tx, askedTo, input.opId, input.actor);
+    notify(tx, project, 'question', askedTo, input.opId);
+  }
 }
 
 /**

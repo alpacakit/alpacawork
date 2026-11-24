@@ -232,9 +232,6 @@ export class TaskTransition {
    */
   apply(tx: ControlTx, transition: Transition): { stoppedRuns: RunId[] } {
     const read = new ReadPoint(tx, transition.taskId), task = read.task(transition.taskId);
-    if (task.meta.kind === 'project')
-      throw new Problem(PROBLEM_CODE.invalidInput, `${task.id} is a project; a project has no working state`, { task: task.id },
-        { reason: { kind: 'project_project_has_no_working_state', task: String(task.id) } });
     assertActive(task);
     const cause: Cause = { id: transition.record?.id ?? `${transition.action === 'run_started' ? 'LSTART' : 'LEND'}${'runId' in transition ? transition.runId : ''}`, at: transition.at, actor: transition.actor };
     const meta = taskMetadata({ ...task.meta, log: [...task.meta.log] }), changes: Change[] = [{ task, meta, values: transition.record?.values,
@@ -274,7 +271,7 @@ export class TaskTransition {
       link(meta, meta.baseState, cause, { id: cause.id, runId: transition.runId, fromState: task.meta.state, ruleId: decision.rule, boundary: transition.action === 'run_started' ? 'accepted_start' : 'settled_end' });
     else report(task, meta, transition, decision.rule);
     if (decision.subtree) {
-      const below = activeBelow(task.id, read.tasks.map(item => item.meta));
+      const below = workBelow(task.meta, read.tasks.map(item => item.meta));
       for (const item of below) {
         const child = read.task(item.id);
         const target = evaluate(TASK_POLICY.stopTarget, { ...child.meta, active: child.meta.lifecycle === 'active' });
@@ -295,6 +292,16 @@ export class TaskTransition {
     const run = read.tx.runs.get(runId);
     if (!run) throw new Error('Observed start has no Run');
     return startDecision(read.tx.store.connection, run.requestId, run.task);
+  }
+  /** A project can finish while its tasks still work and may subsequently ask it a question. */
+  reopenForQuestion(tx: ControlTx, taskId: string, questionId: string, actor: TaskActor): void {
+    const read = new ReadPoint(tx, taskId), task = read.task(taskId);
+    if (task.meta.kind !== 'project' || task.meta.baseState !== 'done') return;
+    const decision = evaluate(TASK_POLICY.transition, operationFacts(task.meta, 'resume', actor));
+    const cause = { id: questionId, at: new Date().toISOString(), actor };
+    const meta = taskMetadata({ ...task.meta, log: [...task.meta.log] });
+    link(meta, decision.baseState!, cause, { ruleId: decision.rule });
+    this.write(read, [{ task, meta }], { taskId, kind: 'state' }, cause, false);
   }
   /**
    * Appends a record that keeps the state (a question, an answer, a withdrawal, a comment, a
@@ -414,6 +421,11 @@ function reopenAbove(read: ReadPoint, next: NextChanges, below: BelowChange, cau
   return reopened;
 }
 
+/** Project membership does not make a task part of the project's own work. */
+function workBelow(task: ControlMetadata, tasks: Iterable<ControlMetadata>) {
+  return task.kind === 'task' ? activeBelow(task.id, tasks) : [];
+}
+
 /** The finished-branch rule over the tree after the write: the path above the change, and everything below what changed. */
 function assertBranch(after: readonly ControlMetadata[], next: NextChanges, below: BelowChange): void {
   // Validate the resulting path; an unchanged base checks it without propagating a new branch result.
@@ -430,7 +442,7 @@ function assertBranch(after: readonly ControlMetadata[], next: NextChanges, belo
   for (const id of new Set([...next.keys(), below.taskId])) {
     const parent = after.find(item => item.id === id)!;
     if (parent.lifecycle !== 'active') continue;
-    for (const child of activeBelow(id, after)) {
+    for (const child of workBelow(parent, after)) {
       const childMeta = after.find(item => item.id === child.id)!;
       const check = evaluate(TASK_POLICY.parentChild, { parentBase: parent.baseState, childBase: childMeta.baseState, direction: 'parent_operation' });
       if (check.kind === 'reject') throw branchProblem(id, { kind: 'below', tasks: [child.id] });
@@ -468,7 +480,7 @@ function settleLoanChanges(read: ReadPoint, next: NextChanges, cause: Cause): vo
   for (const id of closingIds) for (const task of tasks.related(id).tasks) context.set(task.id, task);
   const lifecycle = new ReturnLifecycle(db, read.tx.runs, [...context.values()], read.project, undefined, read.tx.store.root);
   lifecycle.settleLoans(closingIds, cause.at);
-  for (const change of closing) if (change.failure) lifecycle.notifyMovedLoanFailure(change, change.failure);
+  for (const change of closing) if (change.failure) lifecycle.notifyFailure(change, change.failure);
 }
 
 /** What the seats that still wait are told of this write: an ancestor it reopened, and a hold's change. */
@@ -509,13 +521,19 @@ function assertSeatsCovered(read: ReadPoint, next: NextChanges): void {
  * receipts count and which is not counted as unfinished.
  */
 function finishable(read: ReadPoint, task: ControlTask, runId: RunId | null): void {
-  const below = activeBelow(task.id, read.tasks.map(item => item.meta));
+  const below = workBelow(task.meta, read.tasks.map(item => item.meta));
   const questionTasks = questionSnapshot(read.tasks);
   const questions = [...questionTasks.values()].flatMap(node => openQuestions(node.log).filter(q =>
     (node.id !== task.id && q.askedTo === task.id) && questionApplicable(node.id, q, questionTasks)).map(q => q.id));
   const requests = read.openRequests(task.id).length, undelivered = read.unreceived(task.id, runId ?? undefined);
   const unfinished = below.filter(item => !terminal(read.task(item.id).meta.baseState)).map(item => item.id);
-  const runs = [...read.unfinishedRuns([task.id, ...below.map(item => item.id)], runId ?? undefined)];
+  const current = runId ? read.tx.runs.get(runId) : null;
+  const inputUnsettled = current !== null && read.tx.runs.inputClosed(current.id);
+  const runs = read.unfinishedRuns([task.id, ...below.map(item => item.id)], runId ?? undefined).filter(id => {
+    // The same placement starts queued owner inputs in order. They belong to future work unless in flight.
+    const next = current && !inputUnsettled ? read.tx.runs.get(id) : null;
+    return !next || next.state !== 'queued' || next.role !== 'owner' || next.placementId !== current?.placementId;
+  });
   const decision = evaluate(TASK_POLICY.finish, { known: true, questions: questions.length, requests, undelivered,
     unfinishedBelow: unfinished.length, otherRuns: runs.length, needsReview: false, reviewFresh: true, reviewRunEnded: true });
   if (decision.kind === 'reject') throw finishProblem(task.id, decision.code, { questions, requests, undelivered, unfinished, runs });

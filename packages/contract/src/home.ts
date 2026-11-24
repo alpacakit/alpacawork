@@ -92,8 +92,8 @@ export function placeHome(tasks: readonly HomeTask[], balls: Readonly<Record<str
       visited.add(task.id);
       stack.push({ task, exit: true });
       for (const child of children.get(task.id) ?? []) stack.push({ task: child, exit: false });
-    } else if (task.lifecycle === 'active' && task.kind === 'task' &&
-      (working.has(task.id) || (children.get(task.id) ?? []).some(child => work.has(child.id)))) work.add(task.id);
+    } else if (task.lifecycle === 'active' && (working.has(task.id) || task.kind === 'task' &&
+      (children.get(task.id) ?? []).some(child => work.has(child.id)))) work.add(task.id);
   }
   if (visited.size !== tasks.length) throw new Error('Cyclic home tree');
   // Each active Task's section and whether its work is listed, from the top down (a row's section reads the rows above).
@@ -112,7 +112,8 @@ export function placeHome(tasks: readonly HomeTask[], balls: Readonly<Record<str
     return result;
   };
   return tasks.flatMap(task => {
-    if (task.kind !== 'task' || task.lifecycle !== 'active') return [];
+    if (task.lifecycle !== 'active' || task.kind === 'project' &&
+        (isFinished(task.baseState) || task.baseState === 'todo' && !task.hold && !work.has(task.id) && !balls[task.id])) return [];
     const { section, position, listsWork } = place(task);
     return [{ taskId: task.id, row: section === null ? null : { taskId: task.id, section, summary: { ...task.summary } }, position, listsWork }];
   });

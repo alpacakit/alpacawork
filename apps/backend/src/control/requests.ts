@@ -193,6 +193,8 @@ export class RequestService {
           const resolvesUnknown = context.purpose !== 'return_continuation' && placement.responsible && speaksForUser(context.actor);
           assertRotationResolved(rotation, resolvesUnknown, input.mode);
           const lifecycle = new ReturnLifecycle(db, tx, snapshot.tasks, project, undefined, this.root);
+          if (fromPlacement && placement.responsible && task.meta.baseState === 'error' && lifecycle.hasUserWork(task))
+            throw new Problem(PROBLEM_CODE.forbidden, 'The user decides how to resolve this failure', { task: task.id });
           const parentInstruction = callerRun?.role === 'owner' && callerRun.task === task.meta.parentId;
           const borrow = !parentInstruction && callerRun?.role === 'owner' && placement.responsible &&
             context.purpose === 'instruction' && !context.answersQuestion
@@ -216,6 +218,8 @@ export class RequestService {
                 { reason: { kind: 'loan_target_waits_for_dependencies', task: task.id } });
             assertDependencyAcyclic(db, { requester: callerRun!.task, target: task.id });
           }
+          if (parentInstruction && placement.responsible && tasks.get(callerRun!.task).meta.kind === 'project')
+            assertDependencyAcyclic(db, { requester: callerRun!.task, target: task.id });
           // On the user's behalf, what the responsible may not have taken goes again, ending the queued Runs it rode in,
           // before the conversation is read: this Request neither waits for nor resumes them.
           if (resolvesUnknown) lifecycle.resendUnconfirmed(task.id, placement.id);
@@ -348,7 +352,7 @@ export class RequestService {
           const admittedTree = new TaskTree(admittedTasks);
           const prompt = startText({ source: { tasks: controlSnapshotView({ ...snapshot, tasks: admittedTasks }).tasks,
             tree: admittedTree, contexts: readTaskContexts(db, admittedTree), runRecords: allRuns, errors: [],
-            estimates: () => estimateExamples }, taskId: task.id,
+            responsible: id => tx.responsiblePlacements(project, [id]).length > 0, estimates: () => estimateExamples }, taskId: task.id,
           responsible: placement.responsible, mode, replyLanguage: savedReplyLanguage(this.root),
           author: requestAuthor(context.purpose, author.kind, placement.responsible), at: request.submittedAt.replace(/\.\d{3}Z$/, 'Z'), body,
           condition: { agent: profile, values: launch.launch.values },

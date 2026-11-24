@@ -297,7 +297,8 @@ const definitions = {
     'Use --lend-task for a direct child that serves the recipient’s work with no current work requested by the user. You can also lend when answering the recipient’s question.',
     'As the borrower, request the lent Task normally. Act on each result and report the combined outcome to your parent. If a request is refused, use its reason to ask your parent for help.',
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
-    'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.') }),
+    'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
+    'Coordinators can use a project ID for work that needs delegation or coordination across top-level Tasks. First assign its responsible using agent assign.') }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
     taskReportInput, [
       text('task', 'Task ID; a Run reports on its own Task when left out'),
@@ -361,7 +362,8 @@ const definitions = {
     expectedTaskHash, text('replace', 'Responsible placement to replace'),
     number('expectedPlacementRevision', 'Revision of the responsible placement it replaces'),
     number('expectedResponsibleRevision', 'Current responsible revision'), quote, sourceRequest,
-  ], { rules: agentAssignRules, output: taskPlacementResultSchema }),
+  ], { rules: agentAssignRules, output: taskPlacementResultSchema,
+    help: help('For a project, the coordinator chooses the responsible to match the work and the project policy, then uses task request with that project ID.') }),
   'agent/handover': command('write', 'Transfer responsibility to an active placement; it learns the Task\'s state and open work',
     agentHandoverInput, [taskId, text('agent', 'Placement ID'), expectedTaskHash, placementRevision, quote, sourceRequest], { output: taskPlacementResultSchema }),
   'agent/release': command('write', 'End an idle placement without losing its history', agentReleaseInput, [

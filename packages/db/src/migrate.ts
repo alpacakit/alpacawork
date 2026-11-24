@@ -7,6 +7,11 @@ import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { CONTROL_VERSION } from './control-migrations.js';
 import { PROBLEM_CODE, Problem, type ProblemReason } from '@alpacawork/core';
 
+const rebuildsReferencedTables = new Set([
+  '20261122000000_request_attempts',
+  '20261124010000_project_responsible',
+]);
+
 export const MIGRATIONS_TABLE = '__drizzle_migrations';
 export type DatabaseKind = 'control' | 'host';
 export type MigrationIdentity = { name: string; hash: string };
@@ -102,12 +107,16 @@ export function migrateDatabase(db: NodeSQLiteDatabase & { $client: DatabaseSync
     });
     // SQLite requires foreign keys off while rebuilding a referenced table. The rebuilding migration checks
     // every foreign key before its transaction commits, and this connection restores enforcement on either exit.
-    const rebuildsRuns = kind === 'control' && migrations.slice(history.length)
-      .some(migration => migration.name === '20261122000000_request_attempts');
-    const foreignKeys = rebuildsRuns && raw.prepare('PRAGMA foreign_keys').get()?.foreign_keys === 1;
+    const rebuildsReferencedTable = kind === 'control' && migrations.slice(history.length)
+      .some(migration => rebuildsReferencedTables.has(migration.name));
+    const foreignKeys = rebuildsReferencedTable && raw.prepare('PRAGMA foreign_keys').get()?.foreign_keys === 1;
+    const legacyAlter = rebuildsReferencedTable ? Number(raw.prepare('PRAGMA legacy_alter_table').get()?.legacy_alter_table ?? 0) : null;
     if (foreignKeys) raw.exec('PRAGMA foreign_keys=OFF');
     try { migrate(db, { migrationsFolder: migrationsFolder(kind) }); }
-    finally { if (foreignKeys) raw.exec('PRAGMA foreign_keys=ON'); }
+    finally {
+      if (legacyAlter !== null) raw.exec(`PRAGMA legacy_alter_table=${legacyAlter}`);
+      if (foreignKeys) raw.exec('PRAGMA foreign_keys=ON');
+    }
     assertCurrentMigrations(raw, kind);
   } catch (error) {
     // A data step's own refusal says why; the migrator wraps it in its failed query.

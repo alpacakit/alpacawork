@@ -73,7 +73,10 @@ export function assertDependencyAcyclic(db: DatabaseSync, proposed?: { requester
     if (!started.has(String(row.task_id))) edge(`end:${row.after_task_id}`, `start:${row.task_id}`);
   for (const row of db.prepare(`SELECT coalesce(q.return_task_id,c.task_id) AS requester,q.task_id AS target
     FROM requests q JOIN wait_cycles c ON c.id=q.wait_cycle_id
-    WHERE q.loan_request_id IS NOT NULL AND q.delivery_state NOT IN ('aborted','recorded_unconfirmed')
+    JOIN tasks sender ON sender.external_id=c.task_id
+    WHERE (q.loan_request_id IS NOT NULL OR sender.kind='project' AND EXISTS (
+      SELECT 1 FROM runs r WHERE r.request_id=q.id AND json_extract(r.record,'$.role')='owner'))
+      AND q.delivery_state NOT IN ('aborted','recorded_unconfirmed')
       AND NOT EXISTS (SELECT 1 FROM returns r WHERE r.request_id=q.id)`).all())
     edge(`end:${row.target}`, `end:${row.requester}`);
   if (proposed) edge(`end:${proposed.target}`, `end:${proposed.requester}`);

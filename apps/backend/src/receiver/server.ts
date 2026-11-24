@@ -649,7 +649,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   }
   const fileOptions = {
     /** A file read is a read of its Task. */
-    authorizeRead: (request: Request, task: string) => { authorizeRead(callerOf(request), { name: 'task.read' }, task); },
+    authorizeRead: (request: Request, task: string) => { authorizeRead(callerOf(request), { name: 'task.read.work' }, task); },
     /**
      * A write is file.write: refused here before its bytes are read, and asked again, for the caller identified again,
      * in the transaction FileJournal reserves it in (its grant), so that an upload outliving its Run writes nothing.

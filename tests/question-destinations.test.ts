@@ -64,6 +64,9 @@ test('CLI requires a chosen recipient; Q1 to parent and Q2 to user retain separa
   const h = await fixture(t);
   await assert.rejects(h.ask(h.owner), { code: 'invalid_input' });
   assert.equal((await h.current(h.child.id)).questions.length, 0);
+  // Keep both questions open while testing their separate destinations.
+  // A delivered consultation can resume the parent's conversation and withdraw its own question.
+  await h.f.person(h.top.id, 'held');
   const q1 = await h.ask(h.owner, h.top.id);
   const q2 = await h.ask(h.parent, 'user');
   assert.equal((await h.current(h.child.id)).questions[0].destination.taskId, h.top.id, 'userRequested does not choose the recipient');
@@ -72,6 +75,7 @@ test('CLI requires a chosen recipient; Q1 to parent and Q2 to user retain separa
   assert.deepEqual(top.userQuestions?.map(q => [q.taskId, q.id]), [[h.top.id, q2]], 'Q1 is not a human question');
   await h.answer(h.top.id, q2);
   assert.equal((await h.current(h.child.id)).questions[0].id, q1, 'Q2 answer cannot close Q1');
+  await h.f.person(h.top.id, 'doing');
   await h.answer(h.child.id, q1, h.parent);
   const records = (await h.current(h.child.id, '--include', 'closedQuestions')).questions;
   assert.deepEqual(records.map(q=>q.state), ['answered']);

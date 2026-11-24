@@ -66,3 +66,31 @@ test('a user request made in a new project awaits review on the screen until the
   }, 'the confirmed request is listed with the finished Tasks');
   h.integrity();
 });
+
+test('the coordinator assigns and requests the same project through the CLI twice', async t => {
+  const h = await setup(t, 1);
+  await h.server();
+  const check = (result: Awaited<ReturnType<typeof cli>>) => {
+    assert.equal(result.code, 0, result.stderr || result.stdout); return result.body;
+  };
+  const task = h.project, view = () => cli(h.root, 'task get', { task, log: '1' }).then(check);
+  const initial = await view();
+  const assigned = check(await cli(h.root, 'agent assign', { task, role: 'responsible', profile: 'reporter',
+    'expected-task-hash': initial.task.hash }, coordinator));
+  const revision = String(assigned.agent.placement.revision);
+  const instruction = h.gate('project-instruction.md');
+  let hash = assigned.task.hash;
+  for (const body of ['Review the release checklist', 'Confirm the next milestone']) {
+    writeFileSync(instruction, body);
+    const accepted = check(await cli(h.root, 'task request', { task, 'instruction-file': instruction,
+      'expected-task-hash': hash, 'expected-placement-revision': revision }, coordinator)).outcome.request;
+    await h.waitState(accepted.runId, 'succeeded');
+    const done = await until(async () => {
+      const latest = await view(), end = latest.task.log[0];
+      return end?.runId === accepted.runId && end.stage?.boundary === 'settled_end' && latest;
+    }, 'the project Run end is linked');
+    assert.equal(done.task.state, 'done');
+    assert.equal(done.reviewRun, null);
+    hash = done.task.hash;
+  }
+});

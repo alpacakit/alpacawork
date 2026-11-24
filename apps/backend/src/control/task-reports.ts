@@ -119,6 +119,8 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
   switch (intent) {
     case 'hold': transition.apply(tx, { ...base, action: 'hold' }); return;
     case 'stop':
+      if (actor.kind === 'placement' && task.meta.baseState === 'error' && returnsAt(tx, task.id).hasUserWork(task))
+        throw new Problem(PROBLEM_CODE.forbidden, 'The user decides how to resolve this failure', { task: task.id });
       stopRunsIn(tx.store, tx.runs, transition.apply(tx, { ...base, action: 'stop', runId }).stoppedRuns, report.opId);
       return;
     case 'submit_review': transition.apply(tx, { ...base, action: 'submit_review' }); return;
@@ -164,7 +166,7 @@ export function* stateLinksSteps(tx: StateLinkReads, work: RoutingTasks | string
   yield;
   const snapshot = { tasks: yield* routingContextSteps(tx.store.root, tx.store.connection, scope, context) }, tree = new TaskTree(snapshot.tasks);
   yield;
-  const working = snapshot.tasks.filter(task => scope.tasks.has(task.id) && task.meta.lifecycle === 'active' && task.meta.kind !== 'project');
+  const working = snapshot.tasks.filter(task => scope.tasks.has(task.id) && task.meta.lifecycle === 'active');
   const taskFacts = new Map(working.map(task => [task.id, logFacts(task)]));
   const owned = new Map<string, RunRecord[]>();
   // Select only boundary facts before decoding records. A later Task state can settle an unwritten boundary too.

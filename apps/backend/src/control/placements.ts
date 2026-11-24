@@ -173,8 +173,8 @@ export class PlacementStore {
           SELECT t.number, t.external_id, t.lifecycle, t.state, t.base_state,
             (SELECT json_group_array(json(entry)) FROM
               (SELECT entry FROM task_log l WHERE l.task_id = t.id ORDER BY ordinal)) AS log,
-            EXISTS(SELECT 1 FROM tasks c WHERE c.parent_id = t.id AND c.lifecycle <> 'deleted') AS has_children
-          FROM tasks t WHERE t.kind = 'task' ${taskIds === undefined ? '' : 'AND t.external_id IN (SELECT value FROM json_each(?))'}
+            t.kind = 'task' AND EXISTS(SELECT 1 FROM tasks c WHERE c.parent_id = t.id AND c.lifecycle <> 'deleted') AS has_children
+          FROM tasks t WHERE 1=1 ${taskIds === undefined ? '' : 'AND t.external_id IN (SELECT value FROM json_each(?))'}
             AND NOT EXISTS(SELECT 1 FROM placements p WHERE p.task_id = t.external_id AND p.ended_at IS NULL AND p.responsible = 1))
         WHERE has_children OR lifecycle = 'active'
         ORDER BY number`).all(...only)

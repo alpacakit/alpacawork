@@ -139,10 +139,10 @@ export function holdingKeys(tasks: Tasks, balls: Balls, parentLookup?: (id: stri
   const parent = parentLookup ?? ((id: string) => byId!.get(id));
   const keys = new Map<string, HeldNotice>();
   for (const task of tasks) {
-    if (task.lifecycle !== 'active' || task.kind !== 'task') continue;
+    if (task.lifecycle !== 'active') continue;
     const turn = userTurn(balls[task.id] ?? null);
     if (turn) keys.set(`${task.id}:${turn.key}`, { task, state: TURN_NOTICES[turn.reason], reason: turn.reason, at: turn.at });
-    else if (isFinished(task.state) && (!task.parentId || parent(task.parentId)?.kind !== 'task' || parent(task.parentId)?.lifecycle !== 'active')) {
+    else if (task.kind === 'task' && isFinished(task.state) && (!task.parentId || parent(task.parentId)?.kind !== 'task' || parent(task.parentId)?.lifecycle !== 'active')) {
       const ended = transition(task);
       if (ended) keys.set(`${task.id}:${ended.id}`, { task, state: task.state, reason: task.state, at: ended.at });
     }
