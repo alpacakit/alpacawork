@@ -50,7 +50,7 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
     // As Claude Code 2.1.330 reported them on one account (a turn's `modelUsage.contextWindow`); a plan with another
     // window corrects them with its first turn's report.
     contextDefaults: { opus: { window: 1_000_000 }, fable: { window: 1_000_000 } }, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
-    defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
+    defaultParams: { model: ['opus', 'fable', 'sonnet', 'haiku'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
     options: {
@@ -59,7 +59,8 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
     }, referenceUrl: 'https://code.claude.com/docs/en/cli-reference',
   },
   codex: bridge('codex', {
-    model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra'], effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'],
+    model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra', 'gpt-6-luna'],
+    effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'],
   }, '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access -o {result}',
   '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access resume -o {result} -- {session}',
   'https://learn.chatgpt.com/docs/cli/reference', ['OPENAI_API_KEY'], ['CODEX_HOME'],
