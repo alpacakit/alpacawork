@@ -50,18 +50,23 @@ function median(values: number[]) {
   const index = Math.floor(values.length / 2);
   return values.length % 2 ? values[index]! : (values[index - 1]! + values[index]!) / 2;
 }
-function creditAcceptedPrs(units: readonly DatedUnit[]): CountedUnit[] {
-  const counted = units.map(item => ({ ...item, prCount: 0 }));
-  const first = new Map<string, CountedUnit>();
-  for (const item of counted) {
-    if (!item.unit.outcome.acceptedAt) continue;
-    for (const link of item.unit.prs) {
+function creditAcceptedPrs(units: readonly DatedUnit[]): Map<Unit, number> {
+  // Attribute a PR in the project scope before selecting dates or task groups.
+  const first = new Map<string, { unit: Unit; acceptedAt: string }>();
+  for (const { unit } of units) {
+    const { acceptedAt } = unit.outcome;
+    if (!acceptedAt) continue;
+    for (const link of unit.prs) {
       const earlier = first.get(link);
-      if (!earlier || item.day < earlier.day) first.set(link, item);
+      if (!earlier || acceptedAt < earlier.acceptedAt ||
+        acceptedAt === earlier.acceptedAt && compareTask(unit, earlier.unit) < 0) {
+        first.set(link, { unit, acceptedAt });
+      }
     }
   }
-  for (const item of first.values()) item.prCount++;
-  return counted;
+  const counts = new Map<Unit, number>();
+  for (const { unit } of first.values()) counts.set(unit, (counts.get(unit) ?? 0) + 1);
+  return counts;
 }
 function acceptedTotals(units: readonly CountedUnit[]): AnalysisAcceptedTotals {
   let submits = 0, questions = 0, prs = 0;
@@ -212,8 +217,8 @@ class ScopedAnalysis {
 
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
     const head = this.head(input);
-    // Attribute a PR before selecting dates so it cannot move into a later period.
-    const units = creditAcceptedPrs(this.datedUnits);
+    const prCounts = creditAcceptedPrs(this.datedUnits);
+    const units = this.datedUnits.map(item => ({ ...item, prCount: prCounts.get(item.unit) ?? 0 }));
     const current = within(units, head.period);
     const previous = head.previous && within(units, head.previous);
     const value = taskTotals(current), before = previous && taskTotals(previous);
@@ -285,21 +290,15 @@ class ScopedAnalysis {
   }
 
   private taskRows(input: AnalysisListInput, head: AnalysisHead) {
+    const prCounts = input.value === 'prs' ? creditAcceptedPrs(this.datedUnits) : null;
     const units = within(this.datedUnits, head.period).map(item => item.unit).filter(unit =>
       (input.set === 'finished' || input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
       && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
-    const credited = new Set<string>();
-    return units.sort(compareTask).map(unit => {
+    return units.map(unit => {
       if (!input.value) return row(unit, null);
-      if (input.value === 'prs') {
-        let added = 0;
-        // Credit a shared URL once, to the first contributing Task ID in this selection.
-        for (const link of unit.prs) if (!credited.has(link)) { credited.add(link); added++; }
-        return row(unit, added);
-      }
       const { review, answer, ai, other } = unit.clock?.time ?? emptyClock();
       const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
-        questions: unit.questions, you: review + answer, ai, other };
+        questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
       return row(unit, values[input.value] ?? null);
     });
   }

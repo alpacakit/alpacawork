@@ -148,17 +148,23 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(accepted.reduce((sum, point) => sum + point[key], 0), daily.accepted.value[key]);
       for (const key of ['review', 'answer', 'ai', 'other'] as const)
         assert.equal(accepted.reduce((sum, point) => sum + point.time[key], 0), daily.accepted.value.time[key]);
-      await t.test('related PRs count on the first acceptance day in both the trend and period totals', async () => {
+      await t.test('related PR lists add up to the period total and each trend bucket', async () => {
         assert.deepEqual(accepted.map(point => point.prs), [1, 0]);
-        assert.equal(accepted.reduce((sum, point) => sum + point.prs, 0), daily.accepted.value.prs);
+        const prList = ({ from, to }: { from: string; to: string }) => read<AnalysisUnitList>('list', {
+          from, to, timeZone: acceptanceRange.timeZone, set: 'accepted', value: 'prs',
+        });
+        const total = (list: AnalysisUnitList) => list.rows.reduce((sum, row) => sum + row.value!, 0);
+        assert.equal(total(await prList(acceptanceRange)), daily.accepted.value.prs);
+        for (const [index, point] of points.entries()) {
+          const list = await prList(point);
+          assert.equal(total(list), point.accepted.prs, point.from);
+          assert.deepEqual(list.rows.map(row => [row.id, row.value]), index === 0 ? [[rowId(2), 1]] : []);
+        }
         const laterRange = { ...acceptanceRange, from: acceptanceRange.to };
         const later = await read<AnalysisTasksView>('tasks', laterRange);
         assert.equal(later.accepted.value.prs, 0);
         assert.equal(later.accepted.previous?.prs, 1);
         assert.equal(later.ever?.accepted.prs, 1);
-        const links = await read<AnalysisUnitList>('list', { from: laterRange.from, to: laterRange.to, timeZone: 'UTC',
-          set: 'accepted', value: 'prs' });
-        assert.deepEqual(links.rows.map(row => [row.id, row.value]), [[rowId(3), 1]]);
         const detail = await read<AnalysisUnitValues>('task', { task: rowId(3), timeZone: 'UTC' });
         assert.deepEqual(detail.prs, [link]);
       });
