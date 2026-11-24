@@ -1464,10 +1464,10 @@
   },
   {
     "reason": {
-      "kind": "project_project_has_no_working_state",
+      "kind": "project_cannot_be_stopped",
       "task": "FACT_task"
     },
-    "en": "FACT_task is a project. Projects have no work state"
+    "en": "FACT_task is a project. To stop its responsible’s Run, use run stop"
   },
   {
     "reason": {

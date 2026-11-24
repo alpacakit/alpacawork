@@ -21,9 +21,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import { PlacementStore } from './placements.js';
 import { ReturnLifecycle } from './return-lifecycle.js';
 import { endedOwnWork } from './return-rules.js';
-import { evaluate, TASK_POLICY, terminal, type Operation, type OperationFacts } from '@alpacawork/contract/task-policy';
+import { evaluate, TASK_POLICY, terminal, supportsTaskStop, type Operation, type OperationFacts } from '@alpacawork/contract/task-policy';
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
-import { TaskRepository, TaskTree, assertActive, taskWriter } from './task-store.js';
+import { TaskRepository, assertActive, taskWriter } from './task-store.js';
 import { startPath, startDecision } from './task-start-facts.js';
 
 /** Translate policy outcomes at the application boundary; policy rules contain no UI words. */
@@ -151,7 +151,7 @@ type OwnerRunBoundary = { runState: 'running' | 'succeeded' | 'failed' | 'cancel
 
 /** A Task's next document in one write, with what its record changes besides the log. */
 type Change = { task: ControlTask; meta: ControlMetadata; values?: TaskValues; settings?: ProjectSettings | null;
-  texts?: ReadonlyMap<string, string>; replyInput?: 'request' | 'doing'; stopScope?: readonly string[] };
+  texts?: ReadonlyMap<string, string>; replyInput?: 'request' | 'doing' };
 
 /**
  * One write's read point: the written branch, its ancestry and Request/return endpoints (TaskRepository.related), and the
@@ -232,6 +232,9 @@ export class TaskTransition {
    */
   apply(tx: ControlTx, transition: Transition): { stoppedRuns: RunId[] } {
     const read = new ReadPoint(tx, transition.taskId), task = read.task(transition.taskId);
+    if (transition.action === 'stop' && !supportsTaskStop(task.meta.kind))
+      throw new Problem(PROBLEM_CODE.invalidInput, 'Project reports do not support the stopped state', { task: task.id },
+        { reason: { kind: 'project_cannot_be_stopped', task: task.id } });
     assertActive(task);
     const cause: Cause = { id: transition.record?.id ?? `${transition.action === 'run_started' ? 'LSTART' : 'LEND'}${'runId' in transition ? transition.runId : ''}`, at: transition.at, actor: transition.actor };
     const meta = taskMetadata({ ...task.meta, log: [...task.meta.log] }), changes: Change[] = [{ task, meta, values: transition.record?.values,
@@ -273,24 +276,21 @@ export class TaskTransition {
       link(meta, meta.baseState, cause, { id: cause.id, runId: transition.runId, fromState: task.meta.state, ruleId: decision.rule, boundary: transition.action === 'run_started' ? 'accepted_start' : 'settled_end' });
     else report(task, meta, transition, decision.rule);
     if (decision.subtree) {
-      const below = stopBelow(read, task);
-      const stopScope = [task.id, ...below];
-      changes[0]!.stopScope = stopScope;
-      for (const id of below) {
-        const child = read.task(id);
+      const below = activeBelow(task.id, read.tasks.map(item => item.meta));
+      for (const item of below) {
+        const child = read.task(item.id);
         const target = evaluate(TASK_POLICY.stopTarget, { ...child.meta, active: child.meta.lifecycle === 'active' });
         if (!target.baseState) continue;
         const next = taskMetadata({ ...child.meta, log: [...child.meta.log] });
         link(next, target.baseState, cause, { ruleId: target.rule });
         changes.push({ task: child, meta: next });
       }
-      stoppedRuns = [...read.unfinishedRuns(stopScope,
+      stoppedRuns = [...read.unfinishedRuns([task.id, ...below.map(item => item.id)],
         'runId' in transition ? transition.runId ?? undefined : undefined)].filter(() => evaluate(TASK_POLICY.stopRun, { unfinished: true, reportingRun: false }).stopRuns);
     }
     const changed = meta.baseState !== task.meta.baseState ? 'state' : transition.record?.values !== undefined ? 'values' : 'none';
     this.write(read, changes, { taskId: task.id, kind: changed }, cause,
       transition.action === 'run_started' || transition.action === 'run_ended', resumeAuthorized);
-    if (transition.action === 'stop' && task.meta.kind === 'project') read.returns.revokeLoans(task.id, cause.at);
     return { stoppedRuns };
   }
   private startOf(read: ReadPoint, runId: RunId) {
@@ -364,7 +364,7 @@ export class TaskTransition {
         throw new Error(`Reply-wait invariant violated on ${change.task.id}`);
       change.meta.version = change.task.meta.version + 1n;
     }
-    saveChanges(read, changes, next, cause);
+    saveChanges(read, changes, next, after, cause);
     settleClosingChanges(read, next, cause);
     noticeChanges(read, changes, next, reopened, below, cause);
     if (!runBoundary) assertSeatsCovered(read, next);
@@ -431,38 +431,6 @@ function workBelow(task: ControlMetadata, tasks: Iterable<ControlMetadata>) {
   return task.kind === 'task' ? activeBelow(task.id, tasks) : [];
 }
 
-/** A project stops the work it manages. Protected tasks keep both their branch and their path open. */
-function stopBelow(read: ReadPoint, task: ControlTask): string[] {
-  if (task.meta.kind === 'task') return workBelow(task.meta, read.tasks.map(item => item.meta)).map(item => item.id);
-  const tree = new TaskTree(read.tasks), stopped = new Set<string>();
-  const assigned = read.openRequests(task.id), assignedTasks = new Set(assigned.map(request => request.taskId));
-  const children = tree.children(task.id).filter(child => child.meta.kind === 'task' && child.meta.lifecycle === 'active');
-  const failures = new Map(children.map(child => [child.id, read.returns.failureOf(child)]));
-  const visited = new Set<string>();
-  function stopBranch(child: ControlTask): boolean {
-    if (child.meta.lifecycle !== 'active') return true;
-    if (visited.has(child.id)) return stopped.has(child.id);
-    visited.add(child.id);
-    if (read.returns.hasUserWork(child)) return false;
-    const below = tree.children(child.id).map(stopBranch);
-    if (below.includes(false)) return false;
-    stopped.add(child.id);
-    return true;
-  }
-  for (const child of children)
-    if (assignedTasks.has(child.id) || failures.get(child.id)?.requester === task.id) stopBranch(child);
-  for (const loan of assigned) {
-    if (!loan.lentTaskId || loan.loanEndedAt || !stopped.has(loan.taskId)) continue;
-    const target = tree.byId.get(loan.lentTaskId);
-    if (!target || target.meta.parentId !== task.id) continue;
-    const failure = failures.get(target.id);
-    const borrowed = failure?.requester === loan.taskId && failure.loanId === loan.id ||
-      read.openRequests(loan.taskId).some(request => request.taskId === target.id && request.loanRequestId === loan.id);
-    if (borrowed) stopBranch(target);
-  }
-  return [...stopped];
-}
-
 /** The finished-branch rule over the tree after the write: the path above the change, and everything below what changed. */
 function assertBranch(after: readonly ControlMetadata[], next: NextChanges, below: BelowChange): void {
   // Validate the resulting path; an unchanged base checks it without propagating a new branch result.
@@ -488,14 +456,17 @@ function assertBranch(after: readonly ControlMetadata[], next: NextChanges, belo
 }
 
 /** The Tasks' next documents, and the stop epoch of each Task a stop reached. */
-function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChanges, cause: Cause): void {
+function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChanges, after: readonly ControlMetadata[], cause: Cause): void {
   const writer = taskWriter(read.tx.store.connection), [primary] = changes;
   if (primary) writer.save(primary.task.id, primary.task.hash, primary.meta, primary.task.meta.log.length, primary.values, primary.settings, primary.texts);
   writer.saveBatch([...next.values()].filter(change => change !== primary)
     .map(change => ({ id: change.task.id, expectedHash: change.task.hash, meta: change.meta, previousLength: change.task.meta.log.length })));
-  for (const id of primary?.stopScope ?? []) {
-    read.tx.store.connection.prepare('INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id').run(id, cause.id);
-    touch(read.tx.store.connection, { kind: 'stop_epoch', id });
+  if (changes[0]?.meta.log.at(-1)?.stage?.action === 'stop') {
+    const stopped = changes[0].task.id;
+    for (const id of [stopped, ...activeBelow(stopped, after).map(item => item.id)]) {
+      read.tx.store.connection.prepare('INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id').run(id, cause.id);
+      touch(read.tx.store.connection, { kind: 'stop_epoch', id });
+    }
   }
 }
 

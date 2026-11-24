@@ -428,25 +428,6 @@ export class ReturnLifecycle {
     return userControlsWork(task.id, failure?.id, view.requests, facts);
   }
 
-  /** Current responsibility for a failed Task, including the original instruction after its return. */
-  failureOf(task: TaskDecisionFacts): { requester: string | null; loanId?: string } | null {
-    const failure = task.meta.baseState === 'error' ? taskFailure(task.meta.log) : undefined;
-    if (!failure) return null;
-    const view = this.seat(task.id), facts = view.facts;
-    const run = failure.runId && this.tx.get(failure.runId);
-    const request = run ? this.tx.getRequest(run.requestId) : null;
-    if (!run || !request) return { requester: failureRequester(task.id, failure, view.requests, facts) };
-    // Closing a Request drops its Run from the active return read, even while its failure remains current.
-    const runs = new Map(facts.runs).set(run.id, run);
-    const caller = run.caller && this.tx.get(run.caller.run);
-    if (caller) runs.set(caller.id, caller);
-    const requests = view.requests.some(item => item.id === request.id) ? view.requests : [...view.requests, request];
-    return {
-      requester: failureRequester(task.id, failure, requests, { ...facts, runs, runOf: new Map(facts.runOf).set(request.id, run) }),
-      loanId: request.loanRequestId,
-    };
-  }
-
   /** Closing returns go to their senders. If a failure now belongs to another seat, give it a notice too. */
   notifyFailure(task: TaskDecisionFacts, entry: TaskLog): void {
     const view = this.seat(task.id);
@@ -480,17 +461,8 @@ export class ReturnLifecycle {
       AND NOT EXISTS (SELECT 1 FROM returns r WHERE r.request_id=q.id)`).all(selected);
     if (borrowed.length) this.close([...this.tx.getRequests(borrowed.map(row => String(row.id))).values()]);
   }
-  /** A stopped lender issues no more instructions through its grants. Accepted work keeps its requester. */
-  revokeLoans(lender: string, at: string): void {
-    const grants = this.db.prepare(`SELECT q.id FROM requests q JOIN wait_cycles c ON c.id=q.wait_cycle_id
-      WHERE c.task_id=? AND q.lent_task_id IS NOT NULL AND q.loan_ended_at IS NULL`).all(lender);
-    for (const grant of grants) this.closeLoanGrant(String(grant.id), at);
-  }
-  private closeLoanGrant(id: string, at: string): void {
-    this.change({ kind: 'request', id }, 'UPDATE requests SET loan_ended_at=? WHERE id=?', at, id);
-  }
   private endLoan(loan: StoredRequest, lender: string, at: string, completed: boolean): void {
-    this.closeLoanGrant(loan.id, at);
+    this.change({ kind: 'request', id: loan.id }, 'UPDATE requests SET loan_ended_at=? WHERE id=?', at, loan.id);
     if (completed) return; // The ordinary finish guard already requires the borrower to have taken every return.
     const uses = this.db.prepare(`SELECT q.id,r.id AS result FROM requests q LEFT JOIN returns r ON r.request_id=q.id
       WHERE q.loan_request_id=? AND q.delivery_state<>'aborted'`).all(loan.id);

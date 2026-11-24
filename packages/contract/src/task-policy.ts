@@ -2,7 +2,7 @@ import type { ProblemReason } from '@alpacawork/core/reasons';
 /** The versioned meaning of Task state, relationships, responsibilities and delivery.
  * Facts are supplied by their owners. This module has no database, process, clock or UI vocabulary. */
 import type { Ball } from './ball.js';
-import type { TaskBaseState, TaskStage, TaskState } from '@alpacawork/raw';
+import type { TaskBaseState, TaskKind, TaskStage, TaskState } from '@alpacawork/raw';
 
 export type Decision = { kind: 'reject' | 'cochange' | 'keep'; code: string;
   baseState?: TaskBaseState; hold?: boolean;
@@ -25,9 +25,11 @@ export function evaluate<F>(rules: readonly Rule<F>[], facts: F, cumulative = fa
     all: selected.map(row => ({ ...row.out(facts), rule: row.id, priority: row.priority })) };
 }
 export const terminal = (state: string | null | undefined) => state === 'done' || state === 'stopped';
+export const supportsTaskStop = (kind?: TaskKind) => kind !== 'project';
 export type Operation = 'report_doing' | 'report_done' | 'submit_review' | 'confirm' | 'stop' | 'resume' |
   'run_started' | 'run_failed' | 'run_no_report' | 'answer' | 'withdraw' | 'hold' | 'unhold';
 type UserQuestionFacts = { openUserQuestion?: boolean };
+type ActionFacts = TaskStage & UserQuestionFacts & { userRequested: boolean; kind?: TaskKind };
 export type OperationFacts = TaskStage & UserQuestionFacts & { action: Operation; explicit: boolean; userRequested: boolean;
   observedStart?: boolean; stopFactsKnown?: boolean; operationId?: string;
   end?: { known: boolean; reported: boolean; questions: number; requests: number; awaitingAtEnd: boolean } };
@@ -58,12 +60,12 @@ const BALL_RULES = table<BallFacts & { result?: Ball }>([
 ]);
 export const TASK_POLICY = {
   version: 'question-done-1',
-  actionCandidates: table<TaskStage & UserQuestionFacts & { userRequested: boolean }>([
+  actionCandidates: table<ActionFacts>([
     ['AC01', f => f.baseState !== 'stopped', keep('report_doing')],
     ['AC02', f => f.baseState !== 'stopped', keep('report_done')],
     ['AC03', f => f.baseState === 'done' && f.userRequested, keep('submit_review')],
     ['AC04', f => f.baseState === 'waiting' || f.baseState === 'doing' && !!f.openUserQuestion, keep('confirm')],
-    ['AC05', f => f.hold || !terminal(f.baseState), keep('stop')],
+    ['AC05', f => supportsTaskStop(f.kind) && (f.hold || !terminal(f.baseState)), keep('stop')],
     ['AC06', f => f.baseState === 'stopped', keep('resume')],
     ['AC07', f => !f.hold, keep('hold')],
     ['AC08', f => f.hold, keep('unhold')],
@@ -283,7 +285,7 @@ export function policyBall(facts: BallFacts): Ball | null {
 }
 
 /** Candidates remain visible; authoritative transition and finish guards decide on submission. */
-export function taskActionsOf(facts: TaskStage & UserQuestionFacts & { userRequested: boolean }):
+export function taskActionsOf(facts: ActionFacts):
   ('report_doing' | 'report_done' | 'submit_review' | 'confirm' | 'stop' | 'resume' | 'hold' | 'unhold')[] {
   return evaluate(TASK_POLICY.actionCandidates, facts, true).all.map(row => row.code as ReturnType<typeof taskActionsOf>[number]);
 }

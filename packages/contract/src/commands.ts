@@ -319,7 +319,7 @@ const definitions = {
         'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
-        'Stopping a Task stops its subtree and their Runs. Stopping a project also stops the work it assigned and still manages.'),
+        'Report stopped for an ordinary Task to stop it and its subtree. To stop a project responsible’s Run, use run stop.'),
       cliHelp: help('A Git diff in the description is attached automatically.',
         'For multiline Markdown, pass --description-file - and write the text on stdin.') }),
   'task/comment': command('write', 'Add a comment without changing Task state; --urgent sends it to the requester now',

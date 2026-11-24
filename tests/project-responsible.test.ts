@@ -10,8 +10,8 @@ import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.
 import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
 import { authorize, type Action } from '@alpacawork/backend/test-dist/control/authorize.js';
 import { closureOf, returnFacts } from '@alpacawork/backend/test-dist/control/return-rules.js';
-import { startDecision } from '@alpacawork/backend/test-dist/control/task-start-facts.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
+import { controlTaskHead } from '@alpacawork/backend/test-dist/control/task-dto.js';
 import { readTaskView } from '@alpacawork/backend/test-dist/control/task-views.js';
 import { taskFlow, type Seat } from './task-flow.fixture.ts';
 import { assignResponsible } from './helpers/control-fixture.ts';
@@ -49,13 +49,6 @@ test('an independent task stays active while the project finishes and its next i
   assert.equal((await outcome())?.outcome, 'succeeded');
   flow.end(queued);
   assert.equal(await flow.state(seat.id), 'done');
-  const independentQueued = await flow.request(independent);
-  const third = await flow.work(seat);
-  await flow.person(seat.id, 'stopped');
-  assert.equal(await flow.state(independent.id), 'doing');
-  assert.equal(flow.run(third).stop_requested, true);
-  assert.equal(flow.run(independent).stop_requested, false);
-  assert.notEqual(flow.store(store => startDecision(store.connection, flow.run(independentQueued).requestId, independent.id)).kind, 'reject');
 });
 
 test('project work waits for its own request and receives the answer and result through the ordinary routes', async t => {
@@ -78,7 +71,9 @@ test('project work waits for its own request and receives the answer and result 
 });
 
 test('a question to a completed project reopens it and survives a hold until it can wake', async t => {
-  const flow = await taskFlow(t), seat = await projectSeat(flow);
+  const flow = await taskFlow(t);
+  await assert.rejects(flow.person(flow.project, 'held'), { code: 'responsible_missing' });
+  const seat = await projectSeat(flow);
   const project = await flow.work(seat);
   await flow.report(project, 'done');
   flow.end(project);
@@ -87,6 +82,7 @@ test('a question to a completed project reopens it and survives a hold until it 
   assert.equal(await flow.state(project.id), 'doing');
   assert.deepEqual((await readTaskView(flow.root, project.id, {}, null)).incomingQuestions.map(each => each.id), [question]);
   await flow.person(project.id, 'held');
+  assert.equal(await flow.state(project.id), 'held');
   const router = new ReturnRouter(flow.root);
   const paused = await router.pass(undefined, { project: project.id });
   assert.deepEqual(paused.acceptedRequestIds, []);
@@ -114,21 +110,6 @@ test('a question to a completed project reopens it and survives a hold until it 
   flow.start(resumed);
   await flow.answer(child.id, question, resumed);
   assert.equal((await readTaskView(flow.root, project.id, {}, null)).incomingQuestions.length, 0);
-});
-
-test('a stopped project expires an open consultation and the asking task can continue', async t => {
-  const flow = await taskFlow(t);
-  await assert.rejects(flow.person(flow.project, 'held'), { code: 'responsible_missing' });
-  const project = await flow.work(await projectSeat(flow));
-  await flow.report(project, 'done');
-  flow.end(project);
-  const child = await flow.work(await flow.task('Independent consultation', { userRequested: true }));
-  const question = await flow.ask(child, project.id);
-  await flow.person(project.id, 'stopped');
-  assert.equal((await flow.get(child.id)).meta.log.find(entry => entry.questionId === question)?.kind, 'question_expired');
-  const resumed = await flow.receive(child);
-  await assert.rejects(flow.ask(resumed, project.id), { code: 'invalid_input' });
-  assert.equal(await flow.state(child.id), 'doing');
 });
 
 test('a moved child failure reaches the current project responsible after its old request closes', async t => {
@@ -200,99 +181,24 @@ test('answering an independent task cannot add an instruction or loan', async t 
   }
 });
 
-test('stopping a project run or the project leaves a called task working on the user’s instruction', async t => {
+test('a stopped report is refused and run stop follows the ordinary caller scope', async t => {
   const flow = await taskFlow(t);
   const project = await flow.work(await projectSeat(flow));
-  const child = await flow.work(await flow.task('Shared assignment'), project);
-  const delegated = await flow.work(await flow.task('Delegated assignment'), project);
-  const queued = await flow.request(await flow.task('Queued assignment'), project);
-  const direct = await flow.request(child);
-  flow.store(store => store.write(tx => tx.update({
-    ...tx.get(direct.runId)!, state: 'joined', into: child.runId, ended_at: new Date().toISOString(),
-  })));
+  const called = await flow.work(await flow.task('Delegated assignment'), project);
+  const independent = await flow.work(await flow.task('Independent assignment', { userRequested: true }));
+  const before = await flow.get(project.id);
+  await assert.rejects(flow.person(project.id, 'stopped'), {
+    code: 'invalid_input', reason: { kind: 'project_cannot_be_stopped', task: project.id },
+  });
+  assert.equal((await flow.get(project.id)).hash, before.hash);
+  assert.equal(flow.run(project).stop_requested, false);
+  assert.equal(controlTaskHead(before).allowedActions.includes('stop'), false);
 
   requestStop(flow.root, { run: project.runId }, randomUUID());
   assert.equal(flow.run(project).stop_requested, true);
-  assert.equal(flow.run(child).stop_requested, false);
-  assert.equal(flow.run(delegated).stop_requested, false);
-  await flow.person(project.id, 'stopped');
-  assert.equal(flow.run(child).stop_requested, false);
-  assert.equal(await flow.state(child.id), 'doing');
-  assert.equal(flow.run(delegated).stop_requested, true);
-  assert.equal(await flow.state(delegated.id), 'stopped');
-  assert.equal(flow.run(queued).state, 'cancelled');
-  assert.equal(await flow.state(queued.id), 'stopped');
-  flow.end(delegated, 'cancelled');
-  assert.equal(await flow.state(delegated.id), 'stopped');
-});
-
-test('a project stop includes managed failures and preserves the path of direct work', async t => {
-  const flow = await taskFlow(t);
-  const project = await flow.work(await projectSeat(flow));
-  const failed = await flow.work(await flow.task('Managed failure'), project);
-  flow.end(failed, 'failed');
-  const parent = await flow.work(await flow.task('Managed branch'), project);
-  const sibling = await flow.work(await flow.task('Managed sibling', { parentId: parent.id }), parent);
-  const protectedParent = await flow.work(await flow.task('Intermediate task', { parentId: parent.id }), parent);
-  const independent = await flow.work(await flow.task('Direct child', { parentId: protectedParent.id }));
-  const queued = await flow.request(independent);
-
-  await flow.person(project.id, 'stopped');
-  assert.equal(await flow.state(failed.id), 'stopped');
-  assert.equal(await flow.state(sibling.id), 'stopped');
-  assert.equal(flow.run(sibling).stop_requested, true);
-  for (const kept of [parent, protectedParent, independent]) {
-    assert.equal(await flow.state(kept.id), 'doing');
-    assert.equal(flow.run(kept).stop_requested, false);
-  }
-  assert.equal(flow.run(queued).state, 'queued');
-  const requestId = flow.run(queued).requestId;
-  assert.notEqual(flow.store(store => startDecision(store.connection, requestId, independent.id)).kind, 'reject');
-
-  const target = await flow.task('New assignment');
-  const decide = (id: string, action: Action) => flow.store(store =>
-    authorize(store.connection, owner(project), action, { task: id, quote: null }));
-  assert.throws(() => decide(project.id, { name: 'task.new', kind: 'task', userRequested: false }), { code: 'forbidden' });
-  assert.throws(() => decide(target.id, { name: 'task.request', worker: false }), { code: 'forbidden' });
-  assert.throws(() => decide(target.id, { name: 'task.answer', askedTo: project.id, closed: true }), { code: 'forbidden' });
-  assert.doesNotThrow(() => decide(target.id, { name: 'task.read' }));
-});
-
-test('project stop ends new lending and keeps accepted work with a protected borrower', async t => {
-  const flow = await taskFlow(t);
-  const project = await flow.work(await projectSeat(flow));
-  async function borrow(protect: boolean) {
-    const borrower = await flow.task(protect ? 'Protected borrower' : 'Managed borrower');
-    const target = await flow.task(protect ? 'Protected borrower’s target' : 'Managed borrower’s target');
-    const { outcome } = await new TaskRequestService(flow.root).request({
-      task: borrower.id, body: 'Verify the result', opId: randomUUID(), lendTask: target.id,
-      expectedTaskHash: (await flow.get(borrower.id)).hash, expectedPlacementRevision: 1,
-    }, { kind: 'placement', placementId: project.placementId }, owner(project));
-    assert.equal(outcome.kind, 'request_accepted');
-    const seat = { ...borrower, runId: outcome.request.runId };
-    flow.start(seat);
-    const work = await flow.work(target, seat);
-    if (protect) await flow.request(seat);
-    return { seat, work };
-  }
-  const managed = await borrow(false);
-  const protectedWork = await borrow(true);
-  await flow.person(project.id, 'stopped');
-  assert.equal(await flow.state(managed.seat.id), 'stopped');
-  assert.equal(await flow.state(managed.work.id), 'stopped');
-  assert.equal(flow.run(managed.work).stop_requested, true);
-  assert.equal(await flow.state(protectedWork.seat.id), 'doing');
-  assert.equal(flow.run(protectedWork.work).stop_requested, false);
-  const borrowAction = { name: 'task.request', worker: false, borrowable: true } as const;
-  assert.throws(() => flow.store(store => authorize(store.connection, owner(protectedWork.seat), borrowAction,
-    { task: protectedWork.work.id, quote: null })), { code: 'forbidden' });
-  await flow.report(protectedWork.work, 'done');
-  flow.end(protectedWork.work);
-  await new ReturnRouter(flow.root).pass(undefined, { project: project.id });
-  const requestId = flow.run(protectedWork.work).requestId;
-  const result = flow.store(store => store.readReturns().find(row => row.requestId === requestId));
-  assert.equal(result?.toTaskId, protectedWork.seat.id);
-  assert.equal(result?.outcome, 'succeeded');
+  assert.equal(flow.run(called).stop_requested, true);
+  assert.equal(flow.run(independent).stop_requested, false);
+  assert.equal(await flow.state(project.id), 'doing');
 });
 
 test('a project uses the ordinary rows and question detail when the user needs to act', async t => {

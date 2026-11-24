@@ -10,10 +10,9 @@ import type { RunId } from '@alpacawork/contract/fields';
 import type { RunRecord } from '@alpacawork/contract/run';
 import type { RunStore, RunTransaction } from '@alpacawork/runs';
 import { now, type ConversationCheckpoint, type ControlTask, type TaskActor, type TaskLog, type TaskState, type TaskValues } from '@alpacawork/raw';
-import { stopRunsIn, stopSelectedRunsIn } from '../runs/entry.js';
+import { stopRunsIn } from '../runs/entry.js';
 import { validateReportMedia } from './report-media.js';
 import { endedOwnWork } from './return-rules.js';
-import { expireInvalidDestinations } from './task-questions.js';
 import { TaskTree, assertActive, assertAtHash } from './task-store.js';
 import { TaskTransition, operationFingerprint, operationIdUse, returnsAt, tasksIn, type ControlTx } from './task-transition.js';
 
@@ -119,16 +118,9 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
     values: written, checkpoint } };
   switch (intent) {
     case 'hold': transition.apply(tx, { ...base, action: 'hold' }); return;
-    case 'stop': {
-      if (actor.kind === 'placement' && task.meta.baseState === 'error' && returnsAt(tx, task.id).hasUserWork(task))
-        throw new Problem(PROBLEM_CODE.forbidden, 'The user decides how to resolve this failure', { task: task.id });
-      const { stoppedRuns } = transition.apply(tx, { ...base, action: 'stop', runId });
-      if (task.meta.kind === 'project') {
-        stopSelectedRunsIn(tx.store, tx.runs, stoppedRuns, report.opId);
-        expireInvalidDestinations(tx, tasksIn(tx).relatedIds([task.id]), actor);
-      } else stopRunsIn(tx.store, tx.runs, stoppedRuns, report.opId);
+    case 'stop':
+      stopRunsIn(tx.store, tx.runs, transition.apply(tx, { ...base, action: 'stop', runId }).stoppedRuns, report.opId);
       return;
-    }
     case 'submit_review': transition.apply(tx, { ...base, action: 'submit_review' }); return;
     case 'report_doing': transition.apply(tx, { ...base, action: 'report_doing', runId: reportingRun(runId) }); return;
     case 'report_done':

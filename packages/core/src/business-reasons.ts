@@ -343,7 +343,7 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('conversation_belongs_alpacawork_run') }).strict(),
   z.object({ kind: z.literal('run_credential_missing_or_invalid') }).strict(),
   z.object({ kind: z.literal('run_not_current_placement') }).strict(),
-  z.object({ kind: z.literal('project_project_has_no_working_state'), task: z.string() }).strict(),
+  z.object({ kind: z.literal('project_cannot_be_stopped'), task: z.string() }).strict(),
   z.object({ kind: z.literal('hold_returns_only_state_it_was_held_from'), targetNone: z.string() }).strict(),
   z.object({ kind: z.literal('put_responsible_on_before_it_works'), tasks: z.string() }).strict(),
   z.object({ kind: z.literal('cannot_go_from_by'), task: z.string(), state: z.string(), toState: z.string(), action: z.string() }).strict(),
