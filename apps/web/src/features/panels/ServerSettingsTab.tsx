@@ -243,8 +243,10 @@ function ServerDraftFoot() {
   return <>
     <FormError form={form} onReread={unproven ? undefined : reload} rereadLabel={t("settings.server.reload")} disabled={!actions.reread} />
     {unconfirmed && <SaveUnconfirmed unproven={unproven} onReread={() => void reload()} disabled={!actions.reread} />}
-    {/* In the page's flow, last: on a phone a foot kept in view would cover the field being typed in over the keyboard. */}
-    <DialogFooter data-settings-foot className="flex-wrap">
+    {/* On a PC kept at the window's foot while the fields above scroll, so whether a save is needed is always in view;
+        it reaches down over the body's bottom room, and its own clears the body's fade. On a phone it stays in the
+        page's flow, last: kept in view it would cover the field being typed in over the keyboard. */}
+    <DialogFooter data-settings-foot className="sticky -bottom-3 z-10 flex-wrap bg-raised pb-4 narrow:static narrow:pb-0">
       <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
         <FieldHint role="status">{status}</FieldHint>
         {/* A save a stack refused says why beside the button, and takes the eye to the row to fix. */}
