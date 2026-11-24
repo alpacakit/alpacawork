@@ -15,11 +15,13 @@ export type AgentOptionsDraft = { base?: string; start: string; resume: string }
 export type AgentDraft = {
   id: string; originalName?: string; name: string; adapter?: BuiltinAdapterId; enabled?: boolean; command?: string;
   params: ParamRowDraft[]; env?: string[]; envWritten?: true; without?: WrittenAgentSetting['without']; options?: AgentOptionsDraft;
+  /** Each model's window and compaction point as the person writes them (empty: the agent's own report, else the shipped value). */
+  context?: WrittenAgentSetting['context'];
 };
 /** The source is a snapshot for comment-preserving writes; the entries alone own unsaved input. */
 export type AgentsDraft = { source: string; agents: AgentDraft[]; root?: 'agents' };
 export type AgentDraftIssue = {
-  agentId?: string; rowId?: string; field: 'yaml' | 'name' | 'adapter' | 'enabled' | 'command' | 'key' | 'values' | 'env' | 'without' | 'options' | LaunchMode | 'base';
+  agentId?: string; rowId?: string; field: 'yaml' | 'name' | 'adapter' | 'enabled' | 'command' | 'key' | 'values' | 'env' | 'without' | 'context' | 'options' | LaunchMode | 'base';
   message: string; index?: number; path?: PropertyKey[]; code?: string;
 };
 export type DraftResult<T> = { ok: true; value: T } | { ok: false; issues: AgentDraftIssue[] };
@@ -32,7 +34,7 @@ function toDraft(name: string, setting: WrittenAgentSetting, id: string, existin
     params: Object.entries(effective.params ?? {}).map(([key, values], index) => ({ id: `${id}-param-${index}`,
       originalKey: key, key, values: values.join(', '), ...(existing && Object.hasOwn(setting.params ?? {}, key) ? { written: true as const } : {}) })),
     env: effective.env?.slice(), ...(existing && setting.env !== undefined ? { envWritten: true as const } : {}), without: setting.without && structuredClone(setting.without),
-    options: setting.options && { ...setting.options } };
+    context: setting.context && structuredClone(setting.context), options: setting.options && { ...setting.options } };
 }
 export function newAgentDraft(name: string, adapter: BuiltinAdapterId, id: string): AgentDraft {
   return toDraft(name, name === adapter ? {} : { adapter }, id, false);
@@ -135,7 +137,7 @@ function fieldIssue(agent: AgentDraft, path: PropertyKey[], message: string, cod
   const row = field === 'params' ? agent.params.find(row => row.key === key) : undefined;
   const target = field === 'params' ? (row ? 'values' : 'key')
     : field === 'options' ? (key === 'start' || key === 'resume' || key === 'base' ? key : 'options')
-    : field === 'adapter' || field === 'enabled' || field === 'command' || field === 'env' || field === 'without' ? field : 'name';
+    : field === 'adapter' || field === 'enabled' || field === 'command' || field === 'env' || field === 'without' || field === 'context' ? field : 'name';
   return { agentId: agent.id, rowId: row?.id, field: target, message, code, path: [agent.name, ...path],
     ...(field === 'env' && typeof key === 'number' ? { index: key } : typeof index === 'number' ? { index } : {}) };
 }
@@ -181,6 +183,7 @@ function settingInput(agent: AgentDraft) {
     ...(agent.enabled === undefined ? {} : { enabled: agent.enabled }),
     ...(agent.command === undefined ? {} : { command: agent.command }), params: Object.fromEntries(params),
     ...(agent.env === undefined ? {} : { env: agent.env }), ...(agent.without === undefined ? {} : { without: agent.without }),
+    ...(agent.context === undefined || !Object.keys(agent.context).length ? {} : { context: agent.context }),
     ...(agent.options === undefined ? {} : { options: agent.options }) };
   return { input, unreadable, issues };
 }

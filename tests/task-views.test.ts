@@ -216,7 +216,8 @@ test('task get --include usage adds own and all descendant Run totals only on re
         for (const [task, input] of [[h.child.id, 10], [h.grandchild.id, 20]] as const)
             store.write(tx => {
                 const queued = createFixtureRun(store, tx, fields({ task, cwd: h.root, placementId: placements.get(task)! }), 'fixture prompt');
-                const started = { ...queued, state: 'running' as const, started_at: '2026-10-05T12:00:00Z' };
+                const started = { ...queued, state: 'running' as const, started_at: '2026-10-05T12:00:00Z',
+                  pids: { manager: null, agent: 1234 } };
                 tx.update(started);
                 tx.finish({ ...started, state: 'succeeded', ended_at: '2026-10-05T12:01:00Z',
                     exit: { code: 0, signal: null }, usage: { conversation: counters(input), run: counters(input), includesEarlier: false } }, { state: 'present', text: 'fixture reply' });

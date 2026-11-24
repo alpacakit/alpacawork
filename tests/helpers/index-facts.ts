@@ -104,6 +104,7 @@ export function materializeIndexFacts(root: string, facts: IndexAuthorities): vo
         launch: inertFixtureLaunch('codex', run.launchValues), usage: run.usage ? { conversation: null, ...run.usage } : null,
         caller: run.caller, resumes: run.resumes, continues: false, session: run.session,
         cwd: run.cwd, state: run.state, reason: run.reason, into: run.into,
+        pids: { manager: null, agent: run.processStarted ? 1234 : null },
         created_at: run.createdAt, started_at: run.startedAt, ended_at: run.endedAt,
       }));
       db.prepare('INSERT INTO runs(id,record,result_state) VALUES(?,?,?)').run(Number(run.id.slice(1)), JSON.stringify(persisted),

@@ -123,7 +123,6 @@
       "heading": "Tokens used (with tasks below)",
       "input": "Input",
       "output": "Output",
-      "scope": "Finished runs only.",
       "unknown_one": "{{count}} more run has no count.",
       "unknown_other": "{{count}} more runs have no count."
     },

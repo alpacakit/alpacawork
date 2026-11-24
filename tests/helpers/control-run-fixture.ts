@@ -5,6 +5,9 @@ import { record } from '../runs-fixtures.ts';
 
 /** Synthetic persisted facts projected by the same boundary as a real control-tree read. */
 export function controlRunFixture(id: string, fields: Partial<RunRecord> = {}): ControlRunDTO {
-  const run = runRecordSchema.parse(record(id, fields));
+  const run = runRecordSchema.parse(record(id, {
+    pids: { manager: null, agent: fields.started_at && fields.state !== 'joined' ? 1234 : null },
+    ...fields,
+  }));
   return controlRunSchema.parse(controlRuns('/synthetic-control-run-fixture', [run])[0]);
 }

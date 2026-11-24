@@ -1,6 +1,7 @@
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
 import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
+import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 /** Codex-specific exec options and app-server protocol. */
 import { type ChildProcessByStdio } from 'node:child_process';
@@ -203,10 +204,15 @@ export class CodexRuntime implements Runtime {
         return;
       }
       if (message.method === 'item/completed' && item.type === 'agentMessage' && typeof item.text === 'string') this.lastMessage = item.text;
+      // A compaction leaves the fill unknown until the next model call says it.
+      if (message.method === 'item/completed' && item.type === 'contextCompaction')
+        this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
       this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed',
         item: { ...item, type: snake(String(item.type)) } });
     } else if (message.method === 'thread/tokenUsage/updated') {
       this.usage = codexUsage(params.tokenUsage?.total);
+      const context = codexContext(params.tokenUsage);
+      if (context) this.io.emit({ type: 'context.updated', context });
     } else if (message.method === 'turn/completed') {
       const turn = params.turn ?? {};
       this.endedTurns.add(turn.id);
@@ -242,6 +248,15 @@ export class CodexRuntime implements Runtime {
       return { state: 'uncertain', message: error instanceof Error ? error.message : String(error) };
     }
   }
+}
+
+/** The fill is the last model call's tokens (`total` is the whole conversation's bill), against the window Codex uses. */
+export function codexContext(value: unknown): ContextUpdate | null {
+  const usage = usageRecord(value), last = usageRecord(usage.last).totalTokens, window = usage.modelContextWindow;
+  const used = callTokens(last);
+  if (used === null) return null;
+  return { usedTokens: used, compacted: false,
+    ...typeof window === 'number' && Number.isSafeInteger(window) && window > 0 ? { windowTokens: window } : {} };
 }
 
 /** App-server total includes cache reads/writes; output already includes reasoning. */

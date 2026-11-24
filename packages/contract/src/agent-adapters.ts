@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { SystemVariableName } from './agent-variables.js';
 import { fingerprintOptions } from './options-base.js';
+import type { ModelContext } from './agent-context.js';
 
 export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'pi', 'copilot'] as const;
 export const unavailableAgentKind = (id: unknown) => `Agent kind "${String(id)}" is unavailable in this version; select a supported adapter or remove this profile from config.yaml`;
@@ -30,20 +31,29 @@ export type AdapterDescription = {
   auth: { args: readonly string[]; ready: number; signedOut: number; nextAction: string } | null;
   /** Whether it reports its account's plan limits without a conversation (the backend adapter's `limits`; a bridge's `--limits`). */
   limits: boolean;
+  /** Each model's context window as shipped, by model candidate (or `-`): used until the agent itself says it, and
+   * for an agent that never does (agent-context resolveContextLimits). */
+  contextDefaults: Readonly<Record<string, ModelContext>>;
   referenceUrl: string;
 };
 const bridge = <Id extends BridgeAdapterId>(id: Id, defaultParams: AdapterDescription['defaultParams'], start: string, resume: string,
   referenceUrl: string, defaultEnv: readonly string[] = [], fixedEnv: readonly string[] = [],
-  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits'>> = {}): AdapterDescription & { id: Id } =>
-  ({ id, command: id, auth: null, limits: false, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
+  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits' | 'contextDefaults'>> = {}): AdapterDescription & { id: Id } =>
+  ({ id, command: id, auth: null, limits: false, contextDefaults: {}, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
     system: { start: ['result'], resume: ['result', 'session'] }, fixedEnv, defaultEnv, referenceUrl });
 const me = '[--model {model}] [--effort {effort}]';
 const result = '-o {result}';
 
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
-    id: 'claude', command: 'claude', limits: true, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
-    defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
+    id: 'claude', command: 'claude', limits: true,
+    // Claude Code's default windows. A turn's `modelUsage.contextWindow` can report a different window.
+    contextDefaults: {
+      opus: { window: 1_000_000 }, fable: { window: 1_000_000 },
+      sonnet: { window: 1_000_000 }, haiku: { window: 1_000_000 },
+    },
+    auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
+    defaultParams: { model: ['opus', 'fable', 'sonnet', 'haiku'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
     options: {
@@ -52,11 +62,17 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
     }, referenceUrl: 'https://code.claude.com/docs/en/cli-reference',
   },
   codex: bridge('codex', {
-    model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra'], effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'],
+    model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra', 'gpt-6-luna'],
+    effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'],
   }, '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access -o {result}',
   '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access resume -o {result} -- {session}',
   'https://learn.chatgpt.com/docs/cli/reference', ['OPENAI_API_KEY'], ['CODEX_HOME'],
-  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' }, limits: true }),
+  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' }, limits: true,
+    // The usable context windows in Codex 0.170.0, after reserved headroom (`modelContextWindow`).
+    contextDefaults: {
+      'gpt-6.2-sol': { window: 475_000 }, 'gpt-6.2-astra': { window: 258_400 },
+      'gpt-6.1-terra': { window: 475_000 }, 'gpt-6-luna': { window: 258_400 },
+    } }),
   grok: bridge('grok', { model: ['grok-4.7'], effort: ['high', 'low', 'medium', 'xhigh'] },
     `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME']),
   copilot: bridge('copilot', { model: [] }, `[-m {model}] ${result}`, `[-m {model}] ${result} resume {session}`,

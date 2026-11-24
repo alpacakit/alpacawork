@@ -129,7 +129,6 @@
       "heading": "Tokens usados (com as tarefas abaixo)",
       "input": "Entrada",
       "output": "Saída",
-      "scope": "Só execuções concluídas.",
       "unknown_one": "Mais {{count}} execução sem contagem.",
       "unknown_many": "Mais {{count}} execuções sem contagem.",
       "unknown_other": "Mais {{count}} execuções sem contagem."

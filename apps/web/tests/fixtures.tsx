@@ -480,7 +480,7 @@ export const run = (id = "R1", overrides: Partial<ControlRunDTO> = {}): ControlR
   requestId: `request-${id}`, caller: null, resumes: null, continues: false,
   cwd: `/fixture/runs/${id}`,
   session: { provider: "codex", id: `session-${id}` }, state: "succeeded", reason: null, into: null, takesInput: false, activity: null,
-  createdAt: at, startedAt: at, endedAt: at, usage: null, taskId: "T1", ...overrides,
+  createdAt: at, startedAt: at, endedAt: at, processStarted: true, usage: null, taskId: "T1", ...overrides,
 });
 
 /** A pointer that can hover (a mouse), as a desktop's is; undone by vi.restoreAllMocks. Without it the tests' pointer cannot. */

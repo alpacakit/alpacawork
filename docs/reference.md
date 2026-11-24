@@ -77,7 +77,7 @@ Run these in a terminal (on Windows, inside Ubuntu). The other commands are for 
 ### Analysis
 
 The screen and these read commands use the same counts. A person or the coordinator can read all projects, or use
-`--project` to include a project and its nested projects. A Task Run reads its own project only.
+`--project` to include a project and its nested projects. A Task Run reads only its own project. Nested projects are excluded from that Run's scope.
 
 | Command | What it reads |
 | --- | --- |
@@ -91,13 +91,24 @@ Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The 
 overridden with `--time-zone <IANA-zone>`. Trend buckets are `day`, `week` and `month`.
 A comparison uses the immediately preceding period of equal length when there is enough history.
 
-The task counts use Tasks the user directly requested. AI usage includes work on all Tasks and groups child launches under
-their top-level Task. A launch has process-start evidence. A Run that joined another counts as input to that process. The
-usage response reports how many launches have unknown token counts. Skill, tool and MCP breakdowns report how many
-launches have been tallied. Task completion dates and launch dates use the time zone echoed in the result.
+Task counts use Tasks the user directly requested. The rework count uses instructions addressed to the top-level Task. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
 
-For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from`
-and `--to` dates. Send the breakdown's `--by` and `--key` to limit the list to that row. Use `--value` to return and sort by
-a contribution such as `lead`, `questions`, `runMs` or `output`. `--limit` accepts up to 100 rows. Use the returned
-`cursor` with the same selection to get the next page. Related PR counts use distinct GitHub links from task values
-and reports. The list credits a link shared by multiple Tasks to the first contributing Task ID in the selection.
+AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
+children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed
+time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. The
+response counts launches without stored token counts separately. Skill, tool and MCP breakdowns report how many launches
+have been tallied. Skill file reads issued as part of compound shell commands are excluded. Task completion dates and
+launch dates use the time zone echoed in the result.
+
+For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from` and
+`--to` dates. Pass the breakdown row's `--by` and `--key` to limit the list to that row. Tool and MCP keys are JSON
+arrays with two strings: use `--key '["provider","tool"]'` for a tool, or `--key '["provider","server:tool"]'` for MCP.
+
+| Set | `--by` | `--value` |
+| --- | --- | --- |
+| `passed`, `reworked`, `stopped`, `accepted`, `finished` | `model`, `agent`, `project` | `lead`, `submits`, `questions`, `prs`, `you`, `ai`, `other` |
+| `used` | `model`, `agent`, `project`, `skill`, `tool`, `mcp` | `launches`, `runMs`, `newConversations`, `output`, `input`, `cache`, `calls` |
+
+`calls` requires a `tool` or `mcp` breakdown. `--value` returns and sorts by that contribution. `--limit` accepts up to
+100 rows. Use the returned `cursor` with the same selection to get the next page. Related PR counts use distinct GitHub
+links from task values and reports. The list credits a shared link to the first contributing Task ID in the selection.

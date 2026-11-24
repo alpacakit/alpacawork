@@ -161,6 +161,10 @@
       "types": "./dist/agent-bridge.d.ts",
       "default": "./dist/agent-bridge.js"
     },
+    "./agent-context": {
+      "types": "./dist/agent-context.d.ts",
+      "default": "./dist/agent-context.js"
+    },
     "./agent-limits": {
       "types": "./dist/agent-limits.d.ts",
       "default": "./dist/agent-limits.js"

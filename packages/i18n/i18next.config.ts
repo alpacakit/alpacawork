@@ -33,6 +33,7 @@ export default defineConfig({
       "tree:status.cause.*", // A stopped row's word for a recognized failure cause (contract runErrorCauseSchema).
       "tree:status.tokens.*", // A token counter's name, by the counter's key (contract TOKEN_COUNTER_KEYS).
       "chrome:limits.window.*", // A limit window's name, by its kind (contract LIMIT_KINDS).
+      "panels:agentSettings.context.source.*", // Where a model's context limit came from, by its source (contract CONTEXT_SOURCES).
       "panels:settings.personal.*",
       "panels:telemetry.blocked.*", // Eligibility reasons come from telemetryGate.
       "setup:skills.items.*", // An offered skill's name and description, looked up by its ID (contract SKILL_OFFERS).

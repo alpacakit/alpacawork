@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
 import type { AnalysisAcceptedTotals, AnalysisBucket, AnalysisDays, AnalysisHead, AnalysisListInput, AnalysisListRow,
   AnalysisTaskInput, AnalysisTaskBy, AnalysisTaskCounts, AnalysisTasksInput, AnalysisTasksView, AnalysisUnitList,
@@ -10,7 +11,7 @@ import { readControl } from '../control/task-store.js';
 import type { Tally } from '../agents/adapters/tally.js';
 import { FactsCache, type AnalysisFacts, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, modelLabel, runtime, shareOf, unitMarks, type Launch } from './rules.js';
+import { clocks, emptyClock, modelLabel, shareOf, unitMarks, type Launch } from './rules.js';
 
 type DatedUnit = { day: string; unit: Unit };
 type DatedLaunch = { day: string; root: string; run: Launch };
@@ -59,21 +60,16 @@ function acceptedTotals(units: readonly Unit[]): AnalysisAcceptedTotals {
   return { leadMedianMs: median(leads), submits, questions, prs: prs.size, time };
 }
 function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
-  let runMs = 0, live = 0, newConversations = 0, tokensUnknown = 0;
-  const tasks = new Set<string>(), tokens = { output: 0, input: 0, cache: 0 };
+  let live = 0, newConversations = 0;
+  const tasks = new Set<string>();
   for (const { root, run } of items) {
     tasks.add(root);
-    runMs += runtime(run, now);
     if (run.live) live++;
     if (first.has(run.id)) newConversations++;
-    if (!run.tokens) tokensUnknown++;
-    else {
-      tokens.output += run.tokens.output;
-      tokens.input += run.tokens.input;
-      tokens.cache += run.tokens.cacheRead + run.tokens.cacheWrite;
-    }
   }
-  return { launches: items.length, runMs, live, newConversations, tokens, tokensUnknown, tasks: tasks.size };
+  const { runs, runMs, tokens, tokensUnknown } = sumRunUsage(items.map(item => item.run), now);
+  return { launches: runs, runMs, live, newConversations, tokensUnknown, tasks: tasks.size,
+    tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
 }
 
 function makeSeries<T extends { day: string }, C>(bucket: AnalysisBucket, head: AnalysisHead, records: readonly T[], counts: (items: T[]) => C) {
@@ -124,7 +120,7 @@ class ScopedAnalysis {
       if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
     }
     for (const run of facts.launches) {
-      const root = facts.rootOf.get(run.task), unit = root && facts.units.get(root);
+      const root = facts.usageRootOf.get(run.task), unit = root && facts.units.get(root);
       if (unit && this.allows(unit.node.project!)) {
         first = Math.min(first, run.started);
         this.datedLaunches.push({ root, run, day: this.date(run.started) });

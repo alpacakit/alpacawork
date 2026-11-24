@@ -8,9 +8,9 @@ export const analysisBucketSchema = z.enum(['day', 'week', 'month']);
 export const analysisTaskBySchema = z.enum(['model', 'agent', 'project']);
 export const analysisUsageBySchema = z.enum(['model', 'agent', 'project', 'skill', 'tool', 'mcp']);
 export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'accepted', 'finished', 'used']);
-const taskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
-const usageValues = ['launches', 'runMs', 'newConversations', 'output', 'input', 'cache', 'calls'] as const;
-export const analysisValueSchema = z.enum([...taskValues, ...usageValues]);
+export const analysisTaskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
+export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'output', 'input', 'cache', 'calls'] as const;
+export const analysisValueSchema = z.enum([...analysisTaskValues, ...analysisUsageValues]);
 
 const scope = {
   project: projectIdSchema.optional(),
@@ -43,7 +43,7 @@ export const analysisListInput = z.strictObject({
   if (!!input.by !== !!input.key) issue('key', 'A breakdown needs both by and key');
   if (input.set !== 'used' && input.by && !analysisTaskBySchema.safeParse(input.by).success)
     issue('by', 'This breakdown applies to AI usage');
-  if (input.value && !(input.set === 'used' ? usageValues : taskValues).some(value => value === input.value))
+  if (input.value && !(input.set === 'used' ? analysisUsageValues : analysisTaskValues).some(value => value === input.value))
     issue('value', 'Choose a value for this set');
   if (input.value === 'calls' && input.by !== 'tool' && input.by !== 'mcp') issue('value', 'Calls require a tool or MCP breakdown');
 });

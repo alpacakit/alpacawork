@@ -1,6 +1,6 @@
 import type { AnalysisUnitValues } from '@alpacawork/contract/analysis';
-import { isReviewMark } from '@alpacawork/contract';
-import { type RunRecord, type TokenCounters } from '@alpacawork/contract/run';
+import { isReviewMark, runUsage, runUsageMs, runUsageSource, type RunContribution } from '@alpacawork/contract';
+import type { RunRecord } from '@alpacawork/contract/run';
 import { speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf } from '@alpacawork/raw/questions';
@@ -9,24 +9,21 @@ export type Interval = { from: number; to: number };
 export type Clock = AnalysisUnitValues['time'];
 export const emptyClock = (): Clock => ({ review: 0, answer: 0, ai: 0, other: 0 });
 export const iso = (ms: number) => new Date(ms).toISOString();
+const normalized = (time: string) => iso(Date.parse(time));
 export const shareOf = (passed: number, accepted: number) => accepted < 10 ? null : passed / accepted;
 
 export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'launch' |
   'state' | 'created_at' | 'started_at' | 'ended_at' | 'pids' | 'usage'>;
-export type Launch = {
-  id: string; task: string; agent: string; model: string | null; effort: string | null; provider: string;
-  session: string | null; started: number; ended: number | null; live: boolean; tokens: TokenCounters | null;
+export type Launch = RunContribution & {
+  id: string; task: string; agent: string; model: string | null; effort: string | null; provider: string; session: string | null;
 };
 
-export function launchOf(run: RunEvidence, witnessed: boolean | null): Launch | null {
-  // Null means that the Run predates the recorded attempt, so the Run's agent PID is the witness.
-  if (run.state === 'joined' || run.state === 'queued' || !run.started_at || !(witnessed ?? run.pids.agent !== null)) return null;
-  const live = run.state === 'running' && run.ended_at === null;
-  return { id: run.id, task: run.task, agent: run.agent, ...modelOf(run), provider: run.session?.provider ?? run.launch.adapter,
-    session: run.session?.id ?? null, started: Date.parse(run.started_at), ended: run.ended_at && Date.parse(run.ended_at) || null, live,
-    tokens: !live && !run.usage?.includesEarlier ? run.usage?.run ?? null : null };
+export function launchOf(run: RunEvidence): Launch | null {
+  const usage = runUsage(runUsageSource(run));
+  if (!usage) return null;
+  return { ...usage, id: run.id, task: run.task, agent: run.agent, ...modelOf(run),
+    provider: run.session?.provider ?? run.launch.adapter, session: run.session?.id ?? null };
 }
-export const runtime = (run: Launch, now: number): number => Math.max(0, (run.ended ?? (run.live ? now : run.started)) - run.started);
 
 export function firstConversations(launches: Iterable<Launch>): Set<string> {
   const first = new Map<string, Launch>();
@@ -61,32 +58,34 @@ const accepts = (entry: TaskLog) => entry.toState === 'done' && entry.fromState 
 
 export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, createdAt: string) {
   const initial = log.find(instruction);
-  const requestedAt = initial?.at ?? log.find(entry => entry.kind === 'created')?.at ?? createdAt;
+  const requestedAt = normalized(initial?.at ?? log.find(entry => entry.kind === 'created')?.at ?? createdAt);
   const acceptedIndex = log.findIndex(accepts);
-  const acceptedAt = log[acceptedIndex]?.at ?? null;
+  const acceptedAt = acceptedIndex < 0 ? null : normalized(log[acceptedIndex]!.at);
   let stoppedAt: string | null = null;
   let base: TaskBaseState = 'todo';
   if (!acceptedAt && state === 'stopped')
     for (const entry of log) {
       const next: TaskBaseState = entry.stage?.baseState ?? (entry.toState === 'held' || !entry.toState ? base : entry.toState);
-      if (next === 'stopped' && base !== 'stopped') stoppedAt = entry.causeAt ?? entry.at;
+      if (next === 'stopped' && base !== 'stopped') stoppedAt = normalized(entry.causeAt ?? entry.at);
       base = next;
     }
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
-  const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && (!stoppedAt || entry.at <= stoppedAt)).length;
-  const linked = new Map<string, TaskState | null>();
+  const stopTime = stoppedAt === null ? Infinity : Date.parse(stoppedAt);
+  const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && Date.parse(entry.at) <= stopTime).length;
+  let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
   // Walk backward so each instruction sees its first subsequent state transition.
   for (let index = log.length - 1; index >= 0; index--) {
     const entry = log[index]!;
-    if (entry.kind === 'linked' && entry.originCauseId && entry.toState !== null)
-      linked.set(entry.originCauseId, entry.fromState);
     if (sendBack(entry)) instructions.sendBacks++;
-    if (!instruction(entry)) continue;
-    const seen = linked.has(entry.id) ? linked.get(entry.id) : entry.fromState;
-    if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
-    else if (seen === 'waiting') instructions.instructionsAtReview++;
-    else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
+    if (instruction(entry)) {
+      const seen = nextTransition?.kind === 'linked' && nextTransition.originCauseId === entry.id
+        ? nextTransition.fromState : entry.fromState;
+      if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
+      else if (seen === 'waiting') instructions.instructionsAtReview++;
+      else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
+    }
+    if (entry.toState !== null) nextTransition = entry;
   }
   const passed = acceptedAt !== null && submits <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
@@ -107,7 +106,7 @@ export function unitMarks(log: readonly TaskLog[], from: number, to: number): An
   return log.flatMap((entry): AnalysisUnitValues['marks'] => {
     const at = Date.parse(entry.at);
     if (at <= from || at > to) return [];
-    return instruction(entry) || sendBack(entry) ? [{ at: entry.at, kind: sendBack(entry) ? 'sendBack' : 'instruction' }] : [];
+    return instruction(entry) || sendBack(entry) ? [{ at: iso(at), kind: sendBack(entry) ? 'sendBack' : 'instruction' }] : [];
   });
 }
 
@@ -138,7 +137,7 @@ export function clocks(log: readonly TaskLog[], own: readonly UserQuestion[], de
   }
   for (const question of own) add({ from: question.from, to: question.to ?? to }, 'own');
   for (const question of descendants) add({ from: question.from, to: question.to ?? to }, 'questions');
-  for (const run of runs) add({ from: run.started, to: run.started + runtime(run, now) }, 'runs');
+  for (const run of runs) add({ from: run.started, to: run.started + runUsageMs(run, now) }, 'runs');
   const ordered = [...cuts].sort(([a], [b]) => a - b);
   let state: TaskState = 'todo', asking = 0, askingOwn = 0, active = 0;
   for (let i = 0; i + 1 < ordered.length; i++) {
