@@ -25,7 +25,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
       <thead><tr className="h-7 text-xs text-soft">
         <th className="w-55 text-start font-normal narrow:w-auto">{head}</th>
         <th className="w-28 px-2 narrow:w-16" />
-        {columns.map((name, at) => <th key={name} className={cn(column(at), "px-2 font-normal")}>
+        {columns.map((name, at) => <th key={name} className={cn(column(at), "px-2 font-normal whitespace-nowrap")}>
           <span className="narrow:hidden">{name}</span>
           <select aria-label={name} value={on} onChange={event => setShown({ ...shown, [id]: Number(event.target.value) })}
             className="hidden max-w-[13em] appearance-none bg-transparent pe-4 text-end text-xs text-soft narrow:inline-block">

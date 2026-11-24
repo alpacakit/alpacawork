@@ -19,10 +19,12 @@ function binName(bin: Bin, today: string, say: (key: string, options?: Record<st
   if (bin.complete) return name;
   return `${name}${say("sep")}${bin.to >= today ? say("bucket.ongoing") : say("bucket.partial", { count: daysBetween(bin.from, bin.to) })}`;
 }
-function xLabel(bin: Bin, bucket: Bucket, first: boolean) {
+/** A bin's name under the chart: every month or week; a day's on Mondays and the first, none too near the last (drawn at the end). */
+function xLabel(bin: Bin, bucket: Bucket, at: number, count: number) {
   if (bucket === "month") return monthLabel(bin.from);
   if (bucket === "week") return dayLabel(bin.from);
-  return weekday(bin.from) === 0 || first ? dayLabel(bin.from) : "";
+  if (at === count - 1) return dayLabel(bin.from);
+  return (weekday(bin.from) === 0 || at === 0) && at < count - 3 ? dayLabel(bin.from) : "";
 }
 
 /** The gutter on the left the scale's numbers stand in. */
@@ -43,7 +45,7 @@ function XAxis({ bins, bucket }: { bins: Bin[]; bucket: Bucket }) {
   return <div aria-hidden className={cn("mt-1.5 grid h-4.5 auto-cols-[minmax(0,1fr)] grid-flow-col", GUT)}>
     {bins.map((bin, at) => <span key={bin.from} className={cn("overflow-visible text-xs leading-4.5 whitespace-nowrap text-soft",
       wide ? "w-full text-center" : at === bins.length - 1 && at ? "flex w-full justify-end" : "w-0")}>
-      {at === bins.length - 1 && !wide && at ? dayLabel(bin.from) : xLabel(bin, bucket, at === 0)}</span>)}
+      {xLabel(bin, bucket, at, bins.length)}</span>)}
   </div>;
 }
 
@@ -61,7 +63,10 @@ export function BarPanel({ bins, bucket, span, today, values, tipOf, unit, unitN
   const { t } = useTranslation("analysis");
   const sums = bins.map((_, at) => values(at).reduce((total, [, value]) => total + value, 0));
   const marks = ticks(Math.max(0, ...sums), unit, wholeOnly), top = marks[marks.length - 1] || 1;
-  const scale = (value: number, last: boolean) => `${(Math.round(value / unit * 100) / 100).toLocaleString()}${last ? unitName : ""}`;
+  const scale = (value: number, last: boolean) => {
+    const written = (Math.round(value / unit * 100) / 100).toLocaleString();
+    return last && unitName ? t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) : written;
+  };
   return <>
     <div className={cn("relative h-33", GUT)}>
       <Grid marks={marks} top={top} label={scale} />

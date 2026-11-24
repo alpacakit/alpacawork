@@ -39,7 +39,7 @@ export function TodayMarks() {
   const words = t("home.marks", { count: rows.length, passed: rows.filter(row => row.outcome === "passed").length });
   return <button type="button" aria-label={t("home.label", { marks: words })} title={words}
     onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}
-    className="ms-2.5 flex items-center gap-0.5 rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
-    {rows.map(row => <i key={row.id} className={cn("block h-3 w-2 rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
+    className="ms-2.5 flex min-w-0 items-center gap-0.5 overflow-hidden rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
+    {rows.map(row => <i key={row.id} className={cn("block h-3 w-2 flex-none rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
   </button>;
 }

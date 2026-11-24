@@ -23,6 +23,7 @@
     "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
     "value": "棒にする値"
   },
+  "colon": "：",
   "day": "{{day}}（{{weekday}}）",
   "def": {
     "after": "作業中の指示の追加は数えない。割合は10件以上のときだけ出す。",
@@ -98,6 +99,7 @@
   },
   "range": "{{from}}〜{{to}}",
   "same": "同じ",
+  "sep": "・",
   "tasks": {
     "accepted": "受け入れた",
     "by": {
@@ -209,7 +211,5 @@
     "stopped": "{{at}} 中止",
     "tools": "ツール",
     "usage": "AI の使用量"
-  },
-  "sep": "・",
-  "colon": "："
+  }
 }
