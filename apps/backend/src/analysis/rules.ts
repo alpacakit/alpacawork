@@ -62,34 +62,45 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   const acceptedIndex = log.findIndex(accepts);
   const acceptedAt = acceptedIndex < 0 ? null : normalized(log[acceptedIndex]!.at);
   let stoppedAt: string | null = null;
+  let firstStoppedAt: string | null = null;
   let base: TaskBaseState = 'todo';
-  if (!acceptedAt && state === 'stopped')
-    for (const entry of log) {
-      const next: TaskBaseState = entry.stage?.baseState ?? (entry.toState === 'held' || !entry.toState ? base : entry.toState);
-      if (next === 'stopped' && base !== 'stopped') stoppedAt = normalized(entry.causeAt ?? entry.at);
-      base = next;
+  for (const entry of log) {
+    const next: TaskBaseState = entry.stage?.baseState ?? (entry.toState === 'held' || !entry.toState ? base : entry.toState);
+    if (next === 'stopped' && base !== 'stopped') {
+      const at = normalized(entry.causeAt ?? entry.at);
+      firstStoppedAt ??= at;
+      if (!acceptedAt && state === 'stopped') stoppedAt = at;
     }
+    base = next;
+  }
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
   const stopTime = stoppedAt === null ? Infinity : Date.parse(stoppedAt);
   const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && Date.parse(entry.at) <= stopTime).length;
   let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
+  let firstReviewReworkAt: string | null = null;
   // Walk backward so each instruction sees its first subsequent state transition.
   for (let index = log.length - 1; index >= 0; index--) {
     const entry = log[index]!;
-    if (sendBack(entry)) instructions.sendBacks++;
+    if (sendBack(entry)) {
+      instructions.sendBacks++;
+      if (acceptedIndex < 0 || index < acceptedIndex) firstReviewReworkAt = normalized(entry.at);
+    }
     if (instruction(entry)) {
       const seen = nextTransition?.kind === 'linked' && nextTransition.originCauseId === entry.id
         ? nextTransition.fromState : entry.fromState;
       if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
-      else if (seen === 'waiting') instructions.instructionsAtReview++;
-      else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
+      else if (seen === 'waiting') {
+        instructions.instructionsAtReview++;
+        firstReviewReworkAt = normalized(entry.at);
+      } else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
     }
     if (entry.toState !== null) nextTransition = entry;
   }
   const passed = acceptedAt !== null && submits <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
-  return { requestedAt, acceptedAt, stoppedAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits, instructions,
+  return { requestedAt, acceptedAt, stoppedAt, firstStoppedAt, firstReviewReworkAt,
+    finishedAt: acceptedAt ?? stoppedAt, passed, submits, instructions,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const : null };
 }

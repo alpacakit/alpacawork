@@ -45,6 +45,9 @@ test('first acceptance retains the unit and each kind of rework is based on comm
   const sendBack = event('send-back', 'review_sent_back', 190);
   assert.deepEqual(facts([created, first, during, held, submit, update, linked, sendBack, accepted, lateAnswer, after]).instructions,
     { sendBacks: 1, instructionsAtReview: 1, instructionsAfterAccept: 1, instructionsDuringWork: 2 });
+  const early = facts([created, first, submit, update, linked, event('next-return', 'review_sent_back', 171)]);
+  assert.deepEqual([early.firstReviewReworkAt, early.outcome], [update.at, null]);
+  assert.equal(facts([...base, event('later', 'review_sent_back', 301)]).firstReviewReworkAt, null);
   const manual = event('manual', 'reported', 210, { fromState: 'doing', toState: 'done' });
   assert.equal(facts([created, manual]).acceptedAt, manual.at);
   assert.equal(facts([...base, manual]).acceptedAt, accepted.at);
@@ -67,6 +70,7 @@ test('stop uses the last real transition and the recorded cause at the local day
   propagated.causeAt = '2026-03-08T00:00:00.019-05:00';
   const repeat = event('repeat', 'reported', 22, { fromState: 'stopped', toState: 'stopped' });
   assert.equal(taskOutcome([created, stop, restart], 'doing', created.at).finishedAt, null);
+  assert.equal(taskOutcome([created, stop, restart], 'doing', created.at).firstStoppedAt, stop.at);
   assert.equal(taskOutcome([created, stop, restart, propagated, repeat], 'stopped', created.at).finishedAt, stamp(19));
   assert.equal(calendar('America/New_York')(Date.parse('2026-03-08T04:59:59.999Z')), '2026-03-07');
 });
