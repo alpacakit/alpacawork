@@ -33,7 +33,7 @@ This file is for coordinators and owners, who create tasks and send requests. Me
 
 ## Letting two child tasks work directly
 
-When one child owns the outcome and a sibling does repeated work for it, the parent responsible can lend the right to instruct that sibling. For example, let the repair task request another check after each fix. Choose another direct child with a responsible and no current work requested by the user.
+When one child owns the outcome and a sibling does repeated work for it, the parent responsible can lend the right to instruct that sibling. For example, let the repair task request another check after each fix when the verification needs its own task. Choose another direct child with a responsible and no current work requested by the user.
 
 Read `alpacawork task get --task <repair task>` first. Use its `task.hash` and the `revision` of its active responsible in `agents`. Name the verification task and its role in the instruction text.
 

@@ -62,7 +62,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   ],
   'task.request': [
     example('task.request', 'Instruction to responsible without a loan', {}),
-    { label: "Instruction using the caller's open loan", action: { name: 'task.request', worker: false, borrowable: true },
+    { label: "Instruction using a loan granted to the caller by the common parent", action: { name: 'task.request', worker: false, borrowable: true },
       requestLoan: true },
     example('task.request', '--agent <member>', { agent: 'P4' }, { worker: true }),
     example('task.request', 'Instruction to failed user-requested Task', {}, {}, failure),

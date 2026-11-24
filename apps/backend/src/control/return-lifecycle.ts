@@ -439,7 +439,7 @@ export class ReturnLifecycle {
     const view = this.seat(task.id);
     if (userWorkFailed(task.id, entry.id, view.requests, view.facts)) return;
     const parent = view.facts.tasks.get(task.meta.parentId ?? '');
-    if (parent?.kind === 'task' && parent.responsible) this.notice('work_changed', parent.id, entry.id);
+    if (parent?.responsible) this.notice('work_changed', parent.id, entry.id);
   }
   /**
    * Apply the ordinary request closure at the write that can end a loan or its borrowed work. The

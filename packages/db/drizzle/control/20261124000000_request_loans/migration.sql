@@ -15,6 +15,10 @@ CREATE INDEX requests_borrowed_targets ON requests(task_id) WHERE loan_request_i
 --> statement-breakpoint
 CREATE INDEX requests_loan_returns ON requests(return_task_id) WHERE return_task_id IS NOT NULL;
 --> statement-breakpoint
+DROP INDEX returns_notice;
+--> statement-breakpoint
+CREATE UNIQUE INDEX returns_notice ON returns(cause_log_id,outcome,to_task_id) WHERE request_id IS NULL;
+--> statement-breakpoint
 CREATE TRIGGER request_loan_insert BEFORE INSERT ON requests
 WHEN NEW.lent_task_id IS NOT NULL OR NEW.loan_request_id IS NOT NULL BEGIN
   SELECT CASE WHEN NEW.wait_cycle_id IS NULL OR NEW.purpose <> 'instruction'

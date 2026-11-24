@@ -203,3 +203,20 @@ test('direct user work added after borrowing still leaves the failure with the u
   h.start(next);
   await assert.rejects(request(h, b, next), { code: 'forbidden' });
 });
+
+test('holding and unholding a lent task notifies both the borrower and the parent', async t => {
+  const { h, a, b, parent } = await setup(t);
+  const loan = await request(h, a, parent.runId, b.id);
+  const direct = await request(h, b, parent.runId);
+  h.start(loan.runId);
+  h.start(direct.runId);
+  const borrowed = await request(h, b, loan.runId);
+  for (const state of ['held', 'doing'] as const) {
+    await h.personReport(b.id, state, 'Change verification hold');
+    const change = (await h.current(b.id)).meta.log.at(-1)!;
+    const rows = h.store.readReturns();
+    assert.deepEqual(new Set(rows.filter(row => row.outcome === 'work_changed' && row.causeLogId === change.id)
+      .map(row => row.toTaskId)), new Set([a.id, h.T.id]));
+    assert.ok(!rows.some(row => row.requestId === borrowed.requestId || row.requestId === direct.requestId));
+  }
+});
