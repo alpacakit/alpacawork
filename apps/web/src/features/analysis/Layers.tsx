@@ -117,7 +117,7 @@ function UnitPane({ unit }: { unit: string }) {
     [t("values.inputCache"), usage.tokens.input + usage.tokens.cache && format("tokens", usage.tokens.input + usage.tokens.cache)],
   ] as [string, string | 0][]).filter(([, text]) => text) as [string, string][];
   return <div className="animate-rise">
-    <h3 dir="auto" className="text-xl leading-normal font-semibold">{row.title}</h3>
+    <h3 dir="auto" className="text-xl font-semibold">{row.title}</h3>
     <p className="mt-2 inline-flex items-center text-muted">
       <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{outcomeWord(row, t)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
     </p>

@@ -43,7 +43,7 @@ export const Square = ({ className }: { className: string }) =>
 export function Value({ kind, value, big, onOpen }: { kind: Kind; value: number | null; big?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold", big ? "text-display leading-tight" : "text-xl leading-normal")}>{written.value}</b>
+    <b className={cn("font-semibold", big ? "text-display" : "text-xl")}>{written.value}</b>
     {written.unit && <span className="text-muted">{written.unit}</span>}
   </>;
   const shape = "inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm";

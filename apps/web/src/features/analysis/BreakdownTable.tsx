@@ -40,9 +40,9 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
         {row.cells.map((cell, at) => <td key={at} className={column(at)}>
           {cell.open
             ? <button type="button" onClick={cell.open} {...(cell.tip ? tip(cell.tip) : {})}
-              className="block w-full rounded-sm px-2 text-end leading-8.75 hover:bg-hover hover:underline hover:underline-offset-4">
+              className="flex h-8.75 w-full items-center justify-end rounded-sm px-2 hover:bg-hover hover:underline hover:underline-offset-4">
               {cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</button>
-            : <span className="block px-2 leading-8.75" {...(cell.tip ? tip(cell.tip) : {})}>{cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</span>}
+            : <span className="flex h-8.75 items-center justify-end px-2" {...(cell.tip ? tip(cell.tip) : {})}>{cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</span>}
         </td>)}
         <td className="narrow:hidden" />
       </tr>)}</tbody>

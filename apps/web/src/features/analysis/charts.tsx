@@ -35,7 +35,7 @@ function Grid({ marks, top, label }: { marks: number[]; top: number; label: (val
   return <div aria-hidden className="pointer-events-none absolute inset-0">
     {marks.map((value, at) => <div key={value} style={{ bottom: `${value / top * 100}%` }} className="absolute inset-x-0">
       <i className={cn("absolute end-0 border-t border-rule", GUT_LEFT)} />
-      <span className="absolute start-0 w-10 translate-y-1/2 text-end text-xs leading-none whitespace-nowrap text-soft narrow:w-8">{label(value, at === marks.length - 1)}</span>
+      <span className="absolute start-0 bottom-0 w-10 translate-y-1/2 text-end text-xs whitespace-nowrap text-soft narrow:w-8">{label(value, at === marks.length - 1)}</span>
     </div>)}
   </div>;
 }
@@ -43,7 +43,7 @@ function Grid({ marks, top, label }: { marks: number[]; top: number; label: (val
 function XAxis({ bins, bucket }: { bins: Bin[]; bucket: Bucket }) {
   const wide = bucket !== "day";
   return <div aria-hidden className={cn("mt-1.5 grid h-4.5 auto-cols-[minmax(0,1fr)] grid-flow-col", GUT)}>
-    {bins.map((bin, at) => <span key={bin.from} className={cn("overflow-visible text-xs leading-4.5 whitespace-nowrap text-soft",
+    {bins.map((bin, at) => <span key={bin.from} className={cn("overflow-visible text-xs whitespace-nowrap text-soft",
       wide ? "w-full text-center" : at === bins.length - 1 && at ? "flex w-full justify-end" : "w-0")}>
       {xLabel(bin, bucket, at, bins.length)}</span>)}
   </div>;
@@ -108,8 +108,8 @@ export function RatePanel({ bins, bucket, span, today, points, onPick }: {
       {bins.map((bin, i) => <button key={bin.from} type="button" onClick={() => onPick(bin)} className={binClass(bin, span, bucket !== "day")}
         {...tip(`${binName(bin, today, t)}${t("sep")}${words(points[i]!)}`)}>
         {points[i]!.accepted > 0 && <em style={{ bottom: `${points[i]!.passed / points[i]!.accepted * 100}%` }}
-          className={cn("absolute start-1/2 -ms-1 -mb-1 size-2 rounded-full bg-done shadow-[0_0_0_2px_var(--bg)]",
-            points[i]!.accepted < 10 && "bg-bg opacity-65 shadow-[inset_0_0_0_1.5px_var(--done)]")} />}
+          className={cn("absolute start-1/2 -ms-1 -mb-1 size-2 rounded-full bg-done ring-2 ring-bg",
+            points[i]!.accepted < 10 && "border-[1.5px] border-done bg-bg opacity-65")} />}
       </button>)}
     </div>
   </div>;
@@ -135,9 +135,9 @@ export function Grass({ from, counts, firstDay, span, onPick }: { from: string; 
   return <div>
     <div role="group" aria-label={t("tasks.grass")} className="grid w-max grid-flow-col grid-rows-[16px_repeat(7,14px)] gap-0.75">
       <em />
-      {[0, 1, 2, 3, 4, 5, 6].map(day => <em key={day} className="pe-1 text-end text-xs leading-3.5 not-italic text-soft">{names.find(([at]) => at === day)?.[1] ?? ""}</em>)}
+      {[0, 1, 2, 3, 4, 5, 6].map(day => <em key={day} className="flex h-3.5 items-center justify-end pe-1 text-xs not-italic text-soft">{names.find(([at]) => at === day)?.[1] ?? ""}</em>)}
       {weeks.map((week, column) => [
-        <em key={`m${column}`} className="w-3.5 overflow-visible text-xs leading-3.5 whitespace-nowrap not-italic text-soft">
+        <em key={`m${column}`} className="flex h-3.5 w-3.5 items-center overflow-visible text-xs whitespace-nowrap not-italic text-soft">
           {column === 0 || Number(week[0]!.slice(8)) <= 7 ? monthLabel(week[0]!) : ""}</em>,
         ...week.map((day, row) => {
           const count = counts[column * 7 + row]!;
@@ -145,7 +145,7 @@ export function Grass({ from, counts, firstDay, span, onPick }: { from: string; 
           const chosen = day >= span.from && day <= span.to;
           return <button key={day} type="button" onClick={() => onPick({ from: day, to: day })}
             className={cn(cell, LEVEL[level(count)], "hover:outline-[1.5px] hover:outline-ink hover:outline-offset-1 hover:outline-solid",
-              one && chosen && "shadow-[0_0_0_1.5px_var(--bg),0_0_0_3px_var(--ink)]")}
+              one && chosen && "ring-[1.5px] ring-ink ring-offset-[1.5px] ring-offset-bg")}
             {...tip(t("tasks.grassTip", { day: dayWithWeekday(day), count }))} />;
         }),
       ])}
