@@ -69,6 +69,7 @@ function setup(root: string) {
       record.pids = { agent: 1000 + id, manager: 2000 + id };
       record.session = { provider: 'fixture', id: 'synthetic-session-' + id };
       if (id === 1) record.started_at = instant(-86_400);
+      if (id === 2) record.started_at = instant(-1);
       if (id === 4) record.started_at = instant(23);
       record.ended_at = instant(id === 1 ? 21 - 86_400 : id === 4 ? 25 : 20 + id);
       record.usage = { includesEarlier: id === 1, conversation: null, run: { input: 10, output: id, cacheRead: 2, cacheWrite: 3 } };
@@ -84,6 +85,12 @@ function setup(root: string) {
     command: 'cat /fictional/skills/example/SKILL.md' } }) + '\n');
   writeFileSync(join(folder, RUN_FILES.tally), JSON.stringify({
     v: TALLY_VERSION - 1, provider: 'fixture', model: null, tools: { command_execution: 1 }, mcp: {}, skills: {},
+    subagentTools: 0, state: 'complete',
+  }));
+  const crossing = runFolder(root, 'R2');
+  mkdirSync(crossing, { recursive: true });
+  writeFileSync(join(crossing, RUN_FILES.tally), JSON.stringify({
+    v: TALLY_VERSION, provider: 'fixture', model: null, tools: { crossing: 1 }, mcp: {}, skills: {},
     subagentTools: 0, state: 'complete',
   }));
   const recent = runFolder(root, 'R4');
@@ -195,13 +202,13 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(customTasks.head.period, { from: custom.from, to: custom.to });
       assert.deepEqual(customUsage.head, customTasks.head);
       assert.equal(customTasks.counts.value.finished, 0);
-      assert.equal(customUsage.counts.value.launches, 1);
+      assert.equal(customUsage.counts.value.launches, 2);
 
       const usage = await read<AnalysisUsageView>('usage', { ...trend, by: 'agent' });
       const counts = usage.counts.value;
       assert.equal(counts.launches, 4);
       assert.equal(counts.tasks, 2);
-      assert.equal(counts.runMs, 68_000);
+      assert.equal(counts.runMs, 69_000);
       assert.deepEqual(counts.tokens, { input: 40, output: 10, cache: 20 });
       assert.deepEqual(customTasks.ever, { counts: tasks.counts.value, accepted: tasks.accepted.value });
       assert.deepEqual(customUsage.ever, counts);
@@ -215,12 +222,15 @@ test('analysis commands share selection, contribution and tally rules over a sma
       }
 
       // Startup recovers only eligible tallies, including a Run that started earlier on the first collection day.
-      let tools: AnalysisUsageView | undefined;
+      let localTools: AnalysisUsageView | undefined;
       for (let tries = 0; tries < 80; tries++) {
-        tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
-        if (tools.breakdown?.counted?.value.launches === 2) break;
+        localTools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool', timeZone: 'America/Los_Angeles' });
+        if (localTools.breakdown?.counted?.value.launches === 3) break;
         await new Promise(resolve => setTimeout(resolve, 25));
       }
+      assert.equal(localTools?.breakdown?.since, '2026-09-24');
+      assert.deepEqual(localTools?.breakdown?.counted?.value, { calls: 5, launches: 3 });
+      const tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
       const tool = tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'command_execution']));
       assert.equal(tool?.calls, 1);
       assert.equal(tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'image_view']))?.calls, 2);
@@ -228,8 +238,8 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(tools?.breakdown?.since, '2026-09-25');
       assert.deepEqual(tools?.breakdown?.counted, { value: toolTotals, previous: null });
       assert.deepEqual(tools?.breakdown?.series?.[0], toolTotals);
-      const localTools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool', timeZone: 'America/Los_Angeles' });
-      assert.equal(localTools.breakdown?.since, '2026-09-24');
+      const crossingKey = JSON.stringify(['fixture', 'crossing']);
+      assert.ok(!tools?.breakdown?.rows.some(row => row.key === crossingKey));
       const split = await read<AnalysisUsageView>('usage', { ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', by: 'tool' });
       assert.ok(split.head.previous);
       assert.deepEqual(split.breakdown?.counted, { value: { calls: 0, launches: 0 }, previous: null });
@@ -243,7 +253,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const counted = await read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
       assert.equal(counted.rows[0]?.value, 1);
       const early = await read<AnalysisUnitList>('list', { from: '2026-09-24', to: '2026-09-24', timeZone: 'UTC',
-        set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
+        set: 'used', by: 'tool', key: crossingKey, value: 'calls' });
       assert.equal(early.total, 0);
       const older = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
       assert.equal(older.v, TALLY_VERSION - 1);
@@ -273,6 +283,8 @@ test('analysis commands share selection, contribution and tally rules over a sma
     try {
       const params = { period: 'all', bucket: 'week' } as const;
       assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
+      assert.deepEqual(reader.usage({ ...params, by: 'tool' }, actor).breakdown,
+        { by: 'tool', since: null, counted: null, series: null, rows: [] });
       const caller = { kind: 'run', taskId: rowId(2), runId: 'R1', placementId: 'fixture-placement-2',
         role: 'owner', responsible: true } as const;
       assert.equal(reader.tasks(params, caller).head.project, project);
