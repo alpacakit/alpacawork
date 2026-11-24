@@ -1,4 +1,5 @@
 /** Browser-safe persisted run records and their state vocabulary. */
+import { agentContextSchema } from './agent-context.js';
 import { z } from 'zod';
 import { conversationContextSchema } from '@alpacawork/raw/conversation-context';
 import { runIdSchema, taskIdSchema, type RunId } from './fields.js';
@@ -29,6 +30,8 @@ export const runActivitySchema = z.object({
   toolName: z.string().max(128).nullable(),
   doing: runWorkSchema.nullable(),
   note: z.object({ at: z.iso.datetime({ offset: true }), text: z.string().min(1).max(RUN_NOTE_LIMIT) }).strict().nullable(),
+  /** How full the conversation is, as its agent last said; null before it has said. */
+  context: agentContextSchema.nullable(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
 /** Where run folders live, relative to the workspace root. */

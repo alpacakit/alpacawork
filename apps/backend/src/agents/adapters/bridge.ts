@@ -1,4 +1,5 @@
 import { AGENT_ADAPTERS, type BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
+import { contextUpdateSchema, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { agentUsageSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { runErrorCauseSchema, type RunFailure } from '@alpacawork/contract/run-failure';
@@ -33,10 +34,17 @@ export const bridgeLimits: LimitsProbe = {
     try { return JSON.parse(stdout.trim().split('\n').at(-1) ?? ''); } catch { return null; }
   },
 };
+/** A bridge says the context already translated (`context.updated`). */
+export function bridgeContext(value: unknown): ContextUpdate | null {
+  const row = object(value);
+  if (row.type !== 'context.updated') return null;
+  const parsed = contextUpdateSchema.safeParse(row.context);
+  return parsed.success ? parsed.data : null;
+}
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
 export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
   return {
-    input: bridgeInput, activity: bridgeActivity, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
+    input: bridgeInput, activity: bridgeActivity, context: bridgeContext, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
     skillCatalogContext: input => catalogContext(id, input),
     earlySession(invocation, folder) {
       try {

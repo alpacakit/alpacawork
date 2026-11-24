@@ -1,5 +1,6 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
 import { RUN_FILES, RUN_NOTE_LIMIT, runActivitySchema, type RunActivity } from '@alpacawork/contract/run';
+import { mergeContext, type AgentContext } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
 import { JsonlReader } from './readers/jsonl.js';
@@ -29,6 +30,8 @@ export class OutputActivityReader {
   private readonly tools = new Map<string, NonNullable<RunActivity['doing']>>();
   private latest: RunActivity | null = null;
   private note: RunActivity['note'] = null;
+  /** The conversation's latest fill, merged from each row that says something of it. */
+  private context: AgentContext | null = null;
   private dirty = false;
   private readonly recent: RecentWork;
   private writtenRecent: string | undefined;
@@ -54,8 +57,16 @@ export class OutputActivityReader {
   private doing(): RunActivity['doing'] { return [...this.tools.values()].at(-1) ?? null; }
 
   private accept(value: unknown): void {
-    const event = this.project(value, new Date(this.now()).toISOString());
+    const received = new Date(this.now()).toISOString();
+    const update = this.adapter.context(value);
+    if (update) this.context = mergeContext(this.context, update, received);
+    const event = this.project(value, received);
     if (event) { this.latest = event; this.dirty = true; }
+    else if (update) {
+      // A row that says only how full the conversation is keeps what the Run is doing and carries the new fill.
+      this.latest = { ...this.latest ?? { at: received, kind: 'output', toolName: null, doing: null, note: this.note }, context: this.context };
+      this.dirty = true;
+    }
   }
 
   private flush(folder: string): void {
@@ -90,7 +101,7 @@ export class OutputActivityReader {
       if (kind === 'result' || kind === 'error') this.clearWork();
       const text = words(event.text);
       if (text) this.note = { at, text };
-      projected = { at, kind, toolName, doing: this.doing(), note: this.note };
+      projected = { at, kind, toolName, doing: this.doing(), note: this.note, context: this.context };
     }
     return projected;
   }

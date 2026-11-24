@@ -1,4 +1,5 @@
 import { agentUsageSchema, type AgentUsage } from '@alpacawork/contract/agent-bridge';
+import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { limitWindow, resetTime, type LimitWindow } from '@alpacawork/contract/agent-limits';
 import { RUN_RESULT_LIMIT } from '@alpacawork/contract/run';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
@@ -74,8 +75,32 @@ export const claudeLimits: LimitsProbe = {
       account: typeof email === 'string' && email ? email : null };
   },
 };
+/**
+ * The main conversation's fill: each of its model calls (input, cache reads and writes, output); the window when a turn
+ * ends; and a compaction's own figure. Sub-agents' rows (`parent_tool_use_id`) are their own conversations. A turn's
+ * `modelUsage` names a window per model; the largest is the main model's (sub-agents run the same or smaller ones).
+ */
+export function claudeContext(value: unknown): ContextUpdate | null {
+  const row = object(value);
+  if (row.parent_tool_use_id != null) return null;
+  if (row.type === 'assistant') {
+    const usage = object(object(row.message).usage);
+    const used = callTokens(usage.input_tokens, usage.cache_creation_input_tokens, usage.cache_read_input_tokens, usage.output_tokens);
+    return used === null ? null : { usedTokens: used, compacted: false };
+  }
+  if (row.type === 'result') {
+    const windows = Object.values(object(row.modelUsage)).map(model => object(model).contextWindow)
+      .filter((size): size is number => typeof size === 'number' && Number.isSafeInteger(size) && size > 0);
+    return windows.length ? { windowTokens: Math.max(...windows) } : null;
+  }
+  if (row.type === 'system' && row.subtype === 'compact_boundary') {
+    const after = object(row.compact_metadata).post_tokens;
+    return { usedTokens: callTokens(after), compacted: true };
+  }
+  return null;
+}
 export const claudeAdapter: AgentAdapter = {
-  input: claudeInput, activity: claudeActivity, limits: claudeLimits,
+  input: claudeInput, activity: claudeActivity, context: claudeContext, limits: claudeLimits,
   earlySession: invocation => invocation.session,
   skillCatalogContext: input => catalogContext('claude', input),
   read(invocation, folder, exit) {
