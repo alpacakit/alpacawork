@@ -359,6 +359,10 @@ const implementations = {
   'help': { run: (_root, input) => mcpCommandHelp(input.commands) },
   'guide': { run: (_root, input) => mcpSkill(input.name) },
   ...taskCommands,
+  'analysis/tasks': { run: () => { throw new Error('Analysis is not available yet'); } },
+  'analysis/usage': { run: () => { throw new Error('Analysis is not available yet'); } },
+  'analysis/list': { run: () => { throw new Error('Analysis is not available yet'); } },
+  'analysis/task': { run: () => { throw new Error('Analysis is not available yet'); } },
   'project/shelf': {
     run: (root, _input, context) => {
       authorizeRead(root, context, SCREEN, null);
