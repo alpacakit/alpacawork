@@ -97,34 +97,47 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
   }
 });
 
-test('a step that changes while the Working row opens is unfolded to as it is, not cut and then jumped to', async ({ page, runtime, scene }) => {
+test('a step that grows and then shrinks while the Working row opens is followed both ways, with no cut, band or jump at the end', async ({ page, runtime, scene }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${runtime.origin}/?agent=1&task=${scene.busy}`);
   const row = page.locator('[data-working-here]');
   await expect(row.locator('[data-run-steps=folded]')).toBeVisible();
   await settleMotion(page, row, true);
-  const seen = await row.evaluate(item => new Promise<{ heights: number[]; clipped: number }>(done => {
-    const body = () => item.querySelector<HTMLElement>('[data-working-person] [data-run-steps]')!.closest<HTMLElement>('[data-disclosure-body]')!;
-    const heights: number[] = [], start = performance.now();
-    let frame = 0;
+  // Measured from the steps' own move: it starts with the press and ends when their body stops, however slow the frames.
+  const seen = await row.evaluate(item => new Promise<{ heights: number[]; changedMoving: boolean[]; band: number }>((done, fail) => {
+    const box = () => item.querySelector('[data-working-person] [data-run-steps]')!.closest<HTMLElement>('[data-disclosure-body]')!;
+    const runs = () => box().getAnimations().some(move => move.playState === 'running');
+    const heights: number[] = [], changedMoving: boolean[] = [];
+    let frames = 0, still = 0, taller: HTMLElement | null = null;
+    const give = setTimeout(() => fail(new Error('the steps never stopped moving')), 5000);
     const next = () => {
-      heights.push(item.getBoundingClientRect().height);
-      // Two frames in, the latest step comes in taller (its command wraps, its failure says what came back).
-      if (++frame === 2) {
-        const taller = document.createElement('li');
+      heights.push(box().getBoundingClientRect().height);
+      const moving = runs();
+      if (moving) frames++;
+      // Two frames into the move the latest step comes in taller; once the body is drawn taller than it will be without
+      // that, it is short again (shorter than the body is drawn by then).
+      const steps = item.querySelector<HTMLElement>('[data-working-person] [data-run-steps=open]')!;
+      if (frames === 2 && !taller) {
+        changedMoving.push(moving);
+        taller = document.createElement('li');
         taller.style.height = '120px';
-        item.querySelector('[data-working-person] [data-run-steps=open]')!.prepend(taller);
+        steps.prepend(taller);
+      } else if (taller?.isConnected && heights.at(-1)! > (box().firstElementChild as HTMLElement).offsetHeight - 120 + 30) {
+        changedMoving.push(moving); taller.remove();
       }
-      if (performance.now() - start < 700) requestAnimationFrame(next);
-      else { const box = body(); done({ heights, clipped: Math.round(box.scrollHeight - box.getBoundingClientRect().height) }); }
+      still = moving ? 0 : still + 1;
+      if (changedMoving.length === 2 && still >= 2) {
+        clearTimeout(give);
+        const body = box(), content = body.firstElementChild as HTMLElement;
+        done({ heights, changedMoving, band: Math.round(body.getBoundingClientRect().height - content.getBoundingClientRect().height) });
+      } else requestAnimationFrame(next);
     };
     item.querySelector<HTMLElement>('[data-working-model]')!.click();
     requestAnimationFrame(next);
   }));
-  const jumps = seen.heights.slice(1).map((height, at) => height - seen.heights[at]!);
-  // It eases into its end: its last move is a small one, not the rest of the new height at once.
-  const moves = jumps.filter(jump => Math.abs(jump) >= 0.5);
-  expect(moves.at(-1)!, `no jump at the end: ${moves.map(Math.round).join(',')}`).toBeLessThan(30);
-  expect(Math.min(...jumps), 'it only grows while it opens').toBeGreaterThanOrEqual(-0.5);
-  expect(seen.clipped, 'arrived, all of it is shown').toBeLessThanOrEqual(1);
+  expect(seen.changedMoving, 'both changes came while it moved').toEqual([true, true]);
+  // It eases into its end from either change: its last move is a small one, not the rest of a height at once.
+  const moves = seen.heights.slice(1).map((height, at) => height - seen.heights[at]!).filter(move => Math.abs(move) >= 0.5);
+  expect(Math.abs(moves.at(-1)!), `no jump at the end: ${moves.map(Math.round).join(',')}`).toBeLessThan(30);
+  expect(seen.band, 'arrived, it is as tall as what it holds: nothing cut, no band').toBe(0);
 });

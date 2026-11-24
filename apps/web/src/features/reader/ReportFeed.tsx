@@ -1091,68 +1091,72 @@ export function ContextPage({ task, onFollow }: { task: TaskDetail; onFollow: (i
 }
 
 /**
- * One motion rule for every report disclosure: its height goes from where it is drawn to its body's height, or
- * back to nothing, over --motion-base in-out, and open it follows its body's height. The height itself moves, so what
- * it shows is always all of its height: a grid row's fr did not, and left a band with nothing in it under the words on
- * the way. It moves as a transition, so the reader keeps its place by its events (reading-position). With `least`,
- * folded it still shows that many pixels of its top, read and pressed as they are (the Working row's lines, LeadNote).
+ * One motion rule for every report disclosure: while it moves, its height goes from where it is drawn to where it is
+ * going, which is always its content's own height as it is now (open) or what it shows folded (`least`, else nothing),
+ * over --motion-base in-out. A content that changes on the way (a working row's step goes by every few seconds) sends it
+ * on from where it is drawn to the new height, taller or shorter, so it is never cut, never left with a band under it,
+ * and never jumps at the end. Arrived open, it stands at its content's height (auto) and follows it at once; folded, it
+ * keeps to what it shows. With reduced motion it is at once where it would arrive. The height itself moves, so what it
+ * shows is always all of its height: a grid row's fr did not. It moves as a transition, so the reader keeps its place
+ * by its events (reading-position). With `least`, folded it still shows that many pixels of its top, read and pressed
+ * as they are (the Working row's lines, LeadNote).
  */
 function DisclosureBody({ open, least, children }: { open: boolean; least?: number; children: ReactNode }) {
   const [seen, setSeen] = useState(open);
   // Latch before committing: the body's first opening must not cause a second commit just to remember it was seen.
   if (open && !seen) setSeen(true);
   const peeks = least !== undefined, hidden = !open && !peeks;
-  const body = useRef<HTMLDivElement>(null), shown = useRef(open), unfolding = useRef<ResizeObserver | null>(null);
+  const body = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), shown = useRef(open);
+  // Watches the content while a move is under way, and only then.
+  const moving = useRef<ResizeObserver | null>(null);
+  const settled = () => { moving.current?.disconnect(); moving.current = null; };
   useLayoutEffect(() => {
-    const box = body.current;
-    if (!box) return;
+    const box = body.current, inner = content.current;
+    if (!box || !inner) return;
     const folded = `${least ?? 0}px`;
-    const moving = shown.current !== open;
+    // Where it goes: its content's own height (not the box's scrollHeight, which never drops below the box) or its fold.
+    const target = () => shown.current ? inner.offsetHeight : least ?? 0;
+    const turned = shown.current !== open;
     shown.current = open;
-    if (moving) unfolding.current?.disconnect();
-    // Not turned: folded, it keeps to what it still shows, at once (first measured, or its words changed), as words in
-    // a row change; a fold under way goes on to it. Open, it follows its body.
-    if (!moving) {
+    if (!turned) {
+      // A move under way goes on to where it now goes (a fold whose shown part changed included).
+      if (moving.current) { box.style.height = `${target()}px`; return; }
+      // Not moving: open, it stands at its content's height; folded, it keeps to what it shows, at once.
       if (open || box.style.height === folded) return;
       // First drawn, it stands at its own height (auto), which nothing glides from: no reflow to hold the glide back.
       // History draws a hundred of these at once, and a reflow for each laid the whole reader out that many times.
       if (box.style.height === "") { box.style.height = folded; return; }
-      const folding = box.getAnimations().some(move => move.playState === "running");
-      if (!folding) box.style.transition = "none";
+      box.style.transition = "none";
       box.style.height = folded;
-      if (!folding) { void box.offsetHeight; box.style.transition = ""; }
+      void box.offsetHeight; box.style.transition = "";
       return;
     }
     // From where it is drawn, a move turned back on the way included.
-    const from = box.getBoundingClientRect().height, to = open ? box.scrollHeight : least ?? 0;
+    settled();
+    const from = box.getBoundingClientRect().height, to = target();
     if (reducedMotion() || Math.abs(to - from) < 1) { box.style.height = open ? "" : folded; return; }
     box.style.height = `${from}px`;
     void box.offsetHeight;
     box.style.height = `${to}px`;
-    // What it holds can change on the way (a working row's words and steps go by every few seconds): unfolding, it goes
-    // on to its body's height as it is then, so it neither stops short of it nor jumps to it at the end.
-    if (open && typeof ResizeObserver !== "undefined") {
-      const follow = unfolding.current = new ResizeObserver(() => {
-        if (shown.current && box.style.height !== "") box.style.height = `${box.scrollHeight}px`;
-        else follow.disconnect();
-      });
-      for (const part of box.children) follow.observe(part);
-    }
+    if (typeof ResizeObserver === "undefined") return;
+    const follow = moving.current = new ResizeObserver(() => { if (moving.current === follow) box.style.height = `${target()}px`; });
+    follow.observe(inner);
   }, [open, least]);
-  useEffect(() => () => unfolding.current?.disconnect(), []);
-  // Arrived open (or stopped on the way while open), it follows its body again.
+  useEffect(() => settled, []);
+  // Arrived: open, it follows its content again; folded, it stays where it is.
   const arrived = (event: React.TransitionEvent<HTMLDivElement>) => {
     const box = event.currentTarget;
-    if (event.target !== box || event.propertyName !== "height" || !shown.current) return;
+    if (event.target !== box || event.propertyName !== "height") return;
     // A move stopped because it was turned back, or sent on to a new height, is taken over by the move that turned it.
     if (event.type === "transitioncancel" && box.getAnimations().some(move => move.playState === "running")) return;
-    box.style.height = "";
-    unfolding.current?.disconnect();
+    settled();
+    if (shown.current) box.style.height = "";
   };
   // The clip reaches 12px past the body's right edge (the reader's own room there), so a press ending on that edge is whole.
+  // Its content is one block of its own (flow-root keeps its first and last margins inside), measured as it is.
   return <div ref={body} data-disclosure-body data-open={open} aria-hidden={hidden} inert={hidden} onTransitionEnd={arrived} onTransitionCancel={arrived}
     className="-mr-3 overflow-hidden pr-3 transition-[height] duration-(--motion-base)">
-    {open || seen || peeks ? children : null}
+    <div ref={content} className="flow-root">{open || seen || peeks ? children : null}</div>
   </div>;
 }
 

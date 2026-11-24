@@ -24,6 +24,8 @@ function Mark({ state }: { state: RunStep["state"] }) {
 const tone = (step: RunStep) => step.state === "running" ? "text-ink" : "text-soft";
 /** What was run or came back, on one line as written: its spaces kept, cut at the end. */
 const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono";
+/** What it ran keeps at least a few letters in sight on one line, however long the tool's name and the agent's words. */
+const TARGET = "flex-1 min-w-[8ch]";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
 const TOOL = "max-w-[40%] flex-none truncate font-medium";
 function Tool({ step }: { step: RunStep }) { return <span className={TOOL}>{toolName(step.tool)}</span>; }
@@ -32,10 +34,10 @@ function Tool({ step }: { step: RunStep }) { return <span className={TOOL}>{tool
 function StepLine({ step }: { step: RunStep }) {
   return <div className={cn("flex min-w-0 items-baseline gap-1.5", tone(step))}>
     <Mark state={step.state} /><Tool step={step} />
-    {step.about && <span dir="auto" className="max-w-[62%] flex-none truncate">{step.about}</span>}
+    {step.about && <span dir="auto" className="min-w-0 max-w-[62%] truncate">{step.about}</span>}
     {atEnd(step)
-      ? <span dir="rtl" className={cn(ONE_LINE, "text-left")}><bdi>{step.text}</bdi></span>
-      : <span dir="auto" className={cn(ONE_LINE, step.about && "text-muted")}>{step.text}</span>}
+      ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{step.text}</bdi></span>
+      : <span dir="auto" className={cn(ONE_LINE, TARGET, step.about && "text-muted")}>{step.text}</span>}
   </div>;
 }
 /** What came back, on one line: its first line and how many follow. */
