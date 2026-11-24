@@ -1,6 +1,7 @@
 import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
-  analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
+  analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues,
+  analysisOwnerChoicesInput, analysisOwnerChoicesSchema } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
 import { AGENT_CHECK_MS, agentInspectionInput } from './server-settings.js';
 import { codecs, createOutputContract, defineEntry, defineEntryEndpoint, defineEntryNode, defineEntryTree, optional, required, verifyEntryOutput,
@@ -246,6 +247,11 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
+  'analysis/owner-choices': command('read', 'Read results of owner model and effort choices for one purpose and weight', analysisOwnerChoicesInput, [
+    analysisScope[0]!, text('purpose', 'Purpose recorded on the first owner request'),
+    text('weight', 'Weight recorded on the first owner request'),
+  ], { output: analysisOwnerChoicesSchema, help: help(
+    'An early rework remains reworked here if the Task is later stopped without acceptance. Task analysis counts it as stopped.') }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [
     text('under', 'Subtree root Task ID, listed first'),
@@ -312,6 +318,8 @@ const definitions = {
     file('instruction', MAX_INSTRUCTION_BYTES, 'The instruction or answer'),
     text('answers', 'ID of the question this answers'),
     text('agent', 'Member placement receiving the instruction'),
+    text('purpose', 'Policy purpose of the first owner selection on a user-requested Task'),
+    text('weight', 'Policy weight of that selection'),
     boolean('newConversation', 'Begin a new conversation'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),

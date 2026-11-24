@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { projectIdSchema, taskIdSchema } from './fields.js';
 import { validTimeZone } from './personal-settings.js';
+import { ownerChoiceContextSchema } from './owner-choice-context.js';
 
 export const analysisDaySchema = z.iso.date();
 export const analysisPeriodSchema = z.enum(['today', '7d', '28d', 'all']);
@@ -48,6 +49,7 @@ export const analysisListInput = z.strictObject({
   if (input.value === 'calls' && input.by !== 'tool' && input.by !== 'mcp') issue('value', 'Calls require a tool or MCP breakdown');
 });
 export const analysisTaskInput = z.strictObject({ ...scope, task: taskIdSchema });
+export const analysisOwnerChoicesInput = ownerChoiceContextSchema.extend({ project: projectIdSchema.optional() });
 
 const count = z.number().int().nonnegative();
 const measurement = z.number().nonnegative();
@@ -66,6 +68,26 @@ const group = { key: z.string(), label: z.string() };
 const times = z.strictObject({ review: count, answer: count, ai: count, other: count });
 const tallied = z.strictObject({ runs: count, of: count });
 const tallyTool = z.strictObject({ name: z.string(), calls: count });
+
+const ownerChoiceSchema = z.strictObject({ adapter: z.string(), model: z.string(), effort: z.string().nullable() });
+const ownerChoiceCounts = z.strictObject({ passed: count, reworked: count, stopped: count, pending: count, unjudged: count });
+const ownerChoiceCost = z.strictObject({ outputTokens: measurement.nullable(), runMs: measurement.nullable() });
+const ownerChoiceJudgment = z.strictObject({
+  task: taskIdSchema, result: z.enum(['passed', 'reworked']), at: z.iso.datetime({ offset: true }),
+  cost: ownerChoiceCost,
+});
+const ownerChoiceRow = z.strictObject({
+  choice: ownerChoiceSchema, available: z.boolean(), counts: ownerChoiceCounts,
+  judgments: z.array(ownerChoiceJudgment).max(5), pendingTasks: z.array(taskIdSchema),
+  medianCost: ownerChoiceCost, costSamples: z.strictObject({ outputTokens: count, runMs: count }),
+});
+export const analysisOwnerChoicesSchema = ownerChoiceContextSchema.extend({
+  project: projectIdSchema.nullable(), counts: ownerChoiceCounts.extend({ mixed: count }),
+  pendingTasksWithoutChoice: z.array(taskIdSchema), rows: z.array(ownerChoiceRow),
+});
+export type AnalysisOwnerChoicesInput = z.infer<typeof analysisOwnerChoicesInput>;
+export type AnalysisOwnerChoices = z.infer<typeof analysisOwnerChoicesSchema>;
+export type OwnerChoice = z.infer<typeof ownerChoiceSchema>;
 
 export const analysisTaskCountsSchema = z.strictObject({
   passed: count, reworked: count, stopped: count, accepted: count, finished: count, share,

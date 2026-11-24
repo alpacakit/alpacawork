@@ -12,6 +12,7 @@ export type TaskNode = {
 };
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
+  ownerChoiceContext: RunEvidence['ownerChoiceContext'];
   childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
   firstAgent: string; firstModel: string; launches: Launch[]; clock: ReturnType<typeof clocks> | null;
 };
@@ -100,6 +101,7 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
   for (const entry of log) if (entry.placementEffect === 'member' && entry.placementId) workers.add(entry.placementId);
   return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length,
     answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs, firstAgent, firstModel: modelLabel(model, effort, firstAgent), launches,
+    ownerChoiceContext: firstOwner?.ownerChoiceContext,
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 

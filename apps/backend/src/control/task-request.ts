@@ -74,6 +74,8 @@ export class TaskRequestService {
     const request = await new RequestService(this.root).request({ taskId: input.task, body: input.body, requestId: input.opId,
       expectedTaskHash, expectedPlacementRevision, expectedHeadRunId: input.expectedHeadRun,
       targetPlacementId: input.agent, mode: input.newConversation ? 'new' : undefined,
+      ...(input.purpose !== undefined && input.weight !== undefined
+        ? { ownerChoiceContext: { purpose: input.purpose, weight: input.weight } } : {}),
       selected: input.selected, aiStack: input.aiStack, cwd: input.cwd },
     { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined });
     return { task: controlTaskHead(await new ControlTaskStore(this.root).get(input.task)),

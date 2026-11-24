@@ -95,6 +95,8 @@ function replayedRun(saved: StoredRequest, input: RequestInput, context: Request
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another AI stack');
   const run = first ? tx.get(`R${first.id}`) : null;
   if (!run) reject(PROBLEM_CODE.saveUnconfirmed, 'Request exists without a confirmed Run', { kind: 'request_exists_without_confirmed_run' }, taskHash, null, null);
+  if (!isDeepStrictEqual(run.ownerChoiceContext, input.ownerChoiceContext))
+    throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another owner selection context');
   if (input.selected !== undefined && Object.entries(input.selected).some(([key, value]) => run.launch.values[key] !== value))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another launch choice', undefined,
       { reason: { kind: 'request_id_belongs_another_launch_choice' } });
@@ -174,6 +176,12 @@ export class RequestService {
           if (!placement) reject(PROBLEM_CODE.responsibleMissing, 'Task needs a responsible placement', { kind: 'task_needs_responsible_placement' }, task.hash, null, null);
           if (!placement.active || placement.taskId !== task.id)
             reject(PROBLEM_CODE.conflict, 'Target is not a current placement of the Task', { kind: 'target_not_current_placement_task' }, task.hash, placement.revision, null);
+          if (input.ownerChoiceContext && (
+            !task.meta.userRequested || !placement.responsible || !speaksForUser(author) ||
+            context.purpose !== 'instruction' || context.answersQuestion ||
+            allRuns.some(run => run.task === task.id && run.role === 'owner')
+          ))
+            throw new Problem(PROBLEM_CODE.invalidInput, 'Purpose and weight are available on the first owner instruction of a user-requested Task');
           if (context.purpose === 'return_continuation') {
             if (!placement.responsible)
               reject(PROBLEM_CODE.handoffPending, 'Return destination changed', { kind: 'return_destination_changed' }, task.hash, placement.revision, null);
@@ -333,6 +341,7 @@ export class RequestService {
             heldSnapshot: mode === 'continue' && head ? suppliedSnapshotForRequest({ store: store!, runs: tx }, head, runs) : undefined,
             onSnapshotSupplied: version => { suppliedSnapshot = version; } } : {}) });
           const run = tx.create({ task: task.id, placementId: placement.id, requestId: request.id,
+            ...(input.ownerChoiceContext && { ownerChoiceContext: input.ownerChoiceContext }),
             agent: profile, role: placement.responsible ? 'owner' : 'worker', resumes: mode === 'continue' ? head!.id : null,
             continues: false, session, caller,
             ...(placement.responsible ? { context: { children,

@@ -7,6 +7,7 @@ import { agentLaunchSchema, coordinatorRestartSchema } from './agent-launch.js';
 import { coordinatorMessageSchema } from './coordinator-contract.js';
 import { runAvailabilitySchema } from './run-failure.js';
 import { answerFileSchema } from './coordinator-files.js';
+import { ownerChoiceContextSchema } from './owner-choice-context.js';
 
 /** Run IDs are numbered in creation order; every list of runs sorts by this number. */
 export const runNumber = (id: RunId): number => Number(id.slice(1));
@@ -139,6 +140,8 @@ const taskRunObject = z.object({
   task: taskIdSchema,
   placementId: z.string().min(1),
   requestId: z.string().min(1),
+  /** Immutable request metadata on the first Run reserved by the initial owner instruction. */
+  ownerChoiceContext: ownerChoiceContextSchema.optional(),
   /** The first Run uses index zero; retries have the index of their frozen candidate. */
   attempt: z.number().int().positive().safe().optional(),
   firstRunId: runIdSchema.optional(),
@@ -166,7 +169,7 @@ const taskRunObject = z.object({
   pids: z.object({ manager: z.number().int().nullable(), agent: z.number().int().nullable() }).strict(),
 }).strict();
 /** What every Run record keeps, whoever it answers. */
-function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at' | 'supersededBy' | 'availability' | 'attempt' | 'firstRunId'>,
+function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'reason' | 'ended_at' | 'into' | 'started_at' | 'supersededBy' | 'availability' | 'attempt' | 'firstRunId' | 'ownerChoiceContext'> & { role: string },
   ctx: z.RefinementCtx): void {
   const reasons: readonly (string | null)[] = RUN_STATE_REASONS[record.state];
   if (!reasons.includes(record.reason)) ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Reason does not match state' });
@@ -176,6 +179,8 @@ function checkRunRecord(record: Pick<z.infer<typeof taskRunObject>, 'state' | 'r
     ctx.addIssue({ code: 'custom', path: ['into'], message: 'Only a joined run names the run it joined' });
   if ((record.attempt === undefined) !== (record.firstRunId === undefined))
     ctx.addIssue({ code: 'custom', path: ['attempt'], message: 'A retry must name its request’s first Run' });
+  if (record.ownerChoiceContext !== undefined && (record.role !== RUN_ROLE.owner || record.attempt !== undefined))
+    ctx.addIssue({ code: 'custom', path: ['ownerChoiceContext'], message: 'Selection context belongs to the first owner Run' });
   if (record.supersededBy !== undefined && (record.state !== 'failed' || record.availability === undefined))
     ctx.addIssue({ code: 'custom', path: ['supersededBy'], message: 'A superseded run requires a failed availability observation' });
   if (record.state === 'queued' && record.started_at !== null)

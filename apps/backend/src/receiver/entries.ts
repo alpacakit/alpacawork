@@ -366,6 +366,7 @@ const implementations = {
   'analysis/usage': { run: (_root, input, context) => context.analysis!.usage(input, requireCaller(context)) },
   'analysis/list': { run: (_root, input, context) => context.analysis!.list(input, requireCaller(context)) },
   'analysis/task': { run: (_root, input, context) => context.analysis!.task(input, requireCaller(context)) },
+  'analysis/owner-choices': { run: (_root, input, context) => context.analysis!.ownerChoices(input, requireCaller(context)) },
   'project/shelf': {
     run: (root, _input, context) => {
       authorizeRead(root, context, SCREEN, null);

@@ -1,5 +1,6 @@
 import { aiStackPrefixSchema } from './ai-stack.js';
 import { selectionSchema } from './agent-settings.js';
+import { ownerChoiceContextSchema } from './owner-choice-context.js';
 /** Public entry values. Channels decode transport types; these schemas own input rules. */
 import { z } from 'zod';
 import { projectColorSchema } from '@alpacawork/raw/project-settings';
@@ -178,6 +179,7 @@ export const taskReportInput = taskReportShape.superRefine((value, context) =>
  * question (`answers`), all in `instruction`. Revisions are shared with the answer path, never an alias.
  */
 export const taskRequestShape = z.object({ task: taskIdSchema, instruction: instructionSchema, answers: logIdSchema.optional(),
+  ...ownerChoiceContextSchema.partial().shape,
   agent: nonempty.optional(), newConversation: z.boolean().optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
@@ -186,9 +188,12 @@ type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiSta
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
-    keys: ['agent', 'newConversation',
+    keys: ['agent', 'newConversation', 'purpose', 'weight',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',
       'expectedTaskHash', 'expectedPlacementRevision'] },
+  { kind: 'forbidden', scope: 'With {agent}', applies: value => value.agent !== undefined, keys: ['purpose', 'weight'] },
+  { kind: 'required', scope: 'With {purpose}', applies: value => value.purpose !== undefined, keys: ['weight'] },
+  { kind: 'required', scope: 'With {weight}', applies: value => value.weight !== undefined, keys: ['purpose'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined,
     keys: ['expectedPlacementRevision'] },

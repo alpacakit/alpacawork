@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { ChangeLog, controlDatabasePath, keepControlChanges, keepControlTables, ControlStore, touch } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
-import type { AnalysisTasksView, AnalysisUnitList, AnalysisUnitValues, AnalysisUsageView } from '@alpacawork/contract/analysis';
+import type { AnalysisOwnerChoices, AnalysisTasksView, AnalysisUnitList, AnalysisUnitValues, AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { AnalysisReader } from '@alpacawork/backend/test-dist/analysis/reads.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
@@ -26,6 +26,7 @@ const project = 'P' + 1;
 const actor = { kind: 'human' } as const;
 const instant = (second: number) => new Date(Date.UTC(2026, 8, 25, 0, 0, second)).toISOString();
 const link = 'https://github.com/fictional/app/pull/1';
+const choiceContext = { purpose: 'Implementation', weight: 'Light' };
 
 function setup(root: string) {
   const db = new DatabaseSync(controlDatabasePath(root), { enableForeignKeyConstraints: true });
@@ -60,6 +61,10 @@ function setup(root: string) {
       const record = JSON.parse(String(db.prepare('SELECT record FROM runs WHERE id=?').get(id)!.record));
       record.pids = { agent: 1000 + id, manager: 2000 + id };
       record.session = { provider: 'fixture', id: 'synthetic-session-' + id };
+      if (id === 1) {
+        record.ownerChoiceContext = choiceContext;
+        record.launch.values = { model: 'fictional', effort: 'low' };
+      }
       record.ended_at = instant(20 + id);
       record.usage = { includesEarlier: id === 1, conversation: null, run: { input: 10, output: id, cacheRead: 2, cacheWrite: 3 } };
       db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), id);
@@ -186,6 +191,16 @@ test('analysis commands share selection, contribution and tally rules over a sma
         ['apps/cli/dist/cli.js', 'analysis', 'tasks', '--period', 'all', '--bucket', 'week', '--by', 'project', '--time-zone', 'UTC'],
         { env: { ...env, ALPACAWORK_SERVER: app.url } });
       assert.deepEqual(JSON.parse(stdout), tasks);
+      const choices = await read<AnalysisOwnerChoices>('owner-choices', { ...choiceContext, project });
+      assert.equal(choices.counts.passed, 1, 'first owner instructions without a context do not contribute');
+      assert.deepEqual(choices.rows[0]?.choice, { adapter: 'codex', model: 'fictional', effort: 'low' });
+      assert.equal(choices.rows[0]?.available, false);
+      assert.deepEqual(choices.rows[0]?.judgments.map(item => [item.task, item.cost.outputTokens]), [[rowId(2), 4]]);
+      assert.deepEqual((await read<AnalysisOwnerChoices>('owner-choices', { ...choiceContext, weight: 'Heavy', project })).rows, []);
+      const choiceCli = await promisify(execFile)(process.execPath,
+        ['apps/cli/dist/cli.js', 'analysis', 'owner-choices', '--project', project,
+          '--purpose', choiceContext.purpose, '--weight', choiceContext.weight], { env: { ...env, ALPACAWORK_SERVER: app.url } });
+      assert.deepEqual(JSON.parse(choiceCli.stdout), choices);
     } finally { await app.close(); }
 
     const { tasks: [task] } = await new ControlTaskCommands(root, actor).create({
@@ -206,6 +221,8 @@ test('analysis commands share selection, contribution and tally rules over a sma
         role: 'owner', responsible: true } as const;
       assert.equal(reader.tasks(params, caller).head.project, project);
       assert.throws(() => reader.tasks({ ...params, project: 'P' + 9 }, caller), /own project/);
+      assert.equal(reader.ownerChoices(choiceContext, caller).counts.passed, 1);
+      assert.throws(() => reader.ownerChoices({ ...choiceContext, project: 'P' + 9 }, caller), /own project/);
       store.write(() => {
         store.connection.prepare('UPDATE tasks SET user_requested=0 WHERE external_id=?').run(rowId(2));
         touch(store.connection, { kind: 'task', id: rowId(2) });

@@ -19,7 +19,7 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
   type StoredReturn, type StoredPlacement, type TransactionReads } from './reads.js';
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
-  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId'>;
+  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId' | 'ownerChoiceContext'>;
 export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
   aboutRunId?: RunId | null;
   aiStack?: readonly AiRow[];
@@ -70,7 +70,8 @@ function whileLive(reads: TransactionReads, check: () => void): TransactionReads
   return Object.fromEntries(Object.entries(reads).map(([name, read]) =>
     [name, (...args: never[]) => { check(); return (read as (...args: never[]) => unknown)(...args); }])) as TransactionReads;
 }
-const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at', 'attempt', 'firstRunId'] as const;
+const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch',
+  'created_at', 'attempt', 'firstRunId', 'ownerChoiceContext'] as const;
 /** A coordinator Run's creation fields beyond a Task Run's. */
 const coordinatorOf = (record: RuntimeRunRecord, rebind: boolean) =>
   record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message, restartArgv: rebind ? null : record.restartArgv } : null;

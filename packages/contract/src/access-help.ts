@@ -32,6 +32,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
     task: { kind: 'project', id: 'T1', parentId: null, project: 'T1' } }],
   'task.file-get': readUp,
   'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
+  'analysis.owner-choices': readTree,
   'task.list': readTree,
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [

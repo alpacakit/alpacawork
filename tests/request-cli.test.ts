@@ -122,9 +122,40 @@ test('CLI task request returns the original instruction after review waiting and
   assert.equal(JSON.parse(changed.stderr).error.code, 'idempotency_conflict');
 });
 
+test('CLI records purpose and weight on the initial owner instruction and refuses a later change', async t => {
+  const h = await setup(t, true);
+  const { url } = await h.start();
+  const path = join(h.root, 'instruction.txt');
+  writeFileSync(path, 'Synthetic work');
+  const operationId = randomUUID();
+  const invoke = (hash: string, opId: string, weight: string) => cliRun(url,
+    ['task', 'request', '--task', h.task.id, '--instruction-file', path, '--op-id', opId,
+      '--expected-task-hash', hash, '--expected-placement-revision', String(h.owner.revision),
+      '--purpose', 'Implementation', '--weight', weight]);
+  const result = await invoke(h.task.hash, operationId, 'Light');
+  assert.equal(result.code, 0, result.stderr);
+  const saved = JSON.parse(result.stdout);
+  const runs = new RunStore(h.root, { busyTimeoutMs: 1000 });
+  try {
+    assert.deepEqual(runs.get(saved.outcome.request.runId)?.ownerChoiceContext, { purpose: 'Implementation', weight: 'Light' });
+  } finally { runs.close(); }
+
+  const replay = await invoke(h.task.hash, operationId, 'Light');
+  assert.equal(replay.code, 0, replay.stderr);
+  assert.deepEqual(JSON.parse(replay.stdout).outcome, saved.outcome);
+  const changed = await invoke(h.task.hash, operationId, 'Heavy');
+  assert.equal(JSON.parse(changed.stderr).error.code, 'idempotency_conflict');
+  const current = await new ControlTaskStore(h.root).get(h.task.id);
+  const later = await invoke(current.hash, randomUUID(), 'Heavy');
+  assert.equal(JSON.parse(later.stderr).error.code, 'invalid_input');
+});
+
  test('the adopted task request input keeps annotations out of its public instruction contract', () => {
   const base = { task: 'T1', instruction: 'Sent body', expectedTaskHash: 'a'.repeat(64), expectedPlacementRevision: 1 };
   assert.equal(taskRequestInput.safeParse(base).success,true);
+  assert.equal(taskRequestInput.safeParse({ ...base, purpose: 'Implementation' }).success, false);
+  assert.equal(taskRequestInput.safeParse({ ...base, weight: 'Light', purpose: ' ' }).success, false);
+  assert.equal(taskRequestInput.safeParse({ ...base, purpose: 'Implementation', weight: 'Light', agent: 'member' }).success, false);
   assert.equal(taskRequestInput.safeParse({ ...base, title: 'History', description: 'Summary' }).success, false);
   assert.equal(taskRequestInput.safeParse({ ...base, description: 'Summary' }).success, false);
   for (const note of [{ title: 'Ignored' }, { description: 'Ignored' }])

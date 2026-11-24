@@ -1,17 +1,20 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
 import type { AnalysisAcceptedTotals, AnalysisBucket, AnalysisDays, AnalysisHead, AnalysisListInput, AnalysisListRow,
   AnalysisTaskInput, AnalysisTaskBy, AnalysisTaskCounts, AnalysisTasksInput, AnalysisTasksView, AnalysisUnitList,
-  AnalysisUnitValues, AnalysisUsageBy, AnalysisUsageCounts, AnalysisUsageInput, AnalysisUsageView } from '@alpacawork/contract/analysis';
+  AnalysisUnitValues, AnalysisUsageBy, AnalysisUsageCounts, AnalysisUsageInput, AnalysisUsageView,
+  AnalysisOwnerChoices, AnalysisOwnerChoicesInput, OwnerChoice } from '@alpacawork/contract/analysis';
+import { enabledAgents, settingAdapter, sumRunUsage, type Selection } from '@alpacawork/contract';
+import { launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
 import { authorize, type Caller } from '../control/authorize.js';
 import { readControl } from '../control/task-store.js';
 import type { Tally } from '../agents/adapters/tally.js';
 import { FactsCache, type AnalysisFacts, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, modelLabel, shareOf, unitMarks, type Launch } from './rules.js';
+import { clocks, emptyClock, median, modelLabel, modelOf, shareOf, unitMarks, type Launch } from './rules.js';
+import { summarizeOwnerChoices } from './owner-choices.js';
 
 type DatedUnit = { day: string; unit: Unit };
 type DatedLaunch = { day: string; root: string; run: Launch };
@@ -39,12 +42,6 @@ function taskCounts(units: readonly Unit[]): AnalysisTaskCounts {
     else if (outcome.stoppedAt) stopped++;
   }
   return { passed, reworked: accepted - passed, stopped, accepted, finished: accepted + stopped, share: shareOf(passed, accepted) };
-}
-function median(values: number[]) {
-  if (!values.length) return null;
-  values.sort((a, b) => a - b);
-  const index = Math.floor(values.length / 2);
-  return values.length % 2 ? values[index]! : (values[index - 1]! + values[index]!) / 2;
 }
 function acceptedTotals(units: readonly Unit[]): AnalysisAcceptedTotals {
   let submits = 0, questions = 0;
@@ -100,6 +97,28 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
   };
 }
 
+function modelChoice({ adapter, model, effort }: Launch) {
+  return model === null ? null : { key: JSON.stringify([adapter, model, effort]), choice: { adapter, model, effort } };
+}
+
+function canLaunch(config: AgentsSettings, { adapter, model, effort }: OwnerChoice) {
+  return enabledAgents(config.agents).some(([profile, setting]) => {
+    if (settingAdapter(profile, setting) !== adapter) return false;
+    const selections: Selection[] = effort === null ? [{ model }, { model, effort }] : [{ model, effort }];
+    return selections.some(selected => {
+      try {
+        const launched = launchSnapshot(config, profile, 'start', process.env.PATH ?? '', selected);
+        if (!launched.ok) return false;
+        const resolved = modelOf(launched);
+        return resolved.model === model && resolved.effort === effort;
+      } catch (error) {
+        if (error instanceof Problem && error.code === PROBLEM_CODE.invalidInput) return false;
+        throw error;
+      }
+    });
+  });
+}
+
 class ScopedAnalysis {
   readonly today: string;
   readonly firstDay: string | null;
@@ -131,6 +150,14 @@ class ScopedAnalysis {
 
   head(input: Parameters<typeof makeHead>[4]) {
     return makeHead(this.project, this.timeZone, this.today, this.firstDay, input);
+  }
+
+  ownerChoices(input: AnalysisOwnerChoicesInput, config: AgentsSettings): AnalysisOwnerChoices {
+    const { purpose, weight } = input;
+    const units = [...this.facts.units.values()].filter(({ node, ownerChoiceContext }) =>
+      node.requested && this.allows(node.project!) && ownerChoiceContext?.purpose === purpose && ownerChoiceContext.weight === weight);
+    return { project: this.project, purpose, weight,
+      ...summarizeOwnerChoices(units, modelChoice, choice => canLaunch(config, choice), this.now) };
   }
 
   private taskKeys(unit: Unit, by: AnalysisTaskBy): DimensionValue[] {
@@ -306,4 +333,11 @@ export class AnalysisReader {
   usage(input: AnalysisUsageInput, caller: Caller) { return this.scoped(input, caller, view => view.usage(input)); }
   list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, view => view.list(input)); }
   task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, view => view.task(input.task)); }
+  ownerChoices(input: AnalysisOwnerChoicesInput, caller: Caller) {
+    return this.scoped(input, caller, view => {
+      const settings = readAgentsSettings(this.root);
+      if (!settings.ok) throw settings.error;
+      return view.ownerChoices(input, settings.config);
+    });
+  }
 }

@@ -11,17 +11,24 @@ export const emptyClock = (): Clock => ({ review: 0, answer: 0, ai: 0, other: 0 
 export const iso = (ms: number) => new Date(ms).toISOString();
 const normalized = (time: string) => iso(Date.parse(time));
 export const shareOf = (passed: number, accepted: number) => accepted < 10 ? null : passed / accepted;
+export function median(values: number[]) {
+  if (!values.length) return null;
+  values.sort((a, b) => a - b);
+  const index = Math.floor(values.length / 2);
+  return values.length % 2 ? values[index]! : (values[index - 1]! + values[index]!) / 2;
+}
 
-export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'launch' |
+export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'launch' | 'ownerChoiceContext' |
   'state' | 'created_at' | 'started_at' | 'ended_at' | 'pids' | 'usage'>;
 export type Launch = RunContribution & {
   id: string; task: string; agent: string; model: string | null; effort: string | null; provider: string; session: string | null;
+  role: RunEvidence['role']; adapter: string;
 };
 
 export function launchOf(run: RunEvidence): Launch | null {
   const usage = runUsage(runUsageSource(run));
   if (!usage) return null;
-  return { ...usage, id: run.id, task: run.task, agent: run.agent, ...modelOf(run),
+  return { ...usage, id: run.id, task: run.task, agent: run.agent, role: run.role, adapter: run.launch.adapter, ...modelOf(run),
     provider: run.session?.provider ?? run.launch.adapter, session: run.session?.id ?? null };
 }
 

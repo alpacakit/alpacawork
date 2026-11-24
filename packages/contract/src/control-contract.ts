@@ -7,6 +7,7 @@ import { projectColorSchema, projectSettingsSchema } from '@alpacawork/raw/proje
 import { launchChoicesSchema } from './agent-selection.js';
 import { coordinatorMarkerSchema } from './coordinator-contract.js';
 import { coordinatorWorkSchema } from './work-contract.js';
+import { ownerChoiceContextSchema } from './owner-choice-context.js';
 /** The idle screen stream cadence; clients allow two missed beats before reconnecting. */
 export const INDEX_HEARTBEAT_MS = 15_000;
 
@@ -629,6 +630,7 @@ export function taskRowFields(task: ControlTaskDTO) {
 
 export const requestInputSchema = z.object({
   taskId: taskIdSchema, mode: requestModeSchema.optional(), body: z.string().min(1),
+  ownerChoiceContext: ownerChoiceContextSchema.optional(),
   title: reportTitleSchema.optional(), description: descriptionSchema.optional(),
   cwd: z.string().min(1).optional(),
   requestId: z.string().min(1), expectedTaskHash: digestSchema,
