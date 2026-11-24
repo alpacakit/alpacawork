@@ -28,26 +28,25 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 
 ## 0.1.7
 
-This version is about seeing how much room your agents have left: the top bar shows each agent's plan usage limits, a working agent shows how full its conversation is, and a run that stops on a usage limit says so and says when the limit lifts. It also lets an MCP client such as Claude Desktop or Cursor use alpacawork as the coordinator.
+This version is about seeing how much room your agents have left: the top bar shows each agent's plan usage limits, a working agent shows how full its conversation is, and a run that stops on a usage limit says so and says when the limit lifts. It also lets an MCP client such as Claude Desktop or Cursor act as the coordinator in alpacawork.
 
-**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.7`. The Run execution format changed from 0.1.6, so read "Check before updating" first. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.7` in step 4.
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.7`. The database schema is unchanged; the Run execution format changed from 0.1.6, so read "Check before updating" first. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.7` in step 4.
 
 ### Check before updating
 - **Update while no agent is working.** While agents are working, Settings shows "Copy the pause instruction" instead of "Update", and `alpacawork deploy` stops and asks you to retry later. Send the copied instruction in the input, update once the agents have stopped, then ask the coordinator to resume the work it paused.
-- **Update the alpacawork CLI on your other devices too.** The server now refuses an older CLI and says which command updates it. If you call the CLI from your own scripts, five options changed: `task new` and `task update` take `--no-from-user` instead of `--internal`; `task get` takes `--include openObligations` (or `files`, `usage`, `estimateExamples`) instead of `--open-obligations`, `--files`, `--usage` and `--estimate-examples`; `task report` takes `--estimate-minutes` instead of `--estimate`; and `config get --check` is now `config inspect`. ([#77](https://github.com/alpacakit/alpacawork/pull/77), [#80](https://github.com/alpacakit/alpacawork/pull/80))
+- **Update the alpacawork CLI on your other devices too.** A 0.1.7 server refuses a 0.1.6 CLI. The error names the command to run on that device, which updates both the CLI and its skills. If your own scripts or instructions call the CLI, these changed: `task new` and `task update` take `--no-from-user` instead of `--internal`; `task get` takes `--include` (`openObligations`, `files`, `usage`, `estimateExamples`) instead of `--open-obligations`, `--files`, `--usage` and `--estimate-examples`; `task report` takes `--estimate-minutes` instead of `--estimate`; `config get --check`, `--adapter` and `--command` moved to `config inspect`; `field set` takes `--many`/`--no-many` and `--required`/`--no-required` instead of `--many true|false` and `--required true|false`; and `task list` returns up to 100 rows per page, with `--cursor` for the next page. ([#77](https://github.com/alpacakit/alpacawork/pull/77), [#80](https://github.com/alpacakit/alpacawork/pull/80))
 
 ### Highlights
 - **Plan usage limits in the top bar.** The bar shows the fullest usage window of your first agent, turning red from 80%. Press it to see every agent's windows, the account each agent is signed in as, and when each window resets; its refresh button reads them all again. Claude Code, Codex and GitHub Copilot report limits. Reading them calls no model. ([#76](https://github.com/alpacakit/alpacawork/pull/76), [#88](https://github.com/alpacakit/alpacawork/pull/88), [#89](https://github.com/alpacakit/alpacawork/pull/89), [#98](https://github.com/alpacakit/alpacawork/pull/98))
-- **How full each working agent's conversation is.** A task's detail shows a ring and a percent of the model's context window for each agent at work. Each agent's settings card has a "Context limits" row to set a model's window; left empty, it uses what the agent reported, then a built-in default. ([#94](https://github.com/alpacakit/alpacawork/pull/94), [#96](https://github.com/alpacakit/alpacawork/pull/96))
+- **How full each working agent's conversation is.** A task's detail shows a ring and a percent of the model's context window for each agent at work. Each agent's settings card has a "Context limits" row to set a model's window; left empty, it uses what the agent reported, then a built-in default where there is one; without a window the ring shows the token count. ([#94](https://github.com/alpacakit/alpacawork/pull/94), [#96](https://github.com/alpacakit/alpacawork/pull/96))
 - **A run stopped on a usage limit says why, and until when.** The list row says, for example, "Model limit until 11/29 11:00" instead of "Ended early", and the opened task says when the limit resets. Claude Code's current limit messages are recognized again, so the next AI in your list takes over the work as intended. ([#82](https://github.com/alpacakit/alpacawork/pull/82))
 - **Use alpacawork from an MCP client.** `alpacawork setup --mcp on` lets a client such as Claude Desktop or Cursor read and write tasks with the same commands as the CLI, as the coordinator. It is off until you turn it on; the alpacawork skill's setup guide has the steps. ([#84](https://github.com/alpacakit/alpacawork/pull/84), [#85](https://github.com/alpacakit/alpacawork/pull/85))
 - **Lighter models to choose from.** The model lists add Claude Code's `sonnet` and `haiku` and Codex's `gpt-6-luna`, after the existing models, so your current choices stay as they are. ([#93](https://github.com/alpacakit/alpacawork/pull/93), [#96](https://github.com/alpacakit/alpacawork/pull/96))
 
 ### Setup
 - The getting-started guide keeps going through the whole first task: when the task is worked on again, asks again or reports again, a short balloon says what is going on and what to do next, and the guide says when it is over. ([#75](https://github.com/alpacakit/alpacawork/pull/75))
-- Opening the screen on a phone for the first time shows how to change the sheet's height, what swiping a task does, and, when notifications are off on that phone, a button to turn them on. ([#78](https://github.com/alpacakit/alpacawork/pull/78))
+- Opening the screen on a phone for the first time shows how to change the sheet's height, what swiping a task does, and, when notifications are off on that phone, a button that opens the notification settings. ([#78](https://github.com/alpacakit/alpacawork/pull/78))
 - The README shows only how to open the screen. The list of operations and when `/alpacawork` is needed moved to the chat guide, in all five languages. ([#74](https://github.com/alpacakit/alpacawork/pull/74), [#83](https://github.com/alpacakit/alpacawork/pull/83))
-- Agents read shorter command help, so a coordinator or owner reads less on each step. ([#86](https://github.com/alpacakit/alpacawork/pull/86))
 
 ### Screens
 - Settings → AI names each row by its role, "Primary" or "Fallback 1, 2, …", with shorter notes. On a computer the save row stays at the foot of the settings window. ([#90](https://github.com/alpacakit/alpacawork/pull/90))
@@ -56,10 +55,11 @@ This version is about seeing how much room your agents have left: the top bar sh
 - The auto-swipe hint and notice say that it moves on after replying to a question or a report in "Awaiting review", in all five languages. ([#91](https://github.com/alpacakit/alpacawork/pull/91))
 
 ### Fixes
-- A page could miss its first offline copy after a read was marked; it now saves it. ([#81](https://github.com/alpacakit/alpacawork/pull/81))
+- After a task was marked read, a page could go without its first offline copy until the next refresh; it now saves it. ([#81](https://github.com/alpacakit/alpacawork/pull/81))
 
 ### Faster
-- While agents are working, the list re-reads only the time strips of the rows that changed, instead of the whole timeline on every write. With a task open, the screen's work while agents write fell to about a quarter on a computer. ([#87](https://github.com/alpacakit/alpacawork/pull/87))
+- While agents are working, the list re-reads only the time strips of the rows that changed, instead of the whole timeline on every write. With a task open, the browser's work while agents write fell to about a quarter on a computer (measured in a 290-task test workspace). ([#87](https://github.com/alpacakit/alpacawork/pull/87))
+- Agents read shorter command help: in a measured coordinator and owner flow, about 13% less text on the CLI and 17% less over MCP. ([#86](https://github.com/alpacakit/alpacawork/pull/86))
 
 ## 0.1.6
 
