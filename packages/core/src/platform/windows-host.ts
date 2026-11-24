@@ -72,8 +72,7 @@ function memoryReading(api: WindowsHostNative): HostReading['memory'] {
   check(api, api.GlobalMemoryStatusEx(memory), 'GlobalMemoryStatusEx');
   const totalBytes = uint64(memory, 8), availableBytes = uint64(memory, 16);
   if (totalBytes <= 0 || availableBytes > totalBytes) throw new Error('GlobalMemoryStatusEx: invalid physical memory counts');
-  // Page-file fields describe commit limits, not bytes physically stored in swap.
-  return { totalBytes, availableBytes, swapUsedBytes: null };
+  return { totalBytes, availableBytes };
 }
 function processesReading(api: WindowsHostNative, processTime: number): ReadonlyMap<number, ProcessStat> {
   const snapshot = api.CreateToolhelp32Snapshot(2 /* TH32CS_SNAPPROCESS */, 0);
@@ -185,7 +184,7 @@ export function windowsHostMeasurement(dataDirectory: string, native?: WindowsHo
       const processTime = Date.now(); // Immediately before the process snapshot, in the startTime coordinate.
       const processes = processesReading(api, processTime);
       return { cpuTicks: { total: totalMs, idle: idleMs }, processTime, processes,
-        memory, load: null, disk };
+        memory, disk };
     },
   };
 }

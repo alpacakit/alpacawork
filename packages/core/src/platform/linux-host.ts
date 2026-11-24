@@ -20,9 +20,9 @@ export function parseMeminfo(text: string): HostReading['memory'] {
     if (!match) throw new Error(`Missing /proc/meminfo ${key}`);
     return Number(match[1]) * 1024;
   };
-  const totalBytes = kib('MemTotal'), availableBytes = kib('MemAvailable'), swapTotal = kib('SwapTotal'), swapFree = kib('SwapFree');
-  if (!(totalBytes > 0) || availableBytes > totalBytes || swapFree > swapTotal) throw new Error('Invalid /proc/meminfo counters');
-  return { totalBytes, availableBytes, swapUsedBytes: swapTotal - swapFree };
+  const totalBytes = kib('MemTotal'), availableBytes = kib('MemAvailable');
+  if (!(totalBytes > 0) || availableBytes > totalBytes) throw new Error('Invalid /proc/meminfo counters');
+  return { totalBytes, availableBytes };
 }
 
 /** Parse native tick fields; the adapter supplies page size and converts ticks to milliseconds. */
@@ -107,14 +107,11 @@ export function linuxHostMeasurement(dataDirectory: string): HostMeasurement {
     readGpus: nvidiaGpuReader(processClock, snapshot),
     read() {
       const disk = statfsSync(dataDirectory);
-      const load = readFileSync('/proc/loadavg', 'utf8').trim().split(/\s+/).slice(0, 3).map(Number);
-      if (load.length !== 3 || load.some(v => !Number.isFinite(v) || v < 0)) throw new Error('Invalid /proc/loadavg');
       const cpu = parseCpuTicks(readFileSync('/proc/stat', 'utf8'));
       const processTime = processClock();
       return {
         cpuTicks: { total: cpu.total * tickMs, idle: cpu.idle * tickMs }, processTime,
         processes: snapshot(), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
-        load: load as [number, number, number],
         disk: { freeBytes: disk.bavail * disk.bsize, totalBytes: disk.blocks * disk.bsize },
       };
     },

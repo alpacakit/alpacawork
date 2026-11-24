@@ -19,9 +19,7 @@ export interface HostReading {
   /** Cumulative milliseconds, including every logical core; all cores together are 100%. */
   cpuTicks: { total: number; idle: number };
   processes: ReadonlyMap<number, ProcessStat>;
-  memory: { totalBytes: number; availableBytes: number; swapUsedBytes: number | null };
-  /** Null means this OS has no equivalent metric, rather than a load of zero. */
-  load: [number, number, number] | null;
+  memory: { totalBytes: number; availableBytes: number };
   disk: { freeBytes: number; totalBytes: number };
 }
 export interface HostGpuReading {

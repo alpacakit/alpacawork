@@ -33,8 +33,8 @@ test('NVIDIA CSV reads per-card counters and distinguishes empty compute use fro
 
 const facts = { hostname: 'fixture', os: 'fixture', cores: 4, memoryBytes: 1024 * MIB };
 const reading: HostReading = {
-  processTime: 100, cpuTicks: { total: 1000, idle: 500 }, load: null,
-  memory: { totalBytes: facts.memoryBytes, availableBytes: 512 * MIB, swapUsedBytes: null },
+  processTime: 100, cpuTicks: { total: 1000, idle: 500 },
+  memory: { totalBytes: facts.memoryBytes, availableBytes: 512 * MIB },
   disk: { freeBytes: 1024 * MIB, totalBytes: 2048 * MIB }, processes: new Map(),
 };
 

@@ -19,7 +19,7 @@ const run = (n: number, cpu: number, role: "owner" | "worker" = "owner") => ({ r
   cpu, memoryBytes: n * GB, processes: 3, heaviest: n === 1 ? { name: "vitest", count: 4 } : null });
 const status: HostStatus = {
   supported: true, facts: { hostname: "workstation", os: "Ubuntu 24.04", cores: 52, memoryBytes: 125 * GB }, parallel: 12,
-  sample: { at: now, cpu: 6.3, memory: { totalBytes: 125 * GB, availableBytes: 100 * GB, swapUsedBytes: 0 }, load: [5.2, 4.9, 4.5],
+  sample: { at: now, cpu: 6.3, memory: { totalBytes: 125 * GB, availableBytes: 100 * GB },
     disk: { freeBytes: 465 * GB, totalBytes: 2000 * GB }, gpus: [],
     runs: [run(1, 31), run(2, 0.4, "worker"), run(3, 0.02), run(4, 0.01), run(5, 0)],
     outside: { cpu: 1.9, memoryBytes: 25 * GB, names: ["chrome-headless", "Xorg"] } },
@@ -134,8 +134,7 @@ test("asking for Host status while settings are open moves there and keeps the o
 });
 
 test("unavailable process values are shown as gaps through the real tab", async () => {
-  const missing: HostStatus = { ...status, sample: { ...status.sample!, load: null,
-    memory: { ...status.sample!.memory, swapUsedBytes: null },
+  const missing: HostStatus = { ...status, sample: { ...status.sample!,
     runs: [{ ...run(1, 1), cpu: null, memoryBytes: null }],
     outside: { cpu: null, memoryBytes: null, names: [] } } };
   vi.spyOn(api, "request").mockResolvedValue(missing);

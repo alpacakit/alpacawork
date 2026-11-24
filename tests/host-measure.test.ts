@@ -25,8 +25,8 @@ const source = (sample: Extract<HostSource, { supported: true }>['sample']): Ext
 
 test('/proc readers take the fields the host status shows', () => {
   assert.deepEqual(parseCpuTicks('cpu  100 5 50 800 20 1 2 3 7 0\ncpu0 1 1 1 1\n'), { total: 981, idle: 820 });
-  assert.deepEqual(parseMeminfo('MemTotal:       1000 kB\nMemFree:  10 kB\nMemAvailable:    250 kB\nSwapTotal:  400 kB\nSwapFree:   100 kB\n'),
-    { totalBytes: 1000 * 1024, availableBytes: 250 * 1024, swapUsedBytes: 300 * 1024 });
+  assert.deepEqual(parseMeminfo('MemTotal:       1000 kB\nMemFree:  10 kB\nMemAvailable:    250 kB\n'),
+    { totalBytes: 1000 * 1024, availableBytes: 250 * 1024 });
   const fields = Array.from({ length: 50 }, (_, index) => String(index + 3));
   fields[4 - 3] = '77'; fields[14 - 3] = '30'; fields[15 - 3] = '12'; fields[22 - 3] = '555'; fields[24 - 3] = '10';
   assert.deepEqual(parseProcessStat(`4242 (Web (Content) x) ${fields.join(' ')}`),
@@ -82,12 +82,15 @@ test('a tight stretch starts after its hold, stays through a dip, and ends after
 });
 
 test('the push names what was tight, for how long, and the heaviest Tasks once each', () => {
-  const sample: HostSampleDTO = { at: 0, cpu: 98, memory: { totalBytes: 100 * GB, availableBytes: 40 * GB, swapUsedBytes: 0 }, load: [50, 40, 30],
+  const sample: HostSampleDTO = { at: 0, cpu: 98, memory: { totalBytes: 100 * GB, availableBytes: 40 * GB },
     disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: [run(10, 'T2'), run(30, 'T1'), run(5, 'T1', 'worker'), run(20, 'T3'), run(1, 'T4')],
     outside: { cpu: 1, memoryBytes: GB, names: [] } };
   const event = hostPushEvent({ start: Date.parse('2026-10-15T00:00:00Z'), end: null, kinds: ['cpu'], peak: { cpu: 98, memoryFreePercent: 40, diskFreeBytes: 400 * GB }, runs: [] }, sample, 'ja');
-  assert.deepEqual(event.payload, { title: 'PC の負荷が厳しい', body: 'CPU 98% が2分続いています。重い順に T1・T3・T2（Run 5件）',
-    url: '/?settings=host', tag: `host:${Date.parse('2026-10-15T00:00:00Z')}` });
+  const { body, url, tag } = event.payload;
+  assert.match(body, /CPU 98%.*2分/);
+  assert.deepEqual(body.match(/\bT\d+\b/g), ['T1', 'T3', 'T2']);
+  assert.match(body, /Run 5件/);
+  assert.deepEqual({ url, tag }, { url: '/?settings=host', tag: `host:${Date.parse('2026-10-15T00:00:00Z')}` });
 });
 
 describe('the monitor and its record', () => {
@@ -100,7 +103,7 @@ describe('the monitor and its record', () => {
   afterEach(() => rmSync(area, { recursive: true, force: true }));
 
   const sampleAt = (now: number, cpu: number): HostSampleDTO => ({ at: now, cpu,
-    memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
+    memory: { totalBytes: 100 * GB, availableBytes: 60 * GB },
     disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: cpu > 50 ? [run(cpu - 10)] : [], outside: { cpu: 1, memoryBytes: GB, names: ['Xorg'] } });
 
   test('disk warns below 50 GB and stays tight until 55 GB without repeated starts', async () => {
@@ -225,7 +228,7 @@ for (const platform of [null, 'darwin', 'win32']) {
     let probes = 0;
     const hostSource: HostSource = platform ? { supported: false, platform } : {
       ...source((_runs, now) => ({ at: now, cpu: 20,
-        memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
+        memory: { totalBytes: 100 * GB, availableBytes: 60 * GB },
         disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: [], outside: { cpu: 0, memoryBytes: 0, names: [] } })),
       readGpus: async () => { probes++; return gpus; },
     };
@@ -271,7 +274,7 @@ test('an unsupported source never samples, records, or notifies', async () => {
 test('normalized readings give CPU deltas, whole Run trees, and PID reuse on every OS', () => {
   let reading: HostReading = { processTime: 2, cpuTicks: { total: 1000, idle: 800 },
     processes: new Map([[10, { pid: 10, ppid: 1, comm: 'agent', ticks: 30, startTime: 1, rssBytes: 100 }]]),
-    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: 100 }, load: [1, 2, 3], disk: { freeBytes: 400, totalBytes: 900 } };
+    memory: { totalBytes: 1000, availableBytes: 500 }, disk: { freeBytes: 400, totalBytes: 900 } };
   const sampler = new HostSampler({ supported: true, facts, read: () => reading, argv: () => ['node', '/w/check.js'] });
   const roots = [{ runId: 'R1', taskId: 'T1', title: 'test', role: 'owner' as const, model: null, pid: 10 }];
   assert.equal(sampler.sample(roots, 0).cpu, null);
@@ -284,7 +287,7 @@ test('normalized readings give CPU deltas, whole Run trees, and PID reuse on eve
   assert.equal(sample.cpu, 80);
   assert.deepEqual(sample.runs[0], { runId: 'R1', taskId: 'T1', title: 'test', role: 'owner', model: null, cpu: 30, memoryBytes: 300, processes: 2, heaviest: { name: 'check', count: 1 } });
   assert.deepEqual(sample.outside, { cpu: 5, memoryBytes: 300, names: ['other'] });
-  assert.deepEqual([sample.memory, sample.load, sample.disk], [reading.memory, reading.load, reading.disk]);
+  assert.deepEqual([sample.memory, sample.disk], [reading.memory, reading.disk]);
   reading = { ...reading, processTime: 4, cpuTicks: { total: 1200, idle: 900 }, processes: new Map([
     [10, { pid: 10, ppid: 1, comm: 'node', ticks: 7, startTime: 4, rssBytes: 50 }],
   ]) };

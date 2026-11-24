@@ -103,7 +103,7 @@ export class HostSampler {
   }
 
   sample(roots: readonly RunRoot[], at = Date.now()): HostSample {
-    const { cpuTicks, processTime, processes, memory, load, disk } = this.measurement.read();
+    const { cpuTicks, processTime, processes, memory, disk } = this.measurement.read();
     const elapsed = this.previousCpu ? cpuTicks.total - this.previousCpu.total : 0;
     const idle = this.previousCpu ? cpuTicks.idle - this.previousCpu.idle : 0;
     const validInterval = elapsed > 0 && idle >= 0 && idle <= elapsed;
@@ -151,7 +151,7 @@ export class HostSampler {
     this.previousTicks = ticks;
     this.names = names;
     return {
-      at, cpu, memory, load, disk, gpus: [],
+      at, cpu, memory, disk, gpus: [],
       runs: runs.sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1) || (b.memoryBytes ?? -1) - (a.memoryBytes ?? -1)),
       outside: outsideLoad,
     };

@@ -48,8 +48,7 @@ const hostGpuSchema = z.object({
 
 export const hostSampleSchema = z.object({
   at, cpu: percent.nullable(),
-  memory: z.object({ totalBytes: bytes, availableBytes: bytes, swapUsedBytes: bytes.nullable() }).strict(),
-  load: z.tuple([z.number(), z.number(), z.number()]).nullable(),
+  memory: z.object({ totalBytes: bytes, availableBytes: bytes }).strict(),
   disk: z.object({ freeBytes: bytes, totalBytes: bytes }).strict(),
   gpus: z.array(hostGpuSchema),
   runs: z.array(hostRunLoadSchema),
