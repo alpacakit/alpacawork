@@ -17,7 +17,6 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contract";
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
-import type { RunStep } from "@alpacawork/contract/run";
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
@@ -964,8 +963,10 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
 
 /**
  * One working person as a History row: time worked, who it is, and their words and latest step under that. The lead's
- * words and steps open and close as every History disclosure does (LeadNote, LeadSteps), and its ⌄ turns with them.
- * Everyone else's are open, their latest step in full: they are drawn only inside the row's body.
+ * words open and close as every History disclosure does (LeadNote), and its ⌄ turns with them; its steps switch at once
+ * between the latest one's line and that step in full over the ones before it (they go by every few seconds, so they do
+ * not ride the disclosure's move). Everyone else's are open, their latest step in full: they are drawn only inside the
+ * row's body.
  */
 function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: ControlRunDTO; task: TaskDetail; onFollow: (id: string) => void; open: boolean; lead: boolean; others?: ReactNode }) {
   const { t } = useTranslation("reader");
@@ -997,8 +998,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {steps.length === 0 ? null : lead ? <LeadSteps open={open} steps={steps} className={`${cell} mt-1.5`} />
-      : <RunSteps steps={steps} open trail={0} className={`${cell} mt-1.5`} />}
+    {steps.length > 0 && <RunSteps steps={steps} open={open} trail={lead ? undefined : 0} newestFirst className={`${cell} mt-1.5`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
@@ -1007,10 +1007,11 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
 const NOTE = "mt-0.5 min-w-0 [overflow-wrap:anywhere] [&>div]:text-inherit";
 
 /**
- * Folded as drawn: true once a fold has finished moving (DisclosureBody's step), false from the moment it opens. What
- * a peeking body holds keeps its open layout while it folds, so the fold ends on what it showed, then takes its folded one.
+ * The lead's words, one copy open or folded: folded, its DisclosureBody keeps their first whole lines shown (up to
+ * two, as useLineClip draws them), and opening unfolds the rest under them over the same step and curve as every History
+ * disclosure, so no line is drawn twice on the way. The "…" goes as it opens and comes back once it has folded.
  */
-function useShut(open: boolean): boolean {
+function LeadNote({ open, words, task, onFollow, className }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void; className: string }) {
   const [shut, setShut] = useState(!open);
   if (open && shut) setShut(false);
   useEffect(() => {
@@ -1018,30 +1019,6 @@ function useShut(open: boolean): boolean {
     const timer = setTimeout(() => setShut(true), reducedMotion() ? 0 : duration("base"));
     return () => clearTimeout(timer);
   }, [open, shut]);
-  return shut;
-}
-
-/**
- * The lead's steps, open or folded on the row's own disclosure: folded, its body keeps the latest step's one line
- * shown, and opening unfolds that step in full and the ones before it under the same step and curve as the words.
- */
-function LeadSteps({ open, steps, className }: { open: boolean; steps: readonly RunStep[]; className: string }) {
-  const shut = useShut(open);
-  const box = useRef<HTMLDivElement>(null);
-  // Folded, one line of the steps' own type shows.
-  const [least, setLeast] = useState(0);
-  useLayoutEffect(() => { if (box.current) setLeast(Number.parseFloat(getComputedStyle(box.current).lineHeight)); }, []);
-  return <div ref={box} className={`${className} text-xs`}><DisclosureBody open={open} least={least}>
-    <RunSteps steps={steps} open={!shut} newestFirst /></DisclosureBody></div>;
-}
-
-/**
- * The lead's words, one copy open or folded: folded, its DisclosureBody keeps their first whole lines shown (up to
- * two, as useLineClip draws them), and opening unfolds the rest under them over the same step and curve as every History
- * disclosure, so no line is drawn twice on the way. The "…" goes as it opens and comes back once it has folded.
- */
-function LeadNote({ open, words, task, onFollow, className }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void; className: string }) {
-  const shut = useShut(open);
   const clip = useLineClip(!shut, words);
   // What stays shown folded: the words' first whole lines as they are drawn now, open or not, so a fold always ends
   // on the words it holds then.
@@ -1101,72 +1078,56 @@ export function ContextPage({ task, onFollow }: { task: TaskDetail; onFollow: (i
 }
 
 /**
- * One motion rule for every report disclosure: while it moves, its height goes from where it is drawn to where it is
- * going, which is always its content's own height as it is now (open) or what it shows folded (`least`, else nothing),
- * over --motion-base in-out. A content that changes on the way (a working row's step goes by every few seconds) sends it
- * on from where it is drawn to the new height, taller or shorter, so it is never cut, never left with a band under it,
- * and never jumps at the end. Arrived open, it stands at its content's height (auto) and follows it at once; folded, it
- * keeps to what it shows. With reduced motion it is at once where it would arrive. The height itself moves, so what it
- * shows is always all of its height: a grid row's fr did not. It moves as a transition, so the reader keeps its place
- * by its events (reading-position). With `least`, folded it still shows that many pixels of its top, read and pressed
- * as they are (the Working row's lines, LeadNote).
+ * One motion rule for every report disclosure: its height goes from where it is drawn to its body's height, or
+ * back to nothing, over --motion-base in-out, and open it follows its body's height. The height itself moves, so what
+ * it shows is always all of its height: a grid row's fr did not, and left a band with nothing in it under the words on
+ * the way. It moves as a transition, so the reader keeps its place by its events (reading-position). With `least`,
+ * folded it still shows that many pixels of its top, read and pressed as they are (the Working row's lines, LeadNote).
  */
 function DisclosureBody({ open, least, children }: { open: boolean; least?: number; children: ReactNode }) {
   const [seen, setSeen] = useState(open);
   // Latch before committing: the body's first opening must not cause a second commit just to remember it was seen.
   if (open && !seen) setSeen(true);
   const peeks = least !== undefined, hidden = !open && !peeks;
-  const body = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), shown = useRef(open);
-  // Watches the content while a move is under way, and only then.
-  const moving = useRef<ResizeObserver | null>(null);
-  const settled = () => { moving.current?.disconnect(); moving.current = null; };
+  const body = useRef<HTMLDivElement>(null), shown = useRef(open);
   useLayoutEffect(() => {
-    const box = body.current, inner = content.current;
-    if (!box || !inner) return;
+    const box = body.current;
+    if (!box) return;
     const folded = `${least ?? 0}px`;
-    // Where it goes: its content's own height (not the box's scrollHeight, which never drops below the box) or its fold.
-    const target = () => shown.current ? inner.offsetHeight : least ?? 0;
-    const turned = shown.current !== open;
+    const moving = shown.current !== open;
     shown.current = open;
-    if (!turned) {
-      // A move under way goes on to where it now goes (a fold whose shown part changed included).
-      if (moving.current) { box.style.height = `${target()}px`; return; }
-      // Not moving: open, it stands at its content's height; folded, it keeps to what it shows, at once.
+    // Not turned: folded, it keeps to what it still shows, at once (first measured, or its words changed), as words in
+    // a row change; a fold under way goes on to it. Open, it follows its body.
+    if (!moving) {
       if (open || box.style.height === folded) return;
       // First drawn, it stands at its own height (auto), which nothing glides from: no reflow to hold the glide back.
       // History draws a hundred of these at once, and a reflow for each laid the whole reader out that many times.
       if (box.style.height === "") { box.style.height = folded; return; }
-      box.style.transition = "none";
+      const folding = box.getAnimations().some(move => move.playState === "running");
+      if (!folding) box.style.transition = "none";
       box.style.height = folded;
-      void box.offsetHeight; box.style.transition = "";
+      if (!folding) { void box.offsetHeight; box.style.transition = ""; }
       return;
     }
     // From where it is drawn, a move turned back on the way included.
-    settled();
-    const from = box.getBoundingClientRect().height, to = target();
+    const from = box.getBoundingClientRect().height, to = open ? box.scrollHeight : least ?? 0;
     if (reducedMotion() || Math.abs(to - from) < 1) { box.style.height = open ? "" : folded; return; }
     box.style.height = `${from}px`;
     void box.offsetHeight;
     box.style.height = `${to}px`;
-    if (typeof ResizeObserver === "undefined") return;
-    const follow = moving.current = new ResizeObserver(() => { if (moving.current === follow) box.style.height = `${target()}px`; });
-    follow.observe(inner);
   }, [open, least]);
-  useEffect(() => settled, []);
-  // Arrived: open, it follows its content again; folded, it stays where it is.
+  // Arrived open (or stopped on the way while open), it follows its body again.
   const arrived = (event: React.TransitionEvent<HTMLDivElement>) => {
     const box = event.currentTarget;
-    if (event.target !== box || event.propertyName !== "height") return;
-    // A move stopped because it was turned back, or sent on to a new height, is taken over by the move that turned it.
+    if (event.target !== box || event.propertyName !== "height" || !shown.current) return;
+    // A move stopped because it was turned back is taken over by the move that turned it.
     if (event.type === "transitioncancel" && box.getAnimations().some(move => move.playState === "running")) return;
-    settled();
-    if (shown.current) box.style.height = "";
+    box.style.height = "";
   };
   // The clip reaches 12px past the body's right edge (the reader's own room there), so a press ending on that edge is whole.
-  // Its content is one block of its own (flow-root keeps its first and last margins inside), measured as it is.
   return <div ref={body} data-disclosure-body data-open={open} aria-hidden={hidden} inert={hidden} onTransitionEnd={arrived} onTransitionCancel={arrived}
     className="-mr-3 overflow-hidden pr-3 transition-[height] duration-(--motion-base)">
-    <div ref={content} className="flow-root">{open || seen || peeks ? children : null}</div>
+    {open || seen || peeks ? children : null}
   </div>;
 }
 
