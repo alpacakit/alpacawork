@@ -39,12 +39,14 @@ function WindowRow({ window, now, scoped }: { window: LimitWindow; now: number; 
   const { t, i18n } = useTranslation("chrome");
   const tone = limitTone(window.usedPercent);
   const reset = resetWords(window.resetsAt, now, i18n.language, t);
-  return <li data-limit-window={window.kind} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-0.5">
-    <span>{windowLabel(window, t, scoped)}</span>
+  // The label's and the percent's boxes are trimmed to their letters (capitals over the baseline), so centring the line
+  // centres what is drawn: the bar stands level with the words, not with their line boxes (which sit about 1px lower).
+  return <li data-limit-window={window.kind} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-1.5">
+    <span className="[text-box:trim-both_cap_alphabetic]">{windowLabel(window, t, scoped)}</span>
     <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
       <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />
     </span>
-    <span className={cn("text-right font-medium tabular-nums", TONE_TEXT[tone])}>{percentText(window.usedPercent)}</span>
+    <span className={cn("text-right font-medium tabular-nums [text-box:trim-both_cap_alphabetic]", TONE_TEXT[tone])}>{percentText(window.usedPercent)}</span>
     {reset && <span className="col-span-full text-xs text-muted">{reset}</span>}
   </li>;
 }
