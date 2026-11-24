@@ -242,8 +242,9 @@ export async function copilotLimits(): Promise<LimitsReport> {
   const client = new CopilotClient({ workingDirectory: process.cwd() });
   try {
     await client.start();
-    const [quota, auth] = await Promise.all([client.rpc.account.getQuota({}), client.getAuthStatus()]);
-    return { windows: copilotLimitWindows(quota), account: auth.login || null };
+    // Who is signed in is beside the limits: its failure leaves the account unnamed, not the limits unread.
+    const [quota, auth] = await Promise.all([client.rpc.account.getQuota({}), client.getAuthStatus().catch(() => null)]);
+    return { windows: copilotLimitWindows(quota), account: auth?.login || null };
   } finally { await client.stop().catch(() => {}); }
 }
 

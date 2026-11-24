@@ -6,7 +6,7 @@
  * Accounts are per kind of agent (profiles share the server's sign-in), so the first profile of each kind is asked.
  */
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
-import type { AgentLimits, AgentLimitsResponse } from '@alpacawork/contract/agent-limits';
+import { limitsReportSchema, type AgentLimits, type AgentLimitsResponse, type LimitsReport } from '@alpacawork/contract/agent-limits';
 import { AGENT_CHECK_MS } from '@alpacawork/contract';
 import { enabledAgents, settingAdapter, type AgentSetting } from '@alpacawork/contract/agent-settings';
 import type { AiRow } from '@alpacawork/contract';
@@ -32,6 +32,15 @@ export function limitsAgents(config: LimitsConfig): [BuiltinAdapterId, AgentSett
     if (kind && !kinds.has(kind)) kinds.set(kind, setting);
   }
   return [...kinds];
+}
+
+/** Every agent's answer passes the same contract; an account name the contract refuses is dropped, not the limits. */
+function checkedReport(report: unknown): LimitsReport | null {
+  if (report === null || typeof report !== 'object') return null;
+  const whole = limitsReportSchema.safeParse(report);
+  if (whole.success) return whole.data;
+  const windows = limitsReportSchema.safeParse({ ...report, account: null });
+  return windows.success ? windows.data : null;
 }
 
 export class AgentLimitsMonitor {
@@ -77,7 +86,7 @@ export class AgentLimitsMonitor {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), AGENT_CHECK_MS);
     try {
       const result = await probe(argv, environment, names, controller.signal, { input: reader.input, limit: LIMITS_OUTPUT });
-      const report = !result.failed && result.status === 0 ? reader.read(result.stdout) : null;
+      const report = !result.failed && result.status === 0 ? checkedReport(reader.read(result.stdout)) : null;
       const at = this.now();
       // A failed read keeps what was last read: its time says how old it is. Asked again after `freshMs`.
       const next: Known = report ? { at, limits: { adapter: id, state: 'ok', ...report, observedAt: new Date(at).toISOString() } }

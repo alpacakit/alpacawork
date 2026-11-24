@@ -60,7 +60,8 @@ process.stdin.resume(); process.stdin.on('end', () => console.log(JSON.stringify
   writeFileSync(bridge, `import { appendFileSync, existsSync } from 'node:fs';
 appendFileSync(${JSON.stringify(calls)}, process.argv.slice(2).join(' ') + '\\n');
 if (existsSync(${JSON.stringify(join(root, 'fail'))})) process.exit(2);
-console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: 9, resetsAt: null }], account: 'someone' }));\n`);
+const used = existsSync(${JSON.stringify(join(root, 'used'))}) ? 20 : 9;
+console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: used, resetsAt: null }], account: 'someone' }));\n`);
   let now = 0;
   const config = { agents: { grok: { enabled: true }, codex: { enabled: true }, claude: { enabled: true }, 'claude-chrome': { adapter: 'claude', enabled: true },
     off: { adapter: 'copilot', enabled: false } }, aiStack: [{ agent: 'claude' }] };
@@ -78,8 +79,11 @@ test('one entry per kind of agent, the task stack\'s first, then the other enabl
   assert.match(f.calls().find(call => call.startsWith('codex')) ?? '', /^codex --command .*\/codex --limits$/);
   await f.monitor.read();
   assert.equal(f.calls().length, 2);
-  // The screen's refresh asks every agent again while the last answers are still fresh, and answers once they reply.
-  await f.monitor.read({ fresh: true });
+  // The screen's refresh asks every agent again while the last answers are still fresh, and answers with their new
+  // answers; two refreshes at once ask each agent once.
+  writeFileSync(join(f.root, 'used'), '');
+  const [refreshed] = await Promise.all([f.monitor.read({ fresh: true }), f.monitor.read({ fresh: true })]);
+  assert.equal(refreshed.agents.find(agent => agent.adapter === 'codex')!.windows[0]!.usedPercent, 20);
   assert.equal(f.calls().length, 4);
 });
 

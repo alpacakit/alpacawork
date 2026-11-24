@@ -272,7 +272,9 @@ export async function codexLimits(command: string): Promise<LimitsReport> {
           let message: Message;
           try { message = JSON.parse(buffered.slice(0, end)); } catch { message = {}; }
           buffered = buffered.slice(end + 1);
-          if (message.error && [1, 2, 3].includes(message.id as number)) reject(new Error(message.error.message ?? 'app-server error'));
+          // Who is signed in is beside the limits: its failure leaves the account unnamed, not the limits unread.
+          if (message.error && message.id === 3) { answers.set(3, null); if (answers.size === 2) resolve([answers.get(2), null]); }
+          else if (message.error && (message.id === 1 || message.id === 2)) reject(new Error(message.error.message ?? 'app-server error'));
           else if (message.id === 1) {
             write({ method: 'initialized', params: {} });
             write({ id: 2, method: 'account/rateLimits/read', params: {} });

@@ -24,7 +24,7 @@
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",
     "refresh": "今すぐ読み直す",
-    "refreshFailed": "読み直せませんでした",
+    "refreshFailed": "利用上限を読み直せませんでした",
     "refreshing": "読み直しています…",
     "reset": {
       "at": "{{when}} にリセット",

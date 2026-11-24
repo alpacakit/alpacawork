@@ -1,5 +1,4 @@
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
-import type { LimitsReport } from '@alpacawork/contract/agent-limits';
 import type { AgentExit, ReaderResult } from '../../runs/readers/result.js';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 import type { ActivityEvent } from '../../runs/activity-events.js';
@@ -18,7 +17,8 @@ export type SkillCatalogContext = Pick<CatalogInput, 'env' | 'session'> & { kind
  * How an agent reports its account's plan limits and who it is signed in as, without a conversation or a model call: the arguments after the
  * agent's launch prefix, what to write to its stdin, and the translation of what it prints. Null: it reports none.
  */
-export type LimitsProbe = { args: readonly string[]; input: string | null; read(stdout: string): LimitsReport | null };
+/** `read` gives the agent's answer in the report's shape, or null when it gave none; the limits monitor checks it. */
+export type LimitsProbe = { args: readonly string[]; input: string | null; read(stdout: string): unknown };
 export type AgentAdapter = {
   input: InputProtocol;
   read(invocation: AdapterInvocation, folder: string, exit: AgentExit): AdapterObservation;

@@ -5,7 +5,7 @@ import { fetchAcceptedResource, ensureReadAnchor, readerTaskRow, readState, reco
 import type { ReadAssessment } from './read-model';
 import { sendDirectIntent } from "./direct-write";
 import { bindIntentTransport, intentKey } from "./write-intent";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { attachmentBytes, DEFAULT_LIMITS, serverSettingsSchema, type ServerSettings } from "@alpacawork/contract";
 import { taskRowFields, taskWriteResultSchema, type ProjectedIndexDTO, type ControlRunDTO } from "@alpacawork/contract/control";
@@ -485,12 +485,24 @@ export function useSaveServerSettings(meta?: WriteOptions) {
   } });
 }
 
-/** Read the plan limits again now. No model is called, so it costs no tokens: each agent answers in a second or two. */
-export function useRefreshAgentLimits() {
+/**
+ * Read the plan limits again now. No model is called, so it costs no tokens: each agent answers in a second or two. It is
+ * a read, not a write: it replaces the bar's own read (one in flight is dropped, so an older answer cannot land after it)
+ * and its failure is the caller's to say.
+ */
+export function useRefreshAgentLimits(): { refresh: () => Promise<void>; refreshing: boolean } {
   const client = useQueryClient();
   const root = useFrameSelector((data) => data?.info.root ?? "");
-  return useMutation({ mutationFn: () => readAgentLimits(true),
-    onSuccess: limits => client.setQueryData(resources.agentLimits(root).queryKey, limits) });
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    const options = resources.agentLimits(root);
+    setRefreshing(true);
+    try {
+      await client.cancelQueries({ queryKey: options.queryKey });
+      await client.fetchQuery({ ...options, queryFn: ({ signal }) => readAgentLimits(true, signal), staleTime: 0 });
+    } finally { setRefreshing(false); }
+  };
+  return { refresh, refreshing };
 }
 
 /** The stopped Run reaches the screen with the feed's next delta. */

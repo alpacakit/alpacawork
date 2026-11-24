@@ -24,7 +24,7 @@
     "readAgo_other": "{{count}} 分钟前更新",
     "readNow": "刚刚更新",
     "refresh": "立即重新读取",
-    "refreshFailed": "无法重新读取",
+    "refreshFailed": "无法重新读取 AI 用量上限",
     "refreshing": "正在读取…",
     "reset": {
       "at": "{{when}} 重置",

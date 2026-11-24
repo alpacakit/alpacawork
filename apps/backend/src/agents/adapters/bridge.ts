@@ -1,6 +1,5 @@
 import { AGENT_ADAPTERS, type BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
 import { agentUsageSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
-import { limitsReportSchema } from '@alpacawork/contract/agent-limits';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { runErrorCauseSchema, type RunFailure } from '@alpacawork/contract/run-failure';
 import { bridgeActivity, ToolResults } from './activity.js';
@@ -31,10 +30,7 @@ export const bridgeInput: InputProtocol = {
 export const bridgeLimits: LimitsProbe = {
   args: ['--limits'], input: null,
   read(stdout) {
-    try {
-      const parsed = limitsReportSchema.safeParse(JSON.parse(stdout.trim().split('\n').at(-1) ?? ''));
-      return parsed.success ? parsed.data : null;
-    } catch { return null; }
+    try { return JSON.parse(stdout.trim().split('\n').at(-1) ?? ''); } catch { return null; }
   },
 };
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
