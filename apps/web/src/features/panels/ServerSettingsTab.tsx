@@ -271,15 +271,20 @@ function ServerDraftFoot() {
  * One rule for the dialog body's foot room: as tall as the save row kept in view there now, and none when no such row
  * is shown (another tab, the options folded, a phone, where it is in the flow). It is asked again whenever a save row
  * appears, goes or changes height, or a fold in the body opens or closes (a folded row keeps its size), so the order
- * the tabs and folds were opened in does not matter.
+ * the tabs and folds were opened in does not matter. The field in hand is brought clear of a row that grew over it.
  */
 function keepFieldsClear(block: HTMLDivElement | null) {
   const body = block?.closest<HTMLElement>('[data-slot="dialog-body"]');
   if (!block || !body) return;
   const fit = () => {
     const shown = [...body.querySelectorAll<HTMLElement>("[data-settings-foot-block]")]
-      .find(each => (each.checkVisibility?.() ?? true) && getComputedStyle(each).position === "sticky");
+      .find(each => (each.checkVisibility?.() ?? true) && each.offsetHeight > 0 && getComputedStyle(each).position === "sticky");
     body.style.scrollPaddingBottom = shown ? `${shown.offsetHeight}px` : "";
+    // A row that grew (a first change adds its note, a refusal its reason) must not cover the field in hand.
+    const held = document.activeElement;
+    if (!shown || !(held instanceof HTMLElement) || !body.contains(held) || shown.contains(held)) return;
+    const field = held.getBoundingClientRect(), row = shown.getBoundingClientRect();
+    if (field.bottom > row.top && field.top < row.bottom) held.scrollIntoView({ block: "nearest" });
   };
   const observer = new ResizeObserver(fit);
   observer.observe(block);
