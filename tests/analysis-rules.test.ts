@@ -30,12 +30,23 @@ test('first acceptance retains the unit and each kind of rework is based on comm
   assert.equal(facts([created, first, submit, event('send-back', 'review_sent_back', 101), accepted]).passed, false);
   assert.equal(facts([created, first, submit, { ...submit, id: 'submit-again', at: stamp(160) }, accepted]).passed, false);
   const update = event('update', 'request_accepted', 160, { fromState: 'doing' });
-  const linked = event('link', 'linked', 159, { originCauseId: update.id, fromState: 'waiting', toState: 'doing' });
-  assert.equal(facts([created, first, submit, linked, update, accepted]).passed, false);
-  assert.equal(facts([created, first, submit, { ...linked, originCauseId: 'other' }, update, accepted]).passed, true);
+  const linked = event('link', 'linked', 161, { originCauseId: update.id, fromState: 'waiting', toState: 'doing' });
+  const later = event('later-link', 'linked', 170, { originCauseId: update.id, fromState: 'doing', toState: 'error' });
+  assert.equal(facts([created, first, submit, update, linked, later, accepted]).passed, false);
+  assert.equal(facts([created, first, submit, { ...linked, at: stamp(159) }, update, accepted]).passed, true);
+  assert.equal(facts([created, first, submit, update, { ...linked, originCauseId: 'other' }, accepted]).passed, true);
   const manual = event('manual', 'reported', 210, { fromState: 'doing', toState: 'done' });
   assert.equal(facts([created, manual]).acceptedAt, manual.at);
   assert.equal(facts([...base, manual]).acceptedAt, accepted.at);
+});
+
+test('a state-preserving link during review does not turn the initial instruction into rework', () => {
+  const initial = event('initial', 'request_accepted', 0, { fromState: 'todo',
+    actor: { kind: 'main', provider: 'codex', conversationId: 'synthetic' } });
+  const submit = event('submit', 'reported', 10, { fromState: 'doing', toState: 'waiting' });
+  const boundary = event('boundary', 'linked', 20, { originCauseId: initial.id, fromState: 'waiting', toState: null });
+  const accepted = event('accepted', 'review_approved', 30, { fromState: 'waiting', toState: 'done' });
+  assert.equal(taskOutcome([initial, submit, boundary, accepted], 'done', initial.at).passed, true);
 });
 
 test('stop uses the last real transition and the recorded cause at the local day boundary', () => {

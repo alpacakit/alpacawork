@@ -75,14 +75,17 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
   const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && (!stoppedAt || entry.at <= stoppedAt)).length;
   const linked = new Map<string, TaskState | null>();
-  for (const entry of log)
-    if (entry.kind === 'linked' && entry.originCauseId && !linked.has(entry.originCauseId)) linked.set(entry.originCauseId, entry.fromState);
-  const rework = log.some((entry, index) => {
-    if (sendBack(entry)) return true;
-    if (!instruction(entry)) return false;
-    if (acceptedIndex >= 0 && index > acceptedIndex) return true;
-    return (linked.has(entry.id) ? linked.get(entry.id) : entry.fromState) === 'waiting';
-  });
+  let rework = false;
+  // Walk backward so each instruction sees its first subsequent state transition.
+  for (let index = log.length - 1; index >= 0; index--) {
+    const entry = log[index]!;
+    if (entry.kind === 'linked' && entry.originCauseId && entry.toState !== null)
+      linked.set(entry.originCauseId, entry.fromState);
+    if (sendBack(entry)) { rework = true; break; }
+    if (!instruction(entry)) continue;
+    const seen = linked.has(entry.id) ? linked.get(entry.id) : entry.fromState;
+    if (seen === 'waiting' || acceptedIndex >= 0 && index > acceptedIndex) { rework = true; break; }
+  }
   const passed = acceptedAt !== null && submits <= 1 && !rework;
   return { requestedAt, acceptedAt, stoppedAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
