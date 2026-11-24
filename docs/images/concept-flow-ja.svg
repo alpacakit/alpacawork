@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 424" width="410" height="424" role="img" aria-labelledby="t d">
-<!-- The Japanese concept page's drawing, from how-it-works-ja.svg with one number per step and the words of the Japanese docs. The colours follow the viewer's light or dark setting. -->
+<!-- The Japanese concept page's drawing, with one number per step and the words of the Japanese docs. The colours follow the viewer's light or dark setting. -->
 <title id="t">1つの依頼が alpacawork の中を進む流れ</title>
 <desc id="d">1 あなたがやりたいことを、窓口の AI（コーディネーター）に伝えます。2 コーディネーターはタスクにして、受け持つ AI（責任者）につなぎます。3 責任者は仕事を子タスクに分けてそれぞれの責任者に任せ、作業者に手伝いを頼みます。4 質問と報告が、確認待ちとしてあなたに届きます。</desc>
 <style>

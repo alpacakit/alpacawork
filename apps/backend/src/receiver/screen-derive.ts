@@ -220,7 +220,7 @@ export const deriveTask: DeriveTask = (records, id) => {
     state: view.state, baseState: view.baseState, hold: view.hold, ball,
     running: placements.some(placement => placement.active && placement.runtime.runningCount > 0),
     working: placements.some(placement => placement.active && (placement.runtime.runningCount > 0 || placement.runtime.queuedCount > 0)),
-    homeWorking: bundle.runs.some(run => run.state === 'queued' || run.state === 'running' || run.state === 'needs_review'),
+    homeWorking: bundle.runs.some(run => run.state === 'running'),
     usage,
     openRuns: runs.flatMap(run => {
       const span = runSpan(run, null);

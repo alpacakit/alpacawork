@@ -1,5 +1,5 @@
 import { measuredUsage, usageRecord } from './usage.js';
-import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
+import type { AgentUsage, BridgeItem } from '@alpacawork/contract/agent-bridge';
 import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
 import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
@@ -55,6 +55,13 @@ type Pending = { resolve: (value: any) => void; reject: (error: Error) => void }
 /** A compaction Codex runs as a turn of its own (thread/compact/start), which is no turn of the Run. */
 type Compaction = { settle(result: CompactionResult): void; error: string | null };
 const snake = (name: string) => name.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+/** Only what the bridge boundary reads crosses it. A provider item can carry megabytes of command output or diffs,
+ * and one line over the reader's limit would void the whole Run's outcome. */
+function boundaryItem(item: Record<string, unknown>): BridgeItem {
+  const type = snake(String(item.type));
+  return { type, ...item.id !== undefined ? { id: item.id } : {},
+    ...type === 'command_execution' ? { command: item.command } : {}, ...type === 'agent_message' ? { text: item.text } : {} };
+}
 const text = (value: string) => [{ type: 'text', text: value, text_elements: [] }];
 const imageInput = (value: string) => {
   const images = [...value.matchAll(/^!\[[^\]\n]*\]\((\/[^)\n]+\.(?:png|jpe?g|webp))\)$/gim)]
@@ -225,8 +232,7 @@ export class CodexRuntime implements Runtime {
       // A compaction leaves the fill unknown until the next model call says it.
       if (message.method === 'item/completed' && item.type === 'contextCompaction')
         this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
-      this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed',
-        item: { ...item, type: snake(String(item.type)) } });
+      this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed', item: boundaryItem(item) });
     } else if (message.method === 'thread/tokenUsage/updated') {
       this.usage = codexUsage(params.tokenUsage?.total);
       const context = codexContext(params.tokenUsage);

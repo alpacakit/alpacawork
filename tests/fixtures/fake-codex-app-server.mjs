@@ -29,7 +29,7 @@ async function run(id, plan) {
     log({ child: 'done' });
   }
   while (plan.gate && !existsSync(plan.gate)) await delay(20);
-  notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true' } });
+  notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true', aggregatedOutput: 'provider output' } });
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.
