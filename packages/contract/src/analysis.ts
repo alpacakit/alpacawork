@@ -16,21 +16,30 @@ const scope = {
   project: projectIdSchema.optional(),
   timeZone: z.string().refine(validTimeZone, 'Expected an IANA time zone').optional(),
 };
-const period = { period: analysisPeriodSchema, end: analysisDaySchema.optional() };
-export const analysisTasksInput = z.strictObject({ ...scope, ...period, bucket: analysisBucketSchema, by: analysisTaskBySchema.optional() });
-export const analysisUsageInput = z.strictObject({ ...scope, ...period, bucket: analysisBucketSchema, by: analysisUsageBySchema.optional() });
-export const analysisListInput = z.strictObject({
-  ...scope, period: period.period.optional(), end: period.end,
+const dates = z.strictObject({
+  period: analysisPeriodSchema.optional(), end: analysisDaySchema.optional(),
   from: analysisDaySchema.optional(), to: analysisDaySchema.optional(),
-  set: analysisSetSchema, by: analysisUsageBySchema.optional(), key: z.string().min(1).max(512).optional(),
-  value: analysisValueSchema.optional(), cursor: z.string().min(1).max(2048).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-}).superRefine((input, ctx) => {
+});
+function validateDates(input: z.infer<typeof dates>, ctx: z.RefinementCtx) {
   const issue = (field: string, message: string) => ctx.addIssue({ code: 'custom', path: [field], message });
-  if (input.period && (input.from || input.to) || !input.period && (!input.from || !input.to))
+  if (input.period ? input.from || input.to : !input.from || !input.to)
     issue('period', 'Choose a period or both from and to dates');
   if (!input.period && input.end) issue('end', 'End requires a period');
   if (input.from && input.to && input.from > input.to) issue('to', 'To must be on or after from');
+}
+export const analysisTasksInput = z.strictObject({
+  ...scope, ...dates.shape, bucket: analysisBucketSchema, by: analysisTaskBySchema.optional(),
+}).superRefine(validateDates);
+export const analysisUsageInput = z.strictObject({
+  ...scope, ...dates.shape, bucket: analysisBucketSchema, by: analysisUsageBySchema.optional(),
+}).superRefine(validateDates);
+export const analysisListInput = z.strictObject({
+  ...scope, ...dates.shape,
+  set: analysisSetSchema, by: analysisUsageBySchema.optional(), key: z.string().min(1).max(512).optional(),
+  value: analysisValueSchema.optional(), cursor: z.string().min(1).max(2048).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+}).superRefine(validateDates).superRefine((input, ctx) => {
+  const issue = (field: string, message: string) => ctx.addIssue({ code: 'custom', path: [field], message });
   if (!!input.by !== !!input.key) issue('key', 'A breakdown needs both by and key');
   if (input.set !== 'used' && input.by && !analysisTaskBySchema.safeParse(input.by).success)
     issue('by', 'This breakdown applies to AI usage');
@@ -97,7 +106,9 @@ export const analysisUnitValuesSchema = z.strictObject({
   band: z.array(z.strictObject({ from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }),
     kind: z.enum(['doing', 'yours', 'paused']) })),
   marks: z.array(z.strictObject({ at: z.iso.datetime({ offset: true }), kind: z.enum(['instruction', 'sendBack']) })),
-  time: times, submits: count, questions: count, usage: analysisUsageCountsSchema,
+  time: times, submits: count, questions: count,
+  sendBacks: count, instructionsAtReview: count, instructionsAfterAccept: count, instructionsDuringWork: count,
+  answers: count, workers: count, children: count, usage: analysisUsageCountsSchema,
   models: z.array(z.strictObject({ label: z.string(), launches: count, runMs: count, output: count })),
   prs: z.array(z.string()), skills: z.array(z.string()), tools: z.array(tallyTool), tallied,
 });

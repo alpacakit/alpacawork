@@ -214,7 +214,8 @@ const taskListResultSchema = z.object({
 }).strict();
 
 const analysisScope = [text('project', 'Project ID, including its nested projects'), text('timeZone', 'IANA zone (default: server zone)')];
-const analysisPeriodOptions = [text('period', 'Calendar period (today, 7d, 28d, all)'), text('end', 'Last local day (YYYY-MM-DD)')];
+const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
+  text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
 const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
 
 const definitions = {
@@ -232,7 +233,7 @@ const definitions = {
     ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', 'Breakdown (model, agent, project, skill, tool, mcp)'),
   ], { output: analysisUsageViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
-    ...analysisScope, ...analysisPeriodOptions, text('from', 'First local day (YYYY-MM-DD)'), text('to', 'Last local day (YYYY-MM-DD)'),
+    ...analysisScope, ...analysisPeriodOptions,
     text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
     text('by', 'Breakdown from the selected row'), text('key', 'Key from the selected row'), text('value', 'Value to return per task'),
     text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),

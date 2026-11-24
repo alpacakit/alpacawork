@@ -28,17 +28,20 @@ function setup(root: string) {
       const external = rowId(n), row = db.prepare('SELECT id FROM tasks WHERE external_id=?').get(external)!;
       db.prepare("UPDATE tasks SET user_requested=1,base_state='done',lifecycle=? WHERE id=?").run(n === 3 ? 'archived' : 'active', row.id);
       if (n === 2) {
+        db.prepare(`INSERT INTO placements(id,task_id,agent_id,profile_key,responsible,revision,started_at,ended_at)
+          VALUES('analysis-released-member',?,'fixture-agent','fixture',0,2,?,?)`).run(external, instant(10), instant(20));
         const milestones = [
           { id: 'analysis-start', kind: 'linked', at: instant(10), actor, fromState: 'todo', toState: 'doing' },
           { id: 'analysis-question', kind: 'asked', at: instant(15), askedTo: null, decide: [{ title: 'Choose a synthetic option' }],
             actor: { kind: 'placement', placementId: 'fixture-placement-2' }, fromState: null, toState: null,
             title: 'Synthetic question', description: 'A fixture question' },
-          { id: 'analysis-withdraw', kind: 'question_withdrawn', at: instant(20), questionId: 'analysis-question',
-            actor: { kind: 'placement', placementId: 'fixture-placement-2' }, fromState: null, toState: null },
+          { id: 'analysis-answer', kind: 'answered', at: instant(20), questionId: 'analysis-question',
+            actor, fromState: null, toState: null },
           { id: 'analysis-submit', kind: 'reported', at: instant(25), actor, fromState: 'doing', toState: 'waiting' },
         ];
         for (const event of milestones) insert.run(event.id, row.id, JSON.stringify({ title: null, description: null, ...event }), row.id);
-        db.prepare('INSERT INTO task_log_question(log_id,question_log_id) VALUES(?,?)').run('analysis-withdraw', 'analysis-question');
+        db.prepare('INSERT INTO task_log_question(log_id,question_log_id) VALUES(?,?)').run('analysis-answer', 'analysis-question');
+        db.prepare('INSERT INTO log_texts(log_id,text) VALUES(?,?)').run('analysis-answer', 'A fixture answer');
       }
       const id = 'analysis-accept-' + n;
       insert.run(id, row.id, JSON.stringify({ id, kind: 'review_approved', at: instant(30 + n), title: null, description: null,
@@ -106,6 +109,18 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(detail.unit.id, rowId(2));
       assert.equal(detail.unit.asked, rowId(4));
       assert.deepEqual(detail.prs, [link]);
+      assert.equal(detail.answers, 1);
+      assert.equal(detail.workers, 1);
+      assert.ok(detail.children > 0);
+
+      const custom = { from: '2026-08-25', to: '2026-09-24', timeZone: 'UTC', bucket: 'month' };
+      const [customTasks, customUsage] = await Promise.all([
+        read<AnalysisTasksView>('tasks', custom), read<AnalysisUsageView>('usage', custom),
+      ]);
+      assert.deepEqual(customTasks.head.period, { from: custom.from, to: custom.to });
+      assert.deepEqual(customUsage.head, customTasks.head);
+      assert.equal(customTasks.counts.value.finished, 0);
+      assert.equal(customUsage.counts.value.launches, 0);
 
       const usage = await read<AnalysisUsageView>('usage', { ...trend, by: 'agent' });
       const counts = usage.counts.value;

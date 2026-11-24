@@ -14,15 +14,19 @@ export function calendar(timeZone: string) {
 }
 
 export function makeHead(project: string | null, timeZone: string, today: string, firstDay: string | null,
-  input: { period?: AnalysisPeriod; end?: string; range?: AnalysisDays }): AnalysisHead {
-  const end = input.range?.to ?? input.end ?? today;
+  input: { period?: AnalysisPeriod; end?: string; from?: string; to?: string }): AnalysisHead {
+  const end = input.to ?? input.end ?? today;
   if (end > today || input.end && firstDay !== null && end < firstDay || input.period === 'all' && input.end && end !== today)
     throw new Problem(PROBLEM_CODE.invalidInput, 'Choose an end day within the available history. All time ends today.');
   const empty = { timeZone, today, firstDay, project, period: null, previous: null };
   if (firstDay === null) return empty;
-  if (input.range) return { ...empty, period: input.range };
-  if (!input.period || input.period === 'all') return { ...empty, period: { from: firstDay, to: today } };
-  const size = periodLength[input.period], from = addDays(end, 1 - size), before = addDays(from, -size);
+  let from = input.from;
+  if (!from) {
+    if (!input.period || input.period === 'all') return { ...empty, period: { from: firstDay, to: today } };
+    from = addDays(end, 1 - periodLength[input.period]);
+  }
+  const size = (Date.parse(end) - Date.parse(from)) / DAY_MS + 1;
+  const before = addDays(from, -size);
   return { ...empty, period: { from, to: end }, previous: before < firstDay ? null : { from: before, to: addDays(from, -1) } };
 }
 
