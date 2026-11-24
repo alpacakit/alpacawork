@@ -19,8 +19,11 @@ export const RUN_STEP_TEXT_LIMIT = 240;
  * One thing an agent did, as its own tool call says it: the first line of what it ran, read or searched (`more`
  * counts the lines after it), the plain words the agent gave for it, and the first line of what came back.
  */
+/** What kind of thing a step does, whichever agent's tool did it: places that show steps choose their look by it. */
+export const runStepKindSchema = z.enum(['command', 'file', 'search', 'edit', 'web', 'tool']);
+export type RunStepKind = z.infer<typeof runStepKindSchema>;
 export const runStepSchema = z.object({
-  id: z.string().max(128), at: z.iso.datetime({ offset: true }), tool: z.string().max(128),
+  id: z.string().max(128), at: z.iso.datetime({ offset: true }), tool: z.string().max(128), kind: runStepKindSchema,
   text: z.string().max(RUN_STEP_TEXT_LIMIT), more: z.number().int().nonnegative(),
   about: z.string().max(RUN_STEP_TEXT_LIMIT).nullable(),
   state: z.enum(['running', 'done', 'failed']),

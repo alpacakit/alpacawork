@@ -23,7 +23,7 @@ export const runActivityKindSchema = z.enum(['output', 'tool_start', 'tool_end',
 export const RUN_NOTE_LIMIT = 500;
 export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contract.js';
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
-export { runStepSchema, runStepsSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, type RunStep } from './work-contract.js';
+export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, type RunStep, type RunStepKind } from './work-contract.js';
 import { runWorkSchema, runStepsSchema } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,

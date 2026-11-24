@@ -6,13 +6,13 @@ import { cn } from "@/lib/utils";
  * soft, muted, error) · states: folded (the latest step on one line) · open (that step in full, the steps before it one
  * line each) · each step running (a pulsing dot), done (✓) or failed (a red ✗, with what came back) */
 
-/** The names agents' tools go by, said as one short family name whichever agent ran them. */
-const TOOL_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
-const toolName = (tool: string) => TOOL_NAMES[tool] ?? (tool.startsWith("mcp__") ? tool.split("__").slice(1).join(".") : tool);
+/** Codex names its items by their type; said as the tool names other agents give. Any other tool keeps its own name. */
+const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
+const toolName = (tool: string) => ITEM_NAMES[tool] ?? tool;
 /** A file's name is at the end of its path: cut short, these lose their start. */
-const FILE_TOOLS = new Set(["Read", "Edit", "Write", "NotebookEdit", "file_change"]);
+const atEnd = (step: RunStep) => step.kind === "file" || step.kind === "edit";
 /** What came back says something of these alone (a command's output, what a search found); a read file's first line does not. */
-const RESULT_TOOLS = new Set(["Bash", "command_execution", "Grep", "Glob"]);
+const tellsResult = (step: RunStep) => step.state === "failed" || step.kind === "command" || step.kind === "search";
 
 /** Going, done or failed, told by the mark's shape as well as its colour, and in words to a screen reader. */
 function Mark({ state }: { state: RunStep["state"] }) {
@@ -28,7 +28,7 @@ function StepLine({ step }: { step: RunStep }) {
   return <div className={cn("flex min-w-0 items-baseline gap-1.5", tone(step))}>
     <Mark state={step.state} /><span className="flex-none font-medium">{toolName(step.tool)}</span>
     {step.about && <span dir="auto" className="max-w-[62%] flex-none truncate">{step.about}</span>}
-    {FILE_TOOLS.has(step.tool)
+    {atEnd(step)
       ? <span dir="rtl" className="min-w-0 truncate text-left font-mono"><bdi>{step.text}</bdi></span>
       : <span dir="auto" className={cn("min-w-0 truncate font-mono", step.about && "text-muted")}>{step.text}</span>}
   </div>;
@@ -36,7 +36,7 @@ function StepLine({ step }: { step: RunStep }) {
 /** What came back, on one line: its first line and how many follow. */
 function StepResult({ step }: { step: RunStep }) {
   const { t } = useTranslation("people");
-  if (!step.result || step.state !== "failed" && !RESULT_TOOLS.has(step.tool)) return null;
+  if (!step.result || !tellsResult(step)) return null;
   return <div data-run-step-result className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
     <span aria-hidden className="flex-none">⎿</span>
     <span dir="auto" className="min-w-0 truncate font-mono">{step.result.text}</span>

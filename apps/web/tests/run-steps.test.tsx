@@ -7,7 +7,7 @@ import { RunSteps } from '../src/features/people/RunSteps';
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 afterEach(cleanup);
 
-const step = (id: string, text: string, rest: Partial<RunStep> = {}): RunStep => ({ id, at: '2026-11-24T00:00:00Z', tool: 'Bash', text,
+const step = (id: string, text: string, rest: Partial<RunStep> = {}): RunStep => ({ id, at: '2026-11-24T00:00:00Z', tool: 'Bash', kind: 'command', text,
   more: 0, about: null, state: 'done', result: null, ...rest });
 const steps = [
   step('1', 'pnpm build'),
