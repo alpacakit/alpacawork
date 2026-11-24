@@ -915,8 +915,9 @@ const WorkingView = createContext<WorkingViewValue | null>(null);
  * the first member) has worked where a report has its clock, their latest words in two lines, their model and how many
  * others work beside them; a press opens the words whole and each other person's. Then each Task below with someone at
  * work, one line each that opens it, children before grandchildren (childWork). Folded, the row shows the first of
- * each, so who works here and where below are both seen, and how many more there are below. The tool step is left
- * out; the task's tokens are in About. Each working line ends with how full its agent's conversation is (ContextMeter).
+ * each, so who works here and where below are both seen, and how many more there are below. Under each person's words
+ * is their latest step on one line (RunSteps); open, the responsible person's is in full with the ones before it. The
+ * task's tokens are in About. Each working line ends with how full its agent's conversation is (ContextMeter).
  * It reads only each Run's latest activity, never the agent's output log, and
  * FeedAgents reads the subtree and shares exactly the rows drawn here with the name scope.
  */
@@ -965,8 +966,8 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
  * One working person as a History row: time worked, who it is, and their words and latest step under that. The lead's
  * words open and close as every History disclosure does (LeadNote), and its ⌄ turns with them; its steps switch at once
  * between the latest one's line and that step in full over the ones before it (they go by every few seconds, so they do
- * not ride the disclosure's move). Everyone else's are open, their latest step in full: they are drawn only inside the
- * row's body.
+ * not ride the disclosure's move). Everyone else's words are open and their latest step is its one line, so the body
+ * holding them keeps its height while steps go by: they are drawn only inside the row's body.
  */
 function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: ControlRunDTO; task: TaskDetail; onFollow: (id: string) => void; open: boolean; lead: boolean; others?: ReactNode }) {
   const { t } = useTranslation("reader");
@@ -998,7 +999,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {steps.length > 0 && <RunSteps steps={steps} open={open} trail={lead ? undefined : 0} newestFirst className={`${cell} mt-1.5`} />}
+    {steps.length > 0 && <RunSteps steps={steps} open={lead && open} newestFirst className={`${cell} mt-1.5`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;

@@ -660,6 +660,23 @@ test("the working row goes on with the Tasks below at work, children before gran
   await waitFor(() => expect(followed).toEqual(["T2"]));
 });
 
+test("opened, only the responsible person's steps open; everyone else's stay on their latest one's line", async () => {
+  await inEnglish();
+  const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
+    more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
+  const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
+    run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),
+    run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member") } })] }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  const lead = document.querySelector('[data-working-person="P1"]')!, member = document.querySelector('[data-working-person="P2"]')!;
+  expect(lead.querySelector("[data-run-steps]")?.getAttribute("data-run-steps")).toBe("open");
+  expect(lead.textContent).toContain("lead step 1");
+  expect(member.querySelector("[data-run-steps]")?.getAttribute("data-run-steps")).toBe("folded");
+  expect(member.textContent).toContain("member step 2");
+  expect(member.textContent).not.toContain("member step 1");
+});
+
 test("a working person who has said nothing yet is read by their step", async () => {
   await inEnglish();
   const data = screenData(tree({ placements: [workingPlacement("P1")], runs: [

@@ -77,7 +77,7 @@ export function RunSteps({ steps, open, trail = 5, newestFirst, className }: { s
   const latest = steps.at(-1);
   if (!latest) return null;
   if (!open) return <div data-run-steps="folded" data-run-step={latest.state} className={cn("min-w-0 text-xs", className)}><StepLine step={latest} /></div>;
-  const before = trail > 0 ? steps.slice(-(trail + 1), -1) : [];
+  const before = steps.slice(-(trail + 1), -1);
   const rows = [...before.map(step => <li key={step.id} data-run-step={step.state} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-1.5">
     <div className="col-span-2 min-w-0"><StepLine step={step} /></div>{step.state === "failed" && <StepResult step={step} />}</li>),
     <li key={latest.id} data-run-step={latest.state} data-run-step-latest className="min-w-0"><StepDetail step={latest} /></li>];
