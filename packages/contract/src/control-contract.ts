@@ -172,6 +172,16 @@ export const placementRuntimeSchema = z.object({
   lastOutputAt: z.iso.datetime({ offset: true }).nullable(),
   activityKind: runActivityKindSchema.nullable(), toolName: z.string().nullable(),
 }).strict();
+/**
+ * A request to compact a placement's conversation. pending: waits for that conversation's next start; sent: went with
+ * its first instruction; compacted / failed: what the agent said; unknown: the agent ended without saying; dropped: the
+ * conversation started anew, or its agent cannot compact.
+ */
+export const COMPACTION_STATES = ['pending', 'sent', 'compacted', 'failed', 'unknown', 'dropped'] as const;
+export const compactionSchema = z.object({ id: z.string().min(1), task: z.string().min(1), agent: z.string().min(1),
+  state: z.enum(COMPACTION_STATES), instructions: z.string().nullable(), message: z.string().nullable(),
+  requestedAt: z.iso.datetime({ offset: true }), endedAt: z.iso.datetime({ offset: true }).nullable() }).strict();
+export type Compaction = z.infer<typeof compactionSchema>;
 const placementRecordFields = {
   id: z.string().min(1), taskId: taskIdSchema, agentId: z.string().min(1),
   profileKey: z.string().min(1),
@@ -191,6 +201,8 @@ export const placementSchema = z.object({
   headRunId: runIdSchema.nullable(),
   /** The head Run's values when its session can be continued; null when none can, absent if unreadable. */
   previousValues: selectionSchema.nullable().optional(),
+  /** The latest request to compact its conversation (agent compact); absent where it is not read. */
+  compaction: compactionSchema.nullable().optional(),
   runtime: placementRuntimeSchema,
 }).strict().superRefine(checkPlacement);
 export const controlRunSchema = z.object({
@@ -708,6 +720,7 @@ export const releaseMemberReceiptSchema = z.object({ placement: placementRecordS
 export const taskPlacementResultSchema = taskWriteResultSchema.extend({ agent: z.union([
   placeAgentReceiptSchema, setResponsibleReceiptSchema, placeMemberReceiptSchema, releaseAgentReceiptSchema,
 ]) }).strict();
+export const agentCompactResultSchema = z.object({ compaction: compactionSchema }).strict();
 /**
  * One review decision ID is also the send-back Request ID and Task log ID. Either decision names the Run it decides on
  * (reviewTarget) and the responsible placement's revision it was made against.

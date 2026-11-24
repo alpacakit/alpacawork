@@ -13,7 +13,7 @@ import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
 import { stopResponseSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
-  taskRequestResultSchema, taskPlacementResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
+  taskRequestResultSchema, taskPlacementResultSchema, agentCompactResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
@@ -24,7 +24,7 @@ import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportS
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, agentCompactInput, runGetInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -367,6 +367,18 @@ const definitions = {
   ], { output: taskPlacementResultSchema, help: help('Releasing a member: --expected-responsible-revision required.',
     'A responsible is released only from a Task without children or work under way; replace any other ' +
       'by agent handover or agent assign --replace.') }),
+  'agent/compact': command('write', 'Compact a placement\'s conversation before its next instruction', agentCompactInput, [
+    taskId, text('agent', 'Placement ID whose conversation to compact'),
+    text('instructions', 'What the summary should keep in focus (Claude, Copilot and pi only)'), quote, sourceRequest,
+  ], { output: agentCompactResultSchema, help: help(
+    'The agent summarizes the conversation so far with the conversation\'s own model and continues from the summary.',
+    'This spends tokens once per compaction: roughly 1,000 to 10,000, growing with the length of the conversation.',
+    'It happens when the conversation next starts, before its first instruction, never inside a turn: a Run that',
+    'compacts its own conversation keeps working until its turn ends. Work that joins a conversation already running',
+    'does not wait for it. A conversation that starts anew, or never runs again, is not compacted.',
+    'A Run may compact its own conversation; the Task\'s responsible a member\'s; the parent\'s responsible the responsible\'s.',
+    'Read how it went with task get (the placement\'s compaction): pending, sent, compacted or failed with the agent\'s words.',
+    'Grok\'s compaction follows its documentation and has not been tried with a signed-in Grok.') }),
   'run/get': command('read', 'Read a bounded run prompt or result with explicit file status', runGetInput,
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/stop': command('write', 'Stop a Run; task report --state stopped stops a Task with its subtree', runStopInput,

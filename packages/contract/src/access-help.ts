@@ -84,6 +84,8 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'agent.release': [example('agent.release', 'Responsible placement', {}, { worker: false }),
     example('agent.release', 'Member placement', {}, { worker: true })],
   'run.stop': [example('run.stop', 'Target Run\'s Task')],
+  'agent.compact': [example('agent.compact', 'The responsible\'s conversation', { agent: 'P3' }, { worker: false }),
+    example('agent.compact', 'A member\'s conversation, by another Run', { agent: 'P9m' }, { worker: true })],
   'config.inspect': [{ label: 'Inspect executables', action: { name: 'config.inspect' } }],
   'config.set': [{ label: 'Change configuration', action: { name: 'config.set' } }],
   'settings.get': [{ label: 'Read the person\'s settings', action: { name: 'settings.read' } }],
@@ -96,7 +98,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
     [`release.${name}`, [{ label: 'Local release (Run acts on its own Task)', action: { name: 'release' } }]])),
 };
 const run = (taskId: string, worker = false): Caller => ({ kind: 'run', taskId,
-  runId: `R${taskId.slice(1)}`, placementId: `P${taskId.slice(1)}`, role: worker ? 'worker' : 'owner', responsible: !worker });
+  runId: `R${taskId.slice(1)}`, placementId: `P${taskId.slice(1)}${worker ? 'm' : ''}`, role: worker ? 'worker' : 'owner', responsible: !worker });
 const callers = {
   human: { kind: 'human' }, coordinator: { kind: 'coordinator', source: 'claude', conversation: 'S1' },
   own: run('T3'), parent: run('T2'), member: run('T3', true), other: run('T4'), asked: run('T5'), foreign: run('T20'),

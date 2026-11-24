@@ -220,6 +220,9 @@ export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
 export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty,
   ...writeRecordShape, expectedTaskHash: digestSchema, expectedPlacementRevision: revision });
 export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
+/** agent compact: one request per conversation; a later one replaces the words of one still pending. */
+export const agentCompactInput = z.object({ task: taskIdSchema, agent: nonempty,
+  instructions: z.string().trim().min(1).max(2000).optional(), ...writeRecordShape });
 
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
 /** run stop stops one Run; a Task with its subtree stops by task report --state stopped. */

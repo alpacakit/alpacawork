@@ -30,19 +30,22 @@ export type AdapterDescription = {
   auth: { args: readonly string[]; ready: number; signedOut: number; nextAction: string } | null;
   /** Whether it reports its account's plan limits without a conversation (the backend adapter's `limits`; a bridge's `--limits`). */
   limits: boolean;
+  /** Whether it compacts a conversation on request (with the conversation's own model), and whether it takes words on
+   * what the summary should keep in focus. Null: it cannot, and a request to compact one of its conversations is refused. */
+  compaction: { instructions: boolean } | null;
   referenceUrl: string;
 };
 const bridge = <Id extends BridgeAdapterId>(id: Id, defaultParams: AdapterDescription['defaultParams'], start: string, resume: string,
   referenceUrl: string, defaultEnv: readonly string[] = [], fixedEnv: readonly string[] = [],
-  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits'>> = {}): AdapterDescription & { id: Id } =>
-  ({ id, command: id, auth: null, limits: false, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
+  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits' | 'compaction'>> = {}): AdapterDescription & { id: Id } =>
+  ({ id, command: id, auth: null, limits: false, compaction: { instructions: true }, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
     system: { start: ['result'], resume: ['result', 'session'] }, fixedEnv, defaultEnv, referenceUrl });
 const me = '[--model {model}] [--effort {effort}]';
 const result = '-o {result}';
 
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
-    id: 'claude', command: 'claude', limits: true, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
+    id: 'claude', command: 'claude', limits: true, compaction: { instructions: true }, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
     defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
@@ -56,9 +59,10 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
   }, '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access -o {result}',
   '[-m {model}] [-c model_reasoning_effort={effort}] [-c service_tier={fast}] -s danger-full-access resume -o {result} -- {session}',
   'https://learn.chatgpt.com/docs/cli/reference', ['OPENAI_API_KEY'], ['CODEX_HOME'],
-  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' }, limits: true }),
+  { auth: { args: ['login', 'status'], ready: 0, signedOut: 1, nextAction: 'codex login' }, limits: true, compaction: { instructions: false } }),
   grok: bridge('grok', { model: ['grok-4.7'], effort: ['high', 'low', 'medium', 'xhigh'] },
-    `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME']),
+    `${me} ${result}`, `${me} ${result} --session {session}`, 'https://docs.x.ai/build/cli/reference', ['XAI_API_KEY'], ['GROK_HOME'],
+    { compaction: { instructions: false } }),
   copilot: bridge('copilot', { model: [] }, `[-m {model}] ${result}`, `[-m {model}] ${result} resume {session}`,
     'https://docs.github.com/en/copilot/reference/copilot-cli-reference', [], [],
     { command: null, auth: { args: ['--auth-status'], ready: 0, signedOut: 1, nextAction: 'gh auth login' }, limits: true }),
@@ -71,6 +75,7 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
 for (const adapter of Object.values(AGENT_ADAPTERS)) {
   for (const values of Object.values(adapter.defaultParams)) Object.freeze(values);
   if (adapter.auth) { Object.freeze(adapter.auth.args); Object.freeze(adapter.auth); }
+  if (adapter.compaction) Object.freeze(adapter.compaction);
   Object.freeze(adapter.defaultParams); Object.freeze(adapter.prefix); Object.freeze(adapter.options);
   for (const names of Object.values(adapter.system)) Object.freeze(names);
   Object.freeze(adapter.system);

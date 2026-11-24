@@ -20,7 +20,7 @@ export function readRunFailure(root: string, run: Pick<ReadRunRecord, 'id' | 'st
   if (known?.file === file) return known.failure;
   const adapter = runtimeAdapter(run.launch.adapter);
   if (!adapter) return;
-  const read = adapter.read({ mode: run.resumes === null ? 'start' : 'resume', session: run.session.id }, folder,
+  const read = adapter.read({ mode: run.resumes === null ? 'start' : 'resume', session: run.session.id, compaction: null }, folder,
     { code: null, signal: null });
   observed.delete(key);
   if (read.failure) {

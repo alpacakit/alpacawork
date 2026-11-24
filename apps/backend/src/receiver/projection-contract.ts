@@ -13,6 +13,7 @@ import type { Ball, FieldCatalog, ReadRunRecord, RunId, RunResultState, UsageTot
 import type { ControlIndexDTO, ControlRunDTO, ControlTreeDTO, IndexPatchDTO, PlacementDTO, ProjectionVersion,
   RequiredPvDTO, TaskViewRowDTO } from '@alpacawork/contract/control';
 import type { RunSnapshot, StoredPlacement, StoredRequest, StoredReturn } from '@alpacawork/runs';
+import type { Compaction } from '@alpacawork/contract/control';
 import type { ProjectShelf } from '../control/project-shelf.js';
 import type { seatSettings } from '../control/wake.js';
 
@@ -38,7 +39,8 @@ export interface RunFileRecord {
 /** One Task's records as serve holds them: what the derivations read of it, and nothing of other Tasks. */
 export interface TaskBundle {
   readonly task: ControlTask;
-  readonly placements: readonly StoredPlacement[];
+  /** With each placement's latest compaction request (runs/compactions). */
+  readonly placements: readonly (StoredPlacement & { readonly compaction?: Compaction | null })[];
   /** Its own Runs, every role. */
   readonly runs: readonly ReadRunRecord[];
   /** Present on database-backed bundles; kept optional for the other chunks' existing fake readers. */

@@ -4,15 +4,20 @@ import type { AgentExit, ReaderResult } from '../../runs/readers/result.js';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 import type { ActivityEvent } from '../../runs/activity-events.js';
 import type { CatalogInput } from '../../coordinator/skill-catalog/context.js';
+import type { CompactionLaunch, CompactionOutcome } from '@alpacawork/contract/run-protocol';
 
-export type AdapterInvocation = { mode: 'start' | 'resume'; session: string | null };
+/** `compaction`: the ID of the compaction the launch asked for before its initial input (agent compact). */
+export type AdapterInvocation = { mode: 'start' | 'resume'; session: string | null; compaction: string | null };
 /** Translation only. Input identity, attempt uniqueness and retry policy stay in runs/input. */
 export type InputProtocol = {
-  encode(id: string, text: string): unknown;
+  /** The lines that give the agent one instruction; with `compaction`, the agent compacts its conversation first. */
+  encode(id: string, text: string, compaction: CompactionLaunch | null): unknown[];
   receipt(value: unknown, session: string | null): { id: string; outcome: 'taken' | 'not_sent' | 'uncertain' } | null;
   turnEnded(value: unknown, session: string | null): boolean;
 };
-export type AdapterObservation = { outcome: ReaderResult; session: string | null; usage: AgentUsage | null; failure?: RunFailure; toolsSettled?: boolean };
+/** `compaction`: what the agent said of the compaction its invocation asked for; null when it said nothing. */
+export type AdapterObservation = { outcome: ReaderResult; session: string | null; usage: AgentUsage | null; failure?: RunFailure;
+  toolsSettled?: boolean; compaction: CompactionOutcome | null };
 export type SkillCatalogContext = Pick<CatalogInput, 'env' | 'session'> & { kind: 'claude' | 'codex' };
 /**
  * How an agent reports its account's plan limits and who it is signed in as, without a conversation or a model call: the
@@ -23,7 +28,7 @@ export type LimitsProbe = { args: readonly string[]; input: string | null; read(
 export type AgentAdapter = {
   input: InputProtocol;
   read(invocation: AdapterInvocation, folder: string, exit: AgentExit): AdapterObservation;
-  earlySession(invocation: AdapterInvocation, folder: string): string | null;
+  earlySession(invocation: Pick<AdapterInvocation, 'mode' | 'session'>, folder: string): string | null;
   activity(value: unknown, received: string): ActivityEvent[];
   skillCatalogContext(input: Pick<CatalogInput, 'argv' | 'env' | 'session'>): SkillCatalogContext;
   limits: LimitsProbe | null;

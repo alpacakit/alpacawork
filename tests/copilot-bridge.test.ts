@@ -15,7 +15,7 @@ import { privateNodeApp } from './helpers/private-node-app.ts';
 
 const bridge = join(import.meta.dirname, '../apps/agent-cli/dist/cli.js');
 
-async function setup(t: TestContext, resume = false, badOutput = false) {
+async function setup(t: TestContext, resume = false, badOutput = false, compaction: 'ok' | 'fail' = 'ok') {
   const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-copilot-')));
   t.after(() => rmSync(area, { recursive: true, force: true }));
   const requests: any[] = [];
@@ -65,6 +65,11 @@ async function setup(t: TestContext, resume = false, badOutput = false) {
           setImmediate(() => event('user.message', { messageId, content: message.params.prompt, delivery,
             interactionId: `interaction-${messageId}` }));
         } else if (message.method === 'ping') reply({ message: '', timestamp: new Date().toISOString(), protocolVersion: 3 });
+        else if (message.method === 'session.history.compact') {
+          if (compaction === 'fail') { write({ jsonrpc: '2.0', id: message.id, error: { code: -32000, message: 'no model endpoints available' } }); continue; }
+          event('session.compaction_complete', { success: true, compactionTokensUsed: { inputTokens: 50, cacheReadTokens: 30, cacheWriteTokens: 0, outputTokens: 7 } });
+          reply({ success: true, tokensRemoved: 10, messagesRemoved: 1 });
+        }
         else reply({});
       }
     });
@@ -417,4 +422,26 @@ test('Copilot sign-in checks distinguish signed-out from check failure without c
     assert.ok(requests.some(row => row.method === 'auth.getStatus'));
     assert.equal(requests.some(row => row.method?.startsWith('session.')), false);
   }
+});
+
+for (const compaction of ['ok', 'fail'] as const) test(`Copilot ${compaction === 'ok' ? 'compacts before' : 'tells a refused compaction and still runs'} the first instruction`, async t => {
+  const h = await setup(t, true, false, compaction);
+  h.child.stdin.write(`${JSON.stringify({ id: 'one', text: 'start', compact: { instructions: 'keep the plan' } })}\n`);
+  await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'one'));
+  h.answer('start', 'answer');
+  h.idle();
+  await h.until(() => h.events().some(event => event.type === 'turn.completed'));
+  h.child.stdin.end();
+  assert.equal(await h.exited, 0, h.stderr());
+  const methods = h.requests.map(request => request.method).filter(method => method === 'session.history.compact' || method === 'session.send');
+  assert.deepEqual(methods, ['session.history.compact', 'session.send']);
+  assert.equal(h.requests.find(request => request.method === 'session.history.compact').params.customInstructions, 'keep the plan');
+  const types = h.events().map(event => event.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.'));
+  assert.deepEqual(types, [compaction === 'ok' ? 'compaction.completed' : 'compaction.failed', 'turn.started', 'turn.completed']);
+  if (compaction === 'fail') assert.match(h.events().find(event => event.type === 'compaction.failed').message, /no model endpoints available/);
+  assertInputOutcomes(h.events(), { one: 'taken' });
+  assert.equal(readFileSync(join(h.area, 'result'), 'utf8'), 'answer');
+  // The compaction's model call is the Run's cost too.
+  assert.deepEqual(h.events().find(event => event.type === 'turn.completed').usage, compaction === 'ok'
+    ? { scope: 'run', counters: { input: 20, cacheRead: 30, cacheWrite: 0, output: 7 } } : null);
 });

@@ -28,6 +28,9 @@ import { AgentInputChannel } from '@alpacawork/backend/test-dist/runs/input.js';
 import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
 import { installInputManagerClock } from './fixtures/input-manager-clock.ts';
 import { RUN_FILES } from '@alpacawork/contract/run';
+import { withControlWrite } from '@alpacawork/backend/test-dist/control/task-transition.js';
+import { latestCompactions, requestCompaction } from '@alpacawork/backend/test-dist/runs/compactions.js';
+import { readControl } from '@alpacawork/backend/test-dist/control/task-store.js';
 
 const fake = join(import.meta.dirname, 'fixtures/fake-input-agent.mjs');
 async function until<T>(check: () => T | null | undefined | false, message: string, timeout = 12_000): Promise<T> {
@@ -267,6 +270,24 @@ test('once the work has ended and stdin is closed, an instruction waits for the 
   await h.tick();
   await h.state(late, 'succeeded');
   assert.equal(h.store.get(late.id)!.resumes, first.id);
+});
+
+test('a compaction asked for an idle conversation goes first with its next instruction, and its outcome shows', async t => {
+  const h = await setup(t);
+  const first = h.send({ step: 'first' });
+  await h.tick();
+  await h.state(first, 'succeeded');
+  const asked = withControlWrite(h.root, (_tx, db) => requestCompaction(db, { taskId: h.taskId, placementId: h.placementId,
+    instructions: null, at: new Date().toISOString() }));
+  assert.equal(asked.state, 'pending');
+  const next = h.send({ step: 'next' });
+  await h.tick();
+  await h.state(next, 'succeeded');
+  const resumed = h.notes().filter(note => note.compacted !== undefined || note.taken).map(note => note.taken ?? 'compacted');
+  assert.deepEqual(resumed, [JSON.stringify({ step: 'first' }), 'compacted', JSON.stringify({ step: 'next' })]);
+  assert.equal(h.store.getText(next.id)?.result, `reply to ${JSON.stringify({ step: 'next' })}`, 'the Run replies to its instruction');
+  const shown = readControl(h.root, db => latestCompactions(db, h.taskId).get(h.placementId));
+  assert.equal(shown?.state, 'compacted');
 });
 
 test('a return continuation joins the working agent, closes its return, and is not sent twice', async t => {

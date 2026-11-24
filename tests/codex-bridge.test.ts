@@ -294,3 +294,20 @@ test('a later successful turn without a fresh usage observation remains unmeasur
   b.child.stdin.end(); assert.equal(await b.exited, 0);
   assert.equal(b.events().filter(row => row.type === 'turn.completed')[1].usage, null);
 });
+
+for (const failure of [null, 'synthetic compaction failure']) test(`a compaction ${failure ? 'that fails is told and still' : 'before the first instruction then'} lets it run as its own turn`, async t => {
+  const h = setup(t), result = join(h.area, 'result.txt');
+  const b = h.start(['-o', result, 'resume', 'thread-old'], failure ? { FAKE_CODEX_COMPACT_FAIL: failure } : {});
+  b.child.stdin.write(`${JSON.stringify({ id: 'one', text: 'after compaction', compact: { instructions: null } })}\n`);
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'instruction turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  assert.deepEqual(h.server().filter(row => ['thread/compact/start', 'turn/start'].includes(row.method)).map(row => row.method),
+    ['thread/compact/start', 'turn/start']);
+  const types = b.events().map(event => event.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.'));
+  assert.deepEqual(types, [failure ? 'compaction.failed' : 'compaction.completed', 'turn.started', 'turn.completed']);
+  if (failure) assert.match(b.events().find(event => event.type === 'compaction.failed').message, new RegExp(failure));
+  assertInputOutcomes(b.events(), { one: 'taken' });
+  assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
+  assert.equal(b.events().some(event => event.item?.type === 'context_compaction'), false);
+});

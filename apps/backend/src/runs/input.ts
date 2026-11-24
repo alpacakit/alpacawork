@@ -4,6 +4,7 @@ import type { Writable } from 'node:stream';
 import type { RunId } from '@alpacawork/contract/fields';
 import { JsonlReader } from './readers/jsonl.js';
 import type { InputProtocol } from '../agents/adapters/types.js';
+import type { CompactionLaunch } from '@alpacawork/contract/run-protocol';
 
 export type InputReceipt<Id extends string> = { id: string; owner: Id; outcome: 'taken' | 'not_sent' | 'uncertain'; raw: unknown };
 export class AgentInputReceipts<Id extends string> {
@@ -57,12 +58,12 @@ export class AgentInputChannel<Id extends string = RunId> {
   get open(): boolean { return !this.closed && !this.stdin.destroyed && !this.stdin.writableEnded; }
   wrote(run: Id): boolean { return this.runs.has(run); }
   refused(run: Id): boolean { return this.refusedRuns.has(run); }
-  write(run: Id, prompt: string, input: string = randomUUID()): boolean {
+  write(run: Id, prompt: string, input: string = randomUUID(), compaction: CompactionLaunch | null = null): boolean {
     if (this.runs.has(run)) throw new Error(`Input was already attempted: ${run}`);
     if (!this.open) return false; // No write call: the caller may durably record not_sent.
     this.runs.add(run); this.receipts.watch(input, run);
     try {
-      this.stdin.write(`${JSON.stringify(this.protocol.encode(input, prompt))}\n`, error => {
+      this.stdin.write(this.protocol.encode(input, prompt, compaction).map(line => `${JSON.stringify(line)}\n`).join(''), error => {
         if (error) { this.closed = true; this.failedWrites.add(input); }
       });
     } catch { this.closed = true; this.failedWrites.add(input); }

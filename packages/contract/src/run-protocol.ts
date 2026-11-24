@@ -12,6 +12,11 @@ export const identitySchema = z.object({ protocol: z.literal(PROTOCOL), workspac
 export type ExecutionIdentity = z.infer<typeof identitySchema>;
 const session = z.object({ provider: z.string().nullable(), id: z.string().min(1) }).strict().nullable();
 export const invocationSchema = agentInvocationSchema.extend({ session }).strict();
+export const compactionLaunchSchema = z.object({ id: uuid, instructions: z.string().nullable() }).strict();
+export type CompactionLaunch = z.infer<typeof compactionLaunchSchema>;
+/** What the agent said of the compaction its launch asked for; null when it said nothing. */
+export const compactionOutcomeSchema = z.object({ state: z.enum(['compacted', 'failed']), message: z.string().max(2000).nullable() }).strict();
+export type CompactionOutcome = z.infer<typeof compactionOutcomeSchema>;
 /**
  * `credential` is null for a coordinator Run: it calls alpacawork as the user's direct caller, never as a Run.
  * `commandSeconds` is absent only in a launch recorded before command limits existed; every new launch writes it.
@@ -20,6 +25,8 @@ export const launchSchema = identitySchema.extend({ cwd: z.string().startsWith('
   prompt: z.string().refine(v => Buffer.byteLength(v) <= PROTOCOL_LIMITS.prompt), initialInputId: uuid,
   format: z.string().regex(/^[a-f0-9]{64}$/), runMinutes: z.number().nonnegative(), commandSeconds: z.number().int().positive().nullable().optional(), credential: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   entry: z.string().startsWith('/'), version: z.string().min(1), server: z.string().url().nullable(), ancestors: z.array(runId), release: z.string().nullable(),
+  /** The conversation is compacted before the initial input (agent compact); `instructions` only for an agent that takes them. */
+  compaction: compactionLaunchSchema.nullable(),
 }).strict().refine(value => value.commandSeconds === undefined || (value.credential === null) === (value.commandSeconds !== null),
   'Only a coordinator launch has command seconds');
 export type LaunchSnapshot = z.infer<typeof launchSchema>;
@@ -52,6 +59,7 @@ export const observationSchema = z.object({
   handoffSafe: z.literal(true).optional(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   result: z.object({ state: z.enum(['present', 'missing', 'too_large', 'unreadable']), digest: digest.nullable(), size: z.number().int().nonnegative() }).strict(),
+  compaction: compactionOutcomeSchema.nullable(),
 }).strict();
 export type ResultObservation = z.infer<typeof observationSchema>;
 const payloads = {

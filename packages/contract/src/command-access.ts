@@ -76,6 +76,8 @@ export type Action =
   | { name: 'task.answer'; askedTo: string | null; closed?: boolean }
   | { name: 'agent.assign' | 'agent.release'; worker: boolean }
   | { name: 'agent.handover' }
+  /** agent compact: the placement whose conversation it compacts, and whether that is a member's. */
+  | { name: 'agent.compact'; worker: boolean; placement: string }
   /** run stop: the Task acted on is the Run's. */
   | { name: 'run.stop' }
   | { name: 'file.write' }
@@ -96,9 +98,9 @@ export type Action =
 /**
  * Who a grant names. own: the Task's responsible Run. parent: the responsible Run of the Task's parent. placement: a
  * Run of a current placement of the Task. asked: whoever the question asked. responsible: the responsible Run of any
- * Task. user: a person or coordinator (raw speaksForUser).
+ * Task. self: the Run of the placement the action names. user: a person or coordinator (raw speaksForUser).
  */
-export type Seat = 'own' | 'parent' | 'placement' | 'asked' | 'responsible' | 'run' | 'user' | 'human';
+export type Seat = 'own' | 'parent' | 'placement' | 'self' | 'asked' | 'responsible' | 'run' | 'user' | 'human';
 /** What a grant also requires: of the Task, or (within) that a move keeps it below the Run's own Task. */
 type Condition = 'held' | 'same_project' | 'project_above' | 'within';
 type Grant = readonly [Seat, ...Condition[]];
@@ -168,6 +170,9 @@ export const ACTIONS = {
   'agent.assign.worker': { grants: [['own'], ['user']] },
   'agent.release.worker': { grants: [['own'], ['user']] },
   'run.stop': { grants: [['parent'], ['user']] },
+  /** A conversation is compacted by its own Run, or by whoever may release its placement. */
+  'agent.compact': { grants: [['self'], ['parent'], ['user']] },
+  'agent.compact.worker': { grants: [['self'], ['own'], ['user']] },
   'file.write': { grants: [['placement'], ['human']], whileHeld: true },
   'field.list': { grants: [['run'], ['user']], whileHeld: true },
   /** Field definitions are shared by every project: only a person or the coordinator changes them. */
@@ -235,6 +240,7 @@ export function actsOf(action: Action, task: TaskFacts | null, caller: Caller): 
     case 'task.request': return [action.worker ? 'task.request.worker' : userDecides ? 'task.request.user' : 'task.request'];
     case 'agent.assign': return [action.worker ? 'agent.assign.worker' : 'agent.assign'];
     case 'agent.release': return [action.worker ? 'agent.release.worker' : 'agent.release'];
+    case 'agent.compact': return [action.worker ? 'agent.compact.worker' : 'agent.compact'];
     default: return [action.name];
   }
 }
@@ -261,6 +267,8 @@ function seated(seat: Seat, caller: Caller, actor: TaskActor, action: Action, ta
     // An answer goes to the question's askedTo, fixed when it was asked: the user's proxy, or that Task's responsible.
     case 'asked': return action.name === 'task.answer' &&
       (action.askedTo === null ? speaksForUser(actor) : responsibleRun(caller, action.askedTo));
+    case 'self': return caller.kind === 'run' && action.name === 'agent.compact' && caller.placementId === action.placement &&
+      caller.taskId === task?.id;
     case 'responsible': return caller.kind === 'run' && caller.role === 'owner' && caller.responsible;
     case 'run': return caller.kind === 'run';
     case 'user': return speaksForUser(actor);
@@ -282,6 +290,7 @@ export const SEAT_TEXT: Record<Seat, string> = {
   own: "the Task's responsible Run",
   parent: "the responsible Run of the Task's parent",
   placement: "a Run of the Task's current placement",
+  self: 'the Run of that placement itself',
   asked: "whoever the question asked",
   responsible: 'a responsible Run',
   run: 'a Run',
@@ -327,7 +336,7 @@ export function decide(caller: Caller, action: Action, facts: Facts): Decision |
 
 /** Commands whose validated input determines an authorization action. */
 export type AccessCommand = 'task.new' | 'task.update' | 'task.report' | 'task.request' | 'task.comment' |
-  'task.move' | 'task.archive' | 'task.delete' | 'task.restore' | 'agent.assign' | 'agent.handover' | 'agent.release' | 'run.stop';
+  'task.move' | 'task.archive' | 'task.delete' | 'task.restore' | 'agent.assign' | 'agent.handover' | 'agent.release' | 'agent.compact' | 'run.stop';
 export type CommandFacts = { worker?: boolean; askedTo?: string | null; closed?: boolean; to?: readonly string[] };
 const UPDATE_FIELDS: readonly UpdateField[] = ['title', 'values', 'cwd', 'color', 'userRequested'];
 
@@ -364,6 +373,10 @@ export function commandAction(command: AccessCommand, input: Readonly<Record<str
     case 'agent.release': {
       if (facts.worker === undefined) throw new Error('A release requires placement facts');
       return { name: command, worker: facts.worker };
+    }
+    case 'agent.compact': {
+      if (facts.worker === undefined) throw new Error('A compaction requires placement facts');
+      return { name: command, worker: facts.worker, placement: String(input.agent) };
     }
     default: return { name: command };
   }
