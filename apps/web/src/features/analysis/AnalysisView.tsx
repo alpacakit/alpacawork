@@ -10,7 +10,7 @@ import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./da
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
 import { PointerTip, Seg, Shown, useChoices } from "./parts";
-import { listOnAnswer, PERIOD_BACK, settleSpan, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
+import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
 import type { Head, Period } from "./contract";
@@ -40,7 +40,6 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const head: Head | undefined = query.data?.head;
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
-  const pick = (days: { from: string; to: string }) => head && show({ span: settleSpan(days, head.today), list: null, unit: null });
   // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since.
   const open = (list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) =>
     head && useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
@@ -79,8 +78,8 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     <Shown current={(answerOf<unknown>(query)?.current ?? true) && (place.look === "tasks" || (answerOf<unknown>(tasks)?.current ?? true))}>
       {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
         : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
-        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />
-          : usage.data && <UsageLook view={usage.data} tasks={tasks.data ?? null} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />}
+        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} zone={zoneName(head.timeZone)} />
+          : usage.data && <UsageLook view={usage.data} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
     </Shown>
     </div></div>
     <Layers place={place} project={project} days={days} />

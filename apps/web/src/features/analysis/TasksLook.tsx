@@ -17,7 +17,7 @@ const HOUR = 3_600_000;
  * same days: finished tasks (with the calendar), the share without fixes, and what it took until acceptance. Then the
  * same numbers broken down. Every number opens the tasks behind it.
  */
-export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; days: Days; open: Open; pick: (days: Days) => void; zone: string }) {
+export function TasksLook({ view, days, open, zone }: { view: TasksView; days: Days; open: Open; zone: string }) {
   const { t } = useTranslation("analysis");
   const { bucket, taskGroup, grow, rules } = useChoices();
   const choose = useChoices(state => state.choose);
@@ -83,7 +83,7 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
     { name: t("until.prs"), value: (i: number) => format("plain", at(i).accepted.prs) },
   ];
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
-  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} pick={pick} lines={lines}>
+  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
     <div key={grow}>
       <Row left={<>
         <RowName>{t("tasks.finished")}</RowName>
@@ -91,7 +91,7 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", now.passed, { set: "passed", value: "lead" }) },
           { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", now.reworked, { set: "reworked", value: "lead" }) },
           { color: "bg-stopped", name: t("outcome.stopped"), value: part("tasks", now.stopped, { set: "stopped", value: null }) }]} />
-        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} onPick={pick} /></div>
+        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
       </>}>
         <BarChart row={0} height="h-52 narrow:h-24" scale={scales.finished} grow
           values={i => [["bg-done", at(i).counts.passed], ["bg-reworked", at(i).counts.reworked], ["bg-stopped", at(i).counts.stopped]]} />

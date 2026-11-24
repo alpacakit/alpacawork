@@ -236,6 +236,8 @@
      (rest) is a line's grey: the light theme's line is too faint on its ground, so it takes the edge's. */
   --color-reworked: color-mix(in oklab, var(--ink) 34%, var(--bg));
   --color-rest: var(--rest-time);
+  /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
+  --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);
   --color-grass-0: color-mix(in oklab, var(--ink) 6%, var(--bg));
   --color-grass-1: color-mix(in oklab, var(--done) 30%, var(--bg));
   --color-grass-2: color-mix(in oklab, var(--done) 52%, var(--bg));

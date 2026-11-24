@@ -28,8 +28,8 @@ type ValueKey = keyof typeof VALUES;
  * value as a row on the same days, then the same broken down. Skills, tools and MCP are counted from the day counting
  * began: the days before it lie hatched.
  */
-export function UsageLook({ view, tasks, days, open, pick, zone }: {
-  view: UsageView; tasks: TasksView | null; days: Days; open: Open; pick: (days: Days) => void; zone: string;
+export function UsageLook({ view, tasks, days, open, zone }: {
+  view: UsageView; tasks: TasksView | null; days: Days; open: Open; zone: string;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket, usageGroup, grow, rules } = useChoices();
@@ -81,7 +81,7 @@ export function UsageLook({ view, tasks, days, open, pick, zone }: {
   ];
   const first = taskPoints ? 1 : 0;
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
-  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} pick={pick} lines={lines}>
+  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} lines={lines}>
     <div key={grow}>
       {taskPoints && finished && <Row left={<>
         <RowName>{t("tasks.finished")}</RowName>
@@ -119,7 +119,7 @@ export function UsageLook({ view, tasks, days, open, pick, zone }: {
     </RulesBox>}
     <BucketSwitch />
     {rows}
-    <Breakdown view={view} group={usageGroup} days={days} open={open} pick={pick} choose={next => choose({ usageGroup: next, all: false })} />
+    <Breakdown view={view} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
   </>;
 }
 
@@ -128,8 +128,8 @@ export function UsageLook({ view, tasks, days, open, pick, zone }: {
  * over the table, the days before that day hatched and that day named in ink on the axis; a span wholly before it has no
  * record, and no table.
  */
-function Breakdown({ view, group, days, open, pick, choose }: {
-  view: UsageView; group: UsageGroup; days: Days; open: Open; pick: (days: Days) => void; choose: (next: UsageGroup) => void;
+function Breakdown({ view, group, days, open, choose }: {
+  view: UsageView; group: UsageGroup; days: Days; open: Open; choose: (next: UsageGroup) => void;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket } = useChoices();
@@ -156,7 +156,7 @@ function Breakdown({ view, group, days, open, pick, choose }: {
   const series = breakdown?.series ?? null, points = view.series.points;
   const scale = useScale(Math.max(0, ...(series ?? []).map(value => value ? read(value) : 0)), 1, t("unit.times", { count: 2 }), true);
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
-  const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket} pick={pick}
+  const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}
     lines={[{ name, value: i => series[i] ? format("times", read(series[i]!)) : t("chart.notCounted") }]}>
     <Row className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
       : <Num className="" label={name} kind="times" value={breakdown?.counted ? read(breakdown.counted.value) : 0}

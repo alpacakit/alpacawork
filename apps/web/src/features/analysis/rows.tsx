@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
@@ -63,28 +63,71 @@ export const RowName = ({ children }: { children: ReactNode }) => <div className
 
 /* ── one group of charts on the same days: what is pointed at, and the window that says it ── */
 type Line = { name: string; value: (at: number) => string };
-type Group = { bins: Bin[]; span: Days; today: string; bucket: Bucket; pick: (days: Days) => void;
-  lines: Line[]; hovered: number | null; point: (at: number | null, row?: number, box?: DOMRect) => void };
+type Pointed = { at: number; row: number; box: { left: number; right: number; top: number } };
+type Group = { bins: Bin[]; span: Days; bucket: Bucket; lines: Line[]; hovered: number | null; narrow: boolean;
+  point: (at: number | null, row?: number, box?: Pointed["box"]) => void };
 const GroupContext = createContext<Group | null>(null);
 
 /**
- * The charts drawn on the same days (`bins`), and what the window says of each day (`lines`, in the rows' order). A
- * press on a day chooses it as the span, as it always has; under a finger there is no window.
+ * The charts drawn on the same days (`bins`), and what the window says of each day (`lines`, in the rows' order).
+ * A day is read, never chosen, from a chart: pointed at (or pressed, under a finger) it lights in every row and its
+ * window says every row's value; the span changes only from the period's switch. Its whole column through every row is
+ * the place to point at, and the chosen span lies as a faint band through every row. Another step of time, a scroll or
+ * a move to another step closes the window.
  */
-export function ChartGroup({ bins, span, today, bucket, pick, lines, children }: Omit<Group, "hovered" | "point"> & { children: ReactNode }) {
-  const [hovered, setHovered] = useState<{ at: number; row: number; box: DOMRect } | null>(null);
+export function ChartGroup({ bins, span, today, bucket, lines, children }: { bins: Bin[]; span: Days; today: string; bucket: Bucket; lines: Line[]; children: ReactNode }) {
+  const [pointed, setPointed] = useState<Pointed | null>(null);
   const narrow = useNarrow();
   const binName = useBinName();
-  // A move to another step takes the window away: it was about what is no longer shown.
-  useLayoutEffect(() => subscribeStep(() => setHovered(null)), []);
-  const point = (at: number | null, row = 0, box?: DOMRect) => setHovered(at === null || !box || narrow ? null : { at, row, box });
-  return <GroupContext value={{ bins, span, today, bucket, pick, lines, hovered: hovered?.at ?? null, point }}>
-    <div onMouseLeave={() => setHovered(null)}>{children}</div>
-    {hovered && <DayWindow name={binName(bins[hovered.at]!, today)} lines={lines.map(line => [line.name, line.value(hovered.at)] as const)}
-      strong={hovered.row} box={hovered.box} />}
+  const close = () => setPointed(null);
+  useLayoutEffect(() => subscribeStep(close), []);
+  // The days are other days now (another step of time, another span of record): what was pointed at is gone.
+  const days = `${bucket}:${bins.length}:${bins[0]?.from ?? ""}`;
+  useLayoutEffect(close, [days]);
+  useEffect(() => {
+    if (!pointed) return;
+    addEventListener("scroll", close, true);
+    // Under a finger the window stays until a press elsewhere.
+    const away = (event: PointerEvent) => { if (!(event.target as Element | null)?.closest?.("[data-day-column]")) close(); };
+    if (narrow) addEventListener("pointerdown", away, true);
+    return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
+  }, [pointed, narrow]);
+  const point = (at: number | null, row = 0, box?: Pointed["box"]) => setPointed(at === null || !box ? null : { at, row, box });
+  const shown = pointed && bins[pointed.at] ? pointed : null;
+  return <GroupContext value={{ bins, span, bucket, lines, hovered: shown?.at ?? null, narrow, point }}>
+    <div className="relative" onMouseLeave={narrow ? undefined : close}>
+      {!narrow && <Columns layer="back" />}
+      <div className="relative">{children}</div>
+      {!narrow && <Columns layer="front" />}
+    </div>
+    {shown && <DayWindow name={binName(bins[shown.at]!, today)} lines={lines.map(line => [line.name, line.value(shown.at)] as const)}
+      strong={shown.row} box={shown.box} />}
   </GroupContext>;
 }
 const useGroup = () => useContext(GroupContext)!;
+
+/**
+ * The group's day columns over the charts' nine grid columns, through every row (a computer's). Behind the charts:
+ * the chosen span's band and the day pointed at. In front: a column a day that takes the pointer, saying which row it
+ * stands over by the chart under it (`data-chart-row`).
+ */
+function Columns({ layer }: { layer: "back" | "front" }) {
+  const group = useGroup();
+  return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
+    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col">
+      {group.bins.map((bin, at) => layer === "back"
+        ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
+        : <span key={bin.from} data-day-column="" className="pointer-events-auto"
+          onMouseMove={event => {
+            const self = event.currentTarget, under = (document.elementsFromPoint?.(event.clientX, event.clientY) ?? [])
+              .find(element => element !== self && element instanceof HTMLElement && element.closest("[data-chart-row]"));
+            const row = Number((under as HTMLElement | undefined)?.closest<HTMLElement>("[data-chart-row]")?.dataset.chartRow ?? -1);
+            const box = self.getBoundingClientRect();
+            if (group.hovered !== at || row >= 0) group.point(at, row, { left: box.left, right: box.right, top: event.clientY - 12 });
+          }} />)}
+    </div>
+  </div>;
+}
 
 /** What a bin covers: its days, and how much of it there is when it is not whole. */
 function useBinName() {
@@ -97,7 +140,7 @@ function useBinName() {
 }
 
 /** The window beside a pointed day: its days, then every row's value, the row pointed at in ink. Kept on the screen. */
-function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonly [string, string])[]; strong: number; box: DOMRect }) {
+function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonly [string, string])[]; strong: number; box: Pointed["box"] }) {
   const self = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const window = self.current;
@@ -130,8 +173,8 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
 const lit = (bin: Bin, span: Days) => bin.from >= span.from && bin.to <= span.to;
 
 /** The frame every chart is drawn in: its height, the mark over its top, the middle line and the foot line. */
-function Frame({ scale, height, children }: { scale: Scale; height: string; children: ReactNode }) {
-  return <div className="pt-4 narrow:pt-4.5">
+function Frame({ row, scale, height, children }: { row: number; scale: Scale; height: string; children: ReactNode }) {
+  return <div data-chart-row={row} className="pt-4 narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
@@ -153,17 +196,19 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
     {group.bins.map((bin, at) => {
       const off = uncounted?.(at) ?? false;
       const edge = off && !(uncounted?.(at + 1) ?? true);
-      return <button key={bin.from} type="button" onClick={() => group.pick(bin)}
-        onMouseEnter={event => group.point(at, row, event.currentTarget.getBoundingClientRect())}
-        aria-label={`${spanLabel(bin.from, bin.to)} ${group.lines[row]?.value(at) ?? ""}`}
-        className={cn("relative flex h-full flex-col-reverse gap-0.5 opacity-50 transition-opacity duration-(--motion-base) ease-out",
-          wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
-          lit(bin, group.span) && "opacity-100", group.hovered === at && "bg-rule opacity-100",
-          (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
-          off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
-          edge && "border-e border-lit-line")}>
-        {!off && children(at)}
-      </button>;
+      const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-50 transition-opacity duration-(--motion-base) ease-out",
+        wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
+        lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
+        // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
+        group.narrow && (group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band"),
+        (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
+        off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
+        edge && "border-e border-lit-line");
+      if (!group.narrow) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
+      return <button key={bin.from} type="button" data-day-column="" aria-label={`${spanLabel(bin.from, bin.to)} ${group.lines[row]?.value(at) ?? ""}`}
+        onClick={event => { const box = event.currentTarget.getBoundingClientRect();
+          group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top }); }}
+        className={look}>{!off && children(at)}</button>;
     })}
   </div>;
 }
@@ -174,7 +219,7 @@ export function BarChart({ row, height, scale, values, uncounted, partial, grow 
   /** Bins only part of which is counted (counting began inside them): boxed as a bin not whole is. */
   partial?: (at: number) => boolean; grow?: boolean;
 }) {
-  return <Frame scale={scale} height={height}>
+  return <Frame row={row} scale={scale} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{at => values(at).map(([color, value], part, all) => value > 0 &&
       <i key={part} style={{ height: `${Math.min(100, value / scale.top * 100)}%` }}
         className={cn("block flex-none origin-bottom rounded-[1px]", color, part === all.length - 1 && "rounded-t-[3px]", grow && "animate-bar")} />)}</Bins>
@@ -198,7 +243,7 @@ export function LineChart({ row, height, scale, values, faint, color }: {
   row: number; height: string; scale: Scale; values: (number | null)[]; faint?: (at: number) => boolean; color: "done" | "muted";
 }) {
   const { dots, lines } = lineDots(values, scale.top, faint);
-  return <Frame scale={scale} height={height}>
+  return <Frame row={row} scale={scale} height={height}>
     <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
       {lines.map(({ from, to, faint: pale }) => <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
         className={cn("[stroke-linecap:round] [stroke-width:2]", color === "done" ? "stroke-done" : "stroke-muted", pale && "[stroke-dasharray:2_4] [stroke-opacity:.4]")} />)}

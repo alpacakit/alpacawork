@@ -3,6 +3,7 @@ import { SearchField } from "../src/features/chrome/SearchField";
 import { analysisHome } from "../src/features/analysis/place";
 import { useState } from "react";
 import { PointerTip } from "../src/features/analysis/parts";
+import { ChartGroup } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
@@ -118,5 +119,20 @@ test("a conversion under way when the face changes is dropped, and its confirmat
   fireEvent.compositionEnd(box, { target: { value: "検索" } });
   await act(async () => { await vi.advanceTimersByTimeAsync(500); });
   expect(useViewStore.getState()).toMatchObject({ query: "", analysis: null });
+  view.unmount();
+});
+
+test("a day's window closes when the charts change to another step of time, whatever day was pointed at", () => {
+  const days = (count: number) => Array.from({ length: count }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const lines = [{ name: "終わったタスク", value: (at: number) => `${at}件` }];
+  const group = (bucket: "day" | "week", bins: ReturnType<typeof days>) =>
+    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket={bucket} lines={lines}><div /></ChartGroup>;
+  const view = render(group("day", days(30)));
+  const columns = view.container.querySelectorAll("[data-day-column]");
+  fireEvent.mouseMove(columns[29]!, { clientX: 10, clientY: 10 });
+  expect(view.getByRole("presentation").textContent).toContain("29件");
+  // The last day pointed at, then weeks: only four bins are left, and the window is gone with the day it said.
+  view.rerender(group("week", days(4).map(bin => ({ ...bin, complete: false }))));
+  expect(view.queryByRole("presentation")).toBeNull();
   view.unmount();
 });

@@ -28,7 +28,6 @@ export function axisLabels(count: number, wide: boolean, candidate: (at: number)
   return [...kept, count - 1];
 }
 
-type Pick = (days: Days) => void;
 /** Levels of a day on the calendar: none, then four steps by the quarters of the days that had any. */
 export function grassLevels(counts: number[]): (count: number) => number {
   const some = counts.filter(Boolean).sort((a, b) => a - b);
@@ -38,7 +37,7 @@ export function grassLevels(counts: number[]): (count: number) => number {
 const LEVEL = ["bg-grass-0", "bg-grass-1", "bg-grass-2", "bg-grass-3", "bg-done"];
 
 /** The calendar of finished tasks: a cell a day, a column a week from Monday, deeper with more finished. */
-export function Grass({ from, counts, firstDay, today, span, onPick }: { from: string; counts: number[]; firstDay: string | null; today: string; span: Days; onPick: Pick }) {
+export function Grass({ from, counts, firstDay, today, span }: { from: string; counts: number[]; firstDay: string | null; today: string; span: Days }) {
   const { t } = useTranslation("analysis");
   const level = grassLevels(counts);
   const one = span.from === span.to;
@@ -63,7 +62,8 @@ export function Grass({ from, counts, firstDay, today, span, onPick }: { from: s
           // A day outside the record (before it began, after today) is a small dot: where the record runs is seen.
           if (firstDay && day < firstDay || day > today) return <span key={day} aria-hidden className={cn(cell, "grid place-items-center")}><i className="block size-0.5 rounded-full bg-lit-line" /></span>;
           const chosen = day >= span.from && day <= span.to;
-          return <button key={day} type="button" onClick={() => onPick({ from: day, to: day })}
+          // A day says its count when pointed at, or pressed under a finger; the span is chosen from the period's switch.
+          return <span key={day} data-tip-tap=""
             className={cn(cell, LEVEL[level(count)], "hover:outline-[1.5px] hover:outline-ink hover:outline-offset-1 hover:outline-solid",
               one && chosen && "ring-[1.5px] ring-ink ring-offset-[1.5px] ring-offset-bg")}
             {...tip(t("tasks.grassTip", { day: dayWithWeekday(day), count }))} />;
