@@ -248,6 +248,14 @@ test('a project stop includes managed failures and preserves the path of direct 
   assert.equal(flow.run(queued).state, 'queued');
   const requestId = flow.run(queued).requestId;
   assert.notEqual(flow.store(store => startDecision(store.connection, requestId, independent.id)).kind, 'reject');
+
+  const target = await flow.task('New assignment');
+  const decide = (id: string, action: Action) => flow.store(store =>
+    authorize(store.connection, owner(project), action, { task: id, quote: null }));
+  assert.throws(() => decide(project.id, { name: 'task.new', kind: 'task', userRequested: false }), { code: 'forbidden' });
+  assert.throws(() => decide(target.id, { name: 'task.request', worker: false }), { code: 'forbidden' });
+  assert.throws(() => decide(target.id, { name: 'task.answer', askedTo: project.id, closed: true }), { code: 'forbidden' });
+  assert.doesNotThrow(() => decide(target.id, { name: 'task.read' }));
 });
 
 test('project stop ends new lending and keeps accepted work with a protected borrower', async t => {

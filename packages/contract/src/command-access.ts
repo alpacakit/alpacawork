@@ -318,6 +318,10 @@ export function decide(caller: Caller, action: Action, facts: Facts): Decision |
       { reason: { kind: 'coordinator_creates_task_with_from_user_or_internal' }, issues: [{ path: 'fromUser', code: 'required', message: '--from-user or --no-from-user is required' }] });
   const actor = recordedActor(caller, facts.quote, facts.message);
   const acts = actsOf(action.name === 'task.request' && !facts.requestLoan ? { ...action, borrowable: false } : action, facts.task, caller);
+  if (caller.kind === 'run' && facts.runState === 'stopped' &&
+      (action.name === 'task.new' || action.name === 'task.request' || action.name === 'task.answer'))
+    return new Problem(PROBLEM_CODE.forbidden, 'A stopped Task cannot start new work', { action: acts[0] },
+      { reason: { kind: 'task_explicit_resume_scope_required' } });
   for (const act of acts) {
     const row: Row = ACTIONS[act];
     if (caller.kind === 'run' && facts.runState === 'held' && !row.whileHeld)
