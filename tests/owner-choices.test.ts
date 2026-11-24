@@ -72,6 +72,9 @@ test('early rework stays with the tried choice across a later repair or stop', (
   }
   assert.equal(view(modify('doing')).rows[0]?.medianCost.outputTokens, null);
   assert.equal(view(modify('done', accept(150))).rows[0]?.medianCost.outputTokens, 90);
+  const unmeasuredReview = launch(task(30), 'high', 60, 20, 0, { usage: null });
+  const measured = view(unit(3, 'medium', 'done', [accept(150)], [unmeasuredReview]));
+  assert.deepEqual(measured.rows[0]?.medianCost, { outputTokens: null, runMs: 50 });
 });
 
 test('missing or mixed evidence cannot count as a pass, and later instructions follow analysis', () => {
