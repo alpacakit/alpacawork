@@ -21,21 +21,21 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   }
   render(<Form />);
   // The first row is the default; it cannot move up. Even the only row can be removed (its agent may be switched off).
-  expect(screen.getByRole('button', { name: 'Move row 1 up' })).toHaveProperty('disabled', true);
-  expect(screen.getByRole('button', { name: 'Remove row 1' })).toHaveProperty('disabled', false);
+  expect(screen.getByRole('button', { name: 'Move Primary up' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Remove Primary' })).toHaveProperty('disabled', false);
   // A fallback added starts as a copy of the last row, focused to be edited: it never picks a model by itself.
   fireEvent.click(screen.getByRole('button', { name: '+ Add a fallback AI' }));
   expect(writeStack(latest, agents)).toEqual([{ agent: 'claude', values: { model: 'opus', effort: 'medium' } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
-  expect(document.activeElement).toBe(screen.getByLabelText('Model in row 2'));
+  expect(document.activeElement).toBe(screen.getByLabelText('Fallback 1: Model'));
   // It repeats row 1, and the row says so.
   expect(document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')[1]!.dataset.repeats).toBe('1');
-  fireEvent.change(screen.getByLabelText('Agent in row 2'), { target: { value: 'codex' } });
-  fireEvent.change(screen.getByLabelText('Effort in row 2'), { target: { value: 'high' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Move row 2 up' }));
+  fireEvent.change(screen.getByLabelText('Fallback 1: agent'), { target: { value: 'codex' } });
+  fireEvent.change(screen.getByLabelText('Fallback 1: Effort'), { target: { value: 'high' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Move Fallback 1 up' }));
   expect(writeStack(latest, agents)).toEqual([{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   // The role goes with the place: the row moved up is now the primary.
-  expect(document.querySelector('[data-ai-stack-row="codex"]')!.textContent).toContain('Primary');
-  fireEvent.click(screen.getByRole('button', { name: 'Remove row 2' }));
+  expect(screen.getByLabelText<HTMLSelectElement>('Primary: agent').value).toBe('codex');
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Fallback 1' }));
   expect(latest.map(row => row.agent)).toEqual(['codex']);
 });
 

@@ -316,7 +316,7 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
     {/* Under the stacks, the agents get their own heading, so their cards do not read as more rows of them. */}
     {draft.agents.ok && <div className="mb-3">
       <h3 className="text-base font-semibold">{t('agentSettings.aiStack.agentsTitle')}</h3>
-      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote', { tasks: t(stackTitleKey('tasks')), input: t(stackTitleKey('coordinator')) })}</p>
+      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote')}</p>
     </div>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
