@@ -672,7 +672,7 @@ test("a step taken after the screen's clock last ticked is still said, and no wo
   await inEnglish();
   const step = (activity: object | null) => screenData(tree({ placements: [workingPlacement("P1")],
     runs: [run("R1", { state: "running", endedAt: null, activity: activity as never })] }));
-  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null };
+  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null };
   const data = step(soon);
   const { unmount } = render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
