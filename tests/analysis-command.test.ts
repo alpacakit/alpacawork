@@ -132,7 +132,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(detail.prs, [link]);
       assert.equal(detail.questions, 1);
       assert.equal(detail.answers, 1);
-      assert.equal(detail.time.ai, 8_000);
+      assert.equal(detail.time.ai, 10_000);
       assert.equal(detail.workers, 1);
       assert.ok(detail.children > 0);
       await t.test('the finished row and analysis detail include a deleted child’s elapsed time and tokens', async () => {
