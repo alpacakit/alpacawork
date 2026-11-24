@@ -27,9 +27,10 @@ const COMM_LIMIT = 15;
  * A readable name for a process: the script or package an interpreter runs, the command a runner runs, and the
  * whole program name where the kernel's 15-character `comm` cut it.
  */
-export function commandName(comm: string, argv: readonly string[]): string {
+export function commandName(comm: string, argv: readonly string[], executable: string | null = null): string {
   if (!INTERPRETERS.has(comm)) {
-    const program = argv[0] === undefined ? '' : basename(argv[0]);
+    // An application can rewrite argv[0] to a process title that includes its arguments.
+    const program = executable === null ? '' : basename(executable);
     return comm.length >= COMM_LIMIT && program.startsWith(comm) ? program : comm;
   }
   const args = argv.slice(1);
@@ -56,7 +57,7 @@ export class HostSampler {
   constructor(private readonly measurement: Extract<HostMeasurement, { supported: true }>) {}
 
   sample(roots: readonly RunRoot[], at = Date.now()): HostSample {
-    const { cpuTicks, processTime, processes, memory, load, disk } = this.measurement.read();
+    const { cpuTicks, processTime, processes, memory, load, disk, gpus } = this.measurement.read();
     const elapsed = this.previousCpu ? cpuTicks.total - this.previousCpu.total : 0;
     const idle = this.previousCpu ? cpuTicks.idle - this.previousCpu.idle : 0;
     const validInterval = elapsed > 0 && idle >= 0 && idle <= elapsed;
@@ -77,7 +78,10 @@ export class HostSampler {
     const names = new Map<string, string>();
     const nameOf = (process: ProcessStat) => {
       const key = processKey(process);
-      const name = (key === null ? undefined : this.names.get(key)) ?? commandName(process.comm, INTERPRETERS.has(process.comm) || process.comm.length >= COMM_LIMIT ? this.measurement.argv(process.pid, process.startTime) : []);
+      const { comm, pid, startTime } = process;
+      const name = (key === null ? undefined : names.get(key) ?? this.names.get(key)) ??
+        (INTERPRETERS.has(comm) ? commandName(comm, this.measurement.argv(pid, startTime)) :
+          commandName(comm, [], comm.length >= COMM_LIMIT ? this.measurement.executable?.(pid, startTime) : null));
       if (key !== null) names.set(key, name);
       return name;
     };
@@ -89,7 +93,7 @@ export class HostSampler {
       const list = children.get(process.ppid);
       if (list) list.push(process.pid); else children.set(process.ppid, [process.pid]);
     }
-    const claimed = new Set<number>();
+    const claimed = new Map<number, Pick<RunRoot, 'runId' | 'taskId'>>();
     const rootKeys = new Map<string, string>();
     const runs = roots.map(root => {
       const tree: ProcessStat[] = [];
@@ -106,12 +110,11 @@ export class HostSampler {
         const pid = pending.pop()!;
         const process = processes.get(pid);
         if (!process || claimed.has(pid)) continue;
-        claimed.add(pid);
+        claimed.set(pid, { runId: root.runId, taskId: root.taskId });
         tree.push(process);
         pending.push(...children.get(pid) ?? []);
       }
-      const { pid: _pid, ...identity } = root;
-      return { ...identity, ...weigh(tree, share, nameOf) };
+      return { ...runIdentity, ...weigh(tree, share, nameOf) };
     });
 
     const outside = [...processes.values()].filter(process => !claimed.has(process.pid));
@@ -126,6 +129,19 @@ export class HostSampler {
       memoryBytes: total(outside.map(process => process.rssBytes)),
       names: [...byName].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([name]) => name),
     };
+    const gpuLoads = gpus.map(({ processes: gpuProcesses, ...gpu }) => ({
+      ...gpu,
+      users: gpuProcesses ? [...gpuProcesses.entries].sort((a, b) => b.memoryBytes - a.memoryBytes || a.pid - b.pid)
+        .slice(0, 2).map(({ pid, name, memoryBytes }) => {
+          const process = processes.get(pid);
+          // The PID may have been reused since the GPU probe. Only name or attribute the process if it already existed.
+          if (process?.startTime == null || process.startTime > gpuProcesses.since) {
+            return { name, memoryBytes, runId: null, taskId: null };
+          }
+          const owner = claimed.get(pid);
+          return { name: nameOf(process) || name, memoryBytes, runId: owner?.runId ?? null, taskId: owner?.taskId ?? null };
+        }) : null,
+    }));
 
     this.previousCpu = cpuTicks;
     this.previousProcessTime = processTime;
@@ -133,7 +149,7 @@ export class HostSampler {
     this.previousTicks = ticks;
     this.names = names;
     return {
-      at, cpu, memory, load, disk,
+      at, cpu, memory, load, disk, gpus: gpuLoads,
       runs: runs.sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1) || (b.memoryBytes ?? -1) - (a.memoryBytes ?? -1)),
       outside: outsideLoad,
     };

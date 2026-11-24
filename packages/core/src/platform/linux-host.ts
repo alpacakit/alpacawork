@@ -1,8 +1,11 @@
 /** Linux kernel readings translated once into the common measurement contract. */
-import { readFileSync, readdirSync, statfsSync } from 'node:fs';
+import { readFileSync, readdirSync, readlinkSync, statfsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { cpus, hostname, totalmem } from 'node:os';
 import type { HostFacts, HostReading, HostMeasurement, ProcessStat } from './host.js';
+import { pollGpus } from './gpu.js';
+import { readAmdGpus } from './amd-gpu.js';
+import { readNvidiaGpus } from './nvidia-gpu.js';
 
 /** Aggregate CPU ticks; guest time is already included in user and nice. */
 export function parseCpuTicks(text: string): { total: number; idle: number } {
@@ -74,19 +77,30 @@ function readProcesses(pageBytes: number, tickMs: number): Map<number, ProcessSt
   return processes;
 }
 
+function sameProcess(pid: number, startTime?: number | null): boolean {
+  return startTime == null || parseProcessStat(readFileSync(`/proc/${pid}/stat`, 'utf8'))?.startTime === startTime;
+}
+
 function readArgv(pid: number, startTime?: number | null): string[] {
   try {
     const argv = readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0').filter(Boolean);
-    const current = parseProcessStat(readFileSync(`/proc/${pid}/stat`, 'utf8'));
-    return startTime != null && current?.startTime !== startTime ? [] : argv;
+    return sameProcess(pid, startTime) ? argv : [];
   }
   catch { return []; } // Names can degrade to comm without fabricating CPU/RSS.
 }
 
+function readExecutable(pid: number, startTime?: number | null): string | null {
+  try {
+    const executable = readlinkSync(`/proc/${pid}/exe`);
+    return sameProcess(pid, startTime) ? executable : null;
+  } catch { return null; }
+}
+
 export function linuxHostMeasurement(dataDirectory: string): HostMeasurement {
   const pageBytes = getconf('PAGESIZE'), ticksPerSecond = getconf('CLK_TCK'), tickMs = 1000 / ticksPerSecond;
+  const amd = pollGpus(() => readAmdGpus()), nvidia = pollGpus(readNvidiaGpus);
   return {
-    supported: true, facts: readHostFacts(), argv: readArgv,
+    supported: true, facts: readHostFacts(), argv: readArgv, executable: readExecutable,
     read() {
       const disk = statfsSync(dataDirectory);
       const load = readFileSync('/proc/loadavg', 'utf8').trim().split(/\s+/).slice(0, 3).map(Number);
@@ -99,6 +113,7 @@ export function linuxHostMeasurement(dataDirectory: string): HostMeasurement {
         processes: readProcesses(pageBytes, tickMs), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
         load: load as [number, number, number],
         disk: { freeBytes: disk.bavail * disk.bsize, totalBytes: disk.blocks * disk.bsize },
+        gpus: [...nvidia(processTime), ...amd(processTime)],
       };
     },
   };

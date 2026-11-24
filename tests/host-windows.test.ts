@@ -77,7 +77,7 @@ function subject(native: WindowsHostNative) {
   const host = windowsHostMeasurement('C:\\work', native, path => {
     assert.equal(path, 'C:\\work');
     return { bavail: 9_000_000, blocks: 50_000_000, bsize: 1_000 };
-  });
+  }, () => []);
   assert.equal(host.supported, true);
   if (!host.supported) throw new Error('Expected supported reader');
   return host;

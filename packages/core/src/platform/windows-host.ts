@@ -2,7 +2,9 @@
 import { createRequire } from 'node:module';
 import { statfsSync } from 'node:fs';
 import { hostname, release } from 'node:os';
-import type { HostMeasurement, HostReading, ProcessStat } from './host.js';
+import type { GpuReading, HostMeasurement, HostReading, ProcessStat } from './host.js';
+import { pollGpus } from './gpu.js';
+import { readNvidiaGpus } from './nvidia-gpu.js';
 
 // The Windows LLP64 ABI has 32-bit DWORD/LONG even when pointers are 64-bit.
 type Handle = number | bigint;
@@ -157,7 +159,8 @@ function readProcess(api: WindowsHostNative, row: ProcessStat, processTime: numb
 
 /** Native injection is for SDK-boundary contract tests on hosts without Windows. */
 export function windowsHostMeasurement(dataDirectory: string, native?: WindowsHostNative,
-  readDisk: (path: string) => { bavail: number; bsize: number; blocks: number } = statfsSync): HostMeasurement {
+  readDisk: (path: string) => { bavail: number; bsize: number; blocks: number } = statfsSync,
+  readGpus: (processTime: number) => GpuReading[] = pollGpus(readNvidiaGpus)): HostMeasurement {
   const api = native ?? loadNative();
   const cores = api.GetActiveProcessorCount(0xffff /* ALL_PROCESSOR_GROUPS */);
   if (!cores) throw winError('GetActiveProcessorCount', api.GetLastError());
@@ -183,7 +186,7 @@ export function windowsHostMeasurement(dataDirectory: string, native?: WindowsHo
       const processTime = Date.now(); // Immediately before the process snapshot, in the startTime coordinate.
       const processes = processesReading(api, processTime);
       return { cpuTicks: { total: totalMs, idle: idleMs }, processTime, processes,
-        memory, load: null, disk };
+        memory, load: null, disk, gpus: readGpus(processTime) };
     },
   };
 }

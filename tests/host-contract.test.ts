@@ -20,7 +20,7 @@ const processRow = (pid: number, startTime: number | null, ticks: number | null,
 const root = { runId: 'R1', taskId: 'T1', title: 'fixture', role: 'owner' as const, model: null, pid: 10 };
 function fixture() {
   let reading: HostReading = { processTime: 100, cpuTicks: { total: 1000, idle: 500 },
-    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null }, load: null,
+    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null }, load: null, gpus: [],
     disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 }, processes: new Map([[10, processRow(10, 10, 100)]]) };
   const sampler = new HostSampler({ supported: true, facts: { hostname: 'fixture', os: 'fixture', cores: 4, memoryBytes: 1000 },
     argv: () => [], read: () => reading });
@@ -131,7 +131,7 @@ test('adapter initialization failure enters the monitor error path and its next 
     if (attempts === 1) throw Object.assign(new Error('native initialization denied'), { code: 'EACCES' });
     return { supported: true, facts, argv: () => [], read: () => ({ processTime: 100,
       cpuTicks: { total: 1000, idle: 500 }, memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null },
-      load: null, processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
+      load: null, gpus: [], processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
   });
   const monitor = new HostMonitor({ root: area, source, runs: () => [], parallel: () => null, noticeChanged: () => {}, episodeStarted: () => {} });
   try {
@@ -159,7 +159,7 @@ test('real host API remains available during native initialization failure and p
     if (++attempts === 1) throw new Error('Could not initialize Darwin host measurement', { cause: new Error('native symbol unavailable') });
     return { supported: true, facts, argv: () => [], read: () => ({ processTime: 100,
       cpuTicks: { total: 1000, idle: 500 }, memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null },
-      load: null, processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
+      load: null, gpus: [], processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
   });
   const app = await startServer(area, 0, { hostSource: source });
   const read = async () => {
