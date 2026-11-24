@@ -8,6 +8,8 @@ import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.
 import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
 import { authorize, type Action } from '@alpacawork/backend/test-dist/control/authorize.js';
 import { closureOf, returnFacts } from '@alpacawork/backend/test-dist/control/return-rules.js';
+import { startDecision } from '@alpacawork/backend/test-dist/control/task-start-facts.js';
+import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { readTaskView } from '@alpacawork/backend/test-dist/control/task-views.js';
 import { taskFlow, type Seat } from './task-flow.fixture.ts';
 import { assignResponsible } from './helpers/control-fixture.ts';
@@ -45,11 +47,13 @@ test('an independent task stays active while the project finishes and its next i
   assert.equal((await outcome())?.outcome, 'succeeded');
   flow.end(queued);
   assert.equal(await flow.state(seat.id), 'done');
+  const independentQueued = await flow.request(independent);
   const third = await flow.work(seat);
   await flow.person(seat.id, 'stopped');
   assert.equal(await flow.state(independent.id), 'doing');
   assert.equal(flow.run(third).stop_requested, true);
   assert.equal(flow.run(independent).stop_requested, false);
+  assert.notEqual(flow.store(store => startDecision(store.connection, flow.run(independentQueued).requestId, independent.id)).kind, 'reject');
 });
 
 test('project work waits for its own request and receives the answer and result through the ordinary routes', async t => {
@@ -110,6 +114,35 @@ test('a question to a completed project reopens it and survives a hold until it 
   assert.equal((await readTaskView(flow.root, project.id, {}, null)).incomingQuestions.length, 0);
 });
 
+test('a stopped project expires an open consultation and the asking task can continue', async t => {
+  const flow = await taskFlow(t);
+  await assert.rejects(flow.person(flow.project, 'held'), { code: 'responsible_missing' });
+  const project = await flow.work(await projectSeat(flow));
+  await flow.report(project, 'done');
+  flow.end(project);
+  const child = await flow.work(await flow.task('Independent consultation', { userRequested: true }));
+  const question = await flow.ask(child, project.id);
+  await flow.person(project.id, 'stopped');
+  assert.equal((await flow.get(child.id)).meta.log.find(entry => entry.questionId === question)?.kind, 'question_expired');
+  const resumed = await flow.receive(child);
+  await assert.rejects(flow.ask(resumed, project.id), { code: 'invalid_input' });
+  assert.equal(await flow.state(child.id), 'doing');
+});
+
+test('a moved child failure reaches the current project responsible after its old request closes', async t => {
+  const flow = await taskFlow(t);
+  const project = await flow.work(await projectSeat(flow));
+  const formerParent = await flow.work(await flow.task('Former parent'));
+  const child = await flow.work(await flow.task('Moved assignment', { parentId: formerParent.id }), formerParent);
+  await flow.commands.move({ id: child.id, parentId: project.id, expectedTaskHash: (await flow.get(child.id)).hash });
+  flow.end(child, 'failed');
+  const failure = (await flow.get(child.id)).meta.log.findLast(entry => entry.toState === 'error');
+  const projection = await readWorkspaceProjection(flow.root);
+  assert.equal(projection.view(child.id).row.ball?.holder, 'parent');
+  assert.ok(flow.store(store => store.readReturns()).some(row => row.causeLogId === failure?.id && row.toTaskId === project.id));
+  await flow.request(child, project);
+});
+
 test('a project seat can manage its own top-level tasks without gaining rights in a nested project', async t => {
   const flow = await taskFlow(t), seat = await projectSeat(flow), active = await flow.work(seat);
   const nested = (await flow.commands.create({ kind: 'project', color: '#39659b', parentId: seat.id,
@@ -121,6 +154,21 @@ test('a project seat can manage its own top-level tasks without gaining rights i
     assert.doesNotThrow(() => decide(child.id, action));
     assert.throws(() => decide(nested.id, action), { code: 'forbidden' });
   }
+
+  const marked = await flow.work(await flow.task('User task', { userRequested: true }));
+  const directlyRequested = await flow.work(await flow.task('Direct instruction'));
+  for (const id of [marked.id, directlyRequested.id]) {
+    for (const action of [{ name: 'task.report', state: 'stopped' }, { name: 'run.stop' }, { name: 'agent.handover' },
+      { name: 'task.request', worker: false, borrowable: true }] as const)
+      assert.throws(() => decide(id, action), { code: 'forbidden' });
+  }
+  const actor = { kind: 'placement', placementId: seat.placementId } as const;
+  const policy = await flow.get(seat.id);
+  await assert.rejects(new ControlTaskCommands(flow.root, actor).update({ id: seat.id, values: { project_policy: 'Replace policy' },
+    expectedTaskHash: policy.hash }), { code: 'forbidden' });
+  await assert.rejects(new TaskReportService(flow.root).report({ task: seat.id, state: 'doing', values: { project_summary: 'Replace summary' },
+    expectedTaskHash: policy.hash, opId: randomUUID() }, actor, owner(active)), { code: 'forbidden' });
+  assert.equal((await flow.get(seat.id)).hash, policy.hash);
 
   const nestedPlacement = await assignResponsible(flow.root, await flow.get(nested.id), 'fake');
   const nestedOwner = await flow.work({ id: nested.id, placementId: nestedPlacement.id });

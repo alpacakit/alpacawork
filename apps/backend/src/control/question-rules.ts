@@ -1,9 +1,9 @@
 /** The fixed destination and applicability of a question. Meaning and the choice of ancestor belong to the AI. */
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { closureOf, openQuestions, questionsOf, type AskedLog, type TaskLifecycle, type TaskLog } from '@alpacawork/raw';
+import { closureOf, openQuestions, questionsOf, type AskedLog, type TaskBaseState, type TaskLifecycle, type TaskLog } from '@alpacawork/raw';
 
 type QuestionTask = { id: string; parentId: string | null; kind: 'task' | 'project' };
-export type QuestionNode = QuestionTask & { lifecycle: TaskLifecycle; log: readonly TaskLog[] };
+export type QuestionNode = QuestionTask & { lifecycle: TaskLifecycle; baseState?: TaskBaseState; log: readonly TaskLog[] };
 export function questionSnapshot(tasks: Iterable<QuestionNode | { id: string; meta: Omit<QuestionNode, 'id'> }>): Map<string, QuestionNode> {
   return new Map([...tasks].map(task => {
     const node = 'meta' in task ? { id: task.id, ...task.meta } : task;
@@ -26,7 +26,7 @@ export function validQuestionDestination(taskId: string, destination: string | n
   if (destination === null) return true;
   if (task.kind === 'project') return false;
   const target = tasks.get(destination);
-  if (!target || target.lifecycle !== 'active' || target.id === task.id ||
+  if (!target || target.lifecycle !== 'active' || target.baseState === 'stopped' || target.id === task.id ||
       containingProject(task, tasks) !== containingProject(target, tasks)) return false;
   const seen = new Set<string>([task.id]);
   let parent = task.parentId;
@@ -103,7 +103,7 @@ export function assertQuestionOpen(taskId: string, log: readonly TaskLog[], ques
   const question = replyQuestion(taskId, log, questionId);
   const detail = { task: taskId, question: questionId };
   if (question.closing?.kind === 'question_expired')
-    throw new Problem(PROBLEM_CODE.questionExpired, 'Question destination became invalid after a move', detail,
+    throw new Problem(PROBLEM_CODE.questionExpired, 'Question destination is no longer applicable', detail,
       { reason: { kind: 'question_destination_invalid' } });
   if (question.closing?.toState === 'stopped')
     throw new Problem(PROBLEM_CODE.questionExpired, 'The question expired when the Task was stopped', detail);

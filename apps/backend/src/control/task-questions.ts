@@ -141,7 +141,7 @@ export function comment(tx: ControlTx, input: { actor: TaskActor; runId: RunId |
   if (target) notify(tx, project, 'urgent', target, input.opId);
 }
 
-/** A move invalidates only questions whose fixed Task seat left their ancestor chain; never retargets them. */
+/** Expire questions whose fixed destination is no longer available after a move or stop. */
 export function expireInvalidDestinations(tx: ControlTx, taskIds: readonly string[], actor: TaskActor): void {
   const tasks = tasksIn(tx);
   if (!taskIds.length) return;

@@ -34,6 +34,8 @@ export type TaskFacts = {
   baseState: TaskBaseState; hold: boolean;
   /** Derived from the Task's own log; absence does not authorize question completion. */
   openUserQuestion?: boolean;
+  /** Direct user work under a project is outside the project's parent authority. */
+  parentManages?: boolean;
 };
 /** What a decision reads besides the caller and the action. */
 export type Facts = {
@@ -130,7 +132,7 @@ export const ACTIONS = {
   'task.new.from_user': { grants: [['user']] },
   'task.new.project': { grants: [['user']] },
   'task.update.title': { grants: [['own'], ['parent', 'same_project'], ['user']] },
-  /** A Task's values; a project's are its summary and its policy. */
+  /** Working values, plus a project's summary and policy when the user's proxy sets them. */
   'task.update.values': { grants: [['own'], ['parent', 'same_project'], ['user']] },
   'task.update.cwd': { grants: [['user']] },
   'task.update.color': { grants: [['user']] },
@@ -260,7 +262,7 @@ const responsibleRun = (caller: Caller, taskId: string | null | undefined) =>
 function seated(seat: Seat, caller: Caller, actor: TaskActor, action: Action, task: TaskFacts | null): boolean {
   switch (seat) {
     case 'own': return responsibleRun(caller, task?.id);
-    case 'parent': return responsibleRun(caller, task?.parentId);
+    case 'parent': return task?.parentManages !== false && responsibleRun(caller, task?.parentId);
     case 'placement': return caller.kind === 'run' && (caller.role === 'worker' || caller.responsible) &&
       caller.taskId === task?.id;
     // An answer goes to the question's askedTo, fixed when it was asked: the user's proxy, or that Task's responsible.

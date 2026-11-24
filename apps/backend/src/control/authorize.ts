@@ -1,10 +1,12 @@
 /** Database facts and authorization on the entry's own connection. Pure permission rules live in contract. */
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { RunStore } from '@alpacawork/runs';
 import type { TaskActor, TaskKind, TaskState, TaskBaseState } from '@alpacawork/raw';
-import { decide, type Caller, type Action, type Decision, type Quote, type TaskFacts } from '@alpacawork/contract/command-access';
+import { ACTIONS, actsOf, decide, type Caller, type Action, type Decision, type Quote, type Row, type TaskFacts } from '@alpacawork/contract/command-access';
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
 import { loanFor } from './request-loans.js';
+import { returnFacts, taskFailure, userControlsWork } from './return-rules.js';
 import { projectsAbove, readTask } from './task-store.js';
 export * from '@alpacawork/contract/command-access';
 
@@ -48,6 +50,11 @@ export function authorize(db: DatabaseSync, caller: Caller, action: Action, targ
 export function authorize(db: DatabaseSync, caller: Caller, action: Action, target: Target): Decision | AuthorizedWriter {
   const task = target.task === null ? null : action.name === 'task.report' ? reportTaskFacts(db, target.task) : taskFacts(db, target.task);
   const own = caller.kind !== 'run' ? null : task !== null && caller.taskId === task.id ? task : taskFacts(db, caller.taskId);
+  if (task && own?.kind === 'project' && task.parentId === own.id && task.project === own.id &&
+      actsOf(action.name === 'task.request' ? { ...action, borrowable: false } : action, task, caller)
+        .some(act => (ACTIONS[act] as Row).grants.some(([seat]) => seat === 'parent'))) {
+    task.parentManages = !projectWorkBelongsToUser(db, task);
+  }
   const decision = decide(caller, action, { task, runProject: own?.project ?? null,
     requestLoan: action.name === 'task.request' && !!action.borrowable && !action.worker &&
       caller.kind === 'run' && caller.role === 'owner' && caller.responsible && task !== null &&
@@ -58,4 +65,17 @@ export function authorize(db: DatabaseSync, caller: Caller, action: Action, targ
   if (action.name !== 'file.write') return decision;
   if (target.task === null) throw new Error('A file write names the Task whose files it writes');
   return { actor: decision.actor, task: target.task };
+}
+
+function projectWorkBelongsToUser(db: DatabaseSync, task: TaskFacts): boolean {
+  if (task.userRequested) return true;
+  const store = new RunStore('', { busyTimeoutMs: 0 }, true, db);
+  try {
+    const { requests, records, returns, placements, runError } = store.snapshot(task.project, [task.id]);
+    if (!records) throw runError;
+    const { meta } = readTask(db, task.id, 'none');
+    const responsible = placements.some(placement => placement.taskId === task.id && placement.active && placement.responsible);
+    const failure = task.baseState === 'error' ? taskFailure(meta.log) : undefined;
+    return userControlsWork(task.id, failure?.id, requests, returnFacts([{ ...meta, responsible }], records, returns));
+  } finally { store.close(); }
 }

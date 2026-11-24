@@ -92,6 +92,15 @@ test('a child Request closes at the first finish its Task records after the Requ
   assert.equal(closureOf(ask, returnFacts([project, task('T2')], [seatRun, childRun()]))?.outcome, 'closed');
 });
 
+test('stopping a queued owner instruction returns it without consuming the previous report', () => {
+  const ask = request('ask', 'T3', 'placement', { submittedAt: at(1) });
+  const tasks = [project, task('T2'), task('T3', { parentId: 'T2', log: [log('Ldone', 3, { toState: 'done' })] })];
+  assert.deepEqual(closureOf(ask, returnFacts(tasks, [seatRun,
+    childRun({ state: 'cancelled', reason: 'stopped', ended_at: at(2) })])),
+  { outcome: 'stopped', runId: 'R3', causeLogId: null });
+  assert.equal(closureOf(ask, returnFacts(tasks, [seatRun, childRun()])), null);
+});
+
 test('a seat waits on the Requests it sent until each closes', () => {
   const requests = [request('top', 'T2', 'human'), request('work', 'T2'), request('ask', 'T3'),
     request('person', 'T3', 'human'), request('wake', 'T2', 'returns'),

@@ -9,7 +9,7 @@ import { touch } from '@alpacawork/db';
 import { Problem, PROBLEM_CODE, toIssues, type Issue } from '@alpacawork/core';
 import { catalogProblems, DEFAULT_SCHEMA, PROJECT_SCHEMA, fieldCatalog, fieldDefSchema, isDefaultField, shippedField,
   missingRequired, schemaOf, schemaProblems, applyValues, type FieldCatalog, type FieldDef, type FieldProblem, type TaskValues } from '@alpacawork/contract';
-import type { TaskKind } from '@alpacawork/raw';
+import { speaksForUser, type TaskActor, type TaskKind } from '@alpacawork/raw';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import type { TaskTree } from './task-store.js';
 
@@ -200,13 +200,15 @@ export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskVa
  * names each wrong value in its issues (`conditions.2`). A field outside the schema cannot be written.
  */
 export function patchedValues(taskId: string, current: TaskValues, patch: unknown, schema: EffectiveSchema,
-  catalog: FieldCatalog): TaskValues {
+  catalog: FieldCatalog, actor: TaskActor): TaskValues {
   const parsed = schemaOf(schema.fields, catalog).safeParse(patch);
   if (!parsed.success) throw new Problem(PROBLEM_CODE.invalidInput, `${taskId}'s values do not fit its fields`, { task: taskId },
     { reason: { kind: 'values_invalid', task: taskId }, issues: toIssues(parsed.error.issues.flatMap((issue): typeof parsed.error.issues =>
       // A field the schema does not have is named at its own path, as a wrong value is.
       issue.code === 'unrecognized_keys' ? issue.keys.map(key => ({ ...issue, path: [...issue.path, key], message: `Unknown field ${key}` }))
         : [issue])) });
+  if (!speaksForUser(actor) && PROJECT_SCHEMA.some(field => Object.hasOwn(parsed.data, field)))
+    throw new Problem(PROBLEM_CODE.forbidden, 'A person or coordinator sets the project summary and policy', { task: taskId });
   return applyValues(current, parsed.data, catalog);
 }
 /**
@@ -226,7 +228,7 @@ export function assertRequiredValues(db: DatabaseSync, path: readonly { id: stri
  * its TaskRepository.ancestry) and applied to its current values.
  */
 export function writtenValues(db: DatabaseSync, path: readonly { id: string; meta: { kind: TaskKind } }[],
-  task: { id: string; values: TaskValues }, patch: unknown): TaskValues {
+  task: { id: string; values: TaskValues }, patch: unknown, actor: TaskActor): TaskValues {
   const { catalog, schemas } = readTaskFields(db);
-  return patchedValues(task.id, task.values, patch, ownSchema(path[0]?.meta.kind, schemaAlong(path, schemas)), catalog);
+  return patchedValues(task.id, task.values, patch, ownSchema(path[0]?.meta.kind, schemaAlong(path, schemas)), catalog, actor);
 }

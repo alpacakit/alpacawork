@@ -4,8 +4,8 @@ import { questionSnapshot, questionApplicable } from './question-rules.js';
 /**
  * The only writer of a Task (the one transition): its state through apply, every other record through
  * appendRecord, each in the caller's transaction at the Task's next revision. Who may make a change is authorize's
- * alone, so this takes the actor it decided and checks the Task's own facts with TASK_POLICY: a project never changes
- * state, finishBlocked, the responsible seat, the finished branch, and the ancestors a change reopens.
+ * alone, so this takes the actor it decided and checks the Task's own facts with TASK_POLICY, including the
+ * responsible seat, the finished branch, and the ancestors a change reopens.
  */
 import { lastStateReport } from './last-state-report.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -237,6 +237,8 @@ export class TaskTransition {
     const meta = taskMetadata({ ...task.meta, log: [...task.meta.log] }), changes: Change[] = [{ task, meta, values: transition.record?.values,
       ...(transition.action === 'report_doing' ? { replyInput: 'doing' as const } : {}) }];
     let stoppedRuns: RunId[] = [];
+    if (transition.action === 'hold' && task.meta.kind === 'project' &&
+        !tx.runs.responsiblePlacement(task.id)) requireResponsible([task.id]);
     const explicit = speaksForUser(transition.actor);
     const start = transition.action === 'run_started' ? this.startOf(read, transition.runId) : null;
     if (start?.kind === 'reject' && (transition.action === 'run_started')) {
@@ -360,7 +362,7 @@ export class TaskTransition {
       change.meta.version = change.task.meta.version + 1n;
     }
     saveChanges(read, changes, next, after, cause);
-    settleLoanChanges(read, next, cause);
+    settleClosingChanges(read, next, cause);
     noticeChanges(read, changes, next, reopened, below, cause);
     if (!runBoundary) assertSeatsCovered(read, next);
   }
@@ -457,16 +459,16 @@ function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChan
   writer.saveBatch([...next.values()].filter(change => change !== primary)
     .map(change => ({ id: change.task.id, expectedHash: change.task.hash, meta: change.meta, previousLength: change.task.meta.log.length })));
   if (changes[0]?.meta.log.at(-1)?.stage?.action === 'stop') {
-    const stopped = changes[0].task.id;
-    for (const id of [stopped, ...activeBelow(stopped, after).map(item => item.id)]) {
+    const stopped = changes[0].meta;
+    for (const id of [stopped.id, ...workBelow(stopped, after).map(item => item.id)]) {
       read.tx.store.connection.prepare('INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id').run(id, cause.id);
       touch(read.tx.store.connection, { kind: 'stop_epoch', id });
     }
   }
 }
 
-/** Close loans and borrowed instructions before any later operation can act on the new task records. */
-function settleLoanChanges(read: ReadPoint, next: NextChanges, cause: Cause): void {
+/** Settle loans and route any failure that needs a notice beyond the closing return. */
+function settleClosingChanges(read: ReadPoint, next: NextChanges, cause: Cause): void {
   const closing = [...next.values()].flatMap(change => {
     const added = change.meta.log.slice(change.task.meta.log.length);
     return added.some(mayCloseRequest) ? [{ id: change.task.id, meta: change.meta, failure: taskFailure(added) }] : [];
@@ -475,11 +477,11 @@ function settleLoanChanges(read: ReadPoint, next: NextChanges, cause: Cause): vo
   const db = read.tx.store.connection, closingIds = closing.map(change => change.id);
   const affected = db.prepare(`SELECT 1 FROM requests WHERE task_id IN (SELECT value FROM json_each(?))
     AND (lent_task_id IS NOT NULL AND loan_ended_at IS NULL OR loan_request_id IS NOT NULL) LIMIT 1`).get(JSON.stringify(closingIds));
-  if (!affected) return;
+  if (!affected && !closing.some(change => change.failure)) return;
   const tasks = tasksIn(read.tx), context = new Map<string, ControlTask>();
   for (const id of closingIds) for (const task of tasks.related(id).tasks) context.set(task.id, task);
   const lifecycle = new ReturnLifecycle(db, read.tx.runs, [...context.values()], read.project, undefined, read.tx.store.root);
-  lifecycle.settleLoans(closingIds, cause.at);
+  if (affected) lifecycle.settleLoans(closingIds, cause.at);
   for (const change of closing) if (change.failure) lifecycle.notifyFailure(change, change.failure);
 }
 
@@ -511,8 +513,12 @@ function assertSeatsCovered(read: ReadPoint, next: NextChanges): void {
   // The placement owner distinguishes a snapshot leaf from a Task that still needs its seat for children.
   const uncovered = changedStates.length === 0 ? [] : new PlacementStore(read.tx.store.root, false, read.tx.store.connection)
     .uncoveredTasks(changedStates).map(item => item.taskId);
-  if (uncovered.length) throw new Problem(PROBLEM_CODE.responsibleMissing, `Put a responsible on ${uncovered.join(', ')} before it works`, { tasks: uncovered },
-    { reason: { kind: 'put_responsible_on_before_it_works', tasks: String(uncovered.join(', ')) } });
+  if (uncovered.length) requireResponsible(uncovered);
+}
+
+function requireResponsible(tasks: readonly string[]): never {
+  throw new Problem(PROBLEM_CODE.responsibleMissing, `Put a responsible on ${tasks.join(', ')} before it works`, { tasks },
+    { reason: { kind: 'put_responsible_on_before_it_works', tasks: tasks.join(', ') } });
 }
 
 /**

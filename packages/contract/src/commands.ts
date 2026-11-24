@@ -144,7 +144,7 @@ const reportTitle = text('title', `One plain-text line, display width up to ${RE
 const descriptionFile = file('description', MAX_DETAIL_LENGTH * 4, 'Description in Markdown');
 /** Where a writer reads how to write a Task's values, and a project's own (no Task's schema names those). */
 const TASK_VALUES_GUIDE = 'field get';
-const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; a project's own values, ${PROJECT_SCHEMA.join(' and ')}: field list`;
+const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; for project metadata (${PROJECT_SCHEMA.join(' and ')}), see field list`;
 /** A write's values: only the fields it changes, as `guide` describes them. */
 const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('values', MAX_CONTROL_BODY, `${description}: JSON from field IDs to values. ` +
   `Omit to keep or use null to clear. Lists replace (${guide})`, true);
@@ -319,7 +319,7 @@ const definitions = {
         'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
-        'Stopped stops the Task, its subtree and their Runs.'),
+        'Stopping a Task stops its subtree and their Runs. Stopping a project leaves its independent Tasks running.'),
       cliHelp: help('A Git diff in the description is attached automatically.',
         'For multiline Markdown, pass --description-file - and write the text on stdin.') }),
   'task/comment': command('write', 'Add a comment without changing Task state; --urgent sends it to the requester now',

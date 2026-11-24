@@ -35,8 +35,8 @@ test('values are one row per field, written whole and read back by Task ID', () 
 
 test('a write checked against the schema keeps unsent fields and refuses with issues at the wrong value', () => {
   const catalog = readFieldCatalog(database()), schema = { fields: DEFAULT_SCHEMA, from: null };
-  assert.deepEqual(patchedValues('T2', { goal: 'g', notes: 'n' }, { notes: null, pr: ['u'] }, schema, catalog), { goal: 'g', pr: ['u'] });
-  assert.throws(() => patchedValues('T2', {}, { conditions: ['x'.repeat(801)] }, schema, catalog),
+  assert.deepEqual(patchedValues('T2', { goal: 'g', notes: 'n' }, { notes: null, pr: ['u'] }, schema, catalog, { kind: 'human' }), { goal: 'g', pr: ['u'] });
+  assert.throws(() => patchedValues('T2', {}, { conditions: ['x'.repeat(801)] }, schema, catalog, { kind: 'human' }),
     (error: { reason?: { kind: string }; issues?: { path: string }[] }) =>
       error.reason?.kind === 'values_invalid' && error.issues?.[0]?.path === 'conditions.0');
 });
@@ -50,9 +50,9 @@ test('a value saved under a longer limit stays readable and shown, other fields 
   assert.equal(stored.notes, notes);
   assert.ok(renderContext(DEFAULT_SCHEMA, stored, catalog).includes(`## Notes\n${notes}`), 'the launch text and the tab show it whole');
   // A write names only the fields it changes: the long ones it leaves are not checked again.
-  assert.deepEqual(patchedValues('T2', stored, { goal: 'g' }, schema, catalog), { ...stored, goal: 'g' });
+  assert.deepEqual(patchedValues('T2', stored, { goal: 'g' }, schema, catalog, { kind: 'human' }), { ...stored, goal: 'g' });
   const refusal = (patch: object) => {
-    try { patchedValues('T2', stored, patch, schema, catalog); } catch (error) { return (error as { issues: { path: string; message: string }[] }).issues; }
+    try { patchedValues('T2', stored, patch, schema, catalog, { kind: 'human' }); } catch (error) { return (error as { issues: { path: string; message: string }[] }).issues; }
     assert.fail('the write went through');
   };
   assert.deepEqual(refusal({ notes }).map(issue => [issue.path, issue.message]), [['notes', 'At most 780 characters (aim for about 600)']]);

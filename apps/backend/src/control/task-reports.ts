@@ -13,6 +13,7 @@ import { now, type ConversationCheckpoint, type ControlTask, type TaskActor, typ
 import { stopRunsIn } from '../runs/entry.js';
 import { validateReportMedia } from './report-media.js';
 import { endedOwnWork } from './return-rules.js';
+import { expireInvalidDestinations } from './task-questions.js';
 import { TaskTree, assertActive, assertAtHash } from './task-store.js';
 import { TaskTransition, operationFingerprint, operationIdUse, returnsAt, tasksIn, type ControlTx } from './task-transition.js';
 
@@ -122,6 +123,7 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
       if (actor.kind === 'placement' && task.meta.baseState === 'error' && returnsAt(tx, task.id).hasUserWork(task))
         throw new Problem(PROBLEM_CODE.forbidden, 'The user decides how to resolve this failure', { task: task.id });
       stopRunsIn(tx.store, tx.runs, transition.apply(tx, { ...base, action: 'stop', runId }).stoppedRuns, report.opId);
+      if (task.meta.kind === 'project') expireInvalidDestinations(tx, tasksIn(tx).relatedIds([task.id]), actor);
       return;
     case 'submit_review': transition.apply(tx, { ...base, action: 'submit_review' }); return;
     case 'report_doing': transition.apply(tx, { ...base, action: 'report_doing', runId: reportingRun(runId) }); return;

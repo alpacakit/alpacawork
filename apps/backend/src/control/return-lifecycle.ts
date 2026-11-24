@@ -22,8 +22,8 @@ import type { TaskDecisionFacts } from './routing-facts.js';
 import { isUnfinished, PROJECT_REQUESTS_SQL, type ReturnDelivery, type RunTransaction, type StoredPlacement, type StoredRequest,
   type StoredReturn } from '@alpacawork/runs';
 import { resolveUncertainInputs } from '../runs/execution-control.js';
-import { arrivingRequests, awaitsClosure, canHandleFailure, closureOf, cycleClosed, failureRequester, isOpen, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
-  returnFacts, returnIdOf, openRequestsBySeat, taskFailure, userWorkFailed, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
+import { arrivingRequests, awaitsClosure, canHandleFailure, closureOf, cycleClosed, failureRequester, openRequests as openRequestsOf, ranToSuccess, requesterSeat,
+  returnFacts, returnIdOf, openRequestsBySeat, taskFailure, userControlsWork, urgentTarget as urgentTargetIn, type ReturnFacts, type ReturnNotice } from './return-rules.js';
 import { failedDeliveryBlocked, seatFailed, seatRunBefore } from './wake.js';
 
 /** What a return's delivery and resolution facts make of it; there is no writable status. */
@@ -424,11 +424,8 @@ export class ReturnLifecycle {
   /** An open direct user instruction or a failure of that work awaiting the user. */
   hasUserWork(task: TaskDecisionFacts): boolean {
     const view = this.seat(task.id), facts = view.facts;
-    if (view.requests.some(request => request.taskId === task.id && speaksForUser(request.author) &&
-      facts.runOf.get(request.id)?.role === 'owner' && isOpen(request, facts))) return true;
-    if (task.meta.baseState !== 'error') return false;
-    const cause = taskFailure(task.meta.log);
-    return cause !== undefined && userWorkFailed(task.id, cause.id, view.requests, facts);
+    const failure = task.meta.baseState === 'error' ? taskFailure(task.meta.log) : undefined;
+    return userControlsWork(task.id, failure?.id, view.requests, facts);
   }
 
   /** Closing returns go to their senders. If a failure now belongs to another seat, give it a notice too. */

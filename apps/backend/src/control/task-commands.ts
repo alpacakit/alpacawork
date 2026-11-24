@@ -115,7 +115,7 @@ export class ControlTaskCommands {
       const schema = ownSchema(kind, schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas));
       const ids = input.tasks.map(draft => writer.create(kind, id => {
         const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor });
-        const values = draft.values === undefined ? {} : patchedValues(id, {}, draft.values, schema, fields.catalog);
+        const values = draft.values === undefined ? {} : patchedValues(id, {}, draft.values, schema, fields.catalog, this.actor);
         return { meta, values, ...(settings === null ? {} : { settings }) };
       }));
       if (parent?.meta.kind === 'task') assertCovered(tx, [parent.id]);
@@ -225,7 +225,7 @@ export class ControlTaskCommands {
       const { title } = input;
       const tree = new TaskTree(snapshot.tasks);
       const values = input.values === undefined ? undefined
-        : patchedValues(task.id, task.values, input.values, schemaFor(tree, snapshot.fields.schemas, task.id), snapshot.fields.catalog);
+        : patchedValues(task.id, task.values, input.values, schemaFor(tree, snapshot.fields.schemas, task.id), snapshot.fields.catalog, this.actor);
       const settings = input.color === undefined ? undefined : { ...task.settings!, color: input.color };
       const records: TaskLog[] = [];
       if (title !== undefined) records.push(this.record('retitled'));
