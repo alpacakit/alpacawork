@@ -119,8 +119,8 @@ function GpuTile({ gpu, label }: { gpu: Gpu; label: string }) {
   return <Tile label={label} value={formatPercent(gpu.utilization, locale)} tight={false} gpu={gpu.id} note={users || undefined}
     chart={gpu.memory && <>
       <Bar share={100 * gpu.memory.usedBytes / gpu.memory.totalBytes} className="mt-2" />
-      <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-1 text-xs whitespace-nowrap">
-        <span className="text-muted">{t("host.vramFree")}</span><span className="ml-auto tabular-nums">{formatVramFree(gpu.memory, locale)}</span>
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-xs whitespace-nowrap">
+        <span className="text-muted">{t("host.vramFree")}</span><span className="tabular-nums">{formatVramFree(gpu.memory, locale)}</span>
       </div>
     </>} />;
 }
@@ -276,9 +276,10 @@ function Episode({ episode, now, limits, models, open, onToggle }: { episode: Ho
     <div data-host-episode={episode.id} className={cn("border-t border-line", open && "-mx-6 bg-hover px-6 pb-3 narrow:-mx-4.5 narrow:px-4.5")}>
       <Button variant="ghost" aria-expanded={open} onClick={onToggle}
         className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline justify-stretch gap-x-2.5 gap-y-0 rounded-none px-0 py-2 text-left text-base whitespace-normal hover:bg-transparent">
-        <span className="tabular-nums">{span}<span aria-hidden className="ml-1 text-xs text-soft">{open ? "⌄" : "›"}</span></span>
-        <span className={cn("text-right text-sm", episode.end === null ? "text-warn" : "text-muted")}>{reasons}</span>
-        <span className="col-span-2 truncate text-xs text-muted">{who}</span>
+        <span className="truncate whitespace-nowrap tabular-nums">{span}</span>
+        <span aria-hidden className="text-xs text-soft">{open ? "⌄" : "›"}</span>
+        <span className="col-span-2 truncate text-sm text-muted">
+          <span className={episode.end === null ? "text-warn" : "text-ink"}>{reasons}</span> · {who}</span>
       </Button>
       {open && <EpisodeDetail episode={episode} now={now} limits={limits} models={models} />}
     </div>
