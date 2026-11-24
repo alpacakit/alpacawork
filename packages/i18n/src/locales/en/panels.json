@@ -6,28 +6,29 @@
     "addRow": "+ Add row",
     "aiStack": {
       "add": "+ Add a fallback AI",
-      "addFirst": "+ Add the AI to use normally",
-      "agentFor": "Agent in row {{n}}",
-      "agentsNote": "A disabled agent cannot be chosen in “{{tasks}}” or “{{input}}”.",
+      "addFirst": "+ Add the primary AI",
+      "agentFor": "{{role}}: Agent",
+      "agentsNote": "A disabled agent cannot be chosen in the two lists above.",
       "agentsTitle": "Settings for each agent",
-      "down": "Move row {{n}} down",
-      "first": "Normally used",
+      "down": "Move {{role}} down",
+      "fallback": "Fallback {{n}}",
+      "first": "Primary",
       "issue": {
         "disabled": "{{agent}} is disabled. Enable it or remove this row.",
-        "empty": "Add the AI to use normally.",
+        "empty": "Add the primary AI.",
         "missing": "There is no agent named {{agent}}. Choose another agent or remove this row.",
         "value": "{{row}} “{{value}}” is not a value of {{agent}}. Choose again."
       },
-      "lead": "Tasks are normally done by AI 1. Only when it stops on a usage limit or capacity do AIs 2, 3… take over in order. If the last one stops too, the work stops and you are told.",
-      "namedOnly": "A model not listed here is never used as a fallback on its own. It is used only when a request names it.",
+      "lead": "Only when the primary AI stops on a usage limit or capacity do the fallbacks take over, from the top down. If they all stop, the work stops and you are told.",
+      "namedOnly": "An AI not listed here is used only when a request names it.",
       "notOffered": "{{value}} (not a value)",
-      "remove": "Remove row {{n}}",
-      "repeated": "Same as row {{n}}, so this row is never used.",
+      "remove": "Remove {{role}}",
+      "repeated": "Same as {{role}}, so this row is never used.",
       "saveRefused": "Not saved: “{{list}}” has something to fix. Fix what is marked in red, then save again.",
       "showRow": "Go to the row",
       "title": "AI for tasks",
-      "up": "Move row {{n}} up",
-      "valueFor": "{{row}} in row {{n}}"
+      "up": "Move {{role}} up",
+      "valueFor": "{{role}}: {{row}}"
     },
     "authNeeded": "Authentication required. Sign in to {{adapter}} on the server's PC",
     "authNeededCommand": "Authentication required. On the server's PC, run <code>{{command}}</code>",
@@ -39,8 +40,21 @@
     "choices": "Values available when requesting work",
     "choicesHint": "The values offered in the AI lists and in requests.",
     "collapse": "Collapse {{name}}",
+    "context": {
+      "from": "{{value}} ({{source}})",
+      "hint": "The 100% of the ring that shows a conversation's use in a task's detail, in tokens. Left empty, the figure the AI reported or the default is used.",
+      "noModel": "No model chosen",
+      "source": {
+        "default": "default",
+        "reported": "reported by the AI",
+        "setting": "set here"
+      },
+      "title": "Context limits",
+      "unset": "Not set",
+      "windowOf": "Context window of {{model}} (tokens)"
+    },
     "coordinatorStack": {
-      "lead": "Takes what you send from the input, turns it into tasks and hands them to the AI for tasks. AI 1 normally takes it; only when it stops on a usage limit or capacity do AIs 2, 3… take over in order.",
+      "lead": "Takes what you send from the input, turns it into tasks and hands them to the AI for tasks.",
       "title": "AI you talk to in the input (coordinator)"
     },
     "defaultsChanged": "This adapter's default launch options have been updated",
@@ -56,6 +70,7 @@
     "envNames": "Additional environment variables",
     "envPlaceholder": "e.g. ANTHROPIC_API_KEY",
     "errors": {
+      "contextModel": "A context limit names a model this agent no longer lists. Empty that field.",
       "dashFirst": "“-” can only go first. Move it to the start.",
       "duplicateAgent": "{{name}} already exists. Choose another name.",
       "duplicateEnv": "{{name}} appears more than once. Keep one copy.",

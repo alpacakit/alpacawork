@@ -15,7 +15,10 @@ test('activity maps tool result to the original tool', t => {
   activity.poll(folder);
   const saved = readRunActivity(folder);
   assert.equal(saved?.toolName, 'shell');
+  assert.equal(saved.kind, 'tool_end');
   assert.equal(saved.doing, null);
+  assert.equal(saved.note, null);
+  assert.equal(saved.context, null);
   assert.equal(saved.steps[0]?.state, 'done');
 });
 

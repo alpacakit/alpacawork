@@ -127,7 +127,7 @@ test("a desktop working row gives its width to the title and keeps its row layou
   const data = served(tree({ tasks: [work, emptyTask], placements: [placement, emptyPlacement], runs: [run("R1", {
     taskId: "T2", placementId: "P1", state: "running", startedAt: iso(now - 20 * minute), endedAt: null }), run("R2", {
     taskId: "T3", placementId: "P2", state: "running", startedAt: iso(now - 20 * minute), endedAt: null,
-    activity: { at: iso(now - minute), kind: "tool_end", toolName: "Bash", doing: null, note: { at: iso(now - minute), text: "Current work note" }, steps: [] } })],
+    activity: { at: iso(now - minute), kind: "tool_end", toolName: "Bash", doing: null, note: { at: iso(now - minute), text: "Current work note" }, context: null, steps: [] } })],
     home: homeFixture([{ taskId: "T2", section: "doing" }, { taskId: "T3", section: "doing" }]) }));
   render(<TestWorkspace data={data}><TimeTree /></TestWorkspace>);
   const empty = document.querySelector<HTMLElement>('[data-row="T3"] [data-row-label]')!;

@@ -49,6 +49,7 @@ import { agentModelName, modelLabel, peopleAgentNames, placementAgentLabel, runA
 import { useActivityText, useDuration } from "@/features/people/labels";
 import { RunSteps } from "@/features/people/RunSteps";
 import { AgentLabel } from "@/features/people/AgentLabel";
+import { ContextMeter } from "@/features/people/ContextMeter";
 import { sameForFeed } from "@/domain/people";
 import { reportCopy, taskCopy, textClip } from "@/lib/clipboard";
 import { finishedBy } from "@/domain/tasks";
@@ -916,7 +917,8 @@ const WorkingView = createContext<WorkingViewValue | null>(null);
  * others work beside them; a press opens the words whole and each other person's. Then each Task below with someone at
  * work, one line each that opens it, children before grandchildren (childWork). Folded, the row shows the first of
  * each, so who works here and where below are both seen, and how many more there are below. The tool step is left
- * out; the task's tokens are in About. It reads only each Run's latest activity, never the agent's output log, and
+ * out; the task's tokens are in About. Each working line ends with how full its agent's conversation is (ContextMeter).
+ * It reads only each Run's latest activity, never the agent's output log, and
  * FeedAgents reads the subtree and shares exactly the rows drawn here with the name scope.
  */
 function WorkingRow({ task, onFollow }: { task: TaskDetail; onFollow: (id: string) => void }) {
@@ -984,16 +986,21 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   // These words can wrap: share their first baseline with the time, rather than centring it on all their lines.
   return <div data-working-person={run.placementId} className={`${RECORD_HEAD} items-baseline !p-0`}>
     <RailTime mark={lead ? WORKING_MARK : undefined} live>{duration(run.startedAt)}</RailTime>
-    <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft group-hover/row:text-ink">
+    <span className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-2 text-xs text-soft group-hover/row:text-ink">
+    <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5">
       <span className="font-medium">{t(`reportFeed.row.party.${member ? "member" : "self"}`)}</span>
       <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
       {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
-        reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}</span>
+        reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
+      </span>
+      {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
+      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
     {steps.length === 0 ? null : lead ? <LeadSteps open={open} steps={steps} className={`${cell} mt-1.5`} />
       : <RunSteps steps={steps} open trail={0} className={`${cell} mt-1.5`} />}
-    {lead && <span className="col-start-3 row-start-1 flex items-center self-center justify-self-end"><DisclosureChevron open={open} /></span>}
+    {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
+    <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
 }
 
@@ -1070,12 +1077,15 @@ function ChildWorkLine({ item, mark, onFollow }: { item: ChildWork; mark: boolea
     onClick={event => { const button = event.currentTarget; followReference(button, item.id, () => onFollow(item.id)); }}
     className={`${RECORD_HEAD} group/row w-full items-baseline !py-1.5 focus-visible:outline-2 focus-visible:outline-ink`}>
     <RailTime mark={mark ? WORKING_MARK : undefined} live>{duration(run.startedAt)}</RailTime>
-    <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft group-hover/row:text-ink">
+    <span className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-2 text-xs text-soft group-hover/row:text-ink">
+    <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5">
       <span data-row-end="child" className="party-tag inline-flex items-baseline gap-1 font-medium">
         <PartyMark party="child" />
         <span>{t(item.path.length > 1 ? "reportFeed.childWorking.grandchild" : "reportFeed.row.party.child")}</span><span className="tabular-nums">{item.id}</span></span>
       <AgentLabel data-child-work-model label={model} />{mark && <span>{t("reportFeed.row.working")}</span>}
-      {others > 0 && <span data-child-work-others className="whitespace-nowrap">·&nbsp;{t("reportFeed.working.others", { count: others })}</span>}</span>
+      {others > 0 && <span data-child-work-others className="whitespace-nowrap">·&nbsp;{t("reportFeed.working.others", { count: others })}</span>}
+      </span>
+      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press={false} /></span>}</span>
     <span data-child-work-title className={`col-start-2 mt-0.5 line-clamp-2 min-w-0 text-sm ${ROW_WORDS} [overflow-wrap:anywhere] narrow:col-span-2 narrow:col-start-1`}>{item.title}</span>
     <Icon name="right" className="press-end col-start-3 row-start-1 row-span-2 size-4 self-center text-muted group-hover/row:text-ink [--edge-press:--spacing(4)]" />
   </button>;

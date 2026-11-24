@@ -9,6 +9,7 @@ import { launchAgent, launchArgv, runScope } from './launch-agent.js';
 import { EventJournal, executionFolder, identityOf, readLaunch, readCommands, names } from './execution-files.js';
 import { runtimeAdapter, unavailableRuntimeMessage } from '../agents/registry.js';
 import { OutputActivityReader } from './activity.js';
+import { recordReportedContext } from '../agents/context-reported.js';
 import { appendReceipt, endOutcome, publishCompletion, readEnd, runExpired, type Outcome } from './result-observation.js';
 import { CommandWatch } from './command-watch.js';
 import { terminateAgent } from './termination.js';
@@ -103,7 +104,10 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   const { child, channel, exited, spawnedAt } = launched;
   let termination: Promise<void> | undefined;
   let channelClosed = false, groupSettled = false, unitSettled = false, failed = false;
-  const activity = new OutputActivityReader(adapter);
+  const launch = snapshot.invocation.launch;
+  const activity = new OutputActivityReader(adapter, undefined,
+    update => { try { recordReportedContext(root, launch.adapter, launch.values.model ?? null, update); }
+      catch (error) { console.error('Reported context could not be kept', error); } });
   const finishActivity = (state: 'done' | 'failed') => {
     try { activity.finish(folder, state); } catch (error) { console.error('Activity finish failed', error); }
   };

@@ -37,7 +37,7 @@ Puedes señalar una tarea por su número (como T12) o por palabras de su título
 | Abrir la pantalla | `abre la pantalla` | `alpacawork open` |
 | Ver si está en marcha | `mira si está en marcha` | `alpacawork status` |
 | Cambiar la configuración | `ejecuta como máximo 4 IA a la vez` | — |
-| Cambiar el modelo de uso normal | `usa opus normalmente para las tareas` | — |
+| Cambiar el modelo principal | `usa opus normalmente para las tareas` | — |
 | Hacer disponible un modelo nuevo | `salió un modelo nuevo de Codex; añádelo a la configuración de modelos para poder elegirlo` | — |
 | Cambiar la política del proyecto | `añade "usa opus para el diseño" a la política del proyecto` | — |
 | Actualizar a la última versión | `actualiza a la última versión` | `alpacawork deploy npm:alpacawork` |

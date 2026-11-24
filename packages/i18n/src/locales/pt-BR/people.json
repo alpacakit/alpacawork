@@ -28,6 +28,19 @@
     "tomorrow": "amanhã {{clock}}",
     "yesterday": "ontem {{clock}}"
   },
+  "context": {
+    "compacted": "A conversa acabou de ser compactada. A próxima resposta dirá quanto está em uso.",
+    "label": "Contexto da conversa {{figure}} (usado {{used}} / limite {{window}})",
+    "noWindow": "Não definido",
+    "setWindow": "Informe um limite em Limites de contexto, nas configurações do agente, para ver uma porcentagem.",
+    "title": "Contexto da conversa",
+    "tokens_one": "{{tokens}} token",
+    "tokens_many": "{{tokens}} tokens",
+    "tokens_other": "{{tokens}} tokens",
+    "used": "Usado",
+    "waiting": "Medindo",
+    "window": "Limite"
+  },
   "day": {
     "date": "{{weekday}}, {{date}}",
     "tomorrow": "Amanhã",

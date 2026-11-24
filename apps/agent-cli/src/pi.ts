@@ -10,6 +10,7 @@ import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { toolResultText } from '@alpacawork/contract/run';
 import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
+import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { measuredUsage, usageRecord as object } from './usage.js';
 import { emitToolEnd, emitToolStart } from './tool-activity.js';
 
@@ -58,6 +59,22 @@ function verifyHeader(file: string, id: string, allowMissing: boolean): void {
     if (header.type !== 'session' || header.id !== id || typeof header.cwd !== 'string' ||
       realpathSync(header.cwd) !== realpathSync(process.cwd())) throw new Error('Pi session ID or cwd does not match');
   } finally { closeSync(fd); }
+}
+/** Each model call's own total; a compaction leaves the fill unknown until the next call (pi says null too). */
+export function piContext(value: unknown): ContextUpdate | null {
+  const row = object(value), message = object(row.message);
+  if (row.type === 'message_end' && message.role === 'assistant') {
+    const usage = object(message.usage);
+    const used = callTokens(usage.totalTokens) ?? callTokens(usage.input, usage.output, usage.cacheRead, usage.cacheWrite);
+    return used === null ? null : { usedTokens: used, compacted: false };
+  }
+  return row.type === 'compaction_end' ? { usedTokens: null, compacted: true } : null;
+}
+/** pi's own reckoning of the fill and its window, read when a turn ends. */
+export function piStatsContext(value: unknown): ContextUpdate | null {
+  const context = object(object(value).contextUsage), window = callTokens(context.contextWindow);
+  if (!window) return null;
+  return { windowTokens: window, ...context.tokens === null ? {} : { usedTokens: callTokens(context.tokens) } };
 }
 export function piUsage(value: unknown) {
   const tokens = object(object(value).tokens);
@@ -228,6 +245,8 @@ export class PiRuntime implements Runtime {
     }
     if (row.type === 'message_start' && message.role === 'assistant') this.execution().assistant = null;
     if (row.type === 'message_end' && message.role === 'assistant') this.execution().assistant = message;
+    const context = piContext(row);
+    if (context) this.io.emit({ type: 'context.updated', context });
     if (row.type === 'tool_execution_start') {
       emitToolStart(this.io, 'mcp_tool_call', row.toolCallId, row.toolName, row.args);
     } else if (row.type === 'tool_execution_end') {
@@ -305,6 +324,8 @@ export class PiRuntime implements Runtime {
       const stats = await this.request('get_session_stats');
       if (stats.sessionId !== this.id || stats.sessionFile !== this.file) throw new Error('Pi stats belong to another session');
       usage = piUsage(stats);
+      const context = piStatsContext(stats);
+      if (context) this.io.emit({ type: 'context.updated', context });
     }
     this.turnCount++; this.lastFailed = failure !== null;
     if (failure) this.io.emit({ type: 'turn.failed', error: { message: diagnosticFailure(failure)!.message } });

@@ -1,7 +1,9 @@
 /** A published reader survives later writes; the next reader agrees with a fresh read of the same database. */
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { parse, stringify } from 'yaml';
+import { runFolder } from '@alpacawork/contract/run';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -76,7 +78,7 @@ test('activity updates list patches without aging the opened view, while batched
     for (const [index, kind] of (['output', 'output', 'tool_start', 'tool_end'] as const).entries()) {
       files = { activity: { at: new Date(Date.parse(at) + index * 1000).toISOString(),
         kind, toolName: kind.startsWith('tool') ? 'Synthetic tool' : null,
-        doing: null, note: { at, text: `Synthetic output ${index}` }, steps: [] }, errorCause: index === 3 ? 'weekly_limit' : undefined };
+        doing: null, note: { at, text: `Synthetic output ${index}` }, context: null, steps: [] }, errorCause: index === 3 ? 'weekly_limit' : undefined };
       const keys: ChangeKey[] = [{ kind: 'activity', id: 'R4' }];
       const after = await owner.read(journal.append(keys));
       const impact = affected({ before: before.records, after: after.records, keys, owners: new Set([task]) });
@@ -245,14 +247,14 @@ test('an unrelated malformed schema does not block a Run change; a failed advanc
 
 test('folder observations, Request ordering and personal count facts all read the published snapshot', t => {
   const h = fixture(t);
-  const files = new Map<string, { activity: import('@alpacawork/contract').RunActivity | null; errorCause: 'weekly_limit' | undefined }>();
+  const files = new Map<string, RunFileRecord>();
   const fileLists = new Map<string, { name: string; size: number; revision: string; at: string }[]>();
   const config = { environment: { root: h.root, profiles: [], attachmentBytes: 1024, writable: true, errors: [] },
     settings: { profiles: new Set(['synthetic']), automaticLimit: 3 } };
   const observations = { runFiles: (run: { id: string }) => files.get(run.id) ?? { activity: null, errorCause: undefined },
     files: (task: string) => fileLists.get(task) ?? [], configuration: () => config };
   const before = emptyWorkspaceRecords(h.root, observations).load(h.db, pv(1));
-  const activity = { at, kind: 'output' as const, toolName: null, doing: null, note: { at, text: 'Synthetic output' }, steps: [] };
+  const activity = { at, kind: 'output' as const, toolName: null, doing: null, note: { at, text: 'Synthetic output' }, context: null, steps: [] };
   files.set('R4', { activity, errorCause: 'weekly_limit' });
   const after = before.advance(h.db, [{ kind: 'activity', id: 'R4' }], pv(2)).next;
   assert.equal(before.bundle('T5')!.runFiles!.get('R4')!.activity, null);
@@ -308,4 +310,21 @@ test('History reverse references cover exactly the Tasks named across all own an
     }
   }
   for (const id of records.taskIds()) assert.deepEqual(records.historyReferrers(id), [...expected.get(id) ?? []].sort(), id);
+});
+
+test('a context window written in the settings reaches every working Run\'s ring on the settings change alone', t => {
+  const h = fixture(t);
+  h.db.prepare(`UPDATE runs SET record=json_set(record,'$.state','running','$.ended_at',NULL,'$.exit',NULL,'$.reason',NULL,
+    '$.agent','codex','$.launch.adapter','codex','$.launch.values',json('{"model":"gpt-6.2-sol"}')) WHERE id=4`).run();
+  mkdirSync(runFolder(h.root, 'R4'), { recursive: true });
+  writeFileSync(join(runFolder(h.root, 'R4'), 'activity.json'), JSON.stringify({ at, kind: 'output', toolName: null, doing: null, note: null,
+    context: { usedTokens: 150_000, compacted: false, observedAt: at }, steps: [] }));
+  const before = emptyWorkspaceRecords(h.root).load(h.db, pv(1));
+  const window = (records: DatabaseWorkspaceRecords) => records.bundle('T5')!.runFiles!.get('R4')!.activity!.context;
+  assert.deepEqual([window(before)!.windowTokens, window(before)!.windowFrom], [475_000, 'default']);
+  const file = join(h.root, 'config.yaml'), config = parse(readFileSync(file, 'utf8')) ?? {};
+  config.agents = { ...config.agents, codex: { ...config.agents?.codex, context: { 'gpt-6.2-sol': { window: 300_000 } } } };
+  writeFileSync(file, stringify(config));
+  const after = before.advance(h.db, [{ kind: 'config', id: 'config.yaml' }], pv(2)).next;
+  assert.deepEqual([window(after)!.windowTokens, window(after)!.windowFrom], [300_000, 'setting']);
 });

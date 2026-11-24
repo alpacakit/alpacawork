@@ -1,4 +1,5 @@
-import { tokenUsage, usageRecord as object } from './usage.js';
+import { tokenUsage, usageRecord } from './usage.js';
+import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 /** Grok Build's native streaming-json is one prompt per process.
  * https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md
  */
@@ -16,6 +17,17 @@ import { emitToolEnd, emitToolStart } from './tool-activity.js';
 type Options = { output: string | null; session: string | null; model: string | null; effort: string | null };
 type Active = Turn & { directory: string; text: string; terminal: Record<string, unknown> | null; error: string | null };
 const USAGE = 'Usage: alpacawork-agent grok [-o FILE] [--session UUID] [--model MODEL] [--effort EFFORT]';
+
+/**
+ * Each model response's own counters (one `usage` row per response, headless-mode docs). streaming-json names no
+ * window, so the fill has none. Whether `input_tokens` there includes the cache is unconfirmed: it is taken as the
+ * terminal result's is documented, without it.
+ */
+export function grokContext(value: unknown): ContextUpdate | null {
+  const usage = usageRecord(value);
+  const used = callTokens(usage.input_tokens, usage.cache_read_input_tokens, usage.cache_creation_input_tokens, usage.output_tokens);
+  return used === null ? null : { usedTokens: used, compacted: false };
+}
 
 export class GrokRuntime extends OneProcessRuntime<Active> {
   private readonly options: Options;
@@ -85,12 +97,15 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
         active.text += event.data;
         this.io.emit({ type: 'item.completed', item: { type: 'agent_message', text: event.data } });
       }
+    } else if (event.type === 'usage') {
+      const context = grokContext(event.usage);
+      if (context) this.io.emit({ type: 'context.updated', context });
     } else if (event.type === 'tool_call') {
       this.begin(active);
       emitToolStart(this.io, 'command_execution', event.toolCallId, event.toolName, event.rawInput);
     } else if (event.type === 'tool_call_update' && (event.status === 'completed' || event.status === 'failed')) {
-      const output = event.rawOutput, data = object(output);
-      const content = Array.isArray(event.content) ? event.content.map(part => object(part).content) : [];
+      const output = event.rawOutput, data = usageRecord(output);
+      const content = Array.isArray(event.content) ? event.content.map(part => usageRecord(part).content) : [];
       const result = toolResultText(output) || toolResultText(data.output) || toolResultText(data.text) ||
         toolResultText(content) || toolArgumentText(output);
       emitToolEnd(this.io, 'command_execution', event.toolCallId, event.toolName, result, event.status === 'failed');

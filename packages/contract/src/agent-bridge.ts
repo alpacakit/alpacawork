@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { tokenCountersSchema } from './run-contract.js';
 import type { RunFailure } from './run-failure.js';
+import type { ContextUpdate } from './agent-context.js';
 import { RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, runStepLineSchema } from './work-contract.js';
 
 export const agentUsageSchema = z.object({ scope: z.enum(['conversation', 'run']), counters: tokenCountersSchema }).strict();
@@ -29,5 +30,7 @@ export type BridgeEvent =
   | { type: 'turn.completed'; usage: AgentUsage | null }
   /** `cause`: the bridge recognized the agent's own report that its plan or the model ran out (see RunFailure). */
   | { type: 'turn.failed'; error: { message: string; cause?: RunFailure['cause'] } }
+  /** How full the main conversation is, as the agent last said (contextUpdateSchema). */
+  | { type: 'context.updated'; context: ContextUpdate }
   | { type: 'error'; message: string }
   | { type: 'item.started' | 'item.completed'; item: { type: string; [key: string]: unknown } };

@@ -1,6 +1,7 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
 import { RUN_FILES, RUN_NOTE_LIMIT, RUN_STEP_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT,
   clipRunText, runActivitySchema, type RunActivity, type RunStep } from '@alpacawork/contract/run';
+import { mergeContext, type AgentContext, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
 import { JsonlReader } from './readers/jsonl.js';
@@ -109,11 +110,14 @@ class WorkActivity {
 }
 
 export class OutputActivityReader {
-  constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now()) {}
+  /** `reported` keeps a window named by the agent in the model's record. */
+  constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
+    private readonly reported: (update: ContextUpdate) => void = () => {}) {}
 
   private readonly work = new WorkActivity();
   private readonly lines = new JsonlReader(() => this.resetWork());
-  private latest: Omit<RunActivity, 'doing' | 'steps'> | null = null;
+  private latest: Omit<RunActivity, 'doing' | 'steps' | 'context'> | null = null;
+  private context: AgentContext | null = null;
   private dirty = false;
   private writtenRecent: string | undefined;
 
@@ -139,7 +143,16 @@ export class OutputActivityReader {
   }
 
   private accept(value: unknown): void {
-    for (const event of this.adapter.activity(value, new Date(this.now()).toISOString())) {
+    const received = new Date(this.now()).toISOString();
+    const update = this.adapter.context(value);
+    if (update) {
+      this.context = mergeContext(this.context, update, received);
+      if (update.windowTokens !== undefined) this.reported(update);
+      // A context-only update leaves the latest work and words in place.
+      this.latest ??= { at: received, kind: 'output', toolName: null, note: null };
+      this.dirty = true;
+    }
+    for (const event of this.adapter.activity(value, received)) {
       const name = this.work.observe(event);
       const text = words(event.text);
       const note = text ? { at: event.at, text } : this.latest?.note ?? null;
@@ -155,7 +168,7 @@ export class OutputActivityReader {
       this.writtenRecent = recent;
     }
     if (this.dirty && this.latest) {
-      const activity: RunActivity = { ...this.latest, doing: this.work.doing, steps: this.work.steps };
+      const activity: RunActivity = { ...this.latest, doing: this.work.doing, context: this.context, steps: this.work.steps };
       writeRunFile(folder, RUN_FILES.activity, JSON.stringify(activity));
       this.dirty = false;
     }

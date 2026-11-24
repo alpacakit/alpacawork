@@ -240,25 +240,56 @@ function ServerDraftFoot() {
   const placeName = (place: DraftPlace) => place === "ai" ? t("settings.tabs.ai") : `${t("settings.tabs.general")} → ${t("settings.server.advanced")}`;
   const status = !isDirty ? t("settings.status.saved") : changed.length
     ? t("settings.status.dirtyIn", { places: changed.map(placeName).join(t("settings.status.placeSeparator")) }) : t("settings.status.dirty");
-  return <>
+  // On a PC the save row, with why a save was refused and what to do next, is kept at the window's foot while the
+  // fields above scroll, so whether a save is needed, and why one did not go through, are always in view; it reaches
+  // down over the body's bottom room, and its own clears the body's fade. A field moved to comes into view above it
+  // (keepFieldsClear). On a phone it all stays in the page's flow, last: kept in view it would cover the field being
+  // typed in over the keyboard.
+  return <div ref={keepFieldsClear} data-settings-foot-block
+    className="sticky -bottom-3 z-10 mt-6 flex flex-col gap-3 border-t border-line bg-raised pt-4 pb-4 narrow:static narrow:contents">
     <FormError form={form} onReread={unproven ? undefined : reload} rereadLabel={t("settings.server.reload")} disabled={!actions.reread} />
     {unconfirmed && <SaveUnconfirmed unproven={unproven} onReread={() => void reload()} disabled={!actions.reread} />}
-    {/* In the page's flow, last: on a phone a foot kept in view would cover the field being typed in over the keyboard. */}
-    <DialogFooter data-settings-foot className="flex-wrap">
+    <DialogFooter data-settings-foot className="mt-0 flex-wrap border-t-0 pt-0 narrow:mt-4.5 narrow:border-t narrow:pt-4">
       <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
         <FieldHint role="status">{status}</FieldHint>
         {/* A save a stack refused says why beside the button, and takes the eye to the row to fix. */}
         {STACK_FIELDS.map(field => errors[field] && <FieldError key={field} data-ai-stack-refused={stackKind(field)} className="mt-type-close">
           {t('agentSettings.aiStack.saveRefused', { list: t(stackTitleKey(stackKind(field))) })}{' '}
           <Button type="button" variant="ref" onClick={() => showStack(field)}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>)}
-        <FieldHint className="mt-type-close">{t("settings.server.effect")}</FieldHint>
+        {/* What a save leaves as it was, said only while there is something to save. */}
+        {isDirty && <FieldHint data-settings-effect className="mt-type-close">{t("settings.server.effect")}</FieldHint>}
       </div>
       <Button variant="outline" disabled={!actions.discard} onClick={() => form.reset()}>
         {t("settings.discard")}
       </Button>
       <SubmitButton form={form} disabled={!actions.save} label={t("settings.server.save")} onClick={save} />
     </DialogFooter>
-  </>;
+  </div>;
+}
+
+/**
+ * One rule for the dialog body's foot room: as tall as the save row kept in view there now, and none when no such row
+ * is shown (another tab, the options folded, a phone, where it is in the flow). It is asked again whenever a save row
+ * appears, goes or changes height, or a fold in the body opens or closes (a folded row keeps its size), so the order
+ * the tabs and folds were opened in does not matter. The field in hand is brought clear of a row that grew over it.
+ */
+function keepFieldsClear(block: HTMLDivElement | null) {
+  const body = block?.closest<HTMLElement>('[data-slot="dialog-body"]');
+  if (!block || !body) return;
+  const fit = () => {
+    const shown = [...body.querySelectorAll<HTMLElement>("[data-settings-foot-block]")]
+      .find(each => (each.checkVisibility?.() ?? true) && each.offsetHeight > 0 && getComputedStyle(each).position === "sticky");
+    body.style.scrollPaddingBottom = shown ? `${shown.offsetHeight}px` : "";
+    // A row that grew (a first change adds its note, a refusal its reason) must not cover the field in hand.
+    const held = document.activeElement;
+    if (!shown || !(held instanceof HTMLElement) || !body.contains(held) || shown.contains(held)) return;
+    const field = held.getBoundingClientRect(), row = shown.getBoundingClientRect();
+    if (field.bottom > row.top && field.top < row.bottom) held.scrollIntoView({ block: "nearest" });
+  };
+  const observer = new ResizeObserver(fit);
+  observer.observe(block);
+  body.addEventListener("toggle", fit, true);
+  return () => { observer.disconnect(); body.removeEventListener("toggle", fit, true); fit(); };
 }
 
 /**
@@ -285,6 +316,7 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
   const { errors } = useFormState({ control });
   // Read beside the form, not before it: it waits on each agent's own checks.
   const status = useAgentStatus().data;
+  const reportedContext = useServerSettings().data?.reportedContext;
   const agentIssues = draft.agents.ok ? validateAgentsDraft(draft.agents.value) : draft.agents.issues;
   // What serve refused in a stack (draftFieldOf): by row when it named one, else the stack as a whole.
   const refusal = (name: StackField) => errors[name] as { message?: string; type?: string } | (({ message?: string } | undefined)[]) | undefined;
@@ -316,11 +348,11 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
     {/* Under the stacks, the agents get their own heading, so their cards do not read as more rows of them. */}
     {draft.agents.ok && <div className="mb-3">
       <h3 className="text-base font-semibold">{t('agentSettings.aiStack.agentsTitle')}</h3>
-      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote', { tasks: t(stackTitleKey('tasks')), input: t(stackTitleKey('coordinator')) })}</p>
+      <p className="mt-1 text-sm text-muted">{t('agentSettings.aiStack.agentsNote')}</p>
     </div>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
-        <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
+        <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile} reportedContext={reportedContext}
           onChange={value => {
             // A row of either stack follows its agent's new name.
             const before = field.value;

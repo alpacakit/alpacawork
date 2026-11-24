@@ -33,7 +33,7 @@ test('coordinator steps and words survive quiet in the index and clear on Run en
   const steps = [{ id: 'check', at, tool: 'Bash', kind: 'command', text: 'cat catalog.txt', more: 0, about: null, state: 'done', result: null }];
   const words = 'The catalog is ready.';
   writeFileSync(join(folder, 'activity.json'), JSON.stringify({
-    at, kind: 'tool_end', toolName: 'Bash', doing: null, note: { at, text: words }, steps,
+    at, kind: 'tool_end', toolName: 'Bash', doing: null, note: { at, text: words }, context: null, steps,
   }));
   do { current = await stream.index(); } while (current.coordinatorWork?.words !== words);
   assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.update', count: 1, steps, words });
