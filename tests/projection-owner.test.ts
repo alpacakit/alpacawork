@@ -194,6 +194,36 @@ test('a Task the index cannot send never precedes a shown home row, at startup o
   shownFollowShown('project left the list while the Task kept its last read');
 });
 
+test('a queued child below a parent in review gets its own home row when its Run starts', async t => {
+  const h = workspace(t, 'projection-queued-child');
+  const at = '2026-11-16T00:00:00.000Z';
+  h.db.prepare("UPDATE tasks SET base_state='waiting' WHERE external_id='T2'").run();
+  h.db.prepare(`INSERT INTO task_log(id,task_id,ordinal,entry)
+    SELECT 'fixture-review',task_id,max(ordinal)+1,? FROM task_log
+    WHERE task_id=(SELECT id FROM tasks WHERE external_id='T2') GROUP BY task_id`).run(JSON.stringify({
+    id: 'fixture-review', kind: 'reported', at, actor: { kind: 'human' },
+    fromState: 'done', toState: 'waiting', title: 'Synthetic submission', description: null,
+  }));
+  h.db.prepare("UPDATE tasks SET base_state='todo',parent_id=(SELECT id FROM tasks WHERE external_id='T2') WHERE external_id='T3'").run();
+  h.db.prepare("INSERT INTO task_dependencies(task_id,after_task_id) VALUES ('T3','T4')").run();
+  const updateRun = h.db.prepare(`UPDATE runs
+    SET record=json_set(record,'$.state',?,'$.started_at',?,'$.ended_at',NULL,'$.exit',NULL),result=NULL,result_state='pending'
+    WHERE id=2`);
+  updateRun.run('queued', null);
+  const owner = h.own(new ProjectionOwner({ ...h, generation: 'queued-child-generation', locations: () => ({}), published: () => {} }));
+  const section = (id: string) => (JSON.parse(owner.index()).home as { taskId: string; section: string }[]).find(row => row.taskId === id)?.section;
+  await owner.start();
+  assert.equal(section('T2'), 'review');
+  assert.equal(section('T3'), undefined, 'a queued child has no separate home row');
+
+  h.db.prepare("UPDATE tasks SET base_state='done' WHERE external_id='T4'").run();
+  h.db.prepare("UPDATE tasks SET base_state='doing' WHERE external_id='T3'").run();
+  updateRun.run('running', at);
+  await owner.read(h.log.append([{ kind: 'task', id: 'T4' }, { kind: 'task', id: 'T3' }, { kind: 'run', id: 'R2' }]));
+  assert.equal(section('T2'), 'review');
+  assert.equal(section('T3'), 'doing');
+});
+
 test('a missing parent retains the last usable Task across publications while independent Tasks stay current', async t => {
   const h = workspace(t, 'projection-missing-parent');
   h.db.prepare("UPDATE tasks SET base_state='doing',hold=0 WHERE external_id='T5'").run();
