@@ -108,6 +108,7 @@ export const tip = (words: string) => ({ "data-tip": words, "aria-label": words 
 /** The small window under the pointer, for every mark inside the analysis that says its value (`tip`). */
 export function PointerTip({ root }: { root: HTMLElement | null }) {
   const [shown, setShown] = useState<{ words: string; x: number; top: number; bottom: number } | null>(null);
+  const tip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!root) return;
     // A move to another step (Back, a row opened) takes away what it said: it was about what is no longer shown.
@@ -130,23 +131,49 @@ export function PointerTip({ root }: { root: HTMLElement | null }) {
       if (!mark?.dataset.tip) { setShown(null); return; }
       place(mark);
     };
-    const out = () => setShown(null);
+    // Leaving for the window itself (to scroll one too tall for the screen) keeps it.
+    const out = (event: MouseEvent) => { if (!tip.current?.contains(event.relatedTarget as Node | null)) setShown(null); };
     root.addEventListener("mouseover", over);
     root.addEventListener("mouseleave", out);
     return () => { stopStep(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", out); };
   }, [root]);
-  return shown && <TipBox {...shown} />;
+  return shown && <TipBox {...shown} tipRef={tip} onLeave={() => setShown(null)} />;
 }
-/** Above the mark where it fits, else under it; never past the screen's sides. */
-function TipBox({ words, x, top, bottom }: { words: string; x: number; top: number; bottom: number }) {
-  const box = useRef<HTMLDivElement>(null);
+/**
+ * Where a small window stands, the one rule for all of them (the time band, the calendar, the charts): above its mark
+ * where it fits, else under it, else on the side with more room, its height held to that room (the rest scrolls inside
+ * it). It never reaches past the screen.
+ */
+export function tipPlace({ top, bottom, height, screen, margin = 4, gap = 6 }: { top: number; bottom: number; height: number; screen: number; margin?: number; gap?: number }) {
+  const above = top - gap - margin, below = screen - bottom - gap - margin;
+  if (height <= above) return { top: top - gap - height, maxHeight: null };
+  if (height <= below) return { top: bottom + gap, maxHeight: null };
+  return above > below ? { top: margin, maxHeight: Math.max(0, above) } : { top: bottom + gap, maxHeight: Math.max(0, below) };
+}
+function TipBox({ words, x, top, bottom, tipRef, onLeave }: { words: string; x: number; top: number; bottom: number;
+  tipRef: React.RefObject<HTMLDivElement | null>; onLeave: () => void }) {
+  const [scrolls, setScrolls] = useState(false);
   useLayoutEffect(() => {
-    const self = box.current;
+    const self = tipRef.current;
     if (!self) return;
-    const width = self.offsetWidth, height = self.offsetHeight;
+    self.style.maxHeight = "";
+    const width = self.offsetWidth, place = tipPlace({ top, bottom, height: self.offsetHeight, screen: innerHeight });
     self.style.left = `${Math.max(4, Math.min(innerWidth - width - 4, x - width / 2))}px`;
-    self.style.top = `${top - 6 - height >= 4 ? top - 6 - height : bottom + 6}px`;
-  }, [words, x, top, bottom]);
-  return <div ref={box} role="presentation" style={{ left: x, top }}
-    className="pointer-events-none fixed z-(--layer-popover) max-w-[calc(100vw-8px)] rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-pre-line shadow-float">{words}</div>;
+    self.style.top = `${place.top}px`;
+    if (place.maxHeight !== null) self.style.maxHeight = `${place.maxHeight}px`;
+    setScrolls(place.maxHeight !== null);
+  }, [words, x, top, bottom, tipRef]);
+  // One that scrolls takes the pointer and the finger, so what is past its height can be read.
+  return <div ref={tipRef} role="presentation" style={{ left: x, top }} onMouseLeave={onLeave}
+    className={cn("fixed z-(--layer-popover) max-w-[calc(100vw-8px)] overflow-y-auto overscroll-contain rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-pre-line shadow-float",
+      !scrolls && "pointer-events-none")}>{words}</div>;
+}
+
+/**
+ * Where an answer is drawn: one not read for what is chosen now (`Answer.current`) is dimmed and out of reach until the
+ * current one comes, so a press never opens something other than what is shown.
+ */
+export function Shown({ current, className, children }: { current: boolean; className?: string; children: ReactNode }) {
+  return <div inert={!current} data-answer={current ? "current" : "other"}
+    className={cn("transition-opacity duration-(--motion-base)", !current && "opacity-60", className)}>{children}</div>;
 }

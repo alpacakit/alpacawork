@@ -6,10 +6,10 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
+import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
-import { PointerTip, Seg, useChoices } from "./parts";
+import { PointerTip, Seg, Shown, useChoices } from "./parts";
 import { listOnAnswer, PERIOD_BACK, settleSpan, stepSpan, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
@@ -74,12 +74,12 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       </div>
     </div>
     {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
-    <div inert={query.isPlaceholderData} className={cn("transition-opacity duration-(--motion-base)", query.isPlaceholderData && "opacity-60")}>
+    <Shown current={answerOf<unknown>(query)?.current ?? true}>
       {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
         : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
         : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />
           : usage.data && <UsageLook view={usage.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />}
-    </div>
+    </Shown>
     </div></div>
     <Layers place={place} project={project} days={days} />
     <PointerTip root={root} />

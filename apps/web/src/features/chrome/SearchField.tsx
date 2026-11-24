@@ -28,6 +28,14 @@ export function SearchField({ className }: { className?: string }) {
     }, 150);
   };
   useEffect(() => { if (!composing.current) { cancel(); setDraft(query); } }, [query]);
+  // The screen's face changing (Use, Analysis, today's marks, a task opened from the analysis, Back or Forward: every one
+  // goes through the store's `analysis`) drops an edit not yet applied, so a search typed just before cannot show its
+  // results over the face just chosen.
+  useEffect(() => useViewStore.subscribe((state, before) => {
+    if (!!state.analysis === !!before.analysis || timer.current === null) return;
+    cancel();
+    setDraft(state.query);
+  }), []);
   useEffect(() => cancel, []);
   return (
     <label className={cn("flex h-control-md min-w-0 items-center gap-2 rounded-md border border-lit-line px-2 text-muted focus-within:border-ink", className)}>

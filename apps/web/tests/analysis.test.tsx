@@ -3,6 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels, shareLine } from "../src/features/analysis/charts";
+import { tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
@@ -115,4 +116,14 @@ test("the chart's day, week and month names never touch, at any width and length
   }
   // Room for them: the first day and the Mondays are named.
   expect(axisLabels(41, false, at => at % 7 === 3, 1370)).toEqual([0, 3, 10, 17, 24, 31, 38, 40]);
+});
+
+test("a small window stands above its mark where it fits, else under it, else is held to the screen and scrolls", () => {
+  expect(tipPlace({ top: 400, bottom: 410, height: 100, screen: 844 })).toEqual({ top: 294, maxHeight: null });
+  expect(tipPlace({ top: 60, bottom: 70, height: 100, screen: 844 })).toEqual({ top: 76, maxHeight: null });
+  // 38 marks' lines, taller than either side of a phone's screen: never past it.
+  const tall = tipPlace({ top: 330, bottom: 340, height: 700, screen: 844 });
+  expect(tall).toEqual({ top: 346, maxHeight: 494 });
+  expect(tall.top + tall.maxHeight!).toBeLessThanOrEqual(844 - 4);
+  expect(tipPlace({ top: 700, bottom: 710, height: 900, screen: 844 })).toEqual({ top: 4, maxHeight: 690 });
 });

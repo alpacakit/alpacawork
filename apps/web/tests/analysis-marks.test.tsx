@@ -1,4 +1,6 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
+import { SearchField } from "../src/features/chrome/SearchField";
+import { analysisHome } from "../src/features/analysis/place";
 import { useState } from "react";
 import { PointerTip } from "../src/features/analysis/parts";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
@@ -6,6 +8,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
 import { FRESH_AFTER_MS } from "../src/features/analysis/data";
 import { queryClient } from "../src/data/query-client";
+import { useViewStore } from "../src/state/view-store";
 import { screenData, TestWorkspace } from "./fixtures";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
@@ -69,4 +72,36 @@ test("a small window opened under a finger closes when Back moves to another ste
   expect(view.getByText("作業中 35分", { selector: "[role=presentation]" })).toBeTruthy();
   await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); });
   expect(view.queryByText("作業中 35分", { selector: "[role=presentation]" })).toBeNull();
+});
+
+test("today's marks of another project stand out of reach until this project's are read", async () => {
+  let held: (body: unknown) => void = () => {};
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (!url.includes("analysis/list")) return new Response("{}", { status: 200 });
+    if (!url.includes("project=")) return new Response(JSON.stringify(today(14)), { status: 200 });
+    return new Promise<Response>(resolve => { held = body => resolve(new Response(JSON.stringify(body), { status: 200 })); });
+  });
+  const view = render(<TestWorkspace data={screenData()}><TodayMarks /></TestWorkspace>);
+  await vi.waitFor(() => expect(view.container.querySelectorAll("button i")).toHaveLength(14));
+  expect(view.container.querySelector("[data-answer]")!.getAttribute("data-answer")).toBe("current");
+  act(() => useViewStore.setState({ project: "P100" }));
+  // Every-project marks still drawn while one project's are read: they cannot be pressed.
+  expect(view.container.querySelector("[data-answer]")!.getAttribute("data-answer")).toBe("other");
+  expect(view.container.querySelector("button")!.closest("[inert]")).not.toBeNull();
+  await act(async () => held(today(1)));
+  await vi.waitFor(() => expect(view.container.querySelectorAll("button i")).toHaveLength(1));
+  expect(view.container.querySelector("button")!.closest("[inert]")).toBeNull();
+  act(() => useViewStore.setState({ project: null }));
+});
+
+test("a search typed just before the face changes to Use is dropped with the change", async () => {
+  vi.useFakeTimers();
+  useViewStore.setState({ navigationReady: true, query: "", analysis: analysisHome() });
+  const view = render(<SearchField />);
+  fireEvent.change(view.getByRole("searchbox"), { target: { value: "R" } });
+  act(() => useViewStore.getState().showAnalysis(null));
+  await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+  expect(useViewStore.getState()).toMatchObject({ query: "", analysis: null });
+  expect((view.getByRole("searchbox") as HTMLInputElement).value).toBe("");
 });

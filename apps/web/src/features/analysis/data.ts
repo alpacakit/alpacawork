@@ -62,20 +62,33 @@ export function useTodayFinished(project: string | null) {
   // The next page is asked for once each: a page that failed is not asked again until the workspace changes.
   useEffect(() => { if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage(); },
     [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
-  return useCompleteMarks(query.data?.pages, !hasNextPage);
+  return useCompleteMarks(query.data?.pages, !hasNextPage, JSON.stringify([root, input]));
 }
 
 /**
  * The marks of a reading only once every page of it is read: until then the last whole reading stands (or none), so a
- * count of a part is never shown as the day's.
+ * count of a part is never shown as the day's. It stands as an answer for what it was read for (`asked`): for another
+ * project it is not current (`Answer`).
  */
-export function useCompleteMarks(pages: UnitList[] | undefined, whole: boolean) {
-  const last = useRef<{ total: number; rows: UnitList["rows"] } | null>(null);
-  return useMemo(() => {
-    if (pages && whole) last.current = { total: pages[0]!.total, rows: pages.flatMap(page => page.rows) };
-    return last.current;
-  }, [pages, whole]);
+export function useCompleteMarks(pages: UnitList[] | undefined, whole: boolean, asked: string): Answer<{ total: number; rows: UnitList["rows"] }> | null {
+  const last = useRef<{ asked: string; data: { total: number; rows: UnitList["rows"] } } | null>(null);
+  if (pages && whole) {
+    const rows = pages.flatMap(page => page.rows);
+    if (last.current?.asked !== asked || last.current.data.rows.length !== rows.length || last.current.data.rows.some((row, at) => row !== rows[at]))
+      last.current = { asked, data: { total: pages[0]!.total, rows } };
+  }
+  const kept = last.current;
+  return useMemo(() => kept && { data: kept.data, current: kept.asked === asked }, [kept, asked]);
 }
+
+/**
+ * An answer and whether it was read for what is chosen now (the project, the span, the look, the step of time, the
+ * breakdown, the face). One that is not stands dimmed and out of reach (`Shown`), so nothing on screen opens what it
+ * does not show.
+ */
+export type Answer<T> = { data: T; current: boolean };
+export const answerOf = <T,>(query: { data: T | undefined; isPlaceholderData: boolean }): Answer<T> | null =>
+  query.data === undefined ? null : { data: query.data, current: !query.isPlaceholderData };
 
 /**
  * Asks the analysis read on screen again a few seconds after the workspace's index changes: once for a burst of changes
