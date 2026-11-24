@@ -105,3 +105,16 @@ test("a search typed just before the face changes to Use is dropped with the cha
   expect(useViewStore.getState()).toMatchObject({ query: "", analysis: null });
   expect((view.getByRole("searchbox") as HTMLInputElement).value).toBe("");
 });
+
+test("a conversion under way when the face changes is dropped, and its confirmation runs no search", async () => {
+  vi.useFakeTimers();
+  useViewStore.setState({ navigationReady: true, query: "", analysis: analysisHome() });
+  const view = render(<SearchField />);
+  const box = view.getByRole("searchbox");
+  fireEvent.compositionStart(box);
+  fireEvent.change(box, { target: { value: "けんさく" } });
+  act(() => useViewStore.getState().showAnalysis(null));
+  fireEvent.compositionEnd(box, { target: { value: "検索" } });
+  await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+  expect(useViewStore.getState()).toMatchObject({ query: "", analysis: null });
+});
