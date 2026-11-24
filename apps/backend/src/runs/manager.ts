@@ -103,6 +103,10 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   const { child, channel, exited, spawnedAt } = launched;
   let termination: Promise<void> | undefined;
   let channelClosed = false, groupSettled = false, unitSettled = false, failed = false;
+  const activity = new OutputActivityReader(adapter);
+  const finishActivity = (state: 'done' | 'failed') => {
+    try { activity.finish(folder, state); } catch (error) { console.error('Activity finish failed', error); }
+  };
   const closeChannel = () => { if (!channelClosed) { channel.close(); channelClosed = true; } };
   const transfer = (open: typeof channel, inputId: string, instructionRunId: string, text: string) => {
     attemptInput(inputId, instructionRunId, text);
@@ -112,7 +116,6 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     journal.append('started', processIdentity(child.pid!));
     transfer(channel, snapshot.initialInputId, id, snapshot.prompt);
     let session = snapshot.invocation.session?.id ?? null, finished = false;
-    const activity = new OutputActivityReader(adapter);
     const takeReceipts = () => {
       for (const receipt of channel.poll(folder, session).receipts) {
         const prior = observedInputs.get(receipt.id);
@@ -180,10 +183,10 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
       journal.append('input_uncertain', { inputId, receipt: { evidence: 'process_ended_without_receipt' } });
       observedInputs.set(inputId, 'uncertain');
     }
-    try { activity.finish(folder); } catch (error) { console.error('Activity finish failed', error); }
     const output = adapter.read(adapterInvocation, folder, exit);
     const end = readEnd({ outcome: endOutcome(cause, output.outcome), observed: output, exit, measured: true,
       interrupted: !!termination || groupLeft || unitLeft || !!commands?.interrupted });
+    finishActivity(end.outcome.state === 'succeeded' ? 'done' : 'failed');
     publishCompletion(journal, end);
   } catch (error) {
     failed = true;
@@ -199,6 +202,7 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     } catch (error) { cleanupErrors.push(error); }
     if (!unitSettled) try { await platform.run.stopUnitOthers(); }
     catch (error) { cleanupErrors.push(error); }
+    if (failed) finishActivity('failed');
     if (cleanupErrors.length) {
       if (failed) console.error('Run manager cleanup failed', new AggregateError(cleanupErrors));
       else throw new AggregateError(cleanupErrors, 'Run manager cleanup failed');

@@ -109,7 +109,7 @@ try {
     for (const id of running) {
       const folder = join(root, '.alpacawork', 'runs', id);
       appendFileSync(join(folder, 'stdout.log'), `{"bench":${seq}}\n`);
-      writeFileSync(join(folder, 'activity.json'), JSON.stringify({ at: new Date().toISOString(), kind: 'tool_start', toolName: `Bench-${seq}`, doing: null, note: null }));
+      writeFileSync(join(folder, 'activity.json'), JSON.stringify({ at: new Date().toISOString(), kind: 'tool_start', toolName: `Bench-${seq}`, doing: null, note: null, steps: [] }));
     }
     // The manager also commits Run facts at the start/end of a Run. Change a
     // manager PID here to exercise the same SQLite invalidation without making

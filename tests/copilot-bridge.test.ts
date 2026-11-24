@@ -12,6 +12,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { assertInputOutcomes } from './fixtures/input-outcomes.ts';
 import { scratch } from './helpers/managed-skills-fixture.ts';
 import { privateNodeApp } from './helpers/private-node-app.ts';
+import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
+import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
+import { RUN_FILES } from '@alpacawork/contract/run';
 
 const bridge = join(import.meta.dirname, '../apps/agent-cli/dist/cli.js');
 
@@ -76,7 +79,7 @@ async function setup(t: TestContext, resume = false, badOutput = false) {
   if (resume) args.push('resume', 'session-1');
   const { child, exited, events, until, stderr, send } = spawnBridge(t, args, { cwd: area });
 
-  return { area, requests, exited, events, until, child, stderr,
+  return { area, requests, exited, events, until, child, stderr, event,
     send,
     answer: (prompt: string, content: string) => event('assistant.message', { messageId: randomUUID(), content,
       originatingMessageId: messages.get(prompt) }),
@@ -102,11 +105,22 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'two'));
   h.send('three', 'refuse');
   await h.until(() => h.events().some(event => event.type === 'input.uncertain' && event.id === 'three'));
+  h.event('tool.execution_start', { toolCallId: 'catalog', toolName: 'view', arguments: { path: 'catalog.txt' } });
+  h.event('tool.execution_complete', { toolCallId: 'catalog', success: false,
+    result: { content: 'Cannot read the catalog', detailedContent: 'Full provider output' } });
   h.answer('start', 'answer');
   h.idle();
   await h.until(() => h.events().some(event => event.type === 'turn.completed'));
   h.child.stdin.end();
   assert.equal(await h.exited, 0);
+  writeFileSync(join(h.area, RUN_FILES.stdout), h.events().map(event => JSON.stringify(event)).join('\n') + '\n');
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.copilot).poll(h.area);
+  const step = readRunActivity(h.area)?.steps.at(-1);
+  assert.equal(step?.tool, 'view');
+  assert.equal(step.kind, 'file');
+  assert.equal(step.text, 'catalog.txt');
+  assert.equal(step.state, 'failed');
+  assert.deepEqual(step.result, { text: 'Cannot read the catalog', more: 0 });
   assertInputOutcomes(h.events(), { one: 'taken', two: 'taken', three: 'uncertain' });
   assert.equal(readFileSync(join(h.area, 'result'), 'utf8'), 'answer');
   assert.deepEqual(h.requests.filter(request => request.method === 'session.send').map(request => request.params.mode),

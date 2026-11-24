@@ -20,18 +20,19 @@ export const runResultStateSchema = z.enum(['present', 'pending', 'missing', 'to
 export type RunResultState = z.infer<typeof runResultStateSchema>;
 /** A bounded display projection of the last complete agent stdout event. */
 export const runActivityKindSchema = z.enum(['output', 'tool_start', 'tool_end', 'message', 'result', 'error']);
-export const RUN_NOTE_LIMIT = 500;
 export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contract.js';
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
-export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, type RunStep, type RunStepKind } from './work-contract.js';
-import { runWorkSchema, runStepsSchema } from './work-contract.js';
-export const runActivitySchema = z.object({
+export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT,
+  RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
+export { clipRunText, previewRunLine, previewToolInput, toolResultText, toolArgumentText } from './work-preview.js';
+import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
+export const runActivitySummarySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
-  toolName: z.string().max(128).nullable(),
+  toolName: z.string().max(RUN_TOOL_NAME_LIMIT).nullable(),
   doing: runWorkSchema.nullable(),
   note: z.object({ at: z.iso.datetime({ offset: true }), text: z.string().min(1).max(RUN_NOTE_LIMIT) }).strict().nullable(),
-  steps: runStepsSchema,
 }).strict();
+export const runActivitySchema = runActivitySummarySchema.extend({ steps: runStepsSchema });
 export type RunActivity = z.infer<typeof runActivitySchema>;
 /** Where run folders live, relative to the workspace root. */
 const RUNS_DIRECTORY = '.alpacawork/runs';

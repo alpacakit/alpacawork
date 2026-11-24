@@ -16,7 +16,7 @@ import { taskBaseStateSchema } from './fields.js';
 import { reportMark } from './report-mark.js';
 import { TASK_LIFECYCLES, TASK_STATE } from '@alpacawork/raw/task-enums';
 import { taskActorSchema as actorSchema, taskLogSchema } from '@alpacawork/raw/task-log-schema';
-import { agentNameSchema, runActivityKindSchema, runActivitySchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
+import { agentNameSchema, runActivityKindSchema, runActivitySchema, runActivitySummarySchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
 import { bodyMarkSchema, descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, logIdSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema } from './fields.js';
 import { errorEntrySchema, problemErrorSchema } from './problem.js';
 import { hostNoticeSchema } from './host-contract.js';
@@ -217,6 +217,16 @@ export const controlRunSchema = z.object({
   endedAt: z.iso.datetime({ offset: true }).nullable(),
   usage: z.object({ run: tokenCountersSchema.nullable(), includesEarlier: z.boolean() }).strict().nullable(),
 }).strict();
+/** The command read gives the activity summary; full tool previews belong to the screen. */
+export const taskGetRunSchema = controlRunSchema.extend({ activity: runActivitySummarySchema.nullable() });
+export type TaskGetRunDTO = z.infer<typeof taskGetRunSchema>;
+
+export function taskGetRunOf(run: ControlRunDTO): TaskGetRunDTO {
+  if (!run.activity) return { ...run, activity: null };
+  const { steps: _steps, ...activity } = run.activity;
+  return { ...run, activity };
+}
+
 export const requestPurposeSchema = z.enum(['instruction', 'review_send_back', 'return_continuation']);
 export const requestModeSchema = z.enum(['continue', 'new']);
 export const deliveryStateSchema = z.enum(['queued', 'waiting_for_run', 'waiting_for_session', 'recorded_unconfirmed', 'aborted']);

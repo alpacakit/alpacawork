@@ -1,4 +1,5 @@
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
+import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -39,6 +40,13 @@ test('Grok queues inputs, resumes exactly the same session, and removes private 
   assert.equal(await h.exited, 0, h.stderr());
   assertInputOutcomes(h.events(), { one: 'taken', two: 'taken' });
   writeFileSync(join(h.area, RUN_FILES.stdout), h.events().map(event => JSON.stringify(event)).join('\n') + '\n');
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.grok).poll(h.area);
+  const step = readRunActivity(h.area)?.steps.at(-1);
+  assert.equal(step?.tool, 'read_file');
+  assert.equal(step.kind, 'file');
+  assert.equal(step.text, 'catalog.txt');
+  assert.equal(step.state, 'done');
+  assert.deepEqual(step.result, { text: 'Catalog found', more: 1 });
   writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(join(h.area, 'result')));
   const read = AGENT_RUNTIME_ADAPTERS.grok.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null });
   assert.equal(read.outcome.state, 'succeeded');
