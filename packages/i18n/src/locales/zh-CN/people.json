@@ -81,10 +81,15 @@
     },
     "output": "{{event}}（{{ago}}前）",
     "stale": "最后一次输出已较久：{{event}}（{{ago}}前）",
-    "toolEvent": "{{tool}}：{{kind}}",
     "step": {
-      "moreLines": "+{{count}} 行"
-    }
+      "moreLines_other": "+{{count}} 行",
+      "state": {
+        "done": "已完成",
+        "failed": "失败",
+        "running": "运行中"
+      }
+    },
+    "toolEvent": "{{tool}}：{{kind}}"
   },
   "records": {
     "close": "关闭运行…"

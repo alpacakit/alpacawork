@@ -4,7 +4,7 @@ import type { CoordinatorTurn } from "@/data/coordinator";
 import { useEveryTaskIndex } from "@/data/queries";
 import { resolveReference } from "@/domain/tasks";
 import { taskTokens } from "./editor/wire";
-import { useContext, useEffect, useLayoutEffect, useReducer, useState, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { WorkspaceContext } from '@/data/workspace-store';
 import { useConversation } from './coordinator';
 import { paceKey, workPacer, type Pace } from './work-pace';
@@ -15,13 +15,15 @@ import { RunSteps } from '@/features/people/RunSteps';
 import { Icon } from '@/components/ui/icon';
 import { MarkdownBody } from '@/features/reader/MarkdownBody';
 import { followTask } from './follow-task';
+import { scrollThreadTo } from './thread-position';
+import { cn } from '@/lib/utils';
 
 /**
  * The words of a running turn: its recent work's name while the pacer shows it for this turn, else the turn's own, then
  * the whole seconds since the message was sent (`at`, kept with the message, so neither the work nor a remount, reload
- * or reconnect restarts them). With no running turn given, or `plain` (where the steps themselves are shown), the turn's own words alone.
+ * or reconnect restarts them). With no running turn given, the turn's own words alone.
  */
-export function useWorkingWords(turn?: { id: string; at: string }, plain = false): string {
+export function useWorkingWords(turn?: { id: string; at: string }): string {
   const { t } = useTranslation('ui');
   const store = useContext(WorkspaceContext);
   const pacer = store ? workPacer(store) : idle;
@@ -29,9 +31,14 @@ export function useWorkingWords(turn?: { id: string; at: string }, plain = false
   const conversation = useConversation(state => state.conversation?.id);
   // The hold starts when the words reach the DOM, not when a value arrives or a timer fires.
   useLayoutEffect(() => pacer.committed(pace.version), [pacer, pace.version]);
-  const words = !plain && pace.label && conversation && turn && pace.key === paceKey(conversation, turn.id)
+  const words = pace.label && conversation && turn && pace.key === paceKey(conversation, turn.id)
     ? workNameWords(pace.label) : t('coordinatorCard.thinking');
-  const seconds = useSecondsSince(turn?.at);
+  return useWorkingFor(turn?.at, words);
+}
+/** `words` with the whole seconds since `at` after them, drawn again each second; `words` alone without `at`. */
+function useWorkingFor(at: string | undefined, words: string): string {
+  const { t } = useTranslation('ui');
+  const seconds = useSecondsSince(at);
   return seconds === null ? words : t('coordinatorCard.working', { words, seconds });
 }
 /** Whole seconds since `at`, drawn again on each whole second after it; null without `at`. */
@@ -50,30 +57,48 @@ function useSecondsSince(at: string | undefined): number | null {
 const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
 const idle = { subscribe: () => () => {}, snapshot: () => none, committed: (_version: number) => {} };
+const noStore = () => () => {};
 
+/** A mark while waiting for an answer: a quiet pulse of opacity alone. */
+function Pulse({ children }: { children: string }) {
+  return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{children}</span>;
+}
+/** The running turn on one line where the work is not shown: its recent work's rounded name and the seconds (useWorkingWords). */
+export function Thinking({ turn }: { turn: { id: string; at: string } }) {
+  return <Pulse>{useWorkingWords(turn)}</Pulse>;
+}
+
+/* Hallmark · component: the running turn's reply in the open conversation · genre: modern-minimal · theme: the app's own
+ * tokens · states: no work seen yet (the seconds alone) · steps folded (the latest step on one line, ⌄) · steps open (that
+ * step in full under the three before it, ⌃) */
 /**
- * What the running turn is doing, in the open conversation: its latest words and its latest step on one line; a press on
- * that line opens the step in full with the steps before it, and another folds it. The folded conversation keeps to the rounded words.
+ * What the running turn is doing, where the conversation is open: its latest words, its latest step on one line, and the
+ * seconds since the message under them (the steps say what it does, so not the rounded name). A press on the step opens
+ * it in full under the steps before it, and keeps the step and the seconds in sight; another folds it.
  */
-export function WorkingSteps({ turn }: { turn: { id: string } }) {
+export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
+  const { t } = useTranslation('ui');
   const store = useContext(WorkspaceContext);
   const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
   const conversation = useConversation(state => state.conversation?.id);
   const [open, setOpen] = useState(false);
-  if (!work || work.conversation !== conversation || work.turn !== turn.id) return null;
-  return <>
-    {work.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={work.words} task={null} variant="note" onFollow={followTask} /></div>}
-    {work.steps.length > 0 && <button type="button" data-working-steps aria-expanded={open}
-      onClick={() => setOpen(!open)} className="group/steps mb-2 flex w-full min-w-0 cursor-pointer items-start gap-2 rounded-sm text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
-      <RunSteps steps={work.steps} open={open} trail={3} className="min-w-0 flex-1" />
-      <Icon name="down" className={`mt-0.5 size-3.5 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${open ? "rotate-180" : ""}`} /></button>}
-  </>;
-}
-const noStore = () => () => {};
-/** A mark while waiting for an answer: a quiet pulse of opacity alone. */
-export function Thinking({ turn, plain }: { turn: { id: string; at: string }; plain?: boolean }) {
-  const words = useWorkingWords(turn, plain);
-  return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{words}</span>;
+  const pressed = useRef(false), end = useRef<HTMLDivElement>(null);
+  const seconds = useWorkingFor(turn.at, t('coordinatorCard.thinking'));
+  // Opened by a press, its foot (the step's end and the seconds) comes into sight as one place request.
+  useLayoutEffect(() => {
+    if (!pressed.current || !end.current) return;
+    pressed.current = false;
+    if (open) scrollThreadTo(end.current, end.current, { block: 'nearest' });
+  }, [open]);
+  const mine = work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  return <div>
+    {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
+    {mine && mine.steps.length > 0 && <button type="button" data-working-steps aria-expanded={open} onClick={() => { pressed.current = true; setOpen(!open); }}
+      className={cn("group/steps mb-1 flex w-full min-w-0 cursor-pointer gap-2 rounded-sm py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11", open ? "items-start" : "items-center")}>
+      <RunSteps steps={mine.steps} open={open} trail={3} className="min-w-0 flex-1" />
+      <Icon name="down" className={cn("size-3.5 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "mt-0.5 rotate-180")} /></button>}
+    <div ref={end} className="flex flex-wrap items-center gap-x-2"><Pulse>{seconds}</Pulse></div>
+  </div>;
 }
 
 /**

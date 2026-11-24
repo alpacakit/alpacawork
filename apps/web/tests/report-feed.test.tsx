@@ -558,7 +558,7 @@ const workingPlacement = (id: string) => ({ id, taskId: "T1", agentId: `A${id}`,
   active: true, revision: 1, startedAt: at, endedAt: null, headRunId: id === "P1" ? "R1" : `R${id.slice(1)}`,
   runtime: { displayState: "running" as const, reason: null, sourceRunIds: [], runningCount: 1, queuedCount: 0,
     since: at, lastOutputAt: at, activityKind: null, toolName: null } });
-const note = (text: string) => ({ at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: { at, text } });
+const note = (text: string) => ({ at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: { at, text }, steps: [] });
 
 test("the working row heads the report column with the responsible person's time, words and model, the others one count", async () => {
   await inEnglish();
@@ -663,7 +663,7 @@ test("the working row goes on with the Tasks below at work, children before gran
 test("a working person who has said nothing yet is read by their step", async () => {
   await inEnglish();
   const data = screenData(tree({ placements: [workingPlacement("P1")], runs: [
-    run("R1", { state: "running", endedAt: null, activity: { at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: null } })] }));
+    run("R1", { state: "running", endedAt: null, activity: { at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, steps: [] } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
 });
@@ -672,7 +672,7 @@ test("a step taken after the screen's clock last ticked is still said, and no wo
   await inEnglish();
   const step = (activity: object | null) => screenData(tree({ placements: [workingPlacement("P1")],
     runs: [run("R1", { state: "running", endedAt: null, activity: activity as never })] }));
-  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null };
+  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, steps: [] };
   const data = step(soon);
   const { unmount } = render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");

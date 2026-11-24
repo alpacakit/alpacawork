@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contract";
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
+import type { RunStep } from "@alpacawork/contract/run";
 import { Button } from "@/components/ui/button";
 import { PendingRegion } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
@@ -960,9 +961,9 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
 }
 
 /**
- * One working person as a History row: time worked, who it is, and their words under that. The lead's words open and
- * close as every History disclosure does (LeadNote), and its ⌄ turns with them. Everyone else's words are open:
- * they are drawn only inside the row's body.
+ * One working person as a History row: time worked, who it is, and their words and latest step under that. The lead's
+ * words and steps open and close as every History disclosure does (LeadNote, LeadSteps), and its ⌄ turns with them.
+ * Everyone else's are open, their latest step in full: they are drawn only inside the row's body.
  */
 function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: ControlRunDTO; task: TaskDetail; onFollow: (id: string) => void; open: boolean; lead: boolean; others?: ReactNode }) {
   const { t } = useTranslation("reader");
@@ -990,7 +991,8 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {steps.length > 0 && <RunSteps steps={steps} open={open} trail={lead ? undefined : 0} newestFirst className={`${cell} mt-1.5`} />}
+    {steps.length === 0 ? null : lead ? <LeadSteps open={open} steps={steps} className={`${cell} mt-1.5`} />
+      : <RunSteps steps={steps} open trail={0} className={`${cell} mt-1.5`} />}
     {lead && <span className="col-start-3 row-start-1 flex items-center self-center justify-self-end"><DisclosureChevron open={open} /></span>}
   </div>;
 }
@@ -998,11 +1000,10 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
 const NOTE = "mt-0.5 min-w-0 [overflow-wrap:anywhere] [&>div]:text-inherit";
 
 /**
- * The lead's words, one copy open or folded: folded, its DisclosureBody keeps their first whole lines shown (up to
- * two, as useLineClip draws them), and opening unfolds the rest under them over the same step and curve as every History
- * disclosure, so no line is drawn twice on the way. The "…" goes as it opens and comes back once it has folded.
+ * Folded as drawn: true once a fold has finished moving (DisclosureBody's step), false from the moment it opens. What
+ * a peeking body holds keeps its open layout while it folds, so the fold ends on what it showed, then takes its folded one.
  */
-function LeadNote({ open, words, task, onFollow, className }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void; className: string }) {
+function useShut(open: boolean): boolean {
   const [shut, setShut] = useState(!open);
   if (open && shut) setShut(false);
   useEffect(() => {
@@ -1010,6 +1011,30 @@ function LeadNote({ open, words, task, onFollow, className }: { open: boolean; w
     const timer = setTimeout(() => setShut(true), reducedMotion() ? 0 : duration("base"));
     return () => clearTimeout(timer);
   }, [open, shut]);
+  return shut;
+}
+
+/**
+ * The lead's steps, open or folded on the row's own disclosure: folded, its body keeps the latest step's one line
+ * shown, and opening unfolds that step in full and the ones before it under the same step and curve as the words.
+ */
+function LeadSteps({ open, steps, className }: { open: boolean; steps: readonly RunStep[]; className: string }) {
+  const shut = useShut(open);
+  const box = useRef<HTMLDivElement>(null);
+  // Folded, one line of the steps' own type shows.
+  const [least, setLeast] = useState(0);
+  useLayoutEffect(() => { if (box.current) setLeast(Number.parseFloat(getComputedStyle(box.current).lineHeight)); }, []);
+  return <div ref={box} className={`${className} text-xs`}><DisclosureBody open={open} least={least}>
+    <RunSteps steps={steps} open={!shut} newestFirst /></DisclosureBody></div>;
+}
+
+/**
+ * The lead's words, one copy open or folded: folded, its DisclosureBody keeps their first whole lines shown (up to
+ * two, as useLineClip draws them), and opening unfolds the rest under them over the same step and curve as every History
+ * disclosure, so no line is drawn twice on the way. The "…" goes as it opens and comes back once it has folded.
+ */
+function LeadNote({ open, words, task, onFollow, className }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void; className: string }) {
+  const shut = useShut(open);
   const clip = useLineClip(!shut, words);
   // What stays shown folded: the words' first whole lines as they are drawn now, open or not, so a fold always ends
   // on the words it holds then.

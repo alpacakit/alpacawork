@@ -88,10 +88,16 @@
     },
     "output": "{{event}} {{ago}} ago",
     "stale": "Last output is old: {{event}} ({{ago}} ago)",
-    "toolEvent": "{{tool}}: {{kind}}",
     "step": {
-      "moreLines": "+{{count}} lines"
-    }
+      "moreLines_one": "+{{count}} line",
+      "moreLines_other": "+{{count}} lines",
+      "state": {
+        "done": "Done",
+        "failed": "Failed",
+        "running": "Running"
+      }
+    },
+    "toolEvent": "{{tool}}: {{kind}}"
   },
   "records": {
     "close": "Close run…"

@@ -81,10 +81,15 @@
     },
     "output": "{{event}}（{{ago}}前）",
     "stale": "最後の出力が古い: {{event}}（{{ago}}前）",
-    "toolEvent": "{{tool}}: {{kind}}",
     "step": {
-      "moreLines": "+{{count}}行"
-    }
+      "moreLines_other": "+{{count}}行",
+      "state": {
+        "done": "完了",
+        "failed": "失敗",
+        "running": "実行中"
+      }
+    },
+    "toolEvent": "{{tool}}: {{kind}}"
   },
   "records": {
     "close": "閉じる…"

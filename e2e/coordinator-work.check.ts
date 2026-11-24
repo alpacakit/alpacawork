@@ -33,7 +33,10 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   const box = (await pill.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(phone ? 390 : 1440);
   await openCoordinator(page);
-  await expect(page.locator('[data-ask-thinking]')).toContainText('New task');
+  // Open, the step itself is read as it was run, and the seconds go on under it without the rounded name.
+  const steps = page.locator('[data-coordinator-turn=running] [data-working-steps]');
+  await expect(steps).toContainText('alpacawork task new --title test');
+  await expect(page.locator('[data-coordinator-turn=running] [data-ask-thinking]')).toHaveText(/^Working on it… \d+s$/);
   await page.screenshot({ path: info.outputPath('work-open.png'), animations: 'disabled' });
   await page.locator('[data-coordinator-turn=running] [data-exchange-toggle]').click();
   await expect(page.locator('[data-exchange-outcome]')).toContainText('New task');
@@ -52,12 +55,18 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
       return activity?.doing ? { tool: activity.doing.toolName, command: activity.doing.command } : null;
     } finally { store.close(); }
   }).toEqual({ tool: 'Bash', command: null });
-  await expect(page.locator('[data-ask-thinking]')).toHaveText(/^Command \d+s$/);
+  await expect(steps).toContainText('echo alpacawork task new');
+  // A press opens the latest step with the one before it, and another folds it back to its one line.
+  await steps.click();
+  await expect(steps).toHaveAttribute('aria-expanded', 'true');
+  await expect(steps.locator('[data-run-step]')).toHaveCount(2);
+  await steps.click();
+  await expect(steps.locator('[data-run-step]')).toHaveCount(1);
   const ended = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   expect(ended.revision).toBe(first.revision);
   expect(reads).toBe(beforeReads);
   gate('update');
-  await expect(page.locator('[data-ask-thinking]')).toHaveText(/^Task update \d+s$/);
+  await expect(steps).toContainText('alpacawork task update --task T1 --title changed');
   expect(reads).toBe(beforeReads);
   await foldConversation(page);
   await expect(pill).toContainText('Task update');

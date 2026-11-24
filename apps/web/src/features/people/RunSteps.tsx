@@ -2,6 +2,10 @@ import { useTranslation } from "react-i18next";
 import type { RunStep } from "@alpacawork/contract/run";
 import { cn } from "@/lib/utils";
 
+/* Hallmark · component: an agent's steps (its own tool calls) · genre: modern-minimal · theme: the app's own tokens (ink,
+ * soft, muted, error) · states: folded (the latest step on one line) · open (that step in full, the steps before it one
+ * line each) · each step running (a pulsing dot), done (✓) or failed (a red ✗, with what came back) */
+
 /** The names agents' tools go by, said as one short family name whichever agent ran them. */
 const TOOL_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
 const toolName = (tool: string) => TOOL_NAMES[tool] ?? (tool.startsWith("mcp__") ? tool.split("__").slice(1).join(".") : tool);
@@ -10,10 +14,12 @@ const FILE_TOOLS = new Set(["Read", "Edit", "Write", "NotebookEdit", "file_chang
 /** What came back says something of these alone (a command's output, what a search found); a read file's first line does not. */
 const RESULT_TOOLS = new Set(["Bash", "command_execution", "Grep", "Glob"]);
 
-/** Going, done or failed, told by the mark's shape as well as its colour. */
+/** Going, done or failed, told by the mark's shape as well as its colour, and in words to a screen reader. */
 function Mark({ state }: { state: RunStep["state"] }) {
-  return <span aria-hidden data-run-step-mark className={cn("w-3 flex-none text-center font-sans", state === "running" ? "motion-safe:animate-pulse" : state === "failed" ? "text-error" : "text-muted")}>
-    {state === "running" ? <span className="inline-block size-1.5 translate-y-[-1px] rounded-full bg-current" /> : state === "failed" ? "✗" : "✓"}</span>;
+  const { t } = useTranslation("people");
+  return <span data-run-step-mark className={cn("w-3 flex-none text-center font-sans", state === "running" ? "motion-safe:animate-pulse" : state === "failed" ? "text-error" : "text-muted")}>
+    <span aria-hidden>{state === "running" ? <span className="inline-block size-1.5 translate-y-[-1px] rounded-full bg-current" /> : state === "failed" ? "✗" : "✓"}</span>
+    <span className="sr-only">{state === "running" ? t("now.step.state.running") : state === "failed" ? t("now.step.state.failed") : t("now.step.state.done")}</span></span>;
 }
 const tone = (step: RunStep) => step.state === "running" ? "text-ink" : "text-soft";
 
@@ -31,7 +37,7 @@ function StepLine({ step }: { step: RunStep }) {
 function StepResult({ step }: { step: RunStep }) {
   const { t } = useTranslation("people");
   if (!step.result || step.state !== "failed" && !RESULT_TOOLS.has(step.tool)) return null;
-  return <div className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
+  return <div data-run-step-result className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
     <span aria-hidden className="flex-none">⎿</span>
     <span dir="auto" className="min-w-0 truncate font-mono">{step.result.text}</span>
     {step.result.more > 0 && <span className="flex-none">{t("now.step.moreLines", { count: step.result.more })}</span>}

@@ -14,7 +14,7 @@ import { useConversation } from './coordinator';
 import { useShownConversation, type LocalTurn, type SentTurn } from './shown';
 import { deliveryLine, deliveryOf } from './delivery-line';
 import { LocalOutcome } from './LocalOutcome';
-import { Thinking, WorkingSteps } from './parts';
+import { WorkingReply } from './parts';
 import { cn } from '@/lib/utils';
 import { waitingKey } from './delivery-copy';
 
@@ -52,8 +52,8 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
       {control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
   const status = outcome && (!panel || ['unknown', 'refused', 'cancelled'].includes(outcome.stage))
     ? <LocalOutcome turn={outcome} cancellation={inlineCancellation ? 'inline' : 'external'} /> : null;
-  // At work, the same line says so ("Working on it…"); its words come from the work itself.
-  if (!panel && line.kind === 'working') return <div><WorkingSteps turn={turn} /><div className="flex flex-wrap items-center gap-x-2"><Thinking turn={turn} plain /></div></div>;
+  // At work, it says what the work is doing and for how long ("Working on it…").
+  if (!panel && line.kind === 'working') return <WorkingReply turn={turn} />;
   return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3'}>
     {panel ? <div className="min-w-0 flex-1">{children}{status}</div> : status}
     {!panel && line.kind === 'waiting' && <WaitingStatus>{t(waitingKey(shown.preparing))}</WaitingStatus>}

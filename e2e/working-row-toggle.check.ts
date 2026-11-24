@@ -2,8 +2,9 @@
  * The Working row opens and closes as every History row does (history-row-toggle): its body unfolds over the
  * shared disclosure step, so the row grows over several frames rather than at once, only grows while it opens and only
  * shrinks while it closes, its head (time, who, ⌄) stays still, and its words are drawn on every frame of the way,
- * once (never a folding copy over an unfolding one), with no empty band under them on the way. Before any press it
- * stands still: its folded lines are drawn where they are, not slid out as the page comes.
+ * once (never a folding copy over an unfolding one), with no empty band under them on the way; the step under them
+ * unfolds with them. Before any press it stands still: its folded lines are drawn where they are, not slid out as the
+ * page comes.
  */
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
@@ -21,7 +22,10 @@ const test = runningRunsTest.extend({
     const store = new RunStore(scene.root, { busyTimeoutMs: 1000 });
     const owner = store.read().find(run => run.task === scene.busy && run.role === 'owner')!;
     const folder = store.folder(owner.id);
-    writeFileSync(join(folder, 'stdout.log'), JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: words } }) + '\n');
+    // A step under way under the words: it opens and closes with them.
+    const command = { id: 'step', type: 'command_execution', command: 'pnpm vitest run tests/billing/amount.test.ts --reporter=dot' };
+    writeFileSync(join(folder, 'stdout.log'), [{ type: 'item.started', item: command },
+      { type: 'item.completed', item: { type: 'agent_message', text: words } }].map(row => JSON.stringify(row) + '\n').join(''));
     new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.codex).poll(folder);
     store.close();
     const app = await startServer(scene.root, 0);
@@ -76,6 +80,7 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
     const row = page.locator('[data-working-here]');
     await expect(row).toHaveAttribute('aria-expanded', 'false');
     await expect(row.locator('[data-working-note]').first()).toContainText('調査をまとめました');
+    await expect(row.locator('[data-run-steps=folded]')).toContainText('pnpm vitest run');
     await settleMotion(page, row, true);
     expect(await page.evaluate(() => (window as unknown as { disclosureMoves: number }).disclosureMoves), 'nothing slides before a press').toBe(0);
     for (const opening of [true, false]) {

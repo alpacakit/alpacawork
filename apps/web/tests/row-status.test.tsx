@@ -32,8 +32,8 @@ test("a running task says when its oldest running Run started, whoever runs", ()
     placement("P1", "T1", "running", { since: "2026-10-16T11:00:00Z", lastOutputAt: "2026-10-16T11:10:00Z" }),
     placement("P2", "T1", "running", { since: "2026-10-16T11:30:00Z", lastOutputAt: "2026-10-16T11:40:00Z", responsible: false }),
   ], {runs:[
-    run('R1',{placementId:'P1',state:'running',startedAt:'2026-10-16T11:00:00Z',activity:{at:'2026-10-16T11:10:00Z',kind:'output',toolName:null,doing:null,note:null}}),
-    run('R2',{placementId:'P2',state:'running',startedAt:'2026-10-16T11:30:00Z',activity:{at:'2026-10-16T11:40:00Z',kind:'output',toolName:null,doing:null,note:null}}),
+    run('R1',{placementId:'P1',state:'running',startedAt:'2026-10-16T11:00:00Z',activity:{at:'2026-10-16T11:10:00Z',kind:'output',toolName:null,doing:null,note:null,steps:[]}}),
+    run('R2',{placementId:'P2',state:'running',startedAt:'2026-10-16T11:30:00Z',activity:{at:'2026-10-16T11:40:00Z',kind:'output',toolName:null,doing:null,note:null,steps:[]}}),
   ]})().status;
   expect(facts).toEqual({ status: { kind: "running", since: Date.parse("2026-10-16T11:00:00Z") },
     childrenRunning: 0, runningRuns: 0, warning: null });
