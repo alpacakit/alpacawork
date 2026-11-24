@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import type { SystemVariableName } from './agent-variables.js';
 import { fingerprintOptions } from './options-base.js';
+import type { ModelContext } from './agent-context.js';
 
 export const BUILTIN_ADAPTER_IDS = ['claude', 'codex', 'grok', 'pi', 'copilot'] as const;
 export const unavailableAgentKind = (id: unknown) => `Agent kind "${String(id)}" is unavailable in this version; select a supported adapter or remove this profile from config.yaml`;
@@ -30,19 +31,22 @@ export type AdapterDescription = {
   auth: { args: readonly string[]; ready: number; signedOut: number; nextAction: string } | null;
   /** Whether it reports its account's plan limits without a conversation (the backend adapter's `limits`; a bridge's `--limits`). */
   limits: boolean;
+  /** Each model's context window and compaction point as shipped, by model candidate (or `-`): for what the agent
+   * itself does not say (agent-context resolveContextLimits). */
+  contextDefaults: Readonly<Record<string, ModelContext>>;
   referenceUrl: string;
 };
 const bridge = <Id extends BridgeAdapterId>(id: Id, defaultParams: AdapterDescription['defaultParams'], start: string, resume: string,
   referenceUrl: string, defaultEnv: readonly string[] = [], fixedEnv: readonly string[] = [],
-  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits'>> = {}): AdapterDescription & { id: Id } =>
-  ({ id, command: id, auth: null, limits: false, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
+  overrides: Partial<Pick<AdapterDescription, 'command' | 'auth' | 'limits' | 'contextDefaults'>> = {}): AdapterDescription & { id: Id } =>
+  ({ id, command: id, auth: null, limits: false, contextDefaults: {}, ...overrides, defaultParams, prefix: ['alpacawork-agent', id], options: { start, resume },
     system: { start: ['result'], resume: ['result', 'session'] }, fixedEnv, defaultEnv, referenceUrl });
 const me = '[--model {model}] [--effort {effort}]';
 const result = '-o {result}';
 
 export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescription & { id: Id } }> = {
   claude: {
-    id: 'claude', command: 'claude', limits: true, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
+    id: 'claude', command: 'claude', limits: true, contextDefaults: {}, auth: { args: ['auth', 'status'], ready: 0, signedOut: 1, nextAction: 'claude auth login' },
     defaultParams: { model: ['opus', 'fable'], effort: ['medium', 'high', 'low', 'xhigh', 'max'] },
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { AgentSettingsOptions } from './AgentSettingsOptions';
 import { AddAgentControl, AgentDefaultMark, AgentExtraFields } from './AgentSettingsExtras';
 import { AgentExecutableRow, AgentNoticeLine } from './AgentSettingsExecutable';
+import { AgentContextRows } from './AgentSettingsContext';
 import { agentDraftIssueText } from './agent-settings-issues';
 import { agentOptionsVersion } from './agent-options-version';
 import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, resetDraftParam, unusedParamReason, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
@@ -115,6 +116,7 @@ function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environm
       {adapter && <p><a href={AGENT_ADAPTERS[adapter].referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-link text-sm">{t('agentSettings.reference', { adapter })}</a></p>}
       <AgentExecutableRow agent={agent} onChange={onChange} issues={issues} />
       <ParamRows agent={agent} onChange={onChange} issues={issues} nextId={nextId} />
+      <AgentContextRows agent={agent} onChange={onChange} issues={issues} />
       {version.changed && <FieldHint>{t('agentSettings.defaultsChanged')}</FieldHint>}
       <AgentSettingsOptions agent={agent} onChange={onChange} issues={issues} base={version.base} />
       <AgentExtraFields agent={agent} onChange={onChange} issues={issues} environmentFile={environmentFile} />

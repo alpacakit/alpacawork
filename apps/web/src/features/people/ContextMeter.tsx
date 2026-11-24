@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AgentContext } from "@alpacawork/contract/agent-context";
+import type { ContextView } from "@alpacawork/contract/agent-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
 import { contextFigure } from "@/domain/context";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
  * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window; on a line that is
  * itself pressed (a child's), the same words are its tooltip instead.
  */
-export function ContextMeter({ context, press }: { context: AgentContext; press: boolean }) {
+export function ContextMeter({ context, press }: { context: ContextView; press: boolean }) {
   const { t, i18n } = useTranslation("people");
   const [open, setOpen] = useState(false);
   const figure = contextFigure(context);

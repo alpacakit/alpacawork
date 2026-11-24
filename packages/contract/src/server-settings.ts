@@ -1,3 +1,4 @@
+import { modelContextSchema } from './agent-context.js';
 import { aiStackSchema } from './ai-stack.js';
 import { agentSettingShapeSchema, agentSettingsSchema, paramsSchema } from './agent-settings.js';
 import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, builtinAdapterIdSchema, optionsBase } from './agent-adapters.js';
@@ -160,6 +161,8 @@ export const serverSettingsSchema = z.object({
   aiStack: aiStackSchema.optional(),
   coordinatorAiStack: aiStackSchema.optional(),
   catalog: adapterCatalogSchema,
+  /** What agents have reported of their models' windows and compaction points, by kind and model (agents/context-limits). */
+  reportedContext: z.record(z.string(), z.record(z.string(), modelContextSchema)).optional(),
   availability: z.record(z.string(), agentAvailabilitySchema).optional(),
   detected: z.record(z.string(), agentAvailabilitySchema).optional(),
   inspected: agentAvailabilitySchema.optional(),

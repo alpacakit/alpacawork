@@ -24,7 +24,7 @@ import { RunStore, parseStoredPlacement, unclosedSent, type StoredRequest } from
 import type { TaskLog } from '@alpacawork/raw';
 import { dialoguesOf, requestedByUser, saidAt, markMessages } from '../coordinator/messages.js';
 import { readProjectionTask } from '../control/task-store.js';
-import { readRunActivity } from '../runs/activity.js';
+import { readRunActivityView } from '../runs/activity.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
 import { readAgentsSettings } from '../agents-settings.js';
@@ -233,7 +233,7 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
     if (run.task === null) return { activity: null, errorCause: undefined };
     const observed = this.observations.runFiles?.(run);
     return observed ? structuredClone(observed) : {
-      activity: run.state === 'running' ? readRunActivity(runFolder(this.root, run.id)) : null,
+      activity: run.state === 'running' ? readRunActivityView(this.root, run) : null,
       errorCause: failureAvailability(readRunFailure(this.root, run)),
     };
   }

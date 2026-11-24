@@ -39,6 +39,21 @@
     "choices": "Values available when requesting work",
     "choicesHint": "The values offered in the AI lists and in requests.",
     "collapse": "Collapse {{name}}",
+    "context": {
+      "compactAt": "Compacts at",
+      "from": "{{value}} ({{source}})",
+      "hint": "Left empty, the figure the AI reported or the default is used. A number you enter is used instead.",
+      "model": "Model",
+      "noModel": "No model chosen",
+      "none": "Unknown",
+      "source": {
+        "default": "default",
+        "reported": "reported",
+        "setting": "reported"
+      },
+      "title": "Context limits",
+      "window": "Window (tokens)"
+    },
     "coordinatorStack": {
       "lead": "Takes what you send from the input, turns it into tasks and hands them to the AI for tasks. AI 1 normally takes it; only when it stops on a usage limit or capacity do AIs 2, 3… take over in order.",
       "title": "AI you talk to in the input (coordinator)"
@@ -56,6 +71,8 @@
     "envNames": "Additional environment variables",
     "envPlaceholder": "e.g. ANTHROPIC_API_KEY",
     "errors": {
+      "contextCompactAt": "The compaction point must be below the window.",
+      "contextModel": "A context limit names a model this agent does not list.",
       "dashFirst": "“-” can only go first. Move it to the start.",
       "duplicateAgent": "{{name}} already exists. Choose another name.",
       "duplicateEnv": "{{name}} appears more than once. Keep one copy.",

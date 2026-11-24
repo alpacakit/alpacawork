@@ -15,6 +15,7 @@ import { parseConfig, requireConfigBytes } from './config.js';
 import { parseAgentsSettings } from './agents-settings.js';
 import { inspectAgents, inspectAgent, type InspectionEnvironment } from './agents/availability.js';
 import { FileWriter } from './raw/storage.js';
+import { readReportedContexts } from './agents/context-limits.js';
 import { requirePublished, FileJournal } from './control/file-journal.js';
 
 const decode = (bytes: Uint8Array) => new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -29,21 +30,22 @@ function agentsBlock(text: string): { start: number; end: number } {
   return { start: pair.key.range[0]!, end: pair.value.range[2]! };
 }
 /** The screen's hash is the digest of config.yaml's bytes, so any change to the file refuses a stale save. */
-function view(bytes: Buffer): ServerSettings {
+function view(bytes: Buffer, root: string): ServerSettings {
   const text = decode(bytes);
   const config = parseAgentsSettings(text);
   const block = agentsBlock(text);
   const agentsText = text.slice(block.start, block.end);
   return { hash: digest(bytes), limits: config.limits, agentsText, agents: config.agents,
     ...(config.aiStack === undefined ? {} : { aiStack: config.aiStack }),
-    ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog() };
+    ...(config.coordinatorAiStack === undefined ? {} : { coordinatorAiStack: config.coordinatorAiStack }), catalog: adapterCatalog(),
+    reportedContext: readReportedContexts(root) };
 }
 export async function readServerSettings(root: string): Promise<ServerSettings> {
   let writer: FileWriter | undefined;
   try {
     new FileJournal(root).assertAvailable(CONFIG_FILE);
     writer = new FileWriter(root);
-    return view(requireConfigBytes(writer));
+    return view(requireConfigBytes(writer), root);
   } catch (error) {
     return { hash: null, limits: parseAgentsSettings('agents: {}').limits, agentsText: '', agents: {}, catalog: adapterCatalog(), error: errorBody(error).error };
   } finally { writer?.close(); }
@@ -96,7 +98,7 @@ export async function saveServerSettings(root: string, input: ConfigSetValues, o
       const base = rewrite ? document.toString({ lineWidth: 0 }) : before;
       const block = agentsBlock(base);
       const output = Buffer.from(base.slice(0, block.start) + agentsText + base.slice(block.end));
-      const saved = view(output);
+      const saved = view(output, root);
       // An unchanged file still answers this operation once, by a receipt that changes nothing else.
       if (output.equals(Buffer.from(before))) {
         const store = new ControlStore(root, { busyTimeoutMs: 10_000 });

@@ -45,3 +45,10 @@ test("a reset within a day says how long until it, a later one when; a past one 
   expect(resetWords("2026-11-29T14:59:59.900Z", now, "en", t)).toBe(later);
   expect(resetWords("2026-11-23T00:00:00Z", now, "en", t)).toBeNull();
 });
+
+test("a context limit's own mistakes are told as such", async () => {
+  const { agentDraftIssueKind } = await import("../src/features/panels/agent-settings-issues");
+  expect(agentDraftIssueKind({ field: "context", message: "The compaction point must be below the window" })).toBe("contextCompactAt");
+  expect(agentDraftIssueKind({ field: "context", message: "Unknown model candidate" })).toBe("contextModel");
+  expect(agentDraftIssueKind({ field: "without", message: "Unknown model candidate" })).toBe("withoutModel");
+});

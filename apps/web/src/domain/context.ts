@@ -1,5 +1,5 @@
 /** How a conversation's context fill is said beside its agent (contract: agent-context). */
-import { contextPercent, type AgentContext } from "@alpacawork/contract/agent-context";
+import { contextPercent, type ContextView } from "@alpacawork/contract/agent-context";
 import { limitTone, type LimitTone } from "./limits";
 
 export type ContextFigure = {
@@ -13,7 +13,7 @@ export type ContextFigure = {
 };
 
 /** The ring's reading; the same 80% rule as the plan limits. */
-export function contextFigure(context: AgentContext): ContextFigure {
+export function contextFigure(context: ContextView): ContextFigure {
   const percent = contextPercent(context);
   return { percent, tone: limitTone(percent ?? 0), open: context.windowTokens === null, waiting: context.usedTokens === null };
 }

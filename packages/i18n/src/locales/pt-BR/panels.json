@@ -39,6 +39,21 @@
     "choices": "Valores disponíveis ao solicitar trabalho",
     "choicesHint": "Os valores oferecidos nas listas de IA e nas solicitações.",
     "collapse": "Recolher {{name}}",
+    "context": {
+      "compactAt": "Compacta em",
+      "from": "{{value}} ({{source}})",
+      "hint": "Se ficar vazio, usa o valor informado pela IA ou o padrão. Um número digitado é usado no lugar.",
+      "model": "Modelo",
+      "noModel": "Nenhum modelo escolhido",
+      "none": "Desconhecido",
+      "source": {
+        "default": "padrão",
+        "reported": "informado",
+        "setting": "informado"
+      },
+      "title": "Limites de contexto",
+      "window": "Janela (tokens)"
+    },
     "coordinatorStack": {
       "lead": "Recebe o que você envia pelo campo de mensagem, transforma em tarefas e as passa para a IA das tarefas. Normalmente a IA 1 recebe; só quando ela para por limite de uso ou de capacidade, as IAs 2, 3… continuam em ordem.",
       "title": "IA com quem você fala no campo de mensagem (coordenador)"
@@ -56,6 +71,8 @@
     "envNames": "Variáveis de ambiente adicionais",
     "envPlaceholder": "ex.: ANTHROPIC_API_KEY",
     "errors": {
+      "contextCompactAt": "O ponto de compactação deve ser menor que a janela.",
+      "contextModel": "Um limite de contexto cita um modelo que este agente não lista.",
       "dashFirst": "“-” só pode vir em primeiro lugar. Mova-o para o início.",
       "duplicateAgent": "{{name}} já existe. Escolha outro nome.",
       "duplicateEnv": "{{name}} aparece mais de uma vez. Mantenha só uma ocorrência.",

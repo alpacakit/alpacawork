@@ -1,6 +1,7 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
-import { RUN_FILES, RUN_NOTE_LIMIT, runActivitySchema, type RunActivity } from '@alpacawork/contract/run';
-import { mergeContext, type AgentContext } from '@alpacawork/contract/agent-context';
+import { RUN_FILES, RUN_NOTE_LIMIT, runActivitySchema, runFolder, type ReadRunRecord, type RunActivity, type RunActivityView } from '@alpacawork/contract/run';
+import { contextLimitsFor } from '../agents/context-limits.js';
+import { mergeContext, type AgentContext, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
 import { JsonlReader } from './readers/jsonl.js';
@@ -23,7 +24,9 @@ const words = (value: unknown): string | null => {
   return /[\uD800-\uDBFF]$/.test(clipped) ? clipped.slice(0, -1) : clipped;
 };
 export class OutputActivityReader {
-  constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now()) {
+  /** `reported`: what the agent said of its model's window or compaction point, for the model's own record. */
+  constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
+    private readonly reported: (update: ContextUpdate) => void = () => {}) {
     this.recent = new RecentWork();
   }
   private readonly lines = new JsonlReader(() => this.clearWork());
@@ -59,7 +62,10 @@ export class OutputActivityReader {
   private accept(value: unknown): void {
     const received = new Date(this.now()).toISOString();
     const update = this.adapter.context(value);
-    if (update) this.context = mergeContext(this.context, update, received);
+    if (update) {
+      this.context = mergeContext(this.context, update, received);
+      if (update.windowTokens !== undefined || update.compactAtTokens !== undefined) this.reported(update);
+    }
     const event = this.project(value, received);
     if (event) { this.latest = event; this.dirty = true; }
     else if (update) {
@@ -105,6 +111,13 @@ export class OutputActivityReader {
     }
     return projected;
   }
+}
+
+/** A working Run's activity for the screen: its fill with its model's window and compaction point. */
+export function readRunActivityView(root: string, run: Pick<ReadRunRecord, 'id' | 'agent' | 'launch'>): RunActivityView | null {
+  const activity = readRunActivity(runFolder(root, run.id));
+  if (!activity) return null;
+  return { ...activity, context: activity.context && { ...activity.context, ...contextLimitsFor(root, run) } };
 }
 
 export function readRunActivity(folder: string): RunActivity | null {

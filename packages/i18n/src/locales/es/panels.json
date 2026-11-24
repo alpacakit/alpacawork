@@ -39,6 +39,21 @@
     "choices": "Valores disponibles al pedir trabajo",
     "choicesHint": "Los valores que se ofrecen en las listas de IA y en las solicitudes.",
     "collapse": "Contraer {{name}}",
+    "context": {
+      "compactAt": "Compacta en",
+      "from": "{{value}} ({{source}})",
+      "hint": "Si se deja vacío, se usa la cifra que informó la IA o el valor predeterminado. Un número que escribas se usa en su lugar.",
+      "model": "Modelo",
+      "noModel": "Sin modelo elegido",
+      "none": "Desconocido",
+      "source": {
+        "default": "predeterminado",
+        "reported": "informado",
+        "setting": "informado"
+      },
+      "title": "Límites de contexto",
+      "window": "Ventana (tokens)"
+    },
     "coordinatorStack": {
       "lead": "Recibe lo que envías desde el cuadro de texto, lo convierte en tareas y se las pasa a la IA de las tareas. Normalmente lo recibe la IA 1; solo si se detiene por un límite de uso o de capacidad, las IA 2, 3… siguen en orden.",
       "title": "IA con la que hablas en el cuadro de texto (coordinador)"
@@ -56,6 +71,8 @@
     "envNames": "Variables de entorno adicionales",
     "envPlaceholder": "p. ej. ANTHROPIC_API_KEY",
     "errors": {
+      "contextCompactAt": "El punto de compactación debe ser menor que la ventana.",
+      "contextModel": "Un límite de contexto nombra un modelo que este agente no incluye.",
       "dashFirst": "“-” solo puede ir en primer lugar. Muévelo al principio.",
       "duplicateAgent": "{{name}} ya existe. Elige otro nombre.",
       "duplicateEnv": "{{name}} aparece más de una vez. Deja solo una.",

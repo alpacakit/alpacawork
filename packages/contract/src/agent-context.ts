@@ -6,29 +6,66 @@
 import { z } from 'zod';
 
 const tokens = z.number().int().nonnegative().safe();
+const limit = tokens.positive();
+/**
+ * How full a Run's conversation is, as its agent last said. Its window belongs to the model, not to the Run: an adapter
+ * reports it in its updates, and the model's own record keeps it (resolveContextLimits).
+ */
 export const agentContextSchema = z.object({
   /** The main conversation's last model call: input, cache reads and writes, and output. Null while unknown (just after a compaction). */
   usedTokens: tokens.nullable(),
-  /** The window the agent itself measures against; null when it does not say. */
-  windowTokens: tokens.positive().nullable(),
-  /** Where the agent compacts by itself, when it says. */
-  compactAtTokens: tokens.positive().nullable(),
   /** The latest figure is a compaction's own, not a model call's. */
   compacted: z.boolean(),
   observedAt: z.iso.datetime({ offset: true }),
 }).strict();
 export type AgentContext = z.infer<typeof agentContextSchema>;
-/** What one observation says; a field it leaves out keeps its last value. */
-export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).partial().strict();
+/** What one observation says: the fill, and the model's window or compaction point when the agent names them. A field it
+ * leaves out keeps its last value. */
+export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true })
+  .extend({ windowTokens: limit, compactAtTokens: limit }).partial().strict();
 export type ContextUpdate = z.infer<typeof contextUpdateSchema>;
 
-/** The latest context after one more observation. */
+/** The latest fill after one more observation (the window is the model's: see resolveContextLimits). */
 export function mergeContext(previous: AgentContext | null, update: ContextUpdate, observedAt: string): AgentContext {
-  return { usedTokens: null, windowTokens: null, compactAtTokens: null, compacted: false, ...previous, ...update, observedAt };
+  const { usedTokens = previous?.usedTokens ?? null, compacted = previous?.compacted ?? false } = update;
+  return { usedTokens, compacted, observedAt };
 }
 
+/** One model's window and compaction point, as a person writes them, as an agent reported them, or as shipped. */
+export const modelContextSchema = z.object({ window: limit.optional(), compact_at: limit.optional() }).strict();
+export type ModelContext = z.infer<typeof modelContextSchema>;
+/** A model's key in each record: the chosen candidate, or `-` when none was chosen. */
+export const modelKey = (model: string | null | undefined): string => model || '-';
+
+/** Where a resolved limit came from, in the order they are looked at: what a person wrote wins over what the agent said. */
+export const CONTEXT_SOURCES = ['setting', 'reported', 'default'] as const;
+export type ContextSource = (typeof CONTEXT_SOURCES)[number];
+export type ContextLimits = { windowTokens: number | null; compactAtTokens: number | null;
+  windowFrom: ContextSource | null; compactAtFrom: ContextSource | null };
+
+/** The one place a model's window and compaction point are decided; a point at or past the window is no point. */
+export function resolveContextLimits(layers: Partial<Record<ContextSource, ModelContext | undefined>>): ContextLimits {
+  const pick = (field: keyof ModelContext) => {
+    for (const source of CONTEXT_SOURCES) {
+      const value = layers[source]?.[field];
+      if (value !== undefined) return { value, from: source };
+    }
+    return { value: null, from: null };
+  };
+  const window = pick('window'), compactAt = pick('compact_at');
+  const point = compactAt.value !== null && window.value !== null && compactAt.value >= window.value ? { value: null, from: null } : compactAt;
+  return { windowTokens: window.value, windowFrom: window.from, compactAtTokens: point.value, compactAtFrom: point.from };
+}
+
+/** A working Run's fill as the screen reads it: the Run's own figure with its model's resolved limits. */
+export const contextViewSchema = agentContextSchema.extend({
+  windowTokens: limit.nullable(), compactAtTokens: limit.nullable(),
+  windowFrom: z.enum(CONTEXT_SOURCES).nullable(), compactAtFrom: z.enum(CONTEXT_SOURCES).nullable(),
+}).strict();
+export type ContextView = z.infer<typeof contextViewSchema>;
+
 /** Percent of the window used: only when both are known, never above 100. */
-export function contextPercent(context: Pick<AgentContext, 'usedTokens' | 'windowTokens'>): number | null {
+export function contextPercent(context: Pick<ContextView, 'usedTokens' | 'windowTokens'>): number | null {
   const { usedTokens, windowTokens } = context;
   return usedTokens === null || windowTokens === null ? null : Math.min(100, usedTokens / windowTokens * 100);
 }

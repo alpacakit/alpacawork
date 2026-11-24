@@ -1,4 +1,5 @@
 /** Target configuration contract. Stage 1 prepares it; stage 3 replaces the old server-settings DSL. */
+import { modelContextSchema } from './agent-context.js';
 import { z } from 'zod';
 import { selectedValueSchema } from '@alpacawork/raw/values';
 import { selectedCandidateSchema } from '@alpacawork/core/selection';
@@ -32,6 +33,8 @@ export function parseParamValues(input: string): string[] {
 export const agentSettingShapeSchema = z.object({
   adapter: builtinAdapterIdSchema.optional(), enabled: z.boolean().optional(), params: paramsSchema.optional(),
   without: z.record(z.string(), z.array(paramNameSchema)).optional(),
+  /** A model's context window and compaction point as a person writes them, by model candidate (or `-` for none chosen). */
+  context: z.record(z.string(), modelContextSchema).optional(),
   env: agentEnvironmentNamesSchema.optional(),
   command: z.string().regex(/^\/(?!.*[\r\n\0])(?!.*\s+-).*\S$/, 'Command must be an absolute executable path without arguments').optional(),
   options: z.object({ base: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/), start: z.string(), resume: z.string() }).strict().optional(),
@@ -108,6 +111,11 @@ function validateSetting(id: BuiltinAdapterId, setting: ResolvedAgentSetting,
     const values = setting.params[name];
     if (values && (values.length === 0 || values[0] === '-'))
       add(['params', name], 'Required reference needs a nonempty default and cannot start with -');
+  }
+  for (const [model, limits] of Object.entries(setting.context ?? {})) {
+    if (model !== '-' && !setting.params.model?.includes(model)) add(['context', model], 'Unknown model candidate');
+    if (limits.window !== undefined && limits.compact_at !== undefined && limits.compact_at >= limits.window)
+      add(['context', model, 'compact_at'], 'The compaction point must be below the window');
   }
   for (const [model, keys] of Object.entries(setting.without)) {
     if (model === '-' || !setting.params.model?.includes(model)) {

@@ -5,7 +5,7 @@ import type { AgentDraft, AgentDraftIssue } from './agent-settings-draft';
 export const AGENT_DRAFT_ISSUE_KINDS = [
   'invalidValue', 'yaml', 'invalidName', 'duplicateAgent', 'invalidKey', 'duplicateKey', 'emptyValue', 'duplicateValue',
   'dashFirst', 'requiredValue', 'unknownVariable', 'unsupportedVariable', 'invalidOptions',
-  'missingBase', 'invalidBase', 'invalidEnv', 'duplicateEnv', 'processEnv', 'fixedEnv', 'withoutModel', 'withoutParam', 'withoutDuplicate', 'invalidCommand',
+  'missingBase', 'invalidBase', 'invalidEnv', 'duplicateEnv', 'processEnv', 'fixedEnv', 'withoutModel', 'withoutParam', 'withoutDuplicate', 'contextModel', 'contextCompactAt', 'invalidCommand',
 ] as const;
 export type AgentDraftIssueKind = typeof AGENT_DRAFT_ISSUE_KINDS[number];
 
@@ -22,7 +22,8 @@ export function agentDraftIssueKind(issue: AgentDraftIssue): AgentDraftIssueKind
   if (message === 'Duplicate environment name') return 'duplicateEnv';
   if (message === 'Environment name is owned by the process boundary') return 'processEnv';
   if (message === 'Environment name is owned by the adapter') return 'fixedEnv';
-  if (message === 'Unknown model candidate') return 'withoutModel';
+  if (message === 'The compaction point must be below the window') return 'contextCompactAt';
+  if (message === 'Unknown model candidate') return issue.field === 'context' ? 'contextModel' : 'withoutModel';
   if (message === 'Duplicate without param') return 'withoutDuplicate';
   if (message === 'without must reference an existing optional param' || message.startsWith('without.')) return 'withoutParam';
   if (message === 'Invalid key in record') return issue.field === 'key' ? 'invalidKey' : issue.field === 'name' ? 'invalidName' : 'invalidValue';

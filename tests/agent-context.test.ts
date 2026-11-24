@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { contextPercent } from '@alpacawork/contract/agent-context';
+import { contextPercent, resolveContextLimits } from '@alpacawork/contract/agent-context';
+import { readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { contextLimitsFor, recordReportedContext } from '@alpacawork/backend/test-dist/agents/context-limits.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS as adapters } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { codexContext } from '../apps/agent-cli/test-dist/codex.js';
@@ -14,12 +16,16 @@ import { grokContext } from '../apps/agent-cli/test-dist/grok.js';
 function reader(t: TestContext, adapter: keyof typeof adapters) {
   const folder = mkdtempSync(join(tmpdir(), 'agent-context-'));
   t.after(() => rmSync(folder, { recursive: true, force: true }));
-  const activity = new OutputActivityReader(adapters[adapter]);
-  return (...rows: unknown[]) => {
+  // What the agent says of its model's window goes to the model's record; the Run keeps its fill.
+  const said: { windowTokens?: number; compactAtTokens?: number } = {};
+  const activity = new OutputActivityReader(adapters[adapter], undefined, update => Object.assign(said, update));
+  const emit = (...rows: unknown[]) => {
     for (const row of rows) appendFileSync(join(folder, 'stdout.log'), JSON.stringify(row) + '\n');
     activity.poll(folder);
-    return readRunActivity(folder)?.context ?? null;
+    const context = readRunActivity(folder)?.context ?? null;
+    return context && { ...context, windowTokens: said.windowTokens ?? null };
   };
+  return emit;
 }
 
 test('Claude: the main conversation\'s last call against the window its turn names; sub-agents and compactions apart', t => {
@@ -28,12 +34,11 @@ test('Claude: the main conversation\'s last call against the window its turn nam
     message: { content: [], usage: { input_tokens: input, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000, output_tokens: 10 } } });
   const first = emit(call(2))!;
   assert.deepEqual([first.usedTokens, first.windowTokens, first.compacted], [1112, null, false]);
-  assert.equal(contextPercent(first), null);
   // A sub-agent's call is its own conversation's.
   assert.equal(emit(call(900_000, 'tool-1'))!.usedTokens, 1112);
   const turn = emit({ type: 'result', modelUsage: { 'main-model': { contextWindow: 1_000_000 }, 'small-model': { contextWindow: 200_000 } } })!;
   assert.deepEqual([turn.usedTokens, turn.windowTokens], [1112, 1_000_000]);
-  assert.ok(Math.abs(contextPercent(turn)! - 0.1112) < 1e-9);
+  assert.ok(Math.abs(contextPercent(turn as never)! - 0.1112) < 1e-9);
   // A compaction says its own figure; the window stays.
   const compacted = emit({ type: 'system', subtype: 'compact_boundary', parent_tool_use_id: null, compact_metadata: { post_tokens: 30_000 } })!;
   assert.deepEqual([compacted.usedTokens, compacted.windowTokens, compacted.compacted], [30_000, 1_000_000, true]);
@@ -46,7 +51,7 @@ test('a bridge\'s context updates merge: a field one leaves out keeps its last v
   assert.deepEqual([first.usedTokens, first.windowTokens], [17_311, 475_000]);
   const after = emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } })!;
   assert.deepEqual([after.usedTokens, after.windowTokens, after.compacted], [null, 475_000, true]);
-  assert.equal(contextPercent(after), null);
+  assert.equal(contextPercent(after as never), null);
   // A malformed update says nothing.
   assert.deepEqual(emit({ type: 'context.updated', context: { usedTokens: -1 } }), after);
 });
@@ -61,4 +66,27 @@ test('each bridge reads its agent\'s own report of the fill', () => {
   // Just after a compaction pi knows its window but not the fill.
   assert.deepEqual(piStatsContext({ contextUsage: { tokens: null, contextWindow: 272_000, percent: null } }), { windowTokens: 272_000 });
   assert.deepEqual(grokContext({ input_tokens: 10, cache_read_input_tokens: 200, cache_creation_input_tokens: 0, output_tokens: 5 }), { usedTokens: 215, compacted: false });
+});
+
+test('a model\'s window: what a person wrote, else what its agent reported, else what ships; a point past the window is none', () => {
+  assert.deepEqual(resolveContextLimits({ setting: { window: 300_000 }, reported: { window: 475_000, compact_at: 400_000 }, default: { window: 1 } }),
+    { windowTokens: 300_000, windowFrom: 'setting', compactAtTokens: null, compactAtFrom: null });
+  assert.deepEqual(resolveContextLimits({ reported: { window: 475_000 }, default: { window: 256_000, compact_at: 217_600 } }),
+    { windowTokens: 475_000, windowFrom: 'reported', compactAtTokens: 217_600, compactAtFrom: 'default' });
+  assert.deepEqual(resolveContextLimits({}), { windowTokens: null, windowFrom: null, compactAtTokens: null, compactAtFrom: null });
+});
+
+test('what an agent reported is kept per kind of agent and model, read for every profile of that kind, and a person\'s value wins', t => {
+  const root = mkdtempSync(join(tmpdir(), 'context-limits-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.alpacawork'));
+  writeFileSync(join(root, 'config.yaml'), 'agents:\n  codex:\n    params:\n      model: [gpt-6.1-sol]\n  mine:\n    adapter: codex\n    params:\n      model: [gpt-6.1-sol]\n    context:\n      gpt-6.1-sol:\n        window: 300000\n');
+  const run = (agent: string) => ({ agent, launch: { adapter: 'codex', values: { model: 'gpt-6.1-sol' } } }) as never;
+  recordReportedContext(root, 'codex', 'gpt-6.1-sol', { windowTokens: 475_000 });
+  const record = join(root, '.alpacawork', 'context-reported.json'), written = statSync(record).mtimeMs;
+  recordReportedContext(root, 'codex', 'gpt-6.1-sol', { windowTokens: 475_000, usedTokens: 10 });
+  assert.equal(statSync(record).mtimeMs, written, 'a repeated figure writes nothing');
+  assert.deepEqual(JSON.parse(readFileSync(record, 'utf8')), { codex: { 'gpt-6.1-sol': { window: 475_000 } } });
+  assert.equal(contextLimitsFor(root, run('codex')).windowTokens, 475_000);
+  assert.deepEqual([contextLimitsFor(root, run('mine')).windowTokens, contextLimitsFor(root, run('mine')).windowFrom], [300_000, 'setting']);
 });

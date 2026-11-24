@@ -1,5 +1,5 @@
 /** Browser-safe persisted run records and their state vocabulary. */
-import { agentContextSchema } from './agent-context.js';
+import { agentContextSchema, contextViewSchema } from './agent-context.js';
 import { z } from 'zod';
 import { conversationContextSchema } from '@alpacawork/raw/conversation-context';
 import { runIdSchema, taskIdSchema, type RunId } from './fields.js';
@@ -34,6 +34,9 @@ export const runActivitySchema = z.object({
   context: agentContextSchema.nullable(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
+/** A working Run's activity as the screen reads it: its fill with its model's resolved window (agents/context-limits). */
+export const runActivityViewSchema = runActivitySchema.extend({ context: contextViewSchema.nullable() }).strict();
+export type RunActivityView = z.infer<typeof runActivityViewSchema>;
 /** Where run folders live, relative to the workspace root. */
 const RUNS_DIRECTORY = '.alpacawork/runs';
 /** The run's output folder under a normalized absolute workspace root. */
