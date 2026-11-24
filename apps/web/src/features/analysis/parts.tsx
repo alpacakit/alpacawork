@@ -90,7 +90,8 @@ export function RulesToggle() {
   </button>;
 }
 export function RulesBox({ children }: { children: ReactNode }) {
-  return <div className="mt-3 mb-1 max-w-[44em] animate-rise rounded-lg border border-line px-3.5 py-3 text-xs text-muted [&_b]:font-semibold [&_b]:text-ink [&_p+p]:mt-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</div>;
+  // Japanese breaks between phrases, not inside a word (auto-phrase reads the page's language).
+  return <div className="mt-3 mb-1 max-w-[44em] animate-rise rounded-lg border border-line px-3.5 py-3 text-xs text-muted [word-break:auto-phrase] [&_b]:font-semibold [&_b]:text-ink [&_p+p]:mt-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</div>;
 }
 
 /** A section under a rule, its name on the left and its switch on the right. */
