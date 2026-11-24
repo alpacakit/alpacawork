@@ -302,7 +302,7 @@ const definitions = {
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
-    'With --compact the agent summarizes this conversation with its own model before the instruction and goes on from the summary; --compact-focus names what the summary must keep. As with --new-conversation, it is refused for an unfinished Run and a first request.',
+    'With --compact the agent summarizes this conversation with its own model before the instruction and goes on from the summary; --compact-focus names what the summary must keep. As with --new-conversation, it is refused for an unfinished Run; a first request has no conversation to compact.',
     COMPACTION_COST, COMPACTION_REFUSALS,
     'task get --include agents shows each placement\'s conversation fill (context) and its latest compaction. Every agent also compacts by itself near its limit: compact for the work, not for fear of overflowing.') }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
