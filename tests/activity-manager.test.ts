@@ -22,15 +22,21 @@ test("manager shows both agents' work with no activity settings", async t => {
     { placementId: h.memberPlacementId, role: 'worker', launch: launch('codex') });
   await h.tick();
   await Promise.all([h.ready(claude), h.ready(codex)]);
-  for (const [run, command] of [[claude, 'task.list'], [codex, 'task.get']] as const) {
+  for (const [run, command, detail] of [
+    [claude, 'task.list', 'alpacawork task list'], [codex, 'task.get', 'alpacawork task get --task T157'],
+  ] as const) {
     const activity = await until(() => {
       const value = readRunActivity(h.store.folder(run.id));
       return value?.doing?.command ? value : null;
     }, `${run.id} work from product-owned reader`);
     assert.equal(activity.doing?.command, command);
-    assert.doesNotMatch(readFileSync(join(h.store.folder(run.id), 'activity.json'), 'utf8'), /T157|alpacawork/);
+    assert.equal(activity.steps[0]?.text, detail);
   }
   h.release('claude-output'); h.release('codex-output');
   await Promise.all([h.waitState(claude, 'succeeded'), h.waitState(codex, 'succeeded')]);
-  for (const run of [claude, codex]) assert.equal(readRunActivity(h.store.folder(run.id))?.doing, null);
+  for (const run of [claude, codex]) {
+    const activity = readRunActivity(h.store.folder(run.id));
+    assert.equal(activity?.doing, null);
+    assert.equal(activity.steps[0]?.state, 'done');
+  }
 });

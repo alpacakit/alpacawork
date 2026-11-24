@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
@@ -37,8 +37,9 @@ for (const agent of ['claude', 'codex'] as const)
     const start = agent === 'claude'
       ? { type: 'assistant', parent_tool_use_id: null, message: { content: [{ type: 'tool_use', id: 'one', name: 'Bash', input: { command } }] } }
       : { type: 'item.started', item: { id: 'one', type: 'command_execution', command } };
-    assert.equal(emit(start)?.doing?.command, 'task.get');
-    assert.doesNotMatch(readFileSync(join(folder, 'activity.json'), 'utf8'), /--log|T157/);
+    const activity = emit(start);
+    assert.equal(activity?.doing?.command, 'task.get');
+    assert.equal(activity?.steps[0]?.text, command);
     assert.equal(emit({ type: 'unrecognized' })?.doing?.command, 'task.get');
     const end = agent === 'claude' ? { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'one' }] } }
       : { type: 'item.completed', item: { id: 'one', type: 'command_execution' } };

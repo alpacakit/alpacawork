@@ -141,9 +141,12 @@ export class CopilotRuntime implements Runtime {
         this.io.emit({ type: 'item.completed', item: { type: 'agent_message', text: event.data.content } });
       }
     } else if (event.type === 'tool.execution_start') {
-      this.io.emit({ type: 'item.started', item: { type: 'mcp_tool_call', id: event.data.toolCallId, name: event.data.toolName } });
+      const { toolCallId, toolName, arguments: args } = event.data;
+      this.io.emit({ type: 'item.started', item: { type: 'mcp_tool_call', id: toolCallId, name: toolName, arguments: args } });
     } else if (event.type === 'tool.execution_complete') {
-      this.io.emit({ type: 'item.completed', item: { type: 'mcp_tool_call', id: event.data.toolCallId } });
+      const { toolCallId, success, result, error } = event.data;
+      this.io.emit({ type: 'item.completed', item: { type: 'mcp_tool_call', id: toolCallId, success,
+        result: result?.detailedContent ?? result?.content ?? error?.message } });
     } else if (event.type === 'session.error') {
       if (event.data.eligibleForAutoSwitch !== true) this.finish(event.data.message);
     } else if (event.type === 'session.idle') {

@@ -48,7 +48,7 @@ export async function reviewTimes() {
   };
   /** The Run's last output, now: a page clock set later sees it as old. */
   const output = (id: string) => writeFileSync(join(store.folder(id), RUN_FILES.activity),
-    JSON.stringify({ at: new Date().toISOString(), kind: 'output', toolName: null, doing: null, note: null }));
+    JSON.stringify({ at: new Date().toISOString(), kind: 'output', toolName: null, doing: null, note: null, steps: [] }));
   const end = (id: string) => store.write(tx => tx.finish({ ...tx.get(id)!, state: 'succeeded', reason: null, ended_at: new Date().toISOString() }, { state: 'present', text: 'result' }));
   /**
    * A task whose owner's Run has started: a user-requested one on the user's request, or a child of `from` on its owner's

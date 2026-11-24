@@ -63,6 +63,8 @@ export class JsonlReader {
 
   finish(onValue: OnValue): void {
     if (this.dropping || !this.pending.length) return;
-    this.parse(this.pending, onValue);
+    const line = this.pending;
+    this.pending = Buffer.alloc(0);
+    this.parse(line, onValue);
   }
 }

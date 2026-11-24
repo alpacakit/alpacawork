@@ -53,8 +53,11 @@ test('a live activity change reaches the SSE index without a Run database commit
     server = await startServer(h.root, 0);
     const stream = await openIndexStream(new URL('/api/events', server.url), controller.signal);
     await stream.index();
+    const at = '2026-10-05T03:43:14.000Z';
+    const step = { id: 'read', at, tool: 'Bash', text: 'sed -n 1p catalog.txt', more: 0,
+      about: 'Read the catalog', state: 'running', result: null };
     writeFileSync(join(runFolder(h.root, h.run.id), 'activity.json'), JSON.stringify({
-      at: '2026-10-05T03:43:14.000Z', kind: 'tool_start', toolName: 'Bash', doing: null, note: null }));
+      at, kind: 'tool_start', toolName: 'Bash', doing: null, note: null, steps: [step] }));
     const changed = await Promise.race([
       (async () => {
         for (;;) {
@@ -64,7 +67,7 @@ test('a live activity change reaches the SSE index without a Run database commit
       })(),
       new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('activity SSE timed out')), 3500); }),
     ]);
-    assert.equal(changed.runs.find(run => run.id === h.run.id)?.activity?.toolName, 'Bash');
+    assert.deepEqual(changed.runs.find(run => run.id === h.run.id)?.activity?.steps, [step]);
     assert.equal(changed.placements.find(item => item.id === h.placement.id)?.runtime.toolName, 'Bash');
   } finally {
     clearTimeout(timeout);

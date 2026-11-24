@@ -76,7 +76,7 @@ test('activity updates list patches without aging the opened view, while batched
     for (const [index, kind] of (['output', 'output', 'tool_start', 'tool_end'] as const).entries()) {
       files = { activity: { at: new Date(Date.parse(at) + index * 1000).toISOString(),
         kind, toolName: kind.startsWith('tool') ? 'Synthetic tool' : null,
-        doing: null, note: { at, text: `Synthetic output ${index}` } }, errorCause: index === 3 ? 'weekly_limit' : undefined };
+        doing: null, note: { at, text: `Synthetic output ${index}` }, steps: [] }, errorCause: index === 3 ? 'weekly_limit' : undefined };
       const keys: ChangeKey[] = [{ kind: 'activity', id: 'R4' }];
       const after = await owner.read(journal.append(keys));
       const impact = affected({ before: before.records, after: after.records, keys, owners: new Set([task]) });
@@ -252,7 +252,7 @@ test('folder observations, Request ordering and personal count facts all read th
   const observations = { runFiles: (run: { id: string }) => files.get(run.id) ?? { activity: null, errorCause: undefined },
     files: (task: string) => fileLists.get(task) ?? [], configuration: () => config };
   const before = emptyWorkspaceRecords(h.root, observations).load(h.db, pv(1));
-  const activity = { at, kind: 'output' as const, toolName: null, doing: null, note: { at, text: 'Synthetic output' } };
+  const activity = { at, kind: 'output' as const, toolName: null, doing: null, note: { at, text: 'Synthetic output' }, steps: [] };
   files.set('R4', { activity, errorCause: 'weekly_limit' });
   const after = before.advance(h.db, [{ kind: 'activity', id: 'R4' }], pv(2)).next;
   assert.equal(before.bundle('T5')!.runFiles!.get('R4')!.activity, null);

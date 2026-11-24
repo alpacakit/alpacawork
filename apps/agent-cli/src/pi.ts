@@ -226,9 +226,14 @@ export class PiRuntime implements Runtime {
     }
     if (row.type === 'message_start' && message.role === 'assistant') this.execution().assistant = null;
     if (row.type === 'message_end' && message.role === 'assistant') this.execution().assistant = message;
-    if (row.type === 'tool_execution_start' || row.type === 'tool_execution_end') {
-      this.io.emit({ type: row.type === 'tool_execution_start' ? 'item.started' : 'item.completed',
-        item: { type: 'mcp_tool_call', id: row.toolCallId, name: row.toolName } });
+    if (row.type === 'tool_execution_start') {
+      this.io.emit({ type: 'item.started', item: { type: 'mcp_tool_call', id: row.toolCallId,
+        name: row.toolName, arguments: row.args } });
+    } else if (row.type === 'tool_execution_end') {
+      const content = object(row.result).content;
+      this.io.emit({ type: 'item.completed', item: { type: 'mcp_tool_call', id: row.toolCallId,
+        name: row.toolName, success: typeof row.isError === 'boolean' ? !row.isError : undefined,
+        result: Array.isArray(content) ? content.map(object).filter(block => block.type === 'text') : content } });
     }
     if (row.type === 'agent_settled' && this.turn?.active) {
       this.turn.active.settled = row;

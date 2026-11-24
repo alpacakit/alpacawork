@@ -1,4 +1,4 @@
-import { tokenUsage } from './usage.js';
+import { tokenUsage, usageRecord as object } from './usage.js';
 /** Grok Build's native streaming-json is one prompt per process.
  * https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md
  */
@@ -86,7 +86,16 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
     } else if (event.type === 'tool_call') {
       if (typeof event.toolCallId !== 'string') throw new Error('Invalid Grok tool call');
       this.begin(active);
-      this.io.emit({ type: 'item.started', item: { type: 'command_execution', id: event.toolCallId, tool: event.toolName } });
+      this.io.emit({ type: 'item.started', item: { type: 'command_execution', id: event.toolCallId,
+        name: event.toolName, arguments: event.rawInput } });
+    } else if (event.type === 'tool_call_update' && (event.status === 'completed' || event.status === 'failed')) {
+      if (typeof event.toolCallId !== 'string') throw new Error('Invalid Grok tool result');
+      const output = event.rawOutput, data = object(output);
+      const content = Array.isArray(event.content) ? event.content.map(part => object(object(part).content))
+        .filter(block => block.type === 'text') : [];
+      this.io.emit({ type: 'item.completed', item: { type: 'command_execution', id: event.toolCallId,
+        status: event.status, result: typeof output === 'string' ? output : data.output ?? data.text ??
+          (content.length ? content : output == null ? undefined : JSON.stringify(output)) } });
     }
   }
   protected conclude(active: Active, code: number | null, signal: NodeJS.Signals | null): TurnEnd {

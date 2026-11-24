@@ -29,6 +29,11 @@ function finish() {
  const stop = ['error', 'length', 'aborted', 'toolUse', 'pending', 'deferred'].includes(mode) ? mode : 'stop';
  const end = () => {
   header();
+  if (mode === 'normal') {
+   send({ type: 'tool_execution_start', toolCallId: 'check', toolName: 'bash', args: { command: 'cat catalog.txt' } });
+   send({ type: 'tool_execution_end', toolCallId: 'check', toolName: 'bash', isError: true,
+    result: { content: [{ type: 'text', text: 'Catalog missing\nTry again' }] } });
+  }
   const rows = [{ type: 'message_end', message: { role: 'assistant', stopReason: stop,
    content: mode === 'no-text' ? [{ type: 'thinking', thinking: 'private thought' }] : [
     { type: 'thinking', thinking: 'never in final output' }, { type: 'text', text: `synthetic reply ${turn}\n\u2028\u2029😀` }],

@@ -94,7 +94,7 @@ test('activity-file changes leave the opened view unchanged while durable execut
     revision: 1, startedAt: at(0), endedAt: null, headRunId: 'R10', previousValues: null,
     runtime: { displayState: 'running' as const, reason: null, sourceRunIds: ['R10'], runningCount: 1, queuedCount: 0,
       since: at(1), lastOutputAt: at(2), activityKind: 'tool_start' as const, toolName: 'Read' } };
-  const run = { ...recordedRun(raw), activity: { at: at(2), kind: 'tool_start' as const, toolName: 'Read', doing: null, note: null },
+  const run = { ...recordedRun(raw), activity: { at: at(2), kind: 'tool_start' as const, toolName: 'Read', doing: null, note: null, steps: [] },
     errorCause: 'weekly_limit' as const };
   const first = taskProjectedViewSchema.parse(projectedView({ ...point,
     derived: () => ({ ...base, placements: [placement], runs: [run] }) }, 'T1'));
