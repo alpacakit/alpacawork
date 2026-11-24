@@ -35,6 +35,7 @@ import { actedTasks } from './messages.js';
 import { replySource, replyPrompt } from './reply.js';
 import { coordinatorAttachmentFile, coordinatorFolders, coordinatorRequestId, discardCoordinatorFiles } from './files.js';
 import { readRecentWork } from '../runs/recent-work.js';
+import { readRunActivity } from '../runs/activity.js';
 import { runFolder } from '@alpacawork/contract/run';
 import type { ControlIndexDTO } from '@alpacawork/contract/control';
 
@@ -108,8 +109,10 @@ export class CoordinatorConversation {
   /** Only this small projection is sampled for stdout changes; no conversation digest or transcript changes. */
   work(): ControlIndexDTO['coordinatorWork'] {
     const run = this.running;
-    const label = run ? readRecentWork(runFolder(this.root, run.id)) : null;
-    return run && label ? { conversation: run.conversationId, turn: run.requestId, ...label } : null;
+    if (!run) return null;
+    const folder = runFolder(this.root, run.id), label = readRecentWork(folder), activity = readRunActivity(folder);
+    const steps = activity?.steps ?? [], words = activity?.note?.text ?? null;
+    return label || steps.length || words ? { conversation: run.conversationId, turn: run.requestId, name: label?.name ?? null, count: label?.count ?? 0, steps, words } : null;
   }
   /** Startup alone calls this, before recovery can turn an unfinished Run into another answer. */
   async seedSeen(): Promise<void> {

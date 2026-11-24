@@ -46,6 +46,7 @@ import { dayClock, dayClockLabel, dayHeading } from "@/domain/day-clock";
 import { useToday } from "@/state/clock";
 import { agentModelName, modelLabel, peopleAgentNames, placementAgentLabel, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
 import { useActivityText, useDuration } from "@/features/people/labels";
+import { RunSteps } from "@/features/people/RunSteps";
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { sameForFeed } from "@/domain/people";
 import { reportCopy, taskCopy, textClip } from "@/lib/clipboard";
@@ -969,8 +970,9 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const step = useActivityText();
   const people = useTaskPeople();
   const model = modelLabel(runAgentLabel(run), useContext(AgentNames));
-  // Before a Run has said anything, show its current step.
-  const words = run.activity?.note?.text || step(run.activity);
+  const steps = run.activity?.steps ?? [];
+  // Before a Run has said or done anything, show its current step.
+  const words = run.activity?.note?.text || (steps.length ? "" : step(run.activity));
   const member = people?.placements.get(run.placementId)?.responsible === false;
   const names = useContext(AgentNames);
   const { t: ui } = useTranslation("ui");
@@ -988,6 +990,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
+    {steps.length > 0 && <RunSteps steps={steps} brief={!open} last={open ? undefined : 3} newestFirst className={`${cell} mt-1.5`} />}
     {lead && <span className="col-start-3 row-start-1 flex items-center self-center justify-self-end"><DisclosureChevron open={open} /></span>}
   </div>;
 }

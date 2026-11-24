@@ -23,12 +23,14 @@ export const runActivityKindSchema = z.enum(['output', 'tool_start', 'tool_end',
 export const RUN_NOTE_LIMIT = 500;
 export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contract.js';
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
-import { runWorkSchema } from './work-contract.js';
+export { runStepSchema, runStepsSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, type RunStep } from './work-contract.js';
+import { runWorkSchema, runStepsSchema } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
   toolName: z.string().max(128).nullable(),
   doing: runWorkSchema.nullable(),
   note: z.object({ at: z.iso.datetime({ offset: true }), text: z.string().min(1).max(RUN_NOTE_LIMIT) }).strict().nullable(),
+  steps: runStepsSchema,
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
 /** Where run folders live, relative to the workspace root. */

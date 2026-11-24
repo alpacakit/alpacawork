@@ -81,7 +81,10 @@
     },
     "output": "{{event}}（{{ago}}前）",
     "stale": "最后一次输出已较久：{{event}}（{{ago}}前）",
-    "toolEvent": "{{tool}}：{{kind}}"
+    "toolEvent": "{{tool}}：{{kind}}",
+    "step": {
+      "moreLines": "+{{count}} 行"
+    }
   },
   "records": {
     "close": "关闭运行…"

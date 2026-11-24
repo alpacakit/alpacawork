@@ -95,7 +95,10 @@
     },
     "output": "{{event}} hace {{ago}}",
     "stale": "La última salida es antigua: {{event}} (hace {{ago}})",
-    "toolEvent": "{{tool}}: {{kind}}"
+    "toolEvent": "{{tool}}: {{kind}}",
+    "step": {
+      "moreLines": "+{{count}} líneas"
+    }
   },
   "records": {
     "close": "Cerrar ejecución…"

@@ -11,13 +11,16 @@ import { paceKey, workPacer, type Pace } from './work-pace';
 import { workNameWords } from '@/domain/work-words';
 import { causeReason, limitName } from '@/domain/run-labels';
 import { agentLabel } from '@/domain/agent-label';
+import { RunSteps } from '@/features/people/RunSteps';
+import { MarkdownBody } from '@/features/reader/MarkdownBody';
+import { followTask } from './follow-task';
 
 /**
  * The words of a running turn: its recent work's name while the pacer shows it for this turn, else the turn's own, then
  * the whole seconds since the message was sent (`at`, kept with the message, so neither the work nor a remount, reload
- * or reconnect restarts them). With no running turn given, the turn's own words alone.
+ * or reconnect restarts them). With no running turn given, or `plain` (where the steps themselves are shown), the turn's own words alone.
  */
-export function useWorkingWords(turn?: { id: string; at: string }): string {
+export function useWorkingWords(turn?: { id: string; at: string }, plain = false): string {
   const { t } = useTranslation('ui');
   const store = useContext(WorkspaceContext);
   const pacer = store ? workPacer(store) : idle;
@@ -25,7 +28,7 @@ export function useWorkingWords(turn?: { id: string; at: string }): string {
   const conversation = useConversation(state => state.conversation?.id);
   // The hold starts when the words reach the DOM, not when a value arrives or a timer fires.
   useLayoutEffect(() => pacer.committed(pace.version), [pacer, pace.version]);
-  const words = pace.label && conversation && turn && pace.key === paceKey(conversation, turn.id)
+  const words = !plain && pace.label && conversation && turn && pace.key === paceKey(conversation, turn.id)
     ? workNameWords(pace.label) : t('coordinatorCard.thinking');
   const seconds = useSecondsSince(turn?.at);
   return seconds === null ? words : t('coordinatorCard.working', { words, seconds });
@@ -47,9 +50,21 @@ const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
 const idle = { subscribe: () => () => {}, snapshot: () => none, committed: (_version: number) => {} };
 
+/** The running turn's latest steps as they are, for the open conversation; the folded one keeps to the rounded words. */
+export function WorkingSteps({ turn }: { turn: { id: string } }) {
+  const store = useContext(WorkspaceContext);
+  const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
+  const conversation = useConversation(state => state.conversation?.id);
+  if (!work || work.conversation !== conversation || work.turn !== turn.id) return null;
+  return <>
+    {work.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={work.words} task={null} variant="note" onFollow={followTask} /></div>}
+    <RunSteps steps={work.steps} brief={false} last={5} className="mb-2" />
+  </>;
+}
+const noStore = () => () => {};
 /** A mark while waiting for an answer: a quiet pulse of opacity alone. */
-export function Thinking({ turn }: { turn: { id: string; at: string } }) {
-  const words = useWorkingWords(turn);
+export function Thinking({ turn, plain }: { turn: { id: string; at: string }; plain?: boolean }) {
+  const words = useWorkingWords(turn, plain);
   return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{words}</span>;
 }
 

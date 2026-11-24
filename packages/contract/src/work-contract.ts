@@ -1,4 +1,4 @@
-/** A closed, safe display vocabulary. Command arguments and shell text never cross this boundary. */
+/** The display vocabulary of observed work: closed names for places that round it, and bounded steps for places that show it as it is. */
 import { z } from 'zod';
 
 export const workCommandSchema = z.enum(['task.new', 'task.update', 'task.move', 'task.request', 'task.report',
@@ -12,4 +12,22 @@ export const workNameSchema = z.enum([...workCommandSchema.options, 'command', '
 export type WorkName = z.infer<typeof workNameSchema>;
 export const workLabelSchema = z.object({ name: workNameSchema, count: z.number().int().positive() }).strict();
 export type WorkLabel = z.infer<typeof workLabelSchema>;
-export const coordinatorWorkSchema = workLabelSchema.extend({ conversation: z.string(), turn: z.string() }).nullable();
+/** How many of the latest steps a Run keeps for display, and how much of each. */
+export const RUN_STEP_LIMIT = 12;
+export const RUN_STEP_TEXT_LIMIT = 240;
+/**
+ * One thing an agent did, as its own tool call says it: the first line of what it ran, read or searched (`more`
+ * counts the lines after it), the plain words the agent gave for it, and the first line of what came back.
+ */
+export const runStepSchema = z.object({
+  id: z.string().max(128), at: z.iso.datetime({ offset: true }), tool: z.string().max(128),
+  text: z.string().max(RUN_STEP_TEXT_LIMIT), more: z.number().int().nonnegative(),
+  about: z.string().max(RUN_STEP_TEXT_LIMIT).nullable(),
+  state: z.enum(['running', 'done', 'failed']),
+  result: z.object({ text: z.string().max(RUN_STEP_TEXT_LIMIT), more: z.number().int().nonnegative() }).strict().nullable(),
+}).strict();
+export type RunStep = z.infer<typeof runStepSchema>;
+export const runStepsSchema = z.array(runStepSchema).max(RUN_STEP_LIMIT);
+/** The running turn's recent work: its rounded name (null once it has gone quiet), and its latest words and steps as they are. */
+export const coordinatorWorkSchema = z.object({ name: workNameSchema.nullable(), count: z.number().int().nonnegative(),
+  conversation: z.string(), turn: z.string(), steps: runStepsSchema, words: z.string().max(500).nullable() }).strict().nullable();

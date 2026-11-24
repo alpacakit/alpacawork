@@ -81,7 +81,10 @@
     },
     "output": "{{event}}（{{ago}}前）",
     "stale": "最後の出力が古い: {{event}}（{{ago}}前）",
-    "toolEvent": "{{tool}}: {{kind}}"
+    "toolEvent": "{{tool}}: {{kind}}",
+    "step": {
+      "moreLines": "+{{count}}行"
+    }
   },
   "records": {
     "close": "閉じる…"
