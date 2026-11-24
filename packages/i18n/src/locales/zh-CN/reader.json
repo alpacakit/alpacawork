@@ -185,12 +185,12 @@
     "allAnswered": "待验收的内容已全部处理完",
     "allAnsweredHeld": "已搁置的内容已全部处理完",
     "autoSwipe": {
-      "hint": "开启：在待验收的任务中发送消息后，卡片会滑走，并转到下一个任务。关闭：发送后留在此任务，聊天保持打开。",
+      "hint": "开启：回复“$t(tree:home.turn)”中的提问或报告后，卡片会滑走，并转到下一个任务。关闭：发送后留在此任务，聊天保持打开。",
       "label": "自动滑动",
       "toastOff": "自动滑动已关闭",
       "toastOffDetail": "发送消息后留在此任务",
       "toastOn": "自动滑动已开启",
-      "toastOnDetail": "在待验收的任务中发送消息后转到下一个任务"
+      "toastOnDetail": "回复“$t(tree:home.turn)”中的提问或报告后，转到下一个任务"
     },
     "close": "关闭",
     "countPart": "{{word}} {{n}}",

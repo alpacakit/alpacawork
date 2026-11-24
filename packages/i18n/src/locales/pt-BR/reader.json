@@ -209,12 +209,12 @@
     "allAnswered": "Você respondeu a tudo que aguardava revisão",
     "allAnsweredHeld": "Você respondeu a tudo que estava adiado",
     "autoSwipe": {
-      "hint": "Ativado: ao enviar uma mensagem em uma tarefa que aguarda revisão, o cartão sai da tela e você passa para a próxima tarefa. Desativado: ao enviar, você continua nesta tarefa, com o chat aberto.",
+      "hint": "Ativado: ao responder a uma pergunta ou a um relatório em “$t(tree:home.turn)”, o cartão sai da tela e você passa para a próxima tarefa. Desativado: ao enviar, você continua nesta tarefa, com o chat aberto.",
       "label": "Avanço automático",
       "toastOff": "Avanço automático desativado",
       "toastOffDetail": "Ao enviar uma mensagem, você continua nesta tarefa",
       "toastOn": "Avanço automático ativado",
-      "toastOnDetail": "Ao enviar uma mensagem em uma tarefa que aguarda revisão, você passa para a próxima tarefa"
+      "toastOnDetail": "Ao responder a uma pergunta ou a um relatório em “$t(tree:home.turn)”, você passa para a próxima tarefa"
     },
     "close": "Fechar",
     "countPart": "{{word}}: {{n}}",

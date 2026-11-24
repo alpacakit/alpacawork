@@ -209,12 +209,12 @@
     "allAnswered": "Ya respondiste todo lo que estaba por revisar",
     "allAnsweredHeld": "Ya respondiste todo lo que estaba en pausa",
     "autoSwipe": {
-      "hint": "Activado: al enviar un mensaje en una tarea por revisar, la tarjeta se desliza fuera y pasas a la siguiente tarea. Desactivado: al enviar, te quedas en esta tarea con el chat abierto.",
+      "hint": "Activado: al responder a una pregunta o a un informe de «$t(tree:home.turn)», la tarjeta se desliza y pasas a la siguiente tarea. Desactivado: al enviar, te quedas en esta tarea con el chat abierto.",
       "label": "Avance automático",
       "toastOff": "Avance automático desactivado",
       "toastOffDetail": "Al enviar un mensaje te quedas en esta tarea",
       "toastOn": "Avance automático activado",
-      "toastOnDetail": "Al enviar un mensaje en una tarea por revisar, pasas a la siguiente tarea"
+      "toastOnDetail": "Al responder a una pregunta o a un informe de «$t(tree:home.turn)», pasas a la siguiente tarea"
     },
     "close": "Cerrar",
     "countPart": "{{word}}: {{n}}",
