@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { TAB, TabLabel, TabMarker } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/ui/icon";
+import { subscribeStep } from "@/state/history-step";
 import { comparison, parts, type Kind } from "./format";
 import type { Bucket } from "./contract";
 
@@ -106,12 +107,14 @@ export const tip = (words: string) => ({ "data-tip": words, "aria-label": words 
 
 /** The small window under the pointer, for every mark inside the analysis that says its value (`tip`). */
 export function PointerTip({ root }: { root: HTMLElement | null }) {
-  const [shown, setShown] = useState<{ words: string; x: number; y: number; below: boolean } | null>(null);
+  const [shown, setShown] = useState<{ words: string; x: number; top: number; bottom: number } | null>(null);
   useEffect(() => {
     if (!root) return;
+    // A move to another step (Back, a row opened) takes away what it said: it was about what is no longer shown.
+    const stopStep = subscribeStep(() => setShown(null));
     const place = (mark: HTMLElement) => {
       const box = mark.getBoundingClientRect();
-      setShown({ words: mark.dataset.tip!, x: box.left + box.width / 2, y: box.top > 40 ? box.top - 6 : box.bottom + 6, below: box.top <= 40 });
+      setShown({ words: mark.dataset.tip!, x: box.left + box.width / 2, top: box.top, bottom: box.bottom });
     };
     // Under a finger there is no pointing: a mark that says only its value (`data-tip-tap`) says it when pressed.
     if (matchMedia("(hover: none)").matches) {
@@ -120,7 +123,7 @@ export function PointerTip({ root }: { root: HTMLElement | null }) {
         if (mark) place(mark); else setShown(null);
       };
       root.addEventListener("click", press);
-      return () => root.removeEventListener("click", press);
+      return () => { stopStep(); root.removeEventListener("click", press); };
     }
     const over = (event: MouseEvent) => {
       const mark = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
@@ -130,19 +133,20 @@ export function PointerTip({ root }: { root: HTMLElement | null }) {
     const out = () => setShown(null);
     root.addEventListener("mouseover", over);
     root.addEventListener("mouseleave", out);
-    return () => { root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", out); };
+    return () => { stopStep(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", out); };
   }, [root]);
   return shown && <TipBox {...shown} />;
 }
-function TipBox({ words, x, y, below }: { words: string; x: number; y: number; below: boolean }) {
+/** Above the mark where it fits, else under it; never past the screen's sides. */
+function TipBox({ words, x, top, bottom }: { words: string; x: number; top: number; bottom: number }) {
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const self = box.current;
     if (!self) return;
-    const width = self.offsetWidth;
+    const width = self.offsetWidth, height = self.offsetHeight;
     self.style.left = `${Math.max(4, Math.min(innerWidth - width - 4, x - width / 2))}px`;
-  }, [words, x]);
-  return <div ref={box} role="presentation" style={{ left: x, top: y }}
-    className={cn("pointer-events-none fixed z-(--layer-popover) rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-nowrap shadow-float",
-      !below && "-translate-y-full")}>{words}</div>;
+    self.style.top = `${top - 6 - height >= 4 ? top - 6 - height : bottom + 6}px`;
+  }, [words, x, top, bottom]);
+  return <div ref={box} role="presentation" style={{ left: x, top }}
+    className="pointer-events-none fixed z-(--layer-popover) max-w-[calc(100vw-8px)] rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-pre-line shadow-float">{words}</div>;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -171,15 +171,31 @@ const BAND = { doing: "bg-working", yours: "bg-turn", paused: "bg-rest" } as con
 function Band({ values }: { values: UnitValues }) {
   const { t } = useTranslation("analysis");
   const zone = values.head.timeZone, row = values.unit;
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const self = box.current;
+    if (!self) return;
+    const measure = () => setWidth(self.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(self);
+    return () => watch.disconnect();
+  }, []);
   if (!values.band.length) return null;
   const start = Date.parse(values.band[0]!.from), end = Date.parse(values.band[values.band.length - 1]!.to), span = Math.max(1, end - start);
   const ending = row.outcome === "stopped" && row.finishedAt ? t("values.stopped", { at: instant(row.finishedAt, zone) })
     : row.outcome && row.finishedAt ? t("values.accepted", { at: instant(row.finishedAt, zone) }) : t("outcome.none");
+  const left = (at: string) => Math.min(100, (Date.parse(at) - start) / span * 100);
+  const groups = markGroups(values.marks.map(mark => left(mark.at)), width);
   return <div className="relative mt-5 pt-3">
-    <div className="absolute inset-x-0 top-0 h-2.5">
-      {values.marks.map((mark, at) => <em key={at} style={{ left: `${Math.min(100, (Date.parse(mark.at) - start) / span * 100)}%` }}
-        className="absolute bottom-0 -ms-px h-2 w-0.5 rounded-[1px] bg-turn after:absolute after:-inset-x-1.5 after:-inset-y-1 after:content-['']"
-        data-tip-tap="" {...tip(`${t(`values.marks.${mark.kind}`)} ${instant(mark.at, zone)}`)} />)}
+    <div ref={box} className="absolute inset-x-0 top-0 h-2.5">
+      {values.marks.map((mark, at) => <i key={at} aria-hidden style={{ left: `${left(mark.at)}%` }} className="absolute bottom-0 -ms-px h-2 w-0.5 rounded-[1px] bg-turn" />)}
+      {/* Marks a finger's width apart are one place to press or point at, and say each of theirs, in order. */}
+      {groups.map(group => <em key={group[0]} data-tip-tap="" style={{ left: `${left(values.marks[group[0]!]!.at)}%`,
+        width: `${left(values.marks[group[group.length - 1]!]!.at) - left(values.marks[group[0]!]!.at)}%` }}
+        className="absolute inset-y-0 -ms-1.5 box-content px-1.5"
+        {...tip(group.map(at => `${t(`values.marks.${values.marks[at]!.kind}`)} ${instant(values.marks[at]!.at, zone)}`).join("\n"))} />)}
     </div>
     <div className="flex h-2 gap-px">
       {values.band.map((piece, at) => {
@@ -190,4 +206,14 @@ function Band({ values }: { values: UnitValues }) {
     </div>
     <div className="mt-1.5 flex justify-between gap-3 text-xs text-soft"><span>{instant(row.requestedAt, zone)}</span><span>{ending}</span></div>
   </div>;
+}
+
+/** Marks (their places in percent of a band `width` pixels wide) gathered where each is within a finger's reach of the one before. */
+export function markGroups(lefts: number[], width: number, reach = 12): number[][] {
+  const groups: number[][] = [];
+  lefts.forEach((left, at) => {
+    const group = groups[groups.length - 1];
+    if (group && (left - lefts[group[group.length - 1]!]!) / 100 * width < reach) group.push(at); else groups.push([at]);
+  });
+  return groups;
 }

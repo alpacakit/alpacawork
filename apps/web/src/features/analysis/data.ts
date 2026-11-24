@@ -3,7 +3,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@t
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group } from "./contract";
+import { tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
 import { spanQuery, type ListPlace, type Span } from "./place";
 
 /**
@@ -57,11 +57,24 @@ export function useTodayFinished(project: string | null) {
   const input = { project, period: "today", set: "finished", limit: String(LIST_PAGE) };
   const query = useInfiniteQuery({ queryKey: ["analysis", root, "list", input, "marks"], initialPageParam: null as string | null,
     queryFn: ({ signal, pageParam }) => api.request(route("list", { ...input, cursor: pageParam }), unitListSchema, signal),
-    getNextPageParam: page => page.cursor });
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
-  useEffect(() => { if (hasNextPage && !isFetchingNextPage) void fetchNextPage(); }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-  const pages = query.data?.pages;
-  return useMemo(() => pages ? { total: pages[0]!.total, rows: pages.flatMap(page => page.rows) } : null, [pages]);
+    getNextPageParam: page => page.cursor, retry: false });
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = query;
+  // The next page is asked for once each: a page that failed is not asked again until the workspace changes.
+  useEffect(() => { if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage(); },
+    [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+  return useCompleteMarks(query.data?.pages, !hasNextPage);
+}
+
+/**
+ * The marks of a reading only once every page of it is read: until then the last whole reading stands (or none), so a
+ * count of a part is never shown as the day's.
+ */
+export function useCompleteMarks(pages: UnitList[] | undefined, whole: boolean) {
+  const last = useRef<{ total: number; rows: UnitList["rows"] } | null>(null);
+  return useMemo(() => {
+    if (pages && whole) last.current = { total: pages[0]!.total, rows: pages.flatMap(page => page.rows) };
+    return last.current;
+  }, [pages, whole]);
 }
 
 /**

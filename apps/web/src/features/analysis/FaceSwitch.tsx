@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NARROW_QUERY, useViewStore } from "@/state/view-store";
 import { closeAnalysisLayer } from "@/state/history-step";
+import { cancelPendingSearch } from "@/features/chrome/search-ref";
 import { cn } from "@/lib/utils";
 import { Seg } from "./parts";
 import { analysisHome, type AnalysisPlace } from "./place";
@@ -17,10 +18,19 @@ export function FaceSwitch({ className }: { className?: string }) {
   const left = useRef<AnalysisPlace | null>(null);
   if (analysis) left.current = { ...analysis, list: null, unit: null };
   return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
-    onChange={face => useViewStore.getState().showAnalysis(face === "analysis" ? left.current ?? analysisHome() : null)}
+    onChange={face => showFace(face === "analysis" ? left.current ?? analysisHome() : null)}
     // Analysis pressed while a list or a task's values is open over it: they close as × closes them.
     onAgain={() => { if (analysis && (analysis.list || analysis.unit)) closeAnalysisLayer(0); }}
     items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;
+}
+
+/**
+ * Another face shown: a search typed just before and not yet applied is dropped with it, so it cannot bring the
+ * search's results back after the face has changed.
+ */
+function showFace(place: AnalysisPlace | null) {
+  if (place) cancelPendingSearch();
+  useViewStore.getState().showAnalysis(place);
 }
 
 const MARK = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
@@ -59,7 +69,7 @@ export function TodayMarks() {
   const words = t("home.marks", { count: data!.total, passed: rows.filter(row => row.outcome === "passed").length });
   return <div ref={place} className="flex min-w-0 flex-1">
     <button type="button" aria-label={t("home.label", { marks: words })} title={words}
-      onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}
+      onClick={() => showFace(analysisHome("tasks", { period: "today" }))}
       className="ms-2.5 flex min-w-0 items-center gap-0.5 rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
       {hidden > 0 && <span className="me-1 text-xs font-normal text-muted tabular-nums">+{hidden}</span>}
       {shown.map(row => <i key={row.id} className={cn("block h-3 w-2 flex-none rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
