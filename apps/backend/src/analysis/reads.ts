@@ -120,7 +120,7 @@ class ScopedAnalysis {
       if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
     }
     for (const run of facts.launches) {
-      const root = facts.rootOf.get(run.task), unit = root && facts.units.get(root);
+      const root = facts.usageRootOf.get(run.task), unit = root && facts.units.get(root);
       if (unit && this.allows(unit.node.project!)) {
         first = Math.min(first, run.started);
         this.datedLaunches.push({ root, run, day: this.date(run.started) });

@@ -17,7 +17,7 @@ export type Unit = {
 };
 export type AnalysisFacts = {
   nodes: ReadonlyMap<string, TaskNode>; units: ReadonlyMap<string, Unit>; rootOf: ReadonlyMap<string, string>;
-  launches: readonly Launch[]; first: ReadonlySet<string>;
+  usageRootOf: ReadonlyMap<string, string>; launches: readonly Launch[]; first: ReadonlySet<string>;
 };
 
 const readNodes = (db: DatabaseSync) => db.prepare(`SELECT t.id AS internal,t.external_id AS id,t.title,
@@ -40,21 +40,26 @@ function runRows(db: DatabaseSync, ids?: Set<string>) {
 }
 
 function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
-  const rootOf = new Map<string, string>(), members = new Map<string, string[]>();
+  const rootOf = new Map<string, string>(), usageRootOf = new Map<string, string>(), members = new Map<string, string[]>();
   for (const node of nodes.values()) {
-    if (node.kind !== 'task' || node.lifecycle === 'deleted') continue;
-    let top = node;
+    if (node.kind !== 'task') continue;
+    let top = node, hasDeletedTask = node.lifecycle === 'deleted';
     let parent = nodes.get(top.parent ?? '');
-    while (parent?.kind === 'task' && parent.lifecycle !== 'deleted') {
-      top = parent; parent = nodes.get(top.parent ?? '');
+    while (parent?.kind === 'task') {
+      top = parent;
+      hasDeletedTask ||= top.lifecycle === 'deleted';
+      parent = nodes.get(top.parent ?? '');
     }
-    if (parent?.kind !== 'project' || parent.lifecycle === 'deleted') continue;
+    if (parent?.kind !== 'project' || parent.lifecycle === 'deleted' || top.lifecycle === 'deleted') continue;
+    // Usage follows the whole subtree. Task history still stops at a deleted Task.
+    usageRootOf.set(node.id, top.id);
+    if (hasDeletedTask) continue;
     rootOf.set(node.id, top.id);
     const group = members.get(top.id);
     if (group) group.push(node.id);
     else members.set(top.id, [node.id]);
   }
-  return { rootOf, members };
+  return { rootOf, usageRootOf, members };
 }
 
 function valuesLinks(db: DatabaseSync, nodes: readonly TaskNode[]) {
@@ -157,7 +162,7 @@ export class FactsCache {
       const item = runFromRow(row);
       this.runs.set(item.run.id, item); taskIds.add(item.run.task);
     }
-    const { rootOf, members } = ancestry(nodes);
+    const { rootOf, usageRootOf, members } = ancestry(nodes);
     const byTask = new Map<string, StoredRun[]>(), launches: Launch[] = [];
     for (const item of this.runs.values()) {
       const group = byTask.get(item.run.task);
@@ -193,6 +198,6 @@ export class FactsCache {
       if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values, byTask, workers.get(id) ?? []));
       else units.delete(id);
     }
-    return { nodes, units, rootOf, launches, first: firstConversations(launches) };
+    return { nodes, units, rootOf, usageRootOf, launches, first: firstConversations(launches) };
   }
 }

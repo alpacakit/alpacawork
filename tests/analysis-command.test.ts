@@ -56,15 +56,21 @@ function setup(root: string) {
         actor, fromState: 'waiting', toState: 'done' }), row.id);
       db.prepare("UPDATE task_values SET value=? WHERE task_id=? AND field_id='notes'").run(JSON.stringify(link), row.id);
     }
-    for (const id of [1, 2, 3]) {
+    const deletedChild = db.prepare("UPDATE tasks SET lifecycle='deleted' WHERE external_id=? RETURNING id").get(rowId(5))!;
+    const deletedQuestion = { id: 'deleted-question', kind: 'asked', at: instant(24), askedTo: null,
+      decide: [{ title: 'Choose a synthetic option' }], actor: { kind: 'placement', placementId: 'fixture-placement-5' },
+      fromState: null, toState: null, title: 'Question from a deleted child', description: 'A synthetic question on the deleted task.' };
+    insert.run(deletedQuestion.id, deletedChild.id, JSON.stringify(deletedQuestion), deletedChild.id);
+    for (const id of [1, 2, 3, 4]) {
       const record = JSON.parse(String(db.prepare('SELECT record FROM runs WHERE id=?').get(id)!.record));
       record.pids = { agent: 1000 + id, manager: 2000 + id };
       record.session = { provider: 'fixture', id: 'synthetic-session-' + id };
-      record.ended_at = instant(20 + id);
+      if (id === 4) record.started_at = instant(23);
+      record.ended_at = instant(id === 4 ? 25 : 20 + id);
       record.usage = { includesEarlier: id === 1, conversation: null, run: { input: 10, output: id, cacheRead: 2, cacheWrite: 3 } };
       db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), id);
     }
-    db.prepare("UPDATE runs SET record=json_set(record,'$.ended_at',?) WHERE id=4").run(instant(120));
+    db.prepare("UPDATE runs SET record=json_set(record,'$.ended_at',?) WHERE id=6").run(instant(120));
     db.exec('COMMIT');
   } finally { db.close(); }
 
@@ -124,14 +130,19 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(detail.unit.id, rowId(2));
       assert.equal(detail.unit.asked, rowId(4));
       assert.deepEqual(detail.prs, [link]);
+      assert.equal(detail.questions, 1);
       assert.equal(detail.answers, 1);
+      assert.equal(detail.time.ai, 8_000);
       assert.equal(detail.workers, 1);
       assert.ok(detail.children > 0);
-      await t.test('the finished row and analysis detail agree on the same task’s elapsed time and tokens', async () => {
+      await t.test('the finished row and analysis detail include a deleted child’s elapsed time and tokens', async () => {
         const projection = await readWorkspaceProjection(root);
         const row = projection.finished(null, project).rows.find(candidate => candidate.id === detail.unit.id);
         assert.ok(row?.usage?.tokens && row.usageBelow);
         const { usage: own, usageBelow: below } = row;
+        assert.equal(detail.usage.launches, 3);
+        assert.equal(detail.usage.runMs, 46_000);
+        assert.equal(detail.usage.tokens.output, 8);
         assert.deepEqual({
           launches: own.runs + below.runs,
           runMs: own.runMs + below.runMs,
@@ -154,9 +165,10 @@ test('analysis commands share selection, contribution and tally rules over a sma
 
       const usage = await read<AnalysisUsageView>('usage', { ...trend, by: 'agent' });
       const counts = usage.counts.value;
-      assert.equal(counts.launches, 3);
+      assert.equal(counts.launches, 4);
       assert.equal(counts.tasks, 2);
-      assert.deepEqual(counts.tokens, { input: 30, output: 6, cache: 15 });
+      assert.equal(counts.runMs, 68_000);
+      assert.deepEqual(counts.tokens, { input: 40, output: 10, cache: 20 });
       assert.equal((await read<AnalysisUnitList>('list', { ...base, set: 'used' })).total, counts.tasks);
       for (const [value, expected] of Object.entries({ launches: counts.launches, runMs: counts.runMs,
         newConversations: counts.newConversations, ...counts.tokens })) {
@@ -174,7 +186,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const tool = tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'command_execution']));
       assert.equal(tool?.calls, 1);
       assert.equal(tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'image_view']))?.calls, 2);
-      assert.deepEqual(tools?.breakdown?.tallied, { runs: 2, of: 3 });
+      assert.deepEqual(tools?.breakdown?.tallied, { runs: 2, of: 4 });
       const counted = await read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
       assert.equal(counted.rows[0]?.value, 1);
       const saved = JSON.parse(readFileSync(join(runFolder(root, 'R1'), RUN_FILES.tally), 'utf8'));
@@ -211,7 +223,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
         touch(store.connection, { kind: 'task', id: rowId(2) });
       });
       assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
-      assert.equal(reader.usage(params, actor).counts.value.launches, 3);
+      assert.equal(reader.usage(params, actor).counts.value.launches, 4);
       await t.test('the next analysis read sees a committed acceptance', async () => {
         assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
         const committed = await new TaskReportService(root).report({ task: id, state: 'done', opId: randomUUID(),
@@ -219,6 +231,12 @@ test('analysis commands share selection, contribution and tally rules over a sma
         assert.equal(committed.task.state, 'done');
         assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
       });
+      store.write(() => {
+        store.connection.prepare("UPDATE tasks SET lifecycle='deleted' WHERE external_id=?").run(rowId(3));
+        touch(store.connection, { kind: 'task', id: rowId(3) });
+      });
+      assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
+      assert.equal(reader.usage(params, actor).counts.value.launches, 3);
     } finally { store.close(); reader.close(); tables(); changes.close(); }
   } finally {
     if (original) {
