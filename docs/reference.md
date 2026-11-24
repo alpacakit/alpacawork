@@ -90,15 +90,22 @@ Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the f
 Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The server's time zone can be
 overridden with `--time-zone <IANA-zone>`. Trend buckets are `day`, `week` and `month`.
 A comparison uses the immediately preceding period of equal length when there is enough history.
+Both commands return `ever` for the same scope from the first day of the record through today. It matches the totals
+for `--period all` and is `null` when the scope has no records.
 
 Task counts use Tasks the user directly requested. The rework count uses instructions addressed to the top-level Task. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
+Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. Related PRs are deduplicated
+within each bucket and across the selected period for the period total, so one PR can appear in multiple buckets.
 
 AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
 children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed
 time includes live Runs up to the time of the read. A Run that joined another counts as input to that process. Live
-Runs are tracked separately from launches whose token count is unavailable. For skills, tools and MCP, `tallied.of`
-includes only launches that ended at or after collection began, and `tallied.since` gives that start date in the result's
-time zone. Shell reads of skill files are counted once per skill per tool call, including
+Runs are tracked separately from launches whose token count is unavailable. Skill, tool and MCP breakdowns expose the
+collection start date in `since` after the first tally is available in scope. They include launches dated on or after
+`since` that ended at or after collection began. `counted` gives calls and distinct launches for the selected period.
+For skills, the launch count covers launches that used at least one skill and `calls` is zero. `breakdown.series`
+aligns with the usage trend points. Buckets wholly before `since` and comparisons that start before `since` are `null`.
+Shell reads of skill files are counted once per skill per tool call, including
 reads in sequences and pipelines. Redirection targets and in-place edits are excluded. Task completion dates
 and launch dates use the time zone echoed in the result.
 
@@ -109,8 +116,9 @@ arrays with two strings: use `--key '["provider","tool"]'` for a tool, or `--key
 | Set | `--by` | `--value` |
 | --- | --- | --- |
 | `passed`, `reworked`, `stopped`, `accepted`, `finished` | `model`, `agent`, `project` | `lead`, `submits`, `questions`, `prs`, `you`, `ai`, `other` |
-| `used` | `model`, `agent`, `project`, `skill`, `tool`, `mcp` | `launches`, `runMs`, `newConversations`, `output`, `input`, `cache`, `calls` |
+| `used` | `model`, `agent`, `project`, `skill`, `tool`, `mcp` | `launches`, `runMs`, `newConversations`, `tokens`, `output`, `input`, `cache`, `calls` |
 
-`calls` requires a `tool` or `mcp` breakdown. `--value` returns and sorts by that contribution. `--limit` accepts up to
+`tokens` sums output, input and cache. `calls` requires a `tool` or `mcp` breakdown. `--value` returns and sorts by
+that contribution. `--limit` accepts up to
 100 rows. Use the returned `cursor` with the same selection to get the next page. Related PR counts use distinct GitHub
 links from task values and reports. The list credits a shared link to the first contributing Task ID in the selection.
