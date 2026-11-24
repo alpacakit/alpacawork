@@ -1,8 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
-import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, readAnalysis, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
-import { settleSpan } from "../src/features/analysis/AnalysisView";
+import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
 import { shareLine } from "../src/features/analysis/charts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -94,4 +93,14 @@ test("the share line has no point where nothing was accepted and does not bridge
   expect(dots.map(dot => dot && { y: Math.round(dot.y), faint: dot.faint })).toEqual([{ y: 10, faint: false }, null, { y: 100, faint: true }, { y: 50, faint: false }]);
   expect(lines.map(line => [line.from, line.to].map(dot => dots.indexOf(dot)))).toEqual([[2, 3]]);
   expect(lines[0]!.faint).toBe(true);
+});
+
+test("a number opens its tasks in the span its answer was counted for, even after another span was chosen", () => {
+  const list = { set: "passed", value: "lead", group: null, member: null } as const;
+  const head = (from: string, to: string) => ({ period: { from, to }, today: "2026-11-24", firstDay: "2026-10-15" });
+  // Today chosen, the 7-day answer still on screen: its number opens the 7 days.
+  expect(listOnAnswer({ ...place("face=analysis&span=today")! }, head("2026-11-18", "2026-11-24"), list)).toMatchObject({ span: { period: "7d" }, list });
+  // The answer for what is chosen keeps the span as it was chosen (all time stays all time).
+  expect(listOnAnswer({ ...place("face=analysis&span=all")! }, head("2026-10-15", "2026-11-24"), list).span).toEqual({ period: "all" });
+  expect(listOnAnswer({ ...place("face=analysis&span=today")! }, head("2026-10-01", "2026-10-31"), list).span).toEqual({ from: "2026-10-01", to: "2026-10-31" });
 });

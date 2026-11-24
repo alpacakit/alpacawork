@@ -104,3 +104,25 @@ export function stepSpan(days: { from: string; to: string }, direction: -1 | 1):
   const length = daysBetween(days.from, days.to);
   return { from: addDays(days.from, direction * length), to: addDays(days.to, direction * length) };
 }
+
+/** The named periods and how many days before today each starts (`all` from the first day of records). */
+export const PERIOD_BACK: { period: Period; back: number | null }[] = [{ period: "today", back: 0 }, { period: "7d", back: 6 }, { period: "28d", back: 27 }, { period: "all", back: null }];
+/**
+ * A span as it is kept: whole days that end today and are as long as a named period are that period, so the period's
+ * switch shows chosen and the URL stays short.
+ */
+export function settleSpan(days: { from: string; to: string }, today: string): Span {
+  if (days.to !== today) return days;
+  const length = daysBetween(days.from, days.to);
+  const preset = PERIOD_BACK.find(each => each.back !== null && each.back + 1 === length);
+  return preset ? { period: preset.period } : days;
+}
+/**
+ * The place a number of an answer opens: its list, in the span that answer was counted for (`head.period`), so the
+ * number and the tasks behind it always agree, even while another span is being read.
+ */
+export function listOnAnswer(place: AnalysisPlace, head: { period: { from: string; to: string } | null; today: string; firstDay: string | null }, list: ListPlace): AnalysisPlace {
+  const shown = head.period, chosen = spanDays(place.span, head.today, head.firstDay);
+  const span = !shown || shown.from === chosen.from && shown.to === chosen.to ? place.span : settleSpan(shown, head.today);
+  return { ...place, span, list, unit: null };
+}

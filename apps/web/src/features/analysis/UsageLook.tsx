@@ -50,7 +50,7 @@ export function UsageLook({ view, days, open, pick, zone }: { view: UsageView; d
   const [unit, unitName] = chartUnit(chosen.kind, largest, t);
 
   const group = usageGroup, rows = view.breakdown?.rows ?? [];
-  const member = (key: string) => ({ group, member: key });
+  const member = (key: string) => ({ group: (view.breakdown?.by as UsageGroup | undefined) ?? group, member: key });
   const counted = group === "skill" || group === "tool" || group === "mcp";
   const columns = group === "skill" ? [t("usage.launches"), t("usage.tasks")]
     : counted ? [t("usage.calls"), t("usage.launches"), t("usage.tasks")]

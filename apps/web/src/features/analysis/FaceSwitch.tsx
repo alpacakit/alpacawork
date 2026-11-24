@@ -33,7 +33,7 @@ const MARK = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped"
 export function TodayMarks() {
   const { t } = useTranslation("analysis");
   const project = useViewStore(state => state.project);
-  const data = useTodayFinished(project).data, rows = data?.rows ?? [];
+  const data = useTodayFinished(project), rows = data?.rows ?? [];
   // The marks already drawn: one not among them is new since, and drops in. The first drawing has none new.
   const seen = useRef<Set<string> | null>(null);
   const fresh = new Set(seen.current ? rows.filter(row => !seen.current!.has(row.id)).map(row => row.id) : []);
@@ -44,7 +44,8 @@ export function TodayMarks() {
   useLayoutEffect(() => {
     const box = place.current;
     if (!box) return;
-    const measure = () => setRoom(box.clientWidth);
+    // A box not laid out yet (no width) is not a limit.
+    const measure = () => setRoom(box.clientWidth || Infinity);
     measure();
     const watch = new ResizeObserver(measure);
     watch.observe(box);
@@ -54,8 +55,8 @@ export function TodayMarks() {
   const step = matchMedia(NARROW_QUERY).matches ? 8 : 10, chrome = 22, count = 32;
   const fit = Math.floor((room - chrome) / step);
   const shown = rows.length <= fit ? rows : rows.slice(rows.length - Math.max(0, Math.floor((room - chrome - count) / step)));
-  const hidden = rows.length - shown.length;
-  const words = t("home.marks", { count: rows.length, passed: rows.filter(row => row.outcome === "passed").length });
+  const hidden = data!.total - shown.length;
+  const words = t("home.marks", { count: data!.total, passed: rows.filter(row => row.outcome === "passed").length });
   return <div ref={place} className="flex min-w-0 flex-1">
     <button type="button" aria-label={t("home.label", { marks: words })} title={words}
       onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}

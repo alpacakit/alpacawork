@@ -104,7 +104,8 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
   </Section>;
 
   const rows = view.breakdown?.rows ?? [];
-  const groupOf = (key: string) => ({ group: taskGroup, member: key });
+  // The breakdown the rows were counted by, which is the one chosen unless another is being read.
+  const groupOf = (key: string) => ({ group: view.breakdown?.by ?? taskGroup, member: key });
   const breakdown = <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
     <BreakdownTable id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}

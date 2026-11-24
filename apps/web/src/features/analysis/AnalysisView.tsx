@@ -10,23 +10,12 @@ import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
 import { PointerTip, Seg, useChoices } from "./parts";
-import { stepSpan, type AnalysisPlace, type ListPlace, type Span } from "./place";
+import { listOnAnswer, PERIOD_BACK, settleSpan, stepSpan, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
 import type { Head, Period } from "./contract";
 
-const PRESETS: { period: Period; back: number | null }[] = [{ period: "today", back: 0 }, { period: "7d", back: 6 }, { period: "28d", back: 27 }, { period: "all", back: null }];
-
-/**
- * A span as it is kept: whole days that end today and are as long as a named period are that period, so the period's
- * switch shows chosen and the URL stays short.
- */
-export function settleSpan(days: { from: string; to: string }, today: string): Span {
-  if (days.to !== today) return days;
-  const length = daysBetween(days.from, days.to);
-  const preset = PRESETS.find(each => each.back !== null && each.back + 1 === length);
-  return preset ? { period: preset.period } : days;
-}
+const PRESETS = PERIOD_BACK;
 
 /** The zone the days are counted in, by its name in the reader's language. */
 function zoneName(zone: string) {
@@ -52,8 +41,9 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
   const pick = (days: { from: string; to: string }) => head && show({ span: settleSpan(days, head.today), list: null, unit: null });
+  // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since.
   const open = (list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) =>
-    show({ list: { group: null, member: null, ...list }, unit: null });
+    head && useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
   const days = head?.period ?? null;
   const length = days ? daysBetween(days.from, days.to) : 0;
   const preset = "period" in place.span ? place.span.period : null;
@@ -83,7 +73,8 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
         </div>
       </div>
     </div>
-    <div className={cn("transition-opacity duration-(--motion-base)", query.isPlaceholderData && "opacity-60")}>
+    {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
+    <div inert={query.isPlaceholderData} className={cn("transition-opacity duration-(--motion-base)", query.isPlaceholderData && "opacity-60")}>
       {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
         : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
         : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} pick={pick} zone={zoneName(head.timeZone)} />
