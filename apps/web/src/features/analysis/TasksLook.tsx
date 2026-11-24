@@ -104,12 +104,14 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
         <LineChart row={1} height="h-18 narrow:h-14" scale={scales.share} color="done"
           values={points.map(p => p.counts.accepted ? p.counts.passed / p.counts.accepted : null)} faint={i => at(i).counts.accepted < 10} />
       </Row>
-      <Row left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3><RowName>{t("until.lead")}</RowName></>}>
+      <Row left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3>
+        <Num className="" label={t("until.lead")} kind="hours" value={accepted.leadMedianMs} previous={acceptedBefore?.leadMedianMs ?? null} length={length}
+          onOpen={() => open({ set: "accepted", value: "lead" })} /></>}>
         <LineChart row={2} height="h-18 narrow:h-14" scale={scales.median} color="muted" values={points.map(p => p.accepted.leadMedianMs)} />
       </Row>
       <Row left={<>
         <RowName>{t("time.total")}</RowName>
-        <Value kind="hours" value={total} />
+        <Value kind="hours" value={total} onOpen={() => open({ set: "accepted", value: "lead" })} />
         <Parts items={[
           { color: "bg-turn", name: t("time.you"), value: part("hours", you, { set: "accepted", value: "you" }) },
           { color: "bg-working", name: t("time.ai"), value: part("hours", time.ai, { set: "accepted", value: "ai" }) },
@@ -126,7 +128,8 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
         onOpen={() => open({ set: "accepted", value: "questions" })} />}>
         <BarChart row={5} height="h-14 narrow:h-11" scale={scales.questions} values={i => [["bg-muted", at(i).accepted.questions]]} />
       </Row>
-      <Row left={<RowName>{t("until.prs")}</RowName>}>
+      <Row left={<Num className="" label={t("until.prs")} kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length}
+        onOpen={() => open({ set: "accepted", value: "prs" })} />}>
         <BarChart row={6} height="h-14 narrow:h-11" scale={scales.prs} values={i => [["bg-muted", at(i).accepted.prs]]} />
         <DayAxis />
       </Row>

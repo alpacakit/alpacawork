@@ -80,8 +80,6 @@ export function UsageLook({ view, tasks, days, open, pick, zone }: {
     ...order.map(key => ({ name: names[key], value: (i: number) => format(VALUES[key].kind, VALUES[key].read(points[i]!.counts)) })),
   ];
   const first = taskPoints ? 1 : 0;
-  // The values a lead number already says have their name alone on the left: no number is said twice.
-  const inLeads = new Set<ValueKey>(["runMs", "launches"]);
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} pick={pick} lines={lines}>
     <div key={grow}>
@@ -96,8 +94,8 @@ export function UsageLook({ view, tasks, days, open, pick, zone }: {
           values={i => [["bg-done", taskPoints[i]!.counts.passed], ["bg-reworked", taskPoints[i]!.counts.reworked], ["bg-stopped", taskPoints[i]!.counts.stopped]]} />
         <DayAxis />
       </Row>}
-      {order.map((key, at) => <Row key={key} left={inLeads.has(key) ? <RowName>{names[key]}</RowName>
-        : <Num className="" label={names[key]} kind={VALUES[key].kind} value={VALUES[key].read(now)} previous={before ? VALUES[key].read(before) : null} length={length}
+      {/* Every row says its own value for the span, those the lead numbers say too: a row is read the same way everywhere. */}
+      {order.map((key, at) => <Row key={key} left={<Num className="" label={names[key]} kind={VALUES[key].kind} value={VALUES[key].read(now)} previous={before ? VALUES[key].read(before) : null} length={length}
           onOpen={() => open({ set: "used", value: key })} />}>
         <BarChart row={first + at} height={key === "newConversations" ? "h-14 narrow:h-11" : "h-16 narrow:h-12"} scale={scales[key]} grow
           values={i => [["bg-muted", VALUES[key].read(points[i]!.counts)]]} />
