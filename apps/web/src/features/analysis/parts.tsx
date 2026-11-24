@@ -141,9 +141,11 @@ export function PointerTip({ root }: { root: HTMLElement | null }) {
       const next = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
       if (next?.dataset.tip) place(next); else hideSoon();
     };
+    // Leaving for the window itself keeps it (its own enter may come first, so this one must not undo it).
+    const leave = (event: MouseEvent) => { if (!tip.current?.contains(event.relatedTarget as Node | null)) hideSoon(); };
     root.addEventListener("mouseover", over);
-    root.addEventListener("mouseleave", hideSoon);
-    return () => { stop(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", hideSoon); };
+    root.addEventListener("mouseleave", leave);
+    return () => { stop(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", leave); };
   }, [root]);
   return shown && <TipBox {...shown} tipRef={tip} onEnter={stay} onLeave={hideSoon} />;
 }
