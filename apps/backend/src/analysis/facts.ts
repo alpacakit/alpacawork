@@ -25,21 +25,18 @@ const readNodes = (db: DatabaseSync) => db.prepare(`SELECT t.id AS internal,t.ex
   FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id LEFT JOIN tasks pr ON pr.id=t.project_task_id`).all().map(
   row => ({ ...row, requested: row.requested === 1 }) as TaskNode);
 
-const runColumns = 'r.record,a.run_no IS NOT NULL AS has_attempt,a.started_json IS NOT NULL AS witnessed';
-export const runFromRow = (row: Record<string, unknown>) => {
+const runFromRow = (row: Record<string, unknown>) => {
   const run = JSON.parse(String(row.record)) as RunEvidence;
-  return { run, launch: launchOf(run, row.has_attempt ? !!row.witnessed : null) };
+  return { run, launch: launchOf(run) };
 };
 type StoredRun = ReturnType<typeof runFromRow>;
 
-function runRows(db: DatabaseSync, ids: Set<string> | undefined, attempts: Set<string>) {
-  const prefix = `SELECT ${runColumns} FROM runs r LEFT JOIN run_attempts a ON a.run_no=r.id WHERE r.task_id IS NOT NULL`;
+function runRows(db: DatabaseSync, ids?: Set<string>) {
+  const prefix = 'SELECT record FROM runs WHERE task_id IS NOT NULL';
   if (!ids) return db.prepare(prefix).all();
-  if (!ids.size && !attempts.size) return [];
-  const numbers = [...ids].map(id => Number(id.slice(1)));
-  return db.prepare(prefix + ` AND r.id IN (
-    SELECT value FROM json_each(?) UNION SELECT run_no FROM run_attempts WHERE attempt_id IN (SELECT value FROM json_each(?)))`)
-    .all(JSON.stringify(numbers), JSON.stringify([...attempts]));
+  if (!ids.size) return [];
+  return db.prepare(prefix + ' AND id IN (SELECT value FROM json_each(?))')
+    .all(JSON.stringify([...ids].map(id => Number(id.slice(1)))));
 }
 
 function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
@@ -90,8 +87,9 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
   }
   const firstOwner = (byTask.get(node.id) ?? []).reduce<RunEvidence | null>((earliest, { run }) => {
     if (run.role !== 'owner') return earliest;
-    return !earliest || run.created_at < earliest.created_at ||
-      run.created_at === earliest.created_at && Number(run.id.slice(1)) < Number(earliest.id.slice(1)) ? run : earliest;
+    if (!earliest) return run;
+    const time = Date.parse(run.created_at) - Date.parse(earliest.created_at);
+    return time < 0 || time === 0 && Number(run.id.slice(1)) < Number(earliest.id.slice(1)) ? run : earliest;
   }, null);
   const firstAgent = firstOwner?.agent ?? 'unknown';
   const { model, effort } = firstOwner ? modelOf(firstOwner) : { model: null, effort: null };
@@ -141,9 +139,8 @@ export class FactsCache {
     const taskIds = new Set(keys.filter(key => key.kind === 'task').map(key => key.id));
     const runIds = new Set(keys.filter(key => key.kind === 'run').map(key => key.id));
     const placementIds = keys.filter(key => key.kind === 'placement').map(key => key.id);
-    const attempts = new Set(keys.filter(key => key.kind === 'attempt').map(key => key.id));
     const valuesIds = new Set(keys.filter(key => key.kind === 'task_value').map(key => (JSON.parse(key.id) as string[])[0]));
-    if (!full && !taskIds.size && !runIds.size && !attempts.size && !valuesIds.size && !placementIds.length) return this.data!;
+    if (!full && !taskIds.size && !runIds.size && !valuesIds.size && !placementIds.length) return this.data!;
     const previous = this.data;
     const nodes = full || taskIds.size ? new Map(readNodes(db).map(node => [node.id, node])) : previous!.nodes;
     const tasks = [...nodes.values()].filter(node => node.kind === 'task');
@@ -156,7 +153,7 @@ export class FactsCache {
     for (const [id, links] of valuesLinks(db, full ? tasks : tasks.filter(node => valuesIds.has(node.internal)))) {
       this.values.set(id, links); taskIds.add(id);
     }
-    for (const row of runRows(db, full ? undefined : runIds, attempts)) {
+    for (const row of runRows(db, full ? undefined : runIds)) {
       const item = runFromRow(row);
       this.runs.set(item.run.id, item); taskIds.add(item.run.task);
     }

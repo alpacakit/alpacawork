@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
 import { buckets, calendar, makeHead } from '@alpacawork/backend/test-dist/analysis/calendar.js';
-import { clocks, firstConversations, launchOf, prLinks, runtime, shareOf, taskOutcome, userQuestions,
+import { clocks, firstConversations, launchOf, prLinks, shareOf, taskOutcome, userQuestions,
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
+import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
 
 const epoch = Date.parse('2026-03-08T05:00:00Z');
@@ -33,6 +34,10 @@ test('first acceptance retains the unit and each kind of rework is based on comm
   const linked = event('link', 'linked', 161, { originCauseId: update.id, fromState: 'waiting', toState: 'doing' });
   const later = event('later-link', 'linked', 170, { originCauseId: update.id, fromState: 'doing', toState: 'error' });
   assert.equal(facts([created, first, submit, update, linked, later, accepted]).passed, false);
+  const workUpdate = { ...update, at: stamp(90) };
+  const workHistory = facts([created, first, workUpdate, submit, linked, accepted]);
+  assert.equal(workHistory.passed, true);
+  assert.equal(workHistory.instructions.instructionsDuringWork, 1);
   assert.equal(facts([created, first, submit, { ...linked, at: stamp(159) }, update, accepted]).passed, true);
   assert.equal(facts([created, first, submit, update, { ...linked, originCauseId: 'other' }, accepted]).passed, true);
   const held = event('during-hold', 'request_accepted', 80, { fromState: 'held' });
@@ -59,6 +64,7 @@ test('stop uses the last real transition and the recorded cause at the local day
   const stop = event('stop', 'reported', 10, { fromState: 'todo', toState: 'stopped' });
   const restart = event('restart', 'linked', 15, { fromState: 'stopped', toState: 'doing' });
   const propagated = event('propagated', 'linked', 21, { fromState: 'doing', toState: 'stopped', causeAt: stamp(19) });
+  propagated.causeAt = '2026-03-08T00:00:00.019-05:00';
   const repeat = event('repeat', 'reported', 22, { fromState: 'stopped', toState: 'stopped' });
   assert.equal(taskOutcome([created, stop, restart], 'doing', created.at).finishedAt, null);
   assert.equal(taskOutcome([created, stop, restart, propagated, repeat], 'stopped', created.at).finishedAt, stamp(19));
@@ -74,17 +80,16 @@ const run = (extra: Partial<RunEvidence> = {}): RunEvidence => ({
 });
 
 test('process evidence, elapsed time and first-session attribution have separate rules', () => {
-  assert.equal(launchOf(run({ state: 'joined' }), true), null);
-  assert.equal(launchOf(run({ state: 'queued' }), true), null);
-  assert.equal(launchOf(run({ state: 'failed' }), false), null);
-  assert.equal(launchOf(run({ pids: { agent: null, manager: 42 } }), null), null);
-  const ended = launchOf(run(), null)!;
-  const live = launchOf(run({ id: 'R2', state: 'running', started_at: stamp(55), ended_at: null }), true)!;
-  const ambiguous = launchOf(run({ usage: { ...run().usage!, includesEarlier: true } }), true)!;
-  assert.equal(runtime(ended, epoch + 400), 40);
-  assert.equal(runtime(live, epoch + 75), 20);
+  assert.equal(launchOf(run({ state: 'joined' })), null);
+  assert.equal(launchOf(run({ state: 'queued' })), null);
+  assert.equal(launchOf(run({ state: 'failed', pids: { agent: null, manager: 42 } })), null);
+  const ended = launchOf(run())!;
+  const live = launchOf(run({ id: 'R2', state: 'running', started_at: stamp(55), ended_at: null, usage: null }))!;
+  const includesEarlier = launchOf(run({ usage: { ...run().usage!, includesEarlier: true } }))!;
+  assert.equal(runUsageMs(ended, epoch + 400), 40);
+  assert.equal(runUsageMs(live, epoch + 75), 20);
   assert.equal(live.tokens, null);
-  assert.equal(ambiguous.tokens, null);
+  assert.deepEqual(includesEarlier.tokens, ended.tokens);
   assert.deepEqual([...firstConversations([live, ended])], ['R1']);
   assert.deepEqual([...firstConversations([ended, { ...live, provider: 'another' }])], ['R1', 'R2']);
 });
@@ -106,7 +111,7 @@ test('review wait, hold, exact question closure and concurrent runs partition wa
     event('child-q', 'asked', 39, { askedTo: null, actor: asker, decide: [{}] }),
     event('child-stop', 'reported', 45, { toState: 'stopped' }),
   ]);
-  const launch = launchOf(run(), true)!;
+  const launch = launchOf(run())!;
   const { time, band } = clocks(ownLog, own, child, [launch, { ...launch, id: 'R2' }], epoch, epoch + 60, epoch + 60);
   assert.deepEqual(time, { review: 10, answer: 18, ai: 7, other: 25 });
   assert.equal(band.find(piece => piece.from === stamp(35))?.to, stamp(39));

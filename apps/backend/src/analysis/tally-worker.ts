@@ -1,8 +1,8 @@
 import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
 import { hasCode } from '@alpacawork/core';
-import { RUN_FILES } from '@alpacawork/contract/run';
+import { RUN_FILES, runFolder, runNumber } from '@alpacawork/contract/run';
 import { runIdSchema } from '@alpacawork/contract';
 import { readControl } from '../control/task-store.js';
 import { supportsTally, TallyParser, tallySchema, type Tally } from '../agents/adapters/tally.js';
@@ -11,15 +11,16 @@ import { writeRunFile } from '../runs/files.js';
 
 const MAX_STDOUT = 128 * 1024 * 1024;
 const MAX_TALLY = 8 * 1024 * 1024;
-const filename = 'tally.json';
+const BATCH_SIZE = 32;
 const { root } = workerData as { root: string };
 const port = parentPort!;
-const folders = join(root, '.alpacawork', 'runs');
-const ended = `r.task_id IS NOT NULL AND r.state IN ('succeeded','failed','cancelled')
-  AND (a.started_json IS NOT NULL OR a.run_no IS NULL AND json_extract(r.record,'$.pids.agent') IS NOT NULL)`;
-const joined = 'FROM runs r LEFT JOIN run_attempts a ON a.run_no=r.id';
+type TallyRun = { id: string; provider: string; adapter: string; session: string | null };
+const runSource = `SELECT 'R' || id AS id, json_extract(record,'$.agent') AS provider,
+  json_extract(record,'$.launch.adapter') AS adapter, session_id AS session
+  FROM runs WHERE task_id IS NOT NULL AND state IN ('succeeded','failed','cancelled')
+    AND json_extract(record,'$.pids.agent') IS NOT NULL AND json_extract(record,'$.started_at') IS NOT NULL`;
 const pending = new Set<string>(), done = new Set<string>();
-let history: string[] = [], running = false, stopped = false;
+let history: TallyRun[] = [], recent: TallyRun[] = [], running = false, stopped = false;
 
 function ordinaryFile<T>(path: string, read: (fd: number, size: number) => T): T {
   const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
@@ -30,15 +31,10 @@ function ordinaryFile<T>(path: string, read: (fd: number, size: number) => T): T
   } finally { closeSync(fd); }
 }
 
-function tally(id: string): Tally | undefined {
-  const n = Number(id.slice(1));
-  const row = readControl(root, db => db.prepare(`SELECT json_extract(r.record,'$.agent') AS provider,
-    json_extract(r.record,'$.launch.adapter') AS adapter, r.session_id AS session
-    ${joined} WHERE r.id=? AND ${ended}`).get(n));
-  if (!row) return;
-  const folder = join(folders, id);
-  if (!lstatSync(folders).isDirectory() || !lstatSync(folder).isDirectory()) return;
-  const output = join(folder, filename);
+function tally({ id, provider, adapter, session }: TallyRun): Tally | undefined {
+  const folder = runFolder(root, id);
+  if (!lstatSync(dirname(folder)).isDirectory() || !lstatSync(folder).isDirectory()) return;
+  const output = join(folder, RUN_FILES.tally);
   try {
     const existing = ordinaryFile(output, (fd, size) => size <= MAX_TALLY
       ? tallySchema.safeParse(JSON.parse(readFileSync(fd, 'utf8'))) : null);
@@ -47,7 +43,7 @@ function tally(id: string): Tally | undefined {
     if (!hasCode(error, 'ENOENT') && !hasCode(error, 'ELOOP') && !(error instanceof SyntaxError)) throw error;
   }
 
-  const adapter = String(row.adapter), parser = new TallyParser(adapter, String(row.provider), row.session as string | null);
+  const parser = new TallyParser(adapter, provider, session);
   let state: Tally['state'] = 'unsupported';
   if (supportsTally(adapter)) {
     try {
@@ -63,35 +59,49 @@ function tally(id: string): Tally | undefined {
     }
   }
   const result = parser.finish(state);
-  writeRunFile(folder, filename, JSON.stringify(result));
+  writeRunFile(folder, RUN_FILES.tally, JSON.stringify(result));
   return result;
+}
+
+function loadPending() {
+  const ids: string[] = [];
+  for (const id of pending) {
+    pending.delete(id);
+    ids.push(id);
+    if (ids.length === BATCH_SIZE) break;
+  }
+  try {
+    return readControl(root, db => db.prepare(runSource + ' AND runs.id IN (SELECT value FROM json_each(?))')
+      .all(JSON.stringify(ids.map(runNumber))) as TallyRun[]);
+  } catch {
+    port.postMessage({ issue: ids.join(', ') });
+    return [];
+  }
 }
 
 function work() {
   if (stopped) return;
+  if (!recent.length && pending.size) recent = loadPending();
   const batch: [string, Tally][] = [], until = performance.now() + 20;
-  let visited = 0;
-  while ((pending.size || history.length) && visited++ < 32 && performance.now() < until) {
-    const fresh = pending.values().next().value;
-    const id = fresh ?? history.pop()!;
-    if (fresh) pending.delete(fresh);
-    if (done.has(id)) continue;
+  for (let visited = 0; visited < BATCH_SIZE && (recent.length || !pending.size && history.length) && performance.now() < until; visited++) {
+    const run = recent.pop() ?? history.pop()!;
+    if (done.has(run.id)) continue;
     try {
-      const value = tally(id);
-      if (value) { done.add(id); batch.push([id, value]); }
+      const value = tally(run);
+      if (value) { done.add(run.id); batch.push([run.id, value]); }
     } catch (error) {
       // Usage remains available if a Run folder disappeared or could not be tallied.
-      if (!hasCode(error, 'ENOENT')) port.postMessage({ issue: id });
+      if (!hasCode(error, 'ENOENT')) port.postMessage({ issue: run.id });
     }
   }
   if (batch.length) port.postMessage({ batch });
-  if (pending.size || history.length) setTimeout(work, 20);
+  if (pending.size || recent.length || history.length) setTimeout(work, 20);
   else running = false;
 }
 
 function rescan() {
-  history = readControl(root, db => db.prepare(`SELECT r.id ${joined} WHERE ${ended}
-    ORDER BY json_extract(r.record,'$.ended_at'), r.id`).all().map(row => 'R' + row.id));
+  history = readControl(root, db => db.prepare(runSource + " ORDER BY julianday(json_extract(record,'$.ended_at')), runs.id")
+    .all() as TallyRun[]).filter(run => !done.has(run.id));
 }
 
 port.on('message', (message: { stop?: true; rescan?: true; ids?: string[] }) => {

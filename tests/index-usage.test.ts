@@ -48,7 +48,7 @@ test('usageBelow includes every logical descendant, including archived and delet
   const projection = await readWorkspaceProjection(h.root), index = projection.index;
   const row = index.tasks.find(task => task.id === parent)!;
   assert.deepEqual(row.usage, { runs: 1, runMs: 2 * minute, tokens: tokens(2), tokensUnknown: 0 });
-  assert.deepEqual(row.usageBelow, { runs: 8, runMs: 419 * minute, tokens: tokens(415), tokensUnknown: 1 });
+  assert.deepEqual(row.usageBelow, { runs: 11, runMs: 419 * minute, tokens: tokens(415), tokensUnknown: 4 });
   assert.deepEqual(row.runsBelow.map(([, from]) => from), [Date.parse(iso(0)), Date.parse(iso(0)), Date.parse(iso(0))]);
   assert.ok(!index.tasks.some(task => [child.id, 'T100', 'T101', 'T103', 'T107'].includes(task.id)),
     'finished and inactive descendants are absent from the live rows');

@@ -215,6 +215,8 @@ export const controlRunSchema = z.object({
   activity: runActivityViewSchema.nullable(),
   createdAt: z.iso.datetime({ offset: true }), startedAt: z.iso.datetime({ offset: true }).nullable(),
   endedAt: z.iso.datetime({ offset: true }).nullable(),
+  /** Whether the agent process start was recorded after reservation. */
+  processStarted: z.boolean(),
   usage: z.object({ run: tokenCountersSchema.nullable(), includesEarlier: z.boolean() }).strict().nullable(),
 }).strict();
 export const requestPurposeSchema = z.enum(['instruction', 'review_send_back', 'return_continuation']);

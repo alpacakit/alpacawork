@@ -85,7 +85,7 @@ test("saved completed usage replaces finished Run records and a newly finished R
   expect(workTimeMs(after.subtree, at(20))).toBe(5 * minute);
 });
 
-test("without saved usage, completed and stranded Runs follow runSpan and time never grows after an end", () => {
+test("without saved usage, recorded elapsed time never grows after an end", () => {
   const tasks = index({ id: "T1" });
   const runs = byTask(finished("R1", 0, 2), finished("R2", 2, 5, { state: "failed" }),
     finished("R3", 4, 6, { state: "cancelled" }), live("R4", 6, { state: "needs_review" }),
@@ -97,13 +97,13 @@ test("without saved usage, completed and stranded Runs follow runSpan and time n
 });
 
 test("a moving Run with an end has a fixed span and invalid timestamps add no time", () => {
-  const tasks = index({ id: "T1", usage: saved(1) });
+  const tasks = index({ id: "T1" });
   const badStart = { ...live("R2", 1), startedAt: "invalid" };
   const badEnd = { ...live("R3", 1), endedAt: "invalid" };
   const runs = byTask(live("R1", 2, { endedAt: iso(4) }), badStart, badEnd);
   const time = taskWorkTime("T1", tasks, runs);
-  expect(time.own).toEqual({ doneMs: 3 * minute, runningSince: [] });
-  expect(workTimeMs(time.subtree, at(20))).toBe(3 * minute);
+  expect(time.own).toEqual({ doneMs: 2 * minute, runningSince: [] });
+  expect(workTimeMs(time.subtree, at(20))).toBe(2 * minute);
 });
 
 test.each([true, false])("subtree adds saved or calculated own time to server descendant time (saved: %s)", hasSaved => {

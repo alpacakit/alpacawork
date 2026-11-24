@@ -23,6 +23,7 @@ export function snapshotFrame(tree: ControlTreeDTO, pv: ProjectionVersion): Publ
         ?? (placements.find(item => item.id === run.placementId)?.responsible ? 'owner' : 'member')) === 'owner' ? 'owner' : 'worker',
       caller: run.caller, resumes: run.resumes, continues: false, session: run.session, cwd: run.cwd,
       launch: { ...record().launch, values: run.launchValues }, state: run.state, reason: run.reason, into: run.into,
+      pids: { manager: null, agent: run.processStarted ? 1234 : null },
       created_at: run.createdAt, started_at: run.startedAt, ended_at: run.endedAt,
       usage: run.usage ? { conversation: null, ...run.usage } : null }));
     return { ...base, task: { ...base.task, path: task.path, hash: task.hash, settings: task.settings ?? null,
