@@ -37,7 +37,8 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
   useEffect(() => { surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true }); }, [place.list, place.unit]);
   if (!depth) return null;
   return <>
-    <div aria-hidden className="fixed inset-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
+    {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
+    <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
     <aside ref={surface} role="dialog" aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
       className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
         narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"

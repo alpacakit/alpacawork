@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { TAB, TabLabel, TabMarker } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/ui/icon";
 import { comparison, parts, type Kind } from "./format";
 import type { Bucket } from "./contract";
 
@@ -24,13 +25,15 @@ export const useChoices = create<Choices & { choose: (next: Partial<Choices>) =>
  * One shape for every switch here, the app's own tab row: 28px high, 6px corners, the chosen one bold on the grey
  * ground that slides to it.
  */
-export function Seg<K extends string>({ label, items, value, onChange, className }: {
-  label: string; items: readonly (readonly [K, string])[]; value: K; onChange: (next: K) => void; className?: string;
+export function Seg<K extends string>({ label, items, value, onChange, onAgain, className }: {
+  label: string; items: readonly (readonly [K, string])[]; value: K; onChange: (next: K) => void;
+  /** What pressing the chosen one does, when it does something. */
+  onAgain?: () => void; className?: string;
 }) {
   return <div role="group" aria-label={label} className={cn("relative flex flex-none items-center gap-0.5", className)}>
     <TabMarker current='[aria-current="true"]' />
     {items.map(([key, name]) => <button key={key} type="button" aria-current={key === value ? "true" : undefined}
-      onClick={() => key !== value && onChange(key)}
+      onClick={() => key !== value ? onChange(key) : onAgain?.()}
       className={cn(TAB, "aria-[current=true]:font-semibold aria-[current=true]:text-ink")}><TabLabel>{name}</TabLabel></button>)}
   </div>;
 }
@@ -48,8 +51,11 @@ export function Value({ kind, value, big, onOpen }: { kind: Kind; value: number 
   </>;
   const shape = "inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm";
   if (!onOpen || !value) return <span className={shape}>{body}</span>;
+  // A number that opens its tasks says so at rest, on a phone and at first sight alike: underlined, and the chevron the
+  // list's headings open with after its unit. Pointed at, the line takes the ink.
   return <button type="button" onClick={onOpen}
-    className={cn(shape, "underline decoration-line decoration-1 underline-offset-5 transition-[text-decoration-color] hover:decoration-ink active:translate-y-px")}>{body}</button>;
+    className={cn(shape, "group/open underline decoration-lit-line decoration-1 underline-offset-5 transition-[text-decoration-color] hover:decoration-ink active:translate-y-px")}>
+    {body}<Icon name="right" className={cn("self-center text-soft group-hover/open:text-ink", big ? "size-4" : "size-3")} /></button>;
 }
 
 /** The line under a number: the same span just before, and the gap. */

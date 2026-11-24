@@ -97,7 +97,7 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
         {([["you", you, "bg-turn"], ["ai", time.ai, "bg-working"], ["other", time.other, "bg-rest"]] as const).map(([key, value, color], at) =>
           <button key={key} type="button" style={{ flex: `${value} 1 0` }} onClick={() => open({ set: "accepted", value: key })}
             className={cn("flex min-w-max items-center rounded-xs whitespace-nowrap text-muted hover:underline hover:underline-offset-4 narrow:flex-none!", at < 2 && "pe-4")}>
-            <Square className={color} />{t(`time.${key}`)}<b className="ms-1.5 font-semibold text-ink">{format("hours", value)}</b>
+            <Square className={color} />{t(`time.${key}`)}<b className="ms-1.5 font-semibold text-ink underline decoration-lit-line underline-offset-4">{format("hours", value)}</b>
           </button>)}
       </div>
     </div>}

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NARROW_QUERY, useViewStore } from "@/state/view-store";
+import { closeAnalysisLayer } from "@/state/history-step";
 import { cn } from "@/lib/utils";
 import { Seg } from "./parts";
 import { analysisHome, type AnalysisPlace } from "./place";
@@ -17,6 +18,8 @@ export function FaceSwitch({ className }: { className?: string }) {
   if (analysis) left.current = { ...analysis, list: null, unit: null };
   return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
     onChange={face => useViewStore.getState().showAnalysis(face === "analysis" ? left.current ?? analysisHome() : null)}
+    // Analysis pressed while a list or a task's values is open over it: they close as × closes them.
+    onAgain={() => { if (analysis && (analysis.list || analysis.unit)) closeAnalysisLayer(0); }}
     items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;
 }
 
