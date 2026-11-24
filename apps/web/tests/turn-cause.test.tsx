@@ -135,3 +135,15 @@ test("an open question leaves the failure cause and recovery actions under the r
   expect(titleTurn(parents.tasks.find(each => each.id === "T1")!)).toBeNull();
   expect(failureCause(parents.tasks.find(each => each.id === "T1")!, parents.people)).toBeNull();
 });
+
+test("a failed project offers continuing but no stop, as the server allows no stop of a project", () => {
+  const log = [logEntry({ id: "L1" }), logEntry({ id: "LENDR2", kind: "linked", at: "2026-09-24T09:05:00Z", fromState: "doing", toState: "error", runId: "R2" })];
+  const data = screenData(tree({ tasks: [taskFixture({ kind: "project", id: "P100", state: "error", ball: userBall("failed", "LENDR2", at), log })],
+    placements: [{ ...placement, taskId: "P100" }], runs: [failedRun("R2")] }));
+  const task = data.tasks.find(each => each.id === "P100")!;
+  expect(task.allowedActions).not.toContain("stop");
+  const head = render(<TestWorkspace data={data}><TurnReason turn={reasonedTurn(task.ball)!} task={task} /></TestWorkspace>);
+  const reason = head.container.querySelector<HTMLElement>('[data-turn-reason="failed"]')!;
+  expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "switch"]);
+  expect(reason.firstChild?.textContent).toBe(i18n.t("ui:turn.reason.failedNoStop"));
+});

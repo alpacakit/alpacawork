@@ -13,7 +13,7 @@ import type { PeopleIndex } from "@/domain/people";
 import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
 import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
-import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
+import { stoppable, turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
 import { formatNoticeTime } from "@/domain/time";
 import { resetMinute } from "@/domain/limits";
@@ -295,7 +295,7 @@ export function RowKindWord({ task }: { task: Task }) {
     switch (kind.kind) {
       case "question": return [ut("turn.question")];
       case "review": return [t("row.review")];
-      case "followup": return [t(`status.turn.${turnReasonKey(kind.turn)}`), turnSentence(kind.turn, ut)];
+      case "followup": return [t(`status.turn.${turnReasonKey(kind.turn)}`), turnSentence(kind.turn, ut, null, stoppable(task))];
       case "stopped": return [failureWord(kind.failure, t)];
     }
   })();

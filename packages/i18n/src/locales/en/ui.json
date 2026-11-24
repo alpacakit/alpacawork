@@ -348,6 +348,7 @@
       "children": "The run reached its request limit. Review the work and send a separate instruction if needed",
       "depth": "Request depth limit reached. Review the result and send a new instruction if needed",
       "failed": "The agent run failed or ended without a report. Choose to continue or stop",
+      "failedNoStop": "The agent run failed or ended without a report. Choose how to continue",
       "limit_one": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "limit_other": "Automatic exchanges stopped at the limit ({{count}} waiting)",
       "noProfile": "There is no launch profile for this agent. Check the settings and send an instruction",

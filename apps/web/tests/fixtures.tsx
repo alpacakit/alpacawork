@@ -72,7 +72,7 @@ export const dto = ({ body, ...overrides }: TaskOverrides = {}): ControlTaskDTO 
   ...(overrides.kind === "project" ? { settings: { color: "#39659b" } } : {}),
   path: `tasks/${overrides.id ?? "T1"}`, kind: "task", userRequested: false,
   lifecycle: "active", title: "Task one", state: "doing", baseState: overrides.baseState ?? (overrides.state === "held" ? "doing" : overrides.state ?? "doing"), hold: overrides.hold ?? overrides.state === "held", version: 1,
-  allowedActions: taskActionsOf({ baseState: overrides.baseState ?? (overrides.state === "held" ? "doing" : overrides.state ?? "doing"), hold: overrides.hold ?? overrides.state === "held", userRequested: overrides.userRequested ?? false,
+  allowedActions: taskActionsOf({ kind: overrides.kind ?? "task", baseState: overrides.baseState ?? (overrides.state === "held" ? "doing" : overrides.state ?? "doing"), hold: overrides.hold ?? overrides.state === "held", userRequested: overrides.userRequested ?? false,
     openUserQuestion: hasOpenUserQuestion(overrides.log ?? []) }), policyVersion: TASK_POLICY.version,
   hash: "a".repeat(64), values: bodyValues(body ?? "Body", overrides.kind), log: [logEntry({ userRequested: overrides.userRequested ?? false })], ...overrides,
   id: overrides.id ?? "T1", parentId: parentOf(overrides),

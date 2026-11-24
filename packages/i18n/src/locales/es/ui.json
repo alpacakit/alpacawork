@@ -359,6 +359,7 @@
       "children": "La ejecución alcanzó su límite de solicitudes. Revisa el trabajo y envía una instrucción aparte si hace falta",
       "depth": "Se alcanzó el límite de profundidad de las solicitudes. Revisa el resultado y envía una nueva instrucción si hace falta",
       "failed": "La ejecución del agente falló o terminó sin informe. Elige si seguir o detener",
+      "failedNoStop": "La ejecución del agente falló o terminó sin informe. Elige cómo seguir",
       "limit_one": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_many": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",
       "limit_other": "Los intercambios automáticos se detuvieron al llegar al límite ({{count}} en espera)",

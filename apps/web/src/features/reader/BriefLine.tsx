@@ -14,7 +14,7 @@ import { TurnReason } from "./TurnReason";
 export function BriefLine({ task, people, id, className }: { task: Task; people: PeopleIndex; id?: string; className?: string }) {
   const { t } = useTranslation("reader");
   const turn = reasonedTurn(task.ball);
-  if (turn) return <TurnReason turn={turn} cause={failureCause(task, people)} className={cn("text-sm text-turn", className)} />;
+  if (turn) return <TurnReason turn={turn} about={task} cause={failureCause(task, people)} className={cn("text-sm text-turn", className)} />;
   const lead = leadOf(task, people);
   const asks = askedOfUser(task);
   const line = lead.failureReason ? t(`history.reasons.${lead.failureReason}`, { defaultValue: t("history.reasons.unknown") }) : lead.line;
