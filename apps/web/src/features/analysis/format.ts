@@ -11,6 +11,8 @@ export type Kind = "tasks" | "times" | "plain" | "hours" | "tokens";
 const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
 const whole = (value: number) => Math.round(value).toLocaleString(locale());
+/** A number to fixed places, in the screen's language (1.39, 1,39). */
+export const decimalText = (value: number, digits: number) => fixed(value, digits);
 /** A number in the screen's language (not the browser's), to two places at most. */
 export const numberText = (value: number) => value.toLocaleString(locale(), { maximumFractionDigits: 2 });
 const fixed = (value: number, digits: number) => value.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -52,7 +54,8 @@ function gapValue(kind: Kind, gap: number, larger: number): string {
   if (kind === "hours") return hourValue(gap / HOUR);
   if (kind !== "tokens") return whole(gap);
   const scale = scaleOf(larger);
-  return scale ? word("unit.joinTight", { value: fixed(gap / scale.at, scale.digits ? scale.digits + 1 : 0), unit: scale.unit }) : whole(gap);
+  // The gap has the places its value has (99.7億, +20.4億), so the two read alike.
+  return scale ? word("unit.joinTight", { value: fixed(gap / scale.at, scale.digits), unit: scale.unit }) : whole(gap);
 }
 /** The gap from the span before: a sign and its size, or "same" when it is zero as written. */
 export function delta(kind: Kind, current: number, previous: number): string {

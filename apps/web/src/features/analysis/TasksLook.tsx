@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
+import { daysBetween, decimalText, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, Lead, Leads, LineChart, Parts, Row, RowName, useScale } from "./rows";
@@ -160,7 +160,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         { text: share(row.share), tip: row.accepted && row.share === null ? t("tasks.few") : undefined,
           open: row.accepted ? () => open({ set: "accepted", value: null, ...groupOf(row.key) }) : undefined },
         row.leadMedianMs === null ? { text: "—" } : cell("hours", row.leadMedianMs, () => open({ set: "accepted", value: "lead", ...groupOf(row.key) })),
-        row.submitsPerAccepted === null ? { text: "—" } : { text: row.submitsPerAccepted.toFixed(2), unit: t("unit.times", { count: 2 }),
+        row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2), unit: t("unit.times", { count: 2 }),
           open: () => open({ set: "accepted", value: "submits", ...groupOf(row.key) }) },
       ] }))} />
   </Section>;

@@ -27,7 +27,8 @@ test("large token counts take the largest step they reach, and a gap is written 
   expect(parts("tokens", big!.at * 74).unit).toBe(big!.unit);
   expect(parts("tokens", small!.at * 3011).unit).toBe(small!.unit);
   expect(parts("tokens", small!.at - 1).unit).toBe("");
-  expect(delta("tokens", big!.at * 74, big!.at * 74.25)).toMatch(/^−0[.,]25/);
+  expect(delta("tokens", big!.at * 74, big!.at * 74.25)).toMatch(/^−0[.,]3\D/);
+  expect(delta("tokens", big!.at * 99.7, big!.at * 79.29)).toMatch(/^\+20[.,]4\D/);
 });
 
 test("a gap has the direction of the change and the kind's rounding; one that rounds to nothing is the same", () => {
