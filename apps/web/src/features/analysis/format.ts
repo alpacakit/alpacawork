@@ -51,7 +51,8 @@ export function duration(ms: number): string {
 
 /** How a gap is written in a kind: its size in the kind's own unit, which for tokens is the larger value's step. */
 function gapValue(kind: Kind, gap: number, larger: number): string {
-  if (kind === "hours") return hourValue(gap / HOUR);
+  // Like tokens, the gap has the places of the larger value (160時間, −1), not of its own size.
+  if (kind === "hours") return larger / HOUR >= 10 ? whole(gap / HOUR) : fixed(gap / HOUR, 1);
   if (kind !== "tokens") return whole(gap);
   const scale = scaleOf(larger);
   // The gap has the places its value has (99.7億, +20.4億), so the two read alike.

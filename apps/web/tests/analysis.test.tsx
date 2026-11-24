@@ -35,6 +35,7 @@ test("a gap has the direction of the change and the kind's rounding; one that ro
   expect(delta("tasks", 60, 64)).toBe("−4");
   expect(delta("tasks", 128, 105)).toBe("+23");
   expect(delta("hours", 1.4 * HOUR, 1.7 * HOUR)).toBe("−0.3");
+  expect(delta("hours", 160.3 * HOUR, 161 * HOUR)).toBe("−1");
   expect(same(delta("tasks", 1, 1))).toBe(true);
   expect(same(delta("hours", 1.42 * HOUR, 1.44 * HOUR))).toBe(true);
   expect(same(delta("hours", 1.4 * HOUR, 1.5 * HOUR))).toBe(false);
