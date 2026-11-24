@@ -73,6 +73,10 @@
       "types": "./dist/command-path.d.ts",
       "default": "./dist/command-path.js"
     },
+    "./analysis": {
+      "types": "./dist/analysis.d.ts",
+      "default": "./dist/analysis.js"
+    },
     "./commands": {
       "types": "./dist/commands.d.ts",
       "default": "./dist/commands.js"
