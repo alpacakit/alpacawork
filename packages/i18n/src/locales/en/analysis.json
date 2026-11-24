@@ -4,7 +4,9 @@
     "all_other": "All {{count}} rows",
     "tallied": "Counted from the records of {{runs}} of {{of}} launches",
     "title": "Break down",
-    "top": "Top rows only"
+    "top": "Top rows only",
+    "untallied_one": "The records of {{count}} launch are not counted yet",
+    "untallied_other": "The records of {{count}} launches are not counted yet"
   },
   "bucket": {
     "day": "Daily",
@@ -132,7 +134,8 @@
     "howCounted": "How it is counted",
     "passed": "Through with no fixes",
     "reworked": "Fixed",
-    "stopped": "Stopped"
+    "stopped": "Stopped",
+    "noAgent": "Not given to an AI"
   },
   "time": {
     "ai": "AI at work",

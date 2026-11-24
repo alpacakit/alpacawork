@@ -19,12 +19,12 @@ function binName(bin: Bin, today: string, say: (key: string, options?: Record<st
   if (bin.complete) return name;
   return `${name}${say("sep")}${bin.to >= today ? say("bucket.ongoing") : say("bucket.partial", { count: daysBetween(bin.from, bin.to) })}`;
 }
-/** A bin's name under the chart: every month or week; a day's on Mondays and the first, none too near the last (drawn at the end). */
+/** A bin's name under the chart: every month or week; a day's on the first, the last and Mondays not too near either. */
 function xLabel(bin: Bin, bucket: Bucket, at: number, count: number) {
   if (bucket === "month") return monthLabel(bin.from);
   if (bucket === "week") return dayLabel(bin.from);
   if (at === count - 1) return dayLabel(bin.from);
-  return (weekday(bin.from) === 0 || at === 0) && at < count - 3 ? dayLabel(bin.from) : "";
+  return at === 0 || weekday(bin.from) === 0 && at > 2 && at < count - 3 ? dayLabel(bin.from) : "";
 }
 
 /** The gutter on the left the scale's numbers stand in. */

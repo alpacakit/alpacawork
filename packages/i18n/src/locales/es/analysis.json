@@ -5,7 +5,10 @@
     "all_other": "Las {{count}} filas",
     "tallied": "Contado con los registros de {{runs}} de {{of}} arranques",
     "title": "Desglose",
-    "top": "Solo las primeras"
+    "top": "Solo las primeras",
+    "untallied_one": "Los registros de {{count}} arranque aún no se han contado",
+    "untallied_many": "Los registros de {{count}} arranques aún no se han contado",
+    "untallied_other": "Los registros de {{count}} arranques aún no se han contado"
   },
   "bucket": {
     "day": "Por día",
@@ -140,7 +143,8 @@
     "howCounted": "Cómo se cuenta",
     "passed": "Sin correcciones",
     "reworked": "Corregidas",
-    "stopped": "Detenidas"
+    "stopped": "Detenidas",
+    "noAgent": "Sin IA asignada"
   },
   "time": {
     "ai": "IA trabajando",

@@ -3,7 +3,8 @@
     "all_other": "すべて {{count}}行",
     "tallied": "{{of}}回のうち {{runs}}回分の記録から数えた",
     "title": "分けて見る",
-    "top": "上位だけ"
+    "top": "上位だけ",
+    "untallied_other": "{{count}}回の起動の記録を、まだ数えていません"
   },
   "bucket": {
     "day": "日ごと",
@@ -124,7 +125,8 @@
     "howCounted": "数え方",
     "passed": "手直しなしで通った",
     "reworked": "手直しあり",
-    "stopped": "中止"
+    "stopped": "中止",
+    "noAgent": "AI に任せていない"
   },
   "time": {
     "ai": "AI が動いた",

@@ -98,8 +98,11 @@ export function UsageLook({ view, days, open, pick, zone }: { view: UsageView; d
     </div>
     <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose({ usageGroup: next as UsageGroup, all: false })}
       items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
-      <BreakdownTable id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />
-      {counted && tallied && tallied.runs < tallied.of && <p className="mt-2 text-xs text-soft">{t("breakdown.tallied", tallied)}</p>}
+      {/* Skills, tools and MCP are counted from each launch's record in the background: until one is, there is nothing to show. */}
+      {counted && tallied && tallied.runs === 0 ? <p className="text-soft">{t("breakdown.untallied", { count: tallied.of })}</p> : <>
+        <BreakdownTable id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />
+        {counted && tallied && tallied.runs < tallied.of && <p className="mt-2 text-xs text-soft">{t("breakdown.tallied", tallied)}</p>}
+      </>}
     </Section>
   </>;
 }

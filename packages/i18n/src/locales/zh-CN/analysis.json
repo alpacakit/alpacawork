@@ -3,7 +3,8 @@
     "all_other": "全部 {{count}} 行",
     "tallied": "根据 {{of}} 次启动中 {{runs}} 次的记录统计",
     "title": "分类查看",
-    "top": "只看前几行"
+    "top": "只看前几行",
+    "untallied_other": "尚未统计 {{count}} 次启动的记录"
   },
   "bucket": {
     "day": "按日",
@@ -124,7 +125,8 @@
     "howCounted": "统计方式",
     "passed": "无需返工即通过",
     "reworked": "有返工",
-    "stopped": "中止"
+    "stopped": "中止",
+    "noAgent": "未交给 AI"
   },
   "time": {
     "ai": "AI 运行",

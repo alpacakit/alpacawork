@@ -109,7 +109,9 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
     <BreakdownTable id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
       columns={[t("tasks.cols.finished"), t("tasks.cols.accepted"), t("tasks.cols.passed"), t("tasks.cols.share"), t("tasks.cols.lead"), t("tasks.cols.submits")]}
-      rows={rows.map(row => ({ key: row.key, name: row.label, bar: row.finished, cells: [
+      rows={rows.map(row => ({ key: row.key,
+        // A task no AI was given (no owner Run) has the server's key `unknown` for its model and AI kind.
+        name: row.key === "unknown" && taskGroup !== "project" ? t("tasks.noAgent") : row.label, bar: row.finished, cells: [
         cell("tasks", row.finished, () => open({ set: "finished", value: null, ...groupOf(row.key) })),
         cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
         cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),
