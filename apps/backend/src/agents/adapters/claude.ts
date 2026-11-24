@@ -52,21 +52,26 @@ export function claudeLimitWindows(value: unknown): LimitWindow[] {
   }
   return windows.filter(window => window !== null);
 }
-/** A control request answered without a conversation or a model call; the process ends when its stdin does. */
+const control = (id: string, subtype: string, fields: object = {}) =>
+  `${JSON.stringify({ type: 'control_request', request_id: id, request: { subtype, ...fields } })}\n`;
+/** Two control requests answered without a conversation or a model call (who is signed in, then `/usage`); the process
+ * ends when its stdin does. */
 export const claudeLimits: LimitsProbe = {
   args: ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'],
-  input: `${JSON.stringify({ type: 'control_request', request_id: 'limits', request: { subtype: 'get_usage', skip_behaviors: true } })}\n`,
+  input: control('account', 'initialize') + control('limits', 'get_usage', { skip_behaviors: true }),
   read(stdout) {
+    const answers = new Map<unknown, Record<string, unknown>>();
     for (const line of stdout.split('\n')) {
       let row: Record<string, unknown>;
       try { row = object(JSON.parse(line)); } catch { continue; }
       const response = object(row.response);
-      if (row.type !== 'control_response' || response.request_id !== 'limits') continue;
-      const usage = object(response.response);
-      // An API key has no plan, so no limits: an answer, not a failure.
-      return response.subtype !== 'success' ? null : usage.rate_limits_available === true ? claudeLimitWindows(usage.rate_limits) : [];
+      if (row.type === 'control_response' && response.subtype === 'success') answers.set(response.request_id, object(response.response));
     }
-    return null;
+    const usage = answers.get('limits'), email = object(answers.get('account')?.account).email;
+    if (!usage) return null;
+    // An API key has no plan, so no limits: an answer, not a failure.
+    return { windows: usage.rate_limits_available === true ? claudeLimitWindows(usage.rate_limits) : [],
+      account: typeof email === 'string' && email ? email : null };
   },
 };
 export const claudeAdapter: AgentAdapter = {

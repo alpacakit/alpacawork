@@ -49,12 +49,12 @@ export class AgentLimitsMonitor {
 
   private async agent(id: BuiltinAdapterId, setting: AgentSetting): Promise<AgentLimits> {
     const reader = runtimeAdapter(id)?.limits;
-    if (!reader) return { adapter: id, state: 'unsupported', windows: [], observedAt: null };
+    if (!reader) return { adapter: id, state: 'unsupported', windows: [], account: null, observedAt: null };
     const environment = this.options.environment ?? { cwd: process.cwd(), env: process.env };
     const description = AGENT_ADAPTERS[id];
     let command: string | undefined;
     try { command = launchCommand(id, setting, environment.env.PATH ?? ''); }
-    catch { return { adapter: id, state: 'unavailable', windows: [], observedAt: null }; }
+    catch { return { adapter: id, state: 'unavailable', windows: [], account: null, observedAt: null }; }
     // The launch prefix the agent runs under, with the bundled bridge in place of its name.
     const prefix = commandPrefix(id, command);
     const argv = description.prefix.length === 1 ? prefix : [...probeArgv(id, null, environment), ...prefix.slice(description.prefix.length)];
@@ -76,11 +76,11 @@ export class AgentLimitsMonitor {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), AGENT_CHECK_MS);
     try {
       const result = await probe(argv, environment, names, controller.signal, { input: reader.input, limit: LIMITS_OUTPUT });
-      const windows = !result.failed && result.status === 0 ? reader.read(result.stdout) : null;
+      const report = !result.failed && result.status === 0 ? reader.read(result.stdout) : null;
       const at = this.now();
       // A failed read keeps what was last read: its time says how old it is. Asked again after `freshMs`.
-      const next: Known = windows ? { at, limits: { adapter: id, state: 'ok', windows, observedAt: new Date(at).toISOString() } }
-        : { at, limits: known?.limits ?? { adapter: id, state: 'unavailable', windows: [], observedAt: null } };
+      const next: Known = report ? { at, limits: { adapter: id, state: 'ok', ...report, observedAt: new Date(at).toISOString() } }
+        : { at, limits: known?.limits ?? { adapter: id, state: 'unavailable', windows: [], account: null, observedAt: null } };
       this.known.set(key, next);
       return next;
     } finally { clearTimeout(timer); }

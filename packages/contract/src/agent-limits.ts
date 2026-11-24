@@ -17,14 +17,18 @@ export const limitWindowSchema = z.object({
   resetsAt: z.iso.datetime({ offset: true }).nullable(),
 }).strict();
 export type LimitWindow = z.infer<typeof limitWindowSchema>;
-/** What a bridge's `--limits` prints: one JSON line. */
-export const bridgeLimitsSchema = z.object({ windows: z.array(limitWindowSchema) }).strict();
+/** The signed-in account as the agent names it (an email, a login); null when it says none. */
+const accountSchema = z.string().min(1).max(256).nullable();
+/** What one read of an agent gives: its windows and whose they are. A bridge's `--limits` prints it as one JSON line. */
+export const limitsReportSchema = z.object({ windows: z.array(limitWindowSchema), account: accountSchema }).strict();
+export type LimitsReport = z.infer<typeof limitsReportSchema>;
 
 export const agentLimitsSchema = z.object({
   adapter: builtinAdapterIdSchema,
   /** ok: read at `observedAt` (a later failed read keeps it); unsupported: the agent reports no limits; unavailable: never read (signed out, no executable…). */
   state: z.enum(['ok', 'unsupported', 'unavailable']),
   windows: z.array(limitWindowSchema),
+  account: accountSchema,
   observedAt: z.iso.datetime({ offset: true }).nullable(),
 }).strict();
 export type AgentLimits = z.infer<typeof agentLimitsSchema>;

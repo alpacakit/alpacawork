@@ -7,7 +7,7 @@ import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
-import { limitWindow, type LimitWindow } from '@alpacawork/contract/agent-limits';
+import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
 
 type Options = { model: string | null; output: string | null; resume: string | null; serverUrl: string | null };
 const USAGE = 'Usage: alpacawork-agent copilot [-m MODEL] [-o FILE] [--server-url URL] [resume SESSION]';
@@ -237,12 +237,13 @@ export async function inspectCopilot(version = false): Promise<void> {
   }
 }
 
-/** The account's quota, read without a session. */
-export async function copilotLimits(): Promise<LimitWindow[]> {
+/** The account's quota and its GitHub login, read without a session. */
+export async function copilotLimits(): Promise<LimitsReport> {
   const client = new CopilotClient({ workingDirectory: process.cwd() });
   try {
     await client.start();
-    return copilotLimitWindows(await client.rpc.account.getQuota({}));
+    const [quota, auth] = await Promise.all([client.rpc.account.getQuota({}), client.getAuthStatus()]);
+    return { windows: copilotLimitWindows(quota), account: auth.login || null };
   } finally { await client.stop().catch(() => {}); }
 }
 

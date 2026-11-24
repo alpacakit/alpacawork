@@ -8,7 +8,7 @@ const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, option
 const week = (usedPercent: number, model: string | null = null): LimitWindow =>
   ({ kind: "weekly", minutes: 10_080, model, usedPercent, resetsAt: null });
 const agent = (adapter: AgentLimits["adapter"], state: AgentLimits["state"], windows: LimitWindow[] = []): AgentLimits =>
-  ({ adapter, state, windows, observedAt: state === "ok" ? "2026-11-24T00:00:00.000Z" : null });
+  ({ adapter, state, windows, account: null, observedAt: state === "ok" ? "2026-11-24T00:00:00.000Z" : null });
 
 test("the bar shows the first agent's fullest window, never another agent's in its place, and no bar until one is known", () => {
   expect(barLimit([agent("grok", "unsupported"), agent("claude", "ok", [week(63), week(77, "Fable")]), agent("codex", "ok", [week(99)])]))

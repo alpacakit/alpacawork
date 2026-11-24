@@ -477,8 +477,10 @@ export function useSaveServerSettings(meta?: WriteOptions) {
     const access = bindIntentTransport(basis ?? workspaceWriteBasis(), { yaml, agents, expected }, wire, opId);
     const settings = await api.request(commandRoute("config/set"), serverSettingsSchema, undefined, wire, opId, access);
     client.setQueryData(resources.serverSettings(root).queryKey, settings);
-    // The saved agents may run another executable: their status is read again.
+    // The saved agents may run another executable, and an agent turned on or off joins or leaves the bar's plan limits:
+    // both are read again.
     void client.invalidateQueries({ queryKey: resources.agentStatus(root).queryKey });
+    void client.invalidateQueries({ queryKey: resources.agentLimits(root).queryKey });
     return settings;
   } });
 }

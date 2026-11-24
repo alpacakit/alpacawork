@@ -55,6 +55,8 @@ function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
   return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h3 className="m-0 text-sm font-semibold">{name}</h3>
+      {/* Whose limits these are: the account the agent is signed in as, cut to the menu's width (whole in the tooltip). */}
+      {agent.account && <span data-limit-account className="min-w-0 max-w-full truncate text-xs text-muted" title={agent.account}>{agent.account}</span>}
       {note && <p className="m-0 text-sm text-muted">{note}</p>}
     </div>
     {!note && <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-sm">{agent.windows.map((window, at) =>
@@ -64,8 +66,8 @@ function AgentBlock({ agent, now }: { agent: AgentLimits; now: number }) {
 
 /**
  * The bar's plan limits: the first agent tasks use, its fullest window (the one that stops it first) as a ring, its name
- * and a percent (the ring and the percent on a phone); "—" while its own are unknown. A press opens every agent's windows with when each resets. Nothing shows until
- * some agent's limits are known.
+ * and a percent (the ring and the percent on a phone); "—" while its own are unknown. A press opens every agent's windows
+ * with when each resets and the account each is signed in as. Nothing shows until some agent's limits are known.
  */
 export function LimitsMenu() {
   const { t, i18n } = useTranslation("chrome");

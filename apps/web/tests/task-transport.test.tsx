@@ -6,6 +6,7 @@ import { headOf, TestWorkspace, dto, run } from './fixtures';
 import { useSaveServerSettings, useStopRun } from '../src/data/queries';
 import { useLifecycle } from '../src/features/forms/lifecycle';
 import { queryClient } from '../src/data/query-client';
+import { resources } from '../src/data/resources';
 import { useWriteIntentStore } from '../src/data/write-intent';
 
 beforeAll(() => startI18n());
@@ -40,3 +41,14 @@ for (const operation of ['config', 'lifecycle', 'stop'] as const)
     } else expect(header).toBe(fixed);
     expect(JSON.parse(String(request[1]?.body))).not.toHaveProperty('opId');
   });
+
+test('a saved config reads the plan limits again, so an agent turned off leaves the bar at once', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ hash: 'c'.repeat(64),
+    agentsText: 'agents: {}\n', agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } })));
+  // The bar has read the limits of the agents enabled before the save.
+  const key = resources.agentLimits('/fixture').queryKey;
+  queryClient.setQueryData(key, { agents: [] });
+  const hook = renderHook(() => useSaveServerSettings(), { wrapper });
+  await act(async () => { await hook.result.current.mutateAsync({ yaml: 'limits: {}', agents: 'agents: {}', expected: 'a'.repeat(64), opId: 'save' }); });
+  expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
+});
