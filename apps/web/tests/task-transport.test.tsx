@@ -55,9 +55,10 @@ test('a saved config reads the plan limits again, so an agent turned off leaves 
   const bar = new QueryObserver(queryClient, resources.agentLimits('/fixture'));
   const shown = () => bar.getCurrentResult().data?.agents.map(entry => entry.adapter);
   const stop = bar.subscribe(() => {});
-  await vi.waitFor(() => expect(shown()).toEqual(['claude', 'codex']));
-  const hook = renderHook(() => useSaveServerSettings(), { wrapper });
-  await act(async () => { await hook.result.current.mutateAsync({ yaml: 'limits: {}', agents: 'agents: {}', expected: 'a'.repeat(64), opId: 'save' }); });
-  await vi.waitFor(() => expect(shown()).toEqual(['claude']));
-  stop();
+  try {
+    await vi.waitFor(() => expect(shown()).toEqual(['claude', 'codex']));
+    const hook = renderHook(() => useSaveServerSettings(), { wrapper });
+    await act(async () => { await hook.result.current.mutateAsync({ yaml: 'limits: {}', agents: 'agents: {}', expected: 'a'.repeat(64), opId: 'save' }); });
+    await vi.waitFor(() => expect(shown()).toEqual(['claude']));
+  } finally { stop(); }
 });

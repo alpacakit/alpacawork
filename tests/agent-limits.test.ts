@@ -61,7 +61,8 @@ process.stdin.resume(); process.stdin.on('end', () => console.log(JSON.stringify
 appendFileSync(${JSON.stringify(calls)}, process.argv.slice(2).join(' ') + '\\n');
 if (existsSync(${JSON.stringify(join(root, 'fail'))})) process.exit(2);
 const used = existsSync(${JSON.stringify(join(root, 'used'))}) ? 20 : 9;
-console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: used, resetsAt: null }], account: 'someone' }));\n`);
+const account = existsSync(${JSON.stringify(join(root, 'long'))}) ? 'x'.repeat(300) : 'someone';
+console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: used, resetsAt: null }], account }));\n`);
   let now = 0;
   const config = { agents: { grok: { enabled: true }, codex: { enabled: true }, claude: { enabled: true }, 'claude-chrome': { adapter: 'claude', enabled: true },
     off: { adapter: 'copilot', enabled: false } }, aiStack: [{ agent: 'claude' }] };
@@ -85,6 +86,10 @@ test('one entry per kind of agent, the task stack\'s first, then the other enabl
   const [refreshed] = await Promise.all([f.monitor.read({ fresh: true }), f.monitor.read({ fresh: true })]);
   assert.equal(refreshed.agents.find(agent => agent.adapter === 'codex')!.windows[0]!.usedPercent, 20);
   assert.equal(f.calls().length, 4);
+  // An account name the contract refuses is left out; the limits stay.
+  writeFileSync(join(f.root, 'long'), '');
+  const codex = (await f.monitor.read({ fresh: true })).agents.find(agent => agent.adapter === 'codex')!;
+  assert.deepEqual([codex.state, codex.account, codex.windows.length], ['ok', null, 1]);
 });
 
 test('a failed read keeps the last windows and their time; an agent never read says it could not be', async t => {

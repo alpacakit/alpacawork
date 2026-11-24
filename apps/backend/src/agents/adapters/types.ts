@@ -1,4 +1,5 @@
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
+import type { LimitsReport } from '@alpacawork/contract/agent-limits';
 import type { AgentExit, ReaderResult } from '../../runs/readers/result.js';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
 import type { ActivityEvent } from '../../runs/activity-events.js';
@@ -14,11 +15,11 @@ export type InputProtocol = {
 export type AdapterObservation = { outcome: ReaderResult; session: string | null; usage: AgentUsage | null; failure?: RunFailure; toolsSettled?: boolean };
 export type SkillCatalogContext = Pick<CatalogInput, 'env' | 'session'> & { kind: 'claude' | 'codex' };
 /**
- * How an agent reports its account's plan limits and who it is signed in as, without a conversation or a model call: the arguments after the
- * agent's launch prefix, what to write to its stdin, and the translation of what it prints. Null: it reports none.
+ * How an agent reports its account's plan limits and who it is signed in as, without a conversation or a model call: the
+ * arguments after the agent's launch prefix, what to write to its stdin, and the translation of what it prints (null when
+ * it gave no answer; the limits monitor checks every answer against the contract). An adapter without one reports none.
  */
-/** `read` gives the agent's answer in the report's shape, or null when it gave none; the limits monitor checks it. */
-export type LimitsProbe = { args: readonly string[]; input: string | null; read(stdout: string): unknown };
+export type LimitsProbe = { args: readonly string[]; input: string | null; read(stdout: string): LimitsReport | null };
 export type AgentAdapter = {
   input: InputProtocol;
   read(invocation: AdapterInvocation, folder: string, exit: AgentExit): AdapterObservation;
