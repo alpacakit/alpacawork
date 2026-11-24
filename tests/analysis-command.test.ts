@@ -262,6 +262,20 @@ test('analysis commands share selection, contribution and tally rules over a sma
         read<AnalysisUsageView>('usage', { ...trend, by: 'mcp' })]);
       assert.deepEqual(skill.breakdown?.counted?.value, { calls: 0, launches: 2 });
       assert.deepEqual(mcp.breakdown?.counted?.value, { calls: 3, launches: 1 });
+      await t.test('lists without a key add up to each collected usage total', async () => {
+        for (const [by, view, values] of [
+          ['skill', skill, ['launches']],
+          ['tool', tools, ['calls', 'launches']],
+          ['mcp', mcp, ['calls', 'launches']],
+        ] as const) {
+          const total = view.breakdown?.counted?.value;
+          assert.ok(total);
+          for (const value of values) {
+            const list = await read<AnalysisUnitList>('list', { ...base, set: 'used', by, value });
+            assert.deepEqual(list.rows.map(row => [row.id, row.value]), [[rowId(2), total[value]]], `${by} ${value}`);
+          }
+        }
+      });
       const counted = await read<AnalysisUnitList>('list', { ...base, set: 'used', by: 'tool', key: tool!.key, value: 'calls' });
       assert.equal(counted.rows[0]?.value, 1);
       const early = await read<AnalysisUnitList>('list', { from: '2026-09-24', to: '2026-09-24', timeZone: 'UTC',

@@ -3,9 +3,10 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
-import type { AnalysisAcceptedTotals, AnalysisBucket, AnalysisDays, AnalysisHead, AnalysisListInput, AnalysisListRow,
-  AnalysisTaskInput, AnalysisTaskBy, AnalysisTaskCounts, AnalysisTasksInput, AnalysisTasksView, AnalysisUnitList,
-  AnalysisUnitValues, AnalysisUsageBy, AnalysisUsageCounts, AnalysisUsageInput, AnalysisUsageView } from '@alpacawork/contract/analysis';
+import { isAnalysisTallyBy, type AnalysisAcceptedTotals, type AnalysisBucket, type AnalysisDays, type AnalysisHead,
+  type AnalysisListInput, type AnalysisListRow, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
+  type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisUnitList,
+  type AnalysisUnitValues, type AnalysisUsageBy, type AnalysisUsageCounts, type AnalysisUsageInput, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { authorize, type Caller } from '../control/authorize.js';
 import { readControl } from '../control/task-store.js';
 import type { Tally } from '../agents/adapters/tally.js';
@@ -17,8 +18,7 @@ type DatedUnit = { day: string; unit: Unit };
 type CountedUnit = DatedUnit & { prCount: number };
 type DatedLaunch = { day: string; root: string; run: FactLaunch };
 type TalliedLaunch = DatedLaunch & { tally: Tally };
-type CountedBy = 'skill' | 'tool' | 'mcp';
-const isCountedBy = (by: AnalysisUsageBy | undefined): by is CountedBy => by === 'skill' || by === 'tool' || by === 'mcp';
+const tallyFields = { skill: 'skills', tool: 'tools', mcp: 'mcp' } as const;
 type Group<T> = { key: string; label: string; items: T[] };
 type DimensionValue = { key: string; label: string };
 const group = <T>(items: Iterable<T>, keys: (item: T) => readonly DimensionValue[]): Map<string, Group<T>> => {
@@ -90,16 +90,16 @@ function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, 
     tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
 }
 
-function countedTotals(items: readonly TalliedLaunch[], by: CountedBy) {
+function tallyCalls(tally: Tally, by: Exclude<AnalysisTallyBy, 'skill'>, name?: string) {
+  const counts = tally[tallyFields[by]];
+  return name === undefined ? Object.values(counts).reduce((sum, count) => sum + count, 0) : counts[name] ?? 0;
+}
+
+function countedTotals(items: readonly TalliedLaunch[], by: AnalysisTallyBy) {
   let calls = 0, launches = 0;
   for (const { tally } of items) {
-    if (by === 'skill') {
-      if (Object.keys(tally.skills).length) launches++;
-    } else {
-      const amounts = Object.values(by === 'tool' ? tally.tools : tally.mcp);
-      if (amounts.length) launches++;
-      for (const amount of amounts) calls += amount;
-    }
+    if (Object.keys(tally[tallyFields[by]]).length) launches++;
+    if (by !== 'skill') calls += tallyCalls(tally, by);
   }
   return { calls, launches };
 }
@@ -189,17 +189,17 @@ class ScopedAnalysis {
     if (by === 'agent') return single(run.agent);
     const tally = this.tallies.get(run.id);
     if (by === 'model') return single(modelLabel(run.model ?? tally?.model ?? null, run.effort, run.agent));
-    if (by === 'skill') return Object.keys(tally?.skills ?? {}).map(name => ({ key: name, label: name }));
-    return Object.keys(by === 'tool' ? tally?.tools ?? {} : tally?.mcp ?? {}).map(name => ({
-      key: JSON.stringify([tally!.provider, name]), label: `${name} · ${tally!.provider}`,
-    }));
+    if (!tally) return [];
+    const names = Object.keys(tally[tallyFields[by]]);
+    return names.map(name => by === 'skill' ? { key: name, label: name }
+      : { key: JSON.stringify([tally.provider, name]), label: `${name} · ${tally.provider}` });
   }
 
   private calls(run: FactLaunch, by: AnalysisUsageBy | undefined, key: string | undefined): number {
     const tally = this.tallies.get(run.id);
-    if (!tally || !key || by !== 'tool' && by !== 'mcp') return 0;
-    const [, name] = JSON.parse(key) as [string, string];
-    return (by === 'tool' ? tally.tools : tally.mcp)[name] ?? 0;
+    if (!tally || by !== 'tool' && by !== 'mcp') return 0;
+    const name = key === undefined ? undefined : (JSON.parse(key) as [string, string])[1];
+    return tallyCalls(tally, by, name);
   }
 
   private collectedLaunches(items: readonly DatedLaunch[]): TalliedLaunch[] {
@@ -242,12 +242,12 @@ class ScopedAnalysis {
     const ever = lifetime && (input.period === 'all' ? value : this.useCounts(within(this.datedLaunches, lifetime)));
     const series = makeSeries(input.bucket, head, this.datedLaunches, items => ({ counts: this.useCounts(items) }));
     const by = input.by;
-    const breakdown = isCountedBy(by) ? this.countedBreakdown(by, head, series)
+    const breakdown = isAnalysisTallyBy(by) ? this.countedBreakdown(by, head, series)
       : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(current, by) } : null;
     return { head, counts: { value, previous: previous && this.useCounts(previous) }, ever, series, breakdown };
   }
 
-  private countedBreakdown(by: CountedBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
+  private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
     const launches = this.collectedLaunches(this.datedLaunches);
     if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
     const since = this.tallyDay;
@@ -271,9 +271,9 @@ class ScopedAnalysis {
 
   private usageRows(input: AnalysisListInput, head: AnalysisHead) {
     const by = input.by;
-    const launches = isCountedBy(by) ? this.collectedLaunches(this.datedLaunches) : this.datedLaunches;
+    const launches = isAnalysisTallyBy(by) ? this.collectedLaunches(this.datedLaunches) : this.datedLaunches;
     const selected = within(launches, head.period).filter(item =>
-      !by || this.usageKeys(item, by).some(key => key.key === input.key));
+      !by || this.usageKeys(item, by).some(({ key }) => input.key === undefined || key === input.key));
     return [...group(selected, item => single(item.root)).values()].map(({ key, items }) => {
       const unit = this.facts.units.get(key)!;
       if (!input.value) return row(unit, null);

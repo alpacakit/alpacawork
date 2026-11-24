@@ -114,6 +114,9 @@ and launch dates use the time zone echoed in the result.
 For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from` and
 `--to` dates. Pass the breakdown row's `--by` and `--key` to limit the list to that row. Tool and MCP keys are JSON
 arrays with two strings: use `--key '["provider","tool"]'` for a tool, or `--key '["provider","server:tool"]'` for MCP.
+With `--set used --by skill|tool|mcp`, omit `--key` to list Tasks with at least one matching launch since collection began.
+`--value launches` counts each matching launch once, even if it used several entries in that breakdown.
+`--value calls` sums all calls for the tool or MCP breakdown. The row values add up to the corresponding usage total.
 
 | Set | `--by` | `--value` |
 | --- | --- | --- |

@@ -6,7 +6,11 @@ export const analysisDaySchema = z.iso.date();
 export const analysisPeriodSchema = z.enum(['today', '7d', '28d', 'all']);
 export const analysisBucketSchema = z.enum(['day', 'week', 'month']);
 export const analysisTaskBySchema = z.enum(['model', 'agent', 'project']);
-export const analysisUsageBySchema = z.enum(['model', 'agent', 'project', 'skill', 'tool', 'mcp']);
+const analysisTallyBySchema = z.enum(['skill', 'tool', 'mcp']);
+export const analysisUsageBySchema = z.enum([...analysisTaskBySchema.options, ...analysisTallyBySchema.options]);
+export type AnalysisTallyBy = z.infer<typeof analysisTallyBySchema>;
+export const isAnalysisTallyBy = (by: AnalysisUsageBy | undefined): by is AnalysisTallyBy =>
+  analysisTallyBySchema.options.some(option => option === by);
 export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'accepted', 'finished', 'used']);
 export const analysisTaskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
 export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'tokens', 'output', 'input', 'cache', 'calls'] as const;
@@ -40,7 +44,9 @@ export const analysisListInput = z.strictObject({
   limit: z.number().int().min(1).max(100).optional(),
 }).superRefine(validateDates).superRefine((input, ctx) => {
   const issue = (field: string, message: string) => ctx.addIssue({ code: 'custom', path: [field], message });
-  if (!!input.by !== !!input.key) issue('key', 'A breakdown needs both by and key');
+  if (!input.by && input.key) issue('key', 'A key requires a breakdown');
+  if (input.by && !input.key && !isAnalysisTallyBy(input.by))
+    issue('key', 'Model, agent and project breakdowns require a row key');
   if (input.set !== 'used' && input.by && !analysisTaskBySchema.safeParse(input.by).success)
     issue('by', 'This breakdown applies to AI usage');
   if (input.value && !(input.set === 'used' ? analysisUsageValues : analysisTaskValues).some(value => value === input.value))
