@@ -126,4 +126,7 @@ With `--set used --by skill|tool|mcp`, omit `--key` to list Tasks with at least 
 `tokens` sums output, input and cache. `calls` requires a `tool` or `mcp` breakdown. `--value` returns and sorts by
 that contribution. `--limit` accepts up to
 100 rows. Use the returned `cursor` with the same selection to get the next page. Related PR counts use distinct GitHub
-links from task values and reports. The list credits a shared link to the first contributing Task ID in the selection.
+links from task values and reports. `analysis list --value prs` shows the Tasks credited with PRs during the selected
+period. Each link is credited to the earliest accepted Task in the project scope, with the lowest Task ID breaking a tie
+at the same acceptance time. The accepted list's row values add up to the corresponding period total or trend bucket.
+`analysis task` shows all PR links referenced by the Task.
