@@ -14,6 +14,7 @@ import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serv
 import { clocks, emptyClock, modelLabel, shareOf, unitMarks } from './rules.js';
 
 type DatedUnit = { day: string; unit: Unit };
+type CountedUnit = DatedUnit & { prCount: number };
 type DatedLaunch = { day: string; root: string; run: FactLaunch };
 type TalliedLaunch = DatedLaunch & { tally: Tally };
 type CountedBy = 'skill' | 'tool' | 'mcp';
@@ -34,9 +35,9 @@ const compareKey = (a: { label: string; key: string }, b: { label: string; key: 
   a.label.localeCompare(b.label, 'en') || a.key.localeCompare(b.key, 'en');
 const compareTask = (a: Unit, b: Unit) => Number(a.node.id.slice(1)) - Number(b.node.id.slice(1));
 
-function taskCounts(units: readonly Unit[]): AnalysisTaskCounts {
+function taskCounts(units: readonly DatedUnit[]): AnalysisTaskCounts {
   let passed = 0, accepted = 0, stopped = 0;
-  for (const { outcome } of units) {
+  for (const { unit: { outcome } } of units) {
     if (outcome.passed) passed++;
     if (outcome.acceptedAt) accepted++;
     else if (outcome.stoppedAt) stopped++;
@@ -49,20 +50,33 @@ function median(values: number[]) {
   const index = Math.floor(values.length / 2);
   return values.length % 2 ? values[index]! : (values[index - 1]! + values[index]!) / 2;
 }
-function acceptedTotals(units: readonly Unit[]): AnalysisAcceptedTotals {
-  let submits = 0, questions = 0;
-  const leads: number[] = [], time = emptyClock(), prs = new Set<string>();
-  for (const unit of units) {
+function creditAcceptedPrs(units: readonly DatedUnit[]): CountedUnit[] {
+  const counted = units.map(item => ({ ...item, prCount: 0 }));
+  const first = new Map<string, CountedUnit>();
+  for (const item of counted) {
+    if (!item.unit.outcome.acceptedAt) continue;
+    for (const link of item.unit.prs) {
+      const earlier = first.get(link);
+      if (!earlier || item.day < earlier.day) first.set(link, item);
+    }
+  }
+  for (const item of first.values()) item.prCount++;
+  return counted;
+}
+function acceptedTotals(units: readonly CountedUnit[]): AnalysisAcceptedTotals {
+  let submits = 0, questions = 0, prs = 0;
+  const leads: number[] = [], time = emptyClock();
+  for (const { unit, prCount } of units) {
     if (!unit.outcome.acceptedAt) continue;
     leads.push(unit.outcome.leadMs!);
     submits += unit.outcome.submits; questions += unit.questions;
-    for (const link of unit.prs) prs.add(link);
+    prs += prCount;
     const clock = unit.clock!.time;
     time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
   }
-  return { leadMedianMs: median(leads), submits, questions, prs: prs.size, time };
+  return { leadMedianMs: median(leads), submits, questions, prs, time };
 }
-const taskTotals = (units: readonly Unit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units) });
+const taskTotals = (units: readonly CountedUnit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units) });
 
 function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
   let newConversations = 0;
@@ -188,17 +202,9 @@ class ScopedAnalysis {
     return (by === 'tool' ? tally.tools : tally.mcp)[name] ?? 0;
   }
 
-  private tallyCoverage(items: readonly DatedLaunch[]) {
-    const eligible = items.filter(({ run }) => run.tallyEligible);
-    return { runs: eligible.filter(({ run }) => {
-      const tally = this.tallies.get(run.id);
-      return tally && tally.state !== 'unsupported';
-    }).length, of: eligible.length, since: this.tallyDay };
-  }
-
-  private collectedLaunches(): TalliedLaunch[] {
-    return this.datedLaunches.flatMap(item => {
-      if (item.day < this.tallyDay || !item.run.tallyEligible) return [];
+  private collectedLaunches(items: readonly DatedLaunch[]): TalliedLaunch[] {
+    return items.flatMap(item => {
+      if (!item.run.tallyEligible) return [];
       const tally = this.tallies.get(item.run.id);
       return tally && tally.state !== 'unsupported' ? [{ ...item, tally }] : [];
     });
@@ -206,18 +212,20 @@ class ScopedAnalysis {
 
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
     const head = this.head(input);
-    const current = within(this.datedUnits, head.period).map(item => item.unit);
-    const previous = head.previous && within(this.datedUnits, head.previous).map(item => item.unit);
+    // Attribute a PR before selecting dates so it cannot move into a later period.
+    const units = creditAcceptedPrs(this.datedUnits);
+    const current = within(units, head.period);
+    const previous = head.previous && within(units, head.previous);
     const value = taskTotals(current), before = previous && taskTotals(previous);
     const lifetime = this.head({}).period;
-    const ever = lifetime && (input.period === 'all' ? value : taskTotals(within(this.datedUnits, lifetime).map(item => item.unit)));
-    const series = makeSeries(input.bucket, head, this.datedUnits, items => taskTotals(items.map(item => item.unit)));
+    const ever = lifetime && (input.period === 'all' ? value : taskTotals(within(units, lifetime)));
+    const series = makeSeries(input.bucket, head, units, taskTotals);
     const counts = new Map<string, number>();
     for (const { day } of this.datedUnits) counts.set(day, (counts.get(day) ?? 0) + 1);
     const from = monday(head.firstDay ?? head.today), finished: number[] = [];
     if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
     const by = input.by;
-    const breakdown = by ? { by, rows: [...group(current, unit => this.taskKeys(unit, by)).values()].map(({ key, label, items }) => {
+    const breakdown = by ? { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ key, label, items }) => {
       const { finished, accepted, passed, share } = taskCounts(items), totals = acceptedTotals(items);
       return { key, label, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
         submitsPerAccepted: accepted ? totals.submits / accepted : null };
@@ -240,7 +248,7 @@ class ScopedAnalysis {
   }
 
   private countedBreakdown(by: CountedBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
-    const launches = this.collectedLaunches();
+    const launches = this.collectedLaunches(this.datedLaunches);
     if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
     const since = this.tallyDay;
     const current = within(launches, head.period);
@@ -263,7 +271,7 @@ class ScopedAnalysis {
 
   private usageRows(input: AnalysisListInput, head: AnalysisHead) {
     const by = input.by;
-    const launches = isCountedBy(by) ? this.collectedLaunches() : this.datedLaunches;
+    const launches = isCountedBy(by) ? this.collectedLaunches(this.datedLaunches) : this.datedLaunches;
     const selected = within(launches, head.period).filter(item =>
       !by || this.usageKeys(item, by).some(key => key.key === input.key));
     return [...group(selected, item => single(item.root)).values()].map(({ key, items }) => {
@@ -323,9 +331,10 @@ class ScopedAnalysis {
     const { time, band } = unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, this.now);
     // Use the same Run attribution as the period view, over this Task's lifetime.
     const items = this.datedLaunches.filter(item => item.root === root);
+    const collected = this.collectedLaunches(items);
     const models = this.usageGroups(items, 'model').map(({ label, counts }) =>
       ({ label, launches: counts.launches, runMs: counts.runMs, output: counts.tokens.output }));
-    const tools = this.usageGroups(items, 'tool').map(({ key, calls }) =>
+    const tools = this.usageGroups(collected, 'tool').map(({ key, calls }) =>
       ({ name: (JSON.parse(key) as [string, string])[1], calls: calls! }));
     const toolCounts = new Map<string, number>();
     for (const { name, calls } of tools) toolCounts.set(name, (toolCounts.get(name) ?? 0) + calls);
@@ -333,9 +342,9 @@ class ScopedAnalysis {
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
       questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
       usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
-      skills: this.usageGroups(items, 'skill').map(group => group.key).sort(),
+      skills: this.usageGroups(collected, 'skill').map(group => group.key).sort(),
       tools: [...toolCounts].map(([name, calls]) => ({ name, calls })).sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name, 'en')),
-      tallied: this.tallyCoverage(items) };
+      tallied: { runs: collected.length, of: items.filter(({ run }) => run.tallyEligible).length, since: this.tallyDay } };
   }
 }
 
