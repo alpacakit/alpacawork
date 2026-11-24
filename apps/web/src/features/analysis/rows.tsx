@@ -133,7 +133,7 @@ const lit = (bin: Bin, span: Days) => bin.from >= span.from && bin.to <= span.to
 function Frame({ scale, height, children }: { scale: Scale; height: string; children: ReactNode }) {
   return <div className="pt-4 narrow:pt-4.5">
     <div className={cn("relative", height)}>
-      <span aria-hidden className="absolute -top-4 start-0 text-xs leading-none text-soft">{scale.label}</span>
+      <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>

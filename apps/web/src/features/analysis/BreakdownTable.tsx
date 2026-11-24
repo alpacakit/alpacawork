@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useNarrow } from "@/state/view-store";
 import { Icon } from "@/components/ui/icon";
 import { tip, useChoices } from "./parts";
 
@@ -17,15 +18,23 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
   const all = useChoices(state => state.all);
   const [shown, setShown] = useState<Record<string, number>>({});
   const on = shown[id] ?? 0;
+  const narrow = useNarrow();
   const most = Math.max(1, ...rows.map(row => row.bar));
   const visible = all ? rows : rows.slice(0, limit);
   if (!rows.length) return <p className="text-soft">{t("usage.none")}</p>;
-  const column = (at: number) => cn("w-33 text-end narrow:hidden", at === on && "narrow:table-cell narrow:w-auto");
+  const column = (at: number) => cn("text-end narrow:hidden", at === on && "narrow:table-cell narrow:w-auto");
+  // On a computer the table stands on the page's grid: the name and its bar over the left three columns and the gap after
+  // them, the numbers over the right nine, a seventh of them each, from the left.
+  const unit = "(100% - 264px)";
   return <>
-    <table className="w-full border-collapse">
+    <table className="w-full table-fixed border-collapse narrow:table-auto">
+      {!narrow && <colgroup>
+        <col style={{ width: `calc(${unit} / 4 - 40px)` }} /><col style={{ width: "112px" }} />
+        {columns.map(name => <col key={name} style={{ width: `calc((${unit} * 0.75 + 192px) / 7)` }} />)}<col />
+      </colgroup>}
       <thead><tr className="h-7 text-xs text-soft">
-        <th className="w-55 text-start font-normal narrow:w-auto">{head}</th>
-        <th className="w-28 px-2 narrow:w-16" />
+        <th className="text-start font-normal">{head}</th>
+        <th className="px-2 narrow:w-16" />
         {columns.map((name, at) => <th key={name} className={cn(column(at), "px-2 font-normal whitespace-nowrap")}>
           <span className="narrow:hidden">{name}</span>
           {/* On a phone the column's name chooses which column shows: the arrow says it opens a choice. */}
@@ -40,7 +49,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
         <th className="narrow:hidden" />
       </tr></thead>
       <tbody>{visible.map(row => <tr key={row.key} className="h-9 border-b border-rule">
-        <td dir="auto" className="whitespace-nowrap narrow:whitespace-normal">{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
+        <td dir="auto" className="truncate narrow:whitespace-normal">{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
         <td className="px-2"><i style={{ width: `${row.bar / most * 100}%` }} className="block h-1.5 min-w-0.5 rounded-full bg-muted" /></td>
         {row.cells.map((cell, at) => <td key={at} className={column(at)}>
           {cell.open
