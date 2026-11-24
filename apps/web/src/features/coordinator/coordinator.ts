@@ -29,7 +29,7 @@ type View = {
   conversation: CoordinatorConversation | null;
   /** Derived from the server-confirmed reply IDs, including ACKs not yet present in a GET. */
   read: boolean;
-  /** Presentation anchor for this opening; never a copy of unread facts or a condition for reading. */
+  /** Presentation anchor for this opening; never a copy of unread facts. Its settling is the press's own read (read-boundary). */
   opening: Opening | null;
   seen: ReadonlySet<string>;
   pendingSeen: ReadonlySet<string>;

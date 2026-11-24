@@ -47,6 +47,17 @@ test("text entered without a key event is an action", () => {
   expect(read()).toEqual(["new"]);
 });
 
+test("a press before the conversation has loaded reads what its own first read brings, and nothing after", () => {
+  setConversationState({ conversation: null });
+  render(<Harness />);
+  act(() => setConversationState({ expanded: true, opening: opening([], 1) }));
+  const taken = useConversation.getState().opening!;
+  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first")]), opening: { ...taken, settled: true } }));
+  expect(read()).toEqual(["first"]);
+  act(() => setConversationState({ conversation: conversation([reply("old", true), reply("first", true), reply("later")]) }));
+  expect(read()).toEqual(["first"]);
+});
+
 test("a pending presentation refresh cannot keep completed replies unread", () => {
   const turns = [reply("old", true), reply("unread")];
   setConversationState({ conversation: conversation(turns), opening: opening(turns, 99) });

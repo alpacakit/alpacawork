@@ -318,6 +318,9 @@ test('at work folded history is read too; the new answer moves nothing', async (
   const before = await top(page);
   writeFileSync(gate, '');
   await answered(page, runtime, 4);
+  await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, false]);
+  // The answer that came in while nobody acted is read by the next input.
+  await page.keyboard.press('Shift');
   await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, true]);
   await page.waitForTimeout(300);
   expect(await top(page)).toBe(before);
@@ -338,6 +341,9 @@ test.describe('send, answer, close and open again', () => {
       const sendHere = async (text: string) => { await input.fill(text); await page.locator('[data-coordinator-card] [data-ask-send]').click(); };
       await sendHere('markdown-answer IN-SIGHT');
       await answered(page, runtime, 3);
+      // Shown, it is read by the next input on the page.
+      await expect(page.locator('[data-coordinator-turn]').last()).toContainText('IN-SIGHT');
+      await page.keyboard.press('Shift');
       await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
       await page.screenshot({ path: info.outputPath(`1-answered-in-sight-${width}.png`) });
       // Two answers come while it is closed: the first folds, the latest stays shown.
