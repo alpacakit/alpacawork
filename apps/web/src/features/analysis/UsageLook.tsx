@@ -79,6 +79,8 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const lines = [
     ...taskPoints ? [{ name: t("tasks.finished"), value: (i: number) => format("tasks", taskPoints[i]!.counts.finished),
       parts: (i: number) => finishedParts(taskPoints[i]!.counts) }] : [],
+    // The day's token total, said once above its three parts (it has no chart of its own).
+    { name: t("usage.tokens"), value: (i: number) => format("tokens", tokens(points[i]!.counts)) },
     ...order.map(key => ({ name: names[key], value: (i: number) => format(VALUES[key].kind, VALUES[key].read(points[i]!.counts)) })),
   ];
   const first = taskPoints ? 1 : 0;
@@ -100,7 +102,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       {/* Every row says its own value for the span, those the lead numbers say too: a row is read the same way everywhere. */}
       {order.map((key, at) => <Row key={key} left={<Num className="" label={names[key]} kind={VALUES[key].kind} value={VALUES[key].read(now)} previous={before ? VALUES[key].read(before) : null} length={length}
           onOpen={() => open({ set: "used", value: key })} />}>
-        <BarChart row={first + at} height={key === "newConversations" ? "h-14 narrow:h-11" : "h-16 narrow:h-12"} scale={scales[key]} grow
+        <BarChart row={first + 1 + at} height={key === "newConversations" ? "h-14 narrow:h-11" : "h-16 narrow:h-12"} scale={scales[key]} grow
           values={i => [["bg-muted", VALUES[key].read(points[i]!.counts)]]} />
         {at === order.length - 1 && <DayAxis />}
       </Row>)}

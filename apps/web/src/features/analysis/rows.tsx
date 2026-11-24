@@ -117,7 +117,8 @@ const useGroup = () => useContext(GroupContext)!;
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
-    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col">
+    {/* Leaving the day columns (for the numbers on the left) closes what a day said. */}
+    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? () => group.point(null) : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto"
