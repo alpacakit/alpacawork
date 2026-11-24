@@ -23,7 +23,7 @@ import { managerScript, settleTransaction, launch } from '@alpacawork/backend/te
 import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
 import { EventJournal, executionFolder, identityOf, messageName } from '@alpacawork/backend/test-dist/runs/execution-files.js';
-import { claimCompaction, requestCompaction, settleCompaction } from '@alpacawork/backend/test-dist/runs/compactions.js';
+import { claimCompaction, latestCompactions, requestCompaction, settleCompaction } from '@alpacawork/backend/test-dist/runs/compactions.js';
 import { changeFixture } from './helpers/change-fixture.ts';
 import { changeAudit } from './helpers/control-change-audit.ts';
 import { assignResponsible, grantFixtureRequest } from './helpers/control-fixture.ts';
@@ -282,22 +282,31 @@ test('seeded real operations cover writers and every committed row change has it
   }));
   assert.ok(carrying.compaction, 'a resumed launch carries the pending compaction');
   const resumedLaunch = { launch: carrying.invocation.launch, mode: 'resume' as const };
-  const settle = (outcome: Parameters<typeof settleCompaction>[2], started: boolean) => write(db =>
-    settleCompaction(db, carrying.attemptId, outcome, started, new Date().toISOString()));
+  const settle = (outcome: Parameters<typeof settleCompaction>[2]) => write(db =>
+    settleCompaction(db, carrying.attemptId, outcome, new Date().toISOString()));
+  const initialInput = (state: 'reserved' | 'not_sent') => runs.write(() => {
+    runs.connection.prepare('UPDATE run_inputs SET state=? WHERE input_id=?').run(state, carrying.initialInputId);
+    touch(runs.connection, { kind: 'input', id: carrying.initialInputId });
+  });
   const carry = (mode: 'start' | 'resume' = 'resume') => write(db => claimCompaction(db, compactSeat.placement.id,
     carrying.attemptId, { ...resumedLaunch, mode }, new Date().toISOString()));
-  await step('settle compacted', () => settle({ state: 'compacted', message: null }, true));
+  const latest = () => control.write(db => latestCompactions(db, [compactSeat.placement.id]).get(compactSeat.placement.id)?.state);
+  await step('settle compacted', () => settle({ state: 'compacted', message: null }));
+  assert.equal(latest(), 'compacted');
   await step('request compaction again', () => ask(null));
   await step('carry it again', () => carry());
-  await step('settle without an answer', () => settle(null, true));
+  await step('settle without an answer', () => settle(null));
+  assert.equal(latest(), 'unknown', 'sent with its instruction and never answered');
+  await step('arrange an unsent initial input', () => initialInput('not_sent'));
   await step('request one to be replaced', () => ask(null));
   await step('carry the replaced one', () => carry());
   await step('request its replacement', () => ask(null));
-  await step('settle the replaced one unstarted', () => settle(null, false));
+  await step('settle the replaced one unsent', () => settle(null));
   await step('drop for a new conversation', () => carry('start'));
-  await step('request one never started', () => ask(null));
-  await step('carry the unstarted one', () => carry());
-  await step('return it to pending', () => settle(null, false));
+  await step('request one never sent', () => ask(null));
+  await step('carry the unsent one', () => carry());
+  await step('return it to pending', () => settle(null));
+  assert.equal(latest(), 'pending', 'never sent: it waits for the next start again');
 
   const missing = inventory.filter(site => trackedSite(site) && !observed.seen.has(siteId(site)));
   assert.deepEqual(missing.map(site => `${site.file}:${site.line} ${site.sql}`), [], 'every owned write site executes at least once');

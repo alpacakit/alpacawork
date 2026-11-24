@@ -123,6 +123,7 @@
       "code_file_outside": "Outside the project's working folder: {{path}}",
       "code_file_shared": "This file shares its contents with another location: {{path}}",
       "compaction_instructions_unsupported": "This agent compacts without instructions; leave them out",
+      "compaction_needs_model": "This agent compacts only a conversation with a chosen model; choose one in its agent settings",
       "compaction_unsupported": "This agent cannot compact a conversation",
       "compaction_without_conversation": "This owner or member has no conversation to compact yet",
       "config_digest_differs": "The config digest does not match",

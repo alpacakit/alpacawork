@@ -23,7 +23,7 @@ const ability = (adapter: unknown) => {
   return id.success ? AGENT_ADAPTERS[id.data].compaction : null;
 };
 const refuse = (message: string,
-  kind: 'compaction_without_conversation' | 'compaction_unsupported' | 'compaction_instructions_unsupported') =>
+  kind: 'compaction_without_conversation' | 'compaction_unsupported' | 'compaction_instructions_unsupported' | 'compaction_needs_model') =>
   new Problem(PROBLEM_CODE.invalidInput, message, undefined, { reason: { kind } });
 
 /**
@@ -36,11 +36,14 @@ export function requestCompaction(db: DatabaseSync, input: { taskId: string; pla
   if (!placement || placement.ended_at !== null)
     throw new Problem(PROBLEM_CODE.notFound, 'No active placement with this ID on the task', undefined,
       { reason: { kind: 'placement_does_not_belong_task' } });
-  const head = db.prepare(`SELECT json_extract(record,'$.launch.adapter') AS adapter FROM runs
-    WHERE placement_id=? AND session_id IS NOT NULL ORDER BY id DESC LIMIT 1`).get(input.placementId);
+  const head = db.prepare(`SELECT json_extract(record,'$.launch.adapter') AS adapter,json_extract(record,'$.launch.values.model') AS model
+    FROM runs WHERE placement_id=? AND session_id IS NOT NULL ORDER BY id DESC LIMIT 1`).get(input.placementId);
   if (!head) throw refuse('This placement has no conversation to compact yet', 'compaction_without_conversation');
   const can = ability(head.adapter);
   if (!can) throw refuse(`${String(head.adapter)} cannot compact a conversation`, 'compaction_unsupported');
+  // 'auto' is how a profile names an agent's automatic choice of model.
+  if (can.needsModel && (typeof head.model !== 'string' || !head.model || head.model === 'auto'))
+    throw refuse(`${String(head.adapter)} compacts only a conversation with a chosen model; choose one in its agent settings`, 'compaction_needs_model');
   if (input.instructions !== null && !can.instructions)
     throw refuse(`${String(head.adapter)} compacts without instructions; leave out --instructions`, 'compaction_instructions_unsupported');
   const pending = db.prepare("SELECT id FROM compactions WHERE placement_id=? AND state='pending'").get(input.placementId);
@@ -70,24 +73,27 @@ export function claimCompaction(db: DatabaseSync, placementId: string | null, at
 }
 
 /**
- * How the compaction `attemptId` carried ended, from its completion: what the agent said; else, when its agent never
- * started, it waits for the next start again (unless a newer request replaced it); else nobody knows.
+ * How the compaction `attemptId` carried ended, once its attempt ended (its completion, or a launch that never started).
+ * It went with the attempt's initial input, so it shares that input's fate: never sent, it waits for the next start
+ * again (unless a newer request replaced it); sent, it is what the agent said of it, else nobody knows.
  */
-export function settleCompaction(db: DatabaseSync, attemptId: string, outcome: CompactionOutcome | null, started: boolean, at: string): void {
-  const row = db.prepare("SELECT id,placement_id FROM compactions WHERE attempt_id=? AND state='sent'").get(attemptId);
+export function settleCompaction(db: DatabaseSync, attemptId: string, outcome: CompactionOutcome | null, at: string): void {
+  const row = db.prepare(`SELECT c.id,c.placement_id,i.state AS input FROM compactions c
+    LEFT JOIN run_inputs i ON i.attempt_id=c.attempt_id AND i.initial=1 WHERE c.attempt_id=? AND c.state='sent'`).get(attemptId);
   if (!row) return;
   const id = String(row.id), placementId = String(row.placement_id);
   if (outcome) db.prepare('UPDATE compactions SET state=?,message=?,ended_at=? WHERE id=?').run(outcome.state, outcome.message, at, id);
-  else if (started) db.prepare("UPDATE compactions SET state='unknown',ended_at=? WHERE id=?").run(at, id);
+  else if (row.input !== 'not_sent') db.prepare("UPDATE compactions SET state='unknown',ended_at=? WHERE id=?").run(at, id);
   else if (db.prepare("SELECT 1 FROM compactions WHERE placement_id=? AND state='pending'").get(placementId))
     db.prepare("UPDATE compactions SET state='dropped',message='A newer request replaced it',ended_at=? WHERE id=?").run(at, id);
   else db.prepare("UPDATE compactions SET state='pending',attempt_id=NULL WHERE id=?").run(id);
   changed(db, placementId);
 }
 
-/** Each placement's latest compaction request, for the placements of `taskId`. */
-export function latestCompactions(db: DatabaseSync, taskId: string): Map<string, Compaction> {
-  const rows = db.prepare(`SELECT c.* FROM compactions c JOIN placements p ON p.id=c.placement_id WHERE p.task_id=?
-    ORDER BY c.requested_at,c.rowid`).all(taskId);
-  return new Map(rows.map(row => [String(row.placement_id), view(row, taskId)]));
+/** Each of `placementIds`' latest compaction request, as task get and the screen show it with the placement. */
+export function latestCompactions(db: DatabaseSync, placementIds: readonly string[]): Map<string, Compaction> {
+  if (!placementIds.length) return new Map();
+  const rows = db.prepare(`SELECT c.*,p.task_id FROM compactions c JOIN placements p ON p.id=c.placement_id
+    WHERE c.placement_id IN (SELECT value FROM json_each(?)) ORDER BY c.requested_at,c.rowid`).all(JSON.stringify(placementIds));
+  return new Map(rows.map(row => [String(row.placement_id), view(row, String(row.task_id))]));
 }

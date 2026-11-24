@@ -66,6 +66,7 @@ Besides the file for your role, read the following according to the situation.
 | Record (including urgent notes) | `task comment` |
 | Read the returns and notices that arrived | `task returns` |
 | Assign, hand over or release an agent | `agent assign`, `agent handover`, `agent release` |
+| Compact a conversation before its next instruction (it spends tokens) | `agent compact` |
 | Read a Run's result or stop a Run | `run get`, `run stop` |
 | Read or change personal settings (such as the language for the user) | `settings get`, `settings set` |
 | Read the fields a task writes (ID, maximum length, how to write) before writing values | `field get` |

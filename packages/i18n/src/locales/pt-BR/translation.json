@@ -123,6 +123,7 @@
       "code_file_outside": "Fora da pasta de trabalho do projeto: {{path}}",
       "code_file_shared": "Este arquivo compartilha o conteúdo com outro local: {{path}}",
       "compaction_instructions_unsupported": "Este agente compacta sem instruções; retire-as",
+      "compaction_needs_model": "Este agente só compacta uma conversa com um modelo escolhido; escolha um nas configurações do agente",
       "compaction_unsupported": "Este agente não pode compactar uma conversa",
       "compaction_without_conversation": "Este responsável ou membro ainda não tem uma conversa para compactar",
       "config_digest_differs": "O digest da configuração não corresponde",

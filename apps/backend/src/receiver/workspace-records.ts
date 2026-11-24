@@ -285,9 +285,9 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
     const id = previous.task.id;
     const put = <K extends keyof TaskBundle>(key: K, data: TaskBundle[K]) => { value = { ...value, [key]: data }; };
     if (read.has('placements')) {
-      const compactions = latestCompactions(db, id);
-      put('placements', db.prepare('SELECT * FROM placements WHERE task_id=? ORDER BY started_at,id').all(id)
-        .map(row => { const placement = parseStoredPlacement(row); return { ...placement, compaction: compactions.get(placement.id) ?? null }; }));
+      const placements = db.prepare('SELECT * FROM placements WHERE task_id=? ORDER BY started_at,id').all(id).map(parseStoredPlacement);
+      const compactions = latestCompactions(db, placements.map(placement => placement.id));
+      put('placements', placements.map(placement => ({ ...placement, compaction: compactions.get(placement.id) ?? null })));
     }
     if (read.has('requests')) {
       const requests = delta ? new Map(previous.requests.map(row => [row.id, row])) : new Map<string, StoredRequest>();

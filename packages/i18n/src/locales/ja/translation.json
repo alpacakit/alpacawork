@@ -123,6 +123,7 @@
       "code_file_outside": "プロジェクトに登録した作業フォルダの外です: {{path}}",
       "code_file_shared": "ほかの場所と中身を共有しているファイルです: {{path}}",
       "compaction_instructions_unsupported": "このエージェントは指示を受けずに圧縮します。指示を外してください",
+      "compaction_needs_model": "このエージェントは、モデルを選んだ会話しか圧縮できません。エージェント設定でモデルを選んでください",
       "compaction_unsupported": "このエージェントは会話を圧縮できません",
       "compaction_without_conversation": "この責任者・作業者には、まだ圧縮できる会話がありません",
       "config_digest_differs": "設定のダイジェストが一致しません",
