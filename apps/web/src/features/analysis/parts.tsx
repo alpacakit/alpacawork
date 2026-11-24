@@ -109,36 +109,45 @@ export const tip = (words: string) => ({ "data-tip": words, "aria-label": words 
 export function PointerTip({ root }: { root: HTMLElement | null }) {
   const [shown, setShown] = useState<{ words: string; x: number; top: number; bottom: number } | null>(null);
   const tip = useRef<HTMLDivElement>(null);
+  const leaving = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stay = () => { if (leaving.current) clearTimeout(leaving.current); leaving.current = null; };
+  // Closing waits a moment, so the pointer can cross from a mark to its window (to scroll a tall one) without losing it.
+  const hideSoon = () => { stay(); leaving.current = setTimeout(() => { leaving.current = null; setShown(null); }, TIP_LEAVE_MS); };
   useEffect(() => {
     if (!root) return;
+    let mark: HTMLElement | null = null;
+    const hide = () => { stay(); mark = null; setShown(null); };
     // A move to another step (Back, a row opened) takes away what it said: it was about what is no longer shown.
-    const stopStep = subscribeStep(() => setShown(null));
-    const place = (mark: HTMLElement) => {
-      const box = mark.getBoundingClientRect();
-      setShown({ words: mark.dataset.tip!, x: box.left + box.width / 2, top: box.top, bottom: box.bottom });
+    const stopStep = subscribeStep(hide);
+    const place = (next: HTMLElement) => {
+      stay(); mark = next;
+      const box = next.getBoundingClientRect();
+      setShown({ words: next.dataset.tip!, x: box.left + box.width / 2, top: box.top, bottom: box.bottom });
     };
+    // The screen resized: the window is placed again by its mark where it now stands.
+    const resized = () => { if (mark?.isConnected) place(mark); else if (mark) hide(); };
+    addEventListener("resize", resized);
+    const stop = () => { stay(); stopStep(); removeEventListener("resize", resized); };
     // Under a finger there is no pointing: a mark that says only its value (`data-tip-tap`) says it when pressed.
     if (matchMedia("(hover: none)").matches) {
       const press = (event: MouseEvent) => {
-        const mark = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip-tap][data-tip]");
-        if (mark) place(mark); else setShown(null);
+        const next = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip-tap][data-tip]");
+        if (next) place(next); else hide();
       };
       root.addEventListener("click", press);
-      return () => { stopStep(); root.removeEventListener("click", press); };
+      return () => { stop(); root.removeEventListener("click", press); };
     }
     const over = (event: MouseEvent) => {
-      const mark = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
-      if (!mark?.dataset.tip) { setShown(null); return; }
-      place(mark);
+      const next = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
+      if (next?.dataset.tip) place(next); else hideSoon();
     };
-    // Leaving for the window itself (to scroll one too tall for the screen) keeps it.
-    const out = (event: MouseEvent) => { if (!tip.current?.contains(event.relatedTarget as Node | null)) setShown(null); };
     root.addEventListener("mouseover", over);
-    root.addEventListener("mouseleave", out);
-    return () => { stopStep(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", out); };
+    root.addEventListener("mouseleave", hideSoon);
+    return () => { stop(); root.removeEventListener("mouseover", over); root.removeEventListener("mouseleave", hideSoon); };
   }, [root]);
-  return shown && <TipBox {...shown} tipRef={tip} onLeave={() => setShown(null)} />;
+  return shown && <TipBox {...shown} tipRef={tip} onEnter={stay} onLeave={hideSoon} />;
 }
+export const TIP_LEAVE_MS = 200;
 /**
  * Where a small window stands, the one rule for all of them (the time band, the calendar, the charts): above its mark
  * where it fits, else under it, else on the side with more room, its height held to that room (the rest scrolls inside
@@ -150,13 +159,14 @@ export function tipPlace({ top, bottom, height, screen, margin = 4, gap = 6 }: {
   if (height <= below) return { top: bottom + gap, maxHeight: null };
   return above > below ? { top: margin, maxHeight: Math.max(0, above) } : { top: bottom + gap, maxHeight: Math.max(0, below) };
 }
-function TipBox({ words, x, top, bottom, tipRef, onLeave }: { words: string; x: number; top: number; bottom: number;
-  tipRef: React.RefObject<HTMLDivElement | null>; onLeave: () => void }) {
+function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: string; x: number; top: number; bottom: number;
+  tipRef: React.RefObject<HTMLDivElement | null>; onEnter: () => void; onLeave: () => void }) {
   const [scrolls, setScrolls] = useState(false);
   useLayoutEffect(() => {
     const self = tipRef.current;
     if (!self) return;
-    self.style.maxHeight = "";
+    // Measured at the screen's left with no height held, so a mark near the right edge keeps the window its own width.
+    self.style.maxHeight = ""; self.style.left = "0px";
     const width = self.offsetWidth, place = tipPlace({ top, bottom, height: self.offsetHeight, screen: innerHeight });
     self.style.left = `${Math.max(4, Math.min(innerWidth - width - 4, x - width / 2))}px`;
     self.style.top = `${place.top}px`;
@@ -164,7 +174,7 @@ function TipBox({ words, x, top, bottom, tipRef, onLeave }: { words: string; x: 
     setScrolls(place.maxHeight !== null);
   }, [words, x, top, bottom, tipRef]);
   // One that scrolls takes the pointer and the finger, so what is past its height can be read.
-  return <div ref={tipRef} role="presentation" style={{ left: x, top }} onMouseLeave={onLeave}
+  return <div ref={tipRef} role="presentation" style={{ left: x, top }} onMouseEnter={onEnter} onMouseLeave={onLeave}
     className={cn("fixed z-(--layer-popover) max-w-[calc(100vw-8px)] overflow-y-auto overscroll-contain rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-pre-line shadow-float",
       !scrolls && "pointer-events-none")}>{words}</div>;
 }
