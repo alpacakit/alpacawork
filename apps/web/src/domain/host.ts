@@ -31,13 +31,6 @@ export function episodeReasons(episode: HostEpisode, locale: string): { kind: Ho
       : formatGigabytes(episode.peak.diskFreeBytes, locale) }));
 }
 
-export type SparkPoint = { at: number; value: number | null };
-/**
- * One line over a fixed time window (0–100 on the value axis), the dashed line at `line`, and the stretches on the
- * tight side of it shaded. Points without a value break the line. Each piece of line also has an area that closes it
- * toward the side that is taken (the bottom for a share in use, the top for a share free), and `last` is the newest
- * point drawn. Coordinates are in a `width`×`height` box.
- */
 /** "RTX 6000 Ada ×2" or "RTX 4090 · RTX 3090": the machine's GPUs by model, without the maker's name. */
 export function gpuModels(gpus: readonly { name: string }[]): string {
   const counts = new Map<string, number>();
@@ -48,6 +41,13 @@ export function gpuModels(gpus: readonly { name: string }[]): string {
   return [...counts].map(([name, count]) => count > 1 ? `${name} ×${count}` : name).join(" · ");
 }
 
+export type SparkPoint = { at: number; value: number | null };
+/**
+ * One line over a fixed time window (0–100 on the value axis), the dashed line at `line`, and the stretches on the
+ * tight side of it shaded. Points without a value break the line. Each piece of line also has an area that closes it
+ * toward the side that is taken (the bottom for a share in use, the top for a share free), and `last` is the newest
+ * point drawn. Coordinates are in a `width`×`height` box.
+ */
 export function sparkShape(points: readonly SparkPoint[], window: { from: number; to: number }, line: number, tightBelow: boolean,
   width: number, height: number, step: number) {
   const span = Math.max(1, window.to - window.from);
@@ -71,10 +71,10 @@ export function sparkShape(points: readonly SparkPoint[], window: { from: number
   return { paths: pieces.map(draw), areas, bands, lineY: y(line), last: pieces[pieces.length - 1]?.at(-1) ?? null };
 }
 
-/** "9.8 / 48 GB": a GPU's free VRAM over its whole, the whole rounded as a card is sold (47.99 GiB reads 48). */
-export function formatVramFree(memory: { usedBytes: number; totalBytes: number }, locale: string): string {
-  const free = Math.max(0, memory.totalBytes - memory.usedBytes) / GB;
+/** "42.5 / 48 GB": a GPU's VRAM in use over its whole, as nvidia-smi reads, the whole rounded as a card is sold (47.99 GiB reads 48). */
+export function formatVramUsed(memory: { usedBytes: number; totalBytes: number }, locale: string): string {
+  const used = memory.usedBytes / GB;
   const whole = memory.totalBytes / GB;
   const wholeDigits = Number.isInteger(Math.round(whole * 10) / 10) ? 0 : 1;
-  return `${gigabytes(free, locale, free < 100 ? 1 : 0, false)} / ${gigabytes(whole, locale, wholeDigits, true)}`;
+  return `${gigabytes(used, locale, used < 100 ? 1 : 0, false)} / ${gigabytes(whole, locale, wholeDigits, true)}`;
 }

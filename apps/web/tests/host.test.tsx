@@ -69,10 +69,11 @@ test("the tab shows this machine, the heaviest Runs with a way to their Task, an
   expect(useDialogStore.getState().dialog).toBeNull();
 });
 
-test("each GPU shows its use, its free VRAM and who holds it, and leaves out what the machine cannot read", async () => {
+test("each GPU shows its use, its VRAM in use and who holds it, and leaves out what the machine cannot read", async () => {
   const gpu = (id: string) => ({ id, name: "NVIDIA RTX 6000 Ada Generation",
     utilization: 82, memory: { usedBytes: 38.2 * GB, totalBytes: 47.99 * GB },
     users: [{ name: "llama-server", memoryBytes: 37.6 * GB, runId: null, taskId: null }, { name: "python3", memoryBytes: 0.5 * GB, runId: "R1", taskId: "T1" }] });
+  const vram = (text: string) => (_: string, element: Element | null) => element?.tagName === "DIV" && element.textContent === `${i18n.t("panels:host.vram")} ${text}`;
   const two = { ...status, sample: { ...status.sample!, gpus: [gpu("0"), { ...gpu("1"), utilization: null, memory: null, users: null }] } };
   vi.spyOn(api, "request").mockResolvedValue(two);
   const view = render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
@@ -80,17 +81,20 @@ test("each GPU shows its use, its free VRAM and who holds it, and leaves out wha
   const [first, second] = [...document.querySelectorAll<HTMLElement>("[data-host-gpu]")];
   expect(within(first!).getByText(i18n.t("panels:host.gpuNumbered", { index: 0 }))).toBeTruthy();
   expect(within(first!).getByText("82%")).toBeTruthy();
-  expect(within(first!).getByText("9.8 / 48 GB")).toBeTruthy();
-  expect(within(first!).getByText("llama-server 37.6 GB · T1 python3 0.5 GB")).toBeTruthy();
+  expect(within(first!).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
+  expect(within(first!).getByText("llama-server 37.6 GB")).toBeTruthy();
+  expect(within(first!).getByText("T1 python3 0.5 GB")).toBeTruthy();
   expect(within(second!).getByText(i18n.t("panels:host.gpuNumbered", { index: 1 }))).toBeTruthy();
   expect(within(second!).getByText("—")).toBeTruthy();
-  expect(within(second!).queryByText(i18n.t("panels:host.vramFree"))).toBeNull();
+  expect(within(second!).queryByText(i18n.t("panels:host.vram"), { exact: false })).toBeNull();
   view.unmount();
 
-  vi.spyOn(api, "request").mockResolvedValue({ ...status, sample: { ...status.sample!, gpus: [{ ...gpu("0"), users: [] }] } });
+  vi.spyOn(api, "request").mockResolvedValue({ ...status, sample: { ...status.sample!, gpus: [{ ...gpu("0"),
+    users: [{ name: "ollama", memoryBytes: 1 * GB, runId: "R2", taskId: null }] }] } });
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
   const only = await screen.findByText(i18n.t("panels:host.gpu"), { selector: "[data-host-gpu] span" });
-  expect(within(only.parentElement!).getByText(i18n.t("panels:host.vramFree"))).toBeTruthy();
+  expect(within(only.parentElement!).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
+  expect(within(only.parentElement!).getByText(`${i18n.t("ui:role.coordinator")} ollama 1.0 GB`), "a Run without a Task is named as the coordinator's").toBeTruthy();
 });
 
 test("the coordinator's Run is named in the screen's language, not by the title the server gave it", async () => {

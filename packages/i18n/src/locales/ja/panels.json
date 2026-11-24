@@ -279,7 +279,7 @@
     "cpu": "CPU",
     "disk": "ディスクの空き",
     "episodeRuns": "このとき実行中だった Run",
-    "episodeRunsNote": "CPU・メモリの最大",
+    "episodeRunsNote": "最大の CPU · メモリ",
     "episodes": "高負荷の履歴",
     "episodesNote": "過去90日",
     "error": "計測できませんでした: {{error}}",
@@ -313,7 +313,7 @@
     "unsupported": "この PC（{{platform}}）の状態は、まだ表示できません。",
     "unsupportedHint": "Linux・macOS・Windows に対応しています。",
     "updated": "10秒ごとに更新 · {{time}}",
-    "vramFree": "VRAM の空き",
+    "vram": "VRAM",
     "whole": "{{minutes}}分間ずっと",
     "worker": "作業者",
     "yesterday": "昨日"

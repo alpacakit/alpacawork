@@ -313,7 +313,7 @@
     "unsupported": "暂时无法测量这台主机（{{platform}}）。",
     "unsupportedHint": "支持 Linux、macOS 和 Windows。",
     "updated": "每 10 秒更新 · {{time}}",
-    "vramFree": "可用显存",
+    "vram": "VRAM",
     "whole": "全程 {{minutes}} 分钟",
     "worker": "成员",
     "yesterday": "昨天"

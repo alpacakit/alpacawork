@@ -78,6 +78,7 @@ export function nvidiaGpuReader(processTime: () => number, readProcesses: () => 
       running = true;
       // Even if a driver prevents the killed process from exiting, release the HTTP request at the deadline.
       const deadline = setTimeout(() => reject(new Error('nvidia-smi query timed out')), QUERY_TIMEOUT_MS);
+      deadline.unref();
       child.unref();
     });
   }

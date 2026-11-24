@@ -325,7 +325,7 @@
     "unsupported": "Este equipo ({{platform}}) aún no se puede medir.",
     "unsupportedHint": "Compatible con Linux, macOS y Windows.",
     "updated": "Se actualiza cada 10 segundos · {{time}}",
-    "vramFree": "VRAM libre",
+    "vram": "VRAM",
     "whole": "los {{minutes}} min completos",
     "worker": "miembro",
     "yesterday": "Ayer"

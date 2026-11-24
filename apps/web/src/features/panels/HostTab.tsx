@@ -6,7 +6,7 @@ import { heaviestText, type HostEpisode, type HostKind, type HostStatus } from "
 import { Button } from "@/components/ui/button";
 import { useWorkspaceInfo } from "@/data/queries";
 import { resources } from "@/data/resources";
-import { episodeReasons, formatGigabytes, formatPercent, formatVramFree, gpuModels, spanMinutes, sparkShape, type SparkPoint } from "@/domain/host";
+import { episodeReasons, formatGigabytes, formatPercent, formatVramUsed, gpuModels, spanMinutes, sparkShape, type SparkPoint } from "@/domain/host";
 import { calendarDayOffset, formatCalendarDate, formatClock } from "@/domain/time";
 import { cn } from "@/lib/utils";
 import { useMoveToTask } from "./use-move-to-task";
@@ -111,29 +111,32 @@ function Tiles({ status, sample, now }: { status: Measured; sample: Sample; now:
   );
 }
 
-/** One GPU: how busy it is, its VRAM taken and free, and what holds the most of it. Parts the machine cannot read are left out. */
+/**
+ * One GPU: how busy it is, then its VRAM in use over the whole with a bar under that line, and what holds the most
+ * of it, one to a line. Parts the machine cannot read are left out.
+ */
 function GpuTile({ gpu, label }: { gpu: Gpu; label: string }) {
   const { t, i18n } = useTranslation("panels");
   const locale = i18n.language;
-  const users = gpu.users?.map(user => [user.taskId, user.name, formatGigabytes(user.memoryBytes, locale)].filter(Boolean).join(" ")).join(" · ");
-  return <Tile label={label} value={formatPercent(gpu.utilization, locale)} tight={false} gpu={gpu.id} note={users || undefined}
-    chart={gpu.memory && <>
-      <Bar share={100 * gpu.memory.usedBytes / gpu.memory.totalBytes} className="mt-2" />
-      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-xs whitespace-nowrap">
-        <span className="text-muted">{t("host.vramFree")}</span><span className="tabular-nums">{formatVramFree(gpu.memory, locale)}</span>
-      </div>
-    </>} />;
+  const holders = gpu.users?.map(user => [user.taskId ?? (user.runId !== null ? t("ui:role.coordinator") : null), user.name,
+    formatGigabytes(user.memoryBytes, locale)].filter(Boolean).join(" ")) ?? [];
+  return <Tile label={label} value={formatPercent(gpu.utilization, locale)} tight={false} gpu={gpu.id} note={holders}
+    chart={gpu.memory && <div className="mt-2.5">
+      <div className="truncate text-xs tabular-nums"><span className="text-muted">{t("host.vram")}</span> {formatVramUsed(gpu.memory, locale)}</div>
+      <Bar share={100 * gpu.memory.usedBytes / gpu.memory.totalBytes} className="mt-1" />
+    </div>} />;
 }
 
-function Tile({ label, value, side, tight, chart, note, gpu }: { label: string; value: ReactNode; side?: string; tight: boolean;
-  chart?: ReactNode; note?: string; gpu?: string }) {
+function Tile({ label, value, side, tight, chart, note = [], gpu }: { label: string; value: ReactNode; side?: string; tight: boolean;
+  chart?: ReactNode; note?: readonly string[]; gpu?: string }) {
   return (
     <div data-host-meter data-host-gpu={gpu} className="flex min-w-0 flex-col rounded-lg border border-line px-3 pt-2 pb-2.5">
       <span className="truncate text-xs text-muted">{label}</span>
       <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}
         {side && <span className="ml-1.5 text-sm font-normal text-muted">{side}</span>}</span>
       {chart && <div className="mt-0.5">{chart}</div>}
-      {note && <span title={note} className="mt-1 truncate text-xs text-muted">{note}</span>}
+      {note.length > 0 && <div className="mt-1 flex flex-col text-xs text-muted">
+        {note.map((line, index) => <span key={index} title={line} className="truncate">{line}</span>)}</div>}
     </div>
   );
 }
@@ -212,7 +215,6 @@ function Heavy({ sample, models }: { sample: Sample; models: readonly string[] }
         <span id="host-heavy">{t("host.heavy")}</span>
         <span className="text-right text-xs font-normal text-muted">{t("host.cpu")}</span>
         <span className="text-right text-xs font-normal text-muted">{t("host.memoryColumn")}</span></h3>
-      {!sample.runs.length && <Message tone="empty" size="line" icon="runningRuns" className="border-t border-line py-2" title={t("host.noRuns")} />}
       {rows.map(({ run }) => {
         if (!run) return <div key="outside" data-host-outside className={row}>
           <span>{t("host.outside")}</span>

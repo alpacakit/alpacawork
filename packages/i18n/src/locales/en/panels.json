@@ -319,7 +319,7 @@
     "unsupported": "This machine ({{platform}}) cannot be measured yet.",
     "unsupportedHint": "Supported on Linux, macOS and Windows.",
     "updated": "Updates every 10 seconds · {{time}}",
-    "vramFree": "VRAM free",
+    "vram": "VRAM",
     "whole": "all {{minutes}} min",
     "worker": "member",
     "yesterday": "Yesterday"
