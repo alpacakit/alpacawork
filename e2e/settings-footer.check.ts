@@ -15,6 +15,8 @@ async function openAdvancedOptions(page: Page) {
 
 /** The save row of the tab shown (here General's Advanced options): what is saved, and its two buttons. */
 const foot = (page: Page) => page.locator('[data-settings-foot]:visible');
+/** The save row with why a save was refused: on a PC kept in view at the window's foot. */
+const footBlock = (page: Page) => page.locator('[data-settings-foot-block]').filter({ has: foot(page) });
 
 test("the settings' foot says what is saved, and its buttons do what they say: discard, save, and a refused save", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -27,7 +29,6 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   await expect(status).toBeInViewport();
   await expect(save).toBeInViewport();
   await expect(status).toHaveText('Saved');
-  await expect(foot(page)).toContainText('Saving does not change runs in progress or requests already accepted.');
   await expect(discard).toBeDisabled();
   await expect(save).toBeDisabled();
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
@@ -40,6 +41,8 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   const before = await attachment.inputValue();
   await attachment.fill('60');
   await expect(status).toHaveText('Unsaved changes (General → Advanced options)');
+  // What a save leaves as it was is said once there is something to save.
+  await expect(foot(page).locator('[data-settings-effect]')).toBeVisible();
   await expect(discard).toBeEnabled();
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
   await discard.click();
@@ -59,7 +62,7 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   const at = (await save.boundingBox())!;
   await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2);
   // Said where the save was pressed, with the fields above still in view.
-  const refusal = foot(page).locator('..').getByRole('button', { name: 'Load the latest' });
+  const refusal = footBlock(page).getByRole('button', { name: 'Load the latest' });
   await expect(refusal).toBeInViewport();
   await expect(page.locator('#server-advanced > summary')).toBeInViewport();
   await expect(limit).toHaveValue('60');
@@ -78,5 +81,5 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   await expect(save).toBeDisabled();
   // On a phone it stays in the page's flow, clear of the keyboard.
   await page.setViewportSize({ width: 390, height: 800 });
-  await expect(foot(page).locator('..')).not.toHaveCSS('position', 'sticky');
+  await expect(footBlock(page)).not.toHaveCSS('position', 'sticky');
 });

@@ -242,9 +242,9 @@ function ServerDraftFoot() {
     ? t("settings.status.dirtyIn", { places: changed.map(placeName).join(t("settings.status.placeSeparator")) }) : t("settings.status.dirty");
   // On a PC the save row, with why a save was refused and what to do next, is kept at the window's foot while the
   // fields above scroll, so whether a save is needed, and why one did not go through, are always in view; it reaches
-  // down over the body's bottom room, and its own clears the body's fade. The body keeps as much room at its foot
-  // where a field moved to comes into view, so the row never covers it. On a phone it all stays in the page's flow,
-  // last: kept in view it would cover the field being typed in over the keyboard.
+  // down over the body's bottom room, and its own clears the body's fade. A field moved to comes into view above it
+  // (keepFieldsClear). On a phone it all stays in the page's flow, last: kept in view it would cover the field being
+  // typed in over the keyboard.
   return <div ref={keepFieldsClear} data-settings-foot-block
     className="sticky -bottom-3 z-10 mt-6 flex flex-col gap-3 border-t border-line bg-raised pt-4 pb-4 narrow:static narrow:contents">
     <FormError form={form} onReread={unproven ? undefined : reload} rereadLabel={t("settings.server.reload")} disabled={!actions.reread} />
@@ -256,7 +256,8 @@ function ServerDraftFoot() {
         {STACK_FIELDS.map(field => errors[field] && <FieldError key={field} data-ai-stack-refused={stackKind(field)} className="mt-type-close">
           {t('agentSettings.aiStack.saveRefused', { list: t(stackTitleKey(stackKind(field))) })}{' '}
           <Button type="button" variant="ref" onClick={() => showStack(field)}>{t('agentSettings.aiStack.showRow')}</Button></FieldError>)}
-        <FieldHint className="mt-type-close">{t("settings.server.effect")}</FieldHint>
+        {/* What a save leaves as it was, said only while there is something to save. */}
+        {isDirty && <FieldHint data-settings-effect className="mt-type-close">{t("settings.server.effect")}</FieldHint>}
       </div>
       <Button variant="outline" disabled={!actions.discard} onClick={() => form.reset()}>
         {t("settings.discard")}
@@ -266,17 +267,24 @@ function ServerDraftFoot() {
   </div>;
 }
 
-/** Keeps the dialog body's foot room as tall as the save row kept over it (none when the row is in the flow). */
+/**
+ * One rule for the dialog body's foot room: as tall as the save row kept in view there now, and none when no such row
+ * is shown (another tab, the options folded, a phone, where it is in the flow). It is asked again whenever a save row
+ * appears, goes or changes height, or a fold in the body opens or closes (a folded row keeps its size), so the order
+ * the tabs and folds were opened in does not matter.
+ */
 function keepFieldsClear(block: HTMLDivElement | null) {
   const body = block?.closest<HTMLElement>('[data-slot="dialog-body"]');
   if (!block || !body) return;
-  const observer = new ResizeObserver(() => {
-    // A hidden tab's row has no height and leaves the room to the one shown.
-    if (getComputedStyle(block).position !== "sticky") body.style.scrollPaddingBottom = "";
-    else if (block.offsetHeight) body.style.scrollPaddingBottom = `${block.offsetHeight}px`;
-  });
+  const fit = () => {
+    const shown = [...body.querySelectorAll<HTMLElement>("[data-settings-foot-block]")]
+      .find(each => (each.checkVisibility?.() ?? true) && getComputedStyle(each).position === "sticky");
+    body.style.scrollPaddingBottom = shown ? `${shown.offsetHeight}px` : "";
+  };
+  const observer = new ResizeObserver(fit);
   observer.observe(block);
-  return () => observer.disconnect();
+  body.addEventListener("toggle", fit, true);
+  return () => { observer.disconnect(); body.removeEventListener("toggle", fit, true); fit(); };
 }
 
 /**

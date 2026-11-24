@@ -476,7 +476,7 @@
       "commandSecondsHint": "Stops commands that run longer. Owner and member runs are not affected · default {{value}}",
       "defaultHint": "Default {{value}}",
       "diagnostics": "Loading and connection status…",
-      "effect": "Saving does not change runs in progress or requests already accepted.",
+      "effect": "Saving does not change the time limit of runs in progress or the agent settings of requests already accepted.",
       "folder": "Workspace folder",
       "folderCopy": "Copy path",
       "jev": {

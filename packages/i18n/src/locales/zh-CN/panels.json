@@ -469,7 +469,7 @@
       "commandSecondsHint": "停止运行超过此时间的命令。不影响负责人和成员的运行 · 默认 {{value}}",
       "defaultHint": "默认 {{value}}",
       "diagnostics": "加载与连接状态…",
-      "effect": "保存不会改变进行中的运行和已受理的委托。",
+      "effect": "保存不会改变进行中运行的时限，也不会改变已受理委托的智能体设置。",
       "folder": "工作区文件夹",
       "folderCopy": "复制路径",
       "jev": {
