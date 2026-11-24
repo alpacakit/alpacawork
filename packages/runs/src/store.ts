@@ -20,7 +20,7 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
   Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId'>;
-export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
+export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId' | 'returnTaskId' | 'loanEndedAt'> & {
   aboutRunId?: RunId | null;
   aiStack?: readonly AiRow[];
   aiExplicit?: boolean;
@@ -234,11 +234,12 @@ export class RunStore {
           const author = JSON.stringify(actorSchema.parse(request.author));
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
             (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author,
-              submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix)
-            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
+              submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, lent_task_id, loan_request_id)
+            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
               WHERE external_id = ? AND kind = 'task'`).run(request.id, request.placementId,
             request.placementRevision, request.taskHash, request.waitCycleId, request.headRunId, request.aboutRunId ?? null, request.mode, request.body,
-            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null, request.taskId).changes);
+            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null,
+            request.lentTaskId ?? null, request.loanRequestId ?? null, request.taskId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Request Task does not exist', undefined, { reason: { kind: 'request_task_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },

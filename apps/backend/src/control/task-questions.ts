@@ -88,10 +88,10 @@ export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; task
 
 /**
  * Answers an open question of `taskId` with `body`, its full text, and notices the asking Task. It makes no Request or
- * Run. TaskRequestService calls it for task request --answers.
+ * Run. An instruction carrying a loan delivers the answer itself.
  */
 export function answer(tx: ControlTx, input: { actor: TaskActor; taskId: string; questionId: string; body: string;
-  opId: string }): void {
+  opId: string }, delivery: 'notice' | 'instruction' = 'notice'): void {
   const tasks = tasksIn(tx), task = tasks.get(input.taskId), fingerprint = operationFingerprint(input);
   if (replayed(tx, task, input.opId, 'answered', fingerprint)) return;
   assertWritable(task);
@@ -100,7 +100,7 @@ export function answer(tx: ControlTx, input: { actor: TaskActor; taskId: string;
   new TaskTransition().appendRecord(tx, task.id, { id: input.opId, kind: 'answered', at: now(), title: null,
     description: null, actor: input.actor, fromState: null, toState: null, questionId: input.questionId,
     operationFingerprint: fingerprint }, input.body);
-  notify(tx, tasks.projectFor(task.id), 'answer', task.id, input.opId);
+  if (delivery === 'notice') notify(tx, tasks.projectFor(task.id), 'answer', task.id, input.opId);
 }
 
 /**

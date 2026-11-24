@@ -32,7 +32,7 @@ export async function readTaskReturns(root: string, input: { task: string; after
     })) : new Set<string>();
     return { returns: db ? page.returns.map(row => {
       const delivery = activeDelivery(row);
-      return { ...row, disposition: returnDisposition(row), urgentReason: row.outcome === 'urgent' ? reasons.get(row.causeLogId ?? '') ?? null : null,
+      return { ...row, deliveries: row.deliveries.map(({ priorSeat, ...delivery }) => delivery), disposition: returnDisposition(row), urgentReason: row.outcome === 'urgent' ? reasons.get(row.causeLogId ?? '') ?? null : null,
         receiptUnknown: !!delivery && unknown.has(delivery.wakeRequestId) };
     }) : [], nextAfter: page.nextAfter };
   } finally { store?.close(); }

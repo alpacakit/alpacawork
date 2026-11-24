@@ -52,8 +52,8 @@ export function dependencyStatus(db: DatabaseSync, taskId: string) {
   return dependencyStatuses(db, [taskId]).get(taskId)!;
 }
 
-/** Four prerequisite edges between start/end events, independent of reversible completion states. */
-export function assertDependencyAcyclic(db: DatabaseSync): void {
+/** All prerequisites share the same start/end graph. Ordinary owner requests to children are tree edges. */
+export function assertDependencyAcyclic(db: DatabaseSync, proposed?: { requester: string; target: string }): void {
   const started = startedTasks(db);
   const tasks = db.prepare("SELECT t.external_id AS id,p.external_id AS parent FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id WHERE t.kind='task'")
     .all().map(row => ({ id: String(row.id), parent: String(row.parent) }));
@@ -71,6 +71,12 @@ export function assertDependencyAcyclic(db: DatabaseSync): void {
   }
   for (const row of db.prepare('SELECT task_id,after_task_id FROM task_dependencies').all())
     if (!started.has(String(row.task_id))) edge(`end:${row.after_task_id}`, `start:${row.task_id}`);
+  for (const row of db.prepare(`SELECT coalesce(q.return_task_id,c.task_id) AS requester,q.task_id AS target
+    FROM requests q JOIN wait_cycles c ON c.id=q.wait_cycle_id
+    WHERE q.loan_request_id IS NOT NULL AND q.delivery_state NOT IN ('aborted','recorded_unconfirmed')
+      AND NOT EXISTS (SELECT 1 FROM returns r WHERE r.request_id=q.id)`).all())
+    edge(`end:${row.target}`, `end:${row.requester}`);
+  if (proposed) edge(`end:${proposed.target}`, `end:${proposed.requester}`);
   // Kahn's algorithm avoids recursion even for long dependency chains.
   const incoming = new Map<string, number>();
   for (const [from, tos] of graph) {
@@ -83,8 +89,9 @@ export function assertDependencyAcyclic(db: DatabaseSync): void {
     incoming.set(to, count);
     if (count === 0) ready.push(to);
   }
-  if (ready.length !== incoming.size) throw new Problem(PROBLEM_CODE.conflict, 'Dependencies would create a deadlock', undefined,
-    { reason: { kind: 'dependency_cycle' } });
+  if (ready.length !== incoming.size) throw new Problem(PROBLEM_CODE.conflict,
+    proposed ? 'This request would make tasks wait for each other' : 'Dependencies would create a deadlock', undefined,
+    { reason: { kind: proposed ? 'loan_wait_cycle' : 'dependency_cycle' } });
 }
 
 /** Replaces canonical edges on the caller's write transaction; its existing command path records History. */

@@ -1,3 +1,4 @@
+import { mayCloseRequest, taskFailure } from './return-rules.js';
 import { touch } from '@alpacawork/db';
 import { questionSnapshot, questionApplicable } from './question-rules.js';
 /**
@@ -352,6 +353,7 @@ export class TaskTransition {
       change.meta.version = change.task.meta.version + 1n;
     }
     saveChanges(read, changes, next, after, cause);
+    settleLoanChanges(read, next, cause);
     noticeChanges(read, changes, next, reopened, below, cause);
     if (!runBoundary) assertSeatsCovered(read, next);
   }
@@ -449,6 +451,24 @@ function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChan
       touch(read.tx.store.connection, { kind: 'stop_epoch', id });
     }
   }
+}
+
+/** Close loans and borrowed instructions before any later operation can act on the new task records. */
+function settleLoanChanges(read: ReadPoint, next: NextChanges, cause: Cause): void {
+  const closing = [...next.values()].flatMap(change => {
+    const added = change.meta.log.slice(change.task.meta.log.length);
+    return added.some(mayCloseRequest) ? [{ id: change.task.id, meta: change.meta, failure: taskFailure(added) }] : [];
+  });
+  if (!closing.length) return;
+  const db = read.tx.store.connection, closingIds = closing.map(change => change.id);
+  const affected = db.prepare(`SELECT 1 FROM requests WHERE task_id IN (SELECT value FROM json_each(?))
+    AND (lent_task_id IS NOT NULL AND loan_ended_at IS NULL OR loan_request_id IS NOT NULL) LIMIT 1`).get(JSON.stringify(closingIds));
+  if (!affected) return;
+  const tasks = tasksIn(read.tx), context = new Map<string, ControlTask>();
+  for (const id of closingIds) for (const task of tasks.related(id).tasks) context.set(task.id, task);
+  const lifecycle = new ReturnLifecycle(db, read.tx.runs, [...context.values()], read.project, undefined, read.tx.store.root);
+  lifecycle.settleLoans(closingIds, cause.at);
+  for (const change of closing) if (change.failure) lifecycle.notifyMovedLoanFailure(change, change.failure);
 }
 
 /** What the seats that still wait are told of this write: an ancestor it reopened, and a hold's change. */

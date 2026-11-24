@@ -73,6 +73,7 @@ export const historyEventSchema = z.object({
   title: z.string(), summary: z.string(),
   /** Execution-order IDs, projected by the server for both current and historical records. */
   dependencies: dependencyChangeSchema.optional(),
+  loan: z.object({ task: taskIdSchema, phase: z.enum(['granted', 'ended']) }).strict().optional(),
   /** Fixed answer text, and the user's words quoted by the Coordinator. */
   answerText: z.string().optional(), quote: z.string().optional(),
   /** On a dialogue, the copies kept of the local files the coordinator's answer links to, drawn as its conversation draws them. */

@@ -4,6 +4,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { TaskActor, TaskKind, TaskState, TaskBaseState } from '@alpacawork/raw';
 import { decide, type Caller, type Action, type Decision, type Quote, type TaskFacts } from '@alpacawork/contract/command-access';
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
+import { loanFor } from './request-loans.js';
 import { projectsAbove, readTask } from './task-store.js';
 export * from '@alpacawork/contract/command-access';
 
@@ -48,6 +49,9 @@ export function authorize(db: DatabaseSync, caller: Caller, action: Action, targ
   const task = target.task === null ? null : action.name === 'task.report' ? reportTaskFacts(db, target.task) : taskFacts(db, target.task);
   const own = caller.kind !== 'run' ? null : task !== null && caller.taskId === task.id ? task : taskFacts(db, caller.taskId);
   const decision = decide(caller, action, { task, runProject: own?.project ?? null,
+    requestLoan: action.name === 'task.request' && !!action.borrowable && !action.worker &&
+      caller.kind === 'run' && caller.role === 'owner' && caller.responsible && task !== null &&
+      own?.project === task.project && caller.taskId !== task.parentId && !!loanFor(db, caller.taskId, task.id),
     runProjectsAbove: own === null ? [] : projectsAbove(db, own.project), runState: own?.state ?? null,
     quote: target.quote, message: target.message });
   if (decision instanceof Problem) throw decision;

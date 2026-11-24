@@ -29,3 +29,30 @@ This file is for coordinators and owners, who create tasks and send requests. Me
 - Define the purpose and the done conditions from the user's original words and the decisions still in effect. In the request text, pass on the recipient's share, the necessary requirements, constraints and principles, and the unverified points without changing their meaning, and mark any condition that is not in the user's words so that it is recognizable as "a condition the AI added". Do not confuse a summary or an interpretation with the original words.
 - When you want the recipient to read an alpacawork record, write the read command (for example `alpacawork task get --task T42`), not a file path. Write the read command for a list of siblings or children only in a request that needs the list.
 - Do not write: the common guardrails in this skill (the recipient reads them too); what alpacawork adds to the launch prompt (see ["When you start or resume" in the main skill](../SKILL.md#when-you-start-or-resume)); secrets (the request text stays in the record and can be read from other conversations).
+
+
+## Letting two child tasks work directly
+
+When one child owns the outcome and a sibling does repeated work for it, the parent responsible can lend the right to instruct that sibling. For example, let the repair task request another check after each fix when the verification needs its own task. Choose another direct child with a responsible and no current work requested by the user.
+
+Read `alpacawork task get --task <repair task>` first. Use its `task.hash` and the `revision` of its active responsible in `agents`. Name the verification task and its role in the instruction text.
+
+```sh
+alpacawork task request --task "$repair_task" --lend-task "$verification_task" \
+  --expected-task-hash "$repair_hash" --expected-placement-revision "$repair_revision" \
+  --instruction-file "$repair_instruction"
+```
+
+You can also add `--lend-task` to `--answers` when answering a question that your direct child addressed to you.
+
+As the repair task's responsible, read the verification task's hash and placement revision and send an ordinary instruction.
+
+```sh
+alpacawork task request --task "$verification_task" \
+  --expected-task-hash "$verification_hash" --expected-placement-revision "$verification_revision" \
+  --instruction-file "$verification_instruction"
+```
+
+The verification task reports on its own task and its results wake you. If an instruction is refused, use the reason to ask your parent with `task report --state waiting --ask-to <parent task>`. If the verification fails, decide whether to retry or report the blocker. After the last result, use `task report --state done` to give your parent the combined outcome. See [Delivery and completion](lifecycle.md) for the report fields and failure flow.
+
+The loan covers instructions while the parent's request stays open. Placement, stopping and moving the verification task stay with the parent. If the repair task stops, fails or moves, unfinished requests and unprocessed results go to the lender. A separate request from the parent to the verification task also returns to the parent.

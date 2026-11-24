@@ -386,8 +386,11 @@ export const taskCommands = {
   'task/request': {
     act: (input, { root, db }) => {
       const answers = input.answers;
-      if (answers === undefined) return taskAct('task.request', input, {
-        worker: input.agent !== undefined && isWorker(root, db, input.task, input.agent) });
+      if (answers === undefined) {
+        const worker = input.agent !== undefined && isWorker(root, db, input.task, input.agent);
+        const act = taskAct('task.request', input, { worker });
+        return { ...act, action: { name: 'task.request', worker, borrowable: input.agent === undefined } };
+      }
       // An answer goes to whom the question asked, fixed when it was asked.
       const question = replyQuestion(input.task, new TaskRepository(root, db).get(input.task).meta.log, answers);
       return taskAct('task.request', input, { askedTo: question.asked.askedTo, closed: question.closing !== null });

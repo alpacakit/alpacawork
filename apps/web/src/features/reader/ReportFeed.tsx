@@ -207,6 +207,7 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
     const ids = new Set<string>([task.id, ...(task.parent ? [task.parent] : [])]);
     for (const event of events.values()) {
       ids.add(event.taskId);
+      if (event.loan) ids.add(event.loan.task);
       if (event.dependencies) for (const id of [...event.dependencies.after, ...event.dependencies.previous]) ids.add(id);
     }
     for (const [id, each] of named) { ids.add(id); if (each.parentId) ids.add(each.parentId); }
@@ -229,7 +230,12 @@ const Feed = memo(function Feed({ task, people, onFollow, waitFrom }: FeedProps)
       const said = reportEvent(event, id => id === task.id ? turnRecord(task) : null);
       const words = event.dependencies ? orderRecordWords(event.dependencies, id => everyName.get(id)?.title
         ?? named.get(id)?.title, t) : null;
-      const report = words ? { ...said, ...words } : said;
+      const loan = event.loan;
+      const report = loan ? { ...said, text: loan.phase === 'granted'
+        ? t("reportFeed.loan.granted", { task: everyName.get(loan.task)?.title ?? named.get(loan.task)?.title ?? loan.task })
+        : t("reportFeed.loan.ended", { task: everyName.get(loan.task)?.title ?? named.get(loan.task)?.title ?? loan.task }),
+        description: loan.task }
+        : words ? { ...said, ...words } : said;
       // A failed Run that still waits for a decision on it can be closed from its row.
       return report.key === finish ? { ...report, finish: true }
         : report.kind === "error" && waiting.has(event.id) ? { ...report, runId: event.id } : report;

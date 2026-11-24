@@ -101,6 +101,7 @@ function* bundleEdges(id: TaskId, bundle: TaskBundle, part: keyof TaskBundle): G
   if (part === 'after') for (const after of bundle.after) yield ['dependents', after, id];
   if (part === 'requests') for (const request of bundle.requests) {
     yield ['requestsByReceiver', id, request.id]; yield ['requestOwner', request.id, id];
+    if (request.lentTaskId) yield ['historyReferrers', request.lentTaskId, id];
     if (request.author.kind === 'main' && request.author.message) yield ['messageTasks', request.author.message, id];
     if (request.author.kind === 'placement') yield ['placementWritesTo', request.author.placementId, id];
   }
@@ -523,8 +524,12 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
       }
       if (key.kind === 'run' || key.kind === 'activity') changedRuns.add(asRunId(key.id));
       if (key.kind === 'request') {
-        const row = db.prepare('SELECT caller.task_id FROM runs r JOIN runs caller ON caller.id=CAST(substr(r.caller_run,2) AS INTEGER) WHERE r.request_id=?').get(key.id);
-        if (row?.task_id != null) need(String(row.task_id), 'unclosedSent');
+        const row = db.prepare(`SELECT c.task_id,q.return_task_id FROM requests q
+          JOIN wait_cycles c ON c.id=q.wait_cycle_id WHERE q.id=?`).get(key.id);
+        if (row) {
+          need(String(row.task_id), 'unclosedSent');
+          if (row.return_task_id !== null) need(String(row.return_task_id), 'unclosedSent');
+        }
       }
       for (const id of ids) {
         need(id);
@@ -660,6 +665,7 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
   }
   private sender(request: StoredRequest | undefined): TaskId | null {
     if (!request || isSeatContinuation(request.purpose) || !hasRequesterSeat(request)) return null;
+    if (request.returnTaskId !== undefined) return request.returnTaskId;
     const run = this.runByRequest(request.id);
     const caller = run && this.runs.get(run)?.record.caller?.run;
     return caller ? this.runOwner(caller) : null;

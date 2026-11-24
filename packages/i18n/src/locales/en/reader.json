@@ -308,6 +308,10 @@
     "jumpToLatest": "Jump to latest",
     "listQuestions_one": "List of {{count}} question for you",
     "listQuestions_other": "List of {{count}} questions for you",
+    "loan": {
+      "ended": "Loan ended for {{task}}",
+      "granted": "Request rights lent for {{task}}"
+    },
     "questions_one": "Question for you · {{count}}",
     "questions_other": "Questions for you · {{count}}",
     "questionsUnavailable": "Could not read the questions.",

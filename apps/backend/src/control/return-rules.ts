@@ -9,7 +9,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { hasRequesterSeat, isSeatContinuation, type RETURN_CLOSURES, type RETURN_NOTICES } from '@alpacawork/contract';
 import { DELIVERY_STATE, type DeliveryState, type RequestPurpose } from '@alpacawork/contract/control';
 import { carrierOf, isRunEnded, runNumber, type ReadRunRecord } from '@alpacawork/contract/run';
-import type { TaskKind, TaskLifecycle, TaskLog, TaskState, TaskActor } from '@alpacawork/raw';
+import { speaksForUser, type TaskKind, type TaskLifecycle, type TaskLog, type TaskState, type TaskActor } from '@alpacawork/raw';
 
 /** Where a return or a question goes: a seat's Task ID, or null for the user. */
 export type Seat = string | null;
@@ -17,7 +17,7 @@ export type ReturnClosure = (typeof RETURN_CLOSURES)[number];
 export type ReturnNotice = (typeof RETURN_NOTICES)[number];
 /** A Request as these rules read it. */
 export type RequestFacts = { id: string; taskId: string; purpose: RequestPurpose; author: TaskActor; submittedAt: string;
-  deliveryState: DeliveryState };
+  deliveryState: DeliveryState; returnTaskId?: string; loanRequestId?: string };
 /** A Run as these rules read it: the Run that carried a Request, and the Run that called it. */
 export type RunFacts = Pick<ReadRunRecord, 'id' | 'task' | 'role' | 'requestId' | 'caller' | 'state' | 'reason' | 'into' |
   'stop_requested' | 'ended_at' | 'attempt' | 'supersededBy'>;
@@ -50,6 +50,7 @@ export function returnFacts(tasks: Iterable<TaskFacts>, runs: Iterable<RunFacts>
 export function requesterSeat(request: RequestFacts, facts: ReturnFacts): Seat {
   if (isSeatContinuation(request.purpose)) throw new Error('A continuation has no requester seat');
   if (!hasRequesterSeat(request)) return null;
+  if (request.returnTaskId !== undefined) return request.returnTaskId;
   const callerId = facts.runOf.get(request.id)?.caller?.run;
   const caller = callerId === undefined ? undefined : facts.runs.get(callerId);
   if (!caller) throw new Error(`Request ${request.id} has no caller seat`);
@@ -94,6 +95,17 @@ export function urgentTarget(taskId: string, requests: readonly RequestFacts[], 
 }
 
 const CHILD_CLOSURES: Partial<Record<TaskState, ReturnClosure>> = { done: 'succeeded', stopped: 'stopped', error: 'failed' };
+function logClosure(entry: TaskLog): ReturnClosure | undefined {
+  if (entry.stage?.action === 'hold' || entry.stage?.action === 'unhold') return undefined;
+  return entry.kind === 'moved' ? 'moved' : entry.toState === null ? undefined : CHILD_CLOSURES[entry.toState];
+}
+
+/** Which new task records can change whether an instruction is open. */
+export function mayCloseRequest(entry: TaskLog): boolean {
+  return logClosure(entry) !== undefined || entry.kind === 'archived' || entry.kind === 'deleted' ||
+    entry.placementEffect === 'released' || entry.stage?.boundary === 'settled_end';
+}
+
 /**
  * Whether and how a Request closed. A worker's closes when its actual Run (a joined one's `into`) ends. A child's
  * responsible's closes at the first done (a review's approval too), stop, failure or move its Task records since the
@@ -114,8 +126,7 @@ export function closureOf(request: RequestFacts, facts: ReturnFacts): Closure | 
   const since = Date.parse(request.submittedAt);
   const cancelled = run.state === 'cancelled' && run.reason === 'scope_invalidated' && run.ended_at !== null;
   for (const entry of task.log) {
-    if (entry.stage?.action === 'hold' || entry.stage?.action === 'unhold') continue;
-    const outcome = entry.kind === 'moved' ? 'moved' : entry.toState === null ? undefined : CHILD_CLOSURES[entry.toState];
+    const outcome = logClosure(entry);
     // Most history entries cannot close a Request. Compare times only for a closing candidate.
     if (outcome && !(Date.parse(entry.causeAt ?? entry.at) < since)) {
       if (cancelled && Date.parse(run.ended_at!) < Date.parse(entry.causeAt ?? entry.at)) break;
@@ -124,6 +135,23 @@ export function closureOf(request: RequestFacts, facts: ReturnFacts): Closure | 
   }
   if (cancelled) return { outcome: 'stopped', runId: run.id, causeLogId: null };
   return task.lifecycle !== 'active' || !task.responsible ? { outcome: 'closed', runId: null, causeLogId: null } : null;
+}
+
+/** A move already told the borrower, and revoked its ability to handle a later failure of this instruction. */
+export function movedBorrowedRequest(request: RequestFacts, facts: ReturnFacts): boolean {
+  return request.loanRequestId !== undefined && closureOf(request, facts)?.outcome === 'moved';
+}
+
+/** Returning a hold restores the existing failure, while an owner boundary can record a new one. */
+export function taskFailure(log: readonly TaskLog[]): TaskLog | undefined {
+  return [...log].reverse().find(entry => entry.toState === 'error' &&
+    (entry.kind !== 'reported' || entry.fromState !== 'held'));
+}
+
+/** Work requested directly by a person and closed by this same failure. The loan cannot resume it. */
+export function userWorkFailed(task: string, cause: string, requests: readonly RequestFacts[], facts: ReturnFacts): boolean {
+  return requests.some(request => request.taskId === task && speaksForUser(request.author) && awaitsClosure(request) &&
+    facts.runOf.get(request.id)?.role === 'owner' && closureOf(request, facts)?.causeLogId === cause);
 }
 
 /** A Run that ended its own work; a joined Run ended in the Run it joined. */
@@ -149,7 +177,7 @@ export const awaitsClosure = (request: Pick<RequestFacts, 'purpose' | 'deliveryS
   request.deliveryState !== DELIVERY_STATE.aborted && request.deliveryState !== DELIVERY_STATE.recorded_unconfirmed;
 // The closing return is permanent. Current availability may close a Request
 // before routing runs, but restore or reassignment cannot undo a committed close.
-const isOpen = (request: RequestFacts, facts: ReturnFacts) => awaitsClosure(request) &&
+export const isOpen = (request: RequestFacts, facts: ReturnFacts) => awaitsClosure(request) &&
   !facts.closedRequests.has(request.id) && closureOf(request, facts) === null;
 
 /**
@@ -179,12 +207,12 @@ export function openRequestsBySeat<R extends RequestFacts>(requests: readonly R[
 
 /** Whether every Request of one wait cycle closed; an aborted Request waits on nothing. */
 export function cycleClosed(requests: readonly RequestFacts[], facts: ReturnFacts): boolean {
-  return !requests.some(request => isOpen(request, facts));
+  return !requests.some(request => request.returnTaskId === undefined && isOpen(request, facts));
 }
 
-/** A return's ID: a closing return's from its Request alone (a Request closes once), a notice's from its cause and kind. */
-export const returnIdOf = (key: { requestId: string } | { causeLogId: string; outcome: ReturnNotice }): string =>
-  'RET' + createHash('sha256').update(JSON.stringify('requestId' in key ? [key.requestId] : [key.causeLogId, key.outcome]))
+/** A closing return closes once; a notice may have multiple destinations for the same cause. */
+export const returnIdOf = (key: { requestId: string } | { causeLogId: string; outcome: ReturnNotice; toTaskId?: string }): string =>
+  'RET' + createHash('sha256').update(JSON.stringify('requestId' in key ? [key.requestId] : [key.causeLogId, key.outcome, ...(key.toTaskId ? [key.toTaskId] : [])]))
     .digest('hex');
 
 /** Closed Requests whose closing return has not been materialized yet, at this same read point. */

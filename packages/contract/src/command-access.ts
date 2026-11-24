@@ -48,6 +48,8 @@ export type Facts = {
   runProjectsAbove?: readonly string[];
   /** The state of a Run caller's own Task (held keeps its Runs to the acts a row lets while held); null for any other. */
   runState: TaskState | null;
+  /** An ordinary owner instruction has a live grant from the common parent. */
+  requestLoan?: boolean;
   /** Optional record fields; neither changes permission. */
   quote: Quote | null;
   message?: string;
@@ -71,7 +73,7 @@ export type Action =
   | { name: 'task.withdraw' }
   | { name: 'task.comment'; urgent: boolean }
   /** task request to the Task's responsible, or to a worker of the Task that --agent names. */
-  | { name: 'task.request'; worker: boolean }
+  | { name: 'task.request'; worker: boolean; borrowable?: boolean }
   /** task request --answers: whom the question asked (null: the user). */
   | { name: 'task.answer'; askedTo: string | null; closed?: boolean }
   | { name: 'agent.assign' | 'agent.release'; worker: boolean }
@@ -154,6 +156,7 @@ export const ACTIONS = {
   'task.comment.urgent': { grants: [['own']], whileHeld: true },
   /** A parent responsible, person or coordinator instructs the Task's responsible. */
   'task.request': { grants: [['parent'], ['user']] },
+  'task.request.borrowed': { grants: [['responsible', 'same_project']] },
   'task.request.worker': { grants: [['own']] },
   /**
    * A failed request from the user is retried only by their proxy. Stopping a waiting review also remains their
@@ -232,7 +235,8 @@ export function actsOf(action: Action, task: TaskFacts | null, caller: Caller): 
     }
     case 'task.comment': return [action.urgent ? 'task.comment.urgent' : 'task.comment'];
     case 'task.answer': return action.closed && userDecides ? ['task.answer', 'task.request.user'] : ['task.answer'];
-    case 'task.request': return [action.worker ? 'task.request.worker' : userDecides ? 'task.request.user' : 'task.request'];
+    case 'task.request': return [action.worker ? 'task.request.worker' : userDecides ? 'task.request.user'
+      : action.borrowable ? 'task.request.borrowed' : 'task.request'];
     case 'agent.assign': return [action.worker ? 'agent.assign.worker' : 'agent.assign'];
     case 'agent.release': return [action.worker ? 'agent.release.worker' : 'agent.release'];
     default: return [action.name];
@@ -310,7 +314,7 @@ export function decide(caller: Caller, action: Action, facts: Facts): Decision |
     return new Problem(PROBLEM_CODE.invalidInput, 'The coordinator creates a Task with --from-user or --no-from-user', undefined,
       { reason: { kind: 'coordinator_creates_task_with_from_user_or_internal' }, issues: [{ path: 'fromUser', code: 'required', message: '--from-user or --no-from-user is required' }] });
   const actor = recordedActor(caller, facts.quote, facts.message);
-  const acts = actsOf(action, facts.task, caller);
+  const acts = actsOf(action.name === 'task.request' && !facts.requestLoan ? { ...action, borrowable: false } : action, facts.task, caller);
   for (const act of acts) {
     const row: Row = ACTIONS[act];
     if (caller.kind === 'run' && facts.runState === 'held' && !row.whileHeld)

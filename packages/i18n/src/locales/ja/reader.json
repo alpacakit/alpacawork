@@ -292,6 +292,10 @@
     "goQuestionAt": "答える: {{at}} {{title}}",
     "jumpToLatest": "最新へ移る",
     "listQuestions_other": "あなたへの質問 {{count}}件の一覧",
+    "loan": {
+      "ended": "「{{task}}」への依頼権限の貸し出し終了",
+      "granted": "「{{task}}」への依頼権限を貸し出し"
+    },
     "questions_other": "あなたへの質問 {{count}}件",
     "questionsUnavailable": "質問を読み取れませんでした。",
     "received": "このタスクが受け取り済み",
