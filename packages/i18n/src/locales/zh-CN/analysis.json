@@ -252,6 +252,7 @@
     "after": "下一段",
     "before": "上一段",
     "finished_other": "已结束 {{count}} 个",
-    "list": "任务列表"
+    "list": "任务列表",
+    "passedOf_other": "{{count}} 个中 {{passed}} 个"
   }
 }

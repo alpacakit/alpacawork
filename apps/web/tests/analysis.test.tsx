@@ -111,10 +111,21 @@ test("a scale's top is set by the bins of the chosen span, not a larger one outs
   const bins = ["2026-11-01", "2026-11-02", "2026-11-03"].map(day => ({ from: day, to: day, complete: true }));
   const span = { from: "2026-11-02", to: "2026-11-03" };
   expect(spanMost(bins, span, at => [600, 10, 4][at]!)).toBe(10);
-  // The line: the span's bins on ten tasks or more; when none of the span's is, every bin of the span.
-  const inSpan = inSpanOf(bins, span);
-  expect(lineTop([42, 3, 1.5], at => at !== 2, inSpan)).toBe(lineTop([3], () => true));
-  expect(lineTop([42, 3, 1.5], at => at === 0, inSpan)).toBe(lineTop([3, 1.5], () => true));
+});
+
+test("a line's top is the larger of the span's largest and the 90th percentile of every steady bin shown", () => {
+  // Twenty bins shown, the last two the span: steady bins outside it run from 1 to 4, one outlier at 40.
+  const values = [...Array.from({ length: 17 }, (_, at) => 1 + at * 3 / 16), 40, 0.5, 0.6];
+  const inSpan = (at: number) => at >= 18, steady = () => true;
+  // The 90th percentile of the twenty (the 18th smallest) is 4: the course outside the span stays readable, the outlier is cut.
+  expect(lineTop(values, steady, inSpan)).toBe(lineTop([4], () => true));
+  // A span larger than that sets the top itself.
+  expect(lineTop([...values.slice(0, 18), 7, 0.6], steady, inSpan)).toBe(lineTop([7], () => true));
+  // The span's largest counts its bins on ten tasks or more; when none of the span's is, every bin of the span.
+  expect(lineTop([1, 3, 9], at => at === 0, at => at >= 1)).toBe(lineTop([9], () => true));
+  expect(lineTop([1, 3, 9], at => at !== 2, at => at >= 1)).toBe(lineTop([3], () => true));
+  // Small values keep their places on the scale (0.21 a task is not written as 0).
+  expect(lineTop([0.21], () => true)).toBeCloseTo(0.3);
 });
 
 test("a number opens its tasks in the span its answer was counted for, even after another span was chosen", () => {

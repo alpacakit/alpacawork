@@ -270,6 +270,8 @@
     "before": "Previous",
     "finished_one": "{{count}} finished",
     "finished_other": "{{count}} finished",
-    "list": "Task list"
+    "list": "Task list",
+    "passedOf_one": "{{passed}} of {{count}}",
+    "passedOf_other": "{{passed}} of {{count}}"
   }
 }

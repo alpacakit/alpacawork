@@ -252,6 +252,7 @@
     "after": "次の区切り",
     "before": "前の区切り",
     "finished_other": "終わった {{count}}件",
-    "list": "タスクの一覧"
+    "list": "タスクの一覧",
+    "passedOf_other": "{{count}}件のうち{{passed}}件"
   }
 }

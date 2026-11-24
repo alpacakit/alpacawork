@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
 import { subscribeStep } from "@/state/history-step";
-import { daysBetween, dayLabel, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
+import { daysBetween, dayLabel, format, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
 import { tipBeside } from "./parts";
 import { Icon } from "@/components/ui/icon";
@@ -120,9 +120,13 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     if (narrow) addEventListener("pointerdown", away, true);
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
-  const point = (at: number | null, row = -1, box?: Pointed["box"]) => setPointed(previous => at === null || !box ? null
-    // Between two charts the window keeps the row last pointed at.
-    : { at, row: row >= 0 ? row : previous?.row ?? 0, box });
+  const point = (at: number | null, row = -1, box?: Pointed["box"]) => setPointed(previous => {
+    if (at === null || !box) return null;
+    // Between two charts the window keeps the row last pointed at; within the same day and row it stays where it
+    // stands, so the pointer can go to it.
+    const next = row >= 0 ? row : previous?.row ?? 0;
+    return previous && previous.at === at && previous.row === next ? previous : { at, row: next, box };
+  });
   const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!, at) ?? null;
   const press = (at: number, row: number) => { const list = listOf(at, row); if (list) { close(); open(list); } };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
@@ -259,13 +263,12 @@ export const spanMost = (bins: Bin[], span: Days, amount: (at: number) => number
 export const inSpanOf = (bins: Bin[], span: Days) => (at: number) => !!bins[at] && lit(bins[at]!, span);
 
 /** The frame every chart is drawn in: its height, the bars' mark over its top left, the line's over its top right. */
-function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: { name: string; label: string }; height: string; children: ReactNode }) {
+function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: string; height: string; children: ReactNode }) {
   return <div data-chart-row={row} className="pt-4 narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
-      {/* The line's scale says what the line is (its mark and name), then, apart, the value its top stands for. */}
-      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft">
-        <LineMark /><span className="text-muted">{lineScale.name}</span><span className="ms-2.5 tabular-nums">{lineScale.label}</span></span>}
+      {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full text-xs whitespace-nowrap text-soft">{lineScale}</span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
@@ -302,8 +305,8 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
   </div>;
 }
 
-/** The per-task line over a chart's bars: its value a bin (null: none), its name, its top (and how it is written), and which bins rest on fewer than ten. */
-export type Overlay = { values: (number | null)[]; top: number; name: string; label: string; faint: (at: number) => boolean };
+/** The per-task line over a chart's bars: its value a bin (null: none), its top (and how it is written), and which bins rest on fewer than ten. */
+export type Overlay = { values: (number | null)[]; top: number; label: string; faint: (at: number) => boolean };
 
 /** A bar's colour for a one-colour row: its tone, deeper the taller it stands (45% at the foot to the full colour at the top). */
 const toneOf = (tone: Tone, share: number) => `color-mix(in oklab, var(--${tone}) ${Math.round(45 + 55 * Math.max(0, Math.min(1, share)))}%, var(--bg))`;
@@ -340,14 +343,17 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   // their shares of it, and is cut there with a small break across it.
   const bars = (at: number) => {
     const all = values(at), sum = all.reduce((total, [, value]) => total + Math.max(0, value), 0);
-    const cut = sum > scale.top, fit = cut ? scale.top / sum : 1, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
+    const cut = sum > scale.top, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
+    // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line.
+    const gaps = 2 * (all.filter(([, value]) => value > 0).length - 1);
+    const height = (value: number) => cut ? `calc((100% - ${gaps}px) * ${value / sum})` : `${Math.min(100, value / scale.top * 100)}%`;
     return all.map(([color, value], part) => value > 0 &&
-      <i key={part} style={{ height: `${Math.min(100, value * fit / scale.top * 100)}%`, ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
+      <i key={part} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
         className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
   };
-  return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay && { name: overlay.name, label: overlay.label }} height={height}>
+  return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
       {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
@@ -356,10 +362,10 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     </svg>}
     {line && <div aria-hidden className="pointer-events-none absolute inset-0">
       {line.dots.map((dot, at) => {
-        // Where bins are too narrow for points the line lies flat on the top where it is cut; elsewhere a point over the
-        // top stands on it as a small caret up, in the span or out of it.
+        // On a computer a point over the top stands on it as a small caret up, in the span or out of it; under a finger
+        // (and where bins are too narrow for points) the line only lies flat on the top where it is cut.
         if (!dot || !points) return null;
-        if (dot.over) return <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
+        if (dot.over) return !group.narrow && <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
           className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
           <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-ink [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
         return (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
@@ -386,16 +392,27 @@ export function lineDots(values: (number | null)[], top: number, faint: (at: num
 }
 
 /**
- * The top of a per-task line's scale: round, and set by the bins within the chosen span (`inSpan`) resting on ten tasks
- * or more (one task's large value must not flatten every other day), or by every bin of the span when none does; a
- * value over it is cut at the top, and marked so.
+ * The top of a per-task line's scale: round, and the larger of the largest value within the chosen span (`inSpan`) and
+ * the 90th percentile of every bin shown resting on ten tasks or more, so the line keeps its course outside the span
+ * too; only a value over that is cut at the top, and marked so. The span's largest counts its bins on ten tasks or more
+ * (one task's large value must not flatten every other day), or every bin of the span when none is.
  */
 export function lineTop(values: (number | null)[], steady: (at: number) => boolean, inSpan: (at: number) => boolean = () => true): number {
-  const shown = (at: number) => values[at] !== null && values[at] !== undefined && inSpan(at);
-  const kept = values.filter((_, at) => shown(at) && steady(at)) as number[];
-  const from = kept.length ? kept : values.filter((_, at) => shown(at)) as number[];
-  const marks = ticks(Math.max(0, ...from), 1, false);
+  const has = (at: number) => values[at] !== null && values[at] !== undefined;
+  const pick = (keep: (at: number) => boolean) => values.filter((_, at) => has(at) && keep(at)) as number[];
+  const spanSteady = pick(at => inSpan(at) && steady(at));
+  const span = spanSteady.length ? spanSteady : pick(inSpan);
+  const shown = pick(steady).sort((a, b) => a - b);
+  const p90 = shown.length ? shown[Math.ceil(shown.length * 0.9) - 1]! : 0;
+  const marks = ticks(Math.max(0, p90, ...span), 1, false);
   return marks[marks.length - 1] || 1;
+}
+
+/** A line scale's top as written over the chart's right: with as many places as it needs (0.25 stays 0.25). */
+export function useLineLabel() {
+  const { t } = useTranslation("analysis");
+  return (kind: "hours" | "times" | "tasks" | "tokens", top: number) => kind === "hours" || kind === "tokens" ? format(kind, top)
+    : t("unit.join", { value: numberText(Math.round(top * 100) / 100), unit: t(`unit.${kind}`, { count: 2 }) });
 }
 
 /** The days under a chart: as many names as its width holds; one day (`strong`, where counting began) in ink and bold. */

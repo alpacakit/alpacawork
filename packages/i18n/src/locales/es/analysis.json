@@ -283,6 +283,9 @@
     "finished_one": "{{count}} terminada",
     "finished_many": "{{count}} terminadas",
     "finished_other": "{{count}} terminadas",
-    "list": "Lista de tareas"
+    "list": "Lista de tareas",
+    "passedOf_one": "{{passed}} de {{count}}",
+    "passedOf_many": "{{passed}} de {{count}}",
+    "passedOf_other": "{{passed}} de {{count}}"
   }
 }

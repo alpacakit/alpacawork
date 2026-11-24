@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, delta, format, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, RowName, spanMost, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
 
@@ -77,8 +77,9 @@ export function UsageLook({ view, tasks, days, open, zone }: {
     finished: useScale(spanMost(points, days, finishedOn), 1, t("unit.tasks", { count: 2 }), true),
     tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
   };
+  const lineLabel = useLineLabel();
   const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
-    return { values, top, name: t("line.perTask"), label: format(kinds[key], top), faint: (i: number) => !steady(i) }; };
+    return { values, top, label: lineLabel(kinds[key] as "tokens" | "hours" | "times", top), faint: (i: number) => !steady(i) }; };
   const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: overlay("launches") } : null;
   const finishedParts = useFinishedParts();
   const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
