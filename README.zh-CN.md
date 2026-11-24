@@ -37,7 +37,7 @@
 alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="电脑浏览器中的 alpacawork，列表里有 10 个进行中和 3 个待验收的任务，旁边并排显示打开的任务报告；右侧的手机上打开着同一份报告" width="820">
+  <img src="docs/images/demo-dark.webp" alt="在手机的输入框里写下一条请求并发送后，电脑的列表中出现三个并行推进的任务；确认送达的结果后右滑完成，对 AI 的提问选择一个方案作答；最后是手机和电脑并排的全貌" width="800">
 </p>
 
 ## 安装
@@ -70,6 +70,10 @@ alpacawork setup
 
 ## 能做什么
 
+在实际界面中观看从提出请求到完成的整个流程（98 秒，无声）。
+
+https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
+
 - **所有委托，都写在同一个聊天框里。** 协调员把每个委托变成任务，交给负责处理的 AI。不必为每件工作分别切换聊天或 AI。
 - **多个 AI，由 AI 统一管理。** 要补充或更改进行中的工作，也只需告诉协调员。写一句“进行中的三个任务，都再检查一下手机上的显示效果”，协调员就会把这条指示传达给正在处理这三个任务的每个 AI。
 - **用文字描述流程，各个 AI 就会协作完成。** 即使是“用三个不同的模型各做一个方案。合并成一个后，让另一个 AI 检查，改好再报告”这样比较复杂的流程，也会按你说的执行：由 AI 管理各个步骤，AI 之间互相交接工作。
@@ -89,6 +93,7 @@ alpacawork setup
 - [入门指南](docs/zh-CN/getting-started.md) — 从安装、发出一个委托到确认结果
 - [文档首页](docs/zh-CN/README.md) — 使用方法、设置、遇到问题时等全部页面的一览
 - 发现 bug 时，请在 [Issues](https://github.com/alpacakit/alpacawork/issues) 中报告
+- 版本发布公告发布在 X 的 [@codemafia0000](https://x.com/codemafia0000)
 
 ## 许可证
 

@@ -37,7 +37,7 @@
 alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude Code y Codex que ya tienes instalados en tu PC y les asigna trabajo. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y sigue el progreso. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="alpacawork en el navegador de un PC, con una lista de diez tareas en curso y tres por revisar junto al informe abierto de una tarea, y a la derecha un teléfono que muestra el mismo informe" width="820">
+  <img src="docs/images/demo-dark.webp" alt="Una petición escrita en el cuadro de chat del teléfono se convierte en tres tareas que avanzan en paralelo en la lista del PC; se revisa un resultado y se desliza para darlo por hecho, y una pregunta de la IA se responde eligiendo una opción; al final, el teléfono y el PC lado a lado" width="800">
 </p>
 
 ## Instalar
@@ -70,6 +70,10 @@ En una terminal, también se abre con `alpacawork open`.
 
 ## Qué hace
 
+Mira el flujo completo, desde la petición hasta el resultado, en las pantallas reales (98 segundos, sin sonido).
+
+https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
+
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.
 - **Una IA gestiona varias IA a la vez.** Para añadir o cambiar algo en el trabajo en curso, solo tienes que decírselo al coordinador. Escribe “En las tres tareas en curso, comprueba también cómo se ve en el teléfono” y el coordinador se lo indica a cada IA que trabaja en ellas.
 - **Describe el proceso con tus palabras y las IA lo llevan a cabo juntas.** Incluso un proceso elaborado, como “Haz tres propuestas, cada una con un modelo distinto. Combínalas en una, haz que otra IA la revise y corrígela antes de pasarme el informe”, se lleva a cabo tal como lo describes: la IA gestiona los pasos y las IA se pasan el trabajo entre sí.
@@ -89,6 +93,7 @@ En una terminal, también se abre con `alpacawork open`.
 - [Primeros pasos](docs/es/getting-started.md): instalar, pedir una tarea y revisarla
 - [Índice de la documentación](docs/es/README.md): la lista de todas las páginas: cómo usarlo, la configuración, la solución de problemas y más
 - Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
+- Los anuncios de nuevas versiones se publican en X: [@codemafia0000](https://x.com/codemafia0000)
 
 ## Licencia
 

@@ -5,6 +5,7 @@
  * the source commit on GitHub, which shows them only while the repository is public; other links open the
  * corresponding repository page.
  * Only `[text](path)`, `src="path"`, `srcset="..."` and `href="path"` are rewritten; the README's header comment says so.
+ * A line that is only a video GitHub hosts (it plays there) becomes a link to it: npm would show the bare URL as plain text.
  */
 export function npmReadme(text: string, packageName: string, version: string, source: string, repositoryUrl: string | undefined,
   inPackage: (path: string) => boolean): string {
@@ -35,6 +36,7 @@ export function npmReadme(text: string, packageName: string, version: string, so
     return result;
   };
   return text
+    .replace(/^https:\/\/github\.com\/user-attachments\/assets\/[\w-]+$/gm, url => `[${url}](${url})`)
     .replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (_, bang: string, label: string, target: string) => `${bang}[${label}](${absolute(target, bang === '!')})`)
     .replace(/\b(src|srcset|href)="([^"]+)"/g, (_, attribute: string, target: string) =>
       `${attribute}="${attribute === 'srcset' ? sourceSet(target) : absolute(target, attribute === 'src')}"`);

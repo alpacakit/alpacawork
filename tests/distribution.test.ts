@@ -226,7 +226,7 @@ test('README pictures and links open on GitHub, and the packaged README uses ver
       assert.ok(target.startsWith(unpkg) || target.startsWith(github), target);
   }
 });
-test('README responsive pictures use this package version and require a repository for unbundled images', () => {
+test('README responsive pictures use this package version and require a repository for unbundled images; a video line becomes a link', () => {
   const rewrite = (text: string) => npmReadme(text, 'alpacawork', '1.2.3', 'a'.repeat(40), undefined,
     file => ['docs/images/phone.gif', 'docs/images/wide.gif'].includes(file));
   assert.equal(rewrite('<picture><source srcset="./docs/images/wide.gif?theme=dark 1x, docs/images/phone.gif 2x"><img src="docs/images/phone.gif"></picture>'),
@@ -234,6 +234,8 @@ test('README responsive pictures use this package version and require a reposito
   const external = '<source srcset="data:image/gif;base64,R0lGODlh 1x, https://example.com/wide.gif 2x">';
   assert.equal(rewrite(external), external);
   assert.throws(() => rewrite('<source srcset="docs/images/missing.gif">'), /repository/);
+  const video = 'https://github.com/user-attachments/assets/0a1b2c3d-video';
+  assert.equal(rewrite(`Watch it.\n\n${video}\n\nNext.`), `Watch it.\n\n[${video}](${video})\n\nNext.`);
 });
 
 test('assembly omits documentation animations and pins the packaged README to their source commit',
