@@ -15,7 +15,7 @@ import { defaultCodexHome, originalCodexThread, prepareCodexHome } from './codex
 
 /** Codex's own error kinds that mean its plan or the model ran out. */
 const CODEX_CAUSES: Record<string, NonNullable<RunFailure['cause']>> = { usageLimitExceeded: 'session_limit', serverOverloaded: 'model_capacity' };
-const INITIALIZE = { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.6' },
+const INITIALIZE = { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.7' },
   capabilities: { experimentalApi: false, requestAttestation: false } };
 
 type Options = { model: string | null; config: string[]; features: string[]; sandbox: string | null;
