@@ -96,7 +96,7 @@ export function LimitsMenu() {
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
-      aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-1.5">
+      aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-2.5">
       <Ring percent={percent} tone={tone} />
       {/* Which agent and which of its windows the figure is: a computer has the room; a phone keeps the figure. The
           window's name goes first, where the buttons' side of the bar (AppBar BUTTONS) no longer holds it and it would
