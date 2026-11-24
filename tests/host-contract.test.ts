@@ -20,7 +20,7 @@ const processRow = (pid: number, startTime: number | null, ticks: number | null,
 const root = { runId: 'R1', taskId: 'T1', title: 'fixture', role: 'owner' as const, model: null, pid: 10 };
 function fixture() {
   let reading: HostReading = { processTime: 100, cpuTicks: { total: 1000, idle: 500 },
-    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null }, load: null, gpus: [],
+    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null }, load: null,
     disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 }, processes: new Map([[10, processRow(10, 10, 100)]]) };
   const sampler = new HostSampler({ supported: true, facts: { hostname: 'fixture', os: 'fixture', cores: 4, memoryBytes: 1000 },
     argv: () => [], read: () => reading });
@@ -131,16 +131,16 @@ test('adapter initialization failure enters the monitor error path and its next 
     if (attempts === 1) throw Object.assign(new Error('native initialization denied'), { code: 'EACCES' });
     return { supported: true, facts, argv: () => [], read: () => ({ processTime: 100,
       cpuTicks: { total: 1000, idle: 500 }, memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null },
-      load: null, gpus: [], processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
+      load: null, processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
   });
   const monitor = new HostMonitor({ root: area, source, runs: () => [], parallel: () => null, noticeChanged: () => {}, episodeStarted: () => {} });
   try {
     monitor.tick(1000);
-    const failed = hostStatusSchema.parse(monitor.status()); assert.ok(failed.supported);
+    const failed = hostStatusSchema.parse(await monitor.status()); assert.ok(failed.supported);
     assert.equal(failed.facts, null); assert.equal(failed.sample, null);
     assert.match(failed.error!.message, /initialization denied/); assert.equal(attempts, 1);
     monitor.tick(11000);
-    const recovered = hostStatusSchema.parse(monitor.status()); assert.ok(recovered.supported);
+    const recovered = hostStatusSchema.parse(await monitor.status()); assert.ok(recovered.supported);
     assert.deepEqual(recovered.facts, facts); assert.ok(recovered.sample); assert.equal(recovered.error, null);
     assert.equal(attempts, 2);
   } finally { monitor.close(); rmSync(area, { recursive: true, force: true }); }
@@ -159,7 +159,7 @@ test('real host API remains available during native initialization failure and p
     if (++attempts === 1) throw new Error('Could not initialize Darwin host measurement', { cause: new Error('native symbol unavailable') });
     return { supported: true, facts, argv: () => [], read: () => ({ processTime: 100,
       cpuTicks: { total: 1000, idle: 500 }, memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: null },
-      load: null, gpus: [], processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
+      load: null, processes: new Map(), disk: { freeBytes: 100 * 1024 ** 3, totalBytes: 1000 * 1024 ** 3 } }) };
   });
   const app = await startServer(area, 0, { hostSource: source });
   const read = async () => {

@@ -3,9 +3,7 @@ import { readFileSync, readdirSync, readlinkSync, statfsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { cpus, hostname, totalmem } from 'node:os';
 import type { HostFacts, HostReading, HostMeasurement, ProcessStat } from './host.js';
-import { pollGpus } from './gpu.js';
-import { readAmdGpus } from './amd-gpu.js';
-import { readNvidiaGpus } from './nvidia-gpu.js';
+import { nvidiaGpuReader } from './nvidia-gpu.js';
 
 /** Aggregate CPU ticks; guest time is already included in user and nice. */
 export function parseCpuTicks(text: string): { total: number; idle: number } {
@@ -98,22 +96,26 @@ function readExecutable(pid: number, startTime?: number | null): string | null {
 
 export function linuxHostMeasurement(dataDirectory: string): HostMeasurement {
   const pageBytes = getconf('PAGESIZE'), ticksPerSecond = getconf('CLK_TCK'), tickMs = 1000 / ticksPerSecond;
-  const amd = pollGpus(() => readAmdGpus()), nvidia = pollGpus(readNvidiaGpus);
+  const snapshot = () => readProcesses(pageBytes, tickMs);
+  const processClock = () => {
+    const time = Number(readFileSync('/proc/uptime', 'utf8').split(' ')[0]) * ticksPerSecond;
+    if (!Number.isFinite(time)) throw new Error('Invalid /proc/uptime');
+    return time;
+  };
   return {
     supported: true, facts: readHostFacts(), argv: readArgv, executable: readExecutable,
+    readGpus: nvidiaGpuReader(processClock, snapshot),
     read() {
       const disk = statfsSync(dataDirectory);
       const load = readFileSync('/proc/loadavg', 'utf8').trim().split(/\s+/).slice(0, 3).map(Number);
       if (load.length !== 3 || load.some(v => !Number.isFinite(v) || v < 0)) throw new Error('Invalid /proc/loadavg');
       const cpu = parseCpuTicks(readFileSync('/proc/stat', 'utf8'));
-      const processTime = Number(readFileSync('/proc/uptime', 'utf8').split(' ')[0]) * ticksPerSecond;
-      if (!Number.isFinite(processTime)) throw new Error('Invalid /proc/uptime');
+      const processTime = processClock();
       return {
         cpuTicks: { total: cpu.total * tickMs, idle: cpu.idle * tickMs }, processTime,
-        processes: readProcesses(pageBytes, tickMs), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
+        processes: snapshot(), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
         load: load as [number, number, number],
         disk: { freeBytes: disk.bavail * disk.bsize, totalBytes: disk.blocks * disk.bsize },
-        gpus: [...nvidia(processTime), ...amd(processTime)],
       };
     },
   };

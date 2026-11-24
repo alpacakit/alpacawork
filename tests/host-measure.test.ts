@@ -19,7 +19,8 @@ import { initializeWorkspace } from '@alpacawork/backend/test-dist/control/initi
 
 const GB = 1024 ** 3;
 const facts = { hostname: 'fixture-host', os: 'fixture OS', cores: 4, memoryBytes: 100 * GB };
-const source = (sample: Extract<HostSource, { supported: true }>['sample']): HostSource => ({ supported: true, facts, sample });
+const source = (sample: Extract<HostSource, { supported: true }>['sample']): Extract<HostSource, { supported: true }> =>
+  ({ supported: true, facts, sample });
 
 
 test('/proc readers take the fields the host status shows', () => {
@@ -44,11 +45,12 @@ test('a command is named by what an interpreter or runner runs', () => {
   assert.equal(commandName('chrome-headless', [], '/opt/x/chrome-headless-shell'), 'chrome-headless-shell');
 });
 
-test('a rewritten argv does not leak arguments or truncate spaces in an executable name', () => {
+test('long names use the executable or a plain argv path without showing process-title arguments', () => {
   const executable = '/opt/Browser Builds/chrome-headless-shell Preview';
-  const argv = [`${executable} --type=renderer --headless=old --no-sandbox`];
-  assert.equal(commandName('chrome-headless', argv, executable), 'chrome-headless-shell Preview');
+  const argv = [`${executable} --type=renderer --user-data-dir=/tmp/chrome-headless-profile`];
+  assert.equal(commandName('chrome-headless', argv, `${executable} (deleted)`), 'chrome-headless-shell Preview');
   assert.equal(commandName('chrome-headless', argv), 'chrome-headless');
+  assert.equal(commandName('systemd-journal', ['/usr/lib/System Services/systemd-journald']), 'systemd-journald');
 });
 
 test('a Run weighs its whole tree and names its heaviest command with a count', () => {
@@ -101,7 +103,7 @@ describe('the monitor and its record', () => {
     memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
     disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: cpu > 50 ? [run(cpu - 10)] : [], outside: { cpu: 1, memoryBytes: GB, names: ['Xorg'] } });
 
-  test('disk warns below 50 GB and stays tight until 55 GB without repeated starts', () => {
+  test('disk warns below 50 GB and stays tight until 55 GB without repeated starts', async () => {
     let freeBytes = 50 * GB;
     const started: number[] = [];
     const monitor = new HostMonitor({ root, runs: () => [], parallel: () => 12,
@@ -110,7 +112,7 @@ describe('the monitor and its record', () => {
     const base = Date.parse('2026-10-15T00:00:00Z');
     try {
       monitor.tick(base);
-      const status = hostStatusSchema.parse(monitor.status(base));
+      const status = hostStatusSchema.parse(await monitor.status(base));
       assert.ok(status.supported);
       assert.equal(status.limits.diskFreeBytes, 50 * GB, 'the displayed limit uses the warning threshold');
       assert.equal(monitor.notice(), null, 'exactly 50 GB does not start a warning');
@@ -136,7 +138,7 @@ describe('the monitor and its record', () => {
     } finally { monitor.close(); }
   });
 
-  test('tells the index while tight, starts one push per episode, and keeps the episode and its minutes', () => {
+  test('tells the index while tight, starts one push per episode, and keeps the episode and its minutes', async () => {
     const cpu = new Map<number, number>();
     const notices: (HostNotice | null)[] = [], started: number[] = [], held: (number | null)[] = [];
     const base = Date.parse('2026-10-15T00:00:00Z');
@@ -152,7 +154,7 @@ describe('the monitor and its record', () => {
       assert.deepEqual(held, [base + at(180), null]);
       assert.equal(notices.at(-1), null, 'the banner goes once it is calm');
       assert.ok(notices.length >= 3, 'the banner is refreshed at least once a minute while tight');
-      const status = hostStatusSchema.parse(monitor.status(base + at(600)));
+      const status = hostStatusSchema.parse(await monitor.status(base + at(600)));
       assert.ok(status.supported);
       assert.equal(status.current, null);
       assert.equal(status.parallel, 12);
@@ -193,7 +195,7 @@ describe('the monitor and its record', () => {
     store.close();
   });
 
-  test('a restart while tight continues the open episode without a second push', () => {
+  test('a restart while tight continues the open episode without a second push', async () => {
     const base = Date.parse('2026-10-15T00:00:00Z');
     const store = new HostStore(root);
     const id = store.saveEpisode(null, { start: base, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base + at(50));
@@ -204,7 +206,7 @@ describe('the monitor and its record', () => {
       episodeStarted: episode => started.push(episode.start), episodeHeld: start => held.push(start), source: source((_runs, now) => sampleAt(now, 96)) });
     try {
       monitor.tick(base + at(60));
-      const status = hostStatusSchema.parse(monitor.status(base + at(60)));
+      const status = hostStatusSchema.parse(await monitor.status(base + at(60)));
       assert.ok(status.supported);
       assert.deepEqual([status.current?.id, status.current?.start], [id, base]);
       assert.deepEqual(started, []);
@@ -218,16 +220,21 @@ const gpus: HostSampleDTO['gpus'] = [
   { id: 'GPU-a', name: 'Fixture GPU', utilization: 100, memory: { usedBytes: GB, totalBytes: 4 * GB }, users: [] },
   { id: 'GPU-b', name: 'Fixture GPU', utilization: null, memory: null, users: null },
 ];
-for (const hostSource of [source((_runs, now) => ({ at: now, cpu: 20,
-  memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
-  disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus, runs: [], outside: { cpu: 0, memoryBytes: 0, names: [] } })),
-  { supported: false, platform: 'darwin' } as const, { supported: false, platform: 'win32' } as const]) {
-  test(`GET /api/host/status uses the supplied ${hostSource.supported ? 'measured' : hostSource.platform} source`, async () => {
+for (const platform of [null, 'darwin', 'win32']) {
+  test(`GET /api/host/status uses the supplied ${platform ?? 'measured'} source`, async () => {
+    let probes = 0;
+    const hostSource: HostSource = platform ? { supported: false, platform } : {
+      ...source((_runs, now) => ({ at: now, cpu: 20,
+        memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
+        disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: [], outside: { cpu: 0, memoryBytes: 0, names: [] } })),
+      readGpus: async () => { probes++; return gpus; },
+    };
     const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-host-route-')));
     const root = join(area, 'root'); mkdirSync(root, { mode: 0o700 });
     await initializeWorkspace(root);
     const app = await startServer(root, 0, { hostSource });
     try {
+      assert.equal(probes, 0, 'starting the monitor does not probe the GPU');
       const response = await fetch(new URL('api/host/status', app.url));
       assert.equal(response.status, 200);
       const status = hostStatusSchema.parse(await response.json());
@@ -236,13 +243,14 @@ for (const hostSource of [source((_runs, now) => ({ at: now, cpu: 20,
         assert.deepEqual(status.facts, facts);
         assert.equal(status.sample.cpu, 20);
         assert.deepEqual(status.sample.gpus, gpus);
+        assert.equal(probes, 1);
         assert.equal(status.current, null);
       } else assert.deepEqual(status, hostSource);
     } finally { await app.close(); rmSync(area, { recursive: true, force: true }); }
   });
 }
 
-test('an unsupported source never samples, records, or notifies', () => {
+test('an unsupported source never samples, records, or notifies', async () => {
   const name = 'darwin';
   const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-host-unsupported-')));
   const root = join(area, 'no-workspace');
@@ -252,7 +260,7 @@ test('an unsupported source never samples, records, or notifies', () => {
     runs: unexpected, parallel: unexpected, noticeChanged: unexpected, episodeStarted: unexpected, episodeHeld: unexpected });
   try {
     monitor.start(); monitor.tick();
-    assert.deepEqual(hostStatusSchema.parse(monitor.status()), { supported: false, platform: name });
+    assert.deepEqual(hostStatusSchema.parse(await monitor.status()), { supported: false, platform: name });
     assert.equal(monitor.episodeMinutes(1), null);
     assert.equal(monitor.notice(), null);
     assert.equal(existsSync(root), false);
@@ -263,7 +271,7 @@ test('an unsupported source never samples, records, or notifies', () => {
 test('normalized readings give CPU deltas, whole Run trees, and PID reuse on every OS', () => {
   let reading: HostReading = { processTime: 2, cpuTicks: { total: 1000, idle: 800 },
     processes: new Map([[10, { pid: 10, ppid: 1, comm: 'agent', ticks: 30, startTime: 1, rssBytes: 100 }]]),
-    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: 100 }, load: [1, 2, 3], disk: { freeBytes: 400, totalBytes: 900 }, gpus: [] };
+    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: 100 }, load: [1, 2, 3], disk: { freeBytes: 400, totalBytes: 900 } };
   const sampler = new HostSampler({ supported: true, facts, read: () => reading, argv: () => ['node', '/w/check.js'] });
   const roots = [{ runId: 'R1', taskId: 'T1', title: 'test', role: 'owner' as const, model: null, pid: 10 }];
   assert.equal(sampler.sample(roots, 0).cpu, null);
@@ -295,7 +303,7 @@ if (platform === linuxAdapter) test('the selected Linux source reads /proc and t
   assert.ok(sample.outside.memoryBytes > 0);
 });
 
-test('a host sampling fault keeps operation, OS code, syscall and path in the public error', () => {
+test('a host sampling fault keeps operation, OS code, syscall and path in the public error', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'host-fault-')));
   const cause = Object.assign(new Error("ENOENT: no such file or directory, open '/proc/test'"),
     { code: 'ENOENT', syscall: 'open', path: '/proc/test' });
@@ -303,7 +311,7 @@ test('a host sampling fault keeps operation, OS code, syscall and path in the pu
     source: { supported: true, facts: { hostname: 'test', os: 'Linux', cores: 1, memoryBytes: 100 }, sample: () => { throw cause; } } });
   try {
     monitor.tick(1000);
-    const status = hostStatusSchema.parse(monitor.status(1000));
+    const status = hostStatusSchema.parse(await monitor.status(1000));
     assert.equal(status.supported, true);
     if (!status.supported) return;
     assert.deepEqual(status.error?.reason, { kind: 'host_failure', operation: 'sample',

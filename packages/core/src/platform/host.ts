@@ -23,12 +23,16 @@ export interface HostReading {
   /** Null means this OS has no equivalent metric, rather than a load of zero. */
   load: [number, number, number] | null;
   disk: { freeBytes: number; totalBytes: number };
+}
+export interface HostGpuReading {
   gpus: GpuReading[];
+  processes: ReadonlyMap<number, ProcessStat>;
 }
 export type HostMeasurement = { supported: false; platform: string } | {
   supported: true;
   facts: HostFacts;
   read(): HostReading;
+  readGpus?(): Promise<HostGpuReading>;
   argv(pid: number, startTime?: number | null): string[];
   executable?(pid: number, startTime?: number | null): string | null;
 };

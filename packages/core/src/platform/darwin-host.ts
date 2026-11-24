@@ -187,7 +187,7 @@ export function darwinHostMeasurement(dataDirectory: string, injected?: DarwinHo
             const process = readProcess(native, pid, numer, denom);
             if (process) processes.set(pid, process);
           }
-          return { cpuTicks, memory, load: [values[0]!, values[1]!, values[2]!], processTime, processes, gpus: [],
+          return { cpuTicks, memory, load: [values[0]!, values[1]!, values[2]!], processTime, processes,
             disk: { freeBytes: validNumber(disk.bavail * disk.bsize, 'disk available bytes'), totalBytes: validNumber(disk.blocks * disk.bsize, 'disk total bytes', true) } };
         } catch (cause) { throw new Error('Could not read Darwin host resources', { cause }); }
       },
