@@ -43,7 +43,16 @@ function calledFrom(store: RunStore, tx: RunTransaction, roots: readonly RunId[]
  * reserved under `operationId`. requestStop (run stop) and a stopped state report (task-reports) call it.
  */
 export function stopRunsIn(store: RunStore, tx: RunTransaction, roots: readonly RunId[], operationId?: string): StopResult {
-  const runs = calledFrom(store, tx, roots), graph = relationships(runs);
+  return reserveStops(store, tx, calledFrom(store, tx, roots), operationId);
+}
+
+/** Task reports with an explicit scope have already selected every unfinished Run to stop. */
+export function stopSelectedRunsIn(store: RunStore, tx: RunTransaction, ids: readonly RunId[], operationId: string): StopResult {
+  return reserveStops(store, tx, ids.flatMap(id => tx.get(id) ?? []), operationId);
+}
+
+function reserveStops(store: RunStore, tx: RunTransaction, runs: readonly RunRecord[], operationId?: string): StopResult {
+  const graph = relationships(runs);
   const result = { cancelled: [] as string[], stop_requested: [] as string[] };
   const lost: { id: string; pid: number }[] = [], stops = new StopDeliveryOwner(store);
   for (const run of runs) {

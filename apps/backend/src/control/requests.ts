@@ -194,7 +194,7 @@ export class RequestService {
           assertRotationResolved(rotation, resolvesUnknown, input.mode);
           const lifecycle = new ReturnLifecycle(db, tx, snapshot.tasks, project, undefined, this.root);
           const parentInstruction = callerRun?.role === 'owner' && callerRun.task === task.meta.parentId;
-          const projectInstruction = parentInstruction && tasks.get(callerRun.task).meta.kind === 'project';
+          const projectInstruction = callerRun?.role === 'owner' && callerRun.task === project;
           // This boundary also takes instructions that carry an answer to a question.
           if (fromPlacement && placement.responsible &&
               (projectInstruction || task.meta.baseState === 'error') && lifecycle.hasUserWork(task))

@@ -183,16 +183,21 @@ test('a project seat can manage its own top-level tasks without gaining rights i
 test('answering an independent task cannot add an instruction or loan', async t => {
   const flow = await taskFlow(t);
   const project = await flow.work(await projectSeat(flow));
-  const independent = await flow.work(await flow.task('Direct instruction'));
-  const sibling = await flow.task('Separate assignment');
-  const question = await flow.ask(independent, project.id);
-  const reply = (lendTask?: string) => new TaskRequestService(flow.root).request({
-    task: independent.id, answers: question, body: 'Please proceed', opId: randomUUID(), lendTask,
-  }, { kind: 'placement', placementId: project.placementId }, owner(project));
-  await assert.rejects(reply(sibling.id), { code: 'forbidden' });
-  assert.equal((await flow.get(independent.id)).meta.log.some(entry => entry.questionId === question), false);
-  assert.equal((await reply()).outcome.kind, 'answered');
-  await assert.rejects(reply(), { code: 'forbidden' });
+  const parent = await flow.work(await flow.task('Project assignment'), project);
+  const top = await flow.work(await flow.task('Direct instruction'));
+  const child = await flow.work(await flow.task('Direct instruction to a child', { parentId: parent.id }));
+  for (const independent of [top, child]) {
+    const question = await flow.ask(independent, project.id);
+    const reply = (lendTask?: string) => new TaskRequestService(flow.root).request({
+      task: independent.id, answers: question, body: 'Please proceed', opId: randomUUID(), lendTask,
+    }, { kind: 'placement', placementId: project.placementId }, owner(project));
+    if (independent === top) {
+      await assert.rejects(reply(parent.id), { code: 'forbidden' });
+      assert.equal((await flow.get(independent.id)).meta.log.some(entry => entry.questionId === question), false);
+    }
+    assert.equal((await reply()).outcome.kind, 'answered');
+    await assert.rejects(reply(), { code: 'forbidden' });
+  }
 });
 
 test('stopping a project run or the project leaves a called task working on the user’s instruction', async t => {
@@ -219,6 +224,67 @@ test('stopping a project run or the project leaves a called task working on the 
   assert.equal(await flow.state(queued.id), 'stopped');
   flow.end(delegated, 'cancelled');
   assert.equal(await flow.state(delegated.id), 'stopped');
+});
+
+test('a project stop includes managed failures and preserves the path of direct work', async t => {
+  const flow = await taskFlow(t);
+  const project = await flow.work(await projectSeat(flow));
+  const failed = await flow.work(await flow.task('Managed failure'), project);
+  flow.end(failed, 'failed');
+  const parent = await flow.work(await flow.task('Managed branch'), project);
+  const sibling = await flow.work(await flow.task('Managed sibling', { parentId: parent.id }), parent);
+  const protectedParent = await flow.work(await flow.task('Intermediate task', { parentId: parent.id }), parent);
+  const independent = await flow.work(await flow.task('Direct child', { parentId: protectedParent.id }));
+  const queued = await flow.request(independent);
+
+  await flow.person(project.id, 'stopped');
+  assert.equal(await flow.state(failed.id), 'stopped');
+  assert.equal(await flow.state(sibling.id), 'stopped');
+  assert.equal(flow.run(sibling).stop_requested, true);
+  for (const kept of [parent, protectedParent, independent]) {
+    assert.equal(await flow.state(kept.id), 'doing');
+    assert.equal(flow.run(kept).stop_requested, false);
+  }
+  assert.equal(flow.run(queued).state, 'queued');
+  const requestId = flow.run(queued).requestId;
+  assert.notEqual(flow.store(store => startDecision(store.connection, requestId, independent.id)).kind, 'reject');
+});
+
+test('project stop ends new lending and keeps accepted work with a protected borrower', async t => {
+  const flow = await taskFlow(t);
+  const project = await flow.work(await projectSeat(flow));
+  async function borrow(protect: boolean) {
+    const borrower = await flow.task(protect ? 'Protected borrower' : 'Managed borrower');
+    const target = await flow.task(protect ? 'Protected borrower’s target' : 'Managed borrower’s target');
+    const { outcome } = await new TaskRequestService(flow.root).request({
+      task: borrower.id, body: 'Verify the result', opId: randomUUID(), lendTask: target.id,
+      expectedTaskHash: (await flow.get(borrower.id)).hash, expectedPlacementRevision: 1,
+    }, { kind: 'placement', placementId: project.placementId }, owner(project));
+    assert.equal(outcome.kind, 'request_accepted');
+    const seat = { ...borrower, runId: outcome.request.runId };
+    flow.start(seat);
+    const work = await flow.work(target, seat);
+    if (protect) await flow.request(seat);
+    return { seat, work };
+  }
+  const managed = await borrow(false);
+  const protectedWork = await borrow(true);
+  await flow.person(project.id, 'stopped');
+  assert.equal(await flow.state(managed.seat.id), 'stopped');
+  assert.equal(await flow.state(managed.work.id), 'stopped');
+  assert.equal(flow.run(managed.work).stop_requested, true);
+  assert.equal(await flow.state(protectedWork.seat.id), 'doing');
+  assert.equal(flow.run(protectedWork.work).stop_requested, false);
+  const borrowAction = { name: 'task.request', worker: false, borrowable: true } as const;
+  assert.throws(() => flow.store(store => authorize(store.connection, owner(protectedWork.seat), borrowAction,
+    { task: protectedWork.work.id, quote: null })), { code: 'forbidden' });
+  await flow.report(protectedWork.work, 'done');
+  flow.end(protectedWork.work);
+  await new ReturnRouter(flow.root).pass(undefined, { project: project.id });
+  const requestId = flow.run(protectedWork.work).requestId;
+  const result = flow.store(store => store.readReturns().find(row => row.requestId === requestId));
+  assert.equal(result?.toTaskId, protectedWork.seat.id);
+  assert.equal(result?.outcome, 'succeeded');
 });
 
 test('a project uses the ordinary rows and question detail when the user needs to act', async t => {

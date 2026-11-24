@@ -23,7 +23,7 @@ import { ReturnLifecycle } from './return-lifecycle.js';
 import { endedOwnWork } from './return-rules.js';
 import { evaluate, TASK_POLICY, terminal, type Operation, type OperationFacts } from '@alpacawork/contract/task-policy';
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
-import { TaskRepository, assertActive, taskWriter } from './task-store.js';
+import { TaskRepository, TaskTree, assertActive, taskWriter } from './task-store.js';
 import { startPath, startDecision } from './task-start-facts.js';
 
 /** Translate policy outcomes at the application boundary; policy rules contain no UI words. */
@@ -290,6 +290,7 @@ export class TaskTransition {
     const changed = meta.baseState !== task.meta.baseState ? 'state' : transition.record?.values !== undefined ? 'values' : 'none';
     this.write(read, changes, { taskId: task.id, kind: changed }, cause,
       transition.action === 'run_started' || transition.action === 'run_ended', resumeAuthorized);
+    if (transition.action === 'stop' && task.meta.kind === 'project') read.returns.revokeLoans(task.id, cause.at);
     return { stoppedRuns };
   }
   private startOf(read: ReadPoint, runId: RunId) {
@@ -430,16 +431,36 @@ function workBelow(task: ControlMetadata, tasks: Iterable<ControlMetadata>) {
   return task.kind === 'task' ? activeBelow(task.id, tasks) : [];
 }
 
-/** A project stops the branches it has open instructions to and can still manage. */
+/** A project stops the work it manages. Protected tasks keep both their branch and their path open. */
 function stopBelow(read: ReadPoint, task: ControlTask): string[] {
-  const tasks = read.tasks.map(item => item.meta);
-  if (task.meta.kind === 'task') return workBelow(task.meta, tasks).map(item => item.id);
-  const assigned = new Set(read.openRequests(task.id).map(request => request.taskId));
-  return read.tasks.flatMap(child => {
-    if (child.meta.parentId !== task.id || child.meta.kind !== 'task' || child.meta.lifecycle !== 'active' ||
-        !assigned.has(child.id) || read.returns.hasUserWork(child)) return [];
-    return [child.id, ...workBelow(child.meta, tasks).map(item => item.id)];
-  });
+  if (task.meta.kind === 'task') return workBelow(task.meta, read.tasks.map(item => item.meta)).map(item => item.id);
+  const tree = new TaskTree(read.tasks), stopped = new Set<string>();
+  const assigned = read.openRequests(task.id), assignedTasks = new Set(assigned.map(request => request.taskId));
+  const children = tree.children(task.id).filter(child => child.meta.kind === 'task' && child.meta.lifecycle === 'active');
+  const failures = new Map(children.map(child => [child.id, read.returns.failureOf(child)]));
+  const visited = new Set<string>();
+  function stopBranch(child: ControlTask): boolean {
+    if (child.meta.lifecycle !== 'active') return true;
+    if (visited.has(child.id)) return stopped.has(child.id);
+    visited.add(child.id);
+    if (read.returns.hasUserWork(child)) return false;
+    const below = tree.children(child.id).map(stopBranch);
+    if (below.includes(false)) return false;
+    stopped.add(child.id);
+    return true;
+  }
+  for (const child of children)
+    if (assignedTasks.has(child.id) || failures.get(child.id)?.requester === task.id) stopBranch(child);
+  for (const loan of assigned) {
+    if (!loan.lentTaskId || loan.loanEndedAt || !stopped.has(loan.taskId)) continue;
+    const target = tree.byId.get(loan.lentTaskId);
+    if (!target || target.meta.parentId !== task.id) continue;
+    const failure = failures.get(target.id);
+    const borrowed = failure?.requester === loan.taskId && failure.loanId === loan.id ||
+      read.openRequests(loan.taskId).some(request => request.taskId === target.id && request.loanRequestId === loan.id);
+    if (borrowed) stopBranch(target);
+  }
+  return [...stopped];
 }
 
 /** The finished-branch rule over the tree after the write: the path above the change, and everything below what changed. */
