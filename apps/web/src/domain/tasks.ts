@@ -130,6 +130,9 @@ export const REPORT_STATE = { approve: "done", hold: "held", stop: "stopped" } a
  * The server policy supplies candidates; the state report carries out the
  * choice, and the server refuses what it may not do.
  */
+/** Whether the server allows `task` a stop: a project, which cannot stop, is offered none (unknown: as a task is). */
+export const stoppable = (task: Pick<Task, "allowedActions"> | undefined) => !task || task.allowedActions.includes("stop");
+
 export function stateChoices(task: Pick<Task, "allowedActions">): StateChoice[] {
   const labels = { confirm: "approve", hold: "hold", unhold: "unhold", stop: "stop" } as const;
   return (["confirm", "hold", "unhold", "stop"] as const).filter(action => task.allowedActions.includes(action)).map(action => labels[action]);

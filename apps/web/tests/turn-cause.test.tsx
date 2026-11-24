@@ -146,4 +146,11 @@ test("a failed project offers continuing but no stop, as the server allows no st
   const reason = head.container.querySelector<HTMLElement>('[data-turn-reason="failed"]')!;
   expect([...reason.querySelectorAll<HTMLElement>("[data-turn-action]")].map(button => button.dataset.turnAction)).toEqual(["retry", "switch"]);
   expect(reason.firstChild?.textContent).toBe(i18n.t("ui:turn.reason.failedNoStop"));
+  cleanup();
+  // A failure whose cause is known says that cause, and no stop either.
+  const known = screenData(tree({ tasks: [taskFixture({ kind: "project", id: "P100", state: "error", ball: userBall("failed", "LENDR2", at), log })],
+    placements: [{ ...placement, taskId: "P100" }], runs: [failedRun("R2", { taskId: "P100", errorCause: { cause: "model_capacity" } })] }));
+  const failed = known.tasks.find(each => each.id === "P100")!;
+  const said = render(<TestWorkspace data={known}><TurnReason turn={reasonedTurn(failed.ball)!} task={failed} cause={failureCause(failed, known.people)} /></TestWorkspace>);
+  expect(said.container.querySelector('[data-turn-reason="failed"]')!.firstChild?.textContent).toBe(i18n.t("ui:run.causeNoStop.modelCapacity"));
 });

@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { useReaderPeople } from "@/data/queries";
 import type { Task } from "@/data/types";
+import { stoppable } from "@/domain/tasks";
 import type { ReasonedTurn } from "@/domain/lead";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
 import { problemReasonText } from "@/data/client";
@@ -34,8 +35,7 @@ export const turnSentence = (turn: ReasonedTurn, t: TFunction<"ui">, causeWords?
   : turn.reason === "failed" && causeWords ? causeWords
   // A failure of what cannot stop (a project) offers only ways to continue, and its sentence says no more.
   : turn.reason === "failed" && !stoppable ? t("turn.reason.failedNoStop") : t(`turn.reason.${turnReasonKey(turn)}`);
-/** Whether the server allows `task` a stop: a project, which cannot stop, is offered none. */
-export const stoppable = (task: Pick<Task, "allowedActions"> | undefined) => !task || task.allowedActions.includes("stop");
+
 
 /**
  * Why the user's turn came when it is not a review or a question (the ball's reason): automatic wakes stopped at their
@@ -48,7 +48,7 @@ export const stoppable = (task: Pick<Task, "allowedActions"> | undefined) => !ta
 export function TurnReason({ turn, task, about = task, cause, className }: { turn: ReasonedTurn; task?: Task; about?: Task; cause?: ErrorCause | null; className?: string }) {
   const { t, i18n } = useTranslation("ui");
   const now = useNow();
-  const words = turnSentence(turn, t, cause ? causeSentence(cause, t, now, i18n.language) : null, stoppable(about));
+  const words = turnSentence(turn, t, cause ? causeSentence(cause, t, now, i18n.language, stoppable(about)) : null, stoppable(about));
   const actions = task ? turnActions(turn).filter(action => action !== "stop" || stoppable(task)) : [];
   // The buttons stand on their own row under the sentence, so the sentence keeps its line height to its last line.
   return <span data-turn-reason={turn.reason} data-turn-cause={turn.reason === "failed" && cause ? cause.cause : undefined} className={className}>

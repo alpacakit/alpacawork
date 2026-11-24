@@ -71,6 +71,12 @@ test("the family's root is the work right under the project, and its size counts
   expect(familySize("T9", at)).toBe(1);
 });
 
+test("a project has no family: its own Tasks are the list's", () => {
+  const at = indexTasks([{ id: "P1", parent: null, kind: "project", title: "P1", state: "doing", ball: null },
+    { id: "T1", parent: null, kind: "task", title: "T1", state: "doing", ball: null }] as unknown as Task[]);
+  expect(familyRoot("P1", at)).toBeUndefined();
+});
+
 test("each opening opens the way to the task being read, even folded before, and keeps the way to the one read before", () => {
   const at = index([["T1", null], ["T2", "T1"], ["T3", "T2"], ["T4", "T1"], ["T5", "T4"], ["T6", "T5"]]);
   const shape = familyShape("T1");

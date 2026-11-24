@@ -37,3 +37,7 @@ test("a Task's file read in the viewer copies with its Task; a code file by its 
   expect(["T151/samples/a.yml", "T150//repo/src/a.ts", "T151/diffs/x.diff"].map(address => viewerCopy(viewerTarget(address)!)))
     .toEqual(["T151/samples/a.yml", "/repo/src/a.ts", null]);
 });
+
+test("a project's file opens in the viewer as a Task's does", () => {
+  expect(viewerTarget("P4/result.md")).toEqual({ owner: "P4", path: "result.md", where: "task", reads: "file" });
+});

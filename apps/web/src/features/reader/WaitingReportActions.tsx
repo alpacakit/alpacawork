@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { TaskDetail } from "@/data/types";
 import { decideOf, isOther, isStop, offeredChoices, type Choice, type Question } from "@/domain/questions";
+import { stoppable } from "@/domain/tasks";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/ui/icon";
 import { useInputDraft, answerInDraft, focusCoordinator } from '@/features/coordinator/editor/draft';
@@ -66,7 +67,8 @@ function useWaitingAnswer(task: TaskDetail, question: string | null) {
    * The question's choices, Stop when it offers one (with a cross: choosing it stops the task), then Other (dashed,
    * with a pen: it brings the input up to write in); a question with no choices is answered by writing (Write an answer).
    */
-  const offered = (question: Question) => offeredChoices(question,
+  // What cannot stop (a project) offers no Stop: the server would refuse it, and the question would stay.
+  const offered = (question: Question) => offeredChoices(stoppable(task) ? question : { ...question, stop: null },
     { stop: t("answer.stop"), other: t(question.choices.length ? "answer.other" : "answer.write") });
   // Recommended stands inside its button, after the choice's name: read with the name it belongs to, never between one
   // choice's words and the next button. Outlined, it reads apart from what is chosen (filled).

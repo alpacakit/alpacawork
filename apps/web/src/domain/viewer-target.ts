@@ -1,7 +1,7 @@
 import { fileKind } from "@alpacawork/contract";
 
 /**
- * What the viewer reads, as the URL's `view` names it: `<Task ID>/<path>`, a file of that Task's folder when the path is
+ * What the viewer reads, as the URL's `view` names it: `<Task ID>/<path>` (a project's ID too), a file of that Task's folder when the path is
  * relative, or a file of its projects' code locations when it is absolute (`T150//home/me/repo/src/a.ts`). The Task is
  * whose words named the file: the server reads a code file only inside that Task's code locations.
  *
@@ -10,7 +10,7 @@ import { fileKind } from "@alpacawork/contract";
 export type ViewerTarget = { owner: string; path: string; where: "task" | "code"; reads: "diff" | "file" };
 
 export function viewerTarget(value: string): ViewerTarget | null {
-  const at = /^(T\d+)\/(.+)$/.exec(value);
+  const at = /^([TP]\d+)\/(.+)$/.exec(value);
   if (!at || at[2]!.includes("\0")) return null;
   const path = at[2]!, where = path.startsWith("/") ? "code" : "task";
   if (where === "task" && path.split("/").some(part => part === ".." || part === "")) return null;

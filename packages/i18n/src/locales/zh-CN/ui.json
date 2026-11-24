@@ -307,6 +307,12 @@
       "sessionLimit": "智能体已达到 5 小时用量上限，运行失败。请在上限重置后用同一 AI 继续、换一个 AI 继续，或停止",
       "weeklyLimit": "智能体已达到每周用量上限，运行失败。请在上限重置后用同一 AI 继续、换一个 AI 继续，或停止"
     },
+    "causeNoStop": {
+      "modelCapacity": "模型容量已满，运行失败。请稍后用同一 AI 继续，或换一个 AI 继续",
+      "modelLimit": "智能体已达到所用模型的用量上限，运行失败。请在上限重置后用同一 AI 继续，或换一个 AI 继续",
+      "sessionLimit": "智能体已达到 5 小时用量上限，运行失败。请在上限重置后用同一 AI 继续，或换一个 AI 继续",
+      "weeklyLimit": "智能体已达到每周用量上限，运行失败。请在上限重置后用同一 AI 继续，或换一个 AI 继续"
+    },
     "causeReason": {
       "modelCapacity": "模型容量已满",
       "modelLimit": "已达到模型用量上限",
@@ -314,6 +320,7 @@
       "weeklyLimit": "已达到每周用量上限"
     },
     "causeWithReset": "{{reason}}（{{reset}}）。请在上限重置后用同一 AI 继续、换一个 AI 继续，或停止",
+    "causeWithResetNoStop": "{{reason}}（{{reset}}）。请在上限重置后用同一 AI 继续，或换一个 AI 继续",
     "limitName": {
       "modelCapacity": "模型容量不足",
       "modelLimit": "模型用量上限",
