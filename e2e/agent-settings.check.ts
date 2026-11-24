@@ -36,7 +36,7 @@ test('a model added in the settings is kept, offered when asking, and given to t
   agent = await openAgent(page);
   await expect(agent.getByRole('textbox', { name: 'Available values for model' })).toHaveValue(/, my-model$/);
   // It is offered for the input's AI, and the launch carries it.
-  await page.locator('[data-ai-stack="coordinator"]').getByLabel('Model in row 1').selectOption('my-model');
+  await page.locator('[data-ai-stack="coordinator"]').getByLabel('Primary: Model').selectOption('my-model');
   await save(page).click();
   await saved(page);
   await page.keyboard.press('Escape');
