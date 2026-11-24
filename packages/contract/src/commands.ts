@@ -235,7 +235,7 @@ const definitions = {
     ...analysisScope, ...analysisPeriodOptions, text('from', 'First local day (YYYY-MM-DD)'), text('to', 'Last local day (YYYY-MM-DD)'),
     text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
     text('by', 'Breakdown from the selected row'), text('key', 'Key from the selected row'), text('value', 'Value to return per task'),
-    text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)', { queryCount: true }),
+    text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),
   ], { output: analysisUnitListSchema }),
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,

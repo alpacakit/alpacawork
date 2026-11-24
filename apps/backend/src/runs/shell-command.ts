@@ -52,12 +52,17 @@ function literalWords(text: string): string[] | null {
   return words;
 }
 
-export function commandOf(value: unknown): WorkCommand | null {
+export function literalInvocation(value: unknown): string[] | null {
   if (typeof value !== 'string' || value.length > 64 * 1024 || value.includes('\0')) return null;
   let words = literalWords(value);
   // Codex emits a single shell wrapper. Its script still goes through the same conservative recognizer.
   if (words?.length === 3 && /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh)$/.test(words[0]!) && ['-c', '-lc'].includes(words[1]!))
     words = literalWords(words[2]!);
+  return words;
+}
+
+export function commandOf(value: unknown): WorkCommand | null {
+  const words = literalInvocation(value);
   if (!words || words[0] !== 'alpacawork' || words.some(word => word === '-h' || word === '--help')) return null;
   const found = commands.find(command => command.words.every((word, at) => words![at + 1] === word));
   const parsed = workCommandSchema.safeParse(found?.key);

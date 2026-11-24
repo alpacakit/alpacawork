@@ -73,3 +73,30 @@ Run these in a terminal (on Windows, inside Ubuntu). The other commands are for 
 | `alpacawork uninstall` | Remove it from this PC. The data folder stays |
 | `alpacawork --version` | Show the installed version |
 | `alpacawork telemetry off` | Stop sending usage data |
+
+### Analysis
+
+The screen and these read commands use the same counts. A person or the coordinator can read all projects, or use
+`--project` to include a project and its nested projects. A Task Run reads its own project only.
+
+| Command | What it reads |
+| --- | --- |
+| `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts |
+| `alpacawork analysis usage --period 28d --bucket week --by model` | Task Run launches, elapsed running time, new conversations and measured tokens |
+| `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |
+| `alpacawork analysis task --task <task>` | One top-level Task's values, including the requested child when it resolves to that parent |
+
+Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods and
+`--time-zone <IANA-zone>` to override the server's time zone. Trend buckets are `day`, `week` and `month`.
+A comparison uses the immediately preceding period of equal length when there is enough history.
+
+The task counts use Tasks the user directly requested. AI usage includes work on all Tasks and groups child launches under
+their top-level Task. A launch has process-start evidence. A Run that joined another counts as input to that process. The
+usage response reports how many launches have unknown token counts. Skill, tool and MCP breakdowns report how many
+launches have been tallied. Task completion dates and launch dates use the time zone echoed in the result.
+
+For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from`
+and `--to` dates. Send the breakdown's `--by` and `--key` to limit the list to that row. Use `--value` to return and sort by
+a contribution such as `lead`, `questions`, `runMs` or `output`. `--limit` accepts up to 100 rows. Use the returned
+`cursor` with the same selection to get the next page. Related PR counts use distinct GitHub links from task values
+and reports. The list credits a link shared by multiple Tasks to the first contributing Task ID in the selection.

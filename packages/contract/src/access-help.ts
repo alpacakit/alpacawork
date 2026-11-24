@@ -14,6 +14,7 @@ const read: Example[] = [{ label: 'Read', action: { name: 'task.read' } }];
 /** A read a Run may also make of the projects above its own: their policies reach its launches. */
 const readUp: Example[] = [...read, { label: 'Read a project above the Run\'s own (Task here means that project)',
   action: { name: 'task.read' }, task: { id: 'P0', kind: 'project', parentId: null, project: 'P0' }, above: true }];
+const readTree: Example[] = [{ label: 'Read', action: { name: 'task.list' } }];
 const file: Example[] = [{ label: 'Write files', action: { name: 'file.write' } }];
 const held = { state: 'held', hold: true } as const;
 const review = { state: 'waiting', baseState: 'waiting', userRequested: true } as const;
@@ -30,7 +31,8 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'field.use': [{ label: 'Project fields (Task here means the project)', action: { name: 'field.use' },
     task: { kind: 'project', id: 'T1', parentId: null, project: 'T1' } }],
   'task.file-get': readUp,
-  'task.list': [{ label: 'Read tree', action: { name: 'task.list' } }],
+  'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
+  'task.list': readTree,
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [
     example('task.new', '--no-from-user (Task here means --parent)', { fromUser: false }),
@@ -173,6 +175,7 @@ export function accessHelp(command: string): string {
     if (index >= 0) lines[index] += ' ' + urgentRecipient.help.replace('--urgent: ', '');
   }
   if (command === 'task.update') lines.push('  Every changed field must be allowed.');
+  if (command.startsWith('analysis.')) lines.push("  A Run's analysis is restricted to its own project.");
   if (command === 'task.list') lines.push('  A Run\'s tree is restricted to its own project.');
   if (command === 'deploy' || command.startsWith('release.') || ['workspace.init', 'workspace.serve', 'workspace.maintenance'].includes(command))
     lines.push('  ' + localCaller.help);
