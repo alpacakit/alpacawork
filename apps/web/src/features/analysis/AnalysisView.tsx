@@ -10,7 +10,7 @@ import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./da
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
 import { PointerTip, Seg, Shown, useChoices } from "./parts";
-import { listOnAnswer, PERIOD_BACK, settleSpan, stepSpan, type AnalysisPlace, type ListPlace } from "./place";
+import { listOnAnswer, PERIOD_BACK, settleSpan, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
 import type { Head, Period } from "./contract";
@@ -47,9 +47,10 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const days = head?.period ?? null;
   const length = days ? daysBetween(days.from, days.to) : 0;
   const preset = "period" in place.span ? place.span.period : null;
-  const step = (direction: -1 | 1) => days && head && show({ span: settleSpan(stepSpan(days, direction), head.today), list: null, unit: null });
-  const canEarlier = !!days && !!head?.firstDay && stepSpan(days, -1).from >= head.firstDay;
-  const canLater = !!days && !!head && stepSpan(days, 1).to <= head.today;
+  // The arrows move from the span chosen now, even while the answer for it is still on its way.
+  const earlier = head ? stepChosen(place.span, head, -1) : null, later = head ? stepChosen(place.span, head, 1) : null;
+  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, unit: null }); };
+  const canEarlier = !!earlier, canLater = !!later;
 
   // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
   return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}

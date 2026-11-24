@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
-import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
+import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels, shareLine } from "../src/features/analysis/charts";
 import { tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
@@ -126,4 +126,13 @@ test("a small window stands above its mark where it fits, else under it, else is
   expect(tall).toEqual({ top: 346, maxHeight: 494 });
   expect(tall.top + tall.maxHeight!).toBeLessThanOrEqual(844 - 4);
   expect(tipPlace({ top: 700, bottom: 710, height: 900, screen: 844 })).toEqual({ top: 4, maxHeight: 690 });
+});
+
+test("the arrows move from the span chosen now, not from the answer still on screen", () => {
+  const head = { today: "2026-11-24", firstDay: "2026-10-15" };
+  // Today chosen (the 7 days' answer may still be shown): earlier is the day before.
+  expect(stepChosen({ period: "today" }, head, -1)).toEqual({ from: "2026-11-23", to: "2026-11-23" });
+  expect(stepChosen({ period: "today" }, head, 1)).toBeNull();
+  expect(stepChosen({ from: "2026-11-11", to: "2026-11-17" }, head, 1)).toEqual({ period: "7d" });
+  expect(stepChosen({ period: "all" }, head, -1)).toBeNull();
 });

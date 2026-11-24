@@ -126,3 +126,13 @@ export function listOnAnswer(place: AnalysisPlace, head: { period: { from: strin
   const span = !shown || shown.from === chosen.from && shown.to === chosen.to ? place.span : settleSpan(shown, head.today);
   return { ...place, span, list, unit: null };
 }
+
+/**
+ * The span the arrows move to: the span chosen now, a length of it earlier or later (whatever answer is still on screen),
+ * kept within the record; null where there is nothing that way.
+ */
+export function stepChosen(span: Span, head: { today: string; firstDay: string | null }, direction: -1 | 1): Span | null {
+  const next = stepSpan(spanDays(span, head.today, head.firstDay), direction);
+  if (direction < 0 ? !head.firstDay || next.from < head.firstDay : next.to > head.today) return null;
+  return settleSpan(next, head.today);
+}
