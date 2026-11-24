@@ -97,7 +97,7 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
       className={cn("group/steps mb-1 flex w-full min-w-0 cursor-pointer gap-2 rounded-sm py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11", open ? "items-start" : "items-center")}>
       <RunSteps steps={mine.steps} open={open} trail={3} className="min-w-0 flex-1" />
       <Icon name="down" className={cn("size-3.5 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "mt-0.5 rotate-180")} /></button>}
-    <div ref={end} className="flex flex-wrap items-center gap-x-2"><Pulse>{seconds}</Pulse></div>
+    <div ref={end} data-working-foot className="flex flex-wrap items-center gap-x-2"><Pulse>{seconds}</Pulse></div>
   </div>;
 }
 
