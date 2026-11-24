@@ -60,6 +60,9 @@ test("the analysis's place survives its URL, with the defaults left out", () => 
     list: { set: "used", value: "runMs", group: "model", member: "opus(high)" }, unit: "T12" });
   expect(place(new URLSearchParams(analysisValues(shown)).toString())).toEqual(shown);
   expect(analysisValues(place("face=analysis"))).toEqual([["face", "analysis"]]);
+  // A whole of skills, tools or MCP has a list without a row; a model's breakdown needs its row.
+  expect(place("face=analysis&look=usage&list=used&measure=calls&group=tool")!.list).toMatchObject({ group: "tool", member: null });
+  expect(place("face=analysis&list=finished&group=model")!.list).toMatchObject({ group: null, member: null });
   expect(place("look=usage")).toBeNull();
 });
 

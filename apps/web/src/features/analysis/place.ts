@@ -40,11 +40,15 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
     set, value: oneOf<ListValue>([...TASK_VALUES, ...USAGE_VALUES], url.get("measure")),
     group: oneOf<Group>([...TASK_GROUPS, ...USAGE_GROUPS], url.get("group")), member: url.get("member"),
   } : null;
-  if (list && (list.group === null) !== (list.member === null)) { list.group = null; list.member = null; }
+  // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
+  // tools, MCP: every launch that used one).
+  if (list && (list.group === null ? list.member !== null : list.member === null && !WHOLE_GROUPS.has(list.group))) { list.group = null; list.member = null; }
   const unit = url.get("unit");
   return { look, span: readSpan(url.get("span")), list, unit: unit && /^T\d+$/.test(unit) ? unit : null };
 }
 
+/** The breakdowns whose whole has a list of its own (every launch that used any of them). */
+const WHOLE_GROUPS = new Set<Group>(["skill", "tool", "mcp"]);
 export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "unit"] as const;
 /** The URL's values for a place, in one order, the defaults left out. */
 export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KEYS[number], string][] {
@@ -55,7 +59,8 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
   if (place.list) {
     out.push(["list", place.list.set]);
     if (place.list.value) out.push(["measure", place.list.value]);
-    if (place.list.group && place.list.member !== null) out.push(["group", place.list.group], ["member", place.list.member]);
+    if (place.list.group) out.push(["group", place.list.group]);
+    if (place.list.group && place.list.member !== null) out.push(["member", place.list.member]);
   }
   if (place.unit) out.push(["unit", place.unit]);
   return out;

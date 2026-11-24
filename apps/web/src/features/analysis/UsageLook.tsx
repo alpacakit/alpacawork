@@ -160,7 +160,8 @@ function Breakdown({ view, group, days, open, choose }: {
     lines={[{ name, value: i => series[i] ? format("times", read(series[i]!)) : t("chart.notCounted") }]}>
     <Row className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
       : <Num className="" label={name} kind="times" value={breakdown?.counted ? read(breakdown.counted.value) : 0}
-        previous={breakdown?.counted?.previous ? read(breakdown.counted.previous) : null} length={daysBetween(days.from, days.to)} />}>
+        previous={breakdown?.counted?.previous ? read(breakdown.counted.previous) : null} length={daysBetween(days.from, days.to)}
+        onOpen={() => open({ set: "used", value: by === "skill" ? "launches" : "calls", group: by, member: null })} />}>
       <BarChart row={0} height="h-16 narrow:h-12" scale={scale} uncounted={i => series[i] === null}
         partial={i => points[i]!.from < since && points[i]!.to >= since} values={i => [["bg-muted", series[i] ? read(series[i]!) : 0]]} />
       <DayAxis strong={sinceAt >= 0 ? { at: sinceAt, day: since } : null} />

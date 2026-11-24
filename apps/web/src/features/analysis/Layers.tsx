@@ -73,7 +73,8 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const first = pages[0];
   const rows = pages.flatMap(page => page.rows);
   const zone = first?.head.timeZone ?? "UTC";
-  const member = list.group === "project" ? projects.find(project => project.id === list.member)?.title ?? list.member : list.member;
+  const member = list.group === "project" ? projects.find(project => project.id === list.member)?.title ?? list.member
+    : list.member ?? (list.group ? t(`usage.by.${list.group}`) : null);
   const span = first?.head.period ?? days;
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
