@@ -7,10 +7,10 @@
     "aiStack": {
       "add": "＋ 予備の AI を追加",
       "addFirst": "＋ メインの AI を追加",
-      "agentFor": "{{role}}のエージェント",
+      "agentFor": "「{{role}}」のエージェント",
       "agentsNote": "無効にしたエージェントは、上の2つの一覧で選べなくなります。",
       "agentsTitle": "エージェントごとの設定",
-      "down": "{{role}}を下へ",
+      "down": "「{{role}}」を下へ",
       "fallback": "予備 {{n}}",
       "first": "メイン",
       "issue": {
@@ -22,13 +22,13 @@
       "lead": "メインが利用上限や混雑で止まったときだけ、予備が上から順に引き継ぎます。すべて止まると、作業を中断してお知らせします。",
       "namedOnly": "ここに無い AI は、指定して頼んだときだけ使います。",
       "notOffered": "{{value}}（候補にない）",
-      "remove": "{{role}}を消す",
+      "remove": "「{{role}}」を消す",
       "repeated": "「{{role}}」と同じなので、この行は使われません。",
       "saveRefused": "「{{list}}」に直す所があるため、保存できませんでした。赤字の所を直してから、もう一度保存してください。",
       "showRow": "直す行へ",
       "title": "タスクを進める AI",
-      "up": "{{role}}を上へ",
-      "valueFor": "{{role}}の{{row}}"
+      "up": "「{{role}}」を上へ",
+      "valueFor": "「{{role}}」の{{row}}"
     },
     "authNeeded": "認証が必要です。サーバーの PC で {{adapter}} にログインしてください",
     "authNeededCommand": "認証が必要です。サーバーの PC で <code>{{command}}</code> を実行してください",
