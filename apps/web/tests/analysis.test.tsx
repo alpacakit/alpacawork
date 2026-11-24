@@ -146,3 +146,13 @@ test("a day's window stands beside its bar, on the side with room, and never pas
   expect(tipBeside({ left: 600, right: 620, top: 820, width: 220, height: 160, ...screen }).top).toBe(736);
   expect(tipBeside({ left: 600, right: 620, top: 100, width: 220, height: 1200, ...screen })).toEqual({ left: 628, top: 4, maxHeight: 892 });
 });
+
+test("the day counting began is always named, and no other name on the axis touches it", () => {
+  for (const width of [330, 1038]) for (const must of [0, 30, 59, 60]) {
+    const named = axisLabels(61, false, at => at % 7 === 3, width, must);
+    expect(named).toContain(must);
+    const bin = width / 61, extent = (at: number) => { const from = Math.min(at * bin, width - 34); return [from, from + 34]; };
+    for (let i = 1; i < named.length; i++) expect(extent(named[i]!)[0]! - extent(named[i - 1]!)[1]!).toBeGreaterThanOrEqual(8);
+    for (const at of named) expect(extent(at)[1]).toBeLessThanOrEqual(width);
+  }
+});

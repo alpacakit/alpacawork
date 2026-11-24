@@ -13,19 +13,28 @@ const LABEL_PX = 34, LABEL_GAP_PX = 8;
  * a day chart names its first day, its last (drawn at the chart's end) and the Mondays between that have room; a week or
  * month chart names every bin that has room, each centred under its bin. The last is always named.
  */
-export function axisLabels(count: number, wide: boolean, candidate: (at: number) => boolean, width: number): number[] {
+export function axisLabels(count: number, wide: boolean, candidate: (at: number) => boolean, width: number, must?: number): number[] {
   if (count <= 1) return count ? [0] : [];
   const bin = width / count;
-  const extent = (at: number): [number, number] => wide ? [(at + 0.5) * bin - LABEL_PX / 2, (at + 0.5) * bin + LABEL_PX / 2]
-    : at === count - 1 ? [width - LABEL_PX, width] : [at * bin, at * bin + LABEL_PX];
-  const last = extent(count - 1), kept: number[] = [];
+  const extent = (at: number): [number, number] => {
+    if (wide) return [(at + 0.5) * bin - LABEL_PX / 2, (at + 0.5) * bin + LABEL_PX / 2];
+    // A day's name starts at its day, and one that would run past the end ends at it instead (as the last day's does).
+    const from = Math.min(at * bin, width - LABEL_PX);
+    return [from, from + LABEL_PX];
+  };
+  const touches = (a: [number, number], b: [number, number]) => a[0] < b[1] + LABEL_GAP_PX && b[0] < a[1] + LABEL_GAP_PX;
+  // A name that must stand (where counting began) is placed first; the others keep clear of it, the last day too.
+  const fixed = must !== undefined && must >= 0 && must < count ? extent(must) : null;
+  const last = extent(count - 1), lastKept = must === count - 1 || !fixed || !touches(last, fixed);
+  const kept: number[] = [];
   let end = -Infinity;
   for (let at = 0; at < count - 1; at++) {
+    if (at === must) { kept.push(at); end = fixed![1]; continue; }
     if (at !== 0 && !candidate(at)) continue;
-    const [from, to] = extent(at);
-    if (from >= end + LABEL_GAP_PX && to + LABEL_GAP_PX <= last[0]) { kept.push(at); end = to; }
+    const span = extent(at);
+    if (span[0] >= end + LABEL_GAP_PX && (!lastKept || span[1] + LABEL_GAP_PX <= last[0]) && !(fixed && touches(span, fixed))) { kept.push(at); end = span[1]; }
   }
-  return [...kept, count - 1];
+  return lastKept ? [...kept, count - 1] : kept;
 }
 
 /** Levels of a day on the calendar: none, then four steps by the quarters of the days that had any. */

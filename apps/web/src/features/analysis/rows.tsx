@@ -270,13 +270,15 @@ export function DayAxis({ strong }: { strong?: { at: number; day: string } | nul
     watch.observe(self);
     return () => watch.disconnect();
   }, []);
-  const named = new Set(axisLabels(bins.length, wide, at => wide || weekday(bins[at]!.from) === 0 || at === strong?.at, width || bins.length * 68));
-  if (strong) named.add(strong.at);
+  const room = width || bins.length * 68;
+  const named = new Set(axisLabels(bins.length, wide, at => wide || weekday(bins[at]!.from) === 0, room, strong?.at));
   const name = (bin: Bin, at: number) => at === strong?.at ? dayLabel(strong.day) : bucket === "month" ? monthLabel(bin.from) : dayLabel(bin.from);
+  // A day's name that would run past the axis's end is drawn ending at it.
+  const atEnd = (at: number) => !wide && at > 0 && (at + 1) * room / bins.length > room - 34;
   return <div ref={box} aria-hidden className="mt-1.5 grid h-4.5 auto-cols-[minmax(0,1fr)] grid-flow-col">
     {bins.map((bin, at) => <span key={bin.from} className={cn("overflow-visible text-xs whitespace-nowrap",
       at === strong?.at ? "font-semibold text-ink" : "text-soft",
-      wide ? "w-full text-center" : at === bins.length - 1 && at ? "flex w-full justify-end" : "w-0")}>
+      wide ? "w-full text-center" : atEnd(at) ? "flex w-full justify-end" : "w-0")}>
       {named.has(at) ? name(bin, at) : ""}</span>)}
   </div>;
 }
