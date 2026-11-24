@@ -71,13 +71,15 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
     questions: useScale(Math.max(0, ...points.map(p => p.accepted.questions)), 1, t("unit.tasks", { count: 2 }), true),
     prs: useScale(Math.max(0, ...points.map(p => p.accepted.prs)), 1, "", true),
   };
+  const finishedParts = useFinishedParts();
   const shareWords = (i: number) => { const c = at(i).counts;
     return c.share !== null ? share(c.share) : c.accepted ? t("chart.fewShare", { passed: c.passed, accepted: c.accepted }) : "—"; };
   const lines = [
-    { name: t("tasks.finished"), value: (i: number) => format("tasks", at(i).counts.finished) },
+    { name: t("tasks.finished"), value: (i: number) => format("tasks", at(i).counts.finished), parts: (i: number) => finishedParts(at(i).counts) },
     { name: t("chart.share"), value: shareWords },
     { name: t("until.lead"), value: (i: number) => median(i) === null ? "—" : format("hours", median(i)!) },
-    { name: t("time.total"), value: (i: number) => format("hours", spent(i).reduce((a, b) => a + b, 0)) },
+    { name: t("time.total"), value: (i: number) => format("hours", spent(i).reduce((a, b) => a + b, 0)),
+      parts: (i: number): [string, string][] => { const [y, a, o] = spent(i); return [[t("time.you"), format("hours", y)], [t("time.ai"), format("hours", a)], [t("time.other"), format("hours", o)]]; } },
     { name: t("until.submits"), value: (i: number) => format("times", at(i).accepted.submits) },
     { name: t("until.questions"), value: (i: number) => format("tasks", at(i).accepted.questions) },
     { name: t("until.prs"), value: (i: number) => format("plain", at(i).accepted.prs) },
@@ -186,4 +188,11 @@ export function BucketSwitch() {
 export function cell(kind: Kind, value: number, open: () => void): Cell {
   const written = parts(kind, value);
   return { text: written.value, unit: written.unit, open: value ? open : undefined };
+}
+
+/** The parts of a day's finished tasks, as its window says them under the total. */
+export function useFinishedParts() {
+  const { t } = useTranslation("analysis");
+  return (counts: { passed: number; reworked: number; stopped: number }): [string, string][] => [
+    [t("outcome.passed"), format("tasks", counts.passed)], [t("outcome.reworked"), format("tasks", counts.reworked)], [t("outcome.stopped"), format("tasks", counts.stopped)]];
 }

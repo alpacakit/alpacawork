@@ -64,7 +64,8 @@ export function Row({ left, children, className }: { left: ReactNode; children?:
 export const RowName = ({ children }: { children: ReactNode }) => <div className="text-xs text-muted">{children}</div>;
 
 /* ── one group of charts on the same days: what is pointed at, and the window that says it ── */
-type Line = { name: string; value: (at: number) => string };
+/** A row's line in a day's window: its value, and for a stacked row the value of each of its parts. */
+type Line = { name: string; value: (at: number) => string; parts?: (at: number) => [string, string][] };
 type Pointed = { at: number; row: number; box: { left: number; right: number; top: number } };
 type Group = { bins: Bin[]; span: Days; bucket: Bucket; lines: Line[]; hovered: number | null; narrow: boolean;
   point: (at: number | null, row?: number, box?: Pointed["box"]) => void };
@@ -102,7 +103,7 @@ export function ChartGroup({ bins, span, today, bucket, lines, children }: { bin
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {shown && <DayWindow name={binName(bins[shown.at]!, today)} lines={lines.map(line => [line.name, line.value(shown.at)] as const)}
+    {shown && <DayWindow name={binName(bins[shown.at]!, today)} lines={lines.map(line => [line.name, line.value(shown.at), line.parts?.(shown.at) ?? []] as const)}
       strong={shown.row} box={shown.box} />}
   </GroupContext>;
 }
@@ -142,7 +143,7 @@ function useBinName() {
 }
 
 /** The window beside a pointed day: its days, then every row's value, the row pointed at in ink. Kept on the screen. */
-function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonly [string, string])[]; strong: number; box: Pointed["box"] }) {
+function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonly [string, string, [string, string][]])[]; strong: number; box: Pointed["box"] }) {
   const self = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const window = self.current;
@@ -156,8 +157,12 @@ function DayWindow({ name, lines, strong, box }: { name: string; lines: (readonl
   return <div ref={self} role="presentation" className="pointer-events-none fixed z-(--layer-popover) max-w-[calc(100vw-8px)] overflow-hidden rounded-md border border-line bg-raised px-2.5 py-2 text-xs shadow-float">
     <div className="mb-1 font-semibold text-ink">{name}</div>
     <div className="grid grid-cols-[auto_auto] gap-x-6 gap-y-0.5">
-      {lines.map(([label, value], at) => <div key={label} className={cn("contents", at === strong ? "font-semibold text-ink" : "text-muted")}>
-        <span className="whitespace-nowrap">{label}</span><span className="text-end whitespace-nowrap tabular-nums">{value}</span></div>)}
+      {lines.map(([label, value, parts], at) => <div key={label} className={cn("contents", at === strong ? "font-semibold text-ink" : "text-muted")}>
+        <span className="whitespace-nowrap">{label}</span><span className="text-end whitespace-nowrap tabular-nums">{value}</span>
+        {/* A stacked row's parts, each under its total. */}
+        {parts.map(([part, amount]) => <div key={part} className="contents font-normal">
+          <span className="ps-3 whitespace-nowrap">{part}</span><span className="text-end whitespace-nowrap tabular-nums">{amount}</span></div>)}
+      </div>)}
     </div>
   </div>;
 }

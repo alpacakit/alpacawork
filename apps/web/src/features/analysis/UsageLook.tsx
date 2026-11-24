@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { daysBetween, format, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
-import { BucketSwitch, cell, type Open } from "./TasksLook";
+import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, Lead, Leads, Parts, Row, RowName, useScale } from "./rows";
 import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
@@ -75,8 +75,10 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const names: Record<ValueKey, string> = { output: t("usage.outputTokens"), input: t("usage.inputTokens"), cache: t("usage.cache"),
     runMs: t("usage.runMs"), launches: t("usage.launches"), newConversations: t("usage.newConversations") };
   const order: ValueKey[] = ["output", "input", "cache", "runMs", "launches", "newConversations"];
+  const finishedParts = useFinishedParts();
   const lines = [
-    ...taskPoints ? [{ name: t("tasks.finished"), value: (i: number) => format("tasks", taskPoints[i]!.counts.finished) }] : [],
+    ...taskPoints ? [{ name: t("tasks.finished"), value: (i: number) => format("tasks", taskPoints[i]!.counts.finished),
+      parts: (i: number) => finishedParts(taskPoints[i]!.counts) }] : [],
     ...order.map(key => ({ name: names[key], value: (i: number) => format(VALUES[key].kind, VALUES[key].read(points[i]!.counts)) })),
   ];
   const first = taskPoints ? 1 : 0;
