@@ -91,7 +91,7 @@ export function PresenceMenu() {
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-presence-trigger
       aria-label={title} title={title} aria-haspopup="menu" aria-expanded={open}
-      onClick={() => setOpen(value => !value)} className={cn('text-muted', CUT_ON_HOVER)}>
+      onClick={() => setOpen(value => !value)} className={cn('text-muted narrow:w-9', CUT_ON_HOVER)}>
       <PresenceGlyph state={presence.state} />
     </Button>
     {open && <Popup open onOpenChange={setOpen} label={t('presence.menuLabel')} align="end"
