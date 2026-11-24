@@ -285,6 +285,7 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
   const { errors } = useFormState({ control });
   // Read beside the form, not before it: it waits on each agent's own checks.
   const status = useAgentStatus().data;
+  const reportedContext = useServerSettings().data?.reportedContext;
   const agentIssues = draft.agents.ok ? validateAgentsDraft(draft.agents.value) : draft.agents.issues;
   // What serve refused in a stack (draftFieldOf): by row when it named one, else the stack as a whole.
   const refusal = (name: StackField) => errors[name] as { message?: string; type?: string } | (({ message?: string } | undefined)[]) | undefined;
@@ -320,7 +321,7 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
     </div>}
     <Controller name="agents" control={control} render={({ field }) => field.value.ok
       ? <AgentObservationsProvider value={status && !status.error ? status : undefined}>
-        <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile}
+        <AgentSettings ref={field.ref} draft={field.value.value} issues={agentIssues} disabled={disabled} environmentFile={environmentFile} reportedContext={reportedContext}
           onChange={value => {
             // A row of either stack follows its agent's new name.
             const before = field.value;

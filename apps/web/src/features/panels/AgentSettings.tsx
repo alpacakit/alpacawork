@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { AgentSettingsOptions } from './AgentSettingsOptions';
 import { AddAgentControl, AgentDefaultMark, AgentExtraFields } from './AgentSettingsExtras';
 import { AgentExecutableRow, AgentNoticeLine } from './AgentSettingsExecutable';
-import { AgentContextRows } from './AgentSettingsContext';
+import { AgentContextRows, type ReportedContext } from './AgentSettingsContext';
 import { agentDraftIssueText } from './agent-settings-issues';
 import { agentOptionsVersion } from './agent-options-version';
 import { draftAdapter, editDraftParam, followsDefaultParam, isDefaultParam, isOptionalDraftParam, resetDraftParam, unusedParamReason, type AgentDraft, type AgentDraftIssue, type AgentsDraft, type ParamRowDraft } from './agent-settings-draft';
@@ -69,9 +69,9 @@ function ParamRows({ agent, onChange, issues, nextId }: {
   </SettingRow>;
 }
 
-function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environmentFile, ref }: {
+function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environmentFile, reportedContext, ref }: {
   agent: AgentDraft; onChange: (agent: AgentDraft) => void; onRemove: () => void;
-  issues: AgentDraftIssue[]; nextId: () => string; environmentFile: string | undefined;
+  issues: AgentDraftIssue[]; nextId: () => string; environmentFile: string | undefined; reportedContext: ReportedContext;
   ref?: Ref<AgentSettingsHandle>;
 }) {
   const { t } = useTranslation('panels');
@@ -116,7 +116,7 @@ function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environm
       {adapter && <p><a href={AGENT_ADAPTERS[adapter].referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-link text-sm">{t('agentSettings.reference', { adapter })}</a></p>}
       <AgentExecutableRow agent={agent} onChange={onChange} issues={issues} />
       <ParamRows agent={agent} onChange={onChange} issues={issues} nextId={nextId} />
-      <AgentContextRows agent={agent} onChange={onChange} issues={issues} />
+      <AgentContextRows agent={agent} onChange={onChange} issues={issues} reported={reportedContext} />
       {version.changed && <FieldHint>{t('agentSettings.defaultsChanged')}</FieldHint>}
       <AgentSettingsOptions agent={agent} onChange={onChange} issues={issues} base={version.base} />
       <AgentExtraFields agent={agent} onChange={onChange} issues={issues} environmentFile={environmentFile} />
@@ -135,8 +135,10 @@ function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environm
  * `environmentFile` is where the server's environment file is, once its parent has read it: the form names it where a
  * variable's value has to come from.
  */
-export function AgentSettings({ draft, onChange, issues = [], disabled = false, environmentFile, ref }: {
+export function AgentSettings({ draft, onChange, issues = [], disabled = false, environmentFile, reportedContext, ref }: {
   draft: AgentsDraft; onChange: (draft: AgentsDraft) => void; issues?: AgentDraftIssue[]; disabled?: boolean; environmentFile?: string;
+  /** What agents have reported of their models' limits, once the parent has read the settings. */
+  reportedContext?: ReportedContext;
   ref?: Ref<AgentSettingsHandle>;
 }) {
   const { t } = useTranslation('panels');
@@ -155,7 +157,7 @@ export function AgentSettings({ draft, onChange, issues = [], disabled = false, 
     <div className="flex flex-col gap-4">
       {draft.agents.map(agent => <AgentSettingsCard key={agent.id} agent={agent}
         ref={handle => { if (handle) cards.current.set(agent.id, handle); else cards.current.delete(agent.id); }}
-        nextId={nextId} issues={issues.filter(issue => issue.agentId === agent.id)} environmentFile={environmentFile}
+        nextId={nextId} issues={issues.filter(issue => issue.agentId === agent.id)} environmentFile={environmentFile} reportedContext={reportedContext}
         onChange={updated => change({ ...draft, agents: draft.agents.map(was => was.id === agent.id ? updated : was) })}
         onRemove={() => change({ ...draft, agents: draft.agents.filter(was => was.id !== agent.id) })} />)}
       <AddAgentControl names={draft.agents.map(agent => agent.name)} nextId={nextId} environmentFile={environmentFile} onAdd={agent => change({ ...draft, agents: [...draft.agents, agent] })} />

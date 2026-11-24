@@ -2,10 +2,13 @@ import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
 import { resolveContextLimits, type ModelContext } from '@alpacawork/contract/agent-context';
+import type { ServerSettings } from '@alpacawork/contract';
+
+/** What agents have reported of their models' limits, as the settings read gives it (its parent reads it). */
+export type ReportedContext = ServerSettings['reportedContext'];
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { SettingRow } from '@/components/settings/SettingRow';
-import { useServerSettings } from '@/data/queries';
 import { draftAdapter, type AgentDraft, type AgentDraftIssue } from './agent-settings-draft';
 import { agentDraftIssueText } from './agent-settings-issues';
 
@@ -36,12 +39,11 @@ export function editContext(context: AgentDraft['context'], model: string, field
  * shows, faintly, what is used without it: the figure the agent reported, or the shipped one, and which; a typed figure
  * wins over both. A person fills here what an agent never says (Grok's window), or a model added since the release.
  */
-export function AgentContextRows({ agent, onChange, issues }: {
-  agent: AgentDraft; onChange: (agent: AgentDraft) => void; issues: AgentDraftIssue[];
+export function AgentContextRows({ agent, onChange, issues, reported }: {
+  agent: AgentDraft; onChange: (agent: AgentDraft) => void; issues: AgentDraftIssue[]; reported: ReportedContext | undefined;
 }) {
   const { t, i18n } = useTranslation('panels');
   const id = useId();
-  const reported = useServerSettings().data?.reportedContext;
   const adapter = draftAdapter(agent);
   if (!adapter) return null;
   const count = new Intl.NumberFormat(i18n.language);
