@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, delta, format, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, lineTop, Parts, Row, RowName, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, ChartGroup, DayAxis, Lead, Leads, Legend, lineTop, Parts, Row, RowName, useScale, type DayList, type RowSay } from "./rows";
 import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
 
@@ -160,7 +160,9 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       <p><b>{t("def.skillName")}</b>{t("colon")}{t("def.skillText")}<span className="ms-4" /><b>{t("def.toolName")}</b>{t("colon")}{t("def.toolText")}</p>
       <p><b>{t("def.finishedName")}</b>{t("colon")}{t("def.finishedText")}<span className="ms-4" /><b>{t("def.everName")}</b>{t("colon")}{t("def.everText")}</p>
       {now.tokensUnknown > 0 && <p>{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}
+      <p><b>{t("def.perFinishedName")}</b>{t("colon")}{t("def.perFinishedText")}</p>
       <p><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
+      <Legend />
     </RulesBox>}
     <BucketSwitch />
     {rows}
@@ -220,6 +222,6 @@ function Breakdown({ view, group, days, open, choose }: {
     items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
     {chart}
     {counted && since === null ? <p className="text-soft">{t("usage.none")}</p>
-      : !before && <BreakdownTable id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
+      : !before && <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
   </Section>;
 }

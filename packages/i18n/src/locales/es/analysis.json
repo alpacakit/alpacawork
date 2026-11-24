@@ -1,7 +1,7 @@
 {
   "breakdown": {
-    "all_one": "Las {{count}} filas",
     "all_many": "Las {{count}} filas",
+    "all_one": "Las {{count}} filas",
     "all_other": "Las {{count}} filas",
     "since": "Recuento desde el {{date}}",
     "title": "Desglose",
@@ -12,8 +12,8 @@
     "label": "Intervalo",
     "month": "Por mes",
     "ongoing": "en curso",
-    "partial_one": "{{count}} día",
     "partial_many": "{{count}} días",
+    "partial_one": "{{count}} día",
     "partial_other": "{{count}} días",
     "week": "Por semana"
   },
@@ -49,6 +49,10 @@
     "modelName": "Modelo",
     "modelText": "El primer modelo al que se encargó",
     "one": "Enviada a revisión una vez como máximo",
+    "perFinishedName": "Por tarea terminada",
+    "perFinishedText": "Lo usado en el intervalo dividido entre las tareas terminadas en él. Incluye las tareas en curso, así que varía de un día a otro",
+    "perTaskName": "Por tarea",
+    "perTaskText": "El total del intervalo dividido entre las tareas aceptadas en él. Con menos de 10, el punto va hueco",
     "prName": "PR relacionados",
     "prText": "PR que aparecen en las tareas aceptadas; el mismo PR cuenta una vez",
     "runName": "Tiempo de ejecución",
@@ -58,8 +62,8 @@
     "three": "Ninguna instrucción después de aceptarla (si llega, deja de contar)",
     "tokensName": "Tokens",
     "tokensText": "Salida + entrada + lecturas y escrituras de caché, incluidas las tareas en curso",
-    "tokensUnknown_one": "{{count}} arranque sin registro de tokens no está en los tokens",
     "tokensUnknown_many": "{{count}} arranques sin registro de tokens no están en los tokens",
+    "tokensUnknown_one": "{{count}} arranque sin registro de tokens no está en los tokens",
     "tokensUnknown_other": "{{count}} arranques sin registro de tokens no están en los tokens",
     "toolName": "Herramientas",
     "toolText": "Sin las llamadas dentro de subagentes",
@@ -72,20 +76,33 @@
   },
   "home": {
     "label": "{{marks}}. Abrir el análisis",
-    "marks_one": "{{count}} terminada hoy · {{passed}} sin correcciones",
     "marks_many": "{{count}} terminadas hoy · {{passed}} sin correcciones",
+    "marks_one": "{{count}} terminada hoy · {{passed}} sin correcciones",
     "marks_other": "{{count}} terminadas hoy · {{passed}} sin correcciones"
   },
   "lead": {
     "ever": "Hasta ahora {{value}}"
+  },
+  "legend": {
+    "ai": "IA trabajando",
+    "line": "Por tarea",
+    "passed": "Sin correcciones",
+    "stopped": "Detenida",
+    "yours": "Requirió tu intervención"
+  },
+  "line": {
+    "median": "Mediana por tarea",
+    "perFinished": "Por tarea terminada",
+    "perTask": "Por tarea",
+    "unit": "{{value}} / tarea"
   },
   "list": {
     "back": "Lista",
     "close": "Cerrar",
     "day": "Día",
     "empty": "No hay tareas",
-    "more_one": "{{count}} más",
     "more_many": "{{count}} más",
+    "more_one": "{{count}} más",
     "more_other": "{{count}} más",
     "outcome": "Resultado",
     "task": "Tarea",
@@ -106,8 +123,8 @@
     "28d": "Últimos 28 días",
     "7d": "Últimos 7 días",
     "all": "Todo",
-    "days_one": "{{count}} día",
     "days_many": "{{count}} días",
+    "days_one": "{{count}} día",
     "days_other": "{{count}} días",
     "earlier": "Período anterior",
     "label": "Período",
@@ -116,10 +133,9 @@
   },
   "previous": {
     "day": "Día anterior",
-    "days_one": "{{count}} día anterior",
     "days_many": "{{count}} días anteriores",
-    "days_other": "{{count}} días anteriores",
-    "none": "{{span}}: sin registros"
+    "days_one": "{{count}} día anterior",
+    "days_other": "{{count}} días anteriores"
   },
   "range": "{{from}} – {{to}}",
   "same": "igual",
@@ -144,8 +160,8 @@
     "grass": "Tareas terminadas por día",
     "grassFew": "Menos",
     "grassMany": "Más",
-    "grassTip_one": "{{day}}  {{count}} tarea terminada",
     "grassTip_many": "{{day}}  {{count}} tareas terminadas",
+    "grassTip_one": "{{day}}  {{count}} tarea terminada",
     "grassTip_other": "{{day}}  {{count}} tareas terminadas",
     "howCounted": "Cómo se cuenta",
     "noAgent": "Sin IA asignada",
@@ -184,14 +200,14 @@
         "unit": "mil"
       }
     ],
-    "taskCount_one": "tarea",
     "taskCount_many": "tareas",
+    "taskCount_one": "tarea",
     "taskCount_other": "tareas",
-    "tasks_one": "tarea",
     "tasks_many": "tareas",
+    "tasks_one": "tarea",
     "tasks_other": "tareas",
-    "times_one": "vez",
     "times_many": "veces",
+    "times_one": "vez",
     "times_other": "veces"
   },
   "until": {
@@ -258,5 +274,14 @@
     "tools": "Herramientas",
     "usage": "Uso de la IA",
     "workers": "Miembros"
+  },
+  "window": {
+    "accepted_many": "{{count}} aceptadas",
+    "accepted_one": "{{count}} aceptada",
+    "accepted_other": "{{count}} aceptadas",
+    "finished_many": "{{count}} terminadas",
+    "finished_one": "{{count}} terminada",
+    "finished_other": "{{count}} terminadas",
+    "list": "Lista de tareas"
   }
 }

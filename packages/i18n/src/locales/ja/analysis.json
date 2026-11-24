@@ -2,7 +2,7 @@
   "breakdown": {
     "all_other": "すべて {{count}}行",
     "since": "{{date}}から集計",
-    "title": "分けて見る",
+    "title": "内訳",
     "top": "上位だけ"
   },
   "bucket": {
@@ -45,6 +45,10 @@
     "modelName": "モデル",
     "modelText": "最初に任せたモデル",
     "one": "確認に出したのは1回まで",
+    "perFinishedName": "終わったタスク1件あたり",
+    "perFinishedText": "その区切りに使った量を、その区切りに終わったタスクの数で割った値。作業中のタスクの分も入るので、日ごとでは振れる",
+    "perTaskName": "1件あたり",
+    "perTaskText": "その区切りの合計を、その区切りに受け入れたタスクの数で割った値。10件未満の区切りは白抜きの点",
     "prName": "関連 PR",
     "prText": "受け入れたタスクに出てきた PR。同じ PR は1つに数える",
     "runName": "実行時間",
@@ -70,6 +74,19 @@
   },
   "lead": {
     "ever": "これまで {{value}}"
+  },
+  "legend": {
+    "ai": "AI が動いた分",
+    "line": "1件あたり",
+    "passed": "手直しなし",
+    "stopped": "中止",
+    "yours": "あなたの手がかかった分"
+  },
+  "line": {
+    "median": "1件の中央値",
+    "perFinished": "終わったタスク1件あたり",
+    "perTask": "1件あたり",
+    "unit": "{{value}}／件"
   },
   "list": {
     "back": "一覧",
@@ -104,8 +121,7 @@
   },
   "previous": {
     "day": "前の日",
-    "days_other": "前の{{count}}日",
-    "none": "{{span}}：記録なし"
+    "days_other": "前の{{count}}日"
   },
   "range": "{{from}}〜{{to}}",
   "same": "同じ",
@@ -231,5 +247,10 @@
     "tools": "ツール",
     "usage": "AI の使用量",
     "workers": "担当"
+  },
+  "window": {
+    "accepted_other": "受け入れた {{count}}件",
+    "finished_other": "終わった {{count}}件",
+    "list": "タスクの一覧"
   }
 }

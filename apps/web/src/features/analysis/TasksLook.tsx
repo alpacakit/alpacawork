@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, decimalText, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, lineTop, Parts, Row, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, ChartGroup, DayAxis, Lead, Leads, Legend, lineTop, Parts, Row, useScale, type DayList, type RowSay } from "./rows";
 import { Compare, gapTone, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { TasksView } from "./contract";
 import type { ListPlace } from "./place";
@@ -178,7 +178,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const groupOf = (key: string) => ({ group: view.breakdown?.by ?? taskGroup, member: key });
   const breakdown = <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
-    <BreakdownTable id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
+    <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
       columns={[t("tasks.cols.finished"), t("tasks.cols.accepted"), t("tasks.cols.passed"), t("tasks.cols.share"), t("tasks.cols.lead"), t("tasks.cols.submits")]}
       rows={breakdownRows.map(row => ({ key: row.key,
         // A task no AI was given (no owner Run) has the server's key `unknown` for its model and AI kind.
@@ -187,6 +187,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
         cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),
         { text: share(row.share), tip: row.accepted && row.share === null ? t("tasks.few") : undefined,
+          split: row.share !== null ? [row.passed, row.accepted - row.passed] : undefined,
           open: row.accepted ? () => open({ set: "accepted", value: null, ...groupOf(row.key) }) : undefined },
         row.leadMedianMs === null ? { text: "—" } : cell("hours", row.leadMedianMs, () => open({ set: "accepted", value: "lead", ...groupOf(row.key) })),
         row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2), unit: t("unit.times", { count: 2 }),
@@ -202,7 +203,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       <p>{t("def.after")}</p>
       <p><b>{t("def.modelName")}</b>{t("colon")}{t("def.modelText")}<span className="ms-4" /><b>{t("def.leadName")}</b>{t("colon")}{t("def.leadText")}</p>
       <p><b>{t("def.prName")}</b>{t("colon")}{t("def.prText")}<span className="ms-4" /><b>{t("def.everName")}</b>{t("colon")}{t("def.everText")}</p>
+      <p><b>{t("def.perTaskName")}</b>{t("colon")}{t("def.perTaskText")}</p>
       <p><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
+      <Legend />
     </RulesBox>}
     <BucketSwitch />
     {rows}

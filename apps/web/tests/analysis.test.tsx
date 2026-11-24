@@ -60,7 +60,11 @@ const step = (from: string, to: string) => isStep(navigation(place(from)), navig
 test("the analysis's place survives its URL, with the defaults left out", () => {
   const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)&unit=T12")!;
   expect(shown).toEqual({ look: "usage", span: { from: "2026-11-01", to: "2026-11-30" },
-    list: { set: "used", value: "runMs", group: "model", member: "opus(high)" }, unit: "T12" });
+    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, unit: "T12" });
+  // A list opened from a chart's bin keeps that bin's days.
+  const bin = place("face=analysis&list=finished&bin=2026-11-09~2026-11-15")!;
+  expect(bin.list).toMatchObject({ set: "finished", days: { from: "2026-11-09", to: "2026-11-15" } });
+  expect(place(new URLSearchParams(analysisValues(bin)).toString())).toEqual(bin);
   expect(place(new URLSearchParams(analysisValues(shown)).toString())).toEqual(shown);
   expect(analysisValues(place("face=analysis"))).toEqual([["face", "analysis"]]);
   // A whole of skills, tools or MCP has a list without a row; a model's breakdown needs its row.

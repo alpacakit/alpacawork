@@ -5,7 +5,8 @@ import { useNarrow } from "@/state/view-store";
 import { Icon } from "@/components/ui/icon";
 import { tip, useChoices } from "./parts";
 
-export type Cell = { text: string; unit?: string; tip?: string; open?: () => void };
+/** A cell: its number and unit, its small window, its list; `split`: a share drawn as a small strip of its two parts. */
+export type Cell = { text: string; unit?: string; tip?: string; open?: () => void; split?: [number, number] };
 export type Row = { key: string; name: string; tag?: string; bar: number; cells: Cell[] };
 
 /**
@@ -22,7 +23,9 @@ export function grid(width: number) {
   return { name: Math.max(0, 3 * column + 3 * 24 - 112), number: (9 * column + 8 * 24) / 7 };
 }
 
-export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: string; head: string; columns: string[]; rows: Row[]; limit?: number }) {
+export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "muted" }: { id: string; head: string; columns: string[]; rows: Row[]; limit?: number;
+  /** The colour of the rows' bars (the look's: tasks done's green, the AI's use working's blue), deeper the longer. */
+  tone?: "done" | "working" | "muted" }) {
   const { t } = useTranslation("analysis");
   const all = useChoices(state => state.all);
   const [shown, setShown] = useState<Record<string, number>>({});
@@ -69,12 +72,13 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
       </tr></thead>
       <tbody>{visible.map(row => <tr key={row.key} className="h-9 border-b border-rule">
         <td dir="auto" className="truncate narrow:whitespace-normal">{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
-        <td className="px-2"><i style={{ width: `${row.bar / most * 100}%` }} className="block h-1.5 min-w-0.5 rounded-full bg-muted" /></td>
+        <td className="px-2"><i style={{ width: `${row.bar / most * 100}%`, background: `color-mix(in oklab, var(--${tone}) ${Math.round(45 + 55 * row.bar / most)}%, var(--bg))` }}
+          className="block h-1.5 min-w-0.5 rounded-full" /></td>
         {row.cells.map((cell, at) => <td key={at} className={column(at)}>
           {cell.open
             ? <button type="button" onClick={cell.open} {...(cell.tip ? tip(cell.tip) : {})}
               className="flex h-8.75 w-full items-center justify-end rounded-sm px-2 underline decoration-lit-line underline-offset-4 hover:bg-hover hover:decoration-ink">
-              {cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</button>
+              {cell.split && <Split parts={cell.split} />}{cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</button>
             : <span className="flex h-8.75 items-center justify-end px-2" {...(cell.tip ? tip(cell.tip) : {})}>{cell.text}{cell.unit && <span className="ms-px text-xs text-soft">{cell.unit}</span>}</span>}
         </td>)}
         <td className="narrow:hidden" />
@@ -84,4 +88,11 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
       className="mt-2.5 text-muted underline decoration-line underline-offset-4 hover:decoration-ink">
       {all ? t("breakdown.top") : t("breakdown.all", { count: rows.length })}</button>}
   </>;
+}
+
+/** A share as a small strip (40px) of its two parts: without fixes in green, with fixes in orange. */
+function Split({ parts: [passed, reworked] }: { parts: [number, number] }) {
+  return <span aria-hidden className="me-2 inline-flex h-1.5 w-10 gap-px overflow-hidden rounded-full">
+    <i style={{ flex: passed }} className="block bg-done" /><i style={{ flex: reworked }} className="block bg-reworked" />
+  </span>;
 }

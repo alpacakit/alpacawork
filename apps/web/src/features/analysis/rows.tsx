@@ -378,3 +378,13 @@ export function DayAxis({ strong }: { strong?: { at: number; day: string } | nul
       {named.has(at) ? name(bin, at) : ""}</span>)}
   </div>;
 }
+
+/** How the charts' colours read, said once in the counting rules: whose hand a task took, and the per-task line. */
+export function Legend() {
+  const { t } = useTranslation("analysis");
+  const item = (color: string, word: string) => <span key={word} className="inline-flex items-center"><i aria-hidden className={cn("me-1.5 inline-block size-2 rounded-xs", color)} />{word}</span>;
+  return <p className="flex flex-wrap gap-x-4 gap-y-1">
+    {item("bg-done", t("legend.passed"))}{item("bg-turn", t("legend.yours"))}{item("bg-working", t("legend.ai"))}{item("bg-stopped-part", t("legend.stopped"))}
+    <span className="inline-flex items-center"><LineMark />{t("legend.line")}</span>
+  </p>;
+}

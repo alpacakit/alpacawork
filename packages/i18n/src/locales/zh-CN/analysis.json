@@ -2,7 +2,7 @@
   "breakdown": {
     "all_other": "全部 {{count}} 行",
     "since": "自 {{date}} 起统计",
-    "title": "分类查看",
+    "title": "明细",
     "top": "只看前几行"
   },
   "bucket": {
@@ -45,6 +45,10 @@
     "modelName": "模型",
     "modelText": "首次委托的模型",
     "one": "提交确认最多 1 次",
+    "perFinishedName": "每个结束的任务",
+    "perFinishedText": "该区间的用量除以该区间结束的任务数。包含进行中的任务，所以按日会有波动",
+    "perTaskName": "每个",
+    "perTaskText": "该区间的合计除以该区间验收的任务数。不足 10 个的区间画成空心点",
     "prName": "相关 PR",
     "prText": "验收任务中出现的 PR，同一个 PR 只计 1 次",
     "runName": "运行时间",
@@ -70,6 +74,19 @@
   },
   "lead": {
     "ever": "至今 {{value}}"
+  },
+  "legend": {
+    "ai": "AI 运行",
+    "line": "每个",
+    "passed": "无需返工",
+    "stopped": "中止",
+    "yours": "需要你处理"
+  },
+  "line": {
+    "median": "每个的中位数",
+    "perFinished": "每个结束的任务",
+    "perTask": "每个",
+    "unit": "{{value}}／个"
   },
   "list": {
     "back": "列表",
@@ -104,8 +121,7 @@
   },
   "previous": {
     "day": "前一天",
-    "days_other": "前 {{count}} 天",
-    "none": "{{span}}：无记录"
+    "days_other": "前 {{count}} 天"
   },
   "range": "{{from}}～{{to}}",
   "same": "相同",
@@ -231,5 +247,10 @@
     "tools": "工具",
     "usage": "AI 使用量",
     "workers": "成员"
+  },
+  "window": {
+    "accepted_other": "已验收 {{count}} 个",
+    "finished_other": "已结束 {{count}} 个",
+    "list": "任务列表"
   }
 }

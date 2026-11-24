@@ -3,7 +3,7 @@
     "all_one": "All {{count}} row",
     "all_other": "All {{count}} rows",
     "since": "Collection began on {{date}}",
-    "title": "Break down",
+    "title": "Breakdown",
     "top": "Top rows only"
   },
   "bucket": {
@@ -47,6 +47,10 @@
     "modelName": "Model",
     "modelText": "The model first given the task",
     "one": "Sent for review at most once",
+    "perFinishedName": "Per finished task",
+    "perFinishedText": "What the bin used divided by the tasks finished in it. It includes tasks still at work, so it swings day to day",
+    "perTaskName": "Per task",
+    "perTaskText": "The bin's total divided by the tasks accepted in it. Bins with fewer than 10 have hollow points",
     "prName": "Related PRs",
     "prText": "PRs that appear in the accepted tasks; the same PR counts once",
     "runName": "Run time",
@@ -74,6 +78,19 @@
   },
   "lead": {
     "ever": "So far {{value}}"
+  },
+  "legend": {
+    "ai": "AI at work",
+    "line": "Per task",
+    "passed": "No fixes",
+    "stopped": "Stopped",
+    "yours": "Took your hand"
+  },
+  "line": {
+    "median": "Median per task",
+    "perFinished": "Per finished task",
+    "perTask": "Per task",
+    "unit": "{{value}} / task"
   },
   "list": {
     "back": "List",
@@ -111,8 +128,7 @@
   "previous": {
     "day": "Day before",
     "days_one": "{{count}} day before",
-    "days_other": "{{count}} days before",
-    "none": "{{span}}: no records"
+    "days_other": "{{count}} days before"
   },
   "range": "{{from}} – {{to}}",
   "same": "same",
@@ -247,5 +263,12 @@
     "tools": "Tools",
     "usage": "AI usage",
     "workers": "Members"
+  },
+  "window": {
+    "accepted_one": "{{count}} accepted",
+    "accepted_other": "{{count}} accepted",
+    "finished_one": "{{count}} finished",
+    "finished_other": "{{count}} finished",
+    "list": "Task list"
   }
 }
