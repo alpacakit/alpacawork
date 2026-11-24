@@ -100,6 +100,7 @@ export async function settleMotion(page: Page, area?: Locator, finiteOnly = fals
       name: 'animationName' in animation ? String(animation.animationName) : null,
       placeholder: target instanceof Element && target.matches('.animate-placeholder') && !!target.closest('[data-skeleton]'),
       liveMark: target instanceof Element && target.parentElement?.matches('svg[data-live-mark]') === true,
+      runningStep: target instanceof Element && target.matches('[data-run-step-mark]') && target.closest('[data-run-step="running"]') !== null,
       startingCoordinator: target instanceof Element && target.closest('[data-coordinator-warm="preparing"]') !== null,
       deliveryStatus: target instanceof Element && target.matches('[role="status"]') && target.closest('[data-coordinator-row-control]') !== null,
       target: target instanceof Element ? target.outerHTML : null,
