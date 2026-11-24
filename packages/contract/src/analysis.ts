@@ -9,7 +9,7 @@ export const analysisTaskBySchema = z.enum(['model', 'agent', 'project']);
 export const analysisUsageBySchema = z.enum(['model', 'agent', 'project', 'skill', 'tool', 'mcp']);
 export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'accepted', 'finished', 'used']);
 export const analysisTaskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
-export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'output', 'input', 'cache', 'calls'] as const;
+export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'tokens', 'output', 'input', 'cache', 'calls'] as const;
 export const analysisValueSchema = z.enum([...analysisTaskValues, ...analysisUsageValues]);
 
 const scope = {
@@ -58,14 +58,16 @@ export const analysisHeadSchema = z.strictObject({
   period: days.nullable(), previous: days.nullable(),
 });
 const pair = <T extends z.ZodType>(value: T) => z.strictObject({ value, previous: value.nullable() });
-const series = <T extends z.ZodType>(counts: T) => z.strictObject({
+const point = days.extend({ complete: z.boolean() });
+const series = <T extends z.ZodType>(point: T) => z.strictObject({
   bucket: analysisBucketSchema,
-  points: z.array(days.extend({ complete: z.boolean(), counts })),
+  points: z.array(point),
 });
 const group = { key: z.string(), label: z.string() };
 const times = z.strictObject({ review: count, answer: count, ai: count, other: count });
 const tallied = z.strictObject({ runs: count, of: count, since: analysisDaySchema });
 const tallyTool = z.strictObject({ name: z.string(), calls: count });
+const counted = z.strictObject({ calls: count, launches: count });
 
 export const analysisTaskCountsSchema = z.strictObject({
   passed: count, reworked: count, stopped: count, accepted: count, finished: count, share,
@@ -73,9 +75,11 @@ export const analysisTaskCountsSchema = z.strictObject({
 export const analysisAcceptedTotalsSchema = z.strictObject({
   leadMedianMs: measurement.nullable(), submits: count, questions: count, prs: count, time: times,
 });
+const taskTotals = { counts: analysisTaskCountsSchema, accepted: analysisAcceptedTotalsSchema };
 export const analysisTasksViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisTaskCountsSchema), accepted: pair(analysisAcceptedTotalsSchema),
-  series: series(analysisTaskCountsSchema), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
+  ever: z.strictObject(taskTotals).nullable(),
+  series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: z.strictObject({
     by: analysisTaskBySchema,
     rows: z.array(z.strictObject({ ...group, finished: count, accepted: count, passed: count, share,
@@ -87,9 +91,11 @@ export const analysisUsageCountsSchema = z.strictObject({
   tokens: z.strictObject({ output: count, input: count, cache: count }), tokensUnknown: count, tasks: count,
 });
 export const analysisUsageViewSchema = z.strictObject({
-  head: analysisHeadSchema, counts: pair(analysisUsageCountsSchema), series: series(analysisUsageCountsSchema),
+  head: analysisHeadSchema, counts: pair(analysisUsageCountsSchema), ever: analysisUsageCountsSchema.nullable(),
+  series: series(point.extend({ counts: analysisUsageCountsSchema })),
   breakdown: z.strictObject({
-    by: analysisUsageBySchema, tallied: tallied.nullable(),
+    by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
+    counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
     rows: z.array(z.strictObject({ ...group, counts: analysisUsageCountsSchema, calls: count.nullable() })),
   }).nullable(),
 });
