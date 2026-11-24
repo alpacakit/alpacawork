@@ -1,8 +1,9 @@
 /** Linux kernel readings translated once into the common measurement contract. */
-import { readFileSync, readdirSync, statfsSync } from 'node:fs';
+import { readFileSync, readdirSync, readlinkSync, statfsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { cpus, hostname, totalmem } from 'node:os';
 import type { HostFacts, HostReading, HostMeasurement, ProcessStat } from './host.js';
+import { nvidiaGpuReader } from './nvidia-gpu.js';
 
 /** Aggregate CPU ticks; guest time is already included in user and nice. */
 export function parseCpuTicks(text: string): { total: number; idle: number } {
@@ -19,9 +20,9 @@ export function parseMeminfo(text: string): HostReading['memory'] {
     if (!match) throw new Error(`Missing /proc/meminfo ${key}`);
     return Number(match[1]) * 1024;
   };
-  const totalBytes = kib('MemTotal'), availableBytes = kib('MemAvailable'), swapTotal = kib('SwapTotal'), swapFree = kib('SwapFree');
-  if (!(totalBytes > 0) || availableBytes > totalBytes || swapFree > swapTotal) throw new Error('Invalid /proc/meminfo counters');
-  return { totalBytes, availableBytes, swapUsedBytes: swapTotal - swapFree };
+  const totalBytes = kib('MemTotal'), availableBytes = kib('MemAvailable');
+  if (!(totalBytes > 0) || availableBytes > totalBytes) throw new Error('Invalid /proc/meminfo counters');
+  return { totalBytes, availableBytes };
 }
 
 /** Parse native tick fields; the adapter supplies page size and converts ticks to milliseconds. */
@@ -74,30 +75,43 @@ function readProcesses(pageBytes: number, tickMs: number): Map<number, ProcessSt
   return processes;
 }
 
+function sameProcess(pid: number, startTime?: number | null): boolean {
+  return startTime == null || parseProcessStat(readFileSync(`/proc/${pid}/stat`, 'utf8'))?.startTime === startTime;
+}
+
 function readArgv(pid: number, startTime?: number | null): string[] {
   try {
     const argv = readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0').filter(Boolean);
-    const current = parseProcessStat(readFileSync(`/proc/${pid}/stat`, 'utf8'));
-    return startTime != null && current?.startTime !== startTime ? [] : argv;
+    return sameProcess(pid, startTime) ? argv : [];
   }
   catch { return []; } // Names can degrade to comm without fabricating CPU/RSS.
 }
 
+function readExecutable(pid: number, startTime?: number | null): string | null {
+  try {
+    const executable = readlinkSync(`/proc/${pid}/exe`);
+    return sameProcess(pid, startTime) ? executable : null;
+  } catch { return null; }
+}
+
 export function linuxHostMeasurement(dataDirectory: string): HostMeasurement {
   const pageBytes = getconf('PAGESIZE'), ticksPerSecond = getconf('CLK_TCK'), tickMs = 1000 / ticksPerSecond;
+  const snapshot = () => readProcesses(pageBytes, tickMs);
+  const processClock = () => {
+    const time = Number(readFileSync('/proc/uptime', 'utf8').split(' ')[0]) * ticksPerSecond;
+    if (!Number.isFinite(time)) throw new Error('Invalid /proc/uptime');
+    return time;
+  };
   return {
-    supported: true, facts: readHostFacts(), argv: readArgv,
+    supported: true, facts: readHostFacts(), argv: readArgv, executable: readExecutable,
+    readGpus: nvidiaGpuReader(processClock, snapshot),
     read() {
       const disk = statfsSync(dataDirectory);
-      const load = readFileSync('/proc/loadavg', 'utf8').trim().split(/\s+/).slice(0, 3).map(Number);
-      if (load.length !== 3 || load.some(v => !Number.isFinite(v) || v < 0)) throw new Error('Invalid /proc/loadavg');
       const cpu = parseCpuTicks(readFileSync('/proc/stat', 'utf8'));
-      const processTime = Number(readFileSync('/proc/uptime', 'utf8').split(' ')[0]) * ticksPerSecond;
-      if (!Number.isFinite(processTime)) throw new Error('Invalid /proc/uptime');
+      const processTime = processClock();
       return {
         cpuTicks: { total: cpu.total * tickMs, idle: cpu.idle * tickMs }, processTime,
-        processes: readProcesses(pageBytes, tickMs), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
-        load: load as [number, number, number],
+        processes: snapshot(), memory: parseMeminfo(readFileSync('/proc/meminfo', 'utf8')),
         disk: { freeBytes: disk.bavail * disk.bsize, totalBytes: disk.blocks * disk.bsize },
       };
     },

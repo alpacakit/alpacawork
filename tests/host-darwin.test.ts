@@ -35,16 +35,11 @@ function fixture(options: { pageBytes?: number; numer?: number; denom?: number; 
     },
     sysctl(name, buffer, length) {
       assert.equal(Number(length.readBigUInt64LE()), buffer.length);
-      if (name === 'hw.pagesize') { assert.equal(buffer.length, 4); buffer.writeUInt32LE(options.pageBytes ?? 16384); }
-      else {
-        assert.equal(name, 'vm.swapusage'); assert.equal(buffer.length, 32);
-        buffer.writeBigUInt64LE(1024n ** 3n, 0); buffer.writeBigUInt64LE(1024n ** 3n - 4096n, 8);
-        buffer.writeBigUInt64LE(4096n, 16); buffer.writeUInt32LE(4096, 24);
-      }
+      assert.equal(name, 'hw.pagesize'); assert.equal(buffer.length, 4);
+      buffer.writeUInt32LE(options.pageBytes ?? 16384);
       return 0;
     },
     timebase(buffer) { assert.equal(buffer.length, 8); buffer.writeUInt32LE(options.numer ?? 125, 0); buffer.writeUInt32LE(options.denom ?? 3, 4); return 0; },
-    loadAverage(buffer, count) { assert.equal(count, 3); assert.equal(buffer.length, 24); [1.5, 2.5, 3.5].forEach((value, index) => buffer.writeDoubleLE(value, index * 8)); return 3; },
     hostSelf: () => 77,
     hostStatistics(host, flavor, buffer, count) {
       assert.equal(host, 77); assert.equal(flavor, 4); assert.equal(buffer.length, 152); assert.equal(count.readUInt32LE(), 38);
@@ -76,9 +71,8 @@ test('Darwin translates the LP64 task/BSD ABI, Mach timebase, all-core ms and na
   assert.deepEqual(source.facts, { hostname: 'darwin-fixture', os: 'macOS (Darwin 24.0.0)', cores: 2, memoryBytes: 8 * 1024 ** 3 });
   assert.deepEqual(reading.cpuTicks, { total: 2000, idle: 1620 });
   assert.deepEqual(reading.processes.get(41), { pid: 41, ppid: 1, comm: 'worker', startTime: 1_700_000_000_123_456, ticks: 3000, rssBytes: 8192 });
-  assert.deepEqual(reading.memory, { totalBytes: 8 * 1024 ** 3, availableBytes: 300 * 16384, swapUsedBytes: 4096 });
+  assert.deepEqual(reading.memory, { totalBytes: 8 * 1024 ** 3, availableBytes: 300 * 16384 });
   assert.deepEqual(reading.disk, { freeBytes: 30 * 4096, totalBytes: 100 * 4096 });
-  assert.deepEqual(reading.load, [1.5, 2.5, 3.5]);
   assert.equal(reading.processTime, 1_700_000_001_000_000);
   assert.ok(f.calls.indexOf('time') < f.calls.indexOf('list'));
   assert.deepEqual(source.argv(41), []);
@@ -122,14 +116,10 @@ test('Darwin propagates enumeration, unexpected process and truncated native fai
   }
 });
 
-test('Darwin releases the host port on statistics and swap failures, with cause retained', () => {
-  for (const fault of ['statistics', 'swap', 'truncated', 'cleanup'] as const) {
+test('Darwin releases the host port when memory statistics fail', () => {
+  for (const fault of ['statistics', 'truncated', 'cleanup'] as const) {
     const f = fixture();
     if (fault === 'statistics') f.native.hostStatistics = () => 5;
-    if (fault === 'swap') {
-      const sysctl = f.native.sysctl;
-      f.native.sysctl = (name, buffer, bytes) => name === 'vm.swapusage' ? -1 : sysctl(name, buffer, bytes);
-    }
     if (fault === 'truncated') f.native.hostStatistics = (_host, _flavor, _buffer, count) => { count.writeUInt32LE(2); return 0; };
     if (fault === 'cleanup') f.native.releaseHost = host => { f.released.push(host); return 5; };
     assert.throws(() => f.source().read(), { message: 'Could not read Darwin host resources' });
@@ -164,11 +154,4 @@ test('Darwin rejects mismatched process identity and memory values outside physi
   memory.native.hostStatistics = (_host, _flavor, buffer) => { buffer.writeUInt32LE(0xffffffff, 0); return 0; };
   assert.throws(() => memory.source().read(), { message: 'Could not read Darwin host resources' });
   assert.deepEqual(memory.released, [77]);
-});
-
-
-test('Darwin load average failure stays an error instead of becoming zero load', () => {
-  const f = fixture();
-  f.native.loadAverage = () => -1;
-  assert.throws(() => f.source().read(), error => error instanceof Error && error.cause instanceof Error && /getloadavg/.test(error.cause.message));
 });

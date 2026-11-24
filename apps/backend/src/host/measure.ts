@@ -27,10 +27,11 @@ const COMM_LIMIT = 15;
  * A readable name for a process: the script or package an interpreter runs, the command a runner runs, and the
  * whole program name where the kernel's 15-character `comm` cut it.
  */
-export function commandName(comm: string, argv: readonly string[]): string {
+export function commandName(comm: string, argv: readonly string[], executable: string | null = null): string {
   if (!INTERPRETERS.has(comm)) {
-    const program = argv[0] === undefined ? '' : basename(argv[0]);
-    return comm.length >= COMM_LIMIT && program.startsWith(comm) ? program : comm;
+    if (comm.length < COMM_LIMIT) return comm;
+    const program = executable === null ? argvProgram(argv[0] ?? '') : basename(executable.replace(/ \(deleted\)$/, ''));
+    return program.startsWith(comm) ? program : comm;
   }
   const args = argv.slice(1);
   const index = args.findIndex(arg => !arg.startsWith('-'));
@@ -46,6 +47,45 @@ export function commandName(comm: string, argv: readonly string[]): string {
   return command ? `${name} ${command}` : name;
 }
 
+function argvProgram(first: string): string {
+  const name = basename(first);
+  // A rewritten process title can include flags with paths of their own.
+  return /\s-/.test(first) || /\s/.test(name) ? '' : name;
+}
+
+function runTrees(processes: ReadonlyMap<number, ProcessStat>, roots: readonly RunRoot[], previous: ReadonlyMap<string, string>) {
+  const children = new Map<number, number[]>();
+  for (const process of processes.values()) {
+    const parent = processes.get(process.ppid);
+    if (!parent || parent.startTime === null || process.startTime === null || parent.startTime > process.startTime) continue;
+    const list = children.get(process.ppid);
+    if (list) list.push(process.pid); else children.set(process.ppid, [process.pid]);
+  }
+  const claimed = new Map<number, Pick<RunRoot, 'runId' | 'taskId'>>();
+  const rootKeys = new Map<string, string>();
+  const trees = roots.map(root => {
+    const rootProcess = processes.get(root.pid);
+    const key = rootProcess ? processKey(rootProcess) : null;
+    const recorded = previous.get(root.runId);
+    if (recorded !== undefined) rootKeys.set(root.runId, recorded);
+    else if (key !== null) rootKeys.set(root.runId, key);
+    const { pid: _rootPid, ...identity } = root;
+    if (key === null || recorded !== undefined && recorded !== key) return { identity, tree: null };
+
+    const tree: ProcessStat[] = [];
+    for (const pending = [root.pid]; pending.length > 0;) {
+      const pid = pending.pop()!;
+      const process = processes.get(pid);
+      if (!process || claimed.has(pid)) continue;
+      claimed.set(pid, { runId: root.runId, taskId: root.taskId });
+      tree.push(process);
+      pending.push(...children.get(pid) ?? []);
+    }
+    return { identity, tree };
+  });
+  return { trees, claimed, rootKeys };
+}
+
 /** Keeps the previous sample's ticks so each sample reports what happened since the last one. */
 export class HostSampler {
   private previousCpu: { total: number; idle: number } | null = null;
@@ -55,8 +95,15 @@ export class HostSampler {
   private names = new Map<string, string>();
   constructor(private readonly measurement: Extract<HostMeasurement, { supported: true }>) {}
 
+  private processName({ comm, pid, startTime }: ProcessStat): string {
+    if (INTERPRETERS.has(comm)) return commandName(comm, this.measurement.argv(pid, startTime));
+    if (comm.length < COMM_LIMIT) return comm;
+    const executable = this.measurement.executable?.(pid, startTime) ?? null;
+    return commandName(comm, executable === null ? this.measurement.argv(pid, startTime) : [], executable);
+  }
+
   sample(roots: readonly RunRoot[], at = Date.now()): HostSample {
-    const { cpuTicks, processTime, processes, memory, load, disk } = this.measurement.read();
+    const { cpuTicks, processTime, processes, memory, disk } = this.measurement.read();
     const elapsed = this.previousCpu ? cpuTicks.total - this.previousCpu.total : 0;
     const idle = this.previousCpu ? cpuTicks.idle - this.previousCpu.idle : 0;
     const validInterval = elapsed > 0 && idle >= 0 && idle <= elapsed;
@@ -77,42 +124,14 @@ export class HostSampler {
     const names = new Map<string, string>();
     const nameOf = (process: ProcessStat) => {
       const key = processKey(process);
-      const name = (key === null ? undefined : this.names.get(key)) ?? commandName(process.comm, INTERPRETERS.has(process.comm) || process.comm.length >= COMM_LIMIT ? this.measurement.argv(process.pid, process.startTime) : []);
+      const name = (key === null ? undefined : names.get(key) ?? this.names.get(key)) ?? this.processName(process);
       if (key !== null) names.set(key, name);
       return name;
     };
 
-    const children = new Map<number, number[]>();
-    for (const process of processes.values()) {
-      const parent = processes.get(process.ppid);
-      if (!parent || parent.startTime === null || process.startTime === null || parent.startTime > process.startTime) continue;
-      const list = children.get(process.ppid);
-      if (list) list.push(process.pid); else children.set(process.ppid, [process.pid]);
-    }
-    const claimed = new Set<number>();
-    const rootKeys = new Map<string, string>();
-    const runs = roots.map(root => {
-      const tree: ProcessStat[] = [];
-      const rootProcess = processes.get(root.pid);
-      const key = rootProcess ? processKey(rootProcess) : null;
-      const recorded = this.roots.get(root.runId);
-      if (recorded !== undefined) rootKeys.set(root.runId, recorded);
-      else if (key !== null) rootKeys.set(root.runId, key);
-      const { pid: _rootPid, ...runIdentity } = root;
-      if (key === null || recorded !== undefined && recorded !== key) return { ...runIdentity,
-        cpu: null, memoryBytes: null, processes: 0, heaviest: null };
-
-      for (const pending = [root.pid]; pending.length > 0;) {
-        const pid = pending.pop()!;
-        const process = processes.get(pid);
-        if (!process || claimed.has(pid)) continue;
-        claimed.add(pid);
-        tree.push(process);
-        pending.push(...children.get(pid) ?? []);
-      }
-      const { pid: _pid, ...identity } = root;
-      return { ...identity, ...weigh(tree, share, nameOf) };
-    });
+    const { trees, claimed, rootKeys } = runTrees(processes, roots, this.roots);
+    const runs = trees.map(({ identity, tree }) => ({ ...identity, ...(tree ? weigh(tree, share, nameOf) :
+      { cpu: null, memoryBytes: null, processes: 0, heaviest: null }) }));
 
     const outside = [...processes.values()].filter(process => !claimed.has(process.pid));
     const byName = new Map<string, number>();
@@ -126,17 +145,39 @@ export class HostSampler {
       memoryBytes: total(outside.map(process => process.rssBytes)),
       names: [...byName].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([name]) => name),
     };
-
     this.previousCpu = cpuTicks;
     this.previousProcessTime = processTime;
     this.roots = rootKeys;
     this.previousTicks = ticks;
     this.names = names;
     return {
-      at, cpu, memory, load, disk,
+      at, cpu, memory, disk, gpus: [],
       runs: runs.sort((a, b) => (b.cpu ?? -1) - (a.cpu ?? -1) || (b.memoryBytes ?? -1) - (a.memoryBytes ?? -1)),
       outside: outsideLoad,
     };
+  }
+
+  async readGpus(runs: () => readonly RunRoot[]): Promise<HostSample['gpus']> {
+    const reading = await this.measurement.readGpus?.();
+    if (!reading || reading.gpus.length === 0) return [];
+    const { gpus, processes } = reading;
+    const { claimed } = runTrees(processes, runs(), this.roots);
+    return gpus.map(({ processes: gpuProcesses, ...gpu }) => ({
+      ...gpu,
+      users: gpuProcesses ? [...gpuProcesses.entries].sort((a, b) => b.memoryBytes - a.memoryBytes || a.pid - b.pid)
+        .slice(0, 2).map(({ pid, name, memoryBytes }) => {
+          const process = processes.get(pid);
+          // The PID may have been reused since the GPU probe. Only name or attribute the process if it already existed.
+          if (process?.startTime == null || process.startTime > gpuProcesses.since) {
+            return { name, memoryBytes, runId: null, taskId: null };
+          }
+          const owner = claimed.get(pid);
+          const key = processKey(process);
+          const label = (key === null ? undefined : this.names.get(key)) ?? this.processName(process);
+          return { name: label || name, memoryBytes, runId: owner?.runId ?? null, taskId: owner?.taskId ?? null };
+        }) : null,
+    }));
+
   }
 }
 
@@ -173,6 +214,7 @@ export type HostSource = { supported: false; platform: string } | {
   /** Null while adapter initialization has failed; never fill hardware facts with guessed values. */
   facts: Extract<HostMeasurement, { supported: true }>['facts'] | null;
   sample(roots: readonly RunRoot[], at: number): HostSample;
+  readGpus?(runs: () => readonly RunRoot[]): Promise<HostSample['gpus']>;
 };
 
 export function createHostSource(dataDirectory: string, factory: (directory: string) => HostMeasurement = measureHost): HostSource {
@@ -190,6 +232,7 @@ export function createHostSource(dataDirectory: string, factory: (directory: str
   } catch (error) { initialFailure = { error }; }
   return {
     supported: true, get facts() { return facts; },
+    readGpus: runs => sampler?.readGpus(runs) ?? Promise.resolve([]),
     sample(roots, at) {
       // Initialization is part of measurement failure, so it cannot prevent serve from starting.
       // Surface the first failure once; the monitor's next scheduled sample retries initialization.

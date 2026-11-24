@@ -21,7 +21,7 @@
    not yet come) · fold (time the line folds away) · work-area (work drawn on the time line) · overdue-area and
    overdue (work past its estimate) · stamp (behind the answered stamp) ·
    inverse-muted (a count on an ink chip) · strain (when the host was hard
-   pressed) · progress-track (under the feed's progress line and an upload's ring, in its colour) · mention (a row the coordinator
+   pressed) · usage (what a host line or bar has taken, under its line) · progress-track (under the feed's progress line and an upload's ring, in its colour) · mention (a row the coordinator
    names) · pale (the white over a picture still on its way, in either theme) and pale-ink (the ring drawn on it) ·
    diff-add and diff-del (a painted diff's added and removed rows, under its code colours) · diff-add-word and
    diff-del-word (the words a changed paragraph added and removed, in a diff card: a step deeper than the rows') ·
@@ -258,6 +258,7 @@
   --color-overdue: color-mix(in oklab, var(--ink) 65%, transparent);
   --color-inverse-muted: color-mix(in oklab, var(--bg) 70%, transparent);
   --color-strain: color-mix(in oklab, var(--warn) 12%, transparent);
+  --color-usage: color-mix(in oklab, var(--ink) 9%, transparent);
   --color-progress-track: color-mix(in oklab, currentColor 18%, transparent);
   --color-pale: color-mix(in oklab, var(--paper) 40%, transparent);
   --color-pale-ink: color-mix(in oklab, var(--scrim) 85%, transparent);
