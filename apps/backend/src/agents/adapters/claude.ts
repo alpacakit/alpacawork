@@ -8,11 +8,47 @@ import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
 import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
+import type { CompactionOutcome } from '@alpacawork/contract/run-protocol';
+
+/**
+ * What Claude said of the `/compact` command `id`: a compact boundary or a successful compact status proves it;
+ * the command ending without either fails it with Claude's own words ("No messages to compact"). Null until it ended.
+ */
+class ClaudeCompaction {
+  outcome: CompactionOutcome | null = null;
+  private open = false;
+  private said: string | null = null;
+  constructor(private readonly id: string | null) {}
+  observe(row: Record<string, unknown>, session: string | null): void {
+    if (this.id === null || row.parent_tool_use_id != null || row.session_id != null && row.session_id !== session) return;
+    if (row.type === 'command_lifecycle' && row.command_uuid === this.id) {
+      if (row.state === 'started') this.open = true;
+      else if (this.open && row.state === 'completed') {
+        this.open = false;
+        this.outcome ??= { state: 'failed', message: (this.said ?? 'Claude did not compact the conversation').slice(0, 2000) };
+      }
+      return;
+    }
+    if (!this.open) return;
+    if (row.type === 'system' && (row.subtype === 'compact_boundary' || row.subtype === 'status' && row.compact_result === 'success'))
+      this.outcome = { state: 'compacted', message: null };
+    else if (row.type === 'system' && row.subtype === 'status' && row.compact_result === 'failed')
+      this.outcome = { state: 'failed', message: typeof row.compact_error === 'string' ? row.compact_error.slice(0, 2000) : null };
+    else if (row.type === 'assistant') {
+      const content = object(row.message).content;
+      const text = Array.isArray(content) ? content.filter(part => object(part).type === 'text').map(part => object(part).text).join('\n') : '';
+      if (text) this.said = text;
+    }
+  }
+}
 
 const ownSession = (row: Record<string, unknown>, session: string | null) =>
   row.parent_tool_use_id == null && session !== null && row.session_id === session;
+const userLine = (id: string, text: string) => ({ type: 'user', message: { role: 'user', content: text }, parent_tool_use_id: null, uuid: id });
 export const claudeInput: InputProtocol = {
-  encode: (id, text) => ({ type: 'user', message: { role: 'user', content: text }, parent_tool_use_id: null, uuid: id }),
+  // `/compact` is Claude's own command, taken in order before the instruction; its uuid is the compaction's ID.
+  encode: (id, text, compaction) => [...compaction ? [userLine(compaction.id,
+    compaction.instructions === null ? '/compact' : `/compact ${compaction.instructions}`)] : [], userLine(id, text)],
   receipt(value, session) {
     const row = object(value);
     if (row.type !== 'command_lifecycle' || row.state !== 'started' || typeof row.command_uuid !== 'string' ||
@@ -110,9 +146,10 @@ export const claudeAdapter: AgentAdapter = {
     let resetsAt: string | undefined;
     // The API error said in the turn now open; a turn's result ends it.
     let said: RunFailure | undefined;
-    const tools = new ToolResults();
+    const tools = new ToolResults(), compaction = new ClaudeCompaction(invocation.compaction);
     const { rejection, outcomeRejection } = scanOutput(folder, value => {
       const row = object(value);
+      compaction.observe(row, invocation.session);
       if (row.type === 'command_lifecycle' && row.state === 'started' && row.parent_tool_use_id == null &&
         (row.session_id == null || row.session_id === invocation.session)) {
         completion = null; usage = null; failure = undefined; resetsAt = undefined; said = undefined;
@@ -140,7 +177,8 @@ export const claudeAdapter: AgentAdapter = {
       }
     });
     const result = completion as { result: string; is_error: boolean } | null;
-    const base = { session: invocation.session, usage, ...(!rejection && failure ? { failure, toolsSettled: tools.complete } : {}) };
+    const base = { session: invocation.session, usage, compaction: compaction.outcome,
+      ...(!rejection && failure ? { failure, toolsSettled: tools.complete } : {}) };
     const text = result?.result;
     const tooLarge = text !== undefined && Buffer.byteLength(text) > RUN_RESULT_LIMIT;
     if (exit.code !== 0 || exit.signal !== null) return { ...base, outcome: { state: 'failed', reason: 'exit',

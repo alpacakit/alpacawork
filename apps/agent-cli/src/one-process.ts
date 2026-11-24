@@ -3,12 +3,15 @@ import type { BridgeEvent } from '@alpacawork/contract/agent-bridge';
 import type { ChildProcessByStdio } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import type { Readable, Writable } from 'node:stream';
-import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
+import type { Admission, CompactionResult, Instruction, Runtime, RuntimeIO } from './run.js';
 
 const MAX_BUFFER_BYTES = 16 * 1024 * 1024;
 
-export type Turn = { input: Instruction; child: ChildProcessByStdio<Writable | null, Readable, null>; buffer: string; started: boolean };
-export const newTurn = (input: Instruction, child: Turn['child']): Turn => ({ input, child, buffer: '', started: false });
+/** What one process is for: an instruction's turn, or compacting the conversation before one, which is no turn. */
+export type Purpose = { kind: 'instruction'; input: Instruction }
+  | { kind: 'compaction'; instructions: string | null; settle(result: CompactionResult): void };
+export type Turn = { purpose: Purpose; child: ChildProcessByStdio<Writable | null, Readable, null>; buffer: string; started: boolean };
+export const newTurn = (purpose: Purpose, child: Turn['child']): Turn => ({ purpose, child, buffer: '', started: false });
 /** What one process's exit means, once its agent has read it. */
 export type TurnEnd = { failed: string } | { output: string; events: BridgeEvent[] };
 export type Shape = {
@@ -23,19 +26,19 @@ export type Shape = {
 export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
   protected active: T | null = null;
   private closing = false;
-  private queued: Instruction[] = [];
+  private queued: Purpose[] = [];
   private turnCount = 0;
   private lastFailed = false;
   private announced = false;
 
   protected constructor(protected readonly io: RuntimeIO, private readonly shape: Shape) {}
-  /** Spawn the agent for one instruction. */
-  protected abstract spawnTurn(input: Instruction): T;
+  /** Spawn the agent for one instruction or compaction. */
+  protected abstract spawnTurn(purpose: Purpose): T;
   /** The line a stdin-fed agent reads its instruction from; null when `spawnTurn` already gave it the instruction. */
-  protected stdinLine(_input: Instruction): string | null { return null; }
+  protected stdinLine(_purpose: Purpose): string | null { return null; }
   /** One parsed line of the agent's stdout. */
   protected abstract receive(turn: T, value: unknown): void;
-  /** What the process's exit means; throws when the exit breaks the agent's protocol. */
+  /** What the process's exit means; throws when the exit breaks the agent's protocol. A compaction's events are dropped. */
   protected abstract conclude(turn: T, code: number | null, signal: NodeJS.Signals | null): TurnEnd;
 
   async start(): Promise<void> {}
@@ -45,13 +48,26 @@ export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
   close(): void {
     this.closing = true;
     this.active?.child.kill('SIGTERM');
+    for (const purpose of [this.active?.purpose, ...this.queued])
+      if (purpose?.kind === 'compaction') purpose.settle({ compacted: false, message: `${this.shape.name} is closed` });
     this.queued = [];
   }
   async deliver(input: Instruction): Promise<Admission> {
     if (this.closing) return { state: 'uncertain', message: `${this.shape.name} is closed` };
-    if (this.active) this.queued.push(input);
-    else this.launch(input);
+    this.enqueue({ kind: 'instruction', input });
     return { state: 'transferred' };
+  }
+  compact(instructions: string | null): Promise<CompactionResult> {
+    if (this.closing) return Promise.resolve({ compacted: false, message: `${this.shape.name} is closed` });
+    return new Promise(settle => this.enqueue({ kind: 'compaction', instructions, settle }));
+  }
+  private enqueue(purpose: Purpose): void {
+    if (this.active) this.queued.push(purpose);
+    else this.launch(purpose);
+  }
+  /** What the Run sees of a process: a compaction's own events are not the Run's. */
+  protected emit(turn: T, event: BridgeEvent): void {
+    if (turn.purpose.kind === 'instruction') this.io.emit(event);
   }
   /** Tell the conversation's identity, the first time it is known. */
   protected announce(thread: string): void {
@@ -62,15 +78,15 @@ export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
   protected started(turn: T): void {
     if (turn.started) return;
     turn.started = true;
-    this.io.started(turn.input.id);
+    if (turn.purpose.kind === 'instruction') this.io.started(turn.purpose.input.id);
   }
   /** Whether stdout still counts: a closing runtime stops reading, and a finished turn's process has no more to say. */
   protected reads(turn: T): boolean { return !this.closing && this.active === turn; }
 
-  private launch(input: Instruction): void {
-    const turn = this.spawnTurn(input), { child } = turn, { name } = this.shape;
+  private launch(purpose: Purpose): void {
+    const turn = this.spawnTurn(purpose), { child } = turn, { name } = this.shape;
     this.active = turn;
-    this.io.emit({ type: 'turn.started' });
+    this.emit(turn, { type: 'turn.started' });
     child.once('error', error => {
       if (!this.closing) this.io.fatal(new Error(`cannot start ${name}: ${error.message}`));
     });
@@ -85,7 +101,7 @@ export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
       try { this.read(turn, chunk); }
       catch (error) { this.io.fatal(error instanceof Error ? error : new Error(String(error))); }
     });
-    const line = this.stdinLine(input);
+    const line = this.stdinLine(purpose);
     if (line !== null) {
       child.stdin!.on('error', error => {
         if (!this.closing) this.io.fatal(new Error(`${name} stdin: ${error.message}`));
@@ -105,17 +121,20 @@ export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
   }
   private finish(turn: T, code: number | null, signal: NodeJS.Signals | null): void {
     if (this.shape.lines && turn.buffer.trim()) throw new Error(`${this.shape.lines} ended with an incomplete JSON line`);
-    const end = this.conclude(turn, code, signal);
-    if (turn.started) this.turnCount++;
-    this.lastFailed = 'failed' in end;
-    if ('failed' in end) this.io.emit({ type: 'turn.failed', error: { message: end.failed } });
+    const end = this.conclude(turn, code, signal), { purpose } = turn;
+    if (purpose.kind === 'compaction') purpose.settle('failed' in end ? { compacted: false, message: end.failed } : { compacted: true });
     else {
-      if (this.shape.output) writeFileSync(this.shape.output, end.output);
-      for (const event of end.events) this.io.emit(event);
+      if (turn.started) this.turnCount++;
+      this.lastFailed = 'failed' in end;
+      if ('failed' in end) this.io.emit({ type: 'turn.failed', error: { message: end.failed } });
+      else {
+        if (this.shape.output) writeFileSync(this.shape.output, end.output);
+        for (const event of end.events) this.io.emit(event);
+      }
     }
     this.active = null;
     const next = this.queued.shift();
     if (next) this.launch(next);
-    else this.io.idle();
+    else if (purpose.kind === 'instruction') this.io.idle();
   }
 }

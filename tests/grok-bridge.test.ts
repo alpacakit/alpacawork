@@ -9,7 +9,7 @@ import { spawnBridge } from './helpers/bridge-process.ts';
 import { assertInputOutcomes } from './fixtures/input-outcomes.ts';
 
 const entry = join(import.meta.dirname, '../apps/agent-cli/dist/cli.js');
-function setup(t: TestContext, session?: string, options: string[] = []) {
+function setup(t: TestContext, session?: string, options: string[] = [], env: NodeJS.ProcessEnv = {}) {
   const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-grok-test-')));
   const binary = join(area, 'grok');
   copyFileSync(join(import.meta.dirname, 'fixtures/fake-grok.mjs'), binary);
@@ -18,7 +18,7 @@ function setup(t: TestContext, session?: string, options: string[] = []) {
   const bridge = spawnBridge(t, [entry, 'grok', '-o', join(area, 'result'), '--model', 'test-model',
     ...(session ? ['--session', session] : []), ...options], {
     cwd: area, env: { ...process.env, PATH: `${area}${delimiter}${process.env.PATH}`,
-      FAKE_GROK_LOG: log, FAKE_GROK_RELEASE: release, FAKE_GROK_READY: ready },
+      FAKE_GROK_LOG: log, FAKE_GROK_RELEASE: release, FAKE_GROK_READY: ready, ...env },
   });
   t.after(() => rmSync(area, { recursive: true, force: true }));
   return { ...bridge, area, ready, finish: () => writeFileSync(release, ''),
@@ -100,4 +100,19 @@ for (const prompt of ['preempt', 'interrupt']) test(`Grok interruption during ${
   assertInputOutcomes(h.events(), { one: prompt === 'preempt' ? 'uncertain' : 'taken', two: 'uncertain' });
   assert.equal(h.invocations().length, 1);
   for (const call of h.invocations()) assert.equal(existsSync(call.promptFile), false);
+});
+
+for (const outcome of ['ok', 'fail']) test(`Grok ${outcome === 'ok' ? 'compacts in a process of its own before' : 'tells a failed compaction and still runs'} the first instruction`, async t => {
+  const session = '12345678-1234-1234-1234-123456789abc';
+  const h = setup(t, session, [], { FAKE_GROK_COMPACT: outcome });
+  h.child.stdin.write(`${JSON.stringify({ id: 'one', text: 'hello', compact: { instructions: 'ignored by Grok' } })}\n`);
+  await h.until(rows => rows.some(row => row.type === 'turn.completed'));
+  h.child.stdin.end();
+  assert.equal(await h.exited, 0, h.stderr());
+  assert.deepEqual(h.invocations().map(call => [call.prompt, call.session, call.args.includes('--resume')]), [['/compact', session, true], ['hello', session, true]]);
+  const types = h.events().map(row => row.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.') || type === 'error');
+  assert.deepEqual(types, [outcome === 'ok' ? 'compaction.completed' : 'compaction.failed', 'turn.started', 'turn.completed']);
+  if (outcome === 'fail') assert.match(h.events().find(row => row.type === 'compaction.failed').message, /synthetic compaction failure/);
+  assertInputOutcomes(h.events(), { one: 'taken' });
+  assert.equal(readFileSync(join(h.area, 'result'), 'utf8'), 'answer hello');
 });

@@ -4,7 +4,7 @@ import { digestBytes, publishImmutable } from '@alpacawork/core';
 import { type TokenCounters } from '@alpacawork/contract/run';
 import type { RunAvailability } from '@alpacawork/contract/run-failure';
 import { failureAvailability } from '@alpacawork/contract/agent-diagnostics';
-import type { ResultObservation } from '@alpacawork/contract/run-protocol';
+import type { CompactionOutcome, ResultObservation } from '@alpacawork/contract/run-protocol';
 import type { EventJournal } from './execution-files.js';
 import type { InputReceipt } from './input.js';
 import type { AdapterObservation } from '../agents/adapters/types.js';
@@ -15,7 +15,9 @@ type FinalResult = { state: 'present'; text: string } | { state: 'missing' | 'to
 export type EndObservation = { outcome: Outcome; finalResult: FinalResult; session: string | null;
   availability?: RunAvailability;
   handoffSafe?: true;
-  measuredUsage: { scope: 'conversation' | 'run'; counters: TokenCounters } | null; exit: AgentExit | null };
+  measuredUsage: { scope: 'conversation' | 'run'; counters: TokenCounters } | null; exit: AgentExit | null;
+  /** What the agent said of the compaction its launch asked for. */
+  compaction: CompactionOutcome | null };
 /** The result of a run whose reply cannot be read: what a failed reader said of it, else missing. */
 const absentResult = (observed: ReaderResult | undefined): FinalResult =>
   ({ state: observed?.state === 'failed' ? observed.resultState ?? 'missing' : 'missing', text: null });
@@ -38,7 +40,8 @@ export function publishCompletion(journal: EventJournal, end: EndObservation): v
     result = { state: 'present', digest, size: bytes.length };
   }
   journal.append('completed', { outcome: { state: end.outcome.state, reason: end.outcome.state === 'succeeded' ? null : end.outcome.reason },
-    session: end.session, measuredUsage: end.measuredUsage, availability: end.availability, handoffSafe: end.handoffSafe, exit: end.exit, result });
+    session: end.session, measuredUsage: end.measuredUsage, availability: end.availability, handoffSafe: end.handoffSafe, exit: end.exit, result,
+    compaction: end.compaction });
 }
 /**
  * Read how an agent ended, from what its manager saw and its output. The manager calls this when its agent
@@ -57,5 +60,6 @@ export function readEnd(ended: { outcome: Outcome;
     (outcome.reason === 'exit' || outcome.reason === 'output') ? known : undefined;
   return { outcome, finalResult, session: ended.observed.session, availability,
     ...(availability && !ended.interrupted && ended.observed.toolsSettled && ended.exit?.signal === null ? { handoffSafe: true as const } : {}),
-    measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit };
+    measuredUsage: ended.measured && outcome.state !== 'needs_review' ? ended.observed.usage : null, exit: ended.exit,
+    compaction: ended.observed.compaction };
 }

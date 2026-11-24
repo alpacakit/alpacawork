@@ -4,7 +4,7 @@
  * ends when the file named by its `gate` exists; between steps it takes each instruction that arrived
  * (`input.taken`) or refuses it when that instruction's plan says `refuse` (`input.refused`). An instruction
  * that arrives between rounds starts the next round. After stdin closes it exits, first waiting for the
- * file named by `linger` when the first plan names one.
+ * file named by `linger` when the first plan names one. An instruction carrying `compact` is compacted first.
  */
 import { appendFileSync, existsSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, join, sep } from 'node:path';
@@ -38,6 +38,8 @@ for (;;) {
   }
   const work = plan(first);
   linger ??= work.linger ?? '';
+  // An instruction that asks to compact first, as a bridge answers it.
+  if (first.compact) { note({ compacted: first.compact.instructions }); emit({ type: 'compaction.completed' }); }
   emit({ type: 'input.taken', id: first.id });
   note({ taken: first.text });
   while (work.gate && !existsSync(join(root, work.gate))) {
