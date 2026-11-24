@@ -12,7 +12,7 @@ export type TaskNode = {
 };
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
-  childQuestions: UserQuestion[]; questions: number; prs: Set<string>;
+  childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
   firstAgent: string; firstModel: string; launches: Launch[]; clock: ReturnType<typeof clocks> | null;
 };
 export type AnalysisFacts = {
@@ -77,7 +77,7 @@ function* textLeaves(value: unknown): Generator<string> {
 }
 
 function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<string, TaskLog[]>,
-  values: ReadonlyMap<string, ReadonlySet<string>>, byTask: ReadonlyMap<string, StoredRun[]>): Unit {
+  values: ReadonlyMap<string, ReadonlySet<string>>, byTask: ReadonlyMap<string, StoredRun[]>, memberIds: readonly string[]): Unit {
   const log = logs.get(node.id) ?? [], outcome = taskOutcome(log, node.state, node.created);
   const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>(), launches: Launch[] = [];
   for (const id of ids) {
@@ -96,9 +96,12 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
   const firstAgent = firstOwner?.agent ?? 'unknown';
   const { model, effort } = firstOwner ? modelOf(firstOwner) : { model: null, effort: null };
   const from = Date.parse(outcome.requestedAt), to = outcome.finishedAt ? Date.parse(outcome.finishedAt) : null;
-  return { node, outcome, log, ownQuestions, childQuestions,
-    questions: [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to)).length,
-    prs, firstAgent, firstModel: modelLabel(model, effort, firstAgent), launches,
+  const questions = [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to));
+  const workers = new Set(memberIds);
+  // The placement row remembers its final role. Its history retains member assignments before a promotion.
+  for (const entry of log) if (entry.placementEffect === 'member' && entry.placementId) workers.add(entry.placementId);
+  return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length,
+    answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs, firstAgent, firstModel: modelLabel(model, effort, firstAgent), launches,
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 
@@ -137,9 +140,10 @@ export class FactsCache {
   private refresh(db: DatabaseSync, full: boolean, keys: readonly ChangeKey[]): AnalysisFacts {
     const taskIds = new Set(keys.filter(key => key.kind === 'task').map(key => key.id));
     const runIds = new Set(keys.filter(key => key.kind === 'run').map(key => key.id));
+    const placementIds = keys.filter(key => key.kind === 'placement').map(key => key.id);
     const attempts = new Set(keys.filter(key => key.kind === 'attempt').map(key => key.id));
     const valuesIds = new Set(keys.filter(key => key.kind === 'task_value').map(key => (JSON.parse(key.id) as string[])[0]));
-    if (!full && !taskIds.size && !runIds.size && !attempts.size && !valuesIds.size) return this.data!;
+    if (!full && !taskIds.size && !runIds.size && !attempts.size && !valuesIds.size && !placementIds.length) return this.data!;
     const previous = this.data;
     const nodes = full || taskIds.size ? new Map(readNodes(db).map(node => [node.id, node])) : previous!.nodes;
     const tasks = [...nodes.values()].filter(node => node.kind === 'task');
@@ -165,6 +169,9 @@ export class FactsCache {
       if (item.launch) launches.push(item.launch);
     }
     const dirty = new Set(full ? [...members.keys()] : []);
+    if (placementIds.length)
+      for (const row of db.prepare('SELECT DISTINCT task_id FROM placements WHERE id IN (SELECT value FROM json_each(?))')
+        .all(JSON.stringify(placementIds))) taskIds.add(String(row.task_id));
     for (const id of taskIds) {
       const before = previous?.rootOf.get(id), after = rootOf.get(id);
       if (before) dirty.add(before);
@@ -177,9 +184,16 @@ export class FactsCache {
         if (root !== next) { dirty.add(root); if (next) dirty.add(next); }
       }
     const units = full ? new Map<string, Unit>() : new Map(previous!.units);
+    const workers = new Map<string, string[]>();
+    if (dirty.size)
+      for (const row of db.prepare('SELECT task_id,id FROM placements WHERE responsible=0 AND task_id IN (SELECT value FROM json_each(?))')
+        .all(JSON.stringify([...dirty]))) {
+        const id = String(row.task_id), group = workers.get(id) ?? [];
+        group.push(String(row.id)); workers.set(id, group);
+      }
     for (const id of dirty) {
       const node = nodes.get(id), group = members.get(id);
-      if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values, byTask));
+      if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values, byTask, workers.get(id) ?? []));
       else units.delete(id);
     }
     return { nodes, units, rootOf, launches, first: firstConversations(launches) };

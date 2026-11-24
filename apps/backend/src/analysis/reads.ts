@@ -246,8 +246,7 @@ class ScopedAnalysis {
   }
 
   list(input: AnalysisListInput): AnalysisUnitList {
-    const range = input.from && input.to ? { from: input.from, to: input.to } : undefined;
-    const head = this.head({ ...input, range });
+    const head = this.head(input);
     const home = input.set === 'finished' && input.period === 'today' && !input.end && !input.by && !input.value;
     const rows = (input.set === 'used' ? this.usageRows(input, head) : this.taskRows(input, head))
       .filter(item => !input.value || item.value !== null && (item.value > 0 || input.value === 'lead' || input.value === 'submits'))
@@ -281,7 +280,8 @@ class ScopedAnalysis {
     for (const { name, calls } of tools) toolCounts.set(name, (toolCounts.get(name) ?? 0) + calls);
     return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
-      questions: unit.questions, usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
+      questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
+      usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
       skills: this.usageGroups(items, 'skill').map(group => group.key).sort(),
       tools: [...toolCounts].map(([name, calls]) => ({ name, calls })).sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name, 'en')),
       tallied: this.tallyCoverage(items) };

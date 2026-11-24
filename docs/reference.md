@@ -86,8 +86,9 @@ The screen and these read commands use the same counts. A person or the coordina
 | `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |
 | `alpacawork analysis task --task <task>` | One top-level Task's values, including the requested child when it resolves to that parent |
 
-Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods and
-`--time-zone <IANA-zone>` to override the server's time zone. Trend buckets are `day`, `week` and `month`.
+Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods.
+Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The server's time zone can be
+overridden with `--time-zone <IANA-zone>`. Trend buckets are `day`, `week` and `month`.
 A comparison uses the immediately preceding period of equal length when there is enough history.
 
 The task counts use Tasks the user directly requested. AI usage includes work on all Tasks and groups child launches under

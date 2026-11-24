@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
-import { analysisListInput } from '@alpacawork/contract/analysis';
+import { analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
 import { buckets, calendar, makeHead } from '@alpacawork/backend/test-dist/analysis/calendar.js';
 import { clocks, firstConversations, launchOf, prLinks, runtime, shareOf, taskOutcome, userQuestions,
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
@@ -35,6 +35,11 @@ test('first acceptance retains the unit and each kind of rework is based on comm
   assert.equal(facts([created, first, submit, update, linked, later, accepted]).passed, false);
   assert.equal(facts([created, first, submit, { ...linked, at: stamp(159) }, update, accepted]).passed, true);
   assert.equal(facts([created, first, submit, update, { ...linked, originCauseId: 'other' }, accepted]).passed, true);
+  const held = event('during-hold', 'request_accepted', 80, { fromState: 'held' });
+  const after = event('after', 'request_accepted', 310, { fromState: 'doing' });
+  const sendBack = event('send-back', 'review_sent_back', 190);
+  assert.deepEqual(facts([created, first, during, held, submit, update, linked, sendBack, accepted, lateAnswer, after]).instructions,
+    { sendBacks: 1, instructionsAtReview: 1, instructionsAfterAccept: 1, instructionsDuringWork: 2 });
   const manual = event('manual', 'reported', 210, { fromState: 'doing', toState: 'done' });
   assert.equal(facts([created, manual]).acceptedAt, manual.at);
   assert.equal(facts([...base, manual]).acceptedAt, accepted.at);
@@ -96,7 +101,7 @@ test('review wait, hold, exact question closure and concurrent runs partition wa
     event('first-withdrawn', 'question_withdrawn', 39, { questionId: 'first-asked' }),
     event('stop', 'reported', 50, { toState: 'stopped' })];
   const own = userQuestions(ownLog);
-  assert.deepEqual(own.map(question => question.to), [epoch + 39, epoch + 17]);
+  assert.deepEqual(own.map(({ to, answered }) => [to, answered]), [[epoch + 39, false], [epoch + 17, true]]);
   const child = userQuestions([
     event('child-q', 'asked', 39, { askedTo: null, actor: asker, decide: [{}] }),
     event('child-stop', 'reported', 45, { toState: 'stopped' }),
@@ -120,6 +125,16 @@ test('periods use civil days, complete calendar buckets, and a minimum share den
     { from: '2026-03-01', to: '2026-03-09', complete: false },
   ]);
   assert.equal(buckets('2026-02-28', '2026-03-09', 'week')[1]!.complete, true);
+  const month = { from: '2026-03-01', to: '2026-03-31' };
+  assert.deepEqual(makeHead(null, 'America/New_York', month.to, '2026-01-29', month).previous,
+    { from: '2026-01-29', to: '2026-02-28' });
+  assert.equal(makeHead(null, 'UTC', month.to, '2026-01-30', month).previous, null);
+  for (const schema of [analysisTasksInput, analysisUsageInput]) {
+    assert.equal(schema.safeParse({ bucket: 'month', ...month }).success, true);
+    assert.equal(schema.safeParse({ bucket: 'month', ...month, period: '7d' }).success, false);
+    assert.equal(schema.safeParse({ bucket: 'month', ...month, end: month.to }).success, false);
+    assert.equal(schema.safeParse({ bucket: 'month', from: month.from }).success, false);
+  }
   assert.equal(shareOf(9, 9), null);
   assert.equal(shareOf(9, 10), 0.9);
   assert.equal(analysisListInput.safeParse({ set: 'used', period: 'all', value: 'calls', by: 'model', key: 'some-model' }).success, false);

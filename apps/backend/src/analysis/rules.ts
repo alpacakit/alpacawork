@@ -75,28 +75,32 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
   const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && (!stoppedAt || entry.at <= stoppedAt)).length;
   const linked = new Map<string, TaskState | null>();
-  let rework = false;
+  const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
   // Walk backward so each instruction sees its first subsequent state transition.
   for (let index = log.length - 1; index >= 0; index--) {
     const entry = log[index]!;
     if (entry.kind === 'linked' && entry.originCauseId && entry.toState !== null)
       linked.set(entry.originCauseId, entry.fromState);
-    if (sendBack(entry)) { rework = true; break; }
+    if (sendBack(entry)) instructions.sendBacks++;
     if (!instruction(entry)) continue;
     const seen = linked.has(entry.id) ? linked.get(entry.id) : entry.fromState;
-    if (seen === 'waiting' || acceptedIndex >= 0 && index > acceptedIndex) { rework = true; break; }
+    if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
+    else if (seen === 'waiting') instructions.instructionsAtReview++;
+    else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
   }
-  const passed = acceptedAt !== null && submits <= 1 && !rework;
-  return { requestedAt, acceptedAt, stoppedAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits,
+  const passed = acceptedAt !== null && submits <= 1 &&
+    !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
+  return { requestedAt, acceptedAt, stoppedAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits, instructions,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const : null };
 }
 export type Outcome = ReturnType<typeof taskOutcome>;
 
-export type UserQuestion = { from: number; to: number | null };
+export type UserQuestion = { from: number; to: number | null; answered: boolean };
 export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
   return questionsOf(log).flatMap(({ asked, closing }) => asked.askedTo === null
-    ? [{ from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at) }] : []);
+    ? [{ from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at),
+      answered: closing?.kind === 'answered' && speaksForUser(closing.actor) }] : []);
 }
 
 export function unitMarks(log: readonly TaskLog[], from: number, to: number): AnalysisUnitValues['marks'] {
