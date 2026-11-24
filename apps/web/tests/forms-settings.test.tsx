@@ -138,7 +138,7 @@ test("a save the AI stack refuses says why by the button and takes the eye to th
   fireEvent.change(parallel(), { target: { value: "3" } });
   fireEvent.click(save());
   await waitFor(() => expect(document.querySelector('[data-ai-stack-refused]')).not.toBeNull());
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Fallback 1: agent')));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Fallback 1: Agent')));
   expect(saveCalls(fetcher)).toHaveLength(0);
   fireEvent.click(screen.getByRole('button', { name: 'Remove Fallback 1' }));
   await waitFor(() => expect(document.querySelector('[data-ai-stack-refused]')).toBeNull());

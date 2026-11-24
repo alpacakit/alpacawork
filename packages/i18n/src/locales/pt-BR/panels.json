@@ -7,7 +7,7 @@
     "aiStack": {
       "add": "+ Adicionar uma IA alternativa",
       "addFirst": "+ Adicionar a IA principal",
-      "agentFor": "{{role}}: agente",
+      "agentFor": "{{role}}: Agente",
       "agentsNote": "Um agente desativado não pode ser escolhido nas duas listas acima.",
       "agentsTitle": "Configurações de cada agente",
       "down": "Descer {{role}}",
@@ -483,7 +483,7 @@
       "commandSecondsHint": "Os comandos que passam desse tempo são interrompidos. As execuções de responsável e de membro não são afetadas · padrão {{value}}",
       "defaultHint": "Padrão {{value}}",
       "diagnostics": "Status de carregamento e conexão…",
-      "effect": "Salvar não altera o limite de tempo das execuções em andamento nem as configurações de agente das solicitações já aceitas.",
+      "effect": "Salvar não altera as execuções em andamento nem as solicitações já aceitas.",
       "folder": "Pasta do workspace",
       "folderCopy": "Copiar caminho",
       "jev": {

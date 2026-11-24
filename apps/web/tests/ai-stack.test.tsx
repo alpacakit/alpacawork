@@ -29,12 +29,12 @@ test('rows are added, moved and removed in one ordered list, the same agent on s
   expect(document.activeElement).toBe(screen.getByLabelText('Fallback 1: Model'));
   // It repeats row 1, and the row says so.
   expect(document.querySelectorAll<HTMLElement>('[data-ai-stack-row]')[1]!.dataset.repeats).toBe('1');
-  fireEvent.change(screen.getByLabelText('Fallback 1: agent'), { target: { value: 'codex' } });
+  fireEvent.change(screen.getByLabelText('Fallback 1: Agent'), { target: { value: 'codex' } });
   fireEvent.change(screen.getByLabelText('Fallback 1: Effort'), { target: { value: 'high' } });
   fireEvent.click(screen.getByRole('button', { name: 'Move Fallback 1 up' }));
   expect(writeStack(latest, agents)).toEqual([{ agent: 'codex', values: { model: 'gpt-6.2-sol', effort: 'high', fast: null } }, { agent: 'claude', values: { model: 'opus', effort: 'medium' } }]);
   // The role goes with the place: the row moved up is now the primary.
-  expect(screen.getByLabelText<HTMLSelectElement>('Primary: agent').value).toBe('codex');
+  expect(screen.getByLabelText<HTMLSelectElement>('Primary: Agent').value).toBe('codex');
   fireEvent.click(screen.getByRole('button', { name: 'Remove Fallback 1' }));
   expect(latest.map(row => row.agent)).toEqual(['codex']);
 });

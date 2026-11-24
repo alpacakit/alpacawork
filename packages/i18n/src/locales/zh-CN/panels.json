@@ -7,10 +7,10 @@
     "aiStack": {
       "add": "+ 添加备选 AI",
       "addFirst": "+ 添加首选 AI",
-      "agentFor": "{{role}}的智能体",
+      "agentFor": "“{{role}}”的智能体",
       "agentsNote": "已停用的智能体不能在上面的两个列表中选择。",
       "agentsTitle": "各智能体的设置",
-      "down": "将{{role}}下移",
+      "down": "将“{{role}}”下移",
       "fallback": "备选 {{n}}",
       "first": "首选",
       "issue": {
@@ -22,13 +22,13 @@
       "lead": "只有首选 AI 因用量上限或容量不足而停止时，备选 AI 才会从上到下依次接手。全部停止时，工作会停止并通知你。",
       "namedOnly": "不在这里的 AI，只在请求中指定时才会使用。",
       "notOffered": "{{value}}（不是可选值）",
-      "remove": "删除{{role}}",
+      "remove": "删除“{{role}}”",
       "repeated": "与“{{role}}”相同，因此这一行不会被使用。",
       "saveRefused": "未保存：“{{list}}”中有需要修正的地方。请修正标红的地方后再次保存。",
       "showRow": "前往该行",
       "title": "推进任务的 AI",
-      "up": "将{{role}}上移",
-      "valueFor": "{{role}}的{{row}}"
+      "up": "将“{{role}}”上移",
+      "valueFor": "“{{role}}”的{{row}}"
     },
     "authNeeded": "需要认证。请在服务器所在的电脑上登录 {{adapter}}",
     "authNeededCommand": "需要认证。请在服务器所在的电脑上执行 <code>{{command}}</code>",
@@ -469,7 +469,7 @@
       "commandSecondsHint": "停止运行超过此时间的命令。不影响负责人和成员的运行 · 默认 {{value}}",
       "defaultHint": "默认 {{value}}",
       "diagnostics": "加载与连接状态…",
-      "effect": "保存不会改变进行中运行的时限，也不会改变已受理委托的智能体设置。",
+      "effect": "保存不会改变进行中的运行和已受理的委托。",
       "folder": "工作区文件夹",
       "folderCopy": "复制路径",
       "jev": {

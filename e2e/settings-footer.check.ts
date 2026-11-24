@@ -22,9 +22,12 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   await openAdvancedOptions(page);
   const status = foot(page).getByRole('status');
   const discard = foot(page).getByRole('button', { name: 'Discard changes' }), save = foot(page).getByRole('button', { name: 'Save', exact: true });
-  await expect(foot(page)).not.toHaveCSS('position', 'sticky');
+  // On a PC the save row stays in view while the fields above it are read.
+  await page.locator('#server-advanced').evaluate(element => element.scrollIntoView({ block: 'start' }));
+  await expect(status).toBeInViewport();
+  await expect(save).toBeInViewport();
   await expect(status).toHaveText('Saved');
-  await expect(foot(page)).toContainText('Saving does not change the time limit of runs in progress or the agent settings of requests already accepted.');
+  await expect(foot(page)).toContainText('Saving does not change runs in progress or requests already accepted.');
   await expect(discard).toBeDisabled();
   await expect(save).toBeDisabled();
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
@@ -50,9 +53,15 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   const limit = page.locator('#limit-attachment_mib');
   const limitBefore = await limit.inputValue();
   await limit.fill('60');
-  await save.click();
+  // Pressed with the options' top in view, where it stands: a locator's click would first scroll the kept row to its
+  // place at the end of the flow.
+  await page.locator('#server-advanced').evaluate(element => element.scrollIntoView({ block: 'start' }));
+  const at = (await save.boundingBox())!;
+  await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2);
+  // Said where the save was pressed, with the fields above still in view.
   const refusal = foot(page).locator('..').getByRole('button', { name: 'Load the latest' });
-  await expect(refusal).toBeVisible();
+  await expect(refusal).toBeInViewport();
+  await expect(page.locator('#server-advanced > summary')).toBeInViewport();
   await expect(limit).toHaveValue('60');
   await expect(status).toHaveText('Unsaved changes (General → Advanced options)');
   await page.locator('[data-slot="dialog-body"]').evaluate(element => element.scrollTo({ top: element.scrollHeight }));
@@ -67,4 +76,7 @@ test("the settings' foot says what is saved, and its buttons do what they say: d
   await save.click();
   await expect(status).toHaveText('Saved');
   await expect(save).toBeDisabled();
+  // On a phone it stays in the page's flow, clear of the keyboard.
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(foot(page).locator('..')).not.toHaveCSS('position', 'sticky');
 });

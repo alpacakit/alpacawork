@@ -240,13 +240,16 @@ function ServerDraftFoot() {
   const placeName = (place: DraftPlace) => place === "ai" ? t("settings.tabs.ai") : `${t("settings.tabs.general")} → ${t("settings.server.advanced")}`;
   const status = !isDirty ? t("settings.status.saved") : changed.length
     ? t("settings.status.dirtyIn", { places: changed.map(placeName).join(t("settings.status.placeSeparator")) }) : t("settings.status.dirty");
-  return <>
+  // On a PC the save row, with why a save was refused and what to do next, is kept at the window's foot while the
+  // fields above scroll, so whether a save is needed, and why one did not go through, are always in view; it reaches
+  // down over the body's bottom room, and its own clears the body's fade. The body keeps as much room at its foot
+  // where a field moved to comes into view, so the row never covers it. On a phone it all stays in the page's flow,
+  // last: kept in view it would cover the field being typed in over the keyboard.
+  return <div ref={keepFieldsClear} data-settings-foot-block
+    className="sticky -bottom-3 z-10 mt-6 flex flex-col gap-3 border-t border-line bg-raised pt-4 pb-4 narrow:static narrow:contents">
     <FormError form={form} onReread={unproven ? undefined : reload} rereadLabel={t("settings.server.reload")} disabled={!actions.reread} />
     {unconfirmed && <SaveUnconfirmed unproven={unproven} onReread={() => void reload()} disabled={!actions.reread} />}
-    {/* On a PC kept at the window's foot while the fields above scroll, so whether a save is needed is always in view;
-        it reaches down over the body's bottom room, and its own clears the body's fade. On a phone it stays in the
-        page's flow, last: kept in view it would cover the field being typed in over the keyboard. */}
-    <DialogFooter data-settings-foot className="sticky -bottom-3 z-10 flex-wrap bg-raised pb-4 narrow:static narrow:pb-0">
+    <DialogFooter data-settings-foot className="mt-0 flex-wrap border-t-0 pt-0 narrow:mt-4.5 narrow:border-t narrow:pt-4">
       <div className="min-w-0 flex-1 basis-60 narrow:basis-full">
         <FieldHint role="status">{status}</FieldHint>
         {/* A save a stack refused says why beside the button, and takes the eye to the row to fix. */}
@@ -260,7 +263,20 @@ function ServerDraftFoot() {
       </Button>
       <SubmitButton form={form} disabled={!actions.save} label={t("settings.server.save")} onClick={save} />
     </DialogFooter>
-  </>;
+  </div>;
+}
+
+/** Keeps the dialog body's foot room as tall as the save row kept over it (none when the row is in the flow). */
+function keepFieldsClear(block: HTMLDivElement | null) {
+  const body = block?.closest<HTMLElement>('[data-slot="dialog-body"]');
+  if (!block || !body) return;
+  const observer = new ResizeObserver(() => {
+    // A hidden tab's row has no height and leaves the room to the one shown.
+    if (getComputedStyle(block).position !== "sticky") body.style.scrollPaddingBottom = "";
+    else if (block.offsetHeight) body.style.scrollPaddingBottom = `${block.offsetHeight}px`;
+  });
+  observer.observe(block);
+  return () => observer.disconnect();
 }
 
 /**
