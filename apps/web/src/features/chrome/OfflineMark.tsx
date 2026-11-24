@@ -27,7 +27,7 @@ export function OfflineMark() {
   const trigger = useRef<HTMLButtonElement>(null);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-offline-mark aria-label={label} title={label} aria-haspopup="dialog" aria-expanded={open}
-      onClick={() => setOpen((was) => !was)}><Icon name="offline" /></Button>
+      className="narrow:w-9" onClick={() => setOpen((was) => !was)}><Icon name="offline" /></Button>
     {open && <Popup open onOpenChange={setOpen} label={t("offline.title")} className="w-80" anchorRef={trigger}
       heading={<span className="flex items-center gap-2"><Icon name="offline" className="flex-none" />{t("offline.title")}</span>}>
       <div data-offline-explanation className="grid gap-4 text-sm">
