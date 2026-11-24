@@ -25,8 +25,9 @@ export const launchSchema = identitySchema.extend({ cwd: z.string().startsWith('
   prompt: z.string().refine(v => Buffer.byteLength(v) <= PROTOCOL_LIMITS.prompt), initialInputId: uuid,
   format: z.string().regex(/^[a-f0-9]{64}$/), runMinutes: z.number().nonnegative(), commandSeconds: z.number().int().positive().nullable().optional(), credential: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   entry: z.string().startsWith('/'), version: z.string().min(1), server: z.string().url().nullable(), ancestors: z.array(runId), release: z.string().nullable(),
-  /** The conversation is compacted before the initial input (agent compact); `instructions` only for an agent that takes them. */
-  compaction: compactionLaunchSchema.nullable(),
+  /** The conversation is compacted before the initial input (agent compact); `instructions` only for an agent that takes them.
+   * Absent or null: no compaction. */
+  compaction: compactionLaunchSchema.nullable().optional(),
 }).strict().refine(value => value.commandSeconds === undefined || (value.credential === null) === (value.commandSeconds !== null),
   'Only a coordinator launch has command seconds');
 export type LaunchSnapshot = z.infer<typeof launchSchema>;
@@ -59,7 +60,8 @@ export const observationSchema = z.object({
   handoffSafe: z.literal(true).optional(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   result: z.object({ state: z.enum(['present', 'missing', 'too_large', 'unreadable']), digest: digest.nullable(), size: z.number().int().nonnegative() }).strict(),
-  compaction: compactionOutcomeSchema.nullable(),
+  /** Absent or null: the launch asked for no compaction, or the agent said nothing of it. */
+  compaction: compactionOutcomeSchema.nullable().optional(),
 }).strict();
 export type ResultObservation = z.infer<typeof observationSchema>;
 const payloads = {

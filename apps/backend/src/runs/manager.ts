@@ -113,7 +113,7 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   try {
     journal.append('started', processIdentity(child.pid!));
     // The compaction the launch carries goes with the initial input, the only one no turn can be running before.
-    transfer(channel, snapshot.initialInputId, id, snapshot.prompt, snapshot.compaction);
+    transfer(channel, snapshot.initialInputId, id, snapshot.prompt, snapshot.compaction ?? null);
     let session = snapshot.invocation.session?.id ?? null, finished = false;
     const activity = new OutputActivityReader(adapter);
     const takeReceipts = () => {

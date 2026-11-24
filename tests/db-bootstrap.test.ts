@@ -90,7 +90,7 @@ test('same marker16 with a longer packaged history requires explicit maintenance
   next.migrateExistingDatabase(commonFile, 'control', options);
   next.openControlDatabase(commonRoot, options).close();
   assert.equal(next.inspectDatabaseHistory(commonFile, 'control', options).length, controlSchemaManifest().history.length + 1);
-  for (const sql of ['DELETE FROM __drizzle_migrations WHERE id=1', 'UPDATE __drizzle_migrations SET id=id+10 WHERE id=1']) {
+  for (const sql of ['DELETE FROM __drizzle_migrations WHERE id=1', 'UPDATE __drizzle_migrations SET id=id+1000 WHERE id=1']) {
     const other = workspace(t); next.openControlDatabase(other, options, false, true).close(); edit(other, sql); const before = snapshot(other);
     assert.throws(() => next.migrateExistingDatabase(controlDatabasePath(other), 'control', options), /history/); assert.deepEqual(snapshot(other), before);
   }

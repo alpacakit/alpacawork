@@ -252,10 +252,10 @@ export class RunEventImporter {
       // Spelled out: the tests' non-strict program reads the protocol's nullable exit fields as optional.
       const exit = observation.exit && { code: observation.exit.code, signal: observation.exit.signal };
       const end: EndObservation = { outcome, session: observation.session, measuredUsage: observation.measuredUsage, exit,
-        availability: observation.availability, handoffSafe: observation.handoffSafe, compaction: observation.compaction,
+        availability: observation.availability, handoffSafe: observation.handoffSafe, compaction: observation.compaction ?? null,
         finalResult: observation.result.state === 'present' ? { state: 'present', text: text! } : { state: observation.result.state, text: null } };
       releaseReserved(db, attempt, { evidence: 'completed_without_attempt', completedDigest: digest });
-      settleCompaction(db, attempt, observation.compaction, row.started_json !== null, event.occurredAt);
+      settleCompaction(db, attempt, observation.compaction ?? null, row.started_json !== null, event.occurredAt);
       const next = reserveAiFallback(this.store, tx, run, end, attempt);
       recordEnd(db, tx, run, end, event.occurredAt, answer, next);
       db.prepare('UPDATE run_attempts SET completed_digest=? WHERE attempt_id=?').run(digest, attempt);
