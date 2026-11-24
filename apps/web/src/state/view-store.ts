@@ -242,7 +242,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
     }
     get().setReaderFull(requested === "full");
   },
-  setQuery: intent((query) => set((state) => ({ query, ...queryEdit(state) }))),
+  setQuery: intent((query) => set((state) => ({ query, ...queryEdit(state), ...query && state.analysis ? { analysis: null } : {} }))),
   clearSearch: intent(() => set((state) => ({ query: "", ...queryEdit(state) }))),
   select: intent((id) => set({ selected: id })),
   // The move on to the next question after an answer acts on the reader that took the answer.
@@ -296,8 +296,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
   }),
   setFilePath: intent((taskId, path) => set({ filePath: { taskId, path } }), true),
   analysis: null,
-  showAnalysis: intent((analysis) => set((state) => analysis && state.reader.open
-    ? { analysis, selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : { analysis })),
+  // Coming to the analysis closes the task open and ends a search, as the search's own button does: the analysis takes
+  // the list's place. A search begun on it goes back to the list, where its results are (setQuery).
+  showAnalysis: intent((analysis) => set((state) => !analysis ? { analysis }
+    : { analysis, searchOpen: false, query: "", ...state.query ? queryEdit(state) : {},
+      ...state.reader.open ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
   openFromAnalysis: intent((id) => { set({ analysis: null }); get().openTask(id, { reader: true, pane: "task" }); }),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {

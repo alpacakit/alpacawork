@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/ui/icon";
 import { tip, useChoices } from "./parts";
 
 export type Cell = { text: string; unit?: string; tip?: string; open?: () => void };
@@ -27,10 +28,14 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10 }: { id: st
         <th className="w-28 px-2 narrow:w-16" />
         {columns.map((name, at) => <th key={name} className={cn(column(at), "px-2 font-normal whitespace-nowrap")}>
           <span className="narrow:hidden">{name}</span>
-          <select aria-label={name} value={on} onChange={event => setShown({ ...shown, [id]: Number(event.target.value) })}
-            className="hidden max-w-[13em] appearance-none bg-transparent pe-4 text-end text-xs text-soft narrow:inline-block">
-            {columns.map((each, index) => <option key={each} value={index}>{each}</option>)}
-          </select>
+          {/* On a phone the column's name chooses which column shows: the arrow says it opens a choice. */}
+          <span className="relative hidden items-center narrow:inline-flex">
+            <select aria-label={name} value={on} onChange={event => setShown({ ...shown, [id]: Number(event.target.value) })}
+              className="max-w-[13em] appearance-none bg-transparent pe-4 text-end text-xs text-soft">
+              {columns.map((each, index) => <option key={each} value={index}>{each}</option>)}
+            </select>
+            <Icon name="down" className="pointer-events-none absolute end-0 size-3 text-soft" />
+          </span>
         </th>)}
         <th className="narrow:hidden" />
       </tr></thead>

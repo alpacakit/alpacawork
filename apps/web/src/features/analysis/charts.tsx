@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { addDays, daysBetween, dayLabel, dayWithWeekday, monthLabel, spanLabel, ticks, weekday, weekdayLabel } from "./format";
@@ -19,14 +20,6 @@ function binName(bin: Bin, today: string, say: (key: string, options?: Record<st
   if (bin.complete) return name;
   return `${name}${say("sep")}${bin.to >= today ? say("bucket.ongoing") : say("bucket.partial", { count: daysBetween(bin.from, bin.to) })}`;
 }
-/** A bin's name under the chart: every month or week; a day's on the first, the last and Mondays not too near either. */
-function xLabel(bin: Bin, bucket: Bucket, at: number, count: number) {
-  if (bucket === "month") return monthLabel(bin.from);
-  if (bucket === "week") return dayLabel(bin.from);
-  if (at === count - 1) return dayLabel(bin.from);
-  return at === 0 || weekday(bin.from) === 0 && at > 2 && at < count - 3 ? dayLabel(bin.from) : "";
-}
-
 /** The gutter on the left the scale's numbers stand in. */
 const GUT = "ps-12 narrow:ps-10";
 const GUT_LEFT = "start-12 narrow:start-10";
@@ -40,13 +33,48 @@ function Grid({ marks, top, label }: { marks: number[]; top: number; label: (val
   </div>;
 }
 
+/** How wide a bin's name is drawn (a day "10/15", a month), and the least room between two names. */
+const LABEL_PX = 34, LABEL_GAP_PX = 8;
+/**
+ * Which bins are named under a chart `width` pixels wide, so that no two names touch at any width or length of record:
+ * a day chart names its first day, its last (drawn at the chart's end) and the Mondays between that have room; a week or
+ * month chart names every bin that has room, each centred under its bin. The last is always named.
+ */
+export function axisLabels(count: number, wide: boolean, candidate: (at: number) => boolean, width: number): number[] {
+  if (count <= 1) return count ? [0] : [];
+  const bin = width / count;
+  const extent = (at: number): [number, number] => wide ? [(at + 0.5) * bin - LABEL_PX / 2, (at + 0.5) * bin + LABEL_PX / 2]
+    : at === count - 1 ? [width - LABEL_PX, width] : [at * bin, at * bin + LABEL_PX];
+  const last = extent(count - 1), kept: number[] = [];
+  let end = -Infinity;
+  for (let at = 0; at < count - 1; at++) {
+    if (at !== 0 && !candidate(at)) continue;
+    const [from, to] = extent(at);
+    if (from >= end + LABEL_GAP_PX && to + LABEL_GAP_PX <= last[0]) { kept.push(at); end = to; }
+  }
+  return [...kept, count - 1];
+}
+
 function XAxis({ bins, bucket }: { bins: Bin[]; bucket: Bucket }) {
   const wide = bucket !== "day";
-  return <div aria-hidden className={cn("mt-1.5 grid h-4.5 auto-cols-[minmax(0,1fr)] grid-flow-col", GUT)}>
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const self = box.current;
+    if (!self) return;
+    const measure = () => setWidth(self.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(self);
+    return () => watch.disconnect();
+  }, []);
+  const named = new Set(axisLabels(bins.length, wide, at => wide || weekday(bins[at]!.from) === 0, width || bins.length * LABEL_PX * 2));
+  const name = (bin: Bin) => bucket === "month" ? monthLabel(bin.from) : dayLabel(bin.from);
+  return <div className={cn("mt-1.5", GUT)}><div ref={box} aria-hidden className="grid h-4.5 auto-cols-[minmax(0,1fr)] grid-flow-col">
     {bins.map((bin, at) => <span key={bin.from} className={cn("overflow-visible text-xs whitespace-nowrap text-soft",
       wide ? "w-full text-center" : at === bins.length - 1 && at ? "flex w-full justify-end" : "w-0")}>
-      {xLabel(bin, bucket, at, bins.length)}</span>)}
-  </div>;
+      {named.has(at) ? name(bin) : ""}</span>)}
+  </div></div>;
 }
 
 type Pick = (days: Days) => void;
@@ -142,7 +170,10 @@ export function Grass({ from, counts, firstDay, span, onPick }: { from: string; 
   for (let at = 0; at < counts.length; at++) (weeks[Math.floor(at / 7)] ??= []).push(addDays(from, at));
   const names = [0, 3, 6].map(day => [day, weekdayLabel(addDays(from, day))] as const);
   const cell = "block size-3.5 rounded-[3px]";
-  return <div>
+  // A long record is wider than the room: the calendar scrolls inside itself, and shows its latest weeks first.
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (box.current) box.current.scrollLeft = box.current.scrollWidth; }, [from, counts.length]);
+  return <div ref={box} className="max-w-full min-w-0 overflow-x-auto pb-1 [scrollbar-width:thin]">
     <div role="group" aria-label={t("tasks.grass")} className="grid w-max grid-flow-col grid-rows-[16px_repeat(7,14px)] gap-0.75">
       <em />
       {[0, 1, 2, 3, 4, 5, 6].map(day => <em key={day} className="flex h-3.5 items-center justify-end pe-1 text-xs not-italic text-soft">{names.find(([at]) => at === day)?.[1] ?? ""}</em>)}

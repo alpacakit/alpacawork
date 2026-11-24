@@ -30,7 +30,8 @@ export function Seg<K extends string>({ label, items, value, onChange, onAgain, 
   /** What pressing the chosen one does, when it does something. */
   onAgain?: () => void; className?: string;
 }) {
-  return <div role="group" aria-label={label} className={cn("relative flex flex-none items-center gap-0.5", className)}>
+  // Where it does not fit (a phone, a longer language) it scrolls sideways inside itself, as the app's tab rows do.
+  return <div role="group" aria-label={label} className={cn("relative flex max-w-full min-w-0 flex-none items-center gap-0.5 overflow-x-auto [scrollbar-width:none]", className)}>
     <TabMarker current='[aria-current="true"]' />
     {items.map(([key, name]) => <button key={key} type="button" aria-current={key === value ? "true" : undefined}
       onClick={() => key !== value ? onChange(key) : onAgain?.()}
@@ -106,12 +107,24 @@ export const tip = (words: string) => ({ "data-tip": words, "aria-label": words 
 export function PointerTip({ root }: { root: HTMLElement | null }) {
   const [shown, setShown] = useState<{ words: string; x: number; y: number; below: boolean } | null>(null);
   useEffect(() => {
-    if (!root || matchMedia("(hover: none)").matches) return;
+    if (!root) return;
+    const place = (mark: HTMLElement) => {
+      const box = mark.getBoundingClientRect();
+      setShown({ words: mark.dataset.tip!, x: box.left + box.width / 2, y: box.top > 40 ? box.top - 6 : box.bottom + 6, below: box.top <= 40 });
+    };
+    // Under a finger there is no pointing: a mark that says only its value (`data-tip-tap`) says it when pressed.
+    if (matchMedia("(hover: none)").matches) {
+      const press = (event: MouseEvent) => {
+        const mark = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip-tap][data-tip]");
+        if (mark) place(mark); else setShown(null);
+      };
+      root.addEventListener("click", press);
+      return () => root.removeEventListener("click", press);
+    }
     const over = (event: MouseEvent) => {
       const mark = (event.target as Element | null)?.closest?.<HTMLElement>("[data-tip]");
       if (!mark?.dataset.tip) { setShown(null); return; }
-      const box = mark.getBoundingClientRect();
-      setShown({ words: mark.dataset.tip, x: box.left + box.width / 2, y: box.top > 40 ? box.top - 6 : box.bottom + 6, below: box.top <= 40 });
+      place(mark);
     };
     const out = () => setShown(null);
     root.addEventListener("mouseover", over);

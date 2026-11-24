@@ -2,7 +2,7 @@ import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, type AnalysisPlace } from "../src/features/analysis/place";
-import { shareLine } from "../src/features/analysis/charts";
+import { axisLabels, shareLine } from "../src/features/analysis/charts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
@@ -103,4 +103,16 @@ test("a number opens its tasks in the span its answer was counted for, even afte
   // The answer for what is chosen keeps the span as it was chosen (all time stays all time).
   expect(listOnAnswer({ ...place("face=analysis&span=all")! }, head("2026-10-15", "2026-11-24"), list).span).toEqual({ period: "all" });
   expect(listOnAnswer({ ...place("face=analysis&span=today")! }, head("2026-10-01", "2026-10-31"), list).span).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+});
+
+test("the chart's day, week and month names never touch, at any width and length, and the last is always named", () => {
+  for (const wide of [false, true]) for (const count of [1, 2, 7, 28, 41, 120, 366]) for (const width of [280, 330, 700, 1370]) {
+    const named = axisLabels(count, wide, at => at % 7 === 3, width);
+    expect(named.at(-1)).toBe(count - 1);
+    const bin = width / count;
+    const extent = (at: number) => wide ? [(at + 0.5) * bin - 17, (at + 0.5) * bin + 17] : at === count - 1 && at ? [width - 34, width] : [at * bin, at * bin + 34];
+    for (let i = 1; i < named.length; i++) expect(extent(named[i]!)[0]! - extent(named[i - 1]!)[1]!).toBeGreaterThanOrEqual(8);
+  }
+  // Room for them: the first day and the Mondays are named.
+  expect(axisLabels(41, false, at => at % 7 === 3, 1370)).toEqual([0, 3, 10, 17, 24, 31, 38, 40]);
 });

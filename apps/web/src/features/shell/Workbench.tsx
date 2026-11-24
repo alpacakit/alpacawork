@@ -151,10 +151,12 @@ export function Workbench() {
             : <RegionSkeleton shape="reader" className={readerBox(mode)} />)}
         </>}>{() => <>
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
-            {place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
+            {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
+            {analysis && !(place === "lookup" && project) ? <AnalysisView place={analysis} />
+              : place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
-              : analysis ? <AnalysisView place={analysis} /> : <TimeTree />}
+              : <TimeTree />}
           </div>
           <Reader mode={mode} overlapping={overlapping} canDock={canDock} />
         </>}</IndexRegions>

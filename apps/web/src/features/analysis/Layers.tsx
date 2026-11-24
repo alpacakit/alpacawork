@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useUnitList, useUnitValues } from "./data";
 import { duration, format, instant, spanLabel } from "./format";
 import { listColumn, listTitle, listUnit, writeValue } from "./lists";
-import { Square, tip } from "./parts";
+import { PointerTip, Square, tip } from "./parts";
 import type { ListRow, UnitValues } from "./contract";
 import type { AnalysisPlace } from "./place";
 
@@ -26,7 +26,9 @@ const outcomeWord = (row: ListRow, say: (key: string) => string) => say(`outcome
 export function Layers({ place, project, days }: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
   const { t } = useTranslation("analysis");
   const narrow = useNarrow();
-  const surface = useRef<HTMLElement>(null);
+  const surface = useRef<HTMLElement | null>(null);
+  const [surfaceBox, setSurfaceBox] = useState<HTMLElement | null>(null);
+  const setSurface = (node: HTMLElement | null) => { surface.current = node; setSurfaceBox(node); };
   const depth = (place.list ? 1 : 0) + (place.unit ? 1 : 0);
   const back = place.list && place.unit;
   useEffect(() => {
@@ -39,7 +41,8 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
   return <>
     {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
     <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
-    <aside ref={surface} role="dialog" aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
+    <PointerTip root={surfaceBox} />
+    <aside ref={setSurface} role="dialog" aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
       className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
         narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
           : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
@@ -175,13 +178,14 @@ function Band({ values }: { values: UnitValues }) {
   return <div className="relative mt-5 pt-3">
     <div className="absolute inset-x-0 top-0 h-2.5">
       {values.marks.map((mark, at) => <em key={at} style={{ left: `${Math.min(100, (Date.parse(mark.at) - start) / span * 100)}%` }}
-        className="absolute bottom-0 -ms-px h-2 w-0.5 rounded-[1px] bg-turn" {...tip(t(`values.marks.${mark.kind}`))} />)}
+        className="absolute bottom-0 -ms-px h-2 w-0.5 rounded-[1px] bg-turn after:absolute after:-inset-x-1.5 after:-inset-y-1 after:content-['']"
+        data-tip-tap="" {...tip(`${t(`values.marks.${mark.kind}`)} ${instant(mark.at, zone)}`)} />)}
     </div>
     <div className="flex h-2 gap-px">
       {values.band.map((piece, at) => {
         const width = Date.parse(piece.to) - Date.parse(piece.from);
-        return width > 0 && <i key={at} style={{ flex: width }} className={cn("block min-w-px rounded-[1.5px]", BAND[piece.kind])}
-          {...tip(`${t(`values.band.${piece.kind}`)} ${duration(width)}`)} />;
+        return width > 0 && <i key={at} style={{ flex: width }} className={cn("block min-w-px rounded-[1.5px]", BAND[piece.kind])} data-tip-tap=""
+          {...tip(`${t(`values.band.${piece.kind}`)} ${duration(width)}${t("sep")}${t("range", { from: instant(piece.from, zone), to: instant(piece.to, zone) })}`)} />;
       })}
     </div>
     <div className="mt-1.5 flex justify-between gap-3 text-xs text-soft"><span>{instant(row.requestedAt, zone)}</span><span>{ending}</span></div>

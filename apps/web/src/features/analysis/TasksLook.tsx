@@ -44,13 +44,6 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
         <b className="ms-2.5 font-normal text-muted">{shareGap === null ? countGap : `${countGap === t("same") ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}${t("sep")}${shareGap}`}</b></>
         : t("previous.none", { span: previousName(length) })}
     </div>
-    {rules && <RulesBox>
-      <p>{t("def.lead")}</p>
-      <ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
-      <p>{t("def.after")}</p>
-      <p><b>{t("def.modelName")}</b>{t("colon")}{t("def.modelText")}<span className="ms-4" /><b>{t("def.leadName")}</b>{t("colon")}{t("def.leadText")}</p>
-      <p><b>{t("def.prName")}</b>{t("colon")}{t("def.prText")}<span className="ms-4" /><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
-    </RulesBox>}
   </div>;
 
   const minor = <div className="mt-5 flex flex-wrap gap-x-6 gap-y-5 narrow:grid narrow:grid-cols-2 narrow:gap-x-3 narrow:gap-y-4">
@@ -129,6 +122,14 @@ export function TasksLook({ view, days, open, pick, zone }: { view: TasksView; d
       <div>{lead}{minor}</div>
       <Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} span={days} onPick={pick} />
     </div>
+    {/* Under the numbers, so opening it moves none of them. */}
+    {rules && <RulesBox>
+      <p>{t("def.lead")}</p>
+      <ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
+      <p>{t("def.after")}</p>
+      <p><b>{t("def.modelName")}</b>{t("colon")}{t("def.modelText")}<span className="ms-4" /><b>{t("def.leadName")}</b>{t("colon")}{t("def.leadText")}</p>
+      <p><b>{t("def.prName")}</b>{t("colon")}{t("def.prText")}<span className="ms-4" /><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
+    </RulesBox>}
     {charts}
     {until}
     {breakdown}
