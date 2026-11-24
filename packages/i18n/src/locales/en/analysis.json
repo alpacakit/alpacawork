@@ -132,10 +132,10 @@
     "grassTip_one": "{{day}}  {{count}} task finished",
     "grassTip_other": "{{day}}  {{count}} tasks finished",
     "howCounted": "How it is counted",
+    "noAgent": "Not given to an AI",
     "passed": "Through with no fixes",
     "reworked": "Fixed",
-    "stopped": "Stopped",
-    "noAgent": "Not given to an AI"
+    "stopped": "Stopped"
   },
   "time": {
     "ai": "AI at work",

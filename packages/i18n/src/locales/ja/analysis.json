@@ -123,10 +123,10 @@
     "grassMany": "多い",
     "grassTip_other": "{{day}}　終わったタスク {{count}}件",
     "howCounted": "数え方",
+    "noAgent": "AI に任せていない",
     "passed": "手直しなしで通った",
     "reworked": "手直しあり",
-    "stopped": "中止",
-    "noAgent": "AI に任せていない"
+    "stopped": "中止"
   },
   "time": {
     "ai": "AI が動いた",

@@ -123,10 +123,10 @@
     "grassMany": "多",
     "grassTip_other": "{{day}}　结束的任务 {{count}} 个",
     "howCounted": "统计方式",
+    "noAgent": "未交给 AI",
     "passed": "无需返工即通过",
     "reworked": "有返工",
-    "stopped": "中止",
-    "noAgent": "未交给 AI"
+    "stopped": "中止"
   },
   "time": {
     "ai": "AI 运行",

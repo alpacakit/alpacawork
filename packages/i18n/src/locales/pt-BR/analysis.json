@@ -141,10 +141,10 @@
     "grassTip_many": "{{day}}  {{count}} tarefas concluídas",
     "grassTip_other": "{{day}}  {{count}} tarefas concluídas",
     "howCounted": "Como é contado",
+    "noAgent": "Sem IA designada",
     "passed": "Sem correções",
     "reworked": "Corrigidas",
-    "stopped": "Interrompidas",
-    "noAgent": "Sem IA designada"
+    "stopped": "Interrompidas"
   },
   "time": {
     "ai": "IA trabalhando",
