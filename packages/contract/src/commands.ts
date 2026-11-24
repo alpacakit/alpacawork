@@ -84,14 +84,11 @@ const list = (key: string, description: string) =>
 const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
   ({ key, description, cliDetail: 'Use an absolute UTF-8 file path or - for stdin.', kind: 'file', max, jsonFile });
 const help = (...lines: string[]) => `\n${lines.join('\n')}`;
-/** What compacting a conversation does and costs, wherever a command can ask for it. */
-const COMPACTION_HELP = [
-  'Compaction: the agent summarizes its conversation with the conversation\'s own model, before the instruction, and',
-  'continues from the summary. It spends tokens each time: the model reads the conversation (about its current size,',
-  'up to the context window, much of it cache reads) and writes a summary of a few thousand tokens. Refused for Copilot on',
-  'Auto model selection and for --compact-focus with Codex or Grok; task request --compact also for an unfinished Run or',
-  'a first request. Grok\'s compaction follows its documentation, untried signed in. task get shows each placement\'s',
-  'latest compaction and how full its conversation last was. Every agent also compacts by itself near its limit.'].join('\n');
+/** What one compaction costs, wherever a command can ask for it. */
+const COMPACTION_COST = 'Each compaction spends tokens: the model reads the conversation (about its current size, up to the context ' +
+  'window, much of it cache reads) and writes a summary of a few thousand tokens. Codex compacts on its server and shows no count.';
+const COMPACTION_REFUSALS = 'Copilot on Auto model selection cannot compact, nor can --compact-focus go to Codex or Grok. ' +
+  'Grok\'s compaction follows its documentation and has not been tried signed in.';
 /** The agents block, as config get returns it and config set saves it. */
 const agentsHelp = 'agents: profiles in order; a coordinator message that names no agent goes to the first enabled one. ' +
   'Each can set adapter (for another name), enabled, ' +
@@ -305,7 +302,9 @@ const definitions = {
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
-    COMPACTION_HELP) }),
+    'With --compact the agent summarizes this conversation with its own model before the instruction and goes on from the summary; --compact-focus names what the summary must keep. As with --new-conversation, it is refused for an unfinished Run and a first request.',
+    COMPACTION_COST, COMPACTION_REFUSALS,
+    'task get --include agents shows each placement\'s conversation fill (context) and its latest compaction. Every agent also compacts by itself near its limit: compact for the work, not for fear of overflowing.') }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
     taskReportInput, [
       text('task', 'Task ID; a Run reports on its own Task when left out'),
@@ -328,7 +327,9 @@ const definitions = {
         'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
-        'Stopped stops the Task, its subtree and their Runs.', COMPACTION_HELP),
+        'Stopped stops the Task, its subtree and their Runs.',
+        'With --next-conversation compact the next conversation goes on compacted first, the agent summarizing it with its own model; --compact-focus names what the summary must keep. An instruction that arrives after the save cancels it, as for new.',
+        COMPACTION_COST, COMPACTION_REFUSALS),
       cliHelp: help('A Git diff in the description is attached automatically.',
         'For multiline Markdown, pass --description-file - and write the text on stdin.') }),
   'task/comment': command('write', 'Add a comment without changing Task state; --urgent sends it to the requester now',

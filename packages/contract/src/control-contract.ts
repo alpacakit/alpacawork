@@ -174,12 +174,13 @@ export const placementRuntimeSchema = z.object({
   activityKind: runActivityKindSchema.nullable(), toolName: z.string().nullable(),
 }).strict();
 /**
- * A request to compact a conversation before an instruction (task request --compact, task report --next-conversation
- * compact). pending: its Run waits to start; sent: went with the Run's first input; compacted / failed: what the agent
- * said; unknown: the agent ended without saying; dropped: the Run started a new conversation, or could not compact.
+ * Compacting a conversation before the instruction of `run` (task request --compact, task report --next-conversation
+ * compact). pending: the Run waits to start; sent: went with its first input; compacted / failed: what the agent said;
+ * unknown: the agent ended without saying; dropped: the Run started a new conversation, could not compact, or ended
+ * before it started.
  */
 export const COMPACTION_STATES = ['pending', 'sent', 'compacted', 'failed', 'unknown', 'dropped'] as const;
-export const compactionSchema = z.object({ id: z.string().min(1), task: z.string().min(1), agent: z.string().min(1),
+export const compactionSchema = z.object({ id: z.string().min(1), run: runIdSchema, task: z.string().min(1), agent: z.string().min(1),
   state: z.enum(COMPACTION_STATES), focus: z.string().nullable(), message: z.string().nullable(),
   requestedAt: z.iso.datetime({ offset: true }), endedAt: z.iso.datetime({ offset: true }).nullable() }).strict();
 export type Compaction = z.infer<typeof compactionSchema>;

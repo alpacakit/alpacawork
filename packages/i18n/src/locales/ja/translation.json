@@ -126,6 +126,7 @@
       "compaction_instructions_unsupported": "このエージェントは焦点を受けずに圧縮します。--compact-focus を外してください",
       "compaction_needs_model": "このエージェントは、モデルを選んだ会話しか圧縮できません。--selected かエージェント設定でモデルを選んでください",
       "compaction_unsupported": "このエージェントは会話を圧縮できません",
+      "compaction_with_new_conversation": "この依頼は新しい会話で始まるので、圧縮する会話がありません",
       "compaction_without_conversation": "この責任者・作業者には、まだ圧縮できる会話がありません",
       "config_digest_differs": "設定のダイジェストが一致しません",
       "config_file_reserved": "設定ファイルは別の操作が確保しています",

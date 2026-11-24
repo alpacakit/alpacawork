@@ -25,7 +25,7 @@ export const launchSchema = identitySchema.extend({ cwd: z.string().startsWith('
   prompt: z.string().refine(v => Buffer.byteLength(v) <= PROTOCOL_LIMITS.prompt), initialInputId: uuid,
   format: z.string().regex(/^[a-f0-9]{64}$/), runMinutes: z.number().nonnegative(), commandSeconds: z.number().int().positive().nullable().optional(), credential: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
   entry: z.string().startsWith('/'), version: z.string().min(1), server: z.string().url().nullable(), ancestors: z.array(runId), release: z.string().nullable(),
-  /** The conversation is compacted before the initial input (agent compact); `instructions` only for an agent that takes them.
+  /** The conversation is compacted before the initial input (runs/compactions); `instructions` is the focus, only for an agent that takes one.
    * Absent or null: no compaction. */
   compaction: compactionLaunchSchema.nullable().optional(),
 }).strict().refine(value => value.commandSeconds === undefined || (value.credential === null) === (value.commandSeconds !== null),

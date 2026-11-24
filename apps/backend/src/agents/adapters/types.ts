@@ -7,7 +7,7 @@ import type { ActivityEvent } from '../../runs/activity-events.js';
 import type { CatalogInput } from '../../coordinator/skill-catalog/context.js';
 import type { CompactionLaunch, CompactionOutcome } from '@alpacawork/contract/run-protocol';
 
-/** `compaction`: the ID of the compaction the launch asked for before its initial input (agent compact). */
+/** `compaction`: the ID of the compaction the launch asked for before its initial input (runs/compactions). */
 export type AdapterInvocation = { mode: 'start' | 'resume'; session: string | null; compaction: string | null };
 /** Translation only. Input identity, attempt uniqueness and retry policy stay in runs/input. */
 export type InputProtocol = {

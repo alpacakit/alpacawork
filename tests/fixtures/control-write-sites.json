@@ -435,44 +435,44 @@
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
-    "sql": "INSERT INTO compactions(id,run_no,placement_id,focus,state,message,requested_at,ended_at) VALUES (?,?,?,?,?,?,?,?)",
+    "sql": "INSERT INTO compactions(id,run_no,focus,state,message,ended_at) VALUES (?,?,?,?,?,?)",
     "table": "compactions",
-    "line": 53,
+    "line": 60,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='dropped',message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 69,
+    "line": 75,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='sent',attempt_id=? WHERE id=?",
     "table": "compactions",
-    "line": 70,
+    "line": 76,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state=?,message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 86,
+    "line": 92,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='unknown',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 87,
+    "line": 93,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='dropped',message='The instruction it went with was not sent',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 88,
+    "line": 94,
     "status": "touch"
   },
   {

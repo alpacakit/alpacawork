@@ -40,7 +40,6 @@ import { runRecordReadError } from './run-record-health.js';
 import { coordinatorFileRun } from './coordinator-file-runs.js';
 import { bundleReloadKeys, conversationReloadKeys } from './workspace-records-reload.js';
 import { databaseKeys, inputInstruction, ownerLookup, readPoint, recordKeys } from './workspace-records-sql.js';
-import { latestCompactions } from '../runs/compactions.js';
 export { ownerLookup } from './workspace-records-sql.js';
 
 /** Result heads are projection facts, never an addition to the durable Run record. */
@@ -284,11 +283,7 @@ export class DatabaseWorkspaceRecords implements WorkspaceRecords {
     let value = previous;
     const id = previous.task.id;
     const put = <K extends keyof TaskBundle>(key: K, data: TaskBundle[K]) => { value = { ...value, [key]: data }; };
-    if (read.has('placements')) {
-      const placements = db.prepare('SELECT * FROM placements WHERE task_id=? ORDER BY started_at,id').all(id).map(parseStoredPlacement);
-      const compactions = latestCompactions(db, placements.map(placement => placement.id));
-      put('placements', placements.map(placement => ({ ...placement, compaction: compactions.get(placement.id) ?? null })));
-    }
+    if (read.has('placements')) put('placements', db.prepare('SELECT * FROM placements WHERE task_id=? ORDER BY started_at,id').all(id).map(parseStoredPlacement));
     if (read.has('requests')) {
       const requests = delta ? new Map(previous.requests.map(row => [row.id, row])) : new Map<string, StoredRequest>();
       const ids = delta?.requests ?? db.prepare('SELECT id FROM requests WHERE task_id=? ORDER BY submitted_at,id').all(id).map(row => String(row.id));

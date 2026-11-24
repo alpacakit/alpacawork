@@ -13,8 +13,8 @@ const keyOf: Record<string, (row: Row) => ChangeKey> = {
   task_values: r => ({ kind: 'task_value', id: JSON.stringify([r.task_id, r.field_id]) }),
   task_dependencies: r => ({ kind: 'dependency', id: JSON.stringify([r.task_id, r.after_task_id]) }),
   placements: r => ({ kind: 'placement', id: String(r.id) }),
-  // A compaction request is part of what its placement shows.
-  compactions: r => ({ kind: 'placement', id: String(r.placement_id) }),
+  // A compaction is its Run's fact.
+  compactions: r => ({ kind: 'run', id: `R${r.run_no}` }),
   wait_cycles: r => ({ kind: 'wait_cycle', id: String(r.id) }),
   requests: r => ({ kind: 'request', id: String(r.id) }),
   task_start_grants: r => ({ kind: 'start_grant', id: String(r.request_id) }),

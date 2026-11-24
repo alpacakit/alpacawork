@@ -232,9 +232,9 @@ export class RequestService {
             explicit: explicitChange ? 'new' : input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
           // A compaction continues the same conversation, as the sender asked or as the seat's last report prepared it.
           // Asked for, it follows the rules of a new conversation: it is no reservation for after a Run ends.
-          if (input.compact && (!head || mode !== 'continue' || explicitChange))
-            refuse(PROBLEM_CODE.notResumable, 'There is no conversation to compact: this request starts a new one',
-              { kind: 'compaction_without_conversation' });
+          if (input.compact && (mode !== 'continue' || explicitChange))
+            refuse(PROBLEM_CODE.notResumable, 'This request starts a new conversation (another AI, or an unsent new one), so there is nothing to compact',
+              { kind: 'compaction_with_new_conversation' });
           if (input.compact && runs.some(isUnfinished))
             refuse(PROBLEM_CODE.handoffPending, 'Cannot compact the conversation while a Run is unfinished',
               { kind: 'cannot_compact_while_run_unfinished' });

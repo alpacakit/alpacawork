@@ -61,7 +61,7 @@ function notify(tx: ControlTx, project: string, kind: ReturnNotice, toTaskId: st
 export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; taskId: string; opId: string;
   expectedTaskHash: string; title: string; description: string; askTo: string;
   /** The write's values as sent (what its fingerprint keeps) and the Task's values after it, saved with the question. */
-  values?: unknown; written?: TaskValues; nextConversation?: 'new' | 'compact'; checkpoint?: ConversationCheckpoint }): void {
+  values?: unknown; written?: TaskValues; nextConversation?: 'new' | 'compact'; compactFocus?: string; checkpoint?: ConversationCheckpoint }): void {
   const { checkpoint, written, ...operation } = input;
   const tasks = tasksIn(tx), read = tasks.get(input.taskId), fingerprint = operationFingerprint(operation);
   if (replayed(tx, read, input.opId, 'asked', fingerprint)) return;

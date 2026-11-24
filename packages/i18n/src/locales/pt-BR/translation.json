@@ -126,6 +126,7 @@
       "compaction_instructions_unsupported": "Este agente compacta sem foco; retire --compact-focus",
       "compaction_needs_model": "Este agente só compacta uma conversa com um modelo escolhido; escolha um com --selected ou nas configurações do agente",
       "compaction_unsupported": "Este agente não pode compactar uma conversa",
+      "compaction_with_new_conversation": "Esta solicitação começa uma nova conversa, então não há nada para compactar",
       "compaction_without_conversation": "Este responsável ou membro ainda não tem uma conversa para compactar",
       "config_digest_differs": "O digest da configuração não corresponde",
       "config_file_reserved": "O arquivo de configuração está reservado por outra operação",

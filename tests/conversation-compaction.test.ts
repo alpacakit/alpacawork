@@ -34,7 +34,9 @@ test('--compact continues the conversation, compacted first, and is refused wher
   h.end(first.runId);
   const next = accepted(await compact(h, { compactFocus: 'Keep the agreed API' }));
   assert.equal(h.store.get(next.runId)!.resumes, first.runId, 'the same conversation goes on');
-  assert.deepEqual([compaction(h)?.state, compaction(h)?.focus], ['pending', 'Keep the agreed API']);
+  assert.deepEqual([compaction(h)?.run, compaction(h)?.state, compaction(h)?.focus], [next.runId, 'pending', 'Keep the agreed API']);
+  h.store.write(tx => tx.abortRequest(tx.get(next.runId)!, next.requestId));
+  assert.equal(compaction(h)?.state, 'dropped', 'a Run that ended before it started compacted nothing');
   for (const [input, path] of [[{ newConversation: true }, 'compact'], [{ compact: undefined, compactFocus: 'x' }, 'compactFocus'],
     [{ expectedHeadRun: undefined }, 'expectedHeadRun']] as const) {
     const parsed = taskRequestInput.safeParse({ task: 'T1', instruction: 'x', compact: true, expectedHeadRun: 'R1',

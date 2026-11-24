@@ -126,6 +126,7 @@
       "compaction_instructions_unsupported": "此代理压缩时不接受焦点，请去掉 --compact-focus",
       "compaction_needs_model": "此代理只能压缩已选定模型的对话，请用 --selected 或在代理设置中选择模型",
       "compaction_unsupported": "此代理无法压缩对话",
+      "compaction_with_new_conversation": "此请求会开始新的对话，因此没有可压缩的内容",
       "compaction_without_conversation": "该负责人或成员还没有可压缩的对话",
       "config_digest_differs": "配置的摘要不一致",
       "config_file_reserved": "配置文件已被其他操作预留",
