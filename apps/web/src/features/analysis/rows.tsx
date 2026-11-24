@@ -356,12 +356,13 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     </svg>}
     {line && <div aria-hidden className="pointer-events-none absolute inset-0">
       {line.dots.map((dot, at) => {
-        if (!dot) return null;
-        // A point over the top stands on it as a small caret up, in the span or out of it.
+        // Where bins are too narrow for points the line lies flat on the top where it is cut; elsewhere a point over the
+        // top stands on it as a small caret up, in the span or out of it.
+        if (!dot || !points) return null;
         if (dot.over) return <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
           className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
           <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-ink [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
-        return points && (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
+        return (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
           className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
             dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />;
       })}
