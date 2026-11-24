@@ -28,7 +28,6 @@ import { AgentInputChannel } from '@alpacawork/backend/test-dist/runs/input.js';
 import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
 import { installInputManagerClock } from './fixtures/input-manager-clock.ts';
 import { RUN_FILES } from '@alpacawork/contract/run';
-import type { Problem } from '@alpacawork/core';
 import { withControlWrite } from '@alpacawork/backend/test-dist/control/task-transition.js';
 import { latestCompactions, requestCompaction } from '@alpacawork/backend/test-dist/runs/compactions.js';
 import { readControl } from '@alpacawork/backend/test-dist/control/task-store.js';
@@ -273,19 +272,14 @@ test('once the work has ended and stdin is closed, an instruction waits for the 
   assert.equal(h.store.get(late.id)!.resumes, first.id);
 });
 
-test('a compaction asked for an idle conversation goes first with its next instruction, and its outcome shows', async t => {
+test('an instruction asked to compact its conversation first is compacted before it, and the outcome shows', async t => {
   const h = await setup(t);
-  const ask = (instructions: string | null) => withControlWrite(h.root, (_tx, db) => requestCompaction(db,
-    { taskId: h.taskId, placementId: h.placementId, instructions, at: new Date().toISOString(), nextValues: () => null }));
-  const refusal = (instructions: string | null) => { try { ask(instructions); } catch (error) { return (error as Problem).reason?.kind; } };
-  assert.equal(refusal(null), 'compaction_without_conversation');
   const first = h.send({ step: 'first' });
   await h.tick();
   await h.state(first, 'succeeded');
-  assert.equal(refusal('Keep the plan'), 'compaction_instructions_unsupported', 'Codex compacts without instructions');
-  const asked = ask(null);
-  assert.equal(asked.state, 'pending');
   const next = h.send({ step: 'next' });
+  // As admission records a --compact request with the Run of its instruction.
+  withControlWrite(h.root, (_tx, db) => requestCompaction(db, next, null, true, new Date().toISOString()));
   await h.tick();
   await h.state(next, 'succeeded');
   const resumed = h.notes().filter(note => note.compacted !== undefined || note.taken).map(note => note.taken ?? 'compacted');

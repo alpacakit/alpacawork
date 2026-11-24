@@ -70,7 +70,7 @@ export class TaskReportService {
     const path = new TaskRepository(this.root, tx.store.connection).ancestry(task.id);
     const written = input.values !== undefined && !replayed ? writtenValues(tx.store.connection, path, task, input.values) : undefined;
     const checkpoint = written !== undefined
-      ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation) : undefined;
+      ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation, input.compactFocus) : undefined;
     if (!reportCallerRules.askTo.allows(input, caller))
       invalid('askTo', 'Only a Run asking a question chooses --ask-to', { kind: 'only_question_run_chooses_ask_to' });
     const report = { actor, taskId: task.id, opId: input.opId, expectedTaskHash: input.expectedTaskHash };

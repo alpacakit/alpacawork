@@ -26,6 +26,7 @@ import { returnLinesOf } from './return-lines.js';
 import { requestAuthor, requestBodyFits, startText } from './start-text.js';
 import { databaseEstimateExamples } from './estimate-examples.js';
 import { assertRotationResolved, continuationSessionUnavailable, conversationForRequest, handoffForRequest, rotationForRequest, suppliedSnapshotForRequest } from './conversation-context.js';
+import { requestCompaction } from '../runs/compactions.js';
 import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
@@ -199,6 +200,8 @@ export class RequestService {
             reject(code, message, reason, task.hash, placement.revision, head?.id ?? null);
           if (task.hash !== input.expectedTaskHash || placement.revision !== input.expectedPlacementRevision)
             refuse(PROBLEM_CODE.conflict, 'Task or placement changed; reload before retrying', { kind: 'task_or_placement_changed' });
+          if (input.compact && !head)
+            refuse(PROBLEM_CODE.notResumable, 'There is no conversation to compact yet', { kind: 'compaction_without_conversation' });
           if (input.expectedHeadRunId !== undefined && input.expectedHeadRunId !== (head?.id ?? null))
             refuse(PROBLEM_CODE.conflict, 'Conversation head changed; reload before retrying', { kind: 'conversation_head_changed' });
           const storedPrefix = db.prepare('SELECT ai_prefix FROM placements WHERE id=?').get(placement.id)?.ai_prefix;
@@ -225,8 +228,17 @@ export class RequestService {
           const resumable = setting?.enabled !== false && !!setting;
           const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
-          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown, explicit: explicitChange ? 'new' : input.mode,
-            head, direct: !fromPlacement, resumable });
+          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown,
+            explicit: explicitChange ? 'new' : input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
+          // A compaction continues the same conversation, as the sender asked or as the seat's last report prepared it.
+          // Asked for, it follows the rules of a new conversation: it is no reservation for after a Run ends.
+          if (input.compact && (!head || mode !== 'continue' || explicitChange))
+            refuse(PROBLEM_CODE.notResumable, 'There is no conversation to compact: this request starts a new one',
+              { kind: 'compaction_without_conversation' });
+          if (input.compact && runs.some(isUnfinished))
+            refuse(PROBLEM_CODE.handoffPending, 'Cannot compact the conversation while a Run is unfinished',
+              { kind: 'cannot_compact_while_run_unfinished' });
+          const compaction = input.compact ?? (mode === 'continue' ? handoff?.compact : null) ?? null;
           if (unsentNew && input.mode === 'continue')
             refuse(PROBLEM_CODE.notResumable, 'An unsent new conversation cannot resume', { kind: 'conversation_session_unavailable' });
           if (mode === 'continue' && cwd !== undefined && cwd !== head?.cwd)
@@ -341,6 +353,7 @@ export class RequestService {
               ...(rotationFrom ? { rotationFrom } : {}) } } : {}),
             cwd: mode === 'continue' ? head!.cwd : cwd ?? launchCwd(this.root, db, task.id),
             launch: launch.launch }, prompt);
+          if (compaction) requestCompaction(db, run, compaction.focus, input.compact !== undefined, request.submittedAt);
           new TaskTransition().captureStartGrant({ store: store!, runs: tx }, task.id, request.id, author);
           context.onAdmitted?.(db, placement.id, tx, request, run);
           return { request: tx.getRequest(request.id)!, run };

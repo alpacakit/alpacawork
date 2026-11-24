@@ -13,7 +13,7 @@ import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
 import { stopResponseSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
-  taskRequestResultSchema, taskPlacementResultSchema, agentCompactResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
+  taskRequestResultSchema, taskPlacementResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
@@ -24,7 +24,7 @@ import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportS
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, agentCompactInput, runGetInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -84,6 +84,14 @@ const list = (key: string, description: string) =>
 const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
   ({ key, description, cliDetail: 'Use an absolute UTF-8 file path or - for stdin.', kind: 'file', max, jsonFile });
 const help = (...lines: string[]) => `\n${lines.join('\n')}`;
+/** What compacting a conversation does and costs, wherever a command can ask for it. */
+const COMPACTION_HELP = [
+  'Compaction: the agent summarizes its conversation with the conversation\'s own model, before the instruction, and',
+  'continues from the summary. It spends tokens each time: the model reads the conversation (about its current size,',
+  'up to the context window, much of it cache reads) and writes a summary of a few thousand tokens. Refused for Copilot on',
+  'Auto model selection and for --compact-focus with Codex or Grok; task request --compact also for an unfinished Run or',
+  'a first request. Grok\'s compaction follows its documentation, untried signed in. task get shows each placement\'s',
+  'latest compaction and how full its conversation last was. Every agent also compacts by itself near its limit.'].join('\n');
 /** The agents block, as config get returns it and config set saves it. */
 const agentsHelp = 'agents: profiles in order; a coordinator message that names no agent goes to the first enabled one. ' +
   'Each can set adapter (for another name), enabled, ' +
@@ -285,6 +293,8 @@ const definitions = {
     text('answers', 'ID of the question this answers'),
     text('agent', 'Member placement receiving the instruction'),
     boolean('newConversation', 'Begin a new conversation'),
+    boolean('compact', 'Compact the conversation before this instruction (it spends tokens; see below)'),
+    text('compactFocus', 'What the compaction\'s summary should keep in focus (Claude, Copilot and pi)'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),
     json('selected', 'Launch choices by key. Use a candidate, or null when candidates are absent or start with -. Unset keys keep the conversation value. ' +
@@ -294,7 +304,8 @@ const definitions = {
     text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
-    'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.') }),
+    'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
+    COMPACTION_HELP) }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
     taskReportInput, [
       text('task', 'Task ID; a Run reports on its own Task when left out'),
@@ -303,7 +314,9 @@ const definitions = {
       text('withdraw', 'ID of the question to withdraw'),
       reportTitle, descriptionFile,
       valuesFile('Changed field values, saved atomically with this owner report'),
-      text('nextConversation', 'new: start the next conversation from these values after this Run succeeds'),
+      text('nextConversation', 'After this Run succeeds, start the next conversation: new (from these values) or compact ' +
+        '(the same conversation, compacted first)'),
+      text('compactFocus', 'With --next-conversation compact: what the summary should keep in focus (Claude, Copilot and pi)'),
       urgent('this done report'),
       text('aboutRun', 'The Run whose review this done report confirms; omit for a Task snapshot review (task get)'),
       number('estimateMinutes', `Remaining work estimate in minutes (${ESTIMATE_MINUTES.min}–${ESTIMATE_MINUTES.max})`),
@@ -315,7 +328,7 @@ const definitions = {
         'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
-        'Stopped stops the Task, its subtree and their Runs.'),
+        'Stopped stops the Task, its subtree and their Runs.', COMPACTION_HELP),
       cliHelp: help('A Git diff in the description is attached automatically.',
         'For multiline Markdown, pass --description-file - and write the text on stdin.') }),
   'task/comment': command('write', 'Add a comment without changing Task state; --urgent sends it to the requester now',
@@ -367,24 +380,6 @@ const definitions = {
   ], { output: taskPlacementResultSchema, help: help('Releasing a member: --expected-responsible-revision required.',
     'A responsible is released only from a Task without children or work under way; replace any other ' +
       'by agent handover or agent assign --replace.') }),
-  'agent/compact': command('write', 'Compact a placement\'s conversation before its next instruction', agentCompactInput, [
-    taskId, text('agent', 'Placement ID whose conversation to compact'),
-    text('instructions', 'What the summary should keep in focus (Claude, Copilot and pi only)'), quote, sourceRequest,
-  ], { output: agentCompactResultSchema, help: help(
-    'The agent summarizes the conversation so far with the conversation\'s own model and continues from the summary.',
-    'Cost, once per compaction: the model reads the conversation to summarize it (input about the conversation\'s current',
-    'size, up to the agent\'s context window for a long one, much of it cache reads where the agent caches) and writes a summary',
-    'of a few thousand tokens. Codex compacts on its server and shows no count.',
-    'When: at the conversation\'s next start, before its first instruction, never inside a turn. A Run that compacts its own',
-    'conversation keeps working; its next continuation starts compacted. Work that joins a conversation already running',
-    'does not wait for it. A conversation that starts anew, or never runs again, is not compacted.',
-    'Who: a Run its own conversation (its placement is the task get agents entry whose headRunId is the Run); the Task\'s',
-    'responsible a member\'s; the parent\'s responsible the responsible\'s. Task conversations only, not the coordinator\'s.',
-    'Result: task get shows each placement\'s latest compaction: pending (waits for the next start), sent, compacted,',
-    'failed (with the agent\'s words), unknown (the agent ended without saying), dropped (the conversation started anew,',
-    'or a newer request replaced it).',
-    'Refused: an agent that cannot compact, a placement with no conversation yet, --instructions for Codex or Grok, and',
-    'Copilot on Auto model selection. Grok\'s compaction follows its documentation and has not been tried signed in.') }),
   'run/get': command('read', 'Read a bounded run prompt or result with explicit file status', runGetInput,
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/stop': command('write', 'Stop a Run; task report --state stopped stops a Task with its subtree', runStopInput,

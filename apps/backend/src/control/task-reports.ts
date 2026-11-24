@@ -92,7 +92,7 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
   expectedTaskHash: string; state: TaskState; intent: string;
   title?: string; description?: string; estimateMinutes?: number; urgentReason?: string;
   /** The write's values as sent (what its fingerprint keeps) and the Task's values after it. */
-  values?: unknown; written?: TaskValues; nextConversation?: 'new'; checkpoint?: ConversationCheckpoint }): void {
+  values?: unknown; written?: TaskValues; nextConversation?: 'new' | 'compact'; checkpoint?: ConversationCheckpoint }): void {
   const { task, previous } = operationTask(tx, report.taskId, report.opId);
   validateReportMedia(tx.store.root, task.path, report.description);
   if (operationIdUse(tx, report.opId).request)

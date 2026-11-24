@@ -57,7 +57,7 @@ export function reserveAttempt(store: RunStore, tx: RunTransaction, run: Runtime
   const warm = coordinator && !!db.prepare('SELECT 1 FROM coordinator_conversations WHERE warm_request_id=?').get(run.requestId);
   const runMinutes = !coordinator ? limits.run_minutes : warm ? WARM_MINUTES : limits.coordinator_run_minutes;
   const attemptId = randomUUID();
-  const compaction = claimCompaction(db, coordinator ? null : run.placementId, attemptId, invocation, new Date().toISOString());
+  const compaction = coordinator ? null : claimCompaction(db, run.id, attemptId, invocation, new Date().toISOString());
   const launch = launchSchema.parse({ protocol: 1, workspaceId, runId: run.id,
     attemptId, compaction, cwd: coordinator ? coordinatorCwd(store.root) : run.cwd, invocation, prompt: String(row.prompt),
     initialInputId: randomUUID(), format: protocolFingerprint(), runMinutes, commandSeconds: coordinator ? limits.coordinator_command_seconds : null,

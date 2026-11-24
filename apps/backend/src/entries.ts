@@ -37,9 +37,6 @@ import { ReturnRouter } from './control/return-router.js';
 import { readTaskReturns } from './control/return-views.js';
 import { ControlTaskStore, TaskRepository, TaskTree } from './control/task-store.js';
 import { withControlWrite } from './control/task-transition.js';
-import { requestCompaction } from './runs/compactions.js';
-import { launchSnapshot, readAgentsSettings } from './agents-settings.js';
-import type { RunRecord } from '@alpacawork/contract/run';
 import { ControlTaskCommands } from './control/task-commands.js';
 import { reportedTask, TaskReportService } from './control/report.js';
 import { TaskRequestService } from './control/task-request.js';
@@ -467,23 +464,6 @@ export const taskCommands = {
           expectedResponsibleRevision: responsibleRevision(input.expectedResponsibleRevision) }, actor)
         : await commands.release(placement, actor);
       return placementReceipt(root, agent, input.task);
-    },
-  },
-  'agent/compact': {
-    act: (input, { root, db }) => taskAct('agent.compact', input, { worker: isWorker(root, db, input.task, input.agent) }),
-    run: async (root, input) => {
-      const settings = readAgentsSettings(root);
-      // As a continuation's admission resolves its launch, without a selection of its own.
-      const nextValues = (head: Pick<RunRecord, 'agent' | 'launch'>) => {
-        if (!settings.ok) return null;
-        // A launch that cannot be resolved now is the next request's to refuse; the start judges the model again.
-        try {
-          const launch = launchSnapshot(settings.config, head.agent, 'resume', process.env.PATH ?? '', {}, head.launch);
-          return launch.ok ? launch.launch.values : null;
-        } catch { return null; }
-      };
-      return { compaction: withControlWrite(root, (_tx, db) => requestCompaction(db,
-        { taskId: input.task, placementId: input.agent, instructions: input.instructions ?? null, at: now(), nextValues })) };
     },
   },
   'run/get': {

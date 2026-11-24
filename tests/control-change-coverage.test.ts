@@ -246,7 +246,7 @@ test('seeded real operations cover writers and every committed row change has it
   rmSync(brokenEvent);
   await step('recover execution diagnostic', () => importer.pass([importedRun.id]), ['input', 'attempt']);
 
-  // A compaction request's life: asked, its words replaced, carried by a resumed launch, and each way it ends.
+  // A conversation whose later Runs compact it.
   const compactTask = await newTask('Compaction audit');
   const compactSeat = await step('place compaction subject', () => placements.createAndPlace({ taskId: compactTask.id,
     profileKey: 'fake', responsible: true }));
@@ -263,10 +263,6 @@ test('seeded real operations cover writers and every committed row change has it
   await step('start first conversation turn', () => runs.write(tx => tx.update({ ...talked, state: 'running', started_at: new Date().toISOString() })));
   await step('finish first conversation turn', () => runs.write(tx => tx.finish({ ...tx.get(talked.id)!, state: 'succeeded',
     ended_at: new Date().toISOString() }, { state: 'present', text: 'Synthetic reply' })));
-  const ask = (instructions: string | null) => write(db => requestCompaction(db, { taskId: compactTask.id,
-    placementId: compactSeat.placement.id, instructions, at: new Date().toISOString(), nextValues: () => null }));
-  await step('request compaction', () => ask(null));
-  await step('ask again while pending', () => ask(null));
   // A queued Run moved to another AI before it was sent (AI fallback), and a placement with its own AI rows.
   const rebound = await step('queue a Run to rebind', () => conversationRun(null));
   await step('rebind a queued Run', () => runs.write(tx => tx.rebindQueued({ ...tx.get(rebound.id)! },
@@ -275,43 +271,47 @@ test('seeded real operations cover writers and every committed row change has it
   const rowsTask = await newTask('Placement AI rows audit');
   await step('assign a responsible with AI rows', async () => new PlacementCommands(root).placeNewResponsible({ taskId: rowsTask.id,
     profileKey: 'fake', expectedTaskHash: (await tasks.get(rowsTask.id)).hash, aiStack: ['stop'] }, human));
-  const resumed = await step('queue resumed turn', () => conversationRun(talked.id));
+  // A compaction rides the Run of its instruction: asked for, carried by its resumed launch, and each way it ends.
+  const at = () => new Date().toISOString();
+  const latest = () => control.write(db => latestCompactions(db, [compactSeat.placement.id]).get(compactSeat.placement.id)?.state);
+  const compacting = async (name: string) => {
+    const run = await step(`queue ${name}`, () => conversationRun(talked.id));
+    await step(`ask to compact before ${name}`, () => write(db => requestCompaction(db, run, null, true, at())));
+    return run;
+  };
+  const resumed = await compacting('resumed turn');
+  assert.equal(latest(), 'pending');
   const carrying = await step('reserve compacting launch', () => runs.write(tx => {
     const reserved = reserveAttempt(runs, tx, resumed, managerScript, DEFAULT_LIMITS);
-    tx.update({ ...resumed, state: 'running', started_at: new Date().toISOString() }); return reserved;
+    tx.update({ ...resumed, state: 'running', started_at: at() }); return reserved;
   }));
-  assert.ok(carrying.compaction, 'a resumed launch carries the pending compaction');
-  const resumedLaunch = { launch: carrying.invocation.launch, mode: 'resume' as const };
-  const settle = (outcome: Parameters<typeof settleCompaction>[2]) => write(db =>
-    settleCompaction(db, carrying.attemptId, outcome, new Date().toISOString()));
-  const initialInput = (state: 'reserved' | 'not_sent') => runs.write(() => {
-    runs.connection.prepare('UPDATE run_inputs SET state=? WHERE input_id=?').run(state, carrying.initialInputId);
-    touch(runs.connection, { kind: 'input', id: carrying.initialInputId });
-  });
-  const carry = (mode: 'start' | 'resume' = 'resume') => write(db => claimCompaction(db, compactSeat.placement.id,
-    carrying.attemptId, { ...resumedLaunch, mode }, new Date().toISOString()));
-  const latest = () => control.write(db => latestCompactions(db, [compactSeat.placement.id]).get(compactSeat.placement.id)?.state);
+  assert.ok(carrying.compaction, 'a resumed launch carries the compaction');
+  const settle = (outcome: Parameters<typeof settleCompaction>[2]) => write(db => settleCompaction(db, carrying.attemptId, outcome, at()));
+  const carry = (run: { id: string }, mode: 'start' | 'resume' = 'resume') => write(db => claimCompaction(db, run.id,
+    carrying.attemptId, { launch: carrying.invocation.launch, mode }, at()));
   await step('settle compacted', () => settle({ state: 'compacted', message: null }));
   assert.equal(latest(), 'compacted');
-  await step('request compaction again', () => ask(null));
-  await step('carry it again', () => carry());
+  const unanswered = await compacting('an unanswered turn');
+  await step('carry it', () => carry(unanswered));
   await step('settle without an answer', () => settle(null));
   assert.equal(latest(), 'unknown', 'sent with its instruction and never answered');
-  await step('arrange an unsent initial input', () => initialInput('not_sent'));
-  await step('request one to be replaced', () => ask(null));
-  await step('carry the replaced one', () => carry());
-  await step('request its replacement', () => ask(null));
-  await step('settle the replaced one unsent', () => settle(null));
-  await step('drop for a new conversation', () => carry('start'));
-  await step('request one for Copilot on Auto', () => ask(null));
-  const auto = await step('drop it at a start without a chosen model', () => write(db => claimCompaction(db, compactSeat.placement.id,
-    carrying.attemptId, { launch: { ...carrying.invocation.launch, adapter: 'copilot', values: {} }, mode: 'resume' }, new Date().toISOString())));
-  assert.equal(auto, null);
+  const anew = await compacting('a turn that starts anew');
+  await step('drop it at a new conversation', () => carry(anew, 'start'));
+  assert.equal(latest(), 'dropped');
+  const unsent = await compacting('an unsent turn');
+  await step('carry the unsent one', () => carry(unsent));
+  await step('arrange an unsent initial input', () => runs.write(() => {
+    runs.connection.prepare("UPDATE run_inputs SET state='not_sent' WHERE input_id=?").run(carrying.initialInputId);
+    touch(runs.connection, { kind: 'input', id: carrying.initialInputId });
+  }));
+  await step('drop it with its unsent instruction', () => settle(null));
+  assert.equal(latest(), 'dropped');
+  await step('keep one the agent cannot compact as dropped', async () => {
+    const run = await conversationRun(talked.id);
+    write(db => requestCompaction(db, { ...run, launch: { ...run.launch, adapter: 'copilot', values: {} } }, null, false, at()));
+  });
   assert.equal(latest(), 'dropped', 'Copilot cannot compact on its automatic choice of model');
-  await step('request one never sent', () => ask(null));
-  await step('carry the unsent one', () => carry());
-  await step('return it to pending', () => settle(null));
-  assert.equal(latest(), 'pending', 'never sent: it waits for the next start again');
+
 
   const missing = inventory.filter(site => trackedSite(site) && !observed.seen.has(siteId(site)));
   assert.deepEqual(missing.map(site => `${site.file}:${site.line} ${site.sql}`), [], 'every owned write site executes at least once');

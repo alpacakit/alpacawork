@@ -133,6 +133,10 @@ export const taskMoveShape = z.object({ task: taskIdSchema, parent, ...writeReco
 export const taskMoveInput = taskMoveShape;
 export const taskLifecycleInput = z.object({ task: taskIdSchema, ...writeRecordShape, expectedTaskHash: digestSchema });
 
+/** How the next conversation starts: anew, or the same one compacted first (the agent summarizes it with its own model). */
+export const nextConversationSchema = z.enum(['new', 'compact']);
+/** What a compaction's summary should keep in focus, for an agent that takes it (AdapterDescription.compaction). */
+export const compactFocusSchema = z.string().trim().min(1).max(2000);
 export const taskReturnsInput = z.object({ task: taskIdSchema, after: z.string().optional(), limit: z.number().int().min(1).max(200).optional() });
 /**
  * task report: the Task's state, a question (--state waiting), or a question's withdrawal. Without `task` a Run reports
@@ -142,7 +146,7 @@ export const taskReturnsInput = z.object({ task: taskIdSchema, after: z.string()
 export const taskReportShape = z.object({ task: taskIdSchema.optional(), state: reportStateSchema.optional(),
   askTo: z.union([z.literal('user'), taskIdSchema]).optional(), withdraw: logIdSchema.optional(), title: reportTitleSchema.optional(), description: descriptionSchema.optional(),
   urgent: urgentReasonSchema.optional(), aboutRun: runIdSchema.optional(),
-  values: valuesInputSchema.optional(), nextConversation: z.literal('new').optional(),
+  values: valuesInputSchema.optional(), nextConversation: nextConversationSchema.optional(), compactFocus: compactFocusSchema.optional(),
   estimateMinutes: estimateMinutesSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema, expectedPlacementRevision: revision.optional() });
 /**
@@ -155,6 +159,8 @@ export const taskReportRules: readonly InputRule<z.output<typeof taskReportShape
     keys: ['askTo'] },
   { kind: 'required', scope: 'With {nextConversation}', applies: value => value.nextConversation !== undefined,
     keys: ['values'] },
+  { kind: 'forbidden', scope: 'Other than {nextConversation} compact', applies: value => value.nextConversation !== 'compact',
+    keys: ['compactFocus'] },
   { kind: 'forbidden', scope: 'Other than an owner doing, waiting or done report',
     applies: value => value.withdraw !== undefined || value.aboutRun !== undefined || !['doing', 'waiting', 'done'].includes(value.state ?? ''),
     keys: ['values', 'nextConversation'] },
@@ -178,7 +184,8 @@ export const taskReportInput = taskReportShape.superRefine((value, context) =>
  * question (`answers`), all in `instruction`. Revisions are shared with the answer path, never an alias.
  */
 export const taskRequestShape = z.object({ task: taskIdSchema, instruction: instructionSchema, answers: logIdSchema.optional(),
-  agent: nonempty.optional(), newConversation: z.boolean().optional(),
+  agent: nonempty.optional(), newConversation: z.boolean().optional(), compact: z.boolean().optional(),
+  compactFocus: compactFocusSchema.optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
   expectedHeadRun: runIdSchema.optional() });
@@ -186,10 +193,14 @@ type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiSta
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
-    keys: ['agent', 'newConversation',
+    keys: ['agent', 'newConversation', 'compact', 'compactFocus',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',
       'expectedTaskHash', 'expectedPlacementRevision'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
+  { kind: 'forbidden', scope: 'With {newConversation}', applies: value => value.newConversation === true, keys: ['compact'] },
+  { kind: 'forbidden', scope: 'Without {compact}', applies: value => value.compact !== true, keys: ['compactFocus'] },
+  // Compaction continues the conversation the sender read.
+  { kind: 'required', scope: 'With {compact}', applies: value => value.compact === true, keys: ['expectedHeadRun'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined,
     keys: ['expectedPlacementRevision'] },
 ];
@@ -220,9 +231,6 @@ export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
 export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty,
   ...writeRecordShape, expectedTaskHash: digestSchema, expectedPlacementRevision: revision });
 export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
-/** agent compact: one request per conversation; a later one replaces the words of one still pending. */
-export const agentCompactInput = z.object({ task: taskIdSchema, agent: nonempty,
-  instructions: z.string().trim().min(1).max(2000).optional(), ...writeRecordShape });
 
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
 /** run stop stops one Run; a Task with its subtree stops by task report --state stopped. */

@@ -1,4 +1,5 @@
 import { aiStackPrefixSchema } from './ai-stack.js';
+import { contextViewSchema } from './agent-context.js';
 import { agentSettingShapeSchema, selectionSchema } from './agent-settings.js';
 import { runAvailabilitySchema, runErrorCauseSchema, runFailureSchema } from './run-failure.js';
 import { restoreIdSchema } from './recovery.js';
@@ -173,13 +174,13 @@ export const placementRuntimeSchema = z.object({
   activityKind: runActivityKindSchema.nullable(), toolName: z.string().nullable(),
 }).strict();
 /**
- * A request to compact a placement's conversation. pending: waits for that conversation's next start; sent: went with
- * its first instruction; compacted / failed: what the agent said; unknown: the agent ended without saying; dropped: the
- * conversation started anew, or its agent cannot compact.
+ * A request to compact a conversation before an instruction (task request --compact, task report --next-conversation
+ * compact). pending: its Run waits to start; sent: went with the Run's first input; compacted / failed: what the agent
+ * said; unknown: the agent ended without saying; dropped: the Run started a new conversation, or could not compact.
  */
 export const COMPACTION_STATES = ['pending', 'sent', 'compacted', 'failed', 'unknown', 'dropped'] as const;
 export const compactionSchema = z.object({ id: z.string().min(1), task: z.string().min(1), agent: z.string().min(1),
-  state: z.enum(COMPACTION_STATES), instructions: z.string().nullable(), message: z.string().nullable(),
+  state: z.enum(COMPACTION_STATES), focus: z.string().nullable(), message: z.string().nullable(),
   requestedAt: z.iso.datetime({ offset: true }), endedAt: z.iso.datetime({ offset: true }).nullable() }).strict();
 export type Compaction = z.infer<typeof compactionSchema>;
 const placementRecordFields = {
@@ -201,8 +202,10 @@ export const placementSchema = z.object({
   headRunId: runIdSchema.nullable(),
   /** The head Run's values when its session can be continued; null when none can, absent if unreadable. */
   previousValues: selectionSchema.nullable().optional(),
-  /** The latest request to compact its conversation (agent compact); absent where it is not read. */
+  /** The latest compaction of its conversation (task request --compact); absent where it is not read. */
   compaction: compactionSchema.nullable().optional(),
+  /** How full its conversation last was, as its agent said, with the model's window; kept after the Run ends (task get). */
+  context: contextViewSchema.nullable().optional(),
   runtime: placementRuntimeSchema,
 }).strict().superRefine(checkPlacement);
 export const controlRunSchema = z.object({
@@ -645,6 +648,8 @@ export const requestInputSchema = z.object({
   expectedPlacementRevision: z.number().int().positive(), expectedHeadRunId: runIdSchema.nullable().optional(),
   targetPlacementId: z.string().min(1).optional(),
   selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
+  /** Compact the conversation before this instruction, keeping `focus` in the summary. */
+  compact: z.object({ focus: z.string().min(1).nullable() }).strict().optional(),
 }).strict().refine(input => input.description === undefined || input.title !== undefined,
   { path: ['title'], message: 'A request description requires a title' });
 export const requestReceiptSchema = z.object({
@@ -720,7 +725,6 @@ export const releaseMemberReceiptSchema = z.object({ placement: placementRecordS
 export const taskPlacementResultSchema = taskWriteResultSchema.extend({ agent: z.union([
   placeAgentReceiptSchema, setResponsibleReceiptSchema, placeMemberReceiptSchema, releaseAgentReceiptSchema,
 ]) }).strict();
-export const agentCompactResultSchema = z.object({ compaction: compactionSchema }).strict();
 /**
  * One review decision ID is also the send-back Request ID and Task log ID. Either decision names the Run it decides on
  * (reviewTarget) and the responsible placement's revision it was made against.

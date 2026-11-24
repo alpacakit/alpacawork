@@ -409,6 +409,7 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('compaction_unsupported') }).strict(),
   z.object({ kind: z.literal('compaction_instructions_unsupported') }).strict(),
   z.object({ kind: z.literal('compaction_needs_model') }).strict(),
+  z.object({ kind: z.literal('cannot_compact_while_run_unfinished') }).strict(),
   z.object({ kind: z.literal('agent_does_not_exist') }).strict(),
   z.object({ kind: z.literal('only_active_member_on_task_can_released') }).strict(),
   z.object({ kind: z.literal('invalid_managed_file_path') }).strict(),

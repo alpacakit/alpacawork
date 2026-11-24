@@ -32,6 +32,7 @@ import { FileWriter } from '../raw/storage.js';
 import { ownerHeadsOf } from './wake.js';
 import { returnFacts } from './return-rules.js';
 import { openObligationsOf, type Obligations } from './return-lifecycle.js';
+import { readRunActivityView } from '../agents/context-limits.js';
 
 type ReadError = { code: string; message: string; path: string; reason?: ProblemReason };
 type SourceTask = ReturnType<typeof controlSnapshotView>['tasks'][number];
@@ -222,7 +223,9 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   const agents = candidates.map(item => {
     const headRunId = source.conversationHeads.get(item.id) ?? null;
     const head = headRunId ? source.runRecords.find(run => run.id === headRunId) : undefined;
-    return { ...item, headRunId,
+    // A queued head has said nothing yet: the conversation's last figure is the Run it resumes.
+    const said = head?.state === 'queued' && head.resumes ? source.runRecords.find(run => run.id === head.resumes) : head;
+    return { ...item, headRunId, context: said ? readRunActivityView(source.root, said)?.context ?? null : null,
       ...(source.errors.some(error => error.code === PROBLEM_CODE.runsUnavailable) || headRunId && !head
         ? {} : { previousValues: head && hasContinuableSession(head) ? { ...head.launch.values } : null }) };
   });

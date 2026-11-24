@@ -435,58 +435,44 @@
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
-    "sql": "UPDATE compactions SET instructions=?,requested_at=? WHERE id=?",
+    "sql": "INSERT INTO compactions(id,run_no,placement_id,focus,state,message,requested_at,ended_at) VALUES (?,?,?,?,?,?,?,?)",
     "table": "compactions",
-    "line": 48,
-    "status": "touch"
-  },
-  {
-    "file": "apps/backend/src/runs/compactions.ts",
-    "sql": "INSERT INTO compactions(id,placement_id,instructions,state,requested_at) VALUES (?,?,?,'pending',?)",
-    "table": "compactions",
-    "line": 49,
+    "line": 53,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='dropped',message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 66,
+    "line": 69,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='sent',attempt_id=? WHERE id=?",
     "table": "compactions",
-    "line": 67,
+    "line": 70,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state=?,message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 80,
+    "line": 86,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='unknown',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 81,
+    "line": 87,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
-    "sql": "UPDATE compactions SET state='dropped',message='A newer request replaced it',ended_at=? WHERE id=?",
+    "sql": "UPDATE compactions SET state='dropped',message='The instruction it went with was not sent',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 83,
-    "status": "touch"
-  },
-  {
-    "file": "apps/backend/src/runs/compactions.ts",
-    "sql": "UPDATE compactions SET state='pending',attempt_id=NULL WHERE id=?",
-    "table": "compactions",
-    "line": 84,
+    "line": 88,
     "status": "touch"
   },
   {
@@ -626,7 +612,7 @@
     "file": "apps/backend/src/runs/scheduler.ts",
     "sql": "UPDATE run_attempts SET diagnostic=? WHERE attempt_id=?",
     "table": "run_attempts",
-    "line": 311,
+    "line": 313,
     "status": "touch"
   }
 ]
