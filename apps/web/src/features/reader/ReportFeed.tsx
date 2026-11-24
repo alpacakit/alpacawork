@@ -1102,13 +1102,14 @@ function DisclosureBody({ open, least, children }: { open: boolean; least?: numb
   // Latch before committing: the body's first opening must not cause a second commit just to remember it was seen.
   if (open && !seen) setSeen(true);
   const peeks = least !== undefined, hidden = !open && !peeks;
-  const body = useRef<HTMLDivElement>(null), shown = useRef(open);
+  const body = useRef<HTMLDivElement>(null), shown = useRef(open), unfolding = useRef<ResizeObserver | null>(null);
   useLayoutEffect(() => {
     const box = body.current;
     if (!box) return;
     const folded = `${least ?? 0}px`;
     const moving = shown.current !== open;
     shown.current = open;
+    if (moving) unfolding.current?.disconnect();
     // Not turned: folded, it keeps to what it still shows, at once (first measured, or its words changed), as words in
     // a row change; a fold under way goes on to it. Open, it follows its body.
     if (!moving) {
@@ -1128,14 +1129,25 @@ function DisclosureBody({ open, least, children }: { open: boolean; least?: numb
     box.style.height = `${from}px`;
     void box.offsetHeight;
     box.style.height = `${to}px`;
+    // What it holds can change on the way (a working row's words and steps go by every few seconds): unfolding, it goes
+    // on to its body's height as it is then, so it neither stops short of it nor jumps to it at the end.
+    if (open && typeof ResizeObserver !== "undefined") {
+      const follow = unfolding.current = new ResizeObserver(() => {
+        if (shown.current && box.style.height !== "") box.style.height = `${box.scrollHeight}px`;
+        else follow.disconnect();
+      });
+      for (const part of box.children) follow.observe(part);
+    }
   }, [open, least]);
+  useEffect(() => () => unfolding.current?.disconnect(), []);
   // Arrived open (or stopped on the way while open), it follows its body again.
   const arrived = (event: React.TransitionEvent<HTMLDivElement>) => {
     const box = event.currentTarget;
     if (event.target !== box || event.propertyName !== "height" || !shown.current) return;
-    // A move stopped because it was turned back is taken over by the move that turned it.
+    // A move stopped because it was turned back, or sent on to a new height, is taken over by the move that turned it.
     if (event.type === "transitioncancel" && box.getAnimations().some(move => move.playState === "running")) return;
     box.style.height = "";
+    unfolding.current?.disconnect();
   };
   // The clip reaches 12px past the body's right edge (the reader's own room there), so a press ending on that edge is whole.
   return <div ref={body} data-disclosure-body data-open={open} aria-hidden={hidden} inert={hidden} onTransitionEnd={arrived} onTransitionCancel={arrived}

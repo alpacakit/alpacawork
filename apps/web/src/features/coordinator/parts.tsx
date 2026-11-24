@@ -17,6 +17,7 @@ import { MarkdownBody } from '@/features/reader/MarkdownBody';
 import { followTask } from './follow-task';
 import { scrollThreadTo } from './thread-position';
 import { cn } from '@/lib/utils';
+import { useConnection } from '@/data/connection';
 
 /**
  * The words of a running turn: its recent work's name while the pacer shows it for this turn, else the turn's own, then
@@ -90,14 +91,16 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
     pressed.current = false;
     if (open) scrollThreadTo(end.current, end.current, { block: 'nearest' });
   }, [open]);
-  const mine = work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
+  const offline = useConnection(state => state.offline);
+  const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
   return <div>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     {mine && mine.steps.length > 0 && <button type="button" data-working-steps aria-expanded={open} onClick={() => { pressed.current = true; setOpen(!open); }}
       className={cn("group/steps mb-1 flex w-full min-w-0 cursor-pointer gap-2 rounded-sm py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11", open ? "items-start" : "items-center")}>
       <RunSteps steps={mine.steps} open={open} trail={3} className="min-w-0 flex-1" />
       <Icon name="down" className={cn("size-3.5 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "mt-0.5 rotate-180")} /></button>}
-    <div ref={end} data-working-foot className="flex flex-wrap items-center gap-x-2"><Pulse>{seconds}</Pulse></div>
+    <div ref={end} className="flex flex-wrap items-center gap-x-2"><Pulse>{seconds}</Pulse></div>
   </div>;
 }
 

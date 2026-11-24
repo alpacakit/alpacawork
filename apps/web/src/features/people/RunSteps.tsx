@@ -22,15 +22,20 @@ function Mark({ state }: { state: RunStep["state"] }) {
     <span className="sr-only">{state === "running" ? t("now.step.state.running") : state === "failed" ? t("now.step.state.failed") : t("now.step.state.done")}</span></span>;
 }
 const tone = (step: RunStep) => step.state === "running" ? "text-ink" : "text-soft";
+/** What was run or came back, on one line as written: its spaces kept, cut at the end. */
+const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono";
+/** A tool's name gives way before what it ran: it never takes more than this of the line. */
+const TOOL = "max-w-[40%] flex-none truncate font-medium";
+function Tool({ step }: { step: RunStep }) { return <span className={TOOL}>{toolName(step.tool)}</span>; }
 
 /** One step on one line: the tool, the agent's own words for it when it gave them, then as much of what it ran as fits. */
 function StepLine({ step }: { step: RunStep }) {
   return <div className={cn("flex min-w-0 items-baseline gap-1.5", tone(step))}>
-    <Mark state={step.state} /><span className="flex-none font-medium">{toolName(step.tool)}</span>
+    <Mark state={step.state} /><Tool step={step} />
     {step.about && <span dir="auto" className="max-w-[62%] flex-none truncate">{step.about}</span>}
     {atEnd(step)
-      ? <span dir="rtl" className="min-w-0 truncate text-left font-mono"><bdi>{step.text}</bdi></span>
-      : <span dir="auto" className={cn("min-w-0 truncate font-mono", step.about && "text-muted")}>{step.text}</span>}
+      ? <span dir="rtl" className={cn(ONE_LINE, "text-left")}><bdi>{step.text}</bdi></span>
+      : <span dir="auto" className={cn(ONE_LINE, step.about && "text-muted")}>{step.text}</span>}
   </div>;
 }
 /** What came back, on one line: its first line and how many follow. */
@@ -39,20 +44,23 @@ function StepResult({ step }: { step: RunStep }) {
   if (!step.result || !tellsResult(step)) return null;
   return <div data-run-step-result className="col-start-2 flex min-w-0 items-baseline gap-1.5 text-muted">
     <span aria-hidden className="flex-none">⎿</span>
-    <span dir="auto" className="min-w-0 truncate font-mono">{step.result.text}</span>
+    <span dir="auto" className={ONE_LINE}>{step.result.text}</span>
     {step.result.more > 0 && <span className="flex-none">{t("now.step.moreLines", { count: step.result.more })}</span>}
   </div>;
 }
-/** One step read in full: what it ran as written (a long line wraps to three, further lines are counted), and what came back. */
+/**
+ * One step read in full: what it ran as written, its spaces kept (a long line wraps to three), the count of its further
+ * lines always in sight under that, and what came back.
+ */
 function StepDetail({ step }: { step: RunStep }) {
   const { t } = useTranslation("people");
-  const text = <>{step.text} {step.more > 0 && <span className="font-sans text-muted">{t("now.step.moreLines", { count: step.more })}</span>}</>;
+  const text = <div className="min-w-0"><div dir="auto" className="line-clamp-3 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]">{step.text}</div>
+    {step.more > 0 && <div className="text-muted">{t("now.step.moreLines", { count: step.more })}</div>}</div>;
   return <div className={cn("grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-1.5", tone(step))}>
     <Mark state={step.state} />
-    <div className="flex min-w-0 items-baseline gap-1.5"><span className="flex-none font-medium">{toolName(step.tool)}</span>
-      {step.about ? <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{step.about}</span>
-        : <span dir="auto" className="line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{text}</span>}</div>
-    {step.about && <div dir="auto" className="col-start-2 line-clamp-3 min-w-0 font-mono [overflow-wrap:anywhere]">{text}</div>}
+    <div className="flex min-w-0 items-baseline gap-1.5"><Tool step={step} />
+      {step.about ? <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{step.about}</span> : <div className="min-w-0 flex-1">{text}</div>}</div>
+    {step.about && <div className="col-start-2 min-w-0">{text}</div>}
     <StepResult step={step} />
   </div>;
 }

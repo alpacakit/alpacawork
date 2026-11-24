@@ -96,3 +96,33 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
     }
   }
 });
+
+test('a step that changes while the Working row opens is unfolded to as it is, not cut and then jumped to', async ({ page, runtime, scene }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${runtime.origin}/?agent=1&task=${scene.busy}`);
+  const row = page.locator('[data-working-here]');
+  await expect(row.locator('[data-run-steps=folded]')).toBeVisible();
+  await settleMotion(page, row, true);
+  const seen = await row.evaluate(item => new Promise<{ heights: number[]; clipped: number }>(done => {
+    const body = () => item.querySelector<HTMLElement>('[data-working-person] [data-run-steps]')!.closest<HTMLElement>('[data-disclosure-body]')!;
+    const heights: number[] = [], start = performance.now();
+    let frame = 0;
+    const next = () => {
+      heights.push(item.getBoundingClientRect().height);
+      // Two frames in, the latest step comes in taller (its command wraps, its failure says what came back).
+      if (++frame === 2) {
+        const taller = document.createElement('li');
+        taller.style.height = '120px';
+        item.querySelector('[data-working-person] [data-run-steps=open]')!.prepend(taller);
+      }
+      if (performance.now() - start < 700) requestAnimationFrame(next);
+      else { const box = body(); done({ heights, clipped: Math.round(box.scrollHeight - box.getBoundingClientRect().height) }); }
+    };
+    item.querySelector<HTMLElement>('[data-working-model]')!.click();
+    requestAnimationFrame(next);
+  }));
+  const jumps = seen.heights.slice(1).map((height, at) => height - seen.heights[at]!);
+  expect(Math.max(...jumps), 'no frame jumps to the new height').toBeLessThan(60);
+  expect(Math.min(...jumps), 'it only grows while it opens').toBeGreaterThanOrEqual(-0.5);
+  expect(seen.clipped, 'arrived, all of it is shown').toBeLessThanOrEqual(1);
+});

@@ -33,8 +33,7 @@ export function scrollThreadTo(thread: HTMLElement, target: HTMLElement, options
 /**
  * One owner for the shown conversation's position: an opening is placed once, a send asks for the end, and otherwise
  * the visible block stays put (or the end follows growth). An opening starts at the last thing said,
- * at its first drawing, and growth does not take it to the end until the person moves; while that turn runs, its live
- * foot is kept in sight under it. Neither a late GET nor an
+ * at its first drawing, and growth does not take it to the end until the person moves. Neither a late GET nor an
  * image acquiring its height can restore an old position.
  */
 export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, active: boolean, surface: Window | boolean,
@@ -66,13 +65,6 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const textAt = (range: Range, block: HTMLElement) => at(block) + below(range.getBoundingClientRect().top) - below(block.getBoundingClientRect().top);
     const headHeight = () => area.querySelector<HTMLElement>('[data-coordinator-panel-head]')?.offsetHeight ?? 0;
     const atEnd = () => area.scrollHeight - area.clientHeight - area.scrollTop < 48;
-    // A running turn's live foot (its latest step and seconds) stays in sight under the message an opening placed, as
-    // little further down as it takes; the reading holds still once the person moves or the turn ends.
-    const keepFoot = () => {
-      const foot = stayOnQuestion ? body.querySelector<HTMLElement>('[data-coordinator-turn=running] [data-working-foot]') : null;
-      const over = foot ? topIn(foot) + foot.offsetHeight - area.scrollTop - area.clientHeight : 0;
-      if (over > 0) area.scrollTop += over;
-    };
     // Where it stands, as of now: cheap, read on every settle.
     const note = () => {
       rememberedTop = area.scrollTop;
@@ -121,7 +113,6 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
           ? textAt(text.range, anchor.block) - text.offset : at(anchor.block) - anchor.offset;
         const wanted = area.scrollTop + shift;
         if (shift !== 0) area.scrollTop = wanted;
-        keepFoot();
         // Kept where it was, the same words are still at the top: only where it stands is new (and where their block
         // now is, should the words be lost later). Held short of that (the
         // area could not scroll so far), what is at its top is looked for again.
@@ -151,7 +142,6 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
         const target = [...last.querySelectorAll<HTMLElement>('[data-coordinator-said]')].at(-1) ?? last;
         stayOnQuestion = true;
         area.scrollTo({ top: topIn(target) - headHeight() - OVER_MESSAGE });
-        keepFoot();
       } else area.scrollTo({ top: 0 });
       remember();
     };
