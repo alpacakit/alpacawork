@@ -19,7 +19,7 @@ if (prompt === 'interrupt') {
   writeFileSync(process.env.FAKE_GROK_READY, '');
   await delay(60000);
 }
-emit({ type: 'tool_call', toolCallId: 'x1', toolName: 'x_search', status: 'in_progress', rawInput: { query: 'test catalog' } });
+emit({ type: 'tool_call', toolCallId: 'x1', toolName: 'read_file', status: 'in_progress', rawInput: { path: 'catalog.txt' } });
 emit({ type: 'tool_call_update', toolCallId: 'x1', status: 'completed', rawOutput: 'Catalog found\nThree results' });
 emit({ type: 'text', data: `answer ${prompt}` });
 if (prompt === 'disconnect') process.exit(1);

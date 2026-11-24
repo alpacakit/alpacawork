@@ -8,6 +8,7 @@ import { requiredValue, unknownOption, withUsage } from './options.js';
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
 import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
+import { emitToolEnd, emitToolStart } from './tool-activity.js';
 
 type Options = { model: string | null; output: string | null; resume: string | null; serverUrl: string | null };
 const USAGE = 'Usage: alpacawork-agent copilot [-m MODEL] [-o FILE] [--server-url URL] [resume SESSION]';
@@ -142,11 +143,10 @@ export class CopilotRuntime implements Runtime {
       }
     } else if (event.type === 'tool.execution_start') {
       const { toolCallId, toolName, arguments: args } = event.data;
-      this.io.emit({ type: 'item.started', item: { type: 'mcp_tool_call', id: toolCallId, name: toolName, arguments: args } });
+      emitToolStart(this.io, 'mcp_tool_call', toolCallId, toolName, args);
     } else if (event.type === 'tool.execution_complete') {
       const { toolCallId, success, result, error } = event.data;
-      this.io.emit({ type: 'item.completed', item: { type: 'mcp_tool_call', id: toolCallId, success,
-        result: result?.detailedContent ?? result?.content ?? error?.message } });
+      emitToolEnd(this.io, 'mcp_tool_call', toolCallId, null, result?.content ?? error?.message, success === false);
     } else if (event.type === 'session.error') {
       if (event.data.eligibleForAutoSwitch !== true) this.finish(event.data.message);
     } else if (event.type === 'session.idle') {

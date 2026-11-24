@@ -34,6 +34,12 @@ function finish() {
    send({ type: 'tool_execution_end', toolCallId: 'check', toolName: 'bash', isError: true,
     result: { content: [{ type: 'text', text: 'Catalog missing\nTry again' }] } });
   }
+  if (mode === 'large-tool') {
+   const tail = 'x'.repeat(3 * 1024 * 1024);
+   send({ type: 'tool_execution_start', toolCallId: 'large', toolName: 'bash', args: { command: 'print catalog\n' + tail } });
+   send({ type: 'tool_execution_end', toolCallId: 'large', toolName: 'bash', isError: false,
+    result: { content: [{ type: 'text', text: 'Catalog printed\n' + tail + '\nEnd' }] } });
+  }
   const rows = [{ type: 'message_end', message: { role: 'assistant', stopReason: stop,
    content: mode === 'no-text' ? [{ type: 'thinking', thinking: 'private thought' }] : [
     { type: 'thinking', thinking: 'never in final output' }, { type: 'text', text: `synthetic reply ${turn}\n\u2028\u2029😀` }],

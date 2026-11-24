@@ -1,11 +1,11 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
-import { RUN_FILES, RUN_NOTE_LIMIT, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT,
-  runActivitySchema, type RunActivity, type RunStep } from '@alpacawork/contract/run';
+import { RUN_FILES, RUN_NOTE_LIMIT, RUN_STEP_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT,
+  clipRunText, runActivitySchema, type RunActivity, type RunStep } from '@alpacawork/contract/run';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
 import { JsonlReader } from './readers/jsonl.js';
 import type { AgentAdapter } from '../agents/adapters/types.js';
-import { RecentWork, recentWorkName } from './recent-work.js';
+import { RecentWork, recentWorkName, runStepKind } from './recent-work.js';
 import type { ActivityEvent } from './activity-events.js';
 
 // Six steps with worst-case JSON escaping, plus the note and current work, fit below this bound.
@@ -14,12 +14,7 @@ const MAX_ACTIVE_TOOLS = 128;
 type ActiveTool = NonNullable<RunActivity['doing']>;
 type Settled = Exclude<RunStep['state'], 'running'>;
 
-function clip(value: string, limit: number): string {
-  const prefix = value.slice(0, limit);
-  return /[\uD800-\uDBFF]$/.test(prefix) ? prefix.slice(0, -1) : prefix;
-}
-
-const toolName = (value: unknown): string | null => typeof value === 'string' ? clip(value, RUN_TOOL_NAME_LIMIT) || null : null;
+const toolName = (value: unknown): string | null => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
 const words = (value: unknown): string | null => {
   const text = typeof value === 'string' ? value.replace(/\r\n?/g, '\n').trim() : '';
   if (!text) return null;
@@ -31,21 +26,13 @@ const words = (value: unknown): string | null => {
     if (match.index >= end) break;
     if (match.index + match[0].length > end) { end = match.index; break; }
   }
-  return clip(text, end).trimEnd() || null;
+  return clipRunText(text, end).trimEnd() || null;
 };
 
-/** Keep one visible line and count the intervening line breaks without splitting the entire input. */
-function preview(value: unknown): { text: string; more: number } {
-  if (typeof value !== 'string') return { text: '', more: 0 };
-  const trimmed = value.trim();
-  const breaks = /\r\n|[\r\n]/g;
-  const first = breaks.exec(trimmed);
-  let more = 0;
-  if (first) {
-    more = 1;
-    while (breaks.exec(trimmed)) more++;
-  }
-  return { text: clip(trimmed.slice(0, first?.index).trimEnd(), RUN_STEP_TEXT_LIMIT), more };
+function stepFields(event: ActivityEvent, id: string, name: string) {
+  const tool = toolName(event.stepTool) ?? name;
+  return { id, at: event.at, tool, kind: runStepKind(tool, name, event.command ?? null),
+    ...(event.detail ?? { text: '', more: 0 }), about: event.about ?? null };
 }
 
 /** Live tool identities are independent of the bounded display history. */
@@ -76,9 +63,9 @@ class WorkActivity {
       if (this.active.size >= MAX_ACTIVE_TOOLS || this.active.has(id)) this.reset();
       const command = event.command ?? null;
       this.active.set(id, { at, toolName: name, command });
-      this.recent.start(id, recentWorkName(name, command), Date.parse(at));
-      this.push({ id, at, tool: toolName(event.stepTool) ?? name, ...preview(event.detail),
-        about: preview(event.about).text || null, state: 'running', result: null });
+      const step = stepFields(event, id, name);
+      this.recent.start(id, recentWorkName(step.kind, command), Date.parse(at));
+      this.push({ ...step, state: 'running', result: null });
       return name;
     }
     const active = this.active.get(id);
@@ -89,16 +76,15 @@ class WorkActivity {
     const previous = this.steps.find(step => step.id === id);
     if (!previous && (active || !name)) return active?.toolName ?? name;
     const state = event.outcome?.failed ? 'failed' : 'done';
-    const result = preview(event.outcome?.text);
-    const details = { state, result: result.text ? result : null } as const;
+    const result = event.outcome?.result;
+    const details = { state, result: result?.text ? result : null } as const;
     if (previous) {
       this.steps = this.steps.map(step => step !== previous ? step : {
-        ...step, ...(step.text ? {} : preview(event.detail)), ...details,
+        ...step, ...(step.text ? {} : event.detail), ...details,
       });
     } else if (name) {
       // Some bridge tools report a complete item without sending a start.
-      this.push({ id, at, tool: toolName(event.stepTool) ?? name, ...preview(event.detail),
-        about: preview(event.about).text || null, ...details });
+      this.push({ ...stepFields(event, id, name), ...details });
     }
     return active?.toolName ?? name;
   }
@@ -113,7 +99,12 @@ class WorkActivity {
   }
 
   private push(step: RunStep): void {
-    this.steps = [...this.steps.filter(previous => previous.id !== step.id), step].slice(-RUN_STEP_LIMIT);
+    const steps = [...this.steps.filter(previous => previous.id !== step.id), step];
+    if (steps.length > RUN_STEP_LIMIT) {
+      const settled = steps.findIndex(previous => previous.state !== 'running');
+      steps.splice(Math.max(0, settled), 1);
+    }
+    this.steps = steps;
   }
 }
 

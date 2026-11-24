@@ -14,6 +14,7 @@ import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from 
  */
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
 import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
+import { taskGetRunOf } from '@alpacawork/contract/control';
 import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
@@ -252,7 +253,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     ...(wantsEstimates ? { estimateExamples: estimateCondition
       ? (source.estimates?.(estimateCondition) ?? estimateExamples(source, estimateCondition)) : null } : {}),
     ...(options.runs === undefined ? {} : { runs: latest(source.runs.filter(item => item.taskId === task.id)
-      .sort(compareRunIds), options.runs) }),
+      .sort(compareRunIds), options.runs).map(taskGetRunOf) }),
     errors: source.errors,
   };
 }

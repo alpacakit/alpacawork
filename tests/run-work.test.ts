@@ -31,7 +31,7 @@ for (const agent of ['claude', 'codex'] as const) test(`${agent}: current work f
   };
   const one = emit(start('one', 'alpacawork task new --title test'));
   assert.equal(one?.doing?.command, 'task.new');
-  assert.deepEqual(one.steps[0], { id: 'one', at, tool: agent === 'claude' ? 'Bash' : 'command_execution',
+  assert.deepEqual(one.steps[0], { id: 'one', at, tool: agent === 'claude' ? 'Bash' : 'command_execution', kind: 'command',
     text: 'alpacawork task new --title test', more: 0, about: agent === 'claude' ? 'Check the catalog' : null, state: 'running', result: null });
   assert.equal(emit(start('two', 'alpacawork task update --task T1 --title changed'))?.doing?.command, 'task.update');
   const failed = emit(end('one', true));
@@ -47,7 +47,7 @@ for (const agent of ['claude', 'codex'] as const) test(`${agent}: current work f
   if (agent === 'codex') {
     emit({ type: 'item.started', item: { id: 'web', type: 'web_search', query: '' } });
     assert.deepEqual(emit({ type: 'item.completed', item: { id: 'web', type: 'web_search', query: 'local catalog' } })?.steps.at(-1),
-      { id: 'web', at, tool: 'web_search', text: 'local catalog', more: 0, about: null, state: 'done', result: null });
+      { id: 'web', at, tool: 'web_search', kind: 'web', text: 'local catalog', more: 0, about: null, state: 'done', result: null });
     const search = emit({ type: 'item.completed', item: { id: 'web-only', type: 'web_search', query: 'catalog tiles' } });
     assert.equal(search?.doing?.command, 'task.request');
     assert.equal(search.steps.at(-1)?.text, 'catalog tiles');
@@ -108,22 +108,34 @@ test('bounded step previews survive long tool arguments, escaped JSON and oversi
   assert.equal(step.result.more, 47);
 
   const escaped = '\0'.repeat(RUN_STEP_TEXT_LIMIT);
-  const ids = Array.from({ length: RUN_STEP_LIMIT + 1 }, (_, i) => i + '\0'.repeat(RUN_TOOL_ID_LIMIT - 1));
-  emit('assistant', tool(ids[0]!, { command: 'long-running command' }));
-  for (const id of ids.slice(1)) {
-    emit('assistant', tool(id, { command: escaped, description: escaped }));
-    emit('user', result(id, escaped));
-  }
+  const ids = Array.from({ length: RUN_STEP_LIMIT }, (_, i) => i + '\0'.repeat(RUN_TOOL_ID_LIMIT - 1));
+  emit('assistant', ...ids.map(id => tool(id, { command: escaped, description: escaped })));
+  emit('user', ...ids.map(id => result(id, escaped)));
   emit('assistant', { type: 'text', text: '\0'.repeat(RUN_NOTE_LIMIT) });
   reader.poll(folder);
   const saved = readRunActivity(folder);
   assert.equal(saved?.note?.text.length, RUN_NOTE_LIMIT);
-  assert.deepEqual(saved.steps.map(item => item.id), ids.slice(1));
+  assert.deepEqual(saved.steps.map(item => item.id), ids);
   assert.equal(saved.steps.at(-1)?.result?.text, escaped);
   assert.ok(statSync(join(folder, RUN_FILES.activity)).size < 64 * 1024);
-  emit('user', result(ids[0]!, 'Finished after eviction'));
+  emit('assistant', tool('active', { command: 'long-running command' }));
+  for (const id of ids) {
+    emit('assistant', tool(id, { command: 'short command' }));
+    emit('user', result(id, 'Finished'));
+  }
   reader.poll(folder);
-  assert.deepEqual(readRunActivity(folder)?.steps, saved.steps);
+  const recent = readRunActivity(folder)?.steps;
+  assert.deepEqual(recent?.map(item => item.id), ['active', ...ids.slice(1)]);
+  assert.equal(recent[0]?.state, 'running');
+
+  const evicted = 'old-active';
+  emit('assistant', ...[evicted, ...ids].map(id => tool(id, { command: 'parallel command' })));
+  reader.poll(folder);
+  const parallel = readRunActivity(folder)?.steps;
+  assert.deepEqual(parallel?.map(item => item.id), ids);
+  emit('user', result(evicted, 'Finished after eviction'));
+  reader.poll(folder);
+  assert.deepEqual(readRunActivity(folder)?.steps, parallel);
 
   emit('assistant', tool('skipped', { command: 'read large output' }));
   emit('user', result('skipped', 'x'.repeat(2 * 1024 * 1024)));

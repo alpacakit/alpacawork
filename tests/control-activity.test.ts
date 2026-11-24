@@ -13,7 +13,9 @@ import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements
 import { AGENTS_TEMPLATE } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { runFolder } from '@alpacawork/contract/run';
+import { mcpReadTool } from '@alpacawork/contract/mcp';
 import { tryLock, unlock } from '@alpacawork/core';
+import { cliRun } from './helpers/http-cli.ts';
 import { openIndexStream } from './index-stream.ts';
 
 async function setup(t: TestContext) {
@@ -42,7 +44,7 @@ async function setup(t: TestContext) {
   return { root, task, run, placement };
 }
 
-test('a live activity change reaches the SSE index without a Run database commit', async t => {
+test('live steps reach the SSE index while CLI and MCP keep the activity summary', async t => {
   const h = await setup(t);
   const fd = openSync(join(runFolder(h.root, h.run.id), 'manager.lock'), constants.O_RDWR | constants.O_CREAT);
   assert.equal(tryLock(fd), true);
@@ -50,14 +52,15 @@ test('a live activity change reaches the SSE index without a Run database commit
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
   try {
-    server = await startServer(h.root, 0);
+    server = await startServer(h.root, 0, { mcp: true });
     const stream = await openIndexStream(new URL('/api/events', server.url), controller.signal);
     await stream.index();
     const at = '2026-10-05T03:43:14.000Z';
-    const step = { id: 'read', at, tool: 'Bash', text: 'sed -n 1p catalog.txt', more: 0,
+    const step = { id: 'read', at, tool: 'Bash', kind: 'command', text: 'sed -n 1p catalog.txt', more: 0,
       about: 'Read the catalog', state: 'running', result: null };
-    writeFileSync(join(runFolder(h.root, h.run.id), 'activity.json'), JSON.stringify({
-      at, kind: 'tool_start', toolName: 'Bash', doing: null, note: null, steps: [step] }));
+    const summary = { at, kind: 'tool_start', toolName: 'Bash',
+      doing: { at, toolName: 'Bash', command: null }, note: { at, text: 'Checking the catalog' } };
+    writeFileSync(join(runFolder(h.root, h.run.id), 'activity.json'), JSON.stringify({ ...summary, steps: [step] }));
     const changed = await Promise.race([
       (async () => {
         for (;;) {
@@ -69,6 +72,19 @@ test('a live activity change reaches the SSE index without a Run database commit
     ]);
     assert.deepEqual(changed.runs.find(run => run.id === h.run.id)?.activity?.steps, [step]);
     assert.equal(changed.placements.find(item => item.id === h.placement.id)?.runtime.toolName, 'Bash');
+
+    const cli = await cliRun(server.url, ['task', 'get', '--task', h.task.id, '--runs', '1']);
+    assert.equal(cli.code, 0, cli.stderr);
+    assert.deepEqual(JSON.parse(cli.stdout).runs[0].activity, summary);
+    const mcp = await fetch(new URL('/mcp', server.url), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
+        name: mcpReadTool, arguments: { command: 'task get', input: { task: h.task.id, runs: 1 } },
+      } }),
+    });
+    const reply = await mcp.json();
+    assert.equal(mcp.status, 200, JSON.stringify(reply));
+    assert.deepEqual(JSON.parse(reply.result.content[0].text).runs[0].activity, summary);
   } finally {
     clearTimeout(timeout);
     controller.abort();

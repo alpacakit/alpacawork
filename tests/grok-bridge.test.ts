@@ -42,8 +42,9 @@ test('Grok queues inputs, resumes exactly the same session, and removes private 
   writeFileSync(join(h.area, RUN_FILES.stdout), h.events().map(event => JSON.stringify(event)).join('\n') + '\n');
   new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.grok).poll(h.area);
   const step = readRunActivity(h.area)?.steps.at(-1);
-  assert.equal(step?.tool, 'x_search');
-  assert.equal(step.text, 'test catalog');
+  assert.equal(step?.tool, 'read_file');
+  assert.equal(step.kind, 'file');
+  assert.equal(step.text, 'catalog.txt');
   assert.equal(step.state, 'done');
   assert.deepEqual(step.result, { text: 'Catalog found', more: 1 });
   writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(join(h.area, 'result')));

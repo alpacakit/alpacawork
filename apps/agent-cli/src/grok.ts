@@ -7,9 +7,11 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { toolArgumentText, toolResultText } from '@alpacawork/contract/run';
 import type { Instruction, RuntimeIO } from './run.js';
 import { newTurn, OneProcessRuntime, type Turn, type TurnEnd } from './one-process.js';
 import { parseFlags, withUsage } from './options.js';
+import { emitToolEnd, emitToolStart } from './tool-activity.js';
 
 type Options = { output: string | null; session: string | null; model: string | null; effort: string | null };
 type Active = Turn & { directory: string; text: string; terminal: Record<string, unknown> | null; error: string | null };
@@ -84,18 +86,14 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
         this.io.emit({ type: 'item.completed', item: { type: 'agent_message', text: event.data } });
       }
     } else if (event.type === 'tool_call') {
-      if (typeof event.toolCallId !== 'string') throw new Error('Invalid Grok tool call');
       this.begin(active);
-      this.io.emit({ type: 'item.started', item: { type: 'command_execution', id: event.toolCallId,
-        name: event.toolName, arguments: event.rawInput } });
+      emitToolStart(this.io, 'command_execution', event.toolCallId, event.toolName, event.rawInput);
     } else if (event.type === 'tool_call_update' && (event.status === 'completed' || event.status === 'failed')) {
-      if (typeof event.toolCallId !== 'string') throw new Error('Invalid Grok tool result');
       const output = event.rawOutput, data = object(output);
-      const content = Array.isArray(event.content) ? event.content.map(part => object(object(part).content))
-        .filter(block => block.type === 'text') : [];
-      this.io.emit({ type: 'item.completed', item: { type: 'command_execution', id: event.toolCallId,
-        status: event.status, result: typeof output === 'string' ? output : data.output ?? data.text ??
-          (content.length ? content : output == null ? undefined : JSON.stringify(output)) } });
+      const content = Array.isArray(event.content) ? event.content.map(part => object(part).content) : [];
+      const result = toolResultText(output) || toolResultText(data.output) || toolResultText(data.text) ||
+        toolResultText(content) || toolArgumentText(output);
+      emitToolEnd(this.io, 'command_execution', event.toolCallId, event.toolName, result, event.status === 'failed');
     }
   }
   protected conclude(active: Active, code: number | null, signal: NodeJS.Signals | null): TurnEnd {

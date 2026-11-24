@@ -106,7 +106,8 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   h.send('three', 'refuse');
   await h.until(() => h.events().some(event => event.type === 'input.uncertain' && event.id === 'three'));
   h.event('tool.execution_start', { toolCallId: 'catalog', toolName: 'view', arguments: { path: 'catalog.txt' } });
-  h.event('tool.execution_complete', { toolCallId: 'catalog', success: false, error: { message: 'Cannot read the catalog' } });
+  h.event('tool.execution_complete', { toolCallId: 'catalog', success: false,
+    result: { content: 'Cannot read the catalog', detailedContent: 'Full provider output' } });
   h.answer('start', 'answer');
   h.idle();
   await h.until(() => h.events().some(event => event.type === 'turn.completed'));
@@ -116,6 +117,7 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.copilot).poll(h.area);
   const step = readRunActivity(h.area)?.steps.at(-1);
   assert.equal(step?.tool, 'view');
+  assert.equal(step.kind, 'file');
   assert.equal(step.text, 'catalog.txt');
   assert.equal(step.state, 'failed');
   assert.deepEqual(step.result, { text: 'Cannot read the catalog', more: 0 });
