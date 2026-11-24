@@ -2,9 +2,9 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, decimalText, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, Legend, lineTop, Parts, Row, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, spanMost, useScale, type DayList, type RowSay } from "./rows";
 import { Compare, gapTone, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, tip, useChoices, type TaskGroup } from "./parts";
-import type { TasksView } from "./contract";
+import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace } from "./place";
 
 type Days = { from: string; to: string };
@@ -70,20 +70,22 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
     share: per(i => at(i).counts.passed), median: points.map(p => p.accepted.leadMedianMs),
     submits: per(i => at(i).accepted.submits), questions: per(i => at(i).accepted.questions),
   };
-  const tops = { median: lineTop(lines.median, steady), submits: lineTop(lines.submits, steady), questions: lineTop(lines.questions, steady) };
+  // Both scales are the chosen span's: a larger bin or point outside it is cut at the top, and marked so.
+  const inSpan = inSpanOf(points, days), most = (amount: (i: number) => number) => spanMost(points, days, amount);
+  const tops = { median: lineTop(lines.median, steady, inSpan), submits: lineTop(lines.submits, steady, inSpan), questions: lineTop(lines.questions, steady, inSpan) };
   const scales = {
-    finished: useScale(Math.max(0, ...points.map(p => p.counts.finished)), 1, t("unit.tasks", { count: 2 }), true),
-    total: useScale(Math.max(0, ...points.map((_, i) => total_(i))), HOUR, t("unit.hours"), false),
-    submits: useScale(Math.max(0, ...points.map(p => p.accepted.submits)), 1, t("unit.times", { count: 2 }), true),
-    questions: useScale(Math.max(0, ...points.map(p => p.accepted.questions)), 1, t("unit.tasks", { count: 2 }), true),
-    prs: useScale(Math.max(0, ...points.map(p => p.accepted.prs)), 1, "", true),
+    finished: useScale(most(i => at(i).counts.finished), 1, t("unit.tasks", { count: 2 }), true),
+    total: useScale(most(total_), HOUR, t("unit.hours"), false),
+    submits: useScale(most(i => at(i).accepted.submits), 1, t("unit.times", { count: 2 }), true),
+    questions: useScale(most(i => at(i).accepted.questions), 1, t("unit.tasks", { count: 2 }), true),
+    prs: useScale(most(i => at(i).accepted.prs), 1, "", true),
   };
-  const perTask = (value: string) => t("line.unit", { value });
+  const faint = (i: number) => !steady(i);
   const overlays = {
-    share: { values: lines.share, top: 1, label: "100%", faint: (i: number) => !steady(i) },
-    median: { values: lines.median, top: tops.median, label: perTask(format("hours", tops.median)), faint: (i: number) => !steady(i) },
-    submits: { values: lines.submits, top: tops.submits, label: perTask(format("times", tops.submits)), faint: (i: number) => !steady(i) },
-    questions: { values: lines.questions, top: tops.questions, label: perTask(format("tasks", tops.questions)), faint: (i: number) => !steady(i) },
+    share: { values: lines.share, top: 1, name: t("chart.share"), label: "100%", faint },
+    median: { values: lines.median, top: tops.median, name: t("line.median"), label: format("hours", tops.median), faint },
+    submits: { values: lines.submits, top: tops.submits, name: t("line.perTask"), label: format("times", tops.submits), faint },
+    questions: { values: lines.questions, top: tops.questions, name: t("line.perTask"), label: format("tasks", tops.questions), faint },
   };
   const acceptedBase = (i: number) => t("window.accepted", { count: at(i).counts.accepted });
   const ratio = (value: number | null, kind: Kind) => value === null ? "—" : kind === "plain" ? share(value) : format(kind, value);
@@ -97,9 +99,10 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         base: i => t("chart.shareTip", { accepted: at(i).counts.accepted, passed: at(i).counts.passed }) } },
     { name: t("time.total"), total: i => format("hours", total_(i)), list: onBin("accepted", "lead"),
       parts: i => { const [y, a, o] = spent(i), all = total_(i);
-        return [{ color: "bg-turn", name: t("time.you"), value: format("hours", y), share: share_(y, all) },
-          { color: "bg-working", name: t("time.ai"), value: format("hours", a), share: share_(a, all) },
-          { color: "bg-rest", name: t("time.other"), value: format("hours", o), share: share_(o, all) }]; },
+        const day = (value: "you" | "ai" | "other", amount: number) => amount ? onBin("accepted", value) : undefined;
+        return [{ color: "bg-turn", name: t("time.you"), value: format("hours", y), share: share_(y, all), list: day("you", y) },
+          { color: "bg-working", name: t("time.ai"), value: format("hours", a), share: share_(a, all), list: day("ai", a) },
+          { color: "bg-rest", name: t("time.other"), value: format("hours", o), share: share_(o, all), list: day("other", o) }]; },
       line: { name: t("line.median"), value: i => ratio(lines.median[i]!, "hours"), base: acceptedBase } },
     { name: t("until.submits"), total: i => format("times", at(i).accepted.submits), list: onBin("accepted", "submits"),
       line: { name: t("line.perTask"), value: i => perText(lines.submits[i]!), base: acceptedBase } },
@@ -232,10 +235,12 @@ export function cell(kind: Kind, value: number, open: () => void): Cell {
 /** The parts of a day's finished tasks, as its window says them under the total, in the colours they are drawn in. */
 export function useFinishedParts() {
   const { t } = useTranslation("analysis");
+  // Each part opens its own tasks of the bin's days, as the same part on the left opens the span's.
+  const day = (set: ListSet, value: ListValue | null) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
   return (counts: { passed: number; reworked: number; stopped: number }) => [
-    { color: "bg-done", name: t("outcome.passed"), value: format("tasks", counts.passed) },
-    { color: "bg-reworked", name: t("outcome.reworked"), value: format("tasks", counts.reworked) },
-    { color: "bg-stopped-part", name: t("outcome.stopped"), value: format("tasks", counts.stopped) }];
+    { color: "bg-done", name: t("outcome.passed"), value: format("tasks", counts.passed), list: counts.passed ? day("passed", "lead") : undefined },
+    { color: "bg-reworked", name: t("outcome.reworked"), value: format("tasks", counts.reworked), list: counts.reworked ? day("reworked", "lead") : undefined },
+    { color: "bg-stopped-part", name: t("outcome.stopped"), value: format("tasks", counts.stopped), list: counts.stopped ? day("stopped", null) : undefined }];
 }
 
 /** The share without fixes, large enough to read beside its name, opening the accepted tasks. */

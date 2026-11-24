@@ -3,7 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
-import { lineDots } from "../src/features/analysis/rows";
+import { inSpanOf, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -100,11 +100,21 @@ test("a span is asked for as a named period where it is one, and kept as one whe
   expect(settleSpan({ from: "2026-11-10", to: "2026-11-16" }, "2026-11-23")).toEqual({ from: "2026-11-10", to: "2026-11-16" });
 });
 
-test("a line has no point where a bin has none and does not bridge it; a faint point's lines are faint", () => {
-  const { dots, lines } = lineDots([0.9, null, 0, 0.5], 1, at => at === 2);
-  expect(dots.map(dot => dot && { y: Math.round(dot.y), faint: dot.faint })).toEqual([{ y: 10, faint: false }, null, { y: 100, faint: true }, { y: 50, faint: false }]);
-  expect(lines.map(line => [line.from, line.to].map(dot => dots.indexOf(dot)))).toEqual([[2, 3]]);
-  expect(lines[0]!.faint).toBe(true);
+test("a line has no point where a bin has none and does not bridge it; a value over the top stands on it, marked", () => {
+  const { dots, lines } = lineDots([0.9, null, 0, 0.5, 3], 1, at => at === 2);
+  expect(dots.map(dot => dot && { y: Math.round(dot.y), faint: dot.faint, over: dot.over }))
+    .toEqual([{ y: 10, faint: false, over: false }, null, { y: 100, faint: true, over: false }, { y: 50, faint: false, over: false }, { y: 0, faint: false, over: true }]);
+  expect(lines.map(line => [line.from, line.to].map(dot => dots.indexOf(dot)))).toEqual([[2, 3], [3, 4]]);
+});
+
+test("a scale's top is set by the bins of the chosen span, not a larger one outside it", () => {
+  const bins = ["2026-11-01", "2026-11-02", "2026-11-03"].map(day => ({ from: day, to: day, complete: true }));
+  const span = { from: "2026-11-02", to: "2026-11-03" };
+  expect(spanMost(bins, span, at => [600, 10, 4][at]!)).toBe(10);
+  // The line: the span's bins on ten tasks or more; when none of the span's is, every bin of the span.
+  const inSpan = inSpanOf(bins, span);
+  expect(lineTop([42, 3, 1.5], at => at !== 2, inSpan)).toBe(lineTop([3], () => true));
+  expect(lineTop([42, 3, 1.5], at => at === 0, inSpan)).toBe(lineTop([3, 1.5], () => true));
 });
 
 test("a number opens its tasks in the span its answer was counted for, even after another span was chosen", () => {

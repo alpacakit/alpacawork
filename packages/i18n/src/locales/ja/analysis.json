@@ -85,8 +85,7 @@
   "line": {
     "median": "1件の中央値",
     "perFinished": "終わったタスク1件あたり",
-    "perTask": "1件あたり",
-    "unit": "{{value}}／件"
+    "perTask": "1件あたり"
   },
   "list": {
     "back": "一覧",
@@ -250,6 +249,8 @@
   },
   "window": {
     "accepted_other": "受け入れた {{count}}件",
+    "after": "次の区切り",
+    "before": "前の区切り",
     "finished_other": "終わった {{count}}件",
     "list": "タスクの一覧"
   }

@@ -85,8 +85,7 @@
   "line": {
     "median": "每个的中位数",
     "perFinished": "每个结束的任务",
-    "perTask": "每个",
-    "unit": "{{value}}／个"
+    "perTask": "每个"
   },
   "list": {
     "back": "列表",
@@ -250,6 +249,8 @@
   },
   "window": {
     "accepted_other": "已验收 {{count}} 个",
+    "after": "下一段",
+    "before": "上一段",
     "finished_other": "已结束 {{count}} 个",
     "list": "任务列表"
   }

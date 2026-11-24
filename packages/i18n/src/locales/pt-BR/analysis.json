@@ -93,8 +93,7 @@
   "line": {
     "median": "Mediana por tarefa",
     "perFinished": "Por tarefa concluída",
-    "perTask": "Por tarefa",
-    "unit": "{{value}} / tarefa"
+    "perTask": "Por tarefa"
   },
   "list": {
     "back": "Lista",
@@ -279,6 +278,8 @@
     "accepted_one": "{{count}} aceita",
     "accepted_many": "{{count}} aceitas",
     "accepted_other": "{{count}} aceitas",
+    "after": "Próximo",
+    "before": "Anterior",
     "finished_one": "{{count}} concluída",
     "finished_many": "{{count}} concluídas",
     "finished_other": "{{count}} concluídas",

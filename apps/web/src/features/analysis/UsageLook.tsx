@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween, delta, format, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, Lead, Leads, Legend, lineTop, Parts, Row, RowName, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, RowName, spanMost, useScale, type DayList, type RowSay } from "./rows";
 import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
 
@@ -69,14 +69,16 @@ export function UsageLook({ view, tasks, days, open, zone }: {
     const step = kind === "tokens" && Array.isArray(steps) ? steps.find(each => top >= each.at) ?? null : null;
     return kind === "hours" ? [HOUR, t("unit.hours"), false] : step ? [step.at, step.unit, false] : [1, kind === "times" ? t("unit.times", { count: 2 }) : "", true];
   };
-  const largest = (key: Amount) => Math.max(0, ...points.map((_, i) => amount[key](i)));
+  // Both scales are the chosen span's: a larger bin or point outside it is cut at the top, and marked so.
+  const inSpan = inSpanOf(points, days);
+  const largest = (key: Amount) => spanMost(points, days, amount[key]);
   const scaleArgs = (key: Amount) => { const [unit, name, wholeOnly] = unitOf(kinds[key], largest(key)); return [largest(key), unit, name, wholeOnly] as const; };
   const scales = {
-    finished: useScale(Math.max(0, ...(taskPoints ?? []).map(p => p.counts.finished)), 1, t("unit.tasks", { count: 2 }), true),
+    finished: useScale(spanMost(points, days, finishedOn), 1, t("unit.tasks", { count: 2 }), true),
     tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
   };
-  const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady);
-    return { values, top, label: t("line.unit", { value: format(kinds[key], top) }), faint: (i: number) => !steady(i) }; };
+  const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
+    return { values, top, name: t("line.perTask"), label: format(kinds[key], top), faint: (i: number) => !steady(i) }; };
   const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: overlay("launches") } : null;
   const finishedParts = useFinishedParts();
   const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
@@ -89,11 +91,13 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       parts: (i: number) => finishedParts(taskPoints[i]!.counts) }] : [],
     { name: t("usage.tokens"), total: i => format("tokens", amount.tokens(i)), list: onBin("used", "tokens"), line: perLine("tokens"),
       parts: i => { const c = points[i]!.counts.tokens;
-        return [{ color: "", name: t("usage.output"), value: format("tokens", c.output) }, { color: "", name: t("usage.input"), value: format("tokens", c.input) },
-          { color: "", name: t("usage.cache"), value: format("tokens", c.cache) }]; } },
+        return [{ color: "", name: t("usage.output"), value: format("tokens", c.output), list: c.output ? onBin("used", "output") : undefined },
+          { color: "", name: t("usage.input"), value: format("tokens", c.input), list: c.input ? onBin("used", "input") : undefined },
+          { color: "", name: t("usage.cache"), value: format("tokens", c.cache), list: c.cache ? onBin("used", "cache") : undefined }]; } },
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
     { name: t("usage.launches"), total: i => format("times", amount.launches(i)), list: onBin("used", "launches"), line: perLine("launches"),
-      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("plain", points[i]!.counts.newConversations) }] },
+      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("plain", points[i]!.counts.newConversations),
+        list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }] },
   ];
   // The span's amounts per finished task on the left, against the span before.
   const spanPer = (value: number, base: number | undefined) => base ? value / base : null;
@@ -201,7 +205,7 @@ function Breakdown({ view, group, days, open, choose }: {
   const name = by === "skill" ? t("usage.skillLaunches") : t("usage.calls");
   const read = (value: { calls: number; launches: number }) => by === "skill" ? value.launches : value.calls;
   const series = breakdown?.series ?? null, points = view.series.points;
-  const scale = useScale(Math.max(0, ...(series ?? []).map(value => value ? read(value) : 0)), 1, t("unit.times", { count: 2 }), true);
+  const scale = useScale(spanMost(points, days, i => series?.[i] ? read(series[i]!) : 0), 1, t("unit.times", { count: 2 }), true);
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
   const valueOf = by === "skill" ? "launches" as const : "calls" as const;
   const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}

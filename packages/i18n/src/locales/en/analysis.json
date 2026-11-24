@@ -89,8 +89,7 @@
   "line": {
     "median": "Median per task",
     "perFinished": "Per finished task",
-    "perTask": "Per task",
-    "unit": "{{value}} / task"
+    "perTask": "Per task"
   },
   "list": {
     "back": "List",
@@ -267,6 +266,8 @@
   "window": {
     "accepted_one": "{{count}} accepted",
     "accepted_other": "{{count}} accepted",
+    "after": "Next",
+    "before": "Previous",
     "finished_one": "{{count}} finished",
     "finished_other": "{{count}} finished",
     "list": "Task list"

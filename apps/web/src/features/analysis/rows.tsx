@@ -82,7 +82,8 @@ export const RowName = ({ children }: { children: ReactNode }) => <div className
  */
 export type RowSay = {
   name: string; total: (at: number) => string;
-  parts?: (at: number) => { color: string; name: string; value: string; share?: string }[];
+  /** Its parts, each with the tasks of that part a press opens (`list`, for the bin's days). */
+  parts?: (at: number) => { color: string; name: string; value: string; share?: string; list?: (bin: Bin) => DayList }[];
   line?: { name: string; value: (at: number) => string; base: (at: number) => string };
   list?: (bin: Bin, at: number) => DayList | null;
 };
@@ -126,16 +127,23 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const press = (at: number, row: number) => { const list = listOf(at, row); if (list) { close(); open(list); } };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
   return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, point, press }}>
-    <div className="relative" onMouseLeave={narrow ? undefined : close}>
+    <div className="relative" onMouseLeave={narrow ? undefined : event => { if (!intoWindow(event)) close(); }}>
       {!narrow && <Columns layer="back" />}
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
     {shown && <DayWindow day={binName(bins[shown.at]!, today)} say={rows[shown.row]!} at={shown.at} box={shown.box} narrow={narrow}
-      onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null} />}
+      onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
+      onPart={list => { close(); open(list(bins[shown.at]!)); }} onLeave={close}
+      // Under a finger the window steps to the day before or after, as if that day were pressed.
+      onStep={step => { const width = shown.box.right - shown.box.left, next = shown.at + step;
+        if (bins[next]) point(next, shown.row, { ...shown.box, left: shown.box.left + step * width, right: shown.box.right + step * width }); }}
+      first={shown.at === 0} last={shown.at === bins.length - 1} />}
   </GroupContext>;
 }
 const useGroup = () => useContext(GroupContext)!;
+/** Whether the pointer left for the day's window (on a computer it is entered, to press one of its parts). */
+const intoWindow = (event: React.MouseEvent) => event.relatedTarget instanceof Element && !!event.relatedTarget.closest("[data-day-window]");
 
 /** The chart row under a point of the screen (its `data-chart-row`), or -1 between charts. */
 function rowAt(x: number, y: number, self: Element) {
@@ -151,7 +159,7 @@ function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
     {/* Leaving the day columns (for the numbers on the left) closes what a day said. */}
-    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? () => group.point(null) : undefined}>
+    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => { if (!intoWindow(event)) group.point(null); } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
@@ -176,9 +184,12 @@ function useBinName() {
 
 /**
  * The window beside a pointed day: the day, the row's name and total (large), its parts with their colours, its
- * per-task line and base, and the way to its tasks. Kept on the screen; under a finger its way to the tasks is a press.
+ * per-task line and base, and the way to its tasks. Kept on the screen. Each part with tasks opens that part's tasks
+ * of the day: on a computer the window stands against the day's column, so the pointer goes straight into it; under a
+ * finger it also steps to the day before or after (‹ ›).
  */
-function DayWindow({ day, say, at, box, narrow, onList }: { day: string; say: RowSay; at: number; box: Pointed["box"]; narrow: boolean; onList: (() => void) | null }) {
+function DayWindow({ day, say, at, box, narrow, onList, onPart, onLeave, onStep, first, last }: { day: string; say: RowSay; at: number; box: Pointed["box"]; narrow: boolean;
+  onList: (() => void) | null; onPart: (list: (bin: Bin) => DayList) => void; onLeave: () => void; onStep: (step: -1 | 1) => void; first: boolean; last: boolean }) {
   const { t } = useTranslation("analysis");
   const self = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -186,30 +197,38 @@ function DayWindow({ day, say, at, box, narrow, onList }: { day: string; say: Ro
     if (!window) return;
     window.style.maxHeight = "";
     const place = tipBeside({ left: box.left, right: box.right, top: box.top, width: window.offsetWidth, height: window.offsetHeight,
-      screenWidth: innerWidth, screenHeight: innerHeight });
+      screenWidth: innerWidth, screenHeight: innerHeight, gap: narrow ? 8 : 0 });
     window.style.left = `${place.left}px`; window.style.top = `${place.top}px`;
     if (place.maxHeight !== null) window.style.maxHeight = `${place.maxHeight}px`;
-  }, [day, say, at, box]);
+  }, [day, say, at, box, narrow]);
   const parts = say.parts?.(at) ?? [];
-  return <div ref={self} role="presentation" data-day-window="" className={cn("fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-xs shadow-float",
-    !narrow && "pointer-events-none")}>
-    <div className="text-soft">{day}</div>
+  const step = (to: -1 | 1, off: boolean) => <button type="button" disabled={off} onClick={() => onStep(to)} aria-label={t(to < 0 ? "window.before" : "window.after")}
+    className="-my-1 flex size-7 items-center justify-center rounded-sm text-muted hover:bg-hover disabled:opacity-30">
+    <Icon name={to < 0 ? "left" : "right"} className="size-3.5" /></button>;
+  return <div ref={self} role="presentation" data-day-window=""
+    onMouseLeave={narrow ? undefined : event => { if (!(event.relatedTarget instanceof Element && event.relatedTarget.closest("[data-day-column]"))) onLeave(); }}
+    className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-xs shadow-float">
+    {narrow ? <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
+      : <div className="text-soft">{day}</div>}
     <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-md font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
-    {parts.length > 0 && <div className="mt-1.5 grid grid-cols-[auto_auto_auto] gap-x-4 gap-y-0.5">
-      {parts.map(part => <div key={part.name} className="contents">
-        <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
-        <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums">{part.value}</span>
-        <span className="text-end whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}</span>
-      </div>)}
+    {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
+      {parts.map(part => {
+        const cells = <>
+          <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
+          <span className={cn("text-end font-semibold whitespace-nowrap text-ink tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</span>
+          <span className="flex items-center justify-end gap-0.5 whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
+        </>;
+        const row = "group/part col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-0.5 narrow:py-1.5";
+        return part.list ? <button key={part.name} type="button" onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
+          : <div key={part.name} className={row}>{cells}</div>;
+      })}
     </div>}
     {say.line && <div className="mt-2 border-t border-rule pt-2">
       <div className="flex items-baseline justify-between gap-6"><span className="flex items-center text-muted"><LineMark />{say.line.name}</span>
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
-    {onList && (narrow
-      ? <button type="button" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted">{t("window.list")}<Icon name="right" className="size-3" /></button>
-      : <div className="mt-2 flex items-center gap-1 border-t border-rule pt-2 text-muted">{t("window.list")}<Icon name="right" className="size-3" /></div>)}
+    {onList && <button type="button" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<Icon name="right" className="size-3" /></button>}
   </div>;
 }
 
@@ -230,13 +249,23 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
 
 /** Whether a bin meets the chosen span at all (a week or month it falls inside, partly or whole). */
 const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from;
+/**
+ * The largest amount a chart's scale is set by: the bins within the chosen span only, so a large day outside it does
+ * not flatten the days the span is about (one over the top is cut there, and marked so).
+ */
+export const spanMost = (bins: Bin[], span: Days, amount: (at: number) => number) =>
+  Math.max(0, ...bins.map((bin, at) => lit(bin, span) ? amount(at) : 0));
+/** The bins within the chosen span, by number. */
+export const inSpanOf = (bins: Bin[], span: Days) => (at: number) => !!bins[at] && lit(bins[at]!, span);
 
 /** The frame every chart is drawn in: its height, the bars' mark over its top left, the line's over its top right. */
-function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: string; height: string; children: ReactNode }) {
+function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: { name: string; label: string }; height: string; children: ReactNode }) {
   return <div data-chart-row={row} className="pt-4 narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
-      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
+      {/* The line's scale says what the line is (its mark and name), then, apart, the value its top stands for. */}
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft">
+        <LineMark /><span className="text-muted">{lineScale.name}</span><span className="ms-2.5 tabular-nums">{lineScale.label}</span></span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
@@ -273,8 +302,8 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
   </div>;
 }
 
-/** The per-task line over a chart's bars: its value a bin (null: none), its top, and which bins rest on fewer than ten. */
-export type Overlay = { values: (number | null)[]; top: number; label: string; faint: (at: number) => boolean };
+/** The per-task line over a chart's bars: its value a bin (null: none), its name, its top (and how it is written), and which bins rest on fewer than ten. */
+export type Overlay = { values: (number | null)[]; top: number; name: string; label: string; faint: (at: number) => boolean };
 
 /** A bar's colour for a one-colour row: its tone, deeper the taller it stands (45% at the foot to the full colour at the top). */
 const toneOf = (tone: Tone, share: number) => `color-mix(in oklab, var(--${tone}) ${Math.round(45 + 55 * Math.max(0, Math.min(1, share)))}%, var(--bg))`;
@@ -282,9 +311,9 @@ export type Tone = "turn" | "working" | "muted";
 
 /**
  * A row's chart: the bin's amount as bars (stacked parts in their colours, or one colour deeper with the amount), and,
- * over them, the amount per task as a line in ink on its own scale. Within the chosen span the line is solid with
- * points; outside it, thin and pale with none; where bins are narrower than 12px it has no points. A point resting on
- * fewer than ten tasks is hollow, its line dotted.
+ * over them, the amount per task as a line in ink on its own scale. Within the chosen span the line has points;
+ * outside it, it is thin and pale with none; where bins are narrower than 12px it has no points. A point resting on
+ * fewer than ten tasks is hollow. Both scales are the chosen span's: a bar or point over the top is cut and marked.
  */
 export function BarChart({ row, height, scale, values, tone, overlay, uncounted, partial, grow }: {
   row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; tone?: Tone; overlay?: Overlay;
@@ -307,45 +336,63 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   const line = overlay ? lineDots(overlay.values, overlay.top, overlay.faint) : null;
   const inSpan = (at: number) => lit(group.bins[at]!, group.span);
   const points = width / Math.max(1, group.bins.length) >= 12;
-  return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
-    <Bins row={row} uncounted={uncounted} partial={partial}>{at => values(at).map(([color, value], part, all) => value > 0 &&
-      <i key={part} style={{ height: `${Math.min(100, value / scale.top * 100)}%`, ...tone ? { background: toneOf(tone, value / scale.top) } : {} }}
-        className={cn("block flex-none origin-bottom rounded-[1px]", !tone && color, part === all.length - 1 && "rounded-t-[3px]", grow && "animate-bar")} />)}</Bins>
+  // A bin over the scale's top (one outside the chosen span: the top is the span's) stands to the top, its parts in
+  // their shares of it, and is cut there with a small break across it.
+  const bars = (at: number) => {
+    const all = values(at), sum = all.reduce((total, [, value]) => total + Math.max(0, value), 0);
+    const cut = sum > scale.top, fit = cut ? scale.top / sum : 1, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
+    return all.map(([color, value], part) => value > 0 &&
+      <i key={part} style={{ height: `${Math.min(100, value * fit / scale.top * 100)}%`, ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
+        className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>
+        {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
+      </i>);
+  };
+  return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay && { name: overlay.name, label: overlay.label }} height={height}>
+    <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      {line.lines.map(({ from, to, faint }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
+      {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
-          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1.5] [stroke-opacity:.45]", faint && "[stroke-dasharray:2_4]")} />; })}
+          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.45]")} />; })}
     </svg>}
-    {line && points && <div aria-hidden className="pointer-events-none absolute inset-0">
-      {line.dots.map((dot, at) => dot && (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
-        className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
-          dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />)}
+    {line && <div aria-hidden className="pointer-events-none absolute inset-0">
+      {line.dots.map((dot, at) => {
+        if (!dot) return null;
+        // A point over the top stands on it as a small caret up, in the span or out of it.
+        if (dot.over) return <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
+          className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
+          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-ink [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
+        return points && (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
+          className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
+            dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />;
+      })}
     </div>}
   </Frame></div>;
 }
 
 /**
  * A level a bin, as points joined by a line (the share without fixes, a median, an amount per task): a bin with none has
- * no point and the line breaks there. A faint point (too few to lean on) is drawn hollow, and so is the line that
- * touches it. A value over the top stands on the top.
+ * no point and the line breaks there. A faint point (too few to lean on) is drawn hollow. A value over the top stands
+ * on the top (`over`), where it is cut.
  */
 export function lineDots(values: (number | null)[], top: number, faint: (at: number) => boolean = () => false) {
   const dots = values.map((value, at) => value === null ? null
-    : { x: (at + 0.5) / values.length * 100, y: 100 - Math.min(1, value / top) * 100, faint: faint(at) });
+    : { x: (at + 0.5) / values.length * 100, y: 100 - Math.min(1, value / top) * 100, faint: faint(at), over: value > top });
   const lines = dots.flatMap((dot, at) => {
     const before = at > 0 ? dots[at - 1] : null;
-    return dot && before ? [{ from: before, to: dot, faint: dot.faint || before.faint }] : [];
+    return dot && before ? [{ from: before, to: dot }] : [];
   });
   return { dots, lines };
 }
 
 /**
- * The top of a per-task line's scale: round, and set by the bins resting on ten tasks or more (one task's large value
- * must not flatten every other day), or by every bin when none does.
+ * The top of a per-task line's scale: round, and set by the bins within the chosen span (`inSpan`) resting on ten tasks
+ * or more (one task's large value must not flatten every other day), or by every bin of the span when none does; a
+ * value over it is cut at the top, and marked so.
  */
-export function lineTop(values: (number | null)[], steady: (at: number) => boolean): number {
-  const kept = values.filter((value, at) => value !== null && steady(at)) as number[];
-  const from = kept.length ? kept : values.filter((value): value is number => value !== null);
+export function lineTop(values: (number | null)[], steady: (at: number) => boolean, inSpan: (at: number) => boolean = () => true): number {
+  const shown = (at: number) => values[at] !== null && values[at] !== undefined && inSpan(at);
+  const kept = values.filter((_, at) => shown(at) && steady(at)) as number[];
+  const from = kept.length ? kept : values.filter((_, at) => shown(at)) as number[];
   const marks = ticks(Math.max(0, ...from), 1, false);
   return marks[marks.length - 1] || 1;
 }
