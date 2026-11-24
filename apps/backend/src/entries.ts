@@ -476,8 +476,11 @@ export const taskCommands = {
       // As a continuation's admission resolves its launch, without a selection of its own.
       const nextValues = (head: Pick<RunRecord, 'agent' | 'launch'>) => {
         if (!settings.ok) return null;
-        const launch = launchSnapshot(settings.config, head.agent, 'resume', process.env.PATH ?? '', {}, head.launch);
-        return launch.ok ? launch.launch.values : null;
+        // A launch that cannot be resolved now is the next request's to refuse; the start judges the model again.
+        try {
+          const launch = launchSnapshot(settings.config, head.agent, 'resume', process.env.PATH ?? '', {}, head.launch);
+          return launch.ok ? launch.launch.values : null;
+        } catch { return null; }
       };
       return { compaction: withControlWrite(root, (_tx, db) => requestCompaction(db,
         { taskId: input.task, placementId: input.agent, instructions: input.instructions ?? null, at: now(), nextValues })) };

@@ -50,7 +50,7 @@ export function requestCompaction(db: DatabaseSync, input: { taskId: string; pla
   const head = JSON.parse(String(row.record)) as Pick<RunRecord, 'agent' | 'launch'>, adapter = head.launch.adapter;
   const can = ability(adapter);
   if (!can) throw refuse(`${adapter} cannot compact a conversation`, 'compaction_unsupported');
-  const next = input.nextValues(head);
+  const next = can.needsModel ? input.nextValues(head) : null;
   if (next && automaticModel(can, next)) throw refuse(`${adapter} ${NEEDS_MODEL}`, 'compaction_needs_model');
   if (input.instructions !== null && !can.instructions)
     throw refuse(`${adapter} compacts without instructions; leave out --instructions`, 'compaction_instructions_unsupported');
