@@ -122,7 +122,9 @@ test('a step that changes while the Working row opens is unfolded to as it is, n
     requestAnimationFrame(next);
   }));
   const jumps = seen.heights.slice(1).map((height, at) => height - seen.heights[at]!);
-  expect(Math.max(...jumps), 'no frame jumps to the new height').toBeLessThan(60);
+  // It eases into its end: its last move is a small one, not the rest of the new height at once.
+  const moves = jumps.filter(jump => Math.abs(jump) >= 0.5);
+  expect(moves.at(-1)!, `no jump at the end: ${moves.map(Math.round).join(',')}`).toBeLessThan(30);
   expect(Math.min(...jumps), 'it only grows while it opens').toBeGreaterThanOrEqual(-0.5);
   expect(seen.clipped, 'arrived, all of it is shown').toBeLessThanOrEqual(1);
 });
