@@ -15,6 +15,9 @@ import { clocks, emptyClock, modelLabel, shareOf, unitMarks } from './rules.js';
 
 type DatedUnit = { day: string; unit: Unit };
 type DatedLaunch = { day: string; root: string; run: FactLaunch };
+type TalliedLaunch = DatedLaunch & { tally: Tally };
+type CountedBy = 'skill' | 'tool' | 'mcp';
+const isCountedBy = (by: AnalysisUsageBy | undefined): by is CountedBy => by === 'skill' || by === 'tool' || by === 'mcp';
 type Group<T> = { key: string; label: string; items: T[] };
 type DimensionValue = { key: string; label: string };
 const group = <T>(items: Iterable<T>, keys: (item: T) => readonly DimensionValue[]): Map<string, Group<T>> => {
@@ -59,6 +62,8 @@ function acceptedTotals(units: readonly Unit[]): AnalysisAcceptedTotals {
   }
   return { leadMedianMs: median(leads), submits, questions, prs: prs.size, time };
 }
+const taskTotals = (units: readonly Unit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units) });
+
 function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
   let newConversations = 0;
   const tasks = new Set<string>();
@@ -71,10 +76,28 @@ function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, 
     tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
 }
 
-function makeSeries<T extends { day: string }, C>(bucket: AnalysisBucket, head: AnalysisHead, records: readonly T[], counts: (items: T[]) => C) {
-  const indexed = group(records, record => single(bucketStart(record.day, bucket)));
-  const points = buckets(head.firstDay, head.today, bucket).map(point => ({
-    ...point, counts: counts(indexed.get(bucketStart(point.from, bucket))?.items ?? []),
+function countedTotals(items: readonly TalliedLaunch[], by: CountedBy) {
+  let calls = 0, launches = 0;
+  for (const { tally } of items) {
+    if (by === 'skill') {
+      if (Object.keys(tally.skills).length) launches++;
+    } else {
+      const amounts = Object.values(by === 'tool' ? tally.tools : tally.mcp);
+      if (amounts.length) launches++;
+      for (const amount of amounts) calls += amount;
+    }
+  }
+  return { calls, launches };
+}
+
+const byBucket = <T extends { day: string }>(records: readonly T[], bucket: AnalysisBucket) =>
+  group(records, record => single(bucketStart(record.day, bucket)));
+
+function makeSeries<T extends { day: string }, C extends object>(bucket: AnalysisBucket, head: AnalysisHead,
+  records: readonly T[], values: (items: T[]) => C) {
+  const indexed = byBucket(records, bucket);
+  const points = buckets(head.firstDay, head.today, bucket).map(point => ({ ...point,
+    ...values(within(indexed.get(bucketStart(point.from, bucket))?.items ?? [], point)),
   }));
   return { bucket, points };
 }
@@ -105,13 +128,15 @@ class ScopedAnalysis {
   readonly datedUnits: DatedUnit[] = [];
   readonly datedLaunches: DatedLaunch[] = [];
   readonly date: ReturnType<typeof calendar>;
+  private readonly tallyDay: string;
   private readonly allows: (project: string) => boolean;
 
   constructor(private readonly facts: AnalysisFacts, readonly project: string | null, ownProject: string | null,
-    private readonly timeZone: string, readonly now: number, private readonly tallySince: number,
+    private readonly timeZone: string, readonly now: number, tallySince: number,
     private readonly tallies: ReadonlyMap<string, Tally>) {
     this.date = calendar(timeZone);
     this.today = this.date(now);
+    this.tallyDay = this.date(tallySince);
     this.allows = matchingProject(facts, project, ownProject);
     // Convert all instants at this read point using one shared date formatter.
     let first = Infinity;
@@ -168,14 +193,25 @@ class ScopedAnalysis {
     return { runs: eligible.filter(({ run }) => {
       const tally = this.tallies.get(run.id);
       return tally && tally.state !== 'unsupported';
-    }).length, of: eligible.length, since: this.date(this.tallySince) };
+    }).length, of: eligible.length, since: this.tallyDay };
+  }
+
+  private collectedLaunches(): TalliedLaunch[] {
+    return this.datedLaunches.flatMap(item => {
+      if (item.day < this.tallyDay || !item.run.tallyEligible) return [];
+      const tally = this.tallies.get(item.run.id);
+      return tally && tally.state !== 'unsupported' ? [{ ...item, tally }] : [];
+    });
   }
 
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
     const head = this.head(input);
     const current = within(this.datedUnits, head.period).map(item => item.unit);
     const previous = head.previous && within(this.datedUnits, head.previous).map(item => item.unit);
-    const series = makeSeries(input.bucket, head, this.datedUnits, items => taskCounts(items.map(item => item.unit)));
+    const value = taskTotals(current), before = previous && taskTotals(previous);
+    const lifetime = this.head({}).period;
+    const ever = lifetime && (input.period === 'all' ? value : taskTotals(within(this.datedUnits, lifetime).map(item => item.unit)));
+    const series = makeSeries(input.bucket, head, this.datedUnits, items => taskTotals(items.map(item => item.unit)));
     const counts = new Map<string, number>();
     for (const { day } of this.datedUnits) counts.set(day, (counts.get(day) ?? 0) + 1);
     const from = monday(head.firstDay ?? head.today), finished: number[] = [];
@@ -186,19 +222,34 @@ class ScopedAnalysis {
       return { key, label, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
         submitsPerAccepted: accepted ? totals.submits / accepted : null };
     }).sort((a, b) => b.finished - a.finished || compareKey(a, b)) } : null;
-    return { head, counts: { value: taskCounts(current), previous: previous && taskCounts(previous) },
-      accepted: { value: acceptedTotals(current), previous: previous && acceptedTotals(previous) },
-      series, grass: { from, finished }, breakdown };
+    return { head, counts: { value: value.counts, previous: before?.counts ?? null },
+      accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished }, breakdown };
   }
 
   usage(input: AnalysisUsageInput): AnalysisUsageView {
     const head = this.head(input);
     const current = within(this.datedLaunches, head.period), previous = head.previous && within(this.datedLaunches, head.previous);
-    const series = makeSeries(input.bucket, head, this.datedLaunches, items => this.useCounts(items));
+    const value = this.useCounts(current);
+    const lifetime = this.head({}).period;
+    const ever = lifetime && (input.period === 'all' ? value : this.useCounts(within(this.datedLaunches, lifetime)));
+    const series = makeSeries(input.bucket, head, this.datedLaunches, items => ({ counts: this.useCounts(items) }));
     const by = input.by;
-    return { head, counts: { value: this.useCounts(current), previous: previous && this.useCounts(previous) }, series,
-      breakdown: by ? { by, tallied: by === 'skill' || by === 'tool' || by === 'mcp' ? this.tallyCoverage(current) : null,
-        rows: this.usageGroups(current, by) } : null };
+    const breakdown = isCountedBy(by) ? this.countedBreakdown(by, head, series)
+      : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(current, by) } : null;
+    return { head, counts: { value, previous: previous && this.useCounts(previous) }, ever, series, breakdown };
+  }
+
+  private countedBreakdown(by: CountedBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
+    const launches = this.collectedLaunches();
+    if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
+    const since = this.tallyDay;
+    const current = within(launches, head.period);
+    const previous = head.previous && head.previous.from >= since ? within(launches, head.previous) : null;
+    const indexed = byBucket(launches, chart.bucket);
+    return { by, since, counted: { value: countedTotals(current, by), previous: previous && countedTotals(previous, by) },
+      series: chart.points.map(point => point.to < since ? null :
+        countedTotals(within(indexed.get(bucketStart(point.from, chart.bucket))?.items ?? [], point), by)),
+      rows: this.usageGroups(current, by) };
   }
 
   private useCounts(items: readonly DatedLaunch[]) { return usageCounts(items, this.facts.first, this.now); }
@@ -211,13 +262,16 @@ class ScopedAnalysis {
   }
 
   private usageRows(input: AnalysisListInput, head: AnalysisHead) {
-    const selected = within(this.datedLaunches, head.period).filter(item =>
-      !input.by || this.usageKeys(item, input.by).some(key => key.key === input.key));
+    const by = input.by;
+    const launches = isCountedBy(by) ? this.collectedLaunches() : this.datedLaunches;
+    const selected = within(launches, head.period).filter(item =>
+      !by || this.usageKeys(item, by).some(key => key.key === input.key));
     return [...group(selected, item => single(item.root)).values()].map(({ key, items }) => {
       const unit = this.facts.units.get(key)!;
       if (!input.value) return row(unit, null);
       if (input.value === 'calls') return row(unit, items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0));
       const { launches, runMs, newConversations, tokens } = this.useCounts(items);
+      if (input.value === 'tokens') return row(unit, tokens.output + tokens.input + tokens.cache);
       return row(unit, ({ launches, runMs, newConversations, ...tokens } as Record<string, number>)[input.value] ?? null);
     });
   }

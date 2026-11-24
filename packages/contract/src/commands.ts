@@ -229,18 +229,19 @@ const definitions = {
   'guide': command('read', 'Read a bundled alpacawork skill document',
     z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
     { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
-  'analysis/tasks': command('read', 'Count finished tasks and time to acceptance', analysisTasksInput, [
+  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals', analysisTasksInput, [
     ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisTaskGroups})`),
   ], { output: analysisTasksViewSchema }),
-  'analysis/usage': command('read', 'Count task launches and measured AI usage', analysisUsageInput, [
-    ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisUsageGroups})`),
+  'analysis/usage': command('read', 'Count task launches and measured AI usage by period and trend bucket, with lifetime totals', analysisUsageInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket,
+    text('by', `Breakdown (${analysisUsageGroups}). Skill, tool and MCP trends start on their collection date`),
   ], { output: analysisUsageViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
     ...analysisScope, ...analysisPeriodOptions,
     text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Tool and MCP keys are JSON arrays with two strings: [provider, name]'),
-    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}. Calls require tool or mcp)`),
+    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Calls require tool or mcp`),
     text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),
   ], { output: analysisUnitListSchema }),
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
