@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
+import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
+import { requestStop } from '@alpacawork/backend/test-dist/runs/entry.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
 import { authorize, type Action } from '@alpacawork/backend/test-dist/control/authorize.js';
@@ -176,6 +178,47 @@ test('a project seat can manage its own top-level tasks without gaining rights i
     authorize(store.connection, owner(nestedOwner), action, { task: seat.id, quote: null }));
   assert.doesNotThrow(() => readAbove({ name: 'task.read' }));
   assert.throws(() => readAbove({ name: 'task.read.work' }), { code: 'forbidden' });
+});
+
+test('answering an independent task cannot add an instruction or loan', async t => {
+  const flow = await taskFlow(t);
+  const project = await flow.work(await projectSeat(flow));
+  const independent = await flow.work(await flow.task('Direct instruction'));
+  const sibling = await flow.task('Separate assignment');
+  const question = await flow.ask(independent, project.id);
+  const reply = (lendTask?: string) => new TaskRequestService(flow.root).request({
+    task: independent.id, answers: question, body: 'Please proceed', opId: randomUUID(), lendTask,
+  }, { kind: 'placement', placementId: project.placementId }, owner(project));
+  await assert.rejects(reply(sibling.id), { code: 'forbidden' });
+  assert.equal((await flow.get(independent.id)).meta.log.some(entry => entry.questionId === question), false);
+  assert.equal((await reply()).outcome.kind, 'answered');
+  await assert.rejects(reply(), { code: 'forbidden' });
+});
+
+test('stopping a project run or the project leaves a called task working on the user’s instruction', async t => {
+  const flow = await taskFlow(t);
+  const project = await flow.work(await projectSeat(flow));
+  const child = await flow.work(await flow.task('Shared assignment'), project);
+  const delegated = await flow.work(await flow.task('Delegated assignment'), project);
+  const queued = await flow.request(await flow.task('Queued assignment'), project);
+  const direct = await flow.request(child);
+  flow.store(store => store.write(tx => tx.update({
+    ...tx.get(direct.runId)!, state: 'joined', into: child.runId, ended_at: new Date().toISOString(),
+  })));
+
+  requestStop(flow.root, { run: project.runId }, randomUUID());
+  assert.equal(flow.run(project).stop_requested, true);
+  assert.equal(flow.run(child).stop_requested, false);
+  assert.equal(flow.run(delegated).stop_requested, false);
+  await flow.person(project.id, 'stopped');
+  assert.equal(flow.run(child).stop_requested, false);
+  assert.equal(await flow.state(child.id), 'doing');
+  assert.equal(flow.run(delegated).stop_requested, true);
+  assert.equal(await flow.state(delegated.id), 'stopped');
+  assert.equal(flow.run(queued).state, 'cancelled');
+  assert.equal(await flow.state(queued.id), 'stopped');
+  flow.end(delegated, 'cancelled');
+  assert.equal(await flow.state(delegated.id), 'stopped');
 });
 
 test('a project uses the ordinary rows and question detail when the user needs to act', async t => {

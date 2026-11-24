@@ -421,7 +421,7 @@ export class ReturnLifecycle {
     const seats = openRequestsBySeat(requests, facts);
     for (const seat of seats.keys()) this.notice('work_changed', seat, causeLogId, seats.size > 1);
   }
-  /** An open direct user instruction or a failure of that work awaiting the user. */
+  /** Whether the user controls this Task, an open instruction, or the current failure. */
   hasUserWork(task: TaskDecisionFacts): boolean {
     const view = this.seat(task.id), facts = view.facts;
     const failure = task.meta.baseState === 'error' ? taskFailure(task.meta.log) : undefined;

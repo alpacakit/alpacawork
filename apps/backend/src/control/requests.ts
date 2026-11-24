@@ -193,9 +193,12 @@ export class RequestService {
           const resolvesUnknown = context.purpose !== 'return_continuation' && placement.responsible && speaksForUser(context.actor);
           assertRotationResolved(rotation, resolvesUnknown, input.mode);
           const lifecycle = new ReturnLifecycle(db, tx, snapshot.tasks, project, undefined, this.root);
-          if (fromPlacement && placement.responsible && task.meta.baseState === 'error' && lifecycle.hasUserWork(task))
-            throw new Problem(PROBLEM_CODE.forbidden, 'The user decides how to resolve this failure', { task: task.id });
           const parentInstruction = callerRun?.role === 'owner' && callerRun.task === task.meta.parentId;
+          const projectInstruction = parentInstruction && tasks.get(callerRun.task).meta.kind === 'project';
+          // This boundary also takes instructions that carry an answer to a question.
+          if (fromPlacement && placement.responsible &&
+              (projectInstruction || task.meta.baseState === 'error') && lifecycle.hasUserWork(task))
+            throw new Problem(PROBLEM_CODE.forbidden, 'The user manages direct work on this Task', { task: task.id });
           const borrow = !parentInstruction && callerRun?.role === 'owner' && placement.responsible &&
             context.purpose === 'instruction' && !context.answersQuestion
             ? loanFor(db, callerRun.task, task.id) : undefined;
@@ -218,8 +221,8 @@ export class RequestService {
                 { reason: { kind: 'loan_target_waits_for_dependencies', task: task.id } });
             assertDependencyAcyclic(db, { requester: callerRun!.task, target: task.id });
           }
-          if (parentInstruction && placement.responsible && tasks.get(callerRun!.task).meta.kind === 'project')
-            assertDependencyAcyclic(db, { requester: callerRun!.task, target: task.id });
+          if (projectInstruction && placement.responsible)
+            assertDependencyAcyclic(db, { requester: callerRun.task, target: task.id });
           // On the user's behalf, what the responsible may not have taken goes again, ending the queued Runs it rode in,
           // before the conversation is read: this Request neither waits for nor resumes them.
           if (resolvesUnknown) lifecycle.resendUnconfirmed(task.id, placement.id);

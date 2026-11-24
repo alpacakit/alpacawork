@@ -151,7 +151,7 @@ type OwnerRunBoundary = { runState: 'running' | 'succeeded' | 'failed' | 'cancel
 
 /** A Task's next document in one write, with what its record changes besides the log. */
 type Change = { task: ControlTask; meta: ControlMetadata; values?: TaskValues; settings?: ProjectSettings | null;
-  texts?: ReadonlyMap<string, string>; replyInput?: 'request' | 'doing' };
+  texts?: ReadonlyMap<string, string>; replyInput?: 'request' | 'doing'; stopScope?: readonly string[] };
 
 /**
  * One write's read point: the written branch, its ancestry and Request/return endpoints (TaskRepository.related), and the
@@ -273,16 +273,18 @@ export class TaskTransition {
       link(meta, meta.baseState, cause, { id: cause.id, runId: transition.runId, fromState: task.meta.state, ruleId: decision.rule, boundary: transition.action === 'run_started' ? 'accepted_start' : 'settled_end' });
     else report(task, meta, transition, decision.rule);
     if (decision.subtree) {
-      const below = workBelow(task.meta, read.tasks.map(item => item.meta));
-      for (const item of below) {
-        const child = read.task(item.id);
+      const below = stopBelow(read, task);
+      const stopScope = [task.id, ...below];
+      changes[0]!.stopScope = stopScope;
+      for (const id of below) {
+        const child = read.task(id);
         const target = evaluate(TASK_POLICY.stopTarget, { ...child.meta, active: child.meta.lifecycle === 'active' });
         if (!target.baseState) continue;
         const next = taskMetadata({ ...child.meta, log: [...child.meta.log] });
         link(next, target.baseState, cause, { ruleId: target.rule });
         changes.push({ task: child, meta: next });
       }
-      stoppedRuns = [...read.unfinishedRuns([task.id, ...below.map(item => item.id)],
+      stoppedRuns = [...read.unfinishedRuns(stopScope,
         'runId' in transition ? transition.runId ?? undefined : undefined)].filter(() => evaluate(TASK_POLICY.stopRun, { unfinished: true, reportingRun: false }).stopRuns);
     }
     const changed = meta.baseState !== task.meta.baseState ? 'state' : transition.record?.values !== undefined ? 'values' : 'none';
@@ -361,7 +363,7 @@ export class TaskTransition {
         throw new Error(`Reply-wait invariant violated on ${change.task.id}`);
       change.meta.version = change.task.meta.version + 1n;
     }
-    saveChanges(read, changes, next, after, cause);
+    saveChanges(read, changes, next, cause);
     settleClosingChanges(read, next, cause);
     noticeChanges(read, changes, next, reopened, below, cause);
     if (!runBoundary) assertSeatsCovered(read, next);
@@ -428,6 +430,18 @@ function workBelow(task: ControlMetadata, tasks: Iterable<ControlMetadata>) {
   return task.kind === 'task' ? activeBelow(task.id, tasks) : [];
 }
 
+/** A project stops the branches it has open instructions to and can still manage. */
+function stopBelow(read: ReadPoint, task: ControlTask): string[] {
+  const tasks = read.tasks.map(item => item.meta);
+  if (task.meta.kind === 'task') return workBelow(task.meta, tasks).map(item => item.id);
+  const assigned = new Set(read.openRequests(task.id).map(request => request.taskId));
+  return read.tasks.flatMap(child => {
+    if (child.meta.parentId !== task.id || child.meta.kind !== 'task' || child.meta.lifecycle !== 'active' ||
+        !assigned.has(child.id) || read.returns.hasUserWork(child)) return [];
+    return [child.id, ...workBelow(child.meta, tasks).map(item => item.id)];
+  });
+}
+
 /** The finished-branch rule over the tree after the write: the path above the change, and everything below what changed. */
 function assertBranch(after: readonly ControlMetadata[], next: NextChanges, below: BelowChange): void {
   // Validate the resulting path; an unchanged base checks it without propagating a new branch result.
@@ -453,17 +467,14 @@ function assertBranch(after: readonly ControlMetadata[], next: NextChanges, belo
 }
 
 /** The Tasks' next documents, and the stop epoch of each Task a stop reached. */
-function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChanges, after: readonly ControlMetadata[], cause: Cause): void {
+function saveChanges(read: ReadPoint, changes: readonly Change[], next: NextChanges, cause: Cause): void {
   const writer = taskWriter(read.tx.store.connection), [primary] = changes;
   if (primary) writer.save(primary.task.id, primary.task.hash, primary.meta, primary.task.meta.log.length, primary.values, primary.settings, primary.texts);
   writer.saveBatch([...next.values()].filter(change => change !== primary)
     .map(change => ({ id: change.task.id, expectedHash: change.task.hash, meta: change.meta, previousLength: change.task.meta.log.length })));
-  if (changes[0]?.meta.log.at(-1)?.stage?.action === 'stop') {
-    const stopped = changes[0].meta;
-    for (const id of [stopped.id, ...workBelow(stopped, after).map(item => item.id)]) {
-      read.tx.store.connection.prepare('INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id').run(id, cause.id);
-      touch(read.tx.store.connection, { kind: 'stop_epoch', id });
-    }
+  for (const id of primary?.stopScope ?? []) {
+    read.tx.store.connection.prepare('INSERT INTO task_stop_epochs(task_id,stop_id) VALUES (?,?) ON CONFLICT(task_id) DO UPDATE SET stop_id=excluded.stop_id').run(id, cause.id);
+    touch(read.tx.store.connection, { kind: 'stop_epoch', id });
   }
 }
 

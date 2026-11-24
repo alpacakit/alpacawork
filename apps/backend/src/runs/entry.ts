@@ -20,20 +20,26 @@ export function refuseSandboxedCaller(): void {
 type StopResult = { result: { cancelled: string[]; stop_requested: string[] }; lost: { id: string; pid: number }[] };
 
 /**
- * `roots` and the Runs below them down the caller chain, oldest first: what a stop reads, never the workspace's other
- * Runs. A coordinator's Run is no Task's, so it is not read (tx.get) and calls none.
+ * Read a stop's roots and their caller chain, oldest first. Project membership is independent work, so a stop
+ * rooted at a project Run follows only calls and replacements on the same project seat.
  */
 function calledFrom(store: RunStore, tx: RunTransaction, roots: readonly RunId[]): RunRecord[] {
-  return store.connection.prepare(`WITH RECURSIVE below(id) AS (SELECT value FROM json_each(?)
-    UNION SELECT r.id FROM runs r JOIN below b ON r.caller_run = 'R' || b.id
-      JOIN requests q ON q.id=r.request_id WHERE q.return_task_id IS NULL
-    UNION SELECT next.id FROM runs current JOIN below b ON current.id=b.id
-      JOIN runs next ON 'R'||next.id=json_extract(current.record,'$.supersededBy')) SELECT id FROM below ORDER BY id`)
+  return store.connection.prepare(`WITH RECURSIVE below(id, seat) AS (
+    SELECT r.id, CASE WHEN t.kind='project' THEN r.task_id END
+      FROM json_each(?) root JOIN runs r ON r.id=root.value
+      LEFT JOIN tasks t ON t.external_id=r.task_id
+    UNION SELECT r.id, b.seat FROM runs r JOIN below b ON r.caller_run = 'R' || b.id
+      JOIN requests q ON q.id=r.request_id
+      WHERE q.return_task_id IS NULL AND (b.seat IS NULL OR r.task_id=b.seat)
+    UNION SELECT next.id, b.seat FROM runs current JOIN below b ON current.id=b.id
+      JOIN runs next ON 'R'||next.id=json_extract(current.record,'$.supersededBy')
+      WHERE b.seat IS NULL OR next.task_id=b.seat
+    ) SELECT DISTINCT id FROM below ORDER BY id`)
     .all(JSON.stringify(roots.map(runNumber))).flatMap(row => tx.get(`R${Number(row.id)}`) ?? []);
 }
 
 /**
- * Stops `roots` and every Run below them in `tx`: each Run's stop effect, with its stop and cancel-input deliveries
+ * Stops the Runs in the roots' stop scope in `tx`, with each stop and cancel-input delivery
  * reserved under `operationId`. requestStop (run stop) and a stopped state report (task-reports) call it.
  */
 export function stopRunsIn(store: RunStore, tx: RunTransaction, roots: readonly RunId[], operationId?: string): StopResult {
@@ -65,7 +71,7 @@ export function stopRunsIn(store: RunStore, tx: RunTransaction, roots: readonly 
   return { result, lost };
 }
 
-/** run stop: the Run and every Run below it. A Task's unfinished work stops by its stopped report instead. */
+/** run stop: the Run and its stop scope. To stop a Task's work, use its stopped report. */
 export function requestStop(root: string, input: z.infer<typeof runStopInput>, operationId?: string): StopResult {
   refuseSandboxedCaller();
   const store = new RunStore(root, options);
