@@ -37,7 +37,7 @@
 alpacawork 是一个工具（AI harness），它运行你电脑上已安装的 Claude Code 和 Codex 智能体，并为它们指派工作。在一个聊天框里写下想做的事，与你对接的 AI（协调员）就会把它变成任务，指派给负责处理的 AI，并跟进进度。你要做的有三件事：提出委托、回答提问、验收结果。在手机上也能同样使用。
 
 <p align="center">
-  <img src="docs/images/demo-dark-zh-CN.webp" alt="在手机的输入框里写下一条请求并发送后，电脑的列表中出现三个并行推进的任务；确认送达的结果后右滑完成，对 AI 的提问选择一个方案作答；最后是手机和电脑并排的全貌" width="800">
+  <img src="docs/images/demo-dark-zh-CN.webp" alt="在手机的输入框里写下一条请求并发送后，电脑的列表中出现三个并行推进的任务；验收结果后右滑标为已完成，对 AI 的提问选择一个方案作答；最后是手机和电脑并排的全貌" width="800">
 </p>
 
 ## 安装
@@ -93,7 +93,7 @@ https://github.com/user-attachments/assets/a4427480-dced-4c59-86ae-12286e97d017
 - [入门指南](docs/zh-CN/getting-started.md) — 从安装、发出一个委托到确认结果
 - [文档首页](docs/zh-CN/README.md) — 使用方法、设置、遇到问题时等全部页面的一览
 - 发现 bug 时，请在 [Issues](https://github.com/alpacakit/alpacawork/issues) 中报告
-- 版本发布公告发布在 X 的 [@codemafia0000](https://x.com/codemafia0000)
+- 新版本公告发布在 X 的 [@codemafia0000](https://x.com/codemafia0000)
 
 ## 许可证
 

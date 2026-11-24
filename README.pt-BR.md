@@ -70,7 +70,7 @@ No terminal, `alpacawork open` também abre a tela.
 
 ## O que ele faz
 
-Veja o fluxo completo, do pedido ao resultado, nas telas reais (cerca de 100 segundos, sem som).
+Veja o fluxo completo nas telas reais, do pedido à conclusão da tarefa (cerca de 100 segundos, sem som).
 
 https://github.com/user-attachments/assets/21326312-73ba-4cd7-86da-3d5e7192b6e9
 

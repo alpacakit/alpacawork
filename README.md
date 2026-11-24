@@ -4,7 +4,7 @@ branch. Link to the guides in this README with absolute GitHub URLs so the npm c
 rendered guides and their section links. Put pictures in docs/images/. The package omits GIFs
 and WebPs from that directory. Write links and pictures as inline Markdown links or as double-quoted src,
 srcset or href attributes. Image descriptors in srcset are preserved.
-Other forms are not rewritten for npm.
+Other forms of relative path are not rewritten for npm.
 npm resolves no relative path, so the release rewrites each one in the packaged copy
 (apps/backend/src/release/npm-readme.ts): a file the package carries opens from
 https://unpkg.com/alpacawork@<version>/<path>. Pictures outside the package are served from
@@ -12,9 +12,9 @@ https://raw.githubusercontent.com/alpacakit/alpacawork/<release-commit>/<path>.
 Other links outside the package open https://github.com/alpacakit/alpacawork/blob/main/<path>.
 The setup guide an AI downloads uses a GitHub raw URL so the AI can read the Markdown directly.
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
-a line of its own; it drops a <video> tag that points anywhere else. npm shows such a URL as plain
-text, so the packaged copy turns that line into a link. To change a demo video, attach the new file
-to a pull request comment (gh pr comment --attach) and write the URL GitHub gives it.
+a line of its own; it drops a <video> tag that points anywhere else. The packaged copy turns that
+line into an explicit link to the video. To change a demo video, attach the new file to a pull
+request comment (gh pr comment --attach) and write the URL GitHub gives it.
 The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages) so that it shows
 larger than a heading can; its alt text carries the name.
 The pictures and videos show made-up data on the dark-theme screens. The demo under the introduction
@@ -70,7 +70,7 @@ to README.md#install): keep those headings, or change the links with them.
 alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 <p align="center">
-  <img src="docs/images/demo-dark.webp" alt="A request typed into the phone's chat box becomes three tasks that run in parallel in the PC's list; a result is checked and swiped done, and a question from the AI is answered by picking an option; then the phone and the PC side by side" width="800">
+  <img src="docs/images/demo-dark.webp" alt="A request typed into the phone's chat box becomes three tasks that run in parallel in the PC's list; a result is checked and a swipe marks its task complete, and a question from the AI is answered by picking an option; then the phone and the PC side by side" width="800">
 </p>
 
 ## Install
@@ -103,7 +103,7 @@ In a terminal, `alpacawork open` also opens it.
 
 ## What it does
 
-See the whole flow, from request to done, on the real screens (about 100 seconds, no sound).
+See the whole flow on the real screens, from sending a request to marking a task complete (about 100 seconds, no sound).
 
 https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
 

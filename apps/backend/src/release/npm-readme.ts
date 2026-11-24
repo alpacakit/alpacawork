@@ -4,8 +4,9 @@
  * package carries opens from this version of the published package on unpkg. Other pictures come from
  * the source commit on GitHub, which shows them only while the repository is public; other links open the
  * corresponding repository page.
- * Only `[text](path)`, `src="path"`, `srcset="..."` and `href="path"` are rewritten; the README's header comment says so.
- * A line that is only a video GitHub hosts (it plays there) becomes a link to it: npm would show the bare URL as plain text.
+ * Of relative paths, only `[text](path)`, `src="path"`, `srcset="..."` and `href="path"` are rewritten; the README's header comment says so.
+ * A line that is only the URL of a video GitHub hosts (GitHub plays it in place) becomes an explicit link to the video,
+ * so opening it does not depend on a renderer linking bare URLs.
  */
 export function npmReadme(text: string, packageName: string, version: string, source: string, repositoryUrl: string | undefined,
   inPackage: (path: string) => boolean): string {
