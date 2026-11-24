@@ -22,6 +22,8 @@ function show(turns: CoordinatorTurn[]) {
   setConversationState({ conversation: conversation(turns) });
   setConversationState({ open: true, expanded: true, opening: opening(turns) });
   render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
+  // A person is at the page: only then does an open conversation read.
+  fireEvent.pointerDown(document);
 }
 beforeAll(() => startI18n());
 beforeEach(async () => { screenData(); await i18n.changeLanguage("en"); setConversationState(useConversation.getInitialState()); });

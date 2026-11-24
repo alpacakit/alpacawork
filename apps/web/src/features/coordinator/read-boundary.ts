@@ -22,23 +22,44 @@ export function learn(taken: Opening, turns: readonly CoordinatorTurn[], request
     settled: request >= taken.waitFor };
 }
 
-/** An open conversation on a visible page reads every completed reply, including folded history. */
+/**
+ * How long a person's last action on a page keeps it reading what arrives. Every screen shares one read state, so a
+ * page left open with nobody at it (a desktop tab stays "visible" while its person is away) must not read for them.
+ */
+export const ATTENDED_MS = 30_000;
+/**
+ * Only input a person makes: pointer moves are left out because browsers send them when the page changes under a
+ * still pointer, and scroll because the thread scrolls itself to a new reply.
+ */
+const ACTIONS = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
+/** When a person last acted on each page; kept across conversations, so the press that opens one still counts. */
+const actedAt = new WeakMap<Document, number>();
+const attended = (doc: Document) => Date.now() - (actedAt.get(doc) ?? -Infinity) <= ATTENDED_MS;
+
+/**
+ * An open conversation on a visible page that a person has acted on recently reads every completed reply, including
+ * folded history; a reply that arrives at an unattended page stays unread until the next action or showing.
+ */
 export function useConversationReading(doc: Document, rootScope: string, conversationId: string | null) {
   useEffect(() => {
     const read = () => {
       const state = useConversation.getState();
       if (!state.expanded || !state.conversation || state.root !== rootScope || state.conversation?.id !== conversationId
-        || doc.visibilityState !== "visible") return;
+        || doc.visibilityState !== "visible" || !attended(doc)) return;
       state.observeSeen(state.conversation.turns.filter(isUnread).map(turn => turn.id));
     };
+    const act = () => { actedAt.set(doc, Date.now()); read(); };
     const leave = () => useConversation.getState().flushSeen(true);
-    const visibility = () => { if (doc.visibilityState === "visible") read(); else leave(); };
+    // Bringing the page into view is itself a person's action.
+    const visibility = () => { if (doc.visibilityState === "visible") act(); else leave(); };
     const stop = useConversation.subscribe(read);
+    for (const type of ACTIONS) doc.addEventListener(type, act, { capture: true, passive: true });
     doc.addEventListener("visibilitychange", visibility);
     doc.defaultView?.addEventListener("pagehide", leave);
     read();
     return () => {
       stop();
+      for (const type of ACTIONS) doc.removeEventListener(type, act, { capture: true });
       doc.removeEventListener("visibilitychange", visibility);
       doc.defaultView?.removeEventListener("pagehide", leave);
     };
