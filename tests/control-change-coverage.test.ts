@@ -264,7 +264,7 @@ test('seeded real operations cover writers and every committed row change has it
   await step('finish first conversation turn', () => runs.write(tx => tx.finish({ ...tx.get(talked.id)!, state: 'succeeded',
     ended_at: new Date().toISOString() }, { state: 'present', text: 'Synthetic reply' })));
   const ask = (instructions: string | null) => write(db => requestCompaction(db, { taskId: compactTask.id,
-    placementId: compactSeat.placement.id, instructions, at: new Date().toISOString() }));
+    placementId: compactSeat.placement.id, instructions, at: new Date().toISOString(), nextValues: () => null }));
   await step('request compaction', () => ask(null));
   await step('ask again while pending', () => ask(null));
   // A queued Run moved to another AI before it was sent (AI fallback), and a placement with its own AI rows.
@@ -303,6 +303,11 @@ test('seeded real operations cover writers and every committed row change has it
   await step('request its replacement', () => ask(null));
   await step('settle the replaced one unsent', () => settle(null));
   await step('drop for a new conversation', () => carry('start'));
+  await step('request one for Copilot on Auto', () => ask(null));
+  const auto = await step('drop it at a start without a chosen model', () => write(db => claimCompaction(db, compactSeat.placement.id,
+    carrying.attemptId, { launch: { ...carrying.invocation.launch, adapter: 'copilot', values: {} }, mode: 'resume' }, new Date().toISOString())));
+  assert.equal(auto, null);
+  assert.equal(latest(), 'dropped', 'Copilot cannot compact on its automatic choice of model');
   await step('request one never sent', () => ask(null));
   await step('carry the unsent one', () => carry());
   await step('return it to pending', () => settle(null));

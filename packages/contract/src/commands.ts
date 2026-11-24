@@ -373,7 +373,7 @@ const definitions = {
   ], { output: agentCompactResultSchema, help: help(
     'The agent summarizes the conversation so far with the conversation\'s own model and continues from the summary.',
     'Cost, once per compaction: the model reads the conversation to summarize it (input about the conversation\'s current',
-    'size, tens of thousands of tokens for a long one, much of it cache reads where the agent caches) and writes a summary',
+    'size, up to the agent\'s context window for a long one, much of it cache reads where the agent caches) and writes a summary',
     'of a few thousand tokens. Codex compacts on its server and shows no count.',
     'When: at the conversation\'s next start, before its first instruction, never inside a turn. A Run that compacts its own',
     'conversation keeps working; its next continuation starts compacted. Work that joins a conversation already running',
