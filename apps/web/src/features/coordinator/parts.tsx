@@ -109,7 +109,7 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
       <WorkLine data-ask-thinking step={step} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
         end={<>{time}<Chevron open={open} /></>} /></button>
       : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
-    {open && worked && <StepList steps={steps} className="mt-1" />}
+    {open && worked && <StepList steps={steps} className={CHAT_LOG} />}
   </div></div>;
 }
 /**
@@ -118,6 +118,8 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
  * of a message is said).
  */
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
+/** The conversation is short: its steps' box keeps the answer under it in sight. */
+const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)]";
 function Chevron({ open }: { open: boolean }) {
   return <Icon name="down" className={cn("size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-180")} />;
 }
@@ -156,7 +158,7 @@ export function AnswerSteps({ run }: { run: string }) {
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-xs text-muted hover:text-ink")}>
       <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
       <Chevron open={open} /></button>
-    {open && <StepList steps={steps} className="mt-1" />}
+    {open && <StepList steps={steps} className={CHAT_LOG} />}
   </div>;
 }
 
