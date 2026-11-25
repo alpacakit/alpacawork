@@ -364,6 +364,7 @@
       "question_destination_invalid": "请将提问发给同一项目中活动的祖先任务，或发给 user",
       "question_does_not_exist": "未找到提问",
       "question_does_not_exist_on_task": "指定的提问不在此任务中",
+      "question_kind_missing": "任务的“提问”（decide）中第 {{n}} 问没有类型。请先在 decide_kind 中写 accept 或 choose 再发送",
       "question_requires_ask_to": "提问需要 --ask-to <Task ID>|user",
       "recovery_continuation_credential_mismatch": "恢复续接凭据与已受理的运行不一致",
       "referenced_run_does_not_exist": "未找到所引用的运行",

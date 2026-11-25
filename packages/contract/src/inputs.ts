@@ -6,6 +6,7 @@ import { projectColorSchema } from '@alpacawork/raw/project-settings';
 import { folderNameProblem } from './workspace-contract.js';
 import { parseDocument } from 'yaml';
 import { MAX_DOCUMENT } from '@alpacawork/raw/values';
+import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
   logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
   titleSchema, urgentReasonSchema } from './fields.js';
@@ -70,7 +71,7 @@ function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readon
 }
 
 export const taskGetIncludes = [
-  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations',
+  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'instructionKinds',
 ] as const;
 export type TaskGetInclude = typeof taskGetIncludes[number];
 export const taskGetInput = z.object({ task: taskIdSchema, log: queryCount.optional(), runs: queryCount.optional(),
@@ -188,14 +189,20 @@ export const taskRequestShape = z.object({ task: taskIdSchema, instruction: inst
   compactFocus: compactFocusSchema.optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
-  expectedHeadRun: runIdSchema.optional() });
+  expectedHeadRun: runIdSchema.optional(),
+  /** What the instruction is (raw INSTRUCTION_KINDS), and for a fix what kind of fix (FIX_KINDS). */
+  instructionKind: z.enum(INSTRUCTION_KINDS).optional(),
+  fixes: z.array(z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS[number][]])).min(1).max(FIX_KINDS.length).optional() });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
     keys: ['agent', 'newConversation', 'compact', 'compactFocus',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',
-      'expectedTaskHash', 'expectedPlacementRevision'] },
+      'expectedTaskHash', 'expectedPlacementRevision', 'instructionKind', 'fixes'] },
+  // A fix says what kind of fix it is; nothing else names one.
+  { kind: 'required', scope: 'With {instructionKind} fix', applies: value => value.instructionKind === 'fix', keys: ['fixes'] },
+  { kind: 'forbidden', scope: 'Without {instructionKind} fix', applies: value => value.instructionKind !== 'fix', keys: ['fixes'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
   { kind: 'forbidden', scope: 'With {newConversation}', applies: value => value.newConversation === true, keys: ['compact'] },
   { kind: 'forbidden', scope: 'Without {compact}', applies: value => value.compact !== true, keys: ['compactFocus'] },
@@ -235,6 +242,14 @@ export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsible
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
 /** run list: the unfinished Runs, one page at a time in Run-number order, optionally below one Task. */
 export const runListInput = z.object({ under: taskIdSchema.optional(), limit: searchOptions.limit, cursor: searchOptions.cursor }).strict();
+/** run conditions: what one Run ran under. */
+export const runConditionsInput = z.object({ run: runIdSchema });
+/**
+ * run steps: a Run's steps with when each started and ended, `from` on (the latest `limit` without `from`); with
+ * `step`, what that one step ran and got back instead.
+ */
+export const runStepsInput = z.object({ run: runIdSchema, from: z.number().int().nonnegative().optional(),
+  limit: z.number().int().positive().max(200).optional(), step: z.number().int().nonnegative().optional() });
 /** run stop stops one Run; a Task with its subtree stops by task report --state stopped. */
 export const runStopInput = z.object({ run: runIdSchema, ...writeRecordShape });
 /**

@@ -55,7 +55,7 @@ export async function reviewTimes() {
    * request.
    */
   const working = async (title: string, from?: { id: string; placementId: string; run: Parameters<TaskRequestService['request']>[2] }) => {
-    const task = (await commands.create({ parentId: from?.id ?? project, userRequested: !from, tasks: [{ title, values: { decide: [{ decide_question: 'Which one?', decide_note: 'A or B.' }] } }] })).tasks[0]!;
+    const task = (await commands.create({ parentId: from?.id ?? project, userRequested: !from, tasks: [{ title, values: { decide: [{ decide_kind: 'choose', decide_question: 'Which one?', decide_note: 'A or B.' }] } }] })).tasks[0]!;
     const owner = await assignResponsible(root, await current(task.id), 'fake');
     const input = { task: task.id, body: 'Work', opId: randomUUID(), expectedTaskHash: (await current(task.id)).hash,
       expectedPlacementRevision: owner.revision };

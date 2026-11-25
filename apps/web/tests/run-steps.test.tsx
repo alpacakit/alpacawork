@@ -41,7 +41,8 @@ beforeEach(() => { server.steps = []; server.version = 0; server.generation = 1;
 afterEach(cleanup);
 
 const entry = (n: number, text: string, rest: Partial<RunStepEntry> = {}): Omit<RunStepEntry, 'changed'> => ({ n, id: `s${n}`, tool: 'Bash',
-  kind: 'command', text, more: 0, about: null, state: 'done', ...rest });
+  kind: 'command', text, more: 0, about: null, state: 'done', startedAt: null, startSource: null, endedAt: null, endSource: null,
+  fingerprint: null, output: null, parentId: null, subagentSteps: 0, ...rest });
 const lines = () => [...document.querySelectorAll('[data-run-step]')].map(item => item.textContent);
 
 test('the work line says the tool and what it runs on one line, or how many steps are listed under it', () => {

@@ -9,6 +9,7 @@ import type { taskRequestInput } from '@alpacawork/contract/inputs';
 import { questionsOf, type TaskActor } from '@alpacawork/raw';
 import { questionSnapshot, replyQuestion, assertQuestionReplyApplicable } from './question-rules.js';
 import type { z } from 'zod';
+import type { DatabaseSync } from 'node:sqlite';
 import type { Caller } from './authorize.js';
 import { RequestService } from './requests.js';
 import { answer } from './task-questions.js';
@@ -42,7 +43,8 @@ export class TaskRequestService {
         const question = replyQuestion(task.id, task.meta.log, questionId);
         // The same answer replay stays an answer, even though its first commit closed the question.
         if (question.closing === null || question.closing.id === input.opId && question.closing.kind === 'answered') {
-          answer(tx, { actor, taskId: input.task, questionId, body: input.body, opId: input.opId });
+          answer(tx, { actor, taskId: input.task, questionId, body: input.body, opId: input.opId },
+            screenAnswer(db, actor, task.id, questionId));
           return { task: controlTaskHead(tasks.get(input.task)), outcome: { kind: 'answered' as const, opId: input.opId } };
         }
         assertQuestionReplyApplicable(task.id, question, questionSnapshot(tasks.related(task.id).tasks));
@@ -76,8 +78,23 @@ export class TaskRequestService {
       targetPlacementId: input.agent, mode: input.newConversation ? 'new' : undefined,
       ...(input.compact ? { compact: { focus: input.compactFocus ?? null } } : {}),
       selected: input.selected, aiStack: input.aiStack, cwd: input.cwd },
-    { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined });
+    { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined,
+      ...(input.instructionKind ? { label: { kind: input.instructionKind, fixes: input.fixes ?? [] } } : {}) });
     return { task: controlTaskHead(await new ControlTaskStore(this.root).get(input.task)),
       outcome: { kind: 'request_accepted', opId: input.opId, request } };
   }
+}
+
+/**
+ * The person's own words when a coordinator passes on their answer from the screen: the screen message the
+ * coordinator says it acts for (`--source-request`), when that message answers this question and no other (with two, its
+ * words do not say which of its `<n>-<word>` labels is whose).
+ */
+function screenAnswer(db: DatabaseSync, actor: TaskActor, task: string, question: string): string | null {
+  if (actor.kind !== 'main' || !actor.message) return null;
+  const row = db.prepare(`SELECT q.body AS body, json_extract(r.record, '$.message.answers') AS answers FROM requests q
+    JOIN runs r ON json_extract(r.record, '$.requestId') = q.id WHERE q.id = ? AND q.conversation_id IS NOT NULL`).get(actor.message);
+  if (!row || typeof row.answers !== 'string') return null;
+  const answers = JSON.parse(row.answers) as { task: string; question: string }[];
+  return answers.length === 1 && answers[0]!.task === task && answers[0]!.question === question ? String(row.body) : null;
 }

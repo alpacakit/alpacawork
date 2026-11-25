@@ -182,6 +182,7 @@ export function claudeActivity(value: unknown, received: string): ActivityEvent[
     const events = blocks.flatMap((block): ActivityEvent[] => {
       if (row.type === 'assistant' && block.type === 'tool_use') return [{ at, kind: 'tool_start',
         toolName: block.name, id: block.id, ...toolCall(block.name, block.input),
+        ...typeof row.parent_tool_use_id === 'string' ? { parent: row.parent_tool_use_id } : {},
         command: rootAssistant && block.name === 'Bash' ? commandOf(object(block.input).command) : null }];
       if (row.type === 'user' && block.type === 'tool_result') {
         const output = toolResultText(block.content);

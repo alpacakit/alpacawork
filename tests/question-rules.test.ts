@@ -13,7 +13,7 @@ const log = (id: string, second: number, fields: Record<string, unknown>): TaskL
   fromState: null, toState: null, ...fields,
 });
 const ask = (id: string, second: number, askedTo: string | null) =>
-  log(id, second, { kind: 'asked', title: 'Choose', description: 'Question summary', askedTo, decide: [{ decide_question: 'Choose' }], runId: 'R1' });
+  log(id, second, { kind: 'asked', title: 'Choose', description: 'Question summary', askedTo, decide: [{ decide_kind: 'choose', decide_question: 'Choose' }], runId: 'R1' });
 const answer = (id: string, questionId: string) =>
   log(id, 100, { kind: 'answered', actor: { kind: 'human' }, questionId });
 function node(id: string, parent: string | null, questions: TaskLog[] = [], options: { project?: boolean; lifecycle?: Node['meta']['lifecycle'] } = {}): Node {

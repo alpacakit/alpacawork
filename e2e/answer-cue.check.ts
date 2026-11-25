@@ -24,9 +24,9 @@ async function begin(page: Page, runtime: Runtime, width = 1440, text?: TaskValu
   configureCoordinator(runtime.root);
   // The first question's shared text names a Task and a file of the Task's folder.
   const values = { decide: [
-    { decide_question: 'Which option', decide_choices: [{ decide_choice: 'Alt1 Send current input', decide_choice_detail: 'Send' },
+    { decide_kind: 'choose', decide_question: 'Which option', decide_choices: [{ decide_choice: 'Alt1 Send current input', decide_choice_detail: 'Send' },
       { decide_choice: 'Alt2 Decide later', decide_choice_detail: 'Hold it' }], decide_note: 'Related: T111 [Note](note.md)' },
-    { decide_question: 'Additional review', decide_choices: [{ decide_choice: 'Alt1 Proceed', decide_choice_detail: 'Select it' },
+    { decide_kind: 'choose', decide_question: 'Additional review', decide_choices: [{ decide_choice: 'Alt1 Proceed', decide_choice_detail: 'Select it' },
       { decide_choice: 'Alt2 Later', decide_choice_detail: 'Put on hold' }] }] };
   const made = await commandPost(page.request, runtime.origin + '/api/commands/task/new', { data: { parent: SAMPLE_PROJECT.id, title: 'Choice view', values: text ?? values } });
   expect(made.ok(), await made.text()).toBe(true);

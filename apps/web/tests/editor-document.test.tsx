@@ -177,8 +177,8 @@ test('sent references use ID format without borrowing a title from another task'
 
 /** What Q1 asks as the server fixed it when it was asked: the screen draws its choices from it alone. */
 const asked = [
-  { decide_question: 'Storage location', decide_choices: [{ decide_choice: 'Option1 Local', decide_choice_detail: 'text' }], decide_stop: 'Nothing is stored' },
-  { decide_question: 'Color', decide_choices: [{ decide_choice: 'Blue', decide_choice_detail: 'text' }] }];
+  { decide_kind: 'choose', decide_question: 'Storage location', decide_choices: [{ decide_choice: 'Option1 Local', decide_choice_detail: 'text' }], decide_stop: 'Nothing is stored' },
+  { decide_kind: 'choose', decide_question: 'Color', decide_choices: [{ decide_choice: 'Blue', decide_choice_detail: 'text' }] }];
 
 test('a choice of what the question fixed goes into the draft naming that question, as `<n>-<first word of its name>`', () => {
   const [first, second] = decideOf(asked);

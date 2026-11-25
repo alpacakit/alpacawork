@@ -30,6 +30,9 @@ import { RunStore } from '@alpacawork/runs';
 import { type TaskActor } from '@alpacawork/raw';
 import { requestStop } from './runs/entry.js';
 import { readRunFiles } from './runs/view.js';
+import { readRunStepIndex } from './runs/run-steps.js';
+import { readConditionsView } from './runs/conditions.js';
+import { RUN_STEPS_PAGE_LIMIT } from '@alpacawork/contract/run';
 import { emptyInput, configSetInput, chooseFolderInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
 import { deleteField, listFields, readSchema, setField } from './control/field-commands.js';
 import { now } from '@alpacawork/raw';
@@ -482,6 +485,25 @@ export const taskCommands = {
     run: async (root, input, context) => {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
       return readRunFiles(root, input.run, input.kind ?? 'result');
+    },
+    readThread: () => true,
+  },
+  'run/steps': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      const index = await readRunStepIndex(root, input.run);
+      if (input.step === undefined) return index ? index.range(input.from, input.limit ?? RUN_STEPS_PAGE_LIMIT)
+        : { steps: [], total: 0, version: 0, complete: true, generation: 0 };
+      const detail = index ? await index.detail(input.step) : null;
+      if (!detail) throw new Problem(PROBLEM_CODE.notFound, 'Step does not exist', { run: input.run }, { reason: { kind: 'run_does_not_exist' } });
+      return detail;
+    },
+    readThread: () => true,
+  },
+  'run/conditions': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      return readConditionsView(root, input.run);
     },
     readThread: () => true,
   },

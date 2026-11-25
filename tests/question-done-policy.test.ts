@@ -8,7 +8,7 @@ import { decide, type Caller, type TaskFacts } from '@alpacawork/contract/comman
 test('one log fold distinguishes open user questions from closed questions and questions to ancestors', () => {
   const asked = (askedTo: string | null): TaskLog => ({ id: 'Q1', kind: 'asked', at: '2026-10-31T00:00:00Z',
     title: 'Which?', description: 'A or B', actor: { kind: 'placement', placementId: 'P1' }, fromState: null, toState: null, askedTo,
-    decide: [{ decide_question: 'Which?' }] });
+    decide: [{ decide_kind: 'choose', decide_question: 'Which?' }] });
   assert.equal(hasOpenUserQuestion([]), false);
   assert.equal(hasOpenUserQuestion([asked('T2')]), false);
   assert.equal(hasOpenUserQuestion([asked(null)]), true);

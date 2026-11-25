@@ -43,7 +43,7 @@ const config = stringify({ limits: { automatic_per_placement: 20 }, agents: {
   fake: fixtureAgentSetting('codex'), steer: fixtureAgentSetting('claude'),
 } });
 /** A question asks its Task's decide value. */
-const decide = { decide: [{ decide_question: 'Please decide' }] };
+const decide = { decide: [{ decide_kind: 'choose', decide_question: 'Please decide' }] };
 type Placement = { id: string; revision: number };
 type Receipt = { requestId: string; runId: string };
 
@@ -293,7 +293,7 @@ test('W2: a question to the parent wakes it at once while its cycle goes on; the
   const h = await fixture(t, { children: 2 });
   const first = await h.human(); h.start(first.runId);
   const [child] = h.childrenTasks;
-  const asking = [{ decide_question: 'Which layout?', decide_choices: [
+  const asking = [{ decide_kind: 'choose', decide_question: 'Which layout?', decide_choices: [
     { decide_choice: 'Sidebar Keep it', decide_choice_detail: 'Nothing moves', decide_choice_recommended: 'No retraining' },
     { decide_choice: 'Tabs' }], decide_note: 'Both fit a phone', decide_stop: 'The redesign is dropped' }];
   seedValues(h.root, child!.id, { decide: asking });
@@ -306,7 +306,7 @@ test('W2: a question to the parent wakes it at once while its cycle goes on; the
   assert.equal(asked?.askedTo, h.parent.id, 'asked of the requester, fixed when asked');
   // What it asks is fixed in the asking record itself, as the Task's decide value was then; no text is kept beside it.
   assert.deepEqual(asked?.decide, asking);
-  seedValues(h.root, child!.id, { decide: [{ decide_question: 'Rewritten since' }] });
+  seedValues(h.root, child!.id, { decide: [{ decide_kind: 'choose', decide_question: 'Rewritten since' }] });
   assert.deepEqual((await h.current(child!.id)).meta.log.find(entry => entry.id === question)?.decide, asking);
   const control = new ControlStore(h.root, { busyTimeoutMs: 1000 });
   try { assert.equal(control.read(db => Number(db.prepare('SELECT count(*) AS n FROM log_texts WHERE log_id=?').get(question)!.n)), 0); }

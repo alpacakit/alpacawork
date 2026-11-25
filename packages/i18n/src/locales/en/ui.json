@@ -204,6 +204,10 @@
     "decide_choices": {
       "title": "Choices"
     },
+    "decide_kind": {
+      "hint": "`accept` when it asks whether to take a result this task made as it is (merge it, adopt it); `choose` for every other decision (options, permission to publish or deploy, a question without choices). Required when asking.",
+      "title": "Question kind"
+    },
     "decide_note": {
       "hint": "Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.",
       "title": "Note"

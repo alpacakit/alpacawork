@@ -15,7 +15,7 @@ test('fixture tasks and questions keep children internal', async t => {
   const root = mkdtempSync(join(tmpdir(), 'alpacawork-e2e-task-seed-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const project = initializeControlFixture(root), top = seedTask(root, project, 'Top');
-  const child = seedTask(root, top.id, 'Child', { decide: [{ decide_question: 'Which way?', decide_note: 'A or B' }] });
+  const child = seedTask(root, top.id, 'Child', { decide: [{ decide_kind: 'choose', decide_question: 'Which way?', decide_note: 'A or B' }] });
   const people = new PlacementStore(root);
   try {
     for (const task of [top, child]) people.createAndPlace({ taskId: task.id, profileKey: 'fake', responsible: true });

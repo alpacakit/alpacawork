@@ -70,7 +70,7 @@ test('error plus open question preserves original askedTo, what it asked and hol
   const asked = tree.tasks.find(row => row.id === task.id)!.log.find(entry => entry.id === question)!;
   assert.equal(tree.tasks.find(row => row.id === task.id)!.hold, true);
   assert.equal(tree.balls[task.id]?.holder, 'user');
-  assert.deepEqual([asked.askedTo, asked.decide], [null, [{ decide_question: 'Which way?' }]]);
+  assert.deepEqual([asked.askedTo, asked.decide], [null, [{ decide_kind: 'choose', decide_question: 'Which way?' }]]);
   await f.answer(task.id, question);
   assert.deepEqual([(await f.get(task.id)).meta.baseState, (await f.get(task.id)).meta.hold], ['error', true]);
 });

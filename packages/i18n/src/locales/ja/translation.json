@@ -364,6 +364,7 @@
       "question_destination_invalid": "問いの宛先は同じプロジェクトの有効な祖先タスクかuserを指定してください",
       "question_does_not_exist": "問いがありません",
       "question_does_not_exist_on_task": "このタスクに指定された問いがありません",
+      "question_kind_missing": "タスクの「質問」（decide）の {{n}} 問目に種類がありません。decide_kind に accept か choose を書いてから送信してください",
       "question_requires_ask_to": "問いには--ask-to <Task ID>|userが必要です",
       "recovery_continuation_credential_mismatch": "復旧の再開資格が、受け付けたRunと一致しません",
       "referenced_run_does_not_exist": "参照先のRunがありません",
