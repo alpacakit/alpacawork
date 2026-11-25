@@ -48,8 +48,7 @@
     "reading": "Loading…",
     "truncated": "Showing the first {{limit}}. Type a name in the field to narrow them.",
     "up": "Up",
-    "use": "Use this folder",
-    "where": "Create inside {{path}}"
+    "use": "Use this folder"
   },
   "formDialog": {
     "cancel": "Cancel"

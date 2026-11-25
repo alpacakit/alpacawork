@@ -101,7 +101,7 @@ export function CreateProject() {
         <ProjectOptions projects={projects} />
       </NativeSelect>}
     </FormField>
-    <FormField form={form} name="cwd" id="project-cwd" label={t("project.cwd")} optional
+    <FormField form={form} name="cwd" id="project-cwd" label={t("project.cwd")}
       hint={above ? t("project.locationInherits", { path: above }) : t("project.locationRoot", { path: root })}>
       {(field) => <FolderInput {...field} value={field.value ?? ""} />}
     </FormField>

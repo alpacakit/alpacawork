@@ -48,8 +48,7 @@
     "reading": "正在加载…",
     "truncated": "仅显示前 {{limit}} 个。在输入框中输入名称可缩小范围。",
     "up": "上一级",
-    "use": "使用此文件夹",
-    "where": "在 {{path}} 中创建"
+    "use": "使用此文件夹"
   },
   "formDialog": {
     "cancel": "取消"

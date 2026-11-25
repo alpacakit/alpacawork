@@ -292,7 +292,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     if (shown) setCameFrom(shown.path.slice(to.replace(/\/+$/, "").length + 1).split("/")[0] || null);
     go(to);
   };
-  const row = "flex min-h-8 w-full items-center gap-2 rounded-xs px-2 text-left text-sm hover:bg-hover narrow:min-h-control-lg";
+  const row = "flex min-h-9 w-full items-center gap-2 rounded-xs px-2.5 text-left text-sm hover:bg-hover narrow:min-h-control-lg narrow:text-md";
 
   // The field, Choose and the list are one control: it is left (onBlur) only when the focus goes outside all of them.
   return <div className={cn("flex flex-col gap-1.5", className)}
@@ -310,7 +310,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         placeholder={placeholder ?? (start.data ? t("folderInput.example", { path: fromHome(inside(start.data.path, "my-work"), start.data.home) }) : undefined)}
         role="combobox" aria-autocomplete="list" aria-expanded={offering} aria-controls={offering ? `${id}-offered` : undefined}
         aria-activedescendant={offering && active >= 0 ? `${id}-offered-${active}` : undefined}
-        className="min-w-0 flex-1 font-mono"
+        className="min-w-0 flex-1 font-mono placeholder:font-sans"
         onChange={(event) => {
           // Typing goes back to the offers: the list is left where it is, without putting back what it had.
           if (walking !== false) { opening.current++; setWalking(false); setShown(null); setNaming(null); setReason(null); }
@@ -330,7 +330,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         className="absolute inset-x-0 top-full z-10 m-0 mt-1 max-h-[13.5rem] list-none overflow-auto rounded-sm border border-lit-line bg-raised p-1 shadow-float">
       {offered.map((name, at) => <li key={name} id={`${id}-offered-${at}`} role="option" aria-selected={at === active}
         onMouseDown={(event) => event.preventDefault()} onClick={() => take(name)}
-        className={cn(row, "cursor-pointer font-mono", at === active && "bg-hover")}>
+        className={cn(row, "cursor-pointer", at === active && "bg-hover")}>
         <Icon name="folder" className="size-3.5 flex-none text-soft" />
         <span className="min-w-0 truncate" title={name}>{name}</span>
       </li>)}
@@ -344,20 +344,21 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     </p>}
     {walking === false && made !== null && made === value && <p data-folder-made className="m-0 flex items-center gap-1 text-xs text-muted">
       <Icon name="check" className="size-3.5 text-done" />{t("folderInput.made")}</p>}
-    {walking !== false && <div ref={list} data-folder-list className="flex flex-col rounded-sm border border-line bg-lit">
+    {/* Brought into view with room below it, clear of the dialog's own buttons. */}
+    {walking !== false && <div ref={list} data-folder-list className="flex scroll-mb-6 flex-col rounded-sm border border-line bg-lit">
       {/* One line however deep: where it starts (~ or /) always shows, the steps between give way first, and the
           folder you are in is cut last. The list below never moves. */}
       <div className="flex flex-none items-center gap-1 border-b border-line px-1.5">
       <Button type="button" variant="ghost" size="icon" aria-label={t("folderInput.up")} title={t("folderInput.up")} disabled={!shown?.parent}
         className="flex-none narrow:size-11" onClick={() => back(shown!.parent!)}><Icon name="arrowUp" className="size-3.5" /></Button>
       <nav aria-label={t("folderInput.path")}
-        className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden text-sm whitespace-nowrap narrow:h-11">
+        className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden text-sm whitespace-nowrap narrow:h-11 narrow:text-md">
         {shown && crumbs(shown.path, shown.home).map((crumb, at, all) => {
           const last = at === all.length - 1;
-          // The folders above give way first (to a few letters, at most almost half the line, a third on a phone), so
-          // the name of the folder you are in is cut last.
+          // The folders above give way first (to a few letters, never less, at most almost half the line, a third on a
+          // phone), so the name of the folder you are in is cut last.
           return <span key={crumb.path} className={cn("flex min-w-0 items-center gap-0.5",
-            at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] min-w-8 shrink-[100] narrow:max-w-[32%]")}>
+            at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] min-w-16 shrink-[100] narrow:max-w-[32%]")}>
             {at > 0 && <Icon name="right" className="size-3 flex-none text-soft" />}
             {last
               ? <span aria-current="location" className="flex min-w-0 items-center gap-1 px-1.5 font-semibold">
@@ -386,7 +387,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
             <Input ref={nameInput} value={naming} aria-label={t("folderInput.name")} placeholder={t("folderInput.placeholder")} disabled={making}
               dir="auto" autoComplete="off" spellCheck={false} autoCapitalize="off" autoCorrect="off"
               aria-invalid={!!(problem && problem !== "empty") || !!makeFailure}
-              className="h-8 min-w-0 flex-1 narrow:h-control-lg"
+              className="min-h-8 h-8 min-w-0 flex-1 narrow:h-control-lg narrow:min-h-control-lg"
               onChange={(event) => { setNaming(event.target.value); setMakeFailure(null); }}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -399,13 +400,12 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
             <Button type="button" variant="ghost" size="icon" aria-label={t("folderInput.cancel")} title={t("folderInput.cancel")} disabled={making}
               className="flex-none narrow:size-11" onClick={stopNaming}><Icon name="close" className="size-3.5" /></Button>
           </div>
-          {/* Where it goes, or why it cannot; a name already there offers that folder instead. */}
-          <p className={cn("m-0 flex flex-wrap items-center gap-x-2 px-0.5 text-xs", problem && problem !== "empty" || makeFailure ? "text-error" : "text-muted")}>
-            {makeFailure ?? (problem && problem !== "empty" ? nameProblems[problem]
-              : t("folderInput.where", { path: fromHome(shown.path, shown.home) }))}
+          {/* Why it cannot be made (where it goes, the path above already says); a name already there offers that folder. */}
+          {(makeFailure || problem && problem !== "empty") && <p className="m-0 flex flex-wrap items-center gap-x-2 px-0.5 text-sm text-error">
+            {makeFailure ?? nameProblems[problem as keyof typeof nameProblems]}
             {problem === "taken" && <button type="button" className="text-ink underline underline-offset-2"
               onClick={() => go(inside(shown.path, naming.trim()))}>{t("folderInput.openExisting")}</button>}
-          </p>
+          </p>}
         </li>}
         {/* One stop for Tab: the first folder; the arrows move between them. */}
         {shown?.folders.map((name, at) => <li key={name}><button type="button" data-folder-name={name} tabIndex={at === 0 ? 0 : -1}

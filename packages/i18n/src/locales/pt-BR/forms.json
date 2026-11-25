@@ -48,8 +48,7 @@
     "reading": "Carregando…",
     "truncated": "Mostrando as primeiras {{limit}}. Digite um nome no campo para filtrar.",
     "up": "Subir",
-    "use": "Usar esta pasta",
-    "where": "Criar dentro de {{path}}"
+    "use": "Usar esta pasta"
   },
   "formDialog": {
     "cancel": "Cancelar"
