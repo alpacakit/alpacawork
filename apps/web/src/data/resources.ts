@@ -175,7 +175,7 @@ export const resources = {
   agentLimits: (root: string) => queryOptions({ queryKey: ["agent-limits", root] as const,
     queryFn: ({ signal }) => readAgentLimits(false, signal),
     staleTime: 60_000, refetchInterval: 60_000 }),
-  /** Host status: read again every sample (10 s) while the tab is open. */
+  /** Resources: read again every sample (10 s) while the tab is open. */
   hostStatus: (root: string) => queryOptions({ queryKey: ["host-status", root] as const,
     queryFn: ({ signal }) => api.request("host/status", hostStatusSchema, signal), staleTime: 0, refetchInterval: 10_000 }),
   /** The minute values around one tight episode: read again each minute while it lasts, kept once it has ended. */

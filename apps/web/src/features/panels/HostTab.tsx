@@ -21,7 +21,7 @@ const SAMPLE = 10_000;
 const iso = (at: number) => new Date(at).toISOString();
 
 /**
- * Settings > Host status: is this machine keeping up, what is heavy now, and when was it tight before.
+ * Settings > Resources: is this machine keeping up, what is heavy now, and when was it tight before.
  * Read-only; the server samples every 10 s and this tab reads again at the same pace while it is open.
  */
 export function HostTab() {
@@ -83,17 +83,17 @@ function Tiles({ status, sample, now }: { status: Measured; sample: Sample; now:
   const { t, i18n } = useTranslation("panels");
   const locale = i18n.language;
   const { limits, parallel } = status;
-  const tight = new Set<HostKind>(status.current?.kinds ?? []);
+  const tight = new Set<HostKind>(status.tight);
   const window = { from: now - HOUR, to: now };
   const gpus = sample.gpus;
   const tiles: ReactNode[] = [
     <Tile key="cpu" label={t("host.cpu")} value={formatPercent(sample.cpu, locale)} tight={tight.has("cpu")}
       chart={<Spark points={status.history.map((point) => ({ at: point.at, value: point.cpu }))} window={window}
-        line={limits.cpu} tightBelow={false} step={SAMPLE} live />} />,
+        line={limits.cpu} tightBelow={false} step={SAMPLE} live tight={tight.has("cpu")} />} />,
     <Tile key="memory" label={t("host.memory")} value={formatPercent(100 * sample.memory.availableBytes / sample.memory.totalBytes, locale)}
       side={formatGigabytes(sample.memory.availableBytes, locale)} tight={tight.has("memory")}
       chart={<Spark points={status.history.map((point) => ({ at: point.at, value: point.memoryFreePercent }))} window={window}
-        line={limits.memoryFreePercent} tightBelow step={SAMPLE} live />} />,
+        line={limits.memoryFreePercent} tightBelow step={SAMPLE} live tight={tight.has("memory")} />} />,
     ...gpus.map((gpu, index) => <GpuTile key={gpu.id} gpu={gpu} label={gpus.length > 1 ? t("host.gpuNumbered", { index }) : t("host.gpu")} />),
     <Tile key="disk" label={t("host.disk")} value={formatGigabytes(sample.disk.freeBytes, locale)} side={`/ ${formatGigabytes(sample.disk.totalBytes, locale)}`}
       tight={tight.has("disk")}
@@ -130,8 +130,9 @@ function GpuTile({ gpu, label }: { gpu: Gpu; label: string }) {
 function Tile({ label, value, side, tight, chart, note = [], gpu }: { label: string; value: ReactNode; side?: string; tight: boolean;
   chart?: ReactNode; note?: readonly string[]; gpu?: string }) {
   return (
-    <div data-host-meter data-host-gpu={gpu} className="flex min-w-0 flex-col rounded-lg border border-line px-3 pt-2 pb-2.5">
-      <span className="truncate text-xs text-muted">{label}</span>
+    <div data-host-meter data-host-gpu={gpu} data-tight={tight || undefined}
+      className={cn("flex min-w-0 flex-col rounded-lg border px-3 pt-2 pb-2.5", tight ? "border-warn bg-strain" : "border-line")}>
+      <span className={cn("truncate text-xs", tight ? "text-warn" : "text-muted")}>{label}</span>
       <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}
         {side && <span className="ml-1.5 text-sm font-normal text-muted">{side}</span>}</span>
       {chart && <div className="mt-0.5">{chart}</div>}
@@ -153,9 +154,13 @@ function Bar({ share, tick, tight = false, className }: { share: number; tick?: 
 }
 
 const SPARK_WIDTH = 354;
-/** A line over its window with what it has taken tinted, the limit dashed, and (`live`) a dot at the newest value. */
-function Spark({ points, window, line, tightBelow, step, height = 30, live = false }: { points: readonly SparkPoint[]; window: { from: number; to: number };
-  line: number; tightBelow: boolean; step: number; height?: number; live?: boolean }) {
+/**
+ * A line over its window with what it has taken tinted, the limit dashed, and (`live`) a dot at the newest value;
+ * drawn in the warning colour while its measure is `tight`.
+ */
+function Spark({ points, window, line, tightBelow, step, height = 30, live = false, tight = false }: { points: readonly SparkPoint[];
+  window: { from: number; to: number }; line: number; tightBelow: boolean; step: number; height?: number; live?: boolean; tight?: boolean }) {
+  const stroke = tight ? "stroke-warn" : "stroke-ink";
   const shape = sparkShape(points, window, line, tightBelow, SPARK_WIDTH, height, step);
   return (
     <svg aria-hidden viewBox={`0 0 ${SPARK_WIDTH} ${height}`} preserveAspectRatio="none" className="block w-full overflow-visible" style={{ height }}>
@@ -163,8 +168,8 @@ function Spark({ points, window, line, tightBelow, step, height = 30, live = fal
       {shape.areas.map((area, index) => <path key={index} d={area} className="fill-usage" />)}
       <line x1={0} x2={SPARK_WIDTH} y1={height - 0.5} y2={height - 0.5} className="stroke-line" strokeWidth={1} vectorEffect="non-scaling-stroke" />
       <line x1={0} x2={SPARK_WIDTH} y1={shape.lineY} y2={shape.lineY} className="stroke-soft" strokeDasharray="2 4" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-      {shape.paths.map((path, index) => <path key={index} d={path} fill="none" className="stroke-ink" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />)}
-      {live && shape.last && <line x1={shape.last.x} x2={shape.last.x} y1={shape.last.y} y2={shape.last.y} className="stroke-ink" strokeWidth={5}
+      {shape.paths.map((path, index) => <path key={index} d={path} fill="none" className={stroke} strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />)}
+      {live && shape.last && <line x1={shape.last.x} x2={shape.last.x} y1={shape.last.y} y2={shape.last.y} className={stroke} strokeWidth={5}
         strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
     </svg>
   );

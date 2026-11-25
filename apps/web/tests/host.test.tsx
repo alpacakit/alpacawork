@@ -24,7 +24,7 @@ const status: HostStatus = {
     runs: [run(1, 31), run(2, 0.4, "worker"), run(3, 0.02), run(4, 0.01), run(5, 0)],
     outside: { cpu: 1.9, memoryBytes: 25 * GB, names: ["chrome-headless", "Xorg"] } },
   history: [{ at: now - 20_000, cpu: 5, memoryFreePercent: 80 }, { at: now, cpu: 6.3, memoryFreePercent: 80 }],
-  current: null,
+  current: null, tight: [],
   episodes: [{ id: 7, start: now - 3_600_000, end: now - 3_000_000, kinds: ["cpu"], peak: { cpu: 99.4, memoryFreePercent: 40, diskFreeBytes: 465 * GB },
     runs: [{ runId: "R1", taskId: "T1", title: "Task 1", model: "opus", role: "owner", cpuPeak: 46, memoryPeakBytes: 2.4 * GB, heaviest: "vitest ×4",
       firstSeen: now - 3_600_000, lastSeen: now - 3_000_000 }] }],
@@ -95,6 +95,15 @@ test("each GPU shows its use, its VRAM in use and who holds it, and leaves out w
   const only = await screen.findByText(i18n.t("panels:host.gpu"), { selector: "[data-host-gpu] span" });
   expect(within(only.parentElement!).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
   expect(within(only.parentElement!).getByText(`${i18n.t("ui:role.coordinator")} ollama 1.0 GB`), "a Run without a Task is named as the coordinator's").toBeTruthy();
+});
+
+test("only the measures tight now are marked, not one that was tight earlier in the same stretch", async () => {
+  const episode = { ...status.episodes[0]!, end: null, kinds: ["cpu", "memory"] as ("cpu" | "memory")[] };
+  vi.spyOn(api, "request").mockResolvedValue({ ...status, current: episode, episodes: [episode], tight: ["memory"] });
+  render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
+  await screen.findByText(i18n.t("panels:host.tight"));
+  const marked = [...document.querySelectorAll("[data-host-meter][data-tight]")].map(frame => frame.firstElementChild!.textContent);
+  expect(marked).toEqual([i18n.t("panels:host.memory")]);
 });
 
 test("the coordinator's Run is named in the screen's language, not by the title the server gave it", async () => {

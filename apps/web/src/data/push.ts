@@ -27,7 +27,7 @@ export function registerServiceWorker() {
   navigator.serviceWorker.register("/sw.js").catch((error: unknown) => recordFailure(error, "service worker registration"));
 }
 
-/** The host push opens Settings > Host status (`/?settings=host`). */
+/** The host push opens Settings > Resources (`/?settings=host`). */
 const openSettingsTab = (tab: unknown) => {
   if (tab === "host") useDialogStore.getState().open("settings", { tab: "host" });
 };

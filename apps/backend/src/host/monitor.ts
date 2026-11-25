@@ -133,7 +133,7 @@ export class HostMonitor {
     if (current && !episodes.some(item => item.start === current.start)) episodes = [{ id: this.currentId ?? 0, ...current }, ...episodes];
     return {
       supported: true, facts: this.source.facts, parallel: this.options.parallel(), sample, history: this.history,
-      current: current ? episodes.find(item => item.start === current.start) ?? null : null, episodes,
+      current: current ? episodes.find(item => item.start === current.start) ?? null : null, tight: this.pressure.tightKinds(), episodes,
       limits: { cpu: PRESSURE_LIMITS.cpu.line, memoryFreePercent: PRESSURE_LIMITS.memory.line, diskFreeBytes: PRESSURE_LIMITS.disk.line },
       error: this.sampleError ?? this.storeError,
     };

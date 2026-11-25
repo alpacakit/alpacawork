@@ -1,4 +1,4 @@
-/** How the Host status tab writes its numbers and draws its lines. */
+/** How the Resources tab writes its numbers and draws its lines. */
 import type { HostEpisode } from "@alpacawork/contract";
 
 const GB = 1024 ** 3;
