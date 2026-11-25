@@ -15,7 +15,6 @@ import { useConversation } from './coordinator';
 import { useShownConversation, type LocalTurn, type SentTurn } from './shown';
 import { deliveryLine, deliveryOf } from './delivery-line';
 import { LocalOutcome } from './LocalOutcome';
-import { WorkingReply } from './parts';
 import { cn } from '@/lib/utils';
 import { waitingKey } from './delivery-copy';
 
@@ -54,8 +53,8 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
       <WorkMark />{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
   const status = outcome && (!panel || ['unknown', 'refused', 'cancelled'].includes(outcome.stage))
     ? <LocalOutcome turn={outcome} cancellation={inlineCancellation ? 'inline' : 'external'} /> : null;
-  // At work, it says what the work is doing and for how long ("Working on it…").
-  if (!panel && line.kind === 'working') return <WorkingReply turn={turn} />;
+  // At work, what the work is doing and for how long is the turn's own work (TurnWork), drawn beside this line.
+  if (!panel && line.kind === 'working') return null;
   // Under a message its state is a line beside it, at the size of the answer's own line (who, when): the work line's.
   return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3 text-xs'}>
     {panel ? <div className="min-w-0 flex-1">{children}{status}</div> : status}

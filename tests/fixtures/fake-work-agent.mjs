@@ -12,7 +12,10 @@ input.close();
 const prompt = first.message.content;
 process.stdout.write(JSON.stringify({ type: 'command_lifecycle', state: 'started', command_uuid: first.uuid, session_id: session }) + '\n');
 const emit = value => process.stdout.write(JSON.stringify(value) + '\n');
-const finish = () => emit({ type: 'result', session_id: session, is_error: false, result: 'Finished checking the work display.' });
+// Asked to answer at length, the answer is taller than the open conversation.
+const answer = prompt.includes('Answer at length') ? ['Finished checking the work display.', ...Array.from({ length: 14 }, (_, at) => `Point ${at + 1}: the work line, its steps and the answer were checked in place.`)].join('\n\n')
+  : 'Finished checking the work display.';
+const finish = () => emit({ type: 'result', session_id: session, is_error: false, result: answer });
 if (prompt.includes('Reply only with: ready')) { finish(); process.exit(0); }
 const start = (id, command) => emit({ type: 'assistant', parent_tool_use_id: null,
   message: { content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }] } });

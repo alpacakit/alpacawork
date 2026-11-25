@@ -126,6 +126,7 @@
     "media": "Imagens, vídeos e áudio",
     "onlyWork": "Ainda não há entregas.",
     "onlyWorkHint": "Os arquivos de trabalho dos agentes estão em Arquivos de trabalho.",
+    "otherIn": "Outros em {{folder}}",
     "otherMedia": "Outras mídias",
     "path": "Caminho",
     "unavailable": "Não foi possível exibir o arquivo: {{name}}",

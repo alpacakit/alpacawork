@@ -988,7 +988,7 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
     <WorkingPerson run={lead} task={task} onFollow={onFollow} open={open} lead
       others={others > 0 && !open ? <span data-working-others>{t("reportFeed.working.others", { count: others })}</span> : null} />
     {others > 0 && <DisclosureBody open={open}><div className="flex flex-col gap-2 pt-2">
-      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open lead={false} />)}
+      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open={open} lead={false} />)}
     </div></DisclosureBody>}
   </div>;
 }
@@ -1011,8 +1011,12 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   // Opened, the lead's line counts its steps and every one of them is listed under it.
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
   // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
-  const latest = steps.at(-1), worked = tookSteps(run.activity), listed = lead && open && worked;
-  const full = useRunSteps(run.id, listed, run.activity?.stepEvents ?? 0);
+  const latest = steps.at(-1), worked = tookSteps(run.activity);
+  // Each person's steps open on their own work line, apart from the words: one press, one thing opened.
+  const [listed, setListed] = useState(false);
+  // A member's steps are read only while the row shows them: folded, its body keeps them drawn but out of sight.
+  const reading = listed && worked && (lead || open);
+  const full = useRunSteps(run.id, reading, run.activity?.stepEvents ?? 0);
   const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;
@@ -1038,10 +1042,14 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className={`${cell} mt-1.5 text-xs`} />
-    {listed && <StepList steps={full} className={`${cell} mt-1`} />}
+    {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={() => setListed(!listed)}
+      className={`${cell} group/steps mt-1 flex cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11`}>
+      <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
+      <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
+      : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
+    {reading && <StepList steps={full} className={`${cell} mt-1`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
-    <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
+    <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
 }
 

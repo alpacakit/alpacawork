@@ -9,7 +9,8 @@
  *
  * Task side and execution: the Task-side reads (`get`, `all`, `snapshot`, `runsOfTask`, `requests`, `getRequest`…)
  * return Task Runs (`RunRecord`) and Requests to Tasks only. Only the execution layer's reads (`read`,
- * `readUnfinished`, `forSettle`, `runtimeGet`, `getText`) return every Run (`RuntimeRunRecord`), the coordinator's too.
+ * `readUnfinished`, `forSettle`, `runtimeGet`, `getText`) return every Run (`RuntimeRunRecord`), the coordinator's too;
+ * `run list` reads `readUnfinished` as well, narrowed to a project or Tasks for any caller but a person or coordinator.
  */
 import { parseReturnHold } from './return-hold.js';
 import type { ProblemReason } from '@alpacawork/core';
@@ -824,11 +825,13 @@ export function storeReads(db: DatabaseSync, root: string) {
       return storageOperation(() => db.prepare('SELECT id, record FROM runs ORDER BY id').all().map(parseRuntimeRow));
     },
     /**
-     * The Runs not yet ended (queued, running, needs_review…), the coordinator's too, without the ended history the
-     * periodic checks never look at.
+     * The Runs not yet ended (queued, running, needs_review…), in Run-number order, without the ended history the
+     * periodic checks never look at: the coordinator's too, unless a project or Tasks narrow it to those Task Runs.
      */
-    unfinished(): RuntimeRunRecord[] {
-      return storageOperation(() => db.prepare(`SELECT id, record FROM runs WHERE state IN (${UNFINISHED_SQL}) ORDER BY id`).all().map(parseRuntimeRow));
+    unfinished(project?: string, taskIds?: readonly string[]): RuntimeRunRecord[] {
+      const [condition, parameters] = scoped(PROJECT_RUNS_SQL, project, taskIds);
+      return storageOperation(() => db.prepare(`SELECT id, record FROM runs WHERE state IN (${UNFINISHED_SQL}) AND ${condition} ORDER BY id`)
+        .all(...parameters).map(parseRuntimeRow));
     },
     /**
      * Who holds any of these conversation sessions. A Task Run's session wins over a coordinator Run's: a session a Task

@@ -146,7 +146,10 @@ export class RunStore {
     return this.at(() => this.storeReads.snapshot(project, taskIds, rows => rows.map(parseRow)));
   }
   read(): RuntimeRunRecord[] { return this.at(() => this.storeReads.everyRun()); }
-  readUnfinished(): RuntimeRunRecord[] { return this.at(() => this.storeReads.unfinished()); }
+  /** Unfinished Runs: every one, or one project's or these Tasks' Task Runs (reads `unfinished`). */
+  readUnfinished(project?: string, taskIds?: readonly string[]): RuntimeRunRecord[] {
+    return this.at(() => this.storeReads.unfinished(project, taskIds));
+  }
   getRequest(id: string): StoredRequest | null { return this.at(() => this.reads.getRequest(id)); }
   readRequests(project?: string): StoredRequest[] { return this.at(() => this.reads.requests(project)); }
   conversationRuns(placementId: string): RunRecord[] { return this.at(() => this.reads.conversationRuns(placementId)); }

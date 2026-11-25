@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepsPage, type RunStepText } from "@alpacawork/contract/run";
 import { readRunStep, readRunSteps } from "@/data/run-steps";
@@ -178,11 +178,12 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
   return useMemo(() => live ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again }, [live, state, earlier, again]);
 }
 
-const BLOCK = "m-0 max-h-64 overflow-auto rounded-sm border border-line bg-bg p-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
-/** What a step ran or got back, as written, saying how much was left out past the limit. */
-function StepText({ text, tone, ...data }: { text: RunStepText; tone: string; "data-run-step-input"?: true; "data-run-step-output"?: true }) {
+const BLOCK = "m-0 px-2.5 py-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
+/** What a step ran or got back, as written, saying how much was left out past the limit. A command is said after `$`. */
+function StepText({ text, tone, prompt, ...data }: { text: RunStepText; tone: string; prompt?: boolean; "data-run-step-input"?: true; "data-run-step-output"?: true }) {
   const { t } = useTranslation("people");
-  return <pre dir="auto" {...data} className={cn(BLOCK, tone)}>{text.text}
+  // The prompt is drawn, not written: the block's words, copied or read, are the command alone.
+  return <pre dir="auto" {...data} className={cn(BLOCK, tone, prompt && "before:text-muted before:content-['$_']")}>{text.text}
     {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}
     {!!text.omittedFiles && <span data-run-step-more-files className="block font-sans text-muted">{t("now.step.omittedFiles", { count: text.omittedFiles })}</span>}</pre>;
 }
@@ -216,7 +217,17 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
   open: boolean; toggle: (step: RunStepEntry) => void; again: () => void }) {
   const { t } = useTranslation("people");
   const detail = useStepDetail(run, step, generation, open, again);
-  return <li data-run-step={step.state} className="min-w-0">
+  const item = useRef<HTMLLIElement>(null);
+  const shown = !!detail?.value;
+  // Opened, what it ran and got back comes into the box's sight, its own line kept at the top at most.
+  useLayoutEffect(() => {
+    const row = item.current, box = row?.closest<HTMLElement>("[data-run-log]");
+    if (!shown || !row || !box) return;
+    const area = box.getBoundingClientRect(), place = row.getBoundingClientRect();
+    const below = place.bottom - area.bottom;
+    if (below > 0) box.scrollTop += Math.min(below, place.top - area.top);
+  }, [shown]);
+  return <li ref={item} data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={() => toggle(step)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
@@ -225,10 +236,12 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
           : step.state === "unknown" ? t("now.step.state.unknown") : t("now.step.state.done")}</span></span>
       <LineWords line={step} />
     </button>
-    {open && <div className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
+    {open && <div data-run-step-open className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
       {detail?.value ? <>
-        <StepText data-run-step-input text={detail.value.input} tone="text-ink" />
-        {detail.value.output && <StepText data-run-step-output text={detail.value.output} tone={step.state === "failed" ? "text-error" : "text-soft"} />}
+        <div className={cn("min-w-0 overflow-hidden rounded-sm border border-line bg-bg", step.state === "failed" && "border-l-2 border-l-error")}>
+          <StepText data-run-step-input text={detail.value.input} tone="text-ink" prompt={step.kind === "command"} />
+          {detail.value.output && <StepText data-run-step-output text={detail.value.output} tone={cn("border-t border-line", step.state === "failed" ? "text-error" : "text-soft")} />}
+        </div>
         {step.state === "unknown" && <Message tone="caution" size="line" quiet title={t("now.step.unknown")} className="text-xs" />}
         {detail.value.detailsDropped && <Message tone="caution" size="line" quiet data-run-step-dropped title={t("now.step.detailsDropped")} className="text-xs" />}</>
         : detail?.failed ? <Message tone="error" size="line" title={t("now.step.unreadableOne")} className="text-xs" />
@@ -263,11 +276,42 @@ export const StepList = memo(function StepList({ steps, className }: { steps: St
   if (!listed || !run) return steps.failed ? <Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE, className)} /> : null;
   if (!listed.steps.length) return <Message tone="empty" size="line" quiet title={t("now.step.none")} className={cn("text-xs", NOTE, className)} />;
 
-  return <ol data-run-steps="open" className={cn("m-0 flex list-none flex-col p-0 text-xs", className)}>
+  return <LogBox listed={listed} className={className}><ol data-run-steps="open" className="m-0 flex list-none flex-col p-0 text-xs">
     {listed.from > 0 && <li><button type="button" data-run-steps-more onClick={steps.earlier}
       className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
       {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
     {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
     {listed.steps.map(step => <StepRow key={`${listed.generation}:${step.n}`} run={run} step={step} generation={listed.generation}
-      open={opened.get(step.n) === step.id} toggle={toggle} again={steps.again} />)}</ol>;
+      open={opened.get(step.n) === step.id} toggle={toggle} again={steps.again} />)}</ol></LogBox>;
 });
+
+/**
+ * The steps' own framed box, as high as a dozen lines at most, so the words, the people and the History around it stay
+ * in sight however long the Run worked. It opens at its foot (the latest step, as a terminal does), stays at its foot
+ * while new steps come if it was there, and keeps the reader's place when earlier steps are added at its top.
+ */
+function LogBox({ listed, className, children }: { listed: ListedSteps; className?: string; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  // Where the reader was when the steps last changed or they last scrolled: at the foot, or how high the list was.
+  const at = useRef<{ from: number; height: number; foot: boolean } | null>(null);
+  const from = useRef(listed.from);
+  from.current = listed.from;
+  const remember = useCallback(() => {
+    const element = box.current;
+    if (!element) return;
+    at.current = { from: from.current, height: element.scrollHeight, foot: element.scrollHeight - element.scrollTop - element.clientHeight < 8 };
+    // Lines above what is shown fade in at the top, so a box opened at its foot says there is more before (no redraw).
+    element.toggleAttribute("data-above", element.scrollTop > 4);
+  }, []);
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    const before = at.current;
+    if (before && listed.from < before.from) element.scrollTop += element.scrollHeight - before.height;
+    else if (!before || before.foot) element.scrollTop = element.scrollHeight;
+    remember();
+  }, [listed, remember]);
+  return <div ref={box} data-run-log onScroll={remember}
+    className={cn("max-h-[min(19rem,45vh)] overflow-y-auto rounded-md border border-line bg-well px-2.5 py-1.5 [scrollbar-width:thin] narrow:max-h-[min(22rem,50vh)] has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] narrow:has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] data-above:[mask-image:linear-gradient(to_bottom,transparent,black_2rem)]", className)}>
+    {children}</div>;
+}

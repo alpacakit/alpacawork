@@ -102,6 +102,7 @@
     "media": "画像・動画・音声",
     "onlyWork": "成果物はまだありません。",
     "onlyWorkHint": "担当の作業ファイルは「作業ファイル」にあります。",
+    "otherIn": "{{folder}} フォルダのその他",
     "otherMedia": "その他の画像・動画・音声",
     "path": "場所",
     "unavailable": "ファイルを表示できません: {{name}}",
