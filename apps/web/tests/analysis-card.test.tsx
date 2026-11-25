@@ -18,7 +18,8 @@ const usageCounts = { launches: 3, runMs: 147.4 * 3_600_000, live: 0, newConvers
 // What the analysis answers besides numbers (a project's ID and title) must never reach the card.
 const tasks = { head: { ...head, project: "P9" }, counts: { value: taskCounts, previous: null }, accepted: { value: accepted, previous: null }, ever: null,
   series: { bucket: "day", points: [] }, grass: { from: "2026-09-28", finished: Array.from({ length: 63 }, (_, at) => at % 5) },
-  breakdown: { by: "project", rows: [{ key: "P9", label: "Secret project", finished: 3, accepted: 3, passed: 3, share: null, leadMedianMs: null, submitsPerAccepted: null }] } } as TasksView;
+  breakdown: { by: "project", rows: [{ key: "P9", label: "Secret project", finished: 3, accepted: 3, passed: 3, share: null, leadMedianMs: null, submitsPerAccepted: null }] },
+  unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } } } as TasksView;
 const usage = { head, counts: { value: usageCounts, previous: null }, ever: null, series: { bucket: "day", points: [] },
   breakdown: { by: "model", since: null, counted: null, series: null, rows: [
     { key: "a", label: "claude-opus-5-5-extended(high)", model: { name: "claude-opus-5-5-extended", effort: "high" }, counts: usageCounts, calls: null },

@@ -4,7 +4,7 @@ import type { RunRecord, RunUsage } from '@alpacawork/contract/run';
 import { speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf } from '@alpacawork/raw/questions';
-import type { AnswerParts } from '@alpacawork/raw';
+import type { AnswerParts, InstructionLabel } from '@alpacawork/raw';
 
 export type Interval = { from: number; to: number };
 export type Clock = AnalysisUnitValues['time'];
@@ -90,16 +90,21 @@ export function questionKind(decide: readonly Readonly<Record<string, unknown>>[
 }
 
 /**
- * Every question to the user, in log order. An instruction withdrew it when the withdrawal's cause is a user's
- * instruction recorded in the same log (the instruction that came in place of an answer).
+ * Every question to the user, in log order. A withdrawn question was replaced by the user's instruction that came in
+ * place of its answer: the instruction whose arrival withdrew it, or one sent later naming it (`task request --answers`
+ * on the closed question).
  */
 export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
-  const instructions = new Set(log.filter(instruction).map(entry => entry.id));
+  const instructions = new Set(log.filter(instruction).map(entry => entry.id)), naming = new Map<string, string>();
+  for (const entry of log)
+    if (entry.kind === 'request_accepted' && entry.answers && speaksForUser(entry.actor) && !naming.has(entry.answers))
+      naming.set(entry.answers, entry.id);
   return questionsOf(log).flatMap(({ asked, closing }) => asked.askedTo === null ? [{
     id: asked.id, from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at),
     answered: closing?.kind === 'answered' && speaksForUser(closing.actor), ...questionKind(asked.decide),
-    replacedBy: closing?.kind === 'question_withdrawn' && closing.originCauseId !== undefined &&
-      instructions.has(closing.originCauseId) ? closing.originCauseId : null,
+    replacedBy: closing?.kind !== 'question_withdrawn' ? null
+      : closing.originCauseId !== undefined && instructions.has(closing.originCauseId) ? closing.originCauseId
+      : naming.get(asked.id) ?? null,
     parts: closing?.kind === 'answered' ? closing.answerParts ?? null : null,
     recommends: asked.decide.map(item => Array.isArray(item.decide_choices) && item.decide_choices.some(choice =>
       !!choice && typeof choice === 'object' && typeof (choice as Record<string, unknown>).decide_choice_recommended === 'string')),
@@ -131,10 +136,13 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
     }
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
   const stopTime = stoppedAt === null ? Infinity : Date.parse(stoppedAt);
-  const finishTime = acceptedAt === null ? stopTime : Date.parse(acceptedAt);
+  const finishTime = Date.parse(acceptedAt ?? stoppedAt ?? doneAt ?? '') || Infinity, requestTime = Date.parse(requestedAt);
   const reviews = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && Date.parse(entry.at) <= stopTime).length;
-  const rounds = questions.filter(question => question.accept && question.from <= finishTime);
+  // The questions asked while the unit was open, as its question count and its clocks read them.
+  const open = questions.filter(question => question.from >= requestTime && question.from <= finishTime);
+  const rounds = open.filter(question => question.accept);
   const replaced = rounds.filter(question => question.replacedBy !== null && question.to! <= finishTime);
+  // Each replacing instruction counts once, at review, wherever under the unit it was given.
   const replacing = new Set(replaced.map(question => question.replacedBy));
   let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
@@ -142,27 +150,39 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   for (let index = log.length - 1; index >= 0; index--) {
     const entry = log[index]!;
     if (sendBack(entry)) instructions.sendBacks++;
-    if (instruction(entry)) {
+    if (instruction(entry) && !replacing.has(entry.id)) {
       const seen = nextTransition?.kind === 'linked' && nextTransition.originCauseId === entry.id
         ? nextTransition.fromState : entry.fromState;
       if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
-      else if (seen === 'waiting' || replacing.has(entry.id)) instructions.instructionsAtReview++;
+      else if (seen === 'waiting') instructions.instructionsAtReview++;
       else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
     }
     if (entry.toState !== null) nextTransition = entry;
   }
-  // A child's question withdrawn by an instruction in the child's own log is rework of this unit as well.
-  const own = new Set(log.map(entry => entry.id));
-  instructions.instructionsAtReview += replaced.filter(question => !own.has(question.replacedBy!)).length;
+  instructions.instructionsAtReview += replacing.size;
   const passed = acceptedAt !== null && reviews <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
   return { requestedAt, acceptedAt, stoppedAt, doneAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits: reviews + rounds.length,
-    estimated: questions.some(question => question.estimated && question.from <= finishTime), instructions,
+    estimated: open.some(question => question.estimated), instructions,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const
       : doneAt ? 'doneUnaccepted' as const : null };
 }
 export type Outcome = ReturnType<typeof taskOutcome>;
+
+/**
+ * The user's instructions to a unit (its own log, `log`) or any Task under it (`logs`, the unit's included), after the
+ * request itself (answers and send-backs are not instructions), and the labels their senders gave those instructions:
+ * an instruction's log entry carries its Request's ID, which its label names.
+ */
+export function laterInstructions(log: readonly TaskLog[], logs: readonly (readonly TaskLog[])[]) {
+  const initial = log.find(instruction), counted = new Set<string>(), labels: InstructionLabel[] = [];
+  for (const history of logs)
+    for (const entry of history)
+      if (entry.kind === 'request_labeled' && entry.label) labels.push(entry.label);
+      else if (instruction(entry) && entry !== initial) counted.add(entry.id);
+  return { count: counted.size, labels: labels.filter(label => counted.has(label.request)) };
+}
 
 export function unitMarks(log: readonly TaskLog[], from: number, to: number): AnalysisUnitValues['marks'] {
   return log.flatMap((entry): AnalysisUnitValues['marks'] => {

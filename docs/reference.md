@@ -101,11 +101,14 @@ whose question was answered "take it" and that was then submitted for review has
 was recorded is read from its words (merge, adopt, accept and the like); `submitsEstimated` counts the accepted Tasks
 whose rounds rest on that reading. A Task is reworked when the user sent it back, gave an instruction at review or after
 acceptance, gave an instruction in place of answering a question asking to take a result, or it was submitted for review
-twice or more. Answering such a question with a choice (even one that asks for changes) is not rework. The rework
+twice or more. An instruction that names a withdrawn question it answers counts as one given in place of its answer.
+Only questions asked between the request and the end count. Answering such a question with a choice (even one that asks for changes) is not rework. The rework
 counts (`sendBacks`, `instructionsAtReview` and the rest) read the top-level Task's own history, plus the instructions
 that replaced questions anywhere under it. The time a question asking to take a result stayed open is review time
-(`time.review`), not `time.answer`. `doneUnaccepted` counts Tasks their owner reported done without the user accepting
-them; they are not among `finished`, and their list rows give `doneAt` with a null `outcome` and `finishedAt`. The share
+(`time.review`), not `time.answer`. `doneUnaccepted` counts top-level Tasks their owner reported done without the user accepting them,
+whether the user requested them or not (a Task the user requested goes to review instead, so these are mostly Tasks
+made for the user); they are not among `finished`, their times stop when they were done, and their list rows give
+`doneAt` with a null `outcome` and `finishedAt`. The share
 is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
 
 `waits` splits the time the user was waited on (`time.review` plus `time.answer`, the `--value you` of a list) by where
@@ -113,8 +116,9 @@ the user was. The user's actions on every Task (their own, and the coordinator's
 coordinator are laid in one line. A gap of 30 minutes or more without an action is treated as `away`. A shorter gap
 counts toward the Task of the next action: `thisTask` when that Task is this one or under it, `otherTasks` otherwise (a
 message that names no Task included). After the last action, the time until now is `thisTask` while under 30 minutes
-and `away` after. Reading a screen leaves no action, so a long read counts as away. In `analysis tasks` the totals cover
-accepted Tasks; a wait still open shows in `analysis task`, which runs it to the time of the read.
+and `away` after. Reading a screen leaves no action, so a long read counts as away. In `analysis tasks` the period totals cover
+accepted Tasks; `unfinished` gives, as of the read, the requested Tasks not yet ended with their waits so far (a wait
+still open running to now), and `analysis task` gives one Task's.
 
 `questions` counts every question to the user, including those asking to take a result that `submits` also counts.
 `answerItems` counts the answered items of those questions by the kind of the answer's recorded part: one of the choices

@@ -137,6 +137,11 @@ export const analysisTasksViewSchema = z.strictObject({
   ever: z.strictObject(taskTotals).nullable(),
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: tasksBreakdown.nullable(),
+  /**
+   * As of the read, whatever the period: the requested tasks not yet ended, and the time they have waited for the user
+   * so far (review and answer, as `time` counts them, a wait still open running to now) with where the user was.
+   */
+  unfinished: z.strictObject({ tasks: count, time: z.strictObject({ review: count, answer: count }), waits }),
 });
 export const analysisUsageCountsSchema = z.strictObject({
   launches: count, runMs: count, live: count, newConversations: count,

@@ -249,12 +249,14 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
  */
 const ZONES_KEPT = 3, SCOPES_KEPT = 4;
 /** One unit's part of a zone's days: kept with the unit, so facts that change only other units date only theirs again. */
-type UnitDays = { project: string; dated: DatedUnit | null; first: number; launches: ZoneLaunch[] };
+type UnitDays = { project: string; dated: DatedUnit | null; first: number; launches: ZoneLaunch[];
+  /** A requested unit not yet ended (accepted, stopped or done), whose waits still run. */
+  open: Unit | null };
 type ZoneDays = { units: UnitDays[]; launches: ZoneLaunch[] };
 /** A launch in a zone's days, with its unit's project (the same object in the unit's days and the zone's). */
 type ZoneLaunch = DatedLaunch & { project: string };
 /** A scope's units and launches; its day sums are made when a read first needs them (`dailyOf`). */
-type ScopeView = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; daily?: Promise<DailyUsage>;
+type ScopeView = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; open: Unit[]; daily?: Promise<DailyUsage>;
   byDimension: Map<string, Promise<DimensionDays[]>> };
 type DimensionDays = DimensionValue & { daily: DailyUsage };
 /**
@@ -280,12 +282,14 @@ async function zoneDays(facts: AnalysisFacts, kept: WeakMap<Unit, UnitDays>, dat
     let days = kept.get(unit);
     if (!days) {
       const project = unit.node.project!, slot = slotOf(unit.node.id);
-      days = { project, dated: null, first: Infinity, launches: [] };
+      days = { project, dated: null, first: Infinity, launches: [], open: null };
       if (unit.node.requested) {
         days.first = Date.parse(unit.outcome.requestedAt);
         const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
         if (ended) days.dated = { unit, day: date(Date.parse(ended)) };
-      }
+        else days.open = unit;
+      // A top-level Task the user did not request counts only when its owner reported it done (nobody accepts it).
+      } else if (unit.outcome.doneAt) days.dated = { unit, day: date(Date.parse(unit.outcome.doneAt)) };
       for (const run of unit.launches) {
         days.first = Math.min(days.first, run.started);
         days.launches.push({ root: unit.node.id, slot, run, day: date(run.started), project });
@@ -305,11 +309,12 @@ async function scopeView(zone: ZoneDays, allows: (project: string) => boolean, s
     if (found === undefined) allowed.set(project, found = allows(project));
     return found;
   };
-  const view = { units: [] as DatedUnit[], launches: [] as DatedLaunch[], first: Infinity };
+  const view = { units: [] as DatedUnit[], launches: [] as DatedLaunch[], first: Infinity, open: [] as Unit[] };
   for (const unit of zone.units) {
     if (!inScope(unit.project)) continue;
     view.first = Math.min(view.first, unit.first);
     if (unit.dated) view.units.push(unit.dated);
+    if (unit.open) view.open.push(unit.open);
   }
   for (const launch of zone.launches) {
     if (inScope(launch.project)) view.launches.push(launch);
@@ -337,6 +342,7 @@ class ScopedAnalysis {
   readonly firstDay: string | null;
   readonly datedUnits: readonly DatedUnit[];
   readonly datedLaunches: readonly DatedLaunch[];
+  private readonly openUnits: readonly Unit[];
   private readonly tallyDay: string;
   /** The scope's day sums, once a read that needs them has made them (`daily`). */
   private days?: DailyUsage;
@@ -349,6 +355,7 @@ class ScopedAnalysis {
     this.tallyDay = date(tallySince);
     this.datedUnits = view?.units ?? [];
     this.datedLaunches = view?.launches ?? [];
+    this.openUnits = view?.open ?? [];
     this.firstDay = Number.isFinite(first) ? date(Math.min(first, now)) : null;
   }
 
@@ -451,6 +458,18 @@ class ScopedAnalysis {
   private readonly waits: Waits = unit => waitsOf(this.facts, unit, this.now);
   private readonly taskTotals = (units: readonly CountedUnit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units, this.waits) });
 
+  /** The requested tasks not yet ended, with their waits for the user so far, the open ones running to now. */
+  private unfinished() {
+    const time = { review: 0, answer: 0 }, sum = new CluesSum();
+    for (const unit of this.openUnits) {
+      const { review, answer } = clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches,
+        Date.parse(unit.outcome.requestedAt), this.now, this.now).time;
+      time.review += review; time.answer += answer;
+      sum.add({ ...unit, asked: [], instructions: { count: 0, labels: [] } }, this.waits(unit));
+    }
+    return { tasks: this.openUnits.length, time, waits: sum.clues().waits };
+  }
+
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
     const head = this.head(input), taskTotals = this.taskTotals;
     const prCounts = creditAcceptedPrs(this.datedUnits);
@@ -467,6 +486,7 @@ class ScopedAnalysis {
     if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
     return { head, counts: { value: value.counts, previous: before?.counts ?? null },
       accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished },
+      unfinished: this.unfinished(),
       breakdown: input.by ? this.taskBreakdown(input.by, current.filter(item => isFinished(item.unit))) : null };
   }
 
@@ -593,7 +613,8 @@ class ScopedAnalysis {
   task(asked: string): AnalysisUnitValues {
     const root = this.facts.rootOf.get(asked), unit = root && this.facts.units.get(root);
     if (!unit || !this.allows(unit.node.project!)) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist in the analysis scope');
-    const from = Date.parse(unit.outcome.requestedAt), to = unit.outcome.finishedAt ? Date.parse(unit.outcome.finishedAt) : this.now;
+    const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
+    const from = Date.parse(unit.outcome.requestedAt), to = ended ? Date.parse(ended) : this.now;
     const { time, band } = unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, this.now);
     // Use the same Run attribution as the period view, over this Task's lifetime (its own launches; no day is read).
     const slot = slotOf(unit.node.id), items = unit.launches.map(run => ({ root: unit.node.id, slot, run, day: '' }));

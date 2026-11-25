@@ -45,7 +45,8 @@ function standIn(span: Span, bucket: Bucket) {
     points.push({ from: day, to: day, complete: true });
   const tasks: TasksView = { head, counts: { value: counts, previous: previous && counts }, accepted: { value: accepted, previous: previous && accepted },
     ever: whole ? null : { counts, accepted }, series: { bucket, points: points.map(point => ({ ...point, counts, accepted })) },
-    grass: { from: firstDay, finished: Array.from({ length: daysBetween(addDays(firstDay, -6), last) }, () => 1) }, breakdown: null };
+    grass: { from: firstDay, finished: Array.from({ length: daysBetween(addDays(firstDay, -6), last) }, () => 1) }, breakdown: null,
+    unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } } };
   const usage: UsageView = { head, counts: { value: used, previous: previous && used }, ever: whole ? null : used,
     series: { bucket, points: points.map(point => ({ ...point, counts: used })) }, breakdown: null };
   return { tasks, usage, days };

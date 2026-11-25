@@ -5,7 +5,7 @@
 import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
 import type { AnalysisAcceptedTotals } from '@alpacawork/contract/analysis';
 import type { AnalysisFacts, Unit } from './facts.js';
-import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
+import { addSplit, emptySplit, splitWaits, type Activity, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
 type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'answersWithoutParts' | 'instructions' | 'questionsReplaced'>;
@@ -51,19 +51,22 @@ export class CluesSum {
   }
 }
 
-/** Each unit's waits split by where the user was, kept per reading of the facts. */
-const splits = new WeakMap<AnalysisFacts, WeakMap<Unit, WaitSplit>>();
+/**
+ * Each unit's waits split by where the user was, kept per line of the user's actions (a new line when an action or a
+ * message changes) and per unit (a unit counted again is a new one). A split that still moves with the time of the read
+ * (a wait still open, or one ended within 30 minutes of the last action) is made again at each read.
+ */
+const splits = new WeakMap<() => readonly Activity[], WeakMap<Unit, WaitSplit>>();
 export function waitsOf(facts: AnalysisFacts, unit: Unit, now: number): WaitSplit {
-  let kept = splits.get(facts);
-  if (!kept) splits.set(facts, kept = new WeakMap());
-  let split = kept.get(unit);
-  if (!split) {
-    const from = Date.parse(unit.outcome.requestedAt), to = unit.outcome.finishedAt ? Date.parse(unit.outcome.finishedAt) : now;
-    const waits = (unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, now)).waits;
-    const id = unit.node.id;
-    split = splitWaits(waits, facts.activity(), task => task === id || facts.rootOf.get(task) === id, now);
-    // A unit still open is split again at the next read (its wait runs to now).
-    if (unit.clock) kept.set(unit, split);
-  }
+  let kept = splits.get(facts.activity);
+  if (!kept) splits.set(facts.activity, kept = new WeakMap());
+  const found = kept.get(unit);
+  if (found) return found;
+  const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
+  const from = Date.parse(unit.outcome.requestedAt), to = ended ? Date.parse(ended) : now;
+  const waits = (unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, now)).waits;
+  const id = unit.node.id;
+  const { split, settled } = splitWaits(waits, facts.activity(), task => task === id || facts.rootOf.get(task) === id, now);
+  if (unit.clock && settled) kept.set(unit, split);
   return split;
 }

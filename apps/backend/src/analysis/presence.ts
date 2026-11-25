@@ -24,10 +24,15 @@ function after(activity: readonly Activity[], time: number) {
   return low;
 }
 
-/** The waits (in time order, not overlapping) split by where the user was. `here`: whether a task is this one or under it. */
+/**
+ * The waits (in time order, not overlapping) split by where the user was. `here`: whether a task is this one or under
+ * it. `settled`: the split no longer changes with the time of the read (no part lies after the last action, still
+ * within 30 minutes of it).
+ */
 export function splitWaits(waits: readonly Interval[], activity: readonly Activity[], here: (task: string) => boolean,
-  now: number): WaitSplit {
+  now: number): { split: WaitSplit; settled: boolean } {
   const split = emptySplit();
+  let settled = true;
   for (const wait of waits) {
     let index = after(activity, wait.from), cursor = wait.from;
     let previous = index > 0 ? activity[index - 1]!.at : -Infinity;
@@ -40,12 +45,13 @@ export function splitWaits(waits: readonly Interval[], activity: readonly Activi
         if (task !== null && here(task)) onThis = true;
       }
       const part = (next ?? now) - previous >= AWAY_MS ? 'away' : next === null || onThis ? 'thisTask' : 'otherTasks';
+      if (next === null && part !== 'away') settled = false;
       split[part] += end - cursor;
       cursor = end;
       if (next !== null) previous = next;
     }
   }
-  return split;
+  return { split, settled };
 }
 
 export const addSplit = (total: WaitSplit, part: WaitSplit) => {

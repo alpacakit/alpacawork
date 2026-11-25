@@ -21,7 +21,7 @@ const view: AnalysisTasksView = {
   head: { timeZone: 'UTC', today: '2026-11-25', firstDay: '2026-11-25', project: null, period: { from: '2026-11-25', to: '2026-11-25' }, previous: null },
   counts: { value: finished, previous: null }, accepted: { value: accepted, previous: null }, ever: null,
   series: { bucket: 'day', points: [{ from: '2026-11-25', to: '2026-11-25', complete: true, counts: finished, accepted }] },
-  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null,
+  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null, unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } },
 };
 const client = () => {
   const made = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
