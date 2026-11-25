@@ -330,7 +330,6 @@
     "create": "Create",
     "creating": "Creating…",
     "cwd": "Working folder",
-    "cwdHint": "Agents work here. If empty, they use the parent project's folder, or this folder if there is no parent:",
     "description": "Groups tasks, a goal and agents.",
     "fieldsNote": "Fields written in tasks. Agents receive them in this order.",
     "gone": "This project is no longer listed.",

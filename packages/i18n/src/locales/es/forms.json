@@ -25,11 +25,11 @@
     "choose": "Elegir",
     "chooseHere": "Elegir aquí",
     "chooserTitle": "Elegir la carpeta de trabajo",
-    "choosing": "Elige la carpeta en la ventana que se abrió en este equipo.",
+    "choosing": "Elige la carpeta en la ventana que se abrió.",
     "close": "Cancelar",
     "create": "Crear",
     "creating": "Creando…",
-    "empty": "No hay carpetas dentro.",
+    "empty": "No hay carpetas",
     "example": "p. ej. {{path}}",
     "inside": "Carpetas que contiene",
     "made": "Esta es una carpeta recién creada.",
@@ -46,7 +46,7 @@
       "taken": "Ya existe una carpeta con este nombre."
     },
     "reading": "Cargando…",
-    "truncated": "Solo se muestran las primeras {{limit}}. Cierra la lista y escribe un nombre en el campo para acotarlas.",
+    "truncated": "Se muestran las primeras {{limit}}. Escribe un nombre en el campo para filtrarlas.",
     "up": "Subir",
     "use": "Usar esta carpeta",
     "where": "Crear dentro de {{path}}"

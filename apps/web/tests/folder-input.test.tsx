@@ -139,7 +139,7 @@ describe("choosing on this PC", () => {
     }));
     render(<TestWorkspace><Field /></TestWorkspace>);
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Choose here instead" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Choose here" }));
     expect(closed?.aborted).toBe(true);
     await waitFor(() => expect(document.querySelector("[data-folder-list]")).toBeTruthy());
     cleanup();

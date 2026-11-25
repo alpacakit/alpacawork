@@ -336,7 +336,6 @@
     "create": "Criar",
     "creating": "Criando…",
     "cwd": "Pasta de trabalho",
-    "cwdHint": "Os agentes trabalham aqui. Se estiver vazio, eles usam a pasta do projeto pai ou, se não houver pai, esta pasta:",
     "description": "Reúne tarefas, um objetivo e agentes.",
     "fieldsNote": "Campos preenchidos nas tarefas. Os agentes os recebem nesta ordem.",
     "gone": "Este projeto não está mais na lista.",

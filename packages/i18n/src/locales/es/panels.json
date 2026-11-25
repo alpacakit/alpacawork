@@ -336,7 +336,6 @@
     "create": "Crear",
     "creating": "Creando…",
     "cwd": "Carpeta de trabajo",
-    "cwdHint": "Los agentes trabajan aquí. Si está vacío, usan la carpeta del proyecto superior, o esta carpeta si no hay proyecto superior:",
     "description": "Agrupa tareas, un objetivo y agentes.",
     "fieldsNote": "Campos que se escriben en las tareas. Los agentes los reciben en este orden.",
     "gone": "Este proyecto ya no está en la lista.",

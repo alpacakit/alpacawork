@@ -283,7 +283,8 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     const at = (count: number) => count ? inside(base, steps.slice(0, count).join("/")) : base;
     const first = Math.max(0, steps.length - 3);
     const near = steps.slice(first).map((step, index) => ({ label: step, path: at(first + index + 1) }));
-    return [{ label: base === home ? "~" : "/", path: base },
+    // Home by its icon and its own name, as a file manager shows it.
+    return [{ label: base === home ? home.slice(home.lastIndexOf("/") + 1) || "~" : "/", path: base, home: base === home },
       ...steps.length > 3 ? [{ label: "…", path: at(steps.length - 3) }] : [], ...near];
   };
   // Back to a folder above, the focus goes to the row of the folder on the way to where you were.
@@ -346,11 +347,11 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     {walking !== false && <div ref={list} data-folder-list className="flex flex-col rounded-sm border border-line bg-lit">
       {/* One line however deep: where it starts (~ or /) always shows, the steps between give way first, and the
           folder you are in is cut last. The list below never moves. */}
-      <div className="flex flex-none items-center gap-0.5 border-b border-line px-1">
+      <div className="flex flex-none items-center gap-1 border-b border-line px-1.5">
       <Button type="button" variant="ghost" size="icon" aria-label={t("folderInput.up")} title={t("folderInput.up")} disabled={!shown?.parent}
         className="flex-none narrow:size-11" onClick={() => back(shown!.parent!)}><Icon name="arrowUp" className="size-3.5" /></Button>
       <nav aria-label={t("folderInput.path")}
-        className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden font-mono text-sm whitespace-nowrap narrow:h-11">
+        className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden text-sm whitespace-nowrap narrow:h-11">
         {shown && crumbs(shown.path, shown.home).map((crumb, at, all) => {
           const last = at === all.length - 1;
           // The folders above give way first (to a few letters, at most almost half the line, a third on a phone), so
@@ -359,9 +360,11 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
             at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] min-w-8 shrink-[100] narrow:max-w-[32%]")}>
             {at > 0 && <Icon name="right" className="size-3 flex-none text-soft" />}
             {last
-              ? <span aria-current="location" className="min-w-0 truncate px-1.5 font-semibold">{crumb.label}</span>
+              ? <span aria-current="location" className="flex min-w-0 items-center gap-1 px-1.5 font-semibold">
+                {"home" in crumb && crumb.home && <Icon name="home" className="size-3.5 flex-none" />}<span className="truncate">{crumb.label}</span></span>
               : <button type="button" onClick={() => back(crumb.path)} title={crumb.path}
-                className="min-h-8 min-w-8 max-w-full truncate rounded-xs px-1.5 text-muted hover:bg-hover hover:text-ink narrow:min-h-control-lg narrow:min-w-11">{crumb.label}</button>}
+                className="flex min-h-8 max-w-full min-w-0 items-center gap-1 rounded-xs px-1.5 text-muted hover:bg-hover hover:text-ink narrow:min-h-control-lg">
+                {"home" in crumb && crumb.home && <Icon name="home" className="size-3.5 flex-none" />}<span className="truncate">{crumb.label}</span></button>}
           </span>;
         })}
       </nav>
@@ -383,7 +386,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
             <Input ref={nameInput} value={naming} aria-label={t("folderInput.name")} placeholder={t("folderInput.placeholder")} disabled={making}
               dir="auto" autoComplete="off" spellCheck={false} autoCapitalize="off" autoCorrect="off"
               aria-invalid={!!(problem && problem !== "empty") || !!makeFailure}
-              className="h-8 min-w-0 flex-1 font-mono narrow:h-control-lg"
+              className="h-8 min-w-0 flex-1 narrow:h-control-lg"
               onChange={(event) => { setNaming(event.target.value); setMakeFailure(null); }}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -406,10 +409,11 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         </li>}
         {/* One stop for Tab: the first folder; the arrows move between them. */}
         {shown?.folders.map((name, at) => <li key={name}><button type="button" data-folder-name={name} tabIndex={at === 0 ? 0 : -1}
-          onClick={() => go(inside(shown.path, name))} className={cn(row, "font-mono focus-visible:bg-hover")}>
+          onClick={() => go(inside(shown.path, name))} className={cn(row, "group focus-visible:bg-hover")}>
           <Icon name="folder" className="size-3.5 flex-none text-soft" />
           <span className="min-w-0 flex-1 truncate" title={name}>{name}</span>
-          <Icon name="right" className="size-3 flex-none text-soft" />
+          {/* Going in is shown where the pointer or the focus is; a phone, with neither, shows it on every row. */}
+          <Icon name="right" className="size-3 flex-none text-soft opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 narrow:opacity-100" />
         </button></li>)}
         {shown && !shown.folders.length && <li className="px-2 py-1.5"><Message tone="empty" size="line" title={t("folderInput.empty")} /></li>}
         {!shown && walk.isFetching && <li className="px-2 py-1.5"><Message tone="waiting" size="line" live title={t("folderInput.reading")} /></li>}
