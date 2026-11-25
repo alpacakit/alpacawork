@@ -4,12 +4,14 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
-import { carrierOf, isRunMoving, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { carrierOf, isRunMoving, runFolder, tookSteps, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import type { RunId } from '@alpacawork/contract/fields';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import type { CoordinatorConversation as ConversationView, CoordinatorError, CoordinatorResult, CoordinatorTurn } from '@alpacawork/contract/coordinator';
 import { isEnded, laneAhead, type RunStore } from '@alpacawork/runs';
 import { blockedInvocations, queuedInputReservations } from '../runs/execution-control.js';
 import { readRunFailure } from '../runs/error-cause.js';
+import { readRunActivity } from '../runs/activity.js';
 import { resultsOf } from './messages.js';
 import { replyView } from './reply.js';
 
@@ -21,6 +23,17 @@ const ERRORS: Partial<Record<NonNullable<CoordinatorRunRecord['reason']>, Coordi
   output: 'output', timeout: 'timeout', launch: 'launch', conversation_busy: 'conversation_busy', attachment_save: 'attachment_save' };
 /** An answer that could not be read is told apart from one the agent did not give (`missing`, an `output` error). */
 const UNREAD_ANSWERS = ['too_large', 'unreadable'] as const satisfies readonly CoordinatorError[];
+/** Whether an ended Run took any steps, by its ID: an ended Run's activity no longer changes. */
+const worked = new Map<string, boolean>();
+const WORKED_LIMIT = 1024;
+function endedRunTookSteps(root: string, id: RunId): boolean {
+  const key = `${root}\0${id}`, known = worked.get(key);
+  if (known !== undefined) return known;
+  const value = tookSteps(readRunActivity(runFolder(root, id)));
+  worked.set(key, value);
+  if (worked.size > WORKED_LIMIT) worked.delete(worked.keys().next().value!);
+  return value;
+}
 /** Each queued message's last handover, by its Run. */
 export function handovers(db: DatabaseSync, conversation: string): Map<string, Handover> {
   const rows = db.prepare(`SELECT i.instruction_run_no, i.state, json_extract(i.receipt_json, '$.evidence') AS evidence,
@@ -126,8 +139,9 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
       // The message sent in its place carries what is left to read, while this one stays failed: one that answers after
       // all (a Run back from review) is shown with its answer.
       const again = sentAgain.has(id) && turn.status === 'failed';
+      const workedBy = readable(turn) && isEnded(run) && endedRunTookSteps(store.root, run.id) ? run.id : undefined;
       turns.push({ ...turn, ...attempts ? { attempts } : {}, ...failure ? { failure } : {}, ...(typeof request.reply_to === 'string' ? { replyTo: reply(request.reply_to) } : {}),
-        ...again ? { sentAgain: true as const } : {}, seen: readable(turn) && (again || seen.has(id)) });
+        ...again ? { sentAgain: true as const } : {}, ...workedBy ? { workedBy } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
   }
   return { id: conversation.id,

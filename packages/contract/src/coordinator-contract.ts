@@ -123,6 +123,8 @@ export const coordinatorTurnSchema = z.object({
   seen: z.boolean(),
   answerFiles: z.array(answerFileSchema).optional(),
   result: coordinatorResultSchema.nullable(),
+  /** The Run that answered it, once ended, when that Run took steps: they open under the answer. */
+  workedBy: runIdSchema.optional(),
 });
 /** The agent and selected values actually passed in the next message's launch arguments. */
 export const coordinatorNextLaunchSchema = z.object({ agent: aiRowSchema.shape.agent, values: launchArgumentValuesSchema }).strict();

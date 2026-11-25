@@ -5,6 +5,7 @@ import { parse, stringify } from 'yaml';
 import { writeFixtureConfig } from './fixture-writes.ts';
 import { test, expect, open, openCoordinator, writeCoordinator } from './fixtures.ts';
 import { readyCoordinator, foldConversation } from './coordinator-fixture.ts';
+import { markCentreGap } from './mark-centre.ts';
 
 test.use({ isolated: true, fixedTime: false });
 for (const phone of [false]) test(`observed work reaches folded and open conversation without rereading it (${phone ? 'phone' : 'pc'})`, async ({ page, runtime }, info) => {
@@ -33,7 +34,12 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   const box = (await pill.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(phone ? 390 : 1440);
   await openCoordinator(page);
-  await expect(page.locator('[data-ask-thinking]')).toContainText('New task');
+  // Open, the step itself is read as it was run on the work line, the seconds at its end, without the rounded name.
+  const steps = page.locator('[data-coordinator-turn=running] [data-working-steps]');
+  await expect(steps).toContainText('alpacawork task new --title test');
+  await expect(steps.locator('[data-work-seconds]')).toHaveText(/^\d+s$/);
+  // The mark stands level with the words beside it.
+  expect(await markCentreGap(steps.locator('[data-work-line]'))).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath('work-open.png'), animations: 'disabled' });
   await page.locator('[data-coordinator-turn=running] [data-exchange-toggle]').click();
   await expect(page.locator('[data-exchange-outcome]')).toContainText('New task');
@@ -52,12 +58,20 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
       return activity?.doing ? { tool: activity.doing.toolName, command: activity.doing.command } : null;
     } finally { store.close(); }
   }).toEqual({ tool: 'Bash', command: null });
-  await expect(page.locator('[data-ask-thinking]')).toHaveText(/^Command \d+s$/);
+  await expect(steps).toContainText('echo alpacawork task new');
+  // A press lists every step so far, read from the Run's output, and another folds them back to the one line.
+  const listed = page.locator('[data-coordinator-turn=running] [data-run-steps=open] [data-run-step]');
+  await steps.click();
+  await expect(steps).toHaveAttribute('aria-expanded', 'true');
+  await expect(steps).toContainText('2 steps so far');
+  await expect(listed).toHaveCount(2);
+  await steps.click();
+  await expect(listed).toHaveCount(0);
   const ended = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   expect(ended.revision).toBe(first.revision);
   expect(reads).toBe(beforeReads);
   gate('update');
-  await expect(page.locator('[data-ask-thinking]')).toHaveText(/^Task update \d+s$/);
+  await expect(steps).toContainText('alpacawork task update --task T1 --title changed');
   expect(reads).toBe(beforeReads);
   await foldConversation(page);
   await expect(pill).toContainText('Task update');

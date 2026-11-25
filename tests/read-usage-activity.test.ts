@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
@@ -13,7 +13,13 @@ test('activity maps tool result to the original tool', t => {
   stdout([{ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'shell' }] } },
     { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1' }] } }]);
   activity.poll(folder);
-  assert.deepEqual(readRunActivity(folder), { at: readRunActivity(folder)?.at, kind: 'tool_end', toolName: 'shell', doing: null, note: null, context: null });
+  const saved = readRunActivity(folder);
+  assert.equal(saved?.toolName, 'shell');
+  assert.equal(saved.kind, 'tool_end');
+  assert.equal(saved.doing, null);
+  assert.equal(saved.note, null);
+  assert.equal(saved.context, null);
+  assert.equal(saved.steps[0]?.state, 'done');
 });
 
 test('the latest direct words survive tool activity and helper output', t => {
@@ -28,6 +34,23 @@ test('the latest direct words survive tool activity and helper output', t => {
   activity.poll(folder);
   assert.equal(readRunActivity(folder)?.kind, 'tool_start');
   assert.equal(readRunActivity(folder)?.note?.text, 'Summarizing the\ninvestigation results.');
+});
+
+test('short Claude progress updates survive empty, long and nested thinking blocks', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'read-progress-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const activity = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
+  const thinking = (text: string) => ({ type: 'thinking', thinking: text, signature: 'opaque' });
+  const emit = (parent: string | null, ...content: unknown[]) => {
+    appendFileSync(join(folder, 'stdout.log'), JSON.stringify({ type: 'assistant', parent_tool_use_id: parent, message: { content } }) + '\n');
+    activity.poll(folder);
+  };
+  emit(null, thinking('Checking the catalog.'));
+  emit(null, thinking('  '), thinking('long reasoning '.repeat(100)));
+  emit('helper', thinking('Nested progress'));
+  assert.equal(readRunActivity(folder)?.note?.text, 'Checking the catalog.');
+  emit(null, { type: 'text', text: 'I found the catalog.' }, thinking('Checking again.'));
+  assert.equal(readRunActivity(folder)?.note?.text, 'I found the catalog.');
 });
 
 test('activity note stays within the contract limit without splitting an emoji', t => {

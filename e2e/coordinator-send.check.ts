@@ -4,6 +4,7 @@ import { test as base, expect, open, openCoordinator, writeCoordinator, keepShot
 import { atTheTop } from './toast-position.ts';
 import { configureCoordinator, foldConversation } from './coordinator-fixture.ts';
 import { start } from './server.ts';
+import { markCentreGap } from './mark-centre.ts';
 
 // What is sent shows at once and the input is free at once; serve's snapshot settles it, whichever of the POST's
 // answer and the event comes first; a refused send comes back, an unknown one is resent as it was.
@@ -43,7 +44,7 @@ const statusLine = (row: import('@playwright/test').Locator) => row.evaluate(ite
   const words = document.createTreeWalker(line, NodeFilter.SHOW_TEXT).nextNode()!, range = document.createRange();
   range.selectNodeContents(words);
   return { size: getComputedStyle(line).fontSize, left: Math.round(line.getBoundingClientRect().left),
-    below: Math.round(range.getBoundingClientRect().top - said.bottom) };
+    below: Math.round(range.getBoundingClientRect().top - said.bottom), height: Math.round(line.getBoundingClientRect().height) };
 });
 async function ready(page: Page, runtime: Parameters<typeof open>[1]) {
   await open(page, runtime, '?agent=1');
@@ -72,6 +73,10 @@ for (const phone of [false]) test.describe(phone ? 'phone' : 'pc', () => {
     // The retained original is hidden from the editor; only new words can form another submission.
     await expect(thread(page).locator('[data-coordinator-local=sending]')).toContainText('Instruction shown first');
     await expect(thread(page).locator('[data-coordinator-local=sending]')).toContainText('Sending…');
+    // On its way it already shows the work's mark, where the work line will show it.
+    await expect(thread(page).locator('[data-coordinator-local=sending] [data-coordinator-posting] [data-work-mark]')).toHaveCount(1);
+    // The mark stands level with the words beside it.
+    expect(await markCentreGap(thread(page).locator('[data-coordinator-local=sending] [data-coordinator-posting]'))).toBeLessThanOrEqual(1);
     // On its way nothing is offered to take back, and the place it is said stays one element up to its answer.
     const sending = thread(page).locator('[data-coordinator-local=sending]');
     await expect(sending.locator('[data-coordinator-withdraw]')).toHaveCount(0);
@@ -158,6 +163,8 @@ test.describe('coordinator three-second grace',()=>{
     await page.screenshot({ path: test.info().outputPath('grace-sending.png') });
     await pill.click();
     await expect(thread(page).locator('[data-coordinator-local=sending]')).toContainText('Sending…');
+    // On its way it already shows the work's mark, where the work line will show it.
+    await expect(thread(page).locator('[data-coordinator-local=sending] [data-coordinator-posting] [data-work-mark]')).toHaveCount(1);
     posts.release();
     await expect(thread(page).locator('[data-coordinator-turn=succeeded]')).toHaveCount(1);
     expect(posts.bodies[0]!.text).toBe('Grace deadline message');
@@ -187,6 +194,7 @@ test.describe('coordinator three-second grace',()=>{
       await field(page).fill('Waiting behind current work'); await send.click();
       const waiting = thread(page).locator('[data-coordinator-waiting]').filter({ hasText: 'Waiting behind current work' });
       await expect(waiting).toContainText('Queued');
+      await expect(waiting.locator('[role=status] [data-work-mark]')).toHaveCount(1);
       expect(await statusLine(waiting)).toEqual(working);
       await expect(waiting.locator('[data-coordinator-send-now]')).toBeVisible();
       await expect(waiting.locator('[data-exchange-toggle]')).toHaveCount(0);

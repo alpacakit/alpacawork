@@ -7,10 +7,12 @@ import { isAbsolute } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { platform } from '@alpacawork/core';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
+import { toolResultText } from '@alpacawork/contract/run';
 import type { Admission, CompactionResult, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
 import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { measuredUsage, usageRecord as object } from './usage.js';
+import { emitToolEnd, emitToolStart } from './tool-activity.js';
 
 type Options = { output: string | null; session: string | null; model: string | null; thinking: string | null; trust: string | null };
 type Input = { input: Instruction; disposition: string | null; observed: boolean; taken: boolean; ambiguous: boolean; failure: string | null };
@@ -248,9 +250,11 @@ export class PiRuntime implements Runtime {
     if (row.type === 'message_end' && message.role === 'assistant') this.execution().assistant = message;
     const context = piContext(row);
     if (context) this.io.emit({ type: 'context.updated', context });
-    if (row.type === 'tool_execution_start' || row.type === 'tool_execution_end') {
-      this.io.emit({ type: row.type === 'tool_execution_start' ? 'item.started' : 'item.completed',
-        item: { type: 'mcp_tool_call', id: row.toolCallId, name: row.toolName } });
+    if (row.type === 'tool_execution_start') {
+      emitToolStart(this.io, 'mcp_tool_call', row.toolCallId, row.toolName, row.args);
+    } else if (row.type === 'tool_execution_end') {
+      emitToolEnd(this.io, 'mcp_tool_call', row.toolCallId, row.toolName,
+        toolResultText(object(row.result).content), row.isError === true);
     }
     if (row.type === 'agent_settled' && this.turn?.active) {
       this.turn.active.settled = row;

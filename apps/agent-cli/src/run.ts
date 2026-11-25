@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { BridgeEvent, BridgeInstruction, CompactionRequest } from '@alpacawork/contract/agent-bridge';
+import { boundBridgeEvent, type BridgeEvent, type BridgeInstruction, type CompactionRequest } from '@alpacawork/contract/agent-bridge';
 export type Instruction = BridgeInstruction;
 /** How compacting a conversation ended; `message` is the agent's own account of a failure. */
 export type CompactionResult = { compacted: true } | { compacted: false; message: string };
@@ -33,7 +33,8 @@ export function run(create: (io: RuntimeIO) => Runtime): void {
   let runtime: Runtime;
   // Keep identity and receipt evidence after uncertainty: a delayed started still settles the same ID.
   const pending = new Map<string, Pending>();
-  const emit = (event: BridgeEvent) => process.stdout.write(`${JSON.stringify(event)}\n`);
+  // Every line a bridge writes goes here, kept under the outcome reader's line limit whatever it holds.
+  const emit = (event: BridgeEvent) => process.stdout.write(`${JSON.stringify(boundBridgeEvent(event))}\n`);
   const outcome = (id: string, message: string): void => {
     const input = pending.get(id)!;
     if (input.outcome === 'taken' || input.outcome === 'not_sent') return;

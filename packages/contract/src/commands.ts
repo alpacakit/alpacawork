@@ -16,7 +16,7 @@ import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
 import { stopResponseSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
-  taskRequestResultSchema, taskPlacementResultSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
+  taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
@@ -170,6 +170,7 @@ const taskGetResultSchema = z.looseObject({
   }),
   shelf: projectShelfInfoSchema,
   agents: z.array(placementSchema),
+  runs: z.array(taskGetRunSchema).optional(),
   questions: z.array(z.looseObject({ id: z.string(), taskId: taskIdSchema, applicable: z.boolean() })),
   dependencies: startOrderSchema,
   errors: z.array(errorEntrySchema),

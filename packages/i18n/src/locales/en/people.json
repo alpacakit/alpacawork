@@ -100,6 +100,31 @@
     },
     "output": "{{event}} {{ago}} ago",
     "stale": "Last output is old: {{event}} ({{ago}} ago)",
+    "step": {
+      "answered": "Steps behind this answer",
+      "answeredCount_one": "{{count}} step behind this answer",
+      "answeredCount_other": "{{count}} steps behind this answer",
+      "count_one": "{{count}} step so far",
+      "count_other": "{{count}} steps so far",
+      "detailsDropped": "Its contents were too large, so the details could not be recorded",
+      "none": "No steps were recorded",
+      "older_one": "Show {{count}} earlier ({{rest}} left)",
+      "older_other": "Show {{count}} earlier ({{rest}} left)",
+      "omitted_one": "{{count}} more character left out as too long",
+      "omitted_other": "{{count}} more characters left out as too long",
+      "omittedFiles_one": "and {{count}} more file",
+      "omittedFiles_other": "and {{count}} more files",
+      "reading": "Reading…",
+      "state": {
+        "done": "Done",
+        "failed": "Failed",
+        "running": "Running",
+        "unknown": "Outcome unknown"
+      },
+      "unknown": "Part of the record could not be read, so whether this step went well is not known",
+      "unreadable": "The steps could not be read",
+      "unreadableOne": "What this step ran could not be read"
+    },
     "toolEvent": "{{tool}}: {{kind}}"
   },
   "records": {

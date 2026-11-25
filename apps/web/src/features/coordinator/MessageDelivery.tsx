@@ -1,4 +1,5 @@
 import { countUse } from '@/features/telemetry/count';
+import { WorkMark } from '@/features/people/RunSteps';
 import { WaitingStatus } from './WaitingStatus';
 import { useDeliverySurface } from './delivery-notice';
 import { useToolsHere } from './task-action-slot';
@@ -14,7 +15,7 @@ import { useConversation } from './coordinator';
 import { useShownConversation, type LocalTurn, type SentTurn } from './shown';
 import { deliveryLine, deliveryOf } from './delivery-line';
 import { LocalOutcome } from './LocalOutcome';
-import { Thinking } from './parts';
+import { WorkingReply } from './parts';
 import { cn } from '@/lib/utils';
 import { waitingKey } from './delivery-copy';
 
@@ -47,17 +48,19 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
   const withdrawHere = !inlineCancellation && (panel ? ['requested', 'send-now', 'cancel'] : ['send-now', 'cancel']).includes(control);
   const buttons = control === 'send-now' || withdrawHere;
   // What the message is doing on its way, said once wherever its row is drawn.
+  // On its way it shows the same mark as the work it goes to, in the same box, so only the words change from here on.
   const words = control === 'withdrawing' || control === 'handing' || control === 'requested'
-    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="text-muted motion-safe:animate-pulse">
-      {control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
+    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="inline-flex items-center gap-1.5 text-muted">
+      <WorkMark />{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
   const status = outcome && (!panel || ['unknown', 'refused', 'cancelled'].includes(outcome.stage))
     ? <LocalOutcome turn={outcome} cancellation={inlineCancellation ? 'inline' : 'external'} /> : null;
-  // At work, the same line says so ("Working on it…"); its words come from the work itself.
-  if (!panel && line.kind === 'working') return <div className="flex flex-wrap items-center gap-x-2"><Thinking turn={turn} /></div>;
-  return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3'}>
+  // At work, it says what the work is doing and for how long ("Working on it…").
+  if (!panel && line.kind === 'working') return <WorkingReply turn={turn} />;
+  // Under a message its state is a line beside it, at the size of the answer's own line (who, when): the work line's.
+  return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3 text-xs'}>
     {panel ? <div className="min-w-0 flex-1">{children}{status}</div> : status}
     {!panel && line.kind === 'waiting' && <WaitingStatus>{t(waitingKey(shown.preparing))}</WaitingStatus>}
-    {/* Under a message its state is said in the conversation's own words and size, from the reply's edge (as "Working on it…" is);
+    {/* Under a message its state is said in the conversation's own words at its states' size, from the reply's edge (as "Working on it…" is);
         the panel's compact row says it among its controls. */}
     {!panel && line.kind === 'moving' && words}
     {/* Its buttons say their words at the line's size and in its quiet tone (the ink comes under the pointer), a worded one

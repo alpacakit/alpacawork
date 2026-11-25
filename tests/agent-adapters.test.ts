@@ -80,7 +80,7 @@ test('all bridge IDs consume the common boundary after admission, keep continuat
   assert.equal(adapters.codex.read(resume, f.folder, exit).outcome.state, 'failed');
 });
 
-test('Codex overload cannot hand off an unfinished tool even when activity omits it', t => {
+test('Codex overload cannot hand off an unfinished tool', t => {
   const f = fixture(t), failed = { code: 1, signal: null };
   for (const type of ['dynamic_tool_call', 'collab_agent_tool_call']) {
     const item = { type, id: 'tool' };

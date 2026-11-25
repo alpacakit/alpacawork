@@ -21,19 +21,36 @@ export const runResultStateSchema = z.enum(['present', 'pending', 'missing', 'to
 export type RunResultState = z.infer<typeof runResultStateSchema>;
 /** A bounded display projection of the last complete agent stdout event. */
 export const runActivityKindSchema = z.enum(['output', 'tool_start', 'tool_end', 'message', 'result', 'error']);
-export const RUN_NOTE_LIMIT = 500;
 export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contract.js';
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
-import { runWorkSchema } from './work-contract.js';
+export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT,
+  RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
+export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
+  RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
+export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
+import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
-  toolName: z.string().max(128).nullable(),
+  toolName: z.string().max(RUN_TOOL_NAME_LIMIT).nullable(),
   doing: runWorkSchema.nullable(),
   note: z.object({ at: z.iso.datetime({ offset: true }), text: z.string().min(1).max(RUN_NOTE_LIMIT) }).strict().nullable(),
   /** How full the conversation is, as its agent last said; null before it has said. */
   context: agentContextSchema.nullable(),
+  steps: runStepsSchema,
+  /**
+   * How many times a step of this Run has started or ended so far, every step counted, not only the latest kept in
+   * `steps`: a change of it says the Run's opened list of steps is behind (absent before any step was counted).
+   */
+  stepEvents: z.number().int().nonnegative().optional(),
+  /** How many steps this Run began, every one counted (absent before any was): the one ground for its having steps. */
+  stepsStarted: z.number().int().nonnegative().optional(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
+/**
+ * Whether a Run has taken any step, the one answer every place that offers its steps asks: it began one. Only a step's
+ * start counts; an end, the Run's end, or the latest steps kept (an unreadable line can leave them empty) do not.
+ */
+export const tookSteps = (activity: { stepsStarted?: number } | null | undefined): boolean => (activity?.stepsStarted ?? 0) > 0;
 /** A working Run's activity as the screen reads it: its fill with its model's resolved window (agents/context-limits). */
 export const runActivityViewSchema = runActivitySchema.extend({ context: contextViewSchema.nullable() }).strict();
 export type RunActivityView = z.infer<typeof runActivityViewSchema>;
