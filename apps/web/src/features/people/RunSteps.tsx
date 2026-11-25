@@ -182,7 +182,8 @@ const BLOCK = "m-0 px-2.5 py-2 font-mono whitespace-pre-wrap [overflow-wrap:anyw
 /** What a step ran or got back, as written, saying how much was left out past the limit. A command is said after `$`. */
 function StepText({ text, tone, prompt, ...data }: { text: RunStepText; tone: string; prompt?: boolean; "data-run-step-input"?: true; "data-run-step-output"?: true }) {
   const { t } = useTranslation("people");
-  return <pre dir="auto" {...data} className={cn(BLOCK, tone)}>{prompt && <span aria-hidden className="text-muted select-none">$ </span>}{text.text}
+  // The prompt is drawn, not written: the block's words, copied or read, are the command alone.
+  return <pre dir="auto" {...data} className={cn(BLOCK, tone, prompt && "before:text-muted before:content-['$_']")}>{text.text}
     {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}
     {!!text.omittedFiles && <span data-run-step-more-files className="block font-sans text-muted">{t("now.step.omittedFiles", { count: text.omittedFiles })}</span>}</pre>;
 }
