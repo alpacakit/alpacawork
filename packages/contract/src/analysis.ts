@@ -210,3 +210,147 @@ export type AnalysisUsageView = z.infer<typeof analysisUsageViewSchema>;
 export type AnalysisListRow = z.infer<typeof analysisListRowSchema>;
 export type AnalysisUnitList = z.infer<typeof analysisUnitListSchema>;
 export type AnalysisUnitValues = z.infer<typeof analysisUnitValuesSchema>;
+
+/*
+ * The timeline of one task (`analysis trace`), the findings read from it (`analysis findings`) and the situation at one
+ * instant (`analysis at`). The screen draws its timeline from these same answers, so a person and an AI name the same
+ * spans, findings and instants; `url` opens the same scene on the screen.
+ */
+const instant = z.iso.datetime({ offset: true });
+const runId = z.string().regex(/^R[1-9]\d*$/);
+const taskOnly = taskIdSchema.refine(id => /^T[1-9]\d*$/.test(id), 'Expected a task ID (T<number>)');
+/** `self`: the task's own records; `subtree`: with every task under it. */
+export const analysisTraceScopeSchema = z.enum(['self', 'subtree']);
+export const analysisSpanKinds = ['task-state', 'waiting-answer', 'queued', 'run', 'step'] as const;
+export const analysisMarkKinds = ['instruction', 'answer', 'question-withdrawn', 'report', 'assigned', 'moved', 'values-changed',
+  'compacted', 'command-stopped', 'change'] as const;
+/** Non-overlapping parts of the wall time, in the order an instant is given to the first that holds (they sum to `wall`). */
+export const analysisBreakdownKeys = ['owner-working', 'member-working', 'child-working', 'held', 'waiting-answer', 'waiting-review',
+  'queued', 'idle'] as const;
+export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-command', 'queue-wait',
+  'failed-run', 'rework', 'idle'] as const;
+export type AnalysisFindingRule = typeof analysisFindingRules[number];
+
+const timelineScope = { timeZone: scope.timeZone, task: taskOnly, scope: analysisTraceScopeSchema.optional() };
+export const analysisTraceInput = z.strictObject({
+  ...timelineScope, from: instant.optional(), to: instant.optional(),
+  kinds: z.array(z.enum([...analysisSpanKinds, ...analysisMarkKinds])).min(1).optional(),
+  cursor: z.string().min(1).max(2048).optional(), limit: z.number().int().min(1).max(500).optional(),
+}).superRefine((input, ctx) => {
+  if (input.from && input.to && Date.parse(input.from) >= Date.parse(input.to))
+    ctx.addIssue({ code: 'custom', path: ['to'], message: 'To must be after from' });
+});
+/** `rule=value`: minutes for a time, a count for a repeat. */
+const thresholdText = z.string().regex(new RegExp(`^(${analysisFindingRules.join('|')})=\\d+(\\.\\d+)?$`), 'Expected rule=value');
+export const analysisFindingsInput = z.strictObject({
+  ...timelineScope, rules: z.array(z.enum(analysisFindingRules)).min(1).optional(),
+  threshold: z.array(thresholdText).optional(), limit: z.number().int().min(1).max(100).optional(),
+});
+export const analysisAtInput = z.strictObject({ ...timelineScope, at: instant });
+
+/** A record a span, mark or finding stands on; each is read again by its own command (run get, run steps --step, task get --question). */
+export const analysisEvidenceSchema = z.union([
+  z.strictObject({ run: runId, step: count.optional() }),
+  z.strictObject({ question: z.string(), task: taskIdSchema }),
+  z.strictObject({ log: z.string(), task: taskIdSchema }),
+]);
+const timelineHead = z.strictObject({
+  task: taskIdSchema, project: projectIdSchema, scope: analysisTraceScopeSchema, timeZone: z.string(), generatedAt: instant,
+});
+const recipient = z.union([z.literal('user'), taskIdSchema]);
+/** Who sent an instruction: the user (or the coordinator for them), the parent task, or the task's own owner (to a member, or going on after a return). */
+const instructionFrom = z.enum(['user', 'parent', 'owner']);
+const instructionPurpose = z.enum(['instruction', 'send-back', 'return']);
+export const analysisLaneSchema = z.strictObject({
+  id: z.string(), kind: z.enum(['task', 'agent']), task: taskIdSchema, parent: z.string().nullable(),
+  role: z.enum(['owner', 'member']).nullable(), agent: z.string().nullable(), label: z.string(),
+});
+const spanBase = { id: z.string(), lane: z.string(), from: instant, to: instant.nullable() };
+export const analysisSpanSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ ...spanBase, kind: z.literal('task-state'), task: taskIdSchema, state: z.string() }),
+  z.strictObject({ ...spanBase, kind: z.literal('waiting-answer'), task: taskIdSchema, question: z.string(), askedTo: recipient,
+    closed: z.enum(['answered', 'withdrawn', 'expired']).nullable() }),
+  z.strictObject({ ...spanBase, kind: z.literal('queued'), run: runId, behind: runId.nullable() }),
+  z.strictObject({ ...spanBase, kind: z.literal('run'), run: runId, state: z.string(), reason: z.string().nullable(),
+    model: z.string().nullable(), effort: z.string().nullable(), steps: z.enum(['recorded', 'not-recorded']) }),
+  z.strictObject({ ...spanBase, kind: z.literal('step'), run: runId, step: count, tool: z.string(), line: z.string(),
+    state: z.string(), source: z.string().nullable(), inside: z.string().nullable(), subagentSteps: count }),
+]);
+const markBase = { id: z.string(), lane: z.string(), at: instant };
+const changeSchema = z.strictObject({
+  what: z.enum(['agent', 'model', 'effort', 'version', 'skill', 'instructions']), name: z.string().nullable(),
+  from: z.string().nullable(), to: z.string().nullable(),
+});
+export const analysisMarkSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ ...markBase, kind: z.literal('instruction'), task: taskIdSchema, request: z.string(), from: instructionFrom,
+    purpose: instructionPurpose, label: z.string().nullable(), answers: z.string().nullable() }),
+  z.strictObject({ ...markBase, kind: z.literal('answer'), task: taskIdSchema, question: z.string(), by: recipient }),
+  z.strictObject({ ...markBase, kind: z.literal('question-withdrawn'), task: taskIdSchema, question: z.string(), log: z.string() }),
+  z.strictObject({ ...markBase, kind: z.literal('report'), task: taskIdSchema, log: z.string(), state: z.string().nullable(), title: z.string().nullable() }),
+  z.strictObject({ ...markBase, kind: z.enum(['assigned', 'moved', 'values-changed']), task: taskIdSchema, log: z.string() }),
+  z.strictObject({ ...markBase, kind: z.literal('compacted'), run: runId, beforeTokens: count.nullable(), afterTokens: count.nullable() }),
+  z.strictObject({ ...markBase, kind: z.literal('command-stopped'), run: runId, seconds: count, signal: z.string() }),
+  z.strictObject({ ...markBase, kind: z.literal('change'), run: runId, previous: runId, changes: z.array(changeSchema).min(1) }),
+]);
+/** Why a Run has no step times: launched before they were kept, or its agent's output names no steps alpacawork reads. */
+const stepsMissing = z.enum(['before-journal', 'provider-unsupported']);
+export const analysisTraceViewSchema = z.strictObject({
+  head: timelineHead.extend({ from: instant, to: instant, complete: z.boolean() }),
+  coverage: z.strictObject({
+    steps: z.strictObject({ known: z.array(runId), unknown: z.array(z.strictObject({ run: runId, reason: stepsMissing })) }),
+    conditions: z.strictObject({ known: z.array(runId), unknown: z.array(runId) }),
+    values: z.strictObject({ recordedFrom: instant.nullable() }),
+  }),
+  lanes: z.array(analysisLaneSchema), spans: z.array(analysisSpanSchema), marks: z.array(analysisMarkSchema),
+  breakdown: z.strictObject({
+    wall: count, categories: z.array(z.strictObject({ key: z.enum(analysisBreakdownKeys), ms: count })),
+    answerTo: z.strictObject({ user: count, task: count }),
+    aiBusyMs: count, aiWorkMs: count, toolMs: count.nullable(), thinkingMs: count.nullable(), stepWorkMs: count.nullable(),
+  }),
+  total: count, nextCursor: z.string().nullable(), url: z.string(),
+});
+export const analysisFindingSchema = z.strictObject({
+  id: z.string(), rule: z.enum(analysisFindingRules), at: instant, durationMs: count, lane: z.string().nullable(),
+  count: count.nullable(), threshold: z.strictObject({ value: measurement, unit: z.enum(['minutes', 'count']) }).nullable(),
+  source: z.enum(['recorded', 'inferred']), evidence: z.array(analysisEvidenceSchema).min(1), url: z.string(),
+});
+export const analysisFindingsViewSchema = z.strictObject({
+  head: timelineHead.extend({ from: instant, to: instant }),
+  rules: z.strictObject({
+    set: z.literal('experimental'),
+    used: z.array(z.strictObject({ rule: z.enum(analysisFindingRules),
+      threshold: z.strictObject({ value: measurement, unit: z.enum(['minutes', 'count']) }).nullable() })),
+    /** A rule that needs step times when no Run in the scope has them. */
+    unread: z.array(z.strictObject({ rule: z.enum(analysisFindingRules), reason: z.literal('no-step-times') })),
+  }),
+  findings: z.array(analysisFindingSchema), total: count, url: z.string(),
+});
+const stepAt = z.strictObject({ step: count, tool: z.string(), line: z.string(), from: instant.nullable(), to: instant.nullable() });
+export const analysisAtViewSchema = z.strictObject({
+  head: timelineHead.extend({ at: instant }),
+  tasks: z.array(z.strictObject({ task: taskIdSchema, title: z.string(), state: z.string() })),
+  runs: z.array(z.strictObject({
+    run: runId, task: taskIdSchema, role: z.enum(['owner', 'member']), agent: z.string(), model: z.string().nullable(),
+    effort: z.string().nullable(), since: instant,
+    request: z.strictObject({ id: z.string(), from: instructionFrom, purpose: instructionPurpose, at: instant, firstLine: z.string() }).nullable(),
+    steps: z.enum(['recorded', 'not-recorded']), current: z.array(stepAt), before: stepAt.nullable(), after: stepAt.nullable(),
+  })),
+  queued: z.array(z.strictObject({ run: runId, task: taskIdSchema, since: instant })),
+  questions: z.array(z.strictObject({ question: z.string(), task: taskIdSchema, askedTo: recipient, since: instant, title: z.string().nullable() })),
+  history: z.array(z.strictObject({ log: z.string(), task: taskIdSchema, kind: z.string(), at: instant, title: z.string().nullable() })),
+  values: z.null(), valuesReason: z.literal('not-recorded'), url: z.string(),
+});
+
+export type AnalysisTraceInput = z.infer<typeof analysisTraceInput>;
+export type AnalysisFindingsInput = z.infer<typeof analysisFindingsInput>;
+export type AnalysisAtInput = z.infer<typeof analysisAtInput>;
+export type AnalysisTraceScope = z.infer<typeof analysisTraceScopeSchema>;
+export type AnalysisEvidence = z.infer<typeof analysisEvidenceSchema>;
+export type AnalysisLane = z.infer<typeof analysisLaneSchema>;
+export type AnalysisSpan = z.infer<typeof analysisSpanSchema>;
+export type AnalysisMark = z.infer<typeof analysisMarkSchema>;
+export type AnalysisChange = z.infer<typeof changeSchema>;
+export type AnalysisTraceView = z.infer<typeof analysisTraceViewSchema>;
+export type AnalysisFinding = z.infer<typeof analysisFindingSchema>;
+export type AnalysisFindingsView = z.infer<typeof analysisFindingsViewSchema>;
+export type AnalysisAtView = z.infer<typeof analysisAtViewSchema>;

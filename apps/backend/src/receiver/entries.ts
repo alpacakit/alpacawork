@@ -27,6 +27,7 @@ import { updateNode } from './update-entries.js';
 import { workspaceUrl } from './workspace-url.js';
 
 import type { AnalysisReader } from '../analysis/reads.js';
+import { readAt, readFindings, readTrace } from '../analysis/timeline-reads.js';
 
 export interface Context extends TaskContext {
   analysis?: AnalysisReader;
@@ -367,6 +368,9 @@ const implementations = {
   'analysis/breakdown': { run: (_root, input, context) => context.analysis!.breakdown(input, requireCaller(context)) },
   'analysis/list': { run: (_root, input, context) => context.analysis!.list(input, requireCaller(context)) },
   'analysis/task': { run: (_root, input, context) => context.analysis!.task(input, requireCaller(context)) },
+  'analysis/trace': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readTrace(root, input); } },
+  'analysis/findings': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readFindings(root, input); } },
+  'analysis/at': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readAt(root, input); } },
   'project/shelf': {
     run: (root, _input, context) => {
       authorizeRead(root, context, SCREEN, null);

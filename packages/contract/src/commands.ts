@@ -1,4 +1,6 @@
 import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
+  analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
+  analysisSpanKinds, analysisMarkKinds, analysisFindingRules,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -62,7 +64,7 @@ export function commandRuleHelp(command: Command, showFlags = false): string[] {
 const groups: Readonly<Record<string, string>> = {
   dependency: 'Task execution order',
   project: 'Project management',
-  analysis: 'Counted values of finished tasks and AI use',
+  analysis: 'Counted values of finished tasks and AI use, and one task\'s timeline',
   task: 'Tasks: read, plan, request work, report and record',
   'task file': 'Files in a Task folder',
   'task attachment': 'Files attached to a request',
@@ -240,6 +242,8 @@ const analysisScope = [text('project', 'Project ID (nested projects included for
 const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
   text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
 const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
+const analysisTimelineScope = [text('task', 'Task ID (T<number>)'), text('scope', 'self: the task\'s own records (default); subtree: with every task under it'),
+  text('timeZone', 'IANA zone for display (default: server zone)')];
 const analysisTaskGroups = analysisTaskBySchema.options.join(', ');
 const analysisUsageGroups = analysisUsageBySchema.options.join(', ');
 
@@ -273,6 +277,27 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
+  'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, its subtasks and each agent seat), spans and marks in time ' +
+    'order, the wall time split into parts that do not overlap, and which Runs have step times', analysisTraceInput, [
+    ...analysisTimelineScope, text('from', 'Start instant (ISO; default: the task\'s creation)'),
+    text('to', 'End instant (ISO; default: now while the task can change, else its last record)'),
+    list('kinds', `Span and mark kinds to read (${[...analysisSpanKinds, ...analysisMarkKinds].join(', ')})`),
+    text('cursor', 'nextCursor from the previous page'), number('limit', 'Most spans and marks per page (up to 500, default 200)'),
+  ], { output: analysisTraceViewSchema, help: help(
+    'Breakdown parts, each instant to the first that holds: owner-working, member-working, child-working, held, waiting-answer, waiting-review, queued, idle.',
+    'Step-level values (toolMs, thinkingMs, stepWorkMs) are null, not 0, when a Run in the period has no step times; coverage names those Runs and why.',
+    'url opens the same scene on the screen. Read a span\'s records with run get, run steps --step, task get --question.') }),
+  'analysis/findings': command('read', 'Find places in one task\'s timeline worth a look, each by a fixed rule with its threshold and the ' +
+    'records it stands on, the longest first', analysisFindingsInput, [
+    ...analysisTimelineScope, list('rules', `Rules to apply (${analysisFindingRules.join(', ')}; default: all)`),
+    list('threshold', 'Threshold as rule=value: minutes for a time, a count for a repeat (e.g. long-wait=60)'),
+    number('limit', 'Most findings (up to 100, default 20)'),
+  ], { output: analysisFindingsViewSchema, help: help(
+    'The rule set is experimental: rule IDs stay, thresholds may change. Rules that read step times say so under unread when no Run has them.') }),
+  'analysis/at': command('read', 'Read the situation of one task at one instant: each task\'s state, the Runs running with their current, ' +
+    'previous and next steps and the instruction that started them, the queue, open questions and the last history lines', analysisAtInput, [
+    ...analysisTimelineScope, text('at', 'The instant (ISO)'),
+  ], { output: analysisAtViewSchema, help: help('Task values at that time are not recorded yet: values is null with valuesReason not-recorded.') }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [
     text('under', 'Subtree root Task ID, listed first'),
