@@ -55,16 +55,18 @@ export type PartItem = { color: string; name: string; value: ReactNode; share?: 
 /**
  * The parts of a row's whole, then the row's per-task line (─●), its value and its gap to the span before (or, for a
  * day, its base under it). One grid for the span's numbers and a day's alike: the name, then the number at the end of a
- * column of its own, then what goes beside it. The two number columns are as wide as the widest that any row of the
+ * column of its own, then what goes beside it (under the name where the column is narrow). The two number columns are as wide as the widest that any row of the
  * group says on any day (`--part-value`, `--part-share`, measured by ChartGroup from the span's numbers and each row's
  * room), so the numbers stand in one column down the rows and do not move when a day is pointed at.
  */
 export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name: string; value: ReactNode; gap?: ReactNode; base?: ReactNode } }) {
   const row = "col-span-3 grid grid-cols-subgrid items-baseline";
-  const name = "flex min-w-0 items-baseline text-muted [word-break:auto-phrase]";
-  const value = "justify-self-end inline-flex items-baseline gap-0.5 text-end whitespace-nowrap";
+  // Where the column is too narrow for a name beside its numbers (under 13rem: a window under about 900px), each name
+  // takes a line of its own and its numbers stand under it, in the same two columns.
+  const name = "flex min-w-0 items-baseline text-muted [overflow-wrap:anywhere] [word-break:auto-phrase] @max-[13rem]:col-span-3";
+  const value = "justify-self-end inline-flex items-baseline gap-0.5 text-end whitespace-nowrap @max-[13rem]:col-start-2";
   const share = "justify-self-end text-end text-xs whitespace-nowrap";
-  return <div className="mt-2 text-sm">
+  return <div className="@container mt-2 text-sm">
     <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-0.5">
       {items.map(item => {
         const cells = <>
@@ -321,7 +323,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} at={shown.at} box={shown.box}
+    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} room={legendRoom(rows[shown.row]!, names)} at={shown.at} box={shown.box}
       onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
       onPart={openDay}
       // The window steps to the day before or after, as if that day were pressed.
@@ -408,7 +410,7 @@ function useBinName() {
  * base, and the way to its tasks. It stands over or under the bin, where there is room, so the bins beside it stay in
  * sight; only where neither has room, beside it. Kept on the screen.
  */
-function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: { day: string; say: RowSay; at: number; box: Box;
+function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, last }: { day: string; say: RowSay; room: { day: string; say: RowSay }; at: number; box: Box;
   onList: (() => void) | null; onPart: (list: (bin: Bin) => DayList) => void; onStep: (step: -1 | 1) => void; first: boolean; last: boolean }) {
   const { t } = useTranslation("analysis");
   const self = useRef<HTMLDivElement>(null);
@@ -428,7 +430,20 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
     className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-sm shadow-float">
     <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
     <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-xl font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
+    {/* As wide, and its columns as wide, as the widest any of the row's days takes (legendRoom): stepping to another day
+        moves nothing. The room is laid out unseen and of no height. */}
+    <div aria-hidden className="invisible h-0 overflow-hidden whitespace-nowrap">
+      <div className="flex gap-2"><span className="size-7" />{room.day}<span className="size-7" /></div>
+      <div className="flex gap-6"><span>{room.say.name}</span><b className="text-xl font-semibold">{room.say.total(0)}</b></div>
+      {room.say.line && <div className="flex gap-6 ps-6"><span>{room.say.line.name}</span><b className="font-semibold">{room.say.line.value(0)}</b></div>}
+      {room.say.line && <div className="ps-5">{room.say.line.base(0)}</div>}
+    </div>
     {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
+      {(room.say.parts?.(0) ?? []).map((part, index) => <div key={`room-${index}`} aria-hidden className="invisible col-span-3 grid h-0 grid-cols-subgrid overflow-hidden px-1.5">
+        <span className="flex items-center whitespace-nowrap">{part.color && <i className="me-2 inline-block size-2" />}{part.name}</span>
+        <span className="font-semibold whitespace-nowrap tabular-nums">{part.value}</span>
+        <span className="flex items-center gap-0.5 text-xs whitespace-nowrap tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
+      </div>)}
       {parts.map(part => {
         const cells = <>
           <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>

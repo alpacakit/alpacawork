@@ -9,7 +9,7 @@ import { useWorkspaceInfo } from "@/data/queries";
 import { cn } from "@/lib/utils";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { useUnitList, useUnitValues } from "./data";
-import { dayLabel, duration, format, instant, spanLabel, tokenColumn } from "./format";
+import { duration, format, instant, spanLabel, tokenColumn } from "./format";
 import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
 import { PointerTip, Square, tip } from "./parts";
 import type { ListRow, UnitValues } from "./contract";
@@ -91,10 +91,8 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const left = first.total - rows.length;
   // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
   const title = listHeading(list, first.total);
-  const oneDay = list.days ? list.days.from === list.days.to ? list.days.from : null : span && span.from === span.to ? span.from : null;
   const dayOf = (row: ListRow) => row.finishedAt ? instant(row.finishedAt, zone).split(" ")[0]! : null;
-  const listDay = oneDay ? dayLabel(oneDay) : null;
-  const noDays = !showsDays(rows.map(dayOf), listDay);
+  const noDays = !showsDays(list, list.days ?? span);
   const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
     <h3 className="text-md font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>

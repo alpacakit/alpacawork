@@ -174,6 +174,8 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       <Rule name={t("usage.tasks")}>{t("def.usedTasksText")}</Rule>
       <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
       <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
+      <Rule name={t("usage.by.mcp")}>{t("def.mcpText")}</Rule>
+      <Rule name={t("usage.calls")}>{t("def.callsText")}</Rule>
       <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
       <Rule name={t("def.dayName")}>{zone}</Rule>
     </RulesBox>}

@@ -12,8 +12,8 @@ export type Row = { key: string; name: string; tag?: string; bar: number; cells:
 /**
  * A breakdown: the name, then the numbers, each a way into its tasks. The rows stand by the first number, most first,
  * and that column draws a quiet bar of how many, to compare the rows by. Each column's unit is in its heading, once.
- * The table is as wide as the page is now: the name over the left quarter of the grid (its three columns and the gap
- * after them), the numbers sharing the rest evenly. A heading wraps to the lines it needs, never over its neighbour.
+ * The table is as wide as the page is now: the name over its left quarter (wrapping, never cut), the numbers sharing
+ * the rest evenly. A heading wraps to the lines it needs, never over its neighbour.
  * Where the numbers would have less than `MIN_COLUMN` each (a phone, a narrow window, a long language), the table shows
  * the name and one column, chosen from that column's own heading: it never scrolls sideways. The first ten rows stand;
  * the rest come with a press.
@@ -50,7 +50,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "mu
   return <div ref={box}>
     <table className="w-full table-fixed border-collapse">
       <colgroup>
-        <col style={{ width: one ? "auto" : "calc(25% + 6px)" }} />
+        <col style={{ width: one ? "auto" : "25%" }} />
         {columns.map((name, at) => shows(at) && <col key={name} style={one ? { width: "45%" } : undefined} />)}
       </colgroup>
       <thead><tr className="text-xs text-soft">
@@ -69,7 +69,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "mu
         </th>)}
       </tr></thead>
       <tbody className="border-t border-rule">{visible.map(row => <tr key={row.key} className="h-9 border-b border-rule text-sm">
-        <td dir="auto" className={cn(one ? "pe-2 [overflow-wrap:anywhere]" : "truncate")}>{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
+        <td dir="auto" className="py-1.5 pe-3 [overflow-wrap:anywhere]">{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
         {row.cells.map((cell, at) => {
           if (!shows(at)) return null;
           const body = <>{cell.split && <Split parts={cell.split} />}<span className="tabular-nums">{cell.text}</span></>;

@@ -33,6 +33,9 @@ test("a column of tokens is written in its largest value's step, said once, and 
   const column = tokenColumn([4e4, 2953]);
   expect(column.unit).toBe("万");
   expect([column.write(4e4), column.write(2953), column.write(0)]).toEqual(["4.0", "0.3", "0"]);
+  // A column written whole (its largest ten or more of its step) marks a small value under its smallest place, 1.
+  const whole = tokenColumn([1.6e5, 2953, 400]);
+  expect([whole.unit, whole.write(1.6e5), whole.write(2953), whole.write(400)]).toEqual(["万", "16", "<1", "<1"]);
   const large = tokenColumn([1.2e9, 2953]);
   expect([large.unit, large.write(1.2e9), large.write(2953)]).toEqual(["億", "12.0", "<0.1"]);
   expect(tokenColumn([2953, 12]).unit).toBe("");
@@ -54,12 +57,15 @@ test("a list's heading says what it lists and how many tasks apart, in English t
   } finally { await i18n.changeLanguage("ja"); }
 });
 
-test("a list leaves out the day each task finished only when every row finished on the list's one day", () => {
-  expect(showsDays(["10/3", "10/3", null], "10/3")).toBe(false);
-  expect(showsDays(["10/3", "10/5", "10/6"], "10/3")).toBe(true);
-  expect(showsDays(["10/5", "10/5"], "10/3")).toBe(true);
-  expect(showsDays(["10/5", "10/6"], null)).toBe(true);
-  expect(showsDays([null, null], null)).toBe(false);
+test("a list leaves out the day each task finished only when it lists the tasks finished on one day", () => {
+  const day = { from: "2026-10-03", to: "2026-10-03" }, week = { from: "2026-10-01", to: "2026-10-07" };
+  for (const set of ["finished", "passed", "reworked", "stopped", "accepted"] as const) {
+    expect(showsDays({ set }, day)).toBe(false);
+    expect(showsDays({ set }, week)).toBe(true);
+  }
+  // The AI's use of a day lists the tasks it worked on that day, which may finish on any day, or not yet.
+  expect(showsDays({ set: "used" }, day)).toBe(true);
+  expect(showsDays({ set: "finished" }, null)).toBe(true);
 });
 
 test("large token counts take the largest step they reach, and a gap is written in the larger value's step", () => {

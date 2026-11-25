@@ -45,7 +45,9 @@ export function writeValue(value: ListValue, amount: number): string {
 }
 
 /**
- * Whether a list shows the column of the day each task finished: unless it would say nothing the heading does not,
- * every row having finished on the list's one day (`listDay`; null for a list of several days) or not at all.
+ * Whether a list shows the column of the day each task finished, decided by what the list is, never by the rows read
+ * so far: it is left out only from a list of the tasks that finished (or were accepted, or stopped) on one day, where
+ * every row's day is that day. A list of the AI's use (tasks it worked on in the days) always shows it.
  */
-export const showsDays = (days: (string | null)[], listDay: string | null) => !days.every(day => day === null || day === listDay);
+export const showsDays = (list: Pick<ListPlace, "set">, days: { from: string; to: string } | null) =>
+  list.set === "used" || !days || days.from !== days.to;
