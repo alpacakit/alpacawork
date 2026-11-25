@@ -2,7 +2,7 @@ import { act, fireEvent, render } from "@testing-library/react";
 import { SearchField } from "../src/features/chrome/SearchField";
 import { analysisHome } from "../src/features/analysis/place";
 import { useState } from "react";
-import { PointerTip } from "../src/features/analysis/parts";
+import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
 import { BarChart, ChartGroup, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
@@ -304,4 +304,16 @@ test("a day left waiting and dropped by another span leaves none of its listener
   for (const kind of ["keydown", "focusin", "wheel"]) expect(live.get(kind)?.size ?? 0).toBe(0);
   add.mockRestore(); remove.mockRestore();
   view.unmount();
+});
+
+test("how the numbers are counted is always open under the breakdown, and the way to it at the charts' head takes the focus there", () => {
+  const page = render(<><ChartHead /><p>charts</p>
+    <Rules><RuleCard><Rule name="手直しなし">受け入れたタスクのうち</Rule></RuleCard><RuleCard><Rule name="全期間">記録の最初の日から</Rule></RuleCard></Rules></>);
+  // Nothing opens or closes: the rules are read as they stand, a section named by its heading, cards of names and what each counts.
+  const region = page.getByRole("region", { name: "数え方" });
+  expect(region.querySelectorAll("dl")).toHaveLength(2);
+  expect([...region.querySelectorAll("dt")].map(name => name.textContent)).toEqual(["手直しなし", "全期間"]);
+  expect(page.container.querySelector("[aria-expanded]")).toBeNull();
+  fireEvent.click(page.getByRole("link", { name: "数え方" }));
+  expect(document.activeElement).toBe(page.getByRole("heading", { name: "数え方" }));
 });

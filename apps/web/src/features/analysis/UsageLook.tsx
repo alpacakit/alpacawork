@@ -3,7 +3,7 @@ import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind 
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, Num, Rule, rowName, RulesBox, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
 
 type Days = { from: string; to: string };
@@ -31,7 +31,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   view: UsageView; tasks: TasksView | null; days: Days; open: Open; zone: string;
 }) {
   const { t } = useTranslation("analysis");
-  const { bucket, usageGroup, grow, rules } = useChoices();
+  const { bucket, usageGroup, grow } = useChoices();
   const choose = useChoices(state => state.choose);
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
@@ -159,27 +159,27 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   return <>
     {leads}
     <ChartHead />
-    {/* Every name the look shows, in the order it shows them. */}
-    {rules && <RulesBox>
-      <Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p className="mt-1">{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
-      <Rule name={t("usage.output")}>{t("def.outputText")}</Rule>
-      <Rule name={t("def.inputName")}>{t("def.inputText")}</Rule>
-      <Rule name={t("usage.cache")}>{t("def.cacheText")}</Rule>
-      <Rule name={t("def.runName")}>{t("def.runText")}</Rule>
-      <Rule name={t("def.launchName")}>{t("def.launchText")}</Rule>
-      <Rule name={t("def.conversationName")}>{t("def.conversationText")}</Rule>
-      <Rule name={t("def.finishedName")}>{t("def.finishedText")}</Rule>
-      <Rule name={t("def.perFinishedName")}>{t("def.perFinishedText")}</Rule>
-      <Rule name={t("usage.tasks")}>{t("def.usedTasksText")}</Rule>
-      <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
-      <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
-      <Rule name={t("usage.by.mcp")}>{t("def.mcpText")}</Rule>
-      <Rule name={t("usage.calls")}>{t("def.callsText")}</Rule>
-      <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
-      <Rule name={t("def.dayName")}>{zone}</Rule>
-    </RulesBox>}
     {rows}
     <Breakdown view={view} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
+    {/* Every name the look shows, in cards in the order the rows show them. */}
+    <Rules>
+      <RuleCard><Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p>{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
+        <Rule name={t("usage.output")}>{t("def.outputText")}</Rule>
+        <Rule name={t("def.inputName")}>{t("def.inputText")}</Rule>
+        <Rule name={t("usage.cache")}>{t("def.cacheText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.runName")}>{t("def.runText")}</Rule>
+        <Rule name={t("def.launchName")}>{t("def.launchText")}</Rule>
+        <Rule name={t("def.conversationName")}>{t("def.conversationText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.finishedName")}>{t("def.finishedText")}</Rule>
+        <Rule name={t("def.perFinishedName")}>{t("def.perFinishedText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("usage.tasks")}>{t("def.usedTasksText")}</Rule>
+        <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
+        <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
+        <Rule name={t("usage.by.mcp")}>{t("def.mcpText")}</Rule>
+        <Rule name={t("usage.calls")}>{t("def.callsText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.everName")}>{t("def.everText")}</Rule>
+        <Rule name={t("def.dayName")}>{zone}</Rule></RuleCard>
+    </Rules>
   </>;
 }
 

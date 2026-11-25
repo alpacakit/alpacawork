@@ -12,13 +12,13 @@ import type { Bucket } from "./contract";
 /**
  * How the analysis is drawn, kept while the page stands (not in the URL: Back does not undo them): the step of time
  * on the charts, how each look is broken down, which value the use chart draws, whether a table shows every row and
- * whether the counting rules are open. `grow` says the next drawing of the charts grows their bars.
+ * `grow` says the next drawing of the charts grows their bars.
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; rules: boolean; grow: number };
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, rules: false, grow: 0,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0,
   choose: (next) => set(next),
 }));
 
@@ -115,27 +115,45 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
 }
 
 /**
- * The head of a look's charts, under the rule that parts them from the lead numbers: how the numbers are counted on the
- * left (it opens the rules under it), the step of time of every chart on the right, over the charts it steps.
+ * The head of a look's charts: on the left the way down to how the numbers are counted (the cards under the breakdown,
+ * `Rules`), on the right the step of time of every chart, over the charts it steps.
  */
 export function ChartHead() {
   const { t } = useTranslation("analysis");
-  const { bucket, grow, rules } = useChoices();
+  const { bucket, grow } = useChoices();
   return <div className="mt-14 flex items-center justify-between gap-4 narrow:mt-10">
-    {/* It opens the rules under it, as the app's other disclosures do: a chevron that turns as it opens. */}
-    <button type="button" aria-expanded={rules} onClick={() => useChoices.getState().choose({ rules: !rules })}
-      className="group -ms-2 inline-flex h-7 items-center gap-1 rounded-md ps-2 pe-1.5 text-base whitespace-nowrap text-muted hover:bg-hover hover:text-ink aria-expanded:text-ink">
-      {t("tasks.howCounted")}
-      <Icon name="down" aria-hidden className="size-3.5 transition-transform duration-(--motion-base) group-aria-expanded:rotate-180" />
-    </button>
+    {/* A way to a place on the page, not a way into tasks (no ›): pressed, the rules come into view and take the focus. */}
+    <a href={`#${RULES}`} onClick={event => { event.preventDefault(); toRules(); }}
+      className="-ms-1 rounded-sm px-1 text-base whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">
+      {t("tasks.howCounted")}</a>
     <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
       items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />
   </div>;
 }
-/** The counting rules: a name and what it counts, one to a line, the names in a column of their own. */
-export function RulesBox({ children }: { children: ReactNode }) {
+/** Where the counting rules stand, by the id of their heading. */
+const RULES = "analysis-rules";
+/** Brings the counting rules into view and gives their heading the focus (read out, and the keys go on from there). */
+function toRules() {
+  const heading = document.getElementById(RULES);
+  heading?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  heading?.focus({ preventScroll: true });
+}
+/**
+ * How the numbers are counted, always open under the breakdown: a heading, then cards of rules that belong together, in
+ * the order the rows show them (three across, two on a narrower page, one on a phone). Each card is a list of names and
+ * what each counts.
+ */
+export function Rules({ children }: { children: ReactNode }) {
+  const { t } = useTranslation("analysis");
+  return <section aria-labelledby={RULES} className="mt-16 narrow:mt-12">
+    <h2 id={RULES} tabIndex={-1} className="mb-4 scroll-mt-[calc(var(--bar-h)+1.5rem)] text-xl font-semibold outline-none">{t("tasks.howCounted")}</h2>
+    <div className="grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>
+  </section>;
+}
+/** A card of rules that belong together: each name over what it counts. */
+export function RuleCard({ children }: { children: ReactNode }) {
   // Japanese breaks between phrases, not inside a word (auto-phrase reads the page's language).
-  return <dl className="mt-3 mb-1 grid max-w-[52em] animate-rise grid-cols-[max-content_minmax(0,1fr)] gap-x-5 gap-y-1.5 rounded-lg border border-line px-4 py-3.5 text-base text-muted [word-break:auto-phrase] narrow:grid-cols-1 narrow:gap-y-0.5 [&_dd+dt]:narrow:mt-2 [&_dt]:font-semibold [&_dt]:text-ink [&_ul]:mt-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</dl>;
+  return <dl className="grid gap-y-1 rounded-lg border border-rule px-6 py-5 text-base text-muted [word-break:auto-phrase] narrow:p-4 [&_dd_p]:mt-1 [&_dd_p]:text-xs [&_dt]:font-semibold [&_dt]:text-ink [&_dt:not(:first-child)]:mt-3 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</dl>;
 }
 /** One counting rule: its name, then what it counts. */
 export const Rule = ({ name, children }: { name: string; children: ReactNode }) => <><dt>{name}</dt><dd>{children}</dd></>;

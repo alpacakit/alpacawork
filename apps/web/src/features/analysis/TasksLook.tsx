@@ -4,7 +4,7 @@ import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDel
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, rowName, RulesBox, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace } from "./place";
 
@@ -20,7 +20,7 @@ const HOUR = 3_600_000;
  */
 export function TasksLook({ view, days, open, zone }: { view: TasksView; days: Days; open: Open; zone: string }) {
   const { t } = useTranslation("analysis");
-  const { bucket, taskGroup, grow, rules } = useChoices();
+  const { bucket, taskGroup, grow } = useChoices();
   const choose = useChoices(state => state.choose);
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
@@ -208,26 +208,26 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   return <>
     {leads}
     <ChartHead />
-    {/* Every name the look shows, in the order it shows them. */}
-    {rules && <RulesBox>
-      <Rule name={t("tasks.passed")}>{t("def.lead")}<ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
-        <p className="mt-1">{t("def.after")}</p></Rule>
-      <Rule name={t("tasks.finished")}>{t("def.finishedTasksText")}</Rule>
-      <Rule name={t("tasks.accepted")}>{t("def.acceptedText")}</Rule>
-      <Rule name={t("def.leadName")}>{t("def.leadText")}</Rule>
-      <Rule name={t("time.you")}>{t("def.youText")}</Rule>
-      <Rule name={t("time.ai")}>{t("def.aiText")}</Rule>
-      <Rule name={t("time.other")}>{t("def.otherText")}</Rule>
-      <Rule name={t("until.submits")}>{t("def.submitsText")}</Rule>
-      <Rule name={t("until.questions")}>{t("def.questionsText")}</Rule>
-      <Rule name={t("def.prName")}>{t("def.prText")}</Rule>
-      <Rule name={t("def.perTaskName")}>{t("def.perTaskText")}</Rule>
-      <Rule name={t("def.modelName")}>{t("def.modelText")}</Rule>
-      <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
-      <Rule name={t("def.dayName")}>{zone}</Rule>
-    </RulesBox>}
     {rows}
     {breakdown}
+    {/* Every name the look shows, in cards in the order the rows show them. */}
+    <Rules>
+      <RuleCard><Rule name={t("tasks.passed")}>{t("def.lead")}<ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
+        <p>{t("def.after")}</p></Rule></RuleCard>
+      <RuleCard><Rule name={t("tasks.finished")}>{t("def.finishedTasksText")}</Rule>
+        <Rule name={t("tasks.accepted")}>{t("def.acceptedText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.leadName")}>{t("def.leadText")}</Rule>
+        <Rule name={t("time.you")}>{t("def.youText")}</Rule>
+        <Rule name={t("time.ai")}>{t("def.aiText")}</Rule>
+        <Rule name={t("time.other")}>{t("def.otherText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("until.submits")}>{t("def.submitsText")}</Rule>
+        <Rule name={t("until.questions")}>{t("def.questionsText")}</Rule>
+        <Rule name={t("def.perTaskName")}>{t("def.perTaskText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.prName")}>{t("def.prText")}</Rule>
+        <Rule name={t("def.modelName")}>{t("def.modelText")}</Rule></RuleCard>
+      <RuleCard><Rule name={t("def.everName")}>{t("def.everText")}</Rule>
+        <Rule name={t("def.dayName")}>{zone}</Rule></RuleCard>
+    </Rules>
   </>;
 }
 
