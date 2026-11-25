@@ -96,6 +96,10 @@ const key = (event: StepJournalEntry['event'], line: number, id: string) => `${e
 export class StepJournal {
   /** The step a tool call's ID names now, by the line that started it: an ID used again after its end starts another. */
   private readonly open = new Map<string, number>();
+  /** Steps a turn's end or an error notice settled without their own end, by call ID: a later end is theirs. */
+  private readonly settled = new Map<string, number>();
+  /** Settled steps whose call ID a new step took before their end came: they end when the Run does. */
+  private readonly unended: [string, number][] = [];
   /** The line of the last step each call ID named, once it ended. */
   private readonly closed = new Map<string, number>();
   private held: Map<string, StepTime> | null = null;
@@ -114,10 +118,18 @@ export class StepJournal {
   observe(event: ActivityEvent, line: number, timeOf: StepTimeOf): number | null {
     if (this.failed) return null;
     const { kind, id } = event;
-    // The agent's turn ended: what is still open ends with it, as the index of steps reads it.
-    if (kind === 'result' || kind === 'error') { this.settle(kind === 'result' ? 'done' : 'failed', timeOf); return null; }
+    // A turn's end or an error notice settles what is open, as the index of steps reads it: the same ID starts a new
+    // step after it, while an end said later is still the settled step's. Its time is written when that end comes, or
+    // when the Run ends.
+    if (kind === 'result' || kind === 'error') {
+      for (const [open, at] of this.open) this.settled.set(open, at);
+      this.open.clear();
+      return null;
+    }
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return null;
     if (kind === 'tool_start' && this.open.has(id)) return this.open.get(id)!;
+    if (kind === 'tool_start' && this.settled.has(id)) { this.unended.push([id, this.settled.get(id)!]); this.settled.delete(id); }
+    if (kind === 'tool_end' && !this.open.has(id) && this.settled.has(id)) { this.open.set(id, this.settled.get(id)!); this.settled.delete(id); }
     // An end said again for a step already ended is that step's, as the index of steps reads it.
     if (kind === 'tool_end' && !this.open.has(id) && this.closed.has(id)) return this.closed.get(id)!;
     if (kind === 'tool_start' || !this.open.has(id)) {
@@ -157,16 +169,16 @@ export class StepJournal {
   }
 
   /**
-   * The steps still open when the agent's turn ended end with it (`state`), each at the time `timeOf` gives (not
+   * The steps still without an end when the Run ended end with it (`state`), each at the time `timeOf` gives (not
    * written where it gives none).
    */
   settle(state: 'done' | 'failed' | 'unknown', timeOf: StepTimeOf): void {
-    for (const [id, line] of this.open) {
+    for (const [id, line] of [...this.open, ...this.settled, ...this.unended]) {
       const at = timeOf('end', line, id);
       if (at) this.append({ event: 'end', line, id, ...at, state, output: null });
       this.closed.set(id, line);
     }
-    this.open.clear();
+    this.open.clear(); this.settled.clear(); this.unended.length = 0;
   }
 
   /** What the journal holds, by entry, with where its time came from (the first written stands). */

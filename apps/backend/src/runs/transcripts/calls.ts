@@ -43,17 +43,18 @@ export class CallBook {
     const runs = this.runs(id);
     if (runs && !runs.some(run => run.startedAt === at)) runs.push({ startedAt: at, endedAt: null });
   }
-  /** A call ended: the end of its latest run still open that started by then, or a run said only by its end. */
+  /** A call ended: the end of its latest run still open that started by then, else a run said only by its end (once). */
   ended(id: unknown, at: number): void {
     const runs = this.runs(id);
-    if (!runs || runs.some(run => run.endedAt === at)) return;
+    if (!runs) return;
     const open = [...runs].reverse().find(run => run.endedAt === null && run.startedAt !== null && run.startedAt <= at);
-    if (open) open.endedAt = at; else runs.push({ startedAt: null, endedAt: at });
+    if (open) open.endedAt = at;
+    else if (!runs.some(run => run.endedAt === at)) runs.push({ startedAt: null, endedAt: at });
   }
-  /** A run said whole, its start null where the record gives only its end. */
+  /** A run said whole, its start null where the record gives only its end; the same run said again is one. */
   ran(id: unknown, startedAt: number | null, endedAt: number): void {
     const runs = this.runs(id);
-    if (runs && !runs.some(run => run.endedAt === endedAt)) runs.push({ startedAt, endedAt });
+    if (runs && !runs.some(run => run.startedAt === startedAt && run.endedAt === endedAt)) runs.push({ startedAt, endedAt });
   }
 }
 

@@ -74,7 +74,10 @@ test('codex: a command starts as long before its end as it took, an item that sa
   lines(join(homes.codex[0]!, 'sessions/2026/11/20', `rollout-2026-11-20T10-00-00-${thread}.jsonl`), [
     completed('2026-11-20T01:00:46.500Z', { type: 'CommandExecution', id: 'exec-1', duration: { secs: 46, nanos: 500_000_000 } }),
     completed('2026-11-20T01:00:50.000Z', { type: 'FileChange', id: 'f1' }),
-    completed('2026-11-20T01:01:30.000Z', { type: 'CommandExecution', id: 'exec-2', duration: { secs: 10, nanos: 400_123 } })]);
+    completed('2026-11-20T01:01:30.000Z', { type: 'CommandExecution', id: 'exec-2', duration: { secs: 10, nanos: 400_123 } }),
+    // Two records of one call that end together but started apart: which is right is not known.
+    completed('2026-11-20T01:01:40.000Z', { type: 'CommandExecution', id: 'exec-3', duration: { secs: 2, nanos: 0 } }),
+    completed('2026-11-20T01:01:40.000Z', { type: 'CommandExecution', id: 'exec-3', duration: { secs: 7, nanos: 0 } })]);
   const folder = join(path, 'R3'), command = "/bin/bash -lc 'pnpm test'";
   lines(join(folder, 'stdout.log'), [{ type: 'item.started', item: { id: 'exec-1', type: 'command_execution', command } },
     { type: 'item.completed', item: { id: 'exec-1', type: 'command_execution', command, exitCode: 0 } },
@@ -82,16 +85,18 @@ test('codex: a command starts as long before its end as it took, an item that sa
     { type: 'item.completed', item: { id: 'f1', type: 'file_change', changes: [], status: 'completed' } },
     { type: 'item.completed', item: { id: 'f1', type: 'file_change', changes: [], status: 'completed' } },
     // The output stops before this command's end; the record has it.
-    { type: 'item.started', item: { id: 'exec-2', type: 'command_execution', command } }]);
+    { type: 'item.started', item: { id: 'exec-2', type: 'command_execution', command } },
+    { type: 'item.started', item: { id: 'exec-3', type: 'command_execution', command } }]);
   const record = run('R3', 'codex', thread, '2026-11-20T01:00:00.000Z', '2026-11-20T01:02:00.000Z');
   assert.deepEqual(await importRunSteps(folder, record, transcriptReaders(homes), false),
-    { run: 'R3', task: 'T1', agent: 'codex', steps: 3, timed: 3, added: 5, reason: null });
+    { run: 'R3', task: 'T1', agent: 'codex', steps: 4, timed: 3, added: 5, reason: null });
   assert.equal((await times(folder, 'codex'))[0]!.startedAt, null);
   await importRunSteps(folder, record, transcriptReaders(homes), true);
   assert.deepEqual(await times(folder, 'codex'), [
     { id: 'exec-1', startedAt: '2026-11-20T01:00:00.000Z', startSource: 'transcript', endedAt: '2026-11-20T01:00:46.500Z', endSource: 'transcript' },
     { id: 'f1', startedAt: null, startSource: null, endedAt: '2026-11-20T01:00:50.000Z', endSource: 'transcript' },
     { id: 'exec-2', startedAt: '2026-11-20T01:01:20.000Z', startSource: 'transcript', endedAt: '2026-11-20T01:01:30.000Z', endSource: 'transcript' },
+    { id: 'exec-3', startedAt: null, startSource: null, endedAt: null, endSource: null },
   ]);
 });
 
