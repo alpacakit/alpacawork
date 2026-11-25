@@ -14,6 +14,7 @@ import { analysisTasksViewSchema, analysisUnitValuesSchema, analysisUsageViewSch
   type AnalysisTasksView, type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { AnalysisReader, analysisKept } from '@alpacawork/backend/test-dist/analysis/reads.js';
 import { openTallyScope } from '@alpacawork/backend/test-dist/analysis/tally-scope.js';
+import { setAnalysisSlice } from '@alpacawork/backend/test-dist/analysis/slices.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
@@ -470,6 +471,62 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const alone = [];
       for (const read of reads) alone.push(await read());
       assert.deepEqual(together, alone);
+
+      // Writes while reads are under way: each answer is the whole answer of one moment, and the reads after them are
+      // what reading everything again gives. Every point a read may give the loop back does (a slice of 0), and the
+      // writes come after more and more of those points.
+      const reRun = (run: number, session: string, output: number) => {
+        const record = JSON.parse(String(store.connection.prepare('SELECT record FROM runs WHERE id=?').get(run)!.record));
+        record.session = { provider: 'fixture', id: session };
+        record.usage = { ...record.usage, run: { ...record.usage.run, output } };
+        store.connection.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), run);
+        touch(store.connection, { kind: 'run', id: 'R' + run });
+      };
+      // A Run's session and its output tokens changed at once, and two Runs changed by two writes.
+      const states = [
+        [() => store.write(() => reRun(4, 'synthetic-session-1', 4 + 12_345))],
+        [() => store.write(() => reRun(4, 'synthetic-session-4', 4))],
+        [() => store.write(() => reRun(3, 'synthetic-session-1', 3 + 12_345)), () => store.write(() => reRun(4, 'synthetic-session-1', 4 + 12_345))],
+        [() => store.write(() => reRun(3, 'synthetic-session-3', 3)), () => store.write(() => reRun(4, 'synthetic-session-4', 4))],
+      ];
+      const counted = (view: AnalysisReader) => view.usage({ ...params, by: 'model' }, actor);
+      const listed = (view: AnalysisReader) => view.list({ period: 'all', set: 'used', value: 'tokens' }, actor);
+      const wholly = async <T>(read: (view: AnalysisReader) => Promise<T>) => {
+        const fresh = new AnalysisReader(root, Date.parse(tallySince));
+        try { return await read(fresh); } finally { fresh.close(); }
+      };
+      const turns = (count: number) => (async () => { for (let i = 0; i < count; i++) await new Promise(resolve => setImmediate(resolve)); })();
+      const seen = { counted: new Set<number>(), listed: new Set<number>() };
+      let during = 0;
+      setAnalysisSlice(0);
+      try {
+        for (let round = 0; round < 24; round++) {
+          const writes = states[round % states.length]!, after = 1 + (round >> 2) * 6;
+          const moments = [{ counted: await wholly(counted), listed: await wholly(listed) }];
+          // A long count whose facts have a change to read, and a list that waits behind it for the facts.
+          store.write(() => touch(store.connection, { kind: 'run', id: 'R1' }));
+          let settled = false;
+          const counting = counted(reader).finally(() => { settled = true; }), listing = listed(reader);
+          for (const write of writes) {
+            await turns(after);
+            if (!settled) during++;
+            write();
+            moments.push({ counted: await wholly(counted), listed: await wholly(listed) });
+          }
+          const [count, list] = await Promise.all([counting, listing]);
+          const at = (answer: unknown, kind: 'counted' | 'listed') => {
+            const moment = moments.findIndex(each => JSON.stringify(each[kind]) === JSON.stringify(answer));
+            assert.notEqual(moment, -1, `round ${round}: the ${kind} answer is no one moment's`);
+            seen[kind].add(moment);
+          };
+          at(count, 'counted'); at(list, 'listed');
+          const last = moments.at(-1)!;
+          assert.deepEqual(await counted(reader), last.counted, `round ${round}`);
+          assert.deepEqual(await listed(reader), last.listed, `round ${round}`);
+        }
+      } finally { setAnalysisSlice(); }
+      // Writes came while reads were under way, and a read waiting its turn answered as of a later moment.
+      assert.ok(during > 0 && seen.listed.size > 1, JSON.stringify({ during, counted: [...seen.counted], listed: [...seen.listed] }));
     } finally { store.close(); reader.close(); tables(); changes.close(); }
   } finally {
     if (original) {

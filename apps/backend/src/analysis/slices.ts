@@ -6,13 +6,16 @@ import { performance } from 'node:perf_hooks';
  * against a person's sense of a pause and the work's own cost of resuming small (measured: work/perf/README.md).
  */
 export const SLICE_MS = 50;
+let sliceMs = SLICE_MS;
+/** For tests: a slice of `ms` (0 gives the loop back at every point a read may pause), until it is set back. */
+export function setAnalysisSlice(ms = SLICE_MS) { sliceMs = ms; }
 export class Slices {
-  private until = performance.now() + SLICE_MS;
+  private until = performance.now() + sliceMs;
   /** Whether this slice is spent: the caller gives the loop back (`pause`) at a point where its state is whole. */
   get due() { return performance.now() >= this.until; }
   async pause() {
     await new Promise(resolve => setImmediate(resolve));
-    this.until = performance.now() + SLICE_MS;
+    this.until = performance.now() + sliceMs;
   }
 }
 

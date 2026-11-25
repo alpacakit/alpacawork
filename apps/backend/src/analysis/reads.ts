@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
@@ -635,35 +634,33 @@ export class AnalysisReader {
   }
   close() { this.facts.close(); }
 
-  private readFacts(db: DatabaseSync, slices: Slices) {
-    const turn = this.factsTurn.then(() => this.facts.read(db, slices));
+  private readFacts(slices: Slices) {
+    const turn = this.factsTurn.then(() => this.facts.read(slices));
     this.factsTurn = turn.catch(() => {});
     return turn;
   }
 
   /**
-   * One read: the caller's scope, the facts at its read point, then what it counts over (`needs`: nothing more for one
-   * task's values; the scope's units and launches; those and their day sums), then `apply`.
+   * One read: the caller's scope, then the facts at one read point (they take their own, in their turn: FactsCache.read)
+   * and what it counts over them alone (`needs`: nothing more for one task's values; the scope's units and launches;
+   * those and their day sums), then `apply`. Every number of one answer is counted from those facts.
    */
   private async scoped<T>(input: { project?: string; timeZone?: string }, caller: Caller, needs: 'facts' | 'scope' | 'days',
     apply: (view: ScopedAnalysis, slices: Slices) => T | Promise<T>): Promise<T> {
     const store = new ControlStore(this.root, { busyTimeoutMs: 10_000 }, true), slices = new Slices();
-    try {
-      return await store.readAsync(async () => {
-        const db = store.connection;
-        const { readScope } = authorize(db, caller, { name: 'task.list' }, { task: null, quote: null });
-        if (readScope !== null && input.project !== undefined && input.project !== readScope)
-          throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
-        const facts = await this.readFacts(db, slices);
-        const project = readScope ?? input.project ?? null, zone = input.timeZone ?? this.timeZone;
-        const allows = matchingProject(facts, project, readScope), date = calendar(zone), scope = JSON.stringify([project, readScope]);
-        const view = needs === 'facts' ? null : await this.view(facts, zone, scope, allows, date, slices);
-        const analysis = new ScopedAnalysis(facts, view, view?.first ?? firstOf(facts, scope, allows), project, allows, zone,
-          Date.now(), this.tallySince, this.tallies, date);
-        if (needs === 'days') await analysis.daily(slices);
-        return await apply(analysis, slices);
-      });
-    } finally { store.close(); }
+    let readScope: string | null;
+    try { ({ readScope } = store.read(db => authorize(db, caller, { name: 'task.list' }, { task: null, quote: null }))); }
+    finally { store.close(); }
+    if (readScope !== null && input.project !== undefined && input.project !== readScope)
+      throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
+    const facts = await this.readFacts(slices);
+    const project = readScope ?? input.project ?? null, zone = input.timeZone ?? this.timeZone;
+    const allows = matchingProject(facts, project, readScope), date = calendar(zone), scope = JSON.stringify([project, readScope]);
+    const view = needs === 'facts' ? null : await this.view(facts, zone, scope, allows, date, slices);
+    const analysis = new ScopedAnalysis(facts, view, view?.first ?? firstOf(facts, scope, allows), project, allows, zone,
+      Date.now(), this.tallySince, this.tallies, date);
+    if (needs === 'days') await analysis.daily(slices);
+    return await apply(analysis, slices);
   }
 
   /** A scope's units and launches for these facts: kept per zone and scope, made again only when the facts change. */

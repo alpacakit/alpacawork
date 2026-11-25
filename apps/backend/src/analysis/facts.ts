@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { type ChangeKey, type ChangeLog } from '@alpacawork/db';
+import { ControlStore, type ChangeKey, type ChangeLog } from '@alpacawork/db';
 import type { TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
@@ -168,13 +168,22 @@ export class FactsCache {
   close() { this.release?.(); }
 
   /**
-   * The facts as of `db`'s read point. The work gives the event loop back every slice; `db` holds one read point across
-   * the pauses (ControlStore.readAsync), and reads are taken one at a time (the caller's queue), so a pause never sees
-   * another read's half-kept state.
+   * The facts as of one read point, which this read takes itself: the journal's position is read and the read point
+   * taken right after it, with no pause between them, so every change the position counts is in what is read (a change
+   * committed after the position and before the read point is read twice, never missed). The work gives the event loop
+   * back every slice and holds that read point across the pauses (ControlStore.readAsync); reads are taken one at a time
+   * (the caller's queue). What is returned is never changed afterwards, so a read still counting over older facts counts
+   * them as they were.
    */
-  async read(db: DatabaseSync, slices: Slices): Promise<AnalysisFacts> {
-    // The journal is read and the read point is taken with no pause between them.
+  async read(slices: Slices): Promise<AnalysisFacts> {
+    const store = new ControlStore(this.root, { busyTimeoutMs: 10_000 }, true);
+    try { return await store.readAsync(() => this.readAt(store.connection, slices)); }
+    finally { store.close(); }
+  }
+
+  private async readAt(db: DatabaseSync, slices: Slices): Promise<AnalysisFacts> {
     const change = this.journal?.read('analysis');
+    // The transaction's first statement: the read point is taken here.
     const identity = db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()?.id;
     const full = !this.data || this.workspace !== identity || !change || change.kind === 'overflow';
     if (!full && change.kind === 'changes' && !change.batches.length) return this.data!;
@@ -225,7 +234,10 @@ export class FactsCache {
       for (const [key, launch] of first) { this.first.add(launch.id); this.firstOf.set(key, launch.id); }
       return;
     }
-    for (const key of keys) {
+    // The facts given out before hold the last set: it is copied, never changed.
+    const keyed = [...keys];
+    if (keyed.length) this.first = new Set(this.first);
+    for (const key of keyed) {
       const old = this.firstOf.get(key);
       if (old !== undefined) { this.first.delete(old); this.firstOf.delete(key); }
       const launches = [...this.sessions.get(key) ?? []].map(id => this.runs.get(id)!);
@@ -243,7 +255,7 @@ export class FactsCache {
     const previous = this.data, taskIds = new Set(changedTasks);
     if (full) {
       for (const kept of [this.logs, this.values, this.runs, this.runsByTask, this.firstOwners, this.sessions, this.sessionOf, this.firstOf]) kept.clear();
-      this.first.clear();
+      this.first = new Set();
     }
     let nodes = previous?.nodes ?? new Map<string, TaskNode>();
     if (full) nodes = new Map((await readNodes(db, slices)).map(node => [node.id, node]));
