@@ -21,7 +21,10 @@
   },
   "limits": {
     "barLabel": "Límites de uso de la IA: {{agent}}, {{window}}: {{percent}} usado",
+    "barStopped": "Límites de uso de la IA: {{agent}}: {{state}}",
+    "barSwitched": "Límites de uso de la IA: {{spent}} alcanzó su límite, se usa {{agent}} en su lugar; {{window}}: {{percent}} usado",
     "barUnknown": "Límites de uso de la IA: no se pudieron leer los límites de {{agent}}",
+    "instead": "En uso en su lugar",
     "none": "Ahora no hay límites",
     "readAgo_one": "Actualizado hace {{count}} min",
     "readAgo_many": "Actualizado hace {{count}} min",
@@ -38,6 +41,9 @@
       "inMinutes_other": "Se restablece en {{count}} min",
       "inWholeHours": "Se restablece en {{hours}} h"
     },
+    "stopped": "Detenido",
+    "stoppedUntil": "Detenido hasta el {{when}}",
+    "stoppedUntilShort": "Hasta el {{when}}",
     "title": "Límites de uso de la IA",
     "unavailable": "No se pudo leer. Comprueba el inicio de sesión",
     "unsupported": "No da sus límites",

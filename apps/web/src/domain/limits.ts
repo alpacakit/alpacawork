@@ -1,5 +1,5 @@
 /** How the bar and its menu say an agent's plan limits (contract: agent-limits). */
-import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
+import type { AgentLimits, AgentLimitsResponse, LimitWindow } from "@alpacawork/contract/agent-limits";
 
 /** From here a window is close to its limit, and at 100 it is spent. */
 export const LIMIT_NEAR = 80;
@@ -10,16 +10,44 @@ export const limitTone = (percent: number): LimitTone => percent >= 100 ? "spent
 export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
   windows.reduce<LimitWindow | null>((tightest, window) => !tightest || window.usedPercent > tightest.usedPercent ? window : tightest, null);
 
+/** The windows that hold a stack row back: the account's own, and its model's (the provider's "Fable", the row's "fable"). */
+export const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
+  windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
+
 /**
- * What the bar shows: the first agent that tasks use (the server lists the task stack's first) and its fullest window,
- * or no window while that agent's limits are unknown, so another agent's figure never stands as the first's. Null, and
- * no bar, until some agent's limits are known.
+ * What the bar shows, from the stack tasks run on:
+ * - `using`: the first row that can work now, and its fullest window that holds it (null while its limits are unknown,
+ *   so another agent's figure never stands as its own); `spent`: the agents of the rows before it whose limit is spent.
+ * - `stopped`: every row is spent; the first row's agent, and the window holding it longest (when work goes on).
+ * A row whose agent has no limits (one used with an API key) is passed over. Null, and no bar, until some agent's limits are known.
  */
-export function barLimit(agents: readonly AgentLimits[]): { agent: AgentLimits; window: LimitWindow | null } | null {
-  // An agent with no limits at all (one used with an API key) has nothing to warn of: the next one tasks use stands first.
-  const agent = agents.find(entry => entry.state === "unavailable" || entry.state === "ok" && entry.windows.length > 0);
-  if (!agent || !agents.some(entry => entry.state === "ok")) return null;
-  return { agent, window: agent.state === "ok" ? tightestWindow(agent.windows) : null };
+export type BarLimit =
+  | { kind: "using"; agent: AgentLimits; window: LimitWindow | null; spent: AgentLimits[] }
+  | { kind: "stopped"; agent: AgentLimits; window: LimitWindow };
+export function barLimit({ agents, stack }: AgentLimitsResponse): BarLimit | null {
+  if (!agents.some(entry => entry.state === "ok")) return null;
+  const spent: { agent: AgentLimits; windows: LimitWindow[] }[] = [];
+  for (const row of stack) {
+    const agent = agents.find(entry => entry.adapter === row.adapter);
+    if (!agent || agent.state === "unsupported") continue;
+    // Another agent's figure never stands for one whose own are unknown.
+    if (agent.state === "unavailable") return using(agent, null, spent);
+    const windows = rowWindows(agent.windows, row.model);
+    if (windows.length === 0) continue;
+    const full = windows.filter(window => window.usedPercent >= 100);
+    if (full.length === 0) return using(agent, tightestWindow(windows), spent);
+    spent.push({ agent, windows: full });
+  }
+  const first = spent[0];
+  if (!first) return null;
+  // It works again once its last spent window resets.
+  const window = first.windows.reduce((latest, next) => (next.resetsAt ? Date.parse(next.resetsAt) : Infinity) > (latest.resetsAt ? Date.parse(latest.resetsAt) : Infinity) ? next : latest);
+  return { kind: "stopped", agent: first.agent, window };
+}
+function using(agent: AgentLimits, window: LimitWindow | null, spent: readonly { agent: AgentLimits }[]): BarLimit {
+  // A model of the same agent standing in is the same agent to the reader: only others are said to be spent.
+  const others = [...new Map(spent.filter(entry => entry.agent.adapter !== agent.adapter).map(entry => [entry.agent.adapter, entry.agent])).values()];
+  return { kind: "using", agent, window, spent: others };
 }
 
 type T = (key: string, options?: Record<string, unknown>) => string;
@@ -52,6 +80,14 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   }
   const when = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at);
   return t("chrome:limits.reset.at", { when });
+}
+
+/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a phone) the day alone, "Until 11/29". */
+export function stoppedWords(window: LimitWindow, locale: string, t: T, short = false): string {
+  if (!window.resetsAt) return t("chrome:limits.stopped");
+  const when = new Intl.DateTimeFormat(locale, short ? { month: "numeric", day: "numeric" }
+    : { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(resetMinute(window.resetsAt));
+  return t(short ? "chrome:limits.stoppedUntilShort" : "chrome:limits.stoppedUntil", { when });
 }
 
 /** "Updated 3 min ago", or "Updated just now". */

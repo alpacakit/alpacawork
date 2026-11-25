@@ -19,7 +19,10 @@
   },
   "limits": {
     "barLabel": "AI の利用上限: {{agent}} の{{window}}は {{percent}} 使用",
+    "barStopped": "AI の利用上限: {{agent}} は{{state}}",
+    "barSwitched": "AI の利用上限: {{spent}} は上限に達し、代わりに {{agent}} を使用中。{{window}}は {{percent}} 使用",
     "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
+    "instead": "代わりに使用中",
     "none": "いまかかっている上限はありません",
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",
@@ -32,6 +35,9 @@
       "inMinutes_other": "あと{{count}}分でリセット",
       "inWholeHours": "あと{{hours}}時間でリセット"
     },
+    "stopped": "停止中",
+    "stoppedUntil": "{{when}} まで停止",
+    "stoppedUntilShort": "{{when}} まで",
     "title": "AI の利用上限",
     "unavailable": "読めません。サインインを確かめてください",
     "unsupported": "上限の値を取れません",

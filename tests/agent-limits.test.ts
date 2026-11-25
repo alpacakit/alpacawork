@@ -3,7 +3,7 @@ import { test, type TestContext } from 'node:test';
 import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AgentLimitsMonitor } from '@alpacawork/backend/test-dist/agents/limits.js';
+import { AgentLimitsMonitor, limitsStack } from '@alpacawork/backend/test-dist/agents/limits.js';
 import { claudeLimits } from '@alpacawork/backend/test-dist/agents/adapters/claude.js';
 import { codexLimitWindows } from '../apps/agent-cli/test-dist/codex.js';
 import { copilotLimitWindows, copilotUsage } from '../apps/agent-cli/test-dist/copilot.js';
@@ -75,6 +75,7 @@ test('one entry per kind of agent, the task stack\'s first, then the other enabl
   const f = fixture(t);
   const first = await f.monitor.read();
   assert.deepEqual(first.agents.map(agent => [agent.adapter, agent.state]), [['claude', 'ok'], ['grok', 'unsupported'], ['codex', 'ok']]);
+  assert.deepEqual(first.stack, [{ adapter: 'claude', model: null }]);
   assert.equal(first.agents[0]!.windows[0]!.usedPercent, 50);
   assert.equal(first.agents.find(agent => agent.adapter === 'codex')!.account, 'someone');
   assert.match(f.calls().find(call => call.startsWith('codex')) ?? '', /^codex --command .*\/codex --limits$/);
@@ -105,4 +106,12 @@ test('a failed read keeps the last windows and their time; an agent never read s
   appendFileSync(join(fresh.root, 'fail'), '');
   assert.deepEqual((await fresh.monitor.read()).agents.find(agent => agent.adapter === 'codex'),
     { adapter: 'codex', state: 'unavailable', windows: [], account: null, observedAt: null });
+});
+
+test('the stack the screen gets is the rows tasks run on: enabled agents in order with their models, or the first enabled agent', () => {
+  const agents = { codex: { enabled: true }, claude: { enabled: true }, 'claude-chrome': { adapter: 'claude', enabled: true }, off: { adapter: 'copilot', enabled: false } };
+  assert.deepEqual(limitsStack({ agents: agents as never, aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'off', values: {} },
+    { agent: 'claude-chrome', values: { model: 'fable' } }, { agent: 'codex', values: {} }] }),
+  [{ adapter: 'claude', model: 'opus' }, { adapter: 'claude', model: 'fable' }, { adapter: 'codex', model: null }]);
+  assert.deepEqual(limitsStack({ agents: agents as never }).map(row => row.adapter), ['codex']);
 });
