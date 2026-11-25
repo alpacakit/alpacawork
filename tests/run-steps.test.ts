@@ -538,21 +538,21 @@ test('step times: kept as each step starts and ends, never replaced when the out
   new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => clock).finish(path, 'done');
   const steps = (await read(path)).range(undefined, 12).steps;
   assert.equal(runStepsPageSchema.safeParse({ steps, total: 3, version: 0, complete: true, generation: 0 }).success, true);
-  assert.deepEqual(steps.map(({ id, startedAt, startSource, endedAt, endSource, parent, subagentSteps }) =>
-    ({ id, startedAt, startSource, endedAt, endSource, parent, subagentSteps })), [
-    { id: 'one', startedAt: '2026-11-26T01:00:00.000Z', startSource: 'read', endedAt: '2026-11-26T01:00:04.000Z', endSource: 'read', parent: null, subagentSteps: 0 },
-    { id: 'sub', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'read', endedAt: '2026-11-26T01:01:04.000Z', endSource: 'read', parent: null, subagentSteps: 1 },
-    { id: 'inner', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'read', endedAt: '2026-11-26T01:00:05.500Z', endSource: 'row', parent: 'sub', subagentSteps: 0 },
+  assert.deepEqual(steps.map(({ id, startedAt, startSource, endedAt, endSource, parentId, subagentSteps }) =>
+    ({ id, startedAt, startSource, endedAt, endSource, parentId, subagentSteps })), [
+    { id: 'one', startedAt: '2026-11-26T01:00:00.000Z', startSource: 'observed', endedAt: '2026-11-26T01:00:04.000Z', endSource: 'observed', parentId: null, subagentSteps: 0 },
+    { id: 'sub', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'observed', endedAt: '2026-11-26T01:01:04.000Z', endSource: 'observed', parentId: null, subagentSteps: 1 },
+    { id: 'inner', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'observed', endedAt: '2026-11-26T01:00:05.500Z', endSource: 'reported', parentId: 'sub', subagentSteps: 0 },
   ]);
-  assert.deepEqual(steps[0]?.fingerprint, { line: 'cat <<EOF > <path>', body: steps[0]?.fingerprint?.body });
-  assert.match(steps[0]?.fingerprint?.body ?? '', /^[0-9a-f]{16}$/);
+  assert.deepEqual(steps[0]?.fingerprint, { line: 'cat <<EOF > <path>', bodyDigest: steps[0]?.fingerprint?.bodyDigest });
+  assert.match(steps[0]?.fingerprint?.bodyDigest ?? '', /^[0-9a-f]{16}$/);
   assert.equal(steps[0]?.output?.chars, 2);
 });
 
 test('step fingerprint: the same command with other paths, IDs and numbers reads as one; another body does not', () => {
   const one = stepFingerprint('alpacawork task get --task T1093 --runs 3 > /tmp/x-1.json');
   assert.deepEqual(one, stepFingerprint('alpacawork task get --task T42 --runs 10 > /home/a/out.json'));
-  assert.deepEqual(stepFingerprint('git show 3485f2a36:README.md'), { line: 'git show <hash>:README.md', body: null });
+  assert.deepEqual(stepFingerprint('git show 3485f2a36:README.md'), { line: 'git show <hash>:README.md', bodyDigest: null });
   assert.notDeepEqual(stepFingerprint('python3 - <<EOF\nprint(1)\nEOF'), stepFingerprint('python3 - <<EOF\nprint(2)\nEOF'));
   assert.deepEqual(stepFingerprint('serve --port 4000 <<EOF\nhello\nEOF'), stepFingerprint('serve --port 5000 <<EOF\nhello\nEOF'));
 });

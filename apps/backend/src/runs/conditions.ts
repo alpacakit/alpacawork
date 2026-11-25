@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, relative } from 'node:path';
-import { RUN_FILES, runConditionsSchema, runFolder, runNumber, type RunConditionChange, type RunConditions, type RunConditionsView, type RunRecord } from '@alpacawork/contract/run';
+import { RUN_FILES, runConditionsSchema, runFolder, type RunConditions, type RunConditionsView, type RunRecord } from '@alpacawork/contract/run';
 import type { RunId } from '@alpacawork/contract/fields';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { RunStore } from '@alpacawork/runs';
@@ -15,6 +15,11 @@ import { readPackageVersion } from '@alpacawork/core/package-version';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { personalSkillsFolder } from '../installation/agent-skill-links.js';
 
+/**
+ * The person's own instruction files an agent reads at every start, relative to HOME: they steer it as skills do, and
+ * no commit holds them. A work folder's own instruction files are in its commit.
+ */
+const PERSONAL_INSTRUCTIONS = ['.claude/CLAUDE.md', '.codex/AGENTS.md', '.agents/AGENTS.md'];
 /** A file up to this size is digested by its bytes; a larger one (a video, an archive) by its size and time. */
 const WHOLE_FILE = 256 * 1024;
 /** A skill of more files than this is too large to digest at every start: its digest is null. */
@@ -46,7 +51,7 @@ function commitAt(cwd: string): string | null {
 
 /** What an agent of `adapter` working in `cwd` runs under now. */
 export function observeConditions(input: { adapter: string; cwd: string; version: string; release: string | null; home?: string }): RunConditions {
-  const personal = personalSkillsFolder(input.adapter, input.home ?? homedir());
+  const home = input.home ?? homedir(), personal = personalSkillsFolder(input.adapter, home);
   const folders = [[personal, 'personal'], [join(input.cwd, '.claude/skills'), 'project'], [join(input.cwd, '.agents/skills'), 'project']] as const;
   const seen = new Set<string>();
   const skills = folders.flatMap(([folder, scope]) => {
@@ -61,7 +66,11 @@ export function observeConditions(input: { adapter: string; cwd: string; version
   try { source = input.release ? String(readPackageVersion(input.release).source ?? '') || null : null; } catch { source = null; }
   return { v: 1, observedAt: new Date().toISOString(), version: input.version, release: input.release, source,
     cwd: { path: input.cwd, commit: commitAt(input.cwd) },
-    skills };
+    skills, instructions: PERSONAL_INSTRUCTIONS.flatMap(path => {
+      const file = join(home, path);
+      try { return [{ path: file, digest: createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16) }]; }
+      catch { return []; }
+    }) };
 }
 
 /** Keeps what the Run ran under in its folder, once: a manager started again for the same Run leaves the first. */
@@ -80,62 +89,12 @@ export function readConditions(runFolder: string): RunConditions | null {
   catch { return null; }
 }
 
-/** How far back by number the Run started before one is looked for (Runs start in another order than they are numbered). */
-const EARLIER_LOOKBACK = 200;
-
-/** What changed in alpacawork and the skills from one Run's conditions to a later one's. */
-export function conditionChanges(before: RunConditions, after: RunConditions): RunConditionChange[] {
-  const changes: RunConditionChange[] = [];
-  const release = (c: RunConditions) => `${c.version}${c.source ? ` (${c.source})` : ''}`;
-  if (release(before) !== release(after)) changes.push({ kind: 'release', name: null, before: release(before), after: release(after) });
-  // A skill is the same skill wherever its work folder is: the agent's own (personal) or the work folder's (project).
-  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ scope, folder, items }) =>
-    items.map(item => [`${scope === 'personal' ? 'personal' : relative(c.cwd.path, folder)}/${item.name}`, item.digest] as const)));
-  const earlier = named(before), later = named(after);
-  for (const name of [...new Set([...earlier.keys(), ...later.keys()])].sort()) {
-    const was = earlier.get(name) ?? null, now = later.get(name) ?? null;
-    if (was !== now || earlier.has(name) !== later.has(name)) changes.push({ kind: 'skill', name, before: was, after: now });
-  }
-  return changes;
-}
-
-/** What changed in the launch from one Run of a placement to its next: the model, the effort, the command. */
-export function launchChanges(before: Pick<RunRecord, 'launch'>, after: Pick<RunRecord, 'launch'>): RunConditionChange[] {
-  const value = (record: Pick<RunRecord, 'launch'>, key: string) => {
-    const chosen = (record.launch.values as Record<string, unknown>)[key];
-    return typeof chosen === 'string' ? chosen : null;
-  };
-  const changes: RunConditionChange[] = [];
-  for (const kind of ['model', 'effort'] as const)
-    if (value(before, kind) !== value(after, kind)) changes.push({ kind, name: null, before: value(before, kind), after: value(after, kind) });
-  const command = (record: Pick<RunRecord, 'launch'>) => `${record.launch.adapter} ${record.launch.argv.join(' ')}`;
-  if (command(before) !== command(after)) changes.push({ kind: 'command', name: null, before: command(before), after: command(after) });
-  return changes;
-}
-
-/** run conditions: what Task Run `run` ran under and what changed before it, compared with Runs `readable` allows. */
-export function readConditionsView(root: string, run: RunId, readable: (run: RunId) => boolean): RunConditionsView {
+/** run conditions: how Task Run `run` was launched and what it ran under, as recorded; comparing Runs is the analysis's. */
+export function readConditionsView(root: string, run: RunId): RunConditionsView {
   const store = RunStore.openReadable(root, { busyTimeoutMs: 0 });
-  let record: RunRecord | null = null, placementRuns: RunRecord[] = [];
-  try {
-    record = store?.get(run) ?? null;
-    if (record) placementRuns = store!.conversationRuns(record.placementId);
-  } finally { store?.close(); }
+  let record: RunRecord | null = null;
+  try { record = store?.get(run) ?? null; } finally { store?.close(); }
   if (!record) throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', { run }, { reason: { kind: 'run_does_not_exist' } });
-  const conditions = readConditions(runFolder(root, run));
-  let sinceEarlier: RunConditionsView['sinceEarlier'] = null;
-  // The Run that started last before this one (by when its conditions were seen), among those this reader may read.
-  if (conditions) {
-    let found: { run: RunId; conditions: RunConditions } | null = null;
-    for (let n = runNumber(run) + EARLIER_LOOKBACK; n > 0 && n >= runNumber(run) - EARLIER_LOOKBACK; n--) {
-      const id = `R${n}` as RunId, earlier = n === runNumber(run) ? null : readConditions(runFolder(root, id));
-      if (earlier && earlier.observedAt < conditions.observedAt && (!found || earlier.observedAt > found.conditions.observedAt) && readable(id))
-        found = { run: id, conditions: earlier };
-    }
-    if (found) sinceEarlier = { run: found.run, changes: conditionChanges(found.conditions, conditions) };
-  }
-  const previous = placementRuns.filter(each => runNumber(each.id) < runNumber(run)).at(-1);
   const chosen = (key: string) => { const value = (record!.launch.values as Record<string, unknown>)[key]; return typeof value === 'string' ? value : null; };
-  return { run, launch: { agent: record.agent, model: chosen('model'), effort: chosen('effort') }, conditions, sinceEarlier,
-    sincePlacement: previous ? { run: previous.id, changes: launchChanges(previous, record) } : null };
+  return { run, launch: { agent: record.agent, model: chosen('model'), effort: chosen('effort') }, conditions: readConditions(runFolder(root, run)) };
 }

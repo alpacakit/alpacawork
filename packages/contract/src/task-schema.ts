@@ -92,7 +92,7 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
     members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop', 'decide_kind'],
     hint: 'Write only when something needs deciding. One question at a time: what to decide, the choices (name and description) and a note. Numbers follow the order. The first word of a choice’s name (up to its first space) becomes its answer button and answer word; do not repeat it within a question, and do not start a name with `stop` or `other`, which the app keeps. The answer arrives as `<number>-<first word of the name>` with any words added; `<number>-other` says none of the choices, with what to do instead. Clear it with null once answered.' },
   text('decide_question', 'What to decide', 60, 'One sentence on what to choose. Background goes in the note.'),
-  text('decide_kind', 'Kind', 6, '`accept` when it asks whether a result you made can be taken (merged, adopted, released); `choose` when it asks the reader to pick among options. Required when asking.'),
+  text('decide_kind', 'Question kind', 6, '`accept` when it asks whether to take a result this task made as it is (merge it, adopt it); `choose` for every other decision (options, permission to publish or deploy, a question without choices). Required when asking.'),
   { id: 'decide_choices', title: 'Choices', type: 'schema', many: true, required: false, maxChars: null, maxItems: 3,
     members: ['decide_choice', 'decide_choice_detail', 'decide_choice_recommended'], hint: '' },
   text('decide_choice', 'Name', 20),
@@ -218,8 +218,8 @@ export const choiceWord = (name: string) => name.trim().split(/\s+/)[0]!;
  */
 export const STOP_WORD = 'stop', OTHER_WORD = 'other';
 /**
- * What a question asks (`decide_kind`), said by whoever asks it: `accept`, whether a result they made can be taken;
- * `choose`, which of several options to take. Counting how often a result is taken as first made rests on it.
+ * What a question asks (`decide_kind`), said by whoever asks it: `accept`, whether to take a result the asking task made
+ * as it is (merge it, adopt it); `choose`, every other decision. Counting how often a result is taken as first made rests on it.
  */
 export const QUESTION_KINDS = ['accept', 'choose'] as const;
 export type QuestionKind = typeof QUESTION_KINDS[number];
@@ -418,7 +418,7 @@ export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z
  * `<n>-<word>` labels that lead a line (after a task mark `T3（…）` or `T3` there, as the screen writes it), one after
  * another; the first words after them end the labels of that line. Its word is the first word of one of its choices
  * (as written, or without its closing punctuation), `other` or `stop`. A label naming no choice, and an item no label
- * names, are `unread`; an item's `words` says whether words follow its labels' line, or the lines after it until the
+ * names, are `unmatched`; an item's `words` says whether words follow its labels' line, or the lines after it until the
  * next labels. Labels inside the words (a quote, a mention) are words.
  */
 export function readAnswerParts(decide: readonly FieldItem[], text: string): { items: AnswerPart[]; words: boolean } {
@@ -445,7 +445,7 @@ export function readAnswerParts(decide: readonly FieldItem[], text: string): { i
   };
   const items = decide.map((item, index): AnswerPart => {
     const n = index + 1, label = labels.get(n);
-    if (label === undefined) return { n, kind: 'unread', words: false };
+    if (label === undefined) return { n, kind: 'unmatched', words: false };
     const said = label.word.replace(/[。．.、,，!！?？)）]+$/, '').toLowerCase(), words = label.words;
     const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
     // A choice's own word (`stop!` is a choice's) comes before the words the app keeps.
@@ -453,7 +453,7 @@ export function readAnswerParts(decide: readonly FieldItem[], text: string): { i
     if (exact === -1 && said === OTHER_WORD) return { n, kind: 'other', words };
     if (exact === -1 && said === STOP_WORD) return { n, kind: 'stop', words };
     const choice = exact !== -1 ? exact : word(choices, label.word);
-    return choice === -1 ? { n, kind: 'unread', words }
+    return choice === -1 ? { n, kind: 'unmatched', words }
       : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim(), words };
   });
   return { items, words: rest };

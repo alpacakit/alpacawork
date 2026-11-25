@@ -213,8 +213,8 @@
       "title": "Opciones"
     },
     "decide_kind": {
-      "hint": "`accept` si pregunta si un resultado que hiciste puede aceptarse (fusionar, adoptar, publicar); `choose` si pide elegir entre opciones. Obligatorio al preguntar.",
-      "title": "Tipo"
+      "hint": "`accept` si pregunta si tomar tal cual un resultado que hizo esta tarea (fusionarlo, adoptarlo); `choose` para cualquier otra decisión (opciones, permiso para publicar o desplegar, una pregunta sin opciones). Obligatorio al preguntar.",
+      "title": "Tipo de pregunta"
     },
     "decide_note": {
       "hint": "Supuestos comunes, enlaces a ejemplos y cuándo se detienen las cosas. No repitas las descripciones de las opciones ni las notas de revisión.",

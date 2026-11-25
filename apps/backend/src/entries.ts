@@ -31,7 +31,6 @@ import { type TaskActor } from '@alpacawork/raw';
 import { requestStop } from './runs/entry.js';
 import { readRunFiles } from './runs/view.js';
 import { readRunStepIndex } from './runs/run-steps.js';
-import type { RunId } from '@alpacawork/contract/fields';
 import { readConditionsView } from './runs/conditions.js';
 import { RUN_STEPS_PAGE_LIMIT } from '@alpacawork/contract/run';
 import { emptyInput, configSetInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
@@ -493,12 +492,7 @@ export const taskCommands = {
   'run/conditions': {
     run: async (root, input, context) => {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
-      // An earlier Run is compared with only when this reader may read it too.
-      const readable = (earlier: RunId) => {
-        try { authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, earlier))); return true; }
-        catch (error) { if (error instanceof Problem) return false; throw error; }
-      };
-      return readConditionsView(root, input.run, readable);
+      return readConditionsView(root, input.run);
     },
     readThread: () => true,
   },

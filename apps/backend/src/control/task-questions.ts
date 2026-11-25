@@ -165,5 +165,5 @@ export function expireInvalidDestinations(tx: ControlTx, taskIds: readonly strin
  * screen's answer to this question alone that a coordinator passes on), else from the words sent as the answer.
  */
 function answerParts(decide: readonly FieldItem[], userWords: string | null, body: string): AnswerParts {
-  return { from: userWords === null ? 'relay' : 'user', ...readAnswerParts(decide, userWords ?? body) };
+  return { source: userWords === null ? 'relay' : 'user', ...readAnswerParts(decide, userWords ?? body) };
 }

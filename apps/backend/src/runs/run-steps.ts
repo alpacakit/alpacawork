@@ -90,7 +90,7 @@ export class RunStepIndex {
       const tool = name(event.stepTool) ?? toolName;
       const parent = typeof event.parent === 'string' && event.parent ? event.parent : null;
       step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
-        about: event.about ?? null, state: 'running', start: at, end: null, line, parent, changed: 0, unsure: false };
+        about: event.about ?? null, state: 'running', start: at, end: null, line, parentId: parent, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
       if (parent !== null) {
         this.inside.set(parent, (this.inside.get(parent) ?? 0) + 1);

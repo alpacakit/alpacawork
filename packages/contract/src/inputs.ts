@@ -71,7 +71,7 @@ function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readon
 }
 
 export const taskGetIncludes = [
-  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'labels',
+  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'instructionKinds',
 ] as const;
 export type TaskGetInclude = typeof taskGetIncludes[number];
 export const taskGetInput = z.object({ task: taskIdSchema, log: queryCount.optional(), runs: queryCount.optional(),
@@ -191,7 +191,8 @@ export const taskRequestShape = z.object({ task: taskIdSchema, instruction: inst
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
   expectedHeadRun: runIdSchema.optional(),
   /** What the instruction is (raw INSTRUCTION_KINDS), and for a fix what kind of fix (FIX_KINDS). */
-  instructionKind: z.enum(INSTRUCTION_KINDS).optional(), fixes: z.array(z.enum(FIX_KINDS)).min(1).max(FIX_KINDS.length).optional() });
+  instructionKind: z.enum(INSTRUCTION_KINDS).optional(),
+  fixes: z.array(z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS[number][]])).min(1).max(FIX_KINDS.length).optional() });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [

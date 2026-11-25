@@ -234,8 +234,9 @@ export const stopResponseSchema = z.object({
  * What a Run ran under, beyond its launch (`launch` in its record: the agent, its command and the chosen model and
  * effort), observed once by its manager just before the agent started: alpacawork's version and the release it ran
  * from, the commit checked out where the agent worked, and each skill the agent could read (its personal skills folder,
- * and the work folder's own `.claude/skills` and `.agents/skills`) with a digest of its files. Which of them it opened
- * is in its steps (run steps). Two Runs whose conditions differ ran under a change (a skill updated, alpacawork replaced).
+ * and the work folder's own `.claude/skills` and `.agents/skills`) with a digest of its files, and the person's own
+ * instruction files. Which skills it opened is in its steps (run steps). Two Runs whose conditions differ ran under a
+ * change (a skill or an instruction file updated, alpacawork replaced).
  */
 export const runConditionsSchema = z.object({
   v: z.literal(1), observedAt: z.iso.datetime({ offset: true }),
@@ -243,21 +244,16 @@ export const runConditionsSchema = z.object({
   cwd: z.object({ path: z.string(), commit: z.string().regex(/^[0-9a-f]{40,64}$/).nullable() }).strict(),
   skills: z.array(z.object({ scope: z.enum(['personal', 'project']), folder: z.string(), items: z.array(z.object({ name: z.string().min(1),
     digest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict()) }).strict()),
+  /** The person's own instruction files the agent read at its start (CLAUDE.md, AGENTS.md under HOME), with a digest of each. */
+  instructions: z.array(z.object({ path: z.string(), digest: z.string().regex(/^[0-9a-f]{16}$/) }).strict()),
 }).strict();
 export type RunConditions = z.infer<typeof runConditionsSchema>;
-/** One difference between a Run's conditions and an earlier Run's: what it is, and its value before and after. */
-export const runConditionChangeSchema = z.object({ kind: z.enum(['release', 'skill', 'model', 'effort', 'command']),
-  name: z.string().nullable(), before: z.string().nullable(), after: z.string().nullable() }).strict();
-export type RunConditionChange = z.infer<typeof runConditionChangeSchema>;
 /**
- * run conditions: what Run `run` ran under (null for a Run from before they were kept), what changed in alpacawork and
- * the skills since the latest earlier Run that kept its conditions and that the reader may read (`sinceEarlier`), and what changed in the launch since
- * the previous Run of the same placement (`sincePlacement`: a model or effort switched, the command changed).
+ * run conditions: how Run `run` was launched (its record's `launch`: the agent and the chosen model and effort, null
+ * where none was chosen) and what it ran under (null for a Run from before conditions were kept). Comparing Runs to
+ * find what changed between them belongs to the analysis.
  */
 export const runConditionsViewSchema = z.object({ run: runIdSchema,
-  /** How it was launched (its record's `launch`): the agent and the chosen model and effort, null where none was chosen. */
   launch: z.object({ agent: z.string(), model: z.string().nullable(), effort: z.string().nullable() }).strict(),
-  conditions: runConditionsSchema.nullable(),
-  sinceEarlier: z.object({ run: runIdSchema, changes: z.array(runConditionChangeSchema) }).strict().nullable(),
-  sincePlacement: z.object({ run: runIdSchema, changes: z.array(runConditionChangeSchema) }).strict().nullable() }).strict();
+  conditions: runConditionsSchema.nullable() }).strict();
 export type RunConditionsView = z.infer<typeof runConditionsViewSchema>;

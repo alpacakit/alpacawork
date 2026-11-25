@@ -20,15 +20,25 @@ export const TASK_LOG_KINDS = [
   'request_labeled',
 ] as const;
 /**
- * What an instruction is, said by whoever passes it on: a fix of what was made (`fix`, with what kind of fix), an
- * addition to the work, a new request, or an answer. The kinds of fix are fixed so they can be counted: the look and
- * feel, wrong behaviour, how a result was shown or asked about (`presentation`), more scope, speed, wording, a misread
- * intent, or other.
+ * What an instruction is, said by whoever passes it on: a fix of what was made (`fix`, with what kind of fix), more work
+ * in the same task (`addition`), or work of its own (`new_request`). An answer to a question is an answer record, not
+ * one of these. The kinds of fix are fixed so they can be counted (FIX_KIND_MEANINGS).
  */
-export const INSTRUCTION_KINDS = ['fix', 'addition', 'new_request', 'answer'] as const;
-export const FIX_KINDS = ['look', 'behavior', 'presentation', 'scope', 'speed', 'wording', 'intent', 'other'] as const;
+export const INSTRUCTION_KINDS = ['fix', 'addition', 'new_request'] as const;
+/** What each kind of fix means: the one definition the command help and the skill procedure both say. */
+export const FIX_KIND_MEANINGS = {
+  look_feel: 'how it looks or feels to use',
+  behavior: 'it does something wrong',
+  review_flow: 'how the result was shown or asked about (a sample first, the order of what was shown)',
+  scope: 'work the original request did not ask for',
+  speed: 'it is slow',
+  wording: 'the words in it',
+  intent: 'the request was understood otherwise than meant',
+  other: 'none of these',
+} as const;
+export const FIX_KINDS = Object.keys(FIX_KIND_MEANINGS) as (keyof typeof FIX_KIND_MEANINGS)[];
 export const instructionLabelSchema = z.object({ request: nonempty(128), kind: z.enum(INSTRUCTION_KINDS),
-  fixes: z.array(z.enum(FIX_KINDS)).max(FIX_KINDS.length) }).strict()
+  fixes: z.array(z.enum(FIX_KINDS as [keyof typeof FIX_KIND_MEANINGS, ...(keyof typeof FIX_KIND_MEANINGS)[]])).max(FIX_KINDS.length) }).strict()
   .refine(label => (label.kind === 'fix') === (label.fixes.length > 0), 'A fix names its kinds of fix, and only a fix does')
   .refine(label => new Set(label.fixes).size === label.fixes.length, 'Each kind of fix once');
 export type InstructionLabel = z.infer<typeof instructionLabelSchema>;
@@ -54,13 +64,13 @@ export const closesQuestion = (kind: string) => kind === 'answered' || kind === 
 /**
  * How one item of a question was answered, read from the answer's words when it came: `choice` (one of its choices,
  * `choice` its number from 1, `recommended` whether it was the one the asker recommended), `other` (none of them, with
- * the person's own words), `stop` (stop the task), or `unread` (no `<n>-<word>` names this item in the words).
+ * the person's own words), `stop` (stop the task), or `unmatched` (no `<n>-<word>` names this item, or its word names no choice).
  * `words`: words follow the item's label.
  */
 export const answerPartSchema = z.discriminatedUnion('kind', [
   z.object({ n: z.number().int().positive(), kind: z.literal('choice'), choice: z.number().int().positive(), recommended: z.boolean(),
     words: z.boolean() }).strict(),
-  z.object({ n: z.number().int().positive(), kind: z.enum(['other', 'stop', 'unread']), words: z.boolean() }).strict(),
+  z.object({ n: z.number().int().positive(), kind: z.enum(['other', 'stop', 'unmatched']), words: z.boolean() }).strict(),
 ]);
 export type AnswerPart = z.infer<typeof answerPartSchema>;
 /**
@@ -68,7 +78,7 @@ export type AnswerPart = z.infer<typeof answerPartSchema>;
  * screen, or a person answering); `relay`, the words a coordinator or a Task sent as the answer. `words`: the answer
  * holds words beyond its `<n>-<word>` labels.
  */
-export const answerPartsSchema = z.object({ from: z.enum(['user', 'relay']), items: z.array(answerPartSchema).min(1), words: z.boolean() }).strict();
+export const answerPartsSchema = z.object({ source: z.enum(['user', 'relay']), items: z.array(answerPartSchema).min(1), words: z.boolean() }).strict();
 export type AnswerParts = z.infer<typeof answerPartsSchema>;
 
 export const taskLogSchema = z.object({
@@ -111,8 +121,7 @@ export const taskLogSchema = z.object({
   /** The question as it was asked: the asking Task's `decide` value, fixed here when it asked. */
   decide: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
   /**
-   * What an instruction of this Task is (request_labeled). A later label of the same instruction replaces an earlier
-   * one, and a person's any AI's.
+   * What an instruction of this Task is (request_labeled), said by whoever sent it.
    */
   label: instructionLabelSchema.optional(),
   /** An answer's items as read from its words when it came (contract readAnswerParts). */

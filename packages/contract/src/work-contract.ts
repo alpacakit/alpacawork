@@ -48,13 +48,13 @@ export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_T
   omittedFiles: z.number().int().positive().optional() }).strict();
 export type RunStepText = z.infer<typeof runStepTextSchema>;
 /**
- * Where a step's time came from: `row`, the agent's own output line said it; `read`, the Run's manager read the line
+ * Where a step's time came from: `reported`, the agent's own output line said it; `observed`, the Run's manager read the line
  * at that time (within its poll interval of when it was written).
  */
-export const stepTimeSourceSchema = z.enum(['row', 'read']);
+export const stepTimeSourceSchema = z.enum(['reported', 'observed']);
 export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;
 /** A step's input with paths, digests, IDs and numbers replaced, and a digest of the whole input when it has more lines. */
-export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), body: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
+export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), bodyDigest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
 export type StepFingerprint = z.infer<typeof stepFingerprintSchema>;
 /** `whole`: the digest covers all of it; false when the agent cut what came back, so it covers the start alone. */
 export const stepOutputSchema = z.object({ chars: z.number().int().nonnegative(), digest: z.string().regex(/^[0-9a-f]{16}$/), whole: z.boolean() }).strict();
@@ -67,7 +67,7 @@ export type StepOutput = z.infer<typeof stepOutputSchema>;
 export const stepJournalEntrySchema = z.discriminatedUnion('event', [
   z.object({ event: z.literal('start'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
     at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema, fingerprint: stepFingerprintSchema.nullable(),
-    parent: z.string().min(1).max(RUN_TOOL_ID_LIMIT).nullable() }).strict(),
+    parentId: z.string().min(1).max(RUN_TOOL_ID_LIMIT).nullable() }).strict(),
   z.object({ event: z.literal('end'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
     at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema,
     state: z.enum(['done', 'failed', 'unknown']), output: stepOutputSchema.nullable() }).strict(),
@@ -97,7 +97,7 @@ export const runStepEntrySchema = z.object({
   /** What came back: its size in characters and a digest of it, so a read that got the same answer again shows. */
   output: stepOutputSchema.nullable(),
   /** The step of the agent's own sub-agent that ran it (its tool call ID); null for the agent's own steps. */
-  parent: z.string().max(RUN_TOOL_ID_LIMIT).nullable(),
+  parentId: z.string().max(RUN_TOOL_ID_LIMIT).nullable(),
   /** For a step that ran a sub-agent: how many steps the sub-agent took. */
   subagentSteps: z.number().int().nonnegative(),
 }).strict();

@@ -213,8 +213,8 @@
       "title": "Opções"
     },
     "decide_kind": {
-      "hint": "`accept` quando pergunta se um resultado que você fez pode ser aceito (mesclar, adotar, publicar); `choose` quando pede para escolher entre opções. Obrigatório ao perguntar.",
-      "title": "Tipo"
+      "hint": "`accept` quando pergunta se aceita como está um resultado feito por esta tarefa (mesclar, adotar); `choose` para qualquer outra decisão (opções, permissão para publicar ou implantar, uma pergunta sem opções). Obrigatório ao perguntar.",
+      "title": "Tipo de pergunta"
     },
     "decide_note": {
       "hint": "Premissas em comum, links para prévias e quando as coisas param. Não repita as descrições das opções nem as notas de revisão.",

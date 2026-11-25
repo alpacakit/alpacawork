@@ -104,7 +104,7 @@ test('values read in schema order, every field under its own heading, lists one 
     decide_note: '共通の前提\n二行目', decide_stop: 'ここで止める\n何も残らない' }, { decide_kind: 'choose', decide_question: '次' }, { decide_kind: 'choose', decide_question: '止めるか', decide_stop: '止める' }] };
   // A question's and a choice's first text (the note, the description) read as written; a later one is led by its title.
   const questions = ['### 1 どれにするか', '#### A 案', '一行', '', '二行', 'Recommended: 早い', '#### B 案', '#### C 案', 'Recommended: 安い', '',
-    '共通の前提\n二行目', '', 'Stop: ここで止める\n何も残らない', '', 'Kind: choose', '', '### 2 次', 'Kind: choose', '', '### 3 止めるか', 'Stop: 止める', 'Kind: choose'];
+    '共通の前提\n二行目', '', 'Stop: ここで止める\n何も残らない', '', 'Question kind: choose', '', '### 2 次', 'Question kind: choose', '', '### 3 止めるか', 'Stop: 止める', 'Question kind: choose'];
   assert.equal(renderContext(DEFAULT_SCHEMA, values, catalog), [
     '## Goal', 'g', '', '## Done conditions', '- c1', '- c2', '',
     '## Questions', ...questions, '',
@@ -156,11 +156,11 @@ test('an answer is read item by item against the question as asked: labels lead 
   assert.deepEqual(readAnswerParts(decide, 'T3（Ship it） 1-Later。 2-other Call it Atlas\n3-stop'), { words: true, items: [
     { n: 1, kind: 'choice', choice: 2, recommended: true, words: false }, { n: 2, kind: 'other', words: true }, { n: 3, kind: 'stop', words: false }] });
   // A label quoted inside the words is words, and a word that names no choice is unread.
-  assert.deepEqual(readAnswerParts(decide, 'The 1-Later in the log was a quote; hold it').items[0], { n: 1, kind: 'unread', words: false });
-  assert.deepEqual(readAnswerParts(decide, '1-Soon').items[0], { n: 1, kind: 'unread', words: false });
+  assert.deepEqual(readAnswerParts(decide, 'The 1-Later in the log was a quote; hold it').items[0], { n: 1, kind: 'unmatched', words: false });
+  assert.deepEqual(readAnswerParts(decide, '1-Soon').items[0], { n: 1, kind: 'unmatched', words: false });
   // Words after a label end the labels: a quoted label there is words, and a next line goes on with the same item.
   assert.deepEqual(readAnswerParts(decide, '1-other the 2-Go in the log was a quote\nso hold it').items.slice(0, 2),
-    [{ n: 1, kind: 'other', words: true }, { n: 2, kind: 'unread', words: false }]);
+    [{ n: 1, kind: 'other', words: true }, { n: 2, kind: 'unmatched', words: false }]);
   assert.deepEqual(readAnswerParts([{ decide_question: 'Go', decide_choices: [{ decide_choice: '続行！' }] }], '1-続行！').items[0],
     { n: 1, kind: 'choice', choice: 1, recommended: false, words: false });
   assert.deepEqual(readAnswerParts([{ decide_question: 'Go', decide_choices: [{ decide_choice: 'stop!', decide_choice_recommended: 'safe' }] }], '1-stop!').items[0],

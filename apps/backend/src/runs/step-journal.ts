@@ -28,14 +28,14 @@ const replacedIds = (text: string) => text
 /**
  * What a step ran, with what changes from one run of the same thing to the next replaced, so the same command run
  * again reads as the same: absolute paths (where it ran included), UUIDs, long hex digests, task, Run and project IDs,
- * and numbers. `body` is a digest of the whole input so replaced (numbers kept below the first line), when it has more than its first line (a heredoc's
+ * and numbers. `bodyDigest` is a digest of the whole input so replaced (numbers kept below the first line), when it has more than its first line (a heredoc's
  * text, a script), so two runs of the same first line with different bodies stay apart.
  */
 export function stepFingerprint(input: string): StepFingerprint | null {
   const text = input.replace(/\r\n?/g, '\n').trim();
   if (!text) return null;
   const newline = text.indexOf('\n'), first = newline === -1 ? text : text.slice(0, newline);
-  return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), body: newline === -1 ? null : short(`${replaced(first)}\n${replaced(text.slice(newline + 1), true)}`) };
+  return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), bodyDigest: newline === -1 ? null : short(`${replaced(first)}\n${replaced(text.slice(newline + 1), true)}`) };
 }
 
 /** What came back, as a size and a digest; `whole` false when the agent cut it, so the digest covers its start only. */
@@ -96,7 +96,7 @@ export class StepJournal {
     if (this.failed) return;
     const { kind, id } = event;
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return;
-    const source: StepTimeSource = event.at === read ? 'read' : 'row';
+    const source: StepTimeSource = event.at === read ? 'observed' : 'reported';
     if (kind === 'tool_start' || !this.open.has(id)) {
       if (kind === 'tool_start' && this.open.has(id)) return;
       if (kind === 'tool_start' && (typeof event.toolName !== 'string' || !event.toolName)) return;
@@ -104,7 +104,7 @@ export class StepJournal {
       const document = event.call ? stepInputDocument(event.call) : undefined;
       this.append({ event: 'start', line, id, at: event.at, source,
         fingerprint: stepFingerprint(document ?? event.input?.text ?? event.detail?.text ?? ''),
-        parent: typeof event.parent === 'string' && event.parent && event.parent.length <= RUN_TOOL_ID_LIMIT ? event.parent : null });
+        parentId: typeof event.parent === 'string' && event.parent && event.parent.length <= RUN_TOOL_ID_LIMIT ? event.parent : null });
       if (kind === 'tool_start') return;
     }
     const started = this.open.get(id)!;
@@ -116,7 +116,7 @@ export class StepJournal {
 
   /** The steps still open when the agent's turn ended end with it, at the time the end was read. */
   settle(state: 'done' | 'failed' | 'unknown', read: string): void {
-    for (const [id, line] of this.open) this.append({ event: 'end', line, id, at: read, source: 'read', state, output: null });
+    for (const [id, line] of this.open) this.append({ event: 'end', line, id, at: read, source: 'observed', state, output: null });
     this.open.clear();
   }
 

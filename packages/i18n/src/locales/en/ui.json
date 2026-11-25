@@ -205,8 +205,8 @@
       "title": "Choices"
     },
     "decide_kind": {
-      "hint": "`accept` when it asks whether a result you made can be taken (merged, adopted, released); `choose` when it asks the reader to pick among options. Required when asking.",
-      "title": "Kind"
+      "hint": "`accept` when it asks whether to take a result this task made as it is (merge it, adopt it); `choose` for every other decision (options, permission to publish or deploy, a question without choices). Required when asking.",
+      "title": "Question kind"
     },
     "decide_note": {
       "hint": "Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.",

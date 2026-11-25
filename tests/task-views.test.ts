@@ -191,7 +191,7 @@ test('task get lists open questions and --question gives one\'s full text as fix
     const questionId = await ask(h, h.top.id, 'Which colour', 'Pick the colour of the button');
     // The text an agent reads: the note as written, the recommendation and what stopping means led by what they are.
     const text = ['### 1 Color', '#### Red', 'Stands out', 'Recommended: Reads at a glance', '#### Blue', 'Calm', '#### Green', '',
-        'All pass contrast', '', 'Stop: The button stays grey', '', 'Kind: choose', '', '### 2 Label', 'Kind: choose'].join('\n');
+        'All pass contrast', '', 'Stop: The button stays grey', '', 'Question kind: choose', '', '### 2 Label', 'Question kind: choose'].join('\n');
     const asked = (await cli(h.root, ['task', 'get', '--task', h.top.id])).json;
     // Top's requester is the user: the question asks the user, in short; its full text comes only when asked for.
     assert.deepEqual(asked.questions.map((question: { id: string; destination: {kind:string}; title: string; summary: string }) =>
@@ -211,27 +211,30 @@ test('task get lists open questions and --question gives one\'s full text as fix
     await new TaskRequestService(h.root).request({ task: h.top.id, answers: questionId, body: '1-Red\n2-other Say "Go"', opId: randomUUID() },
         { kind: 'human' }, { kind: 'human' });
     const answered = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
-    assert.deepEqual([answered.kinds, answered.answerParts], [['choose', 'choose'], { from: 'user', words: true,
+    assert.deepEqual([answered.decideKinds, answered.answerParts], [['choose', 'choose'], { source: 'user', words: true,
         items: [{ n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'other', words: true }] }]);
 });
-test('an instruction keeps what its sender said it is, read back with task get --include labels', async (t) => {
+test('an instruction keeps what its sender said it is, read back with task get --include instructionKinds', async (t) => {
     const h = await setup(t);
     await h.commands.update({ id: h.top.id, values: { decide: [{ decide_kind: 'accept', decide_question: 'Merge the card?' }] }, expectedTaskHash: h.top.hash });
     const questionId = await ask(h, h.top.id, 'Merge the card', 'The card is ready to merge');
     const placement = responsibleOf(h.root, h.top.id), opId = randomUUID();
     const sent = await new TaskRequestService(h.root).request({ task: h.top.id, body: 'The card sits too low; move it up and make it load faster',
         opId, expectedTaskHash: (await new ControlTaskStore(h.root).get(h.top.id)).hash, expectedPlacementRevision: placement.revision,
-        instructionKind: 'fix', fixes: ['look', 'speed'] },
+        instructionKind: 'fix', fixes: ['look_feel', 'speed'] },
         { kind: 'main', provider: 'claude', conversationId: 'c1' }, { kind: 'human' });
     assert.equal(sent.outcome.kind, 'request_accepted');
-    const read = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'labels'])).json;
-    assert.deepEqual(read.labels.map(({ request, kind, fixes, by }: Record<string, unknown>) => ({ request, kind, fixes, by })),
-        [{ request: opId, kind: 'fix', fixes: ['look', 'speed'], by: 'ai' }]);
+    const read = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'instructionKinds'])).json;
+    assert.deepEqual(read.instructionKinds.map(({ request, kind, fixes, by }: Record<string, unknown>) => ({ request, kind, fixes, by })),
+        [{ request: opId, kind: 'fix', fixes: ['look_feel', 'speed'], by: 'main' }]);
     // The question the instruction came instead of an answer to names it.
     const withdrawn = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
-    assert.deepEqual([withdrawn.state, withdrawn.kinds, withdrawn.replacedBy], ['withdrawn', ['accept'], opId]);
+    assert.deepEqual([withdrawn.state, withdrawn.decideKinds, withdrawn.replacedBy], ['withdrawn', ['accept'], opId]);
+    // The same records come on every row of the list, without the question's full text.
+    const listed = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'closedQuestions'])).json.questions;
+    assert.deepEqual(listed.map((q: Record<string, unknown>) => [q.id, q.decideKinds, q.replacedBy, 'text' in q]), [[questionId, ['accept'], opId, false]]);
     // A label is a record for analysis, not a row of the History.
-    assert.equal((await cli(h.root, ['task', 'get', '--task', h.top.id])).json.labels, undefined);
+    assert.equal((await cli(h.root, ['task', 'get', '--task', h.top.id])).json.instructionKinds, undefined);
 });
 test('a question is refused until each of its items says what it asks', async (t) => {
     const h = await setup(t);
