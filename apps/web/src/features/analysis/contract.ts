@@ -1,6 +1,6 @@
-import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
+import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageSeriesViewSchema, analysisUsageViewSchema,
   type AnalysisBucket, type AnalysisHead, type AnalysisListRow, type AnalysisTaskCounts, type AnalysisTasksView,
-  type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageCounts, type AnalysisUsageView } from "@alpacawork/contract/analysis";
+  type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageCounts, type AnalysisUsageSeriesView, type AnalysisUsageView } from "@alpacawork/contract/analysis";
 
 /*
  * What the analysis commands answer (`analysis tasks`, `analysis usage`, `analysis list`, `analysis task`), as the
@@ -9,10 +9,12 @@ import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListS
 export const tasksViewSchema = analysisTasksViewSchema;
 export const usageViewSchema = analysisUsageViewSchema;
 export const breakdownViewSchema = analysisBreakdownViewSchema;
+export const usageSeriesViewSchema = analysisUsageSeriesViewSchema;
 export const unitListSchema = analysisUnitListSchema;
 export const unitValuesSchema = analysisUnitValuesSchema;
 export type TasksView = AnalysisTasksView;
 export type UsageView = AnalysisUsageView;
+export type UsageSeriesView = AnalysisUsageSeriesView;
 export type UnitList = AnalysisUnitList;
 export type ListRow = AnalysisListRow;
 export type UnitValues = AnalysisUnitValues;
@@ -24,7 +26,7 @@ export type Bucket = AnalysisBucket;
 export const PERIODS = ["today", "7d", "28d", "all"] as const;
 export type Period = typeof PERIODS[number];
 export const TASK_GROUPS = ["model", "agent", "project"] as const;
-export const USAGE_GROUPS = ["model", "agent", "skill", "tool", "mcp"] as const;
+export const USAGE_GROUPS = ["model", "agent", "skill", "tool", "mcp", "effort"] as const;
 export type Group = typeof TASK_GROUPS[number] | typeof USAGE_GROUPS[number];
 export const LIST_SETS = ["passed", "reworked", "stopped", "accepted", "finished", "used"] as const;
 export type ListSet = typeof LIST_SETS[number];

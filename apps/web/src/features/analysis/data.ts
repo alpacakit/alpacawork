@@ -3,7 +3,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { filterQuery, type LaunchFilter, type SeriesBy } from "./series";
 import { spanQuery, type ListPlace, type Span } from "./place";
 
 /**
@@ -17,6 +18,16 @@ const route = (name: string, input: Record<string, string | null | undefined>) =
   return `${commandRoute(`analysis/${name}`)}?${query}`;
 };
 const scope = (project: string | null, span: Span) => ({ project, ...spanQuery(span) });
+
+/**
+ * Launches by model or by effort (`analysis usage-series`), for whole days (`days`: the charts' first bin to their last,
+ * or the span's) and one filter. `enabled`: false while the usage look is not shown.
+ */
+export function useUsageSeries(project: string | null, days: Span | null, bucket: Bucket, by: SeriesBy, filter: LaunchFilter | null, enabled = true) {
+  const root = useWorkspaceInfo(info => info.root);
+  const input = days ? { ...scope(project, days), bucket, by, ...filterQuery(filter) } : {};
+  return useQuery({ ...resources.analysisView(root, "usage-series", input, usageSeriesViewSchema), enabled: enabled && !!days });
+}
 
 /**
  * The face's two answers, each for one choice of days, step of time and breakdown, read as the list of tasks reads (kept
@@ -65,7 +76,7 @@ export function useUnitList(project: string | null, span: Span, list: ListPlace 
   const root = useWorkspaceInfo(info => info.root);
   // A list opened from a chart's bin is for that bin's days; one opened from a number, for the span.
   const days = list?.days ? { project, from: list.days.from, to: list.days.to } : scope(project, span);
-  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
+  const input = list ? { ...days, ...filterQuery(list.filter), set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
   return useInfiniteQuery({ ...resources.analysisList(root, input), enabled: !!list });
 }
 

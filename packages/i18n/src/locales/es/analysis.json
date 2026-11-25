@@ -288,8 +288,11 @@
     "submits": "Revisiones"
   },
   "usage": {
+    "allEfforts": "Todos los esfuerzos",
+    "allModels": "Todos los modelos",
     "by": {
       "agent": "Agente",
+      "effort": "Esfuerzo",
       "mcp": "MCP",
       "model": "Modelo",
       "skill": "Skill",
@@ -298,8 +301,10 @@
     "cache": "Caché",
     "cacheWithin": "De ellos, caché {{value}}",
     "calls": "Llamadas",
+    "effortNone": "Sin registrar",
     "heads": {
       "agent": "Agente",
+      "effort": "Esfuerzo",
       "mcp": "MCP",
       "model": "Modelo",
       "skill": "Skill",
@@ -307,9 +312,14 @@
     },
     "input": "Entrada",
     "inputTokens": "Tokens de entrada",
+    "launchColor": "Colorear por",
+    "launchEffort": "Esfuerzo",
+    "launchModel": "Modelo",
     "launches": "Arranques",
     "newConversations": "Conversaciones nuevas",
     "none": "Sin registros",
+    "otherModels_one": "{{count}} otro",
+    "otherModels_other": "{{count}} otros",
     "output": "Salida",
     "outputTokens": "Tokens de salida",
     "runMs": "Tiempo de ejecución",

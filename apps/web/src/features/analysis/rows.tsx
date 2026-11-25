@@ -1,3 +1,4 @@
+import type { LaunchFilter } from "./series";
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -192,7 +193,7 @@ export type RowSay = {
   list?: (bin: Bin, at: number) => DayList | null;
 };
 /** The tasks behind a row on one bin: its list, for the bin's days (`from`–`to`). */
-export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string };
+export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string; filter?: LaunchFilter | null };
 type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
@@ -507,7 +508,7 @@ function Total({ written, className }: { written: string; className?: string }) 
 
 /** The mark of a per-task line (─●), as its name is drawn wherever the line is named. */
 export const LineMark = () => <svg aria-hidden viewBox="0 0 16 8" className="me-2 h-2 w-4 flex-none overflow-visible">
-  <line x1="0" y1="4" x2="16" y2="4" className="stroke-ink [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-ink stroke-bg [stroke-width:1]" />
+  <line x1="0" y1="4" x2="16" y2="4" className="stroke-trend [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-trend stroke-bg [stroke-width:1]" />
 </svg>;
 
 /* ── a chart: the scale's one mark over its top line, a line across its middle, bins over the group's days ── */
@@ -646,7 +647,7 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
       {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
-          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
+          className={cn("stroke-trend [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
     </svg>}
     {line && <div aria-hidden className="pointer-events-none absolute inset-0">
       {line.dots.map((dot, at) => {
@@ -655,10 +656,10 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
         if (!dot || !points) return null;
         if (dot.over) return !group.narrow && <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
           className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
-          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-ink [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
+          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-trend [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
         return (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
           className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
-            dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />;
+            dot.faint ? "border-[1.5px] border-trend bg-bg" : "bg-trend")} />;
       })}
     </div>}
   </Frame></div>;

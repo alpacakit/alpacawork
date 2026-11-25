@@ -252,8 +252,11 @@
     "submits": "確認に出した回数"
   },
   "usage": {
+    "allEfforts": "すべての effort",
+    "allModels": "すべてのモデル",
     "by": {
       "agent": "AI の種類",
+      "effort": "effort",
       "mcp": "MCP",
       "model": "モデル",
       "skill": "スキル",
@@ -262,8 +265,10 @@
     "cache": "キャッシュ",
     "cacheWithin": "うちキャッシュ {{value}}",
     "calls": "呼び出し",
+    "effortNone": "記録なし",
     "heads": {
       "agent": "AI の種類",
+      "effort": "effort",
       "mcp": "MCP",
       "model": "モデル",
       "skill": "スキル",
@@ -271,9 +276,13 @@
     },
     "input": "入力",
     "inputTokens": "入力トークン",
+    "launchColor": "色分け",
+    "launchEffort": "effort",
+    "launchModel": "モデル",
     "launches": "起動",
     "newConversations": "新しい会話",
     "none": "記録なし",
+    "otherModels_other": "ほかの {{count}} 種",
     "output": "出力",
     "outputTokens": "出力トークン",
     "runMs": "実行時間",

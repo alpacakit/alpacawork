@@ -10,6 +10,7 @@ import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./
 import type { Span } from "./place";
 import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
+import { LaunchControls, launchesParts, launchesSay, useLaunches } from "./Launches";
 
 type Days = { from: string; to: string };
 const HOUR = 3_600_000;
@@ -61,9 +62,12 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
+  const launches = useLaunches(points, days, bucket, true);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
-  const amount = { tokens: (i: number) => tokens(points[i]!.counts), runMs: (i: number) => points[i]!.counts.runMs, launches: (i: number) => points[i]!.counts.launches };
+  // The launches are the series' once it has come (under its filter), the use's until then.
+  const amount = { tokens: (i: number) => tokens(points[i]!.counts), runMs: (i: number) => points[i]!.counts.runMs,
+    launches: (i: number) => launches.ready ? launches.total(i) : points[i]!.counts.launches };
   type Amount = keyof typeof amount;
   const kinds: Record<Amount, Kind> = { tokens: "tokens", runMs: "hours", launches: "times" };
   const finishedOn = (i: number) => taskPoints?.[i]?.counts.finished ?? 0;
@@ -85,7 +89,8 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const lineLabel = useLineLabel();
   const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
     return { values, top, label: lineLabel(kinds[key] as "tokens" | "hours" | "times", top), faint: (i: number) => !steady(i) }; };
-  const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: overlay("launches") } : null;
+  // Launches filtered to a model or an effort are not the launches of the tasks finished: no line over them.
+  const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: launches.isFiltered ? undefined : overlay("launches") } : null;
   const finishedParts = useFinishedParts();
   const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
   const finishedBase = (i: number) => t("window.finished", { count: finishedOn(i) });
@@ -101,9 +106,9 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
           { color: "", name: t("usage.input"), value: format("tokens", c.input), list: c.input ? onBin("used", "input") : undefined },
           { color: "", name: t("usage.cache"), value: format("tokens", c.cache), list: c.cache ? onBin("used", "cache") : undefined }]; } },
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
-    { name: t("usage.launches"), total: i => format("times", amount.launches(i)), list: onBin("used", "launches"), line: perLine("launches"),
-      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
-        list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }] },
+    launchesSay(launches, t("usage.launches"), launches.isFiltered ? undefined : perLine("launches"), launches.isFiltered ? undefined
+      : i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
+        list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }]),
   ];
   // The span's amounts per finished task on the left, against the span before.
   const spanPer = (value: number, base: number | undefined) => base ? value / base : null;
@@ -116,7 +121,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   };
   // A part of a row's whole on the left: its number, and (when there are any) its tasks, opened from anywhere on its line.
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => ({ value: <Value small kind={kind} value={value} />, onOpen: value ? () => open(list) : undefined });
-  const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
+  const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to }, filter: list.filter ?? null });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
       {/* Each row's number is a lead's above: the span before is said there, not again here. */}
@@ -150,12 +155,16 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
         <BarChart row={first + 1} height="h-20 narrow:h-16" scale={scales.runMs} tone="working" grow overlay={overlays?.runMs} values={i => [["", amount.runMs(i)]]} />
       </Row>
       <Row row={first + 2} left={<>
-        <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={null} length={length}
-          onOpen={() => open({ set: "used", value: "launches" })} />
-        <Parts items={[{ color: "", name: t("usage.newConversations"), ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]}
-          line={perEntry("launches")} />
+        <Num className="" label={t("usage.launches")} kind="times" value={launches.isFiltered ? launches.spanTotal ?? 0 : now.launches} previous={null} length={length}
+          onOpen={() => open({ set: "used", value: "launches", filter: launches.filter })} />
+        <LaunchControls launches={launches} />
+        <Parts items={[...launchesParts(launches, open), ...launches.isFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
+          ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]]}
+          line={launches.isFiltered ? undefined : perEntry("launches")} />
       </>}>
-        <BarChart row={first + 2} height="h-20 narrow:h-16" scale={scales.launches} tone="working" grow overlay={overlays?.launches} values={i => [["", amount.launches(i)]]} />
+        {/* Each bin's launches stacked by model or effort, the largest at the foot; in one colour until the series has come. */}
+        <BarChart row={first + 2} height="h-30 narrow:h-24" scale={scales.launches} tone={launches.ready ? undefined : "working"} grow overlay={overlays?.launches}
+          values={i => launches.ready ? launches.parts(i).map(({ slot, value }, at) => [slot.color, value, at] as [string, number, number]) : [["", amount.launches(i)]]} />
         <DayAxis />
       </Row>
     </div>

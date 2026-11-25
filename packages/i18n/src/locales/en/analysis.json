@@ -275,8 +275,11 @@
     "submits": "Reviews"
   },
   "usage": {
+    "allEfforts": "All efforts",
+    "allModels": "All models",
     "by": {
       "agent": "Agent",
+      "effort": "Effort",
       "mcp": "MCP",
       "model": "Model",
       "skill": "Skill",
@@ -285,8 +288,10 @@
     "cache": "Cache",
     "cacheWithin": "Cache {{value}} of it",
     "calls": "Calls",
+    "effortNone": "Not recorded",
     "heads": {
       "agent": "Agent",
+      "effort": "Effort",
       "mcp": "MCP",
       "model": "Model",
       "skill": "Skill",
@@ -294,9 +299,14 @@
     },
     "input": "Input",
     "inputTokens": "Input tokens",
+    "launchColor": "Colour by",
+    "launchEffort": "Effort",
+    "launchModel": "Model",
     "launches": "Launches",
     "newConversations": "New conversations",
     "none": "No records",
+    "otherModels_one": "{{count}} other",
+    "otherModels_other": "{{count}} others",
     "output": "Output",
     "outputTokens": "Output tokens",
     "runMs": "Run time",
