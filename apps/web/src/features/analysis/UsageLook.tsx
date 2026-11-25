@@ -67,7 +67,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
-  const launches = useLaunches(points, days, series, span, bucket, live);
+  const launches = useLaunches(points, view, series, span, bucket, live);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
   // The launches are the series' (under its filter) where they stand on the same bins, the use's otherwise.

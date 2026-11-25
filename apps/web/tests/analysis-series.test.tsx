@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { colourBook, partsOf } from "../src/features/analysis/series";
+import { colourBook, faceAnswer, partsOf } from "../src/features/analysis/series";
 import { analysisValues, readAnalysis } from "../src/features/analysis/place";
 import type { UsageSeriesView } from "../src/features/analysis/contract";
 
@@ -39,6 +39,16 @@ test("an answer's numbers carry the filter they were counted under, for the list
   const groups = [group("o", "Opus 5.5", 4)];
   const answer = { ...view(groups, [[[0, 4]]]), filters: { model: "Opus 5.5", effort: null, effortMissing: true } };
   expect(partsOf(colourBook("model", groups), answer).filter).toEqual({ model: "Opus 5.5", effort: "-" });
+});
+
+test("the launches row takes only the face's own answers: its project, its day, its bins and span", () => {
+  const face = view([group("o", "Opus 5.5", 4)], [[[0, 4]], [[0, 0]]]);
+  const { onBins, onSpan } = faceAnswer(face, face.points);
+  expect(onBins(face) && onSpan(face)).toBe(true);
+  expect(onBins({ ...face, head: { ...face.head, project: "P2" } })).toBe(false);
+  expect(onSpan({ ...face, head: { ...face.head, period: { from: "2026-11-19", to: "2026-11-25" } } })).toBe(false);
+  // A day further on: the last bin ends a day later, so an answer that ends earlier does not stand on the bins.
+  expect(onBins({ ...face, points: face.points.map((point, at) => at === 1 ? { ...point, to: "2026-11-24" } : point) })).toBe(false);
 });
 
 test("a list opened under a filter keeps it in the URL", () => {

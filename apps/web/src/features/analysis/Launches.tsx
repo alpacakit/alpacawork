@@ -5,9 +5,10 @@ import { cn } from "@/lib/utils";
 import { format } from "./format";
 import { useUsageSeries } from "./data";
 import { Seg, useChoices } from "./parts";
-import { colourBook, EFFORT_NONE, filtered, partsOf, type LaunchFilter, type SeriesBy, type SeriesPart } from "./series";
+import { colourBook, EFFORT_NONE, faceAnswer, filtered, partsOf, type LaunchFilter, type SeriesBy, type SeriesPart } from "./series";
 import type { Bin, DayList, PartItem, RowSay } from "./rows";
-import type { Bucket, UsageSeriesView } from "./contract";
+import type { Bucket, UsageSeriesView, UsageView } from "./contract";
+type Head = Pick<UsageView, "head">;
 import type { Span } from "./place";
 import type { Open } from "./TasksLook";
 
@@ -23,7 +24,7 @@ export type LaunchAnswers = { models: UsageSeriesView; spanModels: UsageSeriesVi
  * anything chosen can be left. What the row shows, and every list it opens, is one answer's: its axis and its filter
  * as the server counted it, not what is chosen since. `live`: false in the face's stand-in, which reads nothing.
  */
-export function useLaunches(bins: Bin[], days: { from: string; to: string }, answers: LaunchAnswers, span: Span, bucket: Bucket, live = true) {
+export function useLaunches(bins: Bin[], face: Head, answers: LaunchAnswers, span: Span, bucket: Bucket, live = true) {
   const { t } = useTranslation("analysis");
   const project = useViewStore(state => state.project);
   const { launchBy: by, launchFilter: filter } = useChoices();
@@ -32,20 +33,21 @@ export function useLaunches(bins: Bin[], days: { from: string; to: string }, ans
   const efforts = useUsageSeries(project, { period: "all" }, bucket, "effort", null, live);
   const chartRead = useUsageSeries(project, { period: "all" }, bucket, by, filter, live && own);
   const spanRead = useUsageSeries(project, span, bucket, by, filter, live && own);
-  const fits = (view: UsageSeriesView | undefined): view is UsageSeriesView => !!view
-    && view.points.length === bins.length && view.points[0]?.from === bins[0]?.from;
+  // One rule for every answer the row takes: the face's own (series.ts `faceAnswer`).
+  const { ofFace, onBins, onSpan } = faceAnswer(face, bins);
   const sameAnswer = (a: UsageSeriesView, b: UsageSeriesView) => a.by === b.by && JSON.stringify(a.filters) === JSON.stringify(b.filters);
   // The row's own answers once both have come for one choice (or, while another comes, the last that had), else the
-  // face's: never a span's numbers for days other than those the face shows (its lists are for those days), never an
-  // effort's colours before the whole record's efforts have come (a colour would change under the reader's eyes).
-  const sameDays = (view: UsageSeriesView) => view.head.period?.from === days.from && view.head.period?.to === days.to;
-  const ownPair = fits(chartRead.data) && spanRead.data && sameAnswer(chartRead.data, spanRead.data) && sameDays(spanRead.data)
-    && (chartRead.data.by === "model" || !!efforts.data) ? [chartRead.data, spanRead.data] as const : null;
+  // face's; an effort's colours only once the whole record's efforts have come (a colour would change under the reader).
+  const effortsShown = ofFace(efforts.data) ? efforts.data : null;
+  const ownPair = onBins(chartRead.data) && onSpan(spanRead.data) && sameAnswer(chartRead.data, spanRead.data)
+    && (chartRead.data.by === "model" || !!effortsShown) ? [chartRead.data, spanRead.data] as const : null;
   const [chart, inSpan] = own && ownPair ? ownPair : [answers.models, answers.spanModels] as const;
   const current = !own || (!!ownPair && !chartRead.isPlaceholderData && !spanRead.isPlaceholderData && chart === chartRead.data);
   const failed = [efforts, ...own ? [chartRead, spanRead] : []].find(read => read.isError);
-  const bookOf = (axis: SeriesBy) => colourBook(axis, (axis === "model" ? answers.models : efforts.data!).groups);
-  const counts = fits(chart) ? partsOf(bookOf(chart.by), chart) : null, spanCounts = partsOf(bookOf(inSpan.by), inSpan);
+  const bookOf = (axis: SeriesBy) => colourBook(axis, (axis === "model" ? answers.models : effortsShown!).groups);
+  const counts = onBins(chart) ? partsOf(bookOf(chart.by), chart) : null;
+  // The face's span (read with it) is its own; the row's stands only on the face's span.
+  const spanCounts = partsOf(bookOf(inSpan.by), inSpan);
   const shownBy = chart.by;
   const nameOf = (part: SeriesPart) => shownBy === "effort" && part.value === null ? t("usage.effortNone") : part.label;
   const choicesOf = (axis: SeriesBy, view: UsageSeriesView | undefined) => view ? partsOf(colourBook(axis, view.groups), { ...view, points: [] }).parts
@@ -63,7 +65,7 @@ export function useLaunches(bins: Bin[], days: { from: string; to: string }, ans
     parts: (at: number) => counts ? counts.points[at]!.map(([index, value]) => ({ part: counts.parts[index]!, value })) : [],
     spanParts: () => spanCounts.parts.flatMap((part, index) => spanCounts.totals[index]! > 0 ? [{ part, value: spanCounts.totals[index]! }] : []),
     nameOf, member: (part: SeriesPart) => ({ group: shownBy, member: part.key }),
-    choices: { model: choicesOf("model", answers.models), effort: choicesOf("effort", efforts.data) },
+    choices: { model: choicesOf("model", answers.models), effort: choicesOf("effort", effortsShown ?? undefined) },
   };
 }
 export type Launches = ReturnType<typeof useLaunches>;

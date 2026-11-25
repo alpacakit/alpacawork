@@ -64,3 +64,20 @@ export function partsOf(book: ColourBook, view: UsageSeriesView) {
   const filter: LaunchFilter = { model: view.filters.model, effort: view.filters.effortMissing ? EFFORT_NONE : view.filters.effort };
   return { by: view.by, filter, parts, points, totals: order.map(index => view.groups[index]!.total) };
 }
+
+/**
+ * Whether an answer is the face's own: the same project as of the same day, standing on the face's bins (each of them,
+ * to its last day: `onBins`) or on its span's days (`onSpan`). An answer for a project, span or day the face has moved
+ * on from, still on its way, is neither: it is not shown and opens no list.
+ */
+export function faceAnswer(face: Pick<UsageSeriesView, "head">, bins: { from: string; to: string }[]) {
+  const ofFace = (view: UsageSeriesView | null | undefined): view is UsageSeriesView => !!view
+    && view.head.project === face.head.project && view.head.today === face.head.today;
+  return {
+    ofFace,
+    onBins: (view: UsageSeriesView | null | undefined): view is UsageSeriesView => ofFace(view) && view.points.length === bins.length
+      && view.points.every((point, at) => point.from === bins[at]!.from && point.to === bins[at]!.to),
+    onSpan: (view: UsageSeriesView | null | undefined): view is UsageSeriesView => ofFace(view)
+      && view.head.period?.from === face.head.period?.from && view.head.period?.to === face.head.period?.to,
+  };
+}

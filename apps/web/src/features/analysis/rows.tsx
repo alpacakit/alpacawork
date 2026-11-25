@@ -641,21 +641,21 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   const bars = (at: number) => {
     const all = values(at), sum = all.reduce((total, [, value]) => total + Math.max(0, value), 0);
     const cut = sum > scale.top, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
-    // A bar stands as high as its amount on the scale (to the top where it is cut), its 2px gaps between parts taken
-    // from its parts, not added to it: a bar of more parts is never taller than one of a larger amount. Past six parts
-    // (many models in one bin) they stand without gaps, which would leave a short bar no room for them.
-    const shown = all.filter(([, value]) => value > 0), step = shown.length > 6 ? 0 : 2;
-    const gaps = step * (shown.length - 1), whole = `${Math.min(100, sum / scale.top * 100)}%`;
-    const share = (value: number) => `max(0px, calc((100% - ${gaps}px) * ${value / sum}))`;
+    // A bar stands as high as its amount on the scale (to the top where it is cut), its gaps between parts taken from
+    // its parts, not added to it: a bar of more parts is never taller than one of a larger amount. A gap is 2px, or less
+    // on a short bar, all of them a quarter of it at most, so its parts always keep their colours; they share the rest
+    // in their amounts' shares.
+    const shown = all.filter(([, value]) => value > 0), whole = `${Math.min(100, sum / scale.top * 100)}%`;
+    const gap = shown.length > 1 ? `min(2px, ${25 / (shown.length - 1)}%)` : "0px", gaps = `(${shown.length - 1} * ${gap})`;
     // Where a bin is only a few pixels wide (days over a long record), its parts are one element painted in their
     // colours with the same gaps, not one element each: the same picture at a fraction of the page to lay out.
     // Too narrow to press a part, the bin opens the row's tasks.
     if (thin && !tone && !cut && shown.length > 1) {
       let below = 0;
       const stops = shown.map(([color, value], part) => {
-        const from = `calc((100% - ${gaps}px) * ${below / sum} + ${step * part}px)`; below += value;
-        const to = `calc((100% - ${gaps}px) * ${below / sum} + ${step * part}px)`, paint = `var(--${color.replace(/^bg-/, "")})`;
-        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + ${step}px)` : ""}`;
+        const from = `calc((100% - ${gaps}) * ${below / sum} + ${part} * ${gap})`; below += value;
+        const to = `calc((100% - ${gaps}) * ${below / sum} + ${part} * ${gap})`, paint = `var(--${color.replace(/^bg-/, "")})`;
+        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + ${gap})` : ""}`;
       });
       return <i style={{ height: whole, background: `linear-gradient(to top, ${stops.join(", ")})` }}
         className={cn("relative block min-w-px flex-none origin-bottom rounded-t-[3px] rounded-b-[1px]", grow && "animate-bar")} />;
@@ -664,11 +664,12 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     // many things as its bins, not its parts (each that moves is its own layer for the browser to put together).
     const stacked = shown.length > 1;
     const parts = all.map(([color, value, of], part) => value > 0 &&
-      <i key={part} data-part={of} style={{ height: stacked ? share(value) : whole, ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
-        className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && !stacked && "animate-bar")}>
+      <i key={part} data-part={of} style={{ ...stacked ? { flex: `${value} 1 0px` } : { height: whole },
+        ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
+        className={cn("relative block origin-bottom rounded-[1px]", !stacked && "flex-none", !tone && color, part === last && "rounded-t-[3px]", grow && !stacked && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
-    return stacked ? <span style={{ height: whole, gap: `${step}px` }}
+    return stacked ? <span style={{ height: whole, gap }}
       className={cn("flex flex-none origin-bottom flex-col-reverse overflow-hidden", grow && "animate-bar")}>{parts}</span> : parts;
   };
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
