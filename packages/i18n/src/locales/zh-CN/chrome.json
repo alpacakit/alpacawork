@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "菜单",
     "settings": "设置",
     "settingsUpdate": {
       "attention": "设置 — 更新需要处理",
@@ -19,10 +20,16 @@
   },
   "limits": {
     "barLabel": "AI 用量上限：{{agent}}，{{window}} 已用 {{percent}}",
+    "barReset": "AI 用量上限：{{agent}} 的上限已重置，尚未读取新的用量",
     "barStopped": "AI 用量上限：{{agent}}：{{state}}",
     "barUnknown": "AI 用量上限：无法读取 {{agent}} 的上限",
     "barUnlimited": "AI 用量上限：{{agent}} 目前没有上限",
     "none": "当前没有上限",
+    "place": {
+      "model": "{{role}}（{{model}}）",
+      "note": "顶栏显示哪个 AI，取决于设置中「{{title}}」的顺序和用量。",
+      "notListed": "不在「{{title}}」中"
+    },
     "readAgo_other": "{{count}} 分钟前更新",
     "readNow": "刚刚更新",
     "refresh": "立即重新读取",
@@ -30,6 +37,7 @@
     "refreshing": "正在读取…",
     "reset": {
       "at": "{{when}} 重置",
+      "done": "已重置 · 尚未读取新的用量",
       "inHours": "{{hours}} 小时 {{minutes}} 分后重置",
       "inMinutes_other": "{{count}} 分钟后重置",
       "inWholeHours": "{{hours}} 小时后重置"
@@ -37,6 +45,7 @@
     "stopped": "已停止",
     "stoppedUntil": "停止至 {{when}}",
     "stoppedUntilShort": "至 {{when}}",
+    "stoppedUntilTimeShort": "至 {{when}}",
     "title": "AI 用量上限",
     "unavailable": "无法读取。请确认已登录",
     "unsupported": "无法获取上限",

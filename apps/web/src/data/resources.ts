@@ -144,7 +144,7 @@ export const resources = {
    * offline and shown again at the next start until read anew. It is read again when the analysis says (data.ts), not on
    * every move of the index: a burst of work asks once.
    */
-  analysisView: <T,>(root: string, name: 'tasks' | 'usage' | 'breakdown', input: Record<string, string | null>, schema: z.ZodType<T>) => {
+  analysisView: <T,>(root: string, name: 'tasks' | 'usage' | 'breakdown' | 'usage-series', input: Record<string, string | null>, schema: z.ZodType<T>) => {
     // The key holds what is asked as the request says it (one string), as every read's key holds only plain values.
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(input)) if (value !== null && value !== '') query.set(key, value);

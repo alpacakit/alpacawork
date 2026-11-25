@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "Menú",
     "settings": "Configuración",
     "settingsUpdate": {
       "attention": "Configuración — la actualización requiere atención",
@@ -21,10 +22,16 @@
   },
   "limits": {
     "barLabel": "Límites de uso de la IA: {{agent}}, {{window}}: {{percent}} usado",
+    "barReset": "Límites de uso de la IA: el límite de {{agent}} se ha restablecido; aún no se ha leído el nuevo uso",
     "barStopped": "Límites de uso de la IA: {{agent}}: {{state}}",
     "barUnknown": "Límites de uso de la IA: no se pudieron leer los límites de {{agent}}",
     "barUnlimited": "Límites de uso de la IA: ningún límite afecta ahora a {{agent}}",
     "none": "Ahora no hay límites",
+    "place": {
+      "model": "{{role}} ({{model}})",
+      "note": "Lo que muestra la cabecera depende del orden de «{{title}}» en la configuración y del uso.",
+      "notListed": "No está en «{{title}}»"
+    },
     "readAgo_one": "Actualizado hace {{count}} min",
     "readAgo_many": "Actualizado hace {{count}} min",
     "readAgo_other": "Actualizado hace {{count}} min",
@@ -34,6 +41,7 @@
     "refreshing": "Leyendo…",
     "reset": {
       "at": "Se restablece el {{when}}",
+      "done": "Restablecido · aún no se ha leído el nuevo uso",
       "inHours": "Se restablece en {{hours}} h {{minutes}} min",
       "inMinutes_one": "Se restablece en {{count}} min",
       "inMinutes_many": "Se restablece en {{count}} min",
@@ -43,6 +51,7 @@
     "stopped": "Detenido",
     "stoppedUntil": "Detenido hasta el {{when}}",
     "stoppedUntilShort": "Hasta el {{when}}",
+    "stoppedUntilTimeShort": "Hasta las {{when}}",
     "title": "Límites de uso de la IA",
     "unavailable": "No se pudo leer. Comprueba el inicio de sesión",
     "unsupported": "No da sus límites",

@@ -15,29 +15,41 @@ const COUNT_WORD = { tasks: "unit.tasks", times: "unit.times", prs: "unit.prs", 
 
 const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
-const whole = (value: number) => Math.round(value).toLocaleString(locale());
+/**
+ * What a language writes with, made or read once for it (a formatter, its steps, whether it writes count words): a chart
+ * writes every day's numbers and dates to size its legend, and making a formatter or reading a text costs far more than
+ * using one (`toLocaleString` with options makes a formatter each time). The texts are all loaded with the language.
+ */
+const madeOnce = new Map<string, unknown>();
+const once = <T,>(key: string, make: (language: string) => T): T => {
+  const language = locale(), at = `${language}\u0000${key}`;
+  if (!madeOnce.has(at)) madeOnce.set(at, make(language));
+  return madeOnce.get(at) as T;
+};
+const numbers = (min: number | undefined, max: number | undefined) =>
+  once(`number ${min} ${max}`, language => new Intl.NumberFormat(language, { minimumFractionDigits: min, maximumFractionDigits: max }));
+const whole = (value: number) => numbers(undefined, undefined).format(Math.round(value));
 /** A number to fixed places, in the screen's language (1.39, 1,39). */
 export const decimalText = (value: number, digits: number) => fixed(value, digits);
 /** A number in the screen's language (not the browser's), to two places at most. */
-export const numberText = (value: number) => value.toLocaleString(locale(), { maximumFractionDigits: 2 });
-const fixed = (value: number, digits: number) => value.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+export const numberText = (value: number) => numbers(undefined, 2).format(value);
+const fixed = (value: number, digits: number) => numbers(digits, digits).format(value);
 const HOUR = 3_600_000;
 
 /** Large token counts are written in the language's own steps (万・億, or K・M・B), the first step they reach. */
 type Scale = { at: number; unit: string; digits: number };
-const scales = (): Scale[] => {
-  const list = i18n.t("analysis:unit.scales", { returnObjects: true }) as unknown;
+const steps = (key: "scales" | "spoken") => once(key, () => {
+  const list = i18n.t(`analysis:unit.${key}`, { returnObjects: true }) as unknown;
   return Array.isArray(list) ? list as Scale[] : [];
-};
-const scaleOf = (value: number) => scales().find(scale => value >= scale.at) ?? null;
+});
+const scaleOf = (value: number) => steps("scales").find(scale => value >= scale.at) ?? null;
 
 /**
  * A large count as it is said in a sentence of the language (108.6億, 10.9 billion, 10.940 millones de): the language's
  * own steps for prose, which differ from the short ones a figure takes beside its unit (10,9 mil M).
  */
 export function spoken(value: number): string {
-  const list = i18n.t("analysis:unit.spoken", { returnObjects: true }) as unknown;
-  const scale = (Array.isArray(list) ? list as Scale[] : []).find(each => value >= each.at);
+  const scale = steps("spoken").find(each => value >= each.at);
   // Each step carries its own space where the language puts one (" billion", "億").
   return scale ? `${fixed(value / scale.at, scale.digits)}${scale.unit}` : whole(value);
 }
@@ -67,7 +79,8 @@ export const inUnit = (value: string, unit: string) => text({ value, unit });
  * The word a count is written with (件, 回; 个, 次), or none in a language whose names already say what is counted
  * (`unit.countWords`: "no", as English: "Finished tasks 84", not "84 tasks").
  */
-const countWord = (kind: keyof typeof COUNT_WORD, count: number) => word("unit.countWords") === "no" ? "" : word(COUNT_WORD[kind], { count });
+const countWord = (kind: keyof typeof COUNT_WORD, count: number) => writesCountWords() ? word(COUNT_WORD[kind], { count }) : "";
+const writesCountWords = () => once("countWords", () => word("unit.countWords") !== "no");
 /** A kind's unit alone, as a table's heading or a chart's scale says it once ("" for a count in a language that writes none). */
 export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "hours") =>
   kind === "hours" ? word("unit.hours") : countWord(kind, 2);
@@ -137,7 +150,8 @@ export const addDays = (day: string, count: number) => { const at = utc(day); at
 export const daysBetween = (from: string, to: string) => Math.round((utc(to).getTime() - utc(from).getTime()) / 86_400_000) + 1;
 /** Monday 0 … Sunday 6. */
 export const weekday = (day: string) => (utc(day).getUTCDay() + 6) % 7;
-const fmt = (options: Intl.DateTimeFormatOptions, zone = "UTC") => new Intl.DateTimeFormat(locale(), { ...options, timeZone: zone });
+const fmt = (options: Intl.DateTimeFormatOptions, zone = "UTC") =>
+  once(`date ${zone} ${JSON.stringify(options)}`, language => new Intl.DateTimeFormat(language, { ...options, timeZone: zone }));
 export const dateLabel = (day: string) => fmt({ dateStyle: "medium" }).format(utc(day));
 export const dayLabel = (day: string) => fmt({ month: "numeric", day: "numeric" }).format(utc(day));
 export const monthLabel = (day: string) => fmt({ month: "short" }).format(utc(day));

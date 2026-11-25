@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { ChangeLog, controlDatabasePath, keepControlChanges, keepControlTables, ControlStore, touch } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
-import { analysisTasksViewSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
+import { analysisTasksViewSchema, analysisUnitValuesSchema, analysisUsageViewSchema, analysisUsageSeriesViewSchema,
   type AnalysisTasksView, type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { AnalysisReader, analysisKept } from '@alpacawork/backend/test-dist/analysis/reads.js';
 import { openTallyScope } from '@alpacawork/backend/test-dist/analysis/tally-scope.js';
@@ -72,7 +72,9 @@ function setup(root: string) {
       record.pids = { agent: 1000 + id, manager: 2000 + id };
       record.session = { provider: 'fixture', id: 'synthetic-session-' + id };
       if (id === 2) record.agent = 'unknown';
-      record.launch = inertFixtureLaunch('codex', id === 2 ? { effort: 'high' } : { model: 'example', effort: 'high' });
+      const models = [{ model: 'example-v1', effort: 'high' }, { effort: 'high' },
+        { model: 'example', effort: 'medium' }, { model: 'example' }];
+      record.launch = inertFixtureLaunch('codex', models[id - 1]!);
       if (id === 1) record.started_at = instant(-86_400);
       if (id === 2) record.started_at = instant(-1);
       if (id === 4) record.started_at = instant(23);
@@ -127,6 +129,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
     finally { clock.mock.restore(); }
     const app = await startServer(root, 0);
     try {
+      const { ALPACAWORK_RUN: _run, ALPACAWORK_RUN_TOKEN: _token, ...env } = process.env;
       const read = async <T>(verb: string, params: Record<string, string>): Promise<T> => {
         const url = new URL(commandPath('analysis/' + verb), app.url);
         url.search = new URLSearchParams(params).toString();
@@ -222,7 +225,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
 
       const custom = { from: '2026-08-25', to: '2026-09-24', timeZone: 'UTC', bucket: 'month' };
       const [customTasks, customUsage] = await Promise.all([
-        read<AnalysisTasksView>('tasks', custom), read<AnalysisUsageView>('usage', custom),
+        read<AnalysisTasksView>('tasks', custom), read<AnalysisUsageView>('usage', { ...custom, view: 'history' }),
       ]);
       assert.deepEqual(customTasks.head.period, { from: custom.from, to: custom.to });
       assert.deepEqual(customUsage.head, customTasks.head);
@@ -255,7 +258,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       }
       assert.equal(localTools?.breakdown?.since, '2026-09-24');
       assert.deepEqual(localTools?.breakdown?.counted?.value, { calls: 4, launches: 2 });
-      await t.test('model rows distinguish reported names and open matching lists', async () => {
+      await t.test('model series, period rows and drill-down agree across efforts and channels', async () => {
         const by = 'model';
         const [usageView, taskView, detailView] = await Promise.all([
           read('usage', { ...trend, by }),
@@ -265,19 +268,84 @@ test('analysis commands share selection, contribution and tally rules over a sma
         const usageRows = analysisUsageViewSchema.parse(usageView).breakdown!.rows;
         const taskRows = analysisTasksViewSchema.parse(taskView).breakdown!.rows;
         const models = analysisUnitValuesSchema.parse(detailView).models;
-        const example = { name: 'example', effort: 'high' };
+        const example = { name: 'example-v1', effort: 'high' };
         const fallback = { name: 'unknown', effort: null };
-        const version1 = { name: 'example-v1', effort: 'high' };
-        const version2 = { name: 'example-v2', effort: 'high' };
-        assert.deepEqual(new Set(usageRows.map(row => [row.model, row.label, row.counts.launches])), new Set([
-          [example, 'example(high)', 1], [version1, 'example-v1(high)', 1], [version2, 'example-v2(high)', 1], [fallback, 'unknown', 1],
-        ]));
+        const version1 = { name: 'example-v1', effort: 'medium' };
+        const version2 = { name: 'example-v2', effort: null };
+        assert.deepEqual(usageRows.map(row => [row.model, row.counts.launches]), [
+          [{ name: 'example-v1' }, 2], [{ name: version2.name }, 1], [{ name: fallback.name }, 1],
+        ]);
         assert.deepEqual(new Set(taskRows.map(row => row.model)), new Set([example, fallback]));
         assert.deepEqual(new Set(models.map(row => [row.model, row.label, row.launches])), new Set([
-          [example, 'example(high)', 1], [version1, 'example-v1(high)', 1], [version2, 'example-v2(high)', 1],
+          [example, 'example-v1(high)', 1], [version1, 'example-v1(medium)', 1], [version2, 'example-v2', 1],
         ]));
-        assert.deepEqual(new Set(models.map(row => row.key)),
-          new Set(usageRows.filter(row => row.model?.name !== fallback.name).map(row => row.key)));
+
+        const range = { from: '2026-09-24', to: '2026-09-27', timeZone: 'UTC', bucket: 'day' };
+        const readSeries = async (params: Record<string, string>) => analysisUsageSeriesViewSchema.parse(await read('usage-series', params));
+        const series = await readSeries({ ...range, by });
+        assert.deepEqual(series.metric, { id: 'launches', unit: 'runs', aggregation: 'sum' });
+        assert.equal(series.total, 4);
+        assert.deepEqual(series.groups.map(group => [group.key, group.total]), usageRows.map(row => [row.key, row.counts.launches]));
+        assert.equal(series.points.at(-1)?.total, 0);
+        assert.deepEqual(series.points.at(-1)?.counts, []);
+        assert.equal(series.points.reduce((sum, point) => sum + point.total, 0), series.total);
+        const card = await read<AnalysisUsageView>('usage', { ...range, by, view: 'summary' });
+        assert.deepEqual(card.breakdown?.rows[0], usageRows[0]);
+        assert.deepEqual(card.counts.value, (await read<AnalysisUsageView>('usage', { ...range, by })).counts.value);
+        const cardScope = { ...range, project, by };
+        const firstCard = await read<AnalysisUsageView>('usage', { ...cardScope, view: 'summary' });
+        const cardHistory = await read<AnalysisUsageView>('usage', { ...cardScope, view: 'history' });
+        assert.deepEqual(firstCard.counts, cardHistory.counts);
+        assert.deepEqual(firstCard.breakdown, cardHistory.breakdown);
+        for (const point of series.points) {
+          assert.equal(point.counts.reduce((sum, [, count]) => sum + count, 0), point.total);
+          for (const [index, count] of point.counts) {
+            const list = await read<AnalysisUnitList>('list', { from: point.from, to: point.to, timeZone: 'UTC',
+              set: 'used', value: 'launches', by, key: series.groups[index]!.key });
+            assert.equal(list.rows.reduce((sum, row) => sum + row.value!, 0), count);
+          }
+        }
+        const cross = { ...range, by: 'effort', model: 'example-v1', effort: 'medium', bucket: 'week' };
+        const filtered = await readSeries(cross);
+        assert.deepEqual(filtered.groups.map(group => [group.value, group.total]), [['medium', 1]]);
+        assert.deepEqual(filtered.points.map(({ from, to, complete }) => [from, to, complete]), [['2026-09-24', '2026-09-27', false]]);
+        const usage = await read<AnalysisUsageView>('usage', { ...cross, view: 'summary' });
+        assert.equal(usage.counts.value.launches, filtered.total);
+        assert.equal(usage.breakdown?.rows[0]?.effort, 'medium');
+        assert.deepEqual(usage.series.points, []);
+        assert.equal(usage.ever, null);
+        const measured = await read<AnalysisUsageView>('usage', cross);
+        assert.deepEqual(measured.counts, usage.counts);
+        assert.deepEqual(measured.series.points.map(point => [point.from, point.to, point.counts.launches]),
+          filtered.points.map(point => [point.from, point.to, point.total]));
+        const history = await read<AnalysisUsageView>('usage', { ...cross, view: 'history' });
+        assert.deepEqual(history.counts, measured.counts);
+        assert.ok(history.series.points.length > measured.series.points.length);
+        assert.ok(history.ever);
+        const filteredList = await read<AnalysisUnitList>('list', { from: cross.from, to: cross.to, timeZone: cross.timeZone,
+          set: 'used', value: 'launches', by: cross.by, key: filtered.groups[0]!.key, model: cross.model, effort: cross.effort });
+        assert.equal(filteredList.rows.reduce((sum, row) => sum + row.value!, 0), filtered.total);
+        const monthly = await readSeries({ ...range, by: 'effort', bucket: 'month' });
+        assert.equal(monthly.total, series.total);
+        assert.equal(monthly.points[0]?.complete, false);
+        assert.deepEqual(monthly.groups.map(group => [group.value, group.total]), [['high', 2], ['medium', 1], [null, 1]]);
+        const missing = await readSeries({ ...range, by: 'effort', effortMissing: 'true' });
+        assert.deepEqual(missing.groups.map(group => [group.value, group.total]), [[null, 1]]);
+        const unknown = await readSeries({ ...range, by: 'effort', model: 'unknown' });
+        assert.deepEqual(unknown.groups.map(group => [group.value, group.total]), [['high', 1]]);
+        const invalid = new URL(commandPath('analysis/usage-series'), app.url);
+        invalid.search = new URLSearchParams({ ...cross, effortMissing: 'true' }).toString();
+        assert.equal((await fetch(invalid)).status, 400);
+        invalid.search = new URLSearchParams({ ...cross, to: '9999-12-31' }).toString();
+        assert.equal((await fetch(invalid)).status, 400);
+        const { stdout } = await promisify(execFile)(process.execPath,
+          ['apps/cli/dist/cli.js', '--server', app.url,
+            'analysis', 'usage-series', '--from', cross.from, '--to', cross.to, '--time-zone', cross.timeZone,
+            '--bucket', cross.bucket, '--by', cross.by, '--model', cross.model, '--effort', cross.effort], { env });
+        assert.deepEqual(JSON.parse(stdout), filtered);
+        const help = await promisify(execFile)(process.execPath, ['apps/cli/dist/cli.js', 'analysis', 'usage-series', '--help'], { env });
+        assert.match(help.stdout, /--effort-missing/);
+        assert.match(help.stdout, /Access/);
         for (const { key, counts: { launches, runMs, newConversations, tokens } } of usageRows) {
           for (const [value, expected] of Object.entries({ launches, runMs, newConversations, ...tokens,
             tokens: tokens.output + tokens.input + tokens.cache })) {
@@ -302,10 +370,17 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(tools?.breakdown?.series?.[0], toolTotals);
       const crossingKey = JSON.stringify(['fixture', 'crossing']);
       assert.ok(!tools?.breakdown?.rows.some(row => row.key === crossingKey));
-      const split = await read<AnalysisUsageView>('usage', { ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', by: 'tool' });
+      const split = await read<AnalysisUsageView>('usage', { ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', by: 'tool', view: 'history' });
       assert.ok(split.head.previous);
       assert.deepEqual(split.breakdown?.counted, { value: { calls: 0, launches: 0 }, previous: null });
       assert.deepEqual(split.breakdown?.series?.slice(0, 3), [null, toolTotals, { calls: 0, launches: 0 }]);
+      for (const [view, points] of [['period', 2], ['summary', 0]] as const) {
+        const projected = await read<{ breakdown: NonNullable<AnalysisUsageView['breakdown']> }>('breakdown', {
+          ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', look: 'usage', by: 'tool', view,
+        });
+        assert.equal(projected.breakdown.series?.length, points);
+        assert.deepEqual(projected.breakdown.rows, split.breakdown?.rows);
+      }
       const after = await read<AnalysisUsageView>('usage', { ...acceptanceRange, from: '2026-09-27', to: '2026-09-28', by: 'tool' });
       assert.deepEqual(after.breakdown?.counted?.previous, toolTotals);
       const [skill, mcp] = await Promise.all([read<AnalysisUsageView>('usage', { ...trend, by: 'skill' }),
@@ -351,7 +426,6 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(saved.skills, { recent: { call: 0, read: 1 } });
       assert.equal(saved.tools.command_execution, 1);
 
-      const { ALPACAWORK_RUN: _run, ALPACAWORK_RUN_TOKEN: _token, ...env } = process.env;
       const { stdout } = await promisify(execFile)(process.execPath,
         ['apps/cli/dist/cli.js', 'analysis', 'tasks', '--period', 'all', '--bucket', 'week', '--by', 'project', '--time-zone', 'UTC'],
         { env: { ...env, ALPACAWORK_SERVER: app.url } });
@@ -382,16 +456,24 @@ test('analysis commands share selection, contribution and tally rules over a sma
         const by = 'model';
         const before = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows.find(row => row.model?.name === 'unknown')!;
         assert.equal(before.finished, 1);
-        t.after(() => { reader.tallies.delete('R2'); });
-        reader.tallies.set('R2', { v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
-          subagentTools: 0, state: 'complete' });
+        t.after(() => { reader.updateTallies([['R2', null]]); });
+        const tally = { v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
+          subagentTools: 0, state: 'complete' } as const;
+        reader.updateTallies([['R2', tally]]);
         const rows = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows;
         assert.ok(rows.every(row => row.key !== before.key));
         const reported = rows.find(row => row.model?.name === 'example-default')!;
         assert.equal(reported.model?.effort, 'high');
-        const usage = (await reader.usage({ ...params, by }, actor)).breakdown!.rows.find(row => row.key === reported.key);
+        const usage = (await reader.usage({ ...params, by }, actor)).breakdown!.rows.find(row => row.model?.name === 'example-default');
         assert.equal(usage?.counts.launches, 1);
-        const list = (await reader.list({ period: 'all', set: 'finished', by, key: reported.key }, actor));
+        const series = () => reader.usageSeries({ ...params, by }, actor);
+        assert.equal((await series()).groups.find(group => group.value === 'example-default')?.total, 1);
+        reader.updateTallies([['R2', { ...tally, model: 'example-updated' }]]);
+        const changed = await series();
+        assert.equal(changed.groups.find(group => group.value === 'example-updated')?.total, 1);
+        assert.ok(!changed.groups.some(group => group.value === 'example-default'));
+        const changedTask = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows.find(row => row.model?.name === 'example-updated')!;
+        const list = (await reader.list({ period: 'all', set: 'finished', by, key: changedTask.key }, actor));
         assert.deepEqual(list.rows.map(row => row.id), [rowId(3)]);
       });
       const caller = { kind: 'run', taskId: rowId(2), runId: 'R1', placementId: 'fixture-placement-2',

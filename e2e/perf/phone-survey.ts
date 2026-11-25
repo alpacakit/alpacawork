@@ -13,6 +13,7 @@ import { patchTask, seedQuestion } from '../fixture/task-state.ts';
 import { ControlStore } from '@alpacawork/db';
 import { startFakeCoordinator } from '../coordinator-fixture.ts';
 import { decideValues } from '../../tests/helpers/task-values.ts';
+import { leaveBarMenu, settingsEntry, STRIPS_SHOWN, stripsSwitch } from './bar-entries.ts';
 
 /** The conversation's ⌄ (a phone has one too), else Esc. */
 async function foldChat(page: any, press: (target: any) => Promise<unknown> = target => target.click()) {
@@ -253,9 +254,14 @@ try {
     const custom=async(name:string,action:()=>Promise<unknown>,complete:string)=>measure(name,'custom',action,complete);
     for(let i=0;i<Number(args.rounds);i++) {
       await home();
-      await custom(`timeline-show-${i}`,()=>tap(page.locator('[data-strips]')),`document.querySelector('[data-strips]')?.getAttribute('aria-pressed')==='true' && !!document.querySelector('[data-time-clock]') && !!document.querySelector('[data-timeline-read]')`);
+      // Only the Time switch's press is measured; reaching it in the bar's menu and leaving the menu are not.
+      const time=await stripsSwitch(page,tap);
+      await custom(`timeline-show-${i}`,()=>tap(time),`${STRIPS_SHOWN}==='true' && !!document.querySelector('[data-time-clock]') && !!document.querySelector('[data-timeline-read]')`);
+      await leaveBarMenu(page,tap);
       await page.screenshot({path:join(out,`timeline-${i}.png`)});
-      await custom(`timeline-hide-${i}`,()=>tap(page.locator('[data-strips]')),`document.querySelector('[data-strips]')?.getAttribute('aria-pressed')==='false' && !document.querySelector('[data-time-clock]')`);
+      await stripsSwitch(page,tap);
+      await custom(`timeline-hide-${i}`,()=>tap(time),`${STRIPS_SHOWN}==='false' && !document.querySelector('[data-time-clock]')`);
+      await leaveBarMenu(page,tap);
       await custom(`search-open-${i}`,()=>tap(page.locator('[data-search-toggle]')),`!!document.querySelector('[data-search-row]')`);
       const search=page.locator('[data-search-row] input');await search.focus();
       await custom(`search-query-${i}`,()=>page.keyboard.insertText('Synthetic task 17'),`document.querySelector('[data-search-row] input')?.value==='Synthetic task 17' && new URL(location.href).searchParams.get('q')==='Synthetic task 17' && !!document.querySelector('[data-result]') && !document.querySelector('[data-results-head] [role=status]')`);
@@ -265,7 +271,8 @@ try {
       await custom(`project-menu-${i}`,()=>tap(page.locator('[data-project-trigger]')),`!!document.querySelector('[data-project-item]')`);
       // One empty project added to the copy permits a real all-to-P1 filter switch. Base perf data stays intact.
       await custom(`project-select-${i}`,()=>tap(page.locator('[data-project-item=P1]')),`!document.querySelector('[data-project-item]') && new URL(location.href).searchParams.get('project')==='P1' && !!document.querySelector('[data-time-tree]')`);
-      await custom(`settings-open-${i}`,()=>tap(page.getByRole('button',{name:'Settings',exact:true})),`!!document.querySelector('[role=dialog]') && !!document.querySelector('[role=tab]')`);
+      const gear=await settingsEntry(page,tap);
+      await custom(`settings-open-${i}`,()=>tap(gear),`!!document.querySelector('[role=dialog]') && !!document.querySelector('[role=tab]')`);
       // The first tab holding the config.yaml draft is found by its first save row, not by its place, so a run before and after the
       // tabs were reordered measures the same move: another tab shown, then the draft's tab opened. Its panel stays
       // mounted while hidden, so the row is there to find once config.yaml has been read.

@@ -96,7 +96,7 @@ html:has([data-reader-sheet-close]) [data-reader-mode="sheet"] [data-reader-cont
    each mark the placeholder's colour, in the app's placeholder motion. What stands where stays where the answer's will. */
 [data-face-skeleton] * { color: transparent !important; text-decoration-color: transparent !important; }
 [data-face-skeleton] :where(b, span, p, dt, dd, h2, h3, a, button):not(:has(*)):not(:empty),
-[data-face-skeleton] [class*="bg-"]:empty, [data-face-skeleton] [data-chart-row] [class*="bg-"] {
+[data-face-skeleton] [class*="bg-"]:empty, [data-face-skeleton] [data-chart-row] [class*="bg-"], [data-face-skeleton] [data-chart-row] i[style] {
   background: var(--color-placeholder) !important;
   border-radius: 0.25rem;
   animation: var(--animate-placeholder);

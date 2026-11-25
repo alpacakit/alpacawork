@@ -254,8 +254,11 @@
     "submits": "提交确认次数"
   },
   "usage": {
+    "allEfforts": "所有 effort",
+    "allModels": "所有模型",
     "by": {
       "agent": "AI 种类",
+      "effort": "effort",
       "mcp": "MCP",
       "model": "模型",
       "skill": "技能",
@@ -264,8 +267,10 @@
     "cache": "缓存",
     "cacheWithin": "其中缓存 {{value}}",
     "calls": "调用",
+    "effortNone": "未记录",
     "heads": {
       "agent": "AI 种类",
+      "effort": "effort",
       "mcp": "MCP",
       "model": "模型",
       "skill": "技能",
@@ -273,9 +278,13 @@
     },
     "input": "输入",
     "inputTokens": "输入令牌",
+    "launchColor": "着色依据",
+    "launchEffort": "effort",
     "launches": "启动",
+    "launchModel": "模型",
     "newConversations": "新会话",
     "none": "无记录",
+    "otherModels_other": "其他 {{count}} 种",
     "output": "输出",
     "outputTokens": "输出令牌",
     "runMs": "运行时间",

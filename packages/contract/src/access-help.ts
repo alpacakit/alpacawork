@@ -31,7 +31,8 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'field.use': [{ label: 'Project fields (Task here means the project)', action: { name: 'field.use' },
     task: { kind: 'project', id: 'T1', parentId: null, project: 'T1' } }],
   'task.file-get': readUp,
-  'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.list': readTree, 'analysis.task': readTree, 'analysis.breakdown': readTree,
+  'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.usage-series': readTree,
+  'analysis.breakdown': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
   'task.list': readTree, 'run.list': readTree,
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [

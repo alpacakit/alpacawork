@@ -40,3 +40,13 @@ test("with the first agent spent, the bar shows only the next one, the agent wor
   expect(trigger.getAttribute("aria-label")).not.toMatch(/Claude/);
   expect(document.querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("codex");
 });
+
+test("the menu says which agents tasks use, and drops a reset window's old figure", () => {
+  const reset: LimitWindow = { ...week(100), resetsAt: new Date(Date.now() - 60_000).toISOString() };
+  open({ agents: [agent("claude", [reset]), agent("codex", [week(27)])], stack: [{ adapter: "claude", model: "opus" }] });
+  const block = (adapter: string) => document.querySelector<HTMLElement>(`[data-limit-agent=${adapter}]`)!;
+  expect(block("claude").querySelector("[data-limit-place]")?.textContent).toBe("Primary (opus)");
+  expect(block("codex").querySelector("[data-limit-place]")?.textContent).toBe("Not in “AI for tasks”");
+  expect(block("claude").textContent).not.toMatch(/100%/);
+  expect(block("claude").textContent).toMatch(/Reset · the new usage is not read yet/);
+});
