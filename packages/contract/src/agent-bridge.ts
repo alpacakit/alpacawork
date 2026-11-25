@@ -88,7 +88,8 @@ export function fileChangesText(changes: readonly unknown[]): { text: string; he
   const parts: string[] = [], headingEnds: number[] = [];
   let at = 0;
   for (const change of changes.map(record)) {
-    const part = fileChangeText(change), heading = part.indexOf('\n') === -1 ? part.length : part.indexOf('\n');
+    // Where the heading ends is its whole length: a line break in a file's name does not end it.
+    const part = fileChangeText(change), heading = fileChangeHeading(change).length;
     if (parts.length) at += 2;
     headingEnds.push(at + heading);
     parts.push(part); at += part.length;
@@ -103,10 +104,14 @@ export const headingsShown = (headingEnds: readonly number[], length: number) =>
 };
 /** A file change said as a person reads it: what was done to which path (and where it moved), then its diff. */
 export function fileChangeText(change: Record<string, unknown>): string {
+  return [fileChangeHeading(change), typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
+}
+/** A file change's heading, whole: what was done to which path (and where it moved), a line break in a name kept in it. */
+function fileChangeHeading(change: Record<string, unknown>): string {
   const kind = change.kind !== null && typeof change.kind === 'object' ? change.kind as Record<string, unknown> : {};
   const done = typeof change.kind === 'string' ? change.kind : typeof kind.type === 'string' ? kind.type : 'change';
   const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
-  return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
+  return `${done}: ${String(change.path)}${moved}`;
 }
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const texts = (value: unknown) => Array.isArray(value)

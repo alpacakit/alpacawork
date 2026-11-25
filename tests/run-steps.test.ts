@@ -494,3 +494,30 @@ test('a bash script followed by a quoted argument is shown as written, not taken
   assert.equal((await index.detail(0))?.input.text, command);
   assert.equal((await index.detail(1))?.input.text, "echo 'quoted' done");
 });
+
+test('a bash command whose closing quote is not its last character is shown as written; one ending in it, or cut, shows its script', async t => {
+  const path = folder(t);
+  const redirected = "/bin/bash -lc 'cd /tmp; pwd'>out.txt";
+  write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command: redirected } },
+    { type: 'item.started', item: { id: 'c2', type: 'command_execution', command: "/bin/bash -lc 'cd /tmp; pwd'" } }]);
+  const cut = boundBridgeEvent({ type: 'item.started', item: boundaryItem('command_execution', { id: 'c3',
+    command: "/bin/bash -lc 'echo start\n" + 'echo line\n'.repeat(150_000) + "'" }) });
+  appendFileSync(join(path, 'stdout.log'), JSON.stringify(cut) + '\n');
+  const index = await read(path, 'codex');
+  assert.equal((await index.detail(0))?.input.text, redirected);
+  assert.equal((await index.detail(1))?.input.text, 'cd /tmp; pwd');
+  assert.ok((await index.detail(2))!.input.text.startsWith('echo start\necho line\n'));
+});
+
+test('a file whose name holds a line break, its heading cut partway, counts as hidden', async t => {
+  const path = folder(t);
+  const first = 'add: /a.ts\n', second = 'add: /dir\nname-long.ts';
+  // The first diff ends where the opened text, cut at its limit, stops inside the second heading after its line break.
+  const diff = '+' + 'x'.repeat(RUN_STEP_FULL_TEXT_LIMIT - first.length - 2 - 'add: /dir\nna'.length - 1);
+  const changes = [{ path: '/a.ts', kind: { type: 'add' }, diff }, { path: '/dir\nname-long.ts', kind: { type: 'add' }, diff: '+b' }];
+  write(path, [{ type: 'item.completed', item: { id: 'f1', type: 'file_change', changes, status: 'completed' } }]);
+  const detail = await (await read(path, 'codex')).detail(0);
+  assert.ok(detail!.input.text.endsWith('add: /dir\nna'));
+  assert.ok(!detail!.input.text.includes(second));
+  assert.equal(detail!.input.omittedFiles, 1);
+});

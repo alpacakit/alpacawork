@@ -31,42 +31,26 @@ export class ToolResults {
 
 const firstText = (...values: unknown[]) => values.find((value): value is string => typeof value === 'string' && value !== '');
 /**
- * One shell word from `at`, read quote by quote: its text, where it ends, and whether every quote in it closed. Single
- * quotes hold all to the next one; double quotes take a backslash before " \\ $ or `; outside quotes a backslash takes
- * the next character. The word ends at a blank outside quotes.
+ * Codex wraps every command in one login shell; the script inside is what the agent wrote. The wrapper is taken off in
+ * two cases only, without reading the shell's grammar: (a) the command is the wrapper's opening quote, the script and a
+ * closing quote that is the command's last character, every other quote inside being the escaped quote Codex writes;
+ * (b) the bridge cut the command short (`cut`), so its closing quote is gone. Any other command is shown as written.
  */
-function shellWord(line: string, at: number): { text: string; end: number; closed: boolean } {
-  let text = '', i = at;
-  while (i < line.length && !/\s/.test(line[i]!)) {
-    const char = line[i]!;
-    if (char === "'") {
-      const close = line.indexOf("'", i + 1);
-      if (close === -1) return { text: text + line.slice(i + 1), end: line.length, closed: false };
-      text += line.slice(i + 1, close); i = close + 1;
-    } else if (char === '"') {
-      let j = i + 1;
-      for (; j < line.length && line[j] !== '"'; j++) {
-        if (line[j] === '\\' && j + 1 < line.length && '"\\$`'.includes(line[j + 1]!)) text += line[++j];
-        else text += line[j];
-      }
-      if (j >= line.length) return { text, end: line.length, closed: false };
-      i = j + 1;
-    } else if (char === '\\' && i + 1 < line.length) { text += line[i + 1]; i += 2; }
-    else { text += char; i++; }
-  }
-  return { text, end: i, closed: true };
-}
-/**
- * Codex wraps every command in one login shell; the script inside is what the agent wrote. The script is the one word
- * after `-c`, read quote by quote: when it is the whole rest of the command (closed, or cut short by the bridge before
- * its closing quote) it is shown alone; with more after it (another argument), the command is shown as written.
- */
-function shellScript(command: unknown): unknown {
+function shellScript(command: unknown, cut = false): unknown {
   if (typeof command !== 'string') return command;
-  const head = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (?=['"])/.exec(command);
+  const head = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])/.exec(command);
   if (!head) return command;
-  const word = shellWord(command, head[0].length);
-  return word.end === command.length ? word.text : command;
+  const quote = head[1]!, rest = command.slice(head[0].length);
+  const closed = rest.endsWith(quote) && rest.length > 0;
+  const body = closed && !cut ? rest.slice(0, -1) : cut ? rest : null;
+  if (body === null) return command;
+  if (quote === "'") {
+    const escaped = [`'\\''`, `'"'"'`];
+    if (!cut && escaped.reduce((text, each) => text.replaceAll(each, ''), body).includes("'")) return command;
+    return escaped.reduce((text, each) => text.replaceAll(each, "'"), body);
+  }
+  if (!cut && /(^|[^\\])(\\\\)*"/.test(body)) return command;
+  return body.replace(/\\(["\\$`])/g, '$1');
 }
 /** All of a text as the output holds it: the step's opened view bounds it. */
 const whole = (text: string): RunStepText => ({ text, omitted: 0 });
@@ -87,7 +71,7 @@ function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail
     return { ...call, call: { ...call.call!, clipped: clippedBy(item, 'arguments') } };
   }
   const input = Object.fromEntries(fields.filter(key => key in item).map(key => [key, item[key]]));
-  const line = item.type === 'command_execution' ? shellScript(item.command) : item.type === 'web_search' ? firstText(item.query, object(item.action).url)
+  const line = item.type === 'command_execution' ? shellScript(item.command, clippedUnder(item, ['command']) > 0) : item.type === 'web_search' ? firstText(item.query, object(item.action).url)
     : item.type === 'file_change' ? changedPaths(item.changes).map(change => change.path).join('  ') : item.type === 'image_view' ? item.path : item.prompt;
   return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input,
     clipped: Object.fromEntries(fields.map(key => [key, clippedUnder(item, [key])])) } };
@@ -101,7 +85,7 @@ export function stepInputDocument(call: StepCall): string | undefined {
   const input = object(call.input);
   switch (call.tool) {
     case 'codex:command_execution': {
-      const script = shellScript(input.command);
+      const script = shellScript(input.command, (call.clipped?.command ?? 0) > 0);
       return inputDocument({ ...typeof script === 'string' ? { main: script } : {}, fields: 'cwd' in input ? { cwd: input.cwd } : {} });
     }
     case 'codex:web_search': {
