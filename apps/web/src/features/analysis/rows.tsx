@@ -177,11 +177,16 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   // pointer (`pointSoon`) is dropped by any other change here and by any input that is not the pointer's anywhere (a
   // key, a move of the focus, a scroll or a wheel), and by another span or step of time.
   const waiting = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancel = () => {
-    if (!waiting.current) return;
-    clearTimeout(waiting.current); waiting.current = null;
-    for (const kind of OTHER_INPUT) removeEventListener(kind, cancel, true);
-  };
+  // One function for the whole life of the group, so the listeners it adds are the ones it takes away whichever render
+  // drops the day.
+  const [cancel] = useState(() => {
+    const drop = () => {
+      if (!waiting.current) return;
+      clearTimeout(waiting.current); waiting.current = null;
+      for (const kind of OTHER_INPUT) removeEventListener(kind, drop, true);
+    };
+    return drop;
+  });
   useEffect(() => cancel, []);
   const show = (at: number | null, row = -1, box?: Box) => setPointed(previous => {
     if (at === null) return null;

@@ -282,3 +282,26 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   view.unmount();
   useViewStore.setState({ analysis: null });
 });
+
+test("a day left waiting and dropped by another span leaves none of its listeners behind", () => {
+  vi.useFakeTimers();
+  const bins = Array.from({ length: 10 }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const rows = [{ name: "トークン", total: (at: number) => `${at}` }];
+  const live = new Map<string, Set<unknown>>();
+  const add = vi.spyOn(window, "addEventListener").mockImplementation((kind, fn) => { live.set(kind, (live.get(kind) ?? new Set()).add(fn)); });
+  const remove = vi.spyOn(window, "removeEventListener").mockImplementation((kind, fn) => { live.get(kind)?.delete(fn); });
+  const group = (from: string) => <ChartGroup bins={bins} span={{ from, to: "2026-11-07" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
+    <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => [["", at + 1]]} /></Row>
+  </ChartGroup>;
+  const view = render(group("2026-11-01"));
+  for (const from of ["2026-11-02", "2026-11-03", "2026-11-04"]) {
+    const columns = view.container.querySelectorAll("[data-day-column]");
+    fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
+    fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
+    expect(live.get("keydown")?.size ?? 0).toBe(1);
+    view.rerender(group(from));
+  }
+  for (const kind of ["keydown", "focusin", "wheel"]) expect(live.get(kind)?.size ?? 0).toBe(0);
+  add.mockRestore(); remove.mockRestore();
+  view.unmount();
+});
