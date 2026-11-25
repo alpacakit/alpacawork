@@ -575,12 +575,16 @@ class ScopedAnalysis {
 
   private taskEntries(input: AnalysisListInput, head: AnalysisHead): Entry[] {
     const prCounts = input.value === 'prs' ? creditAcceptedPrs(this.datedUnits) : null;
-    const units = within(this.datedUnits, head.period).map(item => item.unit).filter(unit =>
-      (input.set === 'finished' && isFinished(unit) || input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
+    // The unfinished are those of the read, whatever the period, as `unfinished` counts them.
+    const candidates = input.set === 'unfinished' ? this.openUnits : within(this.datedUnits, head.period).map(item => item.unit);
+    const units = candidates.filter(unit => (input.set === 'unfinished' || input.set === 'finished' && isFinished(unit) ||
+      input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
       && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
     return units.map(unit => {
       if (!input.value) return entry(unit, null);
-      const { review, answer, ai, other } = unit.clock?.time ?? emptyClock();
+      const { review, answer, ai, other } = unit.clock?.time ?? (input.set === 'unfinished'
+        ? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, Date.parse(unit.outcome.requestedAt), this.now, this.now).time
+        : emptyClock());
       const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
         questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
       return entry(unit, values[input.value] ?? null);

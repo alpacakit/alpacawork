@@ -12,7 +12,7 @@ export const analysisUsageBySchema = z.enum([...analysisTaskBySchema.options, ..
 export type AnalysisTallyBy = z.infer<typeof analysisTallyBySchema>;
 export const isAnalysisTallyBy = (by: AnalysisUsageBy | undefined): by is AnalysisTallyBy =>
   analysisTallyBySchema.options.some(option => option === by);
-export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished', 'used']);
+export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished', 'unfinished', 'used']);
 export const analysisTaskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
 export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'tokens', 'output', 'input', 'cache', 'calls'] as const;
 export const analysisValueSchema = z.enum([...analysisTaskValues, ...analysisUsageValues]);
@@ -138,7 +138,7 @@ export const analysisTasksViewSchema = z.strictObject({
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: tasksBreakdown.nullable(),
   /**
-   * As of the read, whatever the period: the requested tasks not yet ended, and the time they have waited for the user
+   * As of the read, whatever the period: the requested tasks with no acceptance, stop or owner's done yet, and the time they have waited for the user
    * so far (review and answer, as `time` counts them, a wait still open running to now) with where the user was.
    */
   unfinished: z.strictObject({ tasks: count, time: z.strictObject({ review: count, answer: count }), waits }),

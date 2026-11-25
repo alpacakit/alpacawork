@@ -186,6 +186,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(tasks.grass.finished.reduce((a, b) => a + b, 0), 2);
       for (const set of ['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished'] as const)
         assert.equal((await read<AnalysisUnitList>('list', { ...base, set })).total, tasks.counts.value[set]);
+      assert.equal((await read<AnalysisUnitList>('list', { ...base, set: 'unfinished' })).total, tasks.unfinished.tasks);
       const projectRows = await read<AnalysisUnitList>('list', { ...base, set: 'passed', by: 'project', key: project, limit: '1' });
       assert.equal(projectRows.total, 2);
       assert.ok(projectRows.cursor);
