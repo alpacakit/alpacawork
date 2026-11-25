@@ -641,32 +641,33 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   const bars = (at: number) => {
     const all = values(at), sum = all.reduce((total, [, value]) => total + Math.max(0, value), 0);
     const cut = sum > scale.top, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
-    // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line.
-    const gaps = 2 * (all.filter(([, value]) => value > 0).length - 1);
+    // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line. Past six
+    // parts (many models in one bin) they stand without gaps, which would otherwise take more than a short bar's height.
+    const shown = all.filter(([, value]) => value > 0), step = shown.length > 6 ? 0 : 2;
+    const gaps = step * (shown.length - 1);
     const height = (value: number) => cut ? `calc((100% - ${gaps}px) * ${value / sum})` : `${Math.min(100, value / scale.top * 100)}%`;
     // Where a bin is only a few pixels wide (days over a long record), its parts are one element painted in their
     // colours with the same 2px gaps, not one element each: the same picture at a fraction of the page to lay out.
     // Too narrow to press a part, the bin opens the row's tasks.
-    const shown = all.filter(([, value]) => value > 0);
     if (thin && !tone && !cut && shown.length > 1) {
       let below = 0;
       const stops = shown.map(([color, value], part) => {
-        const from = `calc((100% - ${gaps}px) * ${below / sum} + ${2 * part}px)`; below += value;
-        const to = `calc((100% - ${gaps}px) * ${below / sum} + ${2 * part}px)`, paint = `var(--${color.replace(/^bg-/, "")})`;
-        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + 2px)` : ""}`;
+        const from = `calc((100% - ${gaps}px) * ${below / sum} + ${step * part}px)`; below += value;
+        const to = `calc((100% - ${gaps}px) * ${below / sum} + ${step * part}px)`, paint = `var(--${color.replace(/^bg-/, "")})`;
+        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + ${step}px)` : ""}`;
       });
       return <i style={{ height: `calc(${sum / scale.top * 100}% + ${gaps}px)`, background: `linear-gradient(to top, ${stops.join(", ")})` }}
         className={cn("relative block min-w-px flex-none origin-bottom rounded-t-[3px] rounded-b-[1px]", grow && "animate-bar")} />;
     }
-    // A bar of several parts grows as one (the parts stand in a column that grows), so a stacked chart moves as many
-    // things as its bins, not its parts: each that moves is its own layer for the browser to put together.
-    const stacked = grow && shown.length > 1;
+    // A bar of several parts stands as one column of them, its gaps its own, and grows as one: a stacked chart moves as
+    // many things as its bins, not its parts (each that moves is its own layer for the browser to put together).
+    const stacked = shown.length > 1;
     const parts = all.map(([color, value, of], part) => value > 0 &&
       <i key={part} data-part={of} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
         className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && !stacked && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
-    return stacked ? <span className="flex h-full origin-bottom animate-bar flex-col-reverse gap-0.5">{parts}</span> : parts;
+    return stacked ? <span style={{ gap: `${step}px` }} className={cn("flex h-full origin-bottom flex-col-reverse", grow && "animate-bar")}>{parts}</span> : parts;
   };
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>

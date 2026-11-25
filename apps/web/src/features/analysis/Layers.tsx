@@ -143,12 +143,14 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   </div>;
 }
 
-/** The breakdown's row a list was opened from: the answer that drew it (already read), and its row by key. */
+/**
+ * The breakdown's row a list was opened from, and its row by key: for a number of the span, the breakdown's own answer
+ * (already read); for a chart's bin, that bin's days, where the row may be one the span does not hold.
+ */
 function useRowOf(project: string | null, span: Span, list: ListPlace) {
   const bucket = useChoices(state => state.bucket);
   const group = list.group ?? "model", row = list.group !== null && list.member !== null;
-  // The same read as the breakdown's own (already held when the list was opened from it).
-  const read = useBreakdown(list.set === "used" ? "usage" : "tasks", project, span, bucket, group, row);
+  const read = useBreakdown(list.set === "used" ? "usage" : "tasks", project, list.days ?? span, bucket, group, row);
   const rows: (Parameters<typeof rowName>[0] & { key: string })[] = read.data?.breakdown.rows ?? [];
   return row ? rows.find(each => each.key === list.member) ?? null : null;
 }

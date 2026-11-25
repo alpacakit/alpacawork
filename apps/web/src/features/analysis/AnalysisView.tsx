@@ -49,8 +49,8 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const head: Head | undefined = (set.data?.[0] as { head: Head } | undefined)?.head;
   // The launches' three answers as one value that stays the same while they do, so the usage look (memo) is not drawn
   // again as each other read of the set comes in.
-  const [models, efforts, spanModels, spanEfforts] = (set.data?.slice(2) ?? []) as (UsageSeriesView | undefined)[];
-  const series = useMemo(() => ({ models, efforts, spanModels, spanEfforts }) as LaunchAnswers, [models, efforts, spanModels, spanEfforts]);
+  const [models, spanModels] = (set.data?.slice(2) ?? []) as (UsageSeriesView | undefined)[];
+  const series = useMemo(() => ({ models, spanModels }) as LaunchAnswers, [models, spanModels]);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
   // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
   // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).

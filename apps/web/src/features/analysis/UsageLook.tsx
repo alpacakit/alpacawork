@@ -98,7 +98,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
     return { values, top, label: lineLabel(kinds[key] as "tokens" | "hours" | "times", top), faint: (i: number) => !steady(i) }; };
   // Launches filtered to a model or an effort are not the launches of the tasks finished: no line over them.
-  const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: launches.isFiltered ? undefined : overlay("launches") } : null;
+  const overlays = taskPoints ? { tokens: overlay("tokens"), runMs: overlay("runMs"), launches: launches.shownFiltered ? undefined : overlay("launches") } : null;
   const finishedParts = useFinishedParts();
   const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
   const finishedBase = (i: number) => t("window.finished", { count: finishedOn(i) });
@@ -114,7 +114,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
           { color: "", name: t("usage.input"), value: format("tokens", c.input), list: c.input ? onBin("used", "input") : undefined },
           { color: "", name: t("usage.cache"), value: format("tokens", c.cache), list: c.cache ? onBin("used", "cache") : undefined }]; } },
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
-    launchesSay(launches, t("usage.launches"), launches.isFiltered ? undefined : perLine("launches"), launches.isFiltered ? undefined
+    launchesSay(launches, t("usage.launches"), launches.shownFiltered ? undefined : perLine("launches"), launches.shownFiltered ? undefined
       : i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
         list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }]),
   ];
@@ -165,13 +165,13 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       <Row row={first + 2} left={<>
         {/* While a filter's numbers come, those it replaces stand faint; the choices above them stay in reach. */}
         <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}>
-          <Num className="" label={t("usage.launches")} kind="times" value={launches.isFiltered ? launches.spanTotal : now.launches} previous={null} length={length}
-            onOpen={() => open({ set: "used", value: "launches", filter: launches.filter })} />
+          <Num className="" label={t("usage.launches")} kind="times" value={launches.shownFiltered ? launches.spanTotal : now.launches} previous={null} length={length}
+            onOpen={() => open({ set: "used", value: "launches", filter: launches.shown.spanFilter })} />
         </div>
         <LaunchControls launches={launches} />
-        <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}><Parts items={[...launchesParts(launches, open), ...launches.isFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
+        <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}><Parts items={[...launchesParts(launches, open), ...launches.shownFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
           ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]]}
-          line={launches.isFiltered ? undefined : perEntry("launches")} /></div>
+          line={launches.shownFiltered ? undefined : perEntry("launches")} /></div>
       </>}>
         {/* Each bin's launches stacked by model or effort, the most used at the foot; in one colour where the series does
             not stand on the same bins. */}

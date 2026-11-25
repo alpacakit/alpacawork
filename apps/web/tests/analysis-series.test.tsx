@@ -19,9 +19,9 @@ test("every model is a part of its own, a colour staying with it whatever is fil
   const answer = view([group("h", "h", 4), group("g", "g", 3), group("b", "b", 5)], [[[0, 4], [1, 1], [2, 2]], [[1, 2], [2, 3]]]);
   const { parts, points, totals } = partsOf(book, answer);
   expect(parts.map(part => [part.key, part.color])).toEqual([["b", "bg-series-2"], ["g", "bg-series-other"], ["h", "bg-series-other"]]);
-  expect(points).toEqual([[2, 1, 4], [3, 2, 0]]);
+  expect(points).toEqual([[[0, 2], [1, 1], [2, 4]], [[0, 3], [1, 2]]]);
   // Each point's parts add up to its total, and the answer's to its own.
-  answer.points.forEach((point, at) => expect(points[at]!.reduce((sum, each) => sum + each, 0)).toBe(point.total));
+  answer.points.forEach((point, at) => expect(points[at]!.reduce((sum, [, each]) => sum + each, 0)).toBe(point.total));
   expect(totals.reduce((sum, each) => sum + each, 0)).toBe(answer.total);
 });
 
@@ -33,6 +33,12 @@ test("efforts stand in their order with a colour each, none recorded last", () =
   const colours = parts.map(part => part.color);
   expect(new Set(colours).size).toBe(colours.length);
   expect(colours.at(-1)).toBe("bg-effort-none");
+});
+
+test("an answer's numbers carry the filter they were counted under, for the lists they open", () => {
+  const groups = [group("o", "Opus 5.5", 4)];
+  const answer = { ...view(groups, [[[0, 4]]]), filters: { model: "Opus 5.5", effort: null, effortMissing: true } };
+  expect(partsOf(colourBook("model", groups), answer).filter).toEqual({ model: "Opus 5.5", effort: "-" });
 });
 
 test("a list opened under a filter keeps it in the URL", () => {
