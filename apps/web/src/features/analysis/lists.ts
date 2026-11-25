@@ -23,8 +23,12 @@ export function listTitle(list: ListPlace): string {
   if (list.set === "used" && list.value) return word(COLUMN[list.value]);
   return word({ passed: "tasks.passed", reworked: "tasks.reworked", stopped: "tasks.stopped", accepted: "tasks.accepted", finished: "tasks.finished", used: "usage.tasks" }[list.set]);
 }
-/** The unit of a list's count: tasks, said as a count of them (件) or, for the AI's use, as tasks. */
-export const listUnit = (list: ListPlace, count: number) => list.set === "used" ? word("unit.taskCount", { count }) : word("unit.tasks", { count });
+/**
+ * The unit of a list's count: tasks, said as a count of them (件) or, for the AI's use, as tasks; none in a language that
+ * writes no count word (`unit.countWords`).
+ */
+export const listUnit = (list: ListPlace, count: number) => word("unit.countWords") === "no" ? ""
+  : list.set === "used" ? word("unit.taskCount", { count }) : word("unit.tasks", { count });
 export const listColumn = (list: ListPlace) => list.value ? word(COLUMN[list.value]) : word("list.outcome");
 export const usageValue = (value: ListValue | null) => value !== null && USAGE.has(value);
 

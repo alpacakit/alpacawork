@@ -160,6 +160,7 @@
   },
   "unit": {
     "conversations_other": "个",
+    "countWords": "yes",
     "hours": "小时",
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}}{{unit}}",

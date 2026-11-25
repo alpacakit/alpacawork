@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { subscribeStep } from "@/state/history-step";
-import { daysBetween, dayLabel, format, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
+import { daysBetween, dayLabel, format, inUnit, monthLabel, numberText, unitOf, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
 import { OpenMark, tipAround } from "./parts";
 import { Icon } from "@/components/ui/icon";
@@ -636,7 +636,7 @@ export function lineTop(values: (number | null)[], steady: (at: number) => boole
 export function useLineLabel() {
   const { t } = useTranslation("analysis");
   return (kind: "hours" | "times" | "tasks" | "questions" | "tokens", top: number) => kind === "hours" || kind === "tokens" ? format(kind, top)
-    : t("unit.join", { value: numberText(Math.round(top * 100) / 100), unit: t(`unit.${kind}`, { count: 2 }) });
+    : inUnit(numberText(Math.round(top * 100) / 100), unitOf(kind));
 }
 
 /** The days under a chart: as many names as its width holds; one day (`strong`, where counting began) in ink and bold. */

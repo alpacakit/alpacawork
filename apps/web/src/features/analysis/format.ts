@@ -37,7 +37,7 @@ const hourValue = (hours: number) => hours >= 10 ? whole(hours) : fixed(hours, 1
 export function parts(kind: Kind, value: number): Parts {
   switch (kind) {
     case "tasks": case "times": case "prs": case "conversations": case "people": case "questions":
-      return { value: whole(value), unit: word(COUNT_WORD[kind], { count: value }) };
+      return { value: whole(value), unit: countWord(kind, value) };
     case "plain": return { value: whole(value), unit: "" };
     case "hours": return { value: hourValue(value / HOUR), unit: word("unit.hours") };
     case "tokens": {
@@ -49,9 +49,14 @@ export function parts(kind: Kind, value: number): Parts {
 export const text = ({ value, unit, tight }: Parts) => unit ? word(tight ? "unit.joinTight" : "unit.join", { value, unit }) : value;
 /** A value written by hand (a per-task number, a scale's top) with a unit that may be none. */
 export const inUnit = (value: string, unit: string) => text({ value, unit });
-/** A kind's unit alone, as a table's heading says it once ("" in a language that writes none). */
+/**
+ * The word a count is written with (件, 回; 个, 次), or none in a language whose names already say what is counted
+ * (`unit.countWords`: "no", as English: "Finished tasks 84", not "84 tasks").
+ */
+const countWord = (kind: keyof typeof COUNT_WORD, count: number) => word("unit.countWords") === "no" ? "" : word(COUNT_WORD[kind], { count });
+/** A kind's unit alone, as a table's heading or a chart's scale says it once ("" for a count in a language that writes none). */
 export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "hours") =>
-  kind === "hours" ? word("unit.hours") : word(COUNT_WORD[kind], { count: 2 });
+  kind === "hours" ? word("unit.hours") : countWord(kind, 2);
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
 
 /** A time of one task: minutes under an hour, else hours. */

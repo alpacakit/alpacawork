@@ -167,19 +167,20 @@
     "you": "Your turn"
   },
   "unit": {
-    "conversations_one": "",
-    "conversations_other": "",
+    "conversations_one": "conversation",
+    "conversations_other": "conversations",
+    "countWords": "no",
     "hours": "h",
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}}{{unit}}",
     "minutes": "min",
-    "people_one": "",
-    "people_other": "",
+    "people_one": "person",
+    "people_other": "people",
     "points": " pt",
-    "prs_one": "",
-    "prs_other": "",
-    "questions_one": "",
-    "questions_other": "",
+    "prs_one": "PR",
+    "prs_other": "PRs",
+    "questions_one": "question",
+    "questions_other": "questions",
     "scales": [
       {
         "at": 1000000000,
@@ -197,12 +198,12 @@
         "unit": "K"
       }
     ],
-    "taskCount_one": "",
-    "taskCount_other": "",
-    "tasks_one": "",
-    "tasks_other": "",
-    "times_one": "",
-    "times_other": ""
+    "taskCount_one": "task",
+    "taskCount_other": "tasks",
+    "tasks_one": "task",
+    "tasks_other": "tasks",
+    "times_one": "time",
+    "times_other": "times"
   },
   "until": {
     "lead": "Time taken (median)",
