@@ -4,7 +4,7 @@ import { NARROW_QUERY, useViewStore } from "@/state/view-store";
 import { closeAnalysisLayer } from "@/state/history-step";
 import { cn } from "@/lib/utils";
 import { Seg, Shown } from "./parts";
-import { analysisHome, type AnalysisPlace } from "./place";
+import { analysisHome, analysisSurfaces, belowLayer, type AnalysisPlace } from "./place";
 import { useTodayFinished } from "./data";
 
 /**
@@ -15,11 +15,11 @@ export function FaceSwitch({ className }: { className?: string }) {
   const { t } = useTranslation("analysis");
   const analysis = useViewStore(state => state.analysis);
   const left = useRef<AnalysisPlace | null>(null);
-  if (analysis) left.current = { ...analysis, list: null, unit: null };
+  if (analysis) left.current = belowLayer(analysis, 0);
   return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
     onChange={face => useViewStore.getState().showAnalysis(face === "analysis" ? left.current ?? analysisHome() : null)}
-    // Analysis pressed while a list or a task's values is open over it: they close as × closes them.
-    onAgain={() => { if (analysis && (analysis.list || analysis.unit)) closeAnalysisLayer(0); }}
+    // Analysis pressed while a layer is open over it (a list, a task's values, the card): they close as × closes them.
+    onAgain={() => { if (analysisSurfaces(analysis).length) closeAnalysisLayer(0); }}
     items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;
 }
 

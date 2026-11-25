@@ -32,6 +32,17 @@ const scales = (): Scale[] => {
 const scaleOf = (value: number) => scales().find(scale => value >= scale.at) ?? null;
 
 /**
+ * A large count as it is said in a sentence of the language (108.6億, 10.9 billion, 10.940 millones de): the language's
+ * own steps for prose, which differ from the short ones a figure takes beside its unit (10,9 mil M).
+ */
+export function spoken(value: number): string {
+  const list = i18n.t("analysis:unit.spoken", { returnObjects: true }) as unknown;
+  const scale = (Array.isArray(list) ? list as Scale[] : []).find(each => value >= each.at);
+  // Each step carries its own space where the language puts one (" billion", "億").
+  return scale ? `${fixed(value / scale.at, scale.digits)}${scale.unit}` : whole(value);
+}
+
+/**
  * Hours: to one place under ten, whole from ten. The places are chosen by the value as it rounds (9.96 is 10, not
  * 10.0), so every number of ten or more is written whole.
  */
@@ -100,8 +111,10 @@ export function delta(kind: Kind, current: number, previous: number): string {
   if (!/[1-9]/.test(written)) return word("same");
   return `${gap > 0 ? "+" : "−"}${written}`;
 }
+/** A share as a whole percent, its number and its sign apart. */
+export const shareParts = (value: number): Parts => ({ value: String(Math.round(value * 100)), unit: "%", tight: true });
 /** A share: a whole percent; none (—) when the server gives none (fewer than ten accepted). */
-export const share = (value: number | null) => value === null ? "—" : `${Math.round(value * 100)}%`;
+export const share = (value: number | null) => value === null ? "—" : `${shareParts(value).value}${shareParts(value).unit}`;
 /** A gap between two shares, in points, when both are given. */
 export function shareDelta(current: number | null, previous: number | null): string | null {
   if (current === null || previous === null) return null;

@@ -4,7 +4,7 @@ import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDel
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RulesBox, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, rowName, RulesBox, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace } from "./place";
 
@@ -192,8 +192,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
         head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
       rows={breakdownRows.map(row => ({ key: row.key,
-        // A task no AI was given (no owner Run) has the server's key `unknown` for its model and AI kind.
-        name: row.key === "unknown" && taskGroup !== "project" ? t("tasks.noAgent") : row.label, bar: row.finished, cells: [
+        name: rowName(row, t("tasks.noAgent")), bar: row.finished, cells: [
         cell("tasks", row.finished, () => open({ set: "finished", value: null, ...groupOf(row.key) })),
         cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
         cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),

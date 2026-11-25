@@ -3,14 +3,13 @@ import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind 
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, Num, Rule, RulesBox, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
-import type { TasksView, UsageCounts, UsageView } from "./contract";
+import { ChartHead, Compare, Num, Rule, rowName, RulesBox, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
 
 type Days = { from: string; to: string };
 const HOUR = 3_600_000;
 
-/** The token total a lead number says: output, input and the cache's reads and writes together. */
-const tokens = (counts: UsageCounts) => counts.tokens.output + counts.tokens.input + counts.tokens.cache;
+const tokens = tokenTotal;
 /** Each value of the AI's use: how it is read from the counts, how it is written, and its list. */
 const VALUES = {
   output: { read: (c: UsageCounts) => c.tokens.output, kind: "tokens" },
@@ -219,7 +218,7 @@ function Breakdown({ view, group, days, open, choose }: {
       : counted ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), launches, tasks]
         : [...tokenKeys.map(tokenCell), ...(["launches", "runMs", "newConversations"] as const).map(key =>
           cell(VALUES[key].kind, VALUES[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
-    return { key: row.key, name: row.label, bar: by === "skill" ? c.launches : counted ? row.calls ?? 0 : tokens(c), cells };
+    return { key: row.key, name: rowName(row, t("tasks.noAgent")), bar: by === "skill" ? c.launches : counted ? row.calls ?? 0 : tokens(c), cells };
   });
   const name = by === "skill" ? t("usage.skillLaunches") : t("usage.calls");
   const read = (value: { calls: number; launches: number }) => by === "skill" ? value.launches : value.calls;

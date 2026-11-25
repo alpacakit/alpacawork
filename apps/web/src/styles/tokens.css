@@ -6,7 +6,8 @@
    (`text-[11px]`, a hex, a `/60` see-through). A value that is missing is
    added here first.
 
-   theme.ts writes `data-theme`. Colours are OKLCH except the sRGB ground shared with PWA metadata; small text on bg, lit, raised and hover is 4.5:1 or more.
+   theme.ts writes `data-theme`. `.theme-light` and `.theme-dark` give a part of the page one theme's colours
+   whatever the page's (the share card reads both, features/analysis/ShareCard.tsx). Colours are OKLCH except the sRGB ground shared with PWA metadata; small text on bg, lit, raised and hover is 4.5:1 or more.
    One colour says one thing. The ground, ink and lines:
    bg (the screen) · lit (a surface on it: a panel, a card, a field) ·
    raised (a surface over a surface: a menu, a sheet, a dialog, a hover card,
@@ -52,7 +53,7 @@
    is a turn the reader has set aside (Hold, `[data-held]` below).
 */
 
-:root {
+:root, .theme-light, .theme-dark {
   color-scheme: light;
   /* Global surfaces, from the reader through the image viewer. The coordinator, in every form, stands over the places
      the work is read in (the list's notes, the bar, the reader); what is opened for a moment (a task's card, a toast, an
@@ -124,7 +125,7 @@
 
 /* raised is lit unless a theme gives it a value of its own; mention is written by a style element (coordinator/parts.tsx),
    so it is a variable rather than a class. */
-:root {
+:root, .theme-light, .theme-dark {
   --raised: var(--lit);
   /* A named row is tinted, not picked: quieter than the hover a row takes, so the open row and the states lead. The
      dark ground is near black, where the same tint all but vanishes, so it keeps its own step below. */
@@ -136,7 +137,7 @@
   --rest-time: var(--lit-line);
 }
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"], .theme-dark {
   color-scheme: dark;
   --rest-time: var(--line);
   /* Each surface a step lighter than the one under it, and what is pointed at or picked lighter than any. */

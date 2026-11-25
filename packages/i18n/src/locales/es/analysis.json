@@ -17,6 +17,47 @@
     "partial_other": "{{count}} días",
     "week": "Por semana"
   },
+  "card": {
+    "copied": "Imagen copiada",
+    "copy": "Copiar",
+    "copyFailed": "No se pudo copiar. Guarda la imagen",
+    "dark": "Oscuro",
+    "days_one": "{{count}} día",
+    "days_many": "{{count}} días",
+    "days_other": "{{count}} días",
+    "drawFailed": "No se pudo crear la imagen",
+    "grass": "Calendario",
+    "hero": "Número principal",
+    "kicker": "Trabajo encargado a la IA",
+    "light": "Claro",
+    "make": "Crear tarjeta",
+    "model": "Modelo más usado",
+    "numbers": "Números que se muestran (hasta {{limit}})",
+    "passed": "Completadas sin correcciones",
+    "post": "Postear",
+    "postCopied": "Imagen copiada. Pégala en la publicación",
+    "postFinished_one": "En los últimos {{days}} días, la IA terminó {{value}} tarea que le encargué",
+    "postFinished_many": "En los últimos {{days}} días, la IA terminó {{value}} tareas que le encargué",
+    "postFinished_other": "En los últimos {{days}} días, la IA terminó {{value}} tareas que le encargué",
+    "postFinishedAll_one": "Hasta ahora, la IA ha terminado {{value}} tarea que le encargué",
+    "postFinishedAll_many": "Hasta ahora, la IA ha terminado {{value}} tareas que le encargué",
+    "postFinishedAll_other": "Hasta ahora, la IA ha terminado {{value}} tareas que le encargué",
+    "postHintCopy": "La imagen se copia. Pégala en tu post en X",
+    "postHintSave": "La imagen se guarda. Adjúntala a tu post en X",
+    "postOnX": "Postear en X",
+    "postSave": "Guarda la imagen y adjúntala a la publicación",
+    "postShare": "En los últimos {{days}} días, el {{value}} del trabajo que le encargué a la IA se completó sin correcciones",
+    "postShareAll": "Hasta ahora, el {{value}} del trabajo que le encargué a la IA se ha completado sin correcciones",
+    "postTokens": "En los últimos {{days}} días, le encargué a la IA {{value}} tokens de trabajo",
+    "postTokensAll": "Hasta ahora, le he encargado a la IA {{value}} tokens de trabajo",
+    "prs": "PR",
+    "runMs": "Tiempo de ejecución de la IA",
+    "save": "Guardar imagen",
+    "saved": "Imagen guardada",
+    "share": "Compartir",
+    "shareFailed": "No se pudo compartir",
+    "theme": "Color"
+  },
   "chart": {
     "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} de {{accepted}}",
@@ -222,6 +263,13 @@
         "at": 1000,
         "digits": 0,
         "unit": "mil"
+      }
+    ],
+    "spoken": [
+      {
+        "at": 1000000,
+        "digits": 0,
+        "unit": " millones de"
       }
     ],
     "tasks_one": "tarea",

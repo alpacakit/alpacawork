@@ -213,14 +213,14 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   const surface = document.createElement("button");
   let chain: Element[] = [];
   const open = () => {
-    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null } });
+    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null, card: null } });
     chain = openerChain(document.activeElement);
     document.body.append(surface); surface.focus();
   };
   const closeList = () => {
     const inside = document.activeElement === surface;
     surface.remove();
-    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null, card: null } }); });
     if (inside) giveFocusBack(chain);
     act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
   };

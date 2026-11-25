@@ -96,7 +96,15 @@ for `--period all` and is `null` when the scope has no records.
 Task counts use Tasks the user directly requested. The rework count uses instructions addressed to the top-level Task. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
 Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. A related PR counts once,
 on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
-use that same day.
+use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
+If there is no owner Run, the breakdown row has `noOwnerRun: true` and a separate key for its drill-down list.
+
+Model breakdowns and `analysis task` group by model name and launch effort. They use the model recorded in the
+Run's tally when available, then the launch model, then the agent name. A Run can move to a different row when
+its tally becomes available after it ends. After a server restart, even a completed Run may appear under its launch
+model or agent name until its tally is loaded and its reported model becomes available.
+Model rows with a Run return `model.name`, `model.effort` (`null` if unspecified or only the agent name is available)
+and a readable `label` such as `example-model-v2(high)`. Pass the breakdown row's `key` to `analysis list`.
 
 AI usage groups launches from Tasks and their descendants under the top-level Task, including launches from deleted
 children. A deleted top-level Task and its subtree are excluded. A launch requires a recorded process start. Elapsed

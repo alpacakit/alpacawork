@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
@@ -7,7 +7,7 @@ import { OPEN, OpenMark, tip, useChoices } from "./parts";
 
 /** A cell: its number (its unit is the column's), its small window, its list; `split`: a share drawn as a small strip of its two parts. */
 export type Cell = { text: string; tip?: string; open?: () => void; split?: [number, number] };
-export type Row = { key: string; name: string; tag?: string; bar: number; cells: Cell[] };
+export type Row = { key: string; name: ReactNode; tag?: string; bar: number; cells: Cell[] };
 
 /**
  * A breakdown: the name, then the numbers, each a way into its tasks. The rows stand by the first number, most first,

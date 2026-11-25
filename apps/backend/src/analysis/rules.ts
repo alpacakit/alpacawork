@@ -14,14 +14,15 @@ export const shareOf = (passed: number, accepted: number) => accepted < 10 ? nul
 
 export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'launch' |
   'state' | 'created_at' | 'started_at' | 'ended_at' | 'pids' | 'usage'>;
-export type Launch = RunContribution & {
-  id: string; task: string; agent: string; model: string | null; effort: string | null; provider: string; session: string | null;
+export type ModelRun = { id: string; agent: string; model: string | null; effort: string | null };
+export type Launch = RunContribution & ModelRun & {
+  task: string; provider: string; session: string | null;
 };
 
 export function launchOf(run: RunEvidence): Launch | null {
   const usage = runUsage(runUsageSource(run));
   if (!usage) return null;
-  return { ...usage, id: run.id, task: run.task, agent: run.agent, ...modelOf(run),
+  return { ...usage, task: run.task, ...modelRun(run),
     provider: run.session?.provider ?? run.launch.adapter, session: run.session?.id ?? null };
 }
 
@@ -35,12 +36,11 @@ export function firstConversations(launches: Iterable<Launch>): Set<string> {
   return new Set(Array.from(first.values(), run => run.id));
 }
 
-export function modelOf(run: Pick<RunEvidence, 'launch'>) {
+export function modelRun(run: RunEvidence): ModelRun {
   const { model, effort } = run.launch.values;
-  return { model: typeof model === 'string' ? model : null, effort: typeof effort === 'string' ? effort : null };
+  return { id: run.id, agent: run.agent,
+    model: typeof model === 'string' ? model : null, effort: typeof effort === 'string' ? effort : null };
 }
-export const modelLabel = (model: string | null, effort: string | null, agent: string) =>
-  model ? effort ? `${model}(${effort})` : model : agent;
 
 export function prLinks(values: Iterable<string>): Set<string> {
   const result = new Set<string>();

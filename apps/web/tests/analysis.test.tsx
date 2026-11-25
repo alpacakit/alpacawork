@@ -123,7 +123,7 @@ const step = (from: string, to: string) => isStep(navigation(place(from)), navig
 test("the analysis's place survives its URL, with the defaults left out", () => {
   const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)&unit=T12")!;
   expect(shown).toEqual({ look: "usage", span: { from: "2026-11-01", to: "2026-11-30" },
-    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, unit: "T12" });
+    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, unit: "T12", card: null });
   // A list opened from a chart's bin keeps that bin's days.
   const bin = place("face=analysis&list=finished&bin=2026-11-09~2026-11-15")!;
   expect(bin.list).toMatchObject({ set: "finished", days: { from: "2026-11-09", to: "2026-11-15" } });
@@ -134,6 +134,9 @@ test("the analysis's place survives its URL, with the defaults left out", () => 
   expect(place("face=analysis&look=usage&list=used&measure=calls&group=tool")!.list).toMatchObject({ group: "tool", member: null });
   expect(place("face=analysis&list=finished&group=model")!.list).toMatchObject({ group: null, member: null });
   expect(place("look=usage")).toBeNull();
+  // A day that is not on the calendar is no day: the span, a bin and the card's end fall back as if not given.
+  expect(place("face=analysis&span=2026-02-30~2026-03-05")!.span).toEqual({ period: "7d" });
+  expect(place("face=analysis&card=7d~2026-13-18")!.card).toEqual({ length: "7d", end: null });
 });
 
 test("Back undoes one step at a time: a span chosen, the list opened, a task's values opened; another look is not a step", () => {
@@ -152,6 +155,10 @@ test("Back undoes one step at a time: a span chosen, the list opened, a task's v
   expect(belowLayer(open, 0)).toMatchObject({ list: null, unit: null, span: { period: "today" } });
   expect(analysisSurfaces(belowLayer(open, 0))).toEqual([]);
   expect(analysisMoved(open, { ...open, look: "usage" })).toBe(false);
+  // The card is a layer as well: opening it is a step; another span on it, or a reload, keeps it as it is.
+  expect(step("face=analysis&span=today", "face=analysis&span=today&card=7d")).toBe(true);
+  expect(step("face=analysis&card=7d", "face=analysis&card=28d")).toBe(false);
+  expect(belowLayer(place("face=analysis&card=7d")!, 0).card).toBeNull();
 });
 
 test("a span is asked for as a named period where it is one, and kept as one when it ends today", () => {

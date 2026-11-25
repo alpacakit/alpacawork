@@ -15,12 +15,24 @@ export type Span = { period: Period } | { from: string; to: string };
  * chart it was opened from (its own days, whatever span is chosen); none for a number of the span.
  */
 export type ListPlace = { set: ListSet; value: ListValue | null; group: Group | null; member: string | null; days?: { from: string; to: string } | null };
-export type AnalysisPlace = { look: Look; span: Span; list: ListPlace | null; unit: string | null };
+/**
+ * The share card's days: how long a span (a week, four weeks, the whole record) and the day it ends on, the one the
+ * analysis showed when the card was opened (null: today). Another length keeps the day, the whole record's included.
+ */
+export const CARD_PERIODS = ["7d", "28d", "all"] as const;
+export type CardPeriod = typeof CARD_PERIODS[number];
+export type CardSpan = { length: CardPeriod; end: string | null };
+/** `card`: the share card open over the analysis, and its days. */
+export type AnalysisPlace = { look: Look; span: Span; list: ListPlace | null; unit: string | null; card: CardSpan | null };
 
 export const DEFAULT_SPAN: Span = { period: "7d" };
-export const analysisHome = (look: Look = "tasks", span: Span = DEFAULT_SPAN): AnalysisPlace => ({ look, span, list: null, unit: null });
+export const analysisHome = (look: Look = "tasks", span: Span = DEFAULT_SPAN): AnalysisPlace => ({ look, span, list: null, unit: null, card: null });
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** A day the URL names, when it is one on the calendar (2026-13-18 is not). */
+const isDay = (value: string | undefined): value is string =>
+  !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value);
+/** Whole days the URL names as `from~to`, or null. */
+const readDays = (value: string | null) => { const [from, to] = value?.split("~") ?? []; return isDay(from) && isDay(to) && from <= to ? { from, to } : null; };
 const oneOf = <T extends string>(list: readonly T[], value: string | null): T | null => list.find(item => item === value) ?? null;
 
 export function spanText(span: Span): string {
@@ -29,8 +41,7 @@ export function spanText(span: Span): string {
 export function readSpan(value: string | null): Span {
   const period = oneOf(PERIODS, value);
   if (period) return { period };
-  const [from, to] = value?.split("~") ?? [];
-  return from && to && DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : DEFAULT_SPAN;
+  return readDays(value) ?? DEFAULT_SPAN;
 }
 export const sameSpan = (a: Span, b: Span) => spanText(a) === spanText(b);
 
@@ -43,18 +54,19 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
   const list: ListPlace | null = set ? {
     set, value: oneOf<ListValue>([...TASK_VALUES, ...USAGE_VALUES], url.get("measure")),
     group: oneOf<Group>([...TASK_GROUPS, ...USAGE_GROUPS], url.get("group")), member: url.get("member"),
-    days: (() => { const [from, to] = url.get("bin")?.split("~") ?? []; return from && to && DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null; })(),
+    days: readDays(url.get("bin")),
   } : null;
   // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
   // tools, MCP: every launch that used one).
   if (list && (list.group === null ? list.member !== null : list.member === null && !WHOLE_GROUPS.has(list.group))) { list.group = null; list.member = null; }
   const unit = url.get("unit");
-  return { look, span: readSpan(url.get("span")), list, unit: unit && /^T\d+$/.test(unit) ? unit : null };
+  const card = url.get("card");
+  return { look, span: readSpan(url.get("span")), list, unit: unit && /^T\d+$/.test(unit) ? unit : null, card: card === null ? null : readCard(card) };
 }
 
 /** The breakdowns whose whole has a list of its own (every launch that used any of them). */
 const WHOLE_GROUPS = new Set<Group>(["skill", "tool", "mcp"]);
-export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "unit"] as const;
+export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "unit", "card"] as const;
 /** The URL's values for a place, in one order, the defaults left out. */
 export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KEYS[number], string][] {
   if (!place) return [];
@@ -69,6 +81,7 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
     if (place.list.group && place.list.member !== null) out.push(["member", place.list.member]);
   }
   if (place.unit) out.push(["unit", place.unit]);
+  if (place.card) out.push(["card", place.card.end ? `${place.card.length}~${place.card.end}` : place.card.length]);
   return out;
 }
 
@@ -76,14 +89,16 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
 export function analysisSurfaces(place: AnalysisPlace | null): string[] {
   if (!place) return [];
   const out: string[] = [];
-  if (place.list) out.push(`list:${analysisValues({ ...place, unit: null }).filter(([key]) => key !== "face" && key !== "look" && key !== "span").map(pair => pair.join("=")).join("&")}`);
+  if (place.list) out.push(`list:${analysisValues({ ...place, unit: null, card: null }).filter(([key]) => key !== "face" && key !== "look" && key !== "span").map(pair => pair.join("=")).join("&")}`);
   if (place.unit) out.push(`unit:${place.unit}`);
+  if (place.card) out.push("card");
   return out;
 }
 /** The place with only its `depth` bottom layers open. */
 export function belowLayer(place: AnalysisPlace, depth: number): AnalysisPlace {
-  const layers = [place.list ? "list" : null, place.unit ? "unit" : null].filter(Boolean).slice(0, Math.max(0, depth));
-  return { ...place, list: layers.includes("list") ? place.list : null, unit: layers.includes("unit") ? place.unit : null };
+  const layers = analysisSurfaces(place).slice(0, Math.max(0, depth)).map(surface => surface.split(":")[0]);
+  return { ...place, list: layers.includes("list") ? place.list : null, unit: layers.includes("unit") ? place.unit : null,
+    card: layers.includes("card") ? place.card : null };
 }
 /**
  * Whether going from one analysis to another is a step of its own, besides a layer opening (which every surface is):
@@ -135,7 +150,7 @@ export function settleSpan(days: { from: string; to: string }, today: string): S
 export function listOnAnswer(place: AnalysisPlace, head: { period: { from: string; to: string } | null; today: string; firstDay: string | null }, list: ListPlace): AnalysisPlace {
   const shown = head.period, chosen = spanDays(place.span, head.today, head.firstDay);
   const span = !shown || shown.from === chosen.from && shown.to === chosen.to ? place.span : settleSpan(shown, head.today);
-  return { ...place, span, list, unit: null };
+  return { ...place, span, list, unit: null, card: null };
 }
 
 /**
@@ -146,4 +161,24 @@ export function stepChosen(span: Span, head: { today: string; firstDay: string |
   const next = stepSpan(spanDays(span, head.today, head.firstDay), direction);
   if (direction < 0 ? !head.firstDay || next.from < head.firstDay : next.to > head.today) return null;
   return settleSpan(next, head.today);
+}
+
+/** The card's days as the URL says them: a length, and after `~` the day it ends on when that is not today. */
+function readCard(value: string): CardSpan {
+  const [length, end] = value.split("~");
+  return { length: oneOf(CARD_PERIODS, length ?? null) ?? "7d", end: isDay(end) ? end : null };
+}
+/** The card's days as the analysis shows them: its length (a week for a day or any other length) and its last day. */
+export function cardSpanOf(span: Span): CardSpan {
+  if ("period" in span) return { length: span.period === "today" ? "7d" : span.period, end: null };
+  return { length: daysBetween(span.from, span.to) === 28 ? "28d" : "7d", end: span.to };
+}
+/**
+ * The days the card is counted for: its length ending on its day. The whole record ending on a day is asked as the days
+ * from the record's first (`firstDay`, null while unknown: not yet asked).
+ */
+export function cardDays(card: CardSpan, firstDay: string | null): Span | null {
+  if (!card.end) return { period: card.length };
+  if (card.length !== "all") return { from: addDays(card.end, card.length === "7d" ? -6 : -27), to: card.end };
+  return firstDay ? { from: firstDay < card.end ? firstDay : card.end, to: card.end } : null;
 }

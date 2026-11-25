@@ -10,7 +10,8 @@ import { promisify } from 'node:util';
 import { ChangeLog, controlDatabasePath, keepControlChanges, keepControlTables, ControlStore, touch } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
-import type { AnalysisTasksView, AnalysisUnitList, AnalysisUnitValues, AnalysisUsageView } from '@alpacawork/contract/analysis';
+import { analysisTasksViewSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
+  type AnalysisTasksView, type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { AnalysisReader } from '@alpacawork/backend/test-dist/analysis/reads.js';
 import { openTallyScope } from '@alpacawork/backend/test-dist/analysis/tally-scope.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
@@ -18,6 +19,7 @@ import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { TALLY_VERSION } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
 import { patchTask } from '../e2e/fixture/task-state.ts';
+import { inertFixtureLaunch } from './helpers/agent-stub.ts';
 import { readWorkspaceProjection } from './helpers/workspace-projection.ts';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { copyWorkspace, createOriginal, profiles, removeWorkspace } from '../scripts/dev-fixtures/fixture.ts';
@@ -68,6 +70,8 @@ function setup(root: string) {
       const record = JSON.parse(String(db.prepare('SELECT record FROM runs WHERE id=?').get(id)!.record));
       record.pids = { agent: 1000 + id, manager: 2000 + id };
       record.session = { provider: 'fixture', id: 'synthetic-session-' + id };
+      if (id === 2) record.agent = 'unknown';
+      record.launch = inertFixtureLaunch('codex', id === 2 ? { effort: 'high' } : { model: 'example', effort: 'high' });
       if (id === 1) record.started_at = instant(-86_400);
       if (id === 2) record.started_at = instant(-1);
       if (id === 4) record.started_at = instant(23);
@@ -95,12 +99,14 @@ function setup(root: string) {
   }));
   const recent = runFolder(root, 'R4');
   mkdirSync(recent, { recursive: true });
-  writeFileSync(join(recent, RUN_FILES.stdout), JSON.stringify({ type: 'item.started', item: { id: 'recent', type: 'command_execution',
-    command: 'cat /fictional/skills/recent/SKILL.md' } }) + '\n');
+  writeFileSync(join(recent, RUN_FILES.stdout), [
+    { type: 'item.completed', item: { id: 'config', type: 'agent_configuration', model: 'example-v2' } },
+    { type: 'item.started', item: { id: 'recent', type: 'command_execution', command: 'cat /fictional/skills/recent/SKILL.md' } },
+  ].map(event => JSON.stringify(event)).join('\n') + '\n');
   const cached = runFolder(root, 'R3');
   mkdirSync(cached, { recursive: true });
   writeFileSync(join(cached, RUN_FILES.tally), JSON.stringify({
-    v: TALLY_VERSION, provider: 'fixture', model: null, tools: { image_view: 2, read: 1 },
+    v: TALLY_VERSION, provider: 'fixture', model: 'example-v1', tools: { image_view: 2, read: 1 },
     mcp: { 'fixture:notes': 2, 'fixture:search': 1 }, skills: { one: { call: 1, read: 0 }, two: { call: 0, read: 1 } },
     subagentTools: 0, state: 'complete',
   }));
@@ -248,6 +254,43 @@ test('analysis commands share selection, contribution and tally rules over a sma
       }
       assert.equal(localTools?.breakdown?.since, '2026-09-24');
       assert.deepEqual(localTools?.breakdown?.counted?.value, { calls: 4, launches: 2 });
+      await t.test('model rows distinguish reported names and open matching lists', async () => {
+        const by = 'model';
+        const [usageView, taskView, detailView] = await Promise.all([
+          read('usage', { ...trend, by }),
+          read('tasks', { ...trend, by }),
+          read('task', { task: rowId(2), timeZone: 'UTC' }),
+        ]);
+        const usageRows = analysisUsageViewSchema.parse(usageView).breakdown!.rows;
+        const taskRows = analysisTasksViewSchema.parse(taskView).breakdown!.rows;
+        const models = analysisUnitValuesSchema.parse(detailView).models;
+        const example = { name: 'example', effort: 'high' };
+        const fallback = { name: 'unknown', effort: null };
+        const version1 = { name: 'example-v1', effort: 'high' };
+        const version2 = { name: 'example-v2', effort: 'high' };
+        assert.deepEqual(new Set(usageRows.map(row => [row.model, row.label, row.counts.launches])), new Set([
+          [example, 'example(high)', 1], [version1, 'example-v1(high)', 1], [version2, 'example-v2(high)', 1], [fallback, 'unknown', 1],
+        ]));
+        assert.deepEqual(new Set(taskRows.map(row => row.model)), new Set([example, fallback]));
+        assert.deepEqual(new Set(models.map(row => [row.model, row.label, row.launches])), new Set([
+          [example, 'example(high)', 1], [version1, 'example-v1(high)', 1], [version2, 'example-v2(high)', 1],
+        ]));
+        assert.deepEqual(new Set(models.map(row => row.key)),
+          new Set(usageRows.filter(row => row.model?.name !== fallback.name).map(row => row.key)));
+        for (const { key, counts: { launches, runMs, newConversations, tokens } } of usageRows) {
+          for (const [value, expected] of Object.entries({ launches, runMs, newConversations, ...tokens,
+            tokens: tokens.output + tokens.input + tokens.cache })) {
+            const list = await read<AnalysisUnitList>('list', { ...base, set: 'used', by, key, value });
+            assert.equal(list.rows.reduce((sum, row) => sum + row.value!, 0), expected, value);
+          }
+        }
+        for (const taskRow of taskRows) {
+          for (const set of ['finished', 'accepted', 'passed'] as const) {
+            const list = await read<AnalysisUnitList>('list', { ...base, set, by, key: taskRow.key });
+            assert.equal(list.total, taskRow[set], set);
+          }
+        }
+      });
       const tools = await read<AnalysisUsageView>('usage', { ...trend, by: 'tool' });
       const tool = tools?.breakdown?.rows.find(row => row.key === JSON.stringify(['fixture', 'command_execution']));
       assert.equal(tool?.calls, 1);
@@ -330,6 +373,26 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
       assert.deepEqual(reader.usage({ ...params, by: 'tool' }, actor).breakdown,
         { by: 'tool', since: null, counted: null, series: null, rows: [] });
+      await t.test('a late tally updates the first owner model without a change to cached Run facts', t => {
+        store.write(() => {
+          store.connection.prepare("UPDATE runs SET record=json_set(record,'$.started_at',?) WHERE id=2").run(tallySince);
+          touch(store.connection, { kind: 'run', id: 'R2' });
+        });
+        const by = 'model';
+        const before = reader.tasks({ ...params, by }, actor).breakdown!.rows.find(row => row.model?.name === 'unknown')!;
+        assert.equal(before.finished, 1);
+        t.after(() => { reader.tallies.delete('R2'); });
+        reader.tallies.set('R2', { v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
+          subagentTools: 0, state: 'complete' });
+        const rows = reader.tasks({ ...params, by }, actor).breakdown!.rows;
+        assert.ok(rows.every(row => row.key !== before.key));
+        const reported = rows.find(row => row.model?.name === 'example-default')!;
+        assert.equal(reported.model?.effort, 'high');
+        const usage = reader.usage({ ...params, by }, actor).breakdown!.rows.find(row => row.key === reported.key);
+        assert.equal(usage?.counts.launches, 1);
+        const list = reader.list({ period: 'all', set: 'finished', by, key: reported.key }, actor);
+        assert.deepEqual(list.rows.map(row => row.id), [rowId(3)]);
+      });
       const caller = { kind: 'run', taskId: rowId(2), runId: 'R1', placementId: 'fixture-placement-2',
         role: 'owner', responsible: true } as const;
       assert.equal(reader.tasks(params, caller).head.project, project);
@@ -340,12 +403,27 @@ test('analysis commands share selection, contribution and tally rules over a sma
       });
       assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
       assert.equal(reader.usage(params, actor).counts.value.launches, 4);
-      await t.test('the next analysis read sees a committed acceptance', async () => {
+      await t.test('the next analysis read sees a committed acceptance without an owner Run in its own row', async () => {
         assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
         const committed = await new TaskReportService(root).report({ task: id, state: 'done', opId: randomUUID(),
           expectedTaskHash: shown.hash, title: 'Accepted', description: 'Accepted synthetic work.' }, actor, actor);
         assert.equal(committed.task.state, 'done');
         assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
+        for (const by of ['model', 'agent'] as const) {
+          const rows = analysisTasksViewSchema.parse(reader.tasks({ ...params, by }, actor)).breakdown!.rows;
+          assert.equal(rows.length, 2);
+          const withoutOwner = rows.find(row => row.noOwnerRun === true);
+          const named = rows.find(row => row.label === 'unknown');
+          assert.ok(withoutOwner && named, by);
+          assert.equal(withoutOwner.model, undefined, by);
+          assert.equal(named.noOwnerRun, undefined, by);
+          assert.notEqual(withoutOwner.key, named.key, by);
+          for (const [dimension, taskId] of [[withoutOwner, id], [named, rowId(3)]] as const) {
+            const list = reader.list({ period: 'all', set: 'finished', by, key: dimension.key }, actor);
+            assert.equal(list.total, dimension.finished, by);
+            assert.deepEqual(list.rows.map(row => row.id), [taskId], by);
+          }
+        }
       });
       store.write(() => {
         store.connection.prepare("UPDATE tasks SET lifecycle='deleted' WHERE external_id=?").run(rowId(3));

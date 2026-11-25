@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Icon } from "@/components/ui/icon";
 import { subscribeStep } from "@/state/history-step";
 import { comparison, parts, type Kind } from "./format";
+import type { AnalysisModel } from "@alpacawork/contract/analysis";
 import type { Bucket } from "./contract";
 
 /**
@@ -25,19 +26,36 @@ export const useChoices = create<Choices & { choose: (next: Partial<Choices>) =>
  * One shape for every switch here, the app's own tab row: 28px high, 6px corners, the chosen one bold on the grey
  * ground that slides to it.
  */
-export function Seg<K extends string>({ label, items, value, onChange, onAgain, className }: {
+export function Seg<K extends string>({ label, items, value, onChange, onAgain, className, disabled }: {
   label: string; items: readonly (readonly [K, string])[]; value: K; onChange: (next: K) => void;
   /** What pressing the chosen one does, when it does something. */
   onAgain?: () => void; className?: string;
+  /** Those that cannot be chosen now (a number with no value): drawn faint, out of reach. */
+  disabled?: readonly K[];
 }) {
   // Where it does not fit (a phone, a longer language) it scrolls sideways inside itself, as the app's tab rows do.
   return <div role="group" aria-label={label} className={cn("relative flex max-w-full min-w-0 flex-none items-center gap-0.5 overflow-x-auto [scrollbar-width:none]", className)}>
     <TabMarker current='[aria-current="true"]' />
     {items.map(([key, name]) => <button key={key} type="button" aria-current={key === value ? "true" : undefined}
+      disabled={disabled?.includes(key)}
       onClick={() => key !== value ? onChange(key) : onAgain?.()}
-      className={cn(TAB, "aria-[current=true]:font-semibold aria-[current=true]:text-ink")}><TabLabel>{name}</TabLabel></button>)}
+      className={cn(TAB, "aria-[current=true]:font-semibold aria-[current=true]:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted")}><TabLabel>{name}</TabLabel></button>)}
   </div>;
 }
+
+/**
+ * A model as the analysis names it: its name as it is, then the effort it ran at, small and faint as a unit is, with
+ * no brackets. The card writes it the same way (card-draw.ts).
+ */
+export const ModelName = ({ model }: { model: AnalysisModel }) =>
+  <>{model.name}{model.effort && <span className="ms-1 text-xs text-soft">{model.effort}</span>}</>;
+
+/**
+ * A breakdown's row by its name: a task no AI was given says so, a model is named as `ModelName` names it, any other
+ * by its label. The tables and the list a row opens name it so alike.
+ */
+export const rowName = (row: { label: string; model?: AnalysisModel; noOwnerRun?: true }, noAgent: string): ReactNode =>
+  row.noOwnerRun ? noAgent : row.model ? <ModelName model={row.model} /> : row.label;
 
 /** A small square of a chart's colour before a name: the legend and the name at once. */
 export const Square = ({ className }: { className: string }) =>

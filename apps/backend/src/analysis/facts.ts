@@ -3,8 +3,8 @@ import { type ChangeKey, type ChangeLog } from '@alpacawork/db';
 import type { TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { taskLogs } from '../control/task-history.js';
-import { clocks, firstConversations, launchOf, modelLabel, modelOf, prLinks, taskOutcome, userQuestions,
-  type Launch, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
+import { clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
+  type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
 import { tallyEligible } from './tally-scope.js';
 
 export type TaskNode = {
@@ -14,7 +14,7 @@ export type TaskNode = {
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
   childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
-  firstAgent: string; firstModel: string; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
+  firstOwner: ModelRun | null; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
 };
 export type FactLaunch = Launch & { tallyEligible: boolean };
 export type AnalysisFacts = {
@@ -99,15 +99,14 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
     const time = Date.parse(run.created_at) - Date.parse(earliest.created_at);
     return time < 0 || time === 0 && Number(run.id.slice(1)) < Number(earliest.id.slice(1)) ? run : earliest;
   }, null);
-  const firstAgent = firstOwner?.agent ?? 'unknown';
-  const { model, effort } = firstOwner ? modelOf(firstOwner) : { model: null, effort: null };
   const from = Date.parse(outcome.requestedAt), to = outcome.finishedAt ? Date.parse(outcome.finishedAt) : null;
   const questions = [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to));
   const workers = new Set(memberIds);
   // The placement row remembers its final role. Its history retains member assignments before a promotion.
   for (const entry of log) if (entry.placementEffect === 'member' && entry.placementId) workers.add(entry.placementId);
   return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length,
-    answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs, firstAgent, firstModel: modelLabel(model, effort, firstAgent), launches,
+    answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs,
+    firstOwner: firstOwner && modelRun(firstOwner), launches,
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 

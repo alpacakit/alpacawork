@@ -5,22 +5,22 @@ import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { closeAnalysisLayer } from "@/state/history-step";
 import { useNarrow, useViewStore } from "@/state/view-store";
-import { useWorkspaceInfo } from "@/data/queries";
 import { cn } from "@/lib/utils";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
-import { useUnitList, useUnitValues } from "./data";
+import { useTasksView, useUnitList, useUnitValues, useUsageView } from "./data";
 import { duration, format, instant, spanLabel, tokenColumn } from "./format";
 import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
-import { PointerTip, Square, tip } from "./parts";
+import { ModelName, PointerTip, rowName, Square, tip, useChoices } from "./parts";
+import { CardPane } from "./ShareCard";
 import type { ListRow, UnitValues } from "./contract";
-import type { AnalysisPlace } from "./place";
+import { analysisSurfaces, type AnalysisPlace, type ListPlace, type Span } from "./place";
 
 /** A task's outcome: its colour and its word. */
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 const outcomeWord = (row: ListRow, say: (key: string) => string) => say(`outcome.${row.outcome ?? "none"}`);
 
 /**
- * What a number opens: the list of the tasks behind it, then one task's values. The same surface as the reader on the
+ * What a number opens: the list of the tasks behind it, then one task's values; or the share card. The same surface as the reader on the
  * list of tasks (lit, a hairline edge, 12px from the right and the top), the page behind it kept as it is; on a phone a
  * sheet from the bottom. × and a press behind it close every layer; the list's way back and Back close one.
  */
@@ -30,14 +30,15 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
   const surface = useRef<HTMLElement | null>(null);
   const [surfaceBox, setSurfaceBox] = useState<HTMLElement | null>(null);
   const setSurface = (node: HTMLElement | null) => { surface.current = node; setSurfaceBox(node); };
-  const depth = (place.list ? 1 : 0) + (place.unit ? 1 : 0);
-  const back = place.list && place.unit;
+  const depth = analysisSurfaces(place).length;
+  // Back to the layer under it, where there is one; × and a press behind close them all.
+  const back = depth > 1;
   useEffect(() => {
     const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); closeAnalysisLayer(depth - 1); } };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
   }, [depth]);
-  useEffect(() => { surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true }); }, [place.list, place.unit]);
+  useEffect(() => { surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true }); }, [place.list, place.unit, place.card]);
   // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
   // chart and its legend give it back to themselves, ChartGroup).
   const opener = useRef<Element[]>([]), open = depth > 0;
@@ -53,7 +54,7 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
     <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
     <PointerTip root={surfaceBox} />
     {/* On a computer it is a panel at the window's right: the coordinator's input stands left of it, as beside the reader. */}
-    <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
+    <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={place.card ? t("card.make") : place.unit ?? (place.list ? listTitle(place.list) : "")}
       className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
         narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
           : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
@@ -67,7 +68,8 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
           onClick={() => closeAnalysisLayer(0)}><Icon name="close" /></Button>
       </div>
       <div data-analysis-layer className="min-h-0 flex-1 overflow-auto px-5 narrow:px-4">
-        {place.unit ? <UnitPane key={place.unit} unit={place.unit} />
+        {place.card ? <CardPane place={place} project={project} />
+          : place.unit ? <UnitPane key={place.unit} unit={place.unit} />
           : place.list && <ListPane key={JSON.stringify(place.list)} place={place} project={project} days={days} />}
       </div>
     </aside>
@@ -79,14 +81,15 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const { t } = useTranslation("analysis");
   const list = place.list!;
   const query = useUnitList(project, place.span, list);
-  const projects = useWorkspaceInfo(info => info.projects);
+  const row = useRowOf(project, place.span, list);
   const pages = query.data?.pages ?? [];
   const first = pages[0];
   const rows = pages.flatMap(page => page.rows);
   const zone = first?.head.timeZone ?? "UTC";
-  const member = list.group === "project" ? projects.find(project => project.id === list.member)?.title ?? list.member
-    : list.member ?? (list.group ? t(`usage.by.${list.group}`) : null);
+  // A row is named as its breakdown names it (its key is not its name); a whole of skills, tools or MCP by the breakdown.
+  const member = row ? rowName(row, t("tasks.noAgent")) : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
   const span = first?.head.period ?? days;
+  const spanWords = !list.days && span ? spanLabel(span.from, span.to) : null;
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
   // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
@@ -96,7 +99,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
     <h3 className="text-md font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
-    <p className="mt-0.5 text-xs text-soft">{[member, !list.days && span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
+    <p className="mt-0.5 text-xs text-soft">{member}{member && spanWords && t("sep")}{spanWords}</p>
     {rows.length ? <>
       {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
       <div className={cn("mt-4 grid min-h-7 items-end gap-x-3 border-b border-rule pb-1.5 text-xs text-soft", columns)}>
@@ -119,6 +122,16 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
         className="-mx-1 mt-2.5 rounded-sm px-1 text-sm text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
     </> : <p className="mt-4 text-soft">{t("list.empty")}</p>}
   </div>;
+}
+
+/** The breakdown's row a list was opened from: the answer that drew it (already read), and its row by key. */
+function useRowOf(project: string | null, span: Span, list: ListPlace) {
+  const bucket = useChoices(state => state.bucket);
+  const group = list.group ?? "model", row = list.group !== null && list.member !== null;
+  const tasks = useTasksView(project, span, bucket, group, row && list.set !== "used");
+  const usage = useUsageView(project, span, bucket, group, row && list.set === "used");
+  const rows: (Parameters<typeof rowName>[0] & { key: string })[] = (list.set === "used" ? usage.data?.breakdown?.rows : tasks.data?.breakdown?.rows) ?? [];
+  return row ? rows.find(each => each.key === list.member) ?? null : null;
 }
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
@@ -168,8 +181,8 @@ function UnitPane({ unit }: { unit: string }) {
       <thead><tr className="h-7.5 border-b border-rule text-xs text-soft">
         <th className="text-start font-normal">{t("values.models")}</th><th className="ps-3 text-end font-normal">{t("usage.launches")}</th>
         <th className="ps-3 text-end font-normal">{t("usage.runMs")}</th><th className="ps-3 text-end font-normal">{output.unit ? t("table.head", { name: t("usage.output"), unit: output.unit }) : t("usage.output")}</th></tr></thead>
-      <tbody>{values.models.map(model => <tr key={model.label} className="h-7.5 border-b border-rule">
-        <td>{model.label}</td><td className="ps-3 text-end">{format("times", model.launches)}</td>
+      <tbody>{values.models.map(model => <tr key={model.key} className="h-7.5 border-b border-rule">
+        <td><ModelName model={model.model} /></td><td className="ps-3 text-end">{format("times", model.launches)}</td>
         <td className="ps-3 text-end">{duration(model.runMs)}</td><td className="ps-3 text-end tabular-nums">{output.write(model.output)}</td></tr>)}</tbody>
     </table>}
     {values.prs.length > 0 && <>

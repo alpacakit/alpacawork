@@ -18,17 +18,18 @@ const route = (name: string, input: Record<string, string | null | undefined>) =
 };
 const scope = (project: string | null, span: Span) => ({ project, ...spanQuery(span) });
 
-export function useTasksView(project: string | null, span: Span, bucket: Bucket, by: Group) {
+/** `enabled`: false where the answer is only wanted for some places (a list's model row needs its breakdown's). */
+export function useTasksView(project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
   const input = { ...scope(project, span), bucket, by };
-  return useQuery({ queryKey: ["analysis", root, "tasks", input], placeholderData: keepPreviousData,
+  return useQuery({ queryKey: ["analysis", root, "tasks", input], placeholderData: keepPreviousData, enabled,
     queryFn: ({ signal }) => api.request(route("tasks", input), tasksViewSchema, signal) });
 }
 
-export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group) {
+export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
   const input = { ...scope(project, span), bucket, by };
-  return useQuery({ queryKey: ["analysis", root, "usage", input], placeholderData: keepPreviousData,
+  return useQuery({ queryKey: ["analysis", root, "usage", input], placeholderData: keepPreviousData, enabled,
     queryFn: ({ signal }) => api.request(route("usage", input), usageViewSchema, signal) });
 }
 
