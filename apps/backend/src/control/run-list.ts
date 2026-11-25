@@ -68,7 +68,7 @@ function readCursor(encoded: string, filter: string): number {
   catch { candidate = null; }
   const cursor = cursorSchema.safeParse(candidate);
   if (!cursor.success || cursor.data.filter !== filter) {
-    const message = 'Cursor requires the same run list --under and caller';
+    const message = 'Cursor requires the same run list --under and read scope';
     throw new Problem(PROBLEM_CODE.invalidInput, message, undefined,
       { reason: { kind: 'validation_error' }, issues: [{ path: 'cursor', code: 'invalid_value', message }] });
   }

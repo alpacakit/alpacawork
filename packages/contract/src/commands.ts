@@ -439,7 +439,8 @@ const definitions = {
       text('cursor', 'Cursor from the previous page, for the same --under'),
     ], { output: runListResultSchema, help: help(
       'Unfinished is what finishing or archiving a Task and an update wait for. A Task\'s state, hold, archive or shelf hides none of its Runs.',
-      'parentRun is the Run whose request started the Run (null for a person\'s or the coordinator\'s). Stopping a Run also stops the Runs under it.',
+      'parentRun is the Run whose request started the Run (null for a person\'s or the coordinator\'s). Stopping a Run also stops the Runs under it. ' +
+        'stopRequested: a stop was asked and the Run has not ended yet. The Run that calls run list is listed too.',
       'scope is what was read: project null is the whole workspace, else that project\'s Task Runs only; ' +
         'coordinatorRuns says whether the coordinator conversation\'s Runs were included.',
       'Each page is read at its own observedAt and continues after the last Run returned: a Run that ends between pages is not shown again, ' +
