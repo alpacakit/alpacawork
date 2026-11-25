@@ -312,6 +312,7 @@
       },
       "cause": "{{at}} に受け取った「{{title}}」",
       "changedTo": "{{state}}にしました",
+      "compactedFill": "使用量",
       "end": {
         "again": {
           "question": "同じ質問を出し直しました",
@@ -342,7 +343,9 @@
         "answer": "回答",
         "changed": "変更",
         "comment": "記録",
+        "compacted": "圧縮",
         "confirm": "確認",
+        "conversationNew": "新しい会話",
         "dialogue": "発言",
         "done": "完了",
         "error": "停止",
@@ -355,6 +358,13 @@
         "run_end": "停止",
         "urgent": "緊急",
         "withdrawn": "取り下げ"
+      },
+      "newBecause": {
+        "another_ai": "作業が別の AI に移ったため、新しい会話で始めました",
+        "asked": "依頼で新しい会話が指定されました",
+        "handoff": "作業の区切りで、責任者が新しい会話に切り替えました",
+        "handoffAt": "「{{report}}」の区切りで、責任者が新しい会話に切り替えました",
+        "unresumable": "前の会話を続けられなかったため、新しい会話で始めました"
       },
       "older": "前の{{n}}回を読む",
       "openTask": "「{{task}}」を開く",

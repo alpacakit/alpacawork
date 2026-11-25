@@ -2,7 +2,7 @@
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { digest, type ChildVersions, type ConversationCheckpoint, type ControlTask, type TaskValues } from '@alpacawork/raw';
 import { canonicalValues } from '@alpacawork/contract';
-import { hasContinuableSession, runNumber, type RunRecord } from '@alpacawork/contract/run';
+import { hasContinuableSession, runNumber, type NewConversation, type RunRecord } from '@alpacawork/contract/run';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import { isUnfinished } from '@alpacawork/runs';
 import { endedOwnWork } from './return-rules.js';
@@ -140,14 +140,22 @@ export function continuationSessionUnavailable(head: Pick<RunRecord, 'state' | '
   return head.session === null && head.state !== 'queued' && head.state !== 'running';
 }
 export function conversationForRequest(facts: { rotation: Rotation | null; handoff: Handoff | null; resolvesUnknown: boolean;
-  explicit: 'new' | 'continue' | undefined; head: RunRecord | null; direct: boolean; resumable: boolean }):
-  { mode: 'new' | 'continue'; rotationFrom: string | undefined; unsentNew: boolean } {
+  anotherAi: boolean; explicit: 'new' | 'continue' | undefined; head: RunRecord | null; direct: boolean; resumable: boolean }):
+  { mode: 'new' | 'continue'; rotationFrom: string | undefined; unsentNew: boolean; newConversation: NewConversation | undefined } {
   const { rotation, handoff, head } = facts;
   const unsentNew = rotation?.receipt === 'not_sent', rotates = !!handoff?.rotate && !rotation?.unknown;
-  const mode = unsentNew ? 'new' : facts.explicit ? facts.explicit : rotates || !head ? 'new'
-    : facts.direct && (!hasContinuableSession(head) || !isUnfinished(head) && !facts.resumable) ? 'new' : 'continue';
-  if (mode !== 'new') return { mode, rotationFrom: undefined, unsentNew };
+  const unresumable = !!head && facts.direct && (!hasContinuableSession(head) || !isUnfinished(head) && !facts.resumable);
+  const explicit = facts.anotherAi ? 'new' : facts.explicit;
+  const mode = unsentNew ? 'new' : explicit ? explicit : rotates || !head || unresumable ? 'new' : 'continue';
+  if (mode !== 'new') return { mode, rotationFrom: undefined, unsentNew, newConversation: undefined };
   const rotationFrom = unsentNew || (rotation?.unknown && facts.resolvesUnknown) ? rotation?.run.context?.rotationFrom
     : rotates ? handoff.id : undefined;
-  return { mode, rotationFrom, unsentNew };
+  // Why, said once here where it is decided: a new one sent again, or settled after an unknown receipt, keeps the reason
+  // it was first sent with (a handoff, by the report it carries).
+  const resent = unsentNew || !!rotation?.unknown && facts.resolvesUnknown;
+  const carried = resent ? rotation?.run.newConversation ?? (rotationFrom ? { because: 'handoff' as const, report: rotationFrom } : undefined) : undefined;
+  const newConversation: NewConversation | undefined = resent && carried ? carried : unsentNew ? undefined
+    : facts.anotherAi ? { because: 'another_ai' } : explicit === 'new' ? { because: 'asked' }
+    : rotates ? { because: 'handoff', report: handoff!.id } : !head ? undefined : { because: 'unresumable' };
+  return { mode, rotationFrom, unsentNew, newConversation };
 }

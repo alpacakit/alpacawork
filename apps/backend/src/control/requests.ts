@@ -228,8 +228,8 @@ export class RequestService {
           const resumable = setting?.enabled !== false && !!setting;
           const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
-          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown,
-            explicit: explicitChange ? 'new' : input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
+          const { mode, rotationFrom, unsentNew, newConversation } = conversationForRequest({ rotation, handoff, resolvesUnknown,
+            anotherAi: explicitChange, explicit: input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
           // A compaction continues the same conversation, as the sender asked or as the seat's last report prepared it.
           // Asked for, it follows the rules of a new conversation: it is no reservation for after a Run ends.
           if (input.compact && (mode !== 'continue' || explicitChange))
@@ -346,7 +346,7 @@ export class RequestService {
             onSnapshotSupplied: version => { suppliedSnapshot = version; } } : {}) });
           const run = tx.create({ task: task.id, placementId: placement.id, requestId: request.id,
             agent: profile, role: placement.responsible ? 'owner' : 'worker', resumes: mode === 'continue' ? head!.id : null,
-            continues: false, session, caller,
+            ...(newConversation ? { newConversation } : {}), continues: false, session, caller,
             ...(placement.responsible ? { context: { children,
               ...(suppliedSnapshot ? { suppliedSnapshot } : {}),
               ...(handoff ? { snapshotFrom: handoff.id } : {}),

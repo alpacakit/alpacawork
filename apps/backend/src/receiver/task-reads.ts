@@ -1,8 +1,8 @@
 import { questionApplicable, questionSnapshot } from '../control/question-rules.js';
 
-import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
-import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskViewDTO } from '@alpacawork/contract/control';
-import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
+import { type ReadRunRecord, resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
+import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, CONVERSATION_LIST_LIMIT, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskViewDTO } from '@alpacawork/contract/control';
+import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving, compactionCut, conversationChanges, type ConversationChange } from '@alpacawork/contract/run';
 import { runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
@@ -213,17 +213,27 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       ...(recipient && role ? { recipient: { role, profileKey: profileOf(recipient, receiving), ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
       ...(result && recipient && role === 'member' ? { result: { runId: result.id, at: result.endedAt! } } : {}) });
   }
+  /** A Run's row is written by its Task's responsible or member, by what it ran with. */
+  const ranHere = (run: ControlRunDTO) => {
+    const placement = placements.get(run.placementId);
+    return placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {};
+  };
   for (const run of runs.values()) {
     // Reading why accepted work ended is independent of whether it is a business error needing intervention.
     const kind = isRunInTrouble(run.state) ? 'error'
       : run.state === 'cancelled' && run.reason === 'scope_invalidated' ? 'run_end' : null;
-    // The Run that stopped is the row's writer: its Task's responsible or member, by what it ran with.
-    const placement = placements.get(run.placementId);
+    // The Run that stopped is the row's writer.
     const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
     if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
       ...(kind === 'error' && run.errorCause ? { cause: run.errorCause.cause } : {}),
       ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
-      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
+      ...ranHere(run) });
+  }
+  // What happened to its agents' conversations: a Run starting one anew, and each compaction a Run's agent said. Their
+  // IDs are their own (a Run's ID is its failure's row), and stay when older compactions leave the Run's record.
+  for (const { run: id, at, ...change } of namedReports(task.log, conversationChanges([...runs.values()]))) {
+    const run = runs.get(id)!;
+    events.push({ ...event(change.change === 'new' ? `${id}:new` : `${id}@${at}`, 'conversation', at, '', ''), conversation: change, ...ranHere(run) });
   }
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
@@ -310,6 +320,24 @@ function requireBundle(records: RecordsReader, id: string) {
   return bundle;
 }
 
+/** A handoff's report named by its title, as a person reads it (absent when that entry is gone). */
+function namedReports(log: readonly { id: string; title?: string | null }[], changes: ConversationChange[]): ConversationChange[] {
+  return changes.map(change => {
+    if (change.change !== 'new' || change.report === undefined) return change;
+    const { report, ...rest } = change, title = log.find(entry => entry.id === report)?.title;
+    return title ? { ...rest, report: title } : rest;
+  });
+}
+/** How a Task's conversations went: all its changes counted, and the latest CONVERSATION_LIST_LIMIT listed by time. */
+function conversationsOf(log: readonly { id: string; title?: string | null }[], runs: readonly ReadRunRecord[]): TaskProjectedViewDTO['conversations'] {
+  const changes = namedReports(log, conversationChanges(runs.map(run => ({ id: run.id, placementId: run.placementId, resumes: run.resumes,
+    state: run.state, startedAt: run.started_at, supersededBy: run.supersededBy, newConversation: run.newConversation, compactions: run.compactions }))));
+  const cuts = changes.map(compactionCut).filter((cut): cut is number => cut !== null);
+  return { anew: changes.filter(change => change.change === 'new').length, compacted: changes.filter(change => change.change === 'compacted').length,
+    cutTokens: cuts.length ? cuts.reduce((total, cut) => total + cut, 0) : null,
+    changes: changes.slice(-CONVERSATION_LIST_LIMIT).map(({ run: _run, ...change }) => change) };
+}
+
 /** The small question tree this Task reads: itself, its ancestors, and fixed destinations. */
 function questionNodes(records: RecordsReader, id: string) {
   const own = requireBundle(records, id);
@@ -353,7 +381,8 @@ export function projectedView(frame: PublishedFrame, id: string): TaskProjectedV
       .map(question => ({ ...question, destination: { kind: 'user' as const }, taskTitle: task.title })) : null,
     userReviews: decisionsAvailable ? mark ? [{ id: mark.id, taskId: id, taskTitle: task.title,
       title: mark.title ?? task.title, summary: mark.description ?? null, submittedAt: mark.at }] : [] : null,
-    requestedByUser: bundle.requestedByUser };
+    requestedByUser: bundle.requestedByUser,
+    conversations: conversationsOf(task.log, bundle.runs) };
 }
 
 /**

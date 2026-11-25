@@ -20,16 +20,19 @@ import type { IconName } from "./icon";
  *   aside    what a line says under its title (a list row's id, words and time), a step under the title in either theme
  *   late     past its estimate: in ink and a little heavier, not in a colour
  *   plain    ink
+ *   conversation  an agent's conversation started anew or compacted: a History row that changed no state, yet is
+ *                 the work going on, in a hue of its own
  *
  * Tokens with a fixed meaning, used by class: `new` New, `changed` Changed,
  * `warn` Warning (a read, a save or a setting that failed), `scrim` under a dialog, `paper` behind a Task-folder page.
  */
-export type Tone = "turn" | "working" | "done" | "stopped" | "error" | "todo" | "quiet" | "aside" | "late" | "plain";
+export type Tone = "turn" | "working" | "done" | "stopped" | "error" | "todo" | "quiet" | "aside" | "late" | "plain" | "conversation";
 
 /** Text classes; SVG lines and marks take the same colour through `currentColor`. */
 export const TONE: Record<Tone, string> = {
   turn: "text-turn", working: "text-working", done: "text-done", stopped: "text-stopped", error: "text-error",
   todo: "text-todo", quiet: "text-muted", aside: "text-aside", late: "font-medium text-ink", plain: "text-ink",
+  conversation: "text-conversation",
 };
 
 const STATE_TONE = { todo: "todo", doing: "working", error: "error", waiting: "quiet", held: "quiet", done: "done", stopped: "stopped" } as const satisfies Record<TaskState, Tone>;

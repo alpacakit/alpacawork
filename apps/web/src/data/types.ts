@@ -82,6 +82,8 @@ export type TaskDetail = Task & {
   userReviews: TaskProjectedViewDTO["userReviews"];
   /** When the user asked for it; null when the user did not. */
   requestedByUser: TaskProjectedViewDTO["requestedByUser"];
+  /** How often its agents started a conversation anew and compacted one; null until the Task's view is read. */
+  conversations: TaskProjectedViewDTO["conversations"] | null;
 };
 
 /** Facts about the workspace itself (diagnostics, the server settings, run confirmations). */
