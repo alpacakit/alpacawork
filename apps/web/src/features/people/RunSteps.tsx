@@ -178,7 +178,7 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
   return useMemo(() => live ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again }, [live, state, earlier, again]);
 }
 
-const BLOCK = "m-0 max-h-64 overflow-auto px-2.5 py-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
+const BLOCK = "m-0 px-2.5 py-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
 /** What a step ran or got back, as written, saying how much was left out past the limit. A command is said after `$`. */
 function StepText({ text, tone, prompt, ...data }: { text: RunStepText; tone: string; prompt?: boolean; "data-run-step-input"?: true; "data-run-step-output"?: true }) {
   const { t } = useTranslation("people");
@@ -216,7 +216,17 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
   open: boolean; toggle: (step: RunStepEntry) => void; again: () => void }) {
   const { t } = useTranslation("people");
   const detail = useStepDetail(run, step, generation, open, again);
-  return <li data-run-step={step.state} className="min-w-0">
+  const item = useRef<HTMLLIElement>(null);
+  const shown = !!detail?.value;
+  // Opened, what it ran and got back comes into the box's sight, its own line kept at the top at most.
+  useLayoutEffect(() => {
+    const row = item.current, box = row?.closest<HTMLElement>("[data-run-log]");
+    if (!shown || !row || !box) return;
+    const area = box.getBoundingClientRect(), place = row.getBoundingClientRect();
+    const below = place.bottom - area.bottom;
+    if (below > 0) box.scrollTop += Math.min(below, place.top - area.top);
+  }, [shown]);
+  return <li ref={item} data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={() => toggle(step)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
@@ -225,7 +235,7 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
           : step.state === "unknown" ? t("now.step.state.unknown") : t("now.step.state.done")}</span></span>
       <LineWords line={step} />
     </button>
-    {open && <div className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
+    {open && <div data-run-step-open className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
       {detail?.value ? <>
         <div className={cn("min-w-0 overflow-hidden rounded-sm border border-line bg-bg", step.state === "failed" && "border-l-2 border-l-error")}>
           <StepText data-run-step-input text={detail.value.input} tone="text-ink" prompt={step.kind === "command"} />
@@ -287,7 +297,10 @@ function LogBox({ listed, className, children }: { listed: ListedSteps; classNam
   from.current = listed.from;
   const remember = useCallback(() => {
     const element = box.current;
-    if (element) at.current = { from: from.current, height: element.scrollHeight, foot: element.scrollHeight - element.scrollTop - element.clientHeight < 8 };
+    if (!element) return;
+    at.current = { from: from.current, height: element.scrollHeight, foot: element.scrollHeight - element.scrollTop - element.clientHeight < 8 };
+    // Lines above what is shown fade in at the top, so a box opened at its foot says there is more before (no redraw).
+    element.toggleAttribute("data-above", element.scrollTop > 4);
   }, []);
   useLayoutEffect(() => {
     const element = box.current;
@@ -298,6 +311,6 @@ function LogBox({ listed, className, children }: { listed: ListedSteps; classNam
     remember();
   }, [listed, remember]);
   return <div ref={box} data-run-log onScroll={remember}
-    className={cn("max-h-[min(19rem,45vh)] overflow-y-auto rounded-md border border-line bg-well px-2.5 py-1.5 [scrollbar-width:thin] narrow:max-h-[min(22rem,50vh)]", className)}>
+    className={cn("max-h-[min(19rem,45vh)] overflow-y-auto rounded-md border border-line bg-well px-2.5 py-1.5 [scrollbar-width:thin] narrow:max-h-[min(22rem,50vh)] has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] narrow:has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] data-above:[mask-image:linear-gradient(to_bottom,transparent,black_2rem)]", className)}>
     {children}</div>;
 }

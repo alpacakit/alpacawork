@@ -118,8 +118,8 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
  * of a message is said).
  */
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
-/** The conversation is short: its steps' box keeps the answer under it in sight. */
-const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)]";
+/** The conversation is short: its steps' box keeps the answer under it in sight, a step opened in it too. */
+const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)] has-[[data-run-step-open]]:max-h-[min(14rem,35vh)] narrow:has-[[data-run-step-open]]:max-h-[min(16rem,40vh)]";
 function Chevron({ open }: { open: boolean }) {
   return <Icon name="down" className={cn("size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-180")} />;
 }
@@ -127,7 +127,7 @@ function Chevron({ open }: { open: boolean }) {
  * The steps are read after the press: once first drawn, the line and the list under it come into sight as one place
  * request, the list's head (the line, then "earlier") first. One that does not fit below where it is starts at the top.
  */
-function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>) {
+function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, top = false) {
   const listed = useRef(false);
   useLayoutEffect(() => {
     if (!read) { listed.current = false; return; }
@@ -136,27 +136,32 @@ function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>) {
     listed.current = true;
     const area = element.closest<HTMLElement>('[data-card-scroll]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
     const box = element.getBoundingClientRect();
-    if (box.top < area.top || box.height > area.bottom - area.top) scrollThreadTo(element, element, { block: 'start' });
+    if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' });
     else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' });
-  }, [read, block]);
+  }, [read, block, top]);
 }
 
 /* Hallmark · component: an answered message's steps · genre: modern-minimal · theme: the app's own tokens · states:
- * folded (one quiet line, ⌄) · open (the line counts the steps, every step under it, ⌃) · reading · not readable */
+ * folded (a small pill: the work's mark, its words and ⌄ side by side) · open (the pill counts the steps and turns ⌃, the
+ * steps' box under it, then the answer) · reading · not readable */
 /**
- * The steps of the Run that answered, above its answer where the work line stood while it ran: one quiet line that opens
- * them as that line did, read only once opened.
+ * The steps of the Run that answered, above its answer where the work line stood while it ran: one small pill, as
+ * wide as its words, that opens them under it and closes them again, read only once opened. Its mark, words and
+ * arrow are one press, so it reads as the answer's own way into its work.
  */
 export function AnswerSteps({ run }: { run: string }) {
   const { t } = useTranslation('people');
   const [open, setOpen] = useState(false);
   const steps = useRunSteps(run, open);
   const block = useRef<HTMLDivElement>(null);
-  useListedInSight(steps.listed, block);
+  // Opened, the pill goes to the top where it must move, so the answer's start stays in sight under the steps.
+  useListedInSight(steps.listed, block, true);
   const count = stepCount(steps);
   return <div ref={block} data-answer-steps className="mb-2 scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
-    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-xs text-muted hover:text-ink")}>
-      <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
+    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
+      className="group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-10 narrow:px-3">
+      <Icon name="code" className="size-3.5 flex-none text-muted group-hover/steps:text-ink" />
+      <span className="min-w-0 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
       <Chevron open={open} /></button>
     {open && <StepList steps={steps} className={CHAT_LOG} />}
   </div>;

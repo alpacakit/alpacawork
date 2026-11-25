@@ -958,7 +958,7 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
     <WorkingPerson run={lead} task={task} onFollow={onFollow} open={open} lead
       others={others > 0 && !open ? <span data-working-others>{t("reportFeed.working.others", { count: others })}</span> : null} />
     {others > 0 && <DisclosureBody open={open}><div className="flex flex-col gap-2 pt-2">
-      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open lead={false} />)}
+      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open={open} lead={false} />)}
     </div></DisclosureBody>}
   </div>;
 }
@@ -984,7 +984,9 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const latest = steps.at(-1), worked = tookSteps(run.activity);
   // Each person's steps open on their own work line, apart from the words: one press, one thing opened.
   const [listed, setListed] = useState(false);
-  const full = useRunSteps(run.id, listed && worked, run.activity?.stepEvents ?? 0);
+  // A member's steps are read only while the row shows them: folded, its body keeps them drawn but out of sight.
+  const reading = listed && worked && (lead || open);
+  const full = useRunSteps(run.id, reading, run.activity?.stepEvents ?? 0);
   const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;
@@ -1015,7 +1017,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
       <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
       : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
-    {listed && worked && <StepList steps={full} className={`${cell} mt-1`} />}
+    {reading && <StepList steps={full} className={`${cell} mt-1`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
