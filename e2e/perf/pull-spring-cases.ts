@@ -5,6 +5,7 @@ import {resolve} from 'node:path';
 import {chromium} from '@playwright/test';
 import {start} from '../server.ts';
 import {seedTimelineScroll} from '../fixture/timeline-scroll.ts';
+import { setStrips } from './bar-entries.ts';
 const out=resolve(process.argv[2]!);mkdirSync(out,{recursive:true});
 const browser=await chromium.launch();let runtime:Awaited<ReturnType<typeof start>>|undefined;
 const results:any[]=[];
@@ -14,7 +15,7 @@ for(const reduced of [false,true])for(const kind of ['fast','slow','failure','ca
  let open=()=>{};
  try{
  const page=await context.newPage();await page.goto(runtime.origin+'/?agent=1&zoom=1800000');await page.locator('[data-time-tree]').waitFor();
- if(await page.locator('header [data-strips]').getAttribute('aria-pressed')!=='true')await page.locator('header [data-strips]').click();
+ await setStrips(page,true);
  await page.locator('[data-span]').waitFor();await page.waitForTimeout(600);
  const c=await context.newCDPSession(page);
  const send=async(type:'touchStart'|'touchMove'|'touchEnd'|'touchCancel',points:{x:number;y:number;id?:number}[])=>c.send('Input.dispatchTouchEvent',{type,touchPoints:points});

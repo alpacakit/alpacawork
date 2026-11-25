@@ -8,7 +8,9 @@ export const analysisPeriodSchema = z.enum(['today', '7d', '28d', 'all']);
 export const analysisBucketSchema = z.enum(['day', 'week', 'month']);
 export const analysisTaskBySchema = z.enum(['model', 'agent', 'project']);
 const analysisTallyBySchema = z.enum(['skill', 'tool', 'mcp']);
-export const analysisUsageBySchema = z.enum([...analysisTaskBySchema.options, ...analysisTallyBySchema.options]);
+export const analysisUsageSeriesBySchema = z.enum(['model', 'effort']);
+export const analysisUsageBySchema = z.enum([...analysisTaskBySchema.options, 'effort', ...analysisTallyBySchema.options]);
+export const analysisUsageProjectionSchema = z.enum(['period', 'history', 'summary']);
 export type AnalysisTallyBy = z.infer<typeof analysisTallyBySchema>;
 export const isAnalysisTallyBy = (by: AnalysisUsageBy | undefined): by is AnalysisTallyBy =>
   analysisTallyBySchema.options.some(option => option === by);
@@ -32,31 +34,52 @@ function validateDates(input: z.infer<typeof dates>, ctx: z.RefinementCtx) {
   if (!input.period && input.end) issue('end', 'End requires a period');
   if (input.from && input.to && input.from > input.to) issue('to', 'To must be on or after from');
 }
+const usageFilters = z.strictObject({
+  model: z.string().min(1).optional(), effort: z.string().min(1).optional(), effortMissing: z.boolean().optional(),
+});
+function validateUsageFilters(input: z.infer<typeof usageFilters>, ctx: z.RefinementCtx) {
+  if (input.effort !== undefined && input.effortMissing) {
+    ctx.addIssue({ code: 'custom', path: ['effort'], message: 'Choose an effort or filter for unrecorded effort' });
+  }
+}
+export type AnalysisUsageFilters = z.infer<typeof usageFilters>;
+export const hasAnalysisUsageFilters = ({ model, effort, effortMissing }: AnalysisUsageFilters) =>
+  model !== undefined || effort !== undefined || effortMissing === true;
 export const analysisTasksInput = z.strictObject({
   ...scope, ...dates.shape, bucket: analysisBucketSchema, by: analysisTaskBySchema.optional(),
 }).superRefine(validateDates);
 export const analysisUsageInput = z.strictObject({
-  ...scope, ...dates.shape, bucket: analysisBucketSchema, by: analysisUsageBySchema.optional(),
-}).superRefine(validateDates);
+  ...scope, ...dates.shape, ...usageFilters.shape, bucket: analysisBucketSchema, by: analysisUsageBySchema.optional(),
+  view: analysisUsageProjectionSchema.optional(),
+}).superRefine(validateDates).superRefine(validateUsageFilters);
+export const analysisUsageSeriesInput = z.strictObject({
+  ...scope, ...dates.shape, ...usageFilters.shape, bucket: analysisBucketSchema, by: analysisUsageSeriesBySchema,
+}).superRefine(validateDates).superRefine(validateUsageFilters);
 /** One look's breakdown alone, for a reader that already holds that look's numbers and charts (the screen). */
 export const analysisBreakdownInput = z.strictObject({
-  ...scope, ...dates.shape, bucket: analysisBucketSchema, look: z.enum(['tasks', 'usage']), by: analysisUsageBySchema,
-}).superRefine(validateDates).superRefine((input, ctx) => {
+  ...scope, ...dates.shape, ...usageFilters.shape, bucket: analysisBucketSchema, look: z.enum(['tasks', 'usage']), by: analysisUsageBySchema,
+  view: analysisUsageProjectionSchema.optional(),
+}).superRefine(validateDates).superRefine(validateUsageFilters).superRefine((input, ctx) => {
   if (input.look === 'tasks' && !analysisTaskBySchema.safeParse(input.by).success)
     ctx.addIssue({ code: 'custom', path: ['by'], message: 'This breakdown applies to AI usage' });
+  if (input.look === 'tasks' && hasAnalysisUsageFilters(input))
+    ctx.addIssue({ code: 'custom', path: ['model'], message: 'Model and effort filters apply to AI usage' });
+  if (input.look === 'tasks' && input.view !== undefined)
+    ctx.addIssue({ code: 'custom', path: ['view'], message: 'This view applies to AI usage' });
 });
 export const analysisListInput = z.strictObject({
-  ...scope, ...dates.shape,
+  ...scope, ...dates.shape, ...usageFilters.shape,
   set: analysisSetSchema, by: analysisUsageBySchema.optional(), key: z.string().min(1).max(512).optional(),
   value: analysisValueSchema.optional(), cursor: z.string().min(1).max(2048).optional(),
   limit: z.number().int().min(1).max(100).optional(),
-}).superRefine(validateDates).superRefine((input, ctx) => {
+}).superRefine(validateDates).superRefine(validateUsageFilters).superRefine((input, ctx) => {
   const issue = (field: string, message: string) => ctx.addIssue({ code: 'custom', path: [field], message });
   if (!input.by && input.key) issue('key', 'A key requires a breakdown');
   if (input.by && !input.key && !isAnalysisTallyBy(input.by))
-    issue('key', 'Model, agent and project breakdowns require a row key');
+    issue('key', 'Model, effort, agent and project breakdowns require a row key');
   if (input.set !== 'used' && input.by && !analysisTaskBySchema.safeParse(input.by).success)
     issue('by', 'This breakdown applies to AI usage');
+  if (input.set !== 'used' && hasAnalysisUsageFilters(input)) issue('model', 'Model and effort filters apply to AI usage');
   if (input.value && !(input.set === 'used' ? analysisUsageValues : analysisTaskValues).some(value => value === input.value))
     issue('value', 'Choose a value for this set');
   if (input.value === 'calls' && input.by !== 'tool' && input.by !== 'mcp') issue('value', 'Calls require a tool or MCP breakdown');
@@ -148,10 +171,19 @@ export const analysisUsageCountsSchema = z.strictObject({
   launches: count, runMs: count, live: count, newConversations: count,
   tokens: z.strictObject({ output: count, input: count, cache: count }), tokensUnknown: count, tasks: count,
 });
+const usageSeriesGroup = z.strictObject({ ...group, value: z.string().nullable(), total: count });
+export const analysisUsageSeriesViewSchema = z.strictObject({
+  head: analysisHeadSchema,
+  filters: z.strictObject({ model: z.string().nullable(), effort: z.string().nullable(), effortMissing: z.boolean() }),
+  metric: z.strictObject({ id: z.literal('launches'), unit: z.literal('runs'), aggregation: z.literal('sum') }),
+  bucket: analysisBucketSchema, by: analysisUsageSeriesBySchema, total: count, groups: z.array(usageSeriesGroup),
+  points: z.array(point.extend({ total: count, counts: z.array(z.tuple([count, count.positive()])) })),
+});
 const usageBreakdown = z.strictObject({
   by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
   counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
-  rows: z.array(z.strictObject({ ...breakdownRow, counts: analysisUsageCountsSchema, calls: count.nullable() })),
+  rows: z.array(z.strictObject({ ...group, model: z.strictObject({ name: z.string() }).optional(),
+    effort: z.string().nullable().optional(), counts: analysisUsageCountsSchema, calls: count.nullable() })),
 });
 export const analysisUsageViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisUsageCountsSchema), ever: analysisUsageCountsSchema.nullable(),
@@ -198,6 +230,8 @@ export type AnalysisModel = z.infer<typeof model>;
 export type AnalysisUsageBy = z.infer<typeof analysisUsageBySchema>;
 export type AnalysisTasksInput = z.infer<typeof analysisTasksInput>;
 export type AnalysisUsageInput = z.infer<typeof analysisUsageInput>;
+export type AnalysisUsageSeriesInput = z.infer<typeof analysisUsageSeriesInput>;
+export type AnalysisUsageSeriesView = z.infer<typeof analysisUsageSeriesViewSchema>;
 export type AnalysisListInput = z.infer<typeof analysisListInput>;
 export type AnalysisBreakdownInput = z.infer<typeof analysisBreakdownInput>;
 export type AnalysisBreakdownView = z.infer<typeof analysisBreakdownViewSchema>;

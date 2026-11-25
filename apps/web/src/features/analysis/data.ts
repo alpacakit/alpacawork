@@ -3,7 +3,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { filterQuery, type LaunchFilter, type SeriesBy } from "./series";
 import { cardDays, spanQuery, type CardSpan, type ListPlace, type Span } from "./place";
 
 /**
@@ -19,6 +20,25 @@ const route = (name: string, input: Record<string, string | null | undefined>) =
 const scope = (project: string | null, span: Span) => ({ project, ...spanQuery(span) });
 
 /**
+ * Launches by model or by effort (`analysis usage-series`), for one span and one filter. `enabled`: false while the
+ * usage look is not shown.
+ */
+export function useUsageSeries(project: string | null, span: Span, bucket: Bucket, by: SeriesBy, filter: LaunchFilter | null, enabled = true) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisView(root, "usage-series", { ...scope(project, span), bucket, by, ...filterQuery(filter) }, usageSeriesViewSchema), enabled });
+}
+
+/**
+ * The launches' answers read with the use's own, so the look as it first stands (coloured by model, not filtered) is
+ * drawn once and nothing comes in above it later: by model over the whole record (the charts' bins, the colours and
+ * the choices, which no filter moves) and over the span (the numbers on the left). Anything else the launches row is
+ * asked for (by effort, a filter) it reads and waits for on its own (Launches.tsx), so it never holds up the look.
+ */
+export function useLaunchReads(project: string | null, span: Span, bucket: Bucket, enabled: boolean) {
+  return [useUsageSeries(project, { period: "all" }, bucket, "model", null, enabled), useUsageSeries(project, span, bucket, "model", null, enabled)] as const;
+}
+
+/**
  * The face's two answers, each for one choice of days, step of time and breakdown, read as the list of tasks reads (kept
  * for offline, shown again at the next start until read anew: resources.analysisView). `enabled`: false while it is not
  * wanted yet (the other look, a breakdown not yet near the screen); what it last answered stays.
@@ -28,9 +48,9 @@ export function useTasksView(project: string | null, span: Span, bucket: Bucket,
   return useQuery({ ...resources.analysisView(root, "tasks", { ...scope(project, span), bucket, by }, tasksViewSchema), enabled });
 }
 
-export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true) {
+export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true, view: "history" | "summary" = "history") {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by }, usageViewSchema), enabled });
+  return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by, view }, usageViewSchema), enabled });
 }
 
 /** The card starts these reads as soon as it opens, while its drawing code is still loading. */
@@ -40,7 +60,7 @@ export function useCardReads(project: string | null, span: Span, card: CardSpan,
   // both reads can start without it. Reuse the face's answer when the query is the same.
   const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
   const tasks = useTasksView(project, days ?? span, bucket, null, days !== null);
-  const usage = useUsageView(project, days ?? span, bucket, "model", days !== null);
+  const usage = useUsageView(project, days ?? span, bucket, "model", days !== null, "summary");
   return { face, tasks, usage };
 }
 
@@ -50,7 +70,8 @@ export function useCardReads(project: string | null, span: Span, card: CardSpan,
  */
 export function useBreakdown(look: "tasks" | "usage", project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by }, breakdownViewSchema), enabled });
+  const view = look === "usage" ? "history" : null;
+  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by, view }, breakdownViewSchema), enabled });
 }
 
 /**
@@ -75,7 +96,7 @@ export function useUnitList(project: string | null, span: Span, list: ListPlace 
   const root = useWorkspaceInfo(info => info.root);
   // A list opened from a chart's bin is for that bin's days; one opened from a number, for the span.
   const days = list?.days ? { project, from: list.days.from, to: list.days.to } : scope(project, span);
-  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
+  const input = list ? { ...days, ...filterQuery(list.filter), set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
   return useInfiniteQuery({ ...resources.analysisList(root, input), enabled: !!list });
 }
 

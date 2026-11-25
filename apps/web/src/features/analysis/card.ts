@@ -12,8 +12,8 @@ import type { Answer } from "./data";
 export type CardFacts = {
   from: string; to: string;
   tokens: number; finished: number; share: number | null; runMs: number; prs: number;
-  /** The model used most: its name, and the effort it ran at where the record says one apart. */
-  model: { name: string; effort: string | null } | null;
+  /** The name of the most-used model across all launch efforts. */
+  model: string | null;
   /** The finished-task calendar's latest weeks (13 at most), oldest first, Monday on top: each day's level (0–4), null outside the record. */
   grass: (number | null)[][];
 };
@@ -47,7 +47,7 @@ export function cardFacts(record: Answer<TasksView> | null, tasksAnswer: Answer<
   if (!usageAnswer?.current) return undefined;
   const usage = usageAnswer.data;
   // The most-used model is the first row of the usage's breakdown by model, as its table shows it first.
-  const model = usage.breakdown?.by === "model" ? usage.breakdown.rows[0]?.model ?? null : null;
+  const model = usage.breakdown?.by === "model" ? usage.breakdown.rows[0]?.model?.name ?? null : null;
   return { from: days.from, to: days.to, tokens: tokenTotal(usage.counts.value), finished: tasks.counts.value.finished,
     share: tasks.counts.value.share, runMs: usage.counts.value.runMs, prs: tasks.accepted.value.prs, model,
     grass: grassWeeks(tasks.grass, tasks.head) };
@@ -84,8 +84,8 @@ export function pick(choice: CardChoice, facts: CardFacts, key: CardNumber): Car
 }
 
 /**
- * A number as the card writes it: its value and its unit apart; a model's name is words, as long as it is, its effort
- * small after it. `spaced`: the language writes a space between the number and its unit (534 tasks).
+ * A number as the card writes it: its value and its unit apart. A model's name is text. `spaced` indicates a space
+ * between the number and its unit (534 tasks).
  */
 export type Figure = Parts & { words?: boolean; spaced?: boolean };
 const parts = (kind: Parameters<typeof written>[0], value: number): Figure => {
@@ -99,7 +99,7 @@ export function cardFigure(facts: CardFacts, key: CardNumber): Figure | null {
     case "share": return facts.share === null ? null : shareParts(facts.share);
     case "runMs": return parts("hours", facts.runMs);
     case "prs": return parts("plain", facts.prs);
-    case "model": return facts.model === null ? null : { value: facts.model.name, unit: facts.model.effort ?? "", words: true };
+    case "model": return facts.model === null ? null : { value: facts.model, unit: "", words: true };
   }
 }
 
@@ -128,7 +128,7 @@ export function cardInput(facts: CardFacts, choice: CardChoice): CardInput {
   };
 }
 
-/** A figure as words: its unit after it, a space between where the language puts one (and after a model's name). */
+/** A figure as words: its unit after it, with a space where the language puts one. */
 const figureWords = (figure: Figure) => figure.unit ? `${figure.value}${figure.spaced || figure.words ? " " : ""}${figure.unit}` : figure.value;
 /** What the card says, in the order it is read, for those who hear it rather than see it. */
 export const cardWords = (input: CardInput) => [`${input.kicker} ${input.span} ${input.days}`,

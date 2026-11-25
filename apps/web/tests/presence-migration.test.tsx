@@ -13,6 +13,7 @@ import { i18n, startI18n } from '@alpacawork/i18n';
 
 import { projectedIndexSchema } from '@alpacawork/contract/control';
 import { openIndexStream } from '../../../tests/index-stream';
+import { usePresenceActivity } from '../src/data/presence';
 import { PresenceMenu } from '../src/features/chrome/PresenceMenu';
 import { SettingsDialog } from '../src/features/panels/SettingsDialog';
 import { Toaster } from '../src/components/ui/toaster';
@@ -21,6 +22,9 @@ import { useWriteIntentStore } from '../src/data/write-intent';
 import { useDialogStore } from '../src/state/dialog-store';
 import { queryClient } from '../src/data/query-client';
 import { screenData, TestWorkspace, tree } from './fixtures';
+
+/** The bar's notification button with the page's presence, as AppBar mounts it. */
+function Presence() { return <PresenceMenu present={usePresenceActivity()} />; }
 
 const transport = globalThis.fetch;
 let stop: (() => Promise<void>) | undefined;
@@ -83,14 +87,14 @@ async function fixture() {
   receiveFullIndex(queryClient, index);
   useConnection.setState({ state: 'live', fresh: true, writable: index.writable, offline: false });
   await usePersonalSettings.getState().load(root);
-  const ui = () => <TestWorkspace data={data()}><PresenceMenu /><Toaster /></TestWorkspace>;
+  const ui = () => <TestWorkspace data={data()}><Presence /><Toaster /></TestWorkspace>;
   const view = render(ui());
   return { settings,
     follow: async (state: string) => {
       do { index = await feed.index(); } while (index.presence.state !== state);
       await act(async () => { receiveFullIndex(queryClient, index); view.rerender(ui()); });
     },
-    showSettings: () => { view.rerender(<TestWorkspace data={data()}><PresenceMenu /><SettingsDialog initialTab="notifications" /><Toaster /></TestWorkspace>); },
+    showSettings: () => { view.rerender(<TestWorkspace data={data()}><Presence /><SettingsDialog initialTab="notifications" /><Toaster /></TestWorkspace>); },
   };
 }
 const trigger = () => document.querySelector<HTMLButtonElement>('[data-presence-trigger]')!;

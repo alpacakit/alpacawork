@@ -19,7 +19,7 @@ export type Unit = {
   childQuestions: UserQuestion[]; questions: number;
   /** The user's questions of the subtree asked while the unit was open (`questions` counts them). */
   asked: UserQuestion[]; answers: number; workers: number; children: number; prs: Set<string>;
-  firstOwner: ModelRun | null; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
+  firstOwner: ModelRun | null; launches: readonly FactLaunch[];
   /**
    * The user's instructions to the unit or any Task under it, after the request itself (answers and send-backs are not
    * instructions), and the labels their senders gave them.
@@ -144,8 +144,24 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
   for (const entry of log) if (entry.placementEffect === 'member' && entry.placementId) workers.add(entry.placementId);
   return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length, asked: questions,
     answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs,
-    firstOwner: firstOwner && modelRun(firstOwner), launches, instructions,
-    clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
+    firstOwner: firstOwner && modelRun(firstOwner), launches, instructions };
+}
+
+/**
+ * Ended-task clocks depend only on these facts (usage reads do not need them): a unit accepted or stopped, or done by
+ * its owner without acceptance, runs to that end.
+ */
+const finishedClocks = new WeakMap<Unit, ReturnType<typeof clocks>>();
+export function finishedClock(unit: Unit) {
+  const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
+  if (!ended) return null;
+  let clock = finishedClocks.get(unit);
+  if (!clock) {
+    const to = Date.parse(ended);
+    clock = clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, Date.parse(unit.outcome.requestedAt), to, to);
+    finishedClocks.set(unit, clock);
+  }
+  return clock;
 }
 
 /**
@@ -247,7 +263,7 @@ export class FactsCache {
     }
   }
 
-  private keepRun({ run, launch }: ReturnType<typeof runFromRow>) {
+  private keepRun({ run, launch }: ReturnType<typeof runFromRow>, changedSessions?: Set<string>) {
     const previous = this.runs.get(run.id);
     this.runs.set(run.id, launch);
     let own = this.runsByTask.get(run.task);
@@ -257,14 +273,17 @@ export class FactsCache {
     const first = this.firstOwners.get(run.task);
     if (run.role === 'owner' && (!first || first.id === run.id || madeBefore(run, first))) this.firstOwners.set(run.task, run);
     const before = this.sessionOf.get(run.id), after = launch?.session ? `${launch.provider}\u0000${launch.session}` : undefined;
-    if (before === after && previous?.started === launch?.started) return [];
-    if (before !== undefined) { this.sessions.get(before)?.delete(run.id); this.sessionOf.delete(run.id); }
+    if (before === after && previous?.started === launch?.started) return;
+    if (before !== undefined) {
+      this.sessions.get(before)?.delete(run.id); this.sessionOf.delete(run.id);
+      changedSessions?.add(before);
+    }
     if (after !== undefined) {
       let group = this.sessions.get(after);
       if (!group) this.sessions.set(after, group = new Set());
       group.add(run.id); this.sessionOf.set(run.id, after);
+      changedSessions?.add(after);
     }
-    return [before, after].filter(key => key !== undefined);
   }
 
   /** The Run that began each conversation named (every one, for a full read), again from its launched Runs. */
@@ -346,14 +365,14 @@ export class FactsCache {
         this.values.set(id, links); taskIds.add(id);
       }
     if (slices.due) await slices.pause();
-    const sessionKeys = new Set<string>();
+    const sessionKeys = full ? undefined : new Set<string>();
     for (const row of runRows(db, this.tallySince, full ? undefined : runIds)) {
       const item = runFromRow(row);
-      for (const key of this.keepRun(item)) sessionKeys.add(key);
-      taskIds.add(item.run.task);
+      this.keepRun(item, sessionKeys);
+      if (!full) taskIds.add(item.run.task);
       if (slices.due) await slices.pause();
     }
-    await this.settleFirst(full ? 'all' : sessionKeys, slices);
+    await this.settleFirst(sessionKeys ?? 'all', slices);
     if (slices.due) await slices.pause();
     const moved = full || changedTasks.size > 0;
     const tree = this.tree = moved ? ancestry(nodes) : this.tree!;

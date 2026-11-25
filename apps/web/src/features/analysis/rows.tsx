@@ -1,3 +1,4 @@
+import type { LaunchFilter } from "./series";
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -157,7 +158,11 @@ const LegendRoom = memo(function LegendRoom({ say, names }: { say: RowSay; names
 
 /** How wide words stand: a full-width letter (Japanese, Chinese) as two. */
 const breadth = (words: string) => [...words].reduce((sum, letter) => sum + (/[\u2e80-\uffef]/.test(letter) ? 2 : 1), 0);
-const widest = (all: string[]) => all.reduce((most, words) => breadth(words) > breadth(most) ? words : most, "");
+const widest = (all: string[]) => {
+  let most = "", room = 0;
+  for (const words of all) { const each = breadth(words); if (each > room) { most = words; room = each; } }
+  return most;
+};
 /** A row's legend made of the widest words each of its lines takes over its days (`names`): its room. */
 export function legendRoom(say: RowSay, names: string[]): { day: string; say: RowSay } {
   const days = names.map((_, at) => at);
@@ -192,7 +197,7 @@ export type RowSay = {
   list?: (bin: Bin, at: number) => DayList | null;
 };
 /** The tasks behind a row on one bin: its list, for the bin's days (`from`–`to`). */
-export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string };
+export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string; filter?: LaunchFilter | null };
 type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
@@ -324,6 +329,9 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const { i18n } = useTranslation();
   const names = useMemo(() => bins.map(bin => binName(bin, today)), [bins, today, i18n.language]);
   const dayName = (at: number) => names[at]!;
+  // A row's room (legendRoom) is made once for its days and words, not again at each day a finger steps to.
+  const rooms = useMemo(() => new WeakMap<RowSay, ReturnType<typeof legendRoom>>(), [names]);
+  const roomOf = (say: RowSay) => { let room = rooms.get(say); if (!room) rooms.set(say, room = legendRoom(say, names)); return room; };
   const openDay = (list: (bin: Bin) => DayList) => { if (!shown) return; remember(shown.at, shown.row); close(); open(list(bins[shown.at]!)); };
   // What the day chosen says, read out as it changes (the keys move it a day at a time).
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
@@ -336,7 +344,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} room={legendRoom(rows[shown.row]!, names)} at={shown.at} box={shown.box}
+    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} room={roomOf(rows[shown.row]!)} at={shown.at} box={shown.box}
       onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
       onPart={openDay}
       // The window steps to the day before or after, as if that day were pressed.
@@ -507,7 +515,7 @@ function Total({ written, className }: { written: string; className?: string }) 
 
 /** The mark of a per-task line (─●), as its name is drawn wherever the line is named. */
 export const LineMark = () => <svg aria-hidden viewBox="0 0 16 8" className="me-2 h-2 w-4 flex-none overflow-visible">
-  <line x1="0" y1="4" x2="16" y2="4" className="stroke-ink [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-ink stroke-bg [stroke-width:1]" />
+  <line x1="0" y1="4" x2="16" y2="4" className="stroke-trend [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-trend stroke-bg [stroke-width:1]" />
 </svg>;
 
 /* ── a chart: the scale's one mark over its top line, a line across its middle, bins over the group's days ── */
@@ -575,7 +583,7 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
       const off = uncounted?.(at) ?? false;
       const edge = off && !(uncounted?.(at + 1) ?? true);
       const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-40 transition-opacity duration-(--motion-base) ease-out",
-        wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
+        wide ? "px-[max(min(3px,20%),calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
         lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
         group.narrow && (group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),
@@ -627,26 +635,49 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   const line = overlay ? lineDots(overlay.values, overlay.top, overlay.faint) : null;
   const inSpan = (at: number) => lit(group.bins[at]!, group.span);
   const points = width / Math.max(1, group.bins.length) >= 12;
+  const thin = width > 0 && width / Math.max(1, group.bins.length) < 4;
   // A bin over the scale's top (one outside the chosen span: the top is the span's) stands to the top, its parts in
   // their shares of it, and is cut there with a small break across it.
   const bars = (at: number) => {
     const all = values(at), sum = all.reduce((total, [, value]) => total + Math.max(0, value), 0);
     const cut = sum > scale.top, last = all.reduce((found, [, value], part) => value > 0 ? part : found, -1);
-    // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line.
-    const gaps = 2 * (all.filter(([, value]) => value > 0).length - 1);
-    const height = (value: number) => cut ? `calc((100% - ${gaps}px) * ${value / sum})` : `${Math.min(100, value / scale.top * 100)}%`;
-    return all.map(([color, value, of], part) => value > 0 &&
-      <i key={part} data-part={of} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
-        className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>
+    // A bar stands as high as its amount on the scale (to the top where it is cut), its gaps between parts taken from
+    // its parts, not added to it: a bar of more parts is never taller than one of a larger amount. A gap is 2px, or less
+    // on a short bar, all of them a quarter of it at most, so its parts always keep their colours; they share the rest
+    // in their amounts' shares.
+    const shown = all.filter(([, value]) => value > 0), whole = `${Math.min(100, sum / scale.top * 100)}%`;
+    const gap = shown.length > 1 ? `min(2px, ${25 / (shown.length - 1)}%)` : "0px", gaps = `(${shown.length - 1} * ${gap})`;
+    // Where a bin is only a few pixels wide (days over a long record), its parts are one element painted in their
+    // colours with the same gaps, not one element each: the same picture at a fraction of the page to lay out.
+    // Too narrow to press a part, the bin opens the row's tasks.
+    if (thin && !tone && !cut && shown.length > 1) {
+      let below = 0;
+      const stops = shown.map(([color, value], part) => {
+        const from = `calc((100% - ${gaps}) * ${below / sum} + ${part} * ${gap})`; below += value;
+        const to = `calc((100% - ${gaps}) * ${below / sum} + ${part} * ${gap})`, paint = `var(--${color.replace(/^bg-/, "")})`;
+        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + ${gap})` : ""}`;
+      });
+      return <i style={{ height: whole, background: `linear-gradient(to top, ${stops.join(", ")})` }}
+        className={cn("relative block min-w-px flex-none origin-bottom rounded-t-[3px] rounded-b-[1px]", grow && "animate-bar")} />;
+    }
+    // A bar of several parts stands as one column of them, its own height, and grows as one: a stacked chart moves as
+    // many things as its bins, not its parts (each that moves is its own layer for the browser to put together).
+    const stacked = shown.length > 1;
+    const parts = all.map(([color, value, of], part) => value > 0 &&
+      <i key={part} data-part={of} style={{ ...stacked ? { flex: `${value} 1 0px` } : { height: whole },
+        ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
+        className={cn("relative block origin-bottom rounded-[1px]", !stacked && "flex-none", !tone && color, part === last && "rounded-t-[3px]", grow && !stacked && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
+    return stacked ? <span style={{ height: whole, gap }}
+      className={cn("flex flex-none origin-bottom flex-col-reverse overflow-hidden", grow && "animate-bar")}>{parts}</span> : parts;
   };
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
+      {line.lines.map(({ from, to, at }) => { const within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
-          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
+          className={cn("stroke-trend [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
     </svg>}
     {line && <div aria-hidden className="pointer-events-none absolute inset-0">
       {line.dots.map((dot, at) => {
@@ -655,10 +686,10 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
         if (!dot || !points) return null;
         if (dot.over) return !group.narrow && <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
           className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
-          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-ink [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
+          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-trend [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
         return (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
           className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
-            dot.faint ? "border-[1.5px] border-ink bg-bg" : "bg-ink")} />;
+            dot.faint ? "border-[1.5px] border-trend bg-bg" : "bg-trend")} />;
       })}
     </div>}
   </Frame></div>;
@@ -674,7 +705,7 @@ export function lineDots(values: (number | null)[], top: number, faint: (at: num
     : { x: (at + 0.5) / values.length * 100, y: 100 - Math.min(1, value / top) * 100, faint: faint(at), over: value > top });
   const lines = dots.flatMap((dot, at) => {
     const before = at > 0 ? dots[at - 1] : null;
-    return dot && before ? [{ from: before, to: dot }] : [];
+    return dot && before ? [{ from: before, to: dot, at }] : [];
   });
   return { dots, lines };
 }

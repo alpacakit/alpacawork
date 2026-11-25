@@ -1,4 +1,5 @@
 import { addDays, daysBetween } from "./format";
+import type { LaunchFilter } from "./series";
 import { LIST_SETS, PERIODS, TASK_GROUPS, TASK_VALUES, USAGE_GROUPS, USAGE_VALUES, type Group, type ListSet, type ListValue, type Period } from "./contract";
 
 /**
@@ -9,12 +10,13 @@ import { LIST_SETS, PERIODS, TASK_GROUPS, TASK_VALUES, USAGE_GROUPS, USAGE_VALUE
 export type Look = "tasks" | "usage";
 /** A span: one of the named periods ending today, or whole days chosen on a chart or stepped to. */
 export type Span = { period: Period } | { from: string; to: string };
-/** A list: the tasks of one number. `group`/`member`: the row of a breakdown it was opened from. */
 /**
  * A list: the tasks of one number. `group`/`member`: the row of a breakdown it was opened from. `days`: the bin of a
- * chart it was opened from (its own days, whatever span is chosen); none for a number of the span.
+ * chart it was opened from (its own days, whatever span is chosen); none for a number of the span. `filter`: the model
+ * and effort the launches chart was filtered to, so the list holds the launches its number counted.
  */
-export type ListPlace = { set: ListSet; value: ListValue | null; group: Group | null; member: string | null; days?: { from: string; to: string } | null };
+export type ListPlace = { set: ListSet; value: ListValue | null; group: Group | null; member: string | null; days?: { from: string; to: string } | null;
+  filter?: LaunchFilter | null };
 /**
  * The share card's days: how long a span (a week, four weeks, the whole record) and the day it ends on, the one the
  * analysis showed when the card was opened (null: today). Another length keeps the day, the whole record's included.
@@ -55,6 +57,7 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
     set, value: oneOf<ListValue>([...TASK_VALUES, ...USAGE_VALUES], url.get("measure")),
     group: oneOf<Group>([...TASK_GROUPS, ...USAGE_GROUPS], url.get("group")), member: url.get("member"),
     days: readDays(url.get("bin")),
+    ...url.get("model") !== null || url.get("effort") !== null ? { filter: { model: url.get("model"), effort: url.get("effort") } } : {},
   } : null;
   // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
   // tools, MCP: every launch that used one).
@@ -66,7 +69,7 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
 
 /** The breakdowns whose whole has a list of its own (every launch that used any of them). */
 const WHOLE_GROUPS = new Set<Group>(["skill", "tool", "mcp"]);
-export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "unit", "card"] as const;
+export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "model", "effort", "unit", "card"] as const;
 /** The URL's values for a place, in one order, the defaults left out. */
 export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KEYS[number], string][] {
   if (!place) return [];
@@ -79,6 +82,8 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
     if (place.list.days) out.push(["bin", `${place.list.days.from}~${place.list.days.to}`]);
     if (place.list.group) out.push(["group", place.list.group]);
     if (place.list.group && place.list.member !== null) out.push(["member", place.list.member]);
+    if (place.list.filter?.model) out.push(["model", place.list.filter.model]);
+    if (place.list.filter?.effort) out.push(["effort", place.list.filter.effort]);
   }
   if (place.unit) out.push(["unit", place.unit]);
   if (place.card) out.push(["card", place.card.end ? `${place.card.length}~${place.card.end}` : place.card.length]);

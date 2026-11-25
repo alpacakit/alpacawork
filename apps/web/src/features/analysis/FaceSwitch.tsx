@@ -7,19 +7,22 @@ import { Seg, Shown } from "./parts";
 import { analysisHome, analysisSurfaces, belowLayer, type AnalysisPlace } from "./place";
 import { useTodayFinished } from "./data";
 
+/** Where the analysis was left, for coming back to it: one place for every switch that shows it (the bar's, its menu's). */
+let leftAnalysis: AnalysisPlace | null = null;
+
 /**
  * The bar's faces, beside the project's name: the list of tasks to work with (Use), and what the records count
  * (Analysis). A face to come (Settings) is one more item here. Coming back to the analysis finds it as it was left.
+ * `onChose` follows a choice (the folded bar's menu closes).
  */
-export function FaceSwitch({ className }: { className?: string }) {
+export function FaceSwitch({ className, onChose }: { className?: string; onChose?: () => void }) {
   const { t } = useTranslation("analysis");
   const analysis = useViewStore(state => state.analysis);
-  const left = useRef<AnalysisPlace | null>(null);
-  if (analysis) left.current = belowLayer(analysis, 0);
+  if (analysis) leftAnalysis = belowLayer(analysis, 0);
   return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
-    onChange={face => useViewStore.getState().showAnalysis(face === "analysis" ? left.current ?? analysisHome() : null)}
+    onChange={face => { useViewStore.getState().showAnalysis(face === "analysis" ? leftAnalysis ?? analysisHome() : null); onChose?.(); }}
     // Analysis pressed while a layer is open over it (a list, a task's values, the card): they close as × closes them.
-    onAgain={() => { if (analysisSurfaces(analysis).length) closeAnalysisLayer(0); }}
+    onAgain={() => { if (analysisSurfaces(analysis).length) closeAnalysisLayer(0); onChose?.(); }}
     items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;
 }
 

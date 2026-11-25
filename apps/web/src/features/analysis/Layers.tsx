@@ -1,3 +1,4 @@
+import { EFFORT_NONE } from "./series";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,12 @@ export function ListPane({ place, project, days }: { place: AnalysisPlace; proje
   const rows = pages.flatMap(page => page.rows);
   const zone = first?.head.timeZone ?? "UTC";
   // A row is named as its breakdown names it (its key is not its name); a whole of skills, tools or MCP by the breakdown.
-  const member = row ? rowName(row, t("tasks.noAgent")) : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
+  // An effort none was recorded for is named in the reader's language, as the chart names it.
+  const member = row ? list.group === "effort" && "effort" in row && row.effort === null ? t("usage.effortNone") : rowName(row, t("tasks.noAgent"))
+    : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
+  // The model and effort the launches were filtered to, so a list opened again from its address says what it holds.
+  const filter = [list.filter?.model, list.filter?.effort && (list.filter.effort === EFFORT_NONE ? `${t("usage.launchEffort")} ${t("usage.effortNone")}` : `${t("usage.launchEffort")} ${list.filter.effort}`)]
+    .filter(Boolean).join(t("sep"));
   const span = first?.head.period ?? days;
   const spanWords = !list.days && span ? spanLabel(span.from, span.to) : null;
   // Until its first page has come, the list stands as every part does (ReadPart): its shape, its failure, or offline.
@@ -43,7 +49,7 @@ export function ListPane({ place, project, days }: { place: AnalysisPlace; proje
   const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
     <h3 className="text-heading font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
-    <p className="mt-0.5 text-xs text-soft">{member}{member && spanWords && t("sep")}{spanWords}</p>
+    <p className="mt-0.5 text-xs text-soft">{[member, filter, spanWords].filter(Boolean).map((words, at) => <span key={at}>{at > 0 && t("sep")}{words}</span>)}</p>
     {rows.length ? <>
       {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
       <div className={cn("mt-4 grid min-h-7 items-end gap-x-3 border-b border-rule pb-1.5 text-xs text-soft", columns)}>
@@ -71,12 +77,14 @@ export function ListPane({ place, project, days }: { place: AnalysisPlace; proje
   </div>;
 }
 
-/** The breakdown's row a list was opened from: the answer that drew it (already read), and its row by key. */
+/**
+ * The breakdown's row a list was opened from, and its row by key: for a number of the span, the breakdown's own answer
+ * (already read); for a chart's bin, that bin's days, where the row may be one the span does not hold.
+ */
 function useRowOf(project: string | null, span: Span, list: ListPlace) {
   const bucket = useChoices(state => state.bucket);
   const group = list.group ?? "model", row = list.group !== null && list.member !== null;
-  // The same read as the breakdown's own (already held when the list was opened from it).
-  const read = useBreakdown(list.set === "used" ? "usage" : "tasks", project, span, bucket, group, row);
+  const read = useBreakdown(list.set === "used" ? "usage" : "tasks", project, list.days ?? span, bucket, group, row);
   const rows: (Parameters<typeof rowName>[0] & { key: string })[] = read.data?.breakdown.rows ?? [];
   return row ? rows.find(each => each.key === list.member) ?? null : null;
 }

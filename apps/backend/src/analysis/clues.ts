@@ -4,7 +4,7 @@
  */
 import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
 import type { AnalysisAcceptedTotals } from '@alpacawork/contract/analysis';
-import type { AnalysisFacts, Unit } from './facts.js';
+import { finishedClock, type AnalysisFacts, type Unit } from './facts.js';
 import { addSplit, emptySplit, splitWaits, type Activity, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
@@ -64,9 +64,10 @@ export function waitsOf(facts: AnalysisFacts, unit: Unit, now: number): WaitSpli
   if (found) return found;
   const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
   const from = Date.parse(unit.outcome.requestedAt), to = ended ? Date.parse(ended) : now;
-  const waits = (unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, now)).waits;
+  const clock = finishedClock(unit);
+  const waits = (clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, now)).waits;
   const id = unit.node.id;
   const { split, settled } = splitWaits(waits, facts.activity(), task => task === id || facts.rootOf.get(task) === id, now);
-  if (unit.clock && settled) kept.set(unit, split);
+  if (clock && settled) kept.set(unit, split);
   return split;
 }

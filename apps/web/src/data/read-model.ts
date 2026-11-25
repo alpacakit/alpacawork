@@ -8,7 +8,8 @@ import { hashKey, notifyManager, replaceEqualDeep, type Query as QueryRecord, ty
 import { projectShelfSchema, type ProjectShelfDTO, controlTaskHeadSchema, projectedIndexSchema, taskHistorySchema, taskProjectedPageSchema, taskProjectedViewSchema, taskTimelineLaneSchema, taskProjectedTimelineAxisSchema, taskProjectedSearchSchema, closedPageScope,
   type TaskPageRowDTO, type TaskRowDTO, type ProjectedIndexDTO, type TaskProjectedViewDTO, type ControlTaskHeadDTO, type ProjectionResourceKind, type TaskViewPlacementDTO, type TaskViewRunDTO, type PlacementDTO, type ControlRunDTO } from '@alpacawork/contract/control';
 import { noticeStateResponseSchema, personalSettingsResponseSchema } from '@alpacawork/contract';
-import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema } from '@alpacawork/contract/analysis';
+import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
+  analysisUsageSeriesViewSchema, analysisUsageViewSchema } from '@alpacawork/contract/analysis';
 import type { QueryCacheNotifyEvent } from '@tanstack/react-query';
 
 type Query = QueryRecord<any, any, any, any>;
@@ -94,7 +95,7 @@ const historyPages = pages(taskHistorySchema).refine(value => value.pages.length
 const taskPages = pages(taskProjectedPageSchema), searchPages = pages(taskProjectedSearchSchema);
 /** The analysis's reads kept as the list's are, by the command each reads. */
 const analysisViews = { tasks: analysisTasksViewSchema, usage: analysisUsageViewSchema, breakdown: analysisBreakdownViewSchema,
-  list: pages(analysisUnitListSchema), task: analysisUnitValuesSchema };
+  'usage-series': analysisUsageSeriesViewSchema, list: pages(analysisUnitListSchema), task: analysisUnitValuesSchema };
 export function readCodec(key: QueryKey): z.ZodType | undefined {
   const [kind, root, id, scope] = key;
   if (kind === 'index' && key.length === 1) return projectedIndexSchema;

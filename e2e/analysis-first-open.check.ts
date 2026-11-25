@@ -7,10 +7,10 @@ test("opening a share card shows its loading state and starts reading its number
     await cardCode;
     await route.continue();
   });
-  let requestedUsage = false;
+  let usageView: string | null | undefined;
   page.on("request", request => {
     const url = new URL(request.url());
-    if (url.pathname === "/api/commands/analysis/usage" && url.searchParams.get("by") === "model") requestedUsage = true;
+    if (url.pathname === "/api/commands/analysis/usage" && url.searchParams.get("by") === "model") usageView = url.searchParams.get("view");
   });
 
   try {
@@ -20,7 +20,7 @@ test("opening a share card shows its loading state and starts reading its number
     await open.click();
     const card = page.getByRole("dialog", { name: "Make a card" });
     await expect(card.getByRole("status", { name: "Loading" })).toBeVisible();
-    await expect.poll(() => requestedUsage).toBe(true);
+    await expect.poll(() => usageView).toBe("summary");
     await page.keyboard.press("Escape");
     await expect(card).toHaveCount(0);
     await expect(open).toBeFocused();
