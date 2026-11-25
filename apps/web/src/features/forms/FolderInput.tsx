@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 import { problemText } from "./problem-text";
 import { ReadFailure } from "@/components/ui/loadable";
 
-/** The most folders offered under the field while a path is typed. */
-const OFFERED = 6;
+/** The most folders offered under the field while a path is typed (they scroll past the first few). */
+const OFFERED = 50;
 /** How long Choose waits for this PC's own chooser: past the server's own bound (10 minutes), so the server ends it. */
 const CHOOSER_MS = 11 * 60_000;
 /** A screen opened at a loopback name is on the server's own PC, which can show its own folder chooser. */
@@ -29,7 +29,7 @@ export function typedFolder(value: string): { folder: string; start: string } | 
   return at === 0 ? { folder: "~/", start: "" } : { folder: value.slice(0, at), start: value.slice(at) };
 }
 const inside = (folder: string, name: string) => `${folder.replace(/\/+$/, "")}/${name}`;
-/** A path as a person reads it: under home as ~/…. */
+/** A path as a person reads it, and as the field holds it (the server reads `~` as home): under home as ~/…. */
 const fromHome = (path: string, home: string) => path === home ? "~" : path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 /** What the server said was wrong, in the reader's words. */
 
@@ -40,12 +40,13 @@ export function newNameProblem(name: string, taken: readonly string[]) {
 }
 
 /**
- * A field for a folder of this PC (where a project's code is), always filled with an absolute path. Typed, the folders
- * starting with the last part written are offered under it, and one taken goes on to its own (↑↓ to move, Enter or Tab
- * to take). Choose, on a screen opened on this PC, shows this PC's own folder chooser; elsewhere, or where it cannot be
- * shown, it opens a list to walk the folders instead: in, up, or back along the path, then use the one shown. The offers
- * and the list read the server's one list of a folder's folders; hidden ones are offered once a name starting with "."
- * is typed.
+ * A field for a folder of this PC (where a project's code is), always filled with an absolute path (under home as ~/…,
+ * which the server reads as home). Typed, the folders starting with the last part written are offered under it, and one
+ * taken goes on to its own (↑↓ to move, Enter or Tab to take). Choose, on a screen opened on this PC, shows this PC's
+ * own folder chooser; elsewhere, or where it cannot be shown, it opens a list to walk the folders instead: in, up, or
+ * back along the path (by keys too), and the field follows the folder walked to, so what the form saves is what is
+ * shown; Cancel puts back what the field had. The offers and the list read the server's one list of a folder's folders;
+ * hidden ones are offered once a name starting with "." is typed.
  */
 export function FolderInput({ value, onChange, onBlur, ref, className, placeholder, ...props }: Omit<ComponentProps<"input">, "value" | "onChange" | "onBlur"> & {
   value: string; onChange: (value: string) => void; ref?: Ref<HTMLInputElement>;
@@ -94,7 +95,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   const offering = focused && walking === false && dismissed !== value && offered.length > 0;
   // A name taken goes after the folder as the server read it: `~/co` becomes the absolute path.
   const take = (name: string) => {
-    onChange(`${inside(offer.data!.path, name)}/`);
+    onChange(`${fromHome(inside(offer.data!.path, name), offer.data!.home)}/`);
     setActive(-1);
     // The name just taken is at the end of the field: show it.
     requestAnimationFrame(() => { if (input.current) input.current.scrollLeft = input.current.scrollWidth; });
@@ -108,24 +109,28 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   const [failedAt, setFailedAt] = useState<string | null>(null);
   useEffect(() => { if (walking !== false && walk.data) setShown(walk.data); }, [walking, walk.data]);
   const list = useRef<HTMLDivElement>(null);
-  // A press that moves the list replaces the button pressed; the focus stays in the list rather than leave the field.
+  const folders = useRef<HTMLUListElement>(null);
+  // What the field had when the list opened (Cancel puts it back), whether the person has walked since (the field then
+  // follows), and whether the focus was in the list when it moved (it then goes on to the folder shown).
+  const before = useRef<string | null>(null);
+  const walked = useRef(false);
+  const refocus = useRef(false);
   const go = (path: string | null) => {
     setReason(null);
     setNaming(null);
+    if (walking === false) { before.current = value; walked.current = false; }
+    else { walked.current = true; refocus.current = !!list.current?.contains(document.activeElement); }
     setWalking(path);
-    requestAnimationFrame(() => {
-      const at = document.activeElement;
-      if (list.current && (!at || at === document.body || !list.current.contains(at) && at.getAttribute("role") === "dialog"))
-        list.current.querySelector<HTMLElement>("ul button, [data-folder-use]")?.focus();
-    });
   };
   const close = (used?: string) => {
     setNaming(null);
+    const restore = used === undefined && walking !== false && walked.current ? before.current : null;
     setWalking(false);
     setShown(null);
     setReason(null);
-    setDismissed(used ?? value);
+    setDismissed(used ?? restore ?? value);
     if (used !== undefined) onChange(used);
+    else if (restore !== null) onChange(restore);
     requestAnimationFrame(() => input.current?.focus());
   };
   // Esc ends the naming first, then the list.
@@ -159,9 +164,13 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     try {
       const { path } = await api.request("workspace/folders/new", madeFolderSchema, undefined,
         { path: shown.path, name: naming.trim() }, undefined, workspaceWriteBasis());
-      void queries.invalidateQueries({ queryKey: ["folders", root] });
-      setMade(path);
-      close(path);
+      await queries.invalidateQueries({ queryKey: ["folders", root] });
+      setMade(fromHome(path, shown.home));
+      // Made, it is walked into like any folder: the field follows, and more can be made inside it.
+      refocus.current = true;
+      walked.current = true;
+      setNaming(null);
+      setWalking(path);
     } catch (error) {
       setMakeFailure(problemText(error));
       requestAnimationFrame(() => nameInput.current?.focus());
@@ -176,7 +185,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     try {
       const query = new URLSearchParams({ title: t("folderInput.chooserTitle"), ...written ? { path: written } : {} });
       const { path } = await api.readWithin(`workspace/folders/choose?${query}`, chosenFolderSchema, CHOOSER_MS, ask.signal);
-      if (path !== null) { onChange(path); setMade(null); setDismissed(path); }
+      const home = start.data?.home;
+      const chosen = path === null ? null : home ? fromHome(path, home) : path;
+      if (chosen !== null) { onChange(chosen); setMade(null); setDismissed(chosen); }
       requestAnimationFrame(() => input.current?.focus());
     } catch {
       // Not shown (no desktop here, or it failed): the list instead.
@@ -198,13 +209,37 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   useEffect(() => { document.getElementById(`${id}-offered-${active}`)?.scrollIntoView({ block: "nearest" }); }, [id, active]);
   // A long path shows its end, the folder's own name, while the field is not being written in; so does the path walked.
   useEffect(() => { if (!focused && input.current) input.current.scrollLeft = input.current.scrollWidth; }, [focused, value]);
-  // Up from a folder, the focus goes to that folder's row, so walking on by keys starts where you were.
+  // A folder shown: the field follows it once the person has walked; the list starts at its top, or, up from a folder,
+  // at that folder's row; the focus, when it was in the list, goes to that row or the first; the list opened comes into
+  // view whole.
   const [cameFrom, setCameFrom] = useState<string | null>(null);
+  const opened = useRef(false);
   useEffect(() => {
-    if (!cameFrom || shown?.path !== walking) return;
-    list.current?.querySelector<HTMLElement>(`[data-folder-name="${CSS.escape(cameFrom)}"]`)?.focus();
+    // Set only when the folder asked for has been read (or the nearest above one not there yet).
+    if (!shown) return;
+    if (walked.current && fromHome(shown.path, shown.home) !== value) onChange(fromHome(shown.path, shown.home));
+    const rows = folders.current;
+    if (rows) rows.scrollTop = 0;
+    const from = cameFrom ? rows?.querySelector<HTMLElement>(`[data-folder-name="${CSS.escape(cameFrom)}"]`) : null;
+    from?.scrollIntoView({ block: "nearest" });
+    if (refocus.current || from) (from ?? rows?.querySelector<HTMLElement>("[data-folder-name]") ?? list.current?.querySelector<HTMLElement>("[data-folder-use]"))?.focus();
+    refocus.current = false;
     setCameFrom(null);
-  }, [cameFrom, shown, walking]);
+    if (!opened.current) { opened.current = true; list.current?.scrollIntoView({ block: "nearest" }); }
+    // Only a new folder shown moves the field and the focus; the field's own changes do not.
+  }, [shown]);
+  useEffect(() => { if (walking === false) opened.current = false; }, [walking]);
+  // In the list, the arrows move between folders, → or Enter goes in, ← or Backspace goes up; Tab leaves it.
+  const onListKey = (event: KeyboardEvent<HTMLUListElement>) => {
+    const row = (event.target as HTMLElement).closest<HTMLElement>("[data-folder-name]");
+    if (!row || !shown) return;
+    const all = [...folders.current!.querySelectorAll<HTMLElement>("[data-folder-name]")];
+    const at = all.indexOf(row);
+    const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: all.length - 1 }[event.key as "Home"];
+    if (to !== undefined) { event.preventDefault(); all[Math.max(0, Math.min(all.length - 1, to))]?.focus(); return; }
+    if (event.key === "ArrowRight") { event.preventDefault(); row.click(); return; }
+    if ((event.key === "ArrowLeft" || event.key === "Backspace") && shown.parent) { event.preventDefault(); refocus.current = true; back(shown.parent); }
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (!offering || event.nativeEvent.isComposing) return;
@@ -229,10 +264,10 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     const base = path === home || path.startsWith(`${home}/`) ? home : "/";
     const steps = path.slice(base.length).split("/").filter(Boolean);
     const at = (count: number) => count ? inside(base, steps.slice(0, count).join("/")) : base;
-    const first = Math.max(0, steps.length - 2);
+    const first = Math.max(0, steps.length - 3);
     const near = steps.slice(first).map((step, index) => ({ label: step, path: at(first + index + 1) }));
     return [{ label: base === home ? "~" : "/", path: base },
-      ...steps.length > 2 ? [{ label: "…", path: at(steps.length - 2) }] : [], ...near];
+      ...steps.length > 3 ? [{ label: "…", path: at(steps.length - 3) }] : [], ...near];
   };
   // Back to a folder above, the focus goes to the row of the folder on the way to where you were.
   const back = (to: string) => {
@@ -258,7 +293,11 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         role="combobox" aria-autocomplete="list" aria-expanded={offering} aria-controls={offering ? `${id}-offered` : undefined}
         aria-activedescendant={offering && active >= 0 ? `${id}-offered-${active}` : undefined}
         className="min-w-0 flex-1 font-mono"
-        onChange={(event) => { onChange(event.target.value); setActive(-1); setDismissed(null); setMade(null); }}
+        onChange={(event) => {
+          // Typing goes back to the offers: the list is left where it is, without putting back what it had.
+          if (walking !== false) { setWalking(false); setShown(null); setNaming(null); setReason(null); }
+          onChange(event.target.value); setActive(-1); setDismissed(null); setMade(null);
+        }}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown} />
       <Button type="button" variant="outline" aria-expanded={walking !== false} data-folder-walk disabled={asking !== null}
@@ -269,12 +308,12 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
       {/* Hidden, not removed, when the field is left: a node removed while the focus is between two elements makes
           the dialog take the focus back to itself (Radix FocusScope), so Tab would not reach the next control. */}
       {offered.length > 0 && <ul id={`${id}-offered`} role="listbox" hidden={!offering} aria-label={t("folderInput.offered")}
-        className="absolute inset-x-0 top-full z-10 m-0 mt-1 list-none rounded-sm border border-lit-line bg-raised p-1 shadow-float">
+        className="absolute inset-x-0 top-full z-10 m-0 mt-1 max-h-[13.5rem] list-none overflow-auto rounded-sm border border-lit-line bg-raised p-1 shadow-float">
       {offered.map((name, at) => <li key={name} id={`${id}-offered-${at}`} role="option" aria-selected={at === active}
         onMouseDown={(event) => event.preventDefault()} onClick={() => take(name)}
         className={cn(row, "cursor-pointer font-mono", at === active && "bg-hover")}>
         <Icon name="folder" className="size-3.5 flex-none text-soft" />
-        <span className="min-w-0 truncate">{name}</span>
+        <span className="min-w-0 truncate" title={name}>{name}</span>
       </li>)}
       </ul>}
     </div>
@@ -289,8 +328,11 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     {walking !== false && <div ref={list} data-folder-list className="flex flex-col rounded-sm border border-line bg-lit">
       {/* One line however deep: where it starts (~ or /) always shows, the steps between give way first, and the
           folder you are in is cut last. The list below never moves. */}
+      <div className="flex flex-none items-center gap-0.5 border-b border-line px-1">
+      <Button type="button" variant="ghost" size="icon" aria-label={t("folderInput.up")} title={t("folderInput.up")} disabled={!shown?.parent}
+        className="flex-none narrow:size-11" onClick={() => back(shown!.parent!)}><Icon name="arrowUp" className="size-3.5" /></Button>
       <nav aria-label={t("folderInput.path")}
-        className="flex h-9 flex-none items-center gap-0.5 overflow-hidden border-b border-line px-1 font-mono text-sm whitespace-nowrap narrow:h-11">
+        className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden font-mono text-sm whitespace-nowrap narrow:h-11">
         {shown && crumbs(shown.path, shown.home).map((crumb, at, all) => {
           const last = at === all.length - 1;
           // The folder above keeps its name up to almost half the line (a third on a phone); the folder you are in
@@ -305,21 +347,18 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
           </span>;
         })}
       </nav>
+      <Button type="button" variant="ghost" size="icon" data-folder-new aria-label={t("folderInput.make")} title={t("folderInput.make")}
+        disabled={!shown || naming !== null} className="flex-none narrow:size-11" onClick={startNaming}><Icon name="plus" className="size-3.5" /></Button>
+      </div>
       {/* One height for every folder (cut through a row, so a list that goes on looks it): walking never resizes the
           dialog. What cannot be read and what is left out are said inside it. */}
-      <ul aria-label={t("folderInput.inside")} className="m-0 h-[13.5rem] list-none overflow-auto p-1 narrow:h-[11.25rem]">
+      <ul ref={folders} aria-label={t("folderInput.inside")} onKeyDown={onListKey}
+        className="m-0 h-[13.5rem] list-none overflow-auto p-1 narrow:h-[15rem]">
         {reason && <li className="px-2 py-1.5"><ReadFailure what={reason} retry={() => (walking || null) === failedAt
           // Still at the folder that could not be read: read it again; the failure stands until the answer says otherwise.
           ? void walk.refetch().then(result => { if (!result.isError) setReason(null); })
           : go(failedAt)} /></li>}
-        {shown?.parent && <li><button type="button" onClick={() => back(shown.parent!)}
-          className={cn(row, "text-muted")}>
-          <Icon name="up" className="size-3.5 flex-none" />{t("folderInput.up")}
-        </button></li>}
-        {/* Made here, a new folder is named in the place of this row, at the top of the folders it joins. */}
-        {shown && naming === null && <li><button type="button" data-folder-new onClick={startNaming} className={cn(row, "text-muted")}>
-          <Icon name="plus" className="size-3.5 flex-none" />{t("folderInput.make")}
-        </button></li>}
+        {/* A new folder is named at the top of the folders it joins. */}
         {shown && naming !== null && <li data-folder-naming className="my-0.5 flex flex-col gap-1 rounded-xs border border-line bg-bg p-1.5">
           <div className="flex items-center gap-1.5">
             <Icon name="folder" className="ml-0.5 size-3.5 flex-none text-soft" />
@@ -347,13 +386,14 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
               onClick={() => go(inside(shown.path, naming.trim()))}>{t("folderInput.openExisting")}</button>}
           </p>
         </li>}
-        {shown?.folders.map((name) => <li key={name}><button type="button" data-folder-name={name} onClick={() => go(inside(shown.path, name))}
-          className={cn(row, "font-mono")}>
+        {/* One stop for Tab: the first folder; the arrows move between them. */}
+        {shown?.folders.map((name, at) => <li key={name}><button type="button" data-folder-name={name} tabIndex={at === 0 ? 0 : -1}
+          onClick={() => go(inside(shown.path, name))} className={cn(row, "font-mono focus-visible:bg-hover")}>
           <Icon name="folder" className="size-3.5 flex-none text-soft" />
-          <span className="min-w-0 flex-1 truncate">{name}</span>
+          <span className="min-w-0 flex-1 truncate" title={name}>{name}</span>
           <Icon name="right" className="size-3 flex-none text-soft" />
         </button></li>)}
-        {shown && !shown.folders.length && <li className="px-2 py-1.5"><Message tone="empty" size="line" icon="folder" title={t("folderInput.empty")} /></li>}
+        {shown && !shown.folders.length && <li className="px-2 py-1.5"><Message tone="empty" size="line" title={t("folderInput.empty")} /></li>}
         {!shown && walk.isFetching && <li className="px-2 py-1.5"><Message tone="waiting" size="line" live title={t("folderInput.reading")} /></li>}
         {shown?.truncated && <li className="px-2 py-1.5"><Message tone="info" size="line" title={t("folderInput.truncated", { limit: shown.folders.length })} /></li>}
       </ul>
@@ -361,7 +401,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         <Button type="button" variant="ghost" className="narrow:min-h-control-lg" onClick={() => close()}>{t("folderInput.close")}</Button>
         {/* Not the dialog's own primary button: one dark button says where the form ends. */}
         <Button type="button" variant="outline" data-folder-use className="narrow:min-h-control-lg" disabled={!shown}
-          onClick={() => close(shown!.path)}>{t("folderInput.use")}</Button>
+          onClick={() => close(fromHome(shown!.path, shown!.home))}>{t("folderInput.use")}</Button>
       </div>
     </div>}
   </div>;

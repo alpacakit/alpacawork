@@ -19,7 +19,9 @@ function Field({ submit = vi.fn() }: { submit?: () => void }) {
 }
 async function naming() {
   fireEvent.click(screen.getByRole("button", { name: "Choose" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Create a new folder" }));
+  // Offered once the folder is read.
+  await waitFor(() => expect((screen.getByRole("button", { name: "Create a new folder" }) as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "Create a new folder" }));
   return screen.getByRole("textbox", { name: "New folder name" });
 }
 const listing = { path: "/code", parent: "/", home: "/home/me", folders: ["existing"], truncated: false };
@@ -51,11 +53,11 @@ describe("making a folder in the list", () => {
     expect(newNameProblem(" existing ", ["existing"])).toBe("taken");
   });
 
-  it("Enter creates once despite two presses, never submits the form, and selects the absolute path", async () => {
+  it("Enter creates once despite two presses, never submits the form, and goes into the new folder", async () => {
     let finish!: (value: { path: string }) => void;
     const result = new Promise<{ path: string }>((resolve) => { finish = resolve; });
-    const request = vi.fn((url: string) => url === "/api/workspace/folders/new"
-      ? result.then(value => Response.json(value)) : Promise.resolve(Response.json(listing)));
+    const request = vi.fn((url: string) => url === "/api/workspace/folders/new" ? result.then(value => Response.json(value))
+      : Promise.resolve(Response.json(url.includes("shop") ? { ...listing, path: "/code/shop", parent: "/code", folders: [] } : listing)));
     vi.stubGlobal("fetch", request);
     const submit = vi.fn();
     render(<TestWorkspace><Field submit={submit} /></TestWorkspace>);
@@ -71,7 +73,9 @@ describe("making a folder in the list", () => {
       ["/api/workspace/folders/new", expect.objectContaining({ method: "POST", body: JSON.stringify({ path: "/code", name: "shop" }) })],
     ]);
     await act(async () => finish({ path: "/code/shop" }));
-    expect(screen.getByRole("combobox").getAttribute("value")).toBe("/code/shop");
+    // The list walks into it and the field follows; using it closes the list.
+    await waitFor(() => expect(screen.getByRole("combobox").getAttribute("value")).toBe("/code/shop"));
+    fireEvent.click(screen.getByRole("button", { name: "Use this folder" }));
     expect(screen.getByText("This is a newly created folder.")).toBeTruthy();
     expect(document.querySelector("[data-folder-list]")).toBeNull();
     expect(submit).not.toHaveBeenCalled();
@@ -145,5 +149,41 @@ describe("choosing on this PC", () => {
     render(<TestWorkspace><Field /></TestWorkspace>);
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));
     await waitFor(() => expect(document.querySelector("[data-folder-list]")).toBeTruthy());
+  });
+});
+
+describe("walking the list", () => {
+  const tree: Record<string, string[]> = { "/code": ["shop", "blog"], "/code/shop": ["src"], "/code/blog": [] };
+  const read = (url: string) => {
+    const path = new URL(url, "http://localhost").searchParams.get("path") ?? "/code";
+    return Response.json({ path, parent: path === "/" ? null : path.replace(/\/[^/]*$/, "") || "/", home: "/home/me",
+      folders: tree[path] ?? [], truncated: false });
+  };
+  it("the field follows the folder walked to, by keys too, and Cancel puts back what it had", async () => {
+    vi.spyOn(api, "readWithin").mockImplementation(noChooser);
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(read(url))));
+    render(<TestWorkspace><Field /></TestWorkspace>);
+    const field = screen.getByRole("combobox");
+    fireEvent.click(screen.getByRole("button", { name: "Choose" }));
+    const shop = await screen.findByRole("button", { name: "shop" });
+    expect(field.getAttribute("value")).toBe("/code");
+    shop.focus();
+    fireEvent.keyDown(shop, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "blog" }));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    fireEvent.click(document.activeElement!);
+    // In, the field follows and the focus stays in the list.
+    await waitFor(() => expect(field.getAttribute("value")).toBe("/code/shop"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "src" })));
+    // Back up, the focus is on the folder come from.
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "shop" })));
+    expect(field.getAttribute("value")).toBe("/code");
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    await waitFor(() => expect(field.getAttribute("value")).toBe("/code/shop"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(field.getAttribute("value")).toBe("/code");
+    expect(document.querySelector("[data-folder-list]")).toBeNull();
   });
 });
