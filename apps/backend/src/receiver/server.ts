@@ -786,6 +786,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
               return new Response(projection.index(), { headers: jsonHeaders });
             },
             readOperation, opId: c.req.header('x-alpacawork-op-id'),
+            // The listener answers only loopback names and the public one, so any other is this PC.
+            local: c.req.header('host') !== publicHost && c.req.header('sec-fetch-site') === 'same-origin', signal: c.req.raw.signal,
             grantFileWrite: (task: string) => fileOptions.authorizeWrite(c.req.raw, task),
             fileChanged: attachmentChanged };
           if (runs) {

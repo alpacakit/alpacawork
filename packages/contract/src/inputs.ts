@@ -274,6 +274,8 @@ export const foldersInput = z.object({ path: z.string().trim().optional(), prefi
   hidden: z.boolean().optional() });
 export const makeFolderInput = z.object({ path: z.string().trim(), name: z.string().trim().refine(name => !folderNameProblem(name),
   { message: 'This folder name cannot be used', params: { kind: 'folder_name' } }) });
+/** Where this PC's own chooser opens (a folder that is not there opens where listing starts) and the title it shows. */
+export const chooseFolderInput = z.object({ path: z.string().trim().optional(), title: z.string().trim().min(1).max(200) });
 export const configSetInput = configSetShape.transform((value, context) => {
   const bytes = new TextEncoder().encode(value.config).length + new TextEncoder().encode(value.agents).length;
   if (bytes > MAX_DOCUMENT) issue(context, '', 'too_big', 'Settings must be at most 1 MiB');

@@ -323,6 +323,8 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('serve_only_available_from_local_cli') }).strict(),
   z.object({ kind: z.literal('push_notifications_not_running') }).strict(),
   z.object({ kind: z.literal('host_status_not_running') }).strict(),
+  z.object({ kind: z.literal('folder_chooser_only_on_this_pc') }).strict(),
+  z.object({ kind: z.literal('folder_chooser_unavailable') }).strict(),
   z.object({ kind: z.literal('host_episode_not_recorded'), id: z.string() }).strict(),
   z.object({ kind: z.literal('returns_yielded_task_write') }).strict(),
   z.object({ kind: z.literal('invalid_task_file_path') }).strict(),
