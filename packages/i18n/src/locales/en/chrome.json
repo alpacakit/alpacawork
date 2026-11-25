@@ -21,11 +21,8 @@
   "limits": {
     "barLabel": "AI plan limits: {{agent}}, {{window}}: {{percent}} used",
     "barStopped": "AI plan limits: {{agent}}: {{state}}",
-    "barSwitched_one": "AI plan limits: {{spent}} reached its limit; {{state}}",
-    "barSwitched_other": "AI plan limits: {{spent}} reached their limits; {{state}}",
     "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
     "barUnlimited": "AI plan limits: no limit holds {{agent}} now",
-    "instead": "In use instead",
     "none": "No limits apply now",
     "readAgo_one": "Updated {{count}} min ago",
     "readAgo_other": "Updated {{count}} min ago",
@@ -43,11 +40,6 @@
     "stopped": "Stopped",
     "stoppedUntil": "Stopped until {{when}}",
     "stoppedUntilShort": "Until {{when}}",
-    "switched": {
-      "limited": "{{agent}} works instead, {{window}}: {{percent}} used",
-      "unknown": "{{agent}}'s limits could not be read",
-      "unlimited": "{{agent}} works instead, with no limit"
-    },
     "title": "AI plan limits",
     "unavailable": "Could not be read. Check its sign-in",
     "unsupported": "Does not provide its limits",

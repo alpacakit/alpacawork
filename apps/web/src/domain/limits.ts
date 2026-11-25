@@ -2,53 +2,46 @@
 import type { AgentLimits, AgentLimitsResponse, LimitWindow } from "@alpacawork/contract/agent-limits";
 
 /** From here a window is close to its limit, and at 100 it is spent. */
-export const LIMIT_NEAR = 80;
+const LIMIT_NEAR = 80;
 export type LimitTone = "normal" | "near" | "spent";
 export const limitTone = (percent: number): LimitTone => percent >= 100 ? "spent" : percent >= LIMIT_NEAR ? "near" : "normal";
 
 /** The window that stops the agent first: the fullest one. */
-export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
+const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
   windows.reduce<LimitWindow | null>((tightest, window) => !tightest || window.usedPercent > tightest.usedPercent ? window : tightest, null);
 
 /** The windows that hold a stack row back: the account's own, and its model's (the provider's "Fable", the row's "fable"). */
-export const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
+const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
 /** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
-export const holds = (window: LimitWindow, now: number): boolean =>
+const holds = (window: LimitWindow, now: number): boolean =>
   limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
 
 /**
- * What the bar shows, from the stack tasks run on: the first row that can work now, after `spent`, the other agents of
- * the rows before it that their limits hold back.
+ * What the bar shows, from the stack tasks run on: the first row that can work now.
  * - `limited`: the row's fullest window that holds it.
  * - `unknown`: its limits could not be read; another agent's figure never stands as its own.
  * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
  * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
  * Null, and no bar, until some agent's limits are known.
  */
-type Spent = { spent: AgentLimits[] };
 export type BarLimit =
-  | { kind: "limited"; agent: AgentLimits; window: LimitWindow } & Spent
-  | { kind: "unknown" | "unlimited"; agent: AgentLimits } & Spent
-  | { kind: "stopped"; agent: AgentLimits; window: LimitWindow };
+  | { kind: "limited" | "stopped"; agent: AgentLimits; window: LimitWindow }
+  | { kind: "unknown" | "unlimited"; agent: AgentLimits };
 export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
   if (!agents.some(entry => entry.state === "ok")) return null;
-  const held: { agent: AgentLimits; windows: LimitWindow[] }[] = [];
-  // A model of the same agent standing in is the same agent to the reader: only others are said to be spent.
-  const spentBefore = (agent: AgentLimits) =>
-    [...new Map(held.filter(entry => entry.agent.adapter !== agent.adapter).map(entry => [entry.agent.adapter, entry.agent])).values()];
+  let first: { agent: AgentLimits; windows: LimitWindow[] } | null = null;
   for (const row of stack) {
     const agent = agents.find(entry => entry.adapter === row.adapter);
     if (!agent) continue;
-    if (agent.state === "unavailable") return { kind: "unknown", agent, spent: spentBefore(agent) };
+    if (agent.state === "unavailable") return { kind: "unknown", agent };
     const windows = rowWindows(agent.windows, row.model);
-    if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent, spent: spentBefore(agent) };
+    if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent };
     const holding = windows.filter(window => holds(window, now));
-    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)!, spent: spentBefore(agent) };
-    held.push({ agent, windows: holding });
+    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)! };
+    first ??= { agent, windows: holding };
   }
-  const first = held[0];
   if (!first) return null;
   // It works again once its last holding window resets.
   const until = (window: LimitWindow) => window.resetsAt ? Date.parse(window.resetsAt) : Infinity;
