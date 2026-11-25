@@ -56,7 +56,7 @@ export const hostSampleSchema = z.object({
 }).strict();
 export type HostSampleDTO = z.infer<typeof hostSampleSchema>;
 
-/** `GET /api/host/status`: everything the Machine status tab draws. OS-independent normalized measurements. */
+/** `GET /api/host/status`: everything the Resources tab draws. OS-independent normalized measurements. */
 export const hostStatusSchema = z.discriminatedUnion('supported', [
   z.object({ supported: z.literal(false), platform: z.string() }).strict(),
   z.object({

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { heaviestText, type HostEpisode, type HostKind, type HostStatus } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { useWorkspaceInfo } from "@/data/queries";
 import { resources } from "@/data/resources";
 import { episodeReasons, formatGigabytes, formatPercent, formatVramUsed, gpuModels, spanMinutes, sparkShape, type SparkPoint } from "@/domain/host";
@@ -127,12 +128,17 @@ function GpuTile({ gpu, label }: { gpu: Gpu; label: string }) {
     </div>} />;
 }
 
+/** One measure's frame; while its measure is `tight` it takes the warning colour and a mark, so the problem is seen and heard. */
 function Tile({ label, value, side, tight, chart, note = [], gpu }: { label: string; value: ReactNode; side?: string; tight: boolean;
   chart?: ReactNode; note?: readonly string[]; gpu?: string }) {
+  const { t } = useTranslation("panels");
   return (
     <div data-host-meter data-host-gpu={gpu} data-tight={tight || undefined}
       className={cn("flex min-w-0 flex-col rounded-lg border px-3 pt-2 pb-2.5", tight ? "border-warn bg-strain" : "border-line")}>
-      <span className={cn("truncate text-xs", tight ? "text-warn" : "text-muted")}>{label}</span>
+      <span className={cn("flex min-w-0 items-center gap-1 text-xs", tight ? "text-warn" : "text-muted")}>
+        {tight && <Icon name="caution" className="size-3.5 shrink-0" />}
+        <span data-host-label className="truncate">{label}</span>
+        {tight && <span className="sr-only">{t("host.tight")}</span>}</span>
       <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}
         {side && <span className="ml-1.5 text-sm font-normal text-muted">{side}</span>}</span>
       {chart && <div className="mt-0.5">{chart}</div>}

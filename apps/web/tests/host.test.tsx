@@ -93,16 +93,16 @@ test("each GPU shows its use, its VRAM in use and who holds it, and leaves out w
     users: [{ name: "ollama", memoryBytes: 1 * GB, runId: "R2", taskId: null }] }] } });
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
   const only = await screen.findByText(i18n.t("panels:host.gpu"), { selector: "[data-host-gpu] span" });
-  expect(within(only.parentElement!).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
-  expect(within(only.parentElement!).getByText(`${i18n.t("ui:role.coordinator")} ollama 1.0 GB`), "a Run without a Task is named as the coordinator's").toBeTruthy();
+  expect(within(only.closest("[data-host-gpu]") as HTMLElement).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
+  expect(within(only.closest("[data-host-gpu]") as HTMLElement).getByText(`${i18n.t("ui:role.coordinator")} ollama 1.0 GB`), "a Run without a Task is named as the coordinator's").toBeTruthy();
 });
 
 test("only the measures tight now are marked, not one that was tight earlier in the same stretch", async () => {
   const episode = { ...status.episodes[0]!, end: null, kinds: ["cpu", "memory"] as ("cpu" | "memory")[] };
   vi.spyOn(api, "request").mockResolvedValue({ ...status, current: episode, episodes: [episode], tight: ["memory"] });
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
-  await screen.findByText(i18n.t("panels:host.tight"));
-  const marked = [...document.querySelectorAll("[data-host-meter][data-tight]")].map(frame => frame.firstElementChild!.textContent);
+  await screen.findAllByText(i18n.t("panels:host.tight"));
+  const marked = [...document.querySelectorAll("[data-host-meter][data-tight] [data-host-label]")].map(label => label.textContent);
   expect(marked).toEqual([i18n.t("panels:host.memory")]);
 });
 
