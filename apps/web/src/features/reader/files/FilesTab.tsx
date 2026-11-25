@@ -25,8 +25,8 @@ import { useFileShelves } from "./file-shelves";
 
 /**
  * The Files tab as a review sheet. The deliverables (fileShelves) are on one page in the order a reviewer reads them:
- * the files the Deliverables field lists, under its names and in its order, then documents, then images grouped into
- * comparable sets with every version visible. Folders holding deliverables are filters above the sheet, the work files
+ * the files the Deliverables field lists, under its names, then documents, then images grouped into comparable sets with
+ * every version visible; each part newest first. Folders holding deliverables are filters above the sheet, the work files
  * the one filter set apart. Opening an image uses the shared slider; a document is read in the viewer (openView),
  * beside the sheet on a wide computer; the URL's `path` is the folder either way.
  */
