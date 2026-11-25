@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { format } from "./format";
 import { useUsageSeries } from "./data";
 import { Seg, useChoices } from "./parts";
-import { colourBook, EFFORT_NONE, faceAnswer, filtered, partsOf, type LaunchFilter, type SeriesBy, type SeriesPart } from "./series";
+import { colourBook, EFFORT_NONE, faceAnswer, filtered, NO_FILTER, partsOf, type LaunchFilter, type SeriesBy, type SeriesPart } from "./series";
 import type { Bin, DayList, PartItem, RowSay } from "./rows";
 import type { Bucket, UsageSeriesView, UsageView } from "./contract";
 type Head = Pick<UsageView, "head">;
@@ -46,8 +46,9 @@ export function useLaunches(bins: Bin[], face: Head, answers: LaunchAnswers, spa
   const failed = [efforts, ...own ? [chartRead, spanRead] : []].find(read => read.isError);
   const bookOf = (axis: SeriesBy) => colourBook(axis, (axis === "model" ? answers.models : effortsShown!).groups);
   const counts = onBins(chart) ? partsOf(bookOf(chart.by), chart) : null;
-  // The face's span (read with it) is its own; the row's stands only on the face's span.
-  const spanCounts = partsOf(bookOf(inSpan.by), inSpan);
+  // The span's numbers, by the same rule: one for other days (read again across midnight, say) is none, and the left
+  // then says the use's launches alone, with no parts to open.
+  const spanCounts = onSpan(inSpan) ? partsOf(bookOf(inSpan.by), inSpan) : null;
   const shownBy = chart.by;
   const nameOf = (part: SeriesPart) => shownBy === "effort" && part.value === null ? t("usage.effortNone") : part.label;
   const choicesOf = (axis: SeriesBy, view: UsageSeriesView | undefined) => view ? partsOf(colourBook(axis, view.groups), { ...view, points: [] }).parts
@@ -56,14 +57,14 @@ export function useLaunches(bins: Bin[], face: Head, answers: LaunchAnswers, spa
     by, filter, current, ready: !!counts,
     failure: failed ? { error: failed.error, retry: () => { for (const read of [efforts, chartRead, spanRead]) if (read.isError) void read.refetch(); } } : null,
     /** What the numbers shown were counted under: a list opened from them takes it. */
-    shown: { by: shownBy, filter: counts?.filter ?? spanCounts.filter, spanFilter: spanCounts.filter },
+    shown: { by: shownBy, filter: counts?.filter ?? spanCounts?.filter ?? NO_FILTER, spanFilter: spanCounts?.filter ?? NO_FILTER },
     /** Whether the numbers shown are filtered (the launches of the tasks finished, and their line, are then not said). */
-    shownFiltered: filtered(spanCounts.filter),
+    shownFiltered: !!spanCounts && filtered(spanCounts.filter),
     total: (at: number) => chart.points[at]?.total ?? 0,
-    spanTotal: inSpan.total,
+    spanTotal: spanCounts ? inSpan.total : null,
     /** A bin's parts, those with launches, in the order they stack. */
     parts: (at: number) => counts ? counts.points[at]!.map(([index, value]) => ({ part: counts.parts[index]!, value })) : [],
-    spanParts: () => spanCounts.parts.flatMap((part, index) => spanCounts.totals[index]! > 0 ? [{ part, value: spanCounts.totals[index]! }] : []),
+    spanParts: () => !spanCounts ? [] : spanCounts.parts.flatMap((part, index) => spanCounts.totals[index]! > 0 ? [{ part, value: spanCounts.totals[index]! }] : []),
     nameOf, member: (part: SeriesPart) => ({ group: shownBy, member: part.key }),
     choices: { model: choicesOf("model", answers.models), effort: choicesOf("effort", effortsShown ?? undefined) },
   };
@@ -87,7 +88,7 @@ export function launchesSay(launches: Launches, name: string, line: RowSay["line
 
 /** The span's launches by colour on the left, each opening its own launches of the span. */
 export function launchesParts(launches: Launches, open: Open): PartItem[] {
-  const all = launches.spanTotal;
+  const all = launches.spanTotal ?? 0;
   return launches.spanParts().map(({ part, value }) => ({
     color: part.color, name: launches.nameOf(part),
     value: <b className="font-semibold tabular-nums">{format("times", value)}</b>,

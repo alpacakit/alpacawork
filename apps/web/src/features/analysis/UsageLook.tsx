@@ -165,7 +165,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       <Row row={first + 2} left={<>
         {/* While a filter's numbers come, those it replaces stand faint; the choices above them stay in reach. */}
         <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}>
-          <Num className="" label={t("usage.launches")} kind="times" value={launches.shownFiltered ? launches.spanTotal : now.launches} previous={null} length={length}
+          <Num className="" label={t("usage.launches")} kind="times" value={launches.shownFiltered ? launches.spanTotal ?? now.launches : now.launches} previous={null} length={length}
             onOpen={() => open({ set: "used", value: "launches", filter: launches.shown.spanFilter })} />
         </div>
         <LaunchControls launches={launches} />
