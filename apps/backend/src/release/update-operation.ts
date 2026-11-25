@@ -78,11 +78,13 @@ const inputFor = (op: UpdateOperation) => ({ opId:op.opId, candidateId:op.candid
 function response(op: UpdateOperation, result: string | null = null) {
   return { ...inputFor(op), terminal: result === 'cancelled' ? 'cancelled' as const : null };
 }
-/** Discovery publication replaces the offer atomically and never changes an accepted operation. Caller holds L. */
+/** Discovery publication replaces the offer atomically and never changes an accepted operation. Caller holds L.
+ * Observing the same candidate again keeps the offer, so a review the person has open stays confirmable. */
 export function offerUpdateLocked(releases: string, candidate: NpmCandidate | null): void {
   const state = readUpdateRecord(releases); compactUpdateRecord(releases, state);
   if (state.operation) return;
-  state.offer = candidate; saveUpdateRecord(releases, state);
+  const same = state.offer && candidate && stable({ ...state.offer, candidateId: null }) === stable({ ...candidate, candidateId: null });
+  state.offer = same ? state.offer : candidate; saveUpdateRecord(releases, state);
 }
 export async function reviewUpdate(workspace: string, candidateId?: string) {
   try {
