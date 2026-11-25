@@ -142,6 +142,8 @@ const paths = {
   sidebar: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></>,
   /* Save a file as it is: an arrow down onto the ground it lands on. */
   download: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />,
+  /* Hand to another app: an arrow up out of the tray it leaves. */
+  share: <path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M8 11H5.5v9.5h13V11H16" />,
   image: (
     <>
       <rect x="3.5" y="5" width="17" height="14" rx="1.5" />

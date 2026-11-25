@@ -125,7 +125,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const picks = facts ? cardPicks(choice, facts) : null;
   const [sharing] = useState(canShareFiles);
   const [copying] = useState(canCopyPictures);
-  const postHint = useId();
+  const postHint = useId(), imageName = useId(), shareHint = useId();
   // As the analysis says it: what failed, no record for these days, or a wait.
   const failed = tasks.error ?? usage.error;
   const state = svg ? null : failed ? <p className="text-soft">{failed.message}</p>
@@ -185,18 +185,24 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
     <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
-    <div className="mt-4 flex flex-wrap items-center gap-2 narrow:[&>button]:min-h-10">
-      {/* Opening the X composer leads, black on a light page and white on a dark one. Saving,
-          copying and the device's own sharing stand beside it, quieter. */}
+    {/* Two ways out, each saying what it does. Posting leads: X's post opens with the card's words, and the picture
+        follows by the clipboard or the downloads, so the step left to the person stands beside the button. Under it the
+        picture alone, kept, copied or handed to another app; sharing hands over no words, and says so. */}
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
       <Button disabled={!current} onClick={post} aria-describedby={postHint}
-        className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
+        className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px narrow:w-full dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
         <XMark />{t("card.post")}</Button>
-      <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
-      <Button variant="outline" disabled={!current} onClick={copy} className="active:translate-y-px"><Icon name="copy" className="size-3.5" />{t("card.copy")}</Button>
-      {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} className="active:translate-y-px">{t("card.share")}</Button>}
+      <p id={postHint} className="min-w-0 flex-1 basis-60 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
     </div>
-    {/* What posting will do with the picture, said before it is pressed. */}
-    <p id={postHint} className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    <div role="group" aria-labelledby={imageName} className="mt-5">
+      <h4 id={imageName} className="mb-1 text-xs font-normal text-soft">{t("card.image")}</h4>
+      <div className="flex flex-wrap gap-2 narrow:[&>button]:min-h-10">
+        <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
+        <Button variant="outline" disabled={!current} onClick={copy} className="active:translate-y-px"><Icon name="copy" className="size-3.5" />{t("card.copy")}</Button>
+        {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} aria-describedby={shareHint} className="active:translate-y-px"><Icon name="share" className="size-3.5" />{t("card.share")}</Button>}
+      </div>
+      {sharing && <p id={shareHint} className="mt-2 text-xs text-soft">{t("card.shareHint")}</p>}
+    </div>
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
