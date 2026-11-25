@@ -91,14 +91,18 @@ export function Thinking({ turn }: { turn: { id: string; at: string } }) {
 export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | 'status' | 'workedBy'> }) {
   const { t } = useTranslation('ui'), { t: p } = useTranslation('people');
   const store = useContext(WorkspaceContext);
-  const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
   const conversation = useConversation(state => state.conversation?.id);
+  // Only this turn's work is taken: any other turn's (the one at work, for an answered turn) is null here, so its updates
+  // draw nothing again on turns they are not about.
+  const received = useSyncExternalStore(store?.subscribe ?? noStore, () => {
+    const work = store?.getState().info.coordinatorWork;
+    return work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  });
   const [open, setOpen] = useState(false);
   // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
   const offline = useConnection(state => state.offline);
   // The turn's work, as last received for it: the Run's work ends a moment before the turn's answer comes, and until the
   // answer takes its place the turn keeps saying what it did, so nothing under it is taken away and put back.
-  const received = work && work.conversation === conversation && work.turn === turn.id ? work : null;
   const last = useRef(received);
   if (received) last.current = received;
   const kept = last.current && last.current.conversation === conversation ? last.current : null;

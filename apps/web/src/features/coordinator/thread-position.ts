@@ -126,7 +126,10 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       if (pending) return;
       // Explicit reply jumps, focus, and native scrolling can precede their scroll event. They choose a new anchor.
       if (movedByReader()) { remember(); return; }
-      if (following && (area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom) && !(anchor && pastFollow())) {
+      const sized = area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom;
+      // Following the end with nothing kept, a change that moves nothing and sizes nothing (a second ticking by) asks nothing.
+      if (following && !anchor && !sized) return;
+      if (following && sized && !(anchor && pastFollow())) {
         const from = area.scrollTop;
         area.scrollTop = followTop();
         // What it follows comes into sight by gliding there, not by a jump.
