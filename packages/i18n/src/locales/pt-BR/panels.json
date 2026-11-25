@@ -575,6 +575,7 @@
     "deleteRequest": "Pedido para excluir os dados enviados",
     "deleted": "Dados enviados excluídos",
     "empty": "Ainda não há dados de uso prontos para envio.",
+    "fieldsNote": "O que cada campo significa:",
     "hintAsk": "Você ainda não fez sua escolha. Até lá, nenhum dado é enviado.",
     "hintOn": "Envia dados de uso, como a versão, o sistema operacional e a quantidade aproximada de tarefas. Suas conversas, o conteúdo das tarefas e seus arquivos nunca são enviados.",
     "hintReask": "Pausado porque a forma de envio dos dados de uso mudou. Ative esta opção para enviá-los da nova forma.",
@@ -583,25 +584,27 @@
     "idLabel": "ID deste PC",
     "label": "Enviar dados de uso para ajudar a melhorar o alpacawork",
     "more": "Saiba mais",
-    "notSending": "Nada é mostrado porque os dados de uso não estão sendo enviados.",
+    "notSendingUpcoming": "Nada aguarda envio porque os dados de uso não estão sendo enviados.",
     "nothingSent": "Nada foi enviado ainda.",
     "olderReport": "Relatório em um formato anterior",
     "outcome": {
       "accepted": "Recebido",
-      "rejected": "Não aceito",
-      "unknown": "Não se sabe se foi recebido (sem resposta)",
-      "retry": "Não aceito; será enviado de novo",
-      "deleted": "Excluído"
+      "notAccepted": "Não aceito.",
+      "noResponse": "Sem resposta (pode ter chegado).",
+      "deleted": "Excluído",
+      "deleteFailed": "Não foi possível excluir",
+      "deleteNoResponse": "Sem resposta (não se sabe se foi excluído)"
     },
     "readFailed": "Não foi possível ler a configuração dos dados de uso.",
     "reportOf": "Dados de {{day}}",
+    "resend": "Os mesmos dados serão enviados de novo.",
     "saveFailed": "Não foi possível salvar sua escolha sobre os dados de uso.",
     "saveRetry": "Tente novamente.",
     "see": "Ver o que é enviado",
-    "sentLog": "Enviado (cerca dos últimos 3 meses)",
+    "sentLog": "Enviado (guardado por cerca de 3 meses)",
     "today": "Dados de {{day}} (hoje)",
     "upcoming": "A enviar",
-    "waiting": "Aguardando envio"
+    "waiting": "Aguardando (enviado após {{time}})"
   },
   "update": {
     "changed": "O status da atualização mudou. Verifique o que ele mostra agora.",

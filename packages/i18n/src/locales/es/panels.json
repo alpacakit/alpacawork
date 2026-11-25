@@ -575,6 +575,7 @@
     "deleteRequest": "Solicitud para eliminar los datos enviados",
     "deleted": "Datos enviados eliminados",
     "empty": "Aún no hay datos de uso listos para enviar.",
+    "fieldsNote": "Qué significa cada campo:",
     "hintAsk": "Aún sin elegir. No se envía nada hasta que elijas.",
     "hintOn": "Envía datos de uso como la versión, el sistema operativo y el número aproximado de tareas. Nunca se envían tus conversaciones, el contenido de las tareas ni tus archivos.",
     "hintReask": "En pausa porque cambió la forma de enviar los datos de uso. Actívalo para enviarlos de la nueva forma.",
@@ -583,25 +584,27 @@
     "idLabel": "ID de este PC",
     "label": "Enviar datos de uso para ayudar a mejorar alpacawork",
     "more": "Más información",
-    "notSending": "No se muestra nada porque no se están enviando datos de uso.",
+    "notSendingUpcoming": "No hay nada pendiente de enviar porque no se envían datos de uso.",
     "nothingSent": "Todavía no se ha enviado nada.",
     "olderReport": "Informe en un formato anterior",
     "outcome": {
       "accepted": "Recibido",
-      "rejected": "No aceptado",
-      "unknown": "No se sabe si se recibió (sin respuesta)",
-      "retry": "No aceptado; se volverá a enviar",
-      "deleted": "Eliminado"
+      "notAccepted": "No aceptado.",
+      "noResponse": "Sin respuesta (puede que haya llegado).",
+      "deleted": "Eliminado",
+      "deleteFailed": "No se pudo eliminar",
+      "deleteNoResponse": "Sin respuesta (no se sabe si se eliminó)"
     },
     "readFailed": "No se pudo leer la configuración de los datos de uso.",
     "reportOf": "Datos del {{day}}",
+    "resend": "Se volverán a enviar los mismos datos.",
     "saveFailed": "No se pudo guardar tu elección sobre los datos de uso.",
     "saveRetry": "Vuelve a intentarlo.",
     "see": "Ver lo que se envía",
-    "sentLog": "Enviado (aprox. los últimos 3 meses)",
+    "sentLog": "Enviado (se guarda unos 3 meses)",
     "today": "Datos del {{day}} (hoy)",
     "upcoming": "Pendiente de enviar",
-    "waiting": "En espera de envío"
+    "waiting": "En espera (se envía después de {{time}})"
   },
   "update": {
     "changed": "El estado de la actualización cambió. Comprueba lo que muestra ahora.",

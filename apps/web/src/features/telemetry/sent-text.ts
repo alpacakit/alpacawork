@@ -25,3 +25,17 @@ function layout(value: unknown, indent: string): string {
 }
 
 function isObject(value: unknown): value is object { return typeof value === 'object' && value !== null; }
+
+/**
+ * The attempts that will be sent again: for each day still waiting to be sent, its newest attempt (the log is newest
+ * first). Older attempts of that day, and days no longer waiting, are not sent again.
+ */
+export function willResend<T extends { kind: string; day?: string }>(log: readonly T[], waiting: ReadonlySet<string>): ReadonlySet<T> {
+  const seen = new Set<string>(), again = new Set<T>();
+  for (const entry of log) {
+    if (entry.kind !== 'report' || entry.day === undefined || seen.has(entry.day)) continue;
+    seen.add(entry.day);
+    if (waiting.has(entry.day)) again.add(entry);
+  }
+  return again;
+}

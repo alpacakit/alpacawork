@@ -561,6 +561,7 @@
     "deleteRequest": "删除已发送数据的请求",
     "deleted": "已发送的数据已删除",
     "empty": "还没有可发送的使用数据。",
+    "fieldsNote": "各字段的含义：",
     "hintAsk": "尚未选择。在你选择之前不会发送任何内容。",
     "hintOn": "发送版本、操作系统、任务的大致数量等使用数据。绝不会发送你的对话、任务内容或文件。",
     "hintReask": "使用数据的发送方式有变，因此已暂停。开启后将按新方式发送。",
@@ -569,25 +570,27 @@
     "idLabel": "这台电脑的编号",
     "label": "发送使用数据，帮助改进 alpacawork",
     "more": "了解详情",
-    "notSending": "未发送使用数据，因此没有可显示的内容。",
+    "notSendingUpcoming": "由于未发送使用统计数据，没有待发送的内容。",
     "nothingSent": "尚未发送任何内容。",
     "olderReport": "旧格式的报告",
     "outcome": {
       "accepted": "已送达",
-      "rejected": "未被接受",
-      "unknown": "不确定是否送达（无响应）",
-      "retry": "未被接受，稍后重新发送",
-      "deleted": "已删除"
+      "notAccepted": "未被接受。",
+      "noResponse": "无响应（可能已送达）。",
+      "deleted": "已删除",
+      "deleteFailed": "未能删除",
+      "deleteNoResponse": "无响应（不确定是否已删除）"
     },
     "readFailed": "无法读取使用数据的设置。",
     "reportOf": "{{day}} 的数据",
+    "resend": "将重新发送相同的数据。",
     "saveFailed": "无法保存你对使用数据的选择。",
     "saveRetry": "请重试。",
     "see": "查看发送内容",
-    "sentLog": "已发送（约最近 3 个月）",
+    "sentLog": "已发送（发送后保留约 3 个月）",
     "today": "{{day}} 的数据（今天）",
     "upcoming": "待发送",
-    "waiting": "等待发送"
+    "waiting": "等待发送（{{time}} 之后发送）"
   },
   "update": {
     "changed": "更新状态已变化。请查看当前显示的内容。",

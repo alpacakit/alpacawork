@@ -568,6 +568,7 @@
     "deleteRequest": "Request to delete sent data",
     "deleted": "Sent data deleted",
     "empty": "No usage data is ready to send yet.",
+    "fieldsNote": "What each field means:",
     "hintAsk": "Not selected yet. Nothing is sent until you choose.",
     "hintOn": "Sends usage data such as the version, OS, and approximate task counts. Your conversations, task contents, and files are never sent.",
     "hintReask": "Paused because the way usage data is sent changed. Turn this on to send it the new way.",
@@ -576,25 +577,27 @@
     "idLabel": "This PC's ID",
     "label": "Send usage data to help improve alpacawork",
     "more": "Learn more",
-    "notSending": "Nothing is shown because usage data is not being sent.",
+    "notSendingUpcoming": "Nothing is waiting to be sent because usage data is not being sent.",
     "nothingSent": "Nothing has been sent yet.",
     "olderReport": "Report in an earlier format",
     "outcome": {
       "accepted": "Received",
-      "rejected": "Not accepted",
-      "unknown": "Unknown whether received (no response)",
-      "retry": "Not accepted; will be sent again",
-      "deleted": "Deleted"
+      "notAccepted": "Not accepted.",
+      "noResponse": "No response (it may have arrived).",
+      "deleted": "Deleted",
+      "deleteFailed": "Couldn't delete",
+      "deleteNoResponse": "No response (unknown whether deleted)"
     },
     "readFailed": "Couldn't read the usage data setting.",
     "reportOf": "Data for {{day}}",
+    "resend": "The same data will be sent again.",
     "saveFailed": "Couldn't save your usage data choice.",
     "saveRetry": "Please try again.",
     "see": "See what's sent",
-    "sentLog": "Sent (about the last 3 months)",
+    "sentLog": "Sent (kept for about 3 months)",
     "today": "Data for {{day}} (today)",
     "upcoming": "To be sent",
-    "waiting": "Waiting to be sent"
+    "waiting": "Waiting (sent after {{time}})"
   },
   "update": {
     "changed": "The update status changed. Check what it shows now.",

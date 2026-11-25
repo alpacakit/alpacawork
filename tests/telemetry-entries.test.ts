@@ -21,7 +21,7 @@ test('local telemetry refuses Run credentials and has no opt-in command; HTTP au
     deleteSent: () => { touched.push('delete'); return {}; } } as unknown as TelemetryService;
   app.onError(() => new Response('person required', { status: 403 }));
   installTelemetryRoutes(app, service, () => { throw new Error('person required'); });
-  for (const [method, path] of [['GET', 'status'], ['GET', 'history'], ['GET', 'preview'], ['POST', 'choice'], ['POST', 'use'], ['POST', 'delete']]) {
+  for (const [method, path] of [['GET', 'status'], ['GET', 'history'], ['POST', 'choice'], ['POST', 'use'], ['POST', 'delete']]) {
     const response = await app.request(`/api/telemetry/${path}`, { method, ...(method === 'POST' ? { body: 'invalid JSON' } : {}) });
     assert.equal(response.status, 403);
   }

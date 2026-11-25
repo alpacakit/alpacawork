@@ -12,7 +12,8 @@ import { i18n } from '@alpacawork/i18n';
 import { describeProblem } from '@/features/forms/problem-text';
 import { notify, recordFailure } from '@/lib/notify';
 import { useTelemetry, useTelemetryHistory } from './data';
-import { sentText } from './sent-text';
+import { sentText, willResend } from './sent-text';
+import type { TelemetryAttempt } from '@alpacawork/contract/telemetry';
 import { deleteSentTelemetry } from './choice';
 import { useWorkspaceInfo } from '@/data/queries';
 import { TelemetryDetailsLink } from './TelemetryDetailsLink';
@@ -22,6 +23,12 @@ function choiceFailure(error: unknown, detail: string) {
   const diagnostic = describeProblem(error).detail;
   notify.error(i18n.t('panels:telemetry.saveFailed'), { detail: [detail, diagnostic].filter(Boolean).join(' ') });
 }
+
+/** What each saved request's outcome says: a delete is never sent again, so its failures read as failures. */
+const OUTCOME = {
+  report: { accepted: 'accepted', rejected: 'notAccepted', retry: 'notAccepted', unknown: 'noResponse' },
+  delete: { accepted: 'deleted', rejected: 'deleteFailed', retry: 'deleteFailed', unknown: 'deleteNoResponse' },
+} as const;
 
 /** A day's report is named by its UTC day, as it is counted. */
 function dayName(day: string, language: string): string {
@@ -36,7 +43,7 @@ function SentRow({ when, what, outcome, request, body }: { when?: string; what: 
         <Caret className="group-open:rotate-90" />
         {when && <span className="tabular-nums">{when}</span>}<span>{what}</span><span className="text-muted">{outcome}</span>
       </DisclosureSummary>
-      <pre className="m-0 mb-3 max-h-[50vh] overflow-auto rounded-sm bg-lit p-3 text-xs">{[request, body === undefined ? undefined : sentText(body)].filter(Boolean).join('\n\n')}</pre>
+      <pre className="m-0 mb-3 overflow-x-auto rounded-sm bg-lit p-3 text-xs">{[request, body === undefined ? undefined : sentText(body)].filter(Boolean).join('\n\n')}</pre>
     </details>
   </li>;
 }
@@ -50,6 +57,11 @@ function HistoryDialog({ id, onClose }: { id: string | null; onClose: () => void
   const history = useTelemetryHistory(), data = history.data;
   const time = new Intl.DateTimeFormat(i18n.language, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   const json = (value: unknown) => JSON.stringify(value);
+  const resent = willResend(data?.log ?? [], new Set(data?.queue.map(item => item.day)));
+  const outcomeText = (entry: TelemetryAttempt, again: boolean) => {
+    const key = OUTCOME[entry.kind][entry.outcome];
+    return again ? `${t(`telemetry.outcome.${key}`)} ${t('telemetry.resend')}` : t(`telemetry.outcome.${key}`);
+  };
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent size="large" data-telemetry-history>
       <DialogHeading title={t('telemetry.historyTitle')} description={t('telemetry.historyNote')} />
@@ -62,18 +74,19 @@ function HistoryDialog({ id, onClose }: { id: string | null; onClose: () => void
               {data.next && <SentRow what={t('telemetry.today', { day: dayName(data.next.day, i18n.language) })}
                 outcome={t('telemetry.counting')} body={json(data.next)} />}
               {data.queue.map(item => <SentRow key={item.day} what={t('telemetry.reportOf', { day: dayName(item.day, i18n.language) })}
-                outcome={t('telemetry.waiting')} body={json(item.report)} />)}
-            </ul> : <p className="m-0 mb-6 text-sm text-muted">{data.state === 'on' ? t('telemetry.empty') : t('telemetry.notSending')}</p>}
+                outcome={t('telemetry.waiting', { time: time.format(new Date(item.notBefore)) })} body={json(item.report)} />)}
+            </ul> : <p className="m-0 mb-6 text-sm text-muted">{data.state === 'on' ? t('telemetry.empty') : t('telemetry.notSendingUpcoming')}</p>}
             <h3 className="m-0 mb-1 text-base font-semibold">{t('telemetry.sentLog')}</h3>
             {data.log.length ? <ul className="m-0 list-none border-b border-line p-0" data-telemetry-log>
-              {data.log.map(entry => <SentRow key={`${entry.at}-${entry.url}`} when={time.format(new Date(entry.at))}
+              {data.log.map((entry, index) => <SentRow key={`${index}-${entry.at}`} when={time.format(new Date(entry.at))}
                 what={entry.kind === 'delete' ? t('telemetry.deleteRequest') : entry.day ? t('telemetry.reportOf', { day: dayName(entry.day, i18n.language) }) : t('telemetry.olderReport')}
-                outcome={t(`telemetry.outcome.${entry.kind === 'delete' && entry.outcome === 'accepted' ? 'deleted' : entry.outcome}`)}
+                outcome={outcomeText(entry, resent.has(entry))}
                 request={`${entry.method} ${entry.url}`} body={entry.kind === 'report' ? entry.body : undefined} />)}
             </ul> : <p className="m-0 text-sm text-muted">{t('telemetry.nothingSent')}</p>}
             {id && <p className="m-0 mt-6 flex flex-wrap items-baseline gap-x-4 text-sm">
               <span className="text-muted">{t('telemetry.idLabel')}</span><code data-telemetry-id className="select-all">{id}</code>
               <a className="inline-link" href={TELEMETRY_DELETE_URL} target="_blank" rel="noreferrer">{t('telemetry.deletePage')}</a></p>}
+            <p className="m-0 mt-2 text-sm text-muted">{t('telemetry.fieldsNote')} <TelemetryDetailsLink /></p>
           </>}
         <DialogFooter><Button variant="outline" onClick={onClose}>{t('telemetry.close')}</Button></DialogFooter>
       </DialogBody>

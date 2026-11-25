@@ -21,7 +21,7 @@ import { Hono } from '../apps/backend/node_modules/hono/dist/index.js';
 import { commandCatalog } from '@alpacawork/contract/commands';
 import { writeJson } from '../apps/backend/test-dist/telemetry/files.js';
 import { dayRange, deadline, sizeBucket, telemetryEventKey, TELEMETRY_CONSENT_VERSION, TELEMETRY_DAY_MS, TELEMETRY_ENDPOINT,
-  telemetryHistorySchema, TELEMETRY_DELETE_URL, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS,
+  telemetryHistorySchema, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS,
   type TelemetryAttempt } from '@alpacawork/contract/telemetry';
 
 const at = Date.parse('2026-11-03T12:00:00.000Z'), day = '2026-11-03';
@@ -227,7 +227,6 @@ test('storage failures prevent an unrecorded request and preserve uncertain atte
 test('production telemetry destinations are owned by the outbox', () => {
   const root = resolve(import.meta.dirname, '..');
   const contract = 'packages/contract/src/telemetry.ts', outbox = 'apps/backend/src/telemetry/outbox.ts';
-  const deletePage = 'apps/web/src/features/telemetry/Telemetry.tsx';
   const host = new URL(TELEMETRY_ENDPOINT).hostname;
   const unexpected: string[] = [];
   for (const area of ['apps', 'packages']) {
@@ -239,8 +238,7 @@ test('production telemetry destinations are owned by the outbox', () => {
         const path = join(entry.parentPath, entry.name), file = relative(root, path);
         if (file === contract || file === outbox) continue;
         const source = readFileSync(path, 'utf8');
-        const checked = file === deletePage ? source.replaceAll(TELEMETRY_DELETE_URL, '') : source;
-        if (checked.includes('TELEMETRY_ENDPOINT') || checked.includes(host)) unexpected.push(file);
+        if (source.includes('TELEMETRY_ENDPOINT') || source.includes(host)) unexpected.push(file);
       }
     }
   }
