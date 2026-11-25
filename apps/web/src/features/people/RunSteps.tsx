@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepsPage, type RunStepText } from "@alpacawork/contract/run";
 import { readRunStep, readRunSteps } from "@/data/run-steps";
@@ -22,26 +22,29 @@ const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono
 const TARGET = "flex-1 min-w-[8ch]";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
 const TOOL = "max-w-[40%] flex-none truncate font-medium";
-/** A group that turns about the mark's own centre. */
-const ABOUT_CENTRE = "[transform-box:view-box] origin-center";
 
 /**
- * An agent at work, drawn as vectors so it stays sharp at any size: three dots go once round, gather into one and part
- * again. It says only that the agent is going, where one agent's work is open to read; under reduced motion the three
- * dots stand still.
+ * An agent at work: three dots go once round, gather into one and part again. It says only that the agent is going,
+ * where one agent's work is open to read; under reduced motion the three dots stand still. The dots are boxes of
+ * their own moved by transforms alone, so the motion runs on the compositor and lays out or paints nothing while it
+ * goes. Drawn the same each time, it is not drawn again with what it stands beside.
  */
-export function WorkMark({ className }: { className?: string }) {
-  return <svg aria-hidden data-work-mark viewBox="0 0 24 24" fill="currentColor" className={cn("size-3.5 flex-none self-center overflow-visible text-working", className)}>
-    <g className={cn(ABOUT_CENTRE, "motion-safe:animate-mark-weave-turn")}>
-      {[0, 1, 2].map(arm => <g key={arm} className={ABOUT_CENTRE} style={{ rotate: `${arm * 120}deg` }}>
-        <circle cx="12" cy="12" r="3" className="[translate:0_-8px] motion-safe:animate-mark-weave-dot" /></g>)}
-    </g>
-  </svg>;
-}
+export const WorkMark = memo(function WorkMark({ className }: { className?: string }) {
+  return <span aria-hidden data-work-mark className={cn("relative inline-block size-3.5 flex-none self-center text-working", className)}>
+    <span className="absolute inset-0 motion-safe:animate-mark-weave-turn">
+      {[0, 1, 2].map(arm => <span key={arm} className="absolute inset-0" style={{ rotate: `${arm * 120}deg` }}>
+        <span className="absolute top-[37.5%] left-[37.5%] size-1/4 rounded-full bg-current [translate:0_-133.333%] motion-safe:animate-mark-weave-dot" />
+      </span>)}
+    </span>
+  </span>;
+});
 
 type Line = Pick<RunStep, "tool" | "kind" | "about" | "text">;
 /** The tool, the agent's own words for it when it gave them, then as much of what it ran as fits: one line. */
-function LineWords({ line }: { line: Line }) {
+const sameLine = (a: { line: Line }, b: { line: Line }) => a.line.tool === b.line.tool && a.line.kind === b.line.kind &&
+  a.line.about === b.line.about && a.line.text === b.line.text;
+/** Drawn again only when what it says changes, not each time the activity it comes from is read anew. */
+const LineWords = memo(function LineWords({ line }: { line: Line }) {
   return <>
     <span className={TOOL}>{toolName(line.tool)}</span>
     {line.about && <span dir="auto" className="min-w-0 max-w-[62%] truncate">{line.about}</span>}
@@ -49,7 +52,7 @@ function LineWords({ line }: { line: Line }) {
       ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{line.text}</bdi></span>
       : <span dir="auto" className={cn(ONE_LINE, TARGET, line.about && "text-muted")}>{line.text}</span>}
   </>;
-}
+}, sameLine);
 
 /**
  * What an agent is doing now, on one line that keeps its height: the moving mark, then its latest step, or `idle` (the
@@ -169,7 +172,8 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
       () => setState(previous => ({ ...previous, failed: true })));
   }, [run, take]);
   const again = useCallback(() => setRestart(count => count + 1), []);
-  return live ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again };
+  // The same object while nothing in it changes, so what is drawn from it is not drawn again for nothing.
+  return useMemo(() => live ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again }, [live, state, earlier, again]);
 }
 
 const BLOCK = "m-0 max-h-64 overflow-auto rounded-sm border border-line bg-bg p-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
@@ -205,12 +209,12 @@ function useStepDetail(run: string, step: RunStepEntry, generation: number, open
   return detail.value && (detail.value.generation !== generation || detail.value.changed < changed) ? null : detail;
 }
 /** One step of the list: its line, and on a press what it ran and what came back, in full. */
-function StepRow({ run, step, generation, open, toggle, again }: { run: string; step: RunStepEntry; generation: number; open: boolean;
-  toggle: () => void; again: () => void }) {
+const StepRow = memo(function StepRow({ run, step, generation, open, toggle, again }: { run: string; step: RunStepEntry; generation: number;
+  open: boolean; toggle: (step: RunStepEntry) => void; again: () => void }) {
   const { t } = useTranslation("people");
   const detail = useStepDetail(run, step, generation, open, again);
   return <li data-run-step={step.state} className="min-w-0">
-    <button type="button" aria-expanded={open} onClick={toggle}
+    <button type="button" aria-expanded={open} onClick={() => toggle(step)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
         <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
@@ -227,16 +231,21 @@ function StepRow({ run, step, generation, open, toggle, again }: { run: string; 
         : <span className="text-muted">{t("now.step.reading")}</span>}
     </div>}
   </li>;
-}
+});
 const NOTE = "py-0.5 text-muted narrow:py-1.5";
 /**
  * A Run's steps, oldest first, one line each, each opening to what it ran and what came back. It starts at the latest
  * few; steps that come after are added under them, so what is being read stays where it is, and a press at the top
  * reads the ones before, a page at a time, back to the Run's first.
  */
-export function StepList({ steps, className }: { steps: StepsRead; className?: string }) {
+export const StepList = memo(function StepList({ steps, className }: { steps: StepsRead; className?: string }) {
   const { t } = useTranslation("people");
   const { listed, run } = steps;
+  const toggle = useCallback((step: RunStepEntry) => setOpened(previous => {
+    const next = new Map(previous);
+    if (!next.delete(step.n)) next.set(step.n, step.id);
+    return next;
+  }), []);
   // The steps opened, by their place in the Run (`n`, one per step whatever its tool call's ID) and the step there. A
   // list read anew keeps open those whose place still holds the same step; the rest are closed.
   const [opened, setOpened] = useState<ReadonlyMap<number, string>>(new Map());
@@ -249,16 +258,12 @@ export function StepList({ steps, className }: { steps: StepsRead; className?: s
   }, [listed?.generation]); // eslint-disable-line react-hooks/exhaustive-deps -- pruned only when a list is read anew
   if (!listed || !run) return steps.failed ? <Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE, className)} /> : null;
   if (!listed.steps.length) return <Message tone="empty" size="line" quiet title={t("now.step.none")} className={cn("text-xs", NOTE, className)} />;
-  const toggle = (step: RunStepEntry) => setOpened(previous => {
-    const next = new Map(previous);
-    if (!next.delete(step.n)) next.set(step.n, step.id);
-    return next;
-  });
+
   return <ol data-run-steps="open" className={cn("m-0 flex list-none flex-col p-0 text-xs", className)}>
     {listed.from > 0 && <li><button type="button" data-run-steps-more onClick={steps.earlier}
       className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
       {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
     {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
     {listed.steps.map(step => <StepRow key={`${listed.generation}:${step.n}`} run={run} step={step} generation={listed.generation}
-      open={opened.get(step.n) === step.id} toggle={() => toggle(step)} again={steps.again} />)}</ol>;
-}
+      open={opened.get(step.n) === step.id} toggle={toggle} again={steps.again} />)}</ol>;
+});

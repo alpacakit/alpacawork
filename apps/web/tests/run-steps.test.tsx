@@ -1,8 +1,10 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
+import { Profiler } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { startI18n, i18n } from '@alpacawork/i18n';
 import type { RunStep, RunStepDetail, RunStepEntry } from '@alpacawork/contract/run';
-import { StepList, WorkLine, takeIn, useRunSteps } from '../src/features/people/RunSteps';
+import { StepList, WorkLine, WorkMark, takeIn, useRunSteps } from '../src/features/people/RunSteps';
+import { stylesheet } from './stylesheet';
 import { ApiError } from '../src/data/client';
 import { AnswerSteps } from '../src/features/coordinator/parts';
 
@@ -183,4 +185,32 @@ test('steps that cannot be read say so', async () => {
   render(<AnswerSteps run="R7" />);
   fireEvent.click(screen.getByRole('button'));
   expect((await screen.findByRole('alert')).textContent).toBe('The steps could not be read');
+});
+
+test('the work mark moves its own boxes by rotate and translate alone, so its motion neither lays out nor paints', () => {
+  const { container } = render(<WorkMark />);
+  const mark = container.querySelector('[data-work-mark]')!;
+  expect(mark.querySelector('svg')).toBeNull();
+  for (const name of ['mark-weave-turn', 'mark-weave-dot']) {
+    const frames = stylesheet.slice(stylesheet.indexOf(`@keyframes ${name}`)).match(/^@keyframes[^{]*\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}/)![1]!;
+    const properties = new Set([...frames.matchAll(/([a-z-]+)\s*:/g)].map(match => match[1]));
+    expect([...properties].every(property => ['rotate', 'translate', 'animation-timing-function'].includes(property!))).toBe(true);
+  }
+});
+
+test('a change reaching a long opened list draws again the changed step alone, not every row', () => {
+  const rows = Array.from({ length: 600 }, (_, n) => ({ ...entry(n, `echo ${n}`), changed: n + 1 }));
+  const listed = takeIn(null, { steps: rows, total: 600, generation: 1 }, { caughtUp: 600 })!;
+  // As the list's hook gives them: the same callbacks from one read to the next.
+  const earlier = () => {}, again = () => {};
+  const read = (value: typeof listed) => ({ run: 'R7', listed: value, failed: false, earlier, again });
+  const durations: { actual: number; base: number }[] = [];
+  const page = (value: typeof listed) => <Profiler id="list" onRender={(_id, _phase, actual, base) => durations.push({ actual, base })}>
+    <StepList steps={read(value)} /></Profiler>;
+  const { rerender } = render(page(listed));
+  rerender(page(takeIn(listed, { steps: [{ ...rows[300]!, state: 'failed', changed: 601 }], total: 600, generation: 1 }, { caughtUp: 601 })!));
+  const update = durations.at(-1)!;
+  expect(document.querySelectorAll('[data-run-step=failed]')).toHaveLength(1);
+  // The rows that did not change are not drawn again: the update costs a small part of drawing them all.
+  expect(update.actual).toBeLessThan(update.base / 4);
 });

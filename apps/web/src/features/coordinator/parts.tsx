@@ -4,7 +4,7 @@ import type { CoordinatorTurn } from "@/data/coordinator";
 import { useEveryTaskIndex } from "@/data/queries";
 import { resolveReference } from "@/domain/tasks";
 import { taskTokens } from "./editor/wire";
-import { useContext, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
+import { memo, useContext, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { WorkspaceContext } from '@/data/workspace-store';
 import { useConversation } from './coordinator';
 import { paceKey, workPacer, type Pace } from './work-pace';
@@ -56,6 +56,11 @@ function useSecondsSince(at: string | undefined): number | null {
   }, [start]);
   return Number.isNaN(start) ? null : Math.max(0, Math.floor((Date.now() - start) / 1000));
 }
+/** The seconds a turn has been at work, on their own: their tick draws them alone, not the work line they end. */
+const WorkSeconds = memo(function WorkSeconds({ at }: { at: string }) {
+  const seconds = useSecondsSince(at);
+  return seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
+});
 const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
 const idle = { subscribe: () => () => {}, snapshot: () => none, committed: (_version: number) => {} };
@@ -84,7 +89,6 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
   const conversation = useConversation(state => state.conversation?.id);
   const [open, setOpen] = useState(false);
-  const seconds = useSecondsSince(turn.at);
   // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
   const offline = useConnection(state => state.offline);
   const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
@@ -95,7 +99,7 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const steps = useRunSteps(mine?.run, open && worked, mine?.stepEvents ?? 0);
   const block = useRef<HTMLDivElement>(null);
   useListedInSight(steps.listed, block);
-  const time = seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
+  const time = <WorkSeconds at={turn.at} />;
   const count = stepCount(steps);
   return <div>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
