@@ -78,7 +78,8 @@ export class TaskRequestService {
       targetPlacementId: input.agent, mode: input.newConversation ? 'new' : undefined,
       ...(input.compact ? { compact: { focus: input.compactFocus ?? null } } : {}),
       selected: input.selected, aiStack: input.aiStack, cwd: input.cwd },
-    { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined });
+    { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined,
+      ...(input.instructionKind ? { label: { kind: input.instructionKind, fixes: input.fixes ?? [] } } : {}) });
     return { task: controlTaskHead(await new ControlTaskStore(this.root).get(input.task)),
       outcome: { kind: 'request_accepted', opId: input.opId, request } };
   }

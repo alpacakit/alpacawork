@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
 import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
+import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
@@ -333,6 +334,8 @@ const definitions = {
     json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
+    text('instructionKind', `What the instruction is, kept for analysis: ${INSTRUCTION_KINDS.join(', ')}`),
+    list('fixes', `For a fix, what was wrong with the result (one or more): ${FIX_KINDS.join(', ')}`),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',

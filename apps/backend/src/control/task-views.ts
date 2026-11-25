@@ -7,6 +7,7 @@ import { dependencyStatus } from './dependencies.js';
 import { ProjectShelf } from './project-shelf.js';
 import { questionSnapshot } from './question-rules.js';
 import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from './question-views.js';
+import { instructionLabels } from './instruction-labels.js';
 /**
  * The only read views of `task get` and `task list`. The CLI and the start text
  * both use them, so an agent can fetch exactly what it was given, in one shape.
@@ -267,6 +268,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     ...(options.question === undefined ? {} : { question: questionDetail(source, task, options.question) }),
     agents,
     ...(include.has('openObligations') ? { openObligations: source.openObligations(task.id) } : {}),
+    ...(include.has('labels') ? { labels: instructionLabels(task.log) } : {}),
     ...(usage ? { usage } : {}),
     ...(wantsEstimates ? { estimateExamples: estimateCondition
       ? (source.estimates?.(estimateCondition) ?? estimateExamples(source, estimateCondition)) : null } : {}),

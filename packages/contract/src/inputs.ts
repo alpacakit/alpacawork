@@ -6,6 +6,7 @@ import { projectColorSchema } from '@alpacawork/raw/project-settings';
 import { folderNameProblem } from './workspace-contract.js';
 import { parseDocument } from 'yaml';
 import { MAX_DOCUMENT } from '@alpacawork/raw/values';
+import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
 import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
   logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
   titleSchema, urgentReasonSchema } from './fields.js';
@@ -70,7 +71,7 @@ function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readon
 }
 
 export const taskGetIncludes = [
-  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations',
+  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'labels',
 ] as const;
 export type TaskGetInclude = typeof taskGetIncludes[number];
 export const taskGetInput = z.object({ task: taskIdSchema, log: queryCount.optional(), runs: queryCount.optional(),
@@ -188,14 +189,19 @@ export const taskRequestShape = z.object({ task: taskIdSchema, instruction: inst
   compactFocus: compactFocusSchema.optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
-  expectedHeadRun: runIdSchema.optional() });
+  expectedHeadRun: runIdSchema.optional(),
+  /** What the instruction is (raw INSTRUCTION_KINDS), and for a fix what kind of fix (FIX_KINDS). */
+  instructionKind: z.enum(INSTRUCTION_KINDS).optional(), fixes: z.array(z.enum(FIX_KINDS)).min(1).max(FIX_KINDS.length).optional() });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
     keys: ['agent', 'newConversation', 'compact', 'compactFocus',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',
-      'expectedTaskHash', 'expectedPlacementRevision'] },
+      'expectedTaskHash', 'expectedPlacementRevision', 'instructionKind', 'fixes'] },
+  // A fix says what kind of fix it is; nothing else names one.
+  { kind: 'required', scope: 'With {instructionKind} fix', applies: value => value.instructionKind === 'fix', keys: ['fixes'] },
+  { kind: 'forbidden', scope: 'Without {instructionKind} fix', applies: value => value.instructionKind !== 'fix', keys: ['fixes'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
   { kind: 'forbidden', scope: 'With {newConversation}', applies: value => value.newConversation === true, keys: ['compact'] },
   { kind: 'forbidden', scope: 'Without {compact}', applies: value => value.compact !== true, keys: ['compactFocus'] },

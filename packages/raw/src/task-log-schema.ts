@@ -17,7 +17,21 @@ export const TASK_LOG_KINDS = [
   'responsible_changed', 'placement_changed', 'review_approved', 'review_sent_back',
   'request_accepted', 'body_updated', 'run_stop_requested',
   'asked', 'answered', 'question_withdrawn', 'question_expired', 'user_request_changed', 'dependencies_changed',
+  'request_labeled',
 ] as const;
+/**
+ * What an instruction is, said by whoever passes it on: a fix of what was made (`fix`, with what kind of fix), an
+ * addition to the work, a new request, or an answer. The kinds of fix are fixed so they can be counted: the look and
+ * feel, wrong behaviour, how a result was shown or asked about (`presentation`), more scope, speed, wording, a misread
+ * intent, or other.
+ */
+export const INSTRUCTION_KINDS = ['fix', 'addition', 'new_request', 'answer'] as const;
+export const FIX_KINDS = ['look', 'behavior', 'presentation', 'scope', 'speed', 'wording', 'intent', 'other'] as const;
+export const instructionLabelSchema = z.object({ request: nonempty(128), kind: z.enum(INSTRUCTION_KINDS),
+  fixes: z.array(z.enum(FIX_KINDS)).max(FIX_KINDS.length) }).strict()
+  .refine(label => (label.kind === 'fix') === (label.fixes.length > 0), 'A fix names its kinds of fix, and only a fix does')
+  .refine(label => new Set(label.fixes).size === label.fixes.length, 'Each kind of fix once');
+export type InstructionLabel = z.infer<typeof instructionLabelSchema>;
 /** The IDs fixed by one execution-order change, independent of a reader's language. */
 export const dependencyChangeSchema = z.object({
   after: z.array(taskId), previous: z.array(taskId),
@@ -94,6 +108,11 @@ export const taskLogSchema = z.object({
   askedTo: taskId.nullable().optional(),
   /** The question as it was asked: the asking Task's `decide` value, fixed here when it asked. */
   decide: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
+  /**
+   * What an instruction of this Task is (request_labeled). A later label of the same instruction replaces an earlier
+   * one, a person's (or a coordinator's quoting the person) any AI's.
+   */
+  label: instructionLabelSchema.optional(),
   /** An answer's items as read from its words when it came (contract readAnswerParts). */
   answerParts: answerPartsSchema.optional(),
   /** The 'asked' log an answer or a withdrawal closes. */
@@ -112,6 +131,7 @@ export const taskLogSchema = z.object({
   if (entry.kind === 'dependencies_changed' && (entry.fromState !== null || entry.toState !== null))
     issue('toState', 'A dependency change keeps the state');
   if (entry.changedFields && entry.kind !== 'body_updated') issue('changedFields', 'Only body_updated records changed fields');
+  if ((entry.kind === 'request_labeled') !== (entry.label !== undefined)) issue('label', 'Only an instruction label carries one, and it must');
   if (entry.answerParts && entry.kind !== 'answered') issue('answerParts', 'Only an answer carries its parts');
   if (entry.answers !== undefined && entry.kind !== 'request_accepted') issue('answers', 'Only an instruction answers a closed question');
   if (entry.checkpoint && (!['reported', 'asked'].includes(entry.kind) || !entry.runId || entry.actor.kind !== 'placement'))
