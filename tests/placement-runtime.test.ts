@@ -11,7 +11,7 @@ function run(id: string, fields: Partial<RunRecord> = {}): ControlRunDTO {
   return controlRunFixture(id, { task: 'T1', placementId: 'P1', agent: 'codex',
     requestId: `request-${id}`, cwd: '/fixture/run', created_at: at(0), ...fields });
 }
-const activity = (id: string) => id === 'R2' ? { at: at(3), kind: 'tool_start' as const, toolName: 'Bash', note: null, doing: null } : null;
+const activity = (id: string) => id === 'R2' ? { at: at(3), kind: 'tool_start' as const, toolName: 'Bash', note: null, doing: null, context: null, steps: [] } : null;
 const placement = { id: 'P1', endedAt: null as string | null };
 const task = { state: 'doing', stateLog: [{ at: at(0), toState: 'doing' }] };
 const runtime = (runs: readonly ControlRunDTO[] | null, activityOf = activity,

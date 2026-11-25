@@ -6,7 +6,7 @@ import { runFolder } from '@alpacawork/contract/run';
 import { callerWorkspace } from './coordinator-caller.fixture.ts';
 import { openIndexStream } from './index-stream.ts';
 
-test('recent work travels through real index/delta without changing the conversation revision, and clears on Run end', async t => {
+test('coordinator steps and words survive quiet in the index and clear on Run end', { timeout: 10_000 }, async t => {
   const w = callerWorkspace(t);
   const run = w.screenRun({ words: 'Watch the work', session: 'work-session' });
   const url = await w.start();
@@ -17,17 +17,37 @@ test('recent work travels through real index/delta without changing the conversa
   const first = await stream.index();
   assert.equal(first.coordinatorWork, null);
   const revision = first.person.coordinator;
-  const file = join(runFolder(w.root, run.id), 'recent-work.json');
+  const folder = runFolder(w.root, run.id);
+  const file = join(folder, 'recent-work.json');
   const write = (name: 'task.new' | 'task.update') => writeFileSync(file, JSON.stringify({ name, count: 1 }));
   write('task.new');
   let current = await stream.index();
   for (let i = 0; i < 15 && current.coordinatorWork?.name !== 'task.new'; i++) current = await stream.index();
-  assert.deepEqual(current.coordinatorWork, { conversation: run.conversation, turn: run.requestId, name: 'task.new', count: 1 });
+  const identity = { conversation: run.conversation, turn: run.requestId, run: run.id };
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.new', count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null });
   assert.deepEqual(current.person.coordinator, revision, 'activity is independent of conversation read markers');
   write('task.update');
   do { current = await stream.index(); } while (current.coordinatorWork?.name !== 'task.update');
   assert.deepEqual(current.person.coordinator, revision);
-  // The activity projection intentionally stays non-null: Run state is authoritative at the server boundary.
+  const at = '2026-11-24T01:00:00.000Z';
+  const steps = [{ id: 'check', at, tool: 'Bash', kind: 'command', text: 'cat catalog.txt', more: 0, about: null, state: 'done', result: null }];
+  const words = 'The catalog is ready.';
+  writeFileSync(join(folder, 'activity.json'), JSON.stringify({
+    at, kind: 'tool_end', toolName: 'Bash', doing: null, note: { at, text: words }, context: null, steps, stepEvents: 7, stepsStarted: 3,
+  }));
+  do { current = await stream.index(); } while (current.coordinatorWork?.words !== words);
+  // Every step's start and end is counted with the work, so an opened list knows when any of them changed.
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.update', count: 1, steps, stepEvents: 7, stepsStarted: 3, words });
+  writeFileSync(file, 'null');
+  do { current = await stream.index(); } while (current.coordinatorWork?.name !== null);
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: null, count: 0, steps, stepEvents: 7, stepsStarted: 3, words });
+  assert.deepEqual(current.person.coordinator, revision);
+  // An unreadable line right after a step began left no latest steps, words or name: the work is still told, with
+  // the steps begun, so the conversation offers them.
+  writeFileSync(join(folder, 'activity.json'), JSON.stringify({ at, kind: 'output', toolName: null, doing: null, note: null, context: null,
+    steps: [], stepEvents: 8, stepsStarted: 3 }));
+  do { current = await stream.index(); } while (current.coordinatorWork?.words !== null);
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: null, count: 0, steps: [], stepEvents: 8, stepsStarted: 3, words: null });
   w.end(run);
   do { current = await stream.index(); } while (current.coordinatorWork !== null);
   assert.equal(current.coordinatorWork, null);

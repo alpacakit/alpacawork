@@ -26,6 +26,13 @@ import { receivePatch, resources } from "../src/data/resources";
 import { historyCursor } from "@alpacawork/contract";
 /** Where a jump in the column goes: the row it brings into view (the glide itself is scroll-report's). */
 const jump = vi.hoisted(() => ({ to: (_target: HTMLElement, _block?: string) => {} }));
+/** Steps as the server lists them once the lead's row is opened. */
+const listedSteps = (steps: { id: string; tool: string; kind: "command"; text: string; state: "running" | "done" }[]) => ({
+  total: steps.length, version: steps.length, complete: true, generation: 1,
+  steps: steps.map((step, n) => ({ n, id: step.id, tool: step.tool, kind: step.kind, text: step.text, more: 0, about: null, state: step.state, changed: n + 1 })) });
+// Every step of a Run, as the server reads them from its output once the lead's row is opened.
+const runSteps = vi.hoisted(() => ({ of: (_run: string): Promise<unknown> => new Promise(() => {}) }));
+vi.mock("../src/data/run-steps", () => ({ readRunSteps: (run: string) => runSteps.of(run), readRunStep: () => new Promise(() => {}) }));
 vi.mock("../src/features/reader/scroll-report", () => ({
   scrollReport: (target: HTMLElement, block: string, landed?: () => void) => { jump.to(target, block); landed?.(); },
 }));
@@ -558,7 +565,7 @@ const workingPlacement = (id: string) => ({ id, taskId: "T1", agentId: `A${id}`,
   active: true, revision: 1, startedAt: at, endedAt: null, headRunId: id === "P1" ? "R1" : `R${id.slice(1)}`,
   runtime: { displayState: "running" as const, reason: null, sourceRunIds: [], runningCount: 1, queuedCount: 0,
     since: at, lastOutputAt: at, activityKind: null, toolName: null } });
-const note = (text: string) => ({ at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: { at, text }, context: null });
+const note = (text: string) => ({ at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: { at, text }, context: null, steps: [] });
 
 test("the working row heads the report column with the responsible person's time, words and model, the others one count", async () => {
   await inEnglish();
@@ -586,8 +593,8 @@ test("the working row heads the report column with the responsible person's time
   expect(row.querySelector("[data-rail-time]")?.className).toContain("text-soft");
   expect(people()[0]!.querySelector("[data-working-model]")?.textContent).toBe("opus(high)");
   expect(row.querySelector("[data-working-others]")?.textContent).toBe("+2 more");
-  // What is left to other places is not said here: the tool step, tokens and stop.
-  expect(row.textContent).not.toContain("Bash");
+  // Under the words, one work line says what the lead is at; tokens and stop are left to other places.
+  expect(people()[0]!.querySelectorAll("[data-work-line]")).toHaveLength(1);
   expect(row.textContent).not.toMatch(/tokens|1\.2k/);
   expect(within(row).queryByRole("button", { name: /Stop/ })).toBeNull();
   const toggle = within(row).getByRole("button");
@@ -660,22 +667,63 @@ test("the working row goes on with the Tasks below at work, children before gran
   await waitFor(() => expect(followed).toEqual(["T2"]));
 });
 
-test("a working person who has said nothing yet is read by their step", async () => {
+test("opened, only the responsible person's steps are read and listed; everyone else's stay on their latest one's line", async () => {
+  await inEnglish();
+  const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
+    more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
+  const asked: string[] = [];
+  runSteps.of = async run => { asked.push(run); return listedSteps(steps("lead")); };
+  const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
+    run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead"), stepsStarted: 2 } }),
+    run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member"), stepsStarted: 2 } })] }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const lead = document.querySelector('[data-working-person="P1"]')!;
+  expect(lead.querySelector("[data-work-line]")?.textContent).toContain("lead step 2");
+  expect(asked).toEqual([]);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  await waitFor(() => expect(lead.querySelector("[data-run-steps=open]")?.textContent).toContain("lead step 1"));
+  expect(lead.querySelector("[data-work-line]")?.textContent).toContain("2 steps so far");
+  expect(asked).toEqual(["R1"]);
+  const member = document.querySelector('[data-working-person="P2"]')!;
+  expect(member.querySelector("[data-run-steps]")).toBeNull();
+  expect(member.querySelector("[data-work-line]")?.textContent).toContain("member step 2");
+  expect(member.textContent).not.toContain("member step 1");
+});
+
+test("an opened list stays while the latest steps the activity carries are none, as long as the Run has taken steps", async () => {
+  await inEnglish();
+  runSteps.of = async () => listedSteps([{ id: "a", tool: "Bash", kind: "command", text: "pnpm test", state: "running" }]);
+  const activity = (steps: number) => ({ ...note("lead words"), stepEvents: 1, stepsStarted: 1, steps: steps ? [{ id: "a", at, tool: "Bash", kind: "command" as const,
+    text: "pnpm test", more: 0, about: null, state: "running" as const, result: null }] : [] });
+  const data = (steps: number) => screenData(tree({ placements: [workingPlacement("P1")], runs: [
+    run("R1", { state: "running", endedAt: null, activity: activity(steps) })] }));
+  const first = data(1);
+  const { rerender } = render(<TestWorkspace data={first}><ReportFeed task={first.tasks[0]!} people={first.people} onFollow={() => {}} /></TestWorkspace>);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  await waitFor(() => expect(document.querySelector("[data-run-steps=open]")?.textContent).toContain("pnpm test"));
+  // An unreadable line left the activity's latest steps empty; the Run's steps are still there to read.
+  const after = data(0);
+  rerender(<TestWorkspace data={after}><ReportFeed task={after.tasks[0]!} people={after.people} onFollow={() => {}} /></TestWorkspace>);
+  expect(document.querySelector("[data-run-steps=open]")?.textContent).toContain("pnpm test");
+});
+
+test("a working person who has run nothing yet says on the work line what they last did", async () => {
   await inEnglish();
   const data = screenData(tree({ placements: [workingPlacement("P1")], runs: [
-    run("R1", { state: "running", endedAt: null, activity: { at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null } })] }));
+    run("R1", { state: "running", endedAt: null, activity: { at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null, steps: [] } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
-  expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
+  expect(document.querySelector("[data-working-note]")).toBeNull();
+  expect(document.querySelector("[data-work-line]")?.textContent).toContain("Bash");
 });
 
 test("a step taken after the screen's clock last ticked is still said, and no words leave no empty band", async () => {
   await inEnglish();
   const step = (activity: object | null) => screenData(tree({ placements: [workingPlacement("P1")],
     runs: [run("R1", { state: "running", endedAt: null, activity: activity as never })] }));
-  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null };
+  const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null, steps: [] };
   const data = step(soon);
   const { unmount } = render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
-  expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
+  expect(document.querySelector("[data-work-line]")?.textContent).toContain("Bash");
   unmount();
   const quiet = step(null);
   render(<TestWorkspace data={quiet}><ReportFeed task={quiet.tasks[0]!} people={quiet.people} onFollow={() => {}} /></TestWorkspace>);

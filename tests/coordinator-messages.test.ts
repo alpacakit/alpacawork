@@ -5,7 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { ControlStore } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
-import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { RUN_FILES, runFolder, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { TaskRepository } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { deliveredMessages, dialoguesOf, linkMessage, messageForRun, resultsOf, sourceMessage } from
@@ -292,4 +294,22 @@ test('an independent quoted Task note retains its dialogue, apart from a Request
     assert.deepEqual(dialoguesOf(db,[new TaskRepository(w.root, db).metadataWithHistory(w.project)]).find(row=>row.messageId===entry.id),
       {taskId:w.project,messageId:entry.id,at:entry.at,words:entry.actor.quote,answer:null});
   });
+});
+
+test('an answer offers its steps when its Run began one, even when an unreadable line left its latest steps empty, and only then', t => {
+  const w = callerWorkspace(t), worked = w.screenRun({ words: 'Check', session: 'worked' }), quiet = w.screenRun({ words: 'Hi', session: 'quiet' });
+  const at = new Date().toISOString();
+  const activity = (run: { id: string }, counts: { stepEvents: number; stepsStarted?: number }) => {
+    mkdirSync(runFolder(w.root, run.id), { recursive: true });
+    writeFileSync(join(runFolder(w.root, run.id), RUN_FILES.activity), JSON.stringify({ at, kind: 'output', toolName: null, doing: null,
+      note: null, context: null, steps: [], ...counts }));
+  };
+  // A step began, then a line that could not be read dropped it from the latest steps.
+  activity(worked, { stepEvents: 2, stepsStarted: 1 });
+  // Words alone: the Run's end settled nothing it began, though an end was counted.
+  activity(quiet, { stepEvents: 1, stepsStarted: 0 });
+  w.end(worked, 'succeeded', 'Checked'); w.end(quiet, 'succeeded', 'Hello');
+  const turns = new CoordinatorConversation(w.root).read().turns;
+  assert.equal(turns.find(turn => turn.id === worked.requestId)?.workedBy, worked.id);
+  assert.equal(turns.find(turn => turn.id === quiet.requestId)?.workedBy, undefined);
 });

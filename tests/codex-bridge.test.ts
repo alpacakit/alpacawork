@@ -1,4 +1,6 @@
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
+import { RunStepIndex } from '@alpacawork/backend/test-dist/runs/run-steps.js';
+import { BRIDGE_LINE_BYTES } from '@alpacawork/contract/agent-bridge';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { processIdentity } from '@alpacawork/core';
 /** alpacawork-agent speaks `codex exec` to alpacawork and app-server to Codex; a fake app-server only. */
@@ -55,8 +57,9 @@ test('exec options, JSONL, result file and exit; an instruction during a turn is
   }
   assert.deepEqual(b.events().find(event => event.type === 'item.completed').item,
     { type: 'agent_message', id: 'm-turn-1', text: 'reply turn-1' });
-  // Provider fields such as a command's whole output never cross the boundary: one oversized line voids the Run.
-  assert.deepEqual(b.events().find(event => event.type === 'item.started').item, { type: 'command_execution', id: 'c-turn-1', command: 'true' });
+  // Only the fields a step is read by cross the boundary, each bounded (boundaryItem): one oversized line voids the Run.
+  assert.deepEqual(b.events().find(event => event.type === 'item.started').item,
+    { type: 'command_execution', id: 'c-turn-1', command: 'true', aggregatedOutput: 'provider output' });
   assert.deepEqual(b.events().find(event => event.type === 'turn.completed').usage,
     { scope: 'conversation', counters: { input: 5, cacheRead: 4, cacheWrite: 1, output: 2 } });
   assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
@@ -311,4 +314,93 @@ for (const failure of [null, 'synthetic compaction failure']) test(`a compaction
   assertInputOutcomes(b.events(), { one: 'taken' });
   assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
   assert.equal(b.events().some(event => event.item?.type === 'context_compaction'), false);
+});
+
+test('a structured result past the outcome reader\'s line limit leaves the Run succeeded, its step read with what was left out said', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('big', JSON.stringify({ bigResult: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0);
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  const read = AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null });
+  assert.equal(read.outcome.state, 'succeeded');
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.tool === 'db.rows')!;
+  assert.equal(step.state, 'done');
+  const detail = await index.detail(step.n);
+  // Each text in the result was cut until the line fit; the structured result is read as its JSON.
+  assert.ok(detail!.output!.text.startsWith('[\n  {\n    "id": 0,'));
+  assert.ok(detail!.output!.omitted > 0);
+});
+
+test('a result nested 2,800 arrays deep leaves the Run succeeded with its reply, and its step read with what was left out', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('deep', JSON.stringify({ deepResult: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.deepEqual(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome,
+    { state: 'succeeded', session: 'thread-new', result: 'reply turn-1' });
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.tool === 'db.tree')!;
+  assert.equal(step.state, 'done');
+  const detail = await index.detail(step.n);
+  assert.ok(detail!.output!.text.startsWith('[\n  [\n'));
+  assert.ok(detail!.output!.omitted > 0);
+});
+
+test('an edit of sixty thousand files leaves the Run succeeded, and opens to its first files and how many more there are', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('huge', JSON.stringify({ hugeEdit: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.equal(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome.state, 'succeeded');
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.kind === 'edit')!;
+  assert.equal(step.state, 'done');
+  const detail = await index.detail(step.n);
+  assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/file-0.ts\n+export const v0 = 0;'));
+  assert.ok(detail!.input.omittedFiles! > 0);
+});
+
+test('a call to sixty thousand threads with a large diagnostic leaves the Run succeeded, its step saying its details could not be kept', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('many', JSON.stringify({ manyReceivers: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.equal(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome.state, 'succeeded');
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.id === 'r-turn-1')!;
+  assert.equal((await index.detail(step.n))?.detailsDropped, true);
 });

@@ -28,7 +28,10 @@ function reader(t: TestContext, adapter: keyof typeof adapters) {
     const context = readRunActivity(folder)?.context ?? null;
     return context && { ...context, windowTokens: said.windowTokens ?? null };
   };
-  const shown = () => { const now = readRunActivity(folder); return now && { kind: now.kind, toolName: now.toolName, doing: now.doing }; };
+  const shown = () => {
+    const now = readRunActivity(folder);
+    return now && { at: now.at, kind: now.kind, toolName: now.toolName, doing: now.doing, note: now.note, steps: now.steps };
+  };
   return Object.assign(emit, { shown });
 }
 
@@ -50,11 +53,14 @@ test('Claude: the main conversation\'s last call against the window its turn nam
 
 test('a bridge\'s context updates merge: a field one leaves out keeps its last value, and an unknown fill is unknown', t => {
   const emit = reader(t, 'codex');
-  emit({ type: 'thread.started', thread_id: 'thread' });
+  emit({ type: 'thread.started', thread_id: 'thread' },
+    { type: 'item.completed', item: { type: 'agent_message', text: 'Checking the catalog.' } });
   emit({ type: 'item.started', item: { type: 'command_execution', id: 'c1', command: 'pnpm test' } });
   const step = emit.shown();
   assert.deepEqual([step?.kind, step?.toolName], ['tool_start', 'command_execution']);
   assert.ok(step?.doing);
+  assert.equal(step.note?.text, 'Checking the catalog.');
+  assert.equal(step.steps[0]?.text, 'pnpm test');
   const first = emit({ type: 'context.updated', context: codexContext({ last: { totalTokens: 17_311 }, total: { totalTokens: 34_550 }, modelContextWindow: 475_000 }) })!;
   assert.deepEqual([first.usedTokens, first.windowTokens], [17_311, 475_000]);
   assert.deepEqual(emit.shown(), step, 'the step shown stays while only the fill changes');

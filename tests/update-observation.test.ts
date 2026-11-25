@@ -8,17 +8,19 @@ import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { managedUpdateFixture } from './helpers/managed-update.ts';
 const ok=(r:any)=>{assert.equal(r.status,200,JSON.stringify(r.body));return r.body;};
-function offer(f: Awaited<ReturnType<typeof managedUpdateFixture>>) {
+function offer(f: Awaited<ReturnType<typeof managedUpdateFixture>>, candidateId='fixed') {
  const manifest=JSON.parse(readFileSync(new URL('./fixtures/npm-candidate-manifest.json',import.meta.url),'utf8'));
- const candidate={version:1 as const,candidateId:'fixed',registryOrigin:'http://127.0.0.1:9',packageName:manifest.name,exactVersion:manifest.version,
+ const candidate={version:1 as const,candidateId,registryOrigin:'http://127.0.0.1:9',packageName:manifest.name,exactVersion:manifest.version,
   tarball:'http://127.0.0.1:9/a.tgz',integrity:'sha512-'+Buffer.alloc(64).toString('base64'),metadataDigest:'a'.repeat(64),edition:'production' as const,facts:manifest.alpacawork,
   engines:manifest.engines,environment:{managedNodeVersion:process.version,target:'linux-x64-glibc' as const,edition:'production' as const},expectedActive:f.release,changes:'unknown' as const};
  f.operation.updateDecision(f.releases,()=>f.operation.offerUpdateLocked(f.releases,candidate));
 }
 test('review/confirm/replay/cancel use one record; edits are accepted and consumed offers never revive', { skip: process.platform !== 'linux' && 'runs a linux-x64-glibc fixture image (Koffi native)', timeout:120000}, async t=>{
  const f=await managedUpdateFixture(t);offer(f);
- await f.start();
  const record=join(f.releases,'.updates','state.json'),read=()=>JSON.parse(readFileSync(record,'utf8'));
+ // A periodic check that observes the same release again keeps the offer a person may be reviewing.
+ offer(f,'observed-again');assert.equal(read().offer.candidateId,'fixed');
+ await f.start();
  assert.deepEqual(ok(await f.call('/api/update/review')),{kind:'unavailable'});
  const bytes=readFileSync(record),review=ok(await f.call('/api/update/review?candidateId=fixed'));
  assert.equal(review.kind,'ready');assert.deepEqual(readFileSync(record),bytes);

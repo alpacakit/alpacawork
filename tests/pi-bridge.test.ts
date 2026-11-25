@@ -6,6 +6,8 @@ import { delimiter, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { platform } from '@alpacawork/core';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
+import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
+import { RunStepIndex } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { spawnBridge } from './helpers/bridge-process.ts';
 import { AgentInputChannel } from '@alpacawork/backend/test-dist/runs/input.js';
@@ -43,10 +45,41 @@ test('Pi new/resume preserves complete session, provider/model with slashes, off
  assert.ok(argv[1].includes(id)); assert.equal(argv[0].includes('--approve'), false);
  assert.deepEqual(h.calls().filter(row => row.type === 'prompt').map(row => row.message), ['literal synthetic input', 'next exact input']);
  writeFileSync(join(h.area, RUN_FILES.stdout), resumed.events().map(row => JSON.stringify(row)).join('\n') + '\n');
+ new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.pi).poll(h.area);
+ const step = readRunActivity(h.area)?.steps.at(-1);
+ assert.equal(step?.tool, 'bash');
+ assert.equal(step.kind, 'command');
+ assert.equal(step.text, 'cat catalog.txt');
+ assert.equal(step.state, 'failed');
+ assert.deepEqual(step.result, { text: 'Catalog missing', more: 1 });
  const read = AGENT_RUNTIME_ADAPTERS.pi.read({ mode: 'resume', session: id }, h.area, { code: 0, signal: null });
  assert.equal(read.outcome.state, 'succeeded');
  assert.deepEqual(read.usage, { scope: 'conversation', counters: { input: 23, cacheRead: 8, cacheWrite: 2, output: 9 } });
 });
+
+test('Pi succeeds through the Run reader with tool input and result over the stdout line limit', async t => {
+ const h = setup(t, 'large-tool'), bridge = h.start();
+ bridge.send('one', 'Print the catalog');
+ bridge.child.stdin.end();
+ assert.equal(await bridge.exited, 0, bridge.stderr());
+ writeFileSync(join(h.area, RUN_FILES.stdout), bridge.events().map(row => JSON.stringify(row)).join('\n') + '\n');
+ const adapter = AGENT_RUNTIME_ADAPTERS.pi;
+ assert.equal(adapter.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome.state, 'succeeded');
+ new OutputActivityReader(adapter).poll(h.area);
+ const step = readRunActivity(h.area)?.steps.at(-1);
+ assert.equal(step?.text, 'print catalog');
+ assert.equal(step.more, 1);
+ assert.equal(step.state, 'done');
+ assert.deepEqual(step.result, { text: 'Catalog printed', more: 2 }); // Opened, the step reads every line it ran and got back, up to the limit, saying how much was left out.
+ const index = new RunStepIndex(h.area, adapter);
+ await index.update();
+ const detail = await index.detail(0);
+ assert.equal(detail?.input.text.startsWith('print catalog\nxxx'), true);
+ assert.equal(detail!.input.text.length + detail!.input.omitted, 'print catalog\n'.length + 3 * 1024 * 1024);
+ assert.equal(detail?.output?.text.startsWith('Catalog printed\nxxx'), true);
+ assert.equal(detail!.output!.omitted > 0, true);
+});
+
 for (const mode of ['missing', 'wrong-id', 'wrong-cwd', 'wrong-model', 'busy']) test(`Pi refuses ${mode} before transmitting input`, async t => {
  const h = setup(t, mode), b = h.start(['--session', 'complete-id', '--model', 'provider/model']);
  b.send('one', 'do not transmit'); b.child.stdin.end(); assert.equal(await b.exited, 1, b.stderr());

@@ -4,13 +4,21 @@ import type { CoordinatorTurn } from "@/data/coordinator";
 import { useEveryTaskIndex } from "@/data/queries";
 import { resolveReference } from "@/domain/tasks";
 import { taskTokens } from "./editor/wire";
-import { useContext, useEffect, useLayoutEffect, useReducer, useSyncExternalStore } from 'react';
+import { memo, useContext, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { WorkspaceContext } from '@/data/workspace-store';
 import { useConversation } from './coordinator';
 import { paceKey, workPacer, type Pace } from './work-pace';
 import { workNameWords } from '@/domain/work-words';
 import { causeReason, limitName } from '@/domain/run-labels';
 import { agentLabel } from '@/domain/agent-label';
+import { StepList, WorkLine, stepCount, useRunSteps } from '@/features/people/RunSteps';
+import { tookSteps } from '@alpacawork/contract/run';
+import { Icon } from '@/components/ui/icon';
+import { MarkdownBody } from '@/features/reader/MarkdownBody';
+import { followTask } from './follow-task';
+import { scrollThreadTo } from './thread-position';
+import { cn } from '@/lib/utils';
+import { useConnection } from '@/data/connection';
 
 /**
  * The words of a running turn: its recent work's name while the pacer shows it for this turn, else the turn's own, then
@@ -27,7 +35,12 @@ export function useWorkingWords(turn?: { id: string; at: string }): string {
   useLayoutEffect(() => pacer.committed(pace.version), [pacer, pace.version]);
   const words = pace.label && conversation && turn && pace.key === paceKey(conversation, turn.id)
     ? workNameWords(pace.label) : t('coordinatorCard.thinking');
-  const seconds = useSecondsSince(turn?.at);
+  return useWorkingFor(turn?.at, words);
+}
+/** `words` with the whole seconds since `at` after them, drawn again each second; `words` alone without `at`. */
+function useWorkingFor(at: string | undefined, words: string): string {
+  const { t } = useTranslation('ui');
+  const seconds = useSecondsSince(at);
   return seconds === null ? words : t('coordinatorCard.working', { words, seconds });
 }
 /** Whole seconds since `at`, drawn again on each whole second after it; null without `at`. */
@@ -43,14 +56,108 @@ function useSecondsSince(at: string | undefined): number | null {
   }, [start]);
   return Number.isNaN(start) ? null : Math.max(0, Math.floor((Date.now() - start) / 1000));
 }
+/** The seconds a turn has been at work, on their own: their tick draws them alone, not the work line they end. */
+const WorkSeconds = memo(function WorkSeconds({ at }: { at: string }) {
+  const seconds = useSecondsSince(at);
+  return seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
+});
 const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
 const idle = { subscribe: () => () => {}, snapshot: () => none, committed: (_version: number) => {} };
+const noStore = () => () => {};
 
 /** A mark while waiting for an answer: a quiet pulse of opacity alone. */
+function Pulse({ children }: { children: string }) {
+  return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{children}</span>;
+}
+/** The running turn on one line where the work is not shown: its recent work's rounded name and the seconds (useWorkingWords). */
 export function Thinking({ turn }: { turn: { id: string; at: string } }) {
-  const words = useWorkingWords(turn);
-  return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{words}</span>;
+  return <Pulse>{useWorkingWords(turn)}</Pulse>;
+}
+
+/* Hallmark · component: the running turn's reply in the open conversation · genre: modern-minimal · theme: the app's own
+ * tokens · states: nothing run yet (the mark, "Working on it…", the seconds) · a step (the mark, the step, the seconds, ⌄) ·
+ * open (the line counts the steps, every step so far under it, ⌃) */
+/**
+ * What the running turn is doing, where the conversation is open: its latest words, then one line that says it all —
+ * the moving mark, the latest step (or that it works, before any), and the seconds since the message. A press on the
+ * line opens every step so far under it, oldest first, as History's working row does; another folds them.
+ */
+export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
+  const { t } = useTranslation('ui'), { t: p } = useTranslation('people');
+  const store = useContext(WorkspaceContext);
+  const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
+  const conversation = useConversation(state => state.conversation?.id);
+  const [open, setOpen] = useState(false);
+  // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
+  const offline = useConnection(state => state.offline);
+  const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  const step = mine?.steps.at(-1);
+  // Brought up to date whenever any of its steps starts or ends, however many run at once.
+  // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
+  const worked = tookSteps(mine);
+  const steps = useRunSteps(mine?.run, open && worked, mine?.stepEvents ?? 0);
+  const block = useRef<HTMLDivElement>(null);
+  useListedInSight(steps.listed, block);
+  const time = <WorkSeconds at={turn.at} />;
+  const count = stepCount(steps);
+  return <div>
+    {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
+    {/* The work line beside the message, at the size of its other states and the answer's own line. */}
+    <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs">
+    {worked ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
+      <WorkLine data-ask-thinking step={step} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
+        end={<>{time}<Chevron open={open} /></>} /></button>
+      : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
+    {open && worked && <StepList steps={steps} className="mt-1" />}
+  </div></div>;
+}
+/**
+ * A line that opens a Run's steps under it: its whole width a press, a finger's height on a phone. The press overhangs
+ * the line evenly, so its words stand where the line's words stand before it can be pressed (and where any other state
+ * of a message is said).
+ */
+const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
+function Chevron({ open }: { open: boolean }) {
+  return <Icon name="down" className={cn("size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-180")} />;
+}
+/**
+ * The steps are read after the press: once first drawn, the line and the list under it come into sight as one place
+ * request, the list's head (the line, then "earlier") first. One that does not fit below where it is starts at the top.
+ */
+function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>) {
+  const listed = useRef(false);
+  useLayoutEffect(() => {
+    if (!read) { listed.current = false; return; }
+    const element = block.current;
+    if (listed.current || !element) return;
+    listed.current = true;
+    const area = element.closest<HTMLElement>('[data-card-scroll]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
+    const box = element.getBoundingClientRect();
+    if (box.top < area.top || box.height > area.bottom - area.top) scrollThreadTo(element, element, { block: 'start' });
+    else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' });
+  }, [read, block]);
+}
+
+/* Hallmark · component: an answered message's steps · genre: modern-minimal · theme: the app's own tokens · states:
+ * folded (one quiet line, ⌄) · open (the line counts the steps, every step under it, ⌃) · reading · not readable */
+/**
+ * The steps of the Run that answered, above its answer where the work line stood while it ran: one quiet line that opens
+ * them as that line did, read only once opened.
+ */
+export function AnswerSteps({ run }: { run: string }) {
+  const { t } = useTranslation('people');
+  const [open, setOpen] = useState(false);
+  const steps = useRunSteps(run, open);
+  const block = useRef<HTMLDivElement>(null);
+  useListedInSight(steps.listed, block);
+  const count = stepCount(steps);
+  return <div ref={block} data-answer-steps className="mb-2 scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
+    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-xs text-muted hover:text-ink")}>
+      <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
+      <Chevron open={open} /></button>
+    {open && <StepList steps={steps} className="mt-1" />}
+  </div>;
 }
 
 /**

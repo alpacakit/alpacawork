@@ -140,10 +140,7 @@ test('fake Claude and Codex stdout update running activity without hook observat
   }, 'Codex tool activity');
   assert.equal(claudeActivity.toolName, 'Bash');
   assert.equal(codexActivity.toolName, 'command_execution');
-  for (const run of [claude, codex]) {
-    const file = readFileSync(join(h.store.folder(run.id), 'activity.json'), 'utf8');
-    assert.doesNotMatch(file, /private/);
-  }
+  for (const activity of [claudeActivity, codexActivity]) assert.equal(activity.steps[0]?.state, 'running');
   const tree = await readControlTree(h.root);
   const owner = tree.placements.find(item => item.id === h.ownerPlacementId)!.runtime;
   const member = tree.placements.find(item => item.id === h.memberPlacementId)!.runtime;

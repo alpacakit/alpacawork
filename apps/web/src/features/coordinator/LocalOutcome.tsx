@@ -1,4 +1,5 @@
 import { WaitingStatus } from './WaitingStatus';
+import { WorkMark } from '@/features/people/RunSteps';
 import { SoonRing } from './SoonRing';
 import { i18n } from '@alpacawork/i18n';
 import { notify } from '@/lib/notify';
@@ -35,7 +36,7 @@ export function LocalOutcome({ turn, cancellation = 'inline' }: { turn: LocalTur
     try { await useConversation.getState().messageAction('withdraw', turn.id); }
     catch (error) { recordFailure(error, 'coordinator withdraw'); }
   };
-  if (turn.stage === "sending") return <span role="status" data-coordinator-posting className="text-muted motion-safe:animate-pulse">{text}</span>;
+  if (turn.stage === "sending") return <span role="status" data-coordinator-posting className="inline-flex items-center gap-1.5 text-muted"><WorkMark />{text}</span>;
   const withdrawButton = inlineCancellation && <button type="button" data-coordinator-withdraw disabled={turn.stage === 'unknown' && disabled} className={LINE_ACTION} onClick={() => void withdraw()}>{t('coordinatorCard.withdraw')}</button>;
   if (turn.stage === 'queued') return <WaitingStatus>{text}{withdrawButton}</WaitingStatus>;
   if (turn.stage === 'unknown') return <div role="alert" className="text-warn">{text}

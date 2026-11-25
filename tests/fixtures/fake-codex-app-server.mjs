@@ -30,6 +30,23 @@ async function run(id, plan) {
   }
   while (plan.gate && !existsSync(plan.gate)) await delay(20);
   notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true', aggregatedOutput: 'provider output' } });
+  // `bigResult`: a tool's structured result whose line, whole, would pass the outcome reader's 2 MiB.
+  if (plan.bigResult) notify('item/completed', { item: { type: 'mcpToolCall', id: `t-${id}`, server: 'db', tool: 'rows', status: 'completed',
+    arguments: { table: 'invoices' }, error: null, result: { content: [], structuredContent: Array.from({ length: 2300 }, (_, n) => ({ id: n, text: 'x'.repeat(1024) })) } } });
+  // `manyReceivers`: a collaboration call sent to sixty thousand threads, with a diagnostic of about 2.15 MB.
+  if (plan.manyReceivers) notify('item/completed', { item: { type: 'collabAgentToolCall', id: `r-${id}`, tool: 'sendMessage', status: 'completed',
+    senderThreadId: 'thread-new', prompt: 'check in', model: null, receiverThreadIds: Array.from({ length: 60_000 }, (_, n) => `thread-${n}-0123456789`),
+    error: { message: 'retry diagnostic '.repeat(130_000) } } });
+  // `hugeEdit`: an edit of so many files that their paths and kinds alone pass the line limit.
+  if (plan.hugeEdit) notify('item/completed', { item: { type: 'fileChange', id: `e-${id}`, status: 'completed',
+    changes: Array.from({ length: 60_000 }, (_, n) => ({ path: `/src/packages/module-${n}/file-${n}.ts`, kind: { type: 'add' }, diff: `+export const v${n} = ${n};` })) } });
+  // `deepResult`: a valid result about 1.1 MB long, nested 2,800 arrays deep.
+  if (plan.deepResult) {
+    let deep = 'x'.repeat(1_100_000);
+    for (let level = 0; level < 2800; level++) deep = [deep];
+    notify('item/completed', { item: { type: 'mcpToolCall', id: `d-${id}`, server: 'db', tool: 'tree', status: 'completed', arguments: {}, error: null,
+      result: { content: [], structuredContent: deep } } });
+  }
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.

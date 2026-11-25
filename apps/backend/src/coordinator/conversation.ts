@@ -35,7 +35,8 @@ import { actedTasks } from './messages.js';
 import { replySource, replyPrompt } from './reply.js';
 import { coordinatorAttachmentFile, coordinatorFolders, coordinatorRequestId, discardCoordinatorFiles } from './files.js';
 import { readRecentWork } from '../runs/recent-work.js';
-import { runFolder } from '@alpacawork/contract/run';
+import { readRunActivity } from '../runs/activity.js';
+import { runFolder, tookSteps } from '@alpacawork/contract/run';
 import type { ControlIndexDTO } from '@alpacawork/contract/control';
 
 type Message = z.output<typeof coordinatorMessageInputSchema>;
@@ -108,8 +109,13 @@ export class CoordinatorConversation {
   /** Only this small projection is sampled for stdout changes; no conversation digest or transcript changes. */
   work(): ControlIndexDTO['coordinatorWork'] {
     const run = this.running;
-    const label = run ? readRecentWork(runFolder(this.root, run.id)) : null;
-    return run && label ? { conversation: run.conversationId, turn: run.requestId, ...label } : null;
+    if (!run) return null;
+    const folder = runFolder(this.root, run.id), label = readRecentWork(folder), activity = readRunActivity(folder);
+    const steps = activity?.steps ?? [], words = activity?.note?.text ?? null;
+    // Once the Run has begun a step it is told, whatever its latest steps and words are, so its steps can be opened.
+    return label || steps.length || words || tookSteps(activity) ? { conversation: run.conversationId, turn: run.requestId, run: run.id,
+      name: label?.name ?? null, count: label?.count ?? 0, steps, stepEvents: activity?.stepEvents ?? 0,
+      stepsStarted: activity?.stepsStarted ?? 0, words } : null;
   }
   /** Startup alone calls this, before recovery can turn an unfinished Run into another answer. */
   async seedSeen(): Promise<void> {

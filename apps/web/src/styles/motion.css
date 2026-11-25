@@ -137,6 +137,21 @@
   @keyframes motion-pop { from { opacity: 0; scale: 0.75; } }
   @keyframes motion-grow { from { opacity: 0; scale: 0.9; } }
   @keyframes motion-pulse { 50% { opacity: 0.5; } }
+  /* An agent at work: the work mark's three dots go once round, then in to the centre, a breath as one dot, and out
+     again. They rest, then go (a long ease both ways). Only rotate and translate move, on boxes of their own, so the
+     motion runs on the compositor: no layout or paint while it goes. A dot is a quarter of the mark, so its way out
+     (a third of the mark) is 133.333% of itself. */
+  --ease-mark: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-mark-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-mark-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --animate-mark-weave-turn: mark-weave-turn 3.4s infinite;
+  @keyframes mark-weave-turn { 0% { rotate: 0turn; animation-timing-function: var(--ease-mark); } 52%, 100% { rotate: 1turn; } }
+  --animate-mark-weave-dot: mark-weave-dot 3.4s infinite;
+  @keyframes mark-weave-dot {
+    0%, 50% { translate: 0 -133.333%; animation-timing-function: var(--ease-mark-in); }
+    66%, 76% { translate: 0 0; animation-timing-function: var(--ease-mark-out); }
+    100% { translate: 0 -133.333%; }
+  }
   @keyframes motion-spin { to { transform: rotate(1turn); } }
 
   /* The progress line: a segment runs across again and again; going live fills it and lets it go. */

@@ -235,6 +235,16 @@ export const controlRunSchema = z.object({
   processStarted: z.boolean(),
   usage: z.object({ run: tokenCountersSchema.nullable(), includesEarlier: z.boolean() }).strict().nullable(),
 }).strict();
+/** The command read gives the activity summary; full tool previews belong to the screen. */
+export const taskGetRunSchema = controlRunSchema.extend({ activity: runActivityViewSchema.omit({ steps: true }).nullable() });
+export type TaskGetRunDTO = z.infer<typeof taskGetRunSchema>;
+
+export function taskGetRunOf(run: ControlRunDTO): TaskGetRunDTO {
+  if (!run.activity) return { ...run, activity: null };
+  const { steps: _steps, ...activity } = run.activity;
+  return { ...run, activity };
+}
+
 export const requestPurposeSchema = z.enum(['instruction', 'review_send_back', 'return_continuation']);
 export const requestModeSchema = z.enum(['continue', 'new']);
 export const deliveryStateSchema = z.enum(['queued', 'waiting_for_run', 'waiting_for_session', 'recorded_unconfirmed', 'aborted']);

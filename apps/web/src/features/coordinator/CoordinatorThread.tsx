@@ -15,7 +15,7 @@ import { opening } from "./read-boundary";
 import { firstSentence } from "./foot";
 import { answerBodyFiles, MessageFiles, type OpenMessageImages } from "./MessageFiles";
 import { SentMessage, useMessageCopy, useMessageParts } from "./SentMessage";
-import { Attempts, coordinatorErrorReason, Thinking } from "./parts";
+import { AnswerSteps, Attempts, coordinatorErrorReason, Thinking } from "./parts";
 import { useShownConversation, type SentTurn } from "./shown";
 import { ReplyLabel } from './ReplyLabel';
 import { messageTime } from './message-time';
@@ -86,6 +86,7 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
   if (turn.status === "succeeded" && turn.answer !== null) {
     const seconds = Math.max(0, Math.round((Date.parse(turn.answeredAt ?? turn.at) - Date.parse(turn.at)) / 1000));
     return <div>
+      {turn.workedBy && <AnswerSteps run={turn.workedBy} />}
       <AnswerBody turn={turn} />
       <div data-coordinator-answer-meta className="mt-type-close flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
         <span className="font-medium text-ink">{t("coordinatorCard.title")}</span>
@@ -102,10 +103,10 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
     </div>;
   }
   // The Run's own error words follow in full, even with a known cause: only they carry details such as when a limit resets.
-  return <div role="alert" className="text-error">{t("coordinatorCard.failed", { reason: coordinatorErrorReason(turn) })}
+  return <>{turn.workedBy && <AnswerSteps run={turn.workedBy} />}<div role="alert" className="text-error">{t("coordinatorCard.failed", { reason: coordinatorErrorReason(turn) })}
     {turn.status === "failed" && !turn.attachments.length && !turn.sentAgain && <button type="button" disabled={disabled} className={LINE_ACTION}
       onClick={() => retry(turn)}>{t("coordinatorCard.retry")}</button>}
-    {turn.failure && <span data-coordinator-failure-message className="mt-type-close block whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">{turn.failure.message}</span>}</div>;
+    {turn.failure && <span data-coordinator-failure-message className="mt-type-close block whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">{turn.failure.message}</span>}</div></>;
 }
 
 /**

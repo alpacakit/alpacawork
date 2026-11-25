@@ -39,7 +39,7 @@ export function monitorUpdates(workspace:string,report:(error:unknown)=>void){
  let closed=false,active:Promise<void>|null=null,timer:ReturnType<typeof setTimeout>|undefined;
  const tick=()=>{
   if(closed||active)return;
-  let next=6*60*60*1000;
+  let next=60*60*1000;
   active=Promise.resolve().then(()=>{const runtime=updateRuntime(workspace);return runtime?discoverUpdate(runtime,cancellation.signal):undefined;})
    .then(outcome=>{if(outcome==='deferred')next=60*1000;}).catch(report).finally(()=>{
     active=null;
