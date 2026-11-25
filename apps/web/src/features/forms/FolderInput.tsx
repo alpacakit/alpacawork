@@ -209,8 +209,8 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     if (!shown && missing && walking && walking !== "/") { setWalking(walking.replace(/\/[^/]*\/?$/, "") || "/"); return; }
     setReason(problemText(walk.error));
     setFailedAt(walking || null);
-    // The move did not happen: nothing waits to take the focus to the folder it was for.
-    refocus.current = false;
+    // A move that did not happen takes the focus nowhere; a first read that failed still does once Retry reads it.
+    if (shown) refocus.current = false;
     setCameFrom(null);
     if (shown) setWalking(shown.path);
   }, [walk.isError, walk.error, shown, walking]);
