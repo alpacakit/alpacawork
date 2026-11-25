@@ -165,8 +165,7 @@ test('this PC\'s folders are listed for a person, never for a Run', async t => {
 
 test('this PC\'s own folder chooser is never shown to a screen opened at the public name', async t => {
   const h = await setup(t), server = await startServer(h.root, 0, { publicHost: 'pc.example.ts.net' });
-  t.after(async () => { await server.close(); });
-  const body = JSON.stringify({ title: 'Choose' });
+  // Closed before setup's own cleanup removes the workspace, which the closing server still writes to.
   const answer = await new Promise<{ status: number; text: string }>((done, reject) => {
     const sent = request(new URL('/api/workspace/folders/choose', server.url), { method: 'POST', headers: {
       host: 'pc.example.ts.net', origin: 'https://pc.example.ts.net', 'content-type': 'application/json' } }, response => {
@@ -174,8 +173,8 @@ test('this PC\'s own folder chooser is never shown to a screen opened at the pub
       response.on('data', chunk => { text += chunk; }).on('end', () => done({ status: response.statusCode!, text }));
     });
     sent.on('error', reject);
-    sent.end(body);
-  });
+    sent.end(JSON.stringify({ title: 'Choose' }));
+  }).finally(() => server.close());
   assert.equal(answer.status, 403, answer.text);
   assert.equal(JSON.parse(answer.text).error.reason.kind, 'folder_chooser_only_on_this_pc');
 });
