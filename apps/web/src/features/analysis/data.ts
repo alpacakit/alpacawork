@@ -28,9 +28,9 @@ export function useTasksView(project: string | null, span: Span, bucket: Bucket,
   return useQuery({ ...resources.analysisView(root, "tasks", { ...scope(project, span), bucket, by }, tasksViewSchema), enabled });
 }
 
-export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true) {
+export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true, view: "history" | "summary" = "history") {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by }, usageViewSchema), enabled });
+  return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by, view }, usageViewSchema), enabled });
 }
 
 /**
@@ -39,7 +39,8 @@ export function useUsageView(project: string | null, span: Span, bucket: Bucket,
  */
 export function useBreakdown(look: "tasks" | "usage", project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by }, breakdownViewSchema), enabled });
+  const view = look === "usage" ? "history" : null;
+  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by, view }, breakdownViewSchema), enabled });
 }
 
 /**

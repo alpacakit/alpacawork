@@ -107,7 +107,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
   const face = answerOf(useTasksView(project, place.span, bucket, null));
   const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
   const tasks = useTasksView(project, days ?? place.span, bucket, null, days !== null);
-  const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null);
+  const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null, "summary");
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
   const [appTheme] = useState<Theme>(() => appliedTheme(document));

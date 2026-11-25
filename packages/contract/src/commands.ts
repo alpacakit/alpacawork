@@ -1,4 +1,4 @@
-import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
+import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -224,6 +224,9 @@ const analysisScope = [text('project', 'Project ID (nested projects included for
 const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
   text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
 const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
+const analysisUsageFilters = [text('model', 'Exact model name from collected results, the launch setting or the agent name, in that order'),
+  text('effort', 'Exact recorded launch effort'), boolean('effortMissing', 'Only launches without a recorded effort')];
+const analysisUsageProjection = text('view', 'Trend coverage: period (selected days, default), history (whole record), or summary (period totals and rows)');
 const analysisTaskGroups = analysisTaskBySchema.options.join(', ');
 const analysisUsageGroups = analysisUsageBySchema.options.join(', ');
 
@@ -238,16 +241,20 @@ const definitions = {
   'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals', analysisTasksInput, [
     ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisTaskGroups})`),
   ], { output: analysisTasksViewSchema }),
-  'analysis/usage': command('read', 'Count task launches and measured AI usage by period and trend bucket, with lifetime totals', analysisUsageInput, [
-    ...analysisScope, ...analysisPeriodOptions, analysisBucket,
+  'analysis/usage': command('read', 'Count task launches and measured AI usage', analysisUsageInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket, ...analysisUsageFilters, analysisUsageProjection,
     text('by', `Breakdown (${analysisUsageGroups}). Skill, tool and MCP trends start on their collection date`),
   ], { output: analysisUsageViewSchema }),
+  'analysis/usage-series': command('read', 'Count started Runs by model or effort within the selected period. Each bucket lists nonzero [group index, count] pairs', analysisUsageSeriesInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket, ...analysisUsageFilters,
+    text('by', 'Breakdown axis (model, effort). A group with null effort has no recorded setting'),
+  ], { output: analysisUsageSeriesViewSchema }),
   'analysis/breakdown': command('read', 'Count one breakdown alone, as analysis tasks or analysis usage gives it, without their totals and trends', analysisBreakdownInput, [
-    ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('look', 'Which breakdown (tasks, usage)'),
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket, ...analysisUsageFilters, analysisUsageProjection, text('look', 'Which breakdown (tasks, usage)'),
     text('by', `Breakdown (tasks: ${analysisTaskGroups}. usage: ${analysisUsageGroups})`),
   ], { output: analysisBreakdownViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
-    ...analysisScope, ...analysisPeriodOptions,
+    ...analysisScope, ...analysisPeriodOptions, ...analysisUsageFilters,
     text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),

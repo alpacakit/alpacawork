@@ -58,8 +58,8 @@ export const ModelName = ({ model }: { model: AnalysisModel }) =>
  * A breakdown's row by its name: a task no AI was given says so, a model is named as `ModelName` names it, any other
  * by its label. The tables and the list a row opens name it so alike.
  */
-export const rowName = (row: { label: string; model?: AnalysisModel; noOwnerRun?: true }, noAgent: string): ReactNode =>
-  row.noOwnerRun ? noAgent : row.model ? <ModelName model={row.model} /> : row.label;
+export const rowName = (row: { label: string; model?: { name: string } | AnalysisModel; noOwnerRun?: true }, noAgent: string): ReactNode =>
+  row.noOwnerRun ? noAgent : row.model && "effort" in row.model ? <ModelName model={row.model} /> : row.label;
 
 /** A small square of a chart's colour before a name: the legend and the name at once. */
 export const Square = ({ className }: { className: string }) =>

@@ -3,7 +3,7 @@ import type { ChangeLog } from '@alpacawork/db';
 import { backendEntry } from '../app-paths.js';
 import type { Tally } from '../agents/adapters/tally.js';
 
-export function startTallyJob(root: string, tallySince: number, changes: ChangeLog, tallies: Map<string, Tally>) {
+export function startTallyJob(root: string, tallySince: number, changes: ChangeLog, onTallies: (batch: [string, Tally][]) => void) {
   const worker = new Worker(backendEntry('analysis/tally-worker'), { workerData: { root, tallySince } });
   const release = changes.register('analysis-tally');
   const unsubscribe = changes.subscribe(() => {
@@ -21,7 +21,7 @@ export function startTallyJob(root: string, tallySince: number, changes: ChangeL
   }));
   worker.on('error', error => console.error('Analysis tally worker failed', error));
   worker.on('message', ({ batch, issue }: { batch?: [string, Tally][]; issue?: string }) => {
-    for (const [id, tally] of batch ?? []) tallies.set(id, tally);
+    if (batch) onTallies(batch);
     if (issue) console.error('Analysis tally could not read Run', issue);
   });
   worker.postMessage({ rescan: true });

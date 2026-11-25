@@ -1096,7 +1096,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     stopUpdates=monitorUpdates(root,error=>console.error('Update discovery needs attention',error));
     stopTelemetry=monitorTelemetry(telemetry);
     host.start();
-    stopAnalysisTally = startTallyJob(root, tallySince, changes.log, analysis.tallies);
+    stopAnalysisTally = startTallyJob(root, tallySince, changes.log, batch => analysis.updateTallies(batch));
     stopAnalysisWarm = warmAnalysisWhenIdle(analysis, () => lifecycle.state === 'accepting' && !queuedWrites && !queuedReads);
     let lastSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
     let auditing: Promise<void> | undefined;
