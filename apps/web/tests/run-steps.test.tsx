@@ -1,12 +1,16 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { Profiler } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createStore } from 'zustand';
+import { WorkspaceContext, type WorkspaceStore } from '../src/data/workspace-store';
 import { startI18n, i18n } from '@alpacawork/i18n';
 import type { RunStep, RunStepDetail, RunStepEntry } from '@alpacawork/contract/run';
 import { StepList, WorkLine, WorkMark, takeIn, useRunSteps } from '../src/features/people/RunSteps';
 import { stylesheet } from './stylesheet';
 import { ApiError } from '../src/data/client';
-import { AnswerSteps } from '../src/features/coordinator/parts';
+import { TurnWork } from '../src/features/coordinator/parts';
+/** An answered turn whose Run took steps: its work opens from the pill above its answer. */
+const AnswerSteps = ({ run }: { run: string }) => <TurnWork turn={{ id: 'turn', at: '2026-11-01T00:00:00.000Z', status: 'succeeded', workedBy: run }} />;
 
 // The server's side: one Run's steps, each with the version it last changed at, and what each ran.
 const server = vi.hoisted(() => ({
@@ -232,4 +236,22 @@ test('a change reaching a long opened list draws again the changed step alone, n
   expect(document.querySelectorAll('[data-run-step=failed]')).toHaveLength(1);
   // The rows that did not change are not drawn again: the update costs a small part of drawing them all.
   expect(update.actual).toBeLessThan(update.base / 4);
+});
+
+test("a running turn's work changing draws that turn again, not an answered turn's work", () => {
+  const at = '2026-11-01T00:00:00.000Z';
+  // The live work of the turn at work, as the index carries it, at its nth step.
+  const work = (n: number) => ({ conversation: undefined as unknown as string, turn: 'now', run: 'R8', name: null, count: 0, words: null,
+    stepEvents: n, stepsStarted: n, steps: [{ id: `s${n}`, at, tool: 'Bash', kind: 'command' as const, text: `echo ${n}`, more: 0, about: null, state: 'running' as const, result: null }] });
+  const store = createStore(() => ({ info: { coordinatorWork: work(1) } })) as unknown as WorkspaceStore;
+  const drawn = { answered: 0, running: 0 };
+  render(<WorkspaceContext.Provider value={store}>
+    <Profiler id="answered" onRender={() => { drawn.answered++; }}><TurnWork turn={{ id: 'done', at, status: 'succeeded', workedBy: 'R7' }} /></Profiler>
+    <Profiler id="running" onRender={() => { drawn.running++; }}><TurnWork turn={{ id: 'now', at, status: 'running' }} /></Profiler>
+  </WorkspaceContext.Provider>);
+  const before = { ...drawn };
+  for (let n = 2; n <= 7; n++) act(() => { store.setState({ info: { coordinatorWork: work(n) } } as never); });
+  expect(screen.getByText('echo 7')).toBeTruthy();
+  expect(drawn.running - before.running).toBeGreaterThanOrEqual(6);
+  expect(drawn.answered - before.answered, 'the answered turn is not drawn again').toBe(0);
 });

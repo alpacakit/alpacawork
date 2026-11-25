@@ -73,10 +73,14 @@ test('a bridge\'s context updates merge: a field one leaves out keeps its last v
 
 test('each bridge reads its agent\'s own report of the fill', () => {
   assert.deepEqual(copilotContext('session.usage_info', { currentTokens: 9644, tokenLimit: 922_000 }), { usedTokens: 9644, compacted: false, windowTokens: 922_000 });
-  assert.deepEqual(copilotContext('session.compaction_complete', { postCompactionTokens: 4000 }), { usedTokens: 4000, compacted: true });
+  assert.deepEqual(copilotContext('session.compaction_complete', { success: true, postCompactionTokens: 4000 }), { usedTokens: 4000, compacted: true });
+  // A failed compaction compacted nothing, so History does not count it.
+  assert.equal(copilotContext('session.compaction_complete', { success: false, error: 'no model endpoints available' }), null);
   assert.equal(copilotContext('assistant.message', {}), null);
   assert.deepEqual(piContext({ type: 'message_end', message: { role: 'assistant', usage: { totalTokens: 3434 } } }), { usedTokens: 3434, compacted: false });
-  assert.deepEqual(piContext({ type: 'compaction_end' }), { usedTokens: null, compacted: true });
+  assert.deepEqual(piContext({ type: 'compaction_end', result: { summary: 'Kept' }, aborted: false }), { usedTokens: null, compacted: true });
+  assert.equal(piContext({ type: 'compaction_end', aborted: true }), null);
+  assert.equal(piContext({ type: 'compaction_end', errorMessage: 'Nothing to compact', aborted: false }), null);
   assert.deepEqual(piStatsContext({ contextUsage: { tokens: 3434, contextWindow: 272_000, percent: 1.26 } }), { windowTokens: 272_000, usedTokens: 3434 });
   // Just after a compaction pi knows its window but not the fill.
   assert.deepEqual(piStatsContext({ contextUsage: { tokens: null, contextWindow: 272_000, percent: null } }), { windowTokens: 272_000 });

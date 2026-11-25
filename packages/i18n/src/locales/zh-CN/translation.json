@@ -216,6 +216,8 @@
       "filesystem_root_cannot_task_root": "文件系统的根目录不能作为任务的根目录",
       "final_reply_too_large": "最终回复过大",
       "finished_run_must_have_ended_state": "已结束的运行必须有结束状态",
+      "folder_chooser_only_on_this_pc": "本机的文件夹选择窗口只能从在本机打开的页面使用",
+      "folder_chooser_unavailable": "本机无法显示文件夹选择窗口",
       "has_open_questions_withdraw_them_before_finishing": "{{taskId}} 有尚未回答的提问（{{ids}}）。请先撤回再结束",
       "has_open_requests_finish_after_their_returns": "{{taskId}} 仍有未完结的委托（{{count}} 条）。请收到回复后再结束",
       "held_review_sent_back_once_it_returns_waiting_task_report_state_waiting": "已搁置的验收需先恢复为 waiting 再退回（task report --state waiting）",

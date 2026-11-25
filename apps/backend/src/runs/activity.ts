@@ -120,9 +120,13 @@ class WorkActivity {
 }
 
 export class OutputActivityReader {
-  /** `reported` keeps a window named by the agent in the model's record. */
+  /**
+   * `reported` keeps a window named by the agent in the model's record; `compacted` is told each compaction the agent
+   * says, with how full its conversation was before (the last fill read) and after.
+   */
   constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
-    private readonly reported: (update: ContextUpdate) => void = () => {}) {}
+    private readonly reported: (update: ContextUpdate) => void = () => {},
+    private readonly compacted: (fill: { beforeTokens: number | null; afterTokens: number | null }) => void = () => {}) {}
 
   private readonly work = new WorkActivity();
   // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
@@ -163,6 +167,7 @@ export class OutputActivityReader {
     const received = new Date(this.now()).toISOString();
     const update = this.adapter.context(value);
     if (update) {
+      if (update.compacted) this.compacted({ beforeTokens: this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null });
       this.context = mergeContext(this.context, update, received);
       if (update.windowTokens !== undefined) this.reported(update);
       // A context-only update leaves the latest work and words in place.

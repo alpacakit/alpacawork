@@ -84,6 +84,40 @@ export function carrierOf<Run extends CarrierRun>(run: Run, find: (id: RunId) =>
   }
   return undefined;
 }
+/**
+ * The Runs that started a conversation anew where their placement already had one (a new conversation, not its first):
+ * a Run that resumes nothing after an earlier started Run at the same placement, whatever started it anew (a handoff,
+ * a request for one, another AI chosen, no session to resume). The next AI taking over a failed Run's work is not
+ * counted: that failure's own record (supersededBy) says it.
+ */
+export function newConversationStarts<T extends { id: RunId; placementId: string; resumes: RunId | null; state: RunState;
+  startedAt: string | null; supersededBy?: RunId }>(runs: readonly T[]): T[] {
+  const successors = new Set(runs.flatMap(run => run.supersededBy ? [run.supersededBy] : []));
+  const started = runs.filter(run => run.startedAt !== null && run.state !== RUN_STATE.joined)
+    .sort((a, b) => a.startedAt!.localeCompare(b.startedAt!) || runNumber(a.id) - runNumber(b.id));
+  const seen = new Set<string>();
+  return started.filter(run => {
+    const anew = seen.has(run.placementId) && run.resumes === null && !successors.has(run.id);
+    seen.add(run.placementId);
+    return anew;
+  });
+}
+/** What happened to a Task's agents' conversations, oldest first: each new conversation and each compaction, with its Run. */
+export type ConversationChange = { run: RunId; at: string } & ({ change: 'new'; because?: NewConversation['because']; report?: string }
+  | ({ change: 'compacted' } & Omit<RunCompaction, 'at'>));
+type ChangingRun = Parameters<typeof newConversationStarts>[0][number] & { newConversation?: NewConversation; compactions?: readonly RunCompaction[] };
+/** The one list History rows and a Task's counts are made from: newConversationStarts and the Runs' compactions, by time. */
+export function conversationChanges(runs: readonly ChangingRun[]): ConversationChange[] {
+  const changes: ConversationChange[] = [
+    ...newConversationStarts(runs).map(run => ({ run: run.id, at: run.startedAt!, change: 'new' as const, ...run.newConversation })),
+    ...runs.flatMap(run => (run.compactions ?? []).map(({ at, ...fill }) => ({ run: run.id, at, change: 'compacted' as const, ...fill }))),
+  ];
+  return changes.sort((a, b) => a.at.localeCompare(b.at));
+}
+/** The tokens a compaction took out of its conversation, when its agent said both figures. */
+export const compactionCut = (change: ConversationChange): number | null =>
+  change.change === 'compacted' && change.beforeTokens !== null && change.afterTokens !== null
+    ? Math.max(0, change.beforeTokens - change.afterTokens) : null;
 export const isRunMoving = (state: RunState): boolean => state === RUN_STATE.queued || state === RUN_STATE.running;
 export const isRunInTrouble = (state: RunState): boolean => state === RUN_STATE.failed || state === RUN_STATE.needs_review;
 /** A failure is current until a later Run in its resumed chain actually starts. */
@@ -152,6 +186,27 @@ export const runUsageSchema = z.object({
   includesEarlier: z.boolean(),
 }).strict();
 export type RunUsage = z.infer<typeof runUsageSchema>;
+/** How many compactions a Run keeps: its agent's latest ones. */
+export const RUN_COMPACTION_LIMIT = 50;
+/**
+ * One compaction of a Run's conversation, as its agent said it happened (asked for or its own near its limit): when, and
+ * how full the conversation was before and after (null when the agent did not say), against its model's window then.
+ */
+export const runCompactionSchema = z.object({
+  at: z.iso.datetime({ offset: true }),
+  beforeTokens: z.number().int().nonnegative().safe().nullable(),
+  afterTokens: z.number().int().nonnegative().safe().nullable(),
+  windowTokens: z.number().int().positive().safe().nullable(),
+}).strict();
+export type RunCompaction = z.infer<typeof runCompactionSchema>;
+/**
+ * Why a Run started its conversation anew where its placement had one, as the request that made it decided: the
+ * responsible's report prepared it (`report`: that report's log entry), the sender asked for a new one, another AI took
+ * the work, or the last conversation could not be resumed.
+ */
+export const NEW_CONVERSATION_REASONS = ['handoff', 'asked', 'another_ai', 'unresumable'] as const;
+export const newConversationSchema = z.object({ because: z.enum(NEW_CONVERSATION_REASONS), report: z.string().min(1).optional() }).strict();
+export type NewConversation = z.infer<typeof newConversationSchema>;
 /** A Task's Run (its owner's or a worker's, at a placement of the Task), apart from its checks so a coordinator Run extends it. */
 const taskRunObject = z.object({
   id: runIdSchema,
@@ -179,6 +234,10 @@ const taskRunObject = z.object({
   stop_requested: z.boolean(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   usage: runUsageSchema.nullable(),
+  /** Why it started its conversation anew (newConversationSchema); absent on a conversation's first Run or one it resumes. */
+  newConversation: newConversationSchema.optional(),
+  /** The compactions of its conversation while it ran, oldest first. */
+  compactions: z.array(runCompactionSchema).max(RUN_COMPACTION_LIMIT).optional(),
   created_at: z.iso.datetime({ offset: true }),
   started_at: z.iso.datetime({ offset: true }).nullable(),
   ended_at: z.iso.datetime({ offset: true }).nullable(),

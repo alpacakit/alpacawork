@@ -15,7 +15,7 @@ import { opening } from "./read-boundary";
 import { firstSentence } from "./foot";
 import { answerBodyFiles, MessageFiles, type OpenMessageImages } from "./MessageFiles";
 import { SentMessage, useMessageCopy, useMessageParts } from "./SentMessage";
-import { AnswerSteps, Attempts, coordinatorErrorReason, Thinking } from "./parts";
+import { Attempts, coordinatorErrorReason, Thinking, TurnWork } from "./parts";
 import { useShownConversation, type SentTurn } from "./shown";
 import { ReplyLabel } from './ReplyLabel';
 import { messageTime } from './message-time';
@@ -86,7 +86,6 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
   if (turn.status === "succeeded" && turn.answer !== null) {
     const seconds = Math.max(0, Math.round((Date.parse(turn.answeredAt ?? turn.at) - Date.parse(turn.at)) / 1000));
     return <div>
-      {turn.workedBy && <AnswerSteps run={turn.workedBy} />}
       <AnswerBody turn={turn} />
       <div data-coordinator-answer-meta className="mt-type-close flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
         <span className="font-medium text-ink">{t("coordinatorCard.title")}</span>
@@ -103,7 +102,7 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
     </div>;
   }
   // The Run's own error words follow in full, even with a known cause: only they carry details such as when a limit resets.
-  return <>{turn.workedBy && <AnswerSteps run={turn.workedBy} />}<div role="alert" className="text-error">{t("coordinatorCard.failed", { reason: coordinatorErrorReason(turn) })}
+  return <><div role="alert" className="text-error">{t("coordinatorCard.failed", { reason: coordinatorErrorReason(turn) })}
     {turn.status === "failed" && !turn.attachments.length && !turn.sentAgain && <button type="button" disabled={disabled} className={LINE_ACTION}
       onClick={() => retry(turn)}>{t("coordinatorCard.retry")}</button>}
     {turn.failure && <span data-coordinator-failure-message className="mt-type-close block whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">{turn.failure.message}</span>}</div></>;
@@ -212,7 +211,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry,
     return <li key={turn.id} data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
       className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
       {open ? <Exchange key={EXCHANGE} turn={turn} open={viewer.open} skills={skills} joined={joined} mark={mark} fold={turn.waiting ? undefined : button}
-        reply={<>{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
+        reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
       : <div className="cursor-pointer" onClick={event => {
         // A press opens it; a press on what it holds (a task's label), or a drag that selects its words, does not.
         if (!(event.target as Element).closest("button, a") && (event.currentTarget.ownerDocument.defaultView?.getSelection()?.isCollapsed ?? true)) toggle(turn.id, true);

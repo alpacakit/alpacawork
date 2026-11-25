@@ -6,7 +6,7 @@ export type { HostFacts, HostReading, HostMeasurement, ProcessStat } from './pla
 export * from './immutable-files.js';
 export * from './platform/process-identity.js';
 export * from './reasons.js';
-export type { RunProcess } from './platform/types.js';
+export type { FolderDialog, RunProcess } from './platform/types.js';
 
 export { processRows, isLiveProcess } from './platform/posix-process.js';
 export { CleanupFailure, withResources, withResourcesAsync } from './resource-scope.js';

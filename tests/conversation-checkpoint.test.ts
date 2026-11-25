@@ -43,6 +43,8 @@ test('W0 uses a successful owner handoff once and keeps the snapshot in the new 
   assert.equal(result(h, next.runId).resumes, null);
   assert.notEqual(result(h, next.runId).session?.id, result(h, first.runId).session?.id);
   assert.equal(result(h, next.runId).context?.rotationFrom, input.opId);
+  // History says why: the report that prepared it.
+  assert.deepEqual(result(h, next.runId).newConversation, { because: 'handoff', report: input.opId });
   assert.match(h.store.getText(next.runId)!.prompt, /## Task\nThe task record as of when this request was accepted/);
   assert.match(h.store.getText(next.runId)!.prompt, /Preserve the fixed result/);
   await h.start(next.runId); h.end(next.runId);

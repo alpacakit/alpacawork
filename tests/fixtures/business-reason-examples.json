@@ -1373,6 +1373,18 @@
   },
   {
     "reason": {
+      "kind": "folder_chooser_only_on_this_pc"
+    },
+    "en": "This PC's folder chooser opens only for a screen opened on this PC"
+  },
+  {
+    "reason": {
+      "kind": "folder_chooser_unavailable"
+    },
+    "en": "This PC has no folder chooser to show"
+  },
+  {
+    "reason": {
       "kind": "host_episode_not_recorded",
       "id": "FACT_id"
     },

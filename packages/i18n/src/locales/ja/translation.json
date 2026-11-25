@@ -216,6 +216,8 @@
       "filesystem_root_cannot_task_root": "ファイルシステムのルートをタスクのルートにはできません",
       "final_reply_too_large": "最終回答が大きすぎます",
       "finished_run_must_have_ended_state": "完了したRunには終了状態が必要です",
+      "folder_chooser_only_on_this_pc": "この PC のフォルダ選択画面は、この PC で開いた画面からだけ使えます",
+      "folder_chooser_unavailable": "この PC ではフォルダ選択画面を出せません",
       "has_open_questions_withdraw_them_before_finishing": "{{taskId}}に未回答の問いがあります（{{ids}}）。終了する前に取り下げてください",
       "has_open_requests_finish_after_their_returns": "{{taskId}}に未完了の依頼が{{count}}件あります。返事を受け取ってから終了してください",
       "held_review_sent_back_once_it_returns_waiting_task_report_state_waiting": "保留中の確認はwaitingに戻してから差し戻してください（task report --state waiting）",

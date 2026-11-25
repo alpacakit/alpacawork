@@ -124,7 +124,8 @@ export function ProjectLocationRow({ project, projects, rootHint }: { project: P
   const { control, setValue, formState: { errors } } = useFormContext<ProjectDraft>();
   const cwd = useWatch({ control, name: "cwd" });
   const inherited = inheritedLocation(projects, project);
-  return <SettingRow id="project-location" label={t("project.cwd")} className="narrow:grid-cols-1 narrow:gap-y-2"
+  // The label stays by the field while the folder list below it is open.
+  return <SettingRow id="project-location" label={t("project.cwd")} className="items-start narrow:grid-cols-1 narrow:gap-y-2"
     hint={inherited ? t("project.locationInherits", { path: inherited }) : (rootHint?.(root) ?? t("project.locationRoot", { path: root }))} error={errors.cwd?.message}>
     <div className="w-110 max-w-full min-w-0 narrow:w-full">
       <FolderInput id="project-location" value={cwd} onChange={(value) => setValue("cwd", value, { shouldDirty: true })} />
@@ -159,7 +160,12 @@ function ancestorsOf(projects: WorkspaceInfo["projects"], project: Project): Pro
 
 /** Where a project's agents start when it names no folder: the nearest project above it that does. */
 function inheritedLocation(projects: WorkspaceInfo["projects"], project: Project): string | null {
-  return ancestorsOf(projects, project).find(({ cwd }) => cwd)?.cwd ?? null;
+  return locationAbove(projects, project.parentId);
+}
+/** The folder a project in `parent` (null: at the top) starts in when it names none: that project's, or the nearest above. */
+export function locationAbove(projects: WorkspaceInfo["projects"], parent: string | null): string | null {
+  for (let at = projects.find(({ id }) => id === parent); at; at = projects.find(({ id }) => id === at!.parentId)) if (at.cwd) return at.cwd;
+  return null;
 }
 
 /** What the projects above this one pass on to its agents (each one's context, as the policy chain carries it), folded. */

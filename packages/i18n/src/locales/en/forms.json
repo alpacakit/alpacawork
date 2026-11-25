@@ -23,10 +23,13 @@
   "folderInput": {
     "cancel": "Cancel new folder",
     "choose": "Choose",
-    "close": "Close",
+    "chooseHere": "Choose here",
+    "chooserTitle": "Choose the working folder",
+    "choosing": "Choose the folder in the window that opened.",
+    "close": "Cancel",
     "create": "Create",
     "creating": "Creating…",
-    "empty": "No folders inside.",
+    "empty": "No folders",
     "example": "e.g. {{path}}",
     "inside": "Folders inside",
     "made": "This is a newly created folder.",
@@ -43,10 +46,9 @@
       "taken": "A folder with this name already exists."
     },
     "reading": "Loading…",
-    "truncated": "Only the first {{limit}} are shown. Close the list and type a name in the field to narrow them.",
+    "truncated": "Showing the first {{limit}}. Type a name in the field to narrow them.",
     "up": "Up",
-    "use": "Use this folder",
-    "where": "Create inside {{path}}"
+    "use": "Use this folder"
   },
   "formDialog": {
     "cancel": "Cancel"

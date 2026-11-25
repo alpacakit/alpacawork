@@ -14,6 +14,9 @@ import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffec
 import { followReference, noteReaderRows, readerHistoryPosition } from "@/state/reader-position";
 import { usePeopleFor, useTaskHistory } from "@/data/queries";
 import { useTranslation } from "react-i18next";
+import { contextPercent } from "@alpacawork/contract/agent-context";
+import { percentText, UsageRing } from "@/components/ui/usage-ring";
+import { limitTone } from "@/domain/limits";
 import type { TFunction } from "i18next";
 import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contract";
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
@@ -558,7 +561,7 @@ type RecordProps = RowProps & { line: ReactNode };
  * darker when it is the row being read: colour and weight say only what is yours to do, or what closed and needs no reading.
  */
 function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: RecordProps) {
-  const { reader: t, ui } = useFeedWords();
+  const { reader: t, ui, locale } = useFeedWords();
   const stateWords = (state: TaskState) => stateWord(state, ui);
   const label = useFeedClock(true);
   const { report, sameTitle: same, outcome } = row;
@@ -566,10 +569,12 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const request = isInstruction(report);
   const galleryKey = report.replyTo ?? report.key;
   const plain = (report.note?.title ?? report.text).replace(/\bR\d+\b/g, "").replace(/\s+/g, " ").trim();
-  const kindWord = t(`reportFeed.row.kind.${report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
+  const kindWord = t(`reportFeed.row.kind.${report.conversation ? CONVERSATION_KIND[report.conversation.change]
+    : report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
   const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
     : report.carriedOn ? carriedOnWords(report, names, t, ui)
+    : report.conversation ? conversationFill(report.conversation, t, locale)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -593,10 +598,10 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const media = request ? sentPicture?.path && held(sentPicture.path)?.name : firstReportMedia(report.description ?? "") ?? undefined;
   const shownMedia = media && (home !== task.id || isMedia(media) && held(media)) ? media : null;
   const lines = <>
-    <RailTime mark={report.finish ? FINISH_MARK : { kind: row.way, tone: reportTone(report) }}><time dateTime={report.at}>{label(report.at)}</time></RailTime>
+    <RailTime mark={report.finish ? FINISH_MARK : report.conversation ? CONVERSATION_MARK[report.conversation.change] : { kind: row.way, tone: reportTone(report) }}><time dateTime={report.at}>{label(report.at)}</time></RailTime>
     <RowName row={row} kindWord={kindWord} open={open} />
     <span className="col-start-3 row-start-1 flex items-center justify-self-end"><DisclosureChevron open={open} /></span>
-    {(!bodySaysIt || leaving) && <span ref={wordsLine} data-row-words data-leaving={leaving || undefined} aria-hidden={leaving || undefined} dir="auto" title={same ? report.text : undefined} className={`col-span-2 col-start-1 mt-0.5 min-w-0 text-base ${heading || report.kind === "run_end" || report.kind === "error" ? "" : firstLine ? "line-clamp-1" : "line-clamp-2"} ${strong || heading ? "font-semibold" : "font-normal"} ${
+    {(!bodySaysIt || leaving) && words !== null && <span ref={wordsLine} data-row-words data-leaving={leaving || undefined} aria-hidden={leaving || undefined} dir="auto" title={same ? report.text : undefined} className={`col-span-2 col-start-1 mt-0.5 min-w-0 text-base ${heading || report.kind === "run_end" || report.kind === "error" ? "" : firstLine ? "line-clamp-1" : "line-clamp-2"} ${strong || heading ? "font-semibold" : "font-normal"} ${
       heading ? "text-ink" : faint ? "text-soft group-hover/row:text-ink group-data-lit/row:text-ink" : strong ? "text-ink" : ROW_WORDS}`}>{words}</span>}
     {!open && shownMedia && <MediaThumb name={shownMedia} src={taskFileUrl(home, shownMedia, held(shownMedia)?.revision)} className={`${FEED_THUMB} ${report.result ? "" : FEED_THUMB_FOOT}`} />}
     {!open && sent && sent.files.length > (shownMedia ? 1 : 0) && <span data-attachment-count className="relative z-1 col-start-3 row-start-2 flex flex-none items-center gap-0.5 text-xs text-muted">
@@ -763,7 +768,7 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
   // smaller than the line, so there they never made it taller.
   return <span data-row-name className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-1 whitespace-nowrap py-px narrow:gap-x-0.5 narrow:py-0 text-xs text-soft group-hover/row:text-ink group-data-lit/row:text-ink">
     <span data-row-said className="sr-only">{said}</span>
-    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : ""}`}>{kindWord}</span>
+    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : row.report.conversation ? "text-conversation" : ""}`}>{kindWord}</span>
     {row.older.length > 0 && <span data-row-times className="flex-none tabular-nums">{t("reportFeed.row.times", { n: row.older.length + 1 })}</span>}
     {/* On a phone the tags are a step smaller than the words beside them, so two long agents stay whole on one line. */}
     {/* Cut across only: cut all round, a phone's tight small line cut the agents' g and p off below. */}
@@ -870,6 +875,31 @@ function rowEnds(row: HistoryRow): HistoryRow["name"] {
   return carriedOn && recipient && "ends" in row.name
     ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
 }
+/** A conversation row's rail mark: a new conversation's, or a compaction's, in its own colour (reportTone). */
+const CONVERSATION_MARK = { new: { kind: "anew", tone: "conversation" }, compacted: { kind: "compacted", tone: "conversation" } } as const satisfies
+  Record<NonNullable<ReportEvent["conversation"]>["change"], NonNullable<ReportEvent["mark"]>>;
+/** A conversation row is named by what happened to the conversation; its rail mark is the same picture. */
+const CONVERSATION_KIND = { new: "conversationNew", compacted: "compacted" } as const;
+/**
+ * A compaction's row shows how full the conversation was before and after, as the context meter draws it (the ring and
+ * its figure); nothing when its agent did not say. A new conversation's row says in one sentence why it started anew,
+ * when the Run that started it says.
+ */
+function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>, t: TFunction<"reader">, language: string): ReactNode {
+  if (conversation.change === "new") return !conversation.because ? null : conversation.because === "handoff"
+    ? conversation.report ? t("reportFeed.row.newBecause.handoffAt", { report: conversation.report }) : t("reportFeed.row.newBecause.handoff")
+    : t(`reportFeed.row.newBecause.${conversation.because}`);
+  const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
+  if (before === null || after === null) return null;
+  const figure = (tokens: number) => {
+    const percent = window ? contextPercent({ usedTokens: tokens, windowTokens: window })! : null;
+    const shown = percent !== null ? percentText(percent)
+      : new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(tokens);
+    return <span className="inline-flex items-center gap-1 tabular-nums">
+      <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3.5" />{shown}</span>;
+  };
+  return <span data-compaction-fill className="inline-flex items-center gap-1.5"><span className="text-soft">{t("reportFeed.row.compactedFill")}</span>{figure(before)}<Icon name="arrowRight" className="size-3.5 text-muted" />{figure(after)}</span>;
+}
 const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
   runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
 function carriedOnWords(report: ReportEvent, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {
@@ -958,7 +988,7 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
     <WorkingPerson run={lead} task={task} onFollow={onFollow} open={open} lead
       others={others > 0 && !open ? <span data-working-others>{t("reportFeed.working.others", { count: others })}</span> : null} />
     {others > 0 && <DisclosureBody open={open}><div className="flex flex-col gap-2 pt-2">
-      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open lead={false} />)}
+      {rest.map(run => <WorkingPerson key={run.id} run={run} task={task} onFollow={onFollow} open={open} lead={false} />)}
     </div></DisclosureBody>}
   </div>;
 }
@@ -981,8 +1011,12 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   // Opened, the lead's line counts its steps and every one of them is listed under it.
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
   // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
-  const latest = steps.at(-1), worked = tookSteps(run.activity), listed = lead && open && worked;
-  const full = useRunSteps(run.id, listed, run.activity?.stepEvents ?? 0);
+  const latest = steps.at(-1), worked = tookSteps(run.activity);
+  // Each person's steps open on their own work line, apart from the words: one press, one thing opened.
+  const [listed, setListed] = useState(false);
+  // A member's steps are read only while the row shows them: folded, its body keeps them drawn but out of sight.
+  const reading = listed && worked && (lead || open);
+  const full = useRunSteps(run.id, reading, run.activity?.stepEvents ?? 0);
   const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;
@@ -1005,13 +1039,17 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
       </span>
       {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
-      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
+      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className={`${cell} mt-1.5 text-xs`} />
-    {listed && <StepList steps={full} className={`${cell} mt-1`} />}
+    {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={() => setListed(!listed)}
+      className={`${cell} group/steps mt-1 flex cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11`}>
+      <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
+      <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
+      : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
+    {reading && <StepList steps={full} className={`${cell} mt-1`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
-    <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
+    <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
 }
 

@@ -126,7 +126,7 @@ export const reportContains = <Record extends LayoutRecord>(node: DisplayNode<Re
   (node.report.key === key || reportChildren(node).some(child => reportContains(child, key)));
 
 /** Kinds a row is named by, so it says something without words of its own. */
-const LABELLED: ReadonlySet<HistoryEventKind> = new Set(["request", "answer", "error", "run_end", "dialogue"]);
+const LABELLED: ReadonlySet<HistoryEventKind> = new Set(["request", "answer", "error", "run_end", "dialogue", "conversation"]);
 /**
  * Kinds that only close a wait. The wait's own card says how it closed (its released mark), so a row of their own
  * would tell it twice, beside whatever newer record closed it.

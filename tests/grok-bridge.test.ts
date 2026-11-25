@@ -121,6 +121,8 @@ for (const outcome of ['ok', 'fail']) test(`Grok ${outcome === 'ok' ? 'compacts 
   const types = h.events().map(row => row.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.') || type === 'error');
   assert.deepEqual(types, [outcome === 'ok' ? 'compaction.completed' : 'compaction.failed', 'turn.started', 'turn.completed']);
   if (outcome === 'fail') assert.match(h.events().find(row => row.type === 'compaction.failed').message, /synthetic compaction failure/);
+  // History keeps each compaction once: the bridge says it compacted once, and nothing when it did not.
+  assert.equal(h.events().filter(event => event.type === 'context.updated' && event.context?.compacted === true).length, outcome === 'ok' ? 1 : 0);
   assertInputOutcomes(h.events(), { one: 'taken' });
   assert.equal(readFileSync(join(h.area, 'result'), 'utf8'), 'answer hello');
 });

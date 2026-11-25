@@ -92,9 +92,12 @@ function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly 
       const launch = snapshot.launch;
       const session = canResume ? predecessor.session : assignedSession(launch, agent);
       const resumes = canResume ? run.resumes : null;
+      // A Run that was to resume its conversation starts one anew with the other AI.
+      const newConversation = !canResume && run.resumes !== null ? { because: 'another_ai' as const } : run.newConversation;
+      const opened = newConversation ? { newConversation } : {};
       updated = run.role === 'coordinator' && coordinator?.ok ?
-        { ...run, agent, launch, resumes, session, restartArgv: coordinator.restartArgv } :
-        { ...run, agent, launch, resumes, session };
+        { ...run, agent, launch, resumes, session, ...opened, restartArgv: coordinator.restartArgv } :
+        { ...run, agent, launch, resumes, session, ...opened };
       changed.set(run.id, { agent, values: launch.values, session, adapter: launch.adapter });
     } catch (error) {
       if (error instanceof Problem) return undefined;

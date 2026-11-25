@@ -48,6 +48,7 @@
    Error, stopped by an error, a read or a save that failed — `warn` is the same) ·
    working (Working) · done (Done) · stopped (Stop) · todo (Not started) ·
    changed (not yet read — `new` is the same) ·
+   conversation (an agent's conversation started anew or compacted, in a hue no state or party takes) ·
    scrim (under a dialog) · paper (behind a Task-folder page, white as a
    page is in both themes). A wait that is not yours is said in muted, and so
    is a turn the reader has set aside (Hold, `[data-held]` below).
@@ -104,6 +105,7 @@
   --changed: oklch(50% 0.17 290);
   --new: var(--changed);
   --option-param: oklch(48% 0.19 265);
+  --conversation: oklch(52% 0.1 100);
   --warn: var(--error);
   /* Who a History row was between (ReportFeed's PartyTag): you and the Coordinator by hues no state colour takes; a member
      and Tasks in grey, told apart by their mark. */
@@ -162,6 +164,7 @@
   --changed: oklch(74% 0.12 290);
   --new: var(--changed);
   --option-param: oklch(78% 0.12 265);
+  --conversation: oklch(80% 0.1 100);
   --warn: var(--error);
   --party-you: oklch(80% 0.08 195);
   --party-coordinator: oklch(78% 0.11 320);
@@ -207,6 +210,7 @@
   --color-todo: var(--todo);
   --color-new: var(--new);
   --color-changed: var(--changed);
+  --color-conversation: var(--conversation);
   /* Editable selection references in launch options; system references stay soft. */
   --color-option-param: var(--option-param);
   --color-warn: var(--warn);
