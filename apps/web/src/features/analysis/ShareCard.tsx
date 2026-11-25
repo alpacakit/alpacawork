@@ -72,8 +72,8 @@ function cardPng(svg: string): Promise<Blob> {
 }
 /** The picture onto the clipboard; the PNG is handed over as it is drawn (Safari takes it only so). */
 const canCopyPictures = () => typeof ClipboardItem !== "undefined" && !!navigator.clipboard?.write;
-function copyCard(svg: string): Promise<void> {
-  if (!canCopyPictures()) return Promise.reject(new Error("No clipboard for pictures"));
+async function copyCard(svg: string): Promise<void> {
+  if (!canCopyPictures()) throw new Error("No clipboard for pictures");
   return navigator.clipboard.write([new ClipboardItem({ "image/png": cardPng(svg) })]);
 }
 const canShareFiles = () => {
@@ -131,7 +131,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <CardSkeleton waitFrom={waitFrom} />;
 
   const drawn = async () => facts && svg ? { name: cardFileName(facts), png: await cardPng(svg) } : null;
-  const save = async () => {
+  const save = async (message = t("card.saved")) => {
     try {
       const picture = await drawn();
       if (!picture) return;
@@ -140,7 +140,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       link.download = picture.name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-      notify.success(t("card.saved"));
+      notify.success(message);
     } catch { notify.error(t("card.drawFailed")); }
   };
   const copy = () => { if (svg) copyCard(svg).then(() => notify.success(t("card.copied")), () => notify.error(t("card.copyFailed"))); };
@@ -159,10 +159,10 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const post = () => {
     if (!svg || !facts) return;
     const text = cardPostText(facts, choice, card.length === "all");
-    if (!copying) { void save(); window.open(postUrl(text), "_blank", "noopener"); return; }
-    const copied = copyCard(svg);
+    const saveForPost = () => void save(t("card.postSave"));
+    if (copying) void copyCard(svg).then(() => notify.success(t("card.postCopied")), saveForPost);
+    else saveForPost();
     window.open(postUrl(text), "_blank", "noopener");
-    copied.then(() => notify.success(t("card.postCopied")), () => { void save(); notify.info(t("card.postSave")); });
   };
 
   // A number is chosen by the name the card gives it; several can be, so each chosen one carries a check.
@@ -185,7 +185,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     </div>
     <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
     <div className="mt-4 flex flex-wrap items-center gap-2 narrow:[&>button]:min-h-10">
-      {/* Posting leads: X's own button, black on a light page and white on a dark one, with X's word for it. Saving,
+      {/* Opening the X composer leads, black on a light page and white on a dark one. Saving,
           copying and the device's own sharing stand beside it, quieter. */}
       <Button disabled={!current} onClick={post} aria-label={t("card.postOnX")} title={t("card.postOnX")}
         className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
