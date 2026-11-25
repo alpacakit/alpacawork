@@ -1,6 +1,6 @@
 # Documentação do alpacawork
 
-O alpacawork é uma ferramenta para entregar trabalho ao Claude Code ou ao Codex do seu PC. Escreva uma solicitação no campo de mensagem, e a IA a transforma em uma tarefa e a leva adiante; a tarefa só aparece em “Aguardando revisão” quando precisa de uma decisão sua.
+O alpacawork é uma ferramenta para entregar trabalho aos agentes de IA do seu PC, como o Claude Code e o Codex. Escreva uma solicitação no campo de mensagem, e a IA a transforma em uma tarefa e a leva adiante; a tarefa só aparece em “Aguardando revisão” quando precisa de uma decisão sua.
 
 Se é a primeira vez, comece por “Primeiros passos”, abaixo. Em uns 15 minutos, você faz a primeira solicitação e revisa o resultado.
 
