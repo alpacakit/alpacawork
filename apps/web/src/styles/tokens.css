@@ -135,6 +135,11 @@
    so it is a variable rather than a class. */
 :root, .theme-light, .theme-dark {
   --raised: var(--lit);
+  /* The analysis's bar colours that are mixed, as variables of their own: a chart paints a narrow bin's parts in one
+     element from them (features/analysis/rows.tsx), as every bar colour is a variable named as its class. */
+  --reworked: color-mix(in oklab, var(--turn) 74%, var(--bg));
+  --stopped-part: color-mix(in oklab, var(--stopped) 62%, var(--bg));
+  --rest: var(--rest-time);
   /* A named row is tinted, not picked: quieter than the hover a row takes, so the open row and the states lead. The
      dark ground is near black, where the same tint all but vanishes, so it keeps its own step below. */
   --mention: color-mix(in oklch, var(--changed) 6%, var(--bg));
@@ -254,9 +259,9 @@
   /* Colours say whose hand a task took: done's green went through without a fix, your turn's orange took your hand
      (reworked), stop's pink stopped. Each is also lighter in that order (reworked 26% toward the ground, a stopped part
      38%), so they are told apart without the hue. */
-  --color-reworked: color-mix(in oklab, var(--turn) 74%, var(--bg));
-  --color-stopped-part: color-mix(in oklab, var(--stopped) 62%, var(--bg));
-  --color-rest: var(--rest-time);
+  --color-reworked: var(--reworked);
+  --color-stopped-part: var(--stopped-part);
+  --color-rest: var(--rest);
   /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
   --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);
   --color-day-band: var(--day-band);

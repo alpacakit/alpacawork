@@ -10,7 +10,7 @@ import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./
 import type { Span } from "./place";
 import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
-import { LaunchControls, launchesParts, launchesSay, useLaunches } from "./Launches";
+import { LaunchControls, launchesParts, launchesSay, useLaunches, type LaunchAnswers } from "./Launches";
 
 type Days = { from: string; to: string };
 const HOUR = 3_600_000;
@@ -33,8 +33,10 @@ type ValueKey = keyof typeof VALUES;
  * value as a row on the same days, then the same broken down. Skills, tools and MCP are counted from the day counting
  * began: the days before it lie hatched.
  */
-export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days, open, zone }: {
+export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days, open, zone, series }: {
   view: UsageView; span: Span; root: HTMLElement | null; tasks: TasksView | null; days: Days; open: Open; zone: string;
+  /** The launches by model or effort: the whole record under the filter, without it, and the span under it. */
+  series: LaunchAnswers;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket, usageGroup, grow } = useChoices();
@@ -62,7 +64,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
-  const launches = useLaunches(points, days, bucket, true);
+  const launches = useLaunches(points, series);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
   // The launches are the series' once it has come (under its filter), the use's until then.
@@ -160,7 +162,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       <Row row={first + 2} left={<>
         <Num className="" label={t("usage.launches")} kind="times" value={launches.isFiltered ? launches.spanTotal ?? 0 : now.launches} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "launches", filter: launches.filter })} />
-        <LaunchControls launches={launches} />
+        <LaunchControls launches={launches} bucket={bucket} />
         <Parts items={[...launchesParts(launches, open), ...launches.isFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
           ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]]}
           line={launches.isFiltered ? undefined : perEntry("launches")} />

@@ -635,6 +635,7 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   const line = overlay ? lineDots(overlay.values, overlay.top, overlay.faint) : null;
   const inSpan = (at: number) => lit(group.bins[at]!, group.span);
   const points = width / Math.max(1, group.bins.length) >= 12;
+  const thin = width > 0 && width / Math.max(1, group.bins.length) < 4;
   // A bin over the scale's top (one outside the chosen span: the top is the span's) stands to the top, its parts in
   // their shares of it, and is cut there with a small break across it.
   const bars = (at: number) => {
@@ -643,6 +644,20 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line.
     const gaps = 2 * (all.filter(([, value]) => value > 0).length - 1);
     const height = (value: number) => cut ? `calc((100% - ${gaps}px) * ${value / sum})` : `${Math.min(100, value / scale.top * 100)}%`;
+    // Where a bin is only a few pixels wide (days over a long record), its parts are one element painted in their
+    // colours with the same 2px gaps, not one element each: the same picture at a fraction of the page to lay out.
+    // Too narrow to press a part, the bin opens the row's tasks.
+    const shown = all.filter(([, value]) => value > 0);
+    if (thin && !tone && !cut && shown.length > 1) {
+      let below = 0;
+      const stops = shown.map(([color, value], part) => {
+        const from = `calc((100% - ${gaps}px) * ${below / sum} + ${2 * part}px)`; below += value;
+        const to = `calc((100% - ${gaps}px) * ${below / sum} + ${2 * part}px)`, paint = `var(--${color.replace(/^bg-/, "")})`;
+        return `${paint} ${from}, ${paint} ${to}${part < shown.length - 1 ? `, transparent ${to}, transparent calc(${to} + 2px)` : ""}`;
+      });
+      return <i style={{ height: `calc(${sum / scale.top * 100}% + ${gaps}px)`, background: `linear-gradient(to top, ${stops.join(", ")})` }}
+        className={cn("relative block min-w-px flex-none origin-bottom rounded-t-[3px] rounded-b-[1px]", grow && "animate-bar")} />;
+    }
     return all.map(([color, value, of], part) => value > 0 &&
       <i key={part} data-part={of} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
         className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>

@@ -20,13 +20,24 @@ const route = (name: string, input: Record<string, string | null | undefined>) =
 const scope = (project: string | null, span: Span) => ({ project, ...spanQuery(span) });
 
 /**
- * Launches by model or by effort (`analysis usage-series`), for whole days (`days`: the charts' first bin to their last,
- * or the span's) and one filter. `enabled`: false while the usage look is not shown.
+ * Launches by model or by effort (`analysis usage-series`), for one span and one filter. `enabled`: false while the
+ * usage look is not shown.
  */
-export function useUsageSeries(project: string | null, days: Span | null, bucket: Bucket, by: SeriesBy, filter: LaunchFilter | null, enabled = true) {
+export function useUsageSeries(project: string | null, span: Span, bucket: Bucket, by: SeriesBy, filter: LaunchFilter | null, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  const input = days ? { ...scope(project, days), bucket, by, ...filterQuery(filter) } : {};
-  return useQuery({ ...resources.analysisView(root, "usage-series", input, usageSeriesViewSchema), enabled: enabled && !!days });
+  return useQuery({ ...resources.analysisView(root, "usage-series", { ...scope(project, span), bucket, by, ...filterQuery(filter) }, usageSeriesViewSchema), enabled });
+}
+
+/**
+ * The launches chart's three answers, read with the use's own so the look is drawn once: the whole record under the
+ * filter (the chart: the use's charts stand on the whole record's bins), the whole record without one (its colours,
+ * the same read when nothing is filtered), and the span under the filter (its numbers on the left). The whole record's
+ * do not change with the span, so another span reads only the last.
+ */
+export function useLaunchReads(project: string | null, span: Span, bucket: Bucket, by: SeriesBy, filter: LaunchFilter, enabled: boolean) {
+  const all: Span = { period: "all" };
+  return [useUsageSeries(project, all, bucket, by, filter, enabled), useUsageSeries(project, all, bucket, by, null, enabled),
+    useUsageSeries(project, span, bucket, by, filter, enabled)] as const;
 }
 
 /**
