@@ -3,7 +3,7 @@ import { type ChangeKey, type ChangeLog } from '@alpacawork/db';
 import type { TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
-import { taskLogs } from '../control/task-history.js';
+import { taskLogsOf } from '../control/task-history.js';
 import { Slices } from './slices.js';
 import { beganBefore, clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
   type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
@@ -27,10 +27,19 @@ export type AnalysisFacts = {
 const nodeRows = `SELECT t.id AS internal,t.external_id AS id,t.title,
     p.external_id AS parent,pr.external_id AS project,t.kind,t.lifecycle,t.user_requested AS requested,t.base_state AS state,t.created_at AS created
   FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id LEFT JOIN tasks pr ON pr.id=t.project_task_id`;
-/** Every Task row, or only those named (by ID): a Task's row names only itself, so a change reads only its own. */
-const readNodes = (db: DatabaseSync, ids?: ReadonlySet<string>) => (ids
-  ? db.prepare(nodeRows + ' WHERE t.external_id IN (SELECT value FROM json_each(?))').all(JSON.stringify([...ids]))
-  : db.prepare(nodeRows).all()).map(row => ({ ...row, requested: row.requested === 1 }) as TaskNode);
+/**
+ * Every Task row, or only those named (by ID): a Task's row names only itself, so a change reads only its own. Read row
+ * by row, giving the loop back as it goes.
+ */
+async function readNodes(db: DatabaseSync, slices: Slices, ids?: ReadonlySet<string>) {
+  const nodes: TaskNode[] = [];
+  for (const row of ids ? db.prepare(nodeRows + ' WHERE t.external_id IN (SELECT value FROM json_each(?))').iterate(JSON.stringify([...ids]))
+    : db.prepare(nodeRows).iterate()) {
+    nodes.push({ ...row, requested: row.requested === 1 } as TaskNode);
+    if (slices.due) await slices.pause();
+  }
+  return nodes;
+}
 
 /** Only what the counting reads of a Run is kept: its whole record is many times that, and there are many Runs. */
 const runFromRow = (row: Record<string, unknown>) => {
@@ -85,13 +94,14 @@ function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
   return { rootOf, usageRootOf, members, usageMembers };
 }
 
-function valuesLinks(db: DatabaseSync, nodes: readonly TaskNode[]) {
+async function valuesLinks(db: DatabaseSync, nodes: readonly TaskNode[], slices: Slices) {
   const found = new Map<string, string[]>();
   for (const row of db.prepare(`SELECT task_id,value FROM task_values
     WHERE task_id IN (SELECT value FROM json_each(?)) AND instr(lower(value),'github.com/')>0`)
-    .all(JSON.stringify(nodes.map(node => node.internal)))) {
+    .iterate(JSON.stringify(nodes.map(node => node.internal)))) {
     const key = String(row.task_id), values = found.get(key) ?? [];
     values.push(...textLeaves(JSON.parse(String(row.value)))); found.set(key, values);
+    if (slices.due) await slices.pause();
   }
   return new Map(nodes.map(node => [node.id, prLinks(found.get(node.internal) ?? [])]));
 }
@@ -124,7 +134,10 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 
-/** Task histories are read this many Tasks at a time, so a full read gives the loop back between them. */
+/**
+ * Task histories are read from the table this many Tasks at a time (not through the kept history, which reads every
+ * Task's at once), so a full read gives the loop back between them.
+ */
 const HISTORY_SLICE = 500;
 
 /**
@@ -233,24 +246,25 @@ export class FactsCache {
       this.first.clear();
     }
     let nodes = previous?.nodes ?? new Map<string, TaskNode>();
-    if (full) nodes = new Map(readNodes(db).map(node => [node.id, node]));
+    if (full) nodes = new Map((await readNodes(db, slices)).map(node => [node.id, node]));
     else if (changedTasks.size) {
       const next = new Map(nodes);
-      for (const node of readNodes(db, changedTasks)) next.set(node.id, node);
+      for (const node of await readNodes(db, slices, changedTasks)) next.set(node.id, node);
       nodes = next;
     }
     const tasks = full ? [...nodes.values()].filter(node => node.kind === 'task') : [];
     const historyNodes = full ? tasks : [...changedTasks].flatMap(id => nodes.get(id)?.kind === 'task' ? [nodes.get(id)!] : []);
     for (let at = 0; at < historyNodes.length; at += HISTORY_SLICE) {
       const part = historyNodes.slice(at, at + HISTORY_SLICE);
-      const current = taskLogs(db, this.root, part.map(node => node.internal));
+      const current = taskLogsOf(db, part.map(node => node.internal));
       for (const node of part) this.logs.set(node.id, current.get(node.internal) ?? []);
       if (slices.due) await slices.pause();
     }
     if (full || valuesIds.size)
-      for (const [id, links] of valuesLinks(db, full ? tasks : [...nodes.values()].filter(node => node.kind === 'task' && valuesIds.has(node.internal)))) {
+      for (const [id, links] of await valuesLinks(db, full ? tasks : [...nodes.values()].filter(node => node.kind === 'task' && valuesIds.has(node.internal)), slices)) {
         this.values.set(id, links); taskIds.add(id);
       }
+    if (slices.due) await slices.pause();
     const sessionKeys = new Set<string>();
     for (const row of runRows(db, this.tallySince, full ? undefined : runIds)) {
       const item = runFromRow(row);
@@ -259,9 +273,11 @@ export class FactsCache {
       if (slices.due) await slices.pause();
     }
     await this.settleFirst(full ? 'all' : sessionKeys, slices);
+    if (slices.due) await slices.pause();
     const moved = full || changedTasks.size > 0;
     const tree = this.tree = moved ? ancestry(nodes) : this.tree!;
     const { rootOf, usageRootOf, members, usageMembers } = tree;
+    if (slices.due) await slices.pause();
     const dirty = new Set(full ? [...members.keys()] : []);
     if (placementIds.length)
       for (const row of db.prepare('SELECT DISTINCT task_id FROM placements WHERE id IN (SELECT value FROM json_each(?))')
@@ -281,6 +297,7 @@ export class FactsCache {
         }
       }
     }
+    if (slices.due) await slices.pause();
     const units = full ? new Map<string, Unit>() : new Map(previous!.units);
     const workers = new Map<string, string[]>();
     if (dirty.size)
@@ -289,6 +306,7 @@ export class FactsCache {
         const id = String(row.task_id), group = workers.get(id) ?? [];
         group.push(String(row.id)); workers.set(id, group);
       }
+    if (slices.due) await slices.pause();
     for (const id of dirty) {
       const node = nodes.get(id), group = members.get(id);
       if (!node || !group) { units.delete(id); continue; }

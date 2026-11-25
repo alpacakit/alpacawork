@@ -130,6 +130,7 @@ class DailyUsage {
       const found = byDay.get(item.day);
       if (found) found.push(item);
       else byDay.set(item.day, [item]);
+      if (slices.due) await slices.pause();
     }
     for (const day of [...byDay.keys()].sort()) {
       const items = byDay.get(day)!, still = items.filter(({ run }) => !run.live);
@@ -277,7 +278,10 @@ async function scopeView(zone: ZoneDays, allows: (project: string) => boolean, s
     view.first = Math.min(view.first, unit.first);
     if (unit.dated) view.units.push(unit.dated);
   }
-  for (const launch of zone.launches) if (inScope(launch.project)) view.launches.push(launch);
+  for (const launch of zone.launches) {
+    if (inScope(launch.project)) view.launches.push(launch);
+    if (slices.due) await slices.pause();
+  }
   return { ...view, daily: await DailyUsage.of(view.launches, slices), byDimension: new Map() };
 }
 
@@ -468,7 +472,7 @@ class ScopedAnalysis {
   }
 
   /** Each unit with launches in the days (and the row, when given) and its value: launches are gathered by unit once. */
-  private usageEntries(input: AnalysisListInput, head: AnalysisHead): Entry[] {
+  private async usageEntries(input: AnalysisListInput, head: AnalysisHead, slices: Slices): Promise<Entry[]> {
     const by = input.by, inDays = this.view.daily.within(head.period);
     const launches = isAnalysisTallyBy(by) ? this.collectedLaunches(inDays) : inDays;
     const byUnit = new Map<string, DatedLaunch[]>();
@@ -477,17 +481,24 @@ class ScopedAnalysis {
       const found = byUnit.get(item.root);
       if (found) found.push(item);
       else byUnit.set(item.root, [item]);
+      if (slices.due) await slices.pause();
     }
-    return [...byUnit].map(([root, items]) => {
-      const unit = this.facts.units.get(root)!;
-      if (!input.value) return { unit, value: null };
-      if (input.value === 'calls') return { unit, value: items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0) };
-      const { runs, runMs, tokens } = sumRunUsage(items.map(item => item.run), this.now);
-      const output = tokens?.output ?? 0, inputs = tokens?.input ?? 0, cache = tokens ? tokens.cacheRead + tokens.cacheWrite : 0;
-      const values: Record<string, number> = { launches: runs, runMs, newConversations: items.filter(item => item.first).length,
-        output, input: inputs, cache, tokens: output + inputs + cache };
-      return { unit, value: values[input.value] ?? null };
-    });
+    const entries: Entry[] = [];
+    for (const [root, items] of byUnit) {
+      entries.push(this.usageEntry(this.facts.units.get(root)!, items, input));
+      if (slices.due) await slices.pause();
+    }
+    return entries;
+  }
+
+  private usageEntry(unit: Unit, items: readonly DatedLaunch[], input: AnalysisListInput): Entry {
+    if (!input.value) return entry(unit, null);
+    if (input.value === 'calls') return entry(unit, items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0));
+    const { runs, runMs, tokens } = sumRunUsage(items.map(item => item.run), this.now);
+    const output = tokens?.output ?? 0, inputs = tokens?.input ?? 0, cache = tokens ? tokens.cacheRead + tokens.cacheWrite : 0;
+    const values: Record<string, number> = { launches: runs, runMs, newConversations: items.filter(item => item.first).length,
+      output, input: inputs, cache, tokens: output + inputs + cache };
+    return entry(unit, values[input.value] ?? null);
   }
 
   private taskEntries(input: AnalysisListInput, head: AnalysisHead): Entry[] {
@@ -496,22 +507,23 @@ class ScopedAnalysis {
       (input.set === 'finished' || input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
       && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
     return units.map(unit => {
-      if (!input.value) return { unit, value: null };
+      if (!input.value) return entry(unit, null);
       const { review, answer, ai, other } = unit.clock?.time ?? emptyClock();
       const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
         questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
-      return { unit, value: values[input.value] ?? null };
+      return entry(unit, values[input.value] ?? null);
     });
   }
 
-  list(input: AnalysisListInput): AnalysisUnitList {
+  async list(input: AnalysisListInput, slices: Slices): Promise<AnalysisUnitList> {
     const head = this.head(input);
     const home = input.set === 'finished' && input.period === 'today' && !input.end && !input.by && !input.value;
     // The page's rows are written out after the order is known: only they become rows.
-    const entries = (input.set === 'used' ? this.usageEntries(input, head) : this.taskEntries(input, head))
-      .filter(item => !input.value || item.value !== null && (item.value > 0 || input.value === 'lead' || input.value === 'submits'))
-      .sort((a, b) => ((b.value ?? 0) - (a.value ?? 0)) ||
-        (home ? 1 : -1) * (a.unit.outcome.finishedAt ?? '').localeCompare(b.unit.outcome.finishedAt ?? '') || compareTask(a.unit, b.unit));
+    const entries = (input.set === 'used' ? await this.usageEntries(input, head, slices) : this.taskEntries(input, head))
+      .filter(item => !input.value || item.value !== null && (item.value > 0 || input.value === 'lead' || input.value === 'submits'));
+    if (slices.due) await slices.pause();
+    entries.sort((a, b) => ((b.value ?? 0) - (a.value ?? 0)) ||
+      (home ? 1 : -1) * (a.finishedAt < b.finishedAt ? -1 : a.finishedAt > b.finishedAt ? 1 : 0) || a.number - b.number);
     const selector = createHash('sha256').update(JSON.stringify([head.project, head.timeZone, head.period, input.set, input.by, input.key, input.value]))
       .digest('base64url').slice(0, 22);
     let offset = 0;
@@ -552,7 +564,10 @@ class ScopedAnalysis {
       tallied: { runs: collected.length, of: items.filter(({ run }) => run.tallyEligible).length, since: this.tallyDay } };
   }
 }
-type Entry = { unit: Unit; value: number | null };
+/** A unit in a list before the list is written out: its value, and what its order reads, taken once. */
+type Entry = { unit: Unit; value: number | null; finishedAt: string; number: number };
+const entry = (unit: Unit, value: number | null): Entry =>
+  ({ unit, value, finishedAt: unit.outcome.finishedAt ?? '', number: Number(unit.node.id.slice(1)) });
 
 export class AnalysisReader {
   private readonly facts: FactsCache;
@@ -616,7 +631,7 @@ export class AnalysisReader {
   breakdown(input: AnalysisBreakdownInput, caller: Caller) {
     return this.scoped(input, caller, async (view, slices) => view.breakdown(input, input.look === 'usage' ? await this.rowsFor(view, input.by, slices) : undefined));
   }
-  list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, view => view.list(input)); }
+  list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, (view, slices) => view.list(input, slices)); }
   task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, view => view.task(input.task)); }
   /** A breakdown's kept day sums, for the breakdowns that give a launch one row (model, agent, project). */
   private async rowsFor(view: ScopedAnalysis, by: AnalysisUsageBy | undefined, slices: Slices) {
