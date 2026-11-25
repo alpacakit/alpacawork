@@ -20,13 +20,13 @@ import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycl
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
-import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
+import { taskValuesAtSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
 import { FIX_KIND_MEANINGS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
-  dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
+  dependencySetInput, dependencyClearInput, taskReturnsInput, taskValuesInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
   agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
@@ -333,6 +333,11 @@ const definitions = {
     'A Task awaiting review turns internal only after it is confirmed or sent back.') }),
   'task/returns': command('read', 'Read returns and their full identities without acknowledging them',
     taskReturnsInput, [taskId, text('after', 'Previous return ID'), number('limit', 'Page size (1–200)')], { output: taskReturnsResultSchema }),
+  'task/values': command('read', 'Read a Task\'s values as they were at a time: each write that replaced a value keeps the value it replaced',
+    taskValuesInput, [taskId, text('at', 'The time, as ISO 8601 with its offset (2026-11-26T09:30:00+09:00)')],
+    { output: taskValuesAtSchema, help: help(
+      'values is null before the Task existed (reason not-created) and before earlier values began to be kept (reason not-recorded); recordedSince says from when they are known.',
+      'Who changed the values and when is in the log (body_updated and reports with values: task get --task <ID> --log <count>).') }),
   'task/request': command('write', 'Ask a Task\'s responsible to work: an instruction (to a member with --agent), ' +
     'or an answer to its question (--answers)', taskRequestInput, [
     taskId,

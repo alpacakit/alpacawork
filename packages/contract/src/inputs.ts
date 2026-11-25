@@ -138,6 +138,8 @@ export const taskLifecycleInput = z.object({ task: taskIdSchema, ...writeRecordS
 export const nextConversationSchema = z.enum(['new', 'compact']);
 /** What a compaction's summary should keep in focus, for an agent that takes it (AdapterDescription.compaction). */
 export const compactFocusSchema = z.string().trim().min(1).max(2000);
+/** task values: a Task's values as they were at a time. */
+export const taskValuesInput = z.object({ task: taskIdSchema, at: z.iso.datetime({ offset: true }) }).strict();
 export const taskReturnsInput = z.object({ task: taskIdSchema, after: z.string().optional(), limit: z.number().int().min(1).max(200).optional() });
 /**
  * task report: the Task's state, a question (--state waiting), or a question's withdrawal. Without `task` a Run reports

@@ -7,7 +7,7 @@ import { packagedMigrations } from '@alpacawork/db';
 import { DEFAULT_SCHEMA, renderContext, SYSTEM_FIELDS } from '@alpacawork/contract';
 import * as storeRuntime from '@alpacawork/backend/test-dist/control/task-values-store.js';
 const { readFieldCatalog, writeFieldDef, deleteFieldDef, readProjectSchemas, writeProjectSchema, readTaskValues,
-  writeTaskValues, patchedValues } = storeRuntime as typeof import('../apps/backend/src/control/task-values-store.js');
+  writeTaskValues, patchedValues, readValuesAt } = storeRuntime as typeof import('../apps/backend/src/control/task-values-store.js');
 
 const at = '2026-11-08T00:00:00Z';
 function database() {
@@ -31,6 +31,35 @@ test('values are one row per field, written whole and read back by Task ID', () 
   writeTaskValues(db, 'T2', { goal: 'h' });
   assert.deepEqual(readTaskValues(db).get('T2'), { goal: 'h' });
   assert.deepEqual(readTaskValues(db).get('P1'), {});
+});
+
+test('a value a write replaces or removes stays as a version, and the values read as of a time undo the later writes', () => {
+  const db = database();
+  db.prepare('UPDATE task_value_versions_since SET at=?').run(at);
+  writeTaskValues(db, 'T2', { goal: 'g', conditions: ['a'] }, '2026-11-09T00:00:00.000000+00:00');
+  writeTaskValues(db, 'T2', { goal: 'g', notes: 'n' }, '2026-11-10T00:00:00.000000+00:00');
+  writeFieldDef(db, { id: 'risk', title: 'リスク', type: 'text', many: true, maxChars: 200, maxItems: 5, hint: '', members: [] }, at);
+  writeTaskValues(db, 'T2', { goal: 'h', notes: 'n', risk: ['r'] }, '2026-11-11T00:00:00.000000+00:00');
+  deleteFieldDef(db, 'risk');
+  // An unchanged field keeps no version: goal is written three times and changed once.
+  assert.deepEqual(db.prepare("SELECT value FROM task_value_versions WHERE field_id='goal' ORDER BY id").all().map(row => row.value), [null, '"g"']);
+  const valuesAt = (time: string) => readValuesAt(db, 'T2', time).values;
+  assert.deepEqual(valuesAt('2026-11-08T12:00:00Z'), {});
+  assert.deepEqual(valuesAt('2026-11-09T09:00:00+09:00'), { conditions: ['a'], goal: 'g' }, 'a write is in effect from its own time');
+  assert.deepEqual(valuesAt('2026-11-10T12:00:00Z'), { goal: 'g', notes: 'n' });
+  assert.deepEqual(valuesAt('2026-11-11T12:00:00Z'), { goal: 'h', notes: 'n', risk: ['r'] }, 'a deleted field\'s value stays in the past');
+  assert.deepEqual(valuesAt('2099-01-01T00:00:00Z'), readTaskValues(db).get('T2'));
+  assert.throws(() => db.prepare('DELETE FROM task_value_versions').run(), /fixed as written/);
+});
+
+test('values before the Task existed or before versions were kept are not known, and say why', () => {
+  const db = database();
+  db.prepare('UPDATE task_value_versions_since SET at=?').run('2026-11-07T00:00:00Z');
+  assert.deepEqual(readValuesAt(db, 'T2', '2026-11-07T12:00:00Z'),
+    { task: 'T2', at: '2026-11-07T12:00:00Z', values: null, reason: 'not-created', recordedSince: at });
+  db.prepare('UPDATE task_value_versions_since SET at=?').run('2026-11-09T00:00:00Z');
+  assert.deepEqual(readValuesAt(db, 'T2', '2026-11-08T12:00:00Z'),
+    { task: 'T2', at: '2026-11-08T12:00:00Z', values: null, reason: 'not-recorded', recordedSince: '2026-11-09T00:00:00Z' });
 });
 
 test('a write checked against the schema keeps unsent fields and refuses with issues at the wrong value', () => {
