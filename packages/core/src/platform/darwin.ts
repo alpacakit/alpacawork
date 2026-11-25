@@ -27,10 +27,12 @@ export const darwinAdapter: HostAdapter = {
     finally { rmSync(scratch, { recursive: true, force: true }); }
   },
   folderDialog(start, title) {
-    // Finder's chooser; a cancel is AppleScript error -128, which osascript ends with status 1.
-    return { command: '/usr/bin/osascript', args: ['-e', 'on run argv',
+    // Finder's chooser, brought to the front (a background service's window opens behind the others otherwise). Every
+    // AppleScript error ends osascript with status 1; a cancel is error -128.
+    return { command: '/usr/bin/osascript', args: ['-e', 'on run argv', '-e', 'tell current application to activate',
       '-e', 'POSIX path of (choose folder with prompt (item 2 of argv) default location (POSIX file (item 1 of argv)))',
-      '-e', 'end run', start, title] };
+      '-e', 'end run', start, title],
+    cancelled: (status, stderr) => status === 1 && stderr.includes('(-128)') };
   },
   run: posixRun,
   service: launchdService,

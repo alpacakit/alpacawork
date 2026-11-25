@@ -23,6 +23,8 @@ async function naming() {
   return screen.getByRole("textbox", { name: "New folder name" });
 }
 const listing = { path: "/code", parent: "/", home: "/home/me", folders: ["existing"], truncated: false };
+/** This PC without a chooser to show: Choose opens the list. */
+const noChooser = () => Promise.reject(new ApiError("none", "unavailable", "later"));
 
 describe("a typed folder path", () => {
   it("is the folder written so far and the start of the next name", () => {
@@ -76,7 +78,7 @@ describe("making a folder in the list", () => {
   });
 
   it("Escape and × end only naming and return focus to the new-folder row", async () => {
-    vi.spyOn(api, "request").mockResolvedValue(listing);
+    vi.spyOn(api, "request").mockImplementation((path) => (path === "workspace/folders/choose" ? noChooser() : Promise.resolve(listing)) as never);
     render(<TestWorkspace><Field /></TestWorkspace>);
     await naming();
     for (const cancel of [() => fireEvent.keyDown(document, { key: "Escape" }),
@@ -89,7 +91,7 @@ describe("making a folder in the list", () => {
   });
 
   it("keeps the name and the inline server refusal; a visible duplicate offers its folder", async () => {
-    vi.spyOn(api, "request").mockImplementation((path) => (path === "workspace/folders/new"
+    vi.spyOn(api, "request").mockImplementation((path) => (path === "workspace/folders/choose" ? noChooser() : path === "workspace/folders/new"
       ? Promise.reject(new ApiError("conflict", "invalid_input", "fix", undefined,
         [{ path: "name", code: "folder_exists", message: "exists" }])) : Promise.resolve(listing)) as never);
     render(<TestWorkspace><Field /></TestWorkspace>);
@@ -111,21 +113,22 @@ describe("making a folder in the list", () => {
 
 describe("choosing on this PC", () => {
   it("takes the folder chosen in this PC's own chooser, opened at the folder written", async () => {
-    const request = vi.fn((url: string) => Promise.resolve(Response.json(url.startsWith("/api/workspace/folders/choose?")
+    const request = vi.fn((url: string, _init?: RequestInit) => Promise.resolve(Response.json(url === "/api/workspace/folders/choose"
       ? { path: "/home/me/picked" } : listing)));
     vi.stubGlobal("fetch", request);
     render(<TestWorkspace><Field /></TestWorkspace>);
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));
     await waitFor(() => expect(screen.getByRole("combobox").getAttribute("value")).toBe("/home/me/picked"));
-    const asked = new URL(request.mock.calls.find(([url]) => url.startsWith("/api/workspace/folders/choose?"))![0], "http://localhost");
-    expect(asked.searchParams.get("path")).toBe("/code");
+    const asked = request.mock.calls.find(([url]) => url === "/api/workspace/folders/choose")![1]!;
+    expect(asked.method).toBe("POST");
+    expect(JSON.parse(String(asked.body)).path).toBe("/code");
     expect(document.querySelector("[data-folder-list]")).toBeNull();
   });
 
   it("closes the chooser for the list on request, and opens the list where the chooser cannot be shown", async () => {
     let closed: AbortSignal | undefined;
     vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
-      if (!url.startsWith("/api/workspace/folders/choose?")) return Promise.resolve(Response.json(listing));
+      if (url !== "/api/workspace/folders/choose") return Promise.resolve(Response.json(listing));
       closed = init?.signal ?? undefined;
       return new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
     }));
@@ -136,7 +139,7 @@ describe("choosing on this PC", () => {
     await waitFor(() => expect(document.querySelector("[data-folder-list]")).toBeTruthy());
     cleanup();
 
-    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.startsWith("/api/workspace/folders/choose?")
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url === "/api/workspace/folders/choose"
       ? Response.json({ code: "unavailable", message: "none" }, { status: 503 }) : Response.json(listing))));
     render(<TestWorkspace><Field /></TestWorkspace>);
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));

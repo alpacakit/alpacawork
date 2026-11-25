@@ -111,12 +111,13 @@ export async function chooseFolder(root: string, input: { path?: string; title: 
     { reason: { kind: 'folder_chooser_unavailable' } });
   shown?.kill();
   return new Promise((done, fail) => {
-    const child = execFile(command.command, command.args, { timeout: DIALOG_MS, signal: at.signal, encoding: 'utf8' }, (error, stdout) => {
+    const child = execFile(command.command, command.args, { timeout: DIALOG_MS, signal: at.signal, encoding: 'utf8' }, (error, stdout, stderr) => {
       if (shown === child) shown = null;
       const chosen = stdout.replace(/\r?\n$/, '');
       if (!error && chosen) return done({ path: chosen.length > 1 ? chosen.replace(/\/+$/, '') : chosen });
       // Cancelled, closed by another, timed out or the screen gone: nothing chosen.
-      if (!error || error.code === 1 || child.killed || error.name === 'AbortError') return done({ path: null });
+      if (!error || child.killed || error.name === 'AbortError'
+        || command.cancelled(typeof error.code === 'number' ? error.code : null, stderr)) return done({ path: null });
       fail(new Problem(PROBLEM_CODE.unavailable, `This PC's folder chooser failed: ${error.message}`, undefined,
         { reason: { kind: 'folder_chooser_unavailable' }, cause: error }));
     });

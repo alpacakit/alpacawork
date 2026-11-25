@@ -98,8 +98,10 @@ for (const code of ['ENOSPC', 'EDQUOT', 'ELOOP']) {
 test('this PC\'s chooser: only for a screen on this PC, opened at the folder written, answering the folder or a cancel', async t => {
   const h = fixture(t), title = 'Choose the working folder';
   // A chooser that answers the folder it opened at (as the OS's do, with a trailing slash), or cancels with status 1.
-  const answers = (start: string) => ({ command: 'sh', args: ['-c', 'printf "%s/\\n" "$0"', start] });
-  const cancels = () => ({ command: 'sh', args: ['-c', 'exit 1'] });
+  const cancelled = (status: number | null, stderr: string) => status === 1 && !stderr;
+  const answers = (start: string) => ({ command: 'sh', args: ['-c', 'printf "%s/\\n" "$0"', start], cancelled });
+  const cancels = () => ({ command: 'sh', args: ['-c', 'exit 1'], cancelled });
+  const fails = () => ({ command: 'sh', args: ['-c', 'echo "Failed to open display" >&2; exit 1'], cancelled });
   await assert.rejects(chooseFolder(h.root, { path: h.code, title }, { local: false }, answers),
     (error: unknown) => error instanceof Problem && error.reason?.kind === 'folder_chooser_only_on_this_pc');
   await assert.rejects(chooseFolder(h.root, { path: h.code, title }, { local: true }, () => null),
@@ -109,9 +111,12 @@ test('this PC\'s chooser: only for a screen on this PC, opened at the folder wri
   const opened = await chooseFolder(h.root, { path: join(h.code, 'missing'), title }, { local: true }, answers);
   assert.notEqual(opened.path, join(h.code, 'missing'));
   assert.deepEqual(await chooseFolder(h.root, { title }, { local: true }, cancels), { path: null });
+  // A chooser that could not be shown is said, so the screen offers its own list instead.
+  await assert.rejects(chooseFolder(h.root, { title }, { local: true }, fails),
+    (error: unknown) => error instanceof Problem && error.reason?.kind === 'folder_chooser_unavailable');
   // The screen gone closes the chooser.
   const gone = new AbortController();
-  const waiting = chooseFolder(h.root, { title }, { local: true, signal: gone.signal }, () => ({ command: 'sleep', args: ['30'] }));
+  const waiting = chooseFolder(h.root, { title }, { local: true, signal: gone.signal }, () => ({ command: 'sleep', args: ['30'], cancelled }));
   setTimeout(() => gone.abort(), 50);
   assert.deepEqual(await waiting, { path: null });
 });

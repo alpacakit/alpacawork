@@ -307,7 +307,7 @@ export const foldersNode = defineEntryNode({ name: 'folders',
       async (root, input) => makeFolder(root, input)), SCREEN)] }),
   defineEntryNode({ name: 'choose', description: 'Show this PC\'s own folder chooser to a person at this PC and answer the folder chosen',
     endpoints: [withAct(endpoint('choose', [optionalText('path', 'Folder to open at (absolute or ~/…)'),
-      textParameter('title', 'Title of the chooser')], 'GET', chooseFolderInput,
+      textParameter('title', 'Title of the chooser')], 'POST', chooseFolderInput,
       async (root, input, context) => chooseFolder(root, input, { local: context.local === true, signal: context.signal })), SCREEN)] })] });
 
 export type JsonCommandName = Exclude<CommandName, `task/file/${string}` | 'task/attachment/put'>;

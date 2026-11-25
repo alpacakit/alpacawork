@@ -40,10 +40,13 @@ export const linuxAdapter: HostAdapter = {
     const found = (name: string) => (env.PATH ?? '').split(delimiter).filter(Boolean).map(folder => join(folder, name)).find(path => {
       try { accessSync(path, constants.X_OK); return true; } catch { return false; }
     });
+    // Both end with status 1 when closed, and also when they cannot reach the display ("Failed to open display",
+    // "could not connect to display").
+    const cancelled = (status: number | null, stderr: string) => status === 1 && !/\bdisplay\b/i.test(stderr);
     const zenity = found('zenity');
-    if (zenity) return { command: zenity, args: ['--file-selection', '--directory', `--title=${title}`, `--filename=${start.replace(/\/*$/, '/')}`] };
+    if (zenity) return { command: zenity, args: ['--file-selection', '--directory', `--title=${title}`, `--filename=${start.replace(/\/*$/, '/')}`], cancelled };
     const kdialog = found('kdialog');
-    if (kdialog) return { command: kdialog, args: ['--title', title, '--getexistingdirectory', start] };
+    if (kdialog) return { command: kdialog, args: ['--title', title, '--getexistingdirectory', start], cancelled };
     return null;
   },
   run: linuxRun,

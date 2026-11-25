@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { request } from 'node:http';
 import { RunStore } from '@alpacawork/runs';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
 import { AGENTS_TEMPLATE } from '@alpacawork/backend/test-dist/agents-settings.js';
@@ -160,6 +161,23 @@ test('this PC\'s folders are listed for a person, never for a Run', async t => {
   });
   assert.equal((await make()).status, 400, 'a person reaches name validation');
   assert.equal((await make(`Alpacawork-Run ${h.run.id}:${h.token}`)).status, 403, 'a Run never reaches mkdir');
+});
+
+test('this PC\'s own folder chooser is never shown to a screen opened at the public name', async t => {
+  const h = await setup(t), server = await startServer(h.root, 0, { publicHost: 'pc.example.ts.net' });
+  t.after(async () => { await server.close(); });
+  const body = JSON.stringify({ title: 'Choose' });
+  const answer = await new Promise<{ status: number; text: string }>((done, reject) => {
+    const sent = request(new URL('/api/workspace/folders/choose', server.url), { method: 'POST', headers: {
+      host: 'pc.example.ts.net', origin: 'https://pc.example.ts.net', 'content-type': 'application/json' } }, response => {
+      let text = '';
+      response.on('data', chunk => { text += chunk; }).on('end', () => done({ status: response.statusCode!, text }));
+    });
+    sent.on('error', reject);
+    sent.end(body);
+  });
+  assert.equal(answer.status, 403, answer.text);
+  assert.equal(JSON.parse(answer.text).error.reason.kind, 'folder_chooser_only_on_this_pc');
 });
 
 const fetch = commandFetchWith(fetchBuffered);

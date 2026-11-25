@@ -174,8 +174,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     const ask = new AbortController();
     setAsking(ask);
     try {
-      const query = new URLSearchParams({ title: t("folderInput.chooserTitle"), ...written ? { path: written } : {} });
-      const { path } = await api.readWithin(`workspace/folders/choose?${query}`, chosenFolderSchema, CHOOSER_MS, ask.signal);
+      // Sent as a write, so another site open in this browser cannot make a window open on this PC.
+      const { path } = await api.request("workspace/folders/choose", chosenFolderSchema, ask.signal,
+        { title: t("folderInput.chooserTitle"), ...written ? { path: written } : {} }, undefined, workspaceWriteBasis(), false, CHOOSER_MS);
       if (path !== null) { onChange(path); setMade(null); setDismissed(path); }
       requestAnimationFrame(() => input.current?.focus());
     } catch {
