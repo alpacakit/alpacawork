@@ -181,8 +181,11 @@ export class RunStepIndex {
     if (read.restarted) this.times = new Map();
     this.journalOffset = read.offset;
     const changed = new Set<string>();
-    for (const entry of read.entries) {
+    // A last line without its line end is read too, and again once it is closed: the first time read stands.
+    for (const entry of read.last ? [...read.entries, read.last] : read.entries) {
       const name = `${entry.line}\0${entry.id}`, held = { ...this.times.get(name) ?? untimed };
+      // A time once written stands: a second line of the same event (written after a crash) changes nothing.
+      if (entry.event === 'start' ? held.startedAt !== null : held.endedAt !== null) continue;
       if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint });
       else Object.assign(held, { endedAt: entry.at, endSource: entry.source, output: entry.output });
       this.times.set(name, held); changed.add(name);

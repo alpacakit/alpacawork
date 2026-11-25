@@ -26,3 +26,14 @@ test('a Run keeps the skills it could read and alpacawork\'s version once; an up
   const launch = (model: string) => ({ launch: { adapter: 'claude', argv: ['claude'], path: '/bin/claude', values: { model, effort: 'medium' }, env: [] } });
   assert.deepEqual(launchChanges(launch('opus'), launch('fable')), [{ kind: 'model', name: null, before: 'opus', after: 'fable' }]);
 });
+
+test('a skill of the same name in both of the work folder\'s skill folders is two skills: updating one reads as its change', t => {
+  const home = mkdtempSync(join(tmpdir(), 'run-conditions-')), work = join(home, 'work');
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const skill = (folder: string, text: string) => { mkdirSync(join(work, folder, 'example'), { recursive: true }); writeFileSync(join(work, folder, 'example', 'SKILL.md'), text); };
+  skill('.claude/skills', 'v1'); skill('.agents/skills', 'v1');
+  const observe = () => observeConditions({ adapter: 'codex', cwd: work, version: '0.1.7', release: null, home });
+  const before = observe();
+  skill('.claude/skills', 'v2');
+  assert.deepEqual(conditionChanges(before, observe()).map(({ kind, name }) => [kind, name]), [['skill', '.claude/skills/example']]);
+});

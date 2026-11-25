@@ -163,4 +163,6 @@ test('an answer is read item by item against the question as asked: labels lead 
     [{ n: 1, kind: 'other', words: true }, { n: 2, kind: 'unread', words: false }]);
   assert.deepEqual(readAnswerParts([{ decide_question: 'Go', decide_choices: [{ decide_choice: '続行！' }] }], '1-続行！').items[0],
     { n: 1, kind: 'choice', choice: 1, recommended: false, words: false });
+  assert.deepEqual(readAnswerParts([{ decide_question: 'Go', decide_choices: [{ decide_choice: 'stop!', decide_choice_recommended: 'safe' }] }], '1-stop!').items[0],
+    { n: 1, kind: 'choice', choice: 1, recommended: true, words: false });
 });

@@ -51,19 +51,24 @@ const entryOf = (line: string): StepJournalEntry | null => {
   catch { return null; }
 };
 
-/** The journal's entries as written, skipping lines that cannot be read (the next append starts on a line of its own). */
+/**
+ * The journal's entries as written, skipping lines that cannot be read, and with them a last line a crash left whole
+ * but without its line end (the next append closes it, so it stands as written).
+ */
 export function readStepJournal(folder: string): StepJournalEntry[] {
-  return readStepJournalFrom(folder, 0).entries;
+  const read = readStepJournalFrom(folder, 0);
+  return read.last ? [...read.entries, read.last] : read.entries;
 }
 
 /**
  * The whole lines the journal gained from byte `offset` on, and where the next read starts. The journal only grows; one
  * shorter than `offset` was replaced and is read from its start (`restarted`).
  */
-export function readStepJournalFrom(folder: string, offset: number): { entries: StepJournalEntry[]; offset: number; restarted: boolean } {
+export function readStepJournalFrom(folder: string, offset: number): { entries: StepJournalEntry[]; offset: number; restarted: boolean;
+  /** The entry of a last line without its line end, when it reads whole. */ last: StepJournalEntry | null } {
   let fd: number;
   try { fd = openSync(`${folder}/${RUN_FILES.steps}`, constants.O_RDONLY); }
-  catch (error) { if (hasCode(error, 'ENOENT')) return { entries: [], offset: 0, restarted: offset > 0 }; throw error; }
+  catch (error) { if (hasCode(error, 'ENOENT')) return { entries: [], offset: 0, restarted: offset > 0, last: null }; throw error; }
   try {
     const size = fstatSync(fd).size, restarted = size < offset, from = restarted ? 0 : offset;
     const bytes = Buffer.alloc(size - from);
@@ -71,7 +76,7 @@ export function readStepJournalFrom(folder: string, offset: number): { entries: 
     while (read < bytes.length) { const count = readSync(fd, bytes, read, bytes.length - read, from + read); if (!count) break; read += count; }
     const end = bytes.subarray(0, read).lastIndexOf(10) + 1;
     const entries = bytes.subarray(0, end).toString('utf8').split('\n').flatMap(line => { const entry = entryOf(line); return entry ? [entry] : []; });
-    return { entries, offset: from + end, restarted };
+    return { entries, offset: from + end, restarted, last: end < read ? entryOf(bytes.subarray(end, read).toString('utf8')) : null };
   } finally { closeSync(fd); }
 }
 

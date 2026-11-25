@@ -447,10 +447,12 @@ export function readAnswerParts(decide: readonly FieldItem[], text: string): { i
     const n = index + 1, label = labels.get(n);
     if (label === undefined) return { n, kind: 'unread', words: false };
     const said = label.word.replace(/[。．.、,，!！?？)）]+$/, '').toLowerCase(), words = label.words;
-    if (said === OTHER_WORD) return { n, kind: 'other', words };
-    if (said === STOP_WORD) return { n, kind: 'stop', words };
     const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
-    const choice = word(choices, label.word);
+    // A choice's own word (`stop!` is a choice's) comes before the words the app keeps.
+    const exact = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === label.word);
+    if (exact === -1 && said === OTHER_WORD) return { n, kind: 'other', words };
+    if (exact === -1 && said === STOP_WORD) return { n, kind: 'stop', words };
+    const choice = exact !== -1 ? exact : word(choices, label.word);
     return choice === -1 ? { n, kind: 'unread', words }
       : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim(), words };
   });

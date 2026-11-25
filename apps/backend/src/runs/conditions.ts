@@ -89,8 +89,8 @@ export function conditionChanges(before: RunConditions, after: RunConditions): R
   const release = (c: RunConditions) => `${c.version}${c.source ? ` (${c.source})` : ''}`;
   if (release(before) !== release(after)) changes.push({ kind: 'release', name: null, before: release(before), after: release(after) });
   // A skill is the same skill wherever its work folder is: the agent's own (personal) or the work folder's (project).
-  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ scope, items }) =>
-    items.map(item => [`${scope}/${item.name}`, item.digest] as const)));
+  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ scope, folder, items }) =>
+    items.map(item => [`${scope === 'personal' ? 'personal' : relative(c.cwd.path, folder)}/${item.name}`, item.digest] as const)));
   const earlier = named(before), later = named(after);
   for (const name of [...new Set([...earlier.keys(), ...later.keys()])].sort()) {
     const was = earlier.get(name) ?? null, now = later.get(name) ?? null;

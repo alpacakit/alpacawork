@@ -1,7 +1,7 @@
 /** Every step of a Run, read from its output when the screen opens them: listed a page at a time, each read in full. */
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
@@ -568,4 +568,9 @@ test('a step time written after the index read its line comes with the next sinc
   new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => Date.parse('2026-11-26T02:00:00.000Z')).poll(path);
   await index.update();
   assert.deepEqual(index.since(first.version).steps.map(step => [step.id, step.startedAt]), [['one', '2026-11-26T02:00:00.000Z']]);
+  // A last line left whole without its line end is held: reading the output again appends no second time over it.
+  const tail = join(path, 'steps.jsonl'), kept = readFileSync(tail, 'utf8').trimEnd();
+  writeFileSync(tail, kept);
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => Date.parse('2026-11-26T03:00:00.000Z')).poll(path);
+  assert.equal((await read(path)).range(undefined, 12).steps[0]?.startedAt, '2026-11-26T02:00:00.000Z');
 });
