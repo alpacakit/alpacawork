@@ -46,16 +46,22 @@ test("after a reset the bar uses the current window, or says the limit has reset
     .toEqual({ kind: "limited", agent: "claude", percent: 45 });
 });
 
-test("with every agent in the stack spent, the bar says the first and until when its last spent window holds it", () => {
+test("with every agent in the stack spent, the bar says the one that works again first and until when its last spent window holds it", () => {
   const claude = agent("claude", "ok", [at("2026-11-29T11:00:00Z", week(100)), at("2026-11-26T11:00:00Z", week(100, "Fable")), at("2026-11-30T00:00:00Z", week(100, "Sonnet"))]);
   const codex = agent("codex", "ok", [week(25)]);
   // Only the row's own windows: Sonnet's later reset does not hold Opus.
   expect(barLimit(response([claude, codex], [row("claude", "fable")]), NOW))
     .toMatchObject({ kind: "stopped", agent: { adapter: "claude" }, window: { resetsAt: "2026-11-29T11:00:00Z" } });
-  // A stack whose next row is spent too stops on its first; the window names when.
+  // A fallback back before the primary is where work starts again: the bar's date is when anything works, not the primary's.
   const spentCodex = agent("codex", "ok", [at("2026-11-27T00:00:00Z", week(100))]);
   expect(barLimit(response([claude, spentCodex], [row("claude", "opus"), row("codex")]), NOW))
-    .toMatchObject({ kind: "stopped", agent: { adapter: "claude" } });
+    .toMatchObject({ kind: "stopped", agent: { adapter: "codex" }, window: { resetsAt: "2026-11-27T00:00:00Z" } });
+  // A row whose return has no known time never comes before a known one; with none known the first row stands.
+  const unknownCodex = agent("codex", "ok", [week(100)]);
+  expect(barLimit(response([unknownCodex, claude], [row("codex"), row("claude", "opus")]), NOW))
+    .toMatchObject({ kind: "stopped", agent: { adapter: "claude" }, window: { resetsAt: "2026-11-29T11:00:00Z" } });
+  expect(barLimit(response([unknownCodex, agent("claude", "ok", [week(100)])], [row("codex"), row("claude")]), NOW))
+    .toMatchObject({ kind: "stopped", agent: { adapter: "codex" }, window: { resetsAt: null } });
   const stopped = barLimit(response([claude], [row("claude", "opus")]), NOW);
   expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t)).toMatch(/29/);
   expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t, true)).not.toMatch(/:/);

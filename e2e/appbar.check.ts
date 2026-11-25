@@ -48,18 +48,22 @@ test("the settings shortcut opens the settings from a field and over another dia
   await expect.poll(() => settings.evaluate(dialog => dialog.contains(document.activeElement))).toBe(true);
 });
 
-// A phone's popup comes up from the bottom and closes as every sheet there does: by its × and by its grip pulled down.
+// A phone's bar is one row: ☰ opens its menu, and the notification state's menu from there comes up from the bottom and
+// closes as every sheet there does: by its × and by its grip pulled down.
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-  test("the project menu's sheet closes by its × and by its grip pulled down", async ({ page, runtime }) => {
+  test("the bar's menu opens the notification sheet, which closes by its × and by its grip pulled down", async ({ page, runtime }) => {
     await page.goto(runtime.origin);
     const sheet = page.locator("[data-slot=sheet]");
-    await page.locator("[data-project-trigger]").tap();
-    await settleMotion(page);
+    const fromMenu = async () => {
+      await page.locator("[data-bar-menu-trigger]").tap();
+      await page.locator("[data-bar-menu-presence]").tap();
+      await settleMotion(page);
+    };
+    await fromMenu();
     await sheet.getByRole("button", { name: "Close", exact: true }).tap();
     await expect(sheet).toHaveCount(0);
-    await page.locator("[data-project-trigger]").tap();
-    await settleMotion(page);
+    await fromMenu();
     const grip = (await sheet.locator("[data-task-sheet-grab]").boundingBox())!;
     const x = grip.x + grip.width / 2, y = grip.y + 6;
     await touch(page, [[{ x, y }], [{ x, y: y + 80 }], [{ x, y: y + 160 }], [{ x, y: y + 240 }]]);

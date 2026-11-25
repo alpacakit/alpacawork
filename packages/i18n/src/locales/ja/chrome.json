@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "メニュー",
     "settings": "設定",
     "settingsUpdate": {
       "attention": "設定 — アップデートで対応が必要です",

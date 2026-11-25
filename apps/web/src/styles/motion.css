@@ -108,6 +108,8 @@
   --animate-grow: motion-grow var(--motion-base) var(--ease-out) both;
   /* The phone's sheet: up from the screen's foot. */
   --animate-sheet: motion-sheet var(--motion-slow) var(--ease-out) both;
+  /* The folded bar's menu: in from the screen's start edge. */
+  --animate-drawer: motion-drawer var(--motion-base) var(--ease-out) both;
   /* Something still at work that turns (the pull's ring while it refreshes); still under reduced motion. */
   --animate-spin: motion-spin 0.8s linear infinite;
   /* Something still at work: it pulses. */
@@ -125,6 +127,7 @@
   @keyframes motion-bar { from { scale: 1 0; } }
   /* The analysis's window: comes in from the side it stands on, as the reader does. */
   --animate-side: motion-side var(--motion-slow) var(--ease-out) both;
+  @keyframes motion-drawer { from { opacity: 0; translate: calc(-1 * var(--motion-shift-far)) 0; } }
   @keyframes motion-side { from { opacity: 0; translate: var(--motion-shift-far) 0; } }
   /* A new mark beside Done: drops into its place. */
   --animate-land: motion-land var(--motion-slow) var(--ease-pop) both;

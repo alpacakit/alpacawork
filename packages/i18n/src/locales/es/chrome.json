@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "Menú",
     "settings": "Configuración",
     "settingsUpdate": {
       "attention": "Configuración — la actualización requiere atención",

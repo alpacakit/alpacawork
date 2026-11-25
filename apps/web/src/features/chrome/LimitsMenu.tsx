@@ -85,12 +85,13 @@ function barWords(shown: BarLimit, name: string, locale: string, t: (key: string
 
 /**
  * The bar's plan limits: the agent work goes on with now (the first in the task stack whose limit is not spent) as a
- * ring and its name when the bar has room. The reset fits in the wide or split bar. The window, percent and reset
+ * ring and its name. While every agent is stopped, it names the one that works again first and until when; a folded
+ * bar says only until when. The window, percent and reset
  * time are available in the label and the menu.
  * A press opens every agent's windows with when each resets and the account each is signed in as. Nothing shows until
  * some agent's limits are known.
  */
-export function LimitsMenu() {
+export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   const { t, i18n } = useTranslation("chrome");
   // The bar is drawn before the first index: the limits are read once it names the workspace.
   const root = useFrameSelector(data => data?.info.root ?? null);
@@ -117,7 +118,8 @@ export function LimitsMenu() {
       className="w-auto min-w-0 gap-1.5 px-2 narrow:w-auto narrow:min-w-9">
       {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
       <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
-      <span className="min-w-0 truncate text-sm">{name}</span>
+      {/* Stopped in a folded bar, it says only until when: the name, its order and the time are in the menu. */}
+      {!(folded && shown.kind === "stopped") && <span className="min-w-0 truncate text-sm">{name}</span>}
       {shown.kind === "stopped" ? <>
         <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(shown.window, i18n.language, t)}</span>
         <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(shown.window, i18n.language, t, true)}</span>

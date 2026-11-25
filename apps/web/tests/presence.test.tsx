@@ -6,11 +6,15 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { defaultSettings } from '@alpacawork/contract';
 import * as contract from '@alpacawork/contract';
+import { usePresenceActivity } from '../src/data/presence';
 import { PresenceMenu } from '../src/features/chrome/PresenceMenu';
 import { usePersonalSettings } from '../src/data/personal-settings';
 import { screenData, TestWorkspace } from './fixtures';
 import { postPresence } from '../src/data/presence';
 import { useConnection } from '../src/data/connection';
+
+/** The bar's notification button with the page's presence, as AppBar mounts it. */
+function Presence() { return <PresenceMenu present={usePresenceActivity()} />; }
 
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 afterEach(() => { for (const toast of useToasts.getState().toasts) notify.dismiss(toast.id); cleanup(); vi.useRealTimers(); vi.restoreAllMocks();
@@ -29,7 +33,7 @@ function mount(clock: string, paused = false, open = true) {
   const data = screenData();
   if (paused) data.info.presence = { state: 'muted', until: '2026-10-16T02:00:00.000Z' };
   const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
-  render(<TestWorkspace data={data}><PresenceMenu /></TestWorkspace>);
+  render(<TestWorkspace data={data}><Presence /></TestWorkspace>);
   if (open) fireEvent.click(document.querySelector('[data-presence-trigger]')!);
   return fetcher;
 }

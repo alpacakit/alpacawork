@@ -18,13 +18,18 @@ const rowWindows = (windows: readonly LimitWindow[], model: string | null): Limi
 export const currentLimitWindow = (window: LimitWindow, now: number): boolean =>
   window.resetsAt === null || resetMinute(window.resetsAt) > now;
 
+/** When a spent window lets its row work again; one of no reset time, never as far as anyone knows. */
+const backAt = (window: LimitWindow): number => window.resetsAt ? resetMinute(window.resetsAt) : Infinity;
+
 /**
  * What the bar shows, from the stack tasks run on: the first row that can work now.
  * - `limited`: the row's fullest current window.
  * - `reset`: every window that holds the row has reset since it was read: it works, and its new usage is not read yet.
  * - `unknown`: its limits could not be read.
  * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
- * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
+ * - `stopped`: every row is held; the row that works again first, by when its windows that hold it have all reset (the
+ *   latest of them). A row with a holding window of no reset time has no known return: a known one comes first, and
+ *   with none known the first row stands, its window saying no time.
  * Null, and no bar, until some agent's limits are known.
  */
 export type BarLimit =
@@ -32,7 +37,7 @@ export type BarLimit =
   | { kind: "reset" | "unknown" | "unlimited"; agent: AgentLimits };
 export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
   if (!agents.some(entry => entry.state === "ok")) return null;
-  let first: { agent: AgentLimits; windows: LimitWindow[] } | null = null;
+  let first: { agent: AgentLimits; window: LimitWindow; back: number } | null = null;
   for (const row of stack) {
     const agent = agents.find(entry => entry.adapter === row.adapter);
     if (!agent) continue;
@@ -43,14 +48,12 @@ export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): B
     const fullest = tightestWindow(current);
     if (!fullest) return { kind: "reset", agent };
     if (limitTone(fullest.usedPercent) !== "spent") return { kind: "limited", agent, window: fullest };
-    const holding = current.filter(window => limitTone(window.usedPercent) === "spent");
-    first ??= { agent, windows: holding };
+    // It works again once its last holding window resets.
+    const window = current.filter(window => limitTone(window.usedPercent) === "spent")
+      .reduce((latest, next) => backAt(next) > backAt(latest) ? next : latest);
+    if (!first || backAt(window) < first.back) first = { agent, window, back: backAt(window) };
   }
-  if (!first) return null;
-  // It works again once its last holding window resets.
-  const until = (window: LimitWindow) => window.resetsAt ? Date.parse(window.resetsAt) : Infinity;
-  const window = first.windows.reduce((latest, next) => until(next) > until(latest) ? next : latest);
-  return { kind: "stopped", agent: first.agent, window };
+  return first && { kind: "stopped", agent: first.agent, window: first.window };
 }
 
 /** Where an agent stands in the stack tasks run on: each of its rows' place (0 the primary) and model; none when tasks use it only when a request names it. */

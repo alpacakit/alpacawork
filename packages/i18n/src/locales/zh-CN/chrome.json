@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "菜单",
     "settings": "设置",
     "settingsUpdate": {
       "attention": "设置 — 更新需要处理",

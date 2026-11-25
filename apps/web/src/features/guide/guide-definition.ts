@@ -116,7 +116,7 @@ export const PARTS = {
   taskState: "[data-task-state]:not(:disabled)",
   /** A label in that box, at its left end: the project or Task a message goes to. */
   label: ":is([data-coordinator-capsule], [data-composer-frame]) [data-label=task]",
-  /** The settings' button at the top right. */
+  /** The settings' button at the top right; in a folded bar, ☰ at the top left, whose menu holds settings (BarMenu). */
   settings: '[data-guide-part="settings"]',
   /** That button while no Task is open in the detail: the list is what is seen under it. */
   settingsOverList: 'body:not(:has(aside[data-reader-mode])) [data-guide-part="settings"]',
