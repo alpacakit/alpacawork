@@ -1,6 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
-import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
+import { comparison, delta, format, parts, share, shareDelta } from "../src/features/analysis/format";
+import { head } from "../src/features/analysis/TasksLook";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
 import { dayIntent, inSpanOf, legendRoom, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
@@ -41,6 +42,22 @@ test("a gap has the direction of the change and the kind's rounding; one that ro
   expect(same(delta("hours", 1.4 * HOUR, 1.5 * HOUR))).toBe(false);
   // No span before: nothing is said (no "no record" line).
   expect(comparison("tasks", 3, null, 1)).toBeNull();
+});
+
+test("every count is written with what it counts, and a language whose names say it writes no count word", async () => {
+  // Things are 件, events 回, people 人; a gap is a sign and a number only.
+  expect([format("prs", 62), format("conversations", 496), format("people", 1), format("questions", 3), format("times", 2)])
+    .toEqual(["62件", "496件", "1人", "3回", "2回"]);
+  expect(delta("tasks", 57, 58)).toBe("−1");
+  expect(head("終わった", "tasks")).toBe("終わった（件）");
+  await i18n.changeLanguage("en");
+  try {
+    expect([format("tasks", 58), format("prs", 62), format("questions", 3)]).toEqual(["58", "62", "3"]);
+    // Hours and points keep their signs.
+    expect(format("hours", 1.5 * HOUR)).toBe("1.5 h");
+    expect(head("Finished", "tasks")).toBe("Finished");
+    expect(head("Median time taken", "hours")).toBe("Median time taken (h)");
+  } finally { await i18n.changeLanguage("ja"); }
 });
 
 test("a share the server withholds (under ten accepted) is never written, nor is its gap", () => {
