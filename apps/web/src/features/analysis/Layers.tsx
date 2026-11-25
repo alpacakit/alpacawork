@@ -7,6 +7,7 @@ import { closeAnalysisLayer } from "@/state/history-step";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { useWorkspaceInfo } from "@/data/queries";
 import { cn } from "@/lib/utils";
+import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { useUnitList, useUnitValues } from "./data";
 import { duration, format, instant, numberText, spanLabel } from "./format";
 import { listColumn, listTitle, listUnit, writeValue } from "./lists";
@@ -37,6 +38,15 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
     return () => removeEventListener("keydown", key);
   }, [depth]);
   useEffect(() => { surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true }); }, [place.list, place.unit]);
+  // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
+  // chart and its legend give it back to themselves, ChartGroup).
+  const opener = useRef<Element[]>([]), open = depth > 0;
+  useLayoutEffect(() => {
+    if (open) { opener.current = openerChain(document.activeElement); return; }
+    const chain = opener.current;
+    opener.current = [];
+    giveFocusBack(chain);
+  }, [open]);
   if (!depth) return null;
   return <>
     {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}

@@ -207,4 +207,6 @@ test("a day the pointer passes going left fast, on its way to the row's legend, 
   expect(dayIntent(null, at(700, 100, 20))).toBe("now");
   // Starting left from rest, it waits (a slow one is taken a moment later).
   expect(dayIntent(at(800, 100, 0), at(790, 100, 400))).toBe("wait");
+  // A small move from rest (over a column's edge) is taken at once.
+  expect(dayIntent(at(800, 100, 0), at(798, 100, 400))).toBe("now");
 });

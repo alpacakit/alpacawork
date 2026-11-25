@@ -172,8 +172,8 @@ test("a chart takes the keys: the arrows choose the day its legend says, Enter o
   </div>);
   const legend = () => view.container.querySelector("[data-day-legend]");
   const chart = view.container.querySelector<HTMLElement>("[data-chart-row]")!;
-  // The keys: the chart starts on the span's last day, the arrows move it, Enter opens it.
-  fireEvent.focus(chart);
+  // The keys: the first arrow starts on the span's last day, the next ones move it, Enter opens it.
+  fireEvent.keyDown(chart, { key: "ArrowLeft" });
   expect(legend()?.textContent).toContain("11/7");
   fireEvent.keyDown(chart, { key: "ArrowRight" });
   expect(legend()?.textContent).toContain("11/8");
@@ -198,4 +198,51 @@ test("a chart takes the keys: the arrows choose the day its legend says, Enter o
   fireEvent.mouseLeave(view.container.querySelector("[data-row='0']")!, { relatedTarget: view.getByRole("button", { name: "外" }) });
   expect(legend()).toBeNull();
   view.unmount();
+});
+
+test("the last thing done says the day: a day the pointer left waiting gives way to a key; Escape in the legend gives the focus to its chart; a list closed gives it back to where it was opened", () => {
+  vi.useFakeTimers();
+  const bins = Array.from({ length: 10 }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const day = (bin: { from: string; to: string }) => ({ from: bin.from, to: bin.to });
+  const rows = [{ name: "トークン", total: (at: number) => `${at}`, list: (bin: { from: string; to: string }) => ({ set: "used" as const, value: "tokens" as const, ...day(bin) }),
+    parts: (at: number) => [{ color: "", name: "出力", value: `${at}`, list: (bin: { from: string; to: string }) => ({ set: "used" as const, value: "output" as const, ...day(bin) }) }] }];
+  const list = { set: "used", value: "output", group: null, member: null } as const;
+  // Opening a list is what the look does: the place says it, and closing it takes it away.
+  const open = () => useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null } });
+  const view = render(<ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket="day" rows={rows} open={open}>
+    <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => [["", at + 1]]} /></Row>
+  </ChartGroup>);
+  const legend = () => view.container.querySelector("[data-day-legend]");
+  const chart = view.container.querySelector<HTMLElement>("[data-chart-row]")!;
+  const columns = view.container.querySelectorAll("[data-day-column]");
+  // A quick move left leaves a day waiting; Home before it is shown wins, and the waiting day never comes.
+  fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
+  fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
+  chart.focus();
+  fireEvent.keyDown(chart, { key: "Home" });
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(legend()?.textContent).toContain("11/1");
+  // Escape on a part of the legend: the span's numbers again, and the focus on the chart.
+  const part = view.getByRole("button", { name: /出力/ });
+  part.focus();
+  fireEvent.keyDown(part, { key: "Escape" });
+  expect(legend()).toBeNull();
+  expect(document.activeElement).toBe(chart);
+  // A list opened from a part of the legend: closed, the same day is shown and its part has the focus again.
+  fireEvent.keyDown(chart, { key: "End" });
+  view.getByRole("button", { name: /出力/ }).focus();
+  fireEvent.click(view.getByRole("button", { name: /出力/ }));
+  expect(legend()).toBeNull();
+  act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+  expect(legend()?.textContent).toContain("11/10");
+  expect(document.activeElement?.textContent).toContain("出力");
+  // From the chart (Enter): closed, the focus is on the chart.
+  chart.focus();
+  fireEvent.keyDown(chart, { key: "Enter" });
+  // The list's window takes the focus while it is open.
+  chart.blur();
+  act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+  expect(document.activeElement).toBe(chart);
+  view.unmount();
+  useViewStore.setState({ analysis: null });
 });
