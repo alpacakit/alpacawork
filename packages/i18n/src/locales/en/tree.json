@@ -26,7 +26,7 @@
       "accept": "If you are happy with it, <b>finish the task with this button ({{finish}}).</b> To ask for more, send another instruction instead of finishing.",
       "anotherRepository": "To use another repository, open this, choose <b>“{{create}}”</b>, and pick that repository as its working folder.",
       "answer": "A question from the AI on the task (the owner). Press an option and the answer goes into the input box below. <b>Send it as is to answer.</b> You can also write your own reply instead.",
-      "conversation": "Chats with the front-desk AI are <b>disposable</b>. Once they pile up, open the conversation and clear it with “{{clear}}”. <b>Before clearing, ask for anything worth keeping to be made a task.</b>",
+      "conversation": "Chats with the front-desk AI are <b>disposable</b>. Once they pile up, open the conversation and clear it with “{{clear}}”. Before clearing, ask for anything worth keeping to be made a task.",
       "direct": "The front-desk AI answers short questions right here. <b>Ask for a job, like “make …”, and it becomes a task in the list.</b> The front-desk AI decides which it is.",
       "label": "This label tells the AI <b>which task or project you mean</b>. Without it, the AI works it out from the conversation.",
       "more": "Once you have looked over the report, <b>you can keep asking.</b> Try having it make one more version to compare.",
@@ -36,14 +36,14 @@
       "phoneQuestion": "Choose an answer, then swipe right to send it, or left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "phoneResult": "Swipe right for “{{finish}}”, left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "question": "<b>Your turn.</b> The AI on the task has a question. Press this row to open it.",
-      "received": "<b>The front-desk AI (the coordinator)</b> has it: it is the one you talk to here. <b>It turns your request into a task and passes it to an AI to own it (the owner).</b>",
+      "received": "<b>The front-desk AI (the coordinator)</b> has it: it is the one you talk to here. When it is a job, it turns it into a task and passes it to an AI to own it (the owner).",
       "result": "<b>A report came.</b> It means the AI on the task has finished its work. Press this row to open it.",
       "send": "This is the only input box. <b>Every request and instruction goes here.</b> The front-desk AI (the coordinator) receives it.",
       "sendAgain": "Write <b>what you want done</b> here and send it.",
       "sendReady": "Send it with this button.",
       "stop": "To stop the AI, choose <b>“{{stop}}”</b> here, or ask in the input box. You can ask there to change settings, too.",
       "unassigned": "No AI is on this task yet. Open the row and <b>ask in the input box to start it</b>, and an AI takes it on.",
-      "working": "This is a <b>task</b>. Each task has its own AI (the owner), which calls in helper AIs (members) when it needs them. <b>When a question or report makes it your turn, it moves to “{{section}}”.</b>"
+      "working": "This is a <b>task</b>. Each task has its own AI (the owner), which calls in helper AIs (members) when it needs them. <b>When a question or report makes it your turn, the task moves to “{{section}}”.</b>"
     },
     "tryExample": "Insert a demo prompt"
   },
@@ -176,7 +176,7 @@
     "lead": "A place to hand work to a team of AIs.",
     "picture": {
       "listed": "They're listed. <b>What needs you</b> shows up under “{{section}}”",
-      "own": "<b>An AI takes each task as its owner</b>, splitting it into subtasks when needed",
+      "own": "An AI takes each task as its <b>owner</b>, splitting it into subtasks when needed",
       "send": "Send a request",
       "split": "<b>The front-desk AI (the coordinator)</b> turns it into tasks"
     },
