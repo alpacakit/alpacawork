@@ -38,7 +38,15 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
   }, [depth]);
-  useEffect(() => { surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true }); }, [place.list, place.unit, place.card]);
+  // A layer that opens takes the focus on its first control; back from one task to its list, the focus is on that task's
+  // row again (the list is drawn from what it had read), as every window gives the focus back to what opened it.
+  const shownUnit = useRef<string | null>(null);
+  useEffect(() => {
+    const from = shownUnit.current;
+    shownUnit.current = place.unit;
+    const row = !place.unit && from ? surface.current?.querySelector<HTMLElement>(`[data-unit-row="${from}"]`) : null;
+    (row ?? surface.current?.querySelector<HTMLElement>("[data-layer-focus]"))?.focus({ preventScroll: !row });
+  }, [place.list, place.unit, place.card]);
   // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
   // chart and its legend give it back to themselves, ChartGroup).
   const opener = useRef<Element[]>([]), open = depth > 0;
@@ -98,7 +106,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const noDays = !showsDays(list, list.days ?? span);
   const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
-    <h3 className="text-xl font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
+    <h3 className="text-heading font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
     <p className="mt-0.5 text-xs text-soft">{member}{member && spanWords && t("sep")}{spanWords}</p>
     {rows.length ? <>
       {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
@@ -107,7 +115,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
         <span className="text-end whitespace-nowrap">{listColumn(list)}{list.value && " ▼"}</span>
       </div>
       <ul>{rows.map(row => <li key={row.id} className="border-b border-rule">
-        <button type="button" onClick={() => useViewStore.getState().showAnalysis({ ...place, unit: row.id })}
+        <button type="button" data-unit-row={row.id} onClick={() => useViewStore.getState().showAnalysis({ ...place, unit: row.id })}
           className={cn("grid h-9.75 w-full items-center gap-x-3 rounded-sm text-start text-base hover:bg-hover", columns)}>
           <span className="text-muted">{row.id}</span>
           <span dir="auto" className="truncate">{row.title}</span>
@@ -163,7 +171,7 @@ function UnitPane({ unit }: { unit: string }) {
     [t("values.inputCache"), usage.tokens.input + usage.tokens.cache && format("tokens", usage.tokens.input + usage.tokens.cache)],
   ] as [string, string | 0][]).filter(([, text]) => text) as [string, string][];
   return <div className="animate-rise">
-    <h3 dir="auto" className="text-xl font-semibold">{row.title}</h3>
+    <h3 dir="auto" className="text-heading font-semibold">{row.title}</h3>
     <p className="mt-2 inline-flex items-center text-muted">
       <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{outcomeWord(row, t)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
     </p>

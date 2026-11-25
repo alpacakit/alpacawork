@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from "@testing-library/react";
 import { SearchField } from "../src/features/chrome/SearchField";
-import { analysisHome } from "../src/features/analysis/place";
+import { analysisHome, type AnalysisPlace } from "../src/features/analysis/place";
+import { Layers } from "../src/features/analysis/Layers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
 import { BarChart, ChartGroup, Row } from "../src/features/analysis/rows";
@@ -316,4 +317,22 @@ test("how the numbers are counted is always open under the breakdown, and the wa
   expect(page.container.querySelector("[aria-expanded]")).toBeNull();
   fireEvent.click(page.getByRole("link", { name: "数え方" }));
   expect(document.activeElement).toBe(page.getByRole("heading", { name: "数え方" }));
+});
+
+test("back from one task to its list, the focus is on that task's row again", async () => {
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("analysis/list")) return new Response(JSON.stringify(today(3)), { status: 200 });
+    // One task's values never come: the list and the row are what this is about.
+    if (url.includes("analysis/task")) return new Promise<Response>(() => {});
+    return new Response("{}", { status: 200 });
+  });
+  const list: AnalysisPlace = { ...analysisHome("tasks", { period: "today" }), list: { set: "finished", value: null, group: null, member: null, days: null } };
+  const days = { from: "2026-11-24", to: "2026-11-24" };
+  const view = render(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
+  await vi.waitFor(() => expect(view.container.ownerDocument.querySelector('[data-unit-row="T2"]')).not.toBeNull());
+  view.rerender(<TestWorkspace data={screenData()}><Layers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
+  view.rerender(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
+  await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
+  view.unmount();
 });

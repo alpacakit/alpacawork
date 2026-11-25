@@ -429,12 +429,12 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
   return <div ref={self} role="presentation" data-day-window=""
     className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-base shadow-float">
     <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
-    <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-xl font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
+    <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-heading font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
     {/* As wide, and its columns as wide, as the widest any of the row's days takes (legendRoom): stepping to another day
         moves nothing. The room is laid out unseen and of no height. */}
     <div aria-hidden className="invisible h-0 overflow-hidden whitespace-nowrap">
       <div className="flex gap-2"><span className="size-7" />{room.day}<span className="size-7" /></div>
-      <div className="flex gap-6"><span>{room.say.name}</span><b className="text-xl font-semibold">{room.say.total(0)}</b></div>
+      <div className="flex gap-6"><span>{room.say.name}</span><b className="text-heading font-semibold">{room.say.total(0)}</b></div>
       {room.say.line && <div className="flex gap-6 ps-6"><span>{room.say.line.name}</span><b className="font-semibold">{room.say.line.value(0)}</b></div>}
       {room.say.line && <div className="ps-5">{room.say.line.base(0)}</div>}
     </div>
@@ -478,7 +478,7 @@ function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; d
   return <div data-day-legend={still ? undefined : ""} className={cn(!still && "absolute inset-x-0 top-0")}>
     {/* One line, so the legend keeps to the row's room at a narrow width (the row's name is read out in full). */}
     <div title={`${day} ${say.name}`} className="mb-1 truncate text-base text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
-    <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
+    <b className="block text-heading font-semibold tabular-nums">{say.total(at)}</b>
     <Parts items={(say.parts?.(at) ?? []).map((part, index) => ({ color: part.color, name: part.name, share: part.share, index,
       value: figure(part.value), onOpen: part.list ? () => onList(part.list!) : undefined }))}
       line={say.line && { name: say.line.name, value: <>{figure(say.line.value(at))}<i aria-hidden className="inline-block size-3 flex-none" /></>, base: say.line.base(at) }} />

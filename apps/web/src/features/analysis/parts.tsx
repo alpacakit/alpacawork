@@ -39,7 +39,7 @@ export function Seg<K extends string>({ label, items, value, onChange, onAgain, 
     {items.map(([key, name]) => <button key={key} type="button" aria-current={key === value ? "true" : undefined}
       disabled={disabled?.includes(key)}
       onClick={() => key !== value ? onChange(key) : onAgain?.()}
-      className={cn(TAB, "aria-[current=true]:font-semibold aria-[current=true]:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted")}><TabLabel>{name}</TabLabel></button>)}
+      className={cn(TAB, "text-base aria-[current=true]:font-semibold aria-[current=true]:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted")}><TabLabel>{name}</TabLabel></button>)}
   </div>;
 }
 
@@ -78,8 +78,8 @@ export const OpenMark = ({ big }: { big?: boolean }) =>
 export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-figure narrow:text-figure-compact" : small ? "text-base" : "text-xl")}>{written.value}</b>
-    {written.unit && <span className={cn("text-muted", small ? "text-xs" : "text-base")}>{written.unit}</span>}
+    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-figure narrow:text-figure-compact" : small ? "text-base" : "text-heading")}>{written.value}</b>
+    {written.unit && <span className="text-base text-muted">{written.unit}</span>}
   </>;
   // One that could open tasks but has none (0) keeps the room of the mark, so a column of numbers stays one column.
   if (!onOpen || !value) return <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap">{body}{onOpen && <i aria-hidden className={cn("inline-block flex-none", big ? "size-4" : "size-3")} />}</span>;
@@ -146,7 +146,7 @@ function toRules() {
 export function Rules({ children }: { children: ReactNode }) {
   const { t } = useTranslation("analysis");
   return <section aria-labelledby={RULES} className="mt-16 narrow:mt-12">
-    <h2 id={RULES} tabIndex={-1} className="mb-4 scroll-mt-[calc(var(--bar-h)+1.5rem)] text-xl font-semibold outline-none">{t("tasks.howCounted")}</h2>
+    <h2 id={RULES} tabIndex={-1} className="mb-4 scroll-mt-[calc(var(--bar-h)+1.5rem)] text-heading font-semibold outline-none">{t("tasks.howCounted")}</h2>
     <div className="grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>
   </section>;
 }
@@ -161,7 +161,7 @@ export const Rule = ({ name, children }: { name: string; children: ReactNode }) 
 /** A section under a rule, its name on the left and its switch on the right. */
 export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return <section className="mt-16 narrow:mt-12">
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><h2 className="me-auto text-xl font-semibold">{title}</h2>{aside}</div>
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><h2 className="me-auto text-heading font-semibold">{title}</h2>{aside}</div>
     {children}
   </section>;
 }
