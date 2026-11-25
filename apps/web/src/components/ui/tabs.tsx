@@ -47,7 +47,7 @@ export function TabMarker({ current }: { current: string }) {
   React.useLayoutEffect(() => {
     const self = marker.current, row = self?.parentElement;
     if (!self || !row) return;
-    let shown: HTMLElement | null = null, at = { x: 0, width: 0 }, sliding: Animation | null = null;
+    let shown: HTMLElement | null = null, at = { x: 0, y: 0, width: 0, height: 0 }, sliding: Animation | null = null;
     const drawn = () => {
       if (sliding?.playState !== "running") return at;
       const matrix = new DOMMatrix(getComputedStyle(self).transform);
@@ -57,14 +57,15 @@ export function TabMarker({ current }: { current: string }) {
       const next = row.querySelector<HTMLElement>(current);
       self.hidden = !next;
       if (!next) { shown = null; return; }
-      const to = { x: next.offsetLeft, width: next.offsetWidth }, y = next.offsetTop;
-      if (shown === next && to.x === at.x && to.width === at.width) return;
+      // The whole box: a tab that only grows taller (a row of larger tabs on a phone) or moves down a line is placed again.
+      const to = { x: next.offsetLeft, y: next.offsetTop, width: next.offsetWidth, height: next.offsetHeight }, y = to.y;
+      if (shown === next && to.x === at.x && to.y === at.y && to.width === at.width && to.height === at.height) return;
       const from = slide && shown && shown !== next && !reducedMotion() ? drawn() : null;
       sliding?.cancel();
       sliding = null;
       shown = next; at = to;
       self.style.width = `${to.width}px`;
-      self.style.height = `${next.offsetHeight}px`;
+      self.style.height = `${to.height}px`;
       self.style.transform = `translate(${to.x}px, ${y}px)`;
       if (from && to.width) sliding = self.animate([
         { transform: `translate(${from.x}px, ${y}px) scaleX(${from.width / to.width})` },

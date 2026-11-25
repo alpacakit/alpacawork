@@ -4,7 +4,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
 import { isAnalysisTallyBy, type AnalysisAcceptedTotals, type AnalysisBucket, type AnalysisDays, type AnalysisHead,
-  type AnalysisListInput, type AnalysisListRow, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
+  type AnalysisListInput, type AnalysisListRow, type AnalysisModel, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
   type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisUnitList,
   type AnalysisUnitValues, type AnalysisUsageBy, type AnalysisUsageCounts, type AnalysisUsageInput, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { authorize, type Caller } from '../control/authorize.js';
@@ -12,21 +12,21 @@ import { readControl } from '../control/task-store.js';
 import type { Tally } from '../agents/adapters/tally.js';
 import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, modelLabel, shareOf, unitMarks } from './rules.js';
+import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.js';
 
 type DatedUnit = { day: string; unit: Unit };
 type CountedUnit = DatedUnit & { prCount: number };
 type DatedLaunch = { day: string; root: string; run: FactLaunch };
 type TalliedLaunch = DatedLaunch & { tally: Tally };
 const tallyFields = { skill: 'skills', tool: 'tools', mcp: 'mcp' } as const;
-type Group<T> = { key: string; label: string; items: T[] };
-type DimensionValue = { key: string; label: string };
-const group = <T>(items: Iterable<T>, keys: (item: T) => readonly DimensionValue[]): Map<string, Group<T>> => {
-  const result = new Map<string, Group<T>>();
-  for (const item of items) for (const { key, label } of keys(item)) {
-    const found = result.get(key);
+type DimensionValue = { key: string; label: string; model?: AnalysisModel };
+type TaskDimensionValue = DimensionValue & { noOwnerRun?: true };
+const group = <T, D extends DimensionValue>(items: Iterable<T>, keys: (item: T) => readonly D[]) => {
+  const result = new Map<string, D & { items: T[] }>();
+  for (const item of items) for (const dimension of keys(item)) {
+    const found = result.get(dimension.key);
     if (found) found.items.push(item);
-    else result.set(key, { key, label, items: [item] });
+    else result.set(dimension.key, { ...dimension, items: [item] });
   }
   return result;
 };
@@ -177,10 +177,12 @@ class ScopedAnalysis {
     return makeHead(this.project, this.timeZone, this.today, this.firstDay, input);
   }
 
-  private taskKeys(unit: Unit, by: AnalysisTaskBy): DimensionValue[] {
-    if (by === 'agent') return single(unit.firstAgent);
-    if (by === 'model') return single(unit.firstModel);
-    return this.projectKey(unit);
+  private taskKeys(unit: Unit, by: AnalysisTaskBy): TaskDimensionValue[] {
+    if (by === 'project') return this.projectKey(unit);
+    const run = unit.firstOwner;
+    // The colon keeps this key distinct from agent names and hashed model keys.
+    if (!run) return [{ key: 'owner:none', label: 'No owner Run', noOwnerRun: true }];
+    return by === 'agent' ? single(run.agent) : [this.modelKey(run)];
   }
 
   private projectKey(unit: Unit) {
@@ -188,12 +190,24 @@ class ScopedAnalysis {
     return single(id, this.facts.nodes.get(id)?.title ?? id);
   }
 
+  private modelKey(run: ModelRun) {
+    // Tallies can arrive after the Run facts have been cached.
+    const tally = this.tallies.get(run.id);
+    const model = tally?.model ?? run.model;
+    const name = model ?? run.agent;
+    const effort = model === null ? null : run.effort;
+    const label = effort === null ? name : `${name}(${effort})`;
+    // Custom launch values can contain parentheses or exceed the list key length limit.
+    const key = createHash('sha256').update(JSON.stringify([name, effort])).digest('base64url');
+    return { key, label, model: { name, effort } };
+  }
+
   private usageKeys(item: DatedLaunch, by: AnalysisUsageBy): DimensionValue[] {
     const { run } = item;
     if (by === 'project') return this.projectKey(this.facts.units.get(item.root)!);
     if (by === 'agent') return single(run.agent);
+    if (by === 'model') return [this.modelKey(run)];
     const tally = this.tallies.get(run.id);
-    if (by === 'model') return single(modelLabel(run.model ?? tally?.model ?? null, run.effort, run.agent));
     if (!tally) return [];
     const names = Object.keys(tally[tallyFields[by]]);
     return names.map(name => by === 'skill' ? { key: name, label: name }
@@ -230,9 +244,9 @@ class ScopedAnalysis {
     const from = monday(head.firstDay ?? head.today), finished: number[] = [];
     if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
     const by = input.by;
-    const breakdown = by ? { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ key, label, items }) => {
+    const breakdown = by ? { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ items, ...dimension }) => {
       const { finished, accepted, passed, share } = taskCounts(items), totals = acceptedTotals(items);
-      return { key, label, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
+      return { ...dimension, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
         submitsPerAccepted: accepted ? totals.submits / accepted : null };
     }).sort((a, b) => b.finished - a.finished || compareKey(a, b)) } : null;
     return { head, counts: { value: value.counts, previous: before?.counts ?? null },
@@ -268,9 +282,9 @@ class ScopedAnalysis {
   private useCounts(items: readonly DatedLaunch[]) { return usageCounts(items, this.facts.first, this.now); }
 
   private usageGroups(items: readonly DatedLaunch[], by: AnalysisUsageBy) {
-    return [...group(items, item => this.usageKeys(item, by)).values()].map(({ key, label, items }) => ({
-      key, label, counts: this.useCounts(items),
-      calls: by === 'tool' || by === 'mcp' ? items.reduce((sum, { run }) => sum + this.calls(run, by, key), 0) : null,
+    return [...group(items, item => this.usageKeys(item, by)).values()].map(({ items, ...dimension }) => ({
+      ...dimension, counts: this.useCounts(items),
+      calls: by === 'tool' || by === 'mcp' ? items.reduce((sum, { run }) => sum + this.calls(run, by, dimension.key), 0) : null,
     })).sort((a, b) => (b.calls ?? b.counts.launches) - (a.calls ?? a.counts.launches) || compareKey(a, b));
   }
 
@@ -331,8 +345,11 @@ class ScopedAnalysis {
     // Use the same Run attribution as the period view, over this Task's lifetime.
     const items = this.datedLaunches.filter(item => item.root === root);
     const collected = this.collectedLaunches(items);
-    const models = this.usageGroups(items, 'model').map(({ label, counts }) =>
-      ({ label, launches: counts.launches, runMs: counts.runMs, output: counts.tokens.output }));
+    const models = [...group(items, ({ run }) => [this.modelKey(run)]).values()]
+      .map(({ key, label, model, items }) => {
+        const { launches, runMs, tokens } = this.useCounts(items);
+        return { key, label, model, launches, runMs, output: tokens.output };
+      }).sort((a, b) => b.launches - a.launches || compareKey(a, b));
     const tools = this.usageGroups(collected, 'tool').map(({ key, calls }) =>
       ({ name: (JSON.parse(key) as [string, string])[1], calls: calls! }));
     const toolCounts = new Map<string, number>();

@@ -17,6 +17,47 @@
     "partial_other": "{{count}} dias",
     "week": "Por semana"
   },
+  "card": {
+    "copied": "Imagem copiada",
+    "copy": "Copiar",
+    "copyFailed": "Não foi possível copiar. Salve a imagem",
+    "dark": "Escuro",
+    "days_one": "{{count}} dia",
+    "days_many": "{{count}} dias",
+    "days_other": "{{count}} dias",
+    "drawFailed": "Não foi possível criar a imagem",
+    "grass": "Calendário",
+    "hero": "Número principal",
+    "kicker": "Trabalho entregue à IA",
+    "light": "Claro",
+    "make": "Criar cartão",
+    "model": "Modelo mais usado",
+    "numbers": "Números exibidos (até {{limit}})",
+    "passed": "Concluídas sem correções",
+    "post": "Postar",
+    "postCopied": "Imagem copiada. Cole-a na publicação",
+    "postFinished_one": "Nos últimos {{days}} dias, a IA concluiu {{value}} tarefa que passei para ela",
+    "postFinished_many": "Nos últimos {{days}} dias, a IA concluiu {{value}} tarefas que passei para ela",
+    "postFinished_other": "Nos últimos {{days}} dias, a IA concluiu {{value}} tarefas que passei para ela",
+    "postFinishedAll_one": "Até agora, a IA concluiu {{value}} tarefa que passei para ela",
+    "postFinishedAll_many": "Até agora, a IA concluiu {{value}} tarefas que passei para ela",
+    "postFinishedAll_other": "Até agora, a IA concluiu {{value}} tarefas que passei para ela",
+    "postHintCopy": "A imagem é copiada. Cole-a no seu post no X",
+    "postHintSave": "A imagem é salva. Anexe-a ao seu post no X",
+    "postOnX": "Postar no X",
+    "postSave": "Salve a imagem e anexe-a à publicação",
+    "postShare": "Nos últimos {{days}} dias, {{value}} do trabalho que passei para a IA foi concluído sem correções",
+    "postShareAll": "Até agora, {{value}} do trabalho que passei para a IA foi concluído sem correções",
+    "postTokens": "Nos últimos {{days}} dias, passei {{value}} tokens de trabalho para a IA",
+    "postTokensAll": "Até agora, passei {{value}} tokens de trabalho para a IA",
+    "prs": "PRs",
+    "runMs": "Tempo de execução da IA",
+    "save": "Salvar imagem",
+    "saved": "Imagem salva",
+    "share": "Compartilhar",
+    "shareFailed": "Não foi possível compartilhar",
+    "theme": "Cor"
+  },
   "chart": {
     "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} de {{accepted}}",
@@ -222,6 +263,18 @@
         "at": 1000,
         "digits": 0,
         "unit": "mil"
+      }
+    ],
+    "spoken": [
+      {
+        "at": 1000000000,
+        "digits": 1,
+        "unit": " bilhões de"
+      },
+      {
+        "at": 1000000,
+        "digits": 1,
+        "unit": " milhões de"
       }
     ],
     "tasks_one": "tarefa",

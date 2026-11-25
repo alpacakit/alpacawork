@@ -13,6 +13,41 @@
     "partial_other": "{{count}}日分",
     "week": "週ごと"
   },
+  "card": {
+    "copied": "画像をコピーしました",
+    "copy": "コピー",
+    "copyFailed": "コピーできませんでした。画像を保存してください",
+    "dark": "暗い",
+    "days_other": "{{count}}日間",
+    "drawFailed": "画像を作れませんでした",
+    "grass": "草",
+    "hero": "大きく出す数",
+    "kicker": "AI に任せた仕事",
+    "light": "明るい",
+    "make": "カードにする",
+    "model": "いちばん使ったモデル",
+    "numbers": "載せる数（{{limit}}つまで）",
+    "passed": "手直しなしで完了",
+    "post": "ポストする",
+    "postCopied": "画像をコピーしました。投稿の画面で貼り付けてください",
+    "postFinished_other": "この{{days}}日間で、AI に任せた仕事が {{value}}件終わりました",
+    "postFinishedAll_other": "これまでに、AI に任せた仕事が {{value}}件終わりました",
+    "postHintCopy": "画像はコピーされます。X の画面で貼り付けてください",
+    "postHintSave": "画像は保存されます。X の画面で添付してください",
+    "postOnX": "X でポストする",
+    "postSave": "画像を保存して、投稿に付けてください",
+    "postShare": "この{{days}}日間、AI に任せた仕事の {{value}} が手直しなしで完了しました",
+    "postShareAll": "これまでに、AI に任せた仕事の {{value}} が手直しなしで完了しました",
+    "postTokens": "この{{days}}日間、AI に {{value}}トークン分の仕事を任せました",
+    "postTokensAll": "これまでに、AI に {{value}}トークン分の仕事を任せました",
+    "prs": "PR",
+    "runMs": "AI の実行時間",
+    "save": "画像を保存",
+    "saved": "画像を保存しました",
+    "share": "共有",
+    "shareFailed": "共有できませんでした",
+    "theme": "色"
+  },
   "chart": {
     "binLabel": "{{day}}・{{name}} {{value}}",
     "fewShare": "{{accepted}}件のうち {{passed}}件",
@@ -182,6 +217,18 @@
     "prs_other": "件",
     "questions_other": "回",
     "scales": [
+      {
+        "at": 100000000,
+        "digits": 1,
+        "unit": "億"
+      },
+      {
+        "at": 10000,
+        "digits": 0,
+        "unit": "万"
+      }
+    ],
+    "spoken": [
       {
         "at": 100000000,
         "digits": 1,

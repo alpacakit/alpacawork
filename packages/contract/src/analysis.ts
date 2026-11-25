@@ -69,7 +69,9 @@ const series = <T extends z.ZodType>(point: T) => z.strictObject({
   bucket: analysisBucketSchema,
   points: z.array(point),
 });
+const model = z.strictObject({ name: z.string(), effort: z.string().nullable() });
 const group = { key: z.string(), label: z.string() };
+const breakdownRow = { ...group, model: model.optional() };
 const times = z.strictObject({ review: count, answer: count, ai: count, other: count });
 const tallied = z.strictObject({ runs: count, of: count, since: analysisDaySchema });
 const tallyTool = z.strictObject({ name: z.string(), calls: count });
@@ -88,7 +90,7 @@ export const analysisTasksViewSchema = z.strictObject({
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: z.strictObject({
     by: analysisTaskBySchema,
-    rows: z.array(z.strictObject({ ...group, finished: count, accepted: count, passed: count, share,
+    rows: z.array(z.strictObject({ ...breakdownRow, noOwnerRun: z.literal(true).optional(), finished: count, accepted: count, passed: count, share,
       leadMedianMs: measurement.nullable(), submitsPerAccepted: measurement.nullable() })),
   }).nullable(),
 });
@@ -102,7 +104,7 @@ export const analysisUsageViewSchema = z.strictObject({
   breakdown: z.strictObject({
     by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
     counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
-    rows: z.array(z.strictObject({ ...group, counts: analysisUsageCountsSchema, calls: count.nullable() })),
+    rows: z.array(z.strictObject({ ...breakdownRow, counts: analysisUsageCountsSchema, calls: count.nullable() })),
   }).nullable(),
 });
 
@@ -121,7 +123,7 @@ export const analysisUnitValuesSchema = z.strictObject({
   time: times, submits: count, questions: count,
   sendBacks: count, instructionsAtReview: count, instructionsAfterAccept: count, instructionsDuringWork: count,
   answers: count, workers: count, children: count, usage: analysisUsageCountsSchema,
-  models: z.array(z.strictObject({ label: z.string(), launches: count, runMs: count, output: count })),
+  models: z.array(z.strictObject({ ...group, model, launches: count, runMs: count, output: count })),
   prs: z.array(z.string()), skills: z.array(z.string()), tools: z.array(tallyTool), tallied,
 });
 
@@ -131,6 +133,7 @@ export type AnalysisBucket = z.infer<typeof analysisBucketSchema>;
 export type AnalysisDays = z.infer<typeof days>;
 export type AnalysisHead = z.infer<typeof analysisHeadSchema>;
 export type AnalysisTaskBy = z.infer<typeof analysisTaskBySchema>;
+export type AnalysisModel = z.infer<typeof model>;
 export type AnalysisUsageBy = z.infer<typeof analysisUsageBySchema>;
 export type AnalysisTasksInput = z.infer<typeof analysisTasksInput>;
 export type AnalysisUsageInput = z.infer<typeof analysisUsageInput>;

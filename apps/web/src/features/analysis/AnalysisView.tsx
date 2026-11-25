@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
+import { ShareCardButton } from "./ShareCard";
 import { PointerTip, Seg, Shown, useChoices } from "./parts";
 import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
@@ -48,7 +49,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const preset = "period" in place.span ? place.span.period : null;
   // The arrows move from the span chosen now, even while the answer for it is still on its way.
   const earlier = head ? stepChosen(place.span, head, -1) : null, later = head ? stepChosen(place.span, head, 1) : null;
-  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, unit: null }); };
+  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, unit: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
   // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
@@ -58,8 +59,10 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-6 narrow:pb-5">
       <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, rules: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
         items={[["tasks", t("look.tasks")], ["usage", t("look.usage")]]} />
-      <div className="ms-auto flex flex-wrap items-center gap-x-4 gap-y-2 narrow:ms-0 narrow:w-full">
-        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, unit: null })}
+      {/* The card's way in stands at the row's end: beside the span on a computer, beside the looks on a phone, where
+          the span takes a line of its own. */}
+      <div className="ms-auto flex flex-wrap items-center gap-x-4 gap-y-2 narrow:order-last narrow:ms-0 narrow:w-full">
+        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, unit: null, card: null })}
           items={PRESETS.map(each => [each.period, t(`period.${each.period}`)] as const)} />
         <div className="flex items-center gap-0.5 whitespace-nowrap narrow:w-full">
           <button type="button" aria-label={t("period.earlier")} title={t("period.earlier")} disabled={!canEarlier} onClick={() => step(-1)}
@@ -72,6 +75,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
             <Icon name="right" className="size-3.5" /></button>
         </div>
       </div>
+      <span className="narrow:ms-auto"><ShareCardButton place={place} /></span>
     </div>
     {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
     {/* The usage look draws the tasks' answer too (its finished tasks): both must be for what is chosen now. */}
