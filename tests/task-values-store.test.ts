@@ -7,7 +7,7 @@ import { packagedMigrations } from '@alpacawork/db';
 import { DEFAULT_SCHEMA, renderContext, SYSTEM_FIELDS } from '@alpacawork/contract';
 import * as storeRuntime from '@alpacawork/backend/test-dist/control/task-values-store.js';
 const { readFieldCatalog, writeFieldDef, deleteFieldDef, readProjectSchemas, writeProjectSchema, readTaskValues,
-  writeTaskValues, patchedValues, readValuesAt } = storeRuntime as typeof import('../apps/backend/src/control/task-values-store.js');
+  writeTaskValues, patchedValues, readValuesAt, valuesWriteTime } = storeRuntime as typeof import('../apps/backend/src/control/task-values-store.js');
 
 const at = '2026-11-08T00:00:00Z';
 function database() {
@@ -51,6 +51,12 @@ test('a value a write replaces or removes stays as a version, and the values rea
   assert.deepEqual(valuesAt('2099-01-01T00:00:00Z'), readTaskValues(db).get('T2'));
   assert.throws(() => db.prepare('DELETE FROM task_value_versions').run(), /fixed as written/);
   assert.throws(() => db.prepare("INSERT OR REPLACE INTO task_value_versions(id,task_id,field_id,replaced_at,value) VALUES (1,'t','goal',?,'\"x\"')").run(at), /fixed as written/);
+});
+
+test('a save\'s values hold from the earliest record it appends, whatever their order and time offsets', () => {
+  // A report closing a question can append a link record first that is timed after the report itself.
+  assert.equal(valuesWriteTime([{ at: '2026-11-08T00:00:00.003Z' }, { at: '2026-11-08T09:00:00.002000+09:00' }]),
+    '2026-11-08T09:00:00.002000+09:00');
 });
 
 test('values before the Task existed or before versions were kept are not known, and say why', () => {

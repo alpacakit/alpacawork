@@ -11,8 +11,8 @@ import { storedTaskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { ControlStore, taskHash, touch } from '@alpacawork/db';
 import { PROJECT_SUMMARY, type FieldValue } from '@alpacawork/contract';
 import { CONTROL_TASK_FORMAT, MAX_TASK_NUMBER, publicTaskId, validateControlMetadata, validateControlHead, validateAppendedLog, validateTaskSettings, userRequestedOf,
-  now, taskMetadata, type ControlMetadata, type ControlTask, type ProjectSettings, type TaskKind, type TaskLog, type TaskValues } from '@alpacawork/raw';
-import { readTaskFields, writeTaskValues, type TaskFields } from './task-values-store.js';
+  taskMetadata, type ControlMetadata, type ControlTask, type ProjectSettings, type TaskKind, type TaskLog, type TaskValues } from '@alpacawork/raw';
+import { readTaskFields, valuesWriteTime, writeTaskValues, type TaskFields } from './task-values-store.js';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import type { TaskWriter } from './task-transition.js';
 import type { RoutingTask } from './routing-facts.js';
@@ -432,7 +432,7 @@ export class TaskRepository {
       userRequestedOf(meta.log) ? 1 : 0, checkedSettings === null ? null : JSON.stringify(checkedSettings), 1, at, at);
     touch(this.connection, { kind: 'task', id });
     insertLogs(this.connection, uuid, 0, meta.log);
-    if (Object.keys(values).length) writeTaskValues(this.connection, id, values, writeTime(meta.log, 0));
+    if (Object.keys(values).length) writeTaskValues(this.connection, id, values, valuesWriteTime(meta.log));
     return id;
   }
 }
@@ -481,15 +481,8 @@ function saveTask(db: DatabaseSync, id: string, expectedHash: string | null, met
     revision + 1, new Date().toISOString(), String(row.id));
   touch(db, { kind: 'task', id });
   insertLogs(db, String(row.id), previousLength, meta.log, texts);
-  if (values !== undefined) writeTaskValues(db, id, values, writeTime(meta.log, previousLength));
+  if (values !== undefined) writeTaskValues(db, id, values, valuesWriteTime(meta.log.slice(previousLength)));
   return taskHash(String(row.id), revision + 1);
-}
-/**
- * When a save's values change: the time of the first log record it appends after `previousLength` (the save's changes
- * hold from its first record on, so each of its records reads the new values), else now.
- */
-function writeTime(log: readonly TaskLog[], previousLength: number): string {
-  return log.length > previousLength ? log[previousLength]!.at : now();
 }
 /** SQLite's extended result code for a UNIQUE constraint. */
 const SQLITE_CONSTRAINT_UNIQUE = 2067;

@@ -195,6 +195,14 @@ export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskVa
     if (previous.get(field) !== next.get(field)) replaceValue(db, uuid, field, previous.get(field) ?? null, next.get(field) ?? null, at);
 }
 /**
+ * The time a save's values hold from: the earliest of the log records the save appends (`appended`; they need not be in
+ * time order), so every one of them reads the new values; now when it appends none.
+ */
+export function valuesWriteTime(appended: readonly { at: string }[]): string {
+  return appended.reduce<string | null>((first, entry) =>
+    first === null || Date.parse(entry.at) < Date.parse(first) ? entry.at : first, null) ?? now();
+}
+/**
  * The only change of one stored value (task_values): keeps what the field held (`previous`, JSON or null for none) as a
  * version replaced at `at`, then stores `next` (JSON, or null to remove the field's value).
  */
