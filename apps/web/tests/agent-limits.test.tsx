@@ -28,7 +28,7 @@ test("the bar shows the first agent in the stack that can work now, and the wind
   // A row without a model is held by the account's windows alone.
   expect(shownOf(barLimit(response([agent("claude", "ok", [week(40), week(90, "Fable")])], [row("claude")]), NOW)))
     .toEqual({ kind: "limited", agent: "claude", percent: 40 });
-  // Another model of the same agent standing in is not said to be another agent.
+  // Another model of the same agent standing in keeps that agent in the bar.
   expect(shownOf(barLimit(response([claude], [row("claude", "fable"), row("claude", "opus")]), NOW)))
     .toEqual({ kind: "limited", agent: "claude", percent: 85 });
   // A spent window past its reset holds nothing: the menu says no reset for it either.

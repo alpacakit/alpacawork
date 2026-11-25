@@ -37,5 +37,6 @@ test("with the first agent spent, the bar shows only the next one, the agent wor
     stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
   expect(bar?.trim()).toBe("Codex");
   expect(trigger.getAttribute("aria-label")).toMatch(/Codex.*25%/);
+  expect(trigger.getAttribute("aria-label")).not.toMatch(/Claude/);
   expect(document.querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("codex");
 });
