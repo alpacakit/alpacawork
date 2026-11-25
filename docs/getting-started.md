@@ -5,7 +5,7 @@ This takes you from installing alpacawork to asking the AI for one thing and che
 ## Before you start
 
 - Your PC needs to run macOS (Apple silicon), Linux (x64, with a systemd user session, which most desktop and server installs have) or Windows (WSL2 with systemd on, the default for Ubuntu). On Windows, read [On Windows](manage.md#on-windows) first.
-- Have Claude Code or Codex ready to use on this PC.
+- Have an AI agent such as Claude Code or Codex ready to use on this PC.
 - The AI changes files without asking for confirmation. It runs with your user account's permissions on this PC, so it can reach beyond the folder it works in.
 
 ## 1. Install

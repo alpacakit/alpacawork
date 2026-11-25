@@ -12,7 +12,7 @@
 <h3 align="center">Controla todos tus agentes de IA desde un solo chat.</h3>
 
 <p align="center">
-  Escribe lo que quieres. Claude Code y Codex en tu PC lo dividen en tareas y las ejecutan a la vez.<br/>
+  Escribe lo que quieres. Los agentes de IA de tu PC, como Claude Code y Codex, lo dividen en tareas y las ejecutan a la vez.<br/>
   Tú respondes las preguntas de la IA y revisas los resultados. También desde tu teléfono.
 </p>
 
@@ -34,10 +34,10 @@
   </picture>
 </p>
 
-alpacawork es una herramienta (un harness de IA) que ejecuta los agentes Claude Code y Codex que ya tienes instalados en tu PC y les asigna trabajo. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y sigue el progreso. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
+alpacawork es un orquestador para los agentes de programación con IA que ya tienes en tu PC, como Claude Code y Codex: les reparte el trabajo y lleva su seguimiento. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas y las asigna a otras IA. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="alpacawork en el navegador de un PC, con una lista de diez tareas en curso y tres por revisar junto al informe abierto de una tarea, y a la derecha un teléfono que muestra el mismo informe" width="820">
+  <img src="docs/images/demo-dark-es.webp" alt="Una petición escrita en el cuadro de chat del teléfono se convierte en tres tareas que avanzan en paralelo en la lista del PC; se revisa un resultado y se desliza para marcar la tarea como completada, y una pregunta de la IA se responde eligiendo una opción; al final, el teléfono y el PC lado a lado" width="800">
 </p>
 
 ## Instalar
@@ -70,6 +70,10 @@ En una terminal, también se abre con `alpacawork open`.
 
 ## Qué hace
 
+Mira el flujo completo en las pantallas reales, desde la petición hasta completar la tarea (unos 100 segundos, sin sonido).
+
+https://github.com/user-attachments/assets/967f1b2d-dc77-4c3d-97ed-1a8048095cbb
+
 - **Escribe todas tus solicitudes en un solo cuadro de chat.** El coordinador convierte cada solicitud en una tarea y se la encarga a una IA. No tienes que cambiar de chat ni de IA de un trabajo a otro.
 - **Una IA gestiona varias IA a la vez.** Para añadir o cambiar algo en el trabajo en curso, solo tienes que decírselo al coordinador. Escribe “En las tres tareas en curso, comprueba también cómo se ve en el teléfono” y el coordinador se lo indica a cada IA que trabaja en ellas.
 - **Describe el proceso con tus palabras y las IA lo llevan a cabo juntas.** Incluso un proceso elaborado, como “Haz tres propuestas, cada una con un modelo distinto. Combínalas en una, haz que otra IA la revise y corrígela antes de pasarme el informe”, se lleva a cabo tal como lo describes: la IA gestiona los pasos y las IA se pasan el trabajo entre sí.
@@ -89,6 +93,7 @@ En una terminal, también se abre con `alpacawork open`.
 - [Primeros pasos](docs/es/getting-started.md): instalar, pedir una tarea y revisarla
 - [Índice de la documentación](docs/es/README.md): la lista de todas las páginas: cómo usarlo, la configuración, la solución de problemas y más
 - Por favor, informa de los errores en [Issues](https://github.com/alpacakit/alpacawork/issues)
+- Los anuncios de nuevas versiones se publican en X: [@codemafia0000](https://x.com/codemafia0000)
 
 ## Licencia
 

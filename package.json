@@ -5,7 +5,7 @@
   "keywords": [
     "ai-agents", "ai", "claude-code", "codex", "coding-agents", "ai-coding", "agentic-coding",
     "agent-orchestration", "orchestration", "parallel-agents", "multi-agent", "task-management",
-    "task-manager", "human-in-the-loop", "agent-harness", "vibe-coding", "mobile-first", "self-hosted",
+    "task-manager", "human-in-the-loop", "vibe-coding", "mobile-first", "self-hosted",
     "developer-tools", "cli"
   ],
   "license": "MIT",
