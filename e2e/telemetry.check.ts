@@ -106,7 +106,9 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await switcher.click(); await expect(switcher).not.toBeChecked(); expect(service.status().state).toBe('off');
     expect(service.queue.queued()).toHaveLength(0);
     await page.getByRole('button', { name: '送信内容を表示', exact: true }).click();
-    await expect(preview).toContainText('送信していないため、表示する内容はありません。');
+    await expect(preview).toContainText('送信していないため、これから送る分はありません。');
+    // What was sent stays listed after sending stops.
+    await expect(preview.locator('[data-telemetry-log]')).toContainText('送信済みのデータの削除の依頼');
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-preview-off-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-preview-off-ja-phone');
     await preview.locator('[data-slot=dialog-footer]').getByRole('button', { name: '閉じる', exact: true }).click();
