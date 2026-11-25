@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
-import { BRIDGE_LINE_BYTES, boundBridgeEvent, boundaryItem, clippedUnder } from '@alpacawork/contract/agent-bridge';
+import { BRIDGE_LINE_BYTES, OUTCOME_LINE_BYTES, boundBridgeEvent, boundaryItem, clippedUnder } from '@alpacawork/contract/agent-bridge';
 import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument, tookSteps } from '@alpacawork/contract/run';
 
 function folder(t: TestContext) {
@@ -369,7 +369,8 @@ test('an edit whose file list alone passes the line keeps the files that fit fro
   const index = await read(path, 'codex'), detail = await index.detail(0);
   assert.equal(index.range(undefined, 12).steps[0]?.state, 'done');
   assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/components/generated/file-0.ts\n+export const value0 = 0;'));
-  assert.equal(detail!.input.omittedFiles, event.item.changesOmitted);
+  const headings = detail!.input.text.split('\n').filter(line => /^add: \/src\/packages\/module-\d+\/components\/generated\/file-\d+\.ts$/.test(line)).length;
+  assert.equal(detail!.input.omittedFiles, 60_000 - headings);
 });
 
 test('a line still too long once its readable fields are cut is written as main writes it, marked, and fits', () => {
@@ -381,7 +382,7 @@ test('a line still too long once its readable fields are cut is written as main 
   const call = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('collab_agent_tool_call', { id: 'r1', status: 'completed', prompt: 'check in',
     receiverThreadIds: Array.from({ length: 60_000 }, (_, n) => `thread-${n}-0123456789`) }) }) as { item: Record<string, unknown> };
   assert.ok(Buffer.byteLength(JSON.stringify(call)) <= BRIDGE_LINE_BYTES);
-  assert.deepEqual(call.item, { type: 'collab_agent_tool_call', id: 'r1', detailsDropped: true });
+  assert.deepEqual(call.item, { type: 'collab_agent_tool_call', id: 'r1', status: 'completed', prompt: 'check in', detailsDropped: true });
 });
 
 test('an edit is taken whole from its end when the end gives one, none of its start mixed in', async t => {
@@ -414,4 +415,49 @@ test('a bash command cut short by the bridge still shows the script inside it', 
   const detail = await (await read(path, 'codex')).detail(0);
   assert.ok(detail!.input.text.startsWith("printf 'a'\necho line\n"));
   assert.ok(detail!.input.omitted > 0);
+});
+
+test('the last guard always fits: an ID near the outcome reader\'s limit is written as main would, and marked while that fits', () => {
+  for (const length of [1_500_000, 2 * 1024 * 1024 - 80]) {
+    const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('command_execution', { id: 'x'.repeat(length), command: 'echo hi',
+      aggregatedOutput: 'y'.repeat(600_000), status: 'completed' }) }) as { item: Record<string, unknown> };
+    const main = { type: 'item.completed', item: { type: 'command_execution', id: 'x'.repeat(length), command: 'echo hi' } };
+    assert.ok(Buffer.byteLength(JSON.stringify(event)) <= Math.max(OUTCOME_LINE_BYTES, Buffer.byteLength(JSON.stringify(main))));
+    if (length === 1_500_000) assert.equal(event.item.detailsDropped, true);
+  }
+});
+
+test('a step whose details the last guard dropped keeps how it went, or says that is not known', async t => {
+  const path = folder(t);
+  const receivers = Array.from({ length: 60_000 }, (_, n) => `thread-${n}-0123456789`);
+  const failed = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('collab_agent_tool_call', { id: 'r1', status: 'failed', receiverThreadIds: receivers }) });
+  const silent = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('collab_agent_tool_call', { id: 'r2', receiverThreadIds: receivers }) });
+  writeFileSync(join(path, 'stdout.log'), [failed, silent].map(row => JSON.stringify(row)).join('\n') + '\n');
+  assert.deepEqual((await read(path, 'codex')).range(undefined, 12).steps.map(step => [step.id, step.state]), [['r1', 'failed'], ['r2', 'unknown']]);
+});
+
+test('"and N more files" counts the files the opened text hides even when the line was never cut', async t => {
+  const path = folder(t);
+  const changes = [{ path: '/big.ts', kind: { type: 'add' }, diff: '+' + 'x'.repeat(270_000) },
+    { path: '/b.ts', kind: { type: 'add' }, diff: '+b' }, { path: '/c.ts', kind: { type: 'add' }, diff: '+c' }];
+  write(path, [{ type: 'item.completed', item: { id: 'f1', type: 'file_change', changes, status: 'completed' } }]);
+  const detail = await (await read(path, 'codex')).detail(0);
+  assert.ok(detail!.input.text.startsWith('add: /big.ts'));
+  assert.equal(detail!.input.omittedFiles, 2);
+});
+
+test('the last guard keeps a failure\'s short fields, as its reason, and cuts its long ones', () => {
+  const event = boundBridgeEvent({ type: 'turn.failed', error: { message: 'capacity '.repeat(140_000), cause: 'model_capacity' } }) as
+    { type: string; error: { message: string; cause: string } };
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  assert.equal(event.type, 'turn.failed');
+  assert.equal(event.error.cause, 'model_capacity');
+  assert.ok(event.error.message.startsWith('capacity'));
+});
+
+test('a bash command quoted whole with more after it is shown as it was written', async t => {
+  const path = folder(t);
+  const command = "/bin/bash -lc 'echo a' runner";
+  write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command } }]);
+  assert.equal((await (await read(path, 'codex')).detail(0))?.input.text, command);
 });

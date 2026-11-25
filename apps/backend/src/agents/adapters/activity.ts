@@ -1,5 +1,5 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
-import { ITEM_READABLE, bridgeToolEventSchema, clippedUnder } from '@alpacawork/contract/agent-bridge';
+import { ITEM_READABLE, bridgeToolEventSchema, clippedUnder, fileChangeText } from '@alpacawork/contract/agent-bridge';
 import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent, StepCall } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
@@ -34,8 +34,11 @@ const firstText = (...values: unknown[]) => values.find((value): value is string
 function shellScript(command: unknown): unknown {
   if (typeof command !== 'string') return command;
   // A command cut short by the bridge has lost its closing quote: what follows the opening one is still the script.
-  const wrapped = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)\1$/.exec(command)
-    ?? /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)$/.exec(command);
+  // Only one with no closing quote at all is taken so; one quoted whole with more after it stays as it is.
+  const opened = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)$/.exec(command);
+  const unclosed = opened && (opened[1] === "'" ? !opened[2]!.replaceAll(`'\\''`, '').replaceAll(`'"'"'`, '').includes("'")
+    : !/(^|[^\\])(\\\\)*"/.test(opened[2]!));
+  const wrapped = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)\1$/.exec(command) ?? (unclosed ? opened : null);
   if (!wrapped) return command;
   return wrapped[1] === "'" ? wrapped[2]!.replaceAll(`'\\''`, "'").replaceAll(`'"'"'`, "'") : wrapped[2]!.replace(/\\(["\\$`])/g, '$1');
 }
@@ -46,7 +49,7 @@ const toolCall = (tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | '
   ({ ...previewToolInput(tool, raw), call: { tool: typeof tool === 'string' ? tool : '', input: raw } });
 /** The fields of a Codex item that say what it asked, by its type (what it got back and its state are not its input). */
 const ITEM_INPUT: Record<string, readonly string[]> = {
-  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText', 'changesOmitted'],
+  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText', 'changeCount'],
   collab_agent_tool_call: ['prompt', 'tool', 'model', 'receiverThreadIds'], image_view: ['path'],
 };
 const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : []).map(object).filter(change => typeof change.path === 'string');
@@ -90,7 +93,7 @@ export function stepInputDocument(call: StepCall): string | undefined {
   }
 }
 /** The fields that say one edit together: taken from one record, never mixed from two. */
-const EDIT_FIELDS = ['changes', 'changesText', 'changesOmitted'] as const;
+const EDIT_FIELDS = ['changes', 'changesText', 'changeCount'] as const;
 /** What the bridge cut under one field of an item, by the field below it there ("" for the field cut whole). */
 function clippedBy(item: Record<string, unknown>, field: string): Record<string, number> {
   const clipped = object(item.clipped), by: Record<string, number> = {};
@@ -120,11 +123,23 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
   }
   return { tool: end.tool || start.tool, input, clipped };
 }
-/** How many files of a change list the bridge left out after those its input says (none when it kept them all). */
-export const callOmittedFiles = (call: StepCall): number => {
-  const count = object(call.input).changesOmitted;
-  return typeof count === 'number' && count > 0 ? count : 0;
-};
+/**
+ * How many files of an edit the text opened does not show: all the edit's files (changeCount, else its change list)
+ * less those whose heading is in `text` as written, in order. The one count, whether or not the bridge cut the line.
+ */
+export function hiddenFiles(call: StepCall, text: string): number {
+  if (call.tool !== 'codex:file_change') return 0;
+  const input = object(call.input), changes = Array.isArray(input.changes) ? input.changes.map(object) : [];
+  const total = typeof input.changeCount === 'number' ? input.changeCount : changes.length;
+  let at = 0, shown = 0;
+  for (const change of changes) {
+    const heading = fileChangeText({ ...change, diff: undefined });
+    const found = text.indexOf(heading, at), end = found + heading.length;
+    if (found === -1 || (found > 0 && text[found - 1] !== '\n') || (end < text.length && text[end] !== '\n')) break;
+    shown++; at = end;
+  }
+  return Math.max(0, total - shown);
+}
 /** How many characters the bridge cut from a call's input as it stands. */
 export const callOmitted = (call: StepCall): number => Object.values(call.clipped ?? {}).reduce((sum, count) => sum + count, 0);
 
@@ -139,8 +154,12 @@ function bridgeOutcome(item: Record<string, unknown>): NonNullable<ActivityEvent
     ...said ? { output: { text: said.text, omitted: clippedUnder(item, [said.field]) } } : {},
     failed: item.status === 'failed' || item.status === 'declined' || item.success === false ||
       result.isError === true || item.resultIsError === true || (typeof item.exitCode === 'number' && item.exitCode !== 0),
+    // Its details dropped with nothing left that says how it went, whether it went well is not known.
+    ...item.detailsDropped === true && STATE_FIELDS.every(field => item[field] === undefined) ? { unknown: true as const } : {},
   };
 }
+/** The fields of an item that say how its step went. */
+const STATE_FIELDS = ['status', 'exitCode', 'success', 'resultIsError'] as const;
 
 export function claudeActivity(value: unknown, received: string): ActivityEvent[] {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];

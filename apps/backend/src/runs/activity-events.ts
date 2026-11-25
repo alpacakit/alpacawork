@@ -18,7 +18,7 @@ export type ActivityEvent = {
   /** The tool input as a bridge wrote it (already one text, bounded), where there is no `call`. */
   input?: RunStepText;
   /** A tool end: what came back, as a preview and as written. */
-  outcome?: { result: RunStepLine; failed: boolean; output?: RunStepText };
+  outcome?: { result: RunStepLine; failed: boolean; output?: RunStepText; /** Nothing says how it went. */ unknown?: true };
   /** The bridge could not keep this record's details (its line was too long even cut): only its type, ID and command came. */
   dropped?: true;
 };

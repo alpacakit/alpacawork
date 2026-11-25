@@ -172,21 +172,10 @@ function cutReadable(event: BridgeEvent): BridgeEvent {
       const into = kept;
       const value = item[field];
       const put = (text: string, lost: number) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; };
-      if (field === 'changes' && Array.isArray(value)) {
-        // The files the text says are those whose heading is in it as written: the rest, of all the edit's files, are
-        // told by their count (changesOmitted), whatever was cut on the way.
-        let files: string[] = [];
-        parts.push({ text: () => (files = value.slice(0, (into.changes as unknown[]).length).map(record).map(fileChangeText)).join('\n\n'),
-          put: (text, lost) => {
-            put(text, lost);
-            let at = 0, shown = 0;
-            for (const file of files) {
-              if (at + (file.indexOf('\n') === -1 ? file.length : file.indexOf('\n')) > text.length) break;
-              shown++; at += file.length + 2;
-            }
-            if (value.length > shown) into.changesOmitted = value.length - shown; else delete into.changesOmitted;
-          } });
-      } else parts.push({ text: () => readable(value), put });
+      // The change list's text says the files the line keeps; how many the step's text hides is counted where it is opened.
+      if (field === 'changes' && Array.isArray(value))
+        parts.push({ text: () => value.slice(0, (into.changes as unknown[]).length).map(record).map(fileChangeText).join('\n\n'), put });
+      else parts.push({ text: () => readable(value), put });
     }
     said.item = kept;
   }
@@ -197,8 +186,8 @@ function cutReadable(event: BridgeEvent): BridgeEvent {
   }
   // The room the texts may share: the line with every text empty is what is never cut (the clipped counts' room kept).
   for (const part of parts) part.put('', 0);
-  // A change list too long for the line is read as text too: the files that fit are kept from its start, the rest are
-  // told by their count (changesOmitted), and how many it holds (changeCount) is kept whole.
+  // A change list too long for the line is read as text too: the files that fit are kept from its start, and how many
+  // it holds (changeCount) is kept whole.
   if (kept && Array.isArray(kept.changes)) {
     const changes = kept.changes as unknown[], over = () => utf8.encode(JSON.stringify(said)).length + CLIPPED_ROOM > BRIDGE_LINE_BYTES - CHANGE_LIST_TEXT_ROOM;
     kept.changeCount = changes.length;
@@ -228,35 +217,68 @@ function cutReadable(event: BridgeEvent): BridgeEvent {
 const lineBytes = (value: unknown) => {
   try { return utf8.encode(JSON.stringify(value)).length; } catch { return Number.POSITIVE_INFINITY; }
 };
-/** Texts of `fields` in `into` cut from their end to share the room the line leaves them. */
-function shareRoom(line: Record<string, unknown>, into: Record<string, unknown>, fields: readonly string[]): void {
-  const texts = fields.filter(key => typeof into[key] === 'string').map(key => ({ key, text: into[key] as string }));
-  for (const { key } of texts) into[key] = '';
-  let room = Math.max(0, BRIDGE_LINE_BYTES - lineBytes(line) - CLIPPED_ROOM);
-  texts.sort((a, b) => a.text.length - b.text.length).forEach(({ key, text }, at) => {
-    into[key] = cutText(text, Math.floor(room / (texts.length - at))).text;
-    room -= writtenBytes(into[key] as string);
+/** The ceiling of a Run's outcome reader for one line (its MAX_LINE): the last guard never writes past it. */
+export const OUTCOME_LINE_BYTES = 2 * 1024 * 1024;
+/** A field short enough to keep whole in the last guard: a state, a code, a name, a reason. */
+const SHORT_FIELD_BYTES = 256;
+const isShort = (value: unknown) => value === null || typeof value === 'boolean' || typeof value === 'number'
+  || typeof value === 'string' && writtenBytes(value) <= SHORT_FIELD_BYTES;
+type Text = { holder: Record<string, unknown>; key: string; text: string };
+/** The fields of `from` the last guard keeps in `into`: short ones whole, long texts set aside in `texts` to be cut. */
+function keepShort(from: Record<string, unknown>, into: Record<string, unknown>, texts: Text[], longTexts: readonly string[] | 'all'): void {
+  for (const [key, value] of Object.entries(from)) {
+    if (isShort(value)) into[key] = value;
+    else if (typeof value === 'string' && (longTexts === 'all' || longTexts.includes(key))) texts.push({ holder: into, key, text: value });
+  }
+}
+/** Each text in `texts` cut from its end so the line fits `limit`, the room shared among them. */
+function shareRoom(line: Record<string, unknown>, texts: readonly Text[], limit: number): void {
+  for (const { holder, key } of texts) holder[key] = '';
+  let room = Math.max(0, limit - lineBytes(line));
+  [...texts].sort((a, b) => a.text.length - b.text.length).forEach(({ holder, key, text }, at) => {
+    holder[key] = cutText(text, Math.floor(room / (texts.length - at))).text;
+    room -= writtenBytes(holder[key] as string);
   });
 }
 /**
- * The last guard, for a line that is still too long however its readable fields were cut: an item is written as main
- * writes it (its type, ID, command and text), those texts cut to fit, marked `detailsDropped` so the step says its
- * details could not be kept; any other line keeps its type and ID, its other texts cut to fit and any structure left out.
+ * The last guard, for a line still too long however its readable fields were cut. An item is written as main writes it
+ * (its type, ID, command and text, those texts cut) with its short fields kept whole, so its state, exit code and
+ * whether it failed still say how it went, marked `detailsDropped` so the step says its details could not be kept. Any
+ * other line keeps its short fields, and those of the records it holds (a failure's reason), its long texts cut.
+ *
+ * The line always fits: under BRIDGE_LINE_BYTES once its texts are cut; when what is never cut (an ID) is too long for
+ * that, its texts go, then its other fields, then its mark, so it is never longer than main's least line and never
+ * past the outcome reader's OUTCOME_LINE_BYTES while main's would not be.
  */
 function leastOf(event: BridgeEvent): BridgeEvent {
-  const source = event as Record<string, unknown>;
+  const source = event as Record<string, unknown>, texts: Text[] = [];
+  let line: Record<string, unknown>, holder: Record<string, unknown>;
   if (source.item !== undefined) {
     const item = record(source.item);
-    const least: Record<string, unknown> = { type: item.type, ...item.id !== undefined ? { id: item.id } : {},
-      ...typeof item.command === 'string' ? { command: item.command } : {}, ...typeof item.text === 'string' ? { text: item.text } : {}, detailsDropped: true };
-    const line = { type: source.type, item: least };
-    shareRoom(line, least, ['command', 'text']);
-    return line as BridgeEvent;
+    holder = {};
+    keepShort(item, holder, texts, ['command', 'text']);
+    if (record(item.result).isError === true) holder.resultIsError = true;
+    holder.detailsDropped = true;
+    line = { type: source.type, item: holder };
+  } else {
+    line = holder = {};
+    keepShort(source, line, texts, 'all');
+    for (const [key, value] of Object.entries(source)) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) continue;
+      const kept: Record<string, unknown> = {};
+      keepShort(value as Record<string, unknown>, kept, texts, 'all');
+      line[key] = kept;
+    }
+    holder.detailsDropped = true;
   }
-  const line: Record<string, unknown> = Object.fromEntries(Object.entries(source).filter(([, value]) => value === null || typeof value !== 'object'));
-  if (Object.keys(line).length < Object.keys(source).length) line.detailsDropped = true;
-  shareRoom(line, line, Object.keys(line).filter(key => key !== 'type' && key !== 'id'));
-  return line as BridgeEvent;
+  shareRoom(line, texts, BRIDGE_LINE_BYTES - CLIPPED_ROOM);
+  if (lineBytes(line) <= BRIDGE_LINE_BYTES) return line as BridgeEvent;
+  // What is never cut is itself too long: keep only what main keeps, then its mark only while it still fits.
+  const id = (source.item !== undefined ? record(source.item) : source).id;
+  const least: Record<string, unknown> = { type: holder.type ?? source.type, ...id !== undefined ? { id } : {} };
+  const marked = source.item !== undefined ? { type: source.type, item: { ...least, detailsDropped: true } } : { ...least, detailsDropped: true };
+  if (lineBytes(marked) <= OUTCOME_LINE_BYTES) return marked as BridgeEvent;
+  return (source.item !== undefined ? { type: source.type, item: least } : least) as BridgeEvent;
 }
 /** A provider item as it crosses the bridge: its type (snake case) and the fields the step reading takes, as given. */
 export function boundaryItem(type: string, item: Record<string, unknown>): BridgeItem {

@@ -21,7 +21,7 @@ import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
 import { STEP_LINE_LIMIT } from './readers/jsonl.js';
-import { callOmitted, callOmittedFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
+import { callOmitted, hiddenFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
 
 /**
  * The longest output line read as one row: the live activity's (STEP_LINE_LIMIT), so the steps listed are the steps it
@@ -75,7 +75,9 @@ export class RunStepIndex {
         about: event.about ?? null, state: 'running', start: at, end: null, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
     } else if (event.detail?.text) Object.assign(step, event.detail);
-    if (kind === 'tool_end') { step.state = event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false; }
+    if (kind === 'tool_end') {
+      step.state = event.outcome?.unknown ? 'unknown' : event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false;
+    }
     step.changed = ++this.version;
   }
 
@@ -193,8 +195,9 @@ export class RunStepIndex {
         ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);
       const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);
-      const files = call ? callOmittedFiles(call) : 0;
-      return { input: { ...fullRunText(input.text, input.omitted), ...files ? { omittedFiles: files } : {} }, output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
+      // How many files the edit's text hides is counted once, from the text as it is shown.
+      const shown = fullRunText(input.text, input.omitted), files = call ? hiddenFiles(call, shown.text) : 0;
+      return { input: { ...shown, ...files ? { omittedFiles: files } : {} }, output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
         changed: step.changed, generation: this.generation, ...said.some(event => event.dropped) ? { detailsDropped: true as const } : {} };
     } finally { await handle.close(); }
   }
