@@ -29,7 +29,6 @@ export const RUN_STEPS_LINE_LIMIT = 64 * 1024 * 1024;
 const CHUNK = 1024 * 1024;
 type Settled = 'done' | 'failed';
 type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null;
-  /** The index's version when it last changed. */ changed: number;
   /** A line that could not be read came while it ran. */ unsure: boolean };
 
 const name = (value: unknown) => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
@@ -45,7 +44,9 @@ export class RunStepIndex {
   private offset = 0;
   private file: string | null = null;
   private version = 0;
-  /** How the Run ended, once it has: what its output left running is settled so. */
+  /** How many times the output was read from its start: a replaced output is another generation of steps. */
+  private generation = 0;
+  /** How the Run ended, once it has: what its output left running is settled so, and its last line is whole. */
   private ended: Settled | null = null;
 
   constructor(private readonly folder: string, private readonly adapter: AgentAdapter) {}
@@ -63,7 +64,7 @@ export class RunStepIndex {
       step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
         about: event.about ?? null, state: 'running', start: at, end: null, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
-    } else if (!step.text && event.detail?.text) Object.assign(step, event.detail);
+    } else if (event.detail?.text) Object.assign(step, event.detail);
     if (kind === 'tool_end') { step.state = event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false; }
     step.changed = ++this.version;
   }
@@ -87,8 +88,13 @@ export class RunStepIndex {
     for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at);
   }
 
-  /** Reads what the output gained since the last read; a file that was replaced is read again from its start. */
-  async update(): Promise<void> {
+  /**
+   * Reads what the output gained since the last read; a file that was replaced is read again from its start, as the
+   * next generation. While the Run goes on, a last line with no line end may still be written and waits; once the Run
+   * has ended (`ended`), it is whole and read as the others are.
+   */
+  async update(ended: Settled | null = null): Promise<void> {
+    this.ended ??= ended;
     let handle: FileHandle;
     try { handle = await open(join(this.folder, RUN_FILES.stdout), 'r'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
@@ -96,7 +102,7 @@ export class RunStepIndex {
       const stat = await handle.stat(), file = `${stat.dev}:${stat.ino}`;
       if (file !== this.file || stat.size < this.offset) {
         // Read again from the start, its versions going on, so a list holding the old ones takes every step again.
-        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file;
+        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file; this.generation++;
       }
       const chunk = Buffer.alloc(CHUNK);
       let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false;
@@ -117,22 +123,20 @@ export class RunStepIndex {
         else { pending = []; pendingLength = 0; dropping = true; }
         position += bytesRead;
       }
-      // An unfinished last line is read again next time, once it is whole.
+      if (this.ended && (pendingLength || dropping)) {
+        if (dropping) this.unreadable(); else this.accept(Buffer.concat(pending), lineStart);
+        lineStart = position;
+      }
+      // While the Run goes on, an unfinished last line is read again next time, once it is whole.
       this.offset = lineStart;
     } finally { await handle.close(); }
     if (this.ended) this.settle(this.ended);
   }
 
-  /** The Run has ended so: what its output left running ended with it. */
-  end(state: Settled): void {
-    this.ended = state;
-    this.settle(state);
-  }
-
   get total(): number { return this.steps.length; }
 
   private entry = (step: Step, n: number): RunStepEntry => {
-    const { start: _start, end: _end, changed: _changed, unsure: _unsure, ...rest } = step;
+    const { start: _start, end: _end, unsure: _unsure, ...rest } = step;
     return { n, ...rest };
   };
 
@@ -141,7 +145,7 @@ export class RunStepIndex {
     const count = Math.max(1, Math.min(limit, RUN_STEPS_PAGE_LIMIT)), total = this.steps.length;
     const start = Math.min(total, from ?? Math.max(0, total - count));
     const steps = this.steps.slice(start, start + count).map((step, at) => this.entry(step, start + at));
-    return { steps, total, version: this.version, complete: true };
+    return { steps, total, version: this.version, complete: true, generation: this.generation };
   }
 
   /** The steps that changed after version `since`, the earliest changes first, at most a page of them. */
@@ -149,8 +153,11 @@ export class RunStepIndex {
     const changed = this.steps.map((step, n) => ({ step, n })).filter(({ step }) => step.changed > since)
       .sort((a, b) => a.step.changed - b.step.changed);
     const page = changed.slice(0, RUN_STEPS_PAGE_LIMIT), complete = page.length === changed.length;
-    return { steps: page.sort((a, b) => a.n - b.n).map(({ step, n }) => this.entry(step, n)), total: this.steps.length,
-      version: complete ? this.version : page.at(-1)!.step.changed, complete };
+    // The next read starts after the latest change this page holds, taken in the order of change before the page is
+    // put in the Run's order.
+    const version = complete ? this.version : page.at(-1)!.step.changed;
+    return { steps: [...page].sort((a, b) => a.n - b.n).map(({ step, n }) => this.entry(step, n)), total: this.steps.length,
+      version, complete, generation: this.generation };
   }
 
   /** What step `n` ran and got back, read again from its own lines; null when there is no such step. */
@@ -165,11 +172,14 @@ export class RunStepIndex {
         return value === undefined ? [] : this.adapter.activity(value, new Date().toISOString()).filter(event => event.id === step.id);
       };
       const started = await events(step.start), ended = step.end === step.start ? started : await events(step.end);
-      const input = [...started, ...ended].map(event => event.input).find(Boolean)
-        ?? ({ text: [...started, ...ended].map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
+      // The input is taken from the end's record where it says it (it may hold more, as a Codex edit's diff), else the start's.
+      const said = [...ended, ...started];
+      const input = said.map(event => event.input).find(text => !!text && (text.text !== '' || text.omitted > 0))
+        ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);
       const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);
-      return { input: fullRunText(input.text, input.omitted), output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null };
+      return { input: fullRunText(input.text, input.omitted), output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
+        changed: step.changed, generation: this.generation };
     } finally { await handle.close(); }
   }
 }
@@ -196,7 +206,7 @@ async function lineAt(handle: FileHandle, at: number): Promise<Buffer> {
 const indexes = new Map<string, { index: RunStepIndex; reading: Promise<unknown> }>();
 const INDEX_LIMIT = 16;
 /** One Run's index brought up to date, its reads one after another. */
-export function runStepIndex(folder: string, adapterId: string, adapter: AgentAdapter): Promise<RunStepIndex> {
+export function runStepIndex(folder: string, adapterId: string, adapter: AgentAdapter, ended: Settled | null): Promise<RunStepIndex> {
   const key = `${folder}\0${adapterId}`;
   let held = indexes.get(key);
   if (held) indexes.delete(key);
@@ -204,7 +214,7 @@ export function runStepIndex(folder: string, adapterId: string, adapter: AgentAd
   indexes.set(key, held);
   if (indexes.size > INDEX_LIMIT) indexes.delete(indexes.keys().next().value!);
   const index = held.index;
-  const read = held.reading.catch(() => undefined).then(() => index.update()).then(() => index);
+  const read = held.reading.catch(() => undefined).then(() => index.update(ended)).then(() => index);
   held.reading = read;
   return read;
 }

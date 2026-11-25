@@ -57,18 +57,17 @@ export function toolInputText(tool: unknown, raw: unknown): string | undefined {
 }
 /** One field of a tool's input as written: a text of several lines under its name, anything else after it. */
 function field(key: string, value: unknown): string {
-  if (typeof value === 'string') return value.includes('\n') ? `${key}:\n${value}` : `${key}: ${value}`;
+  if (typeof value === 'string' && value) return value.includes('\n') ? `${key}:\n${value}` : `${key}: ${value}`;
   let text: string | undefined;
   try { text = JSON.stringify(value, null, 2); } catch { text = undefined; }
   return `${key}: ${text ?? String(value)}`;
 }
 /**
- * An input to read in full: its main argument as written, then every other field by name, each text with its own lines.
- * A field with no value says nothing and is left out.
+ * An input to read in full: its main argument as written, then every other field it was given by name, each text with
+ * its own lines. An empty value given (null, "", []) is said as given; only a field not given is left out.
  */
 export function inputDocument(main: string | undefined, fields: Record<string, unknown>): string {
-  const rest = Object.entries(fields).filter(([, value]) => value !== undefined && value !== null && !(Array.isArray(value) && !value.length))
-    .map(([key, value]) => field(key, value));
+  const rest = Object.entries(fields).filter(([, value]) => value !== undefined).map(([key, value]) => field(key, value));
   return [main ?? '', rest.join('\n')].filter(Boolean).join('\n\n');
 }
 /**

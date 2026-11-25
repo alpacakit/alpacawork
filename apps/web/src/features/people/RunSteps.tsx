@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepText } from "@alpacawork/contract/run";
+import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepsPage, type RunStepText } from "@alpacawork/contract/run";
 import { readRunStep, readRunSteps } from "@/data/run-steps";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
@@ -68,47 +68,69 @@ export function WorkLine({ step, idle, label, end, className, ...data }: { step:
 
 /**
  * A Run's steps as far as they are listed: from step `from` (counted from the Run's first, 0) to the latest, of
- * `total`, as they stood at the index's `version`.
+ * `total`, of the index's `generation`, every change up to its `version` taken in. `known` is every step it has been
+ * told of, those before where it starts too, so a page of earlier steps read before a change cannot undo it.
  */
-export type ListedSteps = { from: number; total: number; version: number; steps: readonly RunStepEntry[] };
+export type ListedSteps = { from: number; total: number; version: number; generation: number; steps: readonly RunStepEntry[];
+  known: ReadonlyMap<number, RunStepEntry> };
 export type StepsRead = { run?: string; listed: ListedSteps | null; failed: boolean; earlier: () => void };
 /** How many steps a Run has taken, as far as they were read. */
 export const stepCount = (read: StepsRead) => read.listed?.total;
 /** The steps a list starts with, and how many more a press on "earlier" adds. */
 const FIRST = 12, EARLIER = 24;
+type Answer = Pick<RunStepsPage, "steps" | "total" | "generation">;
 /**
- * A list with the steps that changed after its version: those it holds take their new state, new ones go at its foot,
- * and those before where it starts stay out of it. Where it starts, and so what was gone back to, does not move.
+ * The one way a list takes in an answer, whichever read it came from and in whatever order answers arrive: each step
+ * keeps the newer of what it holds and what came (by the version it changed at), so an older answer never undoes a newer
+ * one. The list shows from `from` (where it was gone back to; a page of earlier steps moves it up), new steps go at its
+ * foot. Only a read of every change since the list's version (`caughtUp`) moves its version. An answer of another
+ * generation (the output was replaced) is not this list's: null, to read the list again.
  */
-export function withChanges(listed: ListedSteps, changed: readonly RunStepEntry[], total: number, version: number): ListedSteps {
-  const steps = [...listed.steps];
-  for (const step of [...changed].sort((a, b) => a.n - b.n)) {
-    const at = step.n - listed.from;
-    if (at >= 0 && at <= steps.length) steps[at] = step;
+export function takeIn(listed: ListedSteps | null, answer: Answer, at: { from?: number; caughtUp?: number } = {}): ListedSteps | null {
+  if (listed && answer.generation !== listed.generation) return null;
+  const from = Math.max(0, at.from ?? listed?.from ?? answer.steps[0]?.n ?? answer.total);
+  const known = new Map(listed?.known);
+  for (const step of answer.steps) {
+    const before = known.get(step.n);
+    if (!before || before.changed <= step.changed) known.set(step.n, step);
   }
-  return { from: listed.from, total: Math.max(total, listed.from + steps.length), version, steps };
+  const steps: RunStepEntry[] = [];
+  for (let n = from; known.has(n); n++) steps.push(known.get(n)!);
+  return { from, steps, known, generation: answer.generation, total: Math.max(answer.total, listed?.total ?? 0, from + steps.length),
+    version: at.caughtUp ?? listed?.version ?? 0 };
 }
 /** Every step that changed after `version`, a page at a time until the answer is the latest. */
-async function readChanges(run: string, version: number, signal: AbortSignal) {
-  const changed: RunStepEntry[] = [];
+async function readChanges(run: string, version: number, signal: AbortSignal): Promise<Answer & { version: number }> {
+  const steps: RunStepEntry[] = [];
   for (let since = version; ;) {
     const page = await readRunSteps(run, { since }, signal);
-    changed.push(...page.steps);
+    steps.push(...page.steps);
     since = page.version;
-    if (page.complete) return { changed, total: page.total, version: page.version };
+    if (page.complete) return { steps, total: page.total, generation: page.generation, version: page.version };
   }
 }
 /**
  * The steps of Run `run`, read while `shown`: the latest few first, and earlier ones a page at a time on `earlier`.
  * Whenever `signal` changes (a step of the Run started or ended, any of them), only what changed since the list's
- * version is read and taken in, so how far it was gone back and the steps opened in it stay as they are. Nothing is
- * read while they are not shown.
+ * version is read and taken in, so how far it was gone back and the steps opened in it stay as they are. Every answer
+ * is taken in one way (takeIn). Nothing is read while they are not shown.
  */
 export function useRunSteps(run: string | undefined, shown: boolean, signal: string | number = ""): StepsRead {
   const [state, setState] = useState<{ run?: string; listed: ListedSteps | null; failed: boolean }>({ listed: null, failed: false });
   const current = useRef(state);
   current.current = state;
   const live = shown && !!run && state.run === run;
+  // A list of a replaced output is read again from its latest steps.
+  const [restart, setRestart] = useState(0);
+  const take = useCallback((answer: Answer, at?: Parameters<typeof takeIn>[2]) => {
+    const previous = current.current;
+    if (previous.run !== run || !previous.listed) return;
+    const listed = takeIn(previous.listed, answer, at);
+    if (!listed) { setRestart(count => count + 1); return; }
+    // Held at once, so an answer taken in right after builds on this one.
+    current.current = { run, failed: false, listed };
+    setState(current.current);
+  }, [run]);
   // The signal the list is up to date with: a first read is, so only a later change reads what changed.
   const told = useRef(signal);
   useEffect(() => {
@@ -116,10 +138,10 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
     if (!run || !shown) { setState({ listed: null, failed: false }); return; }
     const abort = new AbortController();
     readRunSteps(run, { limit: FIRST }, abort.signal).then(page =>
-      setState({ run, failed: false, listed: { from: page.steps[0]?.n ?? page.total, total: page.total, version: page.version, steps: page.steps } }),
+      setState({ run, failed: false, listed: takeIn(null, page, { caughtUp: page.version }) }),
     () => { if (!abort.signal.aborted) setState({ run, listed: null, failed: true }); });
     return () => abort.abort();
-  }, [run, shown]);
+  }, [run, shown, restart]);
   // Read again by what changed since the version held; a read under way finishes first, then the next takes its version.
   const reading = useRef<Promise<unknown>>(Promise.resolve());
   const loaded = live && !!state.listed;
@@ -131,22 +153,19 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
       const held = current.current.listed;
       if (abort.signal.aborted || !held || current.current.run !== run) return;
       try {
-        const { changed, total, version } = await readChanges(run, held.version, abort.signal);
-        setState(previous => previous.run !== run || !previous.listed ? previous
-          : { run, failed: false, listed: withChanges(previous.listed, changed, total, version) });
+        const changes = await readChanges(run, held.version, abort.signal);
+        take(changes, { caughtUp: changes.version });
       } catch { if (!abort.signal.aborted) setState(previous => ({ ...previous, failed: true })); }
     });
     return () => abort.abort();
-  }, [run, loaded, signal]);
+  }, [run, loaded, signal, take]);
   const earlier = useCallback(() => {
     const listed = current.current.listed;
     if (!run || !listed || listed.from === 0) return;
     const from = Math.max(0, listed.from - EARLIER);
-    readRunSteps(run, { from, limit: listed.from - from }).then(page => {
-      setState(previous => previous.run !== run || previous.listed?.from !== listed.from ? previous
-        : { run, failed: false, listed: { ...previous.listed, from, steps: [...page.steps, ...previous.listed.steps] } });
-    }, () => setState(previous => ({ ...previous, failed: true })));
-  }, [run]);
+    readRunSteps(run, { from, limit: listed.from - from }).then(page => take(page, { from }),
+      () => setState(previous => ({ ...previous, failed: true })));
+  }, [run, take]);
   return live ? { ...state, earlier } : { listed: null, failed: false, earlier };
 }
 
@@ -157,25 +176,28 @@ function StepText({ text, tone, ...data }: { text: RunStepText; tone: string; "d
   return <pre dir="auto" {...data} className={cn(BLOCK, tone)}>{text.text}
     {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}</pre>;
 }
-/** What one step ran and got back, read when it is opened and again when its state changes. */
-function useStepDetail(run: string, n: number, open: boolean, state: string) {
-  const [detail, setDetail] = useState<{ key: string; value: RunStepDetail | null; failed: boolean } | null>(null);
-  const key = `${run}:${n}:${state}`;
+/**
+ * What one step ran and got back, read when it is opened and again when it changes: an answer older than the step as
+ * the list holds it is not shown, so the opened text never says other than its line.
+ */
+function useStepDetail(run: string, step: RunStepEntry, open: boolean) {
+  const [detail, setDetail] = useState<{ value: RunStepDetail | null; failed: boolean } | null>(null);
+  const { n, changed } = step;
   useEffect(() => {
     if (!open) return;
     const abort = new AbortController();
-    readRunStep(run, n, abort.signal).then(value => setDetail({ key, value, failed: false }),
-      () => { if (!abort.signal.aborted) setDetail({ key, value: null, failed: true }); });
+    readRunStep(run, n, abort.signal).then(value => setDetail({ value, failed: false }),
+      () => { if (!abort.signal.aborted) setDetail({ value: null, failed: true }); });
     return () => abort.abort();
-  }, [run, n, open, key]);
-  // While a changed step is read again, what was read before stays in place.
-  return open ? detail : null;
+  }, [run, n, changed, open]);
+  if (!open || !detail) return null;
+  return detail.value && detail.value.changed < changed ? null : detail;
 }
 /** One step of the list: its line, and on a press what it ran and what came back, in full. */
 function StepRow({ run, step }: { run: string; step: RunStepEntry }) {
   const { t } = useTranslation("people");
   const [open, setOpen] = useState(false);
-  const detail = useStepDetail(run, step.n, open, step.state);
+  const detail = useStepDetail(run, step, open);
   return <li data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">

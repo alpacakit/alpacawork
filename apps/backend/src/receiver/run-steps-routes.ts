@@ -28,16 +28,15 @@ export function installRunStepsRoutes(api: Hono, root: string, find: (request: R
     const run = find(request, id.data);
     const adapter = runtimeAdapter(run.launch.adapter);
     if (!adapter) return null;
-    const index = await runStepIndex(runFolder(root, run.id), run.launch.adapter, adapter);
-    // Once the Run has ended, what its output left running ended with it.
-    if (!isRunMoving(run.state)) index.end(run.state === 'succeeded' ? 'done' : 'failed');
-    return index;
+    // Once the Run has ended, its output is whole, and what it left running ended with it.
+    return runStepIndex(runFolder(root, run.id), run.launch.adapter, adapter,
+      isRunMoving(run.state) ? null : run.state === 'succeeded' ? 'done' : 'failed');
   };
   const headers = { 'Cache-Control': 'no-store' };
   api.get('/api/runs/:run/steps', async c => {
     const index = await opened(c.req.raw, c.req.param('run'));
     const since = count(c.req.query('since')), from = count(c.req.query('from')), limit = count(c.req.query('limit')) ?? RUN_STEPS_PAGE_LIMIT;
-    if (!index) return c.json({ steps: [], total: 0, version: 0, complete: true }, 200, headers);
+    if (!index) return c.json({ steps: [], total: 0, version: 0, complete: true, generation: 0 }, 200, headers);
     return c.json(since === undefined ? index.range(from, limit) : index.since(since), 200, headers);
   });
   api.get('/api/runs/:run/steps/:n', async c => {

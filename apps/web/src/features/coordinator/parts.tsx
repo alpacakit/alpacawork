@@ -89,7 +89,9 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
   const step = mine?.steps.at(-1);
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
-  const steps = useRunSteps(mine?.run, open && !!step, mine?.stepEvents ?? 0);
+  // Whether there is a list is whether the Run has taken any step, not whether the latest few came with its work.
+  const worked = !!step || (mine?.stepEvents ?? 0) > 0;
+  const steps = useRunSteps(mine?.run, open && worked, mine?.stepEvents ?? 0);
   const block = useRef<HTMLDivElement>(null);
   useListedInSight(steps.listed, block);
   const time = seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
@@ -97,11 +99,11 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   return <div>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
-    {step ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
-      <WorkLine data-ask-thinking step={step} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
+    {worked ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
+      <WorkLine data-ask-thinking step={step} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
         end={<>{time}<Chevron open={open} /></>} /></button>
       : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
-    {open && step && <StepList steps={steps} className="mt-1" />}
+    {open && worked && <StepList steps={steps} className="mt-1" />}
   </div></div>;
 }
 /**

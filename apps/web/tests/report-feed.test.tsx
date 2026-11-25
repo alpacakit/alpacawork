@@ -26,6 +26,10 @@ import { receivePatch, resources } from "../src/data/resources";
 import { historyCursor } from "@alpacawork/contract";
 /** Where a jump in the column goes: the row it brings into view (the glide itself is scroll-report's). */
 const jump = vi.hoisted(() => ({ to: (_target: HTMLElement, _block?: string) => {} }));
+/** Steps as the server lists them once the lead's row is opened. */
+const listedSteps = (steps: { id: string; tool: string; kind: "command"; text: string; state: "running" | "done" }[]) => ({
+  total: steps.length, version: steps.length, complete: true, generation: 1,
+  steps: steps.map((step, n) => ({ n, id: step.id, tool: step.tool, kind: step.kind, text: step.text, more: 0, about: null, state: step.state, changed: n + 1 })) });
 // Every step of a Run, as the server reads them from its output once the lead's row is opened.
 const runSteps = vi.hoisted(() => ({ of: (_run: string): Promise<unknown> => new Promise(() => {}) }));
 vi.mock("../src/data/run-steps", () => ({ readRunSteps: (run: string) => runSteps.of(run), readRunStep: () => new Promise(() => {}) }));
@@ -668,8 +672,7 @@ test("opened, only the responsible person's steps are read and listed; everyone 
   const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
     more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
   const asked: string[] = [];
-  runSteps.of = async run => { asked.push(run); return { total: 2, version: 2, complete: true, steps: steps("lead").map((step, n) => ({ n, id: step.id, tool: step.tool,
-    kind: step.kind, text: step.text, more: 0, about: null, state: step.state })) }; };
+  runSteps.of = async run => { asked.push(run); return listedSteps(steps("lead")); };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),
     run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member") } })] }));
@@ -685,6 +688,23 @@ test("opened, only the responsible person's steps are read and listed; everyone 
   expect(member.querySelector("[data-run-steps]")).toBeNull();
   expect(member.querySelector("[data-work-line]")?.textContent).toContain("member step 2");
   expect(member.textContent).not.toContain("member step 1");
+});
+
+test("an opened list stays while the latest steps the activity carries are none, as long as the Run has taken steps", async () => {
+  await inEnglish();
+  runSteps.of = async () => listedSteps([{ id: "a", tool: "Bash", kind: "command", text: "pnpm test", state: "running" }]);
+  const activity = (steps: number) => ({ ...note("lead words"), stepEvents: 1, steps: steps ? [{ id: "a", at, tool: "Bash", kind: "command" as const,
+    text: "pnpm test", more: 0, about: null, state: "running" as const, result: null }] : [] });
+  const data = (steps: number) => screenData(tree({ placements: [workingPlacement("P1")], runs: [
+    run("R1", { state: "running", endedAt: null, activity: activity(steps) })] }));
+  const first = data(1);
+  const { rerender } = render(<TestWorkspace data={first}><ReportFeed task={first.tasks[0]!} people={first.people} onFollow={() => {}} /></TestWorkspace>);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  await waitFor(() => expect(document.querySelector("[data-run-steps=open]")?.textContent).toContain("pnpm test"));
+  // An unreadable line left the activity's latest steps empty; the Run's steps are still there to read.
+  const after = data(0);
+  rerender(<TestWorkspace data={after}><ReportFeed task={after.tasks[0]!} people={after.people} onFollow={() => {}} /></TestWorkspace>);
+  expect(document.querySelector("[data-run-steps=open]")?.textContent).toContain("pnpm test");
 });
 
 test("a working person who has run nothing yet says on the work line what they last did", async () => {

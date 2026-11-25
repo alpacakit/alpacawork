@@ -979,7 +979,8 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const steps = run.activity?.steps ?? [];
   // Opened, the lead's line counts its steps and every one of them is listed under it.
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
-  const latest = steps.at(-1), listed = lead && open && !!latest;
+  // Whether there is a list is whether the Run has taken any step, not whether the latest few came with its activity.
+  const latest = steps.at(-1), worked = !!latest || (run.activity?.stepEvents ?? 0) > 0, listed = lead && open && worked;
   const full = useRunSteps(run.id, listed, run.activity?.stepEvents ?? 0);
   const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
