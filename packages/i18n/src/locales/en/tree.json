@@ -18,6 +18,10 @@
     "openSteps": "Open the steps",
     "over": "That's the end of the getting-started guide. You can show it again from {{settings}} → {{tab}}, under “{{guide}}”.",
     "reopen": "Undo",
+    "roles": {
+      "task": "Task",
+      "where": "Conversation · input"
+    },
     "say": {
       "accept": "If you're happy with it, finish the task with this button ({{finish}}). If you'd like something else done next, you can send more instructions instead.",
       "anotherRepository": "To use another repository, open this, choose “{{create}}”, and pick that repository as its working folder.",
@@ -32,14 +36,14 @@
       "phoneQuestion": "Choose an answer, then swipe right to send it, or left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "phoneResult": "Swipe right for “{{finish}}”, left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "question": "Your turn. Press this row to open the question.",
-      "received": "The front-desk AI (the coordinator) has it. It takes a moment to pass it to an AI to work on.",
+      "received": "The front-desk AI (the coordinator) has it: it is who you talk to here. It turns your request into a task and passes it to an AI to own it (the owner).",
       "result": "A report came. Press this row to open it.",
       "send": "This is the only input box. All your instructions go here.",
       "sendAgain": "Write what you want done here and send it.",
       "sendReady": "Send it with this button.",
       "stop": "To stop the AI, choose “{{stop}}” here, or ask in the input box. You can also ask there to change settings or add a model.",
       "unassigned": "No AI is on this task yet. Open the row and ask in the input box to start it.",
-      "working": "This is a task. An AI has your instructions and works on it. A question or report for you moves it to “{{section}}”."
+      "working": "This is a task. Each task has its own AI (the owner), which calls in helper AIs (members) when it needs them. A question or report for you moves it to “{{section}}”."
     },
     "tryExample": "Insert a demo prompt"
   },

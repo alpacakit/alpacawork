@@ -13,6 +13,7 @@ import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
+import { RolesPicture } from "./RolesPicture";
 import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
@@ -403,7 +404,7 @@ function keepRoom(before: HTMLElement | null, balloon: DOMRect | null): HTMLElem
 export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DOMRect, "top" | "bottom">) =>
   balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
-/** The balloon's words and buttons: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
+/** The balloon's words and buttons (under the step's picture of who does what, the first time): the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
 function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScreen; entry: GuideEntry; facts: GuideFacts; again: boolean; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
@@ -439,6 +440,7 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
   return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
+    {entry.roles && !again && <RolesPicture lit={entry.roles} />}
     <div className="flex items-start gap-1">
       <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
         <Sentences words={say} />

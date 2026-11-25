@@ -18,6 +18,10 @@
     "openSteps": "Abrir os passos",
     "over": "O guia termina aqui. Você pode mostrá-lo de novo em {{settings}} → {{tab}}, em “{{guide}}”.",
     "reopen": "Desfazer",
+    "roles": {
+      "task": "Tarefa",
+      "where": "Conversa · entrada"
+    },
     "say": {
       "accept": "Se estiver bom, encerre a tarefa com este botão ({{finish}}). Se quiser pedir outra coisa em seguida, você pode enviar mais instruções em vez de encerrar.",
       "anotherRepository": "Para usar outro repositório, abra isto, escolha “{{create}}” e selecione esse repositório como o local do código dele.",
@@ -32,14 +36,14 @@
       "phoneQuestion": "Escolha uma resposta e deslize para a direita para enviá-la, ou para a esquerda para “{{hold}}”. Se voltar o dedo no meio do caminho, nada acontece.",
       "phoneResult": "Deslize para a direita para “{{finish}}” e para a esquerda para “{{hold}}”. Se voltar o dedo no meio do caminho, nada acontece.",
       "question": "Sua vez. Abra esta linha para ver a pergunta.",
-      "received": "A IA da recepção (o coordenador) recebeu o pedido. Leva um momento para passá-lo a uma IA.",
+      "received": "A IA da recepção (o coordenador) recebeu o pedido: é com ela que você conversa aqui. Ela transforma o pedido em uma tarefa e a passa a uma IA que cuida dela (o responsável).",
       "result": "Chegou um relatório. Abra esta linha para ver o detalhe.",
       "send": "Este é o único campo de mensagem. Todas as instruções são dadas por aqui.",
       "sendAgain": "Escreva aqui o que você quer que seja feito e envie.",
       "sendReady": "Envie com este botão.",
       "stop": "Para parar a IA, escolha “{{stop}}” aqui ou peça no campo de mensagem, onde também dá para pedir mudanças nas configurações ou novos modelos.",
       "unassigned": "Esta tarefa ainda não tem uma IA responsável. Abra a linha e peça no campo de mensagem para começar.",
-      "working": "Isto é uma tarefa. Uma IA recebe suas instruções e trabalha nela. Perguntas e relatórios a levam para “{{section}}”."
+      "working": "Isto é uma tarefa. Cada tarefa tem sua própria IA (o responsável), que chama IAs de apoio (membros) quando precisa. Perguntas e relatórios para você a levam para “{{section}}”."
     },
     "tryExample": "Inserir um prompt de demonstração"
   },
