@@ -84,6 +84,7 @@ const SCREEN_KEYS = {
   // The analysis face and what is open on it (features/analysis/place.ts).
   face: { storage: false }, look: { storage: false }, span: { storage: false }, list: { storage: false },
   measure: { storage: false }, group: { storage: false }, member: { storage: false }, bin: { storage: false }, unit: { storage: false },
+  model: { storage: false }, effort: { storage: false },
   card: { storage: false },
 } as const;
 type ScreenKey = keyof typeof SCREEN_KEYS;

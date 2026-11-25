@@ -20,8 +20,8 @@ const tasks = { head: { ...head, project: "P9" }, counts: { value: taskCounts, p
   breakdown: { by: "project", rows: [{ key: "P9", label: "Secret project", finished: 3, accepted: 3, passed: 3, share: null, leadMedianMs: null, submitsPerAccepted: null }] } } as TasksView;
 const usage = { head, counts: { value: usageCounts, previous: null }, ever: null, series: { bucket: "day", points: [] },
   breakdown: { by: "model", since: null, counted: null, series: null, rows: [
-    { key: "a", label: "claude-opus-5-5-extended(high)", model: { name: "claude-opus-5-5-extended", effort: "high" }, counts: usageCounts, calls: null },
-    { key: "b", label: "opus(medium)", model: { name: "opus", effort: "medium" }, counts: usageCounts, calls: null }] } } as UsageView;
+    { key: "a", label: "claude-opus-5-5-extended", model: { name: "claude-opus-5-5-extended" }, counts: usageCounts, calls: null },
+    { key: "b", label: "opus", model: { name: "opus" }, counts: { ...usageCounts, launches: 1 }, calls: null }] } } as UsageView;
 
 const now = <T,>(data: T) => ({ data, current: true });
 
@@ -34,10 +34,10 @@ test("a card is drawn only from answers for what is asked now: one still standin
   expect(cardFacts(now(tasks), now({ ...tasks, head: { ...tasks.head, period: null } }), null)).toBeNull();
 });
 
-test("a card says the commands' numbers as the analysis writes them, and the first model row's name and effort", () => {
+test("a card uses measured totals and the most-used model across efforts", () => {
   const facts = cardFacts(now(tasks), now(tasks), now(usage))!;
   expect(facts).toMatchObject({ from: "2026-11-19", to: "2026-11-25", tokens: 1_240_000_000, finished: 1328, share: 0.75, prs: 412,
-    model: { name: "claude-opus-5-5-extended", effort: "high" } });
+    model: "claude-opus-5-5-extended" });
   // Monday on top, the newest 13 weeks at most; days after today or before the record are not drawn.
   expect(facts.grass.length).toBeLessThanOrEqual(13);
   const input = cardInput(facts, { ...CARD_DEFAULT, numbers: ["finished", "share", "runMs", "prs"] });
@@ -67,14 +67,14 @@ test("the card holds only what it is given, and a long model name stays inside i
   const input = cardInput(facts, { ...CARD_DEFAULT, hero: "finished" });
   const svg = drawCard(input, look);
   for (const out of [svg, cardWords(input), cardFileName(facts)]) expect(out).not.toMatch(/Secret|P9|opus\(|T\d/);
-  // The model's line, its name and its effort together, as wide as its sizes make them: within a third of the card, less the gap.
+  // The model's name stays within a third of the card, less the gap.
   const line = [...new DOMParser().parseFromString(svg, "image/svg+xml").querySelectorAll("text")].find(text => text.textContent!.startsWith("claude-opus"))!;
   const drawn = [...line.childNodes].reduce((sum, node) => {
     const size = Number((node instanceof Element ? node : line).getAttribute("font-size"));
     return sum + width(node.textContent!, size) + Number(node instanceof Element ? node.getAttribute("dx") ?? 0 : 0);
   }, 0);
   expect(drawn).toBeLessThanOrEqual((1200 - 128) / 3 - 40);
-  expect(cardWords(input)).toContain("claude-opus-5-5-extended high");
+  expect(cardWords(input)).toContain("claude-opus-5-5-extended");
 });
 
 test("the card's days are a length and the day the analysis ended on: another length keeps the day, a day opens a week", () => {

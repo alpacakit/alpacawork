@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -6,7 +6,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
+import { useAnalysisFreshness, useLaunchReads, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
 import { cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
@@ -14,7 +14,8 @@ import { AnalysisLayers } from "./AnalysisLayers";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
-import type { Head, Period, TasksView, UsageView } from "./contract";
+import type { Head, Period, TasksView, UsageSeriesView, UsageView } from "./contract";
+import type { LaunchAnswers } from "./Launches";
 
 const PRESETS = PERIOD_BACK;
 
@@ -42,8 +43,13 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const usage = useUsageView(project, place.span, bucket, null, place.look === "usage");
   // The look's answers are one set (the AI's use draws its finished tasks too): the days said above and the numbers
   // under them are always the same set's, the last whole one until the new choice's has wholly come.
-  const set = useReadSet(place.look, place.look === "tasks" ? [tasks] : [usage, tasks]);
+  const launches = useLaunchReads(project, place.span, bucket, place.look === "usage");
+  const set = useReadSet(place.look, place.look === "tasks" ? [tasks] : [usage, tasks, ...launches]);
   const head: Head | undefined = (set.data?.[0] as { head: Head } | undefined)?.head;
+  // The launches' three answers as one value that stays the same while they do, so the usage look (memo) is not drawn
+  // again as each other read of the set comes in.
+  const [models, spanModels] = (set.data?.slice(2) ?? []) as (UsageSeriesView | undefined)[];
+  const series = useMemo(() => ({ models, spanModels }) as LaunchAnswers, [models, spanModels]);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
   // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
   // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).
@@ -92,7 +98,8 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
       {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
         : place.look === "tasks" ? <TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
-          : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)} />}
+          : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
+            series={series} />}
     </ReadPart>
     </div></div>
     <AnalysisLayers place={place} project={project} days={days} />

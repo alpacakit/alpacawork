@@ -364,6 +364,7 @@ const implementations = {
   ...taskCommands,
   'analysis/tasks': { run: (_root, input, context) => context.analysis!.tasks(input, requireCaller(context)) },
   'analysis/usage': { run: (_root, input, context) => context.analysis!.usage(input, requireCaller(context)) },
+  'analysis/usage-series': { run: (_root, input, context) => context.analysis!.usageSeries(input, requireCaller(context)) },
   'analysis/breakdown': { run: (_root, input, context) => context.analysis!.breakdown(input, requireCaller(context)) },
   'analysis/list': { run: (_root, input, context) => context.analysis!.list(input, requireCaller(context)) },
   'analysis/task': { run: (_root, input, context) => context.analysis!.task(input, requireCaller(context)) },

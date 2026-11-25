@@ -3,7 +3,8 @@ import type { AnalysisDays, AnalysisUsageCounts } from "@alpacawork/contract/ana
 import { addDays, daysBetween } from "./format";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
-import type { Bucket, Period, TasksView, UsageView } from "./contract";
+import type { Bucket, Period, TasksView, UsageSeriesView, UsageView } from "./contract";
+import type { LaunchAnswers } from "./Launches";
 import type { Look, Span } from "./place";
 
 /**
@@ -15,11 +16,11 @@ import type { Look, Span } from "./place";
  */
 export function FaceSkeleton({ look, span, bucket }: { look: Look; span: Span; bucket: Bucket }) {
   const { t } = useTranslation("ui");
-  const { tasks, usage, days } = standIn(span, bucket);
+  const { tasks, usage, days, series } = standIn(span, bucket);
   const none = () => {};
   return <div role="status" aria-label={t("loading")} aria-busy="true" data-skeleton="analysis" data-face-skeleton>
     <div inert>{look === "tasks" ? <TasksLook view={tasks} span={span} root={null} days={days} open={none} zone="" />
-      : <UsageLook view={usage} span={span} root={null} tasks={tasks} days={days} open={none} zone="" />}</div>
+      : <UsageLook view={usage} span={span} root={null} tasks={tasks} days={days} open={none} zone="" series={series} live={false} />}</div>
   </div>;
 }
 
@@ -39,7 +40,7 @@ function standIn(span: Span, bucket: Bucket) {
   const accepted = { leadMedianMs: 3_600_000, submits: 12, questions: 3, prs: 4, time: { review: 3_600_000, answer: 600_000, ai: 7_200_000, other: 1_800_000 } };
   const used: AnalysisUsageCounts = { launches: 120, runMs: 36_000_000, live: 0, newConversations: 12,
     tokens: { output: 1_000_000, input: 2_000_000, cache: 40_000_000 }, tokensUnknown: 0, tasks: 11 };
-  const points = [];
+  const points: { from: string; to: string; complete: boolean }[] = [];
   for (let day = firstDay; day <= last; day = addDays(day, bucket === "day" ? 1 : bucket === "week" ? 7 : 30))
     points.push({ from: day, to: day, complete: true });
   const tasks: TasksView = { head, counts: { value: counts, previous: previous && counts }, accepted: { value: accepted, previous: previous && accepted },
@@ -47,5 +48,11 @@ function standIn(span: Span, bucket: Bucket) {
     grass: { from: firstDay, finished: Array.from({ length: daysBetween(addDays(firstDay, -6), last) }, () => 1) }, breakdown: null };
   const usage: UsageView = { head, counts: { value: used, previous: previous && used }, ever: whole ? null : used,
     series: { bucket, points: points.map(point => ({ ...point, counts: used })) }, breakdown: null };
-  return { tasks, usage, days };
+  // The launches by three models, as the usual answer stacks them (their names are blocks).
+  const groups = ["a", "b", "c"].map((key, at) => ({ key, label: key, value: key, total: 60 - at * 20 }));
+  const seriesOf = (by: "model" | "effort"): UsageSeriesView => ({ head, filters: { model: null, effort: null, effortMissing: false },
+    metric: { id: "launches", unit: "runs", aggregation: "sum" }, bucket, by, total: 120, groups,
+    points: points.map(point => ({ ...point, total: 120, counts: [[0, 60], [1, 40], [2, 20]] as [number, number][] })) });
+  const series: LaunchAnswers = { models: seriesOf("model"), spanModels: seriesOf("model") };
+  return { tasks, usage, days, series };
 }

@@ -11,6 +11,7 @@ import { subscribeStep } from "@/state/history-step";
 import { comparison, parts, type Kind } from "./format";
 import type { AnalysisModel } from "@alpacawork/contract/analysis";
 import type { Bucket } from "./contract";
+import { NO_FILTER, type LaunchFilter, type SeriesBy } from "./series";
 
 /**
  * How the analysis is drawn, kept while the page stands (not in the URL: Back does not undo them): the step of time
@@ -19,9 +20,10 @@ import type { Bucket } from "./contract";
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number };
+/** `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to. */
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number; launchBy: SeriesBy; launchFilter: LaunchFilter };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0, launchBy: "model", launchFilter: NO_FILTER,
   choose: (next) => set(next),
 }));
 
@@ -58,8 +60,8 @@ export const ModelName = ({ model }: { model: AnalysisModel }) =>
  * A breakdown's row by its name: a task no AI was given says so, a model is named as `ModelName` names it, any other
  * by its label. The tables and the list a row opens name it so alike.
  */
-export const rowName = (row: { label: string; model?: AnalysisModel; noOwnerRun?: true }, noAgent: string): ReactNode =>
-  row.noOwnerRun ? noAgent : row.model ? <ModelName model={row.model} /> : row.label;
+export const rowName = (row: { label: string; model?: { name: string } | AnalysisModel; noOwnerRun?: true }, noAgent: string): ReactNode =>
+  row.noOwnerRun ? noAgent : row.model && "effort" in row.model ? <ModelName model={row.model} /> : row.label;
 
 /** A small square of a chart's colour before a name: the legend and the name at once. */
 export const Square = ({ className }: { className: string }) =>
