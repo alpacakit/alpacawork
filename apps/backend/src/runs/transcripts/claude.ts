@@ -6,7 +6,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { CallBook, recordLines, recordTime, type ConversationCalls } from './calls.js';
+import { readRecord, recordLines, recordTime, type ConversationCalls } from './calls.js';
 
 export class ClaudeTranscripts {
   private folders: string[] | null = null;
@@ -35,9 +35,7 @@ export class ClaudeTranscripts {
 
   private async readSession(session: string): Promise<ConversationCalls> {
     const files = this.files(session);
-    if (!files.length) return { state: 'missing' };
-    const book = new CallBook();
-    for (const file of files) for await (const line of recordLines(file)) {
+    return readRecord(files, async book => { for (const file of files) for await (const line of recordLines(file)) {
       const at = recordTime(line.timestamp), message = line.message;
       const content = message && typeof message === 'object' ? (message as { content?: unknown }).content : undefined;
       if (!at || !Array.isArray(content)) continue;
@@ -45,10 +43,9 @@ export class ClaudeTranscripts {
       for (const block of content) {
         if (!block || typeof block !== 'object') continue;
         const { type, id, tool_use_id: ended } = block as { type?: unknown; id?: unknown; tool_use_id?: unknown };
-        if (type === 'tool_use') book.note(id, 'startedAt', at);
-        else if (type === 'tool_result') book.note(ended, 'endedAt', at);
+        if (type === 'tool_use') book.note(id, 'started', at);
+        else if (type === 'tool_result') book.note(ended, 'ended', at);
       }
-    }
-    return book.result(files);
+    } });
   }
 }

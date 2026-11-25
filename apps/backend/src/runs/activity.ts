@@ -152,7 +152,7 @@ export class OutputActivityReader {
       this.lines.read(folder, (value, line) => this.accept(value, line));
       this.lines.finish((value, line) => this.accept(value, line));
     } finally {
-      this.journal.settle(state, new Date(this.now()).toISOString());
+      this.journal.settle(state, () => ({ at: new Date(this.now()).toISOString(), source: 'observed' }));
       this.resetWork(state);
       this.flush(folder);
     }

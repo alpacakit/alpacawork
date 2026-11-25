@@ -83,8 +83,11 @@ export function readStepJournalFrom(folder: string, offset: number): { entries: 
 /** When a step started or ended, and where that time came from. */
 export type StepTime = { at: string; source: StepTimeSource };
 
+/** The time to write for the start or end of the step that output line `line` started with call `id`, or null for none. */
+export type StepTimeOf = (event: StepJournalEntry['event'], line: number, id: string) => StepTime | null;
+
 /** The time of an event the Run's manager read at `read` (ISO): the agent's own when its output said one. */
-export const liveStepTime = (event: ActivityEvent, read: string): StepTime =>
+export const liveStepTime = (event: ActivityEvent, read: string): StepTimeOf => () =>
   ({ at: event.at, source: event.at === read ? 'observed' : 'reported' });
 
 const key = (event: StepJournalEntry['event'], line: number, id: string) => `${event}\0${line}\0${id}`;
@@ -93,6 +96,8 @@ const key = (event: StepJournalEntry['event'], line: number, id: string) => `${e
 export class StepJournal {
   /** The step a tool call's ID names now, by the line that started it: an ID used again after its end starts another. */
   private readonly open = new Map<string, number>();
+  /** The line of the last step each call ID named, once it ended. */
+  private readonly closed = new Map<string, number>();
   private held: Set<string> | null = null;
   private failed = false;
   /** Entries this journal appended (or, when it does not write, would have). */
@@ -102,28 +107,31 @@ export class StepJournal {
   constructor(private readonly folder: string, private readonly write = true) {}
 
   /**
-   * One adapter event read from output line `line`, with the time to write for it (`started`: for the start of a step
-   * that an end alone says, when that differs). A null time follows the step (which call ID names which step) without
-   * writing a time for that event, when none is known. Gives the line that names the step, or null for no step.
+   * One adapter event read from output line `line`. `timeOf` gives the time to write for the start or end of the step
+   * (named by the line that started it and its ID); null follows the step without writing that time. Gives the line
+   * that names the step, or null for no step.
    */
-  observe(event: ActivityEvent, line: number, time: StepTime | null, started: StepTime | null = time): number | null {
+  observe(event: ActivityEvent, line: number, timeOf: StepTimeOf): number | null {
     if (this.failed) return null;
     const { kind, id } = event;
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return null;
+    if (kind === 'tool_start' && this.open.has(id)) return this.open.get(id)!;
+    // An end said again for a step already ended is that step's, as the index of steps reads it.
+    if (kind === 'tool_end' && !this.open.has(id) && this.closed.has(id)) return this.closed.get(id)!;
     if (kind === 'tool_start' || !this.open.has(id)) {
-      if (kind === 'tool_start' && this.open.has(id)) return this.open.get(id)!;
       if (kind === 'tool_start' && (typeof event.toolName !== 'string' || !event.toolName)) return null;
       this.open.set(id, line);
       const document = event.call ? stepInputDocument(event.call) : undefined;
-      const at = kind === 'tool_start' ? time : started;
+      const at = timeOf('start', line, id);
       if (at) this.append({ event: 'start', line, id, ...at,
         fingerprint: stepFingerprint(document ?? event.input?.text ?? event.detail?.text ?? ''),
         parentId: typeof event.parent === 'string' && event.parent && event.parent.length <= RUN_TOOL_ID_LIMIT ? event.parent : null });
       if (kind === 'tool_start') return line;
     }
     const opened = this.open.get(id)!;
-    this.open.delete(id);
-    if (time) this.append({ event: 'end', line: opened, id, ...time,
+    this.open.delete(id); this.closed.set(id, opened);
+    const at = timeOf('end', opened, id);
+    if (at) this.append({ event: 'end', line: opened, id, ...at,
       state: event.outcome?.unknown ? 'unknown' : event.outcome?.failed ? 'failed' : 'done',
       output: stepOutput(event.outcome?.output ?? (event.outcome?.result.text ? { text: event.outcome.result.text, omitted: 0 } : undefined)) });
     return opened;
@@ -132,17 +140,32 @@ export class StepJournal {
   /** The journal could not be written: what was observed after that was not kept. */
   get broken(): boolean { return this.failed; }
 
-  /** The steps still open when the agent's turn ended end with it, at the time the end was read. */
-  settle(state: 'done' | 'failed' | 'unknown', read: string): void {
-    for (const [id, line] of this.open) this.append({ event: 'end', line, id, at: read, source: 'observed', state, output: null });
+  /** Whether the journal holds a start or an end of the step that output line `line` started with call `id`. */
+  holds(line: number, id: string): boolean {
+    const held = this.heldNames();
+    return held.has(key('start', line, id)) || held.has(key('end', line, id));
+  }
+
+  /**
+   * The steps still open when the agent's turn ended end with it (`state`), each at the time `timeOf` gives (not
+   * written where it gives none).
+   */
+  settle(state: 'done' | 'failed' | 'unknown', timeOf: StepTimeOf): void {
+    for (const [id, line] of this.open) {
+      const at = timeOf('end', line, id);
+      if (at) this.append({ event: 'end', line, id, ...at, state, output: null });
+    }
     this.open.clear();
   }
 
+  private heldNames(): Set<string> {
+    return this.held ??= new Set(readStepJournal(this.folder).map(held => key(held.event, held.line, held.id)));
+  }
+
   private append(entry: StepJournalEntry): void {
-    this.held ??= new Set(readStepJournal(this.folder).map(held => key(held.event, held.line, held.id)));
-    const name = key(entry.event, entry.line, entry.id);
-    if (this.held.has(name)) return;
-    if (!this.write) { this.held.add(name); this.added++; return; }
+    const held = this.heldNames(), name = key(entry.event, entry.line, entry.id);
+    if (held.has(name)) return;
+    if (!this.write) { held.add(name); this.added++; return; }
     try {
       const fd = openSync(`${this.folder}/${RUN_FILES.steps}`, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND, 0o600);
       try {
@@ -151,7 +174,7 @@ export class StepJournal {
         const torn = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last[0] !== 10;
         appendFileSync(fd, (torn ? '\n' : '') + JSON.stringify(entry) + '\n');
       } finally { closeSync(fd); }
-      this.held.add(name); this.added++;
+      held.add(name); this.added++;
     } catch (error) {
       // The journal is a record beside the Run, not part of it: a Run goes on without it, and says so once.
       this.failed = true;

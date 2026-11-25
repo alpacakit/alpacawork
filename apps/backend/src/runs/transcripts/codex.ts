@@ -9,7 +9,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { CallBook, recordLines, recordTime, type ConversationCalls } from './calls.js';
+import { readRecord, recordLines, recordTime, type ConversationCalls } from './calls.js';
 
 const ROLLOUT = /-([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\.jsonl(?:\.zst)?$/i;
 
@@ -52,18 +52,15 @@ export class CodexTranscripts {
 
   private async readThread(thread: string): Promise<ConversationCalls> {
     const files = this.files(thread);
-    if (!files.length) return { state: 'missing' };
-    const book = new CallBook();
-    for (const file of files) for await (const line of recordLines(file)) {
+    return readRecord(files, async book => { for (const file of files) for await (const line of recordLines(file)) {
       const at = recordTime(line.timestamp);
       if (!at) continue;
       book.entries++;
       const payload = line.payload as { type?: unknown; item?: { id?: unknown; duration?: unknown } } | undefined;
       if (line.type !== 'event_msg' || payload?.type !== 'item_completed' || !payload.item) continue;
-      book.note(payload.item.id, 'endedAt', at);
+      book.note(payload.item.id, 'ended', at);
       const took = millis(payload.item.duration);
-      if (took !== null) book.note(payload.item.id, 'startedAt', new Date(Date.parse(at) - took).toISOString());
-    }
-    return book.result(files);
+      if (took !== null) book.note(payload.item.id, 'started', new Date(Date.parse(at) - took).toISOString());
+    } });
   }
 }
