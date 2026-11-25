@@ -404,7 +404,7 @@ function keepRoom(before: HTMLElement | null, balloon: DOMRect | null): HTMLElem
 export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DOMRect, "top" | "bottom">) =>
   balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
-/** The balloon's words and buttons (under the step's picture of who does what, the first time): the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
+/** The balloon's words and buttons, under the step's picture of who does what the first time: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
 function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScreen; entry: GuideEntry; facts: GuideFacts; again: boolean; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";

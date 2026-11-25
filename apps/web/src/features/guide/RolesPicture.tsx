@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { GuideRole } from "./guide-definition";
 
 /**
- * Who does what, drawn for a balloon (in its colours): you → the coordinator, at the conversation and the input → two
+ * Who does what, drawn in a guide balloon's colours: you → the coordinator, at the conversation and the input → two
  * Tasks, each with its owner, the first with a member beside it. The role the balloon points at is lit (filled), so
  * what is on the screen there and its place in the whole are seen together. The balloon's words say the same, so the
  * picture is hidden from a screen reader. The names are the ones the detail's history shows (reader's party tags).

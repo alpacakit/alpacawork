@@ -36,7 +36,7 @@
       "phoneQuestion": "Choose an answer, then swipe right to send it, or left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "phoneResult": "Swipe right for “{{finish}}”, left for “{{hold}}”. Bring your finger back partway and nothing happens.",
       "question": "Your turn. Press this row to open the question.",
-      "received": "The front-desk AI (the coordinator) has it: it is who you talk to here. It turns your request into a task and passes it to an AI to own it (the owner).",
+      "received": "The front-desk AI (the coordinator) has it: it is the one you talk to here. It turns your request into a task and passes it to an AI to own it (the owner).",
       "result": "A report came. Press this row to open it.",
       "send": "This is the only input box. All your instructions go here.",
       "sendAgain": "Write what you want done here and send it.",
