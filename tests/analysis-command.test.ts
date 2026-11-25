@@ -462,6 +462,14 @@ test('analysis commands share selection, contribution and tally rules over a sma
       for (const timeZone of Intl.supportedValuesOf('timeZone').slice(0, 20))
         await reader.usage({ ...params, by: 'model', timeZone }, actor);
       assert.deepEqual(analysisKept(), { zones: 3, scopes: 3 });
+      // Reads taken at once (counts, lists, a task's values, in several zones) answer as they do one by one.
+      const reads = ['UTC', 'Asia/Tokyo', 'America/New_York'].flatMap(timeZone => [
+        () => reader.usage({ ...params, by: 'model', timeZone }, actor), () => reader.tasks({ ...params, timeZone }, actor),
+        () => reader.list({ period: 'all', set: 'used', value: 'tokens', timeZone }, actor), () => reader.task({ task: rowId(2), timeZone }, actor)]);
+      const together = await Promise.all(reads.map(read => read()));
+      const alone = [];
+      for (const read of reads) alone.push(await read());
+      assert.deepEqual(together, alone);
     } finally { store.close(); reader.close(); tables(); changes.close(); }
   } finally {
     if (original) {
