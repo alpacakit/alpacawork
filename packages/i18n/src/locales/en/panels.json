@@ -589,6 +589,12 @@
       "deleteNoResponse": "No response (unknown whether deleted)"
     },
     "readFailed": "Couldn't read the usage data setting.",
+    "reaskAdded": "More information is now sent. Choose whether to send these fields too. Nothing is sent until you choose.",
+    "reaskChanged": "What is sent or how it is sent has changed. Choose whether to keep sending. Nothing is sent until you choose.",
+    "reaskNote": "You can see what is sent anytime with \"See what's sent\" in Settings → General. What each field means:",
+    "reaskOff": "Don't send",
+    "reaskOn": "Send",
+    "reaskTitle": "Keep sending usage data?",
     "reportOf": "Data for {{day}}",
     "resend": "{{outcome}}. The same data will be sent again",
     "saveFailed": "Couldn't save your usage data choice.",

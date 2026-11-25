@@ -116,12 +116,18 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     // Stopping and choosing again keeps the same number.
     expect(service.status().id).toBe(id);
 
-    writeJson(service.store.paths.consent, { ...service.store.read()!, consentVersion: 0 });
-    await page.keyboard.press('Escape'); await openSettings();
-    await expect(page.locator('[data-telemetry-settings]')).toContainText('スイッチを入れると、新しい形で送信します。');
+    // A kind of information added after the person chose: asked again in a window, naming what was added.
+    const saved = service.store.read()!;
+    writeJson(service.store.paths.consent, { ...saved, fields: saved.fields!.filter(field => field !== 'shape.parallel') });
+    await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
+    const reask = page.locator('[data-telemetry-reask]');
+    await expect(reask.locator('[data-telemetry-added]')).toHaveText('shape.parallel');
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-reask-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-reask-ja-phone');
-    await switcher.click(); await expect(switcher).toBeChecked();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await reask.getByRole('button', { name: '送る', exact: true }).click();
+    await expect(reask).toHaveCount(0); expect(service.status().state).toBe('on');
+    await openSettings();
 
     // The settings hints are observable when consent changes elsewhere during this opening.
     rmSync(service.store.paths.consent);
@@ -135,10 +141,13 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-blocked-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-blocked-ja-phone');
     blocked = false;
-    // A changed consent version, too, waits in Settings rather than stopping the page.
+    // Changed terms ask again too; closing the window answers nothing and sends nothing.
     writeJson(service.store.paths.consent, { version: 1, choice: 'on', consentVersion: 0, decidedAt: new Date(at).toISOString(), decidedBy: 'screen' });
+    await page.keyboard.press('Escape');
     await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(reask).toContainText('送る情報か送り方が変わりました。');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0); expect(service.status().state).toBe('needs_reask');
     expect(network).toBe(0);
     writeFileSync(join(shots, 'evidence.json'), JSON.stringify({ fixture: 'scripts/dev-fixtures small', viewport: ['1440x900', '390x844'], network }, null, 2));
   } finally { await service.close(); rmSync(dir, { recursive: true, force: true }); }

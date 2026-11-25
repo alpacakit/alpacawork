@@ -1,4 +1,5 @@
 import { useDirectWriteRecovery } from "@/features/reader/recovery";
+import { TelemetryReaskDialog } from "@/features/telemetry/ReaskDialog";
 import { useCallback, useContext, useDeferredValue, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -128,6 +129,7 @@ export function Workbench() {
     // the page (the Toaster's).
     <ListNavigationProvider><PageFrame docked={docked} viewing={listAway} barHeight={barHeight} barHidden={barHidden}>
       {ready && <WorkspaceEffects />}
+      {ready && <TelemetryReaskDialog />}
       <Bar inert={covered || listAway} away={listAway}>
         <AppBar />
         <div className={cn("@container px-6 has-[[data-workspace-notice]]:pb-2 narrow:px-3", docked && "pr-[calc(var(--window-reserve)+36px)]")}>

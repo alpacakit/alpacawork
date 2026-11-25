@@ -22,11 +22,12 @@ import { commandCatalog } from '@alpacawork/contract/commands';
 import { writeJson } from '../apps/backend/test-dist/telemetry/files.js';
 import { dayRange, deadline, sizeBucket, telemetryEventKey, TELEMETRY_CONSENT_VERSION, TELEMETRY_DAY_MS, TELEMETRY_ENDPOINT,
   telemetryHistorySchema, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS,
-  type TelemetryAttempt } from '@alpacawork/contract/telemetry';
+  TELEMETRY_FIELDS, type TelemetryAttempt } from '@alpacawork/contract/telemetry';
 
 const at = Date.parse('2026-11-03T12:00:00.000Z'), day = '2026-11-03';
 const ID = '3f2b9c4e-8a1d-4f6b-9c2e-7d5a1b3c9e01';
-const consent: Consent = { version: 1, choice: 'on', consentVersion: TELEMETRY_CONSENT_VERSION, decidedAt: new Date(at).toISOString(), decidedBy: 'screen', id: ID };
+const consent: Consent = { version: 1, choice: 'on', consentVersion: TELEMETRY_CONSENT_VERSION, decidedAt: new Date(at).toISOString(), decidedBy: 'screen', id: ID,
+  fields: [...TELEMETRY_FIELDS] };
 const facts: GateFacts = { env: {}, source: false, edition: 'production', container: false, fixture: false, now: at, consent };
 // Each runtime fact that blocks sending even when the PC chose to send.
 const blockedPatches: Partial<GateFacts>[] = [{ env: { DO_NOT_TRACK: '1' } }, { env: { CI: '1' } }, { env: { NODE_TEST_CONTEXT: '' } }, { container: true },
@@ -56,6 +57,9 @@ test('one eligibility table covers environment, consent, runtime, and backwards/
   assert.equal(telemetryGate({ ...facts, consent: null }).state, 'not_asked');
   assert.equal(telemetryGate({ ...facts, consent: { ...consent, decidedBy: 'cli' } }).state, 'not_asked');
   assert.equal(telemetryGate({ ...facts, consent: { ...consent, consentVersion: TELEMETRY_CONSENT_VERSION - 1 } }).state, 'needs_reask');
+  // A kind of information added to reports since the choice asks again, with no version to raise by hand.
+  assert.equal(telemetryGate({ ...facts, consent: { ...consent, fields: TELEMETRY_FIELDS.slice(0, -1) } }).state, 'needs_reask');
+  assert.equal(telemetryGate({ ...facts, consent: { ...consent, fields: undefined } }).state, 'needs_reask');
   // Chosen before reports carried a number: asked again, never sent without one.
   const { id: _, ...numberless } = consent;
   assert.equal(telemetryGate({ ...facts, consent: numberless }).state, 'needs_reask');

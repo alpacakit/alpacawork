@@ -5,7 +5,7 @@ import { basename, join } from 'node:path';
 import { randomInt } from 'node:crypto';
 import { TELEMETRY_CONSENT_VERSION, TELEMETRY_OPS, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_SHAPES, TELEMETRY_TIMES,
   TELEMETRY_TIME_BUCKETS, TELEMETRY_FAILURES, TELEMETRY_AGENTS, TELEMETRY_COUNT_BUCKETS, TELEMETRY_SIZE_BUCKETS, TELEMETRY_DAY_MS,
-  TELEMETRY_RETRY_MS, TELEMETRY_MAX_EVENTS, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_REPORT_BYTES, dayRange, deadline, utcDay,
+  TELEMETRY_RETRY_MS, TELEMETRY_MAX_EVENTS, telemetryFieldsAdded, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_REPORT_BYTES, dayRange, deadline, utcDay,
   type TelemetryHistory } from '@alpacawork/contract/telemetry';
 import { ConsentStore, telemetryPaths, telemetryGate, runtimeFacts, type Consent, type GateFacts, type TelemetryPaths } from './consent.js';
 import { TelemetryMarks, type Mark } from './marks.js';
@@ -56,7 +56,8 @@ export class TelemetryService {
       consent = this.store.read(); digest = this.store.digest(); queued = this.queue.queued().length;
       lastSentAt = this.outbox.log().find(finishedReport)?.at ?? null;
     } catch { /* Status must remain readable even if local records are unavailable. */ }
-    return { ...gate, consent, digest, id: consent?.id ?? null, decidedAt: consent?.decidedAt ?? null, queued, lastSentAt };
+    const added = gate.state === 'needs_reask' && consent?.fields ? telemetryFieldsAdded(consent.fields) : null;
+    return { ...gate, consent, digest, id: consent?.id ?? null, decidedAt: consent?.decidedAt ?? null, queued, lastSentAt, added };
   }
   show() {
     return { ...this.status(), endpoint: this.outbox.endpoint, consentVersion: TELEMETRY_CONSENT_VERSION,

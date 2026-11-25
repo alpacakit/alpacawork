@@ -29,7 +29,7 @@
   "back": "Atrás",
   "changedElsewhere": "Cambió en otra vista. Se muestra la configuración actual.",
   "consent": {
-    "body": "Los datos de uso incluyen la versión, el sistema operativo y cuántas veces se usan las funciones. Nunca se envían las conversaciones, el contenido de las tareas, los nombres de archivo ni el nombre del PC. No se envía nada hasta que pases al siguiente paso, y alpacawork funciona igual con esto desactivado. Puedes cambiarlo cuando quieras en Configuración.",
+    "body": "Los datos de uso incluyen la versión, el sistema operativo y cuántas veces se usan las funciones. Nunca se envían las conversaciones, el contenido de las tareas, los nombres de archivo ni el nombre del PC. No se envía nada hasta que pases al siguiente paso, y alpacawork funciona igual con esto desactivado. En Configuración puedes ver lo que se envía y cambiarlo cuando quieras.",
     "close": "Cerrar",
     "detail": "Qué se envía",
     "failed": "No se pudo guardar tu elección sobre los datos de uso. Vuelve a intentarlo.",
@@ -43,8 +43,8 @@
       "notSentKey": "Nunca se envían",
       "sent": "La versión de alpacawork, el sistema operativo y el tipo de dispositivo, cuántas veces se usan las funciones, los tiempos de carga de las pantallas, los tipos de error, los tipos de agentes usados y el número aproximado de tareas",
       "sentKey": "Se envían",
-      "stop": "En Configuración → General → Datos de uso puedes dejar de enviar y eliminar los datos ya enviados",
-      "stopKey": "Dejar de enviar y eliminar"
+      "stop": "En Configuración → General → Datos de uso puedes ver lo que se enviará y lo enviado, dejar de enviar y eliminar los datos ya enviados",
+      "stopKey": "Ver, detener, eliminar"
     }
   },
   "display": {

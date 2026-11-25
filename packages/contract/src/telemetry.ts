@@ -251,6 +251,21 @@ export const dayReportSchema = z.object({
   agents: z.array(telemetryAgentSchema).max(TELEMETRY_AGENTS.length).refine(values => new Set(values).size === values.length, 'Expected a subset'),
 }).strict();
 export const telemetryReportSchema = dayReportSchema;
+/**
+ * Every kind of information a report can carry, made from the report's own shape: each key, and each name inside the
+ * keys that hold named values (an event's attributes, the failures, sizes and times). A consent covers the list it was
+ * given; any name added here asks again before anything is sent with it, without a version to remember to raise.
+ * Event names (TELEMETRY_OPS) and the values an attribute takes are counts of the same kind and are not listed.
+ */
+export const TELEMETRY_FIELDS: readonly string[] = Object.keys(dayReportSchema.shape).flatMap(key => {
+  const inner: Record<string, readonly string[]> = { events: TELEMETRY_EVENT_ATTRIBUTES.map(({ name }) => name), failures: TELEMETRY_FAILURES,
+    shape: TELEMETRY_SHAPES, times: TELEMETRY_TIMES };
+  return [key, ...(inner[key] ?? []).map(name => `${key}.${name}`)];
+});
+/** The kinds of information sent now that a consent's list does not cover. */
+export function telemetryFieldsAdded(consented: readonly string[]): string[] {
+  return TELEMETRY_FIELDS.filter(field => !consented.includes(field));
+}
 export type DayReport = z.infer<typeof dayReportSchema>;
 export type TelemetryReport = DayReport;
 
@@ -262,6 +277,8 @@ export const telemetryStatusSchema = z.object({
   digest: z.string().nullable(),
   /** The number reports carry; kept after sending stops, so what was sent can still be deleted. */
   id: telemetryIdSchema.nullable(),
+  /** While asking again: the kinds of information added since the consent, or null when the consent lists none. */
+  added: z.array(z.string()).nullable().optional(),
 });
 export type TelemetryStatus = z.infer<typeof telemetryStatusSchema>;
 

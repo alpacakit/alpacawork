@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { countBucket, dayRange, deadline, sizeBucket, telemetryEventKey, telemetryEventOf, telemetryEventSchemaOf, telemetryEventsSchemaOf,
   telemetryScreenUseSchemaOf, timeBucketIndex, utcDay, telemetryDetailsUrl, TELEMETRY_AGENTS, TELEMETRY_CONSENT_VERSION, TELEMETRY_DAY_MS,
   TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_FAILURES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_MAX_REPORT_BYTES, TELEMETRY_OPS, TELEMETRY_SHAPES,
-  TELEMETRY_TIMES, dayReportSchema, telemetryReportSchema, type DayReport, type TelemetryAttribute, type TelemetryEvent } from '@alpacawork/contract/telemetry';
+  TELEMETRY_TIMES, TELEMETRY_FIELDS, dayReportSchema, telemetryReportSchema, type DayReport, type TelemetryAttribute, type TelemetryEvent } from '@alpacawork/contract/telemetry';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
 const report: DayReport = {
@@ -105,21 +105,35 @@ function schemaEvent(attributes: readonly TelemetryAttribute[]): TelemetryEvent 
   return ['search', 1, ...attributes.map(attribute => attribute.screen[0]!)];
 }
 
-test('the largest possible report still fits the size the receiver accepts', () => {
+/** The longest names everywhere, as many distinct events as a report carries, each at the highest count, every key filled. */
+function largestReport(): DayReport {
   const longest = <T extends string>(values: readonly T[], n: number) => [...values].sort((a, b) => b.length - a.length).slice(0, n);
-  // The longest names everywhere, as many distinct events as a report carries, each at the highest count.
   const combinations: TelemetryEvent[] = [];
   for (const op of longest(TELEMETRY_OPS, 8)) for (const device of longest(TELEMETRY_EVENT_ATTRIBUTES[0].values, 6))
     for (const via of longest(TELEMETRY_EVENT_ATTRIBUTES[1].values, 6))
       combinations.push([op, TELEMETRY_MAX_COUNT, device, via, ...TELEMETRY_EVENT_ATTRIBUTES.slice(2).map(attribute => longest(attribute.values, 1)[0]!)]);
   const events = combinations.sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length).slice(0, TELEMETRY_MAX_EVENTS);
-  const largest: DayReport = { ...report, os: 'darwin', arch: 'arm64', version: '10000.10000.10000-rc.10000', events,
+  return { ...report, os: 'darwin', arch: 'arm64', version: '10000.10000.10000-rc.10000', events,
     failures: Object.fromEntries(TELEMETRY_FAILURES.map(failure => [failure, '21-100'])),
     shape: Object.fromEntries(TELEMETRY_SHAPES.map(name => [name, '10-19'])) as DayReport['shape'],
     times: Object.fromEntries(TELEMETRY_TIMES.map(time => [time, ['0.25-0.5s', '0.25-0.5s']])), agents: [...TELEMETRY_AGENTS] };
-  assert.equal(events.length, TELEMETRY_MAX_EVENTS);
+}
+
+test('the largest possible report still fits the size the receiver accepts', () => {
+  const largest = largestReport();
+  assert.equal(largest.events.length, TELEMETRY_MAX_EVENTS);
   assert.ok(telemetryReportSchema.safeParse(largest).success);
   assert.ok(Buffer.byteLength(JSON.stringify(largest)) <= TELEMETRY_MAX_REPORT_BYTES, String(Buffer.byteLength(JSON.stringify(largest))));
+});
+
+// A consent covers TELEMETRY_FIELDS; a report must not carry a kind of information outside it, or it would be sent
+// without asking again.
+test('every key and every named value a report carries is a field that consent covers', () => {
+  const carried = Object.entries(largestReport()).flatMap(([key, value]) => [key,
+    ...(key === 'events' ? TELEMETRY_EVENT_ATTRIBUTES.map(({ name }) => `events.${name}`)
+      : value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value).map(name => `${key}.${name}`) : [])]);
+  assert.deepEqual(carried.filter(field => !TELEMETRY_FIELDS.includes(field)), []);
+  assert.deepEqual(Object.keys(dayReportSchema.shape).filter(key => !carried.includes(key)), []);
 });
 
 /**

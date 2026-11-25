@@ -596,6 +596,12 @@
       "deleteNoResponse": "Sem resposta (não se sabe se foi excluído)"
     },
     "readFailed": "Não foi possível ler a configuração dos dados de uso.",
+    "reaskAdded": "Agora mais informações são enviadas. Escolha se quer enviar também estes campos. Nada é enviado até você escolher.",
+    "reaskChanged": "O que é enviado ou como é enviado mudou. Escolha se quer continuar enviando. Nada é enviado até você escolher.",
+    "reaskNote": "Você pode ver o que é enviado a qualquer momento em Configurações → Geral. O que cada campo significa:",
+    "reaskOff": "Não enviar",
+    "reaskOn": "Enviar",
+    "reaskTitle": "Continuar enviando dados de uso?",
     "reportOf": "Dados de {{day}}",
     "resend": "{{outcome}}. Os mesmos dados serão enviados de novo",
     "saveFailed": "Não foi possível salvar sua escolha sobre os dados de uso.",

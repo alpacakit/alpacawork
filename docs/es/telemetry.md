@@ -40,7 +40,7 @@ Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a
 
 Al dejar de enviar, lo que aún no se ha enviado se elimina sin enviarlo. Lo ya enviado no se elimina solo por dejar de enviar (“Eliminar los datos enviados”, más abajo).
 
-Si actualizas a una versión que cambia los tipos de datos o la forma de enviarlos, se vuelve a preguntar, solo en los PC que habían elegido enviar. No se envía nada hasta que respondes.
+Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a preguntar al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después.
 
 En algunos casos no se envía aunque hayas elegido enviar, como cuando se ejecuta en CI o en un contenedor. Entonces no puedes usar el interruptor, y el motivo aparece debajo.
 
