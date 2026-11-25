@@ -2,20 +2,20 @@
 import type { AgentLimits, AgentLimitsResponse, LimitWindow } from "@alpacawork/contract/agent-limits";
 
 /** From here a window is close to its limit, and at 100 it is spent. */
-export const LIMIT_NEAR = 80;
+const LIMIT_NEAR = 80;
 export type LimitTone = "normal" | "near" | "spent";
 export const limitTone = (percent: number): LimitTone => percent >= 100 ? "spent" : percent >= LIMIT_NEAR ? "near" : "normal";
 
 /** The window that stops the agent first: the fullest one. */
-export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
+const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
   windows.reduce<LimitWindow | null>((tightest, window) => !tightest || window.usedPercent > tightest.usedPercent ? window : tightest, null);
 
 /** The windows that hold a stack row back: the account's own, and its model's (the provider's "Fable", the row's "fable"). */
-export const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
+const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
 /** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
-export const holds = (window: LimitWindow, now: number): boolean =>
+const holds = (window: LimitWindow, now: number): boolean =>
   limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
 
 /**

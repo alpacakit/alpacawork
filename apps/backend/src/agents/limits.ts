@@ -23,10 +23,10 @@ const LIMITS_OUTPUT = 1024 * 1024;
 export type LimitsConfig = Pick<AgentsSettings, 'agents' | 'aiStack'>;
 type Known = { limits: AgentLimits; at: number };
 
-/** Kinds of agent in the order the screen lists them: the task stack's, then the other enabled profiles'. */
+/** Kinds of agent in the order the screen lists them: the task stack's (`defaultAiStack`), then the other enabled profiles'. */
 export function limitsAgents(config: LimitsConfig): [BuiltinAdapterId, AgentSetting][] {
   const enabled = enabledAgents(config.agents);
-  const ordered = [...(config.aiStack ?? []).flatMap(row => enabled.filter(([key]) => key === row.agent)), ...enabled];
+  const ordered = [...defaultAiStack(config).flatMap(row => enabled.filter(([key]) => key === row.agent)), ...enabled];
   const kinds = new Map<BuiltinAdapterId, AgentSetting>();
   for (const [key, setting] of ordered) {
     const kind = settingAdapter(key, setting);

@@ -87,8 +87,9 @@ export function LimitsMenu() {
   const agents = limits.data?.agents ?? [];
   const shown = limits.data ? barLimit(limits.data, now) : null;
   if (!shown) return null;
-  const shownWindow = shown.kind === "limited" || shown.kind === "stopped" ? shown.window : null;
-  const percent = shown.kind === "stopped" ? 100 : shownWindow?.usedPercent ?? 0;
+  // A stopped agent's window is a spent one, so its ring is full too.
+  const shownWindow = "window" in shown ? shown.window : null;
+  const percent = shownWindow?.usedPercent ?? 0;
   const tone = limitTone(percent);
   const name = AGENT_NAMES[shown.agent.adapter].short;
   const label = barWords(shown, name, i18n.language, t);
