@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { ControlStore, type ChangeKey, type ChangeLog } from '@alpacawork/db';
-import type { TaskBaseState } from '@alpacawork/raw';
+import { speaksForUser, type InstructionLabel, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { taskLogsOf } from '../control/task-history.js';
@@ -8,6 +8,7 @@ import { Slices } from './slices.js';
 import { beganBefore, clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
   type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
 import { tallyEligible } from './tally-scope.js';
+import type { Activity } from './presence.js';
 
 export type TaskNode = {
   internal: string; id: string; title: string; parent: string | null; project: string | null;
@@ -15,13 +16,19 @@ export type TaskNode = {
 };
 export type Unit = {
   node: TaskNode; outcome: Outcome; log: readonly TaskLog[]; ownQuestions: UserQuestion[];
-  childQuestions: UserQuestion[]; questions: number; answers: number; workers: number; children: number; prs: Set<string>;
+  childQuestions: UserQuestion[]; questions: number;
+  /** The user's questions of the subtree asked while the unit was open (`questions` counts them). */
+  asked: UserQuestion[]; answers: number; workers: number; children: number; prs: Set<string>;
   firstOwner: ModelRun | null; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
+  /** The user's instructions in the unit's subtree after the first, and what their senders said each was. */
+  instructions: { count: number; labels: InstructionLabel[] };
 };
 export type FactLaunch = Launch & { tallyEligible: boolean };
 export type AnalysisFacts = {
   nodes: ReadonlyMap<string, TaskNode>; units: ReadonlyMap<string, Unit>; rootOf: ReadonlyMap<string, string>;
   usageRootOf: ReadonlyMap<string, string>; first: ReadonlySet<string>;
+  /** The user's actions on every task and their messages to the coordinator, in time order (made on first use). */
+  activity: () => readonly Activity[];
 };
 
 const nodeRows = `SELECT t.id AS internal,t.external_id AS id,t.title,
@@ -114,24 +121,50 @@ function* textLeaves(value: unknown): Generator<string> {
 function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<string, TaskLog[]>,
   values: ReadonlyMap<string, ReadonlySet<string>>, firstOwner: RunEvidence | null, launches: readonly FactLaunch[],
   memberIds: readonly string[]): Unit {
-  const log = logs.get(node.id) ?? [], outcome = taskOutcome(log, node.state, node.created);
+  const log = logs.get(node.id) ?? [];
   const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>();
+  const instructions = { count: 0, labels: [] as InstructionLabel[] };
   for (const id of ids) {
     const history = logs.get(id) ?? [];
     if (id !== node.id) childQuestions.push(...userQuestions(history));
+    for (const entry of history)
+      if (entry.kind === 'request_labeled' && entry.label) instructions.labels.push(entry.label);
+      else if (entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor)) instructions.count++;
     for (const link of values.get(id) ?? []) prs.add(link);
     const reports = history.filter(entry => entry.kind === 'reported').flatMap(entry => [entry.title ?? '', entry.description ?? '']);
     for (const link of prLinks(reports)) prs.add(link);
   }
+  // The first instruction is the request itself.
+  if (log.some(entry => entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor))) instructions.count--;
+  const outcome = taskOutcome(log, node.state, node.created, [...ownQuestions, ...childQuestions]);
   const from = Date.parse(outcome.requestedAt), to = outcome.finishedAt ? Date.parse(outcome.finishedAt) : null;
   const questions = [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to));
   const workers = new Set(memberIds);
   // The placement row remembers its final role. Its history retains member assignments before a promotion.
   for (const entry of log) if (entry.placementEffect === 'member' && entry.placementId) workers.add(entry.placementId);
-  return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length,
+  return { node, outcome, log, ownQuestions, childQuestions, questions: questions.length, asked: questions,
     answers: questions.filter(question => question.answered).length, workers: workers.size, children: ids.length - 1, prs,
-    firstOwner: firstOwner && modelRun(firstOwner), launches,
+    firstOwner: firstOwner && modelRun(firstOwner), launches, instructions,
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
+}
+
+/**
+ * The user's messages to the coordinator, each with the Tasks it acts on or names (none when it names none): one
+ * action per Task, at the time the message was sent. The warm-up message a conversation opens with is not the user's.
+ */
+function coordinatorMessages(db: DatabaseSync): Activity[] {
+  return db.prepare(`SELECT q.submitted_at AS at, t.external_id AS task FROM requests q
+      JOIN coordinator_conversations c ON c.id=q.conversation_id
+      LEFT JOIN task_dialogues d ON d.request_id=q.id LEFT JOIN tasks t ON t.id=d.task_uuid
+    WHERE c.warm_request_id IS NOT q.id`).all()
+    .map(row => ({ at: Date.parse(String(row.at)), task: row.task === null ? null : String(row.task) }));
+}
+
+/** Every action in time order, made once when a read first needs it. */
+function activityOf(acts: ReadonlyMap<string, readonly number[]>, messages: readonly Activity[]) {
+  let made: Activity[] | undefined;
+  return () => made ??= [...messages, ...[...acts].flatMap(([task, times]) => times.map(at => ({ at, task })))]
+    .sort((a, b) => a.at - b.at);
 }
 
 /**
@@ -159,6 +192,9 @@ export class FactsCache {
   private sessionOf = new Map<string, string>();
   private firstOf = new Map<string, string>();
   private first = new Set<string>();
+  /** Each Task's times of the user's actions (their own or the coordinator's for them), and the coordinator's messages. */
+  private acts = new Map<string, number[]>();
+  private messages: Activity[] = [];
   private workspace: unknown;
   private readonly release?: () => void;
   constructor(private readonly root: string, private readonly tallySince: number, private readonly journal?: ChangeLog) {
@@ -251,10 +287,11 @@ export class FactsCache {
     const runIds = new Set(keys.filter(key => key.kind === 'run').map(key => key.id));
     const placementIds = keys.filter(key => key.kind === 'placement').map(key => key.id);
     const valuesIds = new Set(keys.filter(key => key.kind === 'task_value').map(key => (JSON.parse(key.id) as [string])[0]));
-    if (!full && !changedTasks.size && !runIds.size && !valuesIds.size && !placementIds.length) return this.data!;
+    const messaged = keys.some(key => key.kind === 'request' || key.kind === 'dialogue');
+    if (!full && !changedTasks.size && !runIds.size && !valuesIds.size && !placementIds.length && !messaged) return this.data!;
     const previous = this.data, taskIds = new Set(changedTasks);
     if (full) {
-      for (const kept of [this.logs, this.values, this.runs, this.runsByTask, this.firstOwners, this.sessions, this.sessionOf, this.firstOf]) kept.clear();
+      for (const kept of [this.logs, this.values, this.runs, this.runsByTask, this.firstOwners, this.sessions, this.sessionOf, this.firstOf, this.acts]) kept.clear();
       this.first = new Set();
     }
     let nodes = previous?.nodes ?? new Map<string, TaskNode>();
@@ -269,9 +306,14 @@ export class FactsCache {
     for (let at = 0; at < historyNodes.length; at += HISTORY_SLICE) {
       const part = historyNodes.slice(at, at + HISTORY_SLICE);
       const current = taskLogsOf(db, part.map(node => node.internal));
-      for (const node of part) this.logs.set(node.id, current.get(node.internal) ?? []);
+      for (const node of part) {
+        const log = current.get(node.internal) ?? [];
+        this.logs.set(node.id, log);
+        this.acts.set(node.id, log.flatMap(entry => speaksForUser(entry.actor) ? [Date.parse(entry.at)] : []));
+      }
       if (slices.due) await slices.pause();
     }
+    if (full || messaged) this.messages = coordinatorMessages(db);
     if (full || valuesIds.size)
       for (const [id, links] of await valuesLinks(db, full ? tasks : [...nodes.values()].filter(node => node.kind === 'task' && valuesIds.has(node.internal)), slices)) {
         this.values.set(id, links); taskIds.add(id);
@@ -329,6 +371,6 @@ export class FactsCache {
         launches, workers.get(id) ?? []));
       if (slices.due) await slices.pause();
     }
-    return { nodes, units, rootOf, usageRootOf, first: this.first };
+    return { nodes, units, rootOf, usageRootOf, first: this.first, activity: activityOf(new Map(this.acts), this.messages) };
   }
 }

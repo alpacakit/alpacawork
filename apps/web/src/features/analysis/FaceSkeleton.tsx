@@ -35,8 +35,9 @@ function standIn(span: Span, bucket: Bucket) {
   const days: AnalysisDays = whole ? { from: firstDay, to: last } : { from: addDays(last, 1 - length), to: last };
   const previous = whole ? null : { from: addDays(days.from, -length), to: addDays(days.from, -1) };
   const head = { timeZone: "UTC", today: last, firstDay, project: null, period: days, previous };
-  const counts = { passed: 8, reworked: 2, stopped: 1, accepted: 10, finished: 11, share: 0.8 };
-  const accepted = { leadMedianMs: 3_600_000, submits: 12, questions: 3, prs: 4, time: { review: 3_600_000, answer: 600_000, ai: 7_200_000, other: 1_800_000 } };
+  const counts = { passed: 8, reworked: 2, stopped: 1, unaccepted: 0, accepted: 10, finished: 11, share: 0.8 };
+  const accepted = { leadMedianMs: 3_600_000, submits: 12, questions: 3, prs: 4, time: { review: 3_600_000, answer: 600_000, ai: 7_200_000, other: 1_800_000 },
+    waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, other: 0, unread: 0 }, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, replaced: 0, passedUnasked: 0, estimated: 0 };
   const used: AnalysisUsageCounts = { launches: 120, runMs: 36_000_000, live: 0, newConversations: 12,
     tokens: { output: 1_000_000, input: 2_000_000, cache: 40_000_000 }, tokensUnknown: 0, tasks: 11 };
   const points = [];

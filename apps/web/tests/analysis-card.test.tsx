@@ -10,8 +10,9 @@ beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
 
 const head = { timeZone: "Asia/Tokyo", today: "2026-11-25", firstDay: "2026-10-01", project: null,
   period: { from: "2026-11-19", to: "2026-11-25" }, previous: null };
-const taskCounts = { passed: 900, reworked: 300, stopped: 128, accepted: 1200, finished: 1328, share: 0.75 };
-const accepted = { leadMedianMs: null, submits: 0, questions: 0, prs: 412, time: { review: 0, answer: 0, ai: 0, other: 0 } };
+const taskCounts = { passed: 900, reworked: 300, stopped: 128, unaccepted: 0, accepted: 1200, finished: 1328, share: 0.75 };
+const accepted = { leadMedianMs: null, submits: 0, questions: 0, prs: 412, time: { review: 0, answer: 0, ai: 0, other: 0 },
+  waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, other: 0, unread: 0 }, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, replaced: 0, passedUnasked: 0, estimated: 0 };
 const usageCounts = { launches: 3, runMs: 147.4 * 3_600_000, live: 0, newConversations: 1,
   tokens: { output: 24_000_000, input: 100_000_000, cache: 1_116_000_000 }, tokensUnknown: 0, tasks: 3 };
 // What the analysis answers besides numbers (a project's ID and title) must never reach the card.

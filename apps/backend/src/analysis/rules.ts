@@ -4,6 +4,7 @@ import type { RunRecord, RunUsage } from '@alpacawork/contract/run';
 import { speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf } from '@alpacawork/raw/questions';
+import type { AnswerParts } from '@alpacawork/raw';
 
 export type Interval = { from: number; to: number };
 export type Clock = AnalysisUnitValues['time'];
@@ -64,22 +65,73 @@ const accepts = (entry: TaskLog) => entry.toState === 'done' && entry.fromState 
   speaksForUser(entry.actor) && (entry.kind === 'review_approved' ||
     entry.kind === 'reported' && (entry.stage ? entry.stage.action === 'report_done' : entry.fromState !== 'held'));
 
-export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, createdAt: string) {
+/**
+ * A question to the user, read for analysis: when it was open, whether the user answered it, whether it asked to take a
+ * result as it is (`accept`, the asker's decide_kind; `estimated` where the question predates that record and its words
+ * were read instead), the user's instruction that withdrew it in place of an answer, and how the answer read item by item.
+ */
+export type UserQuestion = {
+  id: string; from: number; to: number | null; answered: boolean; accept: boolean; estimated: boolean;
+  replacedBy: string | null; parts: AnswerParts | null;
+};
+/** Words that mark a question as asking to take a result as it is, for a question asked before decide_kind was recorded. */
+const ACCEPT_WORDS = /merge|adopt|accept|マージ|取り込|取込|採用|受け入れ|main\s*に入れ/i;
+const itemWords = (item: Readonly<Record<string, unknown>>) => [item.decide_question,
+  ...(Array.isArray(item.decide_choices) ? item.decide_choices : []).map(choice =>
+    choice && typeof choice === 'object' ? (choice as Record<string, unknown>).decide_choice : null)]
+  .filter((text): text is string => typeof text === 'string');
+/** Whether a question asks to take a result as it is: any item the asker marked `accept`, or for an older one, its words. */
+export function questionKind(decide: readonly Readonly<Record<string, unknown>>[]) {
+  const kinds = decide.map(item => item.decide_kind);
+  if (kinds.some(kind => typeof kind === 'string')) return { accept: kinds.includes('accept'), estimated: false };
+  return { accept: decide.some(item => itemWords(item).some(text => ACCEPT_WORDS.test(text))), estimated: true };
+}
+
+/**
+ * Every question to the user, in log order. An instruction withdrew it when the withdrawal's cause is a user's
+ * instruction recorded in the same log (the instruction that came in place of an answer).
+ */
+export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
+  const instructions = new Set(log.filter(instruction).map(entry => entry.id));
+  return questionsOf(log).flatMap(({ asked, closing }) => asked.askedTo === null ? [{
+    id: asked.id, from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at),
+    answered: closing?.kind === 'answered' && speaksForUser(closing.actor), ...questionKind(asked.decide),
+    replacedBy: closing?.kind === 'question_withdrawn' && closing.originCauseId !== undefined &&
+      instructions.has(closing.originCauseId) ? closing.originCauseId : null,
+    parts: closing?.kind === 'answered' ? closing.answerParts ?? null : null,
+  }] : []);
+}
+
+/**
+ * How a unit went, from its own log and the user's questions of its whole subtree (`questions`). A review round is a
+ * submit for review or a question to the user that asks to take a result as it is; an instruction that came in place of
+ * the answer to such a question is rework, as an instruction at review is. `estimated`: a round was read from a
+ * question's words (asked before its kind was recorded).
+ */
+export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, createdAt: string, questions: readonly UserQuestion[] = []) {
   const initial = log.find(instruction);
   const requestedAt = normalized(initial?.at ?? log.find(entry => entry.kind === 'created')?.at ?? createdAt);
   const acceptedIndex = log.findIndex(accepts);
   const acceptedAt = acceptedIndex < 0 ? null : normalized(log[acceptedIndex]!.at);
-  let stoppedAt: string | null = null;
+  let stoppedAt: string | null = null, doneAt: string | null = null;
   let base: TaskBaseState = 'todo';
-  if (!acceptedAt && state === 'stopped')
+  // A unit done without the user's acceptance (its owner reported it done) is dated by its last turn to done.
+  if (!acceptedAt && (state === 'stopped' || state === 'done'))
     for (const entry of log) {
       const next: TaskBaseState = entry.stage?.baseState ?? (entry.toState === 'held' || !entry.toState ? base : entry.toState);
-      if (next === 'stopped' && base !== 'stopped') stoppedAt = normalized(entry.causeAt ?? entry.at);
+      if (next === state && base !== state) {
+        if (state === 'stopped') stoppedAt = normalized(entry.causeAt ?? entry.at);
+        else doneAt = normalized(entry.causeAt ?? entry.at);
+      }
       base = next;
     }
   const finishIndex = acceptedIndex < 0 ? log.length : acceptedIndex + 1;
   const stopTime = stoppedAt === null ? Infinity : Date.parse(stoppedAt);
-  const submits = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && Date.parse(entry.at) <= stopTime).length;
+  const finishTime = acceptedAt === null ? stopTime : Date.parse(acceptedAt);
+  const reviews = log.slice(0, finishIndex).filter(entry => isReviewMark(entry) && Date.parse(entry.at) <= stopTime).length;
+  const rounds = questions.filter(question => question.accept && question.from <= finishTime);
+  const replaced = rounds.filter(question => question.replacedBy !== null && question.to! <= finishTime);
+  const replacing = new Set(replaced.map(question => question.replacedBy));
   let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
   // Walk backward so each instruction sees its first subsequent state transition.
@@ -90,25 +142,23 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
       const seen = nextTransition?.kind === 'linked' && nextTransition.originCauseId === entry.id
         ? nextTransition.fromState : entry.fromState;
       if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
-      else if (seen === 'waiting') instructions.instructionsAtReview++;
+      else if (seen === 'waiting' || replacing.has(entry.id)) instructions.instructionsAtReview++;
       else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
     }
     if (entry.toState !== null) nextTransition = entry;
   }
-  const passed = acceptedAt !== null && submits <= 1 &&
+  // A child's question withdrawn by an instruction in the child's own log is rework of this unit as well.
+  const own = new Set(log.map(entry => entry.id));
+  instructions.instructionsAtReview += replaced.filter(question => !own.has(question.replacedBy!)).length;
+  const passed = acceptedAt !== null && reviews <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
-  return { requestedAt, acceptedAt, stoppedAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits, instructions,
+  return { requestedAt, acceptedAt, stoppedAt, doneAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits: reviews + rounds.length,
+    estimated: questions.some(question => question.estimated && question.from <= finishTime), instructions,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
-    outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const : null };
+    outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const
+      : doneAt ? 'unaccepted' as const : null };
 }
 export type Outcome = ReturnType<typeof taskOutcome>;
-
-export type UserQuestion = { from: number; to: number | null; answered: boolean };
-export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
-  return questionsOf(log).flatMap(({ asked, closing }) => asked.askedTo === null
-    ? [{ from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at),
-      answered: closing?.kind === 'answered' && speaksForUser(closing.actor) }] : []);
-}
 
 export function unitMarks(log: readonly TaskLog[], from: number, to: number): AnalysisUnitValues['marks'] {
   return log.flatMap((entry): AnalysisUnitValues['marks'] => {
@@ -118,20 +168,20 @@ export function unitMarks(log: readonly TaskLog[], from: number, to: number): An
   });
 }
 
-type Boundary = { state?: TaskState; questions: number; own: number; runs: number };
+type Boundary = { state?: TaskState; questions: number; own: number; accepting: number; runs: number };
 export function clocks(log: readonly TaskLog[], own: readonly UserQuestion[], descendants: readonly UserQuestion[],
   runs: readonly Launch[], from: number, to: number, now: number) {
   const time = emptyClock(), band: AnalysisUnitValues['band'] = [];
-  if (to <= from) return { time, band };
+  if (to <= from) return { time, band, waits: [] as Interval[] };
   const cuts = new Map<number, Boundary>();
   const at = (t: number) => {
     const previous = cuts.get(t);
     if (previous) return previous;
-    const value = { questions: 0, own: 0, runs: 0 };
+    const value = { questions: 0, own: 0, accepting: 0, runs: 0 };
     cuts.set(t, value);
     return value as Boundary;
   };
-  const add = (interval: Interval, kind: 'questions' | 'own' | 'runs') => {
+  const add = (interval: Interval, kind: 'questions' | 'own' | 'accepting' | 'runs') => {
     const start = Math.max(from, interval.from), end = Math.min(to, interval.to);
     if (start < end) { at(start)[kind]++; at(end)[kind]--; }
   };
@@ -145,20 +195,29 @@ export function clocks(log: readonly TaskLog[], own: readonly UserQuestion[], de
   }
   for (const question of own) add({ from: question.from, to: question.to ?? to }, 'own');
   for (const question of descendants) add({ from: question.from, to: question.to ?? to }, 'questions');
+  for (const question of [...own, ...descendants])
+    if (question.accept) add({ from: question.from, to: question.to ?? to }, 'accepting');
   for (const run of runs) add({ from: run.started, to: run.started + runUsageMs(run, now) }, 'runs');
   const ordered = [...cuts].sort(([a], [b]) => a - b);
-  let state: TaskState = 'todo', asking = 0, askingOwn = 0, active = 0;
+  let state: TaskState = 'todo', asking = 0, askingOwn = 0, accepting = 0, active = 0;
+  const waits: Interval[] = [];
   for (let i = 0; i + 1 < ordered.length; i++) {
     const [start, point] = ordered[i]!, end = ordered[i + 1]![0];
     state = point.state ?? state;
-    asking += point.questions; askingOwn += point.own; active += point.runs;
+    asking += point.questions; askingOwn += point.own; accepting += point.accepting; active += point.runs;
+    // A question asking to take a result as it is is a review, as a submit for review is.
     const part = state === 'waiting' ? 'review' : state !== 'doing' ? 'other'
-      : asking + askingOwn > 0 ? 'answer' : active > 0 ? 'ai' : 'other';
+      : accepting > 0 ? 'review' : asking + askingOwn > 0 ? 'answer' : active > 0 ? 'ai' : 'other';
     time[part] += end - start;
+    if (part === 'review' || part === 'answer') {
+      const last = waits.at(-1);
+      if (last?.to === start) last.to = end;
+      else waits.push({ from: start, to: end });
+    }
     const kind = state === 'waiting' || state === 'doing' && askingOwn > 0 ? 'yours' : state === 'doing' ? 'doing' : 'paused';
     const previous = band.at(-1);
     if (previous?.kind === kind) previous.to = iso(end);
     else band.push({ from: iso(start), to: iso(end), kind });
   }
-  return { time, band };
+  return { time, band, waits };
 }

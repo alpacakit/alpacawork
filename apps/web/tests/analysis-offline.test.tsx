@@ -14,8 +14,9 @@ import { indexOf, tree } from './fixtures';
 const cleanup: (() => void)[] = [];
 afterEach(() => { cleanup.splice(0).reverse().forEach(stop => stop()); vi.unstubAllGlobals(); vi.restoreAllMocks(); useConnection.setState({ offline: false }); });
 const listed = indexOf(tree()), index = { ...listed, person: { ...listed.person, settings: 'stored-settings', notices: 'stored-notices' } };
-const finished = { passed: 3, reworked: 1, stopped: 0, accepted: 4, finished: 4, share: null };
-const accepted = { leadMedianMs: 60_000, submits: 5, questions: 1, prs: 2, time: { review: 1, answer: 2, ai: 3, other: 4 } };
+const finished = { passed: 3, reworked: 1, stopped: 0, unaccepted: 0, accepted: 4, finished: 4, share: null };
+const accepted = { leadMedianMs: 60_000, submits: 5, questions: 1, prs: 2, time: { review: 1, answer: 2, ai: 3, other: 4 },
+  waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, other: 0, unread: 0 }, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, replaced: 0, passedUnasked: 0, estimated: 0 };
 const view: AnalysisTasksView = {
   head: { timeZone: 'UTC', today: '2026-11-25', firstDay: '2026-11-25', project: null, period: { from: '2026-11-25', to: '2026-11-25' }, previous: null },
   counts: { value: finished, previous: null }, accepted: { value: accepted, previous: null }, ever: null,

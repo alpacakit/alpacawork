@@ -8,6 +8,8 @@ import { clocks, firstConversations, launchOf, prLinks, shareOf, taskOutcome, us
 import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
 import { warmAnalysisWhenIdle } from '@alpacawork/backend/test-dist/analysis/reads.js';
+import { splitWaits } from '@alpacawork/backend/test-dist/analysis/presence.js';
+import { CluesSum } from '@alpacawork/backend/test-dist/analysis/clues.js';
 
 const epoch = Date.parse('2026-03-08T05:00:00Z');
 const stamp = (offset: number) => new Date(epoch + offset).toISOString();
@@ -243,4 +245,66 @@ test('serve reads the analysis ahead once, when it is quiet, and not after it cl
   closed();
   t.mock.timers.tick(60_000);
   assert.equal(warmed, 1);
+});
+
+test('a question asking to take a result is a review round, and an instruction in place of its answer is rework', () => {
+  const asker = { kind: 'placement', placementId: 'synthetic' } as const;
+  const coordinator = { kind: 'main', provider: 'claude', conversationId: 'synthetic' } as const;
+  const accept = [{ decide_question: 'Take the result?', decide_kind: 'accept' }];
+  const initial = event('initial', 'request_accepted', 0, { fromState: 'todo' });
+  const asked = event('asked', 'asked', 10, { askedTo: null, actor: asker, decide: accept });
+  const fix = event('fix', 'request_accepted', 20, { fromState: 'doing', actor: coordinator });
+  const withdrawn = event('withdrawn', 'question_withdrawn', 20, { questionId: asked.id, originCauseId: fix.id, actor: coordinator });
+  const again = event('again', 'asked', 30, { askedTo: null, actor: asker, decide: accept });
+  const yes = event('yes', 'answered', 40, { questionId: again.id });
+  const submit = event('submit', 'reported', 50, { fromState: 'doing', toState: 'waiting' });
+  const approved = event('approved', 'review_approved', 60, { fromState: 'waiting', toState: 'done' });
+  const start = event('start', 'linked', 0, { fromState: 'todo', toState: 'doing' });
+  const log = [initial, start, asked, withdrawn, fix, again, yes, submit, approved];
+  const outcome = taskOutcome(log, 'done', initial.at, userQuestions(log));
+  assert.deepEqual([outcome.submits, outcome.passed, outcome.estimated], [3, false, false]);
+  assert.deepEqual(outcome.instructions, { sendBacks: 0, instructionsAtReview: 1, instructionsAfterAccept: 0, instructionsDuringWork: 0 });
+  // Answered at once: two rounds (the question and the submit), still taken as it was.
+  const clean = [initial, again, yes, submit, approved];
+  assert.equal(taskOutcome(clean, 'done', initial.at, userQuestions(clean)).passed, true);
+  // A child's question replaced in the child's own log is the unit's rework too.
+  const child = userQuestions([asked, withdrawn, fix]);
+  assert.equal(taskOutcome(clean, 'done', initial.at, [...userQuestions(clean), ...child]).passed, false);
+  // Before decide_kind was recorded, the question's words decide, and the count says it was read so.
+  const older = [initial, { ...again, decide: [{ decide_question: 'PR #1 を main にマージしてよいか' }] }, yes, submit, approved];
+  assert.deepEqual(userQuestions(older).map(({ accept, estimated }) => [accept, estimated]), [[true, true]]);
+  assert.equal(taskOutcome(older, 'done', initial.at, userQuestions(older)).estimated, true);
+  // Its open time is review time, not answer time.
+  const { time, waits } = clocks(log, userQuestions(log), [], [], epoch, epoch + 60, epoch + 60);
+  assert.deepEqual([time.review, time.answer], [10 + 10 + 10, 0]);
+  assert.deepEqual(waits, [{ from: epoch + 10, to: epoch + 20 }, { from: epoch + 30, to: epoch + 40 }, { from: epoch + 50, to: epoch + 60 }]);
+});
+
+test('a wait is split by where the user was: away after 30 idle minutes, else the task of their next action', () => {
+  const minute = 60_000, at = (m: number) => epoch + m * minute;
+  const activity = [{ at: at(-5), task: 'T1' }, { at: at(10), task: 'T2' }, { at: at(20), task: null },
+    { at: at(200), task: 'T3' }, { at: at(210), task: 'T9' }, { at: at(215), task: 'T1' }];
+  const here = (task: string) => task === 'T1' || task === 'T9';
+  // 0–10 before an action on another task, 10–20 before a message naming no task, 20–200 away, then 200–215 before
+  // actions on a task under this one and on this one.
+  assert.deepEqual(splitWaits([{ from: at(0), to: at(215) }], activity, here, at(300)),
+    { away: 180 * minute, otherTasks: 20 * minute, thisTask: 15 * minute });
+  // A wait still open runs to now: free for this task until 30 minutes pass, away after.
+  assert.deepEqual(splitWaits([{ from: at(216), to: at(240) }], activity, here, at(240)), { away: 0, otherTasks: 0, thisTask: 24 * minute });
+  assert.deepEqual(splitWaits([{ from: at(216), to: at(300) }], activity, here, at(300)), { away: 84 * minute, otherTasks: 0, thisTask: 0 });
+});
+
+test('clues count answers by item, replaced questions and labeled instructions, most frequent kind first', () => {
+  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false, replacedBy: null, parts: null, ...fields });
+  const unit = { asked: [
+    question({ parts: { source: 'user', words: false, items: [
+      { n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'other', words: true }] } }),
+    question({}), question({ answered: false, replacedBy: 'fix' })],
+  instructions: { count: 3, labels: [{ request: 'a', kind: 'fix', fixes: ['look_feel', 'speed'] },
+    { request: 'b', kind: 'fix', fixes: ['look_feel'] }] } } as unknown as Parameters<CluesSum['add']>[0];
+  const sum = new CluesSum();
+  sum.add(unit, { away: 1, otherTasks: 2, thisTask: 3 });
+  assert.deepEqual(sum.clues(), { waits: { away: 1, otherTasks: 2, thisTask: 3 },
+    answerItems: { total: 2, choice: 1, recommended: 1, other: 1, unread: 1 }, replaced: 1,
+    instructions: { total: 3, unlabeled: 1, kinds: [{ kind: 'fix', count: 2 }], fixes: [{ kind: 'look_feel', count: 2 }, { kind: 'speed', count: 1 }] } });
 });

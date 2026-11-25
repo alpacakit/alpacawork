@@ -94,7 +94,26 @@ A comparison uses the immediately preceding period of equal length when there is
 Both commands return `ever` for the same scope from the first day of the record through today. It matches the totals
 for `--period all` and is `null` when the scope has no records.
 
-Task counts use Tasks the user directly requested. The rework count uses instructions addressed to the top-level Task. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
+Task counts use Tasks the user directly requested. A review round (`submits`) is a submit for review, or a question to
+the user from the Task or any Task under it that asks whether to take a result as it is (its `decide_kind` is
+`accept`). A question asked before that kind was recorded is read from its words (merge, adopt, accept and the like);
+`estimated` counts the accepted Tasks read so. A Task is reworked when the user sent it back, gave an instruction at
+review or after acceptance, or gave an instruction in place of answering such a question (`instructionsAtReview`
+counts those too). Time a question asking to take a result stayed open is review time (`time.review`), not
+`time.answer`. `unaccepted` counts Tasks their owner reported done without the user accepting them; they are not among
+`finished`. The share is `null` when fewer than 10 Tasks were accepted. Time values are in milliseconds.
+
+`waits` splits the time the user was waited on (`time.review` plus `time.answer`) by where the user was. The user's
+actions on every Task (their own, and the coordinator's for them) and their messages to the coordinator are laid in one
+line. A gap of 30 minutes or more without an action is `away`. A shorter gap counts toward the Task of the next action:
+`thisTask` when that Task is this one or under it, `otherTasks` otherwise (a message that names no Task included).
+A wait still open runs to the time of the read. Reading a screen leaves no action, so a long read counts as away.
+`answerItems` counts the answered items of the user's questions by how each was answered: one of its choices
+(`choice`, and `recommended` of those), none of them (`other`), and `unread`, answered questions with no recorded
+parts. `replaced` counts questions withdrawn by an instruction in place of an answer. `instructions` counts the user's
+instructions after the request by what their sender labeled each (`kinds`, and `fixes` for the kinds of fix);
+`unlabeled` were sent without a label. `passedUnasked` counts Tasks accepted without rework and without a question to
+the user. `analysis task` returns the same values for one Task, with `estimated` as true or false.
 Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. A related PR counts once,
 on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
 use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
@@ -120,7 +139,7 @@ Shell reads of skill files are counted once per skill per tool call, including
 reads in sequences and pipelines. Redirection targets and in-place edits are excluded. Task completion dates
 and launch dates use the time zone echoed in the result.
 
-For a drill-down, choose `--set passed|reworked|stopped|accepted|finished|used` and a period or inclusive `--from` and
+For a drill-down, choose `--set passed|reworked|stopped|unaccepted|accepted|finished|used` and a period or inclusive `--from` and
 `--to` dates. Pass the breakdown row's `--by` and `--key` to limit the list to that row. Tool and MCP keys are JSON
 arrays with two strings: use `--key '["provider","tool"]'` for a tool, or `--key '["provider","server:tool"]'` for MCP.
 With `--set used --by skill|tool|mcp`, omit `--key` to list Tasks with at least one matching launch since collection began.
@@ -129,7 +148,7 @@ With `--set used --by skill|tool|mcp`, omit `--key` to list Tasks with at least 
 
 | Set | `--by` | `--value` |
 | --- | --- | --- |
-| `passed`, `reworked`, `stopped`, `accepted`, `finished` | `model`, `agent`, `project` | `lead`, `submits`, `questions`, `prs`, `you`, `ai`, `other` |
+| `passed`, `reworked`, `stopped`, `unaccepted`, `accepted`, `finished` | `model`, `agent`, `project` | `lead`, `submits`, `questions`, `prs`, `you`, `ai`, `other` |
 | `used` | `model`, `agent`, `project`, `skill`, `tool`, `mcp` | `launches`, `runMs`, `newConversations`, `tokens`, `output`, `input`, `cache`, `calls` |
 
 `tokens` sums output, input and cache. `calls` requires a `tool` or `mcp` breakdown. `--value` returns and sorts by
