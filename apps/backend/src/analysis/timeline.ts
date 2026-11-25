@@ -4,9 +4,11 @@
  * journal and conditions, and its protocol events (commands stopped at the limit). Nothing here reads storage; the
  * records are loaded once (timeline-reads.ts) and every number of an answer is counted from that one load.
  */
-import { analysisBreakdownKeys, type AnalysisAtView, type AnalysisChange, type AnalysisLane, type AnalysisMark, type AnalysisSpan, type AnalysisTraceScope,
+import { analysisBreakdownKeys, type AnalysisAtView, type AnalysisLane, type AnalysisMark, type AnalysisSpan, type AnalysisTraceScope,
   type AnalysisTraceView } from '@alpacawork/contract/analysis';
-import { iso, type Interval } from './rules.js';
+import { iso, questionKind, type Interval } from './rules.js';
+import { changeEvents } from './changes.js';
+import { splitWaits, type Activity } from './presence.js';
 import type { RunConditions } from '@alpacawork/contract/run';
 import { speaksForUser } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
@@ -41,6 +43,10 @@ export type TraceRecords = {
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
   /** Instruction labels by request (request_labeled): fix, addition or new_request. */
   labels: ReadonlyMap<string, string>;
+  /** The root and every task under it, whatever the scope: the user acting on any of them acts on this task. */
+  family: ReadonlySet<string>;
+  /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
+  activity: readonly Activity[];
   now: number;
 };
 
@@ -138,9 +144,11 @@ export function segments(records: TraceRecords, window: Interval): Segment[] {
     if (span.state === 'held') sets.get('held')!.push({ from: span.from, to: span.to ?? end });
     if (span.state === 'waiting') sets.get('waiting-review')!.push({ from: span.from, to: span.to ?? end });
   }
+  // A question to the user asking to take a result as it is is a review, as in the counts (rules.ts clocks).
   for (const task of records.tasks)
     for (const question of questionsOf(task.log))
-      sets.get(question.asked.askedTo === null ? 'answer-user' : 'answer-task')!.push(questionInterval(question, end));
+      sets.get(question.asked.askedTo !== null ? 'answer-task' : questionKind(question.asked.decide).accept ? 'waiting-review' : 'answer-user')!
+        .push(questionInterval(question, end));
   const cuts = new Set([window.from, window.to]);
   const deltas = new Map<number, Map<Category, number>>();
   const add = (at: number, key: Category, delta: number) => {
@@ -170,7 +178,8 @@ export function segments(records: TraceRecords, window: Interval): Segment[] {
 const stepIntervals = (run: TraceRun, end: number): Interval[] => (run.steps ?? []).flatMap(step =>
   step.inside === null && step.from !== null ? [{ from: step.from, to: step.to ?? run.ended ?? end }] : []);
 
-export function breakdown(records: TraceRecords, window: Interval, parts: readonly Segment[]): AnalysisTraceView['breakdown'] {
+/** The window's breakdown, and whether it still changes with the time of the read (`settled` false: the wait split runs to now). */
+export function breakdown(records: TraceRecords, window: Interval, parts: readonly Segment[]): AnalysisTraceView['breakdown'] & { settled: boolean } {
   const ms = new Map<string, number>();
   for (const part of parts) {
     const key = part.key === 'answer-user' || part.key === 'answer-task' ? 'waiting-answer' : part.key;
@@ -189,9 +198,12 @@ export function breakdown(records: TraceRecords, window: Interval, parts: readon
     for (const step of steps) { const inside = clip(step, part); if (inside) stepWorkMs += inside.to - inside.from; }
   }
   const aiWorkMs = counted.reduce((sum, { part }) => sum + part.to - part.from, 0);
+  const waits = splitWaits(parts.filter(part => part.key === 'answer-user' || part.key === 'answer-task' || part.key === 'waiting-review'),
+    records.activity, task => records.family.has(task), records.now);
   return {
     wall: window.to - window.from, categories: analysisBreakdownKeys.map(key => ({ key, ms: ms.get(key) ?? 0 })),
     answerTo: { user: answer('answer-user'), task: answer('answer-task') },
+    waits: waits.split, settled: waits.settled,
     aiBusyMs: unionMs(counted.map(({ part }) => part), window), aiWorkMs,
     toolMs: known ? toolMs : null, thinkingMs: known ? aiWorkMs - toolMs : null, stepWorkMs: known ? stepWorkMs : null,
   };
@@ -251,48 +263,11 @@ function behind(records: TraceRecords, run: TraceRun): string | null {
   return found?.id ?? null;
 }
 
-const CHANGE_ORDER = ['agent', 'model', 'effort', 'version', 'skill', 'instructions'] as const;
-/**
- * What differs between two Runs of one seat, one after the other: how it was launched (agent, model, effort), and what
- * it ran under when both kept that (alpacawork's version, each skill by its scope and name, the person's instruction
- * files). Where the agent worked (its commit) is left out: it moves with every commit and is the work, not a condition.
- */
-export function conditionChanges(previous: TraceRun, run: TraceRun): AnalysisChange[] {
-  const changes: AnalysisChange[] = [];
-  const launch = (what: 'agent' | 'model' | 'effort', from: string | null, to: string | null) => {
-    if (from !== to) changes.push({ what, name: null, from, to });
-  };
-  launch('agent', previous.agent, run.agent); launch('model', previous.model, run.model); launch('effort', previous.effort, run.effort);
-  const before = previous.conditions, after = run.conditions;
-  if (before && after) {
-    if (before.version !== after.version) changes.push({ what: 'version', name: null, from: before.version, to: after.version });
-    const skills = (conditions: RunConditions) => new Map(conditions.skills.flatMap(group =>
-      group.items.map(item => [`${group.scope}:${item.name}`, item.digest ?? 'unread'] as const)));
-    const files = (conditions: RunConditions) => new Map(conditions.instructions.map(file => [file.path, file.digest] as const));
-    const differ = (what: 'skill' | 'instructions', a: Map<string, string>, b: Map<string, string>) => {
-      for (const name of [...new Set([...a.keys(), ...b.keys()])].sort())
-        if (a.get(name) !== b.get(name)) changes.push({ what, name, from: a.get(name) ?? null, to: b.get(name) ?? null });
-    };
-    differ('skill', skills(before), skills(after));
-    differ('instructions', files(before), files(after));
-  }
-  return changes.sort((a, b) => CHANGE_ORDER.indexOf(a.what) - CHANGE_ORDER.indexOf(b.what));
-}
-
-/** Each Run whose seat ran differently from the Run before it on the same seat, with what changed. */
+/** Each Run that ran differently from the Run before it on the same seat (changes.ts), with what changed. */
 export function changeMarks(records: TraceRecords): AnalysisMark[] {
-  const last = new Map<string, TraceRun>(), result: AnalysisMark[] = [];
-  const started = records.runs.filter(run => run.started !== null && run.state !== 'joined')
-    .sort((a, b) => a.started! - b.started! || Number(a.id.slice(1)) - Number(b.id.slice(1)));
-  for (const run of started) {
-    const previous = last.get(run.placement);
-    last.set(run.placement, run);
-    if (!previous) continue;
-    const changes = conditionChanges(previous, run);
-    if (changes.length) result.push({ id: `change:${run.id}`, lane: agentLane(run.placement), kind: 'change', at: iso(run.started!),
-      run: run.id, previous: previous.id, changes });
-  }
-  return result;
+  return changeEvents(records.runs.filter(run => run.state !== 'joined'), run => run.placement).flatMap(({ run, previous, changes }) =>
+    previous ? [{ id: `change:${run.id}`, lane: agentLane(run.placement), kind: 'change' as const, at: iso(run.started!),
+      run: run.id, previous: previous.id, changes }] : []);
 }
 
 export function marks(records: TraceRecords): AnalysisMark[] {
@@ -365,7 +340,8 @@ export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtV
     .map(run => ({ run: run.id, task: run.task, since: iso(run.created) }));
   const questions = records.tasks.flatMap(task => questionsOf(task.log).filter(({ asked, closing }) =>
     Date.parse(asked.at) <= at && (closing === null || Date.parse(closing.at) > at))
-    .map(({ asked }) => ({ question: asked.id, task: task.id, askedTo: asked.askedTo ?? 'user', since: iso(Date.parse(asked.at)), title: asked.title })));
+    .map(({ asked }) => ({ question: asked.id, task: task.id, askedTo: asked.askedTo ?? 'user', since: iso(Date.parse(asked.at)), title: asked.title,
+      ...questionKind(asked.decide) })));
   const history = records.tasks.flatMap(task => task.log.filter(entry => Date.parse(entry.at) <= at).map(entry => ({ task: task.id, entry })))
     .sort((a, b) => Date.parse(a.entry.at) - Date.parse(b.entry.at)).slice(-HISTORY_LINES)
     .map(({ task, entry }) => ({ log: entry.id, task, kind: entry.kind, at: iso(Date.parse(entry.at)),

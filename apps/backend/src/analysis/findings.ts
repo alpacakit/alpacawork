@@ -8,7 +8,7 @@ import type { AnalysisEvidence, AnalysisFindingRule } from '@alpacawork/contract
 import { analysisFindingRules } from '@alpacawork/contract/analysis';
 import { speaksForUser } from '@alpacawork/raw';
 import { questionsOf } from '@alpacawork/raw/questions';
-import { prLinks } from './rules.js';
+import { prLinks, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
 
 export type Threshold = { value: number; unit: 'minutes' | 'count' };
@@ -173,20 +173,26 @@ const rules: Record<AnalysisFindingRule, Rule> = {
     durationMs: (run.ended ?? window.to) - (run.started ?? run.created), lane: agentLane(run), count: null, source: 'recorded' as const,
     evidence: [{ run: run.id }, ...run.supersededBy ? [{ run: run.supersededBy }] : []] })),
   /**
-   * Work done again: a result sent back, or an instruction from the user while the result waited for review or after
-   * it was done. Its time runs until the task next waits for review or is done.
+   * Work done again: a result sent back, an instruction from the user while the result waited for review or after it
+   * was done, or an instruction that came in place of answering a question asking to take a result (as the counts read
+   * rework, rules.ts taskOutcome). Its time runs until the task next waits for review or is done.
    */
-  rework: (records, window) => records.tasks.flatMap(task => task.log.flatMap((entry, index) => {
-    const sentBack = entry.kind === 'review_sent_back' && speaksForUser(entry.actor);
-    const instruction = entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor) &&
-      (entry.fromState === 'waiting' || entry.fromState === 'done');
-    if (!sentBack && !instruction) return [];
-    const at = Date.parse(entry.at);
-    const next = task.log.slice(index + 1).find(later => later.toState === 'waiting' || later.toState === 'done' ||
-      later.stage?.baseState === 'waiting' || later.stage?.baseState === 'done');
-    return [{ rule: 'rework' as const, anchor: entry.id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
-      lane: taskLane(task.id), count: null, source: 'recorded' as const, evidence: [{ log: entry.id, task: task.id }] }];
-  })),
+  rework: (records, window) => records.tasks.flatMap(task => {
+    const replaced = new Map(userQuestions(task.log).filter(question => question.accept && question.replacedBy !== null)
+      .map(question => [question.replacedBy!, question.id]));
+    return task.log.flatMap((entry, index) => {
+      const sentBack = entry.kind === 'review_sent_back' && speaksForUser(entry.actor);
+      const instruction = entry.kind === 'request_accepted' && speaksForUser(entry.actor) &&
+        (replaced.has(entry.id) || !entry.answers && (entry.fromState === 'waiting' || entry.fromState === 'done'));
+      if (!sentBack && !instruction) return [];
+      const at = Date.parse(entry.at), question = replaced.get(entry.id);
+      const next = task.log.slice(index + 1).find(later => later.toState === 'waiting' || later.toState === 'done' ||
+        later.stage?.baseState === 'waiting' || later.stage?.baseState === 'done');
+      return [{ rule: 'rework' as const, anchor: entry.id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
+        lane: taskLane(task.id), count: null, source: 'recorded' as const,
+        evidence: [{ log: entry.id, task: task.id }, ...question ? [{ question, task: task.id }] : []] }];
+    });
+  }),
   /** A stretch at least the threshold long when nothing ran, nothing waited in the queue and no question or review was open. */
   idle: (records, window, threshold) => segments(records, window).filter(part => part.key === 'idle' && part.to - part.from >= limitOf(threshold))
     .map(part => ({ rule: 'idle' as const, anchor: iso(part.from), at: part.from, durationMs: part.to - part.from,

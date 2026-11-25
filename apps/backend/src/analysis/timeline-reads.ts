@@ -9,13 +9,18 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alpacawork/contract/run';
-import type { AnalysisAtInput, AnalysisAtView, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
+import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { taskLogsOf } from '../control/task-history.js';
 import { readConditions } from '../runs/conditions.js';
 import { readRunStepIndex } from '../runs/run-steps.js';
 import { serverZone } from './calendar.js';
+import type { Activity } from './presence.js';
+import { Kept, type Slices } from './slices.js';
+import { inDays } from './calendar.js';
+import { changeEvents, type ChangeRun } from './changes.js';
+import type { FactLaunch } from './facts.js';
 import { allRules, findFindings, STEP_RULES, thresholdsOf } from './findings.js';
 import { breakdown, iso, isOpen, lanes, marks, sceneUrl, segments, situationAt, spans, wholePeriod,
   type Interval, type TraceRecords, type TraceRequest, type TraceRun, type TraceStep, type TraceTask } from './timeline.js';
@@ -30,10 +35,10 @@ type TaskRow = { internal: string; id: string; parent: string | null; title: str
 const taskRows = `SELECT t.id AS internal,t.external_id AS id,p.external_id AS parent,t.title,pr.external_id AS project,t.created_at AS created
   FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id JOIN tasks pr ON pr.id=t.project_task_id`;
 
-function scopeTasks(db: DatabaseSync, task: string, scope: AnalysisTraceScope): TaskRow[] {
+/** The task and every task under it (the user acting on any of them acts on this task), the root first. */
+function familyOf(db: DatabaseSync, task: string): TaskRow[] {
   const root = db.prepare(`${taskRows} WHERE t.external_id=? AND t.kind='task' AND t.lifecycle<>'deleted'`).get(task) as TaskRow | undefined;
   if (!root) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task });
-  if (scope === 'self') return [root];
   const below = db.prepare(`WITH RECURSIVE under(id) AS (SELECT id FROM tasks WHERE parent_id=?
       UNION SELECT t.id FROM tasks t JOIN under u ON t.parent_id=u.id WHERE t.kind='task')
     ${taskRows} WHERE t.id IN (SELECT id FROM under) AND t.kind='task' AND t.lifecycle<>'deleted' ORDER BY t.number`).all(root.internal) as TaskRow[];
@@ -74,8 +79,14 @@ function stoppedCommands(folder: string): TraceRun['stopped'] {
   return result.sort((a, b) => a.at - b.at);
 }
 
+/**
+ * The steps of Runs that have ended, which never change again: reading a Run's steps reads its whole output, so a task
+ * read again (another page, a finding, an instant) reads only the Runs still going.
+ */
+const endedSteps = new Kept<string, TraceStep[]>(512);
 async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep[] | null; missing: TraceRun['stepsMissing'] }> {
-  const folder = runFolder(root, run.id);
+  const folder = runFolder(root, run.id), key = `${root}\0${run.id}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
+  if (kept) return { steps: kept, missing: null };
   if (!existsSync(join(folder, RUN_FILES.steps)))
     // The journal and the conditions came in together: a Run that kept its conditions and has no journal took no steps.
     return existsSync(join(folder, RUN_FILES.conditions)) ? { steps: [], missing: null } : { steps: null, missing: 'before-journal' };
@@ -91,6 +102,7 @@ async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep
       state: step.state, source: step.startSource, inside: step.parentId, subagentSteps: step.subagentSteps,
       output: step.output?.digest ?? null });
   }
+  if (run.ended_at !== null) endedSteps.set(key, steps);
   return { steps, missing: null };
 }
 
@@ -107,13 +119,14 @@ async function traceRun(root: string, record: RunRecord): Promise<TraceRun> {
 }
 
 /** Every record of the task (and its subtree) the timeline reads, at one read point of the control database. */
-export async function readTimelineRecords(root: string, task: string, scope: AnalysisTraceScope, now = Date.now()): Promise<TraceRecords> {
+export async function readTimelineRecords(root: string, task: string, scope: AnalysisTraceScope, activity: readonly Activity[] = [],
+  now = Date.now()): Promise<TraceRecords> {
   const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true);
-  let rows: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>;
+  let family: TaskRow[], rows: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>;
   try {
-    ({ rows, logs, runs, requests } = store.read(db => {
-      const rows = scopeTasks(db, task, scope), ids = rows.map(row => row.id);
-      return { rows, logs: taskLogsOf(db, rows.map(row => row.internal)), requests: requestsOf(db, ids),
+    ({ family, rows, logs, runs, requests } = store.read(db => {
+      const family = familyOf(db, task), rows = scope === 'self' ? family.slice(0, 1) : family, ids = rows.map(row => row.id);
+      return { family, rows, logs: taskLogsOf(db, rows.map(row => row.internal)), requests: requestsOf(db, ids),
         runs: db.prepare('SELECT record FROM runs WHERE task_id IN (SELECT value FROM json_each(?)) ORDER BY id')
           .all(JSON.stringify(ids)).map(row => JSON.parse(String(row.record)) as RunRecord) };
     }));
@@ -124,7 +137,8 @@ export async function readTimelineRecords(root: string, task: string, scope: Ana
   for (const item of tasks) for (const entry of item.log) if (entry.kind === 'request_labeled' && entry.label) labels.set(entry.label.request, entry.label.kind);
   const traced: TraceRun[] = [];
   for (const record of runs) traced.push(await traceRun(root, record));
-  return { root: task, project: rows[0]!.project, scope, tasks, runs: traced, requests, labels, now };
+  return { root: task, project: rows[0]!.project, scope, tasks, runs: traced, requests, labels,
+    family: new Set(family.map(row => row.id)), activity, now };
 }
 
 function windowOf(records: TraceRecords, input: { from?: string; to?: string }): Interval {
@@ -135,8 +149,9 @@ const headOf = (records: TraceRecords, timeZone: string | undefined) => ({ task:
   scope: records.scope, timeZone: timeZone ?? serverZone(), generatedAt: iso(records.now) });
 
 const PAGE = 200;
-export async function readTrace(root: string, input: AnalysisTraceInput): Promise<AnalysisTraceView> {
-  const scope = input.scope ?? 'self', records = await readTimelineRecords(root, input.task, scope), window = windowOf(records, input);
+/** `activity`: the user's actions on every task (AnalysisFacts.activity), which split the waits as the counts split them. */
+export async function readTrace(root: string, input: AnalysisTraceInput, activity: readonly Activity[]): Promise<AnalysisTraceView> {
+  const scope = input.scope ?? 'self', records = await readTimelineRecords(root, input.task, scope, activity), window = windowOf(records, input);
   const kinds = input.kinds && new Set<string>(input.kinds);
   const overlaps = (from: string, to: string | null) => Date.parse(from) < window.to && (to === null || Date.parse(to) > window.from);
   const allSpans = spans(records).filter(span => (!kinds || kinds.has(span.kind)) && overlaps(span.from, span.to));
@@ -154,19 +169,24 @@ export async function readTrace(root: string, input: AnalysisTraceInput): Promis
     offset = Number(match[2]);
   }
   const end = offset + (input.limit ?? PAGE), page = items.slice(offset, end);
+  const { settled, ...counts } = breakdown(records, window, segments(records, window));
   const runs = records.runs.filter(run => run.started !== null && run.state !== 'joined');
   const recordedFrom = null;
   return {
-    head: { ...headOf(records, input.timeZone), from: iso(window.from), to: iso(window.to), complete: !isOpen(records) || window.to < records.now },
+    head: { ...headOf(records, input.timeZone), from: iso(window.from), to: iso(window.to),
+      complete: (!isOpen(records) || window.to < records.now) && settled },
     coverage: {
       steps: { known: runs.filter(run => run.steps !== null).map(run => run.id),
-        unknown: runs.flatMap(run => run.stepsMissing ? [{ run: run.id, reason: run.stepsMissing }] : []) },
+        unknown: (['before-journal', 'provider-unsupported'] as const).flatMap(reason => {
+          const missing = runs.filter(run => run.stepsMissing === reason).map(run => run.id);
+          return missing.length ? [{ reason, runs: missing }] : [];
+        }) },
       conditions: { known: runs.filter(run => run.conditions).map(run => run.id), unknown: runs.filter(run => !run.conditions).map(run => run.id) },
       values: { recordedFrom },
     },
     lanes: lanes(records),
     spans: page.flatMap(item => 'span' in item ? [item.span] : []), marks: page.flatMap(item => 'mark' in item ? [item.mark] : []),
-    breakdown: breakdown(records, window, segments(records, window)),
+    breakdown: counts,
     total: items.length, nextCursor: end < items.length ? `${selector}.${end}` : null,
     url: sceneUrl(records.root, scope, input.from ? { at: input.from } : {}),
   };
@@ -195,4 +215,50 @@ export async function readAt(root: string, input: AnalysisAtInput): Promise<Anal
   const scope = input.scope ?? 'self', at = Date.parse(input.at);
   const records = await readTimelineRecords(root, input.task, scope);
   return { head: { ...headOf(records, input.timeZone), at: iso(at) }, ...situationAt(records, at), url: sceneUrl(records.root, scope, { at }) };
+}
+
+/** Ended Runs that kept no conditions (from before they were kept): they never will, so their folders are not read again. */
+const noConditions = new Set<string>();
+const CHANGES = 100;
+/**
+ * analysis changes: each Run, over the scope's Runs, that ran under a condition its agent had not run under before (a
+ * version, a skill, an instruction file) or whose seat changed its launch choices (agent, model, effort), dated on the
+ * period's days. Every earlier Run of the scope is read too, so the first Run of the period compares with the last
+ * before it.
+ */
+export async function readChanges(root: string, head: AnalysisHead, launches: readonly { day: string; run: FactLaunch }[],
+  input: AnalysisChangesInput, slices: Slices): Promise<AnalysisChangesView> {
+  const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true), seats = new Map<string, string>();
+  try {
+    store.read(db => {
+      for (const row of db.prepare("SELECT 'R'||id AS id, json_extract(record,'$.placementId') AS placement FROM runs WHERE id IN (SELECT value FROM json_each(?))")
+        .iterate(JSON.stringify(launches.map(({ run }) => Number(run.id.slice(1)))))) seats.set(String(row.id), String(row.placement));
+    });
+  } finally { store.close(); }
+  const runs: (ChangeRun & { day: string })[] = [];
+  for (const { day, run } of launches) {
+    const key = `${root}\0${run.id}`;
+    const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
+    if (!conditions && !run.live) noConditions.add(key);
+    runs.push({ id: run.id, task: run.task, placement: seats.get(run.id) ?? run.id, agent: run.agent, model: run.model, effort: run.effort,
+      started: run.started, conditions, day });
+    if (slices.due) await slices.pause();
+  }
+  const inPeriod = (day: string) => inDays(day, head.period);
+  const events = changeEvents(runs, (run, what) => what === 'agent' || what === 'model' || what === 'effort' ? `seat:${run.placement}` : `agent:${run.agent}`)
+    .filter(({ run }) => inPeriod(run.day));
+  const selector = createHash('sha256').update(JSON.stringify([head.project, head.timeZone, head.period])).digest('base64url').slice(0, 12);
+  let offset = 0;
+  if (input.cursor) {
+    const match = /^([\w-]{12})\.(\d+)$/.exec(input.cursor);
+    if (!match || match[1] !== selector) throw new Problem(PROBLEM_CODE.invalidInput, 'Use a cursor from the same analysis changes');
+    offset = Number(match[2]);
+  }
+  const end = offset + (input.limit ?? CHANGES), period = runs.filter(run => inPeriod(run.day));
+  return {
+    head, runs: { launched: period.length, recorded: period.filter(run => run.conditions).length },
+    changes: events.slice(offset, end).map(({ run, changes }) => ({ id: `change:${run.id}`, at: iso(run.started!), run: run.id,
+      task: run.task, agent: run.agent, changes })),
+    total: events.length, cursor: end < events.length ? `${selector}.${end}` : null,
+  };
 }

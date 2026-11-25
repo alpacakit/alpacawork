@@ -1,6 +1,6 @@
 import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
-  analysisSpanKinds, analysisMarkKinds, analysisFindingRules,
+  analysisSpanKinds, analysisMarkKinds, analysisFindingRules, analysisChangesInput, analysisChangesViewSchema,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -277,6 +277,12 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
+  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, an ' +
+    'agent seat\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
+    ...analysisScope, ...analysisPeriodOptions, text('cursor', 'cursor from the previous page'), number('limit', 'Most changes per page (up to 100, default 100)'),
+  ], { output: analysisChangesViewSchema, help: help(
+    'Versions, skills and instruction files compare each agent\'s Runs in the order they started; agent, model and effort compare the Runs of one agent seat.',
+    'runs.recorded counts the period\'s Runs that kept their conditions: a Run from before they were kept shows no change.') }),
   'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, its subtasks and each agent seat), spans and marks in time ' +
     'order, the wall time split into parts that do not overlap, and which Runs have step times', analysisTraceInput, [
     ...analysisTimelineScope, text('from', 'Start instant (ISO; default: the task\'s creation)'),

@@ -297,7 +297,7 @@ const stepsMissing = z.enum(['before-journal', 'provider-unsupported']);
 export const analysisTraceViewSchema = z.strictObject({
   head: timelineHead.extend({ from: instant, to: instant, complete: z.boolean() }),
   coverage: z.strictObject({
-    steps: z.strictObject({ known: z.array(runId), unknown: z.array(z.strictObject({ run: runId, reason: stepsMissing })) }),
+    steps: z.strictObject({ known: z.array(runId), unknown: z.array(z.strictObject({ reason: stepsMissing, runs: z.array(runId).min(1) })) }),
     conditions: z.strictObject({ known: z.array(runId), unknown: z.array(runId) }),
     values: z.strictObject({ recordedFrom: instant.nullable() }),
   }),
@@ -305,6 +305,8 @@ export const analysisTraceViewSchema = z.strictObject({
   breakdown: z.strictObject({
     wall: count, categories: z.array(z.strictObject({ key: z.enum(analysisBreakdownKeys), ms: count })),
     answerTo: z.strictObject({ user: count, task: count }),
+    /** waiting-answer and waiting-review split by where the user was (30 idle minutes is away), as the counts split them. */
+    waits: z.strictObject({ away: count, otherTasks: count, thisTask: count }),
     aiBusyMs: count, aiWorkMs: count, toolMs: count.nullable(), thinkingMs: count.nullable(), stepWorkMs: count.nullable(),
   }),
   total: count, nextCursor: z.string().nullable(), url: z.string(),
@@ -336,11 +338,27 @@ export const analysisAtViewSchema = z.strictObject({
     steps: z.enum(['recorded', 'not-recorded']), current: z.array(stepAt), before: stepAt.nullable(), after: stepAt.nullable(),
   })),
   queued: z.array(z.strictObject({ run: runId, task: taskIdSchema, since: instant })),
-  questions: z.array(z.strictObject({ question: z.string(), task: taskIdSchema, askedTo: recipient, since: instant, title: z.string().nullable() })),
+  questions: z.array(z.strictObject({ question: z.string(), task: taskIdSchema, askedTo: recipient, since: instant, title: z.string().nullable(),
+    /** Whether it asks to take a result as it is; `estimated` when read from its words (asked before its kind was recorded). */
+    accept: z.boolean(), estimated: z.boolean() })),
   history: z.array(z.strictObject({ log: z.string(), task: taskIdSchema, kind: z.string(), at: instant, title: z.string().nullable() })),
   values: z.null(), valuesReason: z.literal('not-recorded'), url: z.string(),
 });
 
+/** `analysis changes`: when what Runs ran under changed, over the same scope and days as `analysis tasks`. */
+export const analysisChangesInput = z.strictObject({
+  ...scope, ...dates.shape, cursor: z.string().min(1).max(2048).optional(), limit: z.number().int().min(1).max(100).optional(),
+}).superRefine(validateDates);
+export const analysisChangesViewSchema = z.strictObject({
+  head: analysisHeadSchema,
+  /** The Runs of the period's days, and how many of them kept their conditions (a Run from before they were kept has none). */
+  runs: z.strictObject({ launched: count, recorded: count }),
+  changes: z.array(z.strictObject({ id: z.string(), at: instant, run: runId, task: taskIdSchema, agent: z.string(),
+    changes: z.array(changeSchema).min(1) })),
+  total: count, cursor: z.string().nullable(),
+});
+export type AnalysisChangesInput = z.infer<typeof analysisChangesInput>;
+export type AnalysisChangesView = z.infer<typeof analysisChangesViewSchema>;
 export type AnalysisTraceInput = z.infer<typeof analysisTraceInput>;
 export type AnalysisFindingsInput = z.infer<typeof analysisFindingsInput>;
 export type AnalysisAtInput = z.infer<typeof analysisAtInput>;

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { controlDatabasePath } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
-import { analysisAtViewSchema, analysisFindingsViewSchema, analysisTraceViewSchema } from '@alpacawork/contract/analysis';
+import { analysisAtViewSchema, analysisChangesViewSchema, analysisFindingsViewSchema, analysisTraceViewSchema } from '@alpacawork/contract/analysis';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { inertFixtureLaunch } from './helpers/agent-stub.ts';
 import { copyWorkspace, createOriginal, profiles, removeWorkspace } from '../scripts/dev-fixtures/fixture.ts';
@@ -85,6 +85,10 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       assert.deepEqual(at.runs.map(item => [item.run, item.current.map(current => current.step)]), [[run, [0]]]);
       assert.equal(at.values, null);
       await read('at', { task: 'T999999', at: instant(20) }, 404);
+
+      const changes = analysisChangesViewSchema.parse(await read('changes', { period: 'all', timeZone: 'UTC', limit: '1' }));
+      assert.ok(changes.runs.recorded >= 1 && changes.runs.launched >= changes.runs.recorded);
+      assert.equal(changes.cursor === null, changes.total <= 1);
     } finally { await app.close(); }
   } finally {
     if (original) {

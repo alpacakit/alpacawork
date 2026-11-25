@@ -16,6 +16,8 @@ import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serv
 import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.js';
 import { CluesSum, waitsOf } from './clues.js';
 import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
+import { readChanges } from './timeline-reads.js';
+import type { AnalysisChangesInput } from '@alpacawork/contract/analysis';
 
 type DatedUnit = { day: string; unit: Unit };
 type CountedUnit = DatedUnit & { prCount: number };
@@ -625,6 +627,9 @@ class ScopedAnalysis {
       cursor: end < entries.length ? `${selector}.${end}` : null };
   }
 
+  /** The user's actions on every task, as the counts read them (presence.ts). */
+  activity() { return this.facts.activity(); }
+
   task(asked: string): AnalysisUnitValues {
     const root = this.facts.rootOf.get(asked), unit = root && this.facts.units.get(root);
     if (!unit || !this.allows(unit.node.project!)) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist in the analysis scope');
@@ -756,6 +761,11 @@ export class AnalysisReader {
   }
   list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, 'scope', (view, slices) => view.list(input, slices)); }
   task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, 'facts', view => view.task(input.task)); }
+  /** The user's actions on every task, read from the same facts as the counts, for a reader that splits waits as they do. */
+  activity(caller: Caller) { return this.scoped({}, caller, 'facts', view => view.activity()); }
+  changes(input: AnalysisChangesInput, caller: Caller) {
+    return this.scoped(input, caller, 'scope', (view, slices) => readChanges(this.root, view.head(input), view.datedLaunches, input, slices));
+  }
   /** A breakdown's kept day sums, for the breakdowns that give a launch one row (model, agent, project). */
   private async rowsFor(view: ScopedAnalysis, by: AnalysisUsageBy | undefined, slices: Slices) {
     if (by !== 'agent' && by !== 'project' && by !== 'model') return undefined;

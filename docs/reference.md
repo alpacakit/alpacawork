@@ -86,6 +86,10 @@ The screen and these read commands use the same counts. A person or the coordina
 | `alpacawork analysis breakdown --period 7d --bucket day --look usage --by model` | One breakdown alone, the rows `analysis tasks` or `analysis usage` gives with `--by`, without their totals and trends |
 | `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |
 | `alpacawork analysis task --task <task>` | One top-level Task's values, including the requested child when it resolves to that parent |
+| `alpacawork analysis trace --task <task>` | One Task's timeline: lanes, spans, marks, a breakdown of its wall time and which Runs have step times |
+| `alpacawork analysis findings --task <task>` | Places in that timeline worth a look, each by a rule with its threshold and evidence |
+| `alpacawork analysis at --task <task> --at <ISO>` | The situation at one instant: states, Runs and their steps, the queue, open questions, recent history |
+| `alpacawork analysis changes --period 28d` | When what Runs ran under changed (version, skills, instruction files, a seat's model or effort) |
 
 Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods.
 Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The server's time zone can be
@@ -139,6 +143,19 @@ Each Task trend point includes `accepted` totals for the Tasks accepted in that 
 on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
 use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
 If there is no owner Run, the breakdown row has `noOwnerRun: true` and a separate key for its drill-down list.
+
+`analysis trace`, `analysis findings` and `analysis at` read one Task (`--scope subtree` adds every Task under it) from
+its creation to now, or to its last record once it is done or stopped. The trace's `breakdown` gives each instant of the
+wall time to the first part that holds: `owner-working`, `member-working`, `child-working`, `held`, `waiting-answer`,
+`waiting-review`, `queued`, `idle`; the parts sum to `wall`. As in the counts, a question asking to take a result is
+`waiting-review`, and `waits` splits `waiting-answer` plus `waiting-review` by where the user was. A Run gives step times
+only from when they were kept: `coverage.steps.unknown` names the Runs without them by reason, and the step-level values
+(`toolMs`, `thinkingMs`, `stepWorkMs`) are `null`, not 0, while any Run in the period lacks them. Spans and marks come in
+time order, `--limit` at a time, with `nextCursor`. Findings come from an experimental rule set (rule IDs stay;
+thresholds may change); `--threshold rule=value` takes minutes for a time and a count for a repeat. Every answer carries
+`url`, the screen's address of the same scene. `analysis changes` takes the scope and days of `analysis tasks`; versions,
+skills and instruction files compare each agent's Runs in the order they started, and agent, model and effort compare
+the Runs of one agent seat.
 
 Model breakdowns and `analysis task` group by model name and launch effort. They use the model recorded in the
 Run's tally when available, then the launch model, then the agent name. A Run can move to a different row when

@@ -5,6 +5,7 @@ import type { RunConditions } from '@alpacawork/contract/run';
 import { breakdown, changeMarks, segments, situationAt, type TraceRecords, type TraceRun, type TraceStep,
   type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
 import { DEFAULT_THRESHOLDS, findFindings, thresholdsOf } from '@alpacawork/backend/test-dist/analysis/findings.js';
+import { changeEvents } from '@alpacawork/backend/test-dist/analysis/changes.js';
 
 const MIN = 60_000;
 const epoch = Date.parse('2026-03-08T00:00:00Z');
@@ -33,7 +34,7 @@ function step(n: number, from: number, to: number | null, fields: Partial<TraceS
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
-    labels: new Map(), now };
+    labels: new Map(), family: new Set(tasks.map(item => item.id)), activity: [], now };
 }
 const window = (from: number, to: number) => ({ from: at(from), to: at(to) });
 const find = (data: TraceRecords, rule: Parameters<typeof findFindings>[2][number], to = 200, thresholds = DEFAULT_THRESHOLDS) =>
@@ -170,6 +171,49 @@ test('at an instant: states, the Run running with its steps around that time, th
   const [running] = situation.runs;
   assert.deepEqual([running!.run, running!.current.map(item => item.step), running!.before?.step, running!.after?.step], ['R1', [1, 2], 0, 3]);
   assert.deepEqual(situation.queued.map(item => item.run), ['R2']);
-  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo]), [['q1', 'user']]);
+  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept, item.estimated]), [['q1', 'user', false, true]]);
   assert.equal(situation.values, null);
+});
+
+test('a question asking to take a result is review time, and the waits split by where the user was', () => {
+  const accept = [{ decide_question: 'Take the result?', decide_kind: 'accept', decide_choices: [{ decide_choice: 'Take' }] }];
+  const root = task('T1', [state('s1', 0, 'doing'), asked('q1', 10, accept), answered('a1', 100, 'q1'), asked('q2', 100), answered('a2', 120, 'q2')]);
+  // The user acts on another task at 5 and 20, then nothing until 80 (away), then on this task at 90 and 110; it is now 125.
+  const data = { ...records([root], [], at(125)), activity: [{ at: at(5), task: 'T9' }, { at: at(20), task: 'T9' }, { at: at(80), task: 'T1' },
+    { at: at(90), task: 'T1' }, { at: at(110), task: 'T1' }] };
+  const { settled, ...result } = breakdown(data, window(0, 120), segments(data, window(0, 120)));
+  // The last part follows the last action by less than 30 minutes: it still depends on when it is read.
+  assert.equal(settled, false);
+  const part = (key: string) => result.categories.find(item => item.key === key)!.ms / MIN;
+  assert.deepEqual([part('waiting-review'), part('waiting-answer')], [90, 20]);
+  assert.deepEqual({ away: result.waits.away / MIN, otherTasks: result.waits.otherTasks / MIN, thisTask: result.waits.thisTask / MIN },
+    { away: 60, otherTasks: 10, thisTask: 40 });
+  assert.equal(result.waits.away + result.waits.otherTasks + result.waits.thisTask, (part('waiting-review') + part('waiting-answer')) * MIN);
+});
+
+test('rework includes an instruction given in place of answering a question asking to take a result', () => {
+  const accept = [{ decide_question: 'Merge it?', decide_kind: 'accept' }];
+  const choose = [{ decide_question: 'Which layout?', decide_kind: 'choose' }];
+  const root = task('T1', [state('s1', 0, 'doing'), asked('q1', 10, accept), entry('fix', 'request_accepted', 20, { fromState: 'doing' }),
+    entry('w1', 'question_withdrawn', 20, { questionId: 'q1', originCauseId: 'fix' }), asked('q2', 30, choose),
+    entry('more', 'request_accepted', 40, { fromState: 'doing' }), entry('w2', 'question_withdrawn', 40, { questionId: 'q2', originCauseId: 'more' }),
+    state('s2', 50, 'waiting')]);
+  assert.deepEqual(find(records([root], []), 'rework').map(item => [item.anchor, item.evidence.length]), [['fix', 2]]);
+});
+
+test('scope-wide changes compare an agent\'s conditions across its seats, and launch choices within each seat', () => {
+  const conditions = (skills: Record<string, string>, version = '1.0.0'): RunConditions => ({ v: 1, observedAt: stamp(0), version, release: null,
+    source: null, cwd: { path: '/work', commit: null }, instructions: [],
+    skills: [{ scope: 'personal', folder: '/home/skills', items: Object.entries(skills).map(([name, digest]) => ({ name, digest })) }] });
+  const runs = [
+    run('R1', { started: at(0), placement: 'owner', model: 'opus', conditions: conditions({ review: '1111111111111111', plan: '3333333333333333' }) }),
+    run('R2', { started: at(10), placement: 'member', model: 'sonnet', conditions: conditions({ review: '1111111111111111', plan: '3333333333333333' }) }),
+    run('R3', { started: at(20), placement: 'member', model: 'sonnet', conditions: conditions({ review: '2222222222222222' }, '1.1.0') }),
+    run('R4', { started: at(30), placement: 'owner', model: 'sonnet', conditions: conditions({ review: '2222222222222222' }, '1.1.0') }),
+  ];
+  const events = changeEvents(runs, (item, what) => ['agent', 'model', 'effort'].includes(what) ? item.placement : item.agent);
+  assert.deepEqual(events.map(event => [event.run.id, event.changes.map(change => [change.what, change.name, change.to])]), [
+    ['R3', [['version', null, '1.1.0'], ['skill', 'personal:plan', null], ['skill', 'personal:review', '2222222222222222']]],
+    ['R4', [['model', null, 'sonnet']]],
+  ]);
 });

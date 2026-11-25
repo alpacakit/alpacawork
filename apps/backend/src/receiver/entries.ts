@@ -368,7 +368,13 @@ const implementations = {
   'analysis/breakdown': { run: (_root, input, context) => context.analysis!.breakdown(input, requireCaller(context)) },
   'analysis/list': { run: (_root, input, context) => context.analysis!.list(input, requireCaller(context)) },
   'analysis/task': { run: (_root, input, context) => context.analysis!.task(input, requireCaller(context)) },
-  'analysis/trace': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readTrace(root, input); } },
+  'analysis/trace': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, input.task);
+      return readTrace(root, input, await context.analysis!.activity(requireCaller(context)));
+    },
+  },
+  'analysis/changes': { run: (_root, input, context) => context.analysis!.changes(input, requireCaller(context)) },
   'analysis/findings': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readFindings(root, input); } },
   'analysis/at': { run: (root, input, context) => { authorizeRead(root, context, { name: 'task.read' }, input.task); return readAt(root, input); } },
   'project/shelf': {
