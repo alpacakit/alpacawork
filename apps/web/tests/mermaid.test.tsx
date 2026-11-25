@@ -37,11 +37,11 @@ test("language fences retain their source and leave an unfinished fence as ordin
 
 test("a fence written under a list item, bullet or numbered, is a code block under that item, its indent left out", () => {
   expect(parseMarkdown("- 質問:\n  ```\n  Reply language: ja-JP\n    indented\n  ```\n1. 次:\n\n   ```ts\n   const a = 1;\n   ```\n2. 後")).toEqual([
-    { type: "list", ordered: false, start: 1, items: ["質問:"] },
+    { type: "list", ordered: false, start: 1, items: [{ text: "質問:", children: [] }] },
     { type: "code", language: "", text: "Reply language: ja-JP\n  indented", closed: true, nested: true },
-    { type: "list", ordered: true, start: 1, items: ["次:"] },
+    { type: "list", ordered: true, start: 1, items: [{ text: "次:", children: [] }] },
     { type: "code", language: "ts", text: "const a = 1;", closed: true, nested: true },
-    { type: "list", ordered: true, start: 2, items: ["後"] },
+    { type: "list", ordered: true, start: 2, items: [{ text: "後", children: [] }] },
   ]);
   // Every reader finds the same fence: an image in it is code, a git diff in it is a command.
   const fenced = "- 例:\n  ```\n  ![x](shot.png)\n  git diff HEAD~1\n  ```";

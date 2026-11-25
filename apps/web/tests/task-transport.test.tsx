@@ -47,7 +47,7 @@ test('a saved config reads the plan limits again, so an agent turned off leaves 
   let saved = false;
   const agent = (adapter: 'claude' | 'codex') => ({ adapter, state: 'ok', windows: [], account: null, observedAt: '2026-11-24T00:00:00.000Z' });
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-    if (String(url).includes('/api/limits')) return new Response(JSON.stringify({ agents: saved ? [agent('claude')] : [agent('claude'), agent('codex')] }));
+    if (String(url).includes('/api/limits')) return new Response(JSON.stringify({ agents: saved ? [agent('claude')] : [agent('claude'), agent('codex')], stack: [] }));
     saved = true;
     return new Response(JSON.stringify({ hash: 'c'.repeat(64), agentsText: 'agents: {}\n', agents: {}, catalog: [], limits: { ...DEFAULT_LIMITS } }));
   });

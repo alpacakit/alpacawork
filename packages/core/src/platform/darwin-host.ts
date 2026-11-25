@@ -17,7 +17,6 @@ export interface DarwinHostNative {
   pidInfo(pid: number, flavor: number, arg: number, buffer: Buffer, bytes: number): number;
   sysctl(name: string, buffer: Buffer, bytes: Buffer): number;
   timebase(buffer: Buffer): number;
-  loadAverage(buffer: Buffer, count: number): number;
   hostSelf(): number;
   hostStatistics(host: number, flavor: number, buffer: Buffer, count: Buffer): number;
   releaseHost(host: number): number;
@@ -45,12 +44,11 @@ function loadNative(): DarwinHostNative {
   const deallocate = lib.func('int mach_port_deallocate(uint32_t, uint32_t)');
   const taskSelf = koffi.decode(lib.symbol('mach_task_self_'), 'uint32_t') as number;
   const timebase = lib.func('int mach_timebase_info(void *)');
-  const loadAverage = lib.func('int getloadavg(void *, int)');
   return {
     listPids: (type, info, buffer, bytes) => { koffi.errno(0); return listPids(type, info, buffer, bytes); },
     pidInfo: (pid, flavor, arg, buffer, bytes) => { koffi.errno(0); return pidInfo(pid, flavor, arg, buffer, bytes); },
     sysctl: (name, buffer, bytes) => sysctl(name, buffer, bytes, null, 0),
-    timebase, loadAverage, hostSelf, hostStatistics,
+    timebase, hostSelf, hostStatistics,
     releaseHost: host => deallocate(taskSelf, host), errno: () => koffi.errno(),
   };
 }
@@ -141,7 +139,7 @@ function readMemory(native: DarwinHostNative, totalBytes: number, pageBytes: num
     // purgeable pages can overlap other queues and compressed pages are not immediately free RAM.
     const availableBytes = (buffer.readUInt32LE(0) + buffer.readUInt32LE(8)) * pageBytes;
     if (availableBytes > totalBytes) throw new Error('Darwin available memory exceeds total memory');
-    return { totalBytes, availableBytes, swapUsedBytes: uint64(readSysctl(native, 'vm.swapusage', 32), 16) };
+    return { totalBytes, availableBytes };
   } catch (error) {
     failure = error;
     throw error;
@@ -175,11 +173,6 @@ export function darwinHostMeasurement(dataDirectory: string, injected?: DarwinHo
             cpuTicks.total += Object.values(times).reduce((sum, value) => sum + validNumber(value, 'CPU counter'), 0);
             cpuTicks.idle += validNumber(times.idle, 'idle CPU counter');
           }
-          const loadBytes = Buffer.alloc(24);
-          const loadCount = native.loadAverage(loadBytes, 3);
-          if (loadCount !== 3) throw nativeFailure('getloadavg', loadCount);
-          const values = [loadBytes.readDoubleLE(0), loadBytes.readDoubleLE(8), loadBytes.readDoubleLE(16)];
-          if (values.length !== 3 || values.some(value => !Number.isFinite(value) || value < 0)) throw new Error('Invalid Darwin load averages');
           const disk = deps.disk(dataDirectory), memory = readMemory(native, memoryBytes, pageBytes);
           const processTime = validNumber(deps.processTime(), 'process snapshot time', true);
           const processes = new Map<number, ProcessStat>();
@@ -187,7 +180,7 @@ export function darwinHostMeasurement(dataDirectory: string, injected?: DarwinHo
             const process = readProcess(native, pid, numer, denom);
             if (process) processes.set(pid, process);
           }
-          return { cpuTicks, memory, load: [values[0]!, values[1]!, values[2]!], processTime, processes,
+          return { cpuTicks, memory, processTime, processes,
             disk: { freeBytes: validNumber(disk.bavail * disk.bsize, 'disk available bytes'), totalBytes: validNumber(disk.blocks * disk.bsize, 'disk total bytes', true) } };
         } catch (cause) { throw new Error('Could not read Darwin host resources', { cause }); }
       },

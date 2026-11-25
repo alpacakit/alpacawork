@@ -22,6 +22,8 @@ function show(turns: CoordinatorTurn[]) {
   setConversationState({ conversation: conversation(turns) });
   setConversationState({ open: true, expanded: true, opening: opening(turns) });
   render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
+  // A person is at the page: only then does an open conversation read.
+  fireEvent.pointerDown(document);
 }
 beforeAll(() => startI18n());
 beforeEach(async () => { screenData(); await i18n.changeLanguage("en"); setConversationState(useConversation.getInitialState()); });
@@ -66,6 +68,7 @@ test("arrivals stay shown while old history remains independently folded", async
   show(five.map(turn => ({ ...turn, seen: true })));
   act(() => setConversationState({ conversation: conversation([...five.map(turn => ({ ...turn, seen: true })), answered(6)]) }));
   expect(shape()).toBe('Eoo');
+  fireEvent.keyDown(document);
   await waitFor(() => expect(useConversation.getState().read).toBe(true));
 });
 

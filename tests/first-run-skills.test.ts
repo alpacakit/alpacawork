@@ -124,7 +124,7 @@ test('listing skills never starts commands, including concurrent reads during an
   t.after(() => service.close());
   const reads = await Promise.all(Array.from({ length: 8 }, () => service.status()));
   assert.equal(calls, 0);
-  assert.ok(reads.every(read => read.skills.filter(skill => skill.name !== 'alpacawork-betterquality').every(skill => skill.available === 'unknown')));
+  assert.ok(reads.every(read => read.skills.filter(skill => SKILL_OFFERS.some(offer => offer.name === skill.name && offer.from.kind === 'repo')).every(skill => skill.available === 'unknown')));
   service.install({ names: ['doyourjob'] });
   try {
     const progress = await Promise.race([service.status(), delay(100).then(() => { throw new Error('Progress waited for an installer'); })]);

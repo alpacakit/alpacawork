@@ -4,7 +4,7 @@ import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { userConfigDirectory, userStateDirectory } from '@alpacawork/cli-kit';
-import { type TelemetryStatus, TELEMETRY_CONSENT_VERSION, telemetryIdSchema, utcDay } from '@alpacawork/contract/telemetry';
+import { type TelemetryStatus, TELEMETRY_CONSENT_VERSION, TELEMETRY_FIELDS, telemetryFieldsAdded, telemetryIdSchema, utcDay } from '@alpacawork/contract/telemetry';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { thisRelease } from '../release/location.js';
 import { releaseKind } from '../release/edition.js';
@@ -14,7 +14,9 @@ import { readJson, writeJson } from './files.js';
  * choosing again, so what was sent can be deleted. Keys of earlier versions are dropped.
  */
 export const consentSchema = z.object({ version: z.literal(1), choice: z.enum(['on', 'off']), consentVersion: z.number().int(),
-  decidedAt: z.iso.datetime(), decidedBy: z.enum(['cli', 'screen']), id: telemetryIdSchema.optional() });
+  decidedAt: z.iso.datetime(), decidedBy: z.enum(['cli', 'screen']), id: telemetryIdSchema.optional(),
+  /** The kinds of information the person agreed to send (TELEMETRY_FIELDS when they chose). */
+  fields: z.array(z.string()).optional() });
 export type Consent = z.infer<typeof consentSchema>;
 export type TelemetryPaths = { consent: string; state: string };
 export function telemetryPaths(env: NodeJS.ProcessEnv): TelemetryPaths {
@@ -40,8 +42,12 @@ export function telemetryGate(facts: GateFacts): TelemetryGate {
       (facts.latestDay && facts.latestDay > utcDay(facts.now))) return block('clock');
   } catch { return block('clock'); }
   if (!consent || consent.choice === 'on' && consent.decidedBy !== 'screen') return { state: 'not_asked', blockedBy: null };
-  if (consent.choice === 'on' && (consent.consentVersion !== TELEMETRY_CONSENT_VERSION || !consent.id)) return { state: 'needs_reask', blockedBy: null };
+  if (consent.choice === 'on' && !covers(consent)) return { state: 'needs_reask', blockedBy: null };
   return { state: consent.choice, blockedBy: null };
+}
+/** Whether a consent to send covers what is sent now: the same terms, a number, and every kind of information. */
+function covers(consent: Consent): boolean {
+  return consent.consentVersion === TELEMETRY_CONSENT_VERSION && !!consent.id && !!consent.fields && !telemetryFieldsAdded(consent.fields).length;
 }
 export class ConsentStore {
   constructor(readonly paths: TelemetryPaths) {}
@@ -53,12 +59,11 @@ export class ConsentStore {
     catch (error) { if (choice !== 'off') throw error; previous = null; }
     if (expectedDigest !== undefined && expectedDigest !== this.digest()) throw new Problem(PROBLEM_CODE.conflict, 'Telemetry consent changed; read it again', undefined,
       { reason: { kind: 'telemetry_consent_changed' } });
-    const changed = !previous || previous.choice !== choice || previous.decidedBy !== decidedBy || previous.consentVersion !== TELEMETRY_CONSENT_VERSION
-      || choice === 'on' && !previous.id;
+    const changed = !previous || previous.choice !== choice || previous.decidedBy !== decidedBy || choice === 'on' && !covers(previous);
     // The number is made once, when sending is first chosen; stopping keeps it, for deleting what it sent.
     const id = previous?.id ?? (choice === 'on' ? randomUUID() : undefined);
     const next: Consent = changed ? { version: 1, choice, consentVersion: TELEMETRY_CONSENT_VERSION,
-      decidedAt: new Date(now).toISOString(), decidedBy, ...(id ? { id } : {}) } : previous!;
+      decidedAt: new Date(now).toISOString(), decidedBy, ...(id ? { id } : {}), ...(choice === 'on' ? { fields: [...TELEMETRY_FIELDS] } : {}) } : previous!;
     if (changed) writeJson(this.paths.consent, next);
     if (changed || choice === 'off') this.clearPending();
     return { consent: next, changed };

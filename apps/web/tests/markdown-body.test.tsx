@@ -640,6 +640,42 @@ test("lists read the same with Windows line ends", () => {
   expect(ordered!.children).toHaveLength(2);
 });
 
+test("a coordinator's reply draws its rules, nested lists and the paragraphs under an item as GitHub does", () => {
+  const { container } = show([
+    "- **When it fails**: look for another in this order.",
+    "  1. The table's fallback row",
+    "  2. Another candidate in the same row",
+    "",
+    "  Say so in the report.",
+    "",
+    "---",
+    "",
+    "- **Propose it**: the report says",
+    "  - the row to add",
+    "    - its new wording",
+    "- Back at the top",
+    "***",
+    "Title written over a line",
+    "---",
+    "- - -",
+  ].join("\n"));
+  const [first, rule, second, star, heading, dashes] = [...container.firstElementChild!.children] as HTMLElement[];
+  const [fails] = [...first!.children] as HTMLElement[];
+  const numbered = fails!.querySelector(":scope > ol")!;
+  expect([...numbered.children].map(item => item.textContent)).toEqual(["The table's fallback row", "Another candidate in the same row"]);
+  expect(fails!.querySelector(":scope > p")!.textContent).toBe("Say so in the report.");
+  expect([rule, star, dashes].map(block => block!.tagName)).toEqual(["HR", "HR", "HR"]);
+  expect(second!.tagName).toBe("UL");
+  expect(second!.children).toHaveLength(2);
+  expect(second!.lastElementChild!.textContent).toBe("Back at the top");
+  const inner = second!.querySelector(":scope > li > ul")!;
+  expect(inner.className).toContain("list-[circle]");
+  expect(inner.querySelector(":scope > li > ul")!.textContent).toBe("its new wording");
+  expect(heading!.tagName).toBe("H3");
+  expect(heading!.textContent).toBe("Title written over a line");
+  expect(container.textContent).not.toMatch(/---|\*\*\*|- /);
+});
+
 test("HTML in Markdown draws only its permitted tags and attributes; scripts, handlers and unsafe addresses go", () => {
   const { container } = show([
     '<p align="center" onclick="alert(1)" style="color:red">',

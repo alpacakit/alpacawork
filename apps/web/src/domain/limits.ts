@@ -1,25 +1,52 @@
 /** How the bar and its menu say an agent's plan limits (contract: agent-limits). */
-import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
+import type { AgentLimits, AgentLimitsResponse, LimitWindow } from "@alpacawork/contract/agent-limits";
 
 /** From here a window is close to its limit, and at 100 it is spent. */
-export const LIMIT_NEAR = 80;
+const LIMIT_NEAR = 80;
 export type LimitTone = "normal" | "near" | "spent";
 export const limitTone = (percent: number): LimitTone => percent >= 100 ? "spent" : percent >= LIMIT_NEAR ? "near" : "normal";
 
 /** The window that stops the agent first: the fullest one. */
-export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
+const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
   windows.reduce<LimitWindow | null>((tightest, window) => !tightest || window.usedPercent > tightest.usedPercent ? window : tightest, null);
 
+/** The windows that hold a stack row back: the account's own, and its model's (the provider's "Fable", the row's "fable"). */
+const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
+  windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
+
+/** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
+const holds = (window: LimitWindow, now: number): boolean =>
+  limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
+
 /**
- * What the bar shows: the first agent that tasks use (the server lists the task stack's first) and its fullest window,
- * or no window while that agent's limits are unknown, so another agent's figure never stands as the first's. Null, and
- * no bar, until some agent's limits are known.
+ * What the bar shows, from the stack tasks run on: the first row that can work now.
+ * - `limited`: the row's fullest window that holds it.
+ * - `unknown`: its limits could not be read; another agent's figure never stands as its own.
+ * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
+ * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
+ * Null, and no bar, until some agent's limits are known.
  */
-export function barLimit(agents: readonly AgentLimits[]): { agent: AgentLimits; window: LimitWindow | null } | null {
-  // An agent with no limits at all (one used with an API key) has nothing to warn of: the next one tasks use stands first.
-  const agent = agents.find(entry => entry.state === "unavailable" || entry.state === "ok" && entry.windows.length > 0);
-  if (!agent || !agents.some(entry => entry.state === "ok")) return null;
-  return { agent, window: agent.state === "ok" ? tightestWindow(agent.windows) : null };
+export type BarLimit =
+  | { kind: "limited" | "stopped"; agent: AgentLimits; window: LimitWindow }
+  | { kind: "unknown" | "unlimited"; agent: AgentLimits };
+export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
+  if (!agents.some(entry => entry.state === "ok")) return null;
+  let first: { agent: AgentLimits; windows: LimitWindow[] } | null = null;
+  for (const row of stack) {
+    const agent = agents.find(entry => entry.adapter === row.adapter);
+    if (!agent) continue;
+    if (agent.state === "unavailable") return { kind: "unknown", agent };
+    const windows = rowWindows(agent.windows, row.model);
+    if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent };
+    const holding = windows.filter(window => holds(window, now));
+    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)! };
+    first ??= { agent, windows: holding };
+  }
+  if (!first) return null;
+  // It works again once its last holding window resets.
+  const until = (window: LimitWindow) => window.resetsAt ? Date.parse(window.resetsAt) : Infinity;
+  const window = first.windows.reduce((latest, next) => until(next) > until(latest) ? next : latest);
+  return { kind: "stopped", agent: first.agent, window };
 }
 
 type T = (key: string, options?: Record<string, unknown>) => string;
@@ -52,6 +79,14 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   }
   const when = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at);
   return t("chrome:limits.reset.at", { when });
+}
+
+/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a phone) the day alone, "Until 11/29". */
+export function stoppedWords(window: LimitWindow, locale: string, t: T, short = false): string {
+  if (!window.resetsAt) return t("chrome:limits.stopped");
+  const when = new Intl.DateTimeFormat(locale, short ? { month: "numeric", day: "numeric" }
+    : { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(resetMinute(window.resetsAt));
+  return t(short ? "chrome:limits.stoppedUntilShort" : "chrome:limits.stoppedUntil", { when });
 }
 
 /** "Updated 3 min ago", or "Updated just now". */

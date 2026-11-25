@@ -1,15 +1,23 @@
 import { fenceKind, galleryFenceKinds, inGallery, type GalleryFenceKind } from "./markdown-embeds.js";
 import { inlineLinks } from "./report-media.js";
 import { isDrawnTag } from "./markdown-html.js";
-import { LIST_ITEM, fenceLines } from "./markdown-fences.js";
+import { LIST_ITEM, THEMATIC_BREAK, fenceLines } from "./markdown-fences.js";
 
 export * from "./markdown-html.js";
+
+/** A list item: its text, then the lists and paragraphs written under it (indented past its own marker). */
+export type ListItem<T = string> = { text: T; children: (List<T> | { type: "p"; text: T })[] };
+export type List<T = string> = { type: "list"; ordered: boolean; start: number; items: ListItem<T>[] };
+/** Every text of a list, its items' and those under them, in reading order. */
+export const listTexts = <T>(list: List<T>): T[] => list.items.flatMap(item =>
+  [item.text, ...item.children.flatMap(child => child.type === "p" ? [child.text] : listTexts(child))]);
 
 type Block<T = string> =
   | { type: "heading"; level: number; text: T }
   | { type: "p"; text: T }
+  | { type: "rule" }
   | { type: "quote"; paragraphs: T[] }
-  | { type: "list"; ordered: boolean; start: number; items: T[] }
+  | List<T>
   | { type: "table"; rows: T[][] }
   /** `nested`: written under a list item (indented to its text), drawn under that item. */
   | { type: "code"; text: string; language: string; closed: boolean; nested?: true }
@@ -47,7 +55,10 @@ function parseBlocks<T>(text: string, inline: (value: string, at: number) => T,
   onLine?: (value: string) => void, onCode?: (source: string, language: string) => void, onBlock?: (end: number) => void): Block<T>[] {
   const blocks: Block<T>[] = [];
   let offset = 0, listEnd = 0, tableEnd = 0, quoteEnd = 0;
-  let list: { ordered: boolean; start: number; items: T[] } | null = null;
+  // The open lists, outermost first, each with the indent of its items' markers.
+  let lists: { indent: number; list: List<T> }[] = [];
+  // A paragraph line whose end is told only by the next line: a "---" or "===" under it makes it a heading (setext).
+  let pending: { index: number; end: number } | null = null;
   let quote: T[] | null = null;
   let table: T[][] | null = null;
   let code: string[] | null = null;
@@ -56,8 +67,8 @@ function parseBlocks<T>(text: string, inline: (value: string, at: number) => T,
   let html: { lines: string[]; end: RegExp | "blank" } | null = null;
   let language = "";
   const closeList = () => {
-    if (list) { blocks.push({ type: "list", ...list }); onBlock?.(listEnd); }
-    list = null;
+    if (lists[0]) { blocks.push(lists[0].list); onBlock?.(listEnd); }
+    lists = [];
   };
   const closeTable = () => {
     if (table) { blocks.push({ type: "table", rows: table }); onBlock?.(tableEnd); }
@@ -72,6 +83,18 @@ function parseBlocks<T>(text: string, inline: (value: string, at: number) => T,
     offset += line.length;
     if (text[offset] === "\r") offset++;
     if (text[offset] === "\n") offset++;
+    if (pending) {
+      const { index, end } = pending;
+      pending = null;
+      const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
+      if (underline) {
+        onLine?.(line);
+        blocks[index] = { type: "heading", level: underline[1]![0] === "=" ? 1 : 2, text: (blocks[index] as { text: T }).text };
+        onBlock?.(offset);
+        continue;
+      }
+      onBlock?.(end);
+    }
     // An HTML block runs to its end line (CommonMark), Markdown marks inside it included.
     if (html) {
       if (html.end === "blank" && !line.trim()) { blocks.push({ type: "html", text: html.lines.join("\n") }); onBlock?.(offset); html = null; continue; }
@@ -134,20 +157,46 @@ function parseBlocks<T>(text: string, inline: (value: string, at: number) => T,
       continue;
     }
     closeTable();
+    const rule = THEMATIC_BREAK.test(line);
     // A list's items: "- " bullets, or "1. " numbers (from the first item's number); a change of kind starts another list.
-    const item = LIST_ITEM.exec(line);
+    // An item indented past the item above is in a list under that item; one back at an outer indent returns to that list.
+    // An indented line that is not an item is a paragraph of the deepest item it is indented past; a blank line keeps the
+    // list open for one, and any other line ends it.
+    const item = !rule && LIST_ITEM.exec(line);
+    const indent = line.length - line.trimStart().length;
+    const under = (depth: number) => lists[depth]!.list.items.at(-1)!;
     if (item) {
-      const ordered = item[1] !== undefined;
-      if (list && list.ordered !== ordered) closeList();
-      (list ??= { ordered, start: ordered ? Number(item[1]) : 1, items: [] }).items.push(inline(item[2]!, line.length - item[2]!.length));
+      const ordered = item[2] !== undefined;
+      while (lists.length > 1 && lists.at(-1)!.indent > indent) lists.pop();
+      const open = lists.at(-1);
+      const fresh = (): List<T> => ({ type: "list", ordered, start: ordered ? Number(item[2]) : 1, items: [] });
+      if (open && indent > open.indent) {
+        const list = fresh();
+        under(lists.length - 1).children.push(list);
+        lists.push({ indent, list });
+      } else if (open && open.list.ordered !== ordered) {
+        // Another kind at the same depth: a list of its own beside it, under the same item when nested.
+        const list = fresh();
+        if (lists.length === 1) { closeList(); lists = [{ indent, list }]; }
+        else { under(lists.length - 2).children.push(list); lists[lists.length - 1] = { indent, list }; }
+      } else if (!open) lists = [{ indent, list: fresh() }];
+      lists.at(-1)!.list.items.push({ text: inline(item[3]!, line.length - item[3]!.length), children: [] });
+      listEnd = offset;
+      continue;
+    }
+    if (lists.length && !line.trim()) continue;
+    if (lists.length && !rule && indent > lists[0]!.indent) {
+      while (lists.length > 1 && lists.at(-1)!.indent >= indent) lists.pop();
+      under(lists.length - 1).children.push({ type: "p", text: inline(line.trimStart(), indent) });
       listEnd = offset;
       continue;
     }
     closeList();
-    if (/^#{1,4} /.test(line)) blocks.push({ type: "heading", level: line.indexOf(" "), text: inline(line.replace(/^#+ /, ""), line.indexOf(" ") + 1) });
-    else if (line.trim()) blocks.push({ type: "p", text: inline(line, 0) });
-    if (line.trim()) onBlock?.(offset);
+    if (rule) { blocks.push({ type: "rule" }); onBlock?.(offset); continue; }
+    if (/^#{1,6} /.test(line)) { blocks.push({ type: "heading", level: line.indexOf(" "), text: inline(line.replace(/^#+ /, ""), line.indexOf(" ") + 1) }); onBlock?.(offset); }
+    else if (line.trim()) { blocks.push({ type: "p", text: inline(line, 0) }); pending = { index: blocks.length - 1, end: offset }; }
   }
+  if (pending) onBlock?.(pending.end);
   closeList();
   closeTable();
   closeQuote();

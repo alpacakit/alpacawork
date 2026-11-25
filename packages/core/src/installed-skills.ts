@@ -11,9 +11,11 @@ import { strictJson } from './json.js';
 import { tryLock } from './posix.js';
 
 /** Current distribution; retained installations may also contain private add-ons. */
-export const BUNDLED_SKILL_NAMES = ['alpacawork', 'alpacawork-betterquality'] as const;
+export const BUNDLED_SKILL_NAMES = ['alpacawork', 'alpacawork-betterquality', 'alpacawork-modelpickoptimization'] as const;
+/** Bundled skills placed only where someone chose them (in setup) or where they are already installed. */
+export const OPT_IN_SKILL_NAMES: readonly ManagedSkillName[] = ['alpacawork-modelpickoptimization'];
 /** Receipt names remain readable so moving a source never deletes installed content. */
-export const MANAGED_SKILL_NAMES = ['alpacawork', 'alpacawork-betterquality', 'alpacawork-majority', 'alpacawork-try-and-keep'] as const;
+export const MANAGED_SKILL_NAMES = ['alpacawork', 'alpacawork-betterquality', 'alpacawork-majority', 'alpacawork-modelpickoptimization', 'alpacawork-try-and-keep'] as const;
 export const REQUIRED_MANAGED_SKILL = 'alpacawork';
 /** All update callers select only names this release distributes. */
 export const bundledSkillSelection = (selected: readonly ManagedSkillName[]): ManagedSkillName[] =>

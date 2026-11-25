@@ -498,7 +498,7 @@ const indexFields = {
   /** Ephemeral work from stdout; changing it does not invalidate the conversation's persistent read. */
   coordinatorWork: coordinatorWorkSchema,
   presence: z.object({ state: z.enum(['present', 'away', 'muted']), until: z.string().nullable() }).strict(),
-  /** Set while this machine is tight (Machine status); null otherwise and where it is not measured. */
+  /** Set while this machine is tight (Resources); null otherwise and where it is not measured. */
   host: hostNoticeSchema.nullable(),
 };
 /** The bounded live workspace read and SSE `index` event. `rev` counts published changes within one server `generation`. */

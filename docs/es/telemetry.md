@@ -40,7 +40,7 @@ Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a
 
 Al dejar de enviar, lo que aún no se ha enviado se elimina sin enviarlo. Lo ya enviado no se elimina solo por dejar de enviar (“Eliminar los datos enviados”, más abajo).
 
-Si actualizas a una versión que cambia los tipos de datos o la forma de enviarlos, se vuelve a preguntar, solo en los PC que habían elegido enviar. No se envía nada hasta que respondes.
+Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a pedir tu consentimiento al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después.
 
 En algunos casos no se envía aunque hayas elegido enviar, como cuando se ejecuta en CI o en un contenedor. Entonces no puedes usar el interruptor, y el motivo aparece debajo.
 
@@ -48,10 +48,12 @@ Mientras la variable de entorno `ALPACAWORK_TELEMETRY_DISABLED=1` o `DO_NOT_TRAC
 
 ## Ver lo que se envía
 
-- Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el informe de hoy hasta el momento (el que se enviará mañana) tal como se enviará. Solo aparece mientras el envío está activado. Lo que se muestra ahí aún no se ha enviado, así que, si dejas de enviar, no se enviará.
-- Comando: con `alpacawork telemetry show` puedes ver lo de hoy hasta el momento, los informes de días anteriores aún no enviados, las copias de los informes enviados y la lista de nombres y valores que se pueden enviar. La lista se puede ver incluso antes de elegir enviar.
+- Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el borrador de hoy, los informes pendientes y las solicitudes que hace alpacawork. Cada intento muestra el destino, el contenido exacto y el resultado si se conoce. También aparecen los reintentos y las solicitudes de eliminación hechas desde la aplicación.
+- Comando: `alpacawork telemetry show` muestra el mismo historial y la lista de nombres y valores que se pueden enviar.
 
-Ambos se muestran en formato JSON. Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
+Cada intento se registra antes del envío y queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor. Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado.
+
+Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
 
 ## Eliminar los datos enviados
 

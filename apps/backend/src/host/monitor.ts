@@ -6,6 +6,7 @@
 import type { HostEpisodeMinutes, HostNotice, HostStatus } from '@alpacawork/contract';
 import { failure, errorBody, faultReason, Problem, PROBLEM_CODE, type ProblemReason } from '@alpacawork/core';
 import { createHostSource, type HostSource, type HostSample, type RunRoot } from './measure.js';
+import { gpuStatus } from './gpu-status.js';
 import { PRESSURE_LIMITS, Pressure } from './pressure.js';
 import { EPISODE_RETENTION_MS, HostStore, type EpisodeDraft, type MinuteRow } from './store.js';
 
@@ -43,6 +44,7 @@ interface Bucket { at: number; cpu: number[]; memory: number[] }
 
 export class HostMonitor {
   private readonly source: HostSource;
+  private readonly readGpuStatus?: () => Promise<HostSample['gpus']>;
   private readonly pressure = new Pressure();
   private store: HostStore | null | undefined;
   private storeError: ReturnType<typeof errorBody>['error'] | null = null;
@@ -58,6 +60,8 @@ export class HostMonitor {
 
   constructor(private readonly options: HostMonitorOptions) {
     this.source = options.source ?? createHostSource(options.root);
+    const source = this.source;
+    if (source.supported && source.readGpus) this.readGpuStatus = gpuStatus(() => source.readGpus!(options.runs));
   }
 
   start(): void {
@@ -119,15 +123,17 @@ export class HostMonitor {
       cpu: sample.cpu, memoryFreePercent, diskFreeBytes: sample.disk.freeBytes };
   }
 
-  status(now = Date.now()): HostStatus {
+  async status(now = Date.now()): Promise<HostStatus> {
     if (!this.source.supported) return this.source;
+    const gpus = this.latest && this.readGpuStatus ? await this.readGpuStatus() : undefined;
+    const sample = this.latest && gpus !== undefined ? { ...this.latest, gpus } : this.latest;
     const current = this.pressure.current;
     let episodes = this.read(store => store.episodes(now - EPISODE_RETENTION_MS)) ?? [];
     // Without a record the open episode is still shown, from memory, under an id no recorded episode has.
     if (current && !episodes.some(item => item.start === current.start)) episodes = [{ id: this.currentId ?? 0, ...current }, ...episodes];
     return {
-      supported: true, facts: this.source.facts, parallel: this.options.parallel(), sample: this.latest, history: this.history,
-      current: current ? episodes.find(item => item.start === current.start) ?? null : null, episodes,
+      supported: true, facts: this.source.facts, parallel: this.options.parallel(), sample, history: this.history,
+      current: current ? episodes.find(item => item.start === current.start) ?? null : null, tight: this.pressure.tightKinds(), episodes,
       limits: { cpu: PRESSURE_LIMITS.cpu.line, memoryFreePercent: PRESSURE_LIMITS.memory.line, diskFreeBytes: PRESSURE_LIMITS.disk.line },
       error: this.sampleError ?? this.storeError,
     };

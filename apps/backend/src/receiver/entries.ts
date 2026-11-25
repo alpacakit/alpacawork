@@ -298,7 +298,7 @@ const hostEpisode = withAct(defineEntryEndpoint(hostEpisodeEntry, {
 }), SCREEN);
 
 const sharedNodes = [updateNode, ...firstRunNodes,
-  defineEntryNode({ name: 'host', description: 'This machine (Machine status)', children: [
+  defineEntryNode({ name: 'host', description: 'This machine (Resources)', children: [
     defineEntryNode({ name: 'status', description: 'Current values, the last hour and tight episodes', endpoints: [hostStatus] }),
     defineEntryNode({ name: 'episode', description: 'Minute values around one tight episode', endpoints: [hostEpisode] }),
   ] }),

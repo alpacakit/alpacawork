@@ -34,17 +34,29 @@ export const hostEpisodeSchema = z.object({
 }).strict();
 export type HostEpisode = z.infer<typeof hostEpisodeSchema>;
 
+const gpuPercent = z.number().min(0).max(100).nullable();
+const hostGpuSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  utilization: gpuPercent,
+  memory: z.object({ usedBytes: bytes, totalBytes: bytes.positive() }).strict().nullable(),
+  /** The two largest reported VRAM users per GPU. Null when process memory is unavailable. */
+  users: z.array(z.object({
+    name: z.string(), memoryBytes: bytes, runId: runIdSchema.nullable(), taskId: taskIdSchema.nullable(),
+  }).strict()).max(2).nullable(),
+}).strict();
+
 export const hostSampleSchema = z.object({
   at, cpu: percent.nullable(),
-  memory: z.object({ totalBytes: bytes, availableBytes: bytes, swapUsedBytes: bytes.nullable() }).strict(),
-  load: z.tuple([z.number(), z.number(), z.number()]).nullable(),
+  memory: z.object({ totalBytes: bytes, availableBytes: bytes }).strict(),
   disk: z.object({ freeBytes: bytes, totalBytes: bytes }).strict(),
+  gpus: z.array(hostGpuSchema),
   runs: z.array(hostRunLoadSchema),
   outside: z.object({ cpu: percent.nullable(), memoryBytes: bytes.nullable(), names: z.array(z.string()) }).strict(),
 }).strict();
 export type HostSampleDTO = z.infer<typeof hostSampleSchema>;
 
-/** `GET /api/host/status`: everything the Machine status tab draws. OS-independent normalized measurements. */
+/** `GET /api/host/status`: everything the Resources tab draws. OS-independent normalized measurements. */
 export const hostStatusSchema = z.discriminatedUnion('supported', [
   z.object({ supported: z.literal(false), platform: z.string() }).strict(),
   z.object({
@@ -56,6 +68,8 @@ export const hostStatusSchema = z.discriminatedUnion('supported', [
     /** The last hour, one point per sample. */
     history: z.array(z.object({ at, cpu: percent.nullable(), memoryFreePercent: percent }).strict()),
     current: hostEpisodeSchema.nullable(),
+    /** The measures tight now, by the same held thresholds as `current`; empty while calm. */
+    tight: z.array(hostKindSchema),
     /** Newest first, the last 90 days, the current one included. */
     episodes: z.array(hostEpisodeSchema),
     limits: z.object({ cpu: percent, memoryFreePercent: percent, diskFreeBytes: bytes }).strict(),

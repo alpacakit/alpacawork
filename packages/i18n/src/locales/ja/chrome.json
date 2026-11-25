@@ -19,7 +19,9 @@
   },
   "limits": {
     "barLabel": "AI の利用上限: {{agent}} の{{window}}は {{percent}} 使用",
+    "barStopped": "AI の利用上限: {{agent}} は{{state}}",
     "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
+    "barUnlimited": "AI の利用上限: {{agent}} にいまかかっている上限はありません",
     "none": "いまかかっている上限はありません",
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",
@@ -32,6 +34,9 @@
       "inMinutes_other": "あと{{count}}分でリセット",
       "inWholeHours": "あと{{hours}}時間でリセット"
     },
+    "stopped": "停止中",
+    "stoppedUntil": "{{when}} まで停止",
+    "stoppedUntilShort": "{{when}} まで",
     "title": "AI の利用上限",
     "unavailable": "読めません。サインインを確かめてください",
     "unsupported": "上限の値を取れません",
@@ -53,7 +58,7 @@
     "hostMemory": "メモリの空き {{value}}",
     "hostMinutes_other": "{{count}}分",
     "hostOpen": "見る",
-    "hostTight": "PC の負荷が厳しい",
+    "hostTight": "PC の負荷が高い",
     "previousBoth": "前回の設定と状態を使っています。",
     "previousReads": "前回の状態で表示しています。",
     "previousSettings": "前回の設定を使っています。",

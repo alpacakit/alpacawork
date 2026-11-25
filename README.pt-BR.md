@@ -12,7 +12,7 @@
 <h3 align="center">Controle todos os seus agentes de IA em um só chat.</h3>
 
 <p align="center">
-  Faça um pedido. O Claude Code e o Codex no seu PC o dividem em tarefas e as rodam em paralelo.<br/>
+  Faça um pedido. Os agentes de IA do seu PC, como o Claude Code e o Codex, o dividem em tarefas e as rodam em paralelo.<br/>
   Você responde às perguntas da IA e revisa os resultados. Também pelo celular.
 </p>
 
@@ -34,10 +34,10 @@
   </picture>
 </p>
 
-O alpacawork é uma ferramenta (um harness de IA) que executa os agentes Claude Code e Codex já instalados no seu PC e atribui trabalho a eles. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas, atribui as tarefas a outras IAs e acompanha o andamento. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
+O alpacawork é um orquestrador para os agentes de programação com IA que você já tem no PC, como Claude Code e Codex: ele distribui o trabalho entre eles e acompanha o andamento. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas e as atribui a outras IAs. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
 
 <p align="center">
-  <img src="docs/images/pc-phone-dark.png" alt="O alpacawork no navegador de um PC, com uma lista de dez tarefas em andamento e três aguardando revisão ao lado do relatório aberto de uma tarefa, e à direita um celular que mostra o mesmo relatório" width="820">
+  <img src="docs/images/demo-dark-pt-BR.webp" alt="Um pedido digitado na caixa de chat do celular vira três tarefas que avançam em paralelo na lista do PC; um resultado é conferido e concluído com um deslize, e uma pergunta da IA é respondida escolhendo uma opção; no fim, o celular e o PC lado a lado" width="800">
 </p>
 
 ## Instalar
@@ -70,6 +70,10 @@ No terminal, `alpacawork open` também abre a tela.
 
 ## O que ele faz
 
+Veja o fluxo completo nas telas reais, do pedido à conclusão da tarefa (cerca de 100 segundos, sem som).
+
+https://github.com/user-attachments/assets/21326312-73ba-4cd7-86da-3d5e7192b6e9
+
 - **Peça tudo em um único campo de mensagem.** O coordenador transforma cada solicitação em uma tarefa e a delega a uma IA. Você não precisa trocar de chat nem de IA a cada trabalho.
 - **Uma IA gerencia várias IAs ao mesmo tempo.** Para acrescentar ou mudar algo em um trabalho em andamento, basta dizer ao coordenador. Escreva “Nas três tarefas em andamento, verifique também o layout no celular”, e o coordenador passa essa instrução a cada IA que trabalha nelas.
 - **Descreva o processo com suas palavras, e as IAs o executam juntas.** Mesmo um processo mais elaborado, como “Faça três propostas, cada uma com um modelo diferente. Junte as três em uma só, peça para outra IA revisar e corrija antes de relatar”, é executado como você descreveu: a IA gerencia as etapas, e as IAs passam o trabalho umas para as outras.
@@ -89,6 +93,7 @@ No terminal, `alpacawork open` também abre a tela.
 - [Primeiros passos](docs/pt-BR/getting-started.md) — instalar, fazer uma solicitação e revisar o resultado
 - [Início da documentação](docs/pt-BR/README.md) — como usar, configurações, solução de problemas e a lista de todas as páginas
 - Reporte bugs nas [Issues](https://github.com/alpacakit/alpacawork/issues)
+- Os anúncios de novas versões são publicados no X: [@codemafia0000](https://x.com/codemafia0000)
 
 ## Licença
 

@@ -5,7 +5,7 @@ alpacawork を入れて、AI に1件頼み、できあがりを確かめるま�
 ## 始める前に
 
 - PC は macOS（Apple シリコン）、Linux（x64。systemd のユーザーセッションが要ります。多くのデスクトップやサーバーでは最初から有効です）、Windows（WSL2。systemd を有効にして使います。Ubuntu では既定で有効です）のどれかです。Windows では [Windows で使うとき](manage.md#windows-で使うとき) を先に読みます。
-- Claude Code か Codex を、この PC で使える状態にしておきます。
+- Claude Code や Codex などの AI エージェントを、この PC で使える状態にしておきます。
 - AI は確認を求めずにファイルを書き換えます。あなたの PC のユーザーの権限で動くので、作業するフォルダの外にも届きます。
 
 ## 1. インストールする
