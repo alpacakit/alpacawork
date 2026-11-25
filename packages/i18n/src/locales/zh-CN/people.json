@@ -96,16 +96,17 @@
       "answered": "此回复之前的步骤",
       "answeredCount_other": "此回复之前的步骤（{{count}} 步）",
       "count_other": "目前共 {{count}} 步",
-      "cut": "此后内容过长，已省略",
       "none": "没有记录到步骤",
-      "notShown": "更早的步骤过长，无法显示",
-      "older_other": "显示之前的 {{count}} 项",
+      "older_other": "显示之前的 {{count}} 项（还剩 {{rest}} 项）",
+      "omitted_other": "此后 {{count}} 个字符过长，已省略",
+      "reading": "正在读取…",
       "state": {
         "done": "已完成",
         "failed": "失败",
         "running": "运行中"
       },
-      "unreadable": "无法读取步骤"
+      "unreadable": "无法读取步骤",
+      "unreadableOne": "无法读取此步骤的内容"
     },
     "toolEvent": "{{tool}}：{{kind}}"
   },

@@ -28,7 +28,7 @@ import { historyCursor } from "@alpacawork/contract";
 const jump = vi.hoisted(() => ({ to: (_target: HTMLElement, _block?: string) => {} }));
 // Every step of a Run, as the server reads them from its output once the lead's row is opened.
 const runSteps = vi.hoisted(() => ({ of: (_run: string): Promise<unknown> => new Promise(() => {}) }));
-vi.mock("../src/data/run-steps", () => ({ readRunSteps: (run: string) => runSteps.of(run) }));
+vi.mock("../src/data/run-steps", () => ({ readRunSteps: (run: string) => runSteps.of(run), readRunStep: () => new Promise(() => {}) }));
 vi.mock("../src/features/reader/scroll-report", () => ({
   scrollReport: (target: HTMLElement, block: string, landed?: () => void) => { jump.to(target, block); landed?.(); },
 }));
@@ -668,8 +668,8 @@ test("opened, only the responsible person's steps are read and listed; everyone 
   const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
     more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
   const asked: string[] = [];
-  runSteps.of = async run => { asked.push(run); return { older: 0, unread: false, steps: steps("lead").map(step => ({ id: step.id, tool: step.tool,
-    kind: step.kind, about: null, state: step.state, input: { text: step.text, cut: false }, output: null })) }; };
+  runSteps.of = async run => { asked.push(run); return { from: 0, total: 2, steps: steps("lead").map((step, n) => ({ n, id: step.id, tool: step.tool,
+    kind: step.kind, text: step.text, more: 0, about: null, state: step.state })) }; };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),
     run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member") } })] }));

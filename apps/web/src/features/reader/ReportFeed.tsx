@@ -977,10 +977,11 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const people = useTaskPeople();
   const model = modelLabel(runAgentLabel(run), useContext(AgentNames));
   const steps = run.activity?.steps ?? [];
-  // Opened, the lead's line counts its steps and every one of them is listed under it, read again as each step goes by.
+  // Opened, the lead's line counts its steps and every one of them is listed under it.
+  // Read again as any step it was told of starts or ends, so a step that failed while a later one runs says so.
   const latest = steps.at(-1), listed = lead && open && !!latest;
-  const full = useRunSteps(run.id, listed, latest && `${latest.id}:${latest.state}`);
-  const count = stepCount(full.read);
+  const full = useRunSteps(run.id, listed, steps.map(each => `${each.id}:${each.state}`).join(" "));
+  const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;
   const names = useContext(AgentNames);
@@ -1005,7 +1006,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className={`${cell} mt-1.5`} />
+    <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className={`${cell} mt-1.5 text-xs`} />
     {listed && <StepList steps={full} className={`${cell} mt-1`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>

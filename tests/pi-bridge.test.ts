@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { platform } from '@alpacawork/core';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
+import { RunStepIndex } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { spawnBridge } from './helpers/bridge-process.ts';
 import { AgentInputChannel } from '@alpacawork/backend/test-dist/runs/input.js';
@@ -69,7 +70,14 @@ test('Pi succeeds through the Run reader with tool input and result over the std
  assert.equal(step?.text, 'print catalog');
  assert.equal(step.more, 1);
  assert.equal(step.state, 'done');
- assert.deepEqual(step.result, { text: 'Catalog printed', more: 2 });
+ assert.deepEqual(step.result, { text: 'Catalog printed', more: 2 }); // Opened, the step reads every line it ran and got back, up to the limit, saying how much was left out.
+ const index = new RunStepIndex(h.area, adapter);
+ await index.update();
+ const detail = await index.detail(0);
+ assert.equal(detail?.input.text.startsWith('print catalog\nxxx'), true);
+ assert.equal(detail!.input.text.length + detail!.input.omitted, 'print catalog\n'.length + 3 * 1024 * 1024);
+ assert.equal(detail?.output?.text.startsWith('Catalog printed\nxxx'), true);
+ assert.equal(detail!.output!.omitted > 0, true);
 });
 
 for (const mode of ['missing', 'wrong-id', 'wrong-cwd', 'wrong-model', 'busy']) test(`Pi refuses ${mode} before transmitting input`, async t => {

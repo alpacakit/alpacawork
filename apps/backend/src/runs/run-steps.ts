@@ -1,98 +1,171 @@
 /**
- * Every step of one Run, read from its stdout when someone opens them, through the same adapter events as the activity
- * projection (which keeps only the latest few, each on one line). Nothing is kept: each read is taken again.
+ * Every step of one Run, read from its stdout through the same adapter events as the activity projection (which keeps
+ * only the latest few, each on one line), when someone opens them.
+ *
+ * The output is read once, front to back, into an index of steps: each step's one line, its state, and where in the
+ * file the lines that started and ended it are. A list is a range of that index; what one step ran and got back is
+ * read again from its own lines when it is opened. Output only grows, so a later read goes on from where the last one
+ * stopped. Nothing but the index is held.
  */
-import { closeSync, fstatSync, readSync } from 'node:fs';
-import { constants } from 'node:fs';
-import { RUN_FILES, RUN_STEPS_READ_LIMIT, RUN_STEP_FULL_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText,
-  type RunFullStep, type RunStepText, type RunStepsRead } from '@alpacawork/contract/run';
+import { open, type FileHandle } from 'node:fs/promises';
+import { join } from 'node:path';
+import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText,
+  type RunStepDetail, type RunStepEntry, type RunStepLine, type RunStepText, type RunStepsPage } from '@alpacawork/contract/run';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
-import { openRunFile } from './files.js';
 import { runStepKind } from './recent-work.js';
 
-/** How much of the end of stdout is read: the activity projection's own bound for one poll. */
-export const RUN_STEPS_TAIL = 8 * 1024 * 1024;
-type Settled = Exclude<RunFullStep['state'], 'running'>;
+/**
+ * The longest output line read as one row. A longer one (an agent's single message past this) is passed over: the steps
+ * it would have started or ended are missed, as any row that is not JSON is.
+ */
+export const RUN_STEPS_LINE_LIMIT = 64 * 1024 * 1024;
+const CHUNK = 1024 * 1024;
+type Settled = Exclude<RunStepEntry['state'], 'running'>;
+type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null };
 
-const shown = (value: string): RunStepText => {
-  const text = clipRunText(value, RUN_STEP_FULL_TEXT_LIMIT);
-  return { text, cut: text.length < value.length };
-};
 const name = (value: unknown) => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
+const parse = (line: Buffer): unknown => {
+  try { return JSON.parse(line.toString('utf8')); } catch { return undefined; }
+};
 
-/** The end of stdout as text, from its first whole line; `unread` when there was more before it. */
-function tail(folder: string, limit: number): { text: string; unread: boolean } {
-  let fd: number;
-  try { fd = openRunFile(folder, RUN_FILES.stdout, constants.O_RDONLY); }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { text: '', unread: false };
-    throw error;
-  }
-  try {
-    const size = fstatSync(fd).size, length = Math.min(size, limit), bytes = Buffer.alloc(length);
-    let read = 0;
-    while (read < length) {
-      const count = readSync(fd, bytes, read, length - read, size - length + read);
-      if (!count) break;
-      read += count;
-    }
-    const kept = bytes.subarray(0, read);
-    if (length === size) return { text: kept.toString('utf8'), unread: false };
-    const start = kept.indexOf(10);
-    return { text: start === -1 ? '' : kept.subarray(start + 1).toString('utf8'), unread: true };
-  } finally { closeSync(fd); }
-}
+/** One Run's index of steps, read on from where it stopped each time it is asked. */
+export class RunStepIndex {
+  private readonly steps: Step[] = [];
+  /** The step a tool call's ID names now: an ID used again after its step ended starts another. */
+  private readonly byId = new Map<string, number>();
+  private offset = 0;
+  private file: string | null = null;
 
-/** Folds adapter events into steps by tool call: started running, ended done or failed, as the projection decides them. */
-export class StepFold {
-  private readonly steps = new Map<string, RunFullStep>();
+  constructor(private readonly folder: string, private readonly adapter: AgentAdapter) {}
 
-  observe(event: ActivityEvent): void {
+  private observe(event: ActivityEvent, at: number): void {
     const { kind, id } = event;
     if (kind === 'result' || kind === 'error') { this.settle(kind === 'result' ? 'done' : 'failed'); return; }
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return;
-    const known = this.steps.get(id);
-    const input = event.input ?? event.detail?.text;
-    if (kind === 'tool_start' || !known) {
+    const index = this.byId.get(id);
+    let step = index === undefined ? undefined : this.steps[index];
+    if (!step || kind === 'tool_start' && step.state !== 'running') {
       const toolName = name(event.toolName);
       if (!toolName) return;
       const tool = name(event.stepTool) ?? toolName;
-      this.steps.set(id, { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), about: event.about ?? null,
-        state: 'running', input: shown(input ?? ''), output: null });
-    } else if (input && !known.input.text) known.input = shown(input);
-    if (kind === 'tool_end') {
-      const step = this.steps.get(id)!, output = event.outcome?.output ?? event.outcome?.result.text;
-      step.state = event.outcome?.failed ? 'failed' : 'done';
-      step.output = output ? shown(output) : null;
-    }
+      step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
+        about: event.about ?? null, state: 'running', start: at, end: null };
+      this.byId.set(id, this.steps.push(step) - 1);
+    } else if (!step.text && event.detail?.text) Object.assign(step, event.detail);
+    if (kind === 'tool_end') { step.state = event.outcome?.failed ? 'failed' : 'done'; step.end = at; }
   }
 
-  /** What is still running when the agent's turn ended (or the Run did) ended with it. */
-  settle(state: Settled): void {
-    for (const step of this.steps.values()) if (step.state === 'running') step.state = state;
+  /** What is still running when the agent's turn ended ended with it. */
+  private settle(state: Settled): void {
+    for (const step of this.steps) if (step.state === 'running') step.state = state;
   }
 
-  read(unread: boolean): RunStepsRead {
-    const all = [...this.steps.values()];
-    return { steps: all.slice(-RUN_STEPS_READ_LIMIT), older: Math.max(0, all.length - RUN_STEPS_READ_LIMIT), unread };
+  private accept(line: Buffer, at: number): void {
+    const value = parse(line);
+    if (value === undefined) return;
+    for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at);
+  }
+
+  /** Reads what the output gained since the last read; a file that was replaced is read again from its start. */
+  async update(): Promise<void> {
+    let handle: FileHandle;
+    try { handle = await open(join(this.folder, RUN_FILES.stdout), 'r'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+    try {
+      const stat = await handle.stat(), file = `${stat.dev}:${stat.ino}`;
+      if (file !== this.file || stat.size < this.offset) {
+        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file;
+      }
+      const chunk = Buffer.alloc(CHUNK);
+      let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false;
+      for (;;) {
+        const { bytesRead } = await handle.read(chunk, 0, CHUNK, position);
+        if (!bytesRead) break;
+        const bytes = chunk.subarray(0, bytesRead);
+        let from = 0;
+        for (let end = bytes.indexOf(10); end !== -1; end = bytes.indexOf(10, from)) {
+          const part = bytes.subarray(from, end);
+          if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT) this.accept(Buffer.concat([...pending, part]), lineStart);
+          pending = []; pendingLength = 0; dropping = false;
+          lineStart = position + end + 1; from = end + 1;
+        }
+        const rest = bytes.subarray(from);
+        if (!dropping && pendingLength + rest.length <= RUN_STEPS_LINE_LIMIT) { pending.push(Buffer.from(rest)); pendingLength += rest.length; }
+        else { pending = []; pendingLength = 0; dropping = true; }
+        position += bytesRead;
+      }
+      // An unfinished last line is read again next time, once it is whole.
+      this.offset = lineStart;
+    } finally { await handle.close(); }
+  }
+
+  get total(): number { return this.steps.length; }
+
+  /**
+   * Steps `from` on, at most `limit` (the latest `limit` when `from` is not given). `ended`: how the Run ended, for
+   * steps its output left running; null while it runs.
+   */
+  page(from: number | undefined, limit: number, ended: Settled | null): RunStepsPage {
+    const count = Math.max(1, Math.min(limit, RUN_STEPS_PAGE_LIMIT)), total = this.steps.length;
+    const start = Math.min(total, from ?? Math.max(0, total - count));
+    const steps = this.steps.slice(start, start + count).map(({ start: _start, end: _end, state, ...step }, at) =>
+      ({ n: start + at, ...step, state: state === 'running' && ended ? ended : state }));
+    return { steps, from: start, total };
+  }
+
+  /** What step `n` ran and got back, read again from its own lines; null when there is no such step. */
+  async detail(n: number): Promise<RunStepDetail | null> {
+    const step = this.steps[n];
+    if (!step) return null;
+    const handle = await open(join(this.folder, RUN_FILES.stdout), 'r');
+    try {
+      const events = async (at: number | null) => {
+        if (at === null) return [];
+        const value = parse(await lineAt(handle, at));
+        return value === undefined ? [] : this.adapter.activity(value, new Date().toISOString()).filter(event => event.id === step.id);
+      };
+      const started = await events(step.start), ended = step.end === step.start ? started : await events(step.end);
+      const input = [...started, ...ended].map(event => event.input).find(Boolean)
+        ?? ({ text: [...started, ...ended].map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
+      const outcome = ended.map(event => event.outcome).find(Boolean);
+      const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);
+      return { input: fullRunText(input.text, input.omitted), output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null };
+    } finally { await handle.close(); }
   }
 }
+/** A preview said as the text it stands for, when nothing more was written. */
+const lineText = (line: RunStepLine): RunStepText => ({ text: line.text, omitted: 0 });
 
-/**
- * Every step in the Run's stdout, oldest first, the latest `RUN_STEPS_READ_LIMIT` of them. A line that is not JSON is
- * passed over; no stdout reads as no steps. `ended`: how the Run ended, for steps its output left running; null while
- * it runs.
- */
-export function readRunSteps(folder: string, adapter: AgentAdapter, ended: Settled | null, limit = RUN_STEPS_TAIL): RunStepsRead {
-  const { text, unread } = tail(folder, limit);
-  const fold = new StepFold(), received = new Date().toISOString();
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    let value: unknown;
-    try { value = JSON.parse(line); } catch { continue; }
-    for (const event of adapter.activity(value, received)) fold.observe(event);
+/** The whole line that starts at `at`, up to the longest line read as a row. */
+async function lineAt(handle: FileHandle, at: number): Promise<Buffer> {
+  const parts: Buffer[] = [];
+  let length = 0, position = at;
+  for (;;) {
+    const chunk = Buffer.alloc(CHUNK), { bytesRead } = await handle.read(chunk, 0, CHUNK, position);
+    if (!bytesRead) break;
+    const end = chunk.subarray(0, bytesRead).indexOf(10);
+    parts.push(chunk.subarray(0, end === -1 ? bytesRead : end));
+    length += end === -1 ? bytesRead : end;
+    if (end !== -1 || length > RUN_STEPS_LINE_LIMIT) break;
+    position += bytesRead;
   }
-  if (ended) fold.settle(ended);
-  return fold.read(unread);
+  return Buffer.concat(parts);
+}
+
+/** The indexes read lately, by Run folder and agent, so opening again or reading the next page goes on from there. */
+const indexes = new Map<string, { index: RunStepIndex; reading: Promise<unknown> }>();
+const INDEX_LIMIT = 16;
+/** One Run's index brought up to date, its reads one after another. */
+export function runStepIndex(folder: string, adapterId: string, adapter: AgentAdapter): Promise<RunStepIndex> {
+  const key = `${folder}\0${adapterId}`;
+  let held = indexes.get(key);
+  if (held) indexes.delete(key);
+  else held = { index: new RunStepIndex(folder, adapter), reading: Promise.resolve() };
+  indexes.set(key, held);
+  if (indexes.size > INDEX_LIMIT) indexes.delete(indexes.keys().next().value!);
+  const index = held.index;
+  const read = held.reading.catch(() => undefined).then(() => index.update()).then(() => index);
+  held.reading = read;
+  return read;
 }

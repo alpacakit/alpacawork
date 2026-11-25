@@ -95,21 +95,26 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const offline = useConnection(state => state.offline);
   const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
   const step = mine?.steps.at(-1);
-  const steps = useRunSteps(mine?.run, open && !!step, step && `${step.id}:${step.state}`);
-  useListedInSight(steps.read, end);
+  // Read again as any step it was told of starts or ends, so a step that failed while a later one runs says so.
+  const steps = useRunSteps(mine?.run, open && !!step, mine?.steps.map(each => `${each.id}:${each.state}`).join(' '));
+  useListedInSight(steps.listed, end);
   const time = seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
-  const count = stepCount(steps.read);
+  const count = stepCount(steps);
   return <div ref={end}>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     {step ? <button type="button" data-working-steps aria-expanded={open} onClick={() => { pressed.current = true; setOpen(!open); }} className={STEPS_BUTTON}>
       <WorkLine data-ask-thinking step={step} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
         end={<>{time}<Chevron open={open} /></>} /></button>
-      : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} className="py-1 narrow:min-h-11 narrow:items-center" />}
+      : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
     {open && step && <StepList steps={steps} className="mt-1" />}
   </div>;
 }
-/** A line that opens a Run's steps under it: a finger's height on a phone, its whole width a press. */
-const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11";
+/**
+ * A line that opens a Run's steps under it: its whole width a press, a finger's height on a phone. The press overhangs
+ * the line evenly, so its words stand where the line's words stand before it can be pressed (and where any other state
+ * of a message is said).
+ */
+const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
 function Chevron({ open }: { open: boolean }) {
   return <Icon name="down" className={cn("size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-180")} />;
 }
@@ -135,9 +140,9 @@ export function AnswerSteps({ run }: { run: string }) {
   const { t } = useTranslation('people');
   const [open, setOpen] = useState(false);
   const steps = useRunSteps(run, open);
-  const count = stepCount(steps.read);
+  const count = stepCount(steps);
   return <div data-answer-steps className="mb-2">
-    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-xs text-muted hover:text-ink")}>
+    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-muted hover:text-ink")}>
       <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
       <Chevron open={open} /></button>
     {open && <StepList steps={steps} className="mt-1" />}

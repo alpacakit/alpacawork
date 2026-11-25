@@ -1,9 +1,12 @@
-/** Built-in bridge stdin and stdout. Codex forwards app-server items; the other tool events carry bounded display previews. */
+/**
+ * Built-in bridge stdin and stdout. Codex forwards app-server items; the other tool events carry bounded display previews,
+ * and what the tool ran and got back as written, up to the limit a step's opened text has.
+ */
 import { z } from 'zod';
 import { tokenCountersSchema } from './run-contract.js';
 import type { RunFailure } from './run-failure.js';
 import type { ContextUpdate } from './agent-context.js';
-import { RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, runStepLineSchema } from './work-contract.js';
+import { RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, runStepLineSchema, runStepTextSchema } from './work-contract.js';
 
 export const agentUsageSchema = z.object({ scope: z.enum(['conversation', 'run']), counters: tokenCountersSchema }).strict();
 export type AgentUsage = z.infer<typeof agentUsageSchema>;
@@ -15,8 +18,9 @@ const bridgeTool = {
 };
 export const bridgeToolEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tool.started'), ...bridgeTool, detail: runStepLineSchema,
-    about: z.string().max(RUN_STEP_TEXT_LIMIT).nullable() }).strict(),
-  z.object({ type: z.literal('tool.completed'), ...bridgeTool, result: runStepLineSchema, failed: z.boolean() }).strict(),
+    about: z.string().max(RUN_STEP_TEXT_LIMIT).nullable(), input: runStepTextSchema.optional() }).strict(),
+  z.object({ type: z.literal('tool.completed'), ...bridgeTool, result: runStepLineSchema, failed: z.boolean(),
+    output: runStepTextSchema.optional() }).strict(),
 ]);
 export type BridgeToolEvent = z.infer<typeof bridgeToolEventSchema>;
 

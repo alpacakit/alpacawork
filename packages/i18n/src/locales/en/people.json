@@ -106,17 +106,19 @@
       "answeredCount_other": "{{count}} steps behind this answer",
       "count_one": "{{count}} step so far",
       "count_other": "{{count}} steps so far",
-      "cut": "The rest is too long and was left out",
       "none": "No steps were recorded",
-      "notShown": "Earlier steps are too long to show",
-      "older_one": "Show {{count}} earlier",
-      "older_other": "Show {{count}} earlier",
+      "older_one": "Show {{count}} earlier ({{rest}} left)",
+      "older_other": "Show {{count}} earlier ({{rest}} left)",
+      "omitted_one": "{{count}} more character left out as too long",
+      "omitted_other": "{{count}} more characters left out as too long",
+      "reading": "Reading…",
       "state": {
         "done": "Done",
         "failed": "Failed",
         "running": "Running"
       },
-      "unreadable": "The steps could not be read"
+      "unreadable": "The steps could not be read",
+      "unreadableOne": "What this step ran could not be read"
     },
     "toolEvent": "{{tool}}: {{kind}}"
   },

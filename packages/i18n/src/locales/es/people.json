@@ -116,18 +116,21 @@
       "count_one": "{{count}} paso hasta ahora",
       "count_many": "{{count}} pasos hasta ahora",
       "count_other": "{{count}} pasos hasta ahora",
-      "cut": "El resto es demasiado largo y se omitió",
       "none": "No se registraron pasos",
-      "notShown": "Los pasos anteriores son demasiado largos para mostrarlos",
-      "older_one": "Mostrar {{count}} anterior",
-      "older_many": "Mostrar {{count}} anteriores",
-      "older_other": "Mostrar {{count}} anteriores",
+      "older_one": "Mostrar {{count}} anterior (quedan {{rest}})",
+      "older_many": "Mostrar {{count}} anteriores (quedan {{rest}})",
+      "older_other": "Mostrar {{count}} anteriores (quedan {{rest}})",
+      "omitted_one": "Se omitió {{count}} carácter más por ser demasiado largo",
+      "omitted_many": "Se omitieron {{count}} caracteres más por ser demasiado largos",
+      "omitted_other": "Se omitieron {{count}} caracteres más por ser demasiado largos",
+      "reading": "Leyendo…",
       "state": {
         "done": "Hecho",
         "failed": "Falló",
         "running": "En curso"
       },
-      "unreadable": "No se pudieron leer los pasos"
+      "unreadable": "No se pudieron leer los pasos",
+      "unreadableOne": "No se pudo leer lo que ejecutó este paso"
     },
     "toolEvent": "{{tool}}: {{kind}}"
   },
