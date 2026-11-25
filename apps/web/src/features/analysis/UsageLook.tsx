@@ -67,7 +67,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
-  const launches = useLaunches(points, series, span, bucket, live);
+  const launches = useLaunches(points, days, series, span, bucket, live);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
   // The launches are the series' (under its filter) where they stand on the same bins, the use's otherwise.
@@ -116,7 +116,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
     launchesSay(launches, t("usage.launches"), launches.shownFiltered ? undefined : perLine("launches"), launches.shownFiltered ? undefined
       : i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
-        list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }]),
+        list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }], i => points[i]!.counts.launches),
   ];
   // The span's amounts per finished task on the left, against the span before.
   const spanPer = (value: number, base: number | undefined) => base ? value / base : null;

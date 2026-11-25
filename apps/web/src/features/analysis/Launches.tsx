@@ -23,7 +23,7 @@ export type LaunchAnswers = { models: UsageSeriesView; spanModels: UsageSeriesVi
  * anything chosen can be left. What the row shows, and every list it opens, is one answer's: its axis and its filter
  * as the server counted it, not what is chosen since. `live`: false in the face's stand-in, which reads nothing.
  */
-export function useLaunches(bins: Bin[], answers: LaunchAnswers, span: Span, bucket: Bucket, live = true) {
+export function useLaunches(bins: Bin[], days: { from: string; to: string }, answers: LaunchAnswers, span: Span, bucket: Bucket, live = true) {
   const { t } = useTranslation("analysis");
   const project = useViewStore(state => state.project);
   const { launchBy: by, launchFilter: filter } = useChoices();
@@ -35,16 +35,20 @@ export function useLaunches(bins: Bin[], answers: LaunchAnswers, span: Span, buc
   const fits = (view: UsageSeriesView | undefined): view is UsageSeriesView => !!view
     && view.points.length === bins.length && view.points[0]?.from === bins[0]?.from;
   const sameAnswer = (a: UsageSeriesView, b: UsageSeriesView) => a.by === b.by && JSON.stringify(a.filters) === JSON.stringify(b.filters);
-  // The row's own answers once both have come for one choice (or, while another comes, the last that had), else the face's.
-  const ownPair = fits(chartRead.data) && spanRead.data && sameAnswer(chartRead.data, spanRead.data) ? [chartRead.data, spanRead.data] as const : null;
+  // The row's own answers once both have come for one choice (or, while another comes, the last that had), else the
+  // face's: never a span's numbers for days other than those the face shows (its lists are for those days), never an
+  // effort's colours before the whole record's efforts have come (a colour would change under the reader's eyes).
+  const sameDays = (view: UsageSeriesView) => view.head.period?.from === days.from && view.head.period?.to === days.to;
+  const ownPair = fits(chartRead.data) && spanRead.data && sameAnswer(chartRead.data, spanRead.data) && sameDays(spanRead.data)
+    && (chartRead.data.by === "model" || !!efforts.data) ? [chartRead.data, spanRead.data] as const : null;
   const [chart, inSpan] = own && ownPair ? ownPair : [answers.models, answers.spanModels] as const;
   const current = !own || (!!ownPair && !chartRead.isPlaceholderData && !spanRead.isPlaceholderData && chart === chartRead.data);
   const failed = [efforts, ...own ? [chartRead, spanRead] : []].find(read => read.isError);
-  const bookOf = (axis: SeriesBy) => colourBook(axis, axis === "model" ? answers.models.groups : (efforts.data ?? chart).groups);
+  const bookOf = (axis: SeriesBy) => colourBook(axis, (axis === "model" ? answers.models : efforts.data!).groups);
   const counts = fits(chart) ? partsOf(bookOf(chart.by), chart) : null, spanCounts = partsOf(bookOf(inSpan.by), inSpan);
   const shownBy = chart.by;
   const nameOf = (part: SeriesPart) => shownBy === "effort" && part.value === null ? t("usage.effortNone") : part.label;
-  const choicesOf = (axis: SeriesBy, view: UsageSeriesView | undefined) => view ? partsOf(bookOf(axis), { ...view, points: [] }).parts
+  const choicesOf = (axis: SeriesBy, view: UsageSeriesView | undefined) => view ? partsOf(colourBook(axis, view.groups), { ...view, points: [] }).parts
     .map(part => [part.value ?? EFFORT_NONE, axis === "effort" && part.value === null ? t("usage.effortNone") : part.label] as const) : [];
   return {
     by, filter, current, ready: !!counts,
@@ -65,13 +69,15 @@ export function useLaunches(bins: Bin[], answers: LaunchAnswers, span: Span, buc
 export type Launches = ReturnType<typeof useLaunches>;
 
 /** What the launches row says of a bin: its total, and its parts by colour, each opening its own launches of that bin. */
-export function launchesSay(launches: Launches, name: string, line: RowSay["line"], extra: RowSay["parts"]): RowSay {
+export function launchesSay(launches: Launches, name: string, line: RowSay["line"], extra: RowSay["parts"], used: (at: number) => number): RowSay {
+  // Where the series does not stand on the chart's bins, the bars are the use's launches in one colour: so is what a bin says.
+  const total = (at: number) => launches.ready ? launches.total(at) : used(at);
   const share = (value: number, all: number) => all ? `${Math.round(value / all * 100)}%` : "";
   const list = (more: Partial<DayList>) => (bin: Bin): DayList => ({ set: "used", value: "launches", from: bin.from, to: bin.to, filter: launches.shown.filter, ...more });
   return {
-    name, total: at => format("times", launches.total(at)), line, list: bin => list({})(bin),
+    name, total: at => format("times", total(at)), line, list: bin => list({})(bin),
     parts: at => [...launches.parts(at).map(({ part, value }) => ({
-      color: part.color, name: launches.nameOf(part), value: format("times", value), share: share(value, launches.total(at)),
+      color: part.color, name: launches.nameOf(part), value: format("times", value), share: share(value, total(at)),
       list: list(launches.member(part)),
     })), ...extra?.(at) ?? []],
   };
