@@ -11,7 +11,7 @@ import { capitalized, dayClock } from "@/domain/day-clock";
 import { finishWords } from "@/domain/finish-words";
 import type { PeopleIndex } from "@/domain/people";
 import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
-import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
+import { subtreeTokens, taskWorkTime, workTimeMs, type WorkTime as WorkTimeParts } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
@@ -70,9 +70,8 @@ export function StatusTime({ task }: { task: Task }) {
         return [shown, shown, false];
       }
       case "since": {
-        const shown = length(now - status.at, t);
-        return [shown, t(task.rowFacts.kind?.kind === "stopped" || task.rowFacts.kind?.kind === "followup"
-          ? "status.long.reason" : "status.long.since", { length: shown }), true];
+        const since = sinceWords(task, status.at, now, t);
+        return [since.shown, since.long, true];
       }
     }
   })();
@@ -115,24 +114,49 @@ function WorkTime({ task, at }: { task: Task; at?: number | null }) {
 }
 
 /**
- * The reader's line under the title: how long agents have worked on the task and the tasks under it, named, whatever
- * its state, as the row says it while it runs (and in the same colour then); its press says the two parts and the
- * tokens, as the row's does. Before any Run has started there is none, and nothing is said. Beside it, while it runs,
- * the Runs running and the expected report, as on its row.
+ * The reader's line under the title, the row's times named, since nothing around them says what they are: how long
+ * agents have worked on the task and the tasks under it, whatever its state (while it runs, ticking in the working
+ * colour, as on its row), and, as its row says when it does not run, how long it has been in its state. Each press says
+ * what the row's does (the work time's two parts and its tokens). Beside them while it runs, the Runs running and the
+ * expected report. A task no agent has worked on, in no state the row times, says nothing.
  */
 export function ReaderTimes({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
   const { t } = useTranslation("tree");
   const offline = useOfflineShown();
   const receivedAt = useConnection((state) => offline ? state.lastReceivedAt : null);
   const work = useWorkTime(task, offline ? receivedAt ?? null : undefined);
-  if (!work.any) return null;
+  const since = useSince(task);
+  if (!work.any && !since) return null;
   const live = work.running && !work.still;
-  return <p data-reader-times className={cn("flex flex-wrap items-baseline gap-x-2 text-xs text-muted", className)}>
-    <TimeTip data={{ "data-reader-work-time": "" }} align="start" label={t("status.work.label")} shown={workWords(work.subtree, t)} heading={t("status.work.heading")}
-      long={work.long} body={<WorkParts task={task} work={work} />} className={live ? "text-working" : "text-ink"} />
+  return <p data-reader-times className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs", className)}>
+    {work.any && <span className="flex items-baseline gap-1.5">
+      <span className="text-muted">{t("status.work.label")}</span>
+      <TimeTip data={{ "data-reader-work-time": "" }} align="start" shown={workWords(work.subtree, t)} heading={t("status.work.heading")}
+        long={work.long} body={<WorkParts task={task} work={work} />} className={live ? "text-working" : work.still ? "text-muted" : "text-ink"} />
+    </span>}
+    {since && <span className="flex items-baseline gap-1.5">
+      <span className="text-muted">{t("status.tip.elapsed")}</span>
+      <TimeTip data={{ "data-reader-since": "" }} align="start" shown={since.shown} heading={t("status.tip.elapsed")} long={since.long} className="text-ink" />
+    </span>}
     <RunningRuns task={task} />
     <ReportTime task={task} people={people} />
   </p>;
+}
+
+/** How long the task has been in its state, as its row says it when it does not run (`StatusTime`): null when it does not. */
+function useSince(task: Task) {
+  const { t } = useTranslation("tree");
+  const now = useNow();
+  const { status } = task.rowFacts;
+  if (!saysRuns(task) || representedWork(task) || status?.kind !== "since" || !saysStatus(task, status.kind)) return null;
+  return sinceWords(task, status.at, now, t);
+}
+
+/** A time in the state, short and in words ("5時間", "この状態になって 5時間"; after a stop or a follow-up, since its reason). */
+function sinceWords(task: Task, at: number, now: number, t: T) {
+  const shown = length(now - at, t);
+  return { shown, long: t(task.rowFacts.kind?.kind === "stopped" || task.rowFacts.kind?.kind === "followup"
+    ? "status.long.reason" : "status.long.since", { length: shown }) };
 }
 
 /** The work time on a task and under it at the clock's now (or `at`, out of reach): its two parts, said in words. */
@@ -141,8 +165,10 @@ function useWorkTime(task: Task, at?: number | null) {
   const index = useTaskIndexFor(task.id);
   const people = usePeopleFor(task.id, true);
   const times = useMemo(() => taskWorkTime(task.id, index, people.runsByTask), [task.id, index, people]);
-  const ticking = useNow(), now = at ?? ticking;
-  const subtree = workTimeMs(times.subtree, now), own = workTimeMs(times.own, now);
+  // Out of reach with nothing received, the running Runs' time is not known: only what was recorded counts.
+  const ticking = useNow(), now = at === null ? null : at ?? ticking;
+  const time = (part: WorkTimeParts) => now === null ? part.doneMs : workTimeMs(part, now);
+  const subtree = time(times.subtree), own = time(times.own);
   const parts = [{ key: "subtree", label: t("status.work.subtree"), value: workWords(subtree, t) },
     { key: "own", label: t("status.work.own"), value: workWords(own, t) }];
   return { subtree, own, parts, still: at !== undefined, running: times.subtree.runningSince.length > 0,
@@ -199,10 +225,8 @@ function workWords(ms: number, t: T) {
  * the title, even at its top edge, opens the task (e2e/row-time-tip.check.ts). While it is open a press anywhere else only closes it (modal), as do Esc, Back
  * (Popover, with the page's step, as every surface open for a moment), a turn of the wheel and a swipe.
  */
-function TimeTip({ shown, label, mark, heading, long, body, className, data, align = "end" }: {
+function TimeTip({ shown, mark, heading, long, body, className, data, align = "end" }: {
   shown: string;
-  /** What the time is, said before it where nothing around says it (the reader's line), in grey. */
-  label?: string;
   /** What the open tip shows under its heading when it is more than its long words (the work time's two lines); `long` still names the press. */
   body?: ReactNode | ((close: () => void) => ReactNode);
   /** What says the kind of time before its words (the expected report's flag), part of the press. */
@@ -228,7 +252,7 @@ function TimeTip({ shown, label, mark, heading, long, body, className, data, ali
       className={cn("relative z-1 flex-none cursor-pointer rounded-sm whitespace-nowrap tabular-nums decoration-dotted underline-offset-3 outline-none",
         "before:absolute before:-inset-x-1 before:-top-2 before:-bottom-px before:content-[''] hover:underline focus-visible:ring-2 focus-visible:ring-ink/40 data-[state=open]:underline",
         className)}>
-      {label && <span className="me-1.5 text-muted">{label}</span>}{mark}{shown}
+      {mark}{shown}
     </PopoverTrigger>
     <PopoverContent data-time-tip align={align} side="bottom" className="w-auto max-w-72 px-3 py-2 text-sm">
       {heading && <p className="text-xs font-medium text-muted">{heading}</p>}

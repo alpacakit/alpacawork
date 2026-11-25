@@ -394,7 +394,8 @@ test("the detail names the agents' run time under the title for a finished task,
       <Reader mode="docked" /></TestWorkspace>);
     act(() => useViewStore.getState().openTask("T1", { reader: true }));
     const time = await vi.waitFor(() => document.querySelector<HTMLElement>("[data-reader-work-time]")!);
-    expect(time.textContent).toBe("実行時間2時間05分");
+    expect(time.textContent).toBe("2時間05分");
+    expect(time.parentElement?.textContent).toBe("実行時間2時間05分");
     expect(time.classList.contains("text-working")).toBe(false);
     act(() => useViewStore.getState().openTask("T2", { reader: true }));
     await vi.waitFor(() => expect(document.querySelector("[data-reader-title]")?.getAttribute("data-reader-title")).toBe("T2"));
