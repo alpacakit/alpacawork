@@ -3,7 +3,7 @@
  * answer counted from that load alone (timeline.ts, findings.ts). The caller has authorized reading the task.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
@@ -87,10 +87,12 @@ function stoppedCommands(folder: string): TraceRun['stopped'] {
  */
 const endedSteps = new Kept<string, TraceStep[]>(512);
 async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep[] | null; missing: TraceRun['stepsMissing'] }> {
-  const folder = runFolder(root, run.id), key = `${root}\0${run.id}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
+  // Kept by the journal's size as well: a time written after the Run ended (its last steps settled) is read again.
+  const folder = runFolder(root, run.id), journal = statSync(join(folder, RUN_FILES.steps), { throwIfNoEntry: false });
+  const key = `${root}\0${run.id}\0${journal?.size ?? 0}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
   if (kept) return { steps: kept, missing: null };
   // Step times and conditions came in together: a Run with neither started before step times were kept.
-  if (!existsSync(join(folder, RUN_FILES.steps)) && !existsSync(join(folder, RUN_FILES.conditions)))
+  if (!journal && !existsSync(join(folder, RUN_FILES.conditions)))
     return { steps: null, missing: 'before-step-times' };
   const index = await readRunStepIndex(root, run.id);
   if (!index) return { steps: null, missing: 'provider-unsupported' };
@@ -129,8 +131,11 @@ async function traceRun(root: string, record: RunRecord): Promise<TraceRun> {
 function versionOf(tasks: readonly TraceTask[], runs: readonly TraceRun[]) {
   const hash = createHash('sha256');
   for (const task of tasks) hash.update(`${task.id}:${task.log.length}:${task.log.at(-1)?.id ?? ''}\n`);
-  for (const run of runs) hash.update(`${run.id}:${run.state}:${run.ended ?? ''}:${run.steps?.length ?? '-'}:${run.steps?.at(-1)?.to ?? ''}:` +
-    `${run.compactions.length}:${run.stopped.length}:${run.conditions ? 1 : 0}\n`);
+  for (const run of runs) {
+    hash.update(`${run.id}:${run.state}:${run.ended ?? ''}:${run.stepsMissing ?? ''}:${run.compactions.length}:${run.stopped.length}:${run.conditions ? 1 : 0}\n`);
+    // Every step's times and state: one step ending while another runs is a new version too.
+    for (const step of run.steps ?? []) hash.update(`${step.n}:${step.from ?? ''}:${step.to ?? ''}:${step.state}\n`);
+  }
   return hash.digest('base64url').slice(0, 12);
 }
 

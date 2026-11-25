@@ -244,9 +244,10 @@ export const ANALYSIS_FINDING_RULE_MEANINGS: Readonly<Record<AnalysisFindingRule
   'long-step': 'a step this long, or 3 times the median of its fingerprint and at least 30 seconds (a sub-agent judged by its own steps); ' +
     'at: its start, durationMs: its length',
   'limit-hit': 'a command the Run\'s manager stopped at the command time limit; at: when it started, durationMs: the limit',
-  'repeated-command': 'one command again and again in a row with the same output and no edit between, or failing with the same output each time; ' +
+  'repeated-command': 'one command failing with the same output again and again in a row (edits between allowed); ' +
     'at: the first, durationMs: their time together, count: how many',
-  'same-result': 'one read (not a command or an edit) again with the same output and no edit between; at: the first, durationMs: their time, count: how many',
+  'same-result': 'one read or command (not an edit) again with the same output and no edit between, without failing (a repeated ' +
+    'task get or git status included); at: the first, durationMs: their time, count: how many',
   'fan-out': 'one fingerprint with differing arguments many times in one Run (one by one where one read could do); at: the first, ' +
     'durationMs: their time, count: how many',
   'queue-wait': 'a Run that waited this long before it started; at: when it was made, durationMs: the wait',

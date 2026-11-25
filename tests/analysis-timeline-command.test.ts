@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -54,7 +54,6 @@ function prepare(root: string) {
   ].map(line => JSON.stringify(line)).join('\n') + '\n');
   writeFileSync(join(folder, RUN_FILES.steps), [
     { event: 'start', line: 0, id: 'call', at: instant(10), source: 'reported', fingerprint: { line: 'pnpm test', bodyDigest: null }, parentId: null },
-    { event: 'end', line: 0, id: 'call', at: instant(40), source: 'reported', state: 'done', output: null },
   ].map(line => JSON.stringify(line)).join('\n') + '\n');
   writeFileSync(join(folder, RUN_FILES.conditions), JSON.stringify({ v: 1, observedAt: instant(1), version: '0.0.0', release: null, source: null,
     cwd: { path: '/fictional', commit: null }, skills: [], instructions: [] }));
@@ -79,7 +78,17 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
         assert.equal(response.status, status, JSON.stringify(data));
         return data;
       };
+      // The output shows the step ended, but the journal has no end yet: its time is unknown, and it is not running.
+      const before = analysisTraceViewSchema.parse(await read('trace', { task, timeZone: 'UTC', limit: '1' }));
+      assert.deepEqual(before.coverage.steps.unknown.find(item => item.reason === 'missing-step-times')?.runs, [run]);
+      assert.equal(before.breakdown.toolMs, null);
+      assert.deepEqual(analysisAtViewSchema.parse(await read('at', { task, at: instant(20) })).runs.map(item => item.current), [[]]);
+      // The end is written: the records' version changes and a cursor of the earlier version is refused.
+      appendFileSync(join(runFolder(root, run), RUN_FILES.steps),
+        JSON.stringify({ event: 'end', line: 0, id: 'call', at: instant(40), source: 'reported', state: 'done', output: null }) + '\n');
       const trace = analysisTraceViewSchema.parse(await read('trace', { task, timeZone: 'UTC' }));
+      assert.notEqual(trace.head.version, before.head.version);
+      await read('trace', { task, timeZone: 'UTC', limit: '1', cursor: before.cursor! }, 400);
       assert.ok(trace.coverage.steps.known.includes(run));
       const step = trace.spans.find(span => span.kind === 'step');
       assert.deepEqual(step && [step.run, step.step, step.from, step.to], [run, 0, instant(10), instant(40)]);

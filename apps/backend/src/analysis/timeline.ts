@@ -251,8 +251,12 @@ export function lanes(records: TraceRecords): AnalysisLane[] {
   return result;
 }
 
-/** A Run's steps as its step times stand: null when any step the output names lacks its start (its time is unknown, not zero). */
-export const timedSteps = (steps: readonly TraceStep[]): readonly TraceStep[] | null => steps.some(step => step.from === null) ? null : steps;
+/**
+ * A Run's steps as its step times stand: null when any step the output names lacks its start, or ended without its end
+ * time (its time is unknown, not zero, and it is not running). Only a step still running has no end.
+ */
+export const timedSteps = (steps: readonly TraceStep[]): readonly TraceStep[] | null =>
+  steps.some(step => step.from === null || step.to === null && step.state !== 'running') ? null : steps;
 
 /** The time inside a Run with no step running, when its step times are known: what it thought, wrote or waited on. */
 export function thinkingIntervals(run: TraceRun, now: number): Interval[] {

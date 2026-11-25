@@ -88,7 +88,8 @@ test('repeated-question joins questions on the same pull request or the same cho
     asked('q2', 30, ask('Merge the fixed PR #7 and PR #8?', ['Merge', 'Hold'])), answered('a2', 40, 'q2'),
     asked('q3', 50, ask('Merge PR #8 now?', ['Yes', 'No'])), answered('a3', 55, 'q3'),
     // The same number in two repositories, and questions offering no choices, are separate questions.
-    ...['one', 'two', 'three'].flatMap((repo, n) => [asked(`r${n}`, 60 + n, ask(`Merge https://github.com/example/${repo}/pull/5?`)),
+    // A link names the repository, so the bare `PR #5` beside it joins nothing.
+    ...['one', 'two', 'three'].flatMap((repo, n) => [asked(`r${n}`, 60 + n, ask(`Merge PR #5 (https://github.com/example/${repo}/pull/5)?`)),
       answered(`ra${n}`, 61 + n, `r${n}`)]),
     ...[0, 1, 2].flatMap(n => [asked(`free${n}`, 70 + n, ask(`Anything else ${n}?`)), answered(`fa${n}`, 71 + n, `free${n}`)])]);
   const found = find(records([root], []), 'repeated-question');
@@ -112,22 +113,30 @@ test('limit-hit names each command stopped at the limit and the step it stopped'
   assert.deepEqual([found!.durationMs, found!.evidence], [600_000, [{ run: 'R1', step: 0 }]]);
 });
 
-test('repeated-command finds the same command with the same result or the same failure, not normal repeats', () => {
-  const same = (n: number) => step(n, n, n + 0.5, { output: 'same' });
-  const commands = (steps: TraceStep[]) => find(records([task('T1', [])], [run('R1', { steps })]), 'repeated-command').map(item => item.count);
-  assert.deepEqual(commands([same(0), same(1), step(2, 1.6, 1.7, { kind: 'file', fingerprint: 'cat x' }), same(3)]), [3]);
-  assert.deepEqual(commands([same(0), same(1), step(2, 1.6, 1.7, { kind: 'edit', fingerprint: 'edit x' }), same(3)]), []);
-  // A status check whose output changes each time is a normal repeat.
-  assert.deepEqual(commands([0, 1, 2, 3].map(n => step(n, n, n + 0.5))), []);
+test('repeated-command is the same failure again and again; the same success again is same-result', () => {
+  const findIn = (rule: 'repeated-command' | 'same-result', steps: TraceStep[]) =>
+    find(records([task('T1', [])], [run('R1', { steps })]), rule).map(item => item.count);
+  // Three identical `git status` that succeed: one same-result, no repeated-command.
+  const status = [0, 1, 2].map(n => step(n, n, n + 0.5, { fingerprint: 'git status', line: 'git status', output: 'clean' }));
+  assert.deepEqual([findIn('repeated-command', status), findIn('same-result', status)], [[], [3]]);
+  // A status check whose output changes each time is no finding.
+  const changing = [0, 1, 2, 3].map(n => step(n, n, n + 0.5));
+  assert.deepEqual([findIn('repeated-command', changing), findIn('same-result', changing)], [[], []]);
   const failing = (output: (n: number) => string) => [0, 1, 2].flatMap(n => [step(n * 2, n, n + 0.5, { state: 'failed', output: output(n) }),
     step(n * 2 + 1, n + 0.6, n + 0.7, { kind: 'edit', fingerprint: 'edit x' })]);
-  assert.deepEqual(commands(failing(() => 'fail')), [3]);
-  assert.deepEqual(commands(failing(n => `fail-${n}`)), []);
+  assert.deepEqual(findIn('repeated-command', failing(() => 'fail')), [3]);
+  assert.deepEqual(findIn('repeated-command', failing(n => `fail-${n}`)), []);
+  // A success between failures ends the row.
+  const broken = [step(0, 0, 0.5, { state: 'failed', output: 'fail' }), step(1, 1, 1.5, { state: 'failed', output: 'fail' }),
+    step(2, 2, 2.5), step(3, 3, 3.5, { state: 'failed', output: 'fail' })];
+  assert.deepEqual(findIn('repeated-command', broken), []);
 });
 
 test('same-result finds a read repeated with the same answer, and fan-out one fingerprint read one by one', () => {
   const read = (n: number, line: string, output: string, kind = 'file') => step(n, n, n + 0.1, { kind, fingerprint: 'task get <id>', line, output });
-  const sameResult = find(records([task('T1', [])], [run('R1', { steps: [read(0, 'a', 'x'), read(1, 'a', 'x'), read(2, 'b', 'y')] })]), 'same-result');
+  // A shell command re-reading the same answer (design: `task get` with the same arguments) is a read as well.
+  const sameResult = find(records([task('T1', [])], [run('R1', { steps: [read(0, 'a', 'x', 'command'), read(1, 'a', 'x', 'command'),
+    read(2, 'b', 'y')] })]), 'same-result');
   assert.deepEqual(sameResult.map(item => [item.count, item.evidence]), [[2, [{ run: 'R1', step: 0 }, { run: 'R1', step: 1 }]]]);
   const edited = [read(0, 'a', 'x'), step(1, 1, 1.1, { kind: 'edit', fingerprint: 'edit' }), read(2, 'a', 'x')];
   assert.equal(find(records([task('T1', [])], [run('R1', { steps: edited })]), 'same-result').length, 0);
@@ -173,6 +182,9 @@ test('a task reopened after it ended waits again from its latest end', () => {
 
 test('a Run whose output has steps without times has unknown step time, and thinking is the time no step ran', () => {
   assert.equal(timedSteps([step(0, 1, 2), step(1, 3, 4, { from: null })]), null);
+  // A step the output shows as ended without its end time is unknown too; only a running step has no end.
+  assert.equal(timedSteps([step(0, 1, null, { state: 'done' })]), null);
+  assert.equal(timedSteps([step(0, 1, null, { state: 'running' })])?.length, 1);
   const timed = run('R1', { started: at(0), ended: at(20), steps: [step(0, 2, 8), step(1, 4, 10), step(2, 12, 15)] });
   assert.deepEqual(thinkingIntervals(timed, at(30)).map(gap => [(gap.from - epoch) / MIN, (gap.to - epoch) / MIN]), [[0, 2], [10, 12], [15, 20]]);
   assert.deepEqual(thinkingIntervals({ ...timed, steps: null }, at(30)), []);

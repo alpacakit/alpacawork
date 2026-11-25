@@ -61,7 +61,8 @@ export function thresholdsOf(options: readonly string[] = []): Record<AnalysisFi
 export function questionTopic(decide: readonly Record<string, unknown>[]): string[] {
   const text = JSON.stringify(decide);
   const prs = new Set([...prLinks([text])].map(link => link.replace(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\//, '$1/$2#')));
-  for (const match of text.matchAll(/\bPR\s*#(\d+)/gi)) prs.add(`#${match[1]}`);
+  // A bare `#5` names a pull request only when no link says which repository: it joins only other bare ones.
+  if (!prs.size) for (const match of text.matchAll(/\bPR\s*#(\d+)/gi)) prs.add(`#${match[1]}`);
   if (prs.size) return [...prs].sort().map(pr => `pr:${pr}`);
   const choices = decide.flatMap(item => Array.isArray(item.decide_choices) ? item.decide_choices : [])
     .map(choice => String((choice as Record<string, unknown>).decide_choice ?? '').trim().split(/\s+/)[0] ?? '').filter(Boolean);
@@ -144,36 +145,32 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       evidence: [step ? { run: run.id, step: step.n } : { run: run.id }] };
   })),
   /**
-   * The same command run again with the same result: one fingerprint at least the threshold times in a row, each with
-   * the output of the one before, and no edit between; or failing each time with the same output (edits between
-   * allowed). Commands whose output changes (status checks, tests after a fix) are not findings.
+   * The same failure again and again: a command of one fingerprint failing with the same output at least the threshold
+   * times in a row (edits between allowed; a success ends the row). A command repeated successfully with the same output
+   * is same-result; one whose output changes (a status check, tests after a fix) is no finding.
    */
   'repeated-command': (records, window, threshold) => records.runs.flatMap(run => {
-    const found: Found[] = [], rows = new Map<string, TraceStep[]>(), failing = new Map<string, TraceStep[]>();
+    const found: Found[] = [], rows = new Map<string, TraceStep[]>();
     const flush = (row: TraceStep[] | undefined) => {
-      if (!row || row.length < limitOf(threshold) || found.some(item => item.anchor === `${run.id}.${row[0]!.n}`)) return;
+      if (!row || row.length < limitOf(threshold)) return;
       found.push({ rule: 'repeated-command', anchor: `${run.id}.${row[0]!.n}`, at: row[0]!.from!,
         durationMs: row.reduce((sum, step) => sum + stepMs(step, run, window.to), 0), lane: agentLane(run), count: row.length,
         source: 'recorded', evidence: stepEvidence(run, row) });
     };
-    const extend = (kept: Map<string, TraceStep[]>, step: TraceStep) => {
-      const row = kept.get(step.fingerprint!);
-      if (row && step.output !== null && row.at(-1)!.output === step.output) row.push(step);
-      else { flush(row); kept.set(step.fingerprint!, [step]); }
-    };
     for (const step of timedTopSteps(run)) {
-      if (step.kind === 'edit') { for (const row of rows.values()) flush(row); rows.clear(); }
       if (step.kind !== 'command' || !step.fingerprint) continue;
-      extend(rows, step);
-      if (step.state === 'failed') extend(failing, step);
-      else { flush(failing.get(step.fingerprint)); failing.delete(step.fingerprint); }
+      const row = rows.get(step.fingerprint);
+      if (step.state !== 'failed') { flush(row); rows.delete(step.fingerprint); continue; }
+      if (row && step.output !== null && row.at(-1)!.output === step.output) row.push(step);
+      else { flush(row); rows.set(step.fingerprint, [step]); }
     }
-    for (const row of [...rows.values(), ...failing.values()]) flush(row);
+    for (const row of rows.values()) flush(row);
     return found;
   }),
   /**
-   * The same read again with the same answer: a step other than a command or an edit, with one fingerprint and the same
-   * output, at least the threshold times in one Run with no edit between (the second and later reads learned nothing).
+   * The same read again with the same answer (design: the redundant re-read): a step other than an edit that did not
+   * fail, shell commands included, with one fingerprint and the same output at least the threshold times in one Run
+   * and no edit between. The later reads learned nothing.
    */
   'same-result': (records, window, threshold) => records.runs.flatMap(run => {
     const groups = new Map<string, TraceStep[]>(), found: Found[] = [];
@@ -186,7 +183,7 @@ const rules: Record<AnalysisFindingRule, Rule> = {
     };
     for (const step of timedTopSteps(run)) {
       if (step.kind === 'edit') { flush(); continue; }
-      if (step.kind === 'command' || !step.fingerprint || step.output === null) continue;
+      if (step.state === 'failed' || !step.fingerprint || step.output === null) continue;
       const key = `${step.fingerprint}\u0000${step.output}`;
       groups.set(key, [...groups.get(key) ?? [], step]);
     }
