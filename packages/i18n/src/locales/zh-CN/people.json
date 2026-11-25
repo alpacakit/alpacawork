@@ -32,6 +32,7 @@
     "anew_other": "新对话 {{count}} 次",
     "compacted": "对话刚刚被压缩。下一次回复后会显示用量。",
     "compactions_other": "压缩 {{count}} 次",
+    "countsOf": "此任务",
     "label": "对话用量 {{figure}}（已用 {{used}} / 上限 {{window}}）",
     "noWindow": "未设置",
     "setWindow": "在智能体设置的“上下文上限”中填写后，会显示百分比。",

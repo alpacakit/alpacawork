@@ -36,6 +36,7 @@
     "compactions_one": "{{count}} compactación",
     "compactions_many": "{{count}} compactaciones",
     "compactions_other": "{{count}} compactaciones",
+    "countsOf": "Esta tarea",
     "label": "Contexto de la conversación {{figure}} (usado {{used}} / límite {{window}})",
     "noWindow": "Sin definir",
     "setWindow": "Escribe un límite en Límites de contexto, en los ajustes del agente, para ver un porcentaje.",

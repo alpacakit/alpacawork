@@ -150,8 +150,11 @@ export function conversationForRequest(facts: { rotation: Rotation | null; hando
   if (mode !== 'new') return { mode, rotationFrom: undefined, unsentNew, newConversation: undefined };
   const rotationFrom = unsentNew || (rotation?.unknown && facts.resolvesUnknown) ? rotation?.run.context?.rotationFrom
     : rotates ? handoff.id : undefined;
-  // Why, said once here where it is decided: a new one sent again keeps the reason it was first sent with.
-  const newConversation: NewConversation | undefined = unsentNew ? rotation?.run.newConversation
+  // Why, said once here where it is decided: a new one sent again, or settled after an unknown receipt, keeps the reason
+  // it was first sent with (a handoff, by the report it carries).
+  const resent = unsentNew || !!rotation?.unknown && facts.resolvesUnknown;
+  const carried = resent ? rotation?.run.newConversation ?? (rotationFrom ? { because: 'handoff' as const, report: rotationFrom } : undefined) : undefined;
+  const newConversation: NewConversation | undefined = resent && carried ? carried : unsentNew ? undefined
     : facts.anotherAi ? { because: 'another_ai' } : explicit === 'new' ? { because: 'asked' }
     : rotates ? { because: 'handoff', report: handoff!.id } : !head ? undefined : { because: 'unresumable' };
   return { mode, rotationFrom, unsentNew, newConversation };

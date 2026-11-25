@@ -1288,6 +1288,8 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "changed", set: "held" })).toBe("quiet");
   expect(tone({ kind: "run_end" })).toBe("quiet");
   expect(tone({ kind: "dialogue" })).toBe("quiet");
+  // What happened to a conversation has its own colour, on its mark and on the line beside it alike.
+  expect(tone({ kind: "conversation" })).toBe("conversation");
 });
 
 test("a compaction's row shows its fill before and after as rings; a new conversation's says why in one sentence", async () => {
@@ -1304,10 +1306,10 @@ test("a compaction's row shows its fill before and after as rings; a new convers
   });
   expect(kinds.sort()).toEqual(["Compacted", "New conversation"]);
   const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
-  expect(fill.textContent).toBe("61%14%");
+  expect(fill.textContent).toBe("Context61%14%");
   expect(fill.querySelectorAll("svg")).toHaveLength(3);
   const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
-  expect(words).toContain("The responsible switched to a new conversation after “Filters reviewed”");
+  expect(words).toContain("The owner switched to a new conversation after “Filters reviewed”");
 });
 
 test("the context meter counts, with History's marks, only what happened to the task's conversations", async () => {

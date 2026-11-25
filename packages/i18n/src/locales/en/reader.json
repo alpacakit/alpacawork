@@ -328,6 +328,7 @@
       },
       "cause": "Received “{{title}}” · {{at}}",
       "changedTo": "Set to {{state}}",
+      "compactedFill": "Context",
       "end": {
         "again": {
           "question": "Asked the same question again",
@@ -375,10 +376,10 @@
         "withdrawn": "Withdrawn"
       },
       "newBecause": {
-        "another_ai": "Started anew because another AI took the work",
+        "another_ai": "Started anew because the work moved to another AI",
         "asked": "The request asked for a new conversation",
-        "handoff": "The responsible switched to a new conversation at a break in the work",
-        "handoffAt": "The responsible switched to a new conversation after “{{report}}”",
+        "handoff": "The owner switched to a new conversation at a break in the work",
+        "handoffAt": "The owner switched to a new conversation after “{{report}}”",
         "unresumable": "Started anew because the last conversation could not be resumed"
       },
       "older": "Show {{n}} earlier",

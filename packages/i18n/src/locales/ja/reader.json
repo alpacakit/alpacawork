@@ -311,6 +311,7 @@
       },
       "cause": "{{at}} に受け取った「{{title}}」",
       "changedTo": "{{state}}にしました",
+      "compactedFill": "使用量",
       "end": {
         "again": {
           "question": "同じ質問を出し直しました",
@@ -358,7 +359,7 @@
         "withdrawn": "取り下げ"
       },
       "newBecause": {
-        "another_ai": "別の AI に替えたため、新しい会話で始めました",
+        "another_ai": "作業が別の AI に移ったため、新しい会話で始めました",
         "asked": "依頼で新しい会話が指定されました",
         "handoff": "作業の区切りで、責任者が新しい会話に切り替えました",
         "handoffAt": "「{{report}}」の区切りで、責任者が新しい会話に切り替えました",

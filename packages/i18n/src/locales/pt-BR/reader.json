@@ -346,6 +346,7 @@
       },
       "cause": "Recebeu “{{title}}” · {{at}}",
       "changedTo": "Mudou para {{state}}",
+      "compactedFill": "Contexto",
       "end": {
         "again": {
           "question": "Fez a mesma pergunta de novo",
@@ -393,7 +394,7 @@
         "withdrawn": "Retirada"
       },
       "newBecause": {
-        "another_ai": "Começou de novo porque outra IA assumiu o trabalho",
+        "another_ai": "Começou de novo porque o trabalho passou para outra IA",
         "asked": "A solicitação pediu uma conversa nova",
         "handoff": "O responsável passou para uma conversa nova numa pausa do trabalho",
         "handoffAt": "O responsável passou para uma conversa nova depois de “{{report}}”",

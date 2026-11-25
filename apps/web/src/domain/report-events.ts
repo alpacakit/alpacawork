@@ -76,11 +76,13 @@ export const STOP_MARK = { kind: "error", tone: "error" } as const satisfies Non
  * mark and the line drawn beside it when it is pointed at or jumped to agree. In the state colours (tone.ts):
  * stopped by a failure (error), finished (done), waiting on you (turn, only while your turn waits on it; once
  * answered it is quiet), or set to work: an instruction or an answer, which wake the one they go to, or a record that
- * put the Task back to work (working). A record that changed nothing, or whose effect the server does not say, stays
- * quiet: no colour is guessed.
+ * put the Task back to work (working). What happened to an agent's conversation has a colour of its own
+ * (conversation). A record that changed nothing else, or whose effect the server does not say, stays quiet: no colour
+ * is guessed.
  */
 export function reportTone(report: Pick<ReportEvent, "kind" | "mark" | "finish" | "set" | "carriedOn">): MarkTone {
   if (report.kind === "error") return report.carriedOn ? "quiet" : "error";
+  if (report.kind === "conversation") return "conversation";
   if (report.finish || report.set === "done") return "done";
   if (report.mark?.tone === "turn") return "turn";
   return report.kind === "request" || report.kind === "answer" || report.set === "doing" ? "working" : "quiet";

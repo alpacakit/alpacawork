@@ -32,6 +32,7 @@
     "anew_other": "新しい会話 {{count}}回",
     "compacted": "会話を圧縮した直後です。次の応答で使用量が分かります。",
     "compactions_other": "圧縮 {{count}}回",
+    "countsOf": "このタスク",
     "label": "会話の使用量 {{figure}}（使用 {{used}}／上限 {{window}}）",
     "noWindow": "未設定",
     "setWindow": "設定の「会話の上限」に入れると、割合が出ます。",

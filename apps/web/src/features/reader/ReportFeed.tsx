@@ -768,7 +768,7 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
   // smaller than the line, so there they never made it taller.
   return <span data-row-name className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-1 whitespace-nowrap py-px narrow:gap-x-0.5 narrow:py-0 text-xs text-soft group-hover/row:text-ink group-data-lit/row:text-ink">
     <span data-row-said className="sr-only">{said}</span>
-    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : row.report.conversation ? "font-medium text-working" : ""}`}>{kindWord}</span>
+    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : row.report.conversation ? "text-conversation" : ""}`}>{kindWord}</span>
     {row.older.length > 0 && <span data-row-times className="flex-none tabular-nums">{t("reportFeed.row.times", { n: row.older.length + 1 })}</span>}
     {/* On a phone the tags are a step smaller than the words beside them, so two long agents stay whole on one line. */}
     {/* Cut across only: cut all round, a phone's tight small line cut the agents' g and p off below. */}
@@ -875,8 +875,8 @@ function rowEnds(row: HistoryRow): HistoryRow["name"] {
   return carriedOn && recipient && "ends" in row.name
     ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
 }
-/** A conversation row's rail mark: a new conversation's, or a compaction's, in the colour of work going on (the meter's). */
-const CONVERSATION_MARK = { new: { kind: "anew", tone: "working" }, compacted: { kind: "compacted", tone: "working" } } as const satisfies
+/** A conversation row's rail mark: a new conversation's, or a compaction's, in its own colour (reportTone). */
+const CONVERSATION_MARK = { new: { kind: "anew", tone: "conversation" }, compacted: { kind: "compacted", tone: "conversation" } } as const satisfies
   Record<NonNullable<ReportEvent["conversation"]>["change"], NonNullable<ReportEvent["mark"]>>;
 /** A conversation row is named by what happened to the conversation; its rail mark is the same picture. */
 const CONVERSATION_KIND = { new: "conversationNew", compacted: "compacted" } as const;
@@ -898,7 +898,7 @@ function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>
     return <span className="inline-flex items-center gap-1 tabular-nums">
       <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3.5" />{shown}</span>;
   };
-  return <span data-compaction-fill className="inline-flex items-center gap-1.5">{figure(before)}<Icon name="arrowRight" className="size-3.5 text-muted" />{figure(after)}</span>;
+  return <span data-compaction-fill className="inline-flex items-center gap-1.5"><span className="text-soft">{t("reportFeed.row.compactedFill")}</span>{figure(before)}<Icon name="arrowRight" className="size-3.5 text-muted" />{figure(after)}</span>;
 }
 const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
   runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
