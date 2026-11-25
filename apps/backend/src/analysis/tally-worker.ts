@@ -82,8 +82,10 @@ function loadPending() {
 function work() {
   if (stopped) return;
   if (!recent.length && pending.size) recent = loadPending();
+  // Each turn works for 20 ms and sends at most a batch of tallies; a Run with no output to read costs little and
+  // takes no place in the batch, so a record of many such Runs is gone through as fast as one of few.
   const batch: [string, Tally][] = [], until = performance.now() + 20;
-  for (let visited = 0; visited < BATCH_SIZE && (recent.length || !pending.size && history.length) && performance.now() < until; visited++) {
+  while (batch.length < BATCH_SIZE && (recent.length || !pending.size && history.length) && performance.now() < until) {
     const run = recent.pop() ?? history.pop()!;
     if (done.has(run.id)) continue;
     try {

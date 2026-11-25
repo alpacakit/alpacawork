@@ -37,6 +37,12 @@ node scripts/dev-fixtures/child-working-scene.ts --dest /tmp/my-child-scene --ho
 # Diffs use the CLI's own processing. Serve the root after generation, as above.
 node scripts/dev-fixtures/diff-scene.ts --dest /tmp/my-diff-scene
 
+# The analysis at scale: user-requested Tasks finished over a long record, many ended Runs with usage, and Run
+# outputs for the tally (a few of several MB). Defaults: 30000 Tasks, about 300000 Runs, 450 days up to now,
+# outputs for 3% of the Runs and 12 of 4 MB. It writes the root directly (no cached original); remove it with rm -r
+# after stopping its server. Serve it with a larger heap (--max-old-space-size) at the default sizes.
+node scripts/dev-fixtures/analysis-scene.ts --dest /tmp/my-analysis-scene [--tasks N --runs N --days N --outputs FRACTION --large N --large-mb MB]
+
 # Stop the server before removing its copy.
 node scripts/dev-fixtures/fixture.ts remove --root /tmp/my-fixture-run
 

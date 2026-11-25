@@ -16,7 +16,8 @@ import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.j
 
 type DatedUnit = { day: string; unit: Unit };
 type CountedUnit = DatedUnit & { prCount: number };
-type DatedLaunch = { day: string; root: string; run: FactLaunch };
+/** A launch with its local day, its unit (`root`, and `slot`, the unit's number in its scope) and whether it began its conversation. */
+type DatedLaunch = { day: string; root: string; slot: number; first: boolean; run: FactLaunch };
 type TalliedLaunch = DatedLaunch & { tally: Tally };
 const tallyFields = { skill: 'skills', tool: 'tools', mcp: 'mcp' } as const;
 type DimensionValue = { key: string; label: string; model?: AnalysisModel };
@@ -83,16 +84,82 @@ function acceptedTotals(units: readonly CountedUnit[]): AnalysisAcceptedTotals {
 }
 const taskTotals = (units: readonly CountedUnit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units) });
 
-function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
+/** Counts distinct units (by slot) again and again, each count in one pass, without a set per count. */
+const seen = { marks: new Uint32Array(0), round: 0 };
+function newCount() {
+  if (++seen.round === 0xffffffff) { seen.marks.fill(0); seen.round = 1; }
+}
+function firstSeen(slot: number) {
+  if (slot >= seen.marks.length) { const grown = new Uint32Array(Math.max(slot + 1, seen.marks.length * 2)); grown.set(seen.marks); seen.marks = grown; }
+  if (seen.marks[slot] === seen.round) return false;
+  seen.marks[slot] = seen.round;
+  return true;
+}
+function distinctSlots(items: readonly DatedLaunch[]) {
+  newCount();
+  let count = 0;
+  for (const { slot } of items) if (firstSeen(slot)) count++;
+  return count;
+}
+
+function usageCounts(items: readonly DatedLaunch[], now: number): AnalysisUsageCounts {
   let newConversations = 0;
-  const tasks = new Set<string>();
-  for (const { root, run } of items) {
-    tasks.add(root);
-    if (first.has(run.id)) newConversations++;
-  }
+  for (const item of items) if (item.first) newConversations++;
   const { runs, runMs, tokens, tokensUnknown, live } = sumRunUsage(items.map(item => item.run), now);
-  return { launches: runs, runMs, live, newConversations, tokensUnknown, tasks: tasks.size,
+  return { launches: runs, runMs, live, newConversations, tokensUnknown, tasks: distinctSlots(items),
     tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
+}
+
+/**
+ * A scope's launches summed day by day: the usage of any whole days is the sum of their days (by the one Run rule,
+ * sumRunUsage), with the launches still running counted to now and each unit once. Built once per reading of the facts,
+ * so a span, the span before, the whole record and every bin of a chart each read only their days.
+ */
+class DailyUsage {
+  private readonly days: string[] = [];
+  private readonly ended: { runs: number; runMs: number; tokensUnknown: number; newConversations: number;
+    output: number; input: number; cache: number }[] = [];
+  private readonly running: FactLaunch[][] = [];
+  private readonly slots: Int32Array[] = [];
+  constructor(launches: readonly DatedLaunch[]) {
+    const byDay = new Map<string, DatedLaunch[]>();
+    for (const item of launches) {
+      const found = byDay.get(item.day);
+      if (found) found.push(item);
+      else byDay.set(item.day, [item]);
+    }
+    for (const day of [...byDay.keys()].sort()) {
+      const items = byDay.get(day)!, still = items.filter(({ run }) => !run.live);
+      const { runs, runMs, tokens, tokensUnknown } = sumRunUsage(still.map(item => item.run), null);
+      this.days.push(day);
+      this.ended.push({ runs, runMs, tokensUnknown, newConversations: items.filter(item => item.first).length,
+        output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 });
+      this.running.push(items.filter(({ run }) => run.live).map(item => item.run));
+      this.slots.push(Int32Array.from(new Set(items.map(item => item.slot))));
+    }
+  }
+
+  private index(day: string) {
+    let low = 0, high = this.days.length;
+    while (low < high) { const mid = (low + high) >>> 1; if (this.days[mid]! < day) low = mid + 1; else high = mid; }
+    return low;
+  }
+
+  count(range: AnalysisDays | null, now: number): AnalysisUsageCounts {
+    let launches = 0, runMs = 0, live = 0, newConversations = 0, tokensUnknown = 0, output = 0, input = 0, cache = 0, tasks = 0;
+    newCount();
+    for (let at = range ? this.index(range.from) : 0; range && at < this.days.length && this.days[at]! <= range.to; at++) {
+      const day = this.ended[at]!;
+      launches += day.runs; runMs += day.runMs; tokensUnknown += day.tokensUnknown; newConversations += day.newConversations;
+      output += day.output; input += day.input; cache += day.cache;
+      if (this.running[at]!.length) {
+        const running = sumRunUsage(this.running[at]!, now);
+        launches += running.runs; runMs += running.runMs; live += running.live;
+      }
+      for (const slot of this.slots[at]!) if (firstSeen(slot)) tasks++;
+    }
+    return { launches, runMs, live, newConversations, tokensUnknown, tasks, tokens: { output, input, cache } };
+  }
 }
 
 function tallyCalls(tally: Tally, by: Exclude<AnalysisTallyBy, 'skill'>, name?: string) {
@@ -141,11 +208,38 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
   };
 }
 
+/** A scope's finished units and launches, each with its local day: worked out once per reading of the facts. */
+type Dated = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; daily?: DailyUsage };
+const datedKept = new WeakMap<AnalysisFacts, Map<string, Dated>>();
+function datedOf(facts: AnalysisFacts, scope: string, allows: (project: string) => boolean, date: (time: number) => string): Dated {
+  let kept = datedKept.get(facts);
+  if (!kept) datedKept.set(facts, kept = new Map());
+  const found = kept.get(scope);
+  if (found) return found;
+  const dated: Dated = { units: [], launches: [], first: Infinity };
+  let slot = -1;
+  for (const unit of facts.units.values()) {
+    if (!allows(unit.node.project!)) continue;
+    slot++;
+    if (unit.node.requested) {
+      dated.first = Math.min(dated.first, Date.parse(unit.outcome.requestedAt));
+      if (unit.outcome.finishedAt) dated.units.push({ unit, day: date(Date.parse(unit.outcome.finishedAt)) });
+    }
+    for (const run of unit.launches) {
+      dated.first = Math.min(dated.first, run.started);
+      dated.launches.push({ root: unit.node.id, slot, first: facts.first.has(run.id), run, day: date(run.started) });
+    }
+  }
+  kept.set(scope, dated);
+  return dated;
+}
+
 class ScopedAnalysis {
   readonly today: string;
   readonly firstDay: string | null;
-  readonly datedUnits: DatedUnit[] = [];
-  readonly datedLaunches: DatedLaunch[] = [];
+  readonly datedUnits: readonly DatedUnit[];
+  readonly datedLaunches: readonly DatedLaunch[];
+  private readonly dated: Dated;
   readonly date: ReturnType<typeof calendar>;
   private readonly tallyDay: string;
   private readonly allows: (project: string) => boolean;
@@ -157,20 +251,10 @@ class ScopedAnalysis {
     this.today = this.date(now);
     this.tallyDay = this.date(tallySince);
     this.allows = matchingProject(facts, project, ownProject);
-    // Convert all instants at this read point using one shared date formatter.
-    let first = Infinity;
-    for (const unit of facts.units.values()) {
-      if (!this.allows(unit.node.project!)) continue;
-      if (unit.node.requested) {
-        first = Math.min(first, Date.parse(unit.outcome.requestedAt));
-        if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
-      }
-      for (const run of unit.launches) {
-        first = Math.min(first, run.started);
-        this.datedLaunches.push({ root: unit.node.id, run, day: this.date(run.started) });
-      }
-    }
-    this.firstDay = Number.isFinite(first) ? this.date(Math.min(first, now)) : null;
+    const dated = this.dated = datedOf(facts, JSON.stringify([project, ownProject, timeZone]), this.allows, this.date);
+    this.datedUnits = dated.units;
+    this.datedLaunches = dated.launches;
+    this.firstDay = Number.isFinite(dated.first) ? this.date(Math.min(dated.first, now)) : null;
   }
 
   head(input: Parameters<typeof makeHead>[4]) {
@@ -254,16 +338,16 @@ class ScopedAnalysis {
   }
 
   usage(input: AnalysisUsageInput): AnalysisUsageView {
-    const head = this.head(input);
-    const current = within(this.datedLaunches, head.period), previous = head.previous && within(this.datedLaunches, head.previous);
-    const value = this.useCounts(current);
+    const head = this.head(input), daily = this.dated.daily ??= new DailyUsage(this.datedLaunches);
+    const value = daily.count(head.period, this.now);
     const lifetime = this.head({}).period;
-    const ever = lifetime && (input.period === 'all' ? value : this.useCounts(within(this.datedLaunches, lifetime)));
-    const series = makeSeries(input.bucket, head, this.datedLaunches, items => ({ counts: this.useCounts(items) }));
+    const ever = lifetime && (input.period === 'all' ? value : daily.count(lifetime, this.now));
+    const series = { bucket: input.bucket, points: buckets(head.firstDay, head.today, input.bucket)
+      .map(point => ({ ...point, counts: daily.count(point, this.now) })) };
     const by = input.by;
     const breakdown = isAnalysisTallyBy(by) ? this.countedBreakdown(by, head, series)
-      : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(current, by) } : null;
-    return { head, counts: { value, previous: previous && this.useCounts(previous) }, ever, series, breakdown };
+      : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(within(this.datedLaunches, head.period), by) } : null;
+    return { head, counts: { value, previous: head.previous && daily.count(head.previous, this.now) }, ever, series, breakdown };
   }
 
   private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
@@ -279,7 +363,7 @@ class ScopedAnalysis {
       rows: this.usageGroups(current, by) };
   }
 
-  private useCounts(items: readonly DatedLaunch[]) { return usageCounts(items, this.facts.first, this.now); }
+  private useCounts(items: readonly DatedLaunch[]) { return usageCounts(items, this.now); }
 
   private usageGroups(items: readonly DatedLaunch[], by: AnalysisUsageBy) {
     return [...group(items, item => this.usageKeys(item, by)).values()].map(({ items, ...dimension }) => ({

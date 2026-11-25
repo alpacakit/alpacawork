@@ -431,6 +431,26 @@ test('analysis commands share selection, contribution and tally rules over a sma
       });
       assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
       assert.equal(reader.usage(params, actor).counts.value.launches, 3);
+
+      // Reading only what changed counts as reading everything again: a Run that starts a conversation earlier than
+      // the one that began it, and a Task moved under another unit.
+      store.write(() => {
+        const record = JSON.parse(String(store.connection.prepare('SELECT record FROM runs WHERE id=5').get()!.record));
+        Object.assign(record, { pids: { agent: 1005, manager: 2005 }, session: { provider: 'fixture', id: 'synthetic-session-2' },
+          started_at: instant(-5), ended_at: instant(30), usage: { includesEarlier: false, conversation: null, run: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 } } });
+        store.connection.prepare('UPDATE runs SET record=? WHERE id=5').run(JSON.stringify(record));
+        touch(store.connection, { kind: 'run', id: 'R5' });
+        store.connection.prepare('UPDATE tasks SET parent_id=(SELECT id FROM tasks WHERE external_id=?) WHERE external_id=?').run(rowId(2), rowId(6));
+        touch(store.connection, { kind: 'task', id: rowId(6) });
+      });
+      const whole = new AnalysisReader(root, Date.parse(tallySince));
+      try {
+        for (const read of [(view: AnalysisReader) => view.tasks({ ...params, by: 'model' }, actor),
+          (view: AnalysisReader) => view.usage({ ...params, by: 'model' }, actor),
+          (view: AnalysisReader) => view.list({ period: 'all', set: 'used', value: 'newConversations' }, actor),
+          (view: AnalysisReader) => view.task({ task: rowId(2) }, actor)])
+          assert.deepEqual(read(reader), read(whole));
+      } finally { whole.close(); }
     } finally { store.close(); reader.close(); tables(); changes.close(); }
   } finally {
     if (original) {
