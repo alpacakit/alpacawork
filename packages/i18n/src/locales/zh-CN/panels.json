@@ -575,15 +575,15 @@
     "olderReport": "旧格式的报告",
     "outcome": {
       "accepted": "已送达",
-      "notAccepted": "未被接受。",
-      "noResponse": "无响应（可能已送达）。",
+      "notAccepted": "未被接受",
+      "noResponse": "无响应（可能已送达）",
       "deleted": "已删除",
       "deleteFailed": "未能删除",
       "deleteNoResponse": "无响应（不确定是否已删除）"
     },
     "readFailed": "无法读取使用数据的设置。",
     "reportOf": "{{day}} 的数据",
-    "resend": "将重新发送相同的数据。",
+    "resend": "{{outcome}}，将重新发送相同的数据",
     "saveFailed": "无法保存你对使用数据的选择。",
     "saveRetry": "请重试。",
     "see": "查看发送内容",

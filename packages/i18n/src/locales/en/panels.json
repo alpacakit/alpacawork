@@ -582,15 +582,15 @@
     "olderReport": "Report in an earlier format",
     "outcome": {
       "accepted": "Received",
-      "notAccepted": "Not accepted.",
-      "noResponse": "No response (it may have arrived).",
+      "notAccepted": "Not accepted",
+      "noResponse": "No response (it may have arrived)",
       "deleted": "Deleted",
       "deleteFailed": "Couldn't delete",
       "deleteNoResponse": "No response (unknown whether deleted)"
     },
     "readFailed": "Couldn't read the usage data setting.",
     "reportOf": "Data for {{day}}",
-    "resend": "The same data will be sent again.",
+    "resend": "{{outcome}}. The same data will be sent again",
     "saveFailed": "Couldn't save your usage data choice.",
     "saveRetry": "Please try again.",
     "see": "See what's sent",

@@ -589,15 +589,15 @@
     "olderReport": "Relatório em um formato anterior",
     "outcome": {
       "accepted": "Recebido",
-      "notAccepted": "Não aceito.",
-      "noResponse": "Sem resposta (pode ter chegado).",
+      "notAccepted": "Não aceito",
+      "noResponse": "Sem resposta (pode ter chegado)",
       "deleted": "Excluído",
       "deleteFailed": "Não foi possível excluir",
       "deleteNoResponse": "Sem resposta (não se sabe se foi excluído)"
     },
     "readFailed": "Não foi possível ler a configuração dos dados de uso.",
     "reportOf": "Dados de {{day}}",
-    "resend": "Os mesmos dados serão enviados de novo.",
+    "resend": "{{outcome}}. Os mesmos dados serão enviados de novo",
     "saveFailed": "Não foi possível salvar sua escolha sobre os dados de uso.",
     "saveRetry": "Tente novamente.",
     "see": "Ver o que é enviado",

@@ -60,7 +60,7 @@ function HistoryDialog({ id, onClose }: { id: string | null; onClose: () => void
   const resent = willResend(data?.log ?? [], new Set(data?.queue.map(item => item.day)));
   const outcomeText = (entry: TelemetryAttempt, again: boolean) => {
     const key = OUTCOME[entry.kind][entry.outcome];
-    return again ? `${t(`telemetry.outcome.${key}`)} ${t('telemetry.resend')}` : t(`telemetry.outcome.${key}`);
+    return again ? t('telemetry.resend', { outcome: t(`telemetry.outcome.${key}`) }) : t(`telemetry.outcome.${key}`);
   };
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent size="large" data-telemetry-history>

@@ -575,15 +575,15 @@
     "olderReport": "以前の形の報告",
     "outcome": {
       "accepted": "届きました",
-      "notAccepted": "受け付けられませんでした。",
-      "noResponse": "応答なし（届いたかもしれません）。",
+      "notAccepted": "受け付けられませんでした",
+      "noResponse": "応答なし（届いたかもしれません）",
       "deleted": "削除されました",
       "deleteFailed": "削除できませんでした",
       "deleteNoResponse": "応答なし（削除されたか分かりません）"
     },
     "readFailed": "使用統計データの設定を読み込めませんでした。",
     "reportOf": "{{day}} の分",
-    "resend": "同じ中身で送り直します。",
+    "resend": "{{outcome}}。同じ中身で送り直します",
     "saveFailed": "使用統計データの選択を保存できませんでした。",
     "saveRetry": "もう一度お試しください。",
     "see": "送信内容を表示",
