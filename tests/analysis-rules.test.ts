@@ -7,6 +7,7 @@ import { clocks, firstConversations, launchOf, prLinks, shareOf, taskOutcome, us
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
+import { warmAnalysisWhenIdle } from '@alpacawork/backend/test-dist/analysis/reads.js';
 
 const epoch = Date.parse('2026-03-08T05:00:00Z');
 const stamp = (offset: number) => new Date(epoch + offset).toISOString();
@@ -73,16 +74,16 @@ test('stop uses the last real transition and the recorded cause at the local day
 
 const run = (extra: Partial<RunEvidence> = {}): RunEvidence => ({
   id: 'R1', task: 'T1', role: 'owner', agent: 'codex', session: { provider: 'codex', id: 'session' },
-  launch: { adapter: 'codex', values: { model: 'fictional' } } as RunEvidence['launch'],
-  state: 'succeeded', created_at: stamp(0), started_at: stamp(10), ended_at: stamp(50), pids: { manager: null, agent: 12 },
-  usage: { conversation: null, includesEarlier: false, run: { input: 3, cacheRead: 4, cacheWrite: 5, output: 6 } },
+  launch: { adapter: 'codex', values: { model: 'fictional' } },
+  state: 'succeeded', created_at: stamp(0), started_at: stamp(10), ended_at: stamp(50), pids: { agent: 12 },
+  usage: { includesEarlier: false, run: { input: 3, cacheRead: 4, cacheWrite: 5, output: 6 } },
   ...extra,
 });
 
 test('process evidence, elapsed time and first-session attribution have separate rules', () => {
   assert.equal(launchOf(run({ state: 'joined' })), null);
   assert.equal(launchOf(run({ state: 'queued' })), null);
-  assert.equal(launchOf(run({ state: 'failed', pids: { agent: null, manager: 42 } })), null);
+  assert.equal(launchOf(run({ state: 'failed', pids: { agent: null } })), null);
   const ended = launchOf(run())!;
   const live = launchOf(run({ id: 'R2', state: 'running', started_at: stamp(55), ended_at: null, usage: null }))!;
   const includesEarlier = launchOf(run({ usage: { ...run().usage!, includesEarlier: true } }))!;
@@ -118,6 +119,13 @@ test('review wait, hold, exact question closure and concurrent runs partition wa
 });
 
 test('periods use civil days, complete calendar buckets, and a minimum share denominator', () => {
+  // The days kept per quarter hour turn when the zone's day does, a 45-minute offset and a DST change included.
+  for (const [zone, around] of [['Asia/Kathmandu', '2026-03-08T18:15:00Z'], ['America/New_York', '2026-03-08T05:00:00Z']] as const) {
+    const kept = calendar(zone), direct = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    for (let pass = 0; pass < 2; pass++)
+      for (let time = Date.parse(around) - 3_600_000; time <= Date.parse(around) + 3_600_000; time += 59_999)
+        assert.equal(kept(time), direct.format(time), `${zone} ${new Date(time).toISOString()}`);
+  }
   const date = calendar('America/New_York');
   assert.equal(date(Date.parse('2026-03-09T03:59:59Z')), '2026-03-08');
   assert.equal(date(Date.parse('2026-03-09T04:00:00Z')), '2026-03-09');
@@ -217,4 +225,22 @@ test('Claude and bridge tally skill reads in compound shell commands', () => {
     }
     assert.deepEqual({ ...parser.finish('complete').skills }, expected, adapter);
   }
+});
+
+test('serve reads the analysis ahead once, when it is quiet, and not after it closes', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let warmed = 0, quiet = false;
+  const stop = warmAnalysisWhenIdle({ warm: async () => { warmed++; } }, () => quiet);
+  t.mock.timers.tick(3000);
+  assert.equal(warmed, 0);
+  quiet = true;
+  t.mock.timers.tick(1000);
+  assert.equal(warmed, 1);
+  t.mock.timers.tick(60_000);
+  assert.equal(warmed, 1);
+  stop();
+  const closed = warmAnalysisWhenIdle({ warm: async () => { warmed++; } }, () => true);
+  closed();
+  t.mock.timers.tick(60_000);
+  assert.equal(warmed, 1);
 });

@@ -1,12 +1,16 @@
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { i18n } from "@alpacawork/i18n";
 import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
-import type { ListPlace } from "./place";
+import type { ListPlace, Span } from "./place";
+import { useBreakdown, useNear } from "./data";
+import { useViewStore } from "@/state/view-store";
 
 type Days = { from: string; to: string };
 export type Open = (list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) => void;
@@ -18,7 +22,8 @@ const HOUR = 3_600_000;
  * same days: finished tasks (with the calendar), the share without fixes, and what it took until acceptance. Then the
  * same numbers broken down. Every number opens the tasks behind it.
  */
-export function TasksLook({ view, days, open, zone }: { view: TasksView; days: Days; open: Open; zone: string }) {
+export const TasksLook = memo(function TasksLook({ view, span, root, days, open, zone }: { view: TasksView; span: Span; root: HTMLElement | null;
+  days: Days; open: Open; zone: string }) {
   const { t } = useTranslation("analysis");
   const { bucket, taskGroup, grow } = useChoices();
   const choose = useChoices(state => state.choose);
@@ -184,32 +189,11 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
     </div>
   </ChartGroup>;
 
-  const breakdownRows = view.breakdown?.rows ?? [];
-  const groupOf = (key: string) => ({ group: view.breakdown?.by ?? taskGroup, member: key });
-  const breakdown = <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
-    items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
-    <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
-      columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
-        head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
-      rows={breakdownRows.map(row => ({ key: row.key,
-        name: rowName(row, t("tasks.noAgent")), bar: row.finished, cells: [
-        cell("tasks", row.finished, () => open({ set: "finished", value: null, ...groupOf(row.key) })),
-        cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
-        cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),
-        { text: share(row.share), tip: row.accepted && row.share === null ? t("tasks.few") : undefined,
-          split: row.share !== null ? [row.passed, row.accepted - row.passed] : undefined,
-          open: row.accepted ? () => open({ set: "accepted", value: null, ...groupOf(row.key) }) : undefined },
-        row.leadMedianMs === null ? { text: "—" } : cell("hours", row.leadMedianMs, () => open({ set: "accepted", value: "lead", ...groupOf(row.key) })),
-        row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2),
-          open: () => open({ set: "accepted", value: "submits", ...groupOf(row.key) }) },
-      ] }))} />
-  </Section>;
-
   return <>
     {leads}
     <ChartHead />
     {rows}
-    {breakdown}
+    <TasksBreakdown span={span} root={root} open={open} />
     {/* Every name the look shows, in cards in the order the rows show them. */}
     <Rules>
       <RuleCard><Rule name={t("tasks.passed")}>{t("def.lead")}<ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
@@ -229,6 +213,42 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <Rule name={t("def.dayName")}>{zone}</Rule></RuleCard>
     </Rules>
   </>;
+});
+
+/**
+ * The tasks broken down (by model, AI or project): read on its own when it comes near the screen, after the numbers
+ * above it, so choosing another breakdown waits for this table alone.
+ */
+function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | null; open: Open }) {
+  const { t } = useTranslation("analysis");
+  const { bucket, taskGroup } = useChoices();
+  const choose = useChoices(state => state.choose);
+  const project = useViewStore(state => state.project);
+  const [near, wanted] = useNear(root);
+  const breakdownRead = useBreakdown("tasks", project, span, bucket, taskGroup, wanted);
+  const breakdownSet = useReadSet("tasks-breakdown", [breakdownRead]);
+  const answer = (breakdownSet.data?.[0] as typeof breakdownRead.data)?.breakdown, read = answer?.look === "tasks" ? answer : null, breakdownRows = read?.rows ?? [];
+  const groupOf = (key: string) => ({ group: read?.by ?? taskGroup, member: key });
+  return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
+    items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
+    <ReadPart set={breakdownSet} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
+      <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
+        columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
+          head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
+        rows={breakdownRows.map(row => ({ key: row.key,
+          name: rowName(row, t("tasks.noAgent")), bar: row.finished, cells: [
+          cell("tasks", row.finished, () => open({ set: "finished", value: null, ...groupOf(row.key) })),
+          cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
+          cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),
+          { text: share(row.share), tip: row.accepted && row.share === null ? t("tasks.few") : undefined,
+            split: row.share !== null ? [row.passed, row.accepted - row.passed] : undefined,
+            open: row.accepted ? () => open({ set: "accepted", value: null, ...groupOf(row.key) }) : undefined },
+          row.leadMedianMs === null ? { text: "—" } : cell("hours", row.leadMedianMs, () => open({ set: "accepted", value: "lead", ...groupOf(row.key) })),
+          row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2),
+            open: () => open({ set: "accepted", value: "submits", ...groupOf(row.key) }) },
+        ] }))} />
+    </>}</ReadPart>
+  </Section></div>;
 }
 
 /** A table's column heading with its unit once (none in a language that writes no count word). */

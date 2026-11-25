@@ -1,20 +1,21 @@
-import { useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RegionSkeleton } from "@/components/ui/skeleton";
+import { ReadFailure } from "@/components/ui/loadable";
+import { failedAddress } from "@/lib/failed-address";
 import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./data";
+import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
-import { Layers } from "./Layers";
-import { ShareCardButton } from "./ShareCard";
-import { PointerTip, Seg, Shown, useChoices } from "./parts";
-import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
+import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
+import { analysisSurfaces, cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
+import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
-import type { Head, Period } from "./contract";
+import type { Head, Period, TasksView, UsageView } from "./contract";
 
 const PRESETS = PERIOD_BACK;
 
@@ -34,16 +35,25 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
-  const { bucket, taskGroup, usageGroup } = useChoices();
-  const tasks = useTasksView(project, place.span, bucket, taskGroup);
-  const usage = useUsageView(project, place.span, bucket, usageGroup);
-  const query = place.look === "tasks" ? tasks : usage;
-  const head: Head | undefined = query.data?.head;
+  const { bucket } = useChoices();
+  // What is seen first is read first: the look shown (the AI's use draws the tasks' finished too); its breakdown reads
+  // on its own when it comes near the screen (TasksBreakdown, Breakdown).
   const [root, setRoot] = useState<HTMLElement | null>(null);
+  const tasks = useTasksView(project, place.span, bucket, null);
+  const usage = useUsageView(project, place.span, bucket, null, place.look === "usage");
+  // The look's answers are one set (the AI's use draws its finished tasks too): the days said above and the numbers
+  // under them are always the same set's, the last whole one until the new choice's has wholly come.
+  const set = useReadSet(place.look, place.look === "tasks" ? [tasks] : [usage, tasks]);
+  const head: Head | undefined = (set.data?.[0] as { head: Head } | undefined)?.head;
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
-  // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since.
-  const open = (list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) =>
-    head && useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
+  // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
+  // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).
+  const latest = useRef({ place, head });
+  useLayoutEffect(() => { latest.current = { place, head }; });
+  const open = useCallback((list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) => {
+    const { place, head } = latest.current;
+    if (head) useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
+  }, []);
   const days = head?.period ?? null;
   const length = days ? daysBetween(days.from, days.to) : 0;
   const preset = "period" in place.span ? place.span.period : null;
@@ -77,16 +87,56 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       </div>
       <span className="narrow:ms-auto"><ShareCardButton place={place} /></span>
     </div>
-    {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
-    {/* The usage look draws the tasks' answer too (its finished tasks): both must be for what is chosen now. */}
-    <Shown current={(answerOf<unknown>(query)?.current ?? true) && (place.look === "tasks" || (answerOf<unknown>(tasks)?.current ?? true))}>
-      {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
-        : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
-        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} zone={zoneName(head.timeZone)} />
-          : usage.data && <UsageLook view={usage.data} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
-    </Shown>
+    {/* One part, whichever look: the usage look draws the tasks' answer too (its finished tasks), so it is drawn once both
+        have come and each for what is chosen now (ReadPart); nothing is put in above what is drawn later. */}
+    <ReadPart set={set}
+      skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
+      {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
+        : place.look === "tasks" ? <TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+          : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)} />}
+    </ReadPart>
     </div></div>
-    <Layers place={place} project={project} days={days} />
+    <LaterLayers place={place} project={project} days={days} />
     <PointerTip root={root} />
   </>;
+}
+
+/** The analysis's way to the card: over the page, for the span and the project in view. */
+function ShareCardButton({ place }: { place: AnalysisPlace }) {
+  const { t } = useTranslation("analysis");
+  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, unit: null, card: cardSpanOf(place.span) })}>
+    <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
+}
+
+/**
+ * What opens over the face (a number's tasks, one task's values, the card) is its own part of the code; the face is not
+ * (it is drawn with the list's code, so its only wait is for its answers: FaceSkeleton). The layers' part is fetched
+ * when the list has been drawn and the screen is idle, or when the analysis opens; once fetched it is drawn at once.
+ * `again`: at its address once more, made new, so the browser asks for it again instead of answering with the failure it
+ * remembers for that address.
+ */
+type LayersPart = typeof import("./Layers");
+let layersPart: LayersPart | undefined;
+export const loadAnalysisLayers = (again?: string) => (again ? import(/* @vite-ignore */ again) as Promise<LayersPart>
+  : import("./Layers")).then(part => layersPart = part);
+function LaterLayers(props: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
+  const [part, setPart] = useState(layersPart);
+  // A part that could not be fetched is said, where a layer is open, as every read that could not be done, and asked
+  // for again: at a new address, or, where the failure names none, by reading the page again.
+  const [attempt, setAttempt] = useState<{ again?: string; failure?: unknown }>({});
+  useEffect(() => {
+    if (part || "failure" in attempt) return;
+    let live = true;
+    loadAnalysisLayers(attempt.again).then(next => { if (live) setPart(next); }, failure => { if (live) setAttempt({ ...attempt, failure }); });
+    return () => { live = false; };
+  }, [part, attempt]);
+  if (part) return <part.Layers {...props} />;
+  if (!("failure" in attempt) || !analysisSurfaces(props.place).length) return null;
+  const retry = () => {
+    const address = failedAddress(attempt.failure);
+    if (!address) { location.reload(); return; }
+    setAttempt({ again: `${address.split("?")[0]}?again=${Date.now()}` });
+  };
+  return <div role="dialog" className="fixed top-window right-window z-(--layer-reader) w-[min(548px,calc(100%-24px))] rounded-pane border-hairline border-lit-line bg-lit p-6 shadow-float narrow:inset-x-0 narrow:top-auto narrow:bottom-0 narrow:w-auto narrow:rounded-b-none">
+    <ReadFailure size="region" error={attempt.failure} retry={retry} /></div>;
 }

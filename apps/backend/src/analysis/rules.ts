@@ -1,6 +1,6 @@
 import type { AnalysisUnitValues } from '@alpacawork/contract/analysis';
-import { isReviewMark, runUsage, runUsageMs, runUsageSource, type RunContribution } from '@alpacawork/contract';
-import type { RunRecord } from '@alpacawork/contract/run';
+import { isReviewMark, runUsage, runUsageMs, type RunContribution } from '@alpacawork/contract';
+import type { RunRecord, RunUsage } from '@alpacawork/contract/run';
 import { speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf } from '@alpacawork/raw/questions';
@@ -12,26 +12,34 @@ export const iso = (ms: number) => new Date(ms).toISOString();
 const normalized = (time: string) => iso(Date.parse(time));
 export const shareOf = (passed: number, accepted: number) => accepted < 10 ? null : passed / accepted;
 
-export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'launch' |
-  'state' | 'created_at' | 'started_at' | 'ended_at' | 'pids' | 'usage'>;
+/** What of a Run the counting reads: its owner, its launch choices, its times, whether it started and its usage. */
+export type RunEvidence = Pick<RunRecord, 'id' | 'task' | 'role' | 'agent' | 'session' | 'state' | 'created_at' | 'started_at' | 'ended_at'> & {
+  launch: { adapter: string; values: Readonly<Record<string, unknown>> };
+  pids: { agent: number | null }; usage: Pick<RunUsage, 'run' | 'includesEarlier'> | null;
+};
 export type ModelRun = { id: string; agent: string; model: string | null; effort: string | null };
 export type Launch = RunContribution & ModelRun & {
   task: string; provider: string; session: string | null;
 };
 
 export function launchOf(run: RunEvidence): Launch | null {
-  const usage = runUsage(runUsageSource(run));
+  const usage = runUsage({ startedAt: run.started_at, endedAt: run.ended_at, state: run.state,
+    processStarted: run.pids.agent !== null, usage: run.usage });
   if (!usage) return null;
   return { ...usage, task: run.task, ...modelRun(run),
     provider: run.session?.provider ?? run.launch.adapter, session: run.session?.id ?? null };
 }
+
+/** Whether a launch began before another of its conversation: the earlier start, then the lower Run number. */
+export const beganBefore = (run: Launch, other: Launch) =>
+  run.started < other.started || run.started === other.started && Number(run.id.slice(1)) < Number(other.id.slice(1));
 
 export function firstConversations(launches: Iterable<Launch>): Set<string> {
   const first = new Map<string, Launch>();
   for (const run of launches) {
     if (!run.session) continue;
     const key = JSON.stringify([run.provider, run.session]), old = first.get(key);
-    if (!old || run.started < old.started || run.started === old.started && Number(run.id.slice(1)) < Number(old.id.slice(1))) first.set(key, run);
+    if (!old || beganBefore(run, old)) first.set(key, run);
   }
   return new Set(Array.from(first.values(), run => run.id));
 }

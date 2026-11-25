@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
-import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { commandRoute } from "@alpacawork/contract/command-path";
-import { api } from "@/data/resources";
+import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
 import { spanQuery, type ListPlace, type Span } from "./place";
 
 /**
@@ -18,19 +18,45 @@ const route = (name: string, input: Record<string, string | null | undefined>) =
 };
 const scope = (project: string | null, span: Span) => ({ project, ...spanQuery(span) });
 
-/** `enabled`: false where the answer is only wanted for some places (a list's model row needs its breakdown's). */
-export function useTasksView(project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
+/**
+ * The face's two answers, each for one choice of days, step of time and breakdown, read as the list of tasks reads (kept
+ * for offline, shown again at the next start until read anew: resources.analysisView). `enabled`: false while it is not
+ * wanted yet (the other look, a breakdown not yet near the screen); what it last answered stays.
+ */
+export function useTasksView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  const input = { ...scope(project, span), bucket, by };
-  return useQuery({ queryKey: ["analysis", root, "tasks", input], placeholderData: keepPreviousData, enabled,
-    queryFn: ({ signal }) => api.request(route("tasks", input), tasksViewSchema, signal) });
+  return useQuery({ ...resources.analysisView(root, "tasks", { ...scope(project, span), bucket, by }, tasksViewSchema), enabled });
 }
 
-export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
+export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  const input = { ...scope(project, span), bucket, by };
-  return useQuery({ queryKey: ["analysis", root, "usage", input], placeholderData: keepPreviousData, enabled,
-    queryFn: ({ signal }) => api.request(route("usage", input), usageViewSchema, signal) });
+  return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by }, usageViewSchema), enabled });
+}
+
+/**
+ * One look's breakdown alone (`analysis breakdown`), for a breakdown's own place: the numbers and charts above it are
+ * already held, so they are not read again with it.
+ */
+export function useBreakdown(look: "tasks" | "usage", project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by }, breakdownViewSchema), enabled });
+}
+
+/**
+ * Whether a part of the face has come near the screen (within half a screen of it, in the scrolling `root`), so
+ * what only it needs is read then and not before. Once near, it stays so. Where nothing can tell, it is near at once.
+ */
+export function useNear(root: HTMLElement | null): [(node: HTMLElement | null) => void, boolean] {
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  const [near, setNear] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    if (near || !node || !root) return;
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) setNear(true); },
+      { root, rootMargin: "50% 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [near, node, root]);
+  return [setNode, near];
 }
 
 export const LIST_PAGE = 100;
@@ -38,16 +64,13 @@ export function useUnitList(project: string | null, span: Span, list: ListPlace 
   const root = useWorkspaceInfo(info => info.root);
   // A list opened from a chart's bin is for that bin's days; one opened from a number, for the span.
   const days = list?.days ? { project, from: list.days.from, to: list.days.to } : scope(project, span);
-  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : null;
-  return useInfiniteQuery({ queryKey: ["analysis", root, "list", input], enabled: !!input, initialPageParam: null as string | null,
-    queryFn: ({ signal, pageParam }) => api.request(route("list", { ...input!, cursor: pageParam }), unitListSchema, signal),
-    getNextPageParam: page => page.cursor });
+  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
+  return useInfiniteQuery({ ...resources.analysisList(root, input), enabled: !!list });
 }
 
 export function useUnitValues(unit: string | null) {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ queryKey: ["analysis", root, "task", unit], enabled: !!unit,
-    queryFn: ({ signal }) => api.request(route("task", { task: unit }), unitValuesSchema, signal) });
+  return useQuery({ ...resources.analysisTask(root, unit ?? ""), enabled: !!unit });
 }
 
 /**
@@ -105,7 +128,10 @@ export function useAnalysisFreshness() {
   const waiting = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (rev === first.current || waiting.current) return;
-    waiting.current = setTimeout(() => { waiting.current = null; void client.invalidateQueries({ queryKey: ["analysis"] }); }, FRESH_AFTER_MS);
+    waiting.current = setTimeout(() => {
+      waiting.current = null;
+      for (const kind of ["analysis", "analysis-view"]) void client.invalidateQueries({ queryKey: [kind] });
+    }, FRESH_AFTER_MS);
   }, [client, rev]);
   useEffect(() => () => { if (waiting.current) clearTimeout(waiting.current); }, []);
 }

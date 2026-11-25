@@ -89,13 +89,23 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
   </div>;
 }
 
-/** The widths of the parts' number columns: the widest each takes in the group, the live legend over a row left out (it says one of the days its row's room already holds). */
-function measureParts(root: HTMLElement) {
+/**
+ * The widths of the parts' number columns: the widest each takes in the group, the live legend over a row left out (it
+ * says one of the days its row's room already holds). Measured again only when what the cells say has changed (their
+ * words are read without laying the page out) or when `force`d (the group's width or type changed); every width is read
+ * before any is written, and a width is written only when it moves, so the page is laid out once for it.
+ */
+const measuredParts = new WeakMap<HTMLElement, string>();
+function measureParts(root: HTMLElement, force = false) {
+  const cells = [...root.querySelectorAll<HTMLElement>("[data-part-col]")].filter(cell => !cell.closest("[data-day-legend]"));
+  const said = cells.map(cell => `${cell.dataset.partCol}\u0000${cell.textContent}`).join("\u0001");
+  if (!force && measuredParts.get(root) === said) return;
+  measuredParts.set(root, said);
+  const most: Record<string, number> = { value: 0, share: 0 };
+  for (const cell of cells) most[cell.dataset.partCol!] = Math.max(most[cell.dataset.partCol!] ?? 0, cell.getBoundingClientRect().width);
   for (const column of ["value", "share"]) {
-    let most = 0;
-    for (const cell of root.querySelectorAll<HTMLElement>(`[data-part-col="${column}"]`))
-      if (!cell.closest("[data-day-legend]")) most = Math.max(most, cell.getBoundingClientRect().width);
-    root.style.setProperty(`--part-${column}`, most ? `${Math.ceil(most)}px` : "auto");
+    const width = most[column] ? `${Math.ceil(most[column]!)}px` : "auto";
+    if (root.style.getPropertyValue(`--part-${column}`) !== width) root.style.setProperty(`--part-${column}`, width);
   }
 }
 
@@ -251,15 +261,18 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
   const self = useRef<HTMLDivElement>(null);
-  // The parts' number columns, as wide as the widest of the group (Parts): measured whenever the group is drawn (no
-  // state of its own, so a day pointed at changes nothing), and as its width or type changes.
+  // The parts' number columns, as wide as the widest of the group (Parts): measured when the group is drawn with other
+  // words in them (no state of its own, so a day pointed at changes nothing), and as its width or type changes.
   useLayoutEffect(() => { if (self.current) measureParts(self.current); });
   useLayoutEffect(() => {
     const root = self.current;
     if (!root) return;
-    const watch = new ResizeObserver(() => measureParts(root));
+    const watch = new ResizeObserver(() => measureParts(root, true));
     watch.observe(root);
-    return () => watch.disconnect();
+    // Type that arrives after the first drawing makes the same words wider or narrower.
+    let live = true;
+    void document.fonts?.ready.then(() => { if (live) measureParts(root, true); });
+    return () => { live = false; watch.disconnect(); };
   }, []);
   const chartOf = (row: number) => self.current?.querySelector<HTMLElement>(`[data-row="${row}"] [data-chart-row]`) ?? null;
   // A list gives the focus back to what opened it, as every window does (Layers: only when the focus was in it or is

@@ -1,9 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { type ChangeKey, type ChangeLog } from '@alpacawork/db';
+import { ControlStore, type ChangeKey, type ChangeLog } from '@alpacawork/db';
 import type { TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
-import { taskLogs } from '../control/task-history.js';
-import { clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
+import type { RunRecord } from '@alpacawork/contract/run';
+import { taskLogsOf } from '../control/task-history.js';
+import { Slices } from './slices.js';
+import { beganBefore, clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
   type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
 import { tallyEligible } from './tally-scope.js';
 
@@ -22,28 +24,56 @@ export type AnalysisFacts = {
   usageRootOf: ReadonlyMap<string, string>; first: ReadonlySet<string>;
 };
 
-const readNodes = (db: DatabaseSync) => db.prepare(`SELECT t.id AS internal,t.external_id AS id,t.title,
+const nodeRows = `SELECT t.id AS internal,t.external_id AS id,t.title,
     p.external_id AS parent,pr.external_id AS project,t.kind,t.lifecycle,t.user_requested AS requested,t.base_state AS state,t.created_at AS created
-  FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id LEFT JOIN tasks pr ON pr.id=t.project_task_id`).all().map(
-  row => ({ ...row, requested: row.requested === 1 }) as TaskNode);
+  FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id LEFT JOIN tasks pr ON pr.id=t.project_task_id`;
+/**
+ * Every Task row, or only those named (by ID): a Task's row names only itself, so a change reads only its own. Read row
+ * by row, giving the loop back as it goes.
+ */
+async function readNodes(db: DatabaseSync, slices: Slices, ids?: ReadonlySet<string>) {
+  const nodes: TaskNode[] = [];
+  for (const row of ids ? db.prepare(nodeRows + ' WHERE t.external_id IN (SELECT value FROM json_each(?))').iterate(JSON.stringify([...ids]))
+    : db.prepare(nodeRows).iterate()) {
+    nodes.push({ ...row, requested: row.requested === 1 } as TaskNode);
+    if (slices.due) await slices.pause();
+  }
+  return nodes;
+}
 
+/** Only what the counting reads of a Run is kept: its whole record is many times that, and there are many Runs. */
 const runFromRow = (row: Record<string, unknown>) => {
-  const run = JSON.parse(String(row.record)) as RunEvidence;
+  const record = JSON.parse(String(row.record)) as RunRecord, { model, effort } = record.launch.values;
+  const run: RunEvidence = { id: record.id, task: record.task, role: record.role, agent: record.agent, state: record.state,
+    created_at: record.created_at, started_at: record.started_at, ended_at: record.ended_at, session: record.session,
+    launch: { adapter: record.launch.adapter, values: { model, effort } }, pids: { agent: record.pids.agent },
+    usage: record.usage && { run: record.usage.run, includesEarlier: record.usage.includesEarlier } };
   const launch = launchOf(run);
   return { run, launch: launch && { ...launch, tallyEligible: row.tally_eligible === 1 } };
 };
-type StoredRun = ReturnType<typeof runFromRow>;
+/** Whether a Run was made before another (by its creation, then its number): a unit's first owner Run is the earliest. */
+const madeBefore = (run: RunEvidence, other: RunEvidence) => {
+  const time = Date.parse(run.created_at) - Date.parse(other.created_at);
+  return time < 0 || time === 0 && Number(run.id.slice(1)) < Number(other.id.slice(1));
+};
 
 function runRows(db: DatabaseSync, tallySince: number, ids?: Set<string>) {
   const prefix = `SELECT record, (${tallyEligible}) AS tally_eligible FROM runs WHERE task_id IS NOT NULL`;
-  if (!ids) return db.prepare(prefix).all(tallySince);
+  if (!ids) return db.prepare(prefix).iterate(tallySince);
   if (!ids.size) return [];
   return db.prepare(prefix + ' AND id IN (SELECT value FROM json_each(?))')
-    .all(tallySince, JSON.stringify([...ids].map(id => Number(id.slice(1)))));
+    .iterate(tallySince, JSON.stringify([...ids].map(id => Number(id.slice(1)))));
 }
 
+/** Which unit each Task counts toward (its top Task under a project), and the Tasks each unit gathers. */
 function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
-  const rootOf = new Map<string, string>(), usageRootOf = new Map<string, string>(), members = new Map<string, string[]>();
+  const rootOf = new Map<string, string>(), usageRootOf = new Map<string, string>();
+  const members = new Map<string, string[]>(), usageMembers = new Map<string, string[]>();
+  const join = (groups: Map<string, string[]>, top: string, id: string) => {
+    const group = groups.get(top);
+    if (group) group.push(id);
+    else groups.set(top, [id]);
+  };
   for (const node of nodes.values()) {
     if (node.kind !== 'task') continue;
     let top = node, hasDeletedTask = node.lifecycle === 'deleted';
@@ -56,22 +86,22 @@ function ancestry(nodes: ReadonlyMap<string, TaskNode>) {
     if (parent?.kind !== 'project' || parent.lifecycle === 'deleted' || top.lifecycle === 'deleted') continue;
     // Usage follows the whole subtree. Task history still stops at a deleted Task.
     usageRootOf.set(node.id, top.id);
+    join(usageMembers, top.id, node.id);
     if (hasDeletedTask) continue;
     rootOf.set(node.id, top.id);
-    const group = members.get(top.id);
-    if (group) group.push(node.id);
-    else members.set(top.id, [node.id]);
+    join(members, top.id, node.id);
   }
-  return { rootOf, usageRootOf, members };
+  return { rootOf, usageRootOf, members, usageMembers };
 }
 
-function valuesLinks(db: DatabaseSync, nodes: readonly TaskNode[]) {
+async function valuesLinks(db: DatabaseSync, nodes: readonly TaskNode[], slices: Slices) {
   const found = new Map<string, string[]>();
   for (const row of db.prepare(`SELECT task_id,value FROM task_values
     WHERE task_id IN (SELECT value FROM json_each(?)) AND instr(lower(value),'github.com/')>0`)
-    .all(JSON.stringify(nodes.map(node => node.internal)))) {
+    .iterate(JSON.stringify(nodes.map(node => node.internal)))) {
     const key = String(row.task_id), values = found.get(key) ?? [];
     values.push(...textLeaves(JSON.parse(String(row.value)))); found.set(key, values);
+    if (slices.due) await slices.pause();
   }
   return new Map(nodes.map(node => [node.id, prLinks(found.get(node.internal) ?? [])]));
 }
@@ -82,7 +112,7 @@ function* textLeaves(value: unknown): Generator<string> {
 }
 
 function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<string, TaskLog[]>,
-  values: ReadonlyMap<string, ReadonlySet<string>>, ownRuns: readonly StoredRun[], launches: readonly FactLaunch[],
+  values: ReadonlyMap<string, ReadonlySet<string>>, firstOwner: RunEvidence | null, launches: readonly FactLaunch[],
   memberIds: readonly string[]): Unit {
   const log = logs.get(node.id) ?? [], outcome = taskOutcome(log, node.state, node.created);
   const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>();
@@ -93,12 +123,6 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
     const reports = history.filter(entry => entry.kind === 'reported').flatMap(entry => [entry.title ?? '', entry.description ?? '']);
     for (const link of prLinks(reports)) prs.add(link);
   }
-  const firstOwner = ownRuns.reduce<RunEvidence | null>((earliest, { run }) => {
-    if (run.role !== 'owner') return earliest;
-    if (!earliest) return run;
-    const time = Date.parse(run.created_at) - Date.parse(earliest.created_at);
-    return time < 0 || time === 0 && Number(run.id.slice(1)) < Number(earliest.id.slice(1)) ? run : earliest;
-  }, null);
   const from = Date.parse(outcome.requestedAt), to = outcome.finishedAt ? Date.parse(outcome.finishedAt) : null;
   const questions = [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to));
   const workers = new Set(memberIds);
@@ -110,12 +134,31 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 
-/** A single serve owns this reader. Its journal cursor only advances after a full committed read. */
+/**
+ * Task histories are read from the table this many Tasks at a time (not through the kept history, which reads every
+ * Task's at once), so a full read gives the loop back between them.
+ */
+const HISTORY_SLICE = 500;
+
+/**
+ * A single serve owns this reader. Its journal cursor only advances after a full committed read. A read after changes
+ * reads again only what they name (the Tasks, values, Runs and placements changed) and counts again only the units
+ * whose Tasks or Runs those are; the rest is kept as it was counted.
+ */
 export class FactsCache {
   private data?: AnalysisFacts;
+  private tree?: ReturnType<typeof ancestry>;
   private logs = new Map<string, TaskLog[]>();
   private values = new Map<string, ReadonlySet<string>>();
-  private runs = new Map<string, StoredRun>();
+  /** Each Run's launch (null before it is witnessed), each Task's launches, and each Task's first owner Run. */
+  private runs = new Map<string, FactLaunch | null>();
+  private runsByTask = new Map<string, Map<string, FactLaunch>>();
+  private firstOwners = new Map<string, RunEvidence>();
+  /** The launched Runs of each conversation (provider and session), and the one that began it. */
+  private sessions = new Map<string, Set<string>>();
+  private sessionOf = new Map<string, string>();
+  private firstOf = new Map<string, string>();
+  private first = new Set<string>();
   private workspace: unknown;
   private readonly release?: () => void;
   constructor(private readonly root: string, private readonly tallySince: number, private readonly journal?: ChangeLog) {
@@ -124,14 +167,29 @@ export class FactsCache {
 
   close() { this.release?.(); }
 
-  read(db: DatabaseSync): AnalysisFacts {
-    const identity = db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()?.id;
+  /**
+   * The facts as of one read point, which this read takes itself: the journal's position is read and the read point
+   * taken right after it, with no pause between them, so every change the position counts is in what is read (a change
+   * committed after the position and before the read point is read twice, never missed). The work gives the event loop
+   * back every slice and holds that read point across the pauses (ControlStore.readAsync); reads are taken one at a time
+   * (the caller's queue). What is returned is never changed afterwards, so a read still counting over older facts counts
+   * them as they were.
+   */
+  async read(slices: Slices): Promise<AnalysisFacts> {
+    const store = new ControlStore(this.root, { busyTimeoutMs: 10_000 }, true);
+    try { return await store.readAsync(() => this.readAt(store.connection, slices)); }
+    finally { store.close(); }
+  }
+
+  private async readAt(db: DatabaseSync, slices: Slices): Promise<AnalysisFacts> {
     const change = this.journal?.read('analysis');
+    // The transaction's first statement: the read point is taken here.
+    const identity = db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()?.id;
     const full = !this.data || this.workspace !== identity || !change || change.kind === 'overflow';
     if (!full && change.kind === 'changes' && !change.batches.length) return this.data!;
     try {
       const keys = full || change.kind !== 'changes' ? [] : change.batches.flatMap(batch => batch.keys);
-      const next = this.refresh(db, full, keys);
+      const next = await this.refresh(db, full, keys, slices);
       if (change) this.journal!.acknowledge('analysis', change.through);
       this.workspace = identity;
       return this.data = next;
@@ -142,44 +200,96 @@ export class FactsCache {
     }
   }
 
-  private refresh(db: DatabaseSync, full: boolean, keys: readonly ChangeKey[]): AnalysisFacts {
-    const taskIds = new Set(keys.filter(key => key.kind === 'task').map(key => key.id));
+  private keepRun({ run, launch }: ReturnType<typeof runFromRow>) {
+    const previous = this.runs.get(run.id);
+    this.runs.set(run.id, launch);
+    let own = this.runsByTask.get(run.task);
+    if (!own) this.runsByTask.set(run.task, own = new Map());
+    if (launch) own.set(run.id, launch);
+    else own.delete(run.id);
+    const first = this.firstOwners.get(run.task);
+    if (run.role === 'owner' && (!first || first.id === run.id || madeBefore(run, first))) this.firstOwners.set(run.task, run);
+    const before = this.sessionOf.get(run.id), after = launch?.session ? `${launch.provider}\u0000${launch.session}` : undefined;
+    if (before === after && previous?.started === launch?.started) return [];
+    if (before !== undefined) { this.sessions.get(before)?.delete(run.id); this.sessionOf.delete(run.id); }
+    if (after !== undefined) {
+      let group = this.sessions.get(after);
+      if (!group) this.sessions.set(after, group = new Set());
+      group.add(run.id); this.sessionOf.set(run.id, after);
+    }
+    return [before, after].filter(key => key !== undefined);
+  }
+
+  /** The Run that began each conversation named (every one, for a full read), again from its launched Runs. */
+  private async settleFirst(keys: Iterable<string> | 'all', slices: Slices) {
+    if (keys === 'all') {
+      const first = new Map<string, FactLaunch>();
+      for (const launch of this.runs.values()) {
+        const key = launch && this.sessionOf.get(launch.id);
+        if (!key) continue;
+        const old = first.get(key);
+        if (!old || beganBefore(launch, old)) first.set(key, launch);
+        if (slices.due) await slices.pause();
+      }
+      for (const [key, launch] of first) { this.first.add(launch.id); this.firstOf.set(key, launch.id); }
+      return;
+    }
+    // The facts given out before hold the last set: it is copied, never changed.
+    const keyed = [...keys];
+    if (keyed.length) this.first = new Set(this.first);
+    for (const key of keyed) {
+      const old = this.firstOf.get(key);
+      if (old !== undefined) { this.first.delete(old); this.firstOf.delete(key); }
+      const launches = [...this.sessions.get(key) ?? []].map(id => this.runs.get(id)!);
+      for (const id of firstConversations(launches)) { this.first.add(id); this.firstOf.set(key, id); }
+      if (!launches.length) this.sessions.delete(key);
+    }
+  }
+
+  private async refresh(db: DatabaseSync, full: boolean, keys: readonly ChangeKey[], slices: Slices): Promise<AnalysisFacts> {
+    const changedTasks = new Set(keys.filter(key => key.kind === 'task').map(key => key.id));
     const runIds = new Set(keys.filter(key => key.kind === 'run').map(key => key.id));
     const placementIds = keys.filter(key => key.kind === 'placement').map(key => key.id);
-    const valuesIds = new Set(keys.filter(key => key.kind === 'task_value').map(key => (JSON.parse(key.id) as string[])[0]));
-    if (!full && !taskIds.size && !runIds.size && !valuesIds.size && !placementIds.length) return this.data!;
-    const previous = this.data;
-    const nodes = full || taskIds.size ? new Map(readNodes(db).map(node => [node.id, node])) : previous!.nodes;
-    const tasks = [...nodes.values()].filter(node => node.kind === 'task');
-    const historyNodes = full ? tasks : tasks.filter(node => taskIds.has(node.id));
-    if (full) { this.logs.clear(); this.values.clear(); this.runs.clear(); }
-    if (historyNodes.length) {
-      const current = taskLogs(db, this.root, historyNodes.map(node => node.internal));
-      for (const node of historyNodes) this.logs.set(node.id, current.get(node.internal) ?? []);
+    const valuesIds = new Set(keys.filter(key => key.kind === 'task_value').map(key => (JSON.parse(key.id) as [string])[0]));
+    if (!full && !changedTasks.size && !runIds.size && !valuesIds.size && !placementIds.length) return this.data!;
+    const previous = this.data, taskIds = new Set(changedTasks);
+    if (full) {
+      for (const kept of [this.logs, this.values, this.runs, this.runsByTask, this.firstOwners, this.sessions, this.sessionOf, this.firstOf]) kept.clear();
+      this.first = new Set();
     }
-    for (const [id, links] of valuesLinks(db, full ? tasks : tasks.filter(node => valuesIds.has(node.internal)))) {
-      this.values.set(id, links); taskIds.add(id);
+    let nodes = previous?.nodes ?? new Map<string, TaskNode>();
+    if (full) nodes = new Map((await readNodes(db, slices)).map(node => [node.id, node]));
+    else if (changedTasks.size) {
+      const next = new Map(nodes);
+      for (const node of await readNodes(db, slices, changedTasks)) next.set(node.id, node);
+      nodes = next;
     }
+    const tasks = full ? [...nodes.values()].filter(node => node.kind === 'task') : [];
+    const historyNodes = full ? tasks : [...changedTasks].flatMap(id => nodes.get(id)?.kind === 'task' ? [nodes.get(id)!] : []);
+    for (let at = 0; at < historyNodes.length; at += HISTORY_SLICE) {
+      const part = historyNodes.slice(at, at + HISTORY_SLICE);
+      const current = taskLogsOf(db, part.map(node => node.internal));
+      for (const node of part) this.logs.set(node.id, current.get(node.internal) ?? []);
+      if (slices.due) await slices.pause();
+    }
+    if (full || valuesIds.size)
+      for (const [id, links] of await valuesLinks(db, full ? tasks : [...nodes.values()].filter(node => node.kind === 'task' && valuesIds.has(node.internal)), slices)) {
+        this.values.set(id, links); taskIds.add(id);
+      }
+    if (slices.due) await slices.pause();
+    const sessionKeys = new Set<string>();
     for (const row of runRows(db, this.tallySince, full ? undefined : runIds)) {
       const item = runFromRow(row);
-      this.runs.set(item.run.id, item); taskIds.add(item.run.task);
+      for (const key of this.keepRun(item)) sessionKeys.add(key);
+      taskIds.add(item.run.task);
+      if (slices.due) await slices.pause();
     }
-    const { rootOf, usageRootOf, members } = ancestry(nodes);
-    const byTask = new Map<string, StoredRun[]>(), launches: Launch[] = [];
-    const launchesByRoot = new Map<string, FactLaunch[]>();
-    for (const item of this.runs.values()) {
-      const group = byTask.get(item.run.task);
-      if (group) group.push(item);
-      else byTask.set(item.run.task, [item]);
-      const run = item.launch;
-      if (!run) continue;
-      launches.push(run);
-      const root = usageRootOf.get(run.task);
-      if (!root) continue;
-      const groupRuns = launchesByRoot.get(root);
-      if (groupRuns) groupRuns.push(run);
-      else launchesByRoot.set(root, [run]);
-    }
+    await this.settleFirst(full ? 'all' : sessionKeys, slices);
+    if (slices.due) await slices.pause();
+    const moved = full || changedTasks.size > 0;
+    const tree = this.tree = moved ? ancestry(nodes) : this.tree!;
+    const { rootOf, usageRootOf, members, usageMembers } = tree;
+    if (slices.due) await slices.pause();
     const dirty = new Set(full ? [...members.keys()] : []);
     if (placementIds.length)
       for (const row of db.prepare('SELECT DISTINCT task_id FROM placements WHERE id IN (SELECT value FROM json_each(?))')
@@ -193,12 +303,13 @@ export class FactsCache {
           if (after) dirty.add(after);
         }
         // A move or deletion can affect every Task underneath the changed row.
-        for (const [id, root] of previousRoots) {
+        if (moved) for (const [id, root] of previousRoots) {
           const next = nextRoots.get(id);
           if (root !== next) { dirty.add(root); if (next) dirty.add(next); }
         }
       }
     }
+    if (slices.due) await slices.pause();
     const units = full ? new Map<string, Unit>() : new Map(previous!.units);
     const workers = new Map<string, string[]>();
     if (dirty.size)
@@ -207,12 +318,17 @@ export class FactsCache {
         const id = String(row.task_id), group = workers.get(id) ?? [];
         group.push(String(row.id)); workers.set(id, group);
       }
+    if (slices.due) await slices.pause();
     for (const id of dirty) {
       const node = nodes.get(id), group = members.get(id);
-      if (node && group) units.set(id, unitFacts(node, group, this.logs, this.values,
-        byTask.get(id) ?? [], launchesByRoot.get(id) ?? [], workers.get(id) ?? []));
-      else units.delete(id);
+      if (!node || !group) { units.delete(id); continue; }
+      const launches: FactLaunch[] = [];
+      for (const task of usageMembers.get(id) ?? [])
+        for (const launch of this.runsByTask.get(task)?.values() ?? []) launches.push(launch);
+      units.set(id, unitFacts(node, group, this.logs, this.values, this.firstOwners.get(id) ?? null,
+        launches, workers.get(id) ?? []));
+      if (slices.due) await slices.pause();
     }
-    return { nodes, units, rootOf, usageRootOf, first: firstConversations(launches) };
+    return { nodes, units, rootOf, usageRootOf, first: this.first };
   }
 }

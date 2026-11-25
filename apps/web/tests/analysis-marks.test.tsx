@@ -4,7 +4,7 @@ import { analysisHome, type AnalysisPlace } from "../src/features/analysis/place
 import { Layers } from "../src/features/analysis/Layers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
-import { BarChart, ChartGroup, Row } from "../src/features/analysis/rows";
+import { BarChart, ChartGroup, Parts, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
@@ -334,5 +334,49 @@ test("back from one task to its list, the focus is on that task's row again", as
   view.rerender(<TestWorkspace data={screenData()}><Layers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
   view.rerender(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
   await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
+  view.unmount();
+});
+
+test("a list's next page stands as rows while it is read, and one that could not be read says so and is asked again", async () => {
+  let page: (body: unknown) => void = () => {};
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (!url.includes("analysis/list")) return new Response("{}", { status: 200 });
+    if (!url.includes("cursor=")) return new Response(JSON.stringify(today(100, { total: 103, cursor: "c2" })), { status: 200 });
+    return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
+  });
+  const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
+  const view = render(<TestWorkspace data={screenData()}><Layers place={place} project={null} days={null} /></TestWorkspace>);
+  await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
+  await act(async () => view.getByRole("button", { name: /残り/ }).click());
+  // Asked for: its rows' places stand where they will come, not nothing.
+  await vi.waitFor(() => expect(view.container.querySelector("[data-analysis-layer] [data-skeleton]")).not.toBeNull());
+  await act(async () => page(null));
+  await vi.waitFor(() => expect(view.container.querySelector("[data-read-failure]")).not.toBeNull());
+  expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100);
+  await act(async () => view.getByRole("button", { name: i18n.t("retry") }).click());
+  await act(async () => page(today(3, { total: 103, from: 101 })));
+  await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(103));
+  expect(view.container.querySelector("[data-read-failure]")).toBeNull();
+  view.unmount();
+});
+
+test("the parts' number columns are measured again only when their words change, not on every drawing", () => {
+  const bins = [{ from: "2026-11-01", to: "2026-11-01", complete: true }, { from: "2026-11-02", to: "2026-11-02", complete: true }];
+  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}` }];
+  const read = vi.spyOn(Element.prototype, "getBoundingClientRect");
+  const measured = () => read.mock.contexts.filter(cell => (cell as HTMLElement).dataset?.partCol).length;
+  const group = (value: string) => <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-02" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
+    <Row row={0} left={<Parts items={[{ color: "", name: "手直しなし", value }]} />}>
+      <BarChart row={0} height="h-16" scale={{ top: 4, label: "4" }} values={at => [["", at + 1]]} /></Row>
+  </ChartGroup>;
+  const view = render(group("3件"));
+  const first = measured();
+  expect(first).toBeGreaterThan(0);
+  view.rerender(group("3件"));
+  expect(measured()).toBe(first);
+  view.rerender(group("12件"));
+  expect(measured()).toBeGreaterThan(first);
+  read.mockRestore();
   view.unmount();
 });

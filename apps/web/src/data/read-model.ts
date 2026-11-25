@@ -8,6 +8,7 @@ import { hashKey, notifyManager, replaceEqualDeep, type Query as QueryRecord, ty
 import { projectShelfSchema, type ProjectShelfDTO, controlTaskHeadSchema, projectedIndexSchema, taskHistorySchema, taskProjectedPageSchema, taskProjectedViewSchema, taskTimelineLaneSchema, taskProjectedTimelineAxisSchema, taskProjectedSearchSchema, closedPageScope,
   type TaskPageRowDTO, type TaskRowDTO, type ProjectedIndexDTO, type TaskProjectedViewDTO, type ControlTaskHeadDTO, type ProjectionResourceKind, type TaskViewPlacementDTO, type TaskViewRunDTO, type PlacementDTO, type ControlRunDTO } from '@alpacawork/contract/control';
 import { noticeStateResponseSchema, personalSettingsResponseSchema } from '@alpacawork/contract';
+import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema } from '@alpacawork/contract/analysis';
 import type { QueryCacheNotifyEvent } from '@tanstack/react-query';
 
 type Query = QueryRecord<any, any, any, any>;
@@ -51,7 +52,7 @@ export const READ_BUNDLE_AGE = 14 * READ_DAY;
 export const READ_MAX_BYTES = 8 * 1024 * 1024;
 export const READ_MAX_TASKS = 100;
 const taskKinds = ['task', 'task-history'];
-const bundleKinds = ['coordinator', 'person-settings', 'person-notices', 'task-finished', 'task-shelved', 'task-search', 'task-timeline', 'project-shelf'];
+const bundleKinds = ['coordinator', 'person-settings', 'person-notices', 'task-finished', 'task-shelved', 'task-search', 'task-timeline', 'project-shelf', 'analysis-view'];
 export function readLifetime(key: QueryKey) {
   if (key[0] === 'task-search') return 60_000;
   return taskKinds.includes(String(key[0])) ? READ_TASK_AGE : bundleKinds.includes(String(key[0])) ? READ_BUNDLE_AGE : undefined;
@@ -91,6 +92,9 @@ const taskReadSchema = z.union([readViewSchema, writtenReadSchema]);
 const historyPages = pages(taskHistorySchema).refine(value => value.pages.length === 1
   && (value.pages as z.infer<typeof taskHistorySchema>[]).every(page => page.events.every(event => event.taskId.length > 0)));
 const taskPages = pages(taskProjectedPageSchema), searchPages = pages(taskProjectedSearchSchema);
+/** The analysis's reads kept as the list's are, by the command each reads. */
+const analysisViews = { tasks: analysisTasksViewSchema, usage: analysisUsageViewSchema, breakdown: analysisBreakdownViewSchema,
+  list: pages(analysisUnitListSchema), task: analysisUnitValuesSchema };
 export function readCodec(key: QueryKey): z.ZodType | undefined {
   const [kind, root, id, scope] = key;
   if (kind === 'index' && key.length === 1) return projectedIndexSchema;
@@ -98,6 +102,8 @@ export function readCodec(key: QueryKey): z.ZodType | undefined {
   if (['person-settings', 'person-notices'].includes(String(kind)) && key.length === 2)
     return kind === 'person-settings' ? personalSettingsResponseSchema : noticeStateResponseSchema;
   if (kind === 'project-shelf' && key.length === 2) return projectShelfSchema;
+  // The analysis as its face draws it: what its tasks and the AI's use count for one choice of days and steps.
+  if (kind === 'analysis-view' && key.length === 4 && typeof id === 'string' && Object.hasOwn(analysisViews, id)) return analysisViews[id as keyof typeof analysisViews];
   if (kind === 'coordinator' && key.length === 2) return coordinatorSnapshotSchema.refine(value => value.root === root);
   if (kind === 'task' && key.length === 3 && typeof id === 'string') return taskReadSchema.refine(view => view.task.id === id);
   if (kind === 'task-history' && key.length === 3 && typeof id === 'string') return historyPages;
@@ -319,6 +325,8 @@ export function readMarker(index: ProjectedIndexDTO, key: QueryKey): string | nu
   const kind = key[0];
   if (kind === 'index') return `${index.rev}`;
   if (kind === 'project-shelf') return index.projectShelfVersion;
+  // What the analysis counts may move with any record of the workspace: it is the index's revision it was read at.
+  if (kind === 'analysis-view') return `${index.rev}`;
   if (kind === 'coordinator') return index.person.coordinator?.revision ?? null;
   if (kind === 'person-settings') return index.person.settings;
   if (kind === 'person-notices') return index.person.notices;
@@ -643,6 +651,8 @@ function evaluateReadAgainstIndex(index: ProjectedIndexDTO | undefined, read: Re
   }
   if (qualify && !qualification.inSession) return result('unverified');
   if (kind === 'index') return result('current');
+  // Read before the workspace last moved: still shown (and kept for offline) while the analysis reads it again.
+  if (kind === 'analysis-view') return result(proof.marker === readMarker(index, read.key) ? 'current' : 'unverified');
   if (['person-settings', 'person-notices'].includes(kind)) {
     const marker = readMarker(index, read.key), revision = (read.data as { revision: string | null }).revision;
     return result(revision === proof.marker && (revision === marker || proof.precedingMarker !== undefined && marker === proof.precedingMarker) ? 'current' : 'unverified');
@@ -704,7 +714,7 @@ export function observeReadProofs(client: QueryClient) {
   configureReadRetention(client);
   if (observed.has(client)) return;
   observed.add(client);
-  for (const prefix of ['task', 'person-settings', 'person-notices', 'coordinator', 'task-history', 'task-finished', 'task-shelved', 'task-search', 'task-timeline', 'project-shelf'])
+  for (const prefix of ['task', 'person-settings', 'person-notices', 'coordinator', 'task-history', 'task-finished', 'task-shelved', 'task-search', 'task-timeline', 'project-shelf', 'analysis-view'])
     client.setQueryDefaults([prefix], { ...client.getQueryDefaults([prefix]), structuralSharing: resolveReadData });
   const cache = client.getQueryCache(), success = cache.config.onSuccess, settled = cache.config.onSettled, failure = cache.config.onError;
   cache.config.onError = (error, query) => { if (failedGetAccepted(query, error)) failure?.(error, query); };

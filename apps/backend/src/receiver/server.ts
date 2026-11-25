@@ -1,4 +1,4 @@
-import { AnalysisReader } from '../analysis/reads.js';
+import { AnalysisReader, warmAnalysisWhenIdle } from '../analysis/reads.js';
 import { startTallyJob } from '../analysis/tally-job.js';
 import { openTallyScope } from '../analysis/tally-scope.js';
 import { mcpRequestBytes, type McpFileReadOptions } from '@alpacawork/contract/mcp';
@@ -345,7 +345,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const tallySince = openTallyScope(root);
   const analysis = new AnalysisReader(root, tallySince, changes.log);
   startupCleanup.push(() => analysis.close());
-  let stopAnalysisTally: (() => Promise<void>) | undefined;
+  let stopAnalysisTally: (() => Promise<void>) | undefined, stopAnalysisWarm: (() => void) | undefined;
   const context: Context = { root, push, presence, analysis, agentInspection: options.agentInspection };
   const generation = randomUUID();
   startupCleanup.push(() => runs?.close());
@@ -1034,6 +1034,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
       if (!starting) try { await lifecycle.quiesce(); } catch (error) { drainFault = error; }
       try {
       await stopTelemetry?.();
+      stopAnalysisWarm?.();
       await stopAnalysisTally?.();
       analysis.close();
       await firstRunSkills.close();
@@ -1096,6 +1097,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     stopTelemetry=monitorTelemetry(telemetry);
     host.start();
     stopAnalysisTally = startTallyJob(root, tallySince, changes.log, analysis.tallies);
+    stopAnalysisWarm = warmAnalysisWhenIdle(analysis, () => lifecycle.state === 'accepting' && !queuedWrites && !queuedReads);
     let lastSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
     let auditing: Promise<void> | undefined;
     loopDelay?.enable();

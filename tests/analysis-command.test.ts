@@ -12,8 +12,9 @@ import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
 import { analysisTasksViewSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
   type AnalysisTasksView, type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageView } from '@alpacawork/contract/analysis';
-import { AnalysisReader } from '@alpacawork/backend/test-dist/analysis/reads.js';
+import { AnalysisReader, analysisKept } from '@alpacawork/backend/test-dist/analysis/reads.js';
 import { openTallyScope } from '@alpacawork/backend/test-dist/analysis/tally-scope.js';
+import { setAnalysisSlice } from '@alpacawork/backend/test-dist/analysis/slices.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
@@ -370,47 +371,47 @@ test('analysis commands share selection, contribution and tally rules over a sma
     const store = new ControlStore(root, { busyTimeoutMs: 1000 });
     try {
       const params = { period: 'all', bucket: 'week' } as const;
-      assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
-      assert.deepEqual(reader.usage({ ...params, by: 'tool' }, actor).breakdown,
+      assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 2);
+      assert.deepEqual((await reader.usage({ ...params, by: 'tool' }, actor)).breakdown,
         { by: 'tool', since: null, counted: null, series: null, rows: [] });
-      await t.test('a late tally updates the first owner model without a change to cached Run facts', t => {
+      await t.test('a late tally updates the first owner model without a change to cached Run facts', async t => {
         store.write(() => {
           store.connection.prepare("UPDATE runs SET record=json_set(record,'$.started_at',?) WHERE id=2").run(tallySince);
           touch(store.connection, { kind: 'run', id: 'R2' });
         });
         const by = 'model';
-        const before = reader.tasks({ ...params, by }, actor).breakdown!.rows.find(row => row.model?.name === 'unknown')!;
+        const before = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows.find(row => row.model?.name === 'unknown')!;
         assert.equal(before.finished, 1);
         t.after(() => { reader.tallies.delete('R2'); });
         reader.tallies.set('R2', { v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
           subagentTools: 0, state: 'complete' });
-        const rows = reader.tasks({ ...params, by }, actor).breakdown!.rows;
+        const rows = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows;
         assert.ok(rows.every(row => row.key !== before.key));
         const reported = rows.find(row => row.model?.name === 'example-default')!;
         assert.equal(reported.model?.effort, 'high');
-        const usage = reader.usage({ ...params, by }, actor).breakdown!.rows.find(row => row.key === reported.key);
+        const usage = (await reader.usage({ ...params, by }, actor)).breakdown!.rows.find(row => row.key === reported.key);
         assert.equal(usage?.counts.launches, 1);
-        const list = reader.list({ period: 'all', set: 'finished', by, key: reported.key }, actor);
+        const list = (await reader.list({ period: 'all', set: 'finished', by, key: reported.key }, actor));
         assert.deepEqual(list.rows.map(row => row.id), [rowId(3)]);
       });
       const caller = { kind: 'run', taskId: rowId(2), runId: 'R1', placementId: 'fixture-placement-2',
         role: 'owner', responsible: true } as const;
-      assert.equal(reader.tasks(params, caller).head.project, project);
-      assert.throws(() => reader.tasks({ ...params, project: 'P' + 9 }, caller), /own project/);
+      assert.equal((await reader.tasks(params, caller)).head.project, project);
+      await assert.rejects(reader.tasks({ ...params, project: 'P' + 9 }, caller), /own project/);
       store.write(() => {
         store.connection.prepare('UPDATE tasks SET user_requested=0 WHERE external_id=?').run(rowId(2));
         touch(store.connection, { kind: 'task', id: rowId(2) });
       });
-      assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
-      assert.equal(reader.usage(params, actor).counts.value.launches, 4);
+      assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 1);
+      assert.equal((await reader.usage(params, actor)).counts.value.launches, 4);
       await t.test('the next analysis read sees a committed acceptance without an owner Run in its own row', async () => {
-        assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
+        assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 1);
         const committed = await new TaskReportService(root).report({ task: id, state: 'done', opId: randomUUID(),
           expectedTaskHash: shown.hash, title: 'Accepted', description: 'Accepted synthetic work.' }, actor, actor);
         assert.equal(committed.task.state, 'done');
-        assert.equal(reader.tasks(params, actor).counts.value.accepted, 2);
+        assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 2);
         for (const by of ['model', 'agent'] as const) {
-          const rows = analysisTasksViewSchema.parse(reader.tasks({ ...params, by }, actor)).breakdown!.rows;
+          const rows = analysisTasksViewSchema.parse((await reader.tasks({ ...params, by }, actor))).breakdown!.rows;
           assert.equal(rows.length, 2);
           const withoutOwner = rows.find(row => row.noOwnerRun === true);
           const named = rows.find(row => row.label === 'unknown');
@@ -419,7 +420,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
           assert.equal(named.noOwnerRun, undefined, by);
           assert.notEqual(withoutOwner.key, named.key, by);
           for (const [dimension, taskId] of [[withoutOwner, id], [named, rowId(3)]] as const) {
-            const list = reader.list({ period: 'all', set: 'finished', by, key: dimension.key }, actor);
+            const list = (await reader.list({ period: 'all', set: 'finished', by, key: dimension.key }, actor));
             assert.equal(list.total, dimension.finished, by);
             assert.deepEqual(list.rows.map(row => row.id), [taskId], by);
           }
@@ -429,8 +430,103 @@ test('analysis commands share selection, contribution and tally rules over a sma
         store.connection.prepare("UPDATE tasks SET lifecycle='deleted' WHERE external_id=?").run(rowId(3));
         touch(store.connection, { kind: 'task', id: rowId(3) });
       });
-      assert.equal(reader.tasks(params, actor).counts.value.accepted, 1);
-      assert.equal(reader.usage(params, actor).counts.value.launches, 3);
+      assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 1);
+      assert.equal((await reader.usage(params, actor)).counts.value.launches, 3);
+
+      // Reading only what changed counts as reading everything again: a Run that starts a conversation earlier than
+      // the one that began it, and a Task moved under another unit.
+      store.write(() => {
+        const record = JSON.parse(String(store.connection.prepare('SELECT record FROM runs WHERE id=5').get()!.record));
+        Object.assign(record, { pids: { agent: 1005, manager: 2005 }, session: { provider: 'fixture', id: 'synthetic-session-2' },
+          started_at: instant(-5), ended_at: instant(30), usage: { includesEarlier: false, conversation: null, run: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 } } });
+        store.connection.prepare('UPDATE runs SET record=? WHERE id=5').run(JSON.stringify(record));
+        touch(store.connection, { kind: 'run', id: 'R5' });
+        store.connection.prepare('UPDATE tasks SET parent_id=(SELECT id FROM tasks WHERE external_id=?) WHERE external_id=?').run(rowId(2), rowId(6));
+        touch(store.connection, { kind: 'task', id: rowId(6) });
+      });
+      const whole = new AnalysisReader(root, Date.parse(tallySince));
+      try {
+        for (const read of [(view: AnalysisReader) => view.tasks({ ...params, by: 'model' }, actor),
+          (view: AnalysisReader) => view.usage({ ...params, by: 'model' }, actor),
+          (view: AnalysisReader) => view.list({ period: 'all', set: 'used', value: 'newConversations' }, actor),
+          (view: AnalysisReader) => view.task({ task: rowId(2) }, actor)])
+          assert.deepEqual(await read(reader), await read(whole));
+      } finally { whole.close(); }
+
+      // A breakdown alone is the breakdown its look gives.
+      for (const [look, by] of [['tasks', 'model'], ['usage', 'model'], ['usage', 'agent'], ['usage', 'tool']] as const) {
+        const alone = await reader.breakdown({ ...params, look, by }, actor);
+        const full = look === 'tasks' ? await reader.tasks({ ...params, by }, actor) : await reader.usage({ ...params, by }, actor);
+        assert.deepEqual(alone, { head: full.head, breakdown: { look, ...full.breakdown } }, `${look} ${by}`);
+      }
+      // Read in many zones, the analysis keeps only a few of their days.
+      for (const timeZone of Intl.supportedValuesOf('timeZone').slice(0, 20))
+        await reader.usage({ ...params, by: 'model', timeZone }, actor);
+      assert.deepEqual(analysisKept(), { zones: 3, scopes: 3 });
+      // Reads taken at once (counts, lists, a task's values, in several zones) answer as they do one by one.
+      const reads = ['UTC', 'Asia/Tokyo', 'America/New_York'].flatMap(timeZone => [
+        () => reader.usage({ ...params, by: 'model', timeZone }, actor), () => reader.tasks({ ...params, timeZone }, actor),
+        () => reader.list({ period: 'all', set: 'used', value: 'tokens', timeZone }, actor), () => reader.task({ task: rowId(2), timeZone }, actor)]);
+      const together = await Promise.all(reads.map(read => read()));
+      const alone = [];
+      for (const read of reads) alone.push(await read());
+      assert.deepEqual(together, alone);
+
+      // Writes while reads are under way: each answer is the whole answer of one moment, and the reads after them are
+      // what reading everything again gives. Every point a read may give the loop back does (a slice of 0), and the
+      // writes come after more and more of those points.
+      const reRun = (run: number, session: string, output: number) => {
+        const record = JSON.parse(String(store.connection.prepare('SELECT record FROM runs WHERE id=?').get(run)!.record));
+        record.session = { provider: 'fixture', id: session };
+        record.usage = { ...record.usage, run: { ...record.usage.run, output } };
+        store.connection.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), run);
+        touch(store.connection, { kind: 'run', id: 'R' + run });
+      };
+      // A Run's session and its output tokens changed at once, and two Runs changed by two writes.
+      const states = [
+        [() => store.write(() => reRun(4, 'synthetic-session-1', 4 + 12_345))],
+        [() => store.write(() => reRun(4, 'synthetic-session-4', 4))],
+        [() => store.write(() => reRun(3, 'synthetic-session-1', 3 + 12_345)), () => store.write(() => reRun(4, 'synthetic-session-1', 4 + 12_345))],
+        [() => store.write(() => reRun(3, 'synthetic-session-3', 3)), () => store.write(() => reRun(4, 'synthetic-session-4', 4))],
+      ];
+      const counted = (view: AnalysisReader) => view.usage({ ...params, by: 'model' }, actor);
+      const listed = (view: AnalysisReader) => view.list({ period: 'all', set: 'used', value: 'tokens' }, actor);
+      const wholly = async <T>(read: (view: AnalysisReader) => Promise<T>) => {
+        const fresh = new AnalysisReader(root, Date.parse(tallySince));
+        try { return await read(fresh); } finally { fresh.close(); }
+      };
+      const turns = (count: number) => (async () => { for (let i = 0; i < count; i++) await new Promise(resolve => setImmediate(resolve)); })();
+      const seen = { counted: new Set<number>(), listed: new Set<number>() };
+      let during = 0;
+      setAnalysisSlice(0);
+      try {
+        for (let round = 0; round < 24; round++) {
+          const writes = states[round % states.length]!, after = 1 + (round >> 2) * 6;
+          const moments = [{ counted: await wholly(counted), listed: await wholly(listed) }];
+          // A long count whose facts have a change to read, and a list that waits behind it for the facts.
+          store.write(() => touch(store.connection, { kind: 'run', id: 'R1' }));
+          let settled = false;
+          const counting = counted(reader).finally(() => { settled = true; }), listing = listed(reader);
+          for (const write of writes) {
+            await turns(after);
+            if (!settled) during++;
+            write();
+            moments.push({ counted: await wholly(counted), listed: await wholly(listed) });
+          }
+          const [count, list] = await Promise.all([counting, listing]);
+          const at = (answer: unknown, kind: 'counted' | 'listed') => {
+            const moment = moments.findIndex(each => JSON.stringify(each[kind]) === JSON.stringify(answer));
+            assert.notEqual(moment, -1, `round ${round}: the ${kind} answer is no one moment's`);
+            seen[kind].add(moment);
+          };
+          at(count, 'counted'); at(list, 'listed');
+          const last = moments.at(-1)!;
+          assert.deepEqual(await counted(reader), last.counted, `round ${round}`);
+          assert.deepEqual(await listed(reader), last.listed, `round ${round}`);
+        }
+      } finally { setAnalysisSlice(); }
+      // Writes came while reads were under way, and a read waiting its turn answered as of a later moment.
+      assert.ok(during > 0 && seen.listed.size > 1, JSON.stringify({ during, counted: [...seen.counted], listed: [...seen.listed] }));
     } finally { store.close(); reader.close(); tables(); changes.close(); }
   } finally {
     if (original) {

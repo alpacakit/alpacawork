@@ -66,20 +66,25 @@ const keptHistory = () => new KeptTable<Map<string, History>>('task_log', () => 
   }
 });
 /** A current read owns its membership even when another reader has already kept a later prefix. */
+/**
+ * The named Tasks' histories read from the table itself, at `db`'s read point, without the kept history: for a reader
+ * that reads a few Tasks at a time and keeps what it read (the analysis).
+ */
+export function taskLogsOf(db: DatabaseSync, ids: readonly string[]): Map<string, TaskLog[]> {
+  const logs = new Map(ids.map(id => [id, [] as TaskLog[]])), states = new Map<string, TaskLog['fromState']>();
+  for (const row of db.prepare(`SELECT l.task_id,${TASK_RECORD_COLUMNS} FROM task_log l ${TASK_RECORD_JOINS}
+    WHERE l.task_id IN (SELECT value FROM json_each(?)) ORDER BY l.task_id,l.ordinal`).all(JSON.stringify(ids))) {
+    const id = String(row.task_id), before = states.get(id) ?? null, event = taskEvent(row, before);
+    logs.get(id)!.push(event); states.set(id, stateAfter(event, before));
+  }
+  return logs;
+}
 export function taskLogs(db: DatabaseSync, root: string | undefined, ids: readonly string[]): Map<string, TaskLog[]> {
   root ||= controlRoot(db);
   const table = root === undefined ? undefined : keptOf(root, 'task_log', keptHistory);
   const read = table?.at(db, through => db.prepare(`SELECT l.rowid AS history_row,l.task_id,${TASK_RECORD_COLUMNS}
     FROM task_log l ${TASK_RECORD_JOINS} WHERE l.rowid>? ORDER BY l.rowid`).all(through));
-  if (!read) {
-    const logs = new Map(ids.map(id => [id, [] as TaskLog[]])), states = new Map<string, TaskLog['fromState']>();
-    for (const row of db.prepare(`SELECT l.task_id,${TASK_RECORD_COLUMNS} FROM task_log l ${TASK_RECORD_JOINS}
-      WHERE l.task_id IN (SELECT value FROM json_each(?)) ORDER BY l.task_id,l.ordinal`).all(JSON.stringify(ids))) {
-      const id = String(row.task_id), before = states.get(id) ?? null, event = taskEvent(row, before);
-      logs.get(id)!.push(event); states.set(id, stateAfter(event, before));
-    }
-    return logs;
-  }
+  if (!read) return taskLogsOf(db, ids);
   const own = new Map<string, Record<string, unknown>[]>();
   for (const row of read.own) { const id = String(row.task_id), rows = own.get(id) ?? []; rows.push(row); own.set(id, rows); }
   return new Map(ids.map(id => {

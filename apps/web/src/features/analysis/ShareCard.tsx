@@ -15,7 +15,7 @@ import { CARD_DEFAULT, CARD_LIMIT, HEROES, NUMBERS, canPick, cardFacts, cardFile
 import { CARD_H, CARD_W, drawCard, type CardLook, type CardPalette } from "./card-draw";
 import { answerOf, useTasksView, useUsageView } from "./data";
 import { Seg, useChoices } from "./parts";
-import { CARD_PERIODS, cardDays, cardSpanOf, type AnalysisPlace } from "./place";
+import { CARD_PERIODS, cardDays, type AnalysisPlace } from "./place";
 
 type Theme = "dark" | "light";
 /** A choice a finger's height on a phone: one of a row of them, or the row's own buttons. */
@@ -30,13 +30,6 @@ const isChoice = (value: unknown): CardChoice | null => {
   return { hero: hero as Hero, numbers: NUMBERS.filter(each => numbers.includes(each)), grass, theme };
 };
 const cardChoice = deviceValue("alpacawork.shareCard", jsonCodec(isChoice), CARD_DEFAULT);
-
-/** The analysis's way to the card: over the page, for the span and the project in view. */
-export function ShareCardButton({ place }: { place: AnalysisPlace }) {
-  const { t } = useTranslation("analysis");
-  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, unit: null, card: cardSpanOf(place.span) })}>
-    <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
-}
 
 /** What the card's colours are read from: each theme's tokens (tokens.css) on a part of the page that takes that theme. */
 const PROBE = ["bg-bg", "text-ink", "text-muted", "bg-line", "bg-grass-0", "bg-grass-1", "bg-grass-2", "bg-grass-3", "bg-done"] as const;
@@ -106,12 +99,14 @@ function XMark() {
 export function CardPane({ place, project }: { place: AnalysisPlace; project: string | null }) {
   const { t } = useTranslation("analysis");
   const card = place.card!;
-  const { bucket, taskGroup } = useChoices();
+  const { bucket } = useChoices();
   // The whole record ending on a day starts on the record's first day: the analysis's own answer for what is asked now
-  // says which (one still standing for another project says nothing).
-  const face = answerOf(useTasksView(project, place.span, bucket, taskGroup));
+  // says which (one still standing for another project says nothing). The card reads as the face does: the tasks'
+  // numbers without a breakdown (the face's own answer when the days are the same), the AI's use by model for the
+  // model used most.
+  const face = answerOf(useTasksView(project, place.span, bucket, null));
   const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
-  const tasks = useTasksView(project, days ?? place.span, bucket, taskGroup, days !== null);
+  const tasks = useTasksView(project, days ?? place.span, bucket, null, days !== null);
   const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null);
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });

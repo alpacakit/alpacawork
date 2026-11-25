@@ -8,9 +8,32 @@ export const addDays = (day: string, count: number) => dayKey(new Date(Date.pars
 export const monday = (day: string) => addDays(day, -((new Date(day).getUTCDay() + 6) % 7));
 export const serverZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
+/**
+ * The local day of an instant in a zone. A zone's day turns only at a quarter hour (every offset in use is whole
+ * quarters), so the day of each quarter hour whose start and end fall on one day is kept and shared by every read: the
+ * days of a long record are worked out once, not once per Run and read. Few zones are kept; the one least used goes.
+ */
+const QUARTER = 900_000;
+const ZONES_KEPT = 8;
+const zones = new Map<string, { format: (time: number) => string; days: Map<number, string> }>();
 export function calendar(timeZone: string) {
-  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
-  return (time: number) => formatter.format(time);
+  let zone = zones.get(timeZone);
+  if (zone) zones.delete(timeZone);
+  else {
+    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    zone = { format: time => formatter.format(time), days: new Map() };
+    if (zones.size >= ZONES_KEPT) zones.delete(zones.keys().next().value!);
+  }
+  zones.set(timeZone, zone);
+  const { format, days } = zone;
+  return (time: number) => {
+    const quarter = Math.floor(time / QUARTER);
+    const kept = days.get(quarter);
+    if (kept !== undefined) return kept;
+    const day = format(time);
+    if (day === format(quarter * QUARTER) && day === format(quarter * QUARTER + QUARTER - 1)) days.set(quarter, day);
+    return day;
+  };
 }
 
 export function makeHead(project: string | null, timeZone: string, today: string, firstDay: string | null,
@@ -32,9 +55,14 @@ export function makeHead(project: string | null, timeZone: string, today: string
 
 export const inDays = (day: string, range: AnalysisDays | null) => range !== null && range.from <= day && day <= range.to;
 
+const mondays = new Map<string, string>();
 export function bucketStart(day: string, bucket: AnalysisBucket): string {
   if (bucket === 'day') return day;
-  return bucket === 'week' ? monday(day) : day.slice(0, 7) + '-01';
+  if (bucket === 'month') return day.slice(0, 7) + '-01';
+  // Days are few and asked for again and again (each launch's): each Monday is worked out once.
+  let start = mondays.get(day);
+  if (start === undefined) mondays.set(day, start = monday(day));
+  return start;
 }
 
 export function buckets(first: string | null, today: string, bucket: AnalysisBucket) {
