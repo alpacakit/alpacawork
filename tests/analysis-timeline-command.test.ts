@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { controlDatabasePath } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
-import { analysisAtViewSchema, analysisChangesViewSchema, analysisFindingsViewSchema, analysisTraceViewSchema } from '@alpacawork/contract/analysis';
+import { analysisAtViewSchema, analysisUnitValuesSchema, analysisChangesViewSchema, analysisFindingsViewSchema, analysisTraceViewSchema } from '@alpacawork/contract/analysis';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { inertFixtureLaunch } from './helpers/agent-stub.ts';
 import { copyWorkspace, createOriginal, profiles, removeWorkspace } from '../scripts/dev-fixtures/fixture.ts';
@@ -17,7 +17,7 @@ const instant = (second: number) => new Date(Date.UTC(2026, 8, 25, 0, 0, second)
 /** One Run of the task gets times, a step journal with its output, and its conditions; the others stay as they are. */
 function prepare(root: string) {
   const db = new DatabaseSync(controlDatabasePath(root));
-  let run: string, task: string;
+  let run: string, task: string, top: string;
   try {
     const row = db.prepare("SELECT id, json_extract(record,'$.task') AS task FROM runs WHERE json_extract(record,'$.task') IS NOT NULL ORDER BY id LIMIT 1").get()!;
     run = 'R' + String(row.id); task = String(row.task);
@@ -25,6 +25,26 @@ function prepare(root: string) {
     Object.assign(record, { state: 'succeeded', reason: null, created_at: instant(0), started_at: instant(1), ended_at: instant(60),
       launch: inertFixtureLaunch('codex', { model: 'example', effort: 'high' }), pids: { agent: 1001, manager: 2001 } });
     db.prepare('UPDATE runs SET record=? WHERE id=?').run(JSON.stringify(record), row.id);
+    // The top-level Task above it, and a question to the user on each of the two, open while the Run works.
+    top = task;
+    for (;;) {
+      const up = db.prepare("SELECT p.external_id AS id, p.kind FROM tasks t JOIN tasks p ON p.id=t.parent_id WHERE t.external_id=?").get(top)!;
+      if (up.kind !== 'task') break;
+      top = String(up.id);
+    }
+    const insert = db.prepare('INSERT INTO task_log(id,task_id,ordinal,entry) SELECT ?,t.id,coalesce((SELECT max(ordinal) FROM task_log WHERE task_id=t.id),-1)+1,? FROM tasks t WHERE t.external_id=?');
+    insert.run('timeline-doing', JSON.stringify({ id: 'timeline-doing', kind: 'linked', at: instant(2), title: null, description: null,
+      actor: { kind: 'human' }, fromState: 'todo', toState: 'doing' }), top);
+    for (const [n, owner] of [...new Set([top, task])].entries()) {
+      const question = `timeline-question-${n}`, answer = `timeline-answer-${n}`;
+      insert.run(question, JSON.stringify({ id: question, kind: 'asked', at: instant(5 + n), askedTo: null, title: 'Synthetic question',
+        description: 'A fixture question', decide: [{ decide_question: 'Take the result?', decide_kind: n ? 'choose' : 'accept' }],
+        actor: { kind: 'placement', placementId: 'fixture-placement' }, fromState: null, toState: null }), owner);
+      insert.run(answer, JSON.stringify({ id: answer, kind: 'answered', at: instant(50 + n * 10), questionId: question, title: null,
+        description: null, actor: { kind: 'human' }, fromState: null, toState: null }), owner);
+      db.prepare('INSERT INTO task_log_question(log_id,question_log_id) VALUES(?,?)').run(answer, question);
+      db.prepare('INSERT INTO log_texts(log_id,text) VALUES(?,?)').run(answer, 'A fixture answer');
+    }
   } finally { db.close(); }
   const folder = runFolder(root, run);
   mkdirSync(folder, { recursive: true });
@@ -38,7 +58,7 @@ function prepare(root: string) {
   ].map(line => JSON.stringify(line)).join('\n') + '\n');
   writeFileSync(join(folder, RUN_FILES.conditions), JSON.stringify({ v: 1, observedAt: instant(1), version: '0.0.0', release: null, source: null,
     cwd: { path: '/fictional', commit: null }, skills: [], instructions: [] }));
-  return { run, task };
+  return { run, task, top: top! };
 }
 
 test('analysis trace, findings and at answer one task\'s timeline over HTTP in their contract shapes', { timeout: 30_000 }, async () => {
@@ -49,7 +69,7 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
     original = createOriginal({ ...profiles.small, seed: 'analysis-timeline' }, join(temp, 'cache')).root;
     copyWorkspace(original, root);
     rootCreated = true;
-    const { run, task } = prepare(root);
+    const { run, task, top } = prepare(root);
     const app = await startServer(root, 0);
     try {
       const read = async (verb: string, params: Record<string, string>, status = 200) => {
@@ -85,6 +105,12 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       assert.deepEqual(at.runs.map(item => [item.run, item.current.map(current => current.step)]), [[run, [0]]]);
       assert.equal(at.values, null);
       await read('at', { task: 'T999999', at: instant(20) }, 404);
+
+      // The trace's waits are the counts' waits: for a top-level task, the same numbers whatever the scope.
+      const counted = analysisUnitValuesSchema.parse(await read('task', { task: top, timeZone: 'UTC' }));
+      assert.ok(counted.time.review > 0 && counted.waits.away + counted.waits.otherTasks + counted.waits.thisTask > 0);
+      for (const scope of ['self', 'subtree'])
+        assert.deepEqual(analysisTraceViewSchema.parse(await read('trace', { task: top, scope, limit: '1' })).breakdown.waits, counted.waits, scope);
 
       const changes = analysisChangesViewSchema.parse(await read('changes', { period: 'all', timeZone: 'UTC', limit: '1' }));
       assert.ok(changes.runs.recorded >= 1 && changes.runs.launched >= changes.runs.recorded);

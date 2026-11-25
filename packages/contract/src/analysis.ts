@@ -305,7 +305,11 @@ export const analysisTraceViewSchema = z.strictObject({
   breakdown: z.strictObject({
     wall: count, categories: z.array(z.strictObject({ key: z.enum(analysisBreakdownKeys), ms: count })),
     answerTo: z.strictObject({ user: count, task: count }),
-    /** waiting-answer and waiting-review split by where the user was (30 idle minutes is away), as the counts split them. */
+    /**
+     * The time the user was waited on, split by where the user was (30 idle minutes is away): the same rule and time as
+     * `time.review` + `time.answer` of `analysis task` (an open question counts even while an AI works, over the task's
+     * own period and its whole subtree's questions whatever the scope), so it can exceed waiting-answer + waiting-review.
+     */
     waits: z.strictObject({ away: count, otherTasks: count, thisTask: count }),
     aiBusyMs: count, aiWorkMs: count, toolMs: count.nullable(), thinkingMs: count.nullable(), stepWorkMs: count.nullable(),
   }),

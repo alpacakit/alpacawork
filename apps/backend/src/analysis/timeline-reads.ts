@@ -12,6 +12,7 @@ import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alp
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
+import type { TaskBaseState } from '@alpacawork/raw';
 import { taskLogsOf } from '../control/task-history.js';
 import { readConditions } from '../runs/conditions.js';
 import { readRunStepIndex } from '../runs/run-steps.js';
@@ -31,8 +32,8 @@ const firstLine = (text: string) => {
   return line.length > FIRST_LINE ? line.slice(0, FIRST_LINE - 1) + '…' : line;
 };
 
-type TaskRow = { internal: string; id: string; parent: string | null; title: string; project: string; created: string };
-const taskRows = `SELECT t.id AS internal,t.external_id AS id,p.external_id AS parent,t.title,pr.external_id AS project,t.created_at AS created
+type TaskRow = { internal: string; id: string; parent: string | null; title: string; project: string; created: string; state: TaskBaseState };
+const taskRows = `SELECT t.id AS internal,t.external_id AS id,p.external_id AS parent,t.title,pr.external_id AS project,t.created_at AS created,t.base_state AS state
   FROM tasks t LEFT JOIN tasks p ON p.id=t.parent_id JOIN tasks pr ON pr.id=t.project_task_id`;
 
 /** The task and every task under it (the user acting on any of them acts on this task), the root first. */
@@ -126,7 +127,7 @@ export async function readTimelineRecords(root: string, task: string, scope: Ana
   try {
     ({ family, rows, logs, runs, requests } = store.read(db => {
       const family = familyOf(db, task), rows = scope === 'self' ? family.slice(0, 1) : family, ids = rows.map(row => row.id);
-      return { family, rows, logs: taskLogsOf(db, rows.map(row => row.internal)), requests: requestsOf(db, ids),
+      return { family, rows, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
         runs: db.prepare('SELECT record FROM runs WHERE task_id IN (SELECT value FROM json_each(?)) ORDER BY id')
           .all(JSON.stringify(ids)).map(row => JSON.parse(String(row.record)) as RunRecord) };
     }));
@@ -138,7 +139,8 @@ export async function readTimelineRecords(root: string, task: string, scope: Ana
   const traced: TraceRun[] = [];
   for (const record of runs) traced.push(await traceRun(root, record));
   return { root: task, project: rows[0]!.project, scope, tasks, runs: traced, requests, labels,
-    family: new Set(family.map(row => row.id)), activity, now };
+    family: new Set(family.map(row => row.id)), familyLogs: new Map(family.map(row => [row.id, logs.get(row.internal) ?? []])),
+    rootState: family[0]!.state, activity, now };
 }
 
 function windowOf(records: TraceRecords, input: { from?: string; to?: string }): Interval {

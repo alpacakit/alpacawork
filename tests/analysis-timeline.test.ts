@@ -34,7 +34,8 @@ function step(n: number, from: number, to: number | null, fields: Partial<TraceS
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
-    labels: new Map(), family: new Set(tasks.map(item => item.id)), activity: [], now };
+    labels: new Map(), family: new Set(tasks.map(item => item.id)), familyLogs: new Map(tasks.map(item => [item.id, item.log])),
+    rootState: 'doing', activity: [], now };
 }
 const window = (from: number, to: number) => ({ from: at(from), to: at(to) });
 const find = (data: TraceRecords, rule: Parameters<typeof findFindings>[2][number], to = 200, thresholds = DEFAULT_THRESHOLDS) =>

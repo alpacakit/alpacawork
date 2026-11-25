@@ -6,11 +6,11 @@
  */
 import { analysisBreakdownKeys, type AnalysisAtView, type AnalysisLane, type AnalysisMark, type AnalysisSpan, type AnalysisTraceScope,
   type AnalysisTraceView } from '@alpacawork/contract/analysis';
-import { iso, questionKind, type Interval } from './rules.js';
+import { clocks, iso, questionKind, taskOutcome, userQuestions, type Interval } from './rules.js';
 import { changeEvents } from './changes.js';
 import { splitWaits, type Activity } from './presence.js';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { speaksForUser } from '@alpacawork/raw';
+import { speaksForUser, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf, type Question } from '@alpacawork/raw/questions';
 
@@ -45,6 +45,9 @@ export type TraceRecords = {
   labels: ReadonlyMap<string, string>;
   /** The root and every task under it, whatever the scope: the user acting on any of them acts on this task. */
   family: ReadonlySet<string>;
+  /** Every family task's log, whatever the scope (the waits read the user's questions of the whole subtree), and the root's state. */
+  familyLogs: ReadonlyMap<string, readonly TaskLog[]>;
+  rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
   now: number;
@@ -178,6 +181,21 @@ export function segments(records: TraceRecords, window: Interval): Segment[] {
 const stepIntervals = (run: TraceRun, end: number): Interval[] => (run.steps ?? []).flatMap(step =>
   step.inside === null && step.from !== null ? [{ from: step.from, to: step.to ?? run.ended ?? end }] : []);
 
+/**
+ * The time the user was waited on, by the counts' rule (rules.ts clocks, as `analysis task` reads it): over the task's
+ * own period (its request to its acceptance, stop or done, else now) within the window, an open question to the user
+ * from the task or any task under it is a wait even while an AI works, and so is review. It is not the breakdown's
+ * partition, where AI work comes first, so it can exceed waiting-answer plus waiting-review.
+ */
+export function waitIntervals(records: TraceRecords, window: Interval): Interval[] {
+  const log = records.familyLogs.get(records.root) ?? [], own = userQuestions(log);
+  const descendants = [...records.familyLogs].flatMap(([task, history]) => task === records.root ? [] : userQuestions(history));
+  const outcome = taskOutcome(log, records.rootState, iso(records.tasks[0]!.created), [...own, ...descendants]);
+  const end = outcome.finishedAt ?? outcome.doneAt;
+  const from = Math.max(window.from, Date.parse(outcome.requestedAt)), to = Math.min(window.to, end ? Date.parse(end) : records.now);
+  return clocks(log, own, descendants, [], from, to, records.now).waits;
+}
+
 /** The window's breakdown, and whether it still changes with the time of the read (`settled` false: the wait split runs to now). */
 export function breakdown(records: TraceRecords, window: Interval, parts: readonly Segment[]): AnalysisTraceView['breakdown'] & { settled: boolean } {
   const ms = new Map<string, number>();
@@ -198,8 +216,7 @@ export function breakdown(records: TraceRecords, window: Interval, parts: readon
     for (const step of steps) { const inside = clip(step, part); if (inside) stepWorkMs += inside.to - inside.from; }
   }
   const aiWorkMs = counted.reduce((sum, { part }) => sum + part.to - part.from, 0);
-  const waits = splitWaits(parts.filter(part => part.key === 'answer-user' || part.key === 'answer-task' || part.key === 'waiting-review'),
-    records.activity, task => records.family.has(task), records.now);
+  const waits = splitWaits(waitIntervals(records, window), records.activity, task => records.family.has(task), records.now);
   return {
     wall: window.to - window.from, categories: analysisBreakdownKeys.map(key => ({ key, ms: ms.get(key) ?? 0 })),
     answerTo: { user: answer('answer-user'), task: answer('answer-task') },

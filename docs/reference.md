@@ -148,7 +148,10 @@ If there is no owner Run, the breakdown row has `noOwnerRun: true` and a separat
 its creation to now, or to its last record once it is done or stopped. The trace's `breakdown` gives each instant of the
 wall time to the first part that holds: `owner-working`, `member-working`, `child-working`, `held`, `waiting-answer`,
 `waiting-review`, `queued`, `idle`; the parts sum to `wall`. As in the counts, a question asking to take a result is
-`waiting-review`, and `waits` splits `waiting-answer` plus `waiting-review` by where the user was. A Run gives step times
+`waiting-review`. `waits` is the same rule and time as `time.review` + `time.answer` of `analysis task`, split the same
+way by where the user was: an open question counts even while an AI works, over the Task's own period and the questions
+of its whole subtree whatever `--scope` is, so it can exceed `waiting-answer` + `waiting-review`. For a top-level Task the
+two give the same numbers. A Run gives step times
 only from when they were kept: `coverage.steps.unknown` names the Runs without them by reason, and the step-level values
 (`toolMs`, `thinkingMs`, `stepWorkMs`) are `null`, not 0, while any Run in the period lacks them. Spans and marks come in
 time order, `--limit` at a time, with `nextCursor`. Findings come from an experimental rule set (rule IDs stay;
