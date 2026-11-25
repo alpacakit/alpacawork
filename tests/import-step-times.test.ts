@@ -109,6 +109,10 @@ test('a Run that gets no times says why', async t => {
   lines(join(homes.claude, 'projects', '-work', 'read.jsonl'), [said(at, { type: 'tool_use', id: 'a' })]);
   assert.equal(await reason(run('R4', 'claude', 'read', at, at)), 'output_unreadable');
   rmSync(join(folder, 'stdout.log'));
+  // An output with ends alone lists no step.
+  lines(join(folder, 'stdout.log'), [claudeEnd('a')]);
+  assert.equal(await reason(run('R4', 'claude', 'read', at, at)), 'no_steps');
+  rmSync(join(folder, 'stdout.log'));
   lines(join(folder, 'stdout.log'), [claudeStart('a'), claudeEnd('a')]);
   assert.equal(await reason(run('R4', 'claude', 'gone', at, at)), 'transcript_missing');
   // A compressed record that breaks partway is unreadable, and the import goes on.
@@ -120,4 +124,28 @@ test('a Run that gets no times says why', async t => {
   assert.equal(await reason(run('R4', 'claude', 'changed', at, at)), 'transcript_unreadable');
   lines(join(homes.claude, 'projects', '-work', 'other.jsonl'), [said(at, { type: 'tool_use', id: 'z' })]);
   assert.equal(await reason(run('R4', 'claude', 'other', at, at)), 'no_matching_calls');
+});
+
+test('each step takes its own run of the call: whole within the Run\'s time to the millisecond, in order when an ID is used again, and an import left half done is completed', async t => {
+  const { path, homes } = home(t);
+  const session = '22222222-2222-4333-8444-555555555555', project = join(homes.claude, 'projects', '-work');
+  lines(join(project, `${session}.jsonl`), [
+    // Started before the Run: not the Run's, though it ends within it.
+    said('2026-11-20T00:59:59.000Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:01.000Z', { type: 'tool_result', tool_use_id: 'x' }),
+    said('2026-11-20T01:00:00.050Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:07.000Z', { type: 'tool_result', tool_use_id: 'x' }),
+    said('2026-11-20T01:00:08.000Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:09.000Z', { type: 'tool_result', tool_use_id: 'x' }),
+    // Ends a millisecond after the Run.
+    said('2026-11-20T01:00:10.000Z', { type: 'tool_use', id: 'late' }), said('2026-11-20T01:00:15.001Z', { type: 'tool_result', tool_use_id: 'late' })]);
+  const folder = join(path, 'R5');
+  lines(join(folder, 'stdout.log'), [claudeStart('x'), claudeEnd('x'), claudeStart('x'), claudeEnd('x'), claudeStart('late'), claudeEnd('late')]);
+  // An earlier import stopped after the first step's start.
+  writeFileSync(join(folder, 'steps.jsonl'), JSON.stringify({ event: 'start', line: 0, id: 'x', at: '2026-11-20T01:00:00.050Z', source: 'transcript', fingerprint: null, parentId: null }) + '\n');
+  const imported = await importRunSteps(folder, run('R5', 'claude', session, '2026-11-20T01:00:00Z', '2026-11-20T01:00:15Z'), transcriptReaders(homes), true);
+  assert.deepEqual({ steps: imported.steps, timed: imported.timed, added: imported.added }, { steps: 3, timed: 2, added: 3 });
+  const transcript = (start: string, end: string) => ({ startedAt: start, startSource: 'transcript', endedAt: end, endSource: 'transcript' });
+  assert.deepEqual(await times(folder, 'claude'), [
+    { id: 'x', ...transcript('2026-11-20T01:00:00.050Z', '2026-11-20T01:00:07.000Z') },
+    { id: 'x', ...transcript('2026-11-20T01:00:08.000Z', '2026-11-20T01:00:09.000Z') },
+    { id: 'late', startedAt: null, startSource: null, endedAt: null, endSource: null },
+  ]);
 });

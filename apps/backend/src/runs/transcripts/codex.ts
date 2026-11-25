@@ -58,9 +58,8 @@ export class CodexTranscripts {
       book.entries++;
       const payload = line.payload as { type?: unknown; item?: { id?: unknown; duration?: unknown } } | undefined;
       if (line.type !== 'event_msg' || payload?.type !== 'item_completed' || !payload.item) continue;
-      book.note(payload.item.id, 'ended', at);
       const took = millis(payload.item.duration);
-      if (took !== null) book.note(payload.item.id, 'started', new Date(Date.parse(at) - took).toISOString());
+      book.ran(payload.item.id, took === null ? null : at - took, at);
     } });
   }
 }

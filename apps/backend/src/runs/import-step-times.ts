@@ -15,20 +15,22 @@ import { RunStore } from '@alpacawork/runs';
 import { runtimeAdapter } from '../agents/registry.js';
 import { JsonlReader, STEP_LINE_LIMIT } from './readers/jsonl.js';
 import { StepJournal, type StepTimeOf } from './step-journal.js';
-import type { ConversationCalls } from './transcripts/calls.js';
+import type { CallTime, ConversationCalls } from './transcripts/calls.js';
 import { ClaudeTranscripts } from './transcripts/claude.js';
 import { CodexTranscripts } from './transcripts/codex.js';
 
 /**
  * Why a Run got no times. `running`: it has not ended (its manager times it). `agent_not_read`: its agent keeps no record
  * this reads. `no_conversation`: its record names no conversation. `no_output`: its output is gone. `output_unreadable`:
- * its output could not be read, or no line of it read as a step.
+ * its output could not be read, or no line of it read as JSON. `no_steps`: its output lists no step (it ran no tool,
+ * or its output is not in a form the agent's reader knows).
  * `transcript_missing`: the conversation's record is not on this PC (removed after the agent's retention period, or
  * kept elsewhere). `transcript_unreadable`: the record is there but not in a form this reads (the agent changed it).
- * `no_matching_calls`: the record reads, but names none of the Run's steps within the Run's time. `write_failed`: the
+ * `no_matching_calls`: the record reads, but no step of the Run could be matched to a call within the Run's time (none
+ * there, or as many runs of the call as the Run has steps with its ID were not). `write_failed`: the
  * Run's step journal could not be written.
  */
-export const STEP_IMPORT_REASONS = ['running', 'agent_not_read', 'no_conversation', 'no_output', 'output_unreadable',
+export const STEP_IMPORT_REASONS = ['running', 'agent_not_read', 'no_conversation', 'no_output', 'output_unreadable', 'no_steps',
   'transcript_missing', 'transcript_unreadable', 'no_matching_calls', 'write_failed'] as const;
 export type StepImportReason = typeof STEP_IMPORT_REASONS[number];
 
@@ -80,38 +82,62 @@ export async function importRunSteps(folder: string, run: ImportedRun, readers: 
   if (!adapter || (agent !== 'claude' && agent !== 'codex')) return fail('agent_not_read');
   if (!run.session) return fail('no_conversation');
   if (!existsSync(join(folder, RUN_FILES.stdout))) return fail('no_output');
-  const record = await readers[agent].calls(run.session.id);
+  let record: ConversationCalls;
+  try { record = await readers[agent].calls(run.session.id); } catch { return fail('transcript_unreadable'); }
   if (record.state === 'missing') return fail('transcript_missing');
   if (record.state === 'unreadable') return fail('transcript_unreadable');
+  const calls = record.calls, ended = run.ended_at;
 
-  // A conversation's Runs follow one another, so a time between this Run's start and end is this Run's.
-  const from = run.started_at ?? run.created_at, to = run.ended_at;
-  const own = (times: readonly string[] | undefined) => times?.filter(at => at >= from && at <= to).sort()[0] ?? null;
-  const journal = new StepJournal(folder, write);
-  // A step the Run's manager kept any time of is left as it is, so its start and end never come from two clocks.
-  const kept = new Map<string, boolean>(), timed = new Set<string>(), steps = new Set<string>();
-  const timeOf: StepTimeOf = (event, line, id) => {
-    const name = `${line}\0${id}`;
-    if (!kept.has(name)) kept.set(name, journal.holds(line, id));
-    const at = kept.get(name) ? null : own(record.calls.get(id)?.[event === 'start' ? 'started' : 'ended']);
-    if (at) timed.add(name);
-    return at ? { at, source: 'transcript' } : null;
+  /** The Run's output read as its manager read it, each step named by the same output line and ID as in its journal. */
+  const read = (journal: StepJournal, timeOf: StepTimeOf) => {
+    const lines = new JsonlReader(() => {}, STEP_LINE_LIMIT), named = new Map<string, string[]>();
+    const accept = (value: unknown, line: number) => {
+      for (const event of adapter.activity(value, ended)) {
+        const step = journal.observe(event, line, timeOf), id = event.id as string;
+        if (step === null) continue;
+        const steps = named.get(id) ?? [];
+        if (!steps.includes(`${step}`)) named.set(id, [...steps, `${step}`]);
+      }
+    };
+    lines.read(folder, accept); lines.finish(accept);
+    // A step whose end the output does not say ends when the record says it did.
+    journal.settle('unknown', timeOf);
+    return { named, rejected: lines.rejection !== null };
   };
-  // The output read as the Run's manager read it, so each step is named by the same output line and ID.
-  const lines = new JsonlReader(() => {}, STEP_LINE_LIMIT);
-  const accept = (value: unknown, line: number) => {
-    for (const event of adapter.activity(value, to)) {
-      const named = journal.observe(event, line, timeOf);
-      if (named !== null) steps.add(`${named}\0${event.id}`);
+  // First the steps alone: which steps each call ID names, in order.
+  let steps: Map<string, string[]>, rejected: boolean;
+  try { ({ named: steps, rejected } = read(new StepJournal(folder, false), () => null)); } catch { return fail('output_unreadable'); }
+  result.steps = [...steps.values()].reduce((sum, each) => sum + each.length, 0);
+  if (!result.steps) return fail(rejected ? 'output_unreadable' : 'no_steps');
+
+  // A conversation's Runs follow one another, so a run of a call wholly between this Run's start and end is this
+  // Run's. The call's steps take its runs in order, only when there are as many of each: otherwise which is which is
+  // not known, and none is written.
+  const from = Date.parse(run.started_at ?? run.created_at), to = Date.parse(ended);
+  const within = (at: number | null) => at === null || (at >= from && at <= to);
+  const own = new Map<string, CallTime[] | null>();
+  const runsOf = (id: string) => {
+    if (!own.has(id)) {
+      const runs = (calls.get(id) ?? []).filter(time => within(time.startedAt) && within(time.endedAt));
+      own.set(id, runs.length === steps.get(id)?.length ? runs : null);
     }
+    return own.get(id);
   };
-  try { lines.read(folder, accept); lines.finish(accept); }
-  catch { return fail('output_unreadable'); }
-  // A step whose end the output does not say ends when the record says it did.
-  journal.settle('unknown', timeOf);
-  Object.assign(result, { steps: steps.size, timed: timed.size, added: journal.added });
+  const journal = new StepJournal(folder, write), timed = new Set<string>();
+  let live = false;
+  // A step with a time its Run's manager kept as it happened is left as it is, so its start and end never come from
+  // two clocks; one an import began is completed.
+  const timeOf: StepTimeOf = (event, line, id) => {
+    if (journal.keptLive(line, id)) { live = true; return null; }
+    const time = runsOf(id)?.[steps.get(id)!.indexOf(`${line}`)];
+    const at = event === 'start' ? time?.startedAt : time?.endedAt;
+    if (at === null || at === undefined) return null;
+    timed.add(`${line}\0${id}`);
+    return { at: new Date(at).toISOString(), source: 'transcript' };
+  };
+  try { read(journal, timeOf); } catch { return fail('output_unreadable'); }
+  Object.assign(result, { timed: timed.size, added: journal.added });
   if (journal.broken) return fail('write_failed');
-  if (!steps.size && lines.rejection) return fail('output_unreadable');
-  if (steps.size && !timed.size && ![...kept.values()].some(Boolean)) return fail('no_matching_calls');
+  if (!timed.size && !live) return fail('no_matching_calls');
   return result;
 }

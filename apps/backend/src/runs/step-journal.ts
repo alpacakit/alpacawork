@@ -98,7 +98,7 @@ export class StepJournal {
   private readonly open = new Map<string, number>();
   /** The line of the last step each call ID named, once it ended. */
   private readonly closed = new Map<string, number>();
-  private held: Set<string> | null = null;
+  private held: Map<string, StepTimeSource> | null = null;
   private failed = false;
   /** Entries this journal appended (or, when it does not write, would have). */
   added = 0;
@@ -119,7 +119,8 @@ export class StepJournal {
     // An end said again for a step already ended is that step's, as the index of steps reads it.
     if (kind === 'tool_end' && !this.open.has(id) && this.closed.has(id)) return this.closed.get(id)!;
     if (kind === 'tool_start' || !this.open.has(id)) {
-      if (kind === 'tool_start' && (typeof event.toolName !== 'string' || !event.toolName)) return null;
+      // A step is one the index of steps lists: it has a tool name.
+      if (typeof event.toolName !== 'string' || !event.toolName) return null;
       this.open.set(id, line);
       const document = event.call ? stepInputDocument(event.call) : undefined;
       const at = timeOf('start', line, id);
@@ -140,10 +141,13 @@ export class StepJournal {
   /** The journal could not be written: what was observed after that was not kept. */
   get broken(): boolean { return this.failed; }
 
-  /** Whether the journal holds a start or an end of the step that output line `line` started with call `id`. */
-  holds(line: number, id: string): boolean {
+  /**
+   * Whether the journal holds a time the Run's manager kept as it happened (not one imported from a conversation
+   * record) for the start or end of the step that output line `line` started with call `id`.
+   */
+  keptLive(line: number, id: string): boolean {
     const held = this.heldNames();
-    return held.has(key('start', line, id)) || held.has(key('end', line, id));
+    return [held.get(key('start', line, id)), held.get(key('end', line, id))].some(source => source !== undefined && source !== 'transcript');
   }
 
   /**
@@ -158,14 +162,19 @@ export class StepJournal {
     this.open.clear();
   }
 
-  private heldNames(): Set<string> {
-    return this.held ??= new Set(readStepJournal(this.folder).map(held => key(held.event, held.line, held.id)));
+  /** What the journal holds, by entry, with where its time came from (the first written stands). */
+  private heldNames(): Map<string, StepTimeSource> {
+    if (!this.held) {
+      this.held = new Map();
+      for (const entry of readStepJournal(this.folder)) if (!this.held.has(key(entry.event, entry.line, entry.id))) this.held.set(key(entry.event, entry.line, entry.id), entry.source);
+    }
+    return this.held;
   }
 
   private append(entry: StepJournalEntry): void {
     const held = this.heldNames(), name = key(entry.event, entry.line, entry.id);
     if (held.has(name)) return;
-    if (!this.write) { held.add(name); this.added++; return; }
+    if (!this.write) { held.set(name, entry.source); this.added++; return; }
     try {
       const fd = openSync(`${this.folder}/${RUN_FILES.steps}`, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND, 0o600);
       try {
@@ -174,7 +183,7 @@ export class StepJournal {
         const torn = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last[0] !== 10;
         appendFileSync(fd, (torn ? '\n' : '') + JSON.stringify(entry) + '\n');
       } finally { closeSync(fd); }
-      held.add(name); this.added++;
+      held.set(name, entry.source); this.added++;
     } catch (error) {
       // The journal is a record beside the Run, not part of it: a Run goes on without it, and says so once.
       this.failed = true;

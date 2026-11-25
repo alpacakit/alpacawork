@@ -28,8 +28,9 @@ export class ClaudeTranscripts {
     this.folders ??= existsSync(projects) ? readdirSync(projects, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => join(projects, entry.name)) : [];
     return this.folders.flatMap(folder => {
       const main = join(folder, `${session}.jsonl`), subagents = join(folder, session, 'subagents');
-      return [...existsSync(main) ? [main] : [],
-        ...existsSync(subagents) ? readdirSync(subagents).filter(name => name.endsWith('.jsonl')).sort().map(name => join(subagents, name)) : []];
+      let agents: string[] = [];
+      try { agents = readdirSync(subagents).filter(name => name.endsWith('.jsonl')).sort().map(name => join(subagents, name)); } catch { /* none */ }
+      return [...existsSync(main) ? [main] : [], ...agents];
     });
   }
 
@@ -43,8 +44,8 @@ export class ClaudeTranscripts {
       for (const block of content) {
         if (!block || typeof block !== 'object') continue;
         const { type, id, tool_use_id: ended } = block as { type?: unknown; id?: unknown; tool_use_id?: unknown };
-        if (type === 'tool_use') book.note(id, 'started', at);
-        else if (type === 'tool_result') book.note(ended, 'ended', at);
+        if (type === 'tool_use') book.started(id, at);
+        else if (type === 'tool_result') book.ended(ended, at);
       }
     } });
   }
