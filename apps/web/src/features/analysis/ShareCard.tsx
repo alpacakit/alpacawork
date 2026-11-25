@@ -106,12 +106,14 @@ function XMark() {
 export function CardPane({ place, project }: { place: AnalysisPlace; project: string | null }) {
   const { t } = useTranslation("analysis");
   const card = place.card!;
-  const { bucket, taskGroup } = useChoices();
+  const { bucket } = useChoices();
   // The whole record ending on a day starts on the record's first day: the analysis's own answer for what is asked now
-  // says which (one still standing for another project says nothing).
-  const face = answerOf(useTasksView(project, place.span, bucket, taskGroup));
+  // says which (one still standing for another project says nothing). The card reads as the face does: the tasks'
+  // numbers without a breakdown (the face's own answer when the days are the same), the AI's use by model for the
+  // model used most.
+  const face = answerOf(useTasksView(project, place.span, bucket, null));
   const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
-  const tasks = useTasksView(project, days ?? place.span, bucket, taskGroup, days !== null);
+  const tasks = useTasksView(project, days ?? place.span, bucket, null, days !== null);
   const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null);
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
