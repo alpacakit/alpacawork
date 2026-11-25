@@ -57,7 +57,7 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
     set, value: oneOf<ListValue>([...TASK_VALUES, ...USAGE_VALUES], url.get("measure")),
     group: oneOf<Group>([...TASK_GROUPS, ...USAGE_GROUPS], url.get("group")), member: url.get("member"),
     days: readDays(url.get("bin")),
-    filter: url.get("model") !== null || url.get("effort") !== null ? { model: url.get("model"), effort: url.get("effort") } : null,
+    ...url.get("model") !== null || url.get("effort") !== null ? { filter: { model: url.get("model"), effort: url.get("effort") } } : {},
   } : null;
   // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
   // tools, MCP: every launch that used one).
