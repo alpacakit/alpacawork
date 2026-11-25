@@ -91,6 +91,7 @@ import { readControlEnvironment } from '../control/tree.js';
 import { taskFolder } from '../control/task-store.js';
 import { installTaskFileRoutes, installAttachmentFileRoutes } from './file-routes.js';
 import { installCoordinatorRoutes } from './coordinator-routes.js';
+import { installRunStepsRoutes } from './run-steps-routes.js';
 import { CoordinatorConversation } from '../coordinator/conversation.js';
 import { ReturnRouter } from '../control/return-router.js';
 import { createFirstRunState, createNoticeState, createPersonSettings, UNSAVED_SETTINGS } from './person-state.js';
@@ -675,6 +676,19 @@ export async function startServer(root: string, port: number, options: ServerOpt
   installCoordinatorRoutes(api, root, generation, coordinator, request => {
     authorizeRead(callerOf(request), { name: 'coordinator.screen' });
   }, orderedWrite);
+  // A Run's steps are read as `run get` reads its result: a read of its Task; a coordinator's Run is the conversation's.
+  installRunStepsRoutes(api, root, (request, id) => {
+    const caller = callerOf(request);
+    return readControl(db => {
+      const store = new RunStore(root, { busyTimeoutMs: 0 }, true, db);
+      try {
+        const run = store.runtimeGet(id);
+        if (!run) throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', { run: id }, { reason: { kind: 'run_does_not_exist' } });
+        authorize(db, caller, run.task ? { name: 'task.read' } : { name: 'coordinator.screen' }, { task: run.task ?? null, quote: null });
+        return run;
+      } finally { store.close(); }
+    });
+  });
   api.get('/api/runtime/recovery',c=>{
     // Identity is information, never a credential. Credential syntax/Run validity still uses the existing caller Owner.
     callerOf(c.req.raw);

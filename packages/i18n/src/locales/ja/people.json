@@ -93,12 +93,19 @@
     "output": "{{event}}（{{ago}}前）",
     "stale": "最後の出力が古い: {{event}}（{{ago}}前）",
     "step": {
-      "moreLines_other": "+{{count}}行",
+      "answered": "この返事までの作業",
+      "answeredCount_other": "この返事までの作業 {{count}} 件",
+      "count_other": "これまでの作業 {{count}} 件",
+      "cut": "ここから先は長いため省略しました",
+      "none": "記録された作業はありません",
+      "notShown": "これより前の作業は、長すぎるため表示できません",
+      "older_other": "前の {{count}} 件を表示",
       "state": {
         "done": "完了",
         "failed": "失敗",
         "running": "実行中"
-      }
+      },
+      "unreadable": "作業を読み込めませんでした"
     },
     "toolEvent": "{{tool}}: {{kind}}"
   },

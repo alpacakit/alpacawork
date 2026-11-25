@@ -109,14 +109,25 @@
     "output": "{{event}} há {{ago}}",
     "stale": "A última saída é antiga: {{event}} (há {{ago}})",
     "step": {
-      "moreLines_one": "+{{count}} linha",
-      "moreLines_many": "+{{count}} linhas",
-      "moreLines_other": "+{{count}} linhas",
+      "answered": "Etapas por trás desta resposta",
+      "answeredCount_one": "{{count}} etapa por trás desta resposta",
+      "answeredCount_many": "{{count}} etapas por trás desta resposta",
+      "answeredCount_other": "{{count}} etapas por trás desta resposta",
+      "count_one": "{{count}} etapa até agora",
+      "count_many": "{{count}} etapas até agora",
+      "count_other": "{{count}} etapas até agora",
+      "cut": "O restante é longo demais e foi omitido",
+      "none": "Nenhuma etapa foi registrada",
+      "notShown": "As etapas anteriores são longas demais para mostrar",
+      "older_one": "Mostrar {{count}} anterior",
+      "older_many": "Mostrar {{count}} anteriores",
+      "older_other": "Mostrar {{count}} anteriores",
       "state": {
         "done": "Concluído",
         "failed": "Falhou",
         "running": "Em execução"
-      }
+      },
+      "unreadable": "Não foi possível ler as etapas"
     },
     "toolEvent": "{{tool}}: {{kind}}"
   },

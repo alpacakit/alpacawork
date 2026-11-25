@@ -7,6 +7,8 @@ export type ActivityEvent = {
   stepTool?: unknown;
   /** The tool input and the agent's description. Some tools report their input only on completion. */
   detail?: RunStepLine; about?: string | null;
-  /** A tool end: what came back. */
-  outcome?: { result: RunStepLine; failed: boolean };
+  /** The tool input as written, where the output holds it whole (a bridge's own events carry the preview alone). */
+  input?: string;
+  /** A tool end: what came back, as a preview and, where the output holds it, as written. */
+  outcome?: { result: RunStepLine; failed: boolean; output?: string };
 };

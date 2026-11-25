@@ -30,8 +30,8 @@ export function toolArgumentText(value: unknown): string | undefined {
   try { return JSON.stringify(value); } catch { return undefined; }
 }
 
-/** Prefer the human-readable argument when the tool gives it a named field. */
-export function previewToolInput(tool: unknown, raw: unknown): { detail: RunStepLine; about: string | null } {
+/** What a tool call ran, read or searched, as written: the human-readable argument when the tool gives it a named field. */
+export function toolInputText(tool: unknown, raw: unknown): string | undefined {
   const input = record(raw);
   const detail = ((): unknown => {
     switch (tool) {
@@ -46,8 +46,14 @@ export function previewToolInput(tool: unknown, raw: unknown): { detail: RunStep
       default: return firstText(input.command, input.file_path, input.path, input.query, input.url) ?? toolArgumentText(raw);
     }
   })();
+  return typeof detail === 'string' ? detail : undefined;
+}
+
+/** A tool call on one line: the first line of its input, and the agent's own words for a command. */
+export function previewToolInput(tool: unknown, raw: unknown): { detail: RunStepLine; about: string | null } {
+  const input = record(raw);
   const about = tool === 'Bash' || typeof input.command === 'string' ? previewRunLine(input.description).text || null : null;
-  return { detail: previewRunLine(detail), about };
+  return { detail: previewRunLine(toolInputText(tool, raw)), about };
 }
 
 /** Take only text from a tool result's content blocks. */

@@ -20,6 +20,12 @@ test('only source-identified ambient pulses are excluded', () => {
   assert.equal(motionHasSettled([step], true), true);
   assert.equal(motionHasSettled([step], false), false);
   assert.equal(motionHasSettled([{ ...step, name: 'motion-spin' }], true), false);
+  for (const name of ['mark-weave-turn', 'mark-weave-dot']) {
+    const mark = { state: 'running', endTime: Infinity, name, workMark: true };
+    assert.equal(motionHasSettled([mark], true), true);
+    assert.equal(motionHasSettled([mark], false), false);
+    assert.equal(motionHasSettled([{ ...mark, workMark: false }], true), false);
+  }
   const delivery = { state: 'running', endTime: Infinity, name: 'motion-pulse', deliveryStatus: true };
   assert.equal(motionHasSettled([delivery], true), true);
   assert.equal(motionHasSettled([delivery], false), false);

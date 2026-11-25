@@ -25,7 +25,9 @@ export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contr
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
 export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT,
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
-export { clipRunText, previewRunLine, previewToolInput, toolResultText, toolArgumentText } from './work-preview.js';
+export { runStepsReadSchema, runFullStepSchema, RUN_STEPS_READ_LIMIT, RUN_STEP_FULL_TEXT_LIMIT, type RunStepsRead,
+  type RunFullStep, type RunStepText } from './work-contract.js';
+export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolResultText, toolArgumentText } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,

@@ -33,10 +33,10 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   const box = (await pill.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(phone ? 390 : 1440);
   await openCoordinator(page);
-  // Open, the step itself is read as it was run, and the seconds go on under it without the rounded name.
+  // Open, the step itself is read as it was run on the work line, the seconds at its end, without the rounded name.
   const steps = page.locator('[data-coordinator-turn=running] [data-working-steps]');
   await expect(steps).toContainText('alpacawork task new --title test');
-  await expect(page.locator('[data-coordinator-turn=running] [data-ask-thinking]')).toHaveText(/^Working on it… \d+s$/);
+  await expect(steps.locator('[data-work-seconds]')).toHaveText(/^\d+s$/);
   await page.screenshot({ path: info.outputPath('work-open.png'), animations: 'disabled' });
   await page.locator('[data-coordinator-turn=running] [data-exchange-toggle]').click();
   await expect(page.locator('[data-exchange-outcome]')).toContainText('New task');
@@ -56,12 +56,14 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
     } finally { store.close(); }
   }).toEqual({ tool: 'Bash', command: null });
   await expect(steps).toContainText('echo alpacawork task new');
-  // A press opens the latest step with the one before it, and another folds it back to its one line.
+  // A press lists every step so far, read from the Run's output, and another folds them back to the one line.
+  const listed = page.locator('[data-coordinator-turn=running] [data-run-steps=open] [data-run-step]');
   await steps.click();
   await expect(steps).toHaveAttribute('aria-expanded', 'true');
-  await expect(steps.locator('[data-run-step]')).toHaveCount(2);
+  await expect(steps).toContainText('2 steps so far');
+  await expect(listed).toHaveCount(2);
   await steps.click();
-  await expect(steps.locator('[data-run-step]')).toHaveCount(1);
+  await expect(listed).toHaveCount(0);
   const ended = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   expect(ended.revision).toBe(first.revision);
   expect(reads).toBe(beforeReads);

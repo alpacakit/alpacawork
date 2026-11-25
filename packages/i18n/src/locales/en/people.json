@@ -101,13 +101,22 @@
     "output": "{{event}} {{ago}} ago",
     "stale": "Last output is old: {{event}} ({{ago}} ago)",
     "step": {
-      "moreLines_one": "+{{count}} line",
-      "moreLines_other": "+{{count}} lines",
+      "answered": "Steps behind this answer",
+      "answeredCount_one": "{{count}} step behind this answer",
+      "answeredCount_other": "{{count}} steps behind this answer",
+      "count_one": "{{count}} step so far",
+      "count_other": "{{count}} steps so far",
+      "cut": "The rest is too long and was left out",
+      "none": "No steps were recorded",
+      "notShown": "Earlier steps are too long to show",
+      "older_one": "Show {{count}} earlier",
+      "older_other": "Show {{count}} earlier",
       "state": {
         "done": "Done",
         "failed": "Failed",
         "running": "Running"
-      }
+      },
+      "unreadable": "The steps could not be read"
     },
     "toolEvent": "{{tool}}: {{kind}}"
   },

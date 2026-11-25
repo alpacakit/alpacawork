@@ -46,7 +46,7 @@ import { dayClock, dayClockLabel, dayHeading } from "@/domain/day-clock";
 import { useToday } from "@/state/clock";
 import { agentModelName, modelLabel, peopleAgentNames, placementAgentLabel, runAgentLabel, samePeopleAgentNames, visibleAgentNames, type ModelName } from "@/domain/agent-label";
 import { useActivityText, useDuration } from "@/features/people/labels";
-import { RunSteps } from "@/features/people/RunSteps";
+import { StepList, WorkLine, stepCount, useRunSteps } from "@/features/people/RunSteps";
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { ContextMeter } from "@/features/people/ContextMeter";
 import { sameForFeed } from "@/domain/people";
@@ -963,11 +963,12 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
 }
 
 /**
- * One working person as a History row: time worked, who it is, and their words and latest step under that. The lead's
- * words open and close as every History disclosure does (LeadNote), and its ⌄ turns with them; its steps switch at once
- * between the latest one's line and that step in full over the ones before it (they go by every few seconds, so they do
- * not ride the disclosure's move). Everyone else's words are open and their latest step is its one line, so the body
- * holding them keeps its height while steps go by: they are drawn only inside the row's body.
+ * One working person as a History row: time worked, who it is, their words, and their work line under that (the moving
+ * mark and the latest step, or what it is at before any). The lead's words open and close as every History disclosure
+ * does (LeadNote), and its ⌄ turns with them; opened, its work line counts the steps and every one is listed under it,
+ * read then (they come at once: they change every few seconds, so they do not ride the disclosure's move). Everyone
+ * else's words are open and their work line is always the one line, so the body holding them keeps its height while
+ * steps go by: they are drawn only inside the row's body.
  */
 function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: ControlRunDTO; task: TaskDetail; onFollow: (id: string) => void; open: boolean; lead: boolean; others?: ReactNode }) {
   const { t } = useTranslation("reader");
@@ -976,11 +977,16 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const people = useTaskPeople();
   const model = modelLabel(runAgentLabel(run), useContext(AgentNames));
   const steps = run.activity?.steps ?? [];
-  // Before a Run has said or done anything, show its current step.
-  const words = run.activity?.note?.text || (steps.length ? "" : step(run.activity));
+  // Opened, the lead's line counts its steps and every one of them is listed under it, read again as each step goes by.
+  const latest = steps.at(-1), listed = lead && open && !!latest;
+  const full = useRunSteps(run.id, listed, latest && `${latest.id}:${latest.state}`);
+  const count = stepCount(full.read);
+  const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;
   const names = useContext(AgentNames);
-  const { t: ui } = useTranslation("ui");
+  const { t: ui } = useTranslation("ui"), { t: say } = useTranslation("people");
+  // Before it has run anything, the line says so in the words a Run's last sign of life has.
+  const idle = step(run.activity) || ui("coordinatorCard.thinking");
   // The Run it took the request over from, when the one before stopped on a limit.
   const before = people ? [...people.runsByTask.get(run.taskId) ?? []].find(each => each.supersededBy === run.id) : undefined;
   const beforeCause = before?.availability?.cause ?? before?.errorCause?.cause;
@@ -999,7 +1005,8 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {steps.length > 0 && <RunSteps steps={steps} open={lead && open} newestFirst className={`${cell} mt-1.5`} />}
+    <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className={`${cell} mt-1.5`} />
+    {listed && <StepList steps={full} className={`${cell} mt-1`} />}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;

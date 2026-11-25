@@ -179,15 +179,17 @@ test.describe('coordinator three-second grace',()=>{
       await expect(field(page)).toHaveText('');
       const grace = thread(page).locator('[data-coordinator-local=waiting]');
       await expect(grace).toContainText('Sending soon');
-      // A message's state changes in place — the same size, start and distance under its words as the work's own line.
+      // A message's state changes in place — the same start as the work's own line (which says it in the work line's
+      // smaller type, after its mark), and the same size and distance under its words as any other state.
       const working = await statusLine(thread(page).locator('[data-coordinator-turn=running]'));
-      expect(await statusLine(grace)).toEqual(working);
+      const graced = await statusLine(grace);
+      expect(graced.left).toBe(working.left);
       await grace.locator('[data-coordinator-cancel-unsent]').click();
       await expect(field(page)).toHaveText('Cancel during grace');
       await field(page).fill('Waiting behind current work'); await send.click();
       const waiting = thread(page).locator('[data-coordinator-waiting]').filter({ hasText: 'Waiting behind current work' });
       await expect(waiting).toContainText('Queued');
-      expect(await statusLine(waiting)).toEqual(working);
+      expect(await statusLine(waiting)).toEqual(graced);
       await expect(waiting.locator('[data-coordinator-send-now]')).toBeVisible();
       await expect(waiting.locator('[data-exchange-toggle]')).toHaveCount(0);
       await expect(page.locator('[data-coordinator-queue-button]')).toHaveCount(0);

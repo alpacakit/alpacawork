@@ -80,7 +80,7 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
     const row = page.locator('[data-working-here]');
     await expect(row).toHaveAttribute('aria-expanded', 'false');
     await expect(row.locator('[data-working-note]').first()).toContainText('調査をまとめました');
-    await expect(row.locator('[data-run-steps=folded]')).toContainText('pnpm vitest run');
+    await expect(row.locator('[data-work-line]')).toContainText('pnpm vitest run');
     await settleMotion(page, row, true);
     expect(await page.evaluate(() => (window as unknown as { disclosureMoves: number }).disclosureMoves), 'nothing slides before a press').toBe(0);
     for (const opening of [true, false]) {

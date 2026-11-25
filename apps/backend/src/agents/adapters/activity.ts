@@ -1,6 +1,6 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
 import { bridgeToolEventSchema } from '@alpacawork/contract/agent-bridge';
-import { RUN_NOTE_LIMIT, previewRunLine, previewToolInput, toolResultText } from '@alpacawork/contract/run';
+import { RUN_NOTE_LIMIT, previewRunLine, previewToolInput, toolInputText, toolResultText } from '@alpacawork/contract/run';
 import type { ActivityEvent } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
 import { object } from './output.js';
@@ -37,23 +37,29 @@ function shellScript(command: unknown): unknown {
   if (!wrapped) return command;
   return wrapped[1] === "'" ? wrapped[2]!.replaceAll(`'\\''`, "'").replaceAll(`'"'"'`, "'") : wrapped[2]!.replace(/\\(["\\$`])/g, '$1');
 }
-function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about'> {
+/** A step's input as a preview and as written (absent when it is no text). */
+const written = (value: unknown): Pick<ActivityEvent, 'detail' | 'input'> =>
+  ({ detail: previewRunLine(value), ...typeof value === 'string' ? { input: value } : {} });
+/** A named tool's call: its preview, the agent's words for it, and its input as written. */
+const toolCall = (tool: unknown, raw: unknown) => ({ ...previewToolInput(tool, raw), ...written(toolInputText(tool, raw)) });
+function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'input'> {
   switch (item.type) {
-    case 'command_execution': return { detail: previewRunLine(shellScript(item.command)) };
-    case 'web_search': return { detail: previewRunLine(firstText(item.query, object(item.action).url)) };
-    case 'file_change': return { detail: previewRunLine((Array.isArray(item.changes) ? item.changes : [])
-      .map(value => object(value).path).filter(path => typeof path === 'string').join('  ')) };
-    case 'collab_agent_tool_call': return { detail: previewRunLine(item.prompt) };
-    case 'image_view': return { detail: previewRunLine(item.path) };
-    default: return previewToolInput(item.tool ?? item.name, item.arguments);
+    case 'command_execution': return written(shellScript(item.command));
+    case 'web_search': return written(firstText(item.query, object(item.action).url));
+    case 'file_change': return written((Array.isArray(item.changes) ? item.changes : [])
+      .map(value => object(value).path).filter(path => typeof path === 'string').join('  '));
+    case 'collab_agent_tool_call': return written(item.prompt);
+    case 'image_view': return written(item.path);
+    default: return toolCall(item.tool ?? item.name, item.arguments);
   }
 }
 
 function bridgeOutcome(item: Record<string, unknown>): NonNullable<ActivityEvent['outcome']> {
   const result = object(item.result);
+  const output = firstText(item.aggregatedOutput, toolResultText(item.result), toolResultText(result.content),
+    toolResultText(item.contentItems), object(item.error).message);
   return {
-    result: previewRunLine(firstText(item.aggregatedOutput, toolResultText(item.result), toolResultText(result.content),
-      toolResultText(item.contentItems), object(item.error).message)),
+    result: previewRunLine(output), ...output === undefined ? {} : { output },
     failed: item.status === 'failed' || item.status === 'declined' || item.success === false ||
       result.isError === true || (typeof item.exitCode === 'number' && item.exitCode !== 0),
   };
@@ -71,10 +77,13 @@ export function claudeActivity(value: unknown, received: string): ActivityEvent[
     const hasWords = rootAssistant && blocks.some(block => block.type === 'text' && typeof block.text === 'string' && block.text.trim());
     const events = blocks.flatMap((block): ActivityEvent[] => {
       if (row.type === 'assistant' && block.type === 'tool_use') return [{ at, kind: 'tool_start',
-        toolName: block.name, id: block.id, ...previewToolInput(block.name, block.input),
+        toolName: block.name, id: block.id, ...toolCall(block.name, block.input),
         command: rootAssistant && block.name === 'Bash' ? commandOf(object(block.input).command) : null }];
-      if (row.type === 'user' && block.type === 'tool_result') return [{ at, kind: 'tool_end', id: block.tool_use_id,
-        outcome: { result: previewRunLine(toolResultText(block.content)), failed: block.is_error === true } }];
+      if (row.type === 'user' && block.type === 'tool_result') {
+        const output = toolResultText(block.content);
+        return [{ at, kind: 'tool_end', id: block.tool_use_id,
+          outcome: { result: previewRunLine(output), failed: block.is_error === true, ...output === undefined ? {} : { output } } }];
+      }
       if (rootAssistant && block.type === 'text') return [{ at, kind: 'message', text: block.text }];
       // Claude can emit progress updates in thinking blocks. Only short, top-level notes serve as progress text.
       if (rootAssistant && !hasWords && block.type === 'thinking' && typeof block.thinking === 'string') {

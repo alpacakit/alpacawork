@@ -26,6 +26,9 @@ import { receivePatch, resources } from "../src/data/resources";
 import { historyCursor } from "@alpacawork/contract";
 /** Where a jump in the column goes: the row it brings into view (the glide itself is scroll-report's). */
 const jump = vi.hoisted(() => ({ to: (_target: HTMLElement, _block?: string) => {} }));
+// Every step of a Run, as the server reads them from its output once the lead's row is opened.
+const runSteps = vi.hoisted(() => ({ of: (_run: string): Promise<unknown> => new Promise(() => {}) }));
+vi.mock("../src/data/run-steps", () => ({ readRunSteps: (run: string) => runSteps.of(run) }));
 vi.mock("../src/features/reader/scroll-report", () => ({
   scrollReport: (target: HTMLElement, block: string, landed?: () => void) => { jump.to(target, block); landed?.(); },
 }));
@@ -586,8 +589,8 @@ test("the working row heads the report column with the responsible person's time
   expect(row.querySelector("[data-rail-time]")?.className).toContain("text-soft");
   expect(people()[0]!.querySelector("[data-working-model]")?.textContent).toBe("opus(high)");
   expect(row.querySelector("[data-working-others]")?.textContent).toBe("+2 more");
-  // What is left to other places is not said here: the tool step, tokens and stop.
-  expect(row.textContent).not.toContain("Bash");
+  // Under the words, one work line says what the lead is at; tokens and stop are left to other places.
+  expect(people()[0]!.querySelectorAll("[data-work-line]")).toHaveLength(1);
   expect(row.textContent).not.toMatch(/tokens|1\.2k/);
   expect(within(row).queryByRole("button", { name: /Stop/ })).toBeNull();
   const toggle = within(row).getByRole("button");
@@ -660,29 +663,37 @@ test("the working row goes on with the Tasks below at work, children before gran
   await waitFor(() => expect(followed).toEqual(["T2"]));
 });
 
-test("opened, only the responsible person's steps open; everyone else's stay on their latest one's line", async () => {
+test("opened, only the responsible person's steps are read and listed; everyone else's stay on their latest one's line", async () => {
   await inEnglish();
   const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
     more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
+  const asked: string[] = [];
+  runSteps.of = async run => { asked.push(run); return { older: 0, unread: false, steps: steps("lead").map(step => ({ id: step.id, tool: step.tool,
+    kind: step.kind, about: null, state: step.state, input: { text: step.text, cut: false }, output: null })) }; };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),
     run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member") } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const lead = document.querySelector('[data-working-person="P1"]')!;
+  expect(lead.querySelector("[data-work-line]")?.textContent).toContain("lead step 2");
+  expect(asked).toEqual([]);
   fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
-  const lead = document.querySelector('[data-working-person="P1"]')!, member = document.querySelector('[data-working-person="P2"]')!;
-  expect(lead.querySelector("[data-run-steps]")?.getAttribute("data-run-steps")).toBe("open");
-  expect(lead.textContent).toContain("lead step 1");
-  expect(member.querySelector("[data-run-steps]")?.getAttribute("data-run-steps")).toBe("folded");
-  expect(member.textContent).toContain("member step 2");
+  await waitFor(() => expect(lead.querySelector("[data-run-steps=open]")?.textContent).toContain("lead step 1"));
+  expect(lead.querySelector("[data-work-line]")?.textContent).toContain("2 steps so far");
+  expect(asked).toEqual(["R1"]);
+  const member = document.querySelector('[data-working-person="P2"]')!;
+  expect(member.querySelector("[data-run-steps]")).toBeNull();
+  expect(member.querySelector("[data-work-line]")?.textContent).toContain("member step 2");
   expect(member.textContent).not.toContain("member step 1");
 });
 
-test("a working person who has said nothing yet is read by their step", async () => {
+test("a working person who has run nothing yet says on the work line what they last did", async () => {
   await inEnglish();
   const data = screenData(tree({ placements: [workingPlacement("P1")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { at, kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null, steps: [] } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
-  expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
+  expect(document.querySelector("[data-working-note]")).toBeNull();
+  expect(document.querySelector("[data-work-line]")?.textContent).toContain("Bash");
 });
 
 test("a step taken after the screen's clock last ticked is still said, and no words leave no empty band", async () => {
@@ -692,7 +703,7 @@ test("a step taken after the screen's clock last ticked is still said, and no wo
   const soon = { at: new Date(Date.now() + 20_000).toISOString(), kind: "tool_start" as const, toolName: "Bash", doing: null, note: null, context: null, steps: [] };
   const data = step(soon);
   const { unmount } = render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
-  expect(document.querySelector("[data-working-note]")?.textContent).toContain("Bash");
+  expect(document.querySelector("[data-work-line]")?.textContent).toContain("Bash");
   unmount();
   const quiet = step(null);
   render(<TestWorkspace data={quiet}><ReportFeed task={quiet.tasks[0]!} people={quiet.people} onFollow={() => {}} /></TestWorkspace>);
