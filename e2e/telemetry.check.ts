@@ -121,7 +121,9 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     writeJson(service.store.paths.consent, { ...saved, fields: saved.fields!.filter(field => field !== 'shape.parallel') });
     await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
     const reask = page.locator('[data-telemetry-reask]');
-    await expect(reask.locator('[data-telemetry-added]')).toHaveText('shape.parallel');
+    // What it is and an example lead; the field's name follows in brackets.
+    await expect(reask.locator('[data-telemetry-added] li')).toHaveCount(1);
+    await expect(reask.locator('[data-field="shape.parallel"]')).toContainText('同時に動いていた AI の最大の数例: 3-4(shape.parallel)');
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-reask-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-reask-ja-phone');
     await page.setViewportSize({ width: 1440, height: 900 });

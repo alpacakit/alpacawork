@@ -7,6 +7,7 @@ import { notify, recordFailure } from '@/lib/notify';
 import { describeProblem } from '@/features/forms/problem-text';
 import { useTelemetry } from './data';
 import { TelemetryDetailsLink } from './TelemetryDetailsLink';
+import { TELEMETRY_FIELD_EXAMPLES, telemetryFieldKey } from './field-text';
 
 /**
  * Asked once per page while a consent to send no longer covers what is sent (more kinds of information, or new terms):
@@ -30,8 +31,12 @@ export function TelemetryReaskDialog() {
     <DialogContent data-telemetry-reask>
       <DialogHeading title={t('telemetry.reaskTitle')} description={t(added?.length ? 'telemetry.reaskAdded' : 'telemetry.reaskChanged')} />
       <DialogBody>
-        {added?.length ? <ul className="m-0 mb-3 list-disc pl-5 text-sm" data-telemetry-added>
-          {added.map(field => <li key={field}><code>{field}</code></li>)}
+        {added?.length ? <ul className="m-0 mb-3 list-none border-t border-line p-0" data-telemetry-added>
+          {added.map(field => <li key={field} data-field={field} className="border-b border-line py-2">
+            <span className="block text-base">{t(telemetryFieldKey(field))}</span>
+            <span className="block text-sm text-muted">{t('telemetry.example', { value: TELEMETRY_FIELD_EXAMPLES[field] ?? '' })}
+              <span className="ml-2 text-xs">({field})</span></span>
+          </li>)}
         </ul> : null}
         <p className="m-0 text-sm text-muted [word-break:auto-phrase]">{t('telemetry.reaskNote')} <TelemetryDetailsLink /></p>
         <DialogFooter>
