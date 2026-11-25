@@ -99,6 +99,7 @@ export const e2eAreas = {
     "video-slider",
   ],
   "list": [
+    "analysis-first-open",
     "appbar",
     "family-panel",
     "navigation-resume",
