@@ -34,8 +34,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const leads = <Leads>
     <Lead name={t("tasks.passed")}
       value={<Value big kind="tasks" value={now.passed} onOpen={() => open({ set: "passed", value: "lead" })} />}
-      beside={now.accepted > 0 && <span className="inline-flex items-center gap-2.5" {...tip(now.share === null ? t("chart.shareTipFew", now) : t("chart.shareTip", now))}>
-        <span className="flex h-1.5 w-24 gap-0.5 narrow:hidden">
+      // Under the number where the column is narrow; there the strip gives way (to 24px) before the share leaves the column.
+      beside={now.accepted > 0 && <span className="inline-flex max-w-full min-w-0 items-center gap-2.5" {...tip(now.share === null ? t("chart.shareTipFew", now) : t("chart.shareTip", now))}>
+        <span className="flex h-1.5 w-24 min-w-6 shrink gap-0.5 narrow:hidden">
           <i style={{ flex: now.passed }} className="block min-w-0.5 rounded-xs bg-done" />
           <i style={{ flex: now.reworked }} className="block min-w-0.5 rounded-xs bg-reworked" />
         </span>

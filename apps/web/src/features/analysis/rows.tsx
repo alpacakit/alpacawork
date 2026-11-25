@@ -30,7 +30,8 @@ export function Leads({ children }: { children: ReactNode }) {
 }
 
 /**
- * A lead number: its name, the value large on a line of one height (so the four stand level whatever is beside a value),
+ * A lead number: its name, the value large on a line of one least height (the four share each line's height, so they stand
+ * level; what is beside a value wraps under it where the column is too narrow for both),
  * what the value holds that reads otherwise (`note`, as the tokens' cache), the span before, and the whole record so far
  * (`ever`; left out when the span is the whole record). The lines after the value are in one small type.
  */
@@ -38,7 +39,8 @@ export function Lead({ name, value, beside, note, compare, ever }: { name: React
   const { t } = useTranslation("analysis");
   return <div className="row-span-5 grid min-w-0 grid-rows-subgrid">
     <div className="flex min-w-0 flex-wrap items-center text-sm text-muted">{name}</div>
-    <div className="flex h-[45px] min-w-0 items-center gap-5 narrow:h-[33px] narrow:gap-3">{value}{beside}</div>
+    {/* What stands beside the value (the share) goes under it where the column has no room for both: never into the next number. */}
+    <div className="flex min-h-[45px] min-w-0 flex-wrap content-start items-center gap-x-5 gap-y-1 narrow:min-h-[33px] narrow:gap-x-3">{value}{beside}</div>
     <div className="min-w-0 text-xs text-soft">{note}</div>
     <div className="min-w-0">{compare}</div>
     <div className="text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
