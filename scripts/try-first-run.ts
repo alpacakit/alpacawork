@@ -206,7 +206,9 @@ async function runPreview() {
     marker.project = first.state.project; writeFileSync(join(root, 'preview.json'), JSON.stringify(marker));
     const probeStarted = Date.now();
     const skills = await (await checked('/api/skills')).json();
-    if (Date.now() - probeStarted > 3000 || skills.skills.some(skill => skill.name !== 'alpacawork-betterquality' && skill.available !== 'unknown'))
+    const { SKILL_OFFERS: offers } = await import('@alpacawork/contract');
+    const remote = (name: string) => offers.some(offer => offer.name === name && offer.from.kind === 'repo');
+    if (Date.now() - probeStarted > 3000 || skills.skills.some(skill => remote(skill.name) && skill.available !== 'unknown'))
       throw new Error('The preview skill listing was slow or returned unexpected remote availability.');
     const settings = await (await checked('/api/commands/settings/get')).json();
     if (settings.values.language !== values.lang || settings.values['ai.language'] !== values.lang) throw new Error('Setup did not initialize the selected language.');
