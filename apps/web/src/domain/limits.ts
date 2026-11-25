@@ -92,12 +92,16 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   return t("chrome:limits.reset.at", { when });
 }
 
-/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a phone) the day alone, "Until 11/29". */
-export function stoppedWords(window: LimitWindow, locale: string, t: T, short = false): string {
+/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a narrow bar) the time alone when it is back
+ *  later today on this device's clock, "Until 17:13", and otherwise the day alone, "Until 11/29". */
+export function stoppedWords(window: LimitWindow, now: number, locale: string, t: T, short = false): string {
   if (!window.resetsAt) return t("chrome:limits.stopped");
-  const when = new Intl.DateTimeFormat(locale, short ? { month: "numeric", day: "numeric" }
-    : { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(resetMinute(window.resetsAt));
-  return t(short ? "chrome:limits.stoppedUntilShort" : "chrome:limits.stoppedUntil", { when });
+  const at = resetMinute(window.resetsAt);
+  if (!short) return t("chrome:limits.stoppedUntil", { when: new Intl.DateTimeFormat(locale,
+    { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at) });
+  const today = new Date(at).toDateString() === new Date(now).toDateString();
+  return today ? t("chrome:limits.stoppedUntilTimeShort", { when: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(at) })
+    : t("chrome:limits.stoppedUntilShort", { when: new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" }).format(at) });
 }
 
 /** "Updated 3 min ago", or "Updated just now". */

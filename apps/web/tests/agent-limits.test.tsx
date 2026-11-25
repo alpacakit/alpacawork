@@ -63,8 +63,11 @@ test("with every agent in the stack spent, the bar says the one that works again
   expect(barLimit(response([unknownCodex, agent("claude", "ok", [week(100)])], [row("codex"), row("claude")]), NOW))
     .toMatchObject({ kind: "stopped", agent: { adapter: "codex" }, window: { resetsAt: null } });
   const stopped = barLimit(response([claude], [row("claude", "opus")]), NOW);
-  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t)).toMatch(/29/);
-  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t, true)).not.toMatch(/:/);
+  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, NOW, "en", t)).toMatch(/29/);
+  // A narrow bar says the time when the agent is back later today on this device's clock, and the day when it is not.
+  const morning = new Date(2026, 10, 25, 9, 0).getTime(), back = (hours: number) => at(new Date(morning + hours * 3_600_000).toISOString(), week(100));
+  expect(stoppedWords(back(8), morning, "en", t, true)).toMatch(/^Until 5:00\sPM$/);
+  expect(stoppedWords(back(16), morning, "en", t, true)).toBe("Until 11/26");
 });
 
 test("an agent nothing holds (an API key, or one that reports no limits) is where work goes, so the bar never says stopped for it", () => {

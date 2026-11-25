@@ -48,6 +48,7 @@
     "stopped": "Stopped",
     "stoppedUntil": "Stopped until {{when}}",
     "stoppedUntilShort": "Until {{when}}",
+    "stoppedUntilTimeShort": "Until {{when}}",
     "title": "AI plan limits",
     "unavailable": "Could not be read. Check its sign-in",
     "unsupported": "Does not provide its limits",

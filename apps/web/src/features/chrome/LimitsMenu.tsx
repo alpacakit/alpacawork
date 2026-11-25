@@ -77,8 +77,8 @@ function AgentBlock({ agent, stack, now, shown }: { agent: AgentLimits; stack: A
 }
 
 /** The bar's words for a screen reader (and its tooltip): what the ring and the name say, with the window and the percent. */
-function barWords(shown: BarLimit, name: string, locale: string, t: (key: string, options?: Record<string, unknown>) => string): string {
-  if (shown.kind === "stopped") return t("limits.barStopped", { agent: name, state: stoppedWords(shown.window, locale, t) });
+function barWords(shown: BarLimit, name: string, now: number, locale: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (shown.kind === "stopped") return t("limits.barStopped", { agent: name, state: stoppedWords(shown.window, now, locale, t) });
   if (shown.kind === "limited") return t("limits.barLabel", { agent: name, window: windowLabel(shown.window, t), percent: percentText(shown.window.usedPercent) });
   return t(shown.kind === "reset" ? "limits.barReset" : shown.kind === "unknown" ? "limits.barUnknown" : "limits.barUnlimited", { agent: name });
 }
@@ -110,7 +110,7 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   const percent = shownWindow?.usedPercent ?? 0;
   const tone = limitTone(percent);
   const name = AGENT_NAMES[shown.agent.adapter].short;
-  const label = barWords(shown, name, i18n.language, t);
+  const label = barWords(shown, name, now, i18n.language, t);
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
@@ -121,8 +121,8 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
       {/* Stopped in a folded bar, it says only until when: the name, its order and the time are in the menu. */}
       {!(folded && shown.kind === "stopped") && <span className="min-w-0 truncate text-sm">{name}</span>}
       {shown.kind === "stopped" ? <>
-        <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(shown.window, i18n.language, t)}</span>
-        <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(shown.window, i18n.language, t, true)}</span>
+        <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(shown.window, now, i18n.language, t)}</span>
+        <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(shown.window, now, i18n.language, t, true)}</span>
       </> : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
     </Button>
     {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top

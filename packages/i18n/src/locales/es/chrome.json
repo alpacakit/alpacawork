@@ -51,6 +51,7 @@
     "stopped": "Detenido",
     "stoppedUntil": "Detenido hasta el {{when}}",
     "stoppedUntilShort": "Hasta el {{when}}",
+    "stoppedUntilTimeShort": "Hasta las {{when}}",
     "title": "Límites de uso de la IA",
     "unavailable": "No se pudo leer. Comprueba el inicio de sesión",
     "unsupported": "No da sus límites",

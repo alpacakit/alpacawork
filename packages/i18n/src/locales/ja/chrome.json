@@ -45,6 +45,7 @@
     "stopped": "停止中",
     "stoppedUntil": "{{when}} まで停止",
     "stoppedUntilShort": "{{when}} まで",
+    "stoppedUntilTimeShort": "{{when}} まで",
     "title": "AI の利用上限",
     "unavailable": "読めません。サインインを確かめてください",
     "unsupported": "上限の値を取れません",
