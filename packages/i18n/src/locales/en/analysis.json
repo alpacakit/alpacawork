@@ -52,7 +52,7 @@
     "saved": "Image saved",
     "share": "Share",
     "shareFailed": "Couldn't share",
-    "shareHint": "Share sends the image only, without the text.",
+    "shareHint": "Share sends only the image through your device’s share menu.",
     "theme": "Color"
   },
   "chart": {

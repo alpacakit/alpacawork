@@ -185,9 +185,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
     <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
-    {/* Two ways out, each saying what it does. Posting leads: X's post opens with the card's words, and the picture
-        follows by the clipboard or the downloads, so the step left to the person stands beside the button. Under it the
-        picture alone, kept, copied or handed to another app; sharing hands over no words, and says so. */}
+    {/* Keep the manual image step next to the X action. */}
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
       <Button disabled={!current} onClick={post} aria-describedby={postHint}
         className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px narrow:w-full dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">

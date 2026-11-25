@@ -47,7 +47,7 @@
     "saved": "已保存图片",
     "share": "分享",
     "shareFailed": "无法分享",
-    "shareHint": "分享只发送图片，不含文字。",
+    "shareHint": "通过设备的分享菜单仅发送图片。",
     "theme": "颜色"
   },
   "chart": {

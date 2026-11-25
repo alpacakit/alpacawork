@@ -57,7 +57,7 @@
     "saved": "Imagem salva",
     "share": "Compartilhar",
     "shareFailed": "Não foi possível compartilhar",
-    "shareHint": "Compartilhar envia só a imagem, sem o texto.",
+    "shareHint": "Compartilhar envia só a imagem pelo menu do dispositivo.",
     "theme": "Cor"
   },
   "chart": {
