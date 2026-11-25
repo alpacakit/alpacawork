@@ -35,7 +35,7 @@
     "compactions_one": "{{count}} compaction",
     "compactions_other": "{{count}} compactions",
     "counts": "On this task: {{anew}} · {{compacted}}",
-    "kept": "As a conversation grows long, the AI compacts it and carries on. When the approach changes or the next result begins, it starts a new conversation with the task's records.",
+    "kept": "As a conversation grows long, the AI compacts it and carries on. When the approach changes, the next result begins, or another AI takes the work, it starts a new conversation with the task's details.",
     "label": "Conversation context {{figure}} (used {{used}} / limit {{window}})",
     "noWindow": "Not set",
     "setWindow": "Enter a limit under Context limits in the agent's settings to see a percent.",

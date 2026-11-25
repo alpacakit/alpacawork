@@ -1019,7 +1019,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
       {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
-      {run.activity?.context?.compactedAt && <span data-working-compacted>· {t("reportFeed.working.compacted")}</span>}
+      {!!run.compactions?.length && <span data-working-compacted>· {t("reportFeed.working.compacted")}</span>}
       </span>
       {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>

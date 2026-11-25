@@ -332,7 +332,7 @@
         "compacted": "Compacted the conversation and carried on",
         "compactedFill": "Compacted the conversation and carried on · {{before}} → {{after}} used",
         "compactedTokens": "Compacted the conversation and carried on · {{before}} → {{after}} tokens",
-        "new": "Started a new conversation with the task's records"
+        "new": "Started a new conversation with the task's details"
       },
       "end": {
         "again": {

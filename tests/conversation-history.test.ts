@@ -22,11 +22,16 @@ test('History has a row for the compaction an agent made on its own and for a la
     assert.equal(response.status, 200, JSON.stringify(history.error));
     const rows = history.events.filter((event: { kind: string }) => event.kind === 'conversation')
       .map((event: { id: string; conversation: { change: string; beforeTokens?: number; afterTokens?: number } }) => ({ id: event.id, ...event.conversation }));
-    assert.deepEqual(rows.map((row: { id: string }) => row.id).sort(), [`${compacting.id}.1`, anew.id].sort());
+    assert.deepEqual(rows.map((row: { id: string }) => row.id).sort(), [`${compacting.id}@${kept![0]!.at}`, `${anew.id}:new`].sort());
     const compaction = rows.find((row: { change: string }) => row.change === 'compacted');
     assert.equal(compaction.beforeTokens, 610_000);
     assert.equal(compaction.afterTokens, 140_000);
     assert.equal(rows.filter((row: { change: string }) => row.change === 'new').length, 1, 'the first conversation is not a new one');
+    // The list's time strip stays as it was: no conversation row reaches it.
+    const strip = await (await fetch(new URL(`/api/task/timeline?lanes=${h.taskId}&from=2020-01-01T00:00:00.000Z&to=2100-01-01T00:00:00.000Z&limit=50`, app.url))).json();
+    const notes = strip.lanes.flatMap((lane: { events: { kind: string; event?: { kind?: string } }[] }) => lane.events)
+      .filter((event: { kind: string }) => event.kind === 'note');
+    assert.ok(notes.every((note: { event: { kind: string } }) => note.event.kind !== 'conversation'), JSON.stringify(notes));
   } finally { await app.close(); }
 });
 

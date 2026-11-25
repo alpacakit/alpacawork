@@ -48,7 +48,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
       {/* How the conversation is kept workable, said where its fill is read; and how often it happened on this Task. */}
       <p className="m-0 mt-3 text-xs text-muted">{t("context.kept")}</p>
-      {conversations && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", {
+      {conversations && (conversations.anew > 0 || conversations.compacted > 0) && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", {
         anew: t("context.anew", { count: conversations.anew }), compacted: t("context.compactions", { count: conversations.compacted }) })}</p>}
     </PopoverContent>
   </Popover>;

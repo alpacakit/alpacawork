@@ -315,7 +315,7 @@
         "compacted": "压缩了对话并继续",
         "compactedFill": "压缩了对话并继续 · 用量 {{before}} → {{after}}",
         "compactedTokens": "压缩了对话并继续 · {{before}} → {{after}} 个令牌",
-        "new": "带着任务记录开始了新的对话"
+        "new": "带着任务内容开始了新的对话"
       },
       "end": {
         "again": {

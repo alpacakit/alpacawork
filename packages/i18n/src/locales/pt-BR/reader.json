@@ -350,7 +350,7 @@
         "compacted": "Compactou a conversa e continuou",
         "compactedFill": "Compactou a conversa e continuou · {{before}} → {{after}} em uso",
         "compactedTokens": "Compactou a conversa e continuou · {{before}} → {{after}} tokens",
-        "new": "Começou uma conversa nova com os registros da tarefa"
+        "new": "Começou uma conversa nova com os dados da tarefa"
       },
       "end": {
         "again": {

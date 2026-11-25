@@ -84,8 +84,9 @@ export function carrierOf<Run extends CarrierRun>(run: Run, find: (id: RunId) =>
 }
 /**
  * The Runs that started a conversation anew where their placement already had one (a new conversation, not its first):
- * a Run that resumes nothing after an earlier started Run at the same placement. The next AI taking over a failed Run's
- * work is that failure's own record (supersededBy), not a new conversation.
+ * a Run that resumes nothing after an earlier started Run at the same placement, whatever started it anew (a handoff,
+ * a request for one, another AI chosen, no session to resume). The next AI taking over a failed Run's work is not
+ * counted: that failure's own record (supersededBy) says it.
  */
 export function newConversationStarts<T extends { id: RunId; placementId: string; resumes: RunId | null; state: RunState;
   startedAt: string | null; supersededBy?: RunId }>(runs: readonly T[]): T[] {

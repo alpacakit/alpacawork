@@ -213,29 +213,28 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       ...(recipient && role ? { recipient: { role, profileKey: profileOf(recipient, receiving), ...choices(receiving) } } : {}), ...(record?.title ? { note: { title: record.title, description: record.description } } : {}),
       ...(result && recipient && role === 'member' ? { result: { runId: result.id, at: result.endedAt! } } : {}) });
   }
-  for (const run of runs.values()) {
-    // Reading why accepted work ended is independent of whether it is a business error needing intervention.
-    const kind = isRunInTrouble(run.state) ? 'error'
-      : run.state === 'cancelled' && run.reason === 'scope_invalidated' ? 'run_end' : null;
-    // The Run that stopped is the row's writer: its Task's responsible or member, by what it ran with.
-    const placement = placements.get(run.placementId);
-    const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
-    if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
-      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause.cause } : {}),
-      ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
-      ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
-  }
-  // What happened to its agents' conversations: a Run starting one anew, and each compaction a Run's agent said.
+  /** A Run's row is written by its Task's responsible or member, by what it ran with. */
   const ranHere = (run: ControlRunDTO) => {
     const placement = placements.get(run.placementId);
     return placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {};
   };
+  for (const run of runs.values()) {
+    // Reading why accepted work ended is independent of whether it is a business error needing intervention.
+    const kind = isRunInTrouble(run.state) ? 'error'
+      : run.state === 'cancelled' && run.reason === 'scope_invalidated' ? 'run_end' : null;
+    // The Run that stopped is the row's writer.
+    const successor = run.supersededBy ? allRuns.get(run.supersededBy) : undefined;
+    if (kind) events.push({ ...event(run.id, kind, run.endedAt ?? run.startedAt ?? run.createdAt, run.reason ?? run.state, ''),
+      ...(kind === 'error' && run.errorCause ? { cause: run.errorCause.cause } : {}),
+      ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
+      ...ranHere(run) });
+  }
+  // What happened to its agents' conversations: a Run starting one anew, and each compaction a Run's agent said. Their
+  // IDs are their own (a Run's ID is its failure's row), and stay when older compactions leave the Run's record.
   for (const run of newConversationStarts([...runs.values()]))
-    events.push({ ...event(run.id, 'conversation', run.startedAt!, '', ''), conversation: { change: 'new' }, ...ranHere(run) });
-  for (const run of runs.values()) (run.compactions ?? []).forEach((compaction, index) => {
-    const { at, ...fill } = compaction;
-    events.push({ ...event(`${run.id}.${index + 1}`, 'conversation', at, '', ''), conversation: { change: 'compacted', ...fill }, ...ranHere(run) });
-  });
+    events.push({ ...event(`${run.id}:new`, 'conversation', run.startedAt!, '', ''), conversation: { change: 'new' }, ...ranHere(run) });
+  for (const run of runs.values()) for (const { at, ...fill } of run.compactions ?? [])
+    events.push({ ...event(`${run.id}@${at}`, 'conversation', at, '', ''), conversation: { change: 'compacted', ...fill }, ...ranHere(run) });
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
       wordsKey: createHash('sha256').update(dialogue.words).digest('hex'), ...dialogue.answerFiles ? { answerFiles: dialogue.answerFiles } : {} });

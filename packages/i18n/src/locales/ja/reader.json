@@ -315,7 +315,7 @@
         "compacted": "会話を圧縮して続けました",
         "compactedFill": "会話を圧縮して続けました · 使用量 {{before}} → {{after}}",
         "compactedTokens": "会話を圧縮して続けました · {{before}} → {{after}} トークン",
-        "new": "タスクの記録を渡して、新しい会話で始めました"
+        "new": "タスクの内容を渡して、新しい会話で始めました"
       },
       "end": {
         "again": {

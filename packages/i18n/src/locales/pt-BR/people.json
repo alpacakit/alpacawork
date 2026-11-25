@@ -37,7 +37,7 @@
     "compactions_many": "{{count}} compactações",
     "compactions_other": "{{count}} compactações",
     "counts": "Nesta tarefa: {{anew}} · {{compacted}}",
-    "kept": "Quando uma conversa fica longa, a IA a compacta e continua o trabalho. Quando a abordagem muda ou o próximo resultado começa, ela inicia uma conversa nova com os registros da tarefa.",
+    "kept": "Quando uma conversa fica longa, a IA a compacta e continua o trabalho. Quando a abordagem muda, o próximo resultado começa ou outra IA assume o trabalho, ela inicia uma conversa nova com os dados da tarefa.",
     "label": "Contexto da conversa {{figure}} (usado {{used}} / limite {{window}})",
     "noWindow": "Não definido",
     "setWindow": "Informe um limite em Limites de contexto, nas configurações do agente, para ver uma porcentagem.",

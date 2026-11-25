@@ -1303,7 +1303,7 @@ test("a conversation row says the agent compacted its conversation, with how ful
     return said;
   });
   expect(words).toContain("Compacted the conversation and carried on · 61% → 14% used");
-  expect(words).toContain("Started a new conversation with the task's records");
+  expect(words).toContain("Started a new conversation with the task's details");
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

@@ -16,21 +16,18 @@ export const agentContextSchema = z.object({
   usedTokens: tokens.nullable(),
   /** The latest figure is a compaction's own, not a model call's. */
   compacted: z.boolean(),
-  /** When this Run's conversation was last compacted; absent when it was not. */
-  compactedAt: z.iso.datetime({ offset: true }).optional(),
   observedAt: z.iso.datetime({ offset: true }),
 }).strict();
 export type AgentContext = z.infer<typeof agentContextSchema>;
 /** What one observation says: the fill, and the model's window when the agent names it. A field it leaves out keeps its
  * last value. */
-export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true, compactedAt: true }).extend({ windowTokens: limit }).partial().strict();
+export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).extend({ windowTokens: limit }).partial().strict();
 export type ContextUpdate = z.infer<typeof contextUpdateSchema>;
 
 /** The latest fill after one more observation (the window is the model's: see resolveContextLimits). */
 export function mergeContext(previous: AgentContext | null, update: ContextUpdate, observedAt: string): AgentContext {
   const { usedTokens = previous?.usedTokens ?? null, compacted = previous?.compacted ?? false } = update;
-  const compactedAt = update.compacted ? observedAt : previous?.compactedAt;
-  return { usedTokens, compacted, ...compactedAt ? { compactedAt } : {}, observedAt };
+  return { usedTokens, compacted, observedAt };
 }
 
 /** One model's context window, as a person writes it, as an agent reported it, or as shipped. */
