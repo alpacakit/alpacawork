@@ -73,6 +73,7 @@
     "dependencies": "Dependencies",
     "files": "Files",
     "history": "History",
+    "more": "More tabs",
     "waiters": "Followed by"
   },
   "family": {
@@ -256,15 +257,13 @@
     "back": "Back",
     "close": "Close details",
     "closeShort": "Close",
-    "details": "Details",
     "dock": "Restore details width",
     "full": "Show details full screen",
     "insert": "Add {{id}} to the input box",
     "inserted": "Added {{id}} to the input box",
     "next": "Next task",
     "path": "Task path",
-    "previous": "Previous task",
-    "view": "Task view"
+    "previous": "Previous task"
   },
   "recovery": {
     "cancelled": "Sending to “<title>{{title}}</title>” was cancelled. You can send it again.",

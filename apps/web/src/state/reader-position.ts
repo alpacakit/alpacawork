@@ -162,18 +162,8 @@ export function readerBack(toList = false) {
   else navigate(() => useViewStore.getState().setReaderPane("task"), { bound: true, write: "over" });
 }
 
-/** Whether Back in the header returns to the list, including after a switch between the two faces of its row. */
-export function useAnalysisListBack(task: string, pane: ReaderPane, behind: ReaderPlace | null) {
+/** Whether Back in the header returns to the analysis list: the task its row opened, on any of its tabs. */
+export function useAnalysisListBack(task: string, behind: ReaderPlace | null) {
   const inList = useViewStore(state => !!state.analysis?.list);
-  return inList && (!behind || behind.task === task &&
-    (pane === "task" && behind.pane === "analysis" || pane === "analysis" && behind.pane === "task"));
-}
-
-/** Return to the other face if it is the previous place, including its reading position. */
-export function turnReader() {
-  const { reader, selected, setReaderPane } = useViewStore.getState();
-  const behind = readerBehind();
-  const analysis = reader.pane === "analysis";
-  if (behind && behind.task === selected && (behind.pane === "analysis") !== analysis) readerBack();
-  else setReaderPane(analysis ? "task" : "analysis");
+  return inList && (!behind || behind.task === task);
 }

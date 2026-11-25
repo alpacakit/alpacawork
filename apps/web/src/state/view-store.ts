@@ -23,7 +23,7 @@ export const gathering = (state: { query: string }) => !!state.query;
 /** The search row stands while asked for and always while a search is set; pressing its button closes what stands. */
 export const isSearchShown = (state: { searchOpen: boolean; query: string }) => state.searchOpen || gathering(state);
 /**
- * The reader's details panes and its analysis face.
+ * The reader's tabs: History (the reports), Context, Files and Analysis.
  */
 export type ReaderPane = "task" | "files" | "about" | "analysis";
 
@@ -248,10 +248,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   // The move on to the next question after an answer acts on the reader that took the answer.
   openTask: intent((id, { pane = "task", reader = false, whole, returnTo, turnSequence = false, event, } = {}) => {
     // Pressing the task already shown is no opening to wait for.
-    if (pane !== "analysis") {
-      if (!(get().reader.open && get().selected === id)) startTime('task', id);
-      markRead(id);
-    }
+    if (!(get().reader.open && get().selected === id)) startTime('task', id);
+    markRead(id);
     if (reader) { endReaderInput(id); openedByPress = true; }
     set((state) => {
       // The task the reader shows, on the pane it shows, is no move: the row open in it stays open, and a walk
@@ -311,7 +309,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   applyNavigation: (navigation) => {
     const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis } = navigation;
     endReaderInput(task); openedByPress = false;
-    if (task && pane !== "analysis") markRead(task);
+    if (task) markRead(task);
     // The reader shows the task the URL names, or waits for it while it is looked up (`awaitedTask`).
     const shown = readerOn(navigation);
     const returnFocus = !shown && get().reader.open ? readerFocusReturn() : null;

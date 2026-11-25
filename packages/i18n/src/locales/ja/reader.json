@@ -65,6 +65,7 @@
     "dependencies": "依存",
     "files": "ファイル",
     "history": "履歴",
+    "more": "ほかのタブ",
     "waiters": "後続"
   },
   "family": {
@@ -242,15 +243,13 @@
     "back": "戻る",
     "close": "詳細を閉じる",
     "closeShort": "閉じる",
-    "details": "詳細",
     "dock": "詳細を通常幅に戻す",
     "full": "詳細を全画面にする",
     "insert": "{{id}} を入力欄に入れる",
     "inserted": "{{id}} を入力欄に入れました",
     "next": "次のタスク",
     "path": "このタスクの場所",
-    "previous": "前のタスク",
-    "view": "タスクの表示"
+    "previous": "前のタスク"
   },
   "recovery": {
     "cancelled": "「<title>{{title}}</title>」への送信を取り消したので、もう一度送れます",

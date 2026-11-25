@@ -81,6 +81,7 @@
     "dependencies": "Dependencias",
     "files": "Archivos",
     "history": "Historial",
+    "more": "Más pestañas",
     "waiters": "Le siguen"
   },
   "family": {
@@ -270,15 +271,13 @@
     "back": "Atrás",
     "close": "Cerrar detalles",
     "closeShort": "Cerrar",
-    "details": "Detalles",
     "dock": "Restaurar el ancho de los detalles",
     "full": "Mostrar los detalles en pantalla completa",
     "insert": "Añadir {{id}} al cuadro de texto",
     "inserted": "Se añadió {{id}} al cuadro de texto",
     "next": "Tarea siguiente",
     "path": "Ruta de la tarea",
-    "previous": "Tarea anterior",
-    "view": "Vista de la tarea"
+    "previous": "Tarea anterior"
   },
   "recovery": {
     "cancelled": "Se canceló el envío a “<title>{{title}}</title>”. Puedes enviarlo de nuevo.",

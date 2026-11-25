@@ -970,7 +970,7 @@ test("the title and its tabs stay on every pane: History, Context and Files, the
   expect(content.querySelectorAll("[data-task-row], [data-files-row]")).toHaveLength(0);
   const entries = await waitFor(() => {
     const found = [...content.querySelectorAll<HTMLElement>("[data-head-title] [data-reader-entries] button")];
-    expect(found.map(button => button.textContent)).toEqual(["History", "Context", "Files2"]);
+    expect(found.map(button => button.textContent)).toEqual(["History", "Context", "Files2", "Analysis"]);
     return found;
   });
   expect(entries[0]!.getAttribute("aria-current")).toBe("page");

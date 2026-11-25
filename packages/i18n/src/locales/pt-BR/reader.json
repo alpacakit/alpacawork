@@ -81,6 +81,7 @@
     "dependencies": "Dependências",
     "files": "Arquivos",
     "history": "Histórico",
+    "more": "Mais abas",
     "waiters": "Seguida por"
   },
   "family": {
@@ -270,15 +271,13 @@
     "back": "Voltar",
     "close": "Fechar detalhes",
     "closeShort": "Fechar",
-    "details": "Detalhes",
     "dock": "Restaurar a largura dos detalhes",
     "full": "Mostrar detalhes em tela cheia",
     "insert": "Adicionar {{id}} ao campo de mensagem",
     "inserted": "{{id}} foi para o campo de mensagem",
     "next": "Próxima tarefa",
     "path": "Caminho da tarefa",
-    "previous": "Tarefa anterior",
-    "view": "Visualização da tarefa"
+    "previous": "Tarefa anterior"
   },
   "recovery": {
     "cancelled": "O envio para “<title>{{title}}</title>” foi cancelado. Você pode enviar de novo.",

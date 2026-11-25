@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/data/client";
@@ -11,18 +11,16 @@ import type { UnitValues } from "./contract";
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
-export function TaskAnalysis({ taskId, hasTitle, titleAction }: { taskId: string; hasTitle: boolean; titleAction?: ReactNode }) {
+export function TaskAnalysis({ taskId, title = false }: { taskId: string; title?: boolean }) {
   const { t } = useTranslation("analysis");
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const query = useUnitValues(taskId);
   const values = query.data;
   const row = values?.unit;
-  const heading = (!hasTitle || row && row.id !== taskId) && (row || titleAction) && <div className="mb-1 flex items-center gap-2">
-    <h3 dir="auto" className="min-w-0 flex-1 text-heading font-semibold">
-      {row && row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row?.title ?? taskId}
-    </h3>
-    {titleAction}
-  </div>;
+  // Its own title only where the reader has none to show yet (the task still looked up), or the values are another's.
+  const heading = (title || row && row.id !== taskId) && row && <h3 dir="auto" className="mb-1 text-heading font-semibold">
+    {row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row.title}
+  </h3>;
   if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p></>;
   if (!values || !row) return <>{heading}<ReadPart set={{ data: null, current: false, reads: [query] }}
     skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart></>;
