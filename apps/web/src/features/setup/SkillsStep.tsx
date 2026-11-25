@@ -58,7 +58,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
                   leaves no room for it (a phone), it drops under the heading rather than squeeze it. */}
               <span className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
-                {/* Marked only where nothing is given up for it: one that costs time and tokens is ticked, not urged. */}
+                {/* Marked only where nothing is given up for it: a recommended one that costs time and tokens is ticked, not urged. */}
                 {offer.recommended && !offer.cost && <RecommendedMark className="self-center" />}
                 {offer.beta && <BetaMark className="self-center" />}
                 {done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
