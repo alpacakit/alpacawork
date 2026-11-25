@@ -100,7 +100,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const span = first?.head.period ?? days;
   const spanWords = !list.days && span ? spanLabel(span.from, span.to) : null;
   // Until its first page has come, the list stands as every part does (ReadPart): its shape, its failure, or offline.
-  if (!first) return <ReadPart reads={[query]} skeleton={<RegionSkeleton shape="analysisList" />}>{() => null}</ReadPart>;
+  if (!first) return <ReadPart set={{ data: null, current: false, reads: [query] }} skeleton={<RegionSkeleton shape="analysisList" />}>{() => null}</ReadPart>;
   const left = first.total - rows.length;
   // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
   const title = listHeading(list, first.total);
@@ -151,7 +151,7 @@ function useRowOf(project: string | null, span: Span, list: ListPlace) {
 function UnitPane({ unit }: { unit: string }) {
   const { t } = useTranslation("analysis");
   const query = useUnitValues(unit);
-  if (!query.data) return <ReadPart reads={[query]} skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>;
+  if (!query.data) return <ReadPart set={{ data: null, current: false, reads: [query] }} skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>;
   const values = query.data, row = values.unit;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;

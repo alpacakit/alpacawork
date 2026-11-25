@@ -7,7 +7,7 @@ import { restoreReadPersistence, startReadPersistence } from '../src/data/read-p
 import { readQuery } from '../src/data/read-model';
 import { useConnection } from '../src/data/connection';
 import { OFFLINE_SHOWN_AFTER_MS } from '../src/data/reach';
-import { ReadPart } from '../src/features/analysis/parts';
+import { ReadPart, useReadSet, type PartRead } from '../src/features/analysis/parts';
 import { checkpointFixture } from './checkpoint-fixture';
 import { indexOf, tree } from './fixtures';
 
@@ -76,9 +76,14 @@ test('the analysis read once is kept for offline and drawn again at the next sta
   expect(assessRead(next, readQuery(next, options().queryKey)!)).toMatchObject({ display: true, needsRead: true });
 });
 
+/** A part over its reads, as the analysis draws one. */
+function Part({ reads, skeleton, children }: { reads: PartRead<unknown>[]; skeleton: React.ReactNode; children: (data: readonly unknown[]) => React.ReactNode }) {
+  return <ReadPart set={useReadSet('part', reads)} skeleton={skeleton}>{children}</ReadPart>;
+}
+
 test('a part never read stands, offline, as what the list of tasks says of what it has not read, and its failure as every read says it', async () => {
   const read = { data: undefined, isPlaceholderData: false, isError: false, error: null, refetch: () => {} };
-  const offline = render(<ReadPart reads={[read]} skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</ReadPart>);
+  const offline = render(<Part reads={[read]} skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</Part>);
   act(() => useConnection.setState({ offline: true, state: 'reconnecting', failures: 1 }));
   await waitFor(() => expect(offline.container.querySelector('[data-read-note="absent"]')).not.toBeNull(), { timeout: OFFLINE_SHOWN_AFTER_MS + 2000 });
   expect(offline.container.querySelector('[data-skeleton]')).toBeNull();
@@ -86,14 +91,27 @@ test('a part never read stands, offline, as what the list of tasks says of what 
   act(() => useConnection.setState({ offline: false, state: 'live', failures: 0 }));
   const retry = vi.fn();
   // A part drawn from two reads (the AI's use and its finished tasks): one that failed is said, and asked again.
-  const failed = render(<ReadPart reads={[{ ...read, data: 1 }, { ...read, isError: true, error: new Error('x'), refetch: retry }]}
-    skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</ReadPart>);
+  const failed = render(<Part reads={[{ ...read, data: 1 }, { ...read, isError: true, error: new Error('x'), refetch: retry }]}
+    skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</Part>);
   expect(failed.container.querySelector('[data-read-failure]')).not.toBeNull();
   expect(failed.queryByText('drawn')).toBeNull();
   failed.unmount();
-  const waiting = render(<ReadPart reads={[{ ...read, data: 1 }, read]} skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</ReadPart>);
+  const waiting = render(<Part reads={[{ ...read, data: 1 }, read]} skeleton={<i data-skeleton />}>{() => <p>drawn</p>}</Part>);
   // Until both have come, its own shape: nothing drawn now to be pushed down by what comes later.
   expect(waiting.container.querySelector('[data-skeleton]')).not.toBeNull();
   expect(waiting.queryByText('drawn')).toBeNull();
   waiting.unmount();
+});
+
+test("a part drawn from two reads shows one choice's set whole: the last until all of the next has come", () => {
+  const answer = (data: string, placeholder = false) => ({ data, isPlaceholderData: placeholder, isError: false, error: null, refetch: () => {} });
+  const draw = (reads: PartRead<unknown>[]) => <Part reads={reads} skeleton={<i data-skeleton />}>{data => <p>{data.join(' ')}</p>}</Part>;
+  const view = render(draw([answer('7日のトークン'), answer('7日の終わったタスク')]));
+  expect(view.getByText('7日のトークン 7日の終わったタスク')).toBeTruthy();
+  // 28 days chosen: the AI's use has come, its finished tasks not yet (the 7 days' stand in for them).
+  view.rerender(draw([answer('28日のトークン'), answer('7日の終わったタスク', true)]));
+  expect(view.getByText('7日のトークン 7日の終わったタスク').closest('[data-answer]')!.getAttribute('data-answer')).toBe('other');
+  view.rerender(draw([answer('28日のトークン'), answer('28日の終わったタスク')]));
+  expect(view.getByText('28日のトークン 28日の終わったタスク').closest('[data-answer]')!.getAttribute('data-answer')).toBe('current');
+  view.unmount();
 });

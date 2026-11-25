@@ -10,11 +10,12 @@ import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
 import { ShareCardButton } from "./ShareCard";
-import { PointerTip, ReadPart, Seg, useChoices } from "./parts";
+import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
 import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
+import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
-import type { Head, Period } from "./contract";
+import type { Head, Period, TasksView, UsageView } from "./contract";
 
 const PRESETS = PERIOD_BACK;
 
@@ -40,8 +41,10 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const tasks = useTasksView(project, place.span, bucket, null);
   const usage = useUsageView(project, place.span, bucket, null, place.look === "usage");
-  const query = place.look === "tasks" ? tasks : usage;
-  const head: Head | undefined = query.data?.head;
+  // The look's answers are one set (the AI's use draws its finished tasks too): the days said above and the numbers
+  // under them are always the same set's, the last whole one until the new choice's has wholly come.
+  const set = useReadSet(place.look, place.look === "tasks" ? [tasks] : [usage, tasks]);
+  const head: Head | undefined = (set.data?.[0] as { head: Head } | undefined)?.head;
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
   // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
   // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).
@@ -86,11 +89,11 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     </div>
     {/* One part, whichever look: the usage look draws the tasks' answer too (its finished tasks), so it is drawn once both
         have come and each for what is chosen now (ReadPart); nothing is put in above what is drawn later. */}
-    <ReadPart reads={place.look === "tasks" ? [tasks] : [usage, tasks]}
-      skeleton={<RegionSkeleton shape={place.look === "tasks" ? "analysisTasks" : "analysisUsage"} />}>
-      {() => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
-        : place.look === "tasks" ? <TasksLook view={tasks.data!} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
-          : <UsageLook view={usage.data!} span={place.span} root={root} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
+    <ReadPart set={set}
+      skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
+      {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
+        : place.look === "tasks" ? <TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+          : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)} />}
     </ReadPart>
     </div></div>
     <Layers place={place} project={project} days={days} />

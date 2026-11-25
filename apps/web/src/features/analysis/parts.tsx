@@ -276,18 +276,34 @@ function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: st
 /** A read a part of the analysis draws from: its answer, or that it is on its way or could not be read. */
 export type PartRead<T> = { data: T | undefined; isPlaceholderData: boolean; isError: boolean; error: Error | null; refetch: () => unknown };
 /**
- * Every part of the analysis (the face, a breakdown, a list, a task's values) stands in its place by one rule, whatever
- * it waits for: drawn once every read it needs has an answer (one for another choice dimmed and out of reach until this
- * one comes, `Shown`); until then its own shape (`skeleton`), never nothing, so nothing is put in above what is drawn
- * later; what could not be read said in its place as every read says it, with a way to ask again; and, offline, what
- * was never read said as the list of tasks says it (ReadNote), not a wait that cannot end.
+ * What a part shows of its reads: one set, every answer in it for the same choice. While a new choice's answers come in,
+ * the last whole set stands as it was (dimmed, `current` false) and the new one replaces it at once when all of it has
+ * come, so no answer of one choice is ever drawn beside another's. `kind`: what the reads are for (another kind, as
+ * another look, has no set of this one's to stand in for it).
  */
-export function ReadPart({ reads, skeleton, children }: { reads: readonly PartRead<unknown>[]; skeleton: ReactNode; children: () => ReactNode }) {
+export type ReadSet = { data: readonly unknown[] | null; current: boolean; reads: readonly PartRead<unknown>[] };
+export function useReadSet(kind: string, reads: readonly PartRead<unknown>[]): ReadSet {
+  const held = useRef<{ kind: string; data: readonly unknown[] } | null>(null);
+  const whole = reads.every(read => read.data !== undefined && !read.isPlaceholderData);
+  const answers = reads.map(read => read.data);
+  if (whole) held.current = { kind, data: answers };
+  const kept = held.current?.kind === kind ? held.current.data : null;
+  // Before any whole set of this kind, answers that all stand for an earlier choice are still one set.
+  return { data: whole ? answers : kept ?? (reads.every(read => read.data !== undefined) ? answers : null), current: whole, reads };
+}
+
+/**
+ * Every part of the analysis (the face, a breakdown, a list, a task's values) stands in its place by one rule, whatever
+ * it waits for: drawn from its whole set of answers (`useReadSet`; one for an earlier choice dimmed and out of reach until
+ * the new one has wholly come, `Shown`); until it has one, its own shape (`skeleton`), never nothing, so nothing is put in
+ * above what is drawn later; what could not be read said in its place as every read says it, with a way to ask again;
+ * and, offline, what was never read said as the list of tasks says it (ReadNote), not a wait that cannot end.
+ */
+export function ReadPart({ set, skeleton, children }: { set: ReadSet; skeleton: ReactNode; children: (data: readonly unknown[]) => ReactNode }) {
   const offline = useOfflineShown();
-  if (reads.every(read => read.data !== undefined))
-    return <Shown current={reads.every(read => !read.isPlaceholderData)}>{children()}</Shown>;
-  const failed = reads.find(read => read.data === undefined && read.isError);
-  if (failed) return <ReadFailure error={failed.error} retry={() => { for (const read of reads) if (read.data === undefined) void read.refetch(); }} />;
+  if (set.data) return <Shown current={set.current}>{children(set.data)}</Shown>;
+  const failed = set.reads.find(read => read.data === undefined && read.isError);
+  if (failed) return <ReadFailure error={failed.error} retry={() => { for (const read of set.reads) if (read.data === undefined) void read.refetch(); }} />;
   if (offline) return <ReadNote kind="absent" />;
   return <>{skeleton}</>;
 }

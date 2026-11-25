@@ -45,20 +45,35 @@ import { GuideBalloon } from "@/features/guide/Guide";
  */
 type AnalysisPart = typeof import("@/features/analysis/AnalysisView");
 let analysisPart: AnalysisPart | undefined;
-const loadAnalysis = () => import("@/features/analysis/AnalysisView").then(part => analysisPart = part);
+/**
+ * The analysis's code: at its own address, or (`again`) at that address once more, made new so the browser asks for it
+ * again instead of answering with the failure it remembers for that address.
+ */
+const loadAnalysis = (again?: string) => (again ? import(/* @vite-ignore */ again) as Promise<AnalysisPart>
+  : import("@/features/analysis/AnalysisView")).then(part => analysisPart = part);
+/** The address a failed fetch of a part of the code names, when the browser says it. */
+export const failedAddress = (error: unknown) => /https?:\/\/\S+?\.js\b/.exec(error instanceof Error ? error.message : String(error))?.[0];
 function AnalysisView({ place }: { place: AnalysisPlace }) {
   const [part, setPart] = useState(analysisPart);
-  // A part that could not be fetched is said as every read that could not be done, with a way to ask again.
-  const [failure, setFailure] = useState<{ error: unknown } | null>(null);
+  // A part that could not be fetched is said as every read that could not be done, and asked for again: at a new
+  // address (the browser remembers the failure of the old one), or, where the failure names none, by reading the page again.
+  const [attempt, setAttempt] = useState<{ again?: string; failure?: unknown }>({});
   useEffect(() => {
-    if (part || failure) return;
+    if (part || "failure" in attempt) return;
     let live = true;
-    loadAnalysis().then(next => { if (live) setPart(next); }, error => { if (live) setFailure({ error }); });
+    loadAnalysis(attempt.again).then(next => { if (live) setPart(next); }, failure => { if (live) setAttempt({ ...attempt, failure }); });
     return () => { live = false; };
-  }, [part, failure]);
+  }, [part, attempt]);
   if (part) return <part.AnalysisView place={place} />;
-  if (failure) return <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 narrow:min-h-67.5"><BarRoom />
-    <ReadFailure size="region" error={failure.error} retry={() => setFailure(null)} /></div>;
+  if ("failure" in attempt) {
+    const retry = () => {
+      const address = failedAddress(attempt.failure);
+      if (!address) { location.reload(); return; }
+      setAttempt({ again: `${address.split("?")[0]}?again=${Date.now()}` });
+    };
+    return <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 narrow:min-h-67.5"><BarRoom />
+      <ReadFailure size="region" error={attempt.failure} retry={retry} /></div>;
+  }
   return analysisWaiting(place.look);
 }
 /** The analysis's place while its part is read: its top line, then its shape (as the analysis says while it reads). */

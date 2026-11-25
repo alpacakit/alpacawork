@@ -6,7 +6,7 @@ import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDel
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ReadPart, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
 import { useBreakdown, useNear } from "./data";
@@ -226,11 +226,12 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
   const project = useViewStore(state => state.project);
   const [near, wanted] = useNear(root);
   const breakdownRead = useBreakdown("tasks", project, span, bucket, taskGroup, wanted);
-  const answer = breakdownRead.data?.breakdown, read = answer?.look === "tasks" ? answer : null, breakdownRows = read?.rows ?? [];
+  const breakdownSet = useReadSet("tasks-breakdown", [breakdownRead]);
+  const answer = (breakdownSet.data?.[0] as typeof breakdownRead.data)?.breakdown, read = answer?.look === "tasks" ? answer : null, breakdownRows = read?.rows ?? [];
   const groupOf = (key: string) => ({ group: read?.by ?? taskGroup, member: key });
   return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
-    <ReadPart reads={[breakdownRead]} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
+    <ReadPart set={breakdownSet} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
       <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
         columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
           head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
