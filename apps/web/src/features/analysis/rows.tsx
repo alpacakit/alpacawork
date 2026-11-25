@@ -644,7 +644,7 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
+      {line.lines.map(({ from, to, at }) => { const within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
           className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
     </svg>}
@@ -674,7 +674,7 @@ export function lineDots(values: (number | null)[], top: number, faint: (at: num
     : { x: (at + 0.5) / values.length * 100, y: 100 - Math.min(1, value / top) * 100, faint: faint(at), over: value > top });
   const lines = dots.flatMap((dot, at) => {
     const before = at > 0 ? dots[at - 1] : null;
-    return dot && before ? [{ from: before, to: dot }] : [];
+    return dot && before ? [{ from: before, to: dot, at }] : [];
   });
   return { dots, lines };
 }

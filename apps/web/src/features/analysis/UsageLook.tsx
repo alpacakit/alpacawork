@@ -68,7 +68,10 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const kinds: Record<Amount, Kind> = { tokens: "tokens", runMs: "hours", launches: "times" };
   const finishedOn = (i: number) => taskPoints?.[i]?.counts.finished ?? 0;
   const steady = (i: number) => finishedOn(i) >= 10;
-  const perFinished = (key: Amount) => points.map((_, i) => taskPoints && finishedOn(i) ? amount[key](i) / finishedOn(i) : null);
+  // Each amount per finished task, a bin, made once: a day's legend and every day's room read it by the bin.
+  const perEach = (key: Amount) => points.map((_, i) => taskPoints && finishedOn(i) ? amount[key](i) / finishedOn(i) : null);
+  const per = { tokens: perEach("tokens"), runMs: perEach("runMs"), launches: perEach("launches") };
+  const perFinished = (key: Amount) => per[key];
   const unitOf = (kind: Kind, top: number): [number, string, boolean] => {
     const steps = t("unit.scales", { returnObjects: true }) as unknown as { at: number; unit: string }[];
     const step = kind === "tokens" && Array.isArray(steps) ? steps.find(each => top >= each.at) ?? null : null;
