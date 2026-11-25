@@ -67,7 +67,7 @@ to README.md#install): keep those headings, or change the links with them.
   </picture>
 </p>
 
-alpacawork is a tool (an AI harness) that runs the Claude Code and Codex agents already installed on your PC and assigns work to them. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
+alpacawork is an orchestrator for the AI coding agents already on your PC, such as Claude Code and Codex: it hands them work and keeps track of it. Write what you want in one chat box, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs and tracks progress. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
 
 <p align="center">
   <img src="docs/images/demo-dark.webp" alt="A request typed into the phone's chat box becomes three tasks that run in parallel in the PC's list; a result is checked and a swipe marks its task complete, and a question from the AI is answered by picking an option; then the phone and the PC side by side" width="800">
