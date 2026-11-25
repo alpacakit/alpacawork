@@ -72,7 +72,7 @@ const accepts = (entry: TaskLog) => entry.toState === 'done' && entry.fromState 
  */
 export type UserQuestion = {
   id: string; from: number; to: number | null; answered: boolean; accept: boolean; estimated: boolean;
-  replacedBy: string | null; parts: AnswerParts | null;
+  replacedBy: string | null; replacedAt: number | null; parts: AnswerParts | null;
   /** Item by item (in order, from 1), whether the asker recommended one of its choices. */
   recommends: boolean[];
 };
@@ -95,20 +95,25 @@ export function questionKind(decide: readonly Readonly<Record<string, unknown>>[
  * on the closed question).
  */
 export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
-  const instructions = new Set(log.filter(instruction).map(entry => entry.id)), naming = new Map<string, string>();
+  const instructions = new Map(log.filter(instruction).map(entry => [entry.id, entry] as const));
+  const naming = new Map<string, TaskLog>();
   for (const entry of log)
     if (entry.kind === 'request_accepted' && entry.answers && speaksForUser(entry.actor) && !naming.has(entry.answers))
-      naming.set(entry.answers, entry.id);
-  return questionsOf(log).flatMap(({ asked, closing }) => asked.askedTo === null ? [{
+      naming.set(entry.answers, entry);
+  return questionsOf(log).flatMap(({ asked, closing }) => {
+    if (asked.askedTo !== null) return [];
+    const replacing = closing?.kind !== 'question_withdrawn' ? undefined
+      : closing.originCauseId !== undefined && instructions.get(closing.originCauseId) || naming.get(asked.id);
+    return [{
     id: asked.id, from: Date.parse(asked.at), to: closing === null ? null : Date.parse(closing.at),
     answered: closing?.kind === 'answered' && speaksForUser(closing.actor), ...questionKind(asked.decide),
-    replacedBy: closing?.kind !== 'question_withdrawn' ? null
-      : closing.originCauseId !== undefined && instructions.has(closing.originCauseId) ? closing.originCauseId
-      : naming.get(asked.id) ?? null,
+    replacedBy: replacing?.id ?? null, replacedAt: replacing ? Date.parse(replacing.at) : null,
     parts: closing?.kind === 'answered' ? closing.answerParts ?? null : null,
+    // Recommended as the question's own check and the answer's record read it: a recommendation with words.
     recommends: asked.decide.map(item => Array.isArray(item.decide_choices) && item.decide_choices.some(choice =>
-      !!choice && typeof choice === 'object' && typeof (choice as Record<string, unknown>).decide_choice_recommended === 'string')),
-  }] : []);
+      !!choice && typeof choice === 'object' && !!String((choice as Record<string, unknown>).decide_choice_recommended ?? '').trim())),
+  }];
+  });
 }
 
 /**
@@ -141,9 +146,11 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   // The questions asked while the unit was open, as its question count and its clocks read them.
   const open = questions.filter(question => question.from >= requestTime && question.from <= finishTime);
   const rounds = open.filter(question => question.accept);
-  const replaced = rounds.filter(question => question.replacedBy !== null && question.to! <= finishTime);
-  // Each replacing instruction counts once, at review, wherever under the unit it was given.
-  const replacing = new Set(replaced.map(question => question.replacedBy));
+  const replaced = rounds.filter(question => question.replacedBy !== null);
+  // Each replacing instruction counts once, wherever under the unit it was given: at review, or after acceptance when
+  // it came after the acceptance.
+  const acceptTime = acceptedAt === null ? Infinity : Date.parse(acceptedAt);
+  const replacing = new Map(replaced.map(question => [question.replacedBy!, question.replacedAt! > acceptTime]));
   let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
   // Walk backward so each instruction sees its first subsequent state transition.
@@ -159,7 +166,8 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
     }
     if (entry.toState !== null) nextTransition = entry;
   }
-  instructions.instructionsAtReview += replacing.size;
+  for (const after of replacing.values())
+    if (after) instructions.instructionsAfterAccept++; else instructions.instructionsAtReview++;
   const passed = acceptedAt !== null && reviews <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
   return { requestedAt, acceptedAt, stoppedAt, doneAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits: reviews + rounds.length,
@@ -171,16 +179,17 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
 export type Outcome = ReturnType<typeof taskOutcome>;
 
 /**
- * The user's instructions to a unit (its own log, `log`) or any Task under it (`logs`, the unit's included), after the
- * request itself (answers and send-backs are not instructions), and the labels their senders gave those instructions:
- * an instruction's log entry carries its Request's ID, which its label names.
+ * The user's instructions and send-backs to a unit (its own log, `log`) or any Task under it (`logs`, the unit's
+ * included), after the request itself (answers are not instructions), and the labels their senders gave them: an
+ * instruction's or a send-back's log entry carries its Request's ID, which its label names.
  */
 export function laterInstructions(log: readonly TaskLog[], logs: readonly (readonly TaskLog[])[]) {
   const initial = log.find(instruction), counted = new Set<string>(), labels: InstructionLabel[] = [];
+  const since = initial ? Date.parse(initial.at) : -Infinity;
   for (const history of logs)
     for (const entry of history)
       if (entry.kind === 'request_labeled' && entry.label) labels.push(entry.label);
-      else if (instruction(entry) && entry !== initial) counted.add(entry.id);
+      else if ((instruction(entry) || sendBack(entry)) && entry !== initial && Date.parse(entry.at) >= since) counted.add(entry.id);
   return { count: counted.size, labels: labels.filter(label => counted.has(label.request)) };
 }
 

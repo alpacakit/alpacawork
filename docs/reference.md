@@ -101,7 +101,8 @@ whose question was answered "take it" and that was then submitted for review has
 was recorded is read from its words (merge, adopt, accept and the like); `submitsEstimated` counts the accepted Tasks
 whose rounds rest on that reading. A Task is reworked when the user sent it back, gave an instruction at review or after
 acceptance, gave an instruction in place of answering a question asking to take a result, or it was submitted for review
-twice or more. An instruction that names a withdrawn question it answers counts as one given in place of its answer.
+twice or more. An instruction that names a withdrawn question it answers counts as one given in place of its answer; one given
+after the acceptance counts in `instructionsAfterAccept` instead.
 Only questions asked between the request and the end count. Answering such a question, with a choice (even one that asks for changes) or with the user's own words, is not
 rework. The instruction
 counts (`sendBacks`, `instructionsAtReview`, `instructionsAfterAccept`, and `instructionsDuringWork`, which is not
@@ -119,8 +120,9 @@ coordinator are laid in one line. A gap of 30 minutes or more without an action 
 counts toward the Task of the next action: `thisTask` when that Task is this one or under it, `otherTasks` otherwise (a
 message that names no Task included). After the last action, the time until now is `thisTask` while under 30 minutes;
 once 30 minutes pass, all of it is `away`. Reading a screen leaves no action, so a long read counts as away. In `analysis tasks` the period totals cover
-accepted Tasks; `unfinished` gives, as of the read and whatever the period, the requested Tasks with no acceptance, stop
-or owner's done yet (`doneUnaccepted` ones are not among them), with their waits so far (a wait
+accepted Tasks; `unfinished` gives, as of the read and whatever the period, the requested Tasks open now: with no acceptance,
+stop or owner's done yet (`doneUnaccepted` ones are not among them), or reopened after one, counted from that end; with
+their waits so far (a wait
 still open running to now), and `analysis task` gives one Task's.
 
 `questions` counts every question to the user, including those asking to take a result that `submits` also counts.
@@ -128,8 +130,8 @@ still open running to now), and `analysis task` gives one Task's.
 (`choice`, and `recommended` of those), none of them with the user's own words (`other`), `stop`, or no choice named
 (`unmatched`); `recommendable` counts the items whose asker recommended a choice. Answered questions with no recorded
 parts are `answersWithoutParts`. `questionsReplaced` counts questions withdrawn by an instruction in place of an answer.
-`instructions` counts the user's instructions to the Task or any Task under it after the request (answers and send-backs
-are not instructions) by the label their sender gave each (`kinds`, and `fixes` for the kinds of fix; an instruction can
+`instructions` counts the user's instructions and send-backs to the Task or any Task under it after the request
+(answers are not counted) by the label their sender gave each (`kinds`, and `fixes` for the kinds of fix; an instruction can
 name several fixes, and kinds with no count are left out); `unlabeled` were sent without one. `noQuestions` counts the
 accepted Tasks with no question to the user besides those asking to take a result, and `passedNoQuestions` those of them
 accepted without rework. `analysis task` returns the same values for one Task, with `submitsEstimated` as true or false.

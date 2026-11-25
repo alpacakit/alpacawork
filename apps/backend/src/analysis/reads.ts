@@ -15,7 +15,7 @@ import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './fa
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
 import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.js';
 import { CluesSum, waitsOf } from './clues.js';
-import type { WaitSplit } from './presence.js';
+import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
 
 type DatedUnit = { day: string; unit: Unit };
 type CountedUnit = DatedUnit & { prCount: number };
@@ -250,7 +250,7 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
 const ZONES_KEPT = 3, SCOPES_KEPT = 4;
 /** One unit's part of a zone's days: kept with the unit, so facts that change only other units date only theirs again. */
 type UnitDays = { project: string; dated: DatedUnit | null; first: number; launches: ZoneLaunch[];
-  /** A requested unit not yet ended (accepted, stopped or done), whose waits still run. */
+  /** A requested unit open now: not yet ended (accepted, stopped or done), or reopened after it ended. */
   open: Unit | null };
 type ZoneDays = { units: UnitDays[]; launches: ZoneLaunch[] };
 /** A launch in a zone's days, with its unit's project (the same object in the unit's days and the zone's). */
@@ -287,7 +287,7 @@ async function zoneDays(facts: AnalysisFacts, kept: WeakMap<Unit, UnitDays>, dat
         days.first = Date.parse(unit.outcome.requestedAt);
         const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
         if (ended) days.dated = { unit, day: date(Date.parse(ended)) };
-        else days.open = unit;
+        if (unit.node.state !== 'done' && unit.node.state !== 'stopped') days.open = unit;
       // A top-level Task the user did not request counts only when its owner reported it done (nobody accepts it).
       } else if (unit.outcome.doneAt) days.dated = { unit, day: date(Date.parse(unit.outcome.doneAt)) };
       for (const run of unit.launches) {
@@ -458,16 +458,29 @@ class ScopedAnalysis {
   private readonly waits: Waits = unit => waitsOf(this.facts, unit, this.now);
   private readonly taskTotals = (units: readonly CountedUnit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units, this.waits) });
 
-  /** The requested tasks not yet ended, with their waits for the user so far, the open ones running to now. */
+  /**
+   * The requested tasks open now, with their waits for the user so far: from the request, or for one reopened after it
+   * ended, from that end; an open wait runs to now. Each is counted once per read (it moves with the time of the read).
+   */
   private unfinished() {
-    const time = { review: 0, answer: 0 }, sum = new CluesSum();
-    for (const unit of this.openUnits) {
-      const { review, answer } = clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches,
-        Date.parse(unit.outcome.requestedAt), this.now, this.now).time;
-      time.review += review; time.answer += answer;
-      sum.add({ ...unit, asked: [], instructions: { count: 0, labels: [] } }, this.waits(unit));
+    const time = { review: 0, answer: 0 }, waits = emptySplit();
+    for (const clock of this.openClocks().values()) {
+      time.review += clock.time.review; time.answer += clock.time.answer;
+      addSplit(waits, clock.split);
     }
-    return { tasks: this.openUnits.length, time, waits: sum.clues().waits };
+    return { tasks: this.openUnits.length, time, waits };
+  }
+  private openClocksMade?: Map<Unit, ReturnType<typeof clocks> & { split: WaitSplit }>;
+  private openClocks() {
+    if (this.openClocksMade) return this.openClocksMade;
+    const made = new Map<Unit, ReturnType<typeof clocks> & { split: WaitSplit }>(), activity = this.facts.activity();
+    for (const unit of this.openUnits) {
+      const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt, id = unit.node.id;
+      const clock = clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches,
+        Date.parse(ended ?? unit.outcome.requestedAt), this.now, this.now);
+      made.set(unit, { ...clock, split: splitWaits(clock.waits, activity, task => task === id || this.facts.rootOf.get(task) === id, this.now).split });
+    }
+    return this.openClocksMade = made;
   }
 
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
@@ -582,9 +595,7 @@ class ScopedAnalysis {
       && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
     return units.map(unit => {
       if (!input.value) return entry(unit, null);
-      const { review, answer, ai, other } = unit.clock?.time ?? (input.set === 'unfinished'
-        ? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, Date.parse(unit.outcome.requestedAt), this.now, this.now).time
-        : emptyClock());
+      const { review, answer, ai, other } = (input.set === 'unfinished' ? this.openClocks().get(unit)!.time : unit.clock?.time) ?? emptyClock();
       const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
         questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
       return entry(unit, values[input.value] ?? null);
@@ -647,7 +658,7 @@ class ScopedAnalysis {
 /** A unit in a list before the list is written out: its value, and what its order reads, taken once. */
 type Entry = { unit: Unit; value: number | null; finishedAt: string; number: number };
 const entry = (unit: Unit, value: number | null): Entry =>
-  ({ unit, value, finishedAt: unit.outcome.finishedAt ?? '', number: Number(unit.node.id.slice(1)) });
+  ({ unit, value, finishedAt: unit.outcome.finishedAt ?? unit.outcome.doneAt ?? '', number: Number(unit.node.id.slice(1)) });
 
 /** The earliest instant of a scope's record (its first day), for a read that dates nothing else: kept per facts. */
 const firsts = new WeakMap<AnalysisFacts, Map<string, number>>();

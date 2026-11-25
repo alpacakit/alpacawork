@@ -103,7 +103,7 @@ const waits = z.strictObject({ away: count, otherTasks: count, thisTask: count }
 const answerItems = z.strictObject({ total: count, choice: count, recommended: count, recommendable: count,
   other: count, stop: count, unmatched: count });
 /**
- * The user's instructions after the request, by what their senders said each was (`kinds`; `unlabeled`, those sent
+ * The user's instructions and send-backs after the request, by what their senders said each was (`kinds`; `unlabeled`, those sent
  * with no label) and, for the fixes, what kind of fix (`fixes`, an instruction may name several).
  */
 const instructions = z.strictObject({
@@ -138,7 +138,8 @@ export const analysisTasksViewSchema = z.strictObject({
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: tasksBreakdown.nullable(),
   /**
-   * As of the read, whatever the period: the requested tasks with no acceptance, stop or owner's done yet, and the time they have waited for the user
+   * As of the read, whatever the period: the requested tasks open now (with no acceptance, stop or owner's done yet, or
+   * reopened after one, counted from that end), and the time they have waited for the user
    * so far (review and answer, as `time` counts them, a wait still open running to now) with where the user was.
    */
   unfinished: z.strictObject({ tasks: count, time: z.strictObject({ review: count, answer: count }), waits }),

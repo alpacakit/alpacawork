@@ -334,7 +334,8 @@ export class FactsCache {
       const read = coordinatorMessages(db, ids);
       for (const id of ids) {
         const before = this.messages.get(id), after = read.get(id);
-        if (!before && !after) continue;
+        // A write that changes only how a message was delivered leaves its actions as they were.
+        if (JSON.stringify(before ?? null) === JSON.stringify(after ?? null)) continue;
         if (after) this.messages.set(id, after); else this.messages.delete(id);
         acted = true;
       }

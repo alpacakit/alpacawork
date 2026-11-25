@@ -299,7 +299,7 @@ test('a wait is split by where the user was: away after 30 idle minutes, else th
 
 test('clues count answers by item, replaced questions and labeled instructions, most frequent kind first', () => {
   const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false,
-    replacedBy: null, parts: null, recommends: [true, false], ...fields });
+    replacedBy: null, replacedAt: null, parts: null, recommends: [true, false], ...fields });
   const unit = { asked: [
     question({ parts: { source: 'user', words: false, items: [
       { n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'unmatched', words: true }] } }),
@@ -341,4 +341,22 @@ test('an instruction naming a withdrawn question, a later question, labels and a
   const done = event('done', 'reported', 40, { fromState: 'doing', toState: 'done', actor: asker });
   assert.deepEqual(Object.values((({ outcome, doneAt, finishedAt }) => ({ outcome, doneAt, finishedAt }))(taskOutcome([initial, start, done], 'done', initial.at))),
     ['doneUnaccepted', done.at, null]);
+});
+
+test('a replacing instruction after acceptance, a send-back label, an instruction before the request and a blank recommendation', () => {
+  const asker = { kind: 'placement', placementId: 'synthetic' } as const;
+  const initial = event('initial', 'request_accepted', 10, { fromState: 'todo' });
+  const asked = event('asked', 'asked', 20, { askedTo: null, actor: asker, decide: [{ decide_question: 'Take it?', decide_kind: 'accept',
+    decide_choices: [{ decide_choice: 'Take', decide_choice_recommended: '  ' }, { decide_choice: 'Fix' }] }] });
+  const withdrawn = event('withdrawn', 'question_withdrawn', 25, { questionId: asked.id, actor: asker });
+  const approved = event('approved', 'review_approved', 30, { fromState: 'waiting', toState: 'done' });
+  const fix = event('fix', 'request_accepted', 40, { fromState: 'done', answers: asked.id });
+  const log = [initial, asked, withdrawn, approved, fix];
+  const [question] = userQuestions(log);
+  assert.deepEqual([question!.replacedAt, question!.recommends], [epoch + 40, [false]]);
+  assert.deepEqual(Object.values(taskOutcome(log, 'done', initial.at, [question!]).instructions), [0, 0, 1, 0]);
+  const before = event('before', 'request_accepted', 0, { fromState: 'todo' });
+  const sendBack = event('back', 'review_sent_back', 50);
+  const label = event('back:label', 'request_labeled', 50, { label: { request: sendBack.id, kind: 'fix', fixes: ['speed'] } });
+  assert.deepEqual(laterInstructions([initial], [[initial, sendBack, label], [before]]), { count: 1, labels: [label.label] });
 });
