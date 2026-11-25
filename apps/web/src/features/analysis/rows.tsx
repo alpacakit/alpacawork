@@ -658,11 +658,15 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
       return <i style={{ height: `calc(${sum / scale.top * 100}% + ${gaps}px)`, background: `linear-gradient(to top, ${stops.join(", ")})` }}
         className={cn("relative block min-w-px flex-none origin-bottom rounded-t-[3px] rounded-b-[1px]", grow && "animate-bar")} />;
     }
-    return all.map(([color, value, of], part) => value > 0 &&
+    // A bar of several parts grows as one (the parts stand in a column that grows), so a stacked chart moves as many
+    // things as its bins, not its parts: each that moves is its own layer for the browser to put together.
+    const stacked = grow && shown.length > 1;
+    const parts = all.map(([color, value, of], part) => value > 0 &&
       <i key={part} data-part={of} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
-        className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>
+        className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && !stacked && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
+    return stacked ? <span className="flex h-full origin-bottom animate-bar flex-col-reverse gap-0.5">{parts}</span> : parts;
   };
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
     <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
