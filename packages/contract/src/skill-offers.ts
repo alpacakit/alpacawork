@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const SKILL_OFFERS = [
   { name: 'askmeclearly', from: { kind: 'repo', repo: 'alpacakit/pocket-skills' }, recommended: true, cost: false, beta: false },
   { name: 'doyourjob', from: { kind: 'repo', repo: 'alpacakit/pocket-skills' }, recommended: true, cost: false, beta: false },
-  { name: 'alpacawork-betterquality', from: { kind: 'bundled' }, recommended: true, cost: true, beta: true },
+  { name: 'alpacawork-betterquality', from: { kind: 'bundled' }, recommended: false, cost: true, beta: true },
   { name: 'alpacawork-modelpickoptimization', from: { kind: 'bundled' }, recommended: false, cost: false, beta: true },
 ] as const;
 export type SkillName = typeof SKILL_OFFERS[number]['name'];

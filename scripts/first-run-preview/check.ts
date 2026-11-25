@@ -38,15 +38,15 @@ export async function checkJourney(url: string, root: string, language: string, 
     const consent = agents.locator('[data-setup-consent] input');
     await expect(consent).toBeChecked();
     await agents.locator('[data-setup-next]').click();
-    // 3 Skills: the three recommended are ticked; the button names how many it installs.
+    // 3 Skills: the two recommended are ticked, the add-ons are not; the button names how many it installs.
     const skills = setup.locator('[data-setup-panel="skills"]');
-    await expect(skills.locator('[data-setup-install]')).toHaveText(en ? 'Install 3 skills' : '3 個のスキルをインストール');
+    await expect(skills.locator('[data-setup-install]')).toHaveText(en ? 'Install 2 skills' : '2 個のスキルをインストール');
     assert.equal((await get('/api/telemetry/status')).state, 'on');
     await skills.locator('[data-setup-install]').click();
     // 4 Project: reached once every ticked skill is installed, with an empty policy.
     const project = setup.locator('[data-setup-panel="project"]');
     await expect(project).toBeVisible({ timeout: 40_000 });
-    for (const name of ['askmeclearly', 'doyourjob', 'alpacawork-betterquality'])
+    for (const name of ['askmeclearly', 'doyourjob'])
       assert.ok(existsSync(join(marker.home, '.agents/skills', name, 'SKILL.md')), `${name} was not installed`);
     assert.match(readFileSync(join(marker.home, '.agents/skills/askmeclearly/SKILL.md'), 'utf8'), /Synthetic preview/);
     await expect(project.locator('#project-policy')).toHaveValue('');
