@@ -20,7 +20,10 @@ export type Unit = {
   /** The user's questions of the subtree asked while the unit was open (`questions` counts them). */
   asked: UserQuestion[]; answers: number; workers: number; children: number; prs: Set<string>;
   firstOwner: ModelRun | null; launches: readonly FactLaunch[]; clock: ReturnType<typeof clocks> | null;
-  /** The user's instructions in the unit's subtree after the first, and what their senders said each was. */
+  /**
+   * The user's instructions to the unit or any Task under it, after the request itself (answers and send-backs are not
+   * instructions), and the labels their senders gave them.
+   */
   instructions: { count: number; labels: InstructionLabel[] };
 };
 export type FactLaunch = Launch & { tallyEligible: boolean };
@@ -123,19 +126,20 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
   memberIds: readonly string[]): Unit {
   const log = logs.get(node.id) ?? [];
   const ownQuestions = userQuestions(log), childQuestions: UserQuestion[] = [], prs = new Set<string>();
-  const instructions = { count: 0, labels: [] as InstructionLabel[] };
+  const counted = new Set<string>(), labels: InstructionLabel[] = [];
+  const initial = log.find(entry => entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor));
   for (const id of ids) {
     const history = logs.get(id) ?? [];
     if (id !== node.id) childQuestions.push(...userQuestions(history));
     for (const entry of history)
-      if (entry.kind === 'request_labeled' && entry.label) instructions.labels.push(entry.label);
-      else if (entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor)) instructions.count++;
+      if (entry.kind === 'request_labeled' && entry.label) labels.push(entry.label);
+      else if (entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor) && entry !== initial) counted.add(entry.id);
     for (const link of values.get(id) ?? []) prs.add(link);
     const reports = history.filter(entry => entry.kind === 'reported').flatMap(entry => [entry.title ?? '', entry.description ?? '']);
     for (const link of prLinks(reports)) prs.add(link);
   }
-  // The first instruction is the request itself.
-  if (log.some(entry => entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor))) instructions.count--;
+  // An instruction's log entry carries its Request's ID, which its label names.
+  const instructions = { count: counted.size, labels: labels.filter(label => counted.has(label.request)) };
   const outcome = taskOutcome(log, node.state, node.created, [...ownQuestions, ...childQuestions]);
   const from = Date.parse(outcome.requestedAt), to = outcome.finishedAt ? Date.parse(outcome.finishedAt) : null;
   const questions = [...ownQuestions, ...childQuestions].filter(question => question.from >= from && (to === null || question.from <= to));

@@ -8,26 +8,29 @@ import type { AnalysisFacts, Unit } from './facts.js';
 import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
-type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'instructions' | 'replaced'>;
+type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'answersWithoutParts' | 'instructions' | 'questionsReplaced'>;
 /** Sums of clues over units, before the instruction kinds are written out as rows. */
 export class CluesSum {
   readonly waits = emptySplit();
-  readonly answerItems = { total: 0, choice: 0, recommended: 0, other: 0, unread: 0 };
+  readonly answerItems = { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 };
+  private answersWithoutParts = 0;
   private readonly kinds = new Map<string, number>();
   private readonly fixes = new Map<string, number>();
   private total = 0; private labeled = 0;
-  replaced = 0;
+  private questionsReplaced = 0;
 
   add(unit: Unit, waits: WaitSplit) {
     addSplit(this.waits, waits);
     for (const question of unit.asked) {
-      if (question.replacedBy !== null) this.replaced++;
+      if (question.replacedBy !== null) this.questionsReplaced++;
       if (!question.answered) continue;
-      if (!question.parts) { this.answerItems.unread++; continue; }
+      if (!question.parts) { this.answersWithoutParts++; continue; }
       for (const item of question.parts.items) {
-        this.answerItems.total++;
-        if (item.kind === 'choice') { this.answerItems.choice++; if (item.recommended) this.answerItems.recommended++; }
-        else if (item.kind === 'other') this.answerItems.other++;
+        const items = this.answerItems;
+        items.total++;
+        items[item.kind]++;
+        if (item.kind === 'choice' && item.recommended) items.recommended++;
+        if (question.recommends[item.n - 1]) items.recommendable++;
       }
     }
     this.total += unit.instructions.count; this.labeled += unit.instructions.labels.length;
@@ -41,8 +44,9 @@ export class CluesSum {
     // Most first; a tie keeps the kinds' own order.
     const rows = <K extends string>(kinds: readonly K[], counts: Map<string, number>) => kinds
       .map(kind => ({ kind, count: counts.get(kind) ?? 0 })).filter(row => row.count > 0).sort((a, b) => b.count - a.count);
-    return { waits: { ...this.waits }, answerItems: { ...this.answerItems }, replaced: this.replaced,
-      instructions: { total: Math.max(this.total, this.labeled), unlabeled: Math.max(0, this.total - this.labeled),
+    return { waits: { ...this.waits }, answerItems: { ...this.answerItems }, answersWithoutParts: this.answersWithoutParts,
+      questionsReplaced: this.questionsReplaced,
+      instructions: { total: this.total, unlabeled: this.total - this.labeled,
         kinds: rows(INSTRUCTION_KINDS, this.kinds), fixes: rows(FIX_KINDS, this.fixes) } };
   }
 }

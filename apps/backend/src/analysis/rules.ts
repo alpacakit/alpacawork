@@ -73,6 +73,8 @@ const accepts = (entry: TaskLog) => entry.toState === 'done' && entry.fromState 
 export type UserQuestion = {
   id: string; from: number; to: number | null; answered: boolean; accept: boolean; estimated: boolean;
   replacedBy: string | null; parts: AnswerParts | null;
+  /** Item by item (in order, from 1), whether the asker recommended one of its choices. */
+  recommends: boolean[];
 };
 /** Words that mark a question as asking to take a result as it is, for a question asked before decide_kind was recorded. */
 const ACCEPT_WORDS = /merge|adopt|accept|マージ|取り込|取込|採用|受け入れ|main\s*に入れ/i;
@@ -99,6 +101,8 @@ export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
     replacedBy: closing?.kind === 'question_withdrawn' && closing.originCauseId !== undefined &&
       instructions.has(closing.originCauseId) ? closing.originCauseId : null,
     parts: closing?.kind === 'answered' ? closing.answerParts ?? null : null,
+    recommends: asked.decide.map(item => Array.isArray(item.decide_choices) && item.decide_choices.some(choice =>
+      !!choice && typeof choice === 'object' && typeof (choice as Record<string, unknown>).decide_choice_recommended === 'string')),
   }] : []);
 }
 
@@ -156,7 +160,7 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
     estimated: questions.some(question => question.estimated && question.from <= finishTime), instructions,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const
-      : doneAt ? 'unaccepted' as const : null };
+      : doneAt ? 'doneUnaccepted' as const : null };
 }
 export type Outcome = ReturnType<typeof taskOutcome>;
 

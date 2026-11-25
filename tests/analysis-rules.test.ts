@@ -295,16 +295,18 @@ test('a wait is split by where the user was: away after 30 idle minutes, else th
 });
 
 test('clues count answers by item, replaced questions and labeled instructions, most frequent kind first', () => {
-  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false, replacedBy: null, parts: null, ...fields });
+  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false,
+    replacedBy: null, parts: null, recommends: [true, false], ...fields });
   const unit = { asked: [
     question({ parts: { source: 'user', words: false, items: [
-      { n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'other', words: true }] } }),
+      { n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'unmatched', words: true }] } }),
     question({}), question({ answered: false, replacedBy: 'fix' })],
   instructions: { count: 3, labels: [{ request: 'a', kind: 'fix', fixes: ['look_feel', 'speed'] },
     { request: 'b', kind: 'fix', fixes: ['look_feel'] }] } } as unknown as Parameters<CluesSum['add']>[0];
   const sum = new CluesSum();
   sum.add(unit, { away: 1, otherTasks: 2, thisTask: 3 });
   assert.deepEqual(sum.clues(), { waits: { away: 1, otherTasks: 2, thisTask: 3 },
-    answerItems: { total: 2, choice: 1, recommended: 1, other: 1, unread: 1 }, replaced: 1,
+    answerItems: { total: 2, choice: 1, recommended: 1, recommendable: 1, other: 0, stop: 0, unmatched: 1 },
+    answersWithoutParts: 1, questionsReplaced: 1,
     instructions: { total: 3, unlabeled: 1, kinds: [{ kind: 'fix', count: 2 }], fixes: [{ kind: 'look_feel', count: 2 }, { kind: 'speed', count: 1 }] } });
 });

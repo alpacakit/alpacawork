@@ -12,7 +12,7 @@ export const analysisUsageBySchema = z.enum([...analysisTaskBySchema.options, ..
 export type AnalysisTallyBy = z.infer<typeof analysisTallyBySchema>;
 export const isAnalysisTallyBy = (by: AnalysisUsageBy | undefined): by is AnalysisTallyBy =>
   analysisTallyBySchema.options.some(option => option === by);
-export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'unaccepted', 'accepted', 'finished', 'used']);
+export const analysisSetSchema = z.enum(['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished', 'used']);
 export const analysisTaskValues = ['lead', 'submits', 'questions', 'prs', 'you', 'ai', 'other'] as const;
 export const analysisUsageValues = ['launches', 'runMs', 'newConversations', 'tokens', 'output', 'input', 'cache', 'calls'] as const;
 export const analysisValueSchema = z.enum([...analysisTaskValues, ...analysisUsageValues]);
@@ -85,17 +85,23 @@ const tallied = z.strictObject({ runs: count, of: count, since: analysisDaySchem
 const tallyTool = z.strictObject({ name: z.string(), calls: count });
 const counted = z.strictObject({ calls: count, launches: count });
 
-/** `unaccepted`: done by its owner without the user's acceptance; not among the finished (accepted or stopped). */
+/** `doneUnaccepted`: done by its owner without the user's acceptance; not among the finished (accepted or stopped). */
 export const analysisTaskCountsSchema = z.strictObject({
-  passed: count, reworked: count, stopped: count, unaccepted: count, accepted: count, finished: count, share,
+  passed: count, reworked: count, stopped: count, doneUnaccepted: count, accepted: count, finished: count, share,
 });
-/** The time the user was waited on (time.review and time.answer), by where the user was: away, on other tasks, or free for this one. */
+/**
+ * The time the user was waited on (time.review and time.answer, the `--value you` of a list), by where the user was:
+ * treated as away, on other tasks, or free for this one.
+ */
 const waits = z.strictObject({ away: count, otherTasks: count, thisTask: count });
 /**
- * The answered items of the user's questions, by how each was answered (the answer's recorded parts): one of its
- * choices (and of those, the recommended one), or none of them; `unread`, answered questions with no parts recorded.
+ * The answered items of the user's questions, by how each was answered (the kinds of the answer's recorded parts):
+ * one of its choices (`choice`; `recommended`, the recommended one), none of them with words of the user's own
+ * (`other`), stop the task (`stop`), or no choice named (`unmatched`). `recommendable`: items whose asker recommended
+ * one of the choices. Answered questions with no parts recorded are counted apart (`answersWithoutParts`).
  */
-const answerItems = z.strictObject({ total: count, choice: count, recommended: count, other: count, unread: count });
+const answerItems = z.strictObject({ total: count, choice: count, recommended: count, recommendable: count,
+  other: count, stop: count, unmatched: count });
 /**
  * The user's instructions after the request, by what their senders said each was (`kinds`; `unlabeled`, those sent
  * with no label) and, for the fixes, what kind of fix (`fixes`, an instruction may name several).
@@ -106,16 +112,19 @@ const instructions = z.strictObject({
   fixes: z.array(z.strictObject({ kind: z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS]), count })),
 });
 const clues = {
-  waits, answerItems, instructions,
+  waits, answerItems, answersWithoutParts: count, instructions,
   /** Questions to the user withdrawn by an instruction that came in place of an answer. */
-  replaced: count,
+  questionsReplaced: count,
 };
 export const analysisAcceptedTotalsSchema = z.strictObject({
   leadMedianMs: measurement.nullable(), submits: count, questions: count, prs: count, time: times, ...clues,
-  /** Accepted without rework and without a question to the user. */
-  passedUnasked: count,
-  /** Accepted tasks whose review rounds were read from a question's words (asked before its kind was recorded). */
-  estimated: count,
+  /**
+   * Accepted tasks with no question to the user besides those asking to take a result (`noQuestions`), and of those,
+   * the ones accepted without rework (`passedNoQuestions`).
+   */
+  noQuestions: count, passedNoQuestions: count,
+  /** Accepted tasks whose count of review rounds rests on reading a question's words (asked before its kind was recorded). */
+  submitsEstimated: count,
 });
 const taskTotals = { counts: analysisTaskCountsSchema, accepted: analysisAcceptedTotalsSchema };
 const tasksBreakdown = z.strictObject({
@@ -151,7 +160,10 @@ export const analysisBreakdownViewSchema = z.strictObject({
 
 export const analysisListRowSchema = z.strictObject({
   id: taskIdSchema, title: z.string(), project: projectIdSchema, outcome: z.enum(['passed', 'reworked', 'stopped']).nullable(),
-  finishedAt: z.iso.datetime({ offset: true }).nullable(), value: measurement.nullable(),
+  finishedAt: z.iso.datetime({ offset: true }).nullable(),
+  /** When its owner reported it done, for a task done without the user's acceptance (its outcome and finishedAt are null). */
+  doneAt: z.iso.datetime({ offset: true }).optional(),
+  value: measurement.nullable(),
 });
 export const analysisUnitListSchema = z.strictObject({
   head: analysisHeadSchema, total: count, rows: z.array(analysisListRowSchema), cursor: z.string().nullable(),
@@ -164,8 +176,8 @@ export const analysisUnitValuesSchema = z.strictObject({
   time: times, submits: count, questions: count,
   sendBacks: count, instructionsAtReview: count, instructionsAfterAccept: count, instructionsDuringWork: count,
   answers: count, workers: count, children: count, usage: analysisUsageCountsSchema, ...clues,
-  /** Whether its review rounds were read from a question's words (asked before its kind was recorded). */
-  estimated: z.boolean(),
+  /** Whether its count of review rounds rests on reading a question's words (asked before its kind was recorded). */
+  submitsEstimated: z.boolean(),
   models: z.array(z.strictObject({ ...group, model, launches: count, runMs: count, output: count })),
   prs: z.array(z.string()), skills: z.array(z.string()), tools: z.array(tallyTool), tallied,
 });

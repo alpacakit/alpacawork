@@ -264,7 +264,7 @@ const definitions = {
   ], { output: analysisBreakdownViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
     ...analysisScope, ...analysisPeriodOptions,
-    text('set', 'Task set (passed, reworked, stopped, unaccepted: done without the user accepting, accepted, finished, used)'),
+    text('set', 'Task set (passed, reworked, stopped, doneUnaccepted: done by its owner without the user accepting, accepted, finished, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),
     text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls and launches to count each matching Run once`),

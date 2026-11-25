@@ -43,14 +43,14 @@ const compareKey = (a: { label: string; key: string }, b: { label: string; key: 
 const compareTask = (a: Unit, b: Unit) => Number(a.node.id.slice(1)) - Number(b.node.id.slice(1));
 
 function taskCounts(units: readonly DatedUnit[]): AnalysisTaskCounts {
-  let passed = 0, accepted = 0, stopped = 0, unaccepted = 0;
+  let passed = 0, accepted = 0, stopped = 0, doneUnaccepted = 0;
   for (const { unit: { outcome } } of units) {
     if (outcome.passed) passed++;
     if (outcome.acceptedAt) accepted++;
     else if (outcome.stoppedAt) stopped++;
-    else if (outcome.doneAt) unaccepted++;
+    else if (outcome.doneAt) doneUnaccepted++;
   }
-  return { passed, reworked: accepted - passed, stopped, unaccepted, accepted, finished: accepted + stopped, share: shareOf(passed, accepted) };
+  return { passed, reworked: accepted - passed, stopped, doneUnaccepted, accepted, finished: accepted + stopped, share: shareOf(passed, accepted) };
 }
 /** Accepted or stopped: a unit done without acceptance is dated too, but is not among the finished. */
 const isFinished = (unit: Unit) => !!unit.outcome.finishedAt;
@@ -81,20 +81,23 @@ function creditAcceptedPrs(units: readonly DatedUnit[]): Map<Unit, number> {
 /** `waits`: a unit's waits split by where the user was (clues.waitsOf over the facts counted). */
 type Waits = (unit: Unit) => WaitSplit;
 function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAcceptedTotals {
-  let submits = 0, questions = 0, prs = 0, passedUnasked = 0, estimated = 0;
+  let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0, submitsEstimated = 0;
   const leads: number[] = [], time = emptyClock(), clues = new CluesSum();
   for (const { unit, prCount } of units) {
     if (!unit.outcome.acceptedAt) continue;
     leads.push(unit.outcome.leadMs!);
     submits += unit.outcome.submits; questions += unit.questions;
     prs += prCount;
-    if (unit.outcome.passed && !unit.questions) passedUnasked++;
-    if (unit.outcome.estimated) estimated++;
+    if (unit.asked.every(question => question.accept)) {
+      noQuestions++;
+      if (unit.outcome.passed) passedNoQuestions++;
+    }
+    if (unit.outcome.estimated) submitsEstimated++;
     const clock = unit.clock!.time;
     time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
     clues.add(unit, waits(unit));
   }
-  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), passedUnasked, estimated };
+  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, submitsEstimated };
 }
 
 /** Counts distinct units (by slot) again and again, each count in one pass, without a set per count. */
@@ -218,10 +221,10 @@ const within = <T extends { day: string }>(items: readonly T[], range: AnalysisD
   items.filter(({ day }) => inDays(day, range));
 
 function row(unit: Unit, value: number | null): AnalysisListRow {
-  // A unit done without acceptance has not finished: its row names no outcome.
+  // A unit done without acceptance has not finished: its row names no outcome, and its time is when it was done.
   return { id: unit.node.id, project: unit.node.project!, title: unit.node.title,
-    outcome: unit.outcome.outcome === 'unaccepted' ? null : unit.outcome.outcome,
-    finishedAt: unit.outcome.finishedAt, value };
+    outcome: unit.outcome.outcome === 'doneUnaccepted' ? null : unit.outcome.outcome,
+    finishedAt: unit.outcome.finishedAt, ...(unit.outcome.doneAt ? { doneAt: unit.outcome.doneAt } : {}), value };
 }
 
 function matchingProject(facts: AnalysisFacts, project: string | null, ownProject: string | null) {
@@ -607,7 +610,7 @@ class ScopedAnalysis {
     const clues = new CluesSum();
     clues.add(unit, waitsOf(this.facts, unit, this.now));
     return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
-      ...clues.clues(), estimated: unit.outcome.estimated,
+      ...clues.clues(), submitsEstimated: unit.outcome.estimated,
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
       questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
       usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
