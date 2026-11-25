@@ -79,11 +79,11 @@ test("work files alone show the tab without a number and lead to them; no file s
 test("pictures in no set are named as the others of their folder, only beside a set", () => {
   sheet(["shots/a.png", "shots/b.png"]);
   expect(screen.getByText(i18n.t("reader:files.images"))).toBeTruthy();
-  expect(document.querySelectorAll("section .font-medium")).toHaveLength(0);
+  expect(screen.queryByText(i18n.t("reader:files.otherIn", { folder: "shots" }))).toBeNull();
   cleanup();
   sheet(["shots/a.png", "shots/card-light.png", "shots/card-dark.png", "c.png"]);
-  const headings = [...document.querySelectorAll("section .font-medium")].map(each => each.textContent);
-  expect(headings).toEqual(expect.arrayContaining([i18n.t("reader:files.otherIn", { folder: "shots" }), i18n.t("reader:files.otherMedia")]));
+  expect(screen.getByText(i18n.t("reader:files.otherIn", { folder: "shots" }))).toBeTruthy();
+  expect(screen.getByText(i18n.t("reader:files.otherMedia"))).toBeTruthy();
 });
 
 test("every picture shows the time it was written, a set's versions too", () => {
