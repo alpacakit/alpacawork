@@ -143,7 +143,8 @@ export class CopilotRuntime implements Runtime {
     // Sub-agents' model calls are this Run's cost too; their other events are not this conversation's. A compaction's model
     // call has no assistant.usage: its counters, in the same fields, come with its end.
     if (event.type === 'assistant.usage') { this.calls.push(event.data); return; }
-    if (event.type === 'session.compaction_complete') { if (event.data.compactionTokensUsed) this.calls.push(event.data.compactionTokensUsed); return; }
+    // Its end also says the conversation's fill after it (copilotContext).
+    if (event.type === 'session.compaction_complete' && event.data.compactionTokensUsed) this.calls.push(event.data.compactionTokensUsed);
     if (event.agentId) return;
     const context = copilotContext(event.type, event.data);
     if (context) { this.io.emit({ type: 'context.updated', context }); return; }
@@ -230,7 +231,8 @@ export function copilotContext(type: string, value: unknown): ContextUpdate | nu
     const used = callTokens(data.currentTokens), limit = callTokens(data.tokenLimit);
     return used === null ? null : { usedTokens: used, compacted: false, ...limit ? { windowTokens: limit } : {} };
   }
-  if (type === 'session.compaction_complete') return { usedTokens: callTokens(data.postCompactionTokens), compacted: true };
+  // Its end also comes when a compaction failed: only a successful one compacted the conversation.
+  if (type === 'session.compaction_complete' && data.success === true) return { usedTokens: callTokens(data.postCompactionTokens), compacted: true };
   return null;
 }
 

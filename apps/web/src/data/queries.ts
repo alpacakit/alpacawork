@@ -441,7 +441,8 @@ export function taskDetail(task: Task, read: TaskRead): TaskDetail | undefined {
   if (!view) return;
   return { ...task, responsibleRevision: view.placements.find(placement => placement.active && placement.responsible)?.revision ?? null, title: read.task.title, hash: read.task.hash, version: read.task.version, values: view.values, settings: read.task.settings,
     logs: view.task.log, files: filesOfRead(read) ?? NO_FILES, requestHeads: view.requestHeads, reply: view.reply ?? undefined,
-    questions: view.questions, userQuestions: view.userQuestions, userReviews: view.userReviews, requestedByUser: view.requestedByUser };
+    questions: view.questions, userQuestions: view.userQuestions, userReviews: view.userReviews, requestedByUser: view.requestedByUser,
+    conversations: view.conversations };
 }
 
 type WriteOptions = { errorToast?: false };

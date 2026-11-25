@@ -36,7 +36,7 @@ const test = runningRunsTest.extend({
 /** The row's height on every frame from the press until it has settled, where its head's parts are, and whether its words are drawn. */
 const frames = (row: Locator) => row.evaluate(item => new Promise<{ heights: number[]; heads: string[]; said: boolean[]; copies: number[]; bands: number[] }>(done => {
   // Each part's middle: the turning ⌄'s box grows on the way, its middle stays.
-  const head = () => ['[data-rail-time]', '[data-working-model]', 'svg[data-icon="down"]'].map(selector => {
+  const head = () => ['[data-rail-time]', '[data-working-model]', '[data-working-chevron] svg'].map(selector => {
     const part = item.querySelector(`[data-working-person] ${selector}`)?.getBoundingClientRect();
     return part ? Math.round((part.top + part.bottom) / 2 - item.getBoundingClientRect().top) : null;
   }).join(',');

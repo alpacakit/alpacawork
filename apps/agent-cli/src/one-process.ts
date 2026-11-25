@@ -122,7 +122,11 @@ export abstract class OneProcessRuntime<T extends Turn> implements Runtime {
   private finish(turn: T, code: number | null, signal: NodeJS.Signals | null): void {
     if (this.shape.lines && turn.buffer.trim()) throw new Error(`${this.shape.lines} ended with an incomplete JSON line`);
     const end = this.conclude(turn, code, signal), { purpose } = turn;
-    if (purpose.kind === 'compaction') purpose.settle('failed' in end ? { compacted: false, message: end.failed } : { compacted: true });
+    if (purpose.kind === 'compaction') {
+      // Its own events are not the Run's (emit); that it compacted is, once.
+      if (!('failed' in end)) this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
+      purpose.settle('failed' in end ? { compacted: false, message: end.failed } : { compacted: true });
+    }
     else {
       if (turn.started) this.turnCount++;
       this.lastFailed = 'failed' in end;

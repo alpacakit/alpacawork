@@ -453,6 +453,8 @@ for (const compaction of ['ok', 'fail'] as const) test(`Copilot ${compaction ===
   const types = h.events().map(event => event.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.'));
   assert.deepEqual(types, [compaction === 'ok' ? 'compaction.completed' : 'compaction.failed', 'turn.started', 'turn.completed']);
   if (compaction === 'fail') assert.match(h.events().find(event => event.type === 'compaction.failed').message, /no model endpoints available/);
+  // History keeps each compaction once: the bridge says it compacted once, and nothing when it did not.
+  assert.equal(h.events().filter(event => event.type === 'context.updated' && event.context?.compacted === true).length, compaction === 'ok' ? 1 : 0);
   assertInputOutcomes(h.events(), { one: 'taken' });
   assert.equal(readFileSync(join(h.area, 'result'), 'utf8'), 'answer');
   // The compaction's model call is the Run's cost too.

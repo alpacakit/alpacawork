@@ -440,7 +440,7 @@ function rowDetail(task: Task): TaskDetail {
   let detail = rowDetails.get(task);
   if (!detail) {
     detail = { ...task, responsibleRevision: null, values: { values: {}, fields: [], from: null, context: "" }, logs: [], files: [],
-      requestHeads: [], reply: undefined, questions: [], userQuestions: [], userReviews: [], requestedByUser: null };
+      requestHeads: [], reply: undefined, questions: [], userQuestions: [], userReviews: [], requestedByUser: null, conversations: null };
     rowDetails.set(task, detail);
   }
   return detail;

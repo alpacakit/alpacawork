@@ -120,3 +120,16 @@ test("a link to a file opens it in a tab where a tab shows it, and saves the ori
   for (const [name, size] of [["notes.md", 1025], ["voice.m4a", 8], ["clip.mp4", 8], ["large.pdf", 8], ["build", 8]] as const)
     expect(link(name, size), name).toEqual({ href: expect.stringMatching(/&v=r&download=1$/), saves: true });
 });
+
+test("every list is newest first; a set comes at its newest version and keeps its comparison order", () => {
+  const at = (name: string, hour: number) => ({ ...file(name), at: `2026-10-03T${String(hour).padStart(2, "0")}:00:00.000Z` });
+  const files = [at("a/old.png", 1), at("b/card-light.png", 2), at("b/card-dark.png", 5), at("a/new.png", 4), at("z/last.png", 3),
+    at("old.md", 1), at("new.md", 6), at("listed-old.md", 2), at("listed-new.md", 3)];
+  const shelves = fileShelves({ id: "T1", files, values: { values: { artifact: ["[Old](listed-old.md)", "[New](listed-new.md)"] }, fields: [], from: null, context: "" } },
+    "/ws", "http://screen.test");
+  expect(shelves.listed.map(item => item.label)).toEqual(["New", "Old"]);
+  expect(names(shelves.deliverables).filter(name => name.endsWith(".md"))).toEqual(["new.md", "listed-new.md", "listed-old.md", "old.md"]);
+  expect(visibleFileMedia(shelves.deliverables).map(set => set.items.map(item => item.file.name))).toEqual([
+    ["b/card-light.png", "b/card-dark.png"], ["a/new.png", "a/old.png"], ["z/last.png"],
+  ]);
+});

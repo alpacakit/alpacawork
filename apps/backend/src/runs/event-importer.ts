@@ -22,7 +22,7 @@ import type { EndObservation, Outcome } from './result-observation.js';
 import { linkMessage } from '../coordinator/messages.js';
 import { executionImportCandidates, executionReference } from './execution-obligations.js';
 import { runtimeAdapter } from '../agents/registry.js';
-import { settleCompaction } from './compactions.js';
+import { recordCompaction, settleCompaction } from './compactions.js';
 const importFormat = protocolFingerprint();
 
 /**
@@ -246,6 +246,8 @@ export class RunEventImporter {
       if (input.state === 'not_sent' && state === 'taken' || input.state === 'taken' && state === 'not_sent') throw new Error('Contradictory input receipt');
       if (state !== 'not_sent' && input.state === 'reserved') throw new Error('Receipt before transfer attempt');
       recordReceipt(db, tx, input, state, event.payload, run.id, event.occurredAt);
+    } else if (event.type === 'compacted') {
+      recordCompaction(tx, this.store.root, run, event.payload, event.occurredAt);
     } else if (event.type === 'completed') {
       const observation = event.payload;
       const outcome = { state: observation.outcome.state, ...(observation.outcome.reason ? { reason: observation.outcome.reason } : {}) } as Outcome;

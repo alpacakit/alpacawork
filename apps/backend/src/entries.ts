@@ -43,6 +43,7 @@ import { TaskRequestService } from './control/task-request.js';
 import { comment } from './control/task-questions.js';
 import { replyQuestion } from './control/question-rules.js';
 import { readTaskListView, readTaskView } from './control/task-views.js';
+import { readRunList } from './control/run-list.js';
 import { chooseFolder, listFolders, makeFolder } from './control/folders.js';
 import { resolveCaller, type CallerClaim } from './control/credentials.js';
 import { authorize, commandAction, decide, runMayDo, type AccessCommand, type Action, type Caller, type CommandFacts, type Decision } from './control/authorize.js';
@@ -482,6 +483,11 @@ export const taskCommands = {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
       return readRunFiles(root, input.run, input.kind ?? 'result');
     },
+    readThread: () => true,
+  },
+  'run/list': {
+    run: async (root, input, context) =>
+      readRunList(root, input, authorizeRead(root, context, { name: 'task.list' }, null).readScope),
     readThread: () => true,
   },
   'run/stop': {

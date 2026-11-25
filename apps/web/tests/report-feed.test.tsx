@@ -1288,6 +1288,54 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "changed", set: "held" })).toBe("quiet");
   expect(tone({ kind: "run_end" })).toBe("quiet");
   expect(tone({ kind: "dialogue" })).toBe("quiet");
+  // What happened to a conversation has its own colour, on its mark and on the line beside it alike.
+  expect(tone({ kind: "conversation" })).toBe("conversation");
+});
+
+test("a compaction's row shows its fill before and after as rings; a new conversation's says why in one sentence", async () => {
+  await inEnglish();
+  const owner = { kind: "owner", profileKey: "claude", modelId: "opus", effort: "high" } as const;
+  const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
+    { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 } },
+    { id: "R2:new", kind: "conversation", author: owner, conversation: { change: "new", because: "handoff", report: "Filters reviewed" } }]) } }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const kinds = await waitFor(() => {
+    const named = [...document.querySelectorAll<HTMLElement>("[data-row-kind]")].map(kind => kind.textContent);
+    expect(named).toHaveLength(2);
+    return named;
+  });
+  expect(kinds.sort()).toEqual(["Compacted", "New conversation"]);
+  const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
+  expect(fill.textContent).toBe("Context61%14%");
+  expect(fill.querySelectorAll("svg")).toHaveLength(3);
+  const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
+  expect(words).toContain("The owner switched to a new conversation after “Filters reviewed”");
+});
+
+test("the context meter lists the task's conversation changes newest first, with what compactions cut", async () => {
+  await inEnglish();
+  const { ContextMeter } = await import("../src/features/people/ContextMeter");
+  const changes = [
+    { at: "2026-11-26T00:00:00.000Z", change: "new", because: "handoff" },
+    { at: "2026-11-26T01:00:00.000Z", change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 },
+    { at: "2026-11-26T02:00:00.000Z", change: "compacted", beforeTokens: 500_000, afterTokens: 100_000, windowTokens: 1_000_000 },
+  ] as const;
+  render(<ContextMeter press conversations={{ anew: 1, compacted: 23, cutTokens: 9_870_000, changes: [...changes] }}
+    context={{ usedTokens: 140_000, windowTokens: 1_000_000, windowFrom: "reported", compacted: false, observedAt: "2026-11-26T00:00:00.000Z" }} />);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
+  const list = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-list]")!);
+  // The total is the task's whole, from the server, and what the list leaves out is said.
+  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Tokens cut by compaction (total)9.9M tokens");
+  expect(list.querySelector("[data-conversation-more]")!.textContent).toBe("21 more in History");
+  const rows = [...list.querySelectorAll<HTMLElement>("[data-conversation-change]")];
+  expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
+  expect(rows[0]!.textContent).toContain("50%");
+  expect(rows[0]!.textContent).toContain("10%");
+  expect(rows[0]!.textContent).toContain("−400K");
+  expect(rows[2]!.textContent).toContain("owner's break");
+  // What a compaction and a new conversation are is a press on the ? away.
+  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and new conversations"]')!);
+  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts over with the task's details"));
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

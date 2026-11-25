@@ -25,8 +25,8 @@ import { useFileShelves } from "./file-shelves";
 
 /**
  * The Files tab as a review sheet. The deliverables (fileShelves) are on one page in the order a reviewer reads them:
- * the files the Deliverables field lists, under its names and in its order, then documents, then images grouped into
- * comparable sets with every version visible. Folders holding deliverables are filters above the sheet, the work files
+ * the files the Deliverables field lists, under its names, then documents, then images grouped into comparable sets with
+ * every version visible; each part newest first. Folders holding deliverables are filters above the sheet, the work files
  * the one filter set apart. Opening an image uses the shared slider; a document is read in the viewer (openView),
  * beside the sheet on a wide computer; the URL's `path` is the folder either way.
  */
@@ -108,24 +108,31 @@ function Sheet({ task, folder, onOpen }: { task: TaskDetail; folder: string; onO
     </div>}
     {sets.length > 0 && <div className="flex flex-col gap-4">
       <h4 className="m-0 -mb-2 text-sm font-normal text-muted">{t(HEADINGS[[...new Set(sets.flatMap(set => set.items.map(item => mediaKind(item.file.name))))].join()] ?? "files.media")}</h4>
-      {sets.map(set => <div key={set.key} className="flex flex-col gap-1.5">
-        <div className="flex items-baseline gap-2">
-          {/* Loose media need a heading only when shown beside another set. */}
-          {!(set.single && sets.length === 1) && <span className="min-w-0 truncate text-md font-medium">{set.single ? t("files.otherMedia") : set.label}</span>}
-          {relative(set.folder) && relative(set.folder) !== `${set.label}/` && <span className="truncate text-sm text-muted">{relative(set.folder)}</span>}
-        </div>
-        <ul className="m-0 flex list-none gap-2 overflow-x-auto p-0 pb-1">
-          {set.items.map(item => <li key={item.file.name} className="flex-none">
-            <button type="button" className="group flex flex-col gap-1 rounded-md p-0 text-left" onClick={event => openImage(event.currentTarget, item.file.name)}
-              aria-label={baseName(item.file.name)}>
-              <span className="block h-24 overflow-hidden rounded-md border border-line bg-bg group-hover:border-lit-line narrow:h-20">
-                <Thumb task={task} file={item.file} className="h-full w-auto max-w-60 min-w-12" />
-              </span>
-              <span className="max-w-40 truncate text-xs text-muted">{set.single ? baseName(item.file.name) : versionOf(item, set, t)}</span>
-            </button>
-          </li>)}
-        </ul>
-      </div>)}
+      {sets.map(set => {
+        // A set is named by its name and folder; loose media by their folder, or as the others in the Task folder.
+        const where = relative(set.folder);
+        const name = !set.single ? set.label : where ? t("files.otherIn", { folder: where.slice(0, -1) }) : t("files.otherMedia");
+        return <div key={set.key} className="flex flex-col gap-1.5">
+          {/* A heading is needed only beside another set. */}
+          {!(set.single && sets.length === 1) && <div className="flex min-w-0 items-baseline gap-2">
+            <span className="min-w-0 truncate text-md font-medium">{name}</span>
+            {!set.single && where && where !== `${set.label}/` && <span className="truncate text-sm text-muted">{where}</span>}
+          </div>}
+          {/* Every picture shows its own time under its name, as the rows do, in cells of one size, so none hides off the edge. */}
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-x-2 gap-y-3 p-0">
+            {set.items.map(item => <li key={item.file.name} className="min-w-0">
+              <button type="button" className="group flex w-full min-w-0 flex-col gap-0.5 rounded-md p-0 text-left" onClick={event => openImage(event.currentTarget, item.file.name)}
+                aria-label={baseName(item.file.name)}>
+                <span className="mb-0.5 block aspect-[4/3] w-full overflow-hidden rounded-md border border-line bg-bg group-hover:border-lit-line">
+                  <Thumb task={task} file={item.file} className="size-full" />
+                </span>
+                <span className="w-full truncate text-xs">{set.single ? baseName(item.file.name) : versionOf(item, set, t)}</span>
+                <span className="text-xs text-muted"><FileMeta file={item.file} /></span>
+              </button>
+            </li>)}
+          </ul>
+        </div>;
+      })}
     </div>}
   </section>;
 }
@@ -189,8 +196,14 @@ function MediaRow({ task, item, path, onOpen }: { task: TaskDetail; item: Listed
 
 /** The time a file was written, or why it cannot be read. */
 function FileMeta({ file }: { file: TaskFile }) {
-  const { t, i18n } = useTranslation("reader");
-  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <>{formatLogTime(file.at, i18n.language)}</>;
+  const { t } = useTranslation("reader");
+  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <WrittenAt at={file.at} />;
+}
+
+/** A time a file was written, as the rows show it. */
+function WrittenAt({ at }: { at: string }) {
+  const { i18n } = useTranslation("reader");
+  return <time dateTime={at}>{formatLogTime(at, i18n.language)}</time>;
 }
 
 /** A picture of a file, or a quiet placeholder when it cannot be shown here. */

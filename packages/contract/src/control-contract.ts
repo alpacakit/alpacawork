@@ -17,17 +17,20 @@ import { taskBaseStateSchema } from './fields.js';
 import { reportMark } from './report-mark.js';
 import { TASK_LIFECYCLES, TASK_STATE } from '@alpacawork/raw/task-enums';
 import { taskActorSchema as actorSchema, taskLogSchema } from '@alpacawork/raw/task-log-schema';
-import { agentNameSchema, runActivityKindSchema, runActivityViewSchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
+import { agentNameSchema, runActivityKindSchema, runActivityViewSchema, runCallerSchema, runCompactionSchema, newConversationSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
 import { bodyMarkSchema, descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, logIdSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema } from './fields.js';
 import { errorEntrySchema, problemErrorSchema } from './problem.js';
 import { hostNoticeSchema } from './host-contract.js';
 import { ballSchema, userTurn, type Ball } from './ball.js';
 import { HOME_SECTIONS, homeCountsSchema, homeRowSchema, taskActionSchema } from './home.js';
-import { historyCursorSchema, historyEventSchema, NOTICED_LOG_KINDS, STATE_LOG_KINDS } from './history-events.js';
+import { datedConversationChangeSchema, historyCursorSchema, historyEventSchema, NOTICED_LOG_KINDS, STATE_LOG_KINDS } from './history-events.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
 import { questionSchema } from './questions.js';
 import { canonicalValues, fieldDefShape, fieldIdSchema, taskValuesViewSchema, type TaskValues } from './task-schema.js';
+
+/** How many of a Task's latest conversation changes its view lists. */
+export const CONVERSATION_LIST_LIMIT = 20;
 
 export const taskLifecycleSchema = z.enum(TASK_LIFECYCLES);
 const shelfTargetSchema = z.object({ id: projectIdSchema, title: z.string(), color: projectColorSchema, hash: digestSchema }).strict();
@@ -224,6 +227,10 @@ export const controlRunSchema = z.object({
   errorCause: runAvailabilitySchema.optional(),
   availability: runAvailabilitySchema.optional(),
   supersededBy: runIdSchema.optional(),
+  /** Why it started its conversation anew (newConversationSchema), when it did. */
+  newConversation: newConversationSchema.optional(),
+  /** The compactions of its conversation while it ran (runCompactionSchema), oldest first; absent when none. */
+  compactions: z.array(runCompactionSchema).optional(),
   /** A joined Run names the Run whose work took its instruction in. */
   into: runIdSchema.nullable(),
   /** Whether the agent takes further instructions on its input while it works. */
@@ -575,6 +582,14 @@ export const taskViewSchema = z.object({
     summary: z.string().nullable(), submittedAt: z.iso.datetime({ offset: true }) }).strict()).nullable(),
   /** When the user asked for this Task; null when the user did not. */
   requestedByUser: z.object({ at: isoSchema }).strict().nullable(),
+  /**
+   * How this Task's agents' conversations went (conversationChanges): how often one started anew and was compacted, and
+   * the tokens the compactions cut (compactionCut; null when none said its figures), over all its Runs; and the latest
+   * CONVERSATION_LIST_LIMIT of those changes, oldest first.
+   */
+  conversations: z.object({ anew: z.number().int().nonnegative(), compacted: z.number().int().nonnegative(),
+    cutTokens: z.number().int().nonnegative().nullable(),
+    changes: z.array(datedConversationChangeSchema).max(CONVERSATION_LIST_LIMIT) }).strict(),
 }).strict();
 /** Who stood at a Task over a History page's time: its placements and their Runs, as an end of a row names its agent. */
 export const historyCrewSchema = z.object({

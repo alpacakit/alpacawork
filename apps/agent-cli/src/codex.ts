@@ -103,6 +103,8 @@ export class CodexRuntime implements Runtime {
   private settleCompaction(result: CompactionResult): void {
     const compaction = this.compaction;
     this.compaction = null;
+    // The compaction turn's own items are not the Run's; that it compacted is, once, as an automatic one says it.
+    if (compaction && result.compacted) this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
     compaction?.settle(result);
   }
 

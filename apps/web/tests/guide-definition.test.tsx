@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import type { Task } from "../src/data/types";
 import { GUIDE, PARTS, closing, doneOnLeaving, doneOnShowing, finishedHere, guideEntry, guideScreen, nextStage, saidBefore, startsGuide, stepsLeft, stillReads, type GuideFacts } from "../src/features/guide/guide-definition";
 import { awaiting, coordinatorFacts, doneSince, foundDraft, pushOff } from "../src/features/guide/use-guide";
-import { bringInAt, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
+import { bringInAt, frontPart, placeBalloon, roomUnder, seenPart } from "../src/features/guide/Guide";
 
 const started = { stage: "started", at: 1, seen: [] } as const;
 const turn = { stage: "turn", seen: [] } as const;
@@ -291,6 +291,18 @@ test("a box under the balloon gets room at its end from the balloon's top down, 
   expect(roomUnder(sheet, { top: 600, bottom: 700 })).toBe(244);
   expect(roomUnder(sheet, { top: 250, bottom: 320 })).toBe(594);
   expect(roomUnder(sheet, { top: 100, bottom: 200 })).toBe(0);
+});
+
+test("a row partly under a detail widened over the list is ringed only where it is seen", () => {
+  const row = { left: 24, top: 185, width: 533, height: 33 };
+  const middle = { x: 290, y: 201 };
+  // The detail lies over the list from 428 rightwards: the ring, drawn 4px outside its part, stops short of it.
+  expect(frontPart(row, middle, x => x < 428)).toEqual({ left: 24, top: 185, width: 400, height: 33 });
+  // Covered from the left (to 100), the same from that side.
+  expect(frontPart(row, middle, x => x >= 100)).toEqual({ left: 104, top: 185, width: 453, height: 33 });
+  // Nothing over it, or only the next row's edge touching its last pixel: the whole row.
+  expect(frontPart(row, middle, () => true)).toEqual(row);
+  expect(frontPart(row, middle, (_, y) => y < 217.4)).toEqual(row);
 });
 
 test("a part reaching under the input at a detail's foot is pointed at where it is seen, above the input", () => {

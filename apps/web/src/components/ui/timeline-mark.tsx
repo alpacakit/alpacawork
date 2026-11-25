@@ -8,13 +8,13 @@ import { TONE, type Tone } from "./tone";
  * colour is whose turn it is after it (components/ui/tone: working, turn, error, done, or quiet), the same
  * colour the list's line takes from there on.
  */
-export type MarkKind = "request" | "report" | "approve" | "error" | "wait" | "estimate" | "start" | "record" | "held" | "up" | "down" | "by";
+export type MarkKind = "request" | "report" | "approve" | "error" | "wait" | "estimate" | "start" | "record" | "held" | "up" | "down" | "by" | "anew" | "compacted";
 /** Whose turn it is after an event: an agent's (working), yours (turn), nobody's because it stopped (error), finished (done), or unchanged (quiet). */
 export type MarkTone = Tone;
 
 const ICON: Record<MarkKind, IconName> = {
   request: "request", report: "report", approve: "done", error: "error",
-  wait: "waiting", held: "held", estimate: "doing", start: "run", record: "record", up: "arrowUp", down: "arrowDown", by: "record",
+  wait: "waiting", held: "held", estimate: "doing", start: "run", record: "record", up: "arrowUp", down: "arrowDown", by: "record", anew: "chat", compacted: "reload",
 };
 /**
  * What stands on a timeline's rail (a mark, the dot of a write being sent, the line of the row in view) is centred on
