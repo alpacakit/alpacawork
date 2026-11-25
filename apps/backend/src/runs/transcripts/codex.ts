@@ -59,7 +59,7 @@ export class CodexTranscripts {
       const payload = line.payload as { type?: unknown; item?: { id?: unknown; duration?: unknown } } | undefined;
       if (line.type !== 'event_msg' || payload?.type !== 'item_completed' || !payload.item) continue;
       const took = millis(payload.item.duration);
-      book.ran(payload.item.id, took === null ? null : at - took, at);
+      book.ran(payload.item.id, took === null ? null : Math.round(at - took), at);
     } });
   }
 }

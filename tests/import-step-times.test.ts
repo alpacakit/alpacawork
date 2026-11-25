@@ -74,7 +74,7 @@ test('codex: a command starts as long before its end as it took, an item that sa
   lines(join(homes.codex[0]!, 'sessions/2026/11/20', `rollout-2026-11-20T10-00-00-${thread}.jsonl`), [
     completed('2026-11-20T01:00:46.500Z', { type: 'CommandExecution', id: 'exec-1', duration: { secs: 46, nanos: 500_000_000 } }),
     completed('2026-11-20T01:00:50.000Z', { type: 'FileChange', id: 'f1' }),
-    completed('2026-11-20T01:01:30.000Z', { type: 'CommandExecution', id: 'exec-2', duration: { secs: 10, nanos: 0 } })]);
+    completed('2026-11-20T01:01:30.000Z', { type: 'CommandExecution', id: 'exec-2', duration: { secs: 10, nanos: 400_123 } })]);
   const folder = join(path, 'R3'), command = "/bin/bash -lc 'pnpm test'";
   lines(join(folder, 'stdout.log'), [{ type: 'item.started', item: { id: 'exec-1', type: 'command_execution', command } },
     { type: 'item.completed', item: { id: 'exec-1', type: 'command_execution', command, exitCode: 0 } },
@@ -122,30 +122,43 @@ test('a Run that gets no times says why', async t => {
   // A record whose lines no longer read as this reader expects (the agent changed its form).
   lines(join(homes.claude, 'projects', '-work', 'changed.jsonl'), [{ ts: at, body: { blocks: [] } }]);
   assert.equal(await reason(run('R4', 'claude', 'changed', at, at)), 'transcript_unreadable');
+  // A sub-agents folder that cannot be listed leaves the conversation unread rather than half read.
+  lines(join(homes.claude, 'projects', '-work', 'split.jsonl'), [said(at, { type: 'tool_use', id: 'a' })]);
+  mkdirSync(join(homes.claude, 'projects', '-work', 'split'));
+  writeFileSync(join(homes.claude, 'projects', '-work', 'split', 'subagents'), '');
+  assert.equal(await reason(run('R4', 'claude', 'split', at, at)), 'transcript_unreadable');
   lines(join(homes.claude, 'projects', '-work', 'other.jsonl'), [said(at, { type: 'tool_use', id: 'z' })]);
   assert.equal(await reason(run('R4', 'claude', 'other', at, at)), 'no_matching_calls');
 });
 
-test('each step takes its own run of the call: whole within the Run\'s time to the millisecond, in order when an ID is used again, and an import left half done is completed', async t => {
+test('a step takes its call\'s one run within the Run\'s time to the millisecond; an ID used again, or a half-done import from another run, writes nothing', async t => {
   const { path, homes } = home(t);
   const session = '22222222-2222-4333-8444-555555555555', project = join(homes.claude, 'projects', '-work');
   lines(join(project, `${session}.jsonl`), [
-    // Started before the Run: not the Run's, though it ends within it.
+    // `x`: started before the Run (not the Run's), then once within it.
     said('2026-11-20T00:59:59.000Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:01.000Z', { type: 'tool_result', tool_use_id: 'x' }),
-    said('2026-11-20T01:00:00.050Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:07.000Z', { type: 'tool_result', tool_use_id: 'x' }),
-    said('2026-11-20T01:00:08.000Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:09.000Z', { type: 'tool_result', tool_use_id: 'x' }),
-    // Ends a millisecond after the Run.
-    said('2026-11-20T01:00:10.000Z', { type: 'tool_use', id: 'late' }), said('2026-11-20T01:00:15.001Z', { type: 'tool_result', tool_use_id: 'late' })]);
+    said('2026-11-20T01:00:00.050Z', { type: 'tool_use', id: 'x' }), said('2026-11-20T01:00:03.000Z', { type: 'tool_result', tool_use_id: 'x' }),
+    // `y`: an earlier import wrote its start at 01:00:04 from a run the record no longer has.
+    said('2026-11-20T01:00:05.000Z', { type: 'tool_use', id: 'y' }), said('2026-11-20T01:00:06.000Z', { type: 'tool_result', tool_use_id: 'y' }),
+    // `z`: an earlier import wrote its start; its end is completed.
+    said('2026-11-20T01:00:07.000Z', { type: 'tool_use', id: 'z' }), said('2026-11-20T01:00:08.000Z', { type: 'tool_result', tool_use_id: 'z' }),
+    // `w`: used twice in the Run, around an error that ended the first.
+    said('2026-11-20T01:00:09.000Z', { type: 'tool_use', id: 'w' }), said('2026-11-20T01:00:10.000Z', { type: 'tool_result', tool_use_id: 'w' }),
+    // `late`: ends a millisecond after the Run.
+    said('2026-11-20T01:00:11.000Z', { type: 'tool_use', id: 'late' }), said('2026-11-20T01:00:15.001Z', { type: 'tool_result', tool_use_id: 'late' })]);
   const folder = join(path, 'R5');
-  lines(join(folder, 'stdout.log'), [claudeStart('x'), claudeEnd('x'), claudeStart('x'), claudeEnd('x'), claudeStart('late'), claudeEnd('late')]);
-  // An earlier import stopped after the first step's start.
-  writeFileSync(join(folder, 'steps.jsonl'), JSON.stringify({ event: 'start', line: 0, id: 'x', at: '2026-11-20T01:00:00.050Z', source: 'transcript', fingerprint: null, parentId: null }) + '\n');
+  lines(join(folder, 'stdout.log'), [claudeStart('x'), claudeEnd('x'), claudeStart('y'), claudeEnd('y'), claudeStart('z'), claudeEnd('z'),
+    claudeStart('w'), { type: 'result', subtype: 'error_during_execution', is_error: true }, claudeStart('w'), claudeEnd('w'), claudeStart('late'), claudeEnd('late')]);
+  const begun = (line: number, id: string, at: string) => JSON.stringify({ event: 'start', line, id, at, source: 'transcript', fingerprint: null, parentId: null });
+  writeFileSync(join(folder, 'steps.jsonl'), [begun(2, 'y', '2026-11-20T01:00:04.000Z'), begun(4, 'z', '2026-11-20T01:00:07.000Z')].join('\n') + '\n');
   const imported = await importRunSteps(folder, run('R5', 'claude', session, '2026-11-20T01:00:00Z', '2026-11-20T01:00:15Z'), transcriptReaders(homes), true);
-  assert.deepEqual({ steps: imported.steps, timed: imported.timed, added: imported.added }, { steps: 3, timed: 2, added: 3 });
+  assert.deepEqual({ steps: imported.steps, timed: imported.timed, added: imported.added }, { steps: 6, timed: 2, added: 3 });
   const transcript = (start: string, end: string) => ({ startedAt: start, startSource: 'transcript', endedAt: end, endSource: 'transcript' });
+  const none = { startedAt: null, startSource: null, endedAt: null, endSource: null };
   assert.deepEqual(await times(folder, 'claude'), [
-    { id: 'x', ...transcript('2026-11-20T01:00:00.050Z', '2026-11-20T01:00:07.000Z') },
-    { id: 'x', ...transcript('2026-11-20T01:00:08.000Z', '2026-11-20T01:00:09.000Z') },
-    { id: 'late', startedAt: null, startSource: null, endedAt: null, endSource: null },
+    { id: 'x', ...transcript('2026-11-20T01:00:00.050Z', '2026-11-20T01:00:03.000Z') },
+    { id: 'y', startedAt: '2026-11-20T01:00:04.000Z', startSource: 'transcript', endedAt: null, endSource: null },
+    { id: 'z', ...transcript('2026-11-20T01:00:07.000Z', '2026-11-20T01:00:08.000Z') },
+    { id: 'w', ...none }, { id: 'w', ...none }, { id: 'late', ...none },
   ]);
 });

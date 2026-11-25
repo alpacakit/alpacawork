@@ -6,6 +6,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { hasCode } from '@alpacawork/core';
 import { readRecord, recordLines, recordTime, type ConversationCalls } from './calls.js';
 
 export class ClaudeTranscripts {
@@ -29,7 +30,9 @@ export class ClaudeTranscripts {
     return this.folders.flatMap(folder => {
       const main = join(folder, `${session}.jsonl`), subagents = join(folder, session, 'subagents');
       let agents: string[] = [];
-      try { agents = readdirSync(subagents).filter(name => name.endsWith('.jsonl')).sort().map(name => join(subagents, name)); } catch { /* none */ }
+      // A conversation without sub-agents has no folder for them; one that cannot be listed leaves the record unread.
+      try { agents = readdirSync(subagents).filter(name => name.endsWith('.jsonl')).sort().map(name => join(subagents, name)); }
+      catch (error) { if (!hasCode(error, 'ENOENT')) throw error; }
       return [...existsSync(main) ? [main] : [], ...agents];
     });
   }

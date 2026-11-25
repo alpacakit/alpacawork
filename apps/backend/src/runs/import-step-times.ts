@@ -26,8 +26,8 @@ import { CodexTranscripts } from './transcripts/codex.js';
  * or its output is not in a form the agent's reader knows).
  * `transcript_missing`: the conversation's record is not on this PC (removed after the agent's retention period, or
  * kept elsewhere). `transcript_unreadable`: the record is there but not in a form this reads (the agent changed it).
- * `no_matching_calls`: the record reads, but no step of the Run could be matched to a call within the Run's time (none
- * there, or as many runs of the call as the Run has steps with its ID were not). `write_failed`: the
+ * `no_matching_calls`: the record reads, but no step of the Run could be matched to one run of its call within the
+ * Run's time (none there, or its call ID used more than once). `write_failed`: the
  * Run's step journal could not be written.
  */
 export const STEP_IMPORT_REASONS = ['running', 'agent_not_read', 'no_conversation', 'no_output', 'output_unreadable', 'no_steps',
@@ -111,27 +111,26 @@ export async function importRunSteps(folder: string, run: ImportedRun, readers: 
   if (!result.steps) return fail(rejected ? 'output_unreadable' : 'no_steps');
 
   // A conversation's Runs follow one another, so a run of a call wholly between this Run's start and end is this
-  // Run's. The call's steps take its runs in order, only when there are as many of each: otherwise which is which is
-  // not known, and none is written.
+  // Run's. A step takes it when its call ID names that step alone in the Run and the record has that one run of it
+  // there; an ID used again leaves which is which unknown, and none of its steps is written.
   const from = Date.parse(run.started_at ?? run.created_at), to = Date.parse(ended);
   const within = (at: number | null) => at === null || (at >= from && at <= to);
-  const own = new Map<string, CallTime[] | null>();
-  const runsOf = (id: string) => {
-    if (!own.has(id)) {
-      const runs = (calls.get(id) ?? []).filter(time => within(time.startedAt) && within(time.endedAt));
-      own.set(id, runs.length === steps.get(id)?.length ? runs : null);
-    }
-    return own.get(id);
+  const runOf = (id: string): CallTime | null => {
+    const runs = (calls.get(id) ?? []).filter(time => within(time.startedAt) && within(time.endedAt));
+    return runs.length === 1 && steps.get(id)?.length === 1 ? runs[0]! : null;
   };
   const journal = new StepJournal(folder, write), timed = new Set<string>();
   let live = false;
   // A step with a time its Run's manager kept as it happened is left as it is, so its start and end never come from
-  // two clocks; one an import began is completed.
+  // two clocks. One an earlier import began is completed only from the same run of the call.
   const timeOf: StepTimeOf = (event, line, id) => {
     if (journal.keptLive(line, id)) { live = true; return null; }
-    const time = runsOf(id)?.[steps.get(id)!.indexOf(`${line}`)];
-    const at = event === 'start' ? time?.startedAt : time?.endedAt;
-    if (at === null || at === undefined) return null;
+    const time = runOf(id);
+    if (!time) return null;
+    const held = (['start', 'end'] as const).map(each => journal.heldTime(each, line, id)?.at);
+    if (held[0] !== undefined && Date.parse(held[0]) !== time.startedAt || held[1] !== undefined && Date.parse(held[1]) !== time.endedAt) return null;
+    const at = event === 'start' ? time.startedAt : time.endedAt;
+    if (at === null) return null;
     timed.add(`${line}\0${id}`);
     return { at: new Date(at).toISOString(), source: 'transcript' };
   };

@@ -75,10 +75,15 @@ export async function* recordLines(file: string): AsyncGenerator<Record<string, 
   // A failure to open or read the file ends the reading with it.
   if (input !== raw) raw.once('error', error => input.destroy(error));
   const lines = createInterface({ input, crlfDelay: Infinity });
-  for await (const line of lines) {
-    if (!line) continue;
-    let value: unknown;
-    try { value = JSON.parse(line); } catch { continue; }
-    if (value && typeof value === 'object' && !Array.isArray(value)) yield value as Record<string, unknown>;
+  try {
+    for await (const line of lines) {
+      if (!line) continue;
+      let value: unknown;
+      try { value = JSON.parse(line); } catch { continue; }
+      if (value && typeof value === 'object' && !Array.isArray(value)) yield value as Record<string, unknown>;
+    }
+  } finally {
+    // However the reading ends, the file is closed.
+    lines.close(); input.destroy(); raw.destroy();
   }
 }

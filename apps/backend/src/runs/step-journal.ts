@@ -98,7 +98,7 @@ export class StepJournal {
   private readonly open = new Map<string, number>();
   /** The line of the last step each call ID named, once it ended. */
   private readonly closed = new Map<string, number>();
-  private held: Map<string, StepTimeSource> | null = null;
+  private held: Map<string, StepTime> | null = null;
   private failed = false;
   /** Entries this journal appended (or, when it does not write, would have). */
   added = 0;
@@ -114,6 +114,8 @@ export class StepJournal {
   observe(event: ActivityEvent, line: number, timeOf: StepTimeOf): number | null {
     if (this.failed) return null;
     const { kind, id } = event;
+    // The agent's turn ended: what is still open ends with it, as the index of steps reads it.
+    if (kind === 'result' || kind === 'error') { this.settle(kind === 'result' ? 'done' : 'failed', timeOf); return null; }
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return null;
     if (kind === 'tool_start' && this.open.has(id)) return this.open.get(id)!;
     // An end said again for a step already ended is that step's, as the index of steps reads it.
@@ -146,8 +148,12 @@ export class StepJournal {
    * record) for the start or end of the step that output line `line` started with call `id`.
    */
   keptLive(line: number, id: string): boolean {
-    const held = this.heldNames();
-    return [held.get(key('start', line, id)), held.get(key('end', line, id))].some(source => source !== undefined && source !== 'transcript');
+    return (['start', 'end'] as const).some(event => { const source = this.heldTime(event, line, id)?.source; return source !== undefined && source !== 'transcript'; });
+  }
+
+  /** The time the journal holds for the start or end of the step that output line `line` started with call `id`. */
+  heldTime(event: StepJournalEntry['event'], line: number, id: string): StepTime | undefined {
+    return this.heldNames().get(key(event, line, id));
   }
 
   /**
@@ -158,15 +164,17 @@ export class StepJournal {
     for (const [id, line] of this.open) {
       const at = timeOf('end', line, id);
       if (at) this.append({ event: 'end', line, id, ...at, state, output: null });
+      this.closed.set(id, line);
     }
     this.open.clear();
   }
 
   /** What the journal holds, by entry, with where its time came from (the first written stands). */
-  private heldNames(): Map<string, StepTimeSource> {
+  private heldNames(): Map<string, StepTime> {
     if (!this.held) {
       this.held = new Map();
-      for (const entry of readStepJournal(this.folder)) if (!this.held.has(key(entry.event, entry.line, entry.id))) this.held.set(key(entry.event, entry.line, entry.id), entry.source);
+      for (const entry of readStepJournal(this.folder))
+        if (!this.held.has(key(entry.event, entry.line, entry.id))) this.held.set(key(entry.event, entry.line, entry.id), { at: entry.at, source: entry.source });
     }
     return this.held;
   }
@@ -174,7 +182,7 @@ export class StepJournal {
   private append(entry: StepJournalEntry): void {
     const held = this.heldNames(), name = key(entry.event, entry.line, entry.id);
     if (held.has(name)) return;
-    if (!this.write) { held.set(name, entry.source); this.added++; return; }
+    if (!this.write) { held.set(name, { at: entry.at, source: entry.source }); this.added++; return; }
     try {
       const fd = openSync(`${this.folder}/${RUN_FILES.steps}`, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND, 0o600);
       try {
@@ -183,7 +191,7 @@ export class StepJournal {
         const torn = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last[0] !== 10;
         appendFileSync(fd, (torn ? '\n' : '') + JSON.stringify(entry) + '\n');
       } finally { closeSync(fd); }
-      held.set(name, entry.source); this.added++;
+      held.set(name, { at: entry.at, source: entry.source }); this.added++;
     } catch (error) {
       // The journal is a record beside the Run, not part of it: a Run goes on without it, and says so once.
       this.failed = true;
