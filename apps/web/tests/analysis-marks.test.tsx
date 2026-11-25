@@ -3,7 +3,7 @@ import { SearchField } from "../src/features/chrome/SearchField";
 import { analysisHome } from "../src/features/analysis/place";
 import { useState } from "react";
 import { PointerTip } from "../src/features/analysis/parts";
-import { ChartGroup } from "../src/features/analysis/rows";
+import { BarChart, ChartGroup, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
@@ -122,17 +122,38 @@ test("a conversion under way when the face changes is dropped, and its confirmat
   view.unmount();
 });
 
-test("a day's window closes when the charts change to another step of time, whatever day was pointed at", () => {
+test("on a computer the pointed row's left says the day and comes back; a press on a bar's part opens that part's tasks of the day", () => {
   const days = (count: number) => Array.from({ length: count }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
-  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}件` }];
+  const opened = vi.fn();
+  const day = (bin: { from: string; to: string }) => ({ from: bin.from, to: bin.to });
+  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}件`, list: (bin: { from: string; to: string }) => ({ set: "finished" as const, value: null, ...day(bin) }),
+    parts: (at: number) => [{ color: "bg-done", name: "手直しなし", value: `${at}件`, list: (bin: { from: string; to: string }) => ({ set: "passed" as const, value: "lead" as const, ...day(bin) }) }] }];
   const group = (bucket: "day" | "week", bins: ReturnType<typeof days>) =>
-    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket={bucket} rows={rows} open={() => {}}><div /></ChartGroup>;
+    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket={bucket} rows={rows} open={opened}>
+      <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40件" }} values={at => [["bg-done", at + 1, 0]]} /></Row>
+    </ChartGroup>;
   const view = render(group("day", days(30)));
   const columns = view.container.querySelectorAll("[data-day-column]");
-  fireEvent.mouseMove(columns[29]!, { clientX: 10, clientY: 10 });
-  expect(view.getByRole("presentation").textContent).toContain("29件");
-  // The last day pointed at, then weeks: only four bins are left, and the window is gone with the day it said.
-  view.rerender(group("week", days(4).map(bin => ({ ...bin, complete: false }))));
+  const legend = () => view.container.querySelector("[data-day-legend]");
+  fireEvent.mouseMove(columns[28]!, { clientX: 10, clientY: 10 });
+  expect(legend()?.textContent).toContain("28件");
+  // Nothing is laid over the charts.
   expect(view.queryByRole("presentation")).toBeNull();
+  fireEvent.mouseLeave(columns[28]!.parentElement!);
+  expect(legend()).toBeNull();
+  // A press on the bar's part opens that part's tasks of that day; on the column elsewhere, the row's.
+  const part = view.container.querySelectorAll("[data-part]")[28]!;
+  const chart = view.container.querySelector("[data-chart-row]")!;
+  document.elementsFromPoint = () => [part, chart];
+  fireEvent.click(columns[28]!, { clientX: 10, clientY: 10 });
+  expect(opened).toHaveBeenLastCalledWith({ set: "passed", value: "lead", from: "2026-11-29", to: "2026-11-29" });
+  document.elementsFromPoint = () => [chart];
+  fireEvent.click(columns[28]!, { clientX: 10, clientY: 10 });
+  expect(opened).toHaveBeenLastCalledWith({ set: "finished", value: null, from: "2026-11-29", to: "2026-11-29" });
+  // Another step of time lets go of the day pointed at.
+  fireEvent.mouseMove(columns[29]!, { clientX: 10, clientY: 10 });
+  view.rerender(group("week", days(4).map(bin => ({ ...bin, complete: false }))));
+  expect(legend()).toBeNull();
+  delete (document as { elementsFromPoint?: unknown }).elementsFromPoint;
   view.unmount();
 });

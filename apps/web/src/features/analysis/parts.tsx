@@ -180,6 +180,18 @@ export function tipBeside({ left, right, top, width, height, screenWidth, screen
   const y = Math.max(margin, Math.min(top, screenHeight - margin - Math.min(height, room)));
   return { left: x, top: y, maxHeight: height > room ? room : null };
 }
+/**
+ * Where a pressed bin's window stands: over or under the bin, on the side with more room, centred on it and kept on the
+ * screen, so the bins beside it stay in sight; only where neither side holds it, beside the bin (`tipBeside`).
+ */
+export function tipAround({ left, right, top, bottom, width, height, screenWidth, screenHeight, margin = 4, gap = 8 }: {
+  left: number; right: number; top: number; bottom: number; width: number; height: number; screenWidth: number; screenHeight: number; margin?: number; gap?: number;
+}) {
+  const above = top - gap - margin, below = screenHeight - bottom - gap - margin;
+  const x = Math.max(margin, Math.min(screenWidth - margin - width, (left + right) / 2 - width / 2));
+  if (height <= Math.max(above, below)) return { left: x, top: above >= below ? top - gap - height : bottom + gap, maxHeight: null };
+  return tipBeside({ left, right, top, width, height, screenWidth, screenHeight, margin, gap });
+}
 function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: string; x: number; top: number; bottom: number;
   tipRef: React.RefObject<HTMLDivElement | null>; onEnter: () => void; onLeave: () => void }) {
   const [scrolls, setScrolls] = useState(false);

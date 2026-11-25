@@ -113,7 +113,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
-      {taskPoints && finished && <Row left={<>
+      {taskPoints && finished && <Row row={0} left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={tasks?.counts.previous?.finished ?? null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
@@ -122,10 +122,10 @@ export function UsageLook({ view, tasks, days, open, zone }: {
           { color: "bg-stopped-part", name: t("outcome.stopped"), value: part("tasks", finished.stopped, { set: "stopped", value: null }) }]} />
       </>}>
         <BarChart row={0} height="h-22 narrow:h-18" scale={scales.finished} grow
-          values={i => [["bg-done", taskPoints[i]!.counts.passed], ["bg-reworked", taskPoints[i]!.counts.reworked], ["bg-stopped-part", taskPoints[i]!.counts.stopped]]} />
+          values={i => [["bg-done", taskPoints[i]!.counts.passed, 0], ["bg-reworked", taskPoints[i]!.counts.reworked, 1], ["bg-stopped-part", taskPoints[i]!.counts.stopped, 2]]} />
         <DayAxis />
       </Row>}
-      <Row left={<>
+      <Row row={first} left={<>
         <Num className="" label={t("usage.tokens")} kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length}
           onOpen={() => open({ set: "used", value: "tokens" })} />
         <Parts items={[
@@ -135,14 +135,14 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       </>}>
         <BarChart row={first} height="h-30 narrow:h-22" scale={scales.tokens} tone="working" grow overlay={overlays?.tokens} values={i => [["", amount.tokens(i)]]} />
       </Row>
-      <Row left={<>
+      <Row row={first + 1} left={<>
         <Num className="" label={t("usage.runMs")} kind="hours" value={now.runMs} previous={before?.runMs ?? null} length={length}
           onOpen={() => open({ set: "used", value: "runMs" })} />
         <Parts line={perEntry("runMs")} />
       </>}>
         <BarChart row={first + 1} height="h-20 narrow:h-16" scale={scales.runMs} tone="working" grow overlay={overlays?.runMs} values={i => [["", amount.runMs(i)]]} />
       </Row>
-      <Row left={<>
+      <Row row={first + 2} left={<>
         <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={before?.launches ?? null} length={length}
           onOpen={() => open({ set: "used", value: "launches" })} />
         <Parts items={[{ color: "", name: t("usage.newConversations"), value: part("plain", now.newConversations, { set: "used", value: "newConversations" }) }]}
@@ -214,7 +214,7 @@ function Breakdown({ view, group, days, open, choose }: {
       // A bin before counting began has no tasks to open.
       list: (bin, at) => series[at] === null ? null : { set: "used", value: valueOf, group: by, member: null, from: bin.from, to: bin.to } }]}
     open={list => open({ set: list.set, value: list.value, group: list.group ?? null, member: null, days: { from: list.from, to: list.to } })}>
-    <Row className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
+    <Row row={0} className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
       : <Num className="" label={name} kind="times" value={breakdown?.counted ? read(breakdown.counted.value) : 0}
         previous={breakdown?.counted?.previous ? read(breakdown.counted.previous) : null} length={daysBetween(days.from, days.to)}
         onOpen={() => open({ set: "used", value: by === "skill" ? "launches" : "calls", group: by, member: null })} />}>

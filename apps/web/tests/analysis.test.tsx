@@ -4,7 +4,7 @@ import { comparison, delta, parts, share, shareDelta } from "../src/features/ana
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
 import { inSpanOf, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
-import { tipBeside, tipPlace } from "../src/features/analysis/parts";
+import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
@@ -167,6 +167,16 @@ test("the arrows move from the span chosen now, not from the answer still on scr
   expect(stepChosen({ period: "today" }, head, 1)).toBeNull();
   expect(stepChosen({ from: "2026-11-11", to: "2026-11-17" }, head, 1)).toEqual({ period: "7d" });
   expect(stepChosen({ period: "all" }, head, -1)).toBeNull();
+});
+
+test("a pressed bin's window stands over or under it, where there is more room, and beside it only when neither holds it", () => {
+  const screen = { screenWidth: 390, screenHeight: 844 };
+  // Low on the screen: over the bin, centred on it, kept on the screen.
+  expect(tipAround({ left: 300, right: 310, top: 600, bottom: 690, width: 240, height: 250, ...screen })).toEqual({ left: 146, top: 342, maxHeight: null });
+  // High on the screen: under it.
+  expect(tipAround({ left: 20, right: 30, top: 100, bottom: 190, width: 240, height: 250, ...screen })).toEqual({ left: 4, top: 198, maxHeight: null });
+  // Neither side holds it: beside it.
+  expect(tipAround({ left: 20, right: 30, top: 300, bottom: 600, width: 240, height: 400, ...screen }).left).toBe(38);
 });
 
 test("a day's window stands beside its bar, on the side with room, and never past the screen", () => {

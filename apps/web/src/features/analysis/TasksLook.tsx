@@ -128,7 +128,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
-      <Row left={<>
+      <Row row={0} left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={before?.finished ?? null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
@@ -140,10 +140,10 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
       </>}>
         <BarChart row={0} height="h-76 narrow:h-32" scale={scales.finished} grow overlay={overlays.share}
-          values={i => [["bg-done", at(i).counts.passed], ["bg-reworked", at(i).counts.reworked], ["bg-stopped-part", at(i).counts.stopped]]} />
+          values={i => [["bg-done", at(i).counts.passed, 0], ["bg-reworked", at(i).counts.reworked, 1], ["bg-stopped-part", at(i).counts.stopped, 2]]} />
         <DayAxis />
       </Row>
-      <Row left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3>
+      <Row row={1} left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3>
         <Num className="" label={t("time.total")} kind="hours" value={total} previous={acceptedBefore ? acceptedBefore.time.review + acceptedBefore.time.answer + acceptedBefore.time.ai + acceptedBefore.time.other : null}
           length={length} onOpen={() => open({ set: "accepted", value: "lead" })} />
         <Parts items={[
@@ -154,9 +154,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
             gap: gap(accepted.leadMedianMs, acceptedBefore?.leadMedianMs ?? null, "hours") }} />
       </>}>
         <BarChart row={1} height="h-30 narrow:h-22" scale={scales.total} overlay={overlays.median}
-          values={i => { const [y, a, o] = spent(i); return [["bg-turn", y], ["bg-working", a], ["bg-rest", o]]; }} />
+          values={i => { const [y, a, o] = spent(i); return [["bg-turn", y, 0], ["bg-working", a, 1], ["bg-rest", o, 2]]; }} />
       </Row>
-      <Row left={<>
+      <Row row={2} left={<>
         <Num className="" label={t("until.submits")} kind="times" value={accepted.submits} previous={acceptedBefore?.submits ?? null} length={length}
           onOpen={() => open({ set: "accepted", value: "submits" })} />
         <Parts line={{ name: t("line.perTask"), value: <PerValue value={submitsPer} unit={t("unit.times", { count: 2 })} onOpen={() => open({ set: "accepted", value: "submits" })} />,
@@ -164,7 +164,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       </>}>
         <BarChart row={2} height="h-16 narrow:h-13" scale={scales.submits} tone="turn" overlay={overlays.submits} values={i => [["", at(i).accepted.submits]]} />
       </Row>
-      <Row left={<>
+      <Row row={3} left={<>
         <Num className="" label={t("until.questions")} kind="tasks" value={accepted.questions} previous={acceptedBefore?.questions ?? null} length={length}
           onOpen={() => open({ set: "accepted", value: "questions" })} />
         <Parts line={{ name: t("line.perTask"), value: <PerValue value={questionsPer} unit={t("unit.tasks", { count: 2 })} onOpen={() => open({ set: "accepted", value: "questions" })} />,
@@ -172,7 +172,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       </>}>
         <BarChart row={3} height="h-16 narrow:h-13" scale={scales.questions} tone="turn" overlay={overlays.questions} values={i => [["", at(i).accepted.questions]]} />
       </Row>
-      <Row left={<Num className="" label={t("until.prs")} kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length}
+      <Row row={4} left={<Num className="" label={t("until.prs")} kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length}
         onOpen={() => open({ set: "accepted", value: "prs" })} />}>
         <BarChart row={4} height="h-16 narrow:h-13" scale={scales.prs} tone="muted" values={i => [["", at(i).accepted.prs]]} />
         <DayAxis />

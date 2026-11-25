@@ -5,7 +5,7 @@ import { useNarrow } from "@/state/view-store";
 import { subscribeStep } from "@/state/history-step";
 import { daysBetween, dayLabel, format, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
-import { tipBeside } from "./parts";
+import { tipAround } from "./parts";
 import { Icon } from "@/components/ui/icon";
 import type { Bucket, Group, ListSet, ListValue } from "./contract";
 
@@ -63,10 +63,19 @@ export function Parts({ items = [], line }: { items?: { color: string; name: str
   </div>;
 }
 
-/** A row of the grid: a rule above it, its name and numbers on the left, its chart on the right. */
-export function Row({ left, children, className }: { left: ReactNode; children?: ReactNode; className?: string }) {
+/**
+ * A row of the grid: a rule above it, its name and numbers on the left, its chart on the right. On a computer, while a
+ * day of its chart (`row`, its number in the group) is pointed at, the left says that day in place of the span: it is
+ * the chart's legend. The span's numbers keep their room, so nothing below moves, and come back when the pointer goes.
+ */
+export function Row({ row, left, children, className }: { row?: number; left: ReactNode; children?: ReactNode; className?: string }) {
+  const group = useContext(GroupContext);
+  const day = group && !group.narrow && row !== undefined && group.pointed?.row === row ? group.pointed.at : null;
   return <div className={cn(GRID, "border-t border-rule py-4 narrow:py-3.5", className)}>
-    <div className={cn(LEFT, "min-w-0")}>{left}</div>
+    <div className={cn(LEFT, "relative min-w-0")}>
+      <div className={cn(day !== null && "invisible")}>{left}</div>
+      {day !== null && <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} />}
+    </div>
     {children && <div className={cn(RIGHT, "narrow:mt-3")}>{children}</div>}
   </div>;
 }
@@ -89,17 +98,21 @@ export type RowSay = {
 };
 /** The tasks behind a row on one bin: its list, for the bin's days (`from`–`to`). */
 export type DayList = { set: ListSet; value: ListValue | null; group?: Group | null; member?: string | null; from: string; to: string };
-type Pointed = { at: number; row: number; box: { left: number; right: number; top: number } };
+type Box = { left: number; right: number; top: number; bottom: number };
+/** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
+type Pointed = { at: number; row: number; box: Box | null };
 type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean;
-  point: (at: number | null, row?: number, box?: Pointed["box"]) => void; press: (at: number, row: number) => void };
+  pointed: Pointed | null; dayName: (at: number) => string;
+  point: (at: number | null, row?: number, box?: Box) => void; press: (at: number, row: number, part?: number) => void };
 const GroupContext = createContext<GroupState | null>(null);
 
 /**
  * The charts drawn on the same days (`bins`), and what each row says of a day (`rows`, by the row's number). A day is
- * read, never chosen, from a chart: pointed at (pressed, under a finger) its column lights through every row and the
- * window beside it says the row pointed at, alone; pressed on a computer it opens that row's tasks of that day (under a
- * finger, from the window). The span changes only from the period's switch. Between two charts the window stays with
- * the row last pointed at. Another step of time, a scroll or a move to another step closes it.
+ * read, never chosen, from a chart. On a computer nothing is laid over the charts: the day pointed at lights its column
+ * through every row and the pointed row's left says that day; a press opens that row's tasks of that day, or, on a
+ * part of a stacked bar, that part's. Under a finger a press opens a window over or under the bin that says the day and
+ * leads to its tasks. The span changes only from the period's switch. Between two charts the row last pointed at
+ * stays. Another step of time, a scroll or a move to another step lets go of the day.
  */
 export function ChartGroup({ bins, span, today, bucket, rows, open, children }: {
   bins: Bin[]; span: Days; today: string; bucket: Bucket; rows: RowSay[]; open: (list: DayList) => void; children: ReactNode;
@@ -120,39 +133,44 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     if (narrow) addEventListener("pointerdown", away, true);
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
-  const point = (at: number | null, row = -1, box?: Pointed["box"]) => setPointed(previous => {
-    if (at === null || !box) return null;
-    // Between two charts the window keeps the row last pointed at; within the same day and row it stays where it
-    // stands, so the pointer can go to it.
+  const point = (at: number | null, row = -1, box?: Box) => setPointed(previous => {
+    if (at === null) return null;
+    // Between two charts the row last pointed at stays; the same day and row stay as they are.
     const next = row >= 0 ? row : previous?.row ?? 0;
-    return previous && previous.at === at && previous.row === next ? previous : { at, row: next, box };
+    return previous && previous.at === at && previous.row === next ? previous : { at, row: next, box: box ?? null };
   });
   const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!, at) ?? null;
-  const press = (at: number, row: number) => { const list = listOf(at, row); if (list) { close(); open(list); } };
+  // A part of a stacked bar opens that part's tasks of the day; elsewhere the column opens the row's.
+  const press = (at: number, row: number, part?: number) => {
+    const ofPart = part === undefined ? undefined : rows[row]?.parts?.(at)[part]?.list;
+    const list = ofPart ? ofPart(bins[at]!) : listOf(at, row);
+    if (list) { close(); open(list); }
+  };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
-  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, point, press }}>
-    <div className="relative" onMouseLeave={narrow ? undefined : event => { if (!intoWindow(event)) close(); }}>
+  const dayName = (at: number) => binName(bins[at]!, today);
+  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, point, press }}>
+    <div className="relative" onMouseLeave={narrow ? undefined : close}>
       {!narrow && <Columns layer="back" />}
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {shown && <DayWindow day={binName(bins[shown.at]!, today)} say={rows[shown.row]!} at={shown.at} box={shown.box} narrow={narrow}
+    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} at={shown.at} box={shown.box}
       onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
-      onPart={list => { close(); open(list(bins[shown.at]!)); }} onLeave={close}
-      // Under a finger the window steps to the day before or after, as if that day were pressed.
-      onStep={step => { const width = shown.box.right - shown.box.left, next = shown.at + step;
-        if (bins[next]) point(next, shown.row, { ...shown.box, left: shown.box.left + step * width, right: shown.box.right + step * width }); }}
+      onPart={list => { close(); open(list(bins[shown.at]!)); }}
+      // The window steps to the day before or after, as if that day were pressed.
+      onStep={step => { const box = shown.box!, width = box.right - box.left, next = shown.at + step;
+        if (bins[next]) point(next, shown.row, { ...box, left: box.left + step * width, right: box.right + step * width }); }}
       first={shown.at === 0} last={shown.at === bins.length - 1} />}
   </GroupContext>;
 }
 const useGroup = () => useContext(GroupContext)!;
-/** Whether the pointer left for the day's window (on a computer it is entered, to press one of its parts). */
-const intoWindow = (event: React.MouseEvent) => event.relatedTarget instanceof Element && !!event.relatedTarget.closest("[data-day-window]");
 
-/** The chart row under a point of the screen (its `data-chart-row`), or -1 between charts. */
-function rowAt(x: number, y: number, self: Element) {
-  const under = (document.elementsFromPoint?.(x, y) ?? []).find(element => element !== self && element instanceof HTMLElement && element.closest("[data-chart-row]"));
-  return Number((under as HTMLElement | undefined)?.closest<HTMLElement>("[data-chart-row]")?.dataset.chartRow ?? -1);
+/** What is under a point of the screen: the chart row (its `data-chart-row`, -1 between charts) and the part of a stacked bar (`data-part`). */
+function under(x: number, y: number, self: Element) {
+  const all = (document.elementsFromPoint?.(x, y) ?? []).filter(element => element !== self && element instanceof HTMLElement) as HTMLElement[];
+  const row = all.find(element => element.closest("[data-chart-row]"))?.closest<HTMLElement>("[data-chart-row]")?.dataset.chartRow;
+  const part = all.find(element => element.dataset.part !== undefined)?.dataset.part;
+  return { row: Number(row ?? -1), part: part === undefined ? undefined : Number(part) };
 }
 
 /**
@@ -162,16 +180,13 @@ function rowAt(x: number, y: number, self: Element) {
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
-    {/* Leaving the day columns (for the numbers on the left) closes what a day said. */}
-    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => { if (!intoWindow(event)) group.point(null); } : undefined}>
+    {/* Leaving the day columns (for the numbers on the left) lets go of the day. */}
+    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? () => group.point(null) : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
-          onMouseMove={event => {
-            const box = event.currentTarget.getBoundingClientRect();
-            group.point(at, rowAt(event.clientX, event.clientY, event.currentTarget), { left: box.left, right: box.right, top: event.clientY - 12 });
-          }}
-          onClick={event => { const row = rowAt(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row); }} />)}
+          onMouseMove={event => group.point(at, under(event.clientX, event.clientY, event.currentTarget).row)}
+          onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
     </div>
   </div>;
 }
@@ -187,33 +202,30 @@ function useBinName() {
 }
 
 /**
- * The window beside a pointed day: the day, the row's name and total (large), its parts with their colours, its
- * per-task line and base, and the way to its tasks. Kept on the screen. Each part with tasks opens that part's tasks
- * of the day: on a computer the window stands against the day's column, so the pointer goes straight into it; under a
- * finger it also steps to the day before or after (‹ ›).
+ * The window of a pressed day under a finger: the day (with ‹ › to the days beside it), the row's name and total
+ * (large), its parts with their colours, each with tasks opening that part's tasks of the day, its per-task line and
+ * base, and the way to its tasks. It stands over or under the bin, where there is room, so the bins beside it stay in
+ * sight; only where neither has room, beside it. Kept on the screen.
  */
-function DayWindow({ day, say, at, box, narrow, onList, onPart, onLeave, onStep, first, last }: { day: string; say: RowSay; at: number; box: Pointed["box"]; narrow: boolean;
-  onList: (() => void) | null; onPart: (list: (bin: Bin) => DayList) => void; onLeave: () => void; onStep: (step: -1 | 1) => void; first: boolean; last: boolean }) {
+function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: { day: string; say: RowSay; at: number; box: Box;
+  onList: (() => void) | null; onPart: (list: (bin: Bin) => DayList) => void; onStep: (step: -1 | 1) => void; first: boolean; last: boolean }) {
   const { t } = useTranslation("analysis");
   const self = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const window = self.current;
     if (!window) return;
     window.style.maxHeight = "";
-    const place = tipBeside({ left: box.left, right: box.right, top: box.top, width: window.offsetWidth, height: window.offsetHeight,
-      screenWidth: innerWidth, screenHeight: innerHeight, gap: narrow ? 8 : 0 });
+    const place = tipAround({ ...box, width: window.offsetWidth, height: window.offsetHeight, screenWidth: innerWidth, screenHeight: innerHeight });
     window.style.left = `${place.left}px`; window.style.top = `${place.top}px`;
     if (place.maxHeight !== null) window.style.maxHeight = `${place.maxHeight}px`;
-  }, [day, say, at, box, narrow]);
+  }, [day, say, at, box]);
   const parts = say.parts?.(at) ?? [];
   const step = (to: -1 | 1, off: boolean) => <button type="button" disabled={off} onClick={() => onStep(to)} aria-label={t(to < 0 ? "window.before" : "window.after")}
     className="-my-1 flex size-7 items-center justify-center rounded-sm text-muted hover:bg-hover disabled:opacity-30">
     <Icon name={to < 0 ? "left" : "right"} className="size-3.5" /></button>;
   return <div ref={self} role="presentation" data-day-window=""
-    onMouseLeave={narrow ? undefined : event => { if (!(event.relatedTarget instanceof Element && event.relatedTarget.closest("[data-day-column]"))) onLeave(); }}
     className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-xs shadow-float">
-    {narrow ? <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
-      : <div className="text-soft">{day}</div>}
+    <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
     <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-md font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
     {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
       {parts.map(part => {
@@ -222,7 +234,7 @@ function DayWindow({ day, say, at, box, narrow, onList, onPart, onLeave, onStep,
           <span className={cn("text-end font-semibold whitespace-nowrap text-ink tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</span>
           <span className="flex items-center justify-end gap-0.5 whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
         </>;
-        const row = "group/part col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-0.5 narrow:py-1.5";
+        const row = "group/part col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
         return part.list ? <button key={part.name} type="button" onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
           : <div key={part.name} className={row}>{cells}</div>;
       })}
@@ -233,6 +245,22 @@ function DayWindow({ day, say, at, box, narrow, onList, onPart, onLeave, onStep,
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
     {onList && <button type="button" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<Icon name="right" className="size-3" /></button>}
+  </div>;
+}
+
+/**
+ * The left of a row while one of its days is pointed at (a computer's): the day and the row's name, its total large,
+ * its parts with their colours and shares, and its per-task line with its base. Laid over the span's numbers, which
+ * keep their room.
+ */
+function DayLegend({ say, at, day }: { say: RowSay; at: number; day: string }) {
+  const parts = say.parts?.(at) ?? [];
+  return <div data-day-legend="" className="absolute inset-x-0 top-0">
+    <div className="text-xs whitespace-nowrap text-muted"><b className="font-semibold text-ink">{day}</b><span className="ms-2">{say.name}</span></div>
+    <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
+    <Parts items={parts.map(part => ({ ...part, value: <b className="font-semibold tabular-nums">{part.value}</b> }))}
+      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b>,
+        gap: <span className="text-soft">{say.line.base(at)}</span> }} />
   </div>;
 }
 
@@ -299,7 +327,7 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
       if (!group.narrow || off) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
       return <button key={bin.from} type="button" data-day-column="" aria-label={`${spanLabel(bin.from, bin.to)} ${group.rows[row]?.total(at) ?? ""}`}
         onClick={event => { const box = event.currentTarget.getBoundingClientRect();
-          group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top }); }}
+          group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }); }}
         className={look}>{children(at)}</button>;
     })}
   </div>;
@@ -319,7 +347,9 @@ export type Tone = "turn" | "working" | "muted";
  * fewer than ten tasks is hollow. Both scales are the chosen span's: a bar or point over the top is cut and marked.
  */
 export function BarChart({ row, height, scale, values, tone, overlay, uncounted, partial, grow }: {
-  row: number; height: string; scale: Scale; values: (at: number) => [string, number][]; tone?: Tone; overlay?: Overlay;
+  row: number; height: string; scale: Scale;
+  /** A bin's bar: its parts, each its colour, amount and (stacked) the number of the row's part it draws, which a press on it opens. */
+  values: (at: number) => [string, number, number?][]; tone?: Tone; overlay?: Overlay;
   uncounted?: (at: number) => boolean;
   /** Bins only part of which is counted (counting began inside them): boxed as a bin not whole is. */
   partial?: (at: number) => boolean; grow?: boolean;
@@ -347,8 +377,8 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     // Cut, the parts share the height left after the 2px gaps between them, so the bar ends on the top line.
     const gaps = 2 * (all.filter(([, value]) => value > 0).length - 1);
     const height = (value: number) => cut ? `calc((100% - ${gaps}px) * ${value / sum})` : `${Math.min(100, value / scale.top * 100)}%`;
-    return all.map(([color, value], part) => value > 0 &&
-      <i key={part} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
+    return all.map(([color, value, of], part) => value > 0 &&
+      <i key={part} data-part={of} style={{ height: height(value), ...tone ? { background: toneOf(tone, Math.min(1, value / scale.top)) } : {} }}
         className={cn("relative block flex-none origin-bottom rounded-[1px]", !tone && color, part === last && "rounded-t-[3px]", grow && "animate-bar")}>
         {cut && part === last && <b data-cut="" className="absolute inset-x-0 top-1 block h-0.75 -skew-y-12 bg-bg" />}
       </i>);
