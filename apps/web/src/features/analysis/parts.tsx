@@ -60,7 +60,7 @@ export const OpenMark = ({ big }: { big?: boolean }) =>
 export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold tabular-nums", big ? "text-display" : small ? "text-sm" : "text-xl")}>{written.value}</b>
+    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-display" : small ? "text-sm" : "text-xl")}>{written.value}</b>
     {written.unit && <span className={cn("text-muted", small ? "text-xs" : "text-sm")}>{written.unit}</span>}
   </>;
   // One that could open tasks but has none (0) keeps the room of the mark, so a column of numbers stays one column.
@@ -104,9 +104,11 @@ export function ChartHead() {
   const { t } = useTranslation("analysis");
   const { bucket, grow, rules } = useChoices();
   return <div className="mt-8 flex items-center justify-between gap-4 border-t border-rule pt-4">
+    {/* It opens the rules under it, as the app's other disclosures do: a chevron that turns as it opens. */}
     <button type="button" aria-expanded={rules} onClick={() => useChoices.getState().choose({ rules: !rules })}
-      className="-mx-1 rounded-sm px-1 text-sm whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline aria-expanded:text-ink">
+      className="group -ms-2 inline-flex h-7 items-center gap-1 rounded-md ps-2 pe-1.5 text-sm whitespace-nowrap text-muted hover:bg-hover hover:text-ink aria-expanded:text-ink">
       {t("tasks.howCounted")}
+      <Icon name="down" aria-hidden className="size-3.5 transition-transform duration-(--motion-base) group-aria-expanded:rotate-180" />
     </button>
     <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
       items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />

@@ -24,56 +24,75 @@ export const LEFT = "col-span-3", RIGHT = "col-span-9 min-w-0";
 
 /** Four numbers across the top, three columns each; on a phone two by two. */
 export function Leads({ children }: { children: ReactNode }) {
-  // Each number spans four shared rows (its name, value, the span before, the whole record), so neighbours' lines stand
+  // Each number spans five shared rows (its name, value, its note, the span before, the whole record), so neighbours' lines stand
   // level even where one of them wraps; a phone's second pair stands a step below the first.
   return <div className="grid grid-cols-4 gap-x-6 narrow:grid-cols-2 narrow:gap-x-3 [&>*:nth-child(n+3)]:narrow:mt-5">{children}</div>;
 }
 
 /**
  * A lead number: its name, the value large on a line of one height (so the four stand level whatever is beside a value),
- * the span before, and the whole record so far (`ever`; left out when the span is the whole record).
+ * what the value holds that reads otherwise (`note`, as the tokens' cache), the span before, and the whole record so far
+ * (`ever`; left out when the span is the whole record). The lines after the value are in one small type.
  */
-export function Lead({ name, value, beside, compare, ever }: { name: ReactNode; value: ReactNode; beside?: ReactNode; compare: ReactNode; ever?: string | null }) {
+export function Lead({ name, value, beside, note, compare, ever }: { name: ReactNode; value: ReactNode; beside?: ReactNode; note?: ReactNode; compare: ReactNode; ever?: string | null }) {
   const { t } = useTranslation("analysis");
-  return <div className="row-span-4 grid min-w-0 grid-rows-subgrid">
+  return <div className="row-span-5 grid min-w-0 grid-rows-subgrid">
     <div className="flex min-w-0 flex-wrap items-center text-sm text-muted">{name}</div>
     <div className="flex h-[45px] min-w-0 items-center gap-5 narrow:h-[33px] narrow:gap-3">{value}{beside}</div>
+    <div className="min-w-0 text-xs text-soft">{note}</div>
     <div className="min-w-0">{compare}</div>
     <div className="text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
   </div>;
 }
 
-/** A part of a row's whole: its colour, name and number, its share of the whole where it means something, and, in a day's legend, the tasks a press on it opens. */
+/**
+ * A part of a row's whole: its colour, name and number, its share of the whole where it means something, and the tasks
+ * a press on it opens (`onOpen`; the whole line is the way in, its name as much as its number).
+ */
 export type PartItem = { color: string; name: string; value: ReactNode; share?: ReactNode; onOpen?: () => void; index?: number };
 /**
  * The parts of a row's whole, then the row's per-task line (─●), its value and its gap to the span before (or, for a
- * day, its base under it). One grid for the span's numbers and a day's alike, at every width: the name, then the number
- * at the end of a column of its own, then what goes beside it, so the numbers of every row and of every day stand in one
- * column. Where the column is narrow (a narrow window) its widths give way to what is in them.
+ * day, its base under it). One grid for the span's numbers and a day's alike: the name, then the number at the end of a
+ * column of its own, then what goes beside it. The two number columns are as wide as the widest that any row of the
+ * group says on any day (`--part-value`, `--part-share`, measured by ChartGroup from the span's numbers and each row's
+ * room), so the numbers stand in one column down the rows and do not move when a day is pointed at.
  */
 export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name: string; value: ReactNode; gap?: ReactNode; base?: ReactNode } }) {
   const row = "col-span-3 grid grid-cols-subgrid items-baseline";
-  return <div className="@container mt-2 text-sm">
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-0.5 @min-[15rem]:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem]">
+  const name = "flex min-w-0 items-baseline text-muted [word-break:auto-phrase]";
+  const value = "justify-self-end inline-flex items-baseline gap-0.5 text-end whitespace-nowrap";
+  const share = "justify-self-end text-end text-xs whitespace-nowrap";
+  return <div className="mt-2 text-sm">
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-3 gap-y-0.5">
       {items.map(item => {
         const cells = <>
-          <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]">{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
-          <span className="text-end whitespace-nowrap">{item.value}</span>
-          <span className="text-end text-xs whitespace-nowrap text-soft tabular-nums">{item.share ?? ""}</span>
+          <span className={name}>{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
+          <span data-part-col="value" className={value}>{item.value}{item.onOpen ? <OpenMark /> : <i aria-hidden className="inline-block size-3 flex-none" />}</span>
+          <span data-part-col="share" className={cn(share, "text-soft tabular-nums")}>{item.share ?? ""}</span>
         </>;
-        // A whole row that opens its tasks (a day's legend): it takes the press and the keys, as one way in.
+        // A part that opens its tasks: the whole line takes the press and the keys, as one way in.
         return item.onOpen ? <button key={item.name} type="button" data-part-index={item.index} onClick={item.onOpen}
-          className={cn(row, "group/open -mx-1.5 rounded-sm px-1.5 text-start hover:bg-hover focus-visible:bg-hover")}>{cells}</button>
+          className={cn(row, "group/open -mx-1.5 rounded-sm px-1.5 text-start hover:bg-hover focus-visible:bg-hover active:translate-y-px")}>{cells}</button>
           : <div key={item.name} className={row}>{cells}</div>;
       })}
       {line && <div className={cn(row, items.length > 0 && "mt-1.5")}>
-        <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]"><LineMark />{line.name}</span>
-        <span className="text-end whitespace-nowrap">{line.value}</span>
-        <span className="text-end text-xs whitespace-nowrap">{line.gap}</span>
+        <span className={name}><LineMark />{line.name}</span>
+        <span data-part-col="value" className={value}>{line.value}</span>
+        <span data-part-col="share" className={share}>{line.gap}</span>
       </div>}
       {line?.base && <span className="col-span-3 ps-6 text-xs text-soft">{line.base}</span>}
     </div>
   </div>;
+}
+
+/** The widths of the parts' number columns: the widest each takes in the group, the live legend over a row left out (it says one of the days its row's room already holds). */
+function measureParts(root: HTMLElement) {
+  for (const column of ["value", "share"]) {
+    let most = 0;
+    for (const cell of root.querySelectorAll<HTMLElement>(`[data-part-col="${column}"]`))
+      if (!cell.closest("[data-day-legend]")) most = Math.max(most, cell.getBoundingClientRect().width);
+    root.style.setProperty(`--part-${column}`, most ? `${Math.ceil(most)}px` : "auto");
+  }
 }
 
 /**
@@ -228,6 +247,16 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
   const self = useRef<HTMLDivElement>(null);
+  // The parts' number columns, as wide as the widest of the group (Parts): measured whenever the group is drawn (no
+  // state of its own, so a day pointed at changes nothing), and as its width or type changes.
+  useLayoutEffect(() => { if (self.current) measureParts(self.current); });
+  useLayoutEffect(() => {
+    const root = self.current;
+    if (!root) return;
+    const watch = new ResizeObserver(() => measureParts(root));
+    watch.observe(root);
+    return () => watch.disconnect();
+  }, []);
   const chartOf = (row: number) => self.current?.querySelector<HTMLElement>(`[data-row="${row}"] [data-chart-row]`) ?? null;
   // A list gives the focus back to what opened it, as every window does (Layers: only when the focus was in it or is
   // gone, never taking it from where the person moved it). What opens a list from here is a chart: it takes the focus
@@ -427,17 +456,15 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
 function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; day: string; onList: (list: (bin: Bin) => DayList) => void;
   /** Laid in the flow (the room a row keeps), not over the left. */
   still?: boolean }) {
-  // A day's numbers as the span's are written: a part's number, with the › of what opens tasks when it does.
-  const figure = (value: string, opens: boolean) => <span className="inline-flex items-baseline gap-0.5">
-    <b className="font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline">{value}</b>
-    {opens ? <OpenMark /> : <i aria-hidden className="inline-block size-3 flex-none" />}</span>;
+  // A day's numbers as the span's are written (Parts adds the › of what opens tasks).
+  const figure = (value: string) => <b className="font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline">{value}</b>;
   return <div data-day-legend={still ? undefined : ""} className={cn(!still && "absolute inset-x-0 top-0")}>
     {/* One line, so the legend keeps to the row's room at a narrow width (the row's name is read out in full). */}
     <div title={`${day} ${say.name}`} className="mb-1 truncate text-sm text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
     <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
     <Parts items={(say.parts?.(at) ?? []).map((part, index) => ({ color: part.color, name: part.name, share: part.share, index,
-      value: figure(part.value, !!part.list), onOpen: part.list ? () => onList(part.list!) : undefined }))}
-      line={say.line && { name: say.line.name, value: figure(say.line.value(at), false), base: say.line.base(at) }} />
+      value: figure(part.value), onOpen: part.list ? () => onList(part.list!) : undefined }))}
+      line={say.line && { name: say.line.name, value: <>{figure(say.line.value(at))}<i aria-hidden className="inline-block size-3 flex-none" /></>, base: say.line.base(at) }} />
   </div>;
 }
 

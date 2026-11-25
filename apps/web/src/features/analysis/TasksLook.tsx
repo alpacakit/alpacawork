@@ -114,7 +114,8 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       line: { name: t("line.perTask"), value: i => perText(lines.questions[i]!, "questions"), base: acceptedBase } },
     { name: t("until.prs"), total: i => format("prs", at(i).accepted.prs), list: onBin("accepted", "prs") },
   ];
-  const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
+  // A part of a row's whole on the left: its number, and (when there are any) its tasks, opened from anywhere on its line.
+  const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => ({ value: <Value small kind={kind} value={value} />, onOpen: value ? () => open(list) : undefined });
   // The per-task numbers of the span on the left, against the span before.
   const perSpan = (amount: number, base: number) => base ? amount / base : null;
   const submitsPer = perSpan(accepted.submits, now.accepted), submitsPerBefore = acceptedBefore && before ? perSpan(acceptedBefore.submits, before.accepted) : null;
@@ -134,9 +135,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
-          { color: "bg-done", name: t("outcome.passed"), value: part("tasks", now.passed, { set: "passed", value: "lead" }) },
-          { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", now.reworked, { set: "reworked", value: "lead" }) },
-          { color: "bg-stopped-part", name: t("outcome.stopped"), value: part("tasks", now.stopped, { set: "stopped", value: null }) }]}
+          { color: "bg-done", name: t("outcome.passed"), ...part("tasks", now.passed, { set: "passed", value: "lead" }) },
+          { color: "bg-reworked", name: t("outcome.reworked"), ...part("tasks", now.reworked, { set: "reworked", value: "lead" }) },
+          { color: "bg-stopped-part", name: t("outcome.stopped"), ...part("tasks", now.stopped, { set: "stopped", value: null }) }]}
           line={{ name: t("chart.share"), value: <ShareValue value={now.share} onOpen={now.accepted ? () => open({ set: "accepted", value: null }) : undefined} />,
             gap: before && gap(now.share, before.share, "pt", "up") }} />
         <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
@@ -149,9 +150,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
         <Num className="" label={t("time.total")} kind="hours" value={total} previous={acceptedBefore ? acceptedBefore.time.review + acceptedBefore.time.answer + acceptedBefore.time.ai + acceptedBefore.time.other : null}
           length={length} onOpen={() => open({ set: "accepted", value: "lead" })} />
         <Parts items={[
-          { color: "bg-turn", name: t("time.you"), value: part("hours", you, { set: "accepted", value: "you" }), share: share_(you, total) },
-          { color: "bg-working", name: t("time.ai"), value: part("hours", time.ai, { set: "accepted", value: "ai" }), share: share_(time.ai, total) },
-          { color: "bg-rest", name: t("time.other"), value: part("hours", time.other, { set: "accepted", value: "other" }), share: share_(time.other, total) }]}
+          { color: "bg-turn", name: t("time.you"), ...part("hours", you, { set: "accepted", value: "you" }), share: share_(you, total) },
+          { color: "bg-working", name: t("time.ai"), ...part("hours", time.ai, { set: "accepted", value: "ai" }), share: share_(time.ai, total) },
+          { color: "bg-rest", name: t("time.other"), ...part("hours", time.other, { set: "accepted", value: "other" }), share: share_(time.other, total) }]}
           line={{ name: t("line.median"), value: <Value small kind="hours" value={accepted.leadMedianMs} onOpen={() => open({ set: "accepted", value: "lead" })} />,
             gap: gap(accepted.leadMedianMs, acceptedBefore?.leadMedianMs ?? null, "hours") }} />
       </>}>
@@ -187,7 +188,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const breakdown = <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
     <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
-      columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("tasks.cols.share"),
+      columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
         head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
       rows={breakdownRows.map(row => ({ key: row.key,
         // A task no AI was given (no owner Run) has the server's key `unknown` for its model and AI kind.
@@ -207,10 +208,18 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   return <>
     {leads}
     <ChartHead />
+    {/* Every name the look shows, in the order it shows them. */}
     {rules && <RulesBox>
       <Rule name={t("tasks.passed")}>{t("def.lead")}<ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
         <p className="mt-1">{t("def.after")}</p></Rule>
+      <Rule name={t("tasks.finished")}>{t("def.finishedTasksText")}</Rule>
+      <Rule name={t("tasks.accepted")}>{t("def.acceptedText")}</Rule>
       <Rule name={t("def.leadName")}>{t("def.leadText")}</Rule>
+      <Rule name={t("time.you")}>{t("def.youText")}</Rule>
+      <Rule name={t("time.ai")}>{t("def.aiText")}</Rule>
+      <Rule name={t("time.other")}>{t("def.otherText")}</Rule>
+      <Rule name={t("until.submits")}>{t("def.submitsText")}</Rule>
+      <Rule name={t("until.questions")}>{t("def.questionsText")}</Rule>
       <Rule name={t("def.prName")}>{t("def.prText")}</Rule>
       <Rule name={t("def.perTaskName")}>{t("def.perTaskText")}</Rule>
       <Rule name={t("def.modelName")}>{t("def.modelText")}</Rule>
@@ -227,12 +236,11 @@ export const head = (name: string, kind: Parameters<typeof unitOf>[0]) => { cons
   return unit ? i18n.t("analysis:table.head", { name, unit }) : name; };
 
 /**
- * A table cell of a value: the number alone (its unit is in the column's heading), opening the tasks behind it when
- * there are any. Tokens keep their step (万, 億) beside each number, as rows differ in it.
+ * A table cell of a count or hours: the number alone (its unit is in the column's heading), opening the tasks behind
+ * it when there are any. (A token column is written by its own step, `tokenColumn`.)
  */
-export function cell(kind: Kind, value: number, open: () => void): Cell {
-  const written = parts(kind, value);
-  return { text: written.value, unit: kind === "tokens" ? written.unit : undefined, open: value ? open : undefined };
+export function cell(kind: Exclude<Kind, "tokens">, value: number, open: () => void): Cell {
+  return { text: parts(kind, value).value, open: value ? open : undefined };
 }
 
 /** The parts of a day's finished tasks, as its window says them under the total, in the colours they are drawn in. */

@@ -9,8 +9,8 @@ import { useWorkspaceInfo } from "@/data/queries";
 import { cn } from "@/lib/utils";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { useUnitList, useUnitValues } from "./data";
-import { duration, format, instant, numberText, spanLabel } from "./format";
-import { listColumn, listTitle, listUnit, writeValue } from "./lists";
+import { dayLabel, duration, format, instant, spanLabel, tokenColumn } from "./format";
+import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
 import { PointerTip, Square, tip } from "./parts";
 import type { ListRow, UnitValues } from "./contract";
 import type { AnalysisPlace } from "./place";
@@ -52,7 +52,8 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
     {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
     <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
     <PointerTip root={surfaceBox} />
-    <aside ref={setSurface} role="dialog" aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
+    {/* On a computer it is a panel at the window's right: the coordinator's input stands left of it, as beside the reader. */}
+    <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={place.unit ?? (place.list ? listTitle(place.list) : "")}
       className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
         narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
           : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
@@ -88,17 +89,20 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const span = first?.head.period ?? days;
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
-  // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it. A
-  // list of one day leaves out the column of days (every row would say the same day).
-  const title = t("list.title", { title: listTitle(list), n: numberText(first.total), unit: listUnit(list, first.total) });
-  const oneDay = list.days ? list.days.from === list.days.to : !!span && span.from === span.to;
-  const columns = oneDay ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)]";
+  // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
+  const title = listHeading(list, first.total);
+  const oneDay = list.days ? list.days.from === list.days.to ? list.days.from : null : span && span.from === span.to ? span.from : null;
+  const dayOf = (row: ListRow) => row.finishedAt ? instant(row.finishedAt, zone).split(" ")[0]! : null;
+  const listDay = oneDay ? dayLabel(oneDay) : null;
+  const noDays = !showsDays(rows.map(dayOf), listDay);
+  const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
     <h3 className="text-md font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
     <p className="mt-0.5 text-xs text-soft">{[member, !list.days && span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
     {rows.length ? <>
-      <div className={cn("mt-4 grid h-7 items-center gap-x-3 border-b border-rule text-xs text-soft", columns)}>
-        <span>{t("list.task")}</span><span />{!oneDay && <span className="text-end">{t("list.day")}{!list.value && " ▼"}</span>}
+      {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
+      <div className={cn("mt-4 grid min-h-7 items-end gap-x-3 border-b border-rule pb-1.5 text-xs leading-snug text-soft", columns)}>
+        <span>{t("list.task")}</span><span />{!noDays && <span className="text-end [word-break:auto-phrase]">{t("list.day")}{!list.value && " ▼"}</span>}
         <span className="text-end whitespace-nowrap">{listColumn(list)}{list.value && " ▼"}</span>
       </div>
       <ul>{rows.map(row => <li key={row.id} className="border-b border-rule">
@@ -106,7 +110,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
           className={cn("grid h-8.75 w-full items-center gap-x-3 rounded-sm text-start text-sm hover:bg-hover", columns)}>
           <span className="text-muted">{row.id}</span>
           <span dir="auto" className="truncate">{row.title}</span>
-          {!oneDay && <span className="text-end text-soft">{row.finishedAt ? instant(row.finishedAt, zone).split(" ")[0] : ""}</span>}
+          {!noDays && <span className="text-end text-soft">{dayOf(row) ?? ""}</span>}
           <span className="text-end font-semibold whitespace-nowrap">
             {list.value && row.value !== null ? writeValue(list.value, row.value)
               : <span className="inline-flex items-center font-normal text-muted">{row.outcome && <Square className={OUTCOME[row.outcome]} />}{outcomeWord(row, t)}</span>}
@@ -128,10 +132,16 @@ function UnitPane({ unit }: { unit: string }) {
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const usage = values.usage;
-  const facts = ([[t("until.submits"), values.submits], [t("values.sendBacks"), values.sendBacks], [t("values.atReview"), values.instructionsAtReview],
-    [t("values.afterAccept"), values.instructionsAfterAccept], [t("values.duringWork"), values.instructionsDuringWork],
-    [t("until.questions"), values.questions], [t("values.answers"), values.answers]] as [string, number][]).filter(([, n]) => n)
-    .map(([name, n]) => [name, format("times", n)] as [string, string]);
+  // The models' output in one step, the largest's (one column reads alike).
+  const output = tokenColumn(values.models.map(model => model.output));
+  // What took a task out of "no fixes" (more than one review, a send-back, an instruction in review or after acceptance)
+  // is drawn in the colour of "needed fixes" where the task needed them, so the reason reads from the values alone.
+  const reworked = row.outcome === "reworked";
+  const facts = ([[t("until.submits"), values.submits, values.submits > 1], [t("values.sendBacks"), values.sendBacks, true],
+    [t("values.atReview"), values.instructionsAtReview, true], [t("values.afterAccept"), values.instructionsAfterAccept, true],
+    [t("values.duringWork"), values.instructionsDuringWork, false], [t("until.questions"), values.questions, false],
+    [t("values.answers"), values.answers, false]] as [string, number, boolean][]).filter(([, n]) => n)
+    .map(([name, n, why]) => ({ name, value: format(name === t("until.questions") ? "questions" : "times", n), why: reworked && why }));
   const used = ([
     [t("usage.launches"), usage.launches && format("times", usage.launches)],
     [t("usage.runMs"), usage.runMs && duration(usage.runMs)],
@@ -151,7 +161,7 @@ function UnitPane({ unit }: { unit: string }) {
       ...you > 0 ? [{ color: "bg-turn", name: t("time.you"), value: duration(you) }] : [],
       ...values.time.ai > 0 ? [{ color: "bg-working", name: t("time.ai"), value: duration(values.time.ai) }] : [],
       ...values.time.other >= 60_000 ? [{ color: "bg-rest", name: t("time.other"), value: duration(values.time.other) }] : [],
-      ...facts.map(([name, value]) => ({ name, value }))]} />
+      ...facts]} />
     {used.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.usage")}</h4>
       <Facts items={used.map(([name, value]) => ({ name, value }))} />
@@ -159,10 +169,10 @@ function UnitPane({ unit }: { unit: string }) {
     {values.models.length > 0 && <table className="mt-2.5 w-full border-collapse">
       <thead><tr className="h-7.5 border-b border-rule text-xs text-soft">
         <th className="text-start font-normal">{t("values.models")}</th><th className="ps-3 text-end font-normal">{t("usage.launches")}</th>
-        <th className="ps-3 text-end font-normal">{t("usage.runMs")}</th><th className="ps-3 text-end font-normal">{t("usage.output")}</th></tr></thead>
+        <th className="ps-3 text-end font-normal">{t("usage.runMs")}</th><th className="ps-3 text-end font-normal">{output.unit ? t("table.head", { name: t("usage.output"), unit: output.unit }) : t("usage.output")}</th></tr></thead>
       <tbody>{values.models.map(model => <tr key={model.label} className="h-7.5 border-b border-rule">
         <td>{model.label}</td><td className="ps-3 text-end">{format("times", model.launches)}</td>
-        <td className="ps-3 text-end">{duration(model.runMs)}</td><td className="ps-3 text-end">{format("tokens", model.output)}</td></tr>)}</tbody>
+        <td className="ps-3 text-end">{duration(model.runMs)}</td><td className="ps-3 text-end tabular-nums">{output.write(model.output)}</td></tr>)}</tbody>
     </table>}
     {values.prs.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("until.prs")}</h4>
@@ -175,7 +185,7 @@ function UnitPane({ unit }: { unit: string }) {
     {values.tools.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.tools")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{values.tools.slice(0, 8).map(tool =>
-        <span key={tool.name}>{tool.name}<b className="ms-1.5 font-semibold text-ink">{numberText(tool.calls)}</b></span>)}</p>
+        <span key={tool.name}>{tool.name}<b className="ms-1.5 font-semibold text-ink">{format("times", tool.calls)}</b></span>)}</p>
     </>}
     <p className="mt-7"><Button variant="outline" onClick={() => useViewStore.getState().openFromAnalysis(values.unit.id)}>{t("values.open")}</Button></p>
   </div>;
@@ -185,12 +195,12 @@ function UnitPane({ unit }: { unit: string }) {
  * A task's values as the lead numbers are drawn: each its name over its value (with its colour where the chart has one),
  * four to a line on one grid, so a name never parts from its value at a line's end.
  */
-function Facts({ items, className }: { items: { name: string; value: string; color?: string }[]; className?: string }) {
+function Facts({ items, className }: { items: { name: string; value: string; color?: string; why?: boolean }[]; className?: string }) {
   if (!items.length) return null;
   return <dl className={cn("grid grid-cols-4 gap-x-4 gap-y-3 narrow:grid-cols-3", className)}>
     {items.map(item => <div key={item.name} className="min-w-0">
       <dt className="flex items-center text-xs text-muted">{item.color && <Square className={item.color} />}{item.name}</dt>
-      <dd className="text-sm font-semibold tabular-nums">{item.value}</dd>
+      <dd className={cn("text-sm font-semibold tabular-nums", item.why && "text-turn")}>{item.value}</dd>
     </div>)}
   </dl>;
 }

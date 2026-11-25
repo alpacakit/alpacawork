@@ -17,18 +17,19 @@ const COLUMN: Record<ListValue, string> = {
 };
 const USAGE = new Set<ListValue>(["launches", "runMs", "newConversations", "tokens", "output", "input", "cache", "calls"]);
 
+/** What a list lists (the number it was opened from): a count's own name, or, for an amount of the AI's use, the tasks it went to. */
 export function listTitle(list: ListPlace): string {
   if (list.value === "questions") return word("until.questionsList");
   if (list.value === "prs") return word("until.prsList");
-  if (list.set === "used" && list.value) return word(COLUMN[list.value]);
+  if (list.set === "used" && list.value) return word("list.usedTitle", { name: word(COLUMN[list.value]) });
   return word({ passed: "tasks.passed", reworked: "tasks.reworked", stopped: "tasks.stopped", accepted: "tasks.accepted", finished: "tasks.finished", used: "usage.tasks" }[list.set]);
 }
 /**
- * The unit of a list's count: tasks, said as a count of them (件) or, for the AI's use, as tasks; none in a language that
- * writes no count word (`unit.countWords`).
+ * A list's heading: what it lists, then how many tasks, apart ("出力のタスク・3件", "Output · 3 tasks"). The count
+ * always says it counts tasks, in English too (which writes no count word elsewhere): beside a name like "Output" a
+ * bare number would read as the amount.
  */
-export const listUnit = (list: ListPlace, count: number) => word("unit.countWords") === "no" ? ""
-  : list.set === "used" ? word("unit.taskCount", { count }) : word("unit.tasks", { count });
+export const listHeading = (list: ListPlace, count: number) => `${listTitle(list)}${word("sep")}${word("list.count", { count, n: count.toLocaleString(i18n.resolvedLanguage ?? "en") })}`;
 export const listColumn = (list: ListPlace) => list.value ? word(COLUMN[list.value]) : word("list.outcome");
 export const usageValue = (value: ListValue | null) => value !== null && USAGE.has(value);
 
@@ -42,3 +43,9 @@ export function writeValue(value: ListValue, amount: number): string {
     case "tokens": case "output": case "input": case "cache": return format("tokens", amount);
   }
 }
+
+/**
+ * Whether a list shows the column of the day each task finished: unless it would say nothing the heading does not,
+ * every row having finished on the list's one day (`listDay`; null for a list of several days) or not at all.
+ */
+export const showsDays = (days: (string | null)[], listDay: string | null) => !days.every(day => day === null || day === listDay);

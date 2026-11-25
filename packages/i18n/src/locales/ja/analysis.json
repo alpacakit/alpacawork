@@ -24,18 +24,22 @@
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件受け入れると割合を出します）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
   "def": {
+    "acceptedText": "あなたが受け入れたタスク。手直しなしの割合・かかった時間・確認に出した回数・あなたへの問い・関連 PR は、受け入れたタスクだけで数える",
     "after": "作業中の指示の追加は数えない。割合は10件以上のときだけ出す。",
+    "aiText": "作業中で、AI が動いていた時間",
+    "cacheText": "キャッシュから読んだ分と書いた分。トークンの大半はここ",
     "conversationName": "新しい会話",
     "conversationText": "この期間に最初に起動した会話",
     "dayName": "日付",
     "everName": "全期間",
     "everText": "記録の最初の日から今日まで",
     "finishedName": "終わったタスク",
+    "finishedTasksText": "受け入れたタスクと中止したタスク。受け入れたタスクは最初に受け入れた日に数える",
     "finishedText": "「タスク」と同じ数",
     "inputName": "入力",
     "inputText": "キャッシュの読み書きは除く",
@@ -47,23 +51,29 @@
     "modelName": "モデル",
     "modelText": "最初に任せたモデル",
     "one": "確認に出したのは1回まで",
+    "otherText": "保留・エラー・着手前の時間と、作業中でも AI が動いていなかった時間",
+    "outputText": "AI が書いた分",
     "perFinishedName": "終わったタスク1件あたり",
     "perFinishedText": "その区切りの量 ÷ その区切りに終わったタスクの数。作業中のタスクの分も入るので、日ごとでは振れる",
     "perTaskName": "1件あたり",
     "perTaskText": "その区切りの合計 ÷ その区切りに受け入れたタスクの数。10件未満の区切りは白抜きの点",
     "prName": "関連 PR",
     "prText": "受け入れたタスクに出てきた PR。同じ PR は1つに数える",
+    "questionsText": "頼んでから終わるまでに AI があなたに聞いた問いの数。取り下げた問いも含む",
     "runName": "実行時間",
     "runText": "動いた長さの合計。並行分も足す",
     "skillName": "スキル",
     "skillText": "呼び出したか、スキルの文書を読んだ起動",
+    "submitsText": "受け入れるまでに確認に出した回数",
     "three": "受け入れた後に指示が来ていない（来たら外れる）",
     "tokensName": "トークン",
     "tokensText": "出力＋入力＋キャッシュの読み書き。作業中のタスクの分も含む",
     "tokensUnknown_other": "トークンの記録がない起動 {{count}}回は、トークンに含まない",
     "toolName": "ツール",
     "toolText": "サブエージェント内の呼び出しは含まない",
-    "two": "確認中に差し戻しも指示の追加もない"
+    "two": "確認中に差し戻しも指示の追加もない",
+    "usedTasksText": "その AI が動いたタスク。1つのタスクで複数のモデルが動くとそれぞれに数えるので、合計は終わったタスクより多くなることがある",
+    "youText": "確認待ち（あなたが確認するのを待っていた時間）と、答え待ち（あなたへの問いに答えるのを待っていた時間）"
   },
   "face": {
     "analysis": "分析",
@@ -85,12 +95,13 @@
   "list": {
     "back": "一覧",
     "close": "閉じる",
+    "count_other": "{{n}}件",
     "day": "終わった日",
     "empty": "タスクはありません",
     "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
     "task": "タスク",
-    "title": "{{title}} {{n}}{{unit}}"
+    "usedTitle": "{{name}}のタスク"
   },
   "look": {
     "label": "表示",
@@ -135,10 +146,9 @@
       "finished": "終わった",
       "lead": "かかった時間の中央値",
       "passed": "手直しなし",
-      "share": "手直しなしの割合",
       "submits": "確認に出した回数（1件あたり）"
     },
-    "few": "受け入れたタスクが10件未満",
+    "few": "10件受け入れると割合を出します",
     "finished": "終わったタスク",
     "grass": "日ごとの終わったタスク",
     "grassFew": "少ない",
@@ -181,7 +191,6 @@
         "unit": "万"
       }
     ],
-    "taskCount_other": "タスク",
     "tasks_other": "件",
     "times_other": "回"
   },
@@ -202,6 +211,7 @@
       "tool": "ツール"
     },
     "cache": "キャッシュ",
+    "cacheWithin": "うちキャッシュ {{value}}",
     "calls": "呼び出し",
     "heads": {
       "agent": "AI の種類",
@@ -219,13 +229,13 @@
     "outputTokens": "出力トークン",
     "runMs": "実行時間",
     "skillLaunches": "スキルを使った起動",
-    "tasks": "タスク",
+    "tasks": "関わったタスク",
     "tokens": "トークン"
   },
   "values": {
     "accepted": "{{at}} 受け入れ",
     "afterAccept": "受け入れ後の指示",
-    "answers": "答えた",
+    "answers": "あなたが答えた",
     "atReview": "確認中の指示",
     "band": {
       "doing": "作業中",

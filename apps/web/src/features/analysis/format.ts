@@ -31,8 +31,11 @@ const scales = (): Scale[] => {
 };
 const scaleOf = (value: number) => scales().find(scale => value >= scale.at) ?? null;
 
-/** Hours, to one place under ten. */
-const hourValue = (hours: number) => hours >= 10 ? whole(hours) : fixed(hours, 1);
+/**
+ * Hours: to one place under ten, whole from ten. The places are chosen by the value as it rounds (9.96 is 10, not
+ * 10.0), so every number of ten or more is written whole.
+ */
+const hourValue = (hours: number) => { const tenth = Math.round(hours * 10) / 10; return tenth >= 10 ? whole(hours) : fixed(tenth, 1); };
 
 export function parts(kind: Kind, value: number): Parts {
   switch (kind) {
@@ -59,15 +62,33 @@ export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "peop
   kind === "hours" ? word("unit.hours") : countWord(kind, 2);
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
 
-/** A time of one task: minutes under an hour, else hours. */
+/** A time of one task: minutes under an hour as it rounds (59.6 minutes is an hour), else hours. */
 export function duration(ms: number): string {
-  return ms < HOUR ? word("unit.join", { value: whole(ms / 60_000), unit: word("unit.minutes") }) : format("hours", ms);
+  const minutes = Math.round(ms / 60_000);
+  return minutes < 60 ? word("unit.join", { value: whole(minutes), unit: word("unit.minutes") }) : format("hours", ms);
+}
+
+/**
+ * How a column of token counts is written: every value in the step of the column's largest (万・億, or K・M・B), said
+ * once in the column's heading (`unit`), so the values of one column read alike. A value too small to show in that
+ * step is written as under its smallest place ("<0.1"), never as 0 (only none is 0).
+ */
+export function tokenColumn(values: number[]): { unit: string; write: (value: number) => string } {
+  const scale = scaleOf(Math.max(0, ...values));
+  if (!scale) return { unit: "", write: whole };
+  return { unit: scale.unit, write: value => {
+    if (!value) return whole(0);
+    // A step's own places, and one more where the column's values are under ten of it (0.3万, not 0万).
+    const digits = Math.max(scale.digits, Math.max(0, ...values) / scale.at < 10 ? 1 : 0);
+    const written = fixed(value / scale.at, digits);
+    return value > 0 && !/[1-9]/.test(written) ? `<${fixed(10 ** -digits, digits)}` : written;
+  } };
 }
 
 /** How a gap is written in a kind: its size in the kind's own unit, which for tokens is the larger value's step. */
 function gapValue(kind: Kind, gap: number, larger: number): string {
   // Like tokens, the gap has the places of the larger value (160時間, −1), not of its own size.
-  if (kind === "hours") return larger / HOUR >= 10 ? whole(gap / HOUR) : fixed(gap / HOUR, 1);
+  if (kind === "hours") return Math.round(larger / HOUR * 10) / 10 >= 10 ? whole(gap / HOUR) : fixed(gap / HOUR, 1);
   if (kind !== "tokens") return whole(gap);
   const scale = scaleOf(larger);
   // The gap has the places its value has (99.7億, +20.4億), so the two read alike.

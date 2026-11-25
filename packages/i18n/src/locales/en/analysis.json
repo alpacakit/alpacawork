@@ -26,18 +26,22 @@
     "share": "No-fix rate",
     "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
     "shareTip": "{{passed}} of {{accepted}} accepted",
-    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)"
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (the rate shows once 10 are accepted)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
   "def": {
-    "after": "Instructions added while it worked do not count. The share is shown from 10 accepted tasks.",
+    "acceptedText": "Tasks you accepted. The no-fix rate, time taken, reviews, questions to you and related PRs count accepted tasks only",
+    "after": "Instructions added while it worked do not count. The rate is shown from 10 accepted tasks.",
+    "aiText": "Time in progress with an AI running",
+    "cacheText": "Reads from and writes to the cache. Most tokens are here",
     "conversationName": "New conversations",
     "conversationText": "Conversations first launched in this span",
     "dayName": "Dates",
     "everName": "All time",
     "everText": "From the first day of records to today",
     "finishedName": "Finished tasks",
+    "finishedTasksText": "Accepted tasks and stopped tasks. An accepted task counts on the day it was first accepted",
     "finishedText": "The same number as under Tasks",
     "inputName": "Input",
     "inputText": "Cache reads and writes excluded",
@@ -49,24 +53,30 @@
     "modelName": "Model",
     "modelText": "The model first given the task",
     "one": "Sent for review at most once",
+    "otherText": "Time on hold, in error or not started, and time in progress with no AI running",
+    "outputText": "What the AI wrote",
     "perFinishedName": "Per finished task",
     "perFinishedText": "Amount in the interval ÷ tasks finished in it. Work on unfinished tasks is included, so it swings by day",
     "perTaskName": "Per task",
     "perTaskText": "Interval total ÷ tasks accepted in it. Hollow points: fewer than 10",
     "prName": "Related PRs",
     "prText": "PRs that appear in the accepted tasks; the same PR counts once",
+    "questionsText": "Questions the AI asked you between the request and the end, withdrawn ones included",
     "runName": "Run time",
     "runText": "Total time running, parallel runs added",
     "skillName": "Skills",
     "skillText": "Launches that called the skill or read its documents",
+    "submitsText": "Times the task was sent for your review before acceptance",
     "three": "No instruction after acceptance (one coming later takes it out)",
     "tokensName": "Tokens",
     "tokensText": "Output + input + cache reads and writes, tasks still at work included",
-    "tokensUnknown_one": "{{count}} launch without a token record is not in the tokens",
-    "tokensUnknown_other": "{{count}} launches without a token record are not in the tokens",
+    "tokensUnknown_one": "Token totals exclude {{count}} launch without token data",
+    "tokensUnknown_other": "Token totals exclude {{count}} launches without token data",
     "toolName": "Tools",
     "toolText": "Calls inside subagents excluded",
-    "two": "No send-back and no added instruction while in review"
+    "two": "No send-back and no added instruction while in review",
+    "usedTasksText": "Tasks the AI worked on. A task worked on by several models counts for each, so the total can exceed the finished tasks",
+    "youText": "Awaiting your review, and awaiting your answer to a question"
   },
   "face": {
     "analysis": "Analysis",
@@ -89,13 +99,15 @@
   "list": {
     "back": "Back to list",
     "close": "Close",
+    "count_one": "{{n}} task",
+    "count_other": "{{n}} tasks",
     "day": "Finished",
     "empty": "No tasks",
     "more_one": "Show {{count}} more",
     "more_other": "Show {{count}} more",
     "outcome": "Outcome",
     "task": "Task",
-    "title": "{{title}} {{n}} {{unit}}"
+    "usedTitle": "{{name}}"
   },
   "look": {
     "label": "View",
@@ -142,10 +154,9 @@
       "finished": "Finished",
       "lead": "Median time taken",
       "passed": "No fixes",
-      "share": "Share with no fixes",
       "submits": "Reviews per task"
     },
-    "few": "Fewer than 10 accepted tasks",
+    "few": "The rate shows once 10 tasks are accepted",
     "finished": "Finished tasks",
     "grass": "Finished tasks by day",
     "grassFew": "Fewer",
@@ -198,8 +209,6 @@
         "unit": "K"
       }
     ],
-    "taskCount_one": "task",
-    "taskCount_other": "tasks",
     "tasks_one": "task",
     "tasks_other": "tasks",
     "times_one": "time",
@@ -222,6 +231,7 @@
       "tool": "Tool"
     },
     "cache": "Cache",
+    "cacheWithin": "Cache {{value}} of it",
     "calls": "Calls",
     "heads": {
       "agent": "Agent",
@@ -239,13 +249,13 @@
     "outputTokens": "Output tokens",
     "runMs": "Run time",
     "skillLaunches": "Launches using a skill",
-    "tasks": "Tasks",
+    "tasks": "Tasks involved",
     "tokens": "Tokens"
   },
   "values": {
     "accepted": "Accepted {{at}}",
     "afterAccept": "Instructions after acceptance",
-    "answers": "Answered",
+    "answers": "You answered",
     "atReview": "Instructions in review",
     "band": {
       "doing": "Working",

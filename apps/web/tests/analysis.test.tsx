@@ -1,6 +1,8 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
-import { comparison, delta, format, parts, share, shareDelta } from "../src/features/analysis/format";
+import { comparison, delta, duration, format, parts, share, shareDelta, tokenColumn } from "../src/features/analysis/format";
+import { holdsAll } from "../src/features/analysis/BreakdownTable";
+import { listHeading, showsDays } from "../src/features/analysis/lists";
 import { head } from "../src/features/analysis/TasksLook";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
@@ -20,6 +22,44 @@ test("hours are written to one place under ten and whole from ten; a count is gr
   expect(parts("hours", 1.44 * HOUR).value).toBe("1.4");
   expect(parts("hours", 147.4 * HOUR).value).toBe("147");
   expect(parts("tasks", 1511).value).toBe("1,511");
+  // The places follow the value as it rounds: 9.96 hours is 10, never 10.0; 59.6 minutes is an hour.
+  expect(parts("hours", 9.96 * HOUR).value).toBe("10");
+  expect(parts("hours", 9.94 * HOUR).value).toBe("9.9");
+  expect(duration(59.6 * 60_000)).toBe("1.0時間");
+  expect(duration(59.4 * 60_000)).toBe("59分");
+});
+
+test("a column of tokens is written in its largest value's step, said once, and a small value never reads as zero", () => {
+  const column = tokenColumn([4e4, 2953]);
+  expect(column.unit).toBe("万");
+  expect([column.write(4e4), column.write(2953), column.write(0)]).toEqual(["4.0", "0.3", "0"]);
+  const large = tokenColumn([1.2e9, 2953]);
+  expect([large.unit, large.write(1.2e9), large.write(2953)]).toEqual(["億", "12.0", "<0.1"]);
+  expect(tokenColumn([2953, 12]).unit).toBe("");
+});
+
+test("a table shows every column only where each number has its room, else one column chosen from its heading", () => {
+  expect(holdsAll(1392, 8)).toBe(true);
+  expect(holdsAll(653, 8)).toBe(false);
+  expect(holdsAll(653, 3)).toBe(true);
+});
+
+test("a list's heading says what it lists and how many tasks apart, in English too", async () => {
+  expect(listHeading({ set: "used", value: "output" } as never, 3)).toBe("出力のタスク・3件");
+  expect(listHeading({ set: "reworked", value: "lead" } as never, 24)).toBe("手直しあり・24件");
+  await i18n.changeLanguage("en");
+  try {
+    expect(listHeading({ set: "used", value: "output" } as never, 3)).toBe("Output · 3 tasks");
+    expect(listHeading({ set: "finished", value: null } as never, 1)).toBe("Finished tasks · 1 task");
+  } finally { await i18n.changeLanguage("ja"); }
+});
+
+test("a list leaves out the day each task finished only when every row finished on the list's one day", () => {
+  expect(showsDays(["10/3", "10/3", null], "10/3")).toBe(false);
+  expect(showsDays(["10/3", "10/5", "10/6"], "10/3")).toBe(true);
+  expect(showsDays(["10/5", "10/5"], "10/3")).toBe(true);
+  expect(showsDays(["10/5", "10/6"], null)).toBe(true);
+  expect(showsDays([null, null], null)).toBe(false);
 });
 
 test("large token counts take the largest step they reach, and a gap is written in the larger value's step", () => {

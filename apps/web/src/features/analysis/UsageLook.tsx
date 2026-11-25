@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, delta, format, unitOf as unitWord, type Kind } from "./format";
+import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
@@ -42,6 +42,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
 
   const leads = <Leads>
     <Lead name={t("usage.tokens")} value={<Value big kind="tokens" value={tokens(now)} onOpen={() => open({ set: "used", value: "tokens" })} />}
+      note={now.tokens.cache > 0 && t("usage.cacheWithin", { value: format("tokens", now.tokens.cache) })}
       compare={<Compare kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length} />}
       ever={ever && format("tokens", tokens(ever))} />
     <Lead name={t("usage.runMs")} value={<Value big kind="hours" value={now.runMs} onOpen={() => open({ set: "used", value: "runMs" })} />}
@@ -106,10 +107,11 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const perBefore = (key: "tokens" | "runMs" | "launches") => before ? spanPer(key === "tokens" ? tokens(before) : before[key], tasks?.counts.previous?.finished) : null;
   const perEntry = (key: "tokens" | "runMs" | "launches") => {
     const value = perNow(key), previous = perBefore(key);
-    return taskPoints ? { name: t("line.perFinished"), value: <b className="font-semibold tabular-nums">{value === null ? "—" : format(kinds[key], value)}</b>,
+    return taskPoints ? { name: t("line.perFinished"), value: <><b className="font-semibold tabular-nums">{value === null ? "—" : format(kinds[key], value)}</b><i aria-hidden className="inline-block size-3 flex-none" /></>,
       gap: value !== null && previous !== null ? <span className="text-muted">{delta(kinds[key], value, previous)}</span> : null } : undefined;
   };
-  const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
+  // A part of a row's whole on the left: its number, and (when there are any) its tasks, opened from anywhere on its line.
+  const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => ({ value: <Value small kind={kind} value={value} />, onOpen: value ? () => open(list) : undefined });
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
@@ -118,9 +120,9 @@ export function UsageLook({ view, tasks, days, open, zone }: {
         <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
-          { color: "bg-done", name: t("outcome.passed"), value: part("tasks", finished.passed, { set: "passed", value: "lead" }) },
-          { color: "bg-reworked", name: t("outcome.reworked"), value: part("tasks", finished.reworked, { set: "reworked", value: "lead" }) },
-          { color: "bg-stopped-part", name: t("outcome.stopped"), value: part("tasks", finished.stopped, { set: "stopped", value: null }) }]} />
+          { color: "bg-done", name: t("outcome.passed"), ...part("tasks", finished.passed, { set: "passed", value: "lead" }) },
+          { color: "bg-reworked", name: t("outcome.reworked"), ...part("tasks", finished.reworked, { set: "reworked", value: "lead" }) },
+          { color: "bg-stopped-part", name: t("outcome.stopped"), ...part("tasks", finished.stopped, { set: "stopped", value: null }) }]} />
       </>}>
         <BarChart row={0} height="h-22 narrow:h-18" scale={scales.finished} grow
           values={i => [["bg-done", taskPoints[i]!.counts.passed, 0], ["bg-reworked", taskPoints[i]!.counts.reworked, 1], ["bg-stopped-part", taskPoints[i]!.counts.stopped, 2]]} />
@@ -130,9 +132,9 @@ export function UsageLook({ view, tasks, days, open, zone }: {
         <Num className="" label={t("usage.tokens")} kind="tokens" value={tokens(now)} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "tokens" })} />
         <Parts items={[
-          { color: "", name: t("usage.output"), value: part("tokens", now.tokens.output, { set: "used", value: "output" }) },
-          { color: "", name: t("usage.input"), value: part("tokens", now.tokens.input, { set: "used", value: "input" }) },
-          { color: "", name: t("usage.cache"), value: part("tokens", now.tokens.cache, { set: "used", value: "cache" }) }]} line={perEntry("tokens")} />
+          { color: "", name: t("usage.output"), ...part("tokens", now.tokens.output, { set: "used", value: "output" }) },
+          { color: "", name: t("usage.input"), ...part("tokens", now.tokens.input, { set: "used", value: "input" }) },
+          { color: "", name: t("usage.cache"), ...part("tokens", now.tokens.cache, { set: "used", value: "cache" }) }]} line={perEntry("tokens")} />
       </>}>
         <BarChart row={first} height="h-30 narrow:h-22" scale={scales.tokens} tone="working" grow overlay={overlays?.tokens} values={i => [["", amount.tokens(i)]]} />
       </Row>
@@ -146,7 +148,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
       <Row row={first + 2} left={<>
         <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "launches" })} />
-        <Parts items={[{ color: "", name: t("usage.newConversations"), value: part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]}
+        <Parts items={[{ color: "", name: t("usage.newConversations"), ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]}
           line={perEntry("launches")} />
       </>}>
         <BarChart row={first + 2} height="h-20 narrow:h-16" scale={scales.launches} tone="working" grow overlay={overlays?.launches} values={i => [["", amount.launches(i)]]} />
@@ -158,14 +160,18 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   return <>
     {leads}
     <ChartHead />
+    {/* Every name the look shows, in the order it shows them. */}
     {rules && <RulesBox>
       <Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p className="mt-1">{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
+      <Rule name={t("usage.output")}>{t("def.outputText")}</Rule>
       <Rule name={t("def.inputName")}>{t("def.inputText")}</Rule>
+      <Rule name={t("usage.cache")}>{t("def.cacheText")}</Rule>
       <Rule name={t("def.runName")}>{t("def.runText")}</Rule>
       <Rule name={t("def.launchName")}>{t("def.launchText")}</Rule>
       <Rule name={t("def.conversationName")}>{t("def.conversationText")}</Rule>
       <Rule name={t("def.finishedName")}>{t("def.finishedText")}</Rule>
       <Rule name={t("def.perFinishedName")}>{t("def.perFinishedText")}</Rule>
+      <Rule name={t("usage.tasks")}>{t("def.usedTasksText")}</Rule>
       <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
       <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
       <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
@@ -192,19 +198,26 @@ function Breakdown({ view, group, days, open, choose }: {
   const counted = by === "skill" || by === "tool" || by === "mcp";
   const since = breakdown?.since ?? null;
   const before = counted && (since === null || days.to < since);
-  // Each column's unit is said once, in its heading; tokens keep their step (万, 億) by each number.
+  // Each column's unit is said once, in its heading: a token column's step (万, 億) is its largest value's.
+  const tokenKeys = ["tokens", "output", "input", "cache"] as const;
+  const tokenRead = { tokens, output: VALUES.output.read, input: VALUES.input.read, cache: VALUES.cache.read };
+  const steps = Object.fromEntries(tokenKeys.map(key => [key, tokenColumn(rows.map(row => tokenRead[key](row.counts)))])) as Record<typeof tokenKeys[number], ReturnType<typeof tokenColumn>>;
+  const tokenHead = (key: typeof tokenKeys[number]) => steps[key].unit ? t("table.head", { name: t(`usage.${key}`), unit: steps[key].unit }) : t(`usage.${key}`);
+  // The model and the AI kind lead with the tokens, the use's first number above; the rest lead with their own count.
   const columns = by === "skill" ? [head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
     : counted ? [head(t("usage.calls"), "times"), head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
-      : [head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"), head(t("usage.newConversations"), "conversations"),
-        t("usage.output"), t("usage.input"), t("usage.cache"), head(t("usage.tasks"), "tasks")];
+      : [...tokenKeys.map(tokenHead), head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"),
+        head(t("usage.newConversations"), "conversations"), head(t("usage.tasks"), "tasks")];
   const table = rows.map(row => {
     const c = row.counts, tasks = cell("tasks", c.tasks, () => open({ set: "used", value: "launches", ...member(row.key) }));
     const launches = cell("times", c.launches, () => open({ set: "used", value: "launches", ...member(row.key) }));
+    const tokenCell = (key: typeof tokenKeys[number]) => { const value = tokenRead[key](c);
+      return { text: steps[key].write(value), open: value ? () => open({ set: "used", value: key, ...member(row.key) }) : undefined }; };
     const cells = by === "skill" ? [launches, tasks]
       : counted ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), launches, tasks]
-        : [...(["launches", "runMs", "newConversations", "output", "input", "cache"] as const).map(key =>
+        : [...tokenKeys.map(tokenCell), ...(["launches", "runMs", "newConversations"] as const).map(key =>
           cell(VALUES[key].kind, VALUES[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
-    return { key: row.key, name: row.label, bar: counted && by !== "skill" ? row.calls ?? 0 : c.launches, cells };
+    return { key: row.key, name: row.label, bar: by === "skill" ? c.launches : counted ? row.calls ?? 0 : tokens(c), cells };
   });
   const name = by === "skill" ? t("usage.skillLaunches") : t("usage.calls");
   const read = (value: { calls: number; launches: number }) => by === "skill" ? value.launches : value.calls;

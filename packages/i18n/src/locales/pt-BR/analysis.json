@@ -28,18 +28,22 @@
     "share": "Taxa sem correções",
     "sharePercentTip": "{{passed}} de {{accepted}} aceitas · {{share}}",
     "shareTip": "{{passed}} de {{accepted}} aceitas",
-    "shareTipFew": "{{passed}} de {{accepted}} aceitas (menos de 10)"
+    "shareTipFew": "{{passed}} de {{accepted}} aceitas (a taxa aparece ao aceitar 10)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
   "def": {
-    "after": "Instruções adicionadas durante o trabalho não contam. A parcela aparece a partir de 10 tarefas aceitas.",
+    "acceptedText": "Tarefas que você aceitou. A taxa sem correções, o tempo, as revisões, as perguntas para você e os PRs relacionados contam só tarefas aceitas",
+    "after": "Instruções adicionadas durante o trabalho não contam. A taxa aparece a partir de 10 tarefas aceitas.",
+    "aiText": "Tempo em andamento com uma IA trabalhando",
+    "cacheText": "Leituras e gravações do cache. A maioria dos tokens está aqui",
     "conversationName": "Conversas novas",
     "conversationText": "Conversas iniciadas pela primeira vez neste período",
     "dayName": "Datas",
     "everName": "Todo o período",
     "everText": "Do primeiro dia de registros até hoje",
     "finishedName": "Tarefas concluídas",
+    "finishedTasksText": "Tarefas aceitas e tarefas paradas. Uma tarefa aceita conta no dia em que foi aceita pela primeira vez",
     "finishedText": "O mesmo número de Tarefas",
     "inputName": "Entrada",
     "inputText": "Sem leituras e gravações de cache",
@@ -51,25 +55,31 @@
     "modelName": "Modelo",
     "modelText": "O primeiro modelo encarregado",
     "one": "Enviada para revisão no máximo uma vez",
+    "otherText": "Tempo em espera, com erro ou não iniciado, e tempo em andamento sem nenhuma IA trabalhando",
+    "outputText": "O que a IA escreveu",
     "perFinishedName": "Por tarefa concluída",
     "perFinishedText": "Quantidade do intervalo ÷ tarefas concluídas nele. Inclui o trabalho em tarefas não concluídas, então varia por dia",
     "perTaskName": "Por tarefa",
     "perTaskText": "Total do intervalo ÷ tarefas aceitas nele. Ponto vazado: menos de 10",
     "prName": "PRs relacionados",
     "prText": "PRs que aparecem nas tarefas aceitas; o mesmo PR conta uma vez",
+    "questionsText": "Perguntas que a IA fez a você entre o pedido e o fim, incluindo as retiradas",
     "runName": "Tempo de execução",
     "runText": "Tempo total em execução, somando os paralelos",
     "skillName": "Skills",
     "skillText": "Inícios que chamaram a skill ou leram seus documentos",
+    "submitsText": "Vezes que a tarefa foi enviada para sua revisão antes do aceite",
     "three": "Nenhuma instrução depois de aceita (se chegar, deixa de contar)",
     "tokensName": "Tokens",
     "tokensText": "Saída + entrada + leituras e gravações de cache, incluindo tarefas em andamento",
-    "tokensUnknown_one": "{{count}} início sem registro de tokens não entra nos tokens",
-    "tokensUnknown_many": "{{count}} inícios sem registro de tokens não entram nos tokens",
-    "tokensUnknown_other": "{{count}} inícios sem registro de tokens não entram nos tokens",
+    "tokensUnknown_one": "Os totais de tokens excluem {{count}} início sem dados de tokens",
+    "tokensUnknown_many": "Os totais de tokens excluem {{count}} inícios sem dados de tokens",
+    "tokensUnknown_other": "Os totais de tokens excluem {{count}} inícios sem dados de tokens",
     "toolName": "Ferramentas",
     "toolText": "Sem as chamadas dentro de subagentes",
-    "two": "Sem devolução nem instrução adicionada durante a revisão"
+    "two": "Sem devolução nem instrução adicionada durante a revisão",
+    "usedTasksText": "Tarefas em que a IA trabalhou. Uma tarefa com vários modelos conta para cada um, então o total pode passar das tarefas concluídas",
+    "youText": "Aguardando sua revisão e aguardando sua resposta a uma pergunta"
   },
   "face": {
     "analysis": "Análise",
@@ -93,6 +103,9 @@
   "list": {
     "back": "Voltar à lista",
     "close": "Fechar",
+    "count_one": "{{n}} tarefa",
+    "count_many": "{{n}} tarefas",
+    "count_other": "{{n}} tarefas",
     "day": "Concluída",
     "empty": "Nenhuma tarefa",
     "more_one": "Mostrar mais {{count}}",
@@ -100,7 +113,7 @@
     "more_other": "Mostrar mais {{count}}",
     "outcome": "Resultado",
     "task": "Tarefa",
-    "title": "{{title}} {{n}} {{unit}}"
+    "usedTitle": "{{name}}"
   },
   "look": {
     "label": "Visualização",
@@ -149,10 +162,9 @@
       "finished": "Concluídas",
       "lead": "Mediana do tempo",
       "passed": "Sem correções",
-      "share": "Parcela sem correções",
       "submits": "Revisões (por tarefa)"
     },
-    "few": "Menos de 10 tarefas aceitas",
+    "few": "A taxa aparece ao aceitar 10 tarefas",
     "finished": "Tarefas concluídas",
     "grass": "Tarefas concluídas por dia",
     "grassFew": "Menos",
@@ -210,9 +222,6 @@
         "unit": "mil"
       }
     ],
-    "taskCount_one": "tarefa",
-    "taskCount_many": "tarefas",
-    "taskCount_other": "tarefas",
     "tasks_one": "tarefa",
     "tasks_many": "tarefas",
     "tasks_other": "tarefas",
@@ -237,6 +246,7 @@
       "tool": "Ferramenta"
     },
     "cache": "Cache",
+    "cacheWithin": "Desses, cache {{value}}",
     "calls": "Chamadas",
     "heads": {
       "agent": "Agente",
@@ -254,13 +264,13 @@
     "outputTokens": "Tokens de saída",
     "runMs": "Tempo de execução",
     "skillLaunches": "Inícios com uma skill",
-    "tasks": "Tarefas",
+    "tasks": "Tarefas envolvidas",
     "tokens": "Tokens"
   },
   "values": {
     "accepted": "Aceita {{at}}",
     "afterAccept": "Instruções após aceitar",
-    "answers": "Respondidas",
+    "answers": "Você respondeu",
     "atReview": "Instruções na revisão",
     "band": {
       "doing": "Em andamento",

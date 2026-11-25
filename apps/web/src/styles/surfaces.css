@@ -35,9 +35,10 @@ html:has([data-reader-mode="sheet"]) { --foot-ground: var(--lit); }
   padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
   scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
 }
-/* What a number of the analysis opens (features/analysis/Layers.tsx) stands as the reader does: its end comes clear of the
+/* What a number of the analysis opens (features/analysis/Layers.tsx) stands as the reader does: on a computer a panel
+ * the coordinator stands left of (use-frame-placement DOCKED); on a phone a sheet whose end comes clear of the
  * coordinator, one gap more than the room under its last row. */
-[data-analysis-layer] {
+aside:not([data-analysis-panel]) [data-analysis-layer] {
   padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap) + 1.5rem);
   scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
 }
