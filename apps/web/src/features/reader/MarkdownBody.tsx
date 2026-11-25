@@ -615,13 +615,13 @@ function htmlProps(attrs: Record<string, string>): Record<string, unknown> {
 }
 
 /** What the page's reset takes from a tag, given back as a README reads (a list's marks, a table's lines, a heading's size).
- * An open fold ends on a rule, so what it holds parts from the words after it. */
+ * An open fold ends on a rule, so what it holds parts from the words after it; last in its body, the record's own rule does that. */
 const HTML_LOOK: Record<string, string> = {
   h1: "mt-type-section text-xl font-semibold first:mt-0", h2: "mt-type-section text-lg font-semibold first:mt-0",
   h3: "mt-type-section text-md font-semibold first:mt-0", h4: "mt-type-section font-semibold first:mt-0",
   h5: "mt-type-section font-semibold first:mt-0", h6: "mt-type-section font-semibold first:mt-0",
   p: "mt-type-block first:mt-0", ul: "mt-type-block list-disc pl-5 first:mt-0", ol: "mt-type-block list-decimal pl-5 first:mt-0",
-  blockquote: cn("mt-type-block first:mt-0", QUOTE), details: "mt-type-block first:mt-0 open:border-b open:border-rule open:pb-2", summary: "cursor-pointer",
+  blockquote: cn("mt-type-block first:mt-0", QUOTE), details: "mt-type-block first:mt-0 open:border-b open:border-rule open:pb-2 open:last:border-b-0 open:last:pb-0", summary: "cursor-pointer",
   pre: "mt-type-block overflow-x-auto font-[monospace] text-sm whitespace-pre first:mt-0",
   code: "font-[monospace] text-sm", tt: "font-[monospace] text-sm", samp: "font-[monospace] text-sm",
   kbd: "rounded-sm border border-line px-1 font-[monospace] text-sm", u: "underline", hr: "my-3 border-line",
