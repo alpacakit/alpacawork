@@ -27,6 +27,7 @@
     "title": "Agents for your tasks"
   },
   "back": "Back",
+  "beta": "Beta",
   "changedElsewhere": "Changed in another view. Showing the current setting.",
   "consent": {
     "body": "Usage data includes the version, OS, and feature usage counts. Conversations, task contents, file names, and the PC name are never sent. Nothing is sent until you go to the next step, and alpacawork works the same with this off. You can change this anytime in Settings.",
@@ -90,6 +91,10 @@
       "alpacawork-betterquality": {
         "title": "Checked by another AI before you see it",
         "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
+      },
+      "alpacawork-modelpickoptimization": {
+        "title": "Cheaper models, step by step",
+        "what": "Work that gets reviewed is tried on a lighter model or a lower effort first. When the review needs no large fix, the report proposes moving the project policy's model rule to the lighter side."
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",
