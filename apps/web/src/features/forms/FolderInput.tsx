@@ -358,7 +358,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
           // The folders above give way first (to a few letters, never less, at most almost half the line, a third on a
           // phone), so the name of the folder you are in is cut last.
           return <span key={crumb.path} className={cn("flex min-w-0 items-center gap-0.5",
-            at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] min-w-16 shrink-[100] narrow:max-w-[32%]")}>
+            // A short name is never cut (a floor wider than it would only leave a gap after it).
+            at === 0 || crumb.label === "…" || !last && crumb.label.length <= 5 ? "flex-none"
+              : last ? "shrink" : "max-w-[45%] min-w-16 shrink-[100] narrow:max-w-[32%]")}>
             {at > 0 && <Icon name="right" className="size-3 flex-none text-soft" />}
             {last
               ? <span aria-current="location" className="flex min-w-0 items-center gap-1 px-1.5 font-semibold">
