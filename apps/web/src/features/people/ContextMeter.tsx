@@ -25,6 +25,9 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
   const used = figure.waiting ? t("context.waiting") : t("context.tokens", { count: context.usedTokens!, tokens: count(context.usedTokens!) });
   const window = context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
   const label = t("context.label", { figure: shown, used, window });
+  // What happened on this Task, leaving out what did not.
+  const counts = conversations ? [conversations.anew && t("context.anew", { count: conversations.anew }),
+    conversations.compacted && t("context.compactions", { count: conversations.compacted })].filter(Boolean) : [];
   const face = <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
     <span className={cn("min-w-[4ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
@@ -48,8 +51,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
       {/* How the conversation is kept workable, said where its fill is read; and how often it happened on this Task. */}
       <p className="m-0 mt-3 text-xs text-muted">{t("context.kept")}</p>
-      {conversations && (conversations.anew > 0 || conversations.compacted > 0) && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", {
-        anew: t("context.anew", { count: conversations.anew }), compacted: t("context.compactions", { count: conversations.compacted }) })}</p>}
+      {counts.length > 0 && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", { counts: counts.join(t("context.countsSeparator")) })}</p>}
     </PopoverContent>
   </Popover>;
 }

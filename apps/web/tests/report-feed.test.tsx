@@ -1306,6 +1306,17 @@ test("a conversation row says the agent compacted its conversation, with how ful
   expect(words).toContain("Started a new conversation with the task's details");
 });
 
+test("the context meter says how conversations are kept workable and counts only what happened on the task", async () => {
+  await inEnglish();
+  const { ContextMeter } = await import("../src/features/people/ContextMeter");
+  render(<ContextMeter press conversations={{ anew: 0, compacted: 2 }}
+    context={{ usedTokens: 140_000, windowTokens: 1_000_000, windowFrom: "reported", compacted: false, observedAt: "2026-11-26T00:00:00.000Z" }} />);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
+  const counts = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-counts]")!);
+  expect(counts.textContent).toBe("On this task: 2 compactions");
+  expect(document.body.textContent).toContain("the AI compacts it and carries on");
+});
+
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {
   await inEnglish();
   const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([{ id: "R1", kind: "error", title: "exit",

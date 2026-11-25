@@ -231,7 +231,8 @@ export function copilotContext(type: string, value: unknown): ContextUpdate | nu
     const used = callTokens(data.currentTokens), limit = callTokens(data.tokenLimit);
     return used === null ? null : { usedTokens: used, compacted: false, ...limit ? { windowTokens: limit } : {} };
   }
-  if (type === 'session.compaction_complete') return { usedTokens: callTokens(data.postCompactionTokens), compacted: true };
+  // Its end also comes when a compaction failed: only a successful one compacted the conversation.
+  if (type === 'session.compaction_complete' && data.success === true) return { usedTokens: callTokens(data.postCompactionTokens), compacted: true };
   return null;
 }
 
