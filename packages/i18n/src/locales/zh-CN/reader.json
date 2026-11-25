@@ -102,6 +102,7 @@
     "media": "图片、视频和音频",
     "onlyWork": "还没有成果。",
     "onlyWorkHint": "智能体的工作文件在“工作文件”中。",
+    "otherIn": "{{folder}} 文件夹中的其他",
     "otherMedia": "其他媒体",
     "path": "路径",
     "unavailable": "无法显示文件：{{name}}",

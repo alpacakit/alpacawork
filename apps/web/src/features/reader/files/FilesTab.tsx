@@ -108,27 +108,31 @@ function Sheet({ task, folder, onOpen }: { task: TaskDetail; folder: string; onO
     </div>}
     {sets.length > 0 && <div className="flex flex-col gap-4">
       <h4 className="m-0 -mb-2 text-sm font-normal text-muted">{t(HEADINGS[[...new Set(sets.flatMap(set => set.items.map(item => mediaKind(item.file.name))))].join()] ?? "files.media")}</h4>
-      {sets.map(set => <div key={set.key} className="flex flex-col gap-1.5">
-        <div className="flex items-baseline gap-2">
-          {/* Loose media need a heading only when shown beside another set. */}
-          {!(set.single && sets.length === 1) && <span className="min-w-0 truncate text-md font-medium">{set.single ? t("files.otherMedia") : set.label}</span>}
-          {relative(set.folder) && relative(set.folder) !== `${set.label}/` && <span className="truncate text-sm text-muted">{relative(set.folder)}</span>}
-          {/* A set's versions are written together, so the set has one time; loose pictures each show their own. */}
-          {!set.single && <span className="ml-auto flex-none pr-1 text-sm text-muted"><WrittenAt at={newestAt(set)} /></span>}
-        </div>
-        <ul className="m-0 flex list-none gap-2 overflow-x-auto p-0 pb-1">
-          {set.items.map(item => <li key={item.file.name} className="flex-none">
-            <button type="button" className="group flex flex-col gap-1 rounded-md p-0 text-left" onClick={event => openImage(event.currentTarget, item.file.name)}
-              aria-label={baseName(item.file.name)}>
-              <span className="block h-24 overflow-hidden rounded-md border border-line bg-bg group-hover:border-lit-line narrow:h-20">
-                <Thumb task={task} file={item.file} className="h-full w-auto max-w-60 min-w-12" />
-              </span>
-              <span className="max-w-40 truncate text-xs text-muted">{set.single ? baseName(item.file.name) : versionOf(item, set, t)}</span>
-              {set.single && <span className="-mt-1 text-xs text-muted"><FileMeta file={item.file} /></span>}
-            </button>
-          </li>)}
-        </ul>
-      </div>)}
+      {sets.map(set => {
+        // A set is named by its name and folder; loose media by their folder, or as the others in the Task folder.
+        const where = relative(set.folder);
+        const name = !set.single ? set.label : where ? t("files.otherIn", { folder: where.slice(0, -1) }) : t("files.otherMedia");
+        return <div key={set.key} className="flex flex-col gap-1.5">
+          {/* A heading is needed only beside another set. */}
+          {!(set.single && sets.length === 1) && <div className="flex min-w-0 items-baseline gap-2">
+            <span className="min-w-0 truncate text-md font-medium">{name}</span>
+            {!set.single && where && where !== `${set.label}/` && <span className="truncate text-sm text-muted">{where}</span>}
+          </div>}
+          {/* Every picture shows its own time under its name, as the rows do, in cells of one size, so none hides off the edge. */}
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-x-2 gap-y-3 p-0">
+            {set.items.map(item => <li key={item.file.name} className="min-w-0">
+              <button type="button" className="group flex w-full min-w-0 flex-col gap-0.5 rounded-md p-0 text-left" onClick={event => openImage(event.currentTarget, item.file.name)}
+                aria-label={baseName(item.file.name)}>
+                <span className="mb-0.5 block aspect-[4/3] w-full overflow-hidden rounded-md border border-line bg-bg group-hover:border-lit-line">
+                  <Thumb task={task} file={item.file} className="size-full" />
+                </span>
+                <span className="w-full truncate text-xs">{set.single ? baseName(item.file.name) : versionOf(item, set, t)}</span>
+                <span className="text-xs text-muted"><FileMeta file={item.file} /></span>
+              </button>
+            </li>)}
+          </ul>
+        </div>;
+      })}
     </div>}
   </section>;
 }
@@ -201,9 +205,6 @@ function WrittenAt({ at }: { at: string }) {
   const { i18n } = useTranslation("reader");
   return <time dateTime={at}>{formatLogTime(at, i18n.language)}</time>;
 }
-
-/** When a set was last written: its newest version's time. */
-const newestAt = (set: MediaSet) => set.items.reduce((newest, item) => Date.parse(item.file.at) > Date.parse(newest) ? item.file.at : newest, set.items[0]!.file.at);
 
 /** A picture of a file, or a quiet placeholder when it cannot be shown here. */
 function Thumb({ task, file, className }: { task: TaskDetail; file: TaskFile; className?: string }) {
