@@ -4,7 +4,7 @@ import { analysisHome, type AnalysisPlace } from "../src/features/analysis/place
 import { Layers } from "../src/features/analysis/Layers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
-import { BarChart, ChartGroup, Row } from "../src/features/analysis/rows";
+import { BarChart, ChartGroup, Parts, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
@@ -358,5 +358,25 @@ test("a list's next page stands as rows while it is read, and one that could not
   await act(async () => page(today(3, { total: 103, from: 101 })));
   await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(103));
   expect(view.container.querySelector("[data-read-failure]")).toBeNull();
+  view.unmount();
+});
+
+test("the parts' number columns are measured again only when their words change, not on every drawing", () => {
+  const bins = [{ from: "2026-11-01", to: "2026-11-01", complete: true }, { from: "2026-11-02", to: "2026-11-02", complete: true }];
+  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}` }];
+  const read = vi.spyOn(Element.prototype, "getBoundingClientRect");
+  const measured = () => read.mock.contexts.filter(cell => (cell as HTMLElement).dataset?.partCol).length;
+  const group = (value: string) => <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-02" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
+    <Row row={0} left={<Parts items={[{ color: "", name: "手直しなし", value }]} />}>
+      <BarChart row={0} height="h-16" scale={{ top: 4, label: "4" }} values={at => [["", at + 1]]} /></Row>
+  </ChartGroup>;
+  const view = render(group("3件"));
+  const first = measured();
+  expect(first).toBeGreaterThan(0);
+  view.rerender(group("3件"));
+  expect(measured()).toBe(first);
+  view.rerender(group("12件"));
+  expect(measured()).toBeGreaterThan(first);
+  read.mockRestore();
   view.unmount();
 });
