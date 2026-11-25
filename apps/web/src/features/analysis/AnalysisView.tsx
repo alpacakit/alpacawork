@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
+import { ReadFailure } from "@/components/ui/loadable";
 import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
@@ -34,16 +35,23 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
-  const { bucket, taskGroup, usageGroup } = useChoices();
-  const tasks = useTasksView(project, place.span, bucket, taskGroup);
-  const usage = useUsageView(project, place.span, bucket, usageGroup);
+  const { bucket } = useChoices();
+  // What is seen first is read first: the look shown (the AI's use draws the tasks' finished too); its breakdown reads
+  // on its own when it comes near the screen (TasksBreakdown, Breakdown).
+  const [root, setRoot] = useState<HTMLElement | null>(null);
+  const tasks = useTasksView(project, place.span, bucket, null);
+  const usage = useUsageView(project, place.span, bucket, null, place.look === "usage");
   const query = place.look === "tasks" ? tasks : usage;
   const head: Head | undefined = query.data?.head;
-  const [root, setRoot] = useState<HTMLElement | null>(null);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
-  // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since.
-  const open = (list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) =>
-    head && useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
+  // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
+  // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).
+  const latest = useRef({ place, head });
+  useLayoutEffect(() => { latest.current = { place, head }; });
+  const open = useCallback((list: Omit<ListPlace, "group" | "member"> & Partial<Pick<ListPlace, "group" | "member">>) => {
+    const { place, head } = latest.current;
+    if (head) useViewStore.getState().showAnalysis(listOnAnswer(place, head, { group: null, member: null, ...list }));
+  }, []);
   const days = head?.period ?? null;
   const length = days ? daysBetween(days.from, days.to) : 0;
   const preset = "period" in place.span ? place.span.period : null;
@@ -81,9 +89,10 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     {/* The usage look draws the tasks' answer too (its finished tasks): both must be for what is chosen now. */}
     <Shown current={(answerOf<unknown>(query)?.current ?? true) && (place.look === "tasks" || (answerOf<unknown>(tasks)?.current ?? true))}>
       {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
-        : !query.data || !days || !head ? query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={8} />
-        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} days={days} open={open} zone={zoneName(head.timeZone)} />
-          : usage.data && <UsageLook view={usage.data} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
+        : !query.data || !days || !head ? query.isError ? <ReadFailure error={query.error} retry={() => void query.refetch()} />
+          : <RegionSkeleton shape={place.look === "tasks" ? "analysisTasks" : "analysisUsage"} />
+        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+          : usage.data && <UsageLook view={usage.data} span={place.span} root={root} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
     </Shown>
     </div></div>
     <Layers place={place} project={project} days={days} />

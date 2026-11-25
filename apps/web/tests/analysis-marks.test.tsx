@@ -336,3 +336,27 @@ test("back from one task to its list, the focus is on that task's row again", as
   await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
   view.unmount();
 });
+
+test("a list's next page stands as rows while it is read, and one that could not be read says so and is asked again", async () => {
+  let page: (body: unknown) => void = () => {};
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (!url.includes("analysis/list")) return new Response("{}", { status: 200 });
+    if (!url.includes("cursor=")) return new Response(JSON.stringify(today(100, { total: 103, cursor: "c2" })), { status: 200 });
+    return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
+  });
+  const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
+  const view = render(<TestWorkspace data={screenData()}><Layers place={place} project={null} days={null} /></TestWorkspace>);
+  await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
+  await act(async () => view.getByRole("button", { name: /残り/ }).click());
+  // Asked for: its rows' places stand where they will come, not nothing.
+  await vi.waitFor(() => expect(view.container.querySelector("[data-analysis-layer] [data-skeleton]")).not.toBeNull());
+  await act(async () => page(null));
+  await vi.waitFor(() => expect(view.container.querySelector("[data-read-failure]")).not.toBeNull());
+  expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100);
+  await act(async () => view.getByRole("button", { name: i18n.t("retry") }).click());
+  await act(async () => page(today(3, { total: 103, from: 101 })));
+  await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(103));
+  expect(view.container.querySelector("[data-read-failure]")).toBeNull();
+  view.unmount();
+});

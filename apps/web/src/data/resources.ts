@@ -138,6 +138,22 @@ export const resources = {
     queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request("person/notices", noticeStateResponseSchema, signal)),
     staleTime: Infinity,
   }),
+  /**
+   * The analysis's face (`analysis tasks` and `analysis usage` for one choice), read as the list's reads are: kept for
+   * offline and shown again at the next start until read anew. It is read again when the analysis says (data.ts), not on
+   * every move of the index: a burst of work asks once.
+   */
+  analysisView: <T,>(root: string, name: 'tasks' | 'usage', input: Record<string, string | null>, schema: z.ZodType<T>) => {
+    // The key holds what is asked as the request says it (one string), as every read's key holds only plain values.
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(input)) if (value !== null && value !== '') query.set(key, value);
+    return queryOptions({
+      queryKey: ['analysis-view', root, name, query.toString()] as const,
+      queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey,
+        () => api.request(`${commandRoute(`analysis/${name}`)}?${queryKey[3]}`, schema, signal)),
+      placeholderData: keepPreviousData,
+    });
+  },
   personalSettings: (root: string) => queryOptions({
     queryKey: ["person-settings", root] as const,
     queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request(commandRoute("settings/get"), personalSettingsResponseSchema, signal)),

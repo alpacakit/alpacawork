@@ -1,8 +1,10 @@
 import { useDirectWriteRecovery } from "@/features/reader/recovery";
 import { TelemetryReaskDialog } from "@/features/telemetry/ReaskDialog";
-import { useCallback, useContext, useDeferredValue, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useContext, useDeferredValue, useEffect, useLayoutEffect, useState, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { later } from "@/lib/later";
+import type { AnalysisPlace } from "@/features/analysis/place";
 import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
 import { subscribeReads } from "@/data/read-model";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +28,6 @@ import { useDocumentTitle } from "@/features/chrome/use-document-title";
 import { useGlobalShortcuts } from "@/features/chrome/use-shortcuts";
 import { ListNavigationProvider } from "@/features/tree/list-navigation";
 import { TimeTree } from "@/features/tree/TimeTree";
-import { AnalysisView } from "@/features/analysis/AnalysisView";
 import { useDeviceValue } from "@/lib/device-storage";
 import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
@@ -36,6 +37,24 @@ import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
 import { GuideBalloon } from "@/features/guide/Guide";
+
+/**
+ * The analysis is its own part of the code: the list of tasks does not wait for it. It is fetched when the list has
+ * been drawn and the screen is idle (or at once when the analysis is opened first), so opening it later waits for no
+ * code. Once fetched it is drawn at once (not through Suspense, which holds what it reveals back for a moment).
+ */
+type AnalysisPart = typeof import("@/features/analysis/AnalysisView");
+let analysisPart: AnalysisPart | undefined;
+const loadAnalysis = () => import("@/features/analysis/AnalysisView").then(part => analysisPart = part);
+function AnalysisView({ place }: { place: AnalysisPlace }) {
+  const [part, setPart] = useState(analysisPart);
+  useEffect(() => { if (!part) void loadAnalysis().then(setPart); }, [part]);
+  return part ? <part.AnalysisView place={place} /> : analysisWaiting(place.look);
+}
+/** The analysis's place while its part is read: its top line, then its shape (as the analysis says while it reads). */
+const analysisWaiting = (look: "tasks" | "usage") => <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-hidden narrow:min-h-67.5">
+  <BarRoom /><div className="h-7 pt-1 pb-6 box-content narrow:pb-5" />
+  <RegionSkeleton shape={look === "tasks" ? "analysisTasks" : "analysisUsage"} /></div>;
 
 const subscribeViewport = (notify: () => void) => {
   addEventListener("resize", notify);
@@ -97,6 +116,7 @@ export function Workbench() {
   const analysis = useViewStore(state => state.analysis);
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
+  useEffect(() => { if (ready) later(() => void loadAnalysis().catch(() => {})); }, [ready]);
   const readerOpen = useReaderOpen();
   const full = useViewStore((state) => state.readerFull);
   // A diff or a file read on a computer stands right of the reader, which moves to the screen's left over the list

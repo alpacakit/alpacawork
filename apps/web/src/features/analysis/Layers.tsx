@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
+import { ReadFailure } from "@/components/ui/loadable";
 import { closeAnalysisLayer } from "@/state/history-step";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const member = row ? rowName(row, t("tasks.noAgent")) : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
   const span = first?.head.period ?? days;
   const spanWords = !list.days && span ? spanLabel(span.from, span.to) : null;
-  if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
+  if (!first) return query.isError ? <ReadFailure error={query.error} className="mt-4" retry={() => void query.refetch()} /> : <RegionSkeleton shape="analysisList" />;
   const left = first.total - rows.length;
   // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
   const title = listHeading(list, first.total);
@@ -126,8 +127,11 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
           </span>
         </button>
       </li>)}</ul>
-      {left > 0 && query.hasNextPage && <button type="button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}
-        className="-mx-1 mt-2.5 rounded-sm px-1 text-base text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
+      {/* The next page comes in where its rows will stand; a page that could not be read says so, with a way to ask again. */}
+      {query.isFetchingNextPage ? <RegionSkeleton shape="analysisRows" />
+        : query.isFetchNextPageError ? <ReadFailure error={query.error} className="mt-2.5" retry={() => void query.fetchNextPage()} />
+        : left > 0 && query.hasNextPage && <button type="button" onClick={() => void query.fetchNextPage()}
+          className="-mx-1 mt-2.5 rounded-sm px-1 text-base text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
     </> : <p className="mt-4 text-soft">{t("list.empty")}</p>}
   </div>;
 }
@@ -146,7 +150,7 @@ function useRowOf(project: string | null, span: Span, list: ListPlace) {
 function UnitPane({ unit }: { unit: string }) {
   const { t } = useTranslation("analysis");
   const query = useUnitValues(unit);
-  if (!query.data) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
+  if (!query.data) return query.isError ? <ReadFailure error={query.error} className="mt-4" retry={() => void query.refetch()} /> : <RegionSkeleton shape="analysisTask" />;
   const values = query.data, row = values.unit;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;

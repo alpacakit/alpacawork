@@ -1,10 +1,14 @@
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { BreakdownPart, ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
+import type { Span } from "./place";
+import { useNear, useUsageView } from "./data";
+import { useViewStore } from "@/state/view-store";
 
 type Days = { from: string; to: string };
 const HOUR = 3_600_000;
@@ -27,8 +31,8 @@ type ValueKey = keyof typeof VALUES;
  * value as a row on the same days, then the same broken down. Skills, tools and MCP are counted from the day counting
  * began: the days before it lie hatched.
  */
-export function UsageLook({ view, tasks, days, open, zone }: {
-  view: UsageView; tasks: TasksView | null; days: Days; open: Open; zone: string;
+export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days, open, zone }: {
+  view: UsageView; span: Span; root: HTMLElement | null; tasks: TasksView | null; days: Days; open: Open; zone: string;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket, usageGroup, grow } = useChoices();
@@ -160,7 +164,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
     {leads}
     <ChartHead />
     {rows}
-    <Breakdown view={view} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
+    <Breakdown view={view} span={span} root={root} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
     {/* Every name the look shows, in cards in the order the rows show them. */}
     <Rules>
       <RuleCard><Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p>{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
@@ -181,19 +185,23 @@ export function UsageLook({ view, tasks, days, open, zone }: {
         <Rule name={t("def.dayName")}>{zone}</Rule></RuleCard>
     </Rules>
   </>;
-}
+});
 
 /**
- * The AI's use broken down. Skills, tools and MCP are counted from the day counting began (`since`): their chart stands
- * over the table, the days before that day hatched and that day named in ink on the axis; a span wholly before it has no
+ * The AI's use broken down, read on its own when it comes near the screen (after the numbers above it), so choosing
+ * another breakdown waits for this part alone. Skills, tools and MCP are counted from the day counting began (`since`):
+ * their chart stands over the table, the days before that day hatched and that day named in ink on the axis; a span wholly before it has no
  * record, and no table.
  */
-function Breakdown({ view, group, days, open, choose }: {
-  view: UsageView; group: UsageGroup; days: Days; open: Open; choose: (next: UsageGroup) => void;
+function Breakdown({ view, span, root, group, days, open, choose }: {
+  view: UsageView; span: Span; root: HTMLElement | null; group: UsageGroup; days: Days; open: Open; choose: (next: UsageGroup) => void;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket } = useChoices();
-  const breakdown = view.breakdown, rows = breakdown?.rows ?? [];
+  const project = useViewStore(state => state.project);
+  const [near, wanted] = useNear(root);
+  const breakdownRead = useUsageView(project, span, bucket, group, wanted);
+  const breakdown = breakdownRead.data?.breakdown ?? null, rows = breakdown?.rows ?? [];
   const by = (breakdown?.by as UsageGroup | undefined) ?? group;
   const member = (key: string) => ({ group: by, member: key });
   const counted = by === "skill" || by === "tool" || by === "mcp";
@@ -240,10 +248,12 @@ function Breakdown({ view, group, days, open, choose }: {
       <DayAxis strong={sinceAt >= 0 ? { at: sinceAt, day: since } : null} />
     </Row>
   </ChartGroup>;
-  return <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose(next as UsageGroup)}
+  return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose(next as UsageGroup)}
     items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
-    {chart}
-    {counted && since === null ? <p className="text-soft">{t("usage.none")}</p>
-      : !before && <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
-  </Section>;
+    <BreakdownPart read={breakdownRead}>
+      {chart}
+      {counted && since === null ? <p className="text-soft">{t("usage.none")}</p>
+        : !before && <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
+    </BreakdownPart>
+  </Section></div>;
 }

@@ -37,8 +37,59 @@ function FeedLine({ row }: { row: number }) {
   return <li className="flex min-h-11 items-center gap-2 border-b border-rule pl-4"><Bar className="h-2.5 w-7.5 flex-none" /><Bar className={cn("h-3.5", length(row))} /></li>;
 }
 
+/**
+ * The analysis as it stands: its four numbers across the top (two by two on a phone), the step of time over the right,
+ * then each row's name and number on the left and its chart on the right (under them on a phone), the charts as tall
+ * as the look draws them (`charts`: their heights on a computer and on a phone), and the calendar of finished tasks
+ * under the first row's numbers where the look has one (`calendar`).
+ */
+function AnalysisFace({ charts, calendar = false }: { charts: readonly (readonly [string, string])[]; calendar?: boolean }) {
+  return <div>
+    <div className="grid grid-cols-4 gap-x-6 narrow:grid-cols-2 narrow:gap-x-3 [&>*:nth-child(n+3)]:narrow:mt-5">
+      {[0, 1, 2, 3].map(at => <div key={at} className="min-w-0">
+        <Bar className="mt-1 h-3 w-24" />
+        <div className="flex h-[45px] items-center narrow:h-[33px]"><Bar className="h-8 w-28 narrow:h-6 narrow:w-20" /></div>
+        <Bar className="mt-1 h-2.5 w-36 narrow:w-28" /><Bar className="mt-2 h-2.5 w-24" />
+      </div>)}
+    </div>
+    <div className="mt-8 mb-2 flex h-7 items-center justify-end"><Bar className="h-4 w-44" /></div>
+    {charts.map(([wide, phone], row) => <div key={row} className="grid grid-cols-12 gap-x-6 border-t border-rule py-4 narrow:block narrow:py-3.5">
+      <div className="col-span-3 min-w-0 space-y-2.5">
+        <Bar className="h-3 w-24" /><Bar className="h-5 w-20" />
+        {row < 2 && [0, 1, 2].map(line => <Bar key={line} className={cn("h-3.5", length(line + row))} />)}
+        {calendar && row === 0 && <Bar className="!mt-6 h-36 w-64 max-w-full rounded-xs" />}
+      </div>
+      <div className="col-span-9 min-w-0 pt-5 narrow:mt-3 narrow:pt-0"><Bar className={cn("w-full rounded-xs", wide, phone)} /></div>
+    </div>)}
+  </div>;
+}
+
+/** A list over the analysis: its title and days, its columns' names, then its rows (ID, title, day, value). */
+function AnalysisListRow({ row }: { row: number }) {
+  return <div className="grid h-8.75 grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)] items-center gap-x-3 border-b border-rule">
+    <Bar className="h-3 w-9" /><Bar className={cn("h-3.5", length(row))} /><Bar className="ms-auto h-3 w-8" /><Bar className="ms-auto h-3.5 w-14" />
+  </div>;
+}
+
 /** The shape of each region that waits for data, as it will stand once drawn; not every element, only where the blocks go. */
 const SHAPES = {
+  // The analysis of tasks, and of the AI's use: the same top, their own charts.
+  analysisTasks: () => <AnalysisFace calendar charts={[["h-76", "narrow:h-32"], ["h-30", "narrow:h-22"], ["h-16", "narrow:h-13"], ["h-16", "narrow:h-13"], ["h-16", "narrow:h-13"]]} />,
+  analysisUsage: () => <AnalysisFace charts={[["h-22", "narrow:h-18"], ["h-30", "narrow:h-22"], ["h-20", "narrow:h-16"], ["h-20", "narrow:h-16"]]} />,
+  // The tasks behind a number: its days, its title, then its rows under their column names.
+  analysisList: () => <div className="mt-1">
+    <Bar className="h-6 w-48" /><Bar className="mt-2 h-3 w-32" />
+    <div className="mt-4 flex h-7 items-center gap-3 border-b border-rule"><Bar className="h-2.5 w-9" /><Bar className="ms-auto h-2.5 w-20" /></div>
+    {[0, 1, 2, 3, 4, 5, 6, 7].map(row => <AnalysisListRow key={row} row={row} />)}
+  </div>,
+  // More rows of such a list coming (its next page).
+  analysisRows: () => <div>{[0, 1].map(row => <AnalysisListRow key={row} row={row} />)}</div>,
+  // One task's values: its title, its time drawn as a band, then its values in lines.
+  analysisTask: () => <div className="mt-1 space-y-2.5">
+    <Bar className="h-5.5 w-11/12" /><Bar className="h-5.5 w-1/2" />
+    <Bar className="mt-5 h-3 w-full rounded-xs" />
+    <div className="space-y-3 pt-4">{[0, 1, 2, 3, 4, 5].map(row => <div key={row} className="flex items-center justify-between"><Bar className={cn("h-3.5", length(row))} /><Bar className="h-3.5 w-12" /></div>)}</div>
+  </div>,
   // The list: the clock row on a computer, then groups (a heading and rows); each row has its strip beside it on a computer.
   time: () => <div className="relative min-h-75 flex-1 basis-0 overflow-hidden narrow:min-h-67.5">
     <div className="flex h-7.5 border-b border-rule narrow:hidden"><div className="w-90 border-r border-rule max-[900px]:w-82.5" /></div>

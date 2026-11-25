@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { TAB, TabLabel, TabMarker } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { ReadFailure } from "@/components/ui/loadable";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { Icon } from "@/components/ui/icon";
 import { subscribeStep } from "@/state/history-step";
 import { comparison, parts, type Kind } from "./format";
@@ -268,6 +270,18 @@ function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: st
   return <div ref={tipRef} role="presentation" style={{ left: x, top }} onMouseEnter={onEnter} onMouseLeave={onLeave}
     className={cn("fixed z-(--layer-popover) max-w-[calc(100vw-8px)] overflow-y-auto overscroll-contain rounded-md border border-line bg-raised px-2 py-1 text-xs whitespace-pre-line shadow-float",
       !scrolls && "pointer-events-none")}>{words}</div>;
+}
+
+/** A part of the face read apart from it (a breakdown): its answer, or that it is still on its way or could not be read. */
+export type PartRead<T> = { data: T | undefined; isPlaceholderData: boolean; isError: boolean; error: Error | null; refetch: () => unknown };
+/**
+ * Such a part in its place: rows standing where its rows will come while it is first read, what it could not read said
+ * as every read says it, and an answer for another choice dimmed and out of reach until this one comes.
+ */
+export function BreakdownPart<T>({ read, children }: { read: PartRead<T>; children: ReactNode }) {
+  if (read.data === undefined) return read.isError ? <ReadFailure error={read.error} retry={() => void read.refetch()} />
+    : <RegionSkeleton shape="analysisRows" />;
+  return <Shown current={!read.isPlaceholderData}>{children}</Shown>;
 }
 
 /**
