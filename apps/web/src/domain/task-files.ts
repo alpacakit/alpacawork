@@ -20,12 +20,16 @@ const forReader = (name: string) => {
   return isMedia(name) || dot > 0 && DOCUMENTS.has(own.slice(dot + 1).toLowerCase());
 };
 
+/** Newest first by the time a file was written; files written at the same time keep their order (the sort is stable). */
+const newestFirst = (a: Pick<TaskFile, "at">, b: Pick<TaskFile, "at">) => Date.parse(b.at) - Date.parse(a.at);
+
 /** A file the Deliverables field links, under the name written there. */
 export type ListedFile = { file: TaskFile; label: string };
 /**
  * A Task folder split in two, every file in exactly one: the deliverables, which the user looks at (counted on the tab),
  * and the work files, which only the agents use. Work files are the files the Deliverables field does not link that
- * are in work/ or are no document, image, video or sound; `listed` the field's files in its order, each once.
+ * are in work/ or are no document, image, video or sound; `listed` the field's files, each once. Every list is newest
+ * first, so what was made last is seen first.
  */
 export type FileShelves = { listed: ListedFile[]; deliverables: TaskFile[]; work: TaskFile[] };
 export type ShelvedTask = Pick<TaskDetail, "id" | "files" | "values">;
@@ -54,9 +58,9 @@ export function fileShelves(task: ShelvedTask, root: string | null, origin: stri
   }
   const listed = new Map([...found].map(([name, { file, label }]) => [name, { file, label: label?.trim() || baseName(name) }]));
   const deliverables: TaskFile[] = [], work: TaskFile[] = [];
-  for (const file of task.files)
+  for (const file of [...task.files].sort(newestFirst))
     (listed.has(file.name) || !file.name.startsWith(WORK_FOLDER) && forReader(file.name) ? deliverables : work).push(file);
-  return { listed: [...listed.values()], deliverables, work };
+  return { listed: [...listed.values()].sort((a, b) => newestFirst(a.file, b.file)), deliverables, work };
 }
 
 /** A folder's sheet: the files it lists, and whether they are the work files. */
@@ -184,7 +188,8 @@ export type MediaSet = {
 
 /**
  * Group media whose names differ only in comparison words. A name that has no
- * partner stays a set of one, so every media file is in exactly one set.
+ * partner stays a set of one, so every media file is in exactly one set. The sets
+ * are newest first by their newest file; a set's versions keep their comparison order.
  */
 export function mediaSets(files: readonly TaskFile[]): MediaSet[] {
   const groups = new Map<string, MediaSet["items"]>();
@@ -213,10 +218,11 @@ export function mediaSets(files: readonly TaskFile[]): MediaSet[] {
     const name = key.slice(folderOf(key).length);
     sets.push({ key, label: name || baseName(folderOf(key)) || key, items, varies });
   }
-  return sets.sort((a, b) => a.key.localeCompare(b.key));
+  const newest = (set: MediaSet) => set.items.reduce((at, item) => Math.max(at, Date.parse(item.file.at)), -Infinity);
+  return sets.sort((a, b) => newest(b) - newest(a) || a.key.localeCompare(b.key));
 }
 
-/** The sets of the files on a sheet (filesInView) by name, with each folder's loose media gathered at their first occurrence. */
+/** The sets of the files on a sheet (filesInView) newest first, with each folder's loose media gathered at the newest of them. */
 export function visibleFileMedia(files: readonly TaskFile[]): (MediaSet & { folder: string; single: boolean })[] {
   const rows: (MediaSet & { folder: string; single: boolean })[] = [];
   const loose = new Map<string, (typeof rows)[number]>();
