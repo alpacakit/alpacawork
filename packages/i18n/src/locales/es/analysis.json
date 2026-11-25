@@ -21,13 +21,13 @@
     "fewShare": "{{passed}} de {{accepted}}",
     "finished": "Tareas terminadas",
     "finishedTip": "{{total}}: sin correcciones {{passed}} · corregidas {{reworked}} · detenidas {{stopped}}",
+    "keys": "Elige un día con las flechas izquierda y derecha, y pulsa Intro para ver sus tareas",
     "none": "Ninguna aceptada",
     "notCounted": "Sin contar",
     "share": "Proporción sin correcciones",
     "sharePercentTip": "{{passed}} de {{accepted}} aceptadas · {{share}}",
     "shareTip": "{{passed}} de {{accepted}} aceptadas",
-    "shareTipFew": "{{passed}} de {{accepted}} aceptadas (menos de 10)",
-    "keys": "Elige un día con las flechas izquierda y derecha, y pulsa Intro para ver sus tareas"
+    "shareTipFew": "{{passed}} de {{accepted}} aceptadas (menos de 10)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",

@@ -17,13 +17,13 @@
     "fewShare": "{{accepted}}件のうち {{passed}}件",
     "finished": "終わったタスク",
     "finishedTip": "{{total}}件：手直しなし {{passed}}・手直しあり {{reworked}}・中止 {{stopped}}",
+    "keys": "左右の矢印キーで日を選び、Enter でその日のタスクの一覧",
     "none": "受け入れなし",
     "notCounted": "数えていない",
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
-    "keys": "左右の矢印キーで日を選び、Enter でその日のタスクの一覧"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
