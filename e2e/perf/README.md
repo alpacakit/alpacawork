@@ -64,28 +64,9 @@ serve refuses a workspace that differs from its installation record, so run it w
 HOME=/tmp/iso node --import ./e2e/guard-loader.mjs e2e/perf/detail-switch.ts --release <ビルド済みの checkout> --out /abs/new-dir [--rounds 2] [--cpu]
 ```
 
-## What is measured
-
-| Side | Item | How it is measured |
-|---|---|---|
-| Server | Tree reread time (per stage) | `profile-tree.mjs`. Before serve is started, measures each stage of `readControlTree` twice |
-| Server | Size of `/api/workspace/live` (the index), breakdown by key, size on the wire | `run.mjs` fetches `/api/workspace/live` and prints the JSON UTF-8 byte count for each top-level key and each key inside `tasks`. It also prints the actual size when gzip is accepted. The first SSE (`index`) is the same JSON; the later SSEs (`delta`) carry only the changed rows, and their size appears in "Update: SSE size per update" |
-| Server | CPU per send | With the screen open, rewrite a title from outside (writing the file via the CLI, as an agent's report does). Divide serve's CPU time (`ps -o cputime`) during that period by the number of rewrites. CPU for idle time is listed alongside |
-| Browser | From one receipt to paint | With the same rewrite, from the time the last byte of the SSE is read until the new title appears in the list row and the next paint finishes |
-| Browser | main thread time | CDP `TaskDuration` during one update (the time the renderer process's main thread ran), and long tasks over 50ms |
-| Browser | CPU | `TaskDuration` ÷ elapsed time, while updates continue and while idle |
-| Browser | React re-renders | With `--render-counts`, the DevTools commit hook counts commits, component renders and mounts per scene. Output in `idle.react` and `updates.rows[].react` |
-| Browser | First display, opening a task, History, search | The same scenes as the table in the design (spec §4) |
-
-The hook that counts re-renders itself uses CPU. The `react` counts can be compared before and after, but when comparing CPU time, measure without `--render-counts`.
-
-## Data
-
-- **Production copy**: made with `copy-root.mjs`. The production root is only read (it duplicates the files in `tasks/` and the Run files, and backs up the control DB and the observation DB through read-only connections). In the copy's `config.yaml`, each agent's start/resume is replaced with `/usr/bin/false`, so agents do not start.
-- **Synthetic 1,000 and 5,000 tasks**: `node scripts/perf/make-synth.ts <source-copy> <dest> <N>` uses the old Task folder format, so it does not support current copies. Synthetic measurement in the current format needs a separate update.
-- When comparing before and after, reuse the same copy (making it again changes the contents).
-
 ## Making a copy in the current format
+
+The copy includes files from `tasks/` and the Run directory. It backs up the control database through a read-only connection, disables agent profiles, and replaces saved Run launches with inert commands. Reuse the same copy for before and after measurements.
 
 Work outside the worktree (`$D` in the example below). Use the production root only as the read source.
 
@@ -96,17 +77,7 @@ SOURCE=/path/to/current/alpacawork-root                     # 現行形式の読
 node e2e/perf/copy-root.mjs "$SOURCE" $D/perf-data/copy
 ```
 
-`run.mjs` calls the old CLI, so measurement with this copy is not supported yet. Before measurement resumes, it needs to be updated to the current way of starting serve.
-
-## Production server CPU
-
-`server-cpu.mjs` refers to the old `runs.sqlite`, so it does not support current-format copies.
-
-## Notes on reading the results
-
-- The synthetic root derives whose turn it is from the copied log, so `ball` can be set on more rows than in the real data.
-- A copy includes the Runs that were running when it was copied. serve cleans them up inside the copy (agents do not start). As a result, reconciliation runs even at rest, which is close to production while agents are working.
-- With 5,000 tasks, the current serve sometimes fails to deliver the tree. Scenes where it did not arrive show "—" or the failure reason in the table.
+A copy includes Runs that were active at the time of copying. Serving the copy reconciles those Runs, which can contribute to idle measurements.
 
 ## Subscription and same-value notification measurement on fixed data
 

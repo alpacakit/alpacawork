@@ -17,8 +17,11 @@ export const conversationCheckpointSchema = z.object({
   bodyHash: hash,
   inputHead: run,
   children: childVersionsSchema,
-  nextConversation: z.literal('new').optional(),
-}).strict();
+  /** How the next conversation starts: new, or the same one compacted first (with what its summary keeps in focus). */
+  nextConversation: z.enum(['new', 'compact']).optional(),
+  compactFocus: z.string().min(1).optional(),
+}).strict().refine(value => value.compactFocus === undefined || value.nextConversation === 'compact',
+  'Only a compacted next conversation keeps a focus');
 export type ChildVersions = z.infer<typeof childVersionsSchema>;
 export type ConversationCheckpoint = z.infer<typeof conversationCheckpointSchema>;
 

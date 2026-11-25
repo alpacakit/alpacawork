@@ -20,7 +20,9 @@
   },
   "limits": {
     "barLabel": "AI plan limits: {{agent}}, {{window}}: {{percent}} used",
+    "barStopped": "AI plan limits: {{agent}}: {{state}}",
     "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
+    "barUnlimited": "AI plan limits: no limit holds {{agent}} now",
     "none": "No limits apply now",
     "readAgo_one": "Updated {{count}} min ago",
     "readAgo_other": "Updated {{count}} min ago",
@@ -35,6 +37,9 @@
       "inMinutes_other": "Resets in {{count}} min",
       "inWholeHours": "Resets in {{hours}}h"
     },
+    "stopped": "Stopped",
+    "stoppedUntil": "Stopped until {{when}}",
+    "stoppedUntilShort": "Until {{when}}",
     "title": "AI plan limits",
     "unavailable": "Could not be read. Check its sign-in",
     "unsupported": "Does not provide its limits",

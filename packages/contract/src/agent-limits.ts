@@ -32,8 +32,15 @@ export const agentLimitsSchema = z.object({
   observedAt: z.iso.datetime({ offset: true }).nullable(),
 }).strict();
 export type AgentLimits = z.infer<typeof agentLimitsSchema>;
-/** In the order the screen lists them: the task stack's agents first, then the other enabled ones. */
-export const agentLimitsResponseSchema = z.object({ agents: z.array(agentLimitsSchema) }).strict();
+/** One row of the stack tasks run on: the kind of agent and the model the row launches, if it names one. */
+export const limitsStackRowSchema = z.object({ adapter: builtinAdapterIdSchema, model: z.string().min(1).nullable() }).strict();
+export type LimitsStackRow = z.infer<typeof limitsStackRowSchema>;
+export const agentLimitsResponseSchema = z.object({
+  /** In the order the screen lists them: the task stack's agents first, then the other enabled ones. */
+  agents: z.array(agentLimitsSchema),
+  /** The rows tasks run on, in order, enabled agents only: a task falls to the next row when one's limit is spent. */
+  stack: z.array(limitsStackRowSchema),
+}).strict();
 export type AgentLimitsResponse = z.infer<typeof agentLimitsResponseSchema>;
 
 const MINUTE_KINDS: [number, LimitWindow['kind']][] = [[300, 'session'], [10_080, 'weekly']];

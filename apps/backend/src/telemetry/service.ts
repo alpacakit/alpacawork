@@ -3,11 +3,13 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { randomInt } from 'node:crypto';
-import { TELEMETRY_ENDPOINT, TELEMETRY_CONSENT_VERSION, TELEMETRY_OPS, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_SHAPES, TELEMETRY_TIMES,
+import { TELEMETRY_CONSENT_VERSION, TELEMETRY_OPS, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_SHAPES, TELEMETRY_TIMES,
   TELEMETRY_TIME_BUCKETS, TELEMETRY_FAILURES, TELEMETRY_AGENTS, TELEMETRY_COUNT_BUCKETS, TELEMETRY_SIZE_BUCKETS, TELEMETRY_DAY_MS,
-  TELEMETRY_RETRY_MS, TELEMETRY_MAX_EVENTS, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_REPORT_BYTES, dayRange, deadline, utcDay } from '@alpacawork/contract/telemetry';
+  TELEMETRY_RETRY_MS, TELEMETRY_MAX_EVENTS, telemetryFieldsAdded, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_REPORT_BYTES, dayRange, deadline, utcDay,
+  type TelemetryHistory } from '@alpacawork/contract/telemetry';
 import { ConsentStore, telemetryPaths, telemetryGate, runtimeFacts, type Consent, type GateFacts, type TelemetryPaths } from './consent.js';
 import { TelemetryMarks, type Mark } from './marks.js';
+import { TelemetryOutbox, finishedReport } from './outbox.js';
 import { TelemetryQueue } from './queue.js';
 import { envelope, reportFromWorkspace } from './report.js';
 import { readJson, writeJson } from './files.js';
@@ -18,6 +20,7 @@ export class TelemetryService {
   readonly store: ConsentStore;
   readonly marks: TelemetryMarks;
   readonly queue: TelemetryQueue;
+  private readonly outbox: TelemetryOutbox;
   private readonly now: () => number;
   private cancellation = new AbortController();
   /** The send in progress, which a delete waits out so that nothing it sends arrives after the delete. */
@@ -25,8 +28,11 @@ export class TelemetryService {
   private lastDiagnosticDay = '';
   constructor(readonly root?: string, readonly env: NodeJS.ProcessEnv = process.env, private readonly runtime: TelemetryRuntime = {}) {
     this.store = new ConsentStore(runtime.paths ?? telemetryPaths(env));
-    this.marks = new TelemetryMarks(this.store.paths.state); this.queue = new TelemetryQueue(this.store.paths.state);
     this.now = runtime.now ?? Date.now;
+    const { state } = this.store.paths;
+    this.marks = new TelemetryMarks(state);
+    this.outbox = new TelemetryOutbox(state, this.now, runtime.fetch ?? fetch);
+    this.queue = new TelemetryQueue(state, this.outbox);
   }
   /** The latest day this PC has seen; a clock behind it is not trusted. */
   private latestDay(): string | null {
@@ -48,19 +54,30 @@ export class TelemetryService {
     let consent: Consent | null = null, digest: string | null = null, queued = 0, lastSentAt: string | null = null;
     try {
       consent = this.store.read(); digest = this.store.digest(); queued = this.queue.queued().length;
-      lastSentAt = (this.queue.sent() as { sentAt: string }[]).map(value => value.sentAt).sort().at(-1) ?? null;
-    } catch { /* gate above names the unusable local state; status must remain readable. */ }
-    return { ...gate, consent, digest, id: consent?.id ?? null, decidedAt: consent?.decidedAt ?? null, queued, lastSentAt };
+      lastSentAt = this.outbox.log().find(finishedReport)?.at ?? null;
+    } catch { /* Status must remain readable even if local records are unavailable. */ }
+    const added = gate.state === 'needs_reask' && consent?.fields ? telemetryFieldsAdded(consent.fields) : null;
+    return { ...gate, consent, digest, id: consent?.id ?? null, decidedAt: consent?.decidedAt ?? null, queued, lastSentAt, added };
   }
   show() {
-    return { ...this.status(), endpoint: TELEMETRY_ENDPOINT, consentVersion: TELEMETRY_CONSENT_VERSION,
+    return { ...this.status(), endpoint: this.outbox.endpoint, consentVersion: TELEMETRY_CONSENT_VERSION,
       allowed: { ops: TELEMETRY_OPS, attributes: TELEMETRY_EVENT_ATTRIBUTES.map(({ name, values }) => ({ name, values })),
         maxEvents: TELEMETRY_MAX_EVENTS, maxCount: TELEMETRY_MAX_COUNT, maxBytes: TELEMETRY_MAX_REPORT_BYTES,
         shapes: TELEMETRY_SHAPES, times: TELEMETRY_TIMES, timeBuckets: TELEMETRY_TIME_BUCKETS, sizes: TELEMETRY_SIZE_BUCKETS,
         failures: TELEMETRY_FAILURES, agents: TELEMETRY_AGENTS, counts: TELEMETRY_COUNT_BUCKETS,
         os: ['linux', 'darwin', 'wsl'], arch: ['x64', 'arm64'], node: '24..40' },
-      next: this.preview(), queue: this.queue.queued().map(item => item.value),
-      sent: this.queue.sent(), paths: this.store.paths };
+      next: this.preview(), queue: this.queue.queued().map(({ value }) => value),
+      log: this.outbox.log(), paths: this.store.paths };
+  }
+  history(): TelemetryHistory {
+    const { state } = this.gate();
+    const log = this.outbox.log(), finished = this.outbox.finishedDays(log);
+    // A report past its deadline is never sent (the queue drops it), so it is not shown as waiting.
+    const now = this.now();
+    // A failed attempt waits until its retry, so the row says when it can go next.
+    const queue = this.queue.queued().flatMap(({ value: { notBefore, nextAttempt, report } }) =>
+      finished.has(report.day) || now >= deadline(report.day) ? [] : [{ day: report.day, notBefore: Math.max(notBefore, nextAttempt), report }]);
+    return { state, next: this.preview(), queue, log };
   }
   /** When counting starts: the consent, or a later delete of what was sent (nothing before it is reported again). */
   private countFrom(consent: Consent): number {
@@ -97,15 +114,12 @@ export class TelemetryService {
     this.marks.clear();
     this.cancellation.abort(); this.cancellation = new AbortController();
     await this.sending?.catch(() => {});
-    let status = 0;
+    let outcome: 'unknown' | 'accepted' | 'rejected' | 'retry' = 'unknown';
     try {
-      const response = await (this.runtime.fetch ?? fetch)(`${TELEMETRY_ENDPOINT}/${id}`, { method: 'DELETE', redirect: 'error', credentials: 'omit',
-        headers: { 'user-agent': 'alpacawork-telemetry' }, signal: AbortSignal.timeout(timeoutMs) });
-      status = response.status; await response.body?.cancel();
-    } catch { /* No answer: said as a failure below. */ }
-    // 404: nothing was stored under this number (never sent, or already deleted).
-    if (!(status >= 200 && status < 300) && status !== 404)
-      throw new Problem(PROBLEM_CODE.unavailable, 'The receiver did not delete the usage data', undefined, { reason: { kind: 'telemetry_delete_failed' } });
+      ({ outcome } = await this.outbox.delete(id, AbortSignal.timeout(timeoutMs)));
+    } catch (error) { this.diagnostic(error); }
+    if (outcome !== 'accepted')
+      throw new Problem(PROBLEM_CODE.unavailable, 'Could not confirm deletion of the usage data', undefined, { reason: { kind: 'telemetry_delete_failed' } });
     return { id };
   }
   mark(fact: Mark): void {
@@ -114,13 +128,15 @@ export class TelemetryService {
   }
   async send(timeoutMs = 10_000, signal?: AbortSignal): Promise<void> {
     if (this.gate().state !== 'on') return;
-    const sending = this.queue.send({ endpoint: TELEMETRY_ENDPOINT, now: this.now, allowed: () => this.gate().state === 'on',
-      fetch: this.runtime.fetch ?? fetch, timeoutMs, signal: signal ? AbortSignal.any([signal, this.cancellation.signal]) : this.cancellation.signal });
+    if (this.sending) return this.sending;
+    const sending = this.queue.send({ now: this.now, allowed: () => this.gate().state === 'on',
+      timeoutMs, signal: signal ? AbortSignal.any([signal, this.cancellation.signal]) : this.cancellation.signal });
     this.sending = sending;
     try { await sending; } finally { if (this.sending === sending) this.sending = null; }
   }
   /** Each closed day still inside its retry window gets its report once, sent at a random time during the next day. */
   async tick(signal?: AbortSignal): Promise<void> {
+    this.outbox.prune(this.now());
     if (this.gate().state !== 'on' || !this.root) return;
     const consent = this.store.read()!, now = this.now(), today = utcDay(now), state = this.store.paths.state;
     writeJson(join(state, 'clock.json'), { day: today });

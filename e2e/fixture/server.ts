@@ -10,8 +10,8 @@ const calmHost: HostSource = {
   supported: true,
   facts: { hostname: 'fixture-host', os: 'Fixture OS', cores: 4, memoryBytes: 16 * GB },
   sample: (_runs, at) => ({ at, cpu: 20,
-    memory: { totalBytes: 16 * GB, availableBytes: 8 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
-    disk: { freeBytes: 100 * GB, totalBytes: 200 * GB }, runs: [],
+    memory: { totalBytes: 16 * GB, availableBytes: 8 * GB },
+    disk: { freeBytes: 100 * GB, totalBytes: 200 * GB }, gpus: [], runs: [],
     outside: { cpu: 20, memoryBytes: GB, names: [] } }),
 };
 

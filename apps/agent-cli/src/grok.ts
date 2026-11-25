@@ -9,8 +9,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { toolArgumentText, toolResultText } from '@alpacawork/contract/run';
-import type { Instruction, RuntimeIO } from './run.js';
-import { newTurn, OneProcessRuntime, type Turn, type TurnEnd } from './one-process.js';
+import type { RuntimeIO } from './run.js';
+import { newTurn, OneProcessRuntime, type Purpose, type Turn, type TurnEnd } from './one-process.js';
 import { parseFlags, withUsage } from './options.js';
 import { emitToolEnd, emitToolStart } from './tool-activity.js';
 
@@ -57,13 +57,15 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
     super.close();
     if (directory) rmSync(directory, { recursive: true, force: true });
   }
-  protected spawnTurn(input: Instruction): Active {
+  protected spawnTurn(purpose: Purpose): Active {
     // A private prompt file avoids argv size limits and does not expose the instruction in ps.
     const directory = mkdtempSync(join(tmpdir(), 'alpacawork-grok-'));
     const prompt = join(directory, 'prompt');
     let child: Active['child'];
     try {
-      writeFileSync(prompt, input.text, { mode: 0o600 });
+      // Grok's built-in /compact takes no words on what to keep. Unverified against a signed-in Grok: that a headless
+      // prompt runs it like the interactive slash command, and how its streaming-json reports the result.
+      writeFileSync(prompt, purpose.kind === 'instruction' ? purpose.input.text : '/compact', { mode: 0o600 });
       child = spawn(this.command, ['--output-format', 'streaming-json', '--always-approve',
         ...(this.options.model ? ['--model', this.options.model] : []),
         ...(this.options.effort ? ['--reasoning-effort', this.options.effort] : []),
@@ -71,7 +73,7 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
       { stdio: ['ignore', 'pipe', 'inherit'] });
     } catch (error) { rmSync(directory, { recursive: true, force: true }); throw error; }
     child.once('close', () => rmSync(directory, { recursive: true, force: true }));
-    return { ...newTurn(input, child), directory, text: '', terminal: null, error: null };
+    return { ...newTurn(purpose, child), directory, text: '', terminal: null, error: null };
   }
   private begin(active: Active): void {
     // Native streams are projected from the root session. Fresh IDs are assigned before launch.
@@ -89,29 +91,33 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
       active.terminal = event;
     } else if (event.type === 'error') {
       active.error = typeof event.message === 'string' ? event.message : 'Grok Build error';
-      this.io.emit({ type: 'error', message: active.error });
+      this.emit(active, { type: 'error', message: active.error });
     } else if (event.type === 'text' || event.type === 'thought') {
       if (typeof event.data !== 'string') throw new Error('Invalid Grok text event');
       this.begin(active);
       if (event.type === 'text') {
         active.text += event.data;
-        this.io.emit({ type: 'item.completed', item: { type: 'agent_message', text: event.data } });
+        this.emit(active, { type: 'item.completed', item: { type: 'agent_message', text: event.data } });
       }
     } else if (event.type === 'usage') {
       const context = grokContext(event.usage);
       if (context) this.io.emit({ type: 'context.updated', context });
     } else if (event.type === 'tool_call') {
       this.begin(active);
-      emitToolStart(this.io, 'command_execution', event.toolCallId, event.toolName, event.rawInput);
+      // Through the turn's own emit, so a compaction's turn says nothing of its tools.
+      emitToolStart({ emit: value => this.emit(active, value) }, 'command_execution', event.toolCallId, event.toolName, event.rawInput);
     } else if (event.type === 'tool_call_update' && (event.status === 'completed' || event.status === 'failed')) {
       const output = event.rawOutput, data = usageRecord(output);
       const content = Array.isArray(event.content) ? event.content.map(part => usageRecord(part).content) : [];
       const result = toolResultText(output) || toolResultText(data.output) || toolResultText(data.text) ||
         toolResultText(content) || toolArgumentText(output);
-      emitToolEnd(this.io, 'command_execution', event.toolCallId, event.toolName, result, event.status === 'failed');
+      emitToolEnd({ emit: value => this.emit(active, value) }, 'command_execution', event.toolCallId, event.toolName, result, event.status === 'failed');
     }
   }
   protected conclude(active: Active, code: number | null, signal: NodeJS.Signals | null): TurnEnd {
+    // A compaction asks for no reply: a clean exit without an error is its success.
+    if (active.purpose.kind === 'compaction') return code === 0 && active.error === null ? { output: '', events: [] }
+      : { failed: active.error ?? `Grok Build compaction stopped (${signal ?? `exit ${code}`})` };
     if (code !== 0 || active.terminal?.stopReason !== 'end_turn' || active.error !== null) return { failed: active.error ??
       `Grok Build stopped: ${active.terminal?.stopReason ?? 'missing terminal result'} (${signal ?? `exit ${code}`}). Run grok login or set XAI_API_KEY if authentication is missing.` };
     this.begin(active);

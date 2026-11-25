@@ -1,11 +1,11 @@
 {
   "name": "alpacawork",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Run all your AI agents from one chat. Open-source task management for Claude Code, Codex and other coding agents: an AI assigns your requests to agents on your own PC and tracks their progress. Works from your phone too.",
   "keywords": [
     "ai-agents", "ai", "claude-code", "codex", "coding-agents", "ai-coding", "agentic-coding",
     "agent-orchestration", "orchestration", "parallel-agents", "multi-agent", "task-management",
-    "task-manager", "human-in-the-loop", "agent-harness", "vibe-coding", "mobile-first", "self-hosted",
+    "task-manager", "human-in-the-loop", "vibe-coding", "mobile-first", "self-hosted",
     "developer-tools", "cli"
   ],
   "license": "MIT",
@@ -42,7 +42,6 @@
     "test:node": "node scripts/testing/queue.ts node -- node --test --test-concurrency=16 tests/*.test.ts",
     "test:acceptance": "pnpm build && pnpm test:acceptance:run",
     "test:real-agents": "pnpm build && node scripts/testing/queue.ts node -- node tests/acceptance/real-agents.mjs",
-    "perf": "pnpm build && node scripts/testing/queue.ts e2e -- node e2e/perf/all.mjs",
     "test:quick": "node scripts/testing/run.ts quick",
     "test:e2e:smoke": "node scripts/testing/run.ts smoke",
     "test:acceptance:run": "node scripts/testing/queue.ts node -- node --test --test-concurrency=1 --test-timeout=300000 tests/acceptance/*.test.ts",

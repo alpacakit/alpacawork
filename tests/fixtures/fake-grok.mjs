@@ -9,6 +9,12 @@ const prompt = readFileSync(promptFile, 'utf8');
 appendFileSync(process.env.FAKE_GROK_LOG, JSON.stringify({ args, prompt, session, promptFile }) + '\n');
 const emit = event => process.stdout.write(JSON.stringify(event) + '\n');
 emit({ type: 'available_commands', tools: [], commands: [] });
+if (prompt === '/compact') {
+  if (process.env.FAKE_GROK_COMPACT === 'fail') { emit({ type: 'error', message: 'synthetic compaction failure' }); process.exit(1); }
+  emit({ type: 'text', data: 'Conversation compacted.' });
+  emit({ type: 'end', stopReason: 'end_turn', sessionId: session });
+  process.exit(0);
+}
 if (prompt === 'auth') { emit({ type: 'error', message: 'Not signed in. Run grok login or set XAI_API_KEY.' }); process.exit(1); }
 if (prompt === 'preempt' || prompt === 'hold') {
   while (!existsSync(process.env.FAKE_GROK_RELEASE)) await delay(10);

@@ -196,3 +196,16 @@ for (const mode of ['tail-json', 'tail-utf8', 'tail-line']) test(`Pi ${mode} at 
  b.child.stdin.end(); assert.equal(await b.exited, 1, b.stderr());
  assert.match(b.stderr(), /Pi RPC/);
 });
+for (const mode of ['normal', 'compact-fail']) test(`Pi ${mode === 'normal' ? 'compacts before' : 'tells a refused compaction and still runs'} the first instruction`, async t => {
+ const h = setup(t, mode), b = h.start(['--session', '019a5555-1111-7777-8888-123456789abc']);
+ b.child.stdin.write(JSON.stringify({ id: 'one', text: 'after compaction', compact: { instructions: 'keep the plan' } }) + '\n');
+ await b.until(rows => rows.some(row => row.type === 'turn.completed'));
+ b.child.stdin.end(); assert.equal(await b.exited, 0, b.stderr());
+ assert.deepEqual(h.calls().filter(row => row.type === 'compact' || row.type === 'prompt').map(row => [row.type, row.customInstructions ?? row.message]),
+  [['compact', 'keep the plan'], ['prompt', 'after compaction']]);
+ const types = b.events().map(row => row.type).filter(type => type.startsWith('compaction.') || type.startsWith('turn.'));
+ assert.deepEqual(types, [mode === 'normal' ? 'compaction.completed' : 'compaction.failed', 'turn.started', 'turn.completed']);
+ if (mode !== 'normal') assert.match(b.events().find(row => row.type === 'compaction.failed').message, /Nothing to compact/);
+ assertInputOutcomes(b.events(), { one: 'taken' });
+ assert.match(readFileSync(join(h.area, RUN_FILES.resultTemp), 'utf8'), /^synthetic reply 1/);
+});

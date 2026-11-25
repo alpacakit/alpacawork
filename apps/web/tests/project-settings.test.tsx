@@ -276,7 +276,7 @@ test("settings have six tabs, AI holds nothing of a project, and the gear reopen
   render(<TestWorkspace data={screenData(tree())}><DialogHost /></TestWorkspace>);
   act(() => useDialogStore.getState().open("settings", { tab: "ai" }));
   const tabs = await screen.findAllByRole("tab");
-  expect(tabs.map((tab) => tab.textContent)).toEqual(["AI", "Notifications", "Projects", "General", "App & phone", "Machine status"]);
+  expect(tabs.map((tab) => tab.textContent)).toEqual(["AI", "Notifications", "Projects", "General", "App & phone", "Resources"]);
   await waitFor(() => expect(document.getElementById("server-limits")).toBeTruthy());
   expect(screen.queryByLabelText("Name")).toBeNull();
   expect(document.getElementById("project-policy")).toBeNull();

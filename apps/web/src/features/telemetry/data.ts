@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { z } from 'zod';
-import { telemetryPreviewSchema, telemetryStatusSchema, type TelemetryOp, type TelemetryScreenAttributes, type TelemetryStatus } from '@alpacawork/contract/telemetry';
+import { telemetryHistorySchema, telemetryStatusSchema, type TelemetryOp, type TelemetryScreenAttributes, type TelemetryStatus } from '@alpacawork/contract/telemetry';
 import { api, useWorkspaceInfo } from '@/data/queries';
 import { workspaceWriteBasis } from '@/data/connection';
 import { queryClient } from '@/data/query-client';
@@ -40,9 +40,10 @@ export function useTelemetry() {
   };
   return { status, choose, busy };
 }
-export function useTelemetryPreview() {
+/** Everything this PC sends and has sent: today's report so far, the reports waiting, and the record of each request. */
+export function useTelemetryHistory() {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ queryKey: ['telemetry-preview', root], queryFn: ({ signal }) => api.request('telemetry/preview', telemetryPreviewSchema, signal),
+  return useQuery({ queryKey: ['telemetry-history', root], queryFn: ({ signal }) => api.request('telemetry/history', telemetryHistorySchema, signal),
     staleTime: 0, gcTime: 0 });
 }
 

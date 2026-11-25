@@ -33,7 +33,8 @@ function syntheticRelease(root: string, skillsUpdate: string) {
   const source = 'a'.repeat(40), format = 'b'.repeat(64);
   writeFileSync(join(release, 'SOURCE'), source); writeFileSync(join(release, 'FORMAT'), format);
   writeFileSync(join(release, 'package.json'), JSON.stringify({ name: 'alpacawork', version: '0.3.0', type: 'module', alpacawork: { source, format, targets: ['linux-x64-glibc', 'darwin-arm64'] } }));
-  for (const name of ['alpacawork', 'alpacawork-betterquality']) {
+  // The opt-in add-on ships too, but an update must not place it where nobody chose it.
+  for (const name of ['alpacawork', 'alpacawork-betterquality', 'alpacawork-modelpickoptimization']) {
     mkdirSync(join(release, 'skills', name), { recursive: true }); writeFileSync(join(release, 'skills', name, 'SKILL.md'), 'Synthetic skill');
   }
   writeFileSync(join(release, 'apps/backend/dist/installation/skills-update.js'), skillsUpdate);

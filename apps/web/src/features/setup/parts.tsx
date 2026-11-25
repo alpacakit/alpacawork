@@ -26,6 +26,12 @@ export function RecommendedMark({ id, className }: { id?: string; className?: st
   return <span id={id} data-setup-recommended className={cn("rounded-full border border-turn bg-lit px-1.5 text-xs font-normal whitespace-nowrap text-turn", className)}>{t("recommended")}</span>;
 }
 
+/** Says an offer may still change; quieter than the recommended mark, since it urges nothing. */
+export function BetaMark({ className }: { className?: string }) {
+  const { t } = useTranslation("setup");
+  return <span data-setup-beta className={cn("rounded-full border border-line px-1.5 text-xs font-normal whitespace-nowrap text-muted", className)}>{t("beta")}</span>;
+}
+
 export function FailureLine({ text, detail }: { text: string; detail: string }) {
   return <Message tone="error" size="line" className="mb-3" title={text} description={detail || undefined} />;
 }

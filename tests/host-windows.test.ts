@@ -88,9 +88,8 @@ test('Windows reader translates 64-bit SDK buffers, units, epoch, quota and prot
   const host = subject(native);
   const before = Date.now(), reading = host.read();
   assert.deepEqual(reading.cpuTicks, { total: 400.25, idle: 100.25 }); // Kernel already includes idle.
-  assert.deepEqual(reading.memory, { totalBytes: 16_000_000_000, availableBytes: 6_000_000_000, swapUsedBytes: null });
+  assert.deepEqual(reading.memory, { totalBytes: 16_000_000_000, availableBytes: 6_000_000_000 });
   assert.deepEqual(reading.disk, { totalBytes: 50_000_000_000, freeBytes: 9_000_000_000 });
-  assert.equal(reading.load, null);
   assert.ok(reading.processTime >= before && reading.processTime <= Date.now());
   assert.equal(host.facts.cores, 4); assert.equal(host.facts.memoryBytes, 16_000_000_000);
   assert.deepEqual(host.argv(10), []);

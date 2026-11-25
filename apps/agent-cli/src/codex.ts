@@ -1,5 +1,5 @@
 import { measuredUsage, usageRecord } from './usage.js';
-import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
+import type { AgentUsage, BridgeItem } from '@alpacawork/contract/agent-bridge';
 import { limitWindow, type LimitWindow, type LimitsReport } from '@alpacawork/contract/agent-limits';
 import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import type { RunFailure } from '@alpacawork/contract/run-failure';
@@ -9,13 +9,13 @@ import { spawn } from 'node:child_process';
 import type { Readable, Writable } from 'node:stream';
 import { existsSync, writeFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
-import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
+import type { Admission, CompactionResult, Instruction, Runtime, RuntimeIO } from './run.js';
 import { unknownOption, withUsage } from './options.js';
 import { defaultCodexHome, originalCodexThread, prepareCodexHome } from './codex-home.js';
 
 /** Codex's own error kinds that mean its plan or the model ran out. */
 const CODEX_CAUSES: Record<string, NonNullable<RunFailure['cause']>> = { usageLimitExceeded: 'session_limit', serverOverloaded: 'model_capacity' };
-const INITIALIZE = { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.6' },
+const INITIALIZE = { clientInfo: { name: 'alpacawork-agent', title: null, version: '0.1.7' },
   capabilities: { experimentalApi: false, requestAttestation: false } };
 
 type Options = { model: string | null; config: string[]; features: string[]; sandbox: string | null;
@@ -52,7 +52,16 @@ function parseOptions(argv: readonly string[]): Options {
 
 type Message = { id?: number | string; method?: string; params?: any; result?: any; error?: { message?: string } };
 type Pending = { resolve: (value: any) => void; reject: (error: Error) => void };
+/** A compaction Codex runs as a turn of its own (thread/compact/start), which is no turn of the Run. */
+type Compaction = { settle(result: CompactionResult): void; error: string | null };
 const snake = (name: string) => name.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+/** Only what the bridge boundary reads crosses it. A provider item can carry megabytes of command output or diffs,
+ * and one line over the reader's limit would void the whole Run's outcome. */
+function boundaryItem(item: Record<string, unknown>): BridgeItem {
+  const type = snake(String(item.type));
+  return { type, ...item.id !== undefined ? { id: item.id } : {},
+    ...type === 'command_execution' ? { command: item.command } : {}, ...type === 'agent_message' ? { text: item.text } : {} };
+}
 const text = (value: string) => [{ type: 'text', text: value, text_elements: [] }];
 const imageInput = (value: string) => {
   const images = [...value.matchAll(/^!\[[^\]\n]*\]\((\/[^)\n]+\.(?:png|jpe?g|webp))\)$/gim)]
@@ -68,6 +77,7 @@ export class CodexRuntime implements Runtime {
   private buffered = '';
   private threadId = '';
   private turnId: string | null = null;
+  private compaction: Compaction | null = null;
   private endedTurns = new Set<string>();
   private lastMessage = '';
   private usage: AgentUsage | null = null;
@@ -88,6 +98,19 @@ export class CodexRuntime implements Runtime {
     this.closing = true;
     this.server?.kill('SIGTERM');
     this.rejectPending(new Error('codex app-server closed'));
+  }
+  /** Resolves when Codex's compaction turn ends. Only called between turns, so every turn notification meanwhile is its. */
+  compact(): Promise<CompactionResult> {
+    return new Promise(settle => {
+      this.compaction = { settle, error: null };
+      this.request('thread/compact/start', { threadId: this.threadId })
+        .catch(error => this.settleCompaction({ compacted: false, message: error instanceof Error ? error.message : String(error) }));
+    });
+  }
+  private settleCompaction(result: CompactionResult): void {
+    const compaction = this.compaction;
+    this.compaction = null;
+    compaction?.settle(result);
   }
 
   async start(): Promise<void> {
@@ -165,6 +188,7 @@ export class CodexRuntime implements Runtime {
     });
   }
   private rejectPending(error: Error): void {
+    this.settleCompaction({ compacted: false, message: error.message });
     for (const waiter of this.pending.values()) waiter.reject(error);
     this.pending.clear();
   }
@@ -191,6 +215,7 @@ export class CodexRuntime implements Runtime {
     const params = message.params ?? {};
     // app-server also reports the threads of sub-agents this thread spawns; only this thread's turn is the Run's.
     if (params.threadId !== this.threadId) return;
+    if (this.compaction && this.compacting(message.method, params)) return;
     if (message.method === 'turn/started') {
       if (this.endedTurns.has(params.turn?.id)) return;
       this.turnId = params.turn?.id ?? this.turnId;
@@ -207,8 +232,7 @@ export class CodexRuntime implements Runtime {
       // A compaction leaves the fill unknown until the next model call says it.
       if (message.method === 'item/completed' && item.type === 'contextCompaction')
         this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
-      this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed',
-        item: { ...item, type: snake(String(item.type)) } });
+      this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed', item: boundaryItem(item) });
     } else if (message.method === 'thread/tokenUsage/updated') {
       this.usage = codexUsage(params.tokenUsage?.total);
       const context = codexContext(params.tokenUsage);
@@ -231,6 +255,19 @@ export class CodexRuntime implements Runtime {
     } else if (message.method === 'error') {
       this.io.emit({ type: 'error', message: params.error?.message ?? params.message ?? 'error' });
     }
+  }
+
+  /** Whether a notification belongs to the compaction turn: it starts no Run turn, shows no items and ends in the compaction's result. */
+  private compacting(method: string | undefined, params: any): boolean {
+    const compaction = this.compaction!;
+    if (method === 'error') compaction.error = params.error?.message ?? params.message ?? compaction.error;
+    else if (method === 'turn/completed') {
+      const turn = params.turn ?? {};
+      this.endedTurns.add(turn.id);
+      this.settleCompaction(turn.status === 'completed' ? { compacted: true }
+        : { compacted: false, message: turn.error?.message ?? compaction.error ?? `Codex compaction ${turn.status}` });
+    } else if (method !== 'turn/started' && method !== 'item/started' && method !== 'item/completed') return false;
+    return true;
   }
 
   async deliver(input: Instruction): Promise<Admission> {

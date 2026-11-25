@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { platform } from '@alpacawork/core';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { toolResultText } from '@alpacawork/contract/run';
-import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
+import type { Admission, CompactionResult, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
 import { callTokens, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { measuredUsage, usageRecord as object } from './usage.js';
@@ -22,6 +22,8 @@ type Execution = { inputs: Input[]; observations: string[]; assistant: Record<st
   settled: Record<string, unknown> | null };
 type Turn = { inputs: Input[]; executions: Execution[]; active: Execution | null };
 type Waiter = { command: string; resolve(value: Record<string, unknown>): void; reject(error: Error): void; accept?: (data: Record<string, unknown>) => void; timer: ReturnType<typeof setTimeout> };
+/** An ordinary response only admits work; a compaction's response comes when its summary is written. */
+const RESPONSE_MS = 10_000, COMPACTION_MS = 15 * 60_000;
 const THINKING = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const USAGE = 'Usage: alpacawork-agent pi [-o FILE] [--session ID] [--model PROVIDER/ID] [--thinking LEVEL] [--approve | --no-approve]';
 const sessionId = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(value);
@@ -185,10 +187,11 @@ export class PiRuntime implements Runtime {
     this.writes = write.catch(() => {});
     return write;
   }
-  private request(command: string, fields: object = {}, accept?: (data: Record<string, unknown>) => void): Promise<Record<string, unknown>> {
+  private request(command: string, fields: object = {}, accept?: (data: Record<string, unknown>) => void,
+    timeout = RESPONSE_MS): Promise<Record<string, unknown>> {
     const id = `pi-${++this.nextId}`;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { this.waiters.delete(id); reject(new Error(`Pi ${command} response timed out`)); }, 10000);
+      const timer = setTimeout(() => { this.waiters.delete(id); reject(new Error(`Pi ${command} response timed out`)); }, timeout);
       this.waiters.set(id, { command, resolve, reject, timer, accept });
       void this.write({ id, type: command, ...fields }).catch(error => {
         this.waiters.delete(id); clearTimeout(timer); reject(error);
@@ -258,6 +261,13 @@ export class PiRuntime implements Runtime {
       this.turn.active = null;
       this.maybeFinish();
     }
+  }
+  /** Pi's compaction is one RPC answered when it ends; its compaction_start/compaction_end events meanwhile are no turn's. */
+  async compact(instructions: string | null): Promise<CompactionResult> {
+    try {
+      await this.request('compact', instructions === null ? {} : { customInstructions: instructions }, undefined, COMPACTION_MS);
+      return { compacted: true };
+    } catch (error) { return { compacted: false, message: error instanceof Error ? error.message : String(error) }; }
   }
   async deliver(input: Instruction): Promise<Admission> {
     if (this.finishing) await this.finishing;

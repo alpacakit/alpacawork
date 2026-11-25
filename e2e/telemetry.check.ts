@@ -84,10 +84,11 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await page.setViewportSize({ width: 1440, height: 900 });
     const queued = service.queue.queued();
     await page.getByRole('button', { name: '送信内容を表示', exact: true }).click();
-    const preview = page.locator('[data-telemetry-preview]');
-    await expect(preview.locator('pre')).toContainText('"events"');
-    await expect(preview.locator('pre')).toContainText(id);
-    await expect(preview).toContainText('この番号で送信済みのデータを削除できます。');
+    const preview = page.locator('[data-telemetry-history]');
+    await preview.locator('[data-telemetry-upcoming] summary').first().click();
+    await expect(preview.locator('[data-telemetry-upcoming] pre').first()).toContainText('"events"');
+    await expect(preview.locator('[data-telemetry-upcoming] pre').first()).toContainText(id);
+    await expect(preview.locator('[data-telemetry-id]')).toHaveText(id);
     expect(service.queue.queued()).toEqual(queued);
     await shot('settings-preview-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-preview-ja-phone');
@@ -105,7 +106,9 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await switcher.click(); await expect(switcher).not.toBeChecked(); expect(service.status().state).toBe('off');
     expect(service.queue.queued()).toHaveLength(0);
     await page.getByRole('button', { name: '送信内容を表示', exact: true }).click();
-    await expect(preview).toContainText('送信していないため、表示する内容はありません。');
+    await expect(preview).toContainText('送信していないため、これから送る分はありません。');
+    // What was sent stays listed after sending stops.
+    await expect(preview.locator('[data-telemetry-log]')).toContainText('送信済みのデータの削除の依頼');
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-preview-off-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-preview-off-ja-phone');
     await preview.locator('[data-slot=dialog-footer]').getByRole('button', { name: '閉じる', exact: true }).click();
@@ -113,12 +116,20 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     // Stopping and choosing again keeps the same number.
     expect(service.status().id).toBe(id);
 
-    writeJson(service.store.paths.consent, { ...service.store.read()!, consentVersion: 0 });
-    await page.keyboard.press('Escape'); await openSettings();
-    await expect(page.locator('[data-telemetry-settings]')).toContainText('スイッチを入れると、新しい形で送信します。');
+    // A kind of information added after the person chose: asked again in a window, naming what was added.
+    const saved = service.store.read()!;
+    writeJson(service.store.paths.consent, { ...saved, fields: saved.fields!.filter(field => field !== 'shape.parallel') });
+    await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
+    const reask = page.locator('[data-telemetry-reask]');
+    // What it is and an example lead; the field's name follows in brackets.
+    await expect(reask.locator('[data-telemetry-added] li')).toHaveCount(1);
+    await expect(reask.locator('[data-field="shape.parallel"]')).toContainText('同時に動いていた AI の最大の数例: 3-4(shape.parallel)');
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-reask-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-reask-ja-phone');
-    await switcher.click(); await expect(switcher).toBeChecked();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await reask.getByRole('button', { name: '同意する', exact: true }).click();
+    await expect(reask).toHaveCount(0); expect(service.status().state).toBe('on');
+    await openSettings();
 
     // The settings hints are observable when consent changes elsewhere during this opening.
     rmSync(service.store.paths.consent);
@@ -132,10 +143,13 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-blocked-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-blocked-ja-phone');
     blocked = false;
-    // A changed consent version, too, waits in Settings rather than stopping the page.
+    // Changed terms ask again too; closing the window answers nothing and sends nothing.
     writeJson(service.store.paths.consent, { version: 1, choice: 'on', consentVersion: 0, decidedAt: new Date(at).toISOString(), decidedBy: 'screen' });
+    await page.keyboard.press('Escape');
     await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(reask).toContainText('送信する情報か送り方が変わりました。');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0); expect(service.status().state).toBe('needs_reask');
     expect(network).toBe(0);
     writeFileSync(join(shots, 'evidence.json'), JSON.stringify({ fixture: 'scripts/dev-fixtures small', viewport: ['1440x900', '390x844'], network }, null, 2));
   } finally { await service.close(); rmSync(dir, { recursive: true, force: true }); }

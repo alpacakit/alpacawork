@@ -33,12 +33,14 @@ for (const id of BUILTIN_ADAPTER_IDS) test(`adapter ${id}: valid detached initia
 });
 test('omitted settings follow the adapter, explicit lists replace defaults, and exclusions apply only to optional choices', () => {
   const codex = agentSettingSchemaFor('codex').parse({});
-  assert.deepEqual(codex.params, { model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra'],
+  assert.deepEqual(codex.params, { model: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-terra', 'gpt-6-luna'],
     effort: ['high', 'low', 'medium', 'xhigh', 'max', 'ultra'], fast: ['-', 'fast'] });
   assert.deepEqual(codex.env, ['OPENAI_API_KEY']);
   assert.deepEqual(agentSettingSchemaFor('codex').parse({ params: { model: ['custom-model'] } }).params,
     { ...codex.params, model: ['custom-model'] });
-  assert.equal(Object.hasOwn(agentSettingSchemaFor('claude').parse({}).params, 'fast'), false);
+  const claude = agentSettingSchemaFor('claude').parse({});
+  assert.deepEqual(claude.params.model, ['opus', 'fable', 'sonnet', 'haiku']);
+  assert.equal(Object.hasOwn(claude.params, 'fast'), false);
   assert.deepEqual(AGENT_ADAPTERS.claude.fixedEnv, ['CLAUDE_CONFIG_DIR']);
   assert.deepEqual(AGENT_ADAPTERS.codex.fixedEnv, ['CODEX_HOME']);
   assert.deepEqual(AGENT_ADAPTERS.grok.fixedEnv, ['GROK_HOME']);

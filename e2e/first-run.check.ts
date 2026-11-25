@@ -60,9 +60,10 @@ for (const [width, height] of [[1440, 900], [390, 844]] as const) {
     page.on("request", request => { if (request.resourceType() === "document") documents.push(request.url()); });
     await setup.locator("[data-setup-next]").click();
 
-    // 3 Skills: three are recommended and ticked; with only the bundled one left ticked, the button names one skill.
+    // 3 Skills: the two recommended are ticked and the add-ons are not; with only one add-on ticked, the button names one skill.
     const skills = setup.locator('[data-setup-panel="skills"]');
-    await expect(skills.locator("[data-setup-install]")).toHaveText("Install 3 skills");
+    await expect(skills.locator("[data-setup-install]")).toHaveText("Install 2 skills");
+    for (const name of ["alpacawork-betterquality", "alpacawork-modelpickoptimization"]) await expect(skills.locator(`[data-setup-skill="${name}"] input`)).not.toBeChecked();
     for (const name of ["askmeclearly", "doyourjob"]) await skills.locator(`[data-setup-skill="${name}"] input`).uncheck();
     await skills.locator('[data-setup-skill="alpacawork-betterquality"] input').check();
     await expect(skills.locator("[data-setup-install]")).toHaveText("Install 1 skill");

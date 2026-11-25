@@ -19,12 +19,12 @@ const run = (n: number, cpu: number, role: "owner" | "worker" = "owner") => ({ r
   cpu, memoryBytes: n * GB, processes: 3, heaviest: n === 1 ? { name: "vitest", count: 4 } : null });
 const status: HostStatus = {
   supported: true, facts: { hostname: "workstation", os: "Ubuntu 24.04", cores: 52, memoryBytes: 125 * GB }, parallel: 12,
-  sample: { at: now, cpu: 6.3, memory: { totalBytes: 125 * GB, availableBytes: 100 * GB, swapUsedBytes: 0 }, load: [5.2, 4.9, 4.5],
-    disk: { freeBytes: 465 * GB, totalBytes: 2000 * GB },
+  sample: { at: now, cpu: 6.3, memory: { totalBytes: 125 * GB, availableBytes: 100 * GB },
+    disk: { freeBytes: 465 * GB, totalBytes: 2000 * GB }, gpus: [],
     runs: [run(1, 31), run(2, 0.4, "worker"), run(3, 0.02), run(4, 0.01), run(5, 0)],
     outside: { cpu: 1.9, memoryBytes: 25 * GB, names: ["chrome-headless", "Xorg"] } },
   history: [{ at: now - 20_000, cpu: 5, memoryFreePercent: 80 }, { at: now, cpu: 6.3, memoryFreePercent: 80 }],
-  current: null,
+  current: null, tight: [],
   episodes: [{ id: 7, start: now - 3_600_000, end: now - 3_000_000, kinds: ["cpu"], peak: { cpu: 99.4, memoryFreePercent: 40, diskFreeBytes: 465 * GB },
     runs: [{ runId: "R1", taskId: "T1", title: "Task 1", model: "opus", role: "owner", cpuPeak: 46, memoryPeakBytes: 2.4 * GB, heaviest: "vitest ×4",
       firstSeen: now - 3_600_000, lastSeen: now - 3_000_000 }] }],
@@ -48,14 +48,14 @@ test("the tab shows this machine, the heaviest Runs with a way to their Task, an
   const request = vi.spyOn(api, "request").mockImplementation(async (path: string) => path === "host/status" ? status : minutes);
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
   expect(await screen.findByText(i18n.t("panels:host.calm"))).toBeTruthy();
-  expect(screen.getByText(i18n.t("panels:host.limitBytes", { value: "1863 GB" }))).toBeTruthy();
-  expect(screen.getByText(i18n.t("panels:host.facts", { hostname: "workstation", os: "Ubuntu 24.04", cores: 52, memory: "125 GB" }))).toBeTruthy();
-  expect(screen.getByText(i18n.t("panels:host.cpuNote", { load: "5.2", cores: 52 }))).toBeTruthy();
-  expect(screen.getByText("31% · 1.0 GB")).toBeTruthy();
-  expect(screen.getByText("0.4% · 2.0 GB")).toBeTruthy();
+  expect(screen.getByText(i18n.t("panels:host.facts", { hostname: "workstation", cores: 52, memory: "125 GB" }))).toBeTruthy();
+  const heavy = screen.getByRole("region", { name: i18n.t("panels:host.heavy") });
+  const rows = [...heavy.querySelectorAll("[data-host-run], [data-host-outside], [data-host-more]")].map(row => row.firstElementChild!.textContent);
+  expect(rows, "heaviest first, with what runs outside alpacawork in the same order")
+    .toEqual(["T1Task 1", i18n.t("panels:host.outside"), "T1Task 2", "T1Task 3", i18n.t("panels:host.moreRuns", { count: 2 })]);
   expect(screen.getByText(`opus · ${i18n.t("panels:host.worker")}`)).toBeTruthy();
   expect(screen.getByText(i18n.t("panels:host.outsideNames", { names: "chrome-headless · Xorg" }))).toBeTruthy();
-  expect(screen.getByText(i18n.t("panels:host.moreRuns", { count: 2, cpu: "0%", memory: "9.0 GB" }))).toBeTruthy();
+  expect(document.querySelector("[data-host-gpu]"), "no GPU, no GPU frame").toBeNull();
 
   const episode = screen.getByRole("button", { expanded: false });
   fireEvent.click(episode);
@@ -67,6 +67,43 @@ test("the tab shows this machine, the heaviest Runs with a way to their Task, an
   useDialogStore.getState().open("settings", { tab: "host" });
   fireEvent.click(screen.getByText("Task 1", { selector: "[data-host-run] span" }));
   expect(useDialogStore.getState().dialog).toBeNull();
+});
+
+test("each GPU shows its use, its VRAM in use and who holds it, and leaves out what the machine cannot read", async () => {
+  const gpu = (id: string) => ({ id, name: "NVIDIA RTX 6000 Ada Generation",
+    utilization: 82, memory: { usedBytes: 38.2 * GB, totalBytes: 47.99 * GB },
+    users: [{ name: "llama-server", memoryBytes: 37.6 * GB, runId: null, taskId: null }, { name: "python3", memoryBytes: 0.5 * GB, runId: "R1", taskId: "T1" }] });
+  const vram = (text: string) => (_: string, element: Element | null) => element?.tagName === "DIV" && element.textContent === `${i18n.t("panels:host.vram")} ${text}`;
+  const two = { ...status, sample: { ...status.sample!, gpus: [gpu("0"), { ...gpu("1"), utilization: null, memory: null, users: null }] } };
+  vi.spyOn(api, "request").mockResolvedValue(two);
+  const view = render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
+  expect(await screen.findByText(/RTX 6000 Ada ×2$/)).toBeTruthy();
+  const [first, second] = [...document.querySelectorAll<HTMLElement>("[data-host-gpu]")];
+  expect(within(first!).getByText(i18n.t("panels:host.gpuNumbered", { index: 0 }))).toBeTruthy();
+  expect(within(first!).getByText("82%")).toBeTruthy();
+  expect(within(first!).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
+  expect(within(first!).getByText("llama-server 37.6 GB")).toBeTruthy();
+  expect(within(first!).getByText("T1 python3 0.5 GB")).toBeTruthy();
+  expect(within(second!).getByText(i18n.t("panels:host.gpuNumbered", { index: 1 }))).toBeTruthy();
+  expect(within(second!).getByText("—")).toBeTruthy();
+  expect(within(second!).queryByText(i18n.t("panels:host.vram"), { exact: false })).toBeNull();
+  view.unmount();
+
+  vi.spyOn(api, "request").mockResolvedValue({ ...status, sample: { ...status.sample!, gpus: [{ ...gpu("0"),
+    users: [{ name: "ollama", memoryBytes: 1 * GB, runId: "R2", taskId: null }] }] } });
+  render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
+  const only = await screen.findByText(i18n.t("panels:host.gpu"), { selector: "[data-host-gpu] span" });
+  expect(within(only.closest("[data-host-gpu]") as HTMLElement).getAllByText(vram("38.2 / 48 GB")).length).toBeGreaterThan(0);
+  expect(within(only.closest("[data-host-gpu]") as HTMLElement).getByText(`${i18n.t("ui:role.coordinator")} ollama 1.0 GB`), "a Run without a Task is named as the coordinator's").toBeTruthy();
+});
+
+test("only the measures tight now are marked, not one that was tight earlier in the same stretch", async () => {
+  const episode = { ...status.episodes[0]!, end: null, kinds: ["cpu", "memory"] as ("cpu" | "memory")[] };
+  vi.spyOn(api, "request").mockResolvedValue({ ...status, current: episode, episodes: [episode], tight: ["memory"] });
+  render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
+  await screen.findAllByText(i18n.t("panels:host.tight"));
+  const marked = [...document.querySelectorAll("[data-host-meter][data-tight] [data-host-label]")].map(label => label.textContent);
+  expect(marked).toEqual([i18n.t("panels:host.memory")]);
 });
 
 test("the coordinator's Run is named in the screen's language, not by the title the server gave it", async () => {
@@ -109,17 +146,15 @@ test("asking for Host status while settings are open moves there and keeps the o
   expect(document.querySelector('[role="tabpanel"][hidden]'), "the server draft stays mounted while hidden").toBeTruthy();
 });
 
-test("unavailable load, swap and process values are shown as gaps through the real tab", async () => {
-  const missing: HostStatus = { ...status, sample: { ...status.sample!, load: null,
-    memory: { ...status.sample!.memory, swapUsedBytes: null },
+test("unavailable process values are shown as gaps through the real tab", async () => {
+  const missing: HostStatus = { ...status, sample: { ...status.sample!,
     runs: [{ ...run(1, 1), cpu: null, memoryBytes: null }],
     outside: { cpu: null, memoryBytes: null, names: [] } } };
   vi.spyOn(api, "request").mockResolvedValue(missing);
   render(<TestWorkspace data={screenData(tree())}><HostTab /></TestWorkspace>);
-  expect(await screen.findByText(i18n.t("panels:host.cpuNote", { load: "—", cores: 52 }))).toBeTruthy();
-  expect(screen.getByText(i18n.t("panels:host.memoryNote", { swap: "—", free: "100 GB" }))).toBeTruthy();
-  expect(screen.getAllByText("— · —")).toHaveLength(2);
-  expect(screen.queryByText("0% · 0.0 GB")).toBeNull();
+  await waitFor(() => expect(within(document.querySelector<HTMLElement>("[data-host-run]")!).getAllByText("—")).toHaveLength(2));
+  expect(within(document.querySelector<HTMLElement>("[data-host-outside]")!).getAllByText("—")).toHaveLength(2);
+  expect(screen.queryByText("0.0 GB")).toBeNull();
 });
 
 test("adapter initialization failure shows its error without claiming the machine is keeping up", async () => {

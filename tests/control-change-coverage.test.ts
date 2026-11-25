@@ -11,6 +11,7 @@ import { RunStore } from '@alpacawork/runs';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { ControlTaskStore, TaskRepository } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
+import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
 import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { writeFieldDef, deleteFieldDef, writeProjectSchema, writeTaskValues } from '@alpacawork/backend/test-dist/control/task-values-store.js';
@@ -22,6 +23,7 @@ import { managerScript, settleTransaction, launch } from '@alpacawork/backend/te
 import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
 import { EventJournal, executionFolder, identityOf, messageName } from '@alpacawork/backend/test-dist/runs/execution-files.js';
+import { claimCompaction, latestCompactions, requestCompaction, settleCompaction } from '@alpacawork/backend/test-dist/runs/compactions.js';
 import { changeFixture } from './helpers/change-fixture.ts';
 import { changeAudit } from './helpers/control-change-audit.ts';
 import { assignResponsible, grantFixtureRequest } from './helpers/control-fixture.ts';
@@ -243,6 +245,73 @@ test('seeded real operations cover writers and every committed row change has it
   await step('diagnose broken execution event', () => importer.pass([importedRun.id]), ['input', 'attempt']);
   rmSync(brokenEvent);
   await step('recover execution diagnostic', () => importer.pass([importedRun.id]), ['input', 'attempt']);
+
+  // A conversation whose later Runs compact it.
+  const compactTask = await newTask('Compaction audit');
+  const compactSeat = await step('place compaction subject', () => placements.createAndPlace({ taskId: compactTask.id,
+    profileKey: 'fake', responsible: true }));
+  const conversationRun = (resumes: string | null) => runs.write(tx => {
+    const id = randomUUID();
+    tx.insertRequest({ id, taskId: compactTask.id, placementId: compactSeat.placement.id, placementRevision: 1,
+      taskHash: compactTask.hash, waitCycleId: null, headRunId: null, mode: resumes ? 'continue' : 'new', body: 'Compaction audit',
+      purpose: 'instruction', author: human, submittedAt: new Date().toISOString(), deliveryState: 'queued' });
+    grantFixtureRequest(runs, tx, id);
+    return tx.create(fields({ task: compactTask.id, placementId: compactSeat.placement.id, requestId: id, role: 'owner',
+      agent: 'fake', cwd: root, resumes, session: { provider: 'fake', id: 'compaction-audit-session' } }), 'Compaction audit');
+  });
+  const talked = await step('queue first conversation turn', () => conversationRun(null));
+  await step('start first conversation turn', () => runs.write(tx => tx.update({ ...talked, state: 'running', started_at: new Date().toISOString() })));
+  await step('finish first conversation turn', () => runs.write(tx => tx.finish({ ...tx.get(talked.id)!, state: 'succeeded',
+    ended_at: new Date().toISOString() }, { state: 'present', text: 'Synthetic reply' })));
+  // A queued Run moved to another AI before it was sent (AI fallback), and a placement with its own AI rows.
+  const rebound = await step('queue a Run to rebind', () => conversationRun(null));
+  await step('rebind a queued Run', () => runs.write(tx => tx.rebindQueued({ ...tx.get(rebound.id)! },
+    { aiStack: [{ agent: 'fake', values: {} }], prompt: 'Rebound audit' })));
+  await step('cancel the rebound Run', () => runs.write(tx => tx.abortRequest(tx.get(rebound.id)!, rebound.requestId)));
+  const rowsTask = await newTask('Placement AI rows audit');
+  await step('assign a responsible with AI rows', async () => new PlacementCommands(root).placeNewResponsible({ taskId: rowsTask.id,
+    profileKey: 'fake', expectedTaskHash: (await tasks.get(rowsTask.id)).hash, aiStack: ['stop'] }, human));
+  // A compaction rides the Run of its instruction: asked for, carried by its resumed launch, and each way it ends.
+  const at = () => new Date().toISOString();
+  const latest = () => control.write(db => latestCompactions(db, [compactSeat.placement.id]).get(compactSeat.placement.id)?.state);
+  const compacting = async (name: string) => {
+    const run = await step(`queue ${name}`, () => conversationRun(talked.id));
+    await step(`ask to compact before ${name}`, () => write(db => requestCompaction(db, run, null, true, at())));
+    return run;
+  };
+  const resumed = await compacting('resumed turn');
+  assert.equal(latest(), 'pending');
+  const carrying = await step('reserve compacting launch', () => runs.write(tx => {
+    const reserved = reserveAttempt(runs, tx, resumed, managerScript, DEFAULT_LIMITS);
+    tx.update({ ...resumed, state: 'running', started_at: at() }); return reserved;
+  }));
+  assert.ok(carrying.compaction, 'a resumed launch carries the compaction');
+  const settle = (outcome: Parameters<typeof settleCompaction>[2]) => write(db => settleCompaction(db, carrying.attemptId, outcome, at()));
+  const carry = (run: { id: string }, mode: 'start' | 'resume' = 'resume') => write(db => claimCompaction(db, run.id,
+    carrying.attemptId, { launch: carrying.invocation.launch, mode }, at()));
+  await step('settle compacted', () => settle({ state: 'compacted', message: null }));
+  assert.equal(latest(), 'compacted');
+  const unanswered = await compacting('an unanswered turn');
+  await step('carry it', () => carry(unanswered));
+  await step('settle without an answer', () => settle(null));
+  assert.equal(latest(), 'unknown', 'sent with its instruction and never answered');
+  const anew = await compacting('a turn that starts anew');
+  await step('drop it at a new conversation', () => carry(anew, 'start'));
+  assert.equal(latest(), 'dropped');
+  const unsent = await compacting('an unsent turn');
+  await step('carry the unsent one', () => carry(unsent));
+  await step('arrange an unsent initial input', () => runs.write(() => {
+    runs.connection.prepare("UPDATE run_inputs SET state='not_sent' WHERE input_id=?").run(carrying.initialInputId);
+    touch(runs.connection, { kind: 'input', id: carrying.initialInputId });
+  }));
+  await step('drop it with its unsent instruction', () => settle(null));
+  assert.equal(latest(), 'dropped');
+  await step('keep one the agent cannot compact as dropped', async () => {
+    const run = await conversationRun(talked.id);
+    write(db => requestCompaction(db, { ...run, launch: { ...run.launch, adapter: 'copilot', values: {} } }, null, false, at()));
+  });
+  assert.equal(latest(), 'dropped', 'Copilot cannot compact on its automatic choice of model');
+
 
   const missing = inventory.filter(site => trackedSite(site) && !observed.seen.has(siteId(site)));
   assert.deepEqual(missing.map(site => `${site.file}:${site.line} ${site.sql}`), [], 'every owned write site executes at least once');

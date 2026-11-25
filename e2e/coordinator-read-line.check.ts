@@ -54,6 +54,11 @@ async function send(page: Page, runtime: Runtime, text: string) {
 }
 /** Polled often: an answer comes in moments, and expect.poll's own back-off would wait up to a second past each one. */
 const answered = (page: Page, runtime: Runtime, count: number) => expect.poll(async () => (await answers(page, runtime)).length, { timeout: 20_000, intervals: [50] }).toBe(count);
+/** The latest reply drawn on the page, in its own row: only then can an input read it. */
+const drawn = async (page: Page, runtime: Runtime) => {
+  const id = (await turnsOf(page, runtime)).at(-1)!.id;
+  await expect(page.locator(`[data-coordinator-message="${id}"] [data-ask-answer]`)).toBeVisible({ timeout: 20_000 });
+};
 async function seed(page: Page, runtime: Runtime, count: number, long: number[] = []) {
   configureCoordinator(runtime.root);
   const file = join(runtime.root, 'long-answer.md'); writeFileSync(file, LONG);
@@ -116,7 +121,7 @@ test('reading during a delayed opening refresh keeps its position', async ({ pag
   } finally { release(); }
 });
 
-test('a reply that comes while the conversation is open is read without any input (initial GET held)', async ({ page, runtime }) => {
+test('a reply that comes while the conversation is open stays unread until the next input there (initial GET held)', async ({ page, runtime }) => {
   await seed(page, runtime, 1);
   let releaseFirstRead!: () => void;
   let firstReadStarted = false;
@@ -132,11 +137,16 @@ test('a reply that comes while the conversation is open is read without any inpu
   await expect(page.locator('[data-coordinator-turn]')).toHaveCount(1);
   await settleMotion(page);
   let posted = 0; page.on('request', request => { if (new URL(request.url()).pathname === '/api/coordinator/read') posted++; });
-  await send(page, runtime, 'markdown-answer automatic while attending');
-  // No additional click, wheel or key occurs after the request was sent by the API.
-  await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen, { timeout: 20_000 }).toBe(true);
-  expect(posted).toBeGreaterThan(0);
+  await send(page, runtime, 'markdown-answer arrives while nobody acts');
+  // Sent by the API: nothing happens on the page while the reply arrives and is shown.
+  await answered(page, runtime, 2); await drawn(page, runtime);
+  await page.waitForTimeout(400);
+  expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
+  expect(posted).toBe(0);
+  await page.keyboard.press('Shift');
+  await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
   const count = posted;
+  expect(count).toBeGreaterThan(0);
   await page.waitForTimeout(400);
   expect(posted).toBe(count); // Notification -> GET must not create a write cycle.
 });
@@ -183,8 +193,9 @@ test('a separate conversation window reads through its own input and document', 
 });
 
 // Playwright emulates focused tabs by default. This check runs separately with --headed under Xvfb, so a tab in the
-// background is really out of sight: what comes meanwhile is read when the page is shown again.
-test('a background tab keeps a reply unread until the page is shown again', async ({ page, runtime }, info) => {
+// background is really out of sight: what comes meanwhile stays unread when the page is shown again (a tab before it
+// may have closed by itself), until the next input there.
+test('a background tab keeps a reply unread when shown again, until the next input there', async ({ page, runtime }, info) => {
   test.skip(info.project.use.headless !== false, 'Run --headed under Xvfb to exercise actual browser focus');
   const session = await page.context().newCDPSession(page);
   await seed(page, runtime, 1); await readUpTo(page, runtime, 1); await openCoordinator(page);
@@ -202,11 +213,16 @@ test('a background tab keeps a reply unread until the page is shown again', asyn
     expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
     await page.bringToFront();
     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    // Shown again, the page draws the reply; it stays unread until an input there.
+    await drawn(page, runtime);
+    await page.waitForTimeout(300);
+    expect((await turnsOf(page, runtime)).at(-1)?.seen).toBe(false);
+    await page.keyboard.press('Shift');
     await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
   } finally { await otherSession.detach(); await other.close(); await session.detach(); }
 });
 
-test('an initial load failure recovers to folded history whose replies are all read', async ({ page, runtime }) => {
+test('an initial load failure recovers to folded history, read at the next input', async ({ page, runtime }) => {
   await seed(page, runtime, 3, [1, 2, 3]);
   // The seed visit may have saved a valid opening. This case requires a cold initial GET.
   await clearReadCheckpoint(page);
@@ -221,6 +237,9 @@ test('an initial load failure recovers to folded history whose replies are all r
   await page.clock.runFor(4_100);
   await expect(earlier(page)).toContainText('2 earlier messages');
   await expect(page.locator('[data-coordinator-turn]')).toHaveCount(1);
+  // Drawn after the press, by the recovery: read at the next input.
+  expect((await turnsOf(page, runtime)).every(turn => turn.seen)).toBe(false);
+  await page.keyboard.press('Shift');
   await expect.poll(async () => (await turnsOf(page, runtime)).every(turn => turn.seen)).toBe(true);
 });
 
@@ -313,6 +332,10 @@ test('at work folded history is read too; the new answer moves nothing', async (
   const before = await top(page);
   writeFileSync(gate, '');
   await answered(page, runtime, 4);
+  await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, false]);
+  // The answer that came in while nobody acted is read by the next input once it is drawn.
+  await drawn(page, runtime);
+  await page.keyboard.press('Shift');
   await expect.poll(async () => (await turnsOf(page, runtime)).map(turn => turn.seen)).toEqual([true, true, true, true]);
   await page.waitForTimeout(300);
   expect(await top(page)).toBe(before);
@@ -333,6 +356,9 @@ test.describe('send, answer, close and open again', () => {
       const sendHere = async (text: string) => { await input.fill(text); await page.locator('[data-coordinator-card] [data-ask-send]').click(); };
       await sendHere('markdown-answer IN-SIGHT');
       await answered(page, runtime, 3);
+      // Shown, it is read by the next input on the page.
+      await drawn(page, runtime);
+      await page.keyboard.press('Shift');
       await expect.poll(async () => (await turnsOf(page, runtime)).at(-1)?.seen).toBe(true);
       await page.screenshot({ path: info.outputPath(`1-answered-in-sight-${width}.png`) });
       // Two answers come while it is closed: the first folds, the latest stays shown.

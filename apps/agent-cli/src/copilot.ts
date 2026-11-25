@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { managedSkillsRoot } from '@alpacawork/core/installed-skills';
 import { CopilotClient, RuntimeConnection, approveAll, type CopilotSession, type SessionEvent } from '@github/copilot-sdk';
-import type { Admission, Instruction, Runtime, RuntimeIO } from './run.js';
+import type { Admission, CompactionResult, Instruction, Runtime, RuntimeIO } from './run.js';
 import { requiredValue, unknownOption, withUsage } from './options.js';
 import { measuredUsage, usageRecord } from './usage.js';
 import type { AgentUsage } from '@alpacawork/contract/agent-bridge';
@@ -93,6 +93,24 @@ export class CopilotRuntime implements Runtime {
     this.io.emit({ type: 'thread.started', thread_id: session.sessionId });
   }
 
+  /** Copilot compacts with the session's model. A session on Auto has none until a prompt of this process lets Auto pick
+   * one, and the model Auto picked earlier is refused when chosen by name, so such a conversation needs a chosen model. */
+  async compact(instructions: string | null): Promise<CompactionResult> {
+    const session = this.session;
+    if (!session) throw new Error('Copilot session is not ready');
+    let message: string;
+    try {
+      const result = await session.rpc.history.compact(instructions === null ? {} : { customInstructions: instructions });
+      if (result.success) return { compacted: true };
+      message = 'Copilot did not compact the conversation';
+    } catch (error) { message = error instanceof Error ? error.message : String(error); }
+    const model = (await session.rpc.model.getCurrent().catch(() => null))?.modelId;
+    // Copilot's own words come first: on Auto they may have another cause, such as nothing to compact yet.
+    if (!model || model === 'auto') message = `${message.replace(/\.$/, '')}. On Auto model selection Copilot cannot compact ` +
+      'before a turn has picked a model: choose a model for Copilot in the agent settings to compact its conversations.';
+    return { compacted: false, message };
+  }
+
   async deliver(input: Instruction): Promise<Admission> {
     if (!this.session) throw new Error('Copilot session is not ready');
     const first = !this.busy;
@@ -122,8 +140,10 @@ export class CopilotRuntime implements Runtime {
 
   private receive(event: SessionEvent): void {
     if (this.closing) return;
-    // Sub-agents' model calls are this Run's cost too; their other events are not this conversation's.
+    // Sub-agents' model calls are this Run's cost too; their other events are not this conversation's. A compaction's model
+    // call has no assistant.usage: its counters, in the same fields, come with its end.
     if (event.type === 'assistant.usage') { this.calls.push(event.data); return; }
+    if (event.type === 'session.compaction_complete') { if (event.data.compactionTokensUsed) this.calls.push(event.data.compactionTokensUsed); return; }
     if (event.agentId) return;
     const context = copilotContext(event.type, event.data);
     if (context) { this.io.emit({ type: 'context.updated', context }); return; }
