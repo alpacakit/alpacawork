@@ -9,7 +9,7 @@ export const STORY = { single: 'T113', parent: 'T11', child: 'T114', grandchild:
   childQuestion: 'L-story-child', grandQuestion: 'L-story-grand', childStatus: 'L-story-child-status', review: 'T115', statusTask: 'T118', action: 'L-story-own', step: 'L-story-step' } as const;
 const at = (minute: number) => new Date(Date.UTC(2026, 8, 25, 1, minute)).toISOString();
 /** What a story's question asks, as its asking record fixes it. */
-const asking = (title: string) => [{ decide_question: title, decide_choices: [
+const asking = (title: string) => [{ decide_kind: 'choose', decide_question: title, decide_choices: [
   { decide_choice: 'A Option A', decide_choice_detail: 'Proceed with A.' }, { decide_choice: 'B Option B', decide_choice_detail: 'Proceed with B.' }] }];
 
 export function seedTimelineStories(root: string) {

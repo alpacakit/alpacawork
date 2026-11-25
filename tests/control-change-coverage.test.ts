@@ -67,7 +67,7 @@ test('seeded real operations cover writers and every committed row change has it
   const write = <T>(work: Parameters<ControlStore['write']>[0]) => control.write(work) as T;
   const human = { kind: 'human' } as const;
   const newTask = async (title: string) => (await step('create Task', () => commands.create({ parentId: 'P1',
-    userRequested: false, tasks: [{ title, values: { decide: [{ decide_question: 'Which direction?' }] } }] }))).tasks[0]!;
+    userRequested: false, tasks: [{ title, values: { decide: [{ decide_kind: 'choose', decide_question: 'Which direction?' }] } }] }))).tasks[0]!;
   const first = await newTask('First audited task'), second = await newTask('Second audited task');
   const field = { id: 'audit_item', title: 'Audit item', type: 'text', many: false,
     maxChars: 100, maxItems: null, hint: '', members: [] };
@@ -125,7 +125,7 @@ test('seeded real operations cover writers and every committed row change has it
   const actor = { kind: 'placement', placementId: owner.id } as const;
   const question = randomUUID();
   await step('restore question value', () => control.write(db => writeTaskValues(db, first.id,
-    { decide: [{ decide_question: 'Which direction?' }] })));
+    { decide: [{ decide_kind: 'choose', decide_question: 'Which direction?' }] })));
   await step('ask question', async () => new TaskReportService(root).report({ task: first.id, state: 'waiting', askTo: 'user',
     title: 'Choose a direction', description: 'Synthetic question', opId: question, expectedTaskHash: (await tasks.get(first.id)).hash },
   actor, caller), ['wait_cycle', 'return', 'delivery', 'resolution']);

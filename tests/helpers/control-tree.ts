@@ -12,7 +12,7 @@ import { PROBLEM_CODE, hasCode, faultReason, type Problem, type ProblemReason } 
 import { dependencyStatuses } from '@alpacawork/backend/test-dist/control/dependencies.js';
 import { TaskRepository, TaskTree, controlSnapshotView, readControl } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
-import { workingOf } from '@alpacawork/backend/test-dist/control/working.js';
+import { workingOf } from './working-tree.ts';
 import { ballSourceOf, ballsOf } from './ball-source.ts';
 import { endedOwnWork } from '@alpacawork/backend/test-dist/control/return-rules.js';
 import { seatSettings, seatSourceOf } from '@alpacawork/backend/test-dist/control/wake.js';

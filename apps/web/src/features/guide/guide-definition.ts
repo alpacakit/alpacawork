@@ -65,6 +65,8 @@ import type { GuideStage } from "./guide-state";
  * - `say`: its words, by its key, written out so the extractor reads it;
  * - `again`: its words when what it holds under comes round after it was said (above): what goes on and what is next;
  * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft);
+ * - `roles`: who does what, drawn over its first words (RolesPicture) with this role lit: the role its part is on the
+ *   screen. Not over its words when it comes round again;
  * - `show`: a motion that shows how its part is used (show-how), played by that part's owner a moment after the
  *   balloon stands, each time it stands; the balloon stays still meanwhile and stands clear of where it takes the part.
  * Nothing else names a step: the balloon and the stored stage read them from here.
@@ -187,6 +189,9 @@ export type GuideFacts = {
   skipped: ReadonlySet<string>;
 };
 
+/** A role a step's picture of who does what can light (`roles`): the coordinator (the conversation and the input), or a Task's owner. */
+export type GuideRole = "coordinator" | "owner";
+
 /** Where a step belongs in the order steps are chosen in (see the top). */
 export type GuidePhase = "first" | "now" | "turn" | "close" | "work" | "idle" | "phone";
 
@@ -237,6 +242,7 @@ export type GuideEntry = {
   again?: (t: TFunction) => string;
   reads?: readonly GuideRead[];
   show?: ShowHowKind;
+  roles?: GuideRole;
 };
 
 const turnSection = (t: TFunction) => t("tree:home.turn");
@@ -271,7 +277,7 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.send") },
   // Whatever was sent (a request, an answer, one more), while the coordinator is on it: not while it can still be
   // taken back, which the screen says itself.
-  { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy && !f.soon,
+  { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy && !f.soon, roles: "coordinator",
     say: t => t("tree:guide.say.received"), again: t => t("tree:guide.again.received") },
   // A question open in the detail, until its answer is sent: right beside the questions' box, over the detail's margin;
   // where the detail lies over the page, clear of it (what is read over the questions stays read).
@@ -324,7 +330,7 @@ export const GUIDE: readonly GuideEntry[] = [
   // Other work: a Task left with no AI on it waits for the person, nothing there is the AI's yet.
   { id: "unassigned", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0 && f.unowned === f.working,
     say: t => t("tree:guide.say.unassigned"), again: t => t("tree:guide.say.unassigned") },
-  { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0,
+  { id: "working", phase: "work", part: "workingRow", side: "bottom", when: f => f.working > 0, roles: "owner",
     say: t => t("tree:guide.say.working", { section: turnSection(t) }), again: t => t("tree:guide.again.working", { section: turnSection(t) }) },
   // Nothing going on and nothing written: a request is to be written, with the request to try the whole flow with (as
   // on the first step). Not while what the person just sent or finished is on its way: the screen says so itself, and

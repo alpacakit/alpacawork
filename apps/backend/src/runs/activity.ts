@@ -8,6 +8,7 @@ import { JsonlReader, STEP_LINE_LIMIT } from './readers/jsonl.js';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import { RecentWork, recentWorkName, runStepKind } from './recent-work.js';
 import type { ActivityEvent } from './activity-events.js';
+import { StepJournal } from './step-journal.js';
 
 // Six steps with worst-case JSON escaping, plus the note and current work, fit below this bound.
 const ACTIVITY_FILE_LIMIT = 64 * 1024;
@@ -119,9 +120,13 @@ class WorkActivity {
 }
 
 export class OutputActivityReader {
-  /** `reported` keeps a window named by the agent in the model's record. */
+  /**
+   * `reported` keeps a window named by the agent in the model's record; `compacted` is told each compaction the agent
+   * says, with how full its conversation was before (the last fill read) and after.
+   */
   constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
-    private readonly reported: (update: ContextUpdate) => void = () => {}) {}
+    private readonly reported: (update: ContextUpdate) => void = () => {},
+    private readonly compacted: (fill: { beforeTokens: number | null; afterTokens: number | null }) => void = () => {}) {}
 
   private readonly work = new WorkActivity();
   // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
@@ -131,17 +136,23 @@ export class OutputActivityReader {
   private dirty = false;
   private writtenRecent: string | undefined;
 
+  /** The Run's step journal, opened on the folder the first poll reads. */
+  private journal: StepJournal | null = null;
+
   poll(folder: string): void {
-    this.lines.read(folder, value => this.accept(value), 8 * 1024 * 1024);
+    this.journal ??= new StepJournal(folder);
+    this.lines.read(folder, (value, line) => this.accept(value, line), 8 * 1024 * 1024);
     this.work.advance(this.now());
     this.flush(folder);
   }
 
   finish(folder: string, state: Settled = 'failed'): void {
+    this.journal ??= new StepJournal(folder);
     try {
-      this.lines.read(folder, value => this.accept(value));
-      this.lines.finish(value => this.accept(value));
+      this.lines.read(folder, (value, line) => this.accept(value, line));
+      this.lines.finish((value, line) => this.accept(value, line));
     } finally {
+      this.journal.settle(state, new Date(this.now()).toISOString());
       this.resetWork(state);
       this.flush(folder);
     }
@@ -152,10 +163,11 @@ export class OutputActivityReader {
     this.work.reset(state);
   }
 
-  private accept(value: unknown): void {
+  private accept(value: unknown, line: number): void {
     const received = new Date(this.now()).toISOString();
     const update = this.adapter.context(value);
     if (update) {
+      if (update.compacted) this.compacted({ beforeTokens: this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null });
       this.context = mergeContext(this.context, update, received);
       if (update.windowTokens !== undefined) this.reported(update);
       // A context-only update leaves the latest work and words in place.
@@ -163,6 +175,7 @@ export class OutputActivityReader {
       this.dirty = true;
     }
     for (const event of this.adapter.activity(value, received)) {
+      this.journal?.observe(event, line, received);
       const name = this.work.observe(event);
       const text = words(event.text);
       const note = text ? { at: event.at, text } : this.latest?.note ?? null;

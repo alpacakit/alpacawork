@@ -102,6 +102,7 @@
     "media": "图片、视频和音频",
     "onlyWork": "还没有成果。",
     "onlyWorkHint": "智能体的工作文件在“工作文件”中。",
+    "otherIn": "{{folder}} 文件夹中的其他",
     "otherMedia": "其他媒体",
     "path": "路径",
     "unavailable": "无法显示文件：{{name}}",
@@ -311,6 +312,7 @@
       },
       "cause": "收到“{{title}}” · {{at}}",
       "changedTo": "已设为 {{state}}",
+      "compactedFill": "用量",
       "end": {
         "again": {
           "question": "再次提出了同一个提问",
@@ -341,7 +343,9 @@
         "answer": "回答",
         "changed": "更改",
         "comment": "记录",
+        "compacted": "压缩",
         "confirm": "验收",
+        "conversationNew": "新对话",
         "dialogue": "消息",
         "done": "已完成",
         "error": "已停止",
@@ -354,6 +358,13 @@
         "run_end": "已停止",
         "urgent": "紧急",
         "withdrawn": "已撤回"
+      },
+      "newBecause": {
+        "another_ai": "因为工作转到了其他 AI，开始了新的对话",
+        "asked": "请求指定了新的对话",
+        "handoff": "负责人在工作告一段落时切换到了新的对话",
+        "handoffAt": "负责人在“{{report}}”之后切换到了新的对话",
+        "unresumable": "因为无法继续之前的对话，开始了新的对话"
       },
       "older": "显示更早的 {{n}} 条",
       "openTask": "打开“{{task}}”",

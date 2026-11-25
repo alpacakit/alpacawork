@@ -196,6 +196,10 @@
     "decide_choices": {
       "title": "選択肢"
     },
+    "decide_kind": {
+      "hint": "このタスクが作った成果をそのまま取り入れるか（マージ・採用）を聞くなら `accept`、それ以外の判断（案の選択、公開や本番入れ替えの許可、選択肢の無い問い）はすべて `choose`。問うときは必ず書く。",
+      "title": "問いの種類"
+    },
     "decide_note": {
       "hint": "共通の前提と見本のリンク・止まる時刻を書く。選択肢の説明や点検の記録は繰り返さない。",
       "title": "補足"
@@ -267,9 +271,9 @@
     "openTask": "開く",
     "placeholder": "タスクの管理も作業の依頼も、すべてここで",
     "placeholderFolded": "依頼はすべてここから",
-    "placeholderProject": "このプロジェクトに指示を送る",
-    "placeholderTask": "{{id}}に指示を送る",
-    "placeholderTasks": "{{id}}ほかに指示を送る",
+    "placeholderProject": "このプロジェクト関連の指示・質問",
+    "placeholderTask": "{{id}} 関連の指示・質問",
+    "placeholderTasks": "{{id}}ほか 関連の指示・質問",
     "project": "プロジェクト",
     "projects": "プロジェクト",
     "questionsChanged": "問いが変わりました。選び直してください",

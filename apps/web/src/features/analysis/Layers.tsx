@@ -5,89 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ReadFailure } from "@/components/ui/loadable";
-import { closeAnalysisLayer } from "@/state/history-step";
-import { useNarrow, useViewStore } from "@/state/view-store";
+import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { useBreakdown, useUnitList, useUnitValues } from "./data";
 import { duration, format, instant, spanLabel, tokenColumn } from "./format";
 import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
 import { ModelName, PointerTip, ReadPart, rowName, Square, tip, useChoices } from "./parts";
-import { CardPane } from "./ShareCard";
 import type { ListRow, UnitValues } from "./contract";
-import { analysisSurfaces, type AnalysisPlace, type ListPlace, type Span } from "./place";
+import type { AnalysisPlace, ListPlace, Span } from "./place";
+
+export { CardPane } from "./ShareCard";
 
 /** A task's outcome: its colour and its word. */
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 const outcomeWord = (row: ListRow, say: (key: string) => string) => say(`outcome.${row.outcome ?? "none"}`);
 
-/**
- * What a number opens: the list of the tasks behind it, then one task's values; or the share card. The same surface as the reader on the
- * list of tasks (lit, a hairline edge, 12px from the right and the top), the page behind it kept as it is; on a phone a
- * sheet from the bottom. × and a press behind it close every layer; the list's way back and Back close one.
- */
-export function Layers({ place, project, days }: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
-  const { t } = useTranslation("analysis");
-  const narrow = useNarrow();
-  const surface = useRef<HTMLElement | null>(null);
-  const [surfaceBox, setSurfaceBox] = useState<HTMLElement | null>(null);
-  const setSurface = (node: HTMLElement | null) => { surface.current = node; setSurfaceBox(node); };
-  const depth = analysisSurfaces(place).length;
-  // Back to the layer under it, where there is one; × and a press behind close them all.
-  const back = depth > 1;
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); closeAnalysisLayer(depth - 1); } };
-    addEventListener("keydown", key);
-    return () => removeEventListener("keydown", key);
-  }, [depth]);
-  // A layer that opens takes the focus on its first control; back from one task to its list, the focus is on that task's
-  // row again (the list is drawn from what it had read), as every window gives the focus back to what opened it.
-  const shownUnit = useRef<string | null>(null);
-  useEffect(() => {
-    const from = shownUnit.current;
-    shownUnit.current = place.unit;
-    const row = !place.unit && from ? surface.current?.querySelector<HTMLElement>(`[data-unit-row="${from}"]`) : null;
-    (row ?? surface.current?.querySelector<HTMLElement>("[data-layer-focus]"))?.focus({ preventScroll: !row });
-  }, [place.list, place.unit, place.card]);
-  // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
-  // chart and its legend give it back to themselves, ChartGroup).
-  const opener = useRef<Element[]>([]), open = depth > 0;
-  useLayoutEffect(() => {
-    if (open) { opener.current = openerChain(document.activeElement); return; }
-    const chain = opener.current;
-    opener.current = [];
-    giveFocusBack(chain);
-  }, [open]);
-  if (!depth) return null;
-  return <>
-    {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
-    <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={() => closeAnalysisLayer(0)} />
-    <PointerTip root={surfaceBox} />
-    {/* On a computer it is a panel at the window's right: the coordinator's input stands left of it, as beside the reader. */}
-    <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={place.card ? t("card.make") : place.unit ?? (place.list ? listTitle(place.list) : "")}
-      className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
-        narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
-          : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
-      <div className={cn("flex min-h-12 items-center gap-2 pt-3.5 pe-3 pb-1.5 ps-6", narrow && "pt-4.5 pe-2 ps-4")}>
-        {back && <button type="button" data-layer-focus onClick={() => closeAnalysisLayer(1)}
-          className="-ms-2 inline-flex h-7 items-center gap-0.5 rounded-md ps-1 pe-2.5 text-muted hover:bg-hover hover:text-ink">
-          <Icon name="left" className="size-3.5" />{t("list.back")}</button>}
-        {place.unit && <span className="text-muted">{place.unit}</span>}
-        <span className="me-auto" />
-        <Button variant="ghost" size="icon" aria-label={t("list.close")} title={t("list.close")} data-layer-focus={back ? undefined : ""}
-          onClick={() => closeAnalysisLayer(0)}><Icon name="close" /></Button>
-      </div>
-      <div data-analysis-layer className="min-h-0 flex-1 overflow-auto px-6 narrow:px-4">
-        {place.card ? <CardPane place={place} project={project} />
-          : place.unit ? <UnitPane key={place.unit} unit={place.unit} />
-          : place.list && <ListPane key={JSON.stringify(place.list)} place={place} project={project} days={days} />}
-      </div>
-    </aside>
-  </>;
-}
-
 /** The tasks of one number: how many, for which days, and each task with its own value for it, most first. */
-function ListPane({ place, project, days }: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
+export function ListPane({ place, project, days }: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
   const { t } = useTranslation("analysis");
   const list = place.list!;
   const query = useUnitList(project, place.span, list);
@@ -156,7 +90,7 @@ function useRowOf(project: string | null, span: Span, list: ListPlace) {
 }
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
-function UnitPane({ unit }: { unit: string }) {
+export function UnitPane({ unit }: { unit: string }) {
   const { t } = useTranslation("analysis");
   const query = useUnitValues(unit);
   if (!query.data) return <ReadPart set={{ data: null, current: false, reads: [query] }} skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>;

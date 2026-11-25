@@ -14,7 +14,7 @@ import { taskReportInput } from '@alpacawork/contract/inputs';
 
 type Fixture = Awaited<ReturnType<typeof handlingFixture>>;
 const snapshot = { conclusion: 'Preserve the fixed result', remaining: ['Wait for the next group'],
-  decide: [{ decide_question: 'Which group?', decide_choices: [{ decide_choice: 'Next', decide_choice_detail: 'Proceed' }] }],
+  decide: [{ decide_kind: 'choose', decide_question: 'Which group?', decide_choices: [{ decide_choice: 'Next', decide_choice_detail: 'Proceed' }] }],
   notes: 'The reasoning is in the fixed artifact.' };
 const caller = (h: Fixture, runId: string) => ({ kind: 'run' as const, runId, placementId: h.owner.id,
   taskId: h.task.id, role: 'owner' as const, responsible: true });
@@ -43,6 +43,8 @@ test('W0 uses a successful owner handoff once and keeps the snapshot in the new 
   assert.equal(result(h, next.runId).resumes, null);
   assert.notEqual(result(h, next.runId).session?.id, result(h, first.runId).session?.id);
   assert.equal(result(h, next.runId).context?.rotationFrom, input.opId);
+  // History says why: the report that prepared it.
+  assert.deepEqual(result(h, next.runId).newConversation, { because: 'handoff', report: input.opId });
   assert.match(h.store.getText(next.runId)!.prompt, /## Task\nThe task record as of when this request was accepted/);
   assert.match(h.store.getText(next.runId)!.prompt, /Preserve the fixed result/);
   await h.start(next.runId); h.end(next.runId);
@@ -86,7 +88,7 @@ test('W2 child question uses the same prepared handoff while other work remains 
   for (const nextConversation of [true, false]) {
     const h = await handlingFixture(t), first = await h.human(); await h.start(first.runId);
     const child = (await h.commands.create({ parentId: h.task.id, userRequested: false,
-      tasks: [{ title: 'Child', values: { decide: [{ decide_question: 'Child choice?' }] } }] })).tasks[0];
+      tasks: [{ title: 'Child', values: { decide: [{ decide_kind: 'choose', decide_question: 'Child choice?' }] } }] })).tasks[0];
     const tasks = new ControlTaskStore(h.root), owner = await assignResponsible(h.root, child, 'fake');
     const request = (await new TaskRequestService(h.root).request({ task: child.id, body: 'Investigate', opId: randomUUID(),
       expectedTaskHash: (await tasks.get(child.id)).hash, expectedPlacementRevision: owner.revision },

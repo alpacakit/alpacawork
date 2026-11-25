@@ -30,7 +30,10 @@ import { RunStore } from '@alpacawork/runs';
 import { type TaskActor } from '@alpacawork/raw';
 import { requestStop } from './runs/entry.js';
 import { readRunFiles } from './runs/view.js';
-import { emptyInput, configSetInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
+import { readRunStepIndex } from './runs/run-steps.js';
+import { readConditionsView } from './runs/conditions.js';
+import { RUN_STEPS_PAGE_LIMIT } from '@alpacawork/contract/run';
+import { emptyInput, configSetInput, chooseFolderInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
 import { deleteField, listFields, readSchema, setField } from './control/field-commands.js';
 import { now } from '@alpacawork/raw';
 import { ReturnRouter } from './control/return-router.js';
@@ -43,7 +46,8 @@ import { TaskRequestService } from './control/task-request.js';
 import { comment } from './control/task-questions.js';
 import { replyQuestion } from './control/question-rules.js';
 import { readTaskListView, readTaskView } from './control/task-views.js';
-import { listFolders, makeFolder } from './control/folders.js';
+import { readRunList } from './control/run-list.js';
+import { chooseFolder, listFolders, makeFolder } from './control/folders.js';
 import { resolveCaller, type CallerClaim } from './control/credentials.js';
 import { authorize, commandAction, decide, runMayDo, type AccessCommand, type Action, type Caller, type CommandFacts, type Decision } from './control/authorize.js';
 import { PlacementCommands } from './control/placement-commands.js';
@@ -68,6 +72,13 @@ export interface Context {
    * and a project's code location is published under one derived from it (`locationOperation`).
    */
   opId?: string;
+  /**
+   * The request is this server's own page asking, opened at a loopback name, so its person is at this PC: the public
+   * name may be another device, and another site open in the same browser asks cross-site (Fetch Metadata).
+   */
+  local?: boolean;
+  /** Aborted when the request's connection is gone. */
+  signal?: AbortSignal;
   readOperation?: (opId: string, caller: Caller) => unknown;
   grantFileWrite?: (task: string) => WriteGrant;
   fileChanged?: (task: string) => Promise<void>;
@@ -300,7 +311,11 @@ export const foldersNode = defineEntryNode({ name: 'folders',
   children: [defineEntryNode({ name: 'new', description: 'Make one folder and choose it for a project',
     endpoints: [withAct(endpoint('new', [textParameter('path', 'Parent folder (absolute or ~/…)'),
       textParameter('name', 'New folder name')], 'POST', makeFolderInput,
-      async (root, input) => makeFolder(root, input)), SCREEN)] })] });
+      async (root, input) => makeFolder(root, input)), SCREEN)] }),
+  defineEntryNode({ name: 'choose', description: 'Show this PC\'s own folder chooser to a person at this PC and answer the folder chosen',
+    endpoints: [withAct(endpoint('choose', [optionalText('path', 'Folder to open at (absolute or ~/…)'),
+      textParameter('title', 'Title of the chooser')], 'GET', chooseFolderInput,
+      async (root, input, context) => chooseFolder(root, input, { local: context.local === true, signal: context.signal })), SCREEN)] })] });
 
 export type JsonCommandName = Exclude<CommandName, `task/file/${string}` | 'task/attachment/put'>;
 export type ServerCommand<Input, C extends Context = Context> = {
@@ -471,6 +486,30 @@ export const taskCommands = {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
       return readRunFiles(root, input.run, input.kind ?? 'result');
     },
+    readThread: () => true,
+  },
+  'run/steps': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      const index = await readRunStepIndex(root, input.run);
+      if (input.step === undefined) return index ? index.range(input.from, input.limit ?? RUN_STEPS_PAGE_LIMIT)
+        : { steps: [], total: 0, version: 0, complete: true, generation: 0 };
+      const detail = index ? await index.detail(input.step) : null;
+      if (!detail) throw new Problem(PROBLEM_CODE.notFound, 'Step does not exist', { run: input.run }, { reason: { kind: 'run_does_not_exist' } });
+      return detail;
+    },
+    readThread: () => true,
+  },
+  'run/conditions': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      return readConditionsView(root, input.run);
+    },
+    readThread: () => true,
+  },
+  'run/list': {
+    run: async (root, input, context) =>
+      readRunList(root, input, authorizeRead(root, context, { name: 'task.list' }, null).readScope),
     readThread: () => true,
   },
   'run/stop': {

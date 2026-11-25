@@ -15,7 +15,7 @@ import type { Selection } from '@alpacawork/contract/agent-settings';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
-import { speaksForUser, type ChildObservations, type TaskActor } from '@alpacawork/raw';
+import { speaksForUser, type ChildObservations, type InstructionLabel, type TaskActor } from '@alpacawork/raw';
 import { FileWriter } from '../raw/storage.js';
 import { assignedSession, launchSnapshot, readAgentsSettings } from '../agents-settings.js';
 import { TaskRepository, TaskTree, controlSnapshotView } from './task-store.js';
@@ -47,7 +47,9 @@ export type RequestContext = {
   onAdmitted?: (db: DatabaseSync, placementId: string, tx: RunTransaction,
     request: NewRequest, run: RunRecord) => void;
 } & (
-  | { purpose: 'instruction'; actor: TaskActor; actorRunId?: string; answersQuestion?: { id: string; title: string; state: 'answered' | 'withdrawn' } }
+  | { purpose: 'instruction'; actor: TaskActor; actorRunId?: string; answersQuestion?: { id: string; title: string; state: 'answered' | 'withdrawn' };
+    /** What the instruction is, said by its sender: kept beside it in the same write (request_labeled). */
+    label?: Omit<InstructionLabel, 'request'> }
   | { purpose: 'return_continuation'; returnIds: readonly string[] });
 function reject(code: ProblemCode, message: string, reason: ProblemReason,
   taskHash: string | null, revision: number | null, headId: string | null): never {
@@ -228,8 +230,8 @@ export class RequestService {
           const resumable = setting?.enabled !== false && !!setting;
           const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
-          const { mode, rotationFrom, unsentNew } = conversationForRequest({ rotation, handoff, resolvesUnknown,
-            explicit: explicitChange ? 'new' : input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
+          const { mode, rotationFrom, unsentNew, newConversation } = conversationForRequest({ rotation, handoff, resolvesUnknown,
+            anotherAi: explicitChange, explicit: input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
           // A compaction continues the same conversation, as the sender asked or as the seat's last report prepared it.
           // Asked for, it follows the rules of a new conversation: it is no reservation for after a Run ends.
           if (input.compact && (mode !== 'continue' || explicitChange))
@@ -346,7 +348,7 @@ export class RequestService {
             onSnapshotSupplied: version => { suppliedSnapshot = version; } } : {}) });
           const run = tx.create({ task: task.id, placementId: placement.id, requestId: request.id,
             agent: profile, role: placement.responsible ? 'owner' : 'worker', resumes: mode === 'continue' ? head!.id : null,
-            continues: false, session, caller,
+            ...(newConversation ? { newConversation } : {}), continues: false, session, caller,
             ...(placement.responsible ? { context: { children,
               ...(suppliedSnapshot ? { suppliedSnapshot } : {}),
               ...(handoff ? { snapshotFrom: handoff.id } : {}),
@@ -355,6 +357,11 @@ export class RequestService {
             launch: launch.launch }, prompt);
           if (compaction) requestCompaction(db, run, compaction.focus, input.compact !== undefined, request.submittedAt);
           new TaskTransition().captureStartGrant({ store: store!, runs: tx }, task.id, request.id, author);
+          // What the instruction is goes beside it, once its Run (which its log reference reads) exists.
+          if (context.purpose === 'instruction' && context.label)
+            new TaskTransition().appendRecord({ store: store!, runs: tx }, task.id, { id: `${request.id}:label`, kind: 'request_labeled',
+              at: request.submittedAt, actor: request.author, title: null, description: null, fromState: null, toState: null,
+              label: { request: request.id, ...context.label } });
           context.onAdmitted?.(db, placement.id, tx, request, run);
           return { request: tx.getRequest(request.id)!, run };
         });

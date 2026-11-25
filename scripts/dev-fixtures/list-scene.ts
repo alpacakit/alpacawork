@@ -124,7 +124,7 @@ try {
   log(132, { kind: 'reported', at: ago(295), title: 'Started', actor: placed(132), fromState: 'todo', toState: 'doing' });
   notes(132, 270, 230, 190); work(132, 290, 160);
   log(132, { kind: 'asked', at: ago(160), title: 'Which wording should we use', description: 'Choose the wording.', actor: placed(132), askedTo: null,
-    decide: [{ decide_question: 'Choose wording', decide_choices: [{ decide_choice: 'Short', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Long', decide_choice_detail: 'This is a fictional option.' }] }] });
+    decide: [{ decide_kind: 'choose', decide_question: 'Choose wording', decide_choices: [{ decide_choice: 'Short', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Long', decide_choice_detail: 'This is a fictional option.' }] }] });
 
   // A stop: its Run failed, and that put the Task into error.
   log(133, { kind: 'reported', at: ago(255), title: 'Started', actor: placed(133), fromState: 'todo', toState: 'doing' });

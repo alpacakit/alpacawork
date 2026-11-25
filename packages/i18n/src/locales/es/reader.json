@@ -126,6 +126,7 @@
     "media": "Imágenes, videos y audio",
     "onlyWork": "Aún no hay entregables.",
     "onlyWorkHint": "Los archivos de trabajo de los agentes están en Archivos de trabajo.",
+    "otherIn": "Otros en {{folder}}",
     "otherMedia": "Otros archivos multimedia",
     "path": "Ruta",
     "unavailable": "No se pudo mostrar el archivo: {{name}}",
@@ -346,6 +347,7 @@
       },
       "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
+      "compactedFill": "Contexto",
       "end": {
         "again": {
           "question": "Se hizo de nuevo la misma pregunta",
@@ -376,7 +378,9 @@
         "answer": "Respuesta",
         "changed": "Cambio",
         "comment": "Nota",
+        "compacted": "Compactación",
         "confirm": "Revisión",
+        "conversationNew": "Conversación nueva",
         "dialogue": "Mensaje",
         "done": "Completada",
         "error": "Detención",
@@ -389,6 +393,13 @@
         "run_end": "Detención",
         "urgent": "Urgente",
         "withdrawn": "Retirada"
+      },
+      "newBecause": {
+        "another_ai": "Empezó de nuevo porque el trabajo pasó a otra IA",
+        "asked": "La solicitud pidió una conversación nueva",
+        "handoff": "El responsable pasó a una conversación nueva en una pausa del trabajo",
+        "handoffAt": "El responsable pasó a una conversación nueva después de «{{report}}»",
+        "unresumable": "Empezó de nuevo porque no se pudo retomar la conversación anterior"
       },
       "older": "Mostrar anteriores ({{n}})",
       "openTask": "Abrir “{{task}}”",

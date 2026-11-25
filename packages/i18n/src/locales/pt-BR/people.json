@@ -29,8 +29,28 @@
     "yesterday": "ontem {{clock}}"
   },
   "context": {
+    "because": {
+      "another_ai": "outra IA",
+      "asked": "pedida",
+      "handoff": "pausa do responsável",
+      "unresumable": "não foi possível retomar"
+    },
+    "change": {
+      "compacted": "Compactação",
+      "new": "Conversa nova"
+    },
     "compacted": "A conversa acabou de ser compactada. A próxima resposta dirá quanto está em uso.",
+    "conversations": "Conversas desta tarefa",
+    "cutLabel": "Tokens tirados por compactação (total)",
+    "cutTokens": "{{tokens}} tokens",
+    "help": "Sobre compactações e conversas novas",
+    "helpCompacted": "Quando uma conversa fica longa, a IA resume o que foi dito e continua com a versão curta.",
+    "helpFigures": "Um % é quanto do limite da conversa estava em uso; o número à direita são os tokens que essa compactação tirou.",
+    "helpNew": "Quando, por exemplo, a abordagem muda, a conversa recomeça com os dados da tarefa, sem reler o que veio antes.",
     "label": "Contexto da conversa {{figure}} (usado {{used}} / limite {{window}})",
+    "more_one": "Mais {{count}} no histórico",
+    "more_many": "Mais {{count}} no histórico",
+    "more_other": "Mais {{count}} no histórico",
     "noWindow": "Não definido",
     "setWindow": "Informe um limite em Limites de contexto, nas configurações do agente, para ver uma porcentagem.",
     "title": "Contexto da conversa",

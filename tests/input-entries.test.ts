@@ -335,7 +335,7 @@ test('task new and update save values through CLI and HTTP, only the fields sent
 test('values that do not fit the schema are refused alike over CLI and HTTP, naming each field, writing nothing', async t => {
   const { root, server, project, file } = await fixture(t);
   for (const [field, values] of [['unknown', { unknown: 'x' }], ['goal', { goal: 'x'.repeat(401) }],
-    ['policy.1', { policy: ['ok', 42] }], ['decide.0.decide_question', { decide: [{ decide_question: ' ' }] }]] as const) {
+    ['policy.1', { policy: ['ok', 42] }], ['decide.0.decide_question', { decide: [{ decide_kind: 'choose', decide_question: ' ' }] }]] as const) {
     const response = await fetch(new URL('/api/commands/task/new', server.url), { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Invalid', parent: project, values }) });
     assert.equal(response.status, 400, field);

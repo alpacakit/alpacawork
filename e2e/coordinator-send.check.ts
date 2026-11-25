@@ -194,7 +194,9 @@ test.describe('coordinator three-second grace',()=>{
       await field(page).fill('Waiting behind current work'); await send.click();
       const waiting = thread(page).locator('[data-coordinator-waiting]').filter({ hasText: 'Waiting behind current work' });
       await expect(waiting).toContainText('Queued');
-      await expect(waiting.locator('[role=status] [data-work-mark]')).toHaveCount(1);
+      // Waiting its turn, nothing moves: the still ring, not the work's moving mark, which comes once it is on its way.
+      await expect(waiting.locator('[role=status] [data-waiting-mark]')).toHaveCount(1);
+      await expect(waiting.locator('[data-work-mark]')).toHaveCount(0);
       expect(await statusLine(waiting)).toEqual(working);
       await expect(waiting.locator('[data-coordinator-send-now]')).toBeVisible();
       await expect(waiting.locator('[data-exchange-toggle]')).toHaveCount(0);
@@ -224,6 +226,8 @@ test.describe('coordinator three-second grace',()=>{
       await line.evaluate(place => { (place as HTMLElement & { kept?: boolean }).kept = true; });
       await final.locator('[data-coordinator-send-now]').click();
       await expect(final.locator('[data-coordinator-reply]')).toContainText('Sending…');
+      await expect(final.locator('[data-coordinator-reply] [data-work-mark]')).toHaveCount(1);
+      await expect(final.locator('[data-waiting-mark]')).toHaveCount(0);
       await expect(final.locator('[data-coordinator-withdraw]')).toHaveCount(0);
       expect(await line.evaluate(place => (place as HTMLElement & { kept?: boolean }).kept)).toBe(true);
     } finally { writeFileSync(release, ''); }

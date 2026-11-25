@@ -22,6 +22,7 @@ const paths = {
   held: <path d="M6 3.5h12v17l-6-4-6 4z" />,
   /* Your turn's two shapes: a review checks what was made, a question asks you something. */
   review: <path d="M6.5 3.5h7l4 4v13h-11zM13.5 3.5v4h4M9.25 14l2 2 3.75-4.25" />,
+  help: <><circle cx="12" cy="12" r="8.5" /><path d="M9.75 9.75a2.25 2.25 0 1 1 3.1 2.1c-.5.2-.85.6-.85 1.15v.5M12 16.25v.25" /></>,
   question: <path d="M5 4h14v13h-5l-3 3v-3H5zM10 8.6a2 2 0 1 1 2.6 1.9c-.4.15-.6.45-.6.85v.45M12 14.1v.15" />,
   done: (
     <>
@@ -142,6 +143,8 @@ const paths = {
   sidebar: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></>,
   /* Save a file as it is: an arrow down onto the ground it lands on. */
   download: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />,
+  /* Hand to another app: an arrow up out of the tray it leaves. */
+  share: <path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M8 11H5.5v9.5h13V11H16" />,
   image: (
     <>
       <rect x="3.5" y="5" width="17" height="14" rx="1.5" />

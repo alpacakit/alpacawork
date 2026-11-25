@@ -116,7 +116,7 @@ try {
     if (state.question && !state.answered) {
       state.answered = true; saveState(id, state);
       const ask = asks[state.example];
-      const decide = [{ decide_question: pair(ask.question), decide_note: pair(ask.note),
+      const decide = [{ decide_kind: 'choose', decide_question: pair(ask.question), decide_note: pair(ask.note),
         decide_choices: ask.options.map(option => ({ decide_choice: pair(option.name), decide_choice_detail: pair(option.detail),
           ...(option.recommended ? { decide_choice_recommended: pair(option.recommended) } : {}) })) }];
       cli('task', 'report', '--task', id, '--state', 'waiting', '--ask-to', 'user', '--expected-task-hash', current.task.hash,

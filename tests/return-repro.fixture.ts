@@ -159,7 +159,7 @@ async function fixture(t: TestContext, limit = 20, sleepy = false) {
   const commands = new ControlTaskCommands(root, { kind: 'human' }), tasks = new ControlTaskStore(root);
   // A question asks the decide section of its Task's body.
   const create = async (title: string, parentId: string, userRequested: boolean) => (await commands.create({ parentId,
-    userRequested, tasks: [{ title, values: { decide: [{ decide_question: 'Which way?' }] } }] })).tasks[0];
+    userRequested, tasks: [{ title, values: { decide: [{ decide_kind: 'choose', decide_question: 'Which way?' }] } }] })).tasks[0];
   const responsible = async (id: string) => assignResponsible(root, await tasks.get(id), 'fake');
   const member = async (id: string, responsibleRevision: number) => (await new PlacementCommands(root).placeMember({
     taskId: id, profileKey: 'fake', expectedTaskHash: (await tasks.get(id)).hash,

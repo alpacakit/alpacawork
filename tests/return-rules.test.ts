@@ -81,7 +81,7 @@ test('a child Request closes at the first finish its Task records after the Requ
   assert.equal(close(log('Lfailed', 20, { kind: 'linked', toState: 'error', causeAt: at(15) }))?.outcome, 'failed');
   assert.deepEqual(close(log('Lmoved', 20, { kind: 'moved', actor: { kind: 'human' }, formerAncestors: ['T2'] })),
     { outcome: 'moved', runId: null, causeLogId: 'Lmoved' });
-  assert.equal(close(log('Lasked', 20, { kind: 'asked', askedTo: 'T2', title: 'Which one?', description: 'Pick one', decide: [{ decide_question: 'Which one?' }] }),
+  assert.equal(close(log('Lasked', 20, { kind: 'asked', askedTo: 'T2', title: 'Which one?', description: 'Pick one', decide: [{ decide_kind: 'choose', decide_question: 'Which one?' }] }),
     log('Lreview', 25, { toState: 'waiting' }),
     log('Lheld', 30, { actor: { kind: 'human' }, toState: 'held' })), null, 'a question, a review wait and a hold');
   assert.equal(close(log('Lfailed', 20, { toState: 'error' }), log('Ldone', 30, { toState: 'done' }))?.outcome, 'failed');

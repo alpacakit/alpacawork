@@ -55,7 +55,7 @@ export const logEntry = (overrides: Partial<TaskLog> = {}): TaskLog => {
   return taskLogSchema.parse({
     id: "L1", kind, at, title: null, description: null, actor: { kind: "human" }, fromState: null, toState: null,
     ...(kind === "created" || kind === "user_request_changed" ? { userRequested: false } : {}),
-    ...(kind === "asked" ? { decide: [{ decide_question: overrides.title ?? "Question" }] } : {}), ...overrides,
+    ...(kind === "asked" ? { decide: [{ decide_kind: 'choose', decide_question: overrides.title ?? "Question" }] } : {}), ...overrides,
   });
 };
 /** A task's parent: a task with none is right under the fixture's project; a project Task with none is a top one. */
@@ -100,7 +100,7 @@ export const homeFixture = (rows: (Pick<HomeRowDTO, "taskId" | "section"> & Part
  */
 export const decideItem = (question: string, choices: readonly (readonly [name: string, detail?: string, recommended?: string])[] = [],
   more: { decide_note?: string; decide_stop?: string } = {}) => ({
-  decide_question: question,
+  decide_kind: 'choose', decide_question: question,
   ...(choices.length ? { decide_choices: choices.map(([name, detail, recommended]) => ({ decide_choice: name,
     ...(detail === undefined ? {} : { decide_choice_detail: detail }), ...(recommended === undefined ? {} : { decide_choice_recommended: recommended }) })) } : {}),
   ...more,
@@ -323,7 +323,7 @@ const viewOf = (task: ControlTaskDTO, value: Served) => ({ task: { ...task,
   requestHeads: value.requests.filter((request) => request.taskId === task.id).map(({ body, ...request }) => ({
     ...request, headline: body.split("\n", 1)[0] ?? "", bodyBytes: Buffer.byteLength(body) })),
   values: valuesOf(task),
-  reply: value.replies[task.id] ?? null, questions: questionsOf(task.id, value), userQuestions: value.userQuestions && task.id in value.userQuestions ? value.userQuestions[task.id] : [], requestedByUser: value.requestedByUser[task.id] ?? null,
+  reply: value.replies[task.id] ?? null, questions: questionsOf(task.id, value), userQuestions: value.userQuestions && task.id in value.userQuestions ? value.userQuestions[task.id] : [], requestedByUser: value.requestedByUser[task.id] ?? null, conversations: { anew: 0, compacted: 0, cutTokens: null, changes: [] },
   userReviews: value.userReviews && task.id in value.userReviews ? value.userReviews[task.id] : [] });
 /** Each task's opened view as the projection answers it: its own row without the list's numbers, its ancestors' heads. */
 export const viewsOf = (value: Served, sourcePv = 0): TaskProjectedViewDTO[] => value.tasks.map((task) => {

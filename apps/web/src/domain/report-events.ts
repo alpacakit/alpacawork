@@ -26,6 +26,8 @@ export type ReportEvent = {
   /** On a failed Run's row, the cause the backend read in its error words. */
   cause?: HistoryEvent["cause"];
   carriedOn?: true;
+  /** On a conversation row, what happened to the agent's conversation: started anew, or compacted with its fill. */
+  conversation?: HistoryEvent["conversation"];
   /** A failed Run the column offers to close. */
   runId?: string;
   /** The child whose record it is, in its parent's column: what it reported, asked its ancestors or set, never a wait on you. */
@@ -74,11 +76,13 @@ export const STOP_MARK = { kind: "error", tone: "error" } as const satisfies Non
  * mark and the line drawn beside it when it is pointed at or jumped to agree. In the state colours (tone.ts):
  * stopped by a failure (error), finished (done), waiting on you (turn, only while your turn waits on it; once
  * answered it is quiet), or set to work: an instruction or an answer, which wake the one they go to, or a record that
- * put the Task back to work (working). A record that changed nothing, or whose effect the server does not say, stays
- * quiet: no colour is guessed.
+ * put the Task back to work (working). What happened to an agent's conversation has a colour of its own
+ * (conversation). A record that changed nothing else, or whose effect the server does not say, stays quiet: no colour
+ * is guessed.
  */
 export function reportTone(report: Pick<ReportEvent, "kind" | "mark" | "finish" | "set" | "carriedOn">): MarkTone {
   if (report.kind === "error") return report.carriedOn ? "quiet" : "error";
+  if (report.kind === "conversation") return "conversation";
   if (report.finish || report.set === "done") return "done";
   if (report.mark?.tone === "turn") return "turn";
   return report.kind === "request" || report.kind === "answer" || report.set === "doing" ? "working" : "quiet";
@@ -121,6 +125,7 @@ export function reportEvent(event: HistoryEvent, turn: (taskId: string) => strin
     ...(event.answerFiles ? { answerFiles: event.answerFiles } : {}),
     ...(event.cause ? { cause: event.cause } : {}),
     ...(event.carriedOn ? { carriedOn: true } : {}),
+    ...(event.conversation ? { conversation: event.conversation } : {}),
     ...(event.result ? { result: event.result } : {}),
     mark: mark && (yours || closed) ? { ...mark, tone: yours ? "turn" : "quiet" } : mark,
     ...(event.fromChild ? { sourceTaskId: event.taskId } : {}),

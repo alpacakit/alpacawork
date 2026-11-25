@@ -226,7 +226,7 @@ test('the view carries the context in its project\'s schema order, and what its 
   const h = await setup(t);
   const tree = await readControlTree(h.root);
   // What the responsible asks the user is a question, with what it asks fixed in its record when it was asked.
-  const decide = [{ decide_question: 'Publication destination', decide_choices: [{ decide_choice: 'A', decide_choice_detail: 'Internal' }] }];
+  const decide = [{ decide_kind: 'choose', decide_question: 'Publication destination', decide_choices: [{ decide_choice: 'A', decide_choice_detail: 'Internal' }] }];
   const asked = { id: 'Lask', kind: 'asked' as const, at: '2026-10-07T00:00:00.000Z', title: 'Publication destination', description: 'Where to publish',
     actor: { kind: 'placement' as const, placementId: 'P1' }, fromState: null, toState: null, askedTo: null, decide };
   const fields = ['policy', 'goal', 'decide', 'user_instructions', 'conclusion', 'notes'];

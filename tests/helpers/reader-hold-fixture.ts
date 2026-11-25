@@ -28,7 +28,7 @@ try {
   const asked: string[] = [];
   for (let n = 0; n < 2; n++) {
     const { tasks: [created] } = await commands.create({ parentId: project, userRequested: true, tasks: [{
-      title: `Question ${n + 1}`, values: { decide: [{ decide_question: 'Choose an option', decide_choices: [{ decide_choice: 'Proceed Go ahead', decide_choice_detail: 'Choose' }, { decide_choice: 'Wait Later', decide_choice_detail: 'Hold' }] }] } }] });
+      title: `Question ${n + 1}`, values: { decide: [{ decide_kind: 'choose', decide_question: 'Choose an option', decide_choices: [{ decide_choice: 'Proceed Go ahead', decide_choice_detail: 'Choose' }, { decide_choice: 'Wait Later', decide_choice_detail: 'Hold' }] }] } }] });
     const owner = await assignResponsible(root, created, 'fake');
     const { outcome: { request } } = await new TaskRequestService(root).request({ task: created.id, body: 'Work',
       opId: randomUUID(), expectedTaskHash: (await tasks.get(created.id)).hash, expectedPlacementRevision: owner.revision },

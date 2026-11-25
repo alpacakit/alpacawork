@@ -114,6 +114,7 @@
     "media": "Images, videos and audio",
     "onlyWork": "No deliverables yet.",
     "onlyWorkHint": "The agents’ working files are in Work files.",
+    "otherIn": "Other in {{folder}}",
     "otherMedia": "Other media",
     "path": "Path",
     "unavailable": "Could not display file: {{name}}",
@@ -328,6 +329,7 @@
       },
       "cause": "Received “{{title}}” · {{at}}",
       "changedTo": "Set to {{state}}",
+      "compactedFill": "Context",
       "end": {
         "again": {
           "question": "Asked the same question again",
@@ -358,7 +360,9 @@
         "answer": "Answer",
         "changed": "Change",
         "comment": "Note",
+        "compacted": "Compacted",
         "confirm": "Review",
+        "conversationNew": "New conversation",
         "dialogue": "Message",
         "done": "Done",
         "error": "Stopped",
@@ -371,6 +375,13 @@
         "run_end": "Stopped",
         "urgent": "Urgent",
         "withdrawn": "Withdrawn"
+      },
+      "newBecause": {
+        "another_ai": "Started anew because the work moved to another AI",
+        "asked": "The request asked for a new conversation",
+        "handoff": "The owner switched to a new conversation at a break in the work",
+        "handoffAt": "The owner switched to a new conversation after “{{report}}”",
+        "unresumable": "Started anew because the last conversation could not be resumed"
       },
       "older": "Show {{n}} earlier",
       "openTask": "Open “{{task}}”",

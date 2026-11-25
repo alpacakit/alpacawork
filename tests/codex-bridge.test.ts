@@ -314,6 +314,8 @@ for (const failure of [null, 'synthetic compaction failure']) test(`a compaction
   assertInputOutcomes(b.events(), { one: 'taken' });
   assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
   assert.equal(b.events().some(event => event.item?.type === 'context_compaction'), false);
+  // History keeps each compaction once: the bridge says it compacted once, and nothing when it did not.
+  assert.equal(b.events().filter(event => event.type === 'context.updated' && event.context?.compacted === true).length, failure ? 0 : 1);
 });
 
 test('a structured result past the outcome reader\'s line limit leaves the Run succeeded, its step read with what was left out said', async t => {

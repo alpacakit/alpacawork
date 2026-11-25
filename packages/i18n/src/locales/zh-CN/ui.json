@@ -196,6 +196,10 @@
     "decide_choices": {
       "title": "选项"
     },
+    "decide_kind": {
+      "hint": "询问是否原样采用本任务做出的成果（合并、采用）时写 `accept`；其他所有决定（方案选择、发布或上线的许可、没有选项的提问）都写 `choose`。提问时必填。",
+      "title": "提问类型"
+    },
     "decide_note": {
       "hint": "写共同的前提、示例的链接和停止的时间。不要重复选项的说明或检查记录。",
       "title": "补充"
@@ -267,9 +271,9 @@
     "openTask": "打开",
     "placeholder": "管理任务、委托工作，都在这里",
     "placeholderFolded": "有什么需求都写在这里",
-    "placeholderProject": "向此项目发送指示",
-    "placeholderTask": "向 {{id}} 发送指示",
-    "placeholderTasks": "向 {{id}} 等发送指示",
+    "placeholderProject": "关于此项目的指示或问题",
+    "placeholderTask": "关于 {{id}} 的指示或问题",
+    "placeholderTasks": "关于 {{id}} 等任务的指示或问题",
     "project": "项目",
     "projects": "项目",
     "questionsChanged": "提问已更改，请重新选择回答。",

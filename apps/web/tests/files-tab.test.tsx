@@ -76,13 +76,24 @@ test("work files alone show the tab without a number and lead to them; no file s
   expect(tab()).toBeNull();
 });
 
-test("images in no set are named Other only beside a set; alone they are just the images", () => {
+test("pictures in no set are named as the others of their folder, only beside a set", () => {
   sheet(["shots/a.png", "shots/b.png"]);
   expect(screen.getByText(i18n.t("reader:files.images"))).toBeTruthy();
-  expect(screen.queryByText(i18n.t("reader:files.otherMedia"))).toBeNull();
+  expect(screen.queryByText(i18n.t("reader:files.otherIn", { folder: "shots" }))).toBeNull();
   cleanup();
-  sheet(["shots/a.png", "shots/card-light.png", "shots/card-dark.png"]);
+  sheet(["shots/a.png", "shots/card-light.png", "shots/card-dark.png", "c.png"]);
+  expect(screen.getByText(i18n.t("reader:files.otherIn", { folder: "shots" }))).toBeTruthy();
   expect(screen.getByText(i18n.t("reader:files.otherMedia"))).toBeTruthy();
+});
+
+test("every picture shows the time it was written, a set's versions too", () => {
+  const data = screenData(tree({ tasks: [dto()] }));
+  const at = (name: string, minute: number) => ({ ...file(name), at: `2026-10-03T00:${String(minute).padStart(2, "0")}:00.000Z` });
+  const files = [at("shots/card-light.png", 1), at("shots/card-dark.png", 2), at("shots/a.png", 3)];
+  const task = { ...data.tasks[0]!, values: valuesView({}), body: "", logs: [], files, requestHeads: [], extractRows: {}, reply: undefined } as TaskDetail;
+  render(<TestWorkspace data={data}><FilesTab task={task} path="" /></TestWorkspace>);
+  expect(new Set([...document.querySelectorAll("section li time")].map(time => time.getAttribute("datetime"))))
+    .toEqual(new Set(files.map(each => each.at)));
 });
 
 test("the file sheet gives every visible image one slide with set and version captions", () => {

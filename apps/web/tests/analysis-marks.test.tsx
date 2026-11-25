@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from "@testing-library/react";
 import { SearchField } from "../src/features/chrome/SearchField";
 import { analysisHome, type AnalysisPlace } from "../src/features/analysis/place";
-import { Layers } from "../src/features/analysis/Layers";
+import { AnalysisLayers } from "../src/features/analysis/AnalysisLayers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
 import { BarChart, ChartGroup, Parts, Row } from "../src/features/analysis/rows";
@@ -329,10 +329,10 @@ test("back from one task to its list, the focus is on that task's row again", as
   });
   const list: AnalysisPlace = { ...analysisHome("tasks", { period: "today" }), list: { set: "finished", value: null, group: null, member: null, days: null } };
   const days = { from: "2026-11-24", to: "2026-11-24" };
-  const view = render(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={list} project={null} days={days} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.ownerDocument.querySelector('[data-unit-row="T2"]')).not.toBeNull());
-  view.rerender(<TestWorkspace data={screenData()}><Layers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
-  view.rerender(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
+  view.rerender(<TestWorkspace data={screenData()}><AnalysisLayers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
+  view.rerender(<TestWorkspace data={screenData()}><AnalysisLayers place={list} project={null} days={days} /></TestWorkspace>);
   await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
   view.unmount();
 });
@@ -346,7 +346,7 @@ test("a list's next page stands as rows while it is read, and one that could not
     return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
   });
   const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
-  const view = render(<TestWorkspace data={screenData()}><Layers place={place} project={null} days={null} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
   await act(async () => view.getByRole("button", { name: /残り/ }).click());
   // Asked for: its rows' places stand where they will come, not nothing.

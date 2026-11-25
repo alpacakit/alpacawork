@@ -1,9 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RegionSkeleton } from "@/components/ui/skeleton";
 import { TAB, TabLabel } from "@/components/ui/tabs";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
 import { srgb } from "@/lib/mermaid-colors";
@@ -12,10 +11,12 @@ import { cn } from "@/lib/utils";
 import { appliedTheme } from "@/state/theme";
 import { useViewStore } from "@/state/view-store";
 import { CARD_DEFAULT, CARD_LIMIT, HEROES, NUMBERS, canPick, cardFacts, cardFileName, cardInput, cardLabel, cardPicks, cardPostText, cardWords, pick, type CardChoice, type Hero } from "./card";
-import { CARD_H, CARD_W, drawCard, type CardLook, type CardPalette } from "./card-draw";
-import { answerOf, useTasksView, useUsageView } from "./data";
-import { Seg, useChoices } from "./parts";
-import { CARD_PERIODS, cardDays, type AnalysisPlace } from "./place";
+import { drawCard, type CardLook, type CardPalette } from "./card-draw";
+import { CardPreview, CardSkeleton } from "./CardPreview";
+import { CARD_H, CARD_W } from "./card-size";
+import { answerOf, type useCardReads } from "./data";
+import { Seg } from "./parts";
+import { CARD_PERIODS, type AnalysisPlace } from "./place";
 
 type Theme = "dark" | "light";
 /** A choice a finger's height on a phone: one of a row of them, or the row's own buttons. */
@@ -71,8 +72,8 @@ function cardPng(svg: string): Promise<Blob> {
 }
 /** The picture onto the clipboard; the PNG is handed over as it is drawn (Safari takes it only so). */
 const canCopyPictures = () => typeof ClipboardItem !== "undefined" && !!navigator.clipboard?.write;
-function copyCard(svg: string): Promise<void> {
-  if (!canCopyPictures()) return Promise.reject(new Error("No clipboard for pictures"));
+async function copyCard(svg: string): Promise<void> {
+  if (!canCopyPictures()) throw new Error("No clipboard for pictures");
   return navigator.clipboard.write([new ClipboardItem({ "image/png": cardPng(svg) })]);
 }
 const canShareFiles = () => {
@@ -96,18 +97,13 @@ function XMark() {
  * it shows: the span, the number leading, those under it, its colours. The numbers are the analysis commands' for the
  * card's span and the project in view (the project is not on the card).
  */
-export function CardPane({ place, project }: { place: AnalysisPlace; project: string | null }) {
+export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
+  place: AnalysisPlace;
+  reads: ReturnType<typeof useCardReads>;
+  waitFrom: number;
+}) {
   const { t } = useTranslation("analysis");
   const card = place.card!;
-  const { bucket } = useChoices();
-  // The whole record ending on a day starts on the record's first day: the analysis's own answer for what is asked now
-  // says which (one still standing for another project says nothing). The card reads as the face does: the tasks'
-  // numbers without a breakdown (the face's own answer when the days are the same), the AI's use by model for the
-  // model used most.
-  const face = answerOf(useTasksView(project, place.span, bucket, null));
-  const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
-  const tasks = useTasksView(project, days ?? place.span, bucket, null, days !== null);
-  const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null, "summary");
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
   const [appTheme] = useState<Theme>(() => appliedTheme(document));
@@ -129,13 +125,14 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
   const picks = facts ? cardPicks(choice, facts) : null;
   const [sharing] = useState(canShareFiles);
   const [copying] = useState(canCopyPictures);
+  const postHint = useId(), imageName = useId(), shareHint = useId();
   // As the analysis says it: what failed, no record for these days, or a wait.
   const failed = tasks.error ?? usage.error;
   const state = svg ? null : failed ? <p className="text-soft">{failed.message}</p>
-    : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <RegionSkeleton shape="rows" rows={4} className="w-full self-start" />;
+    : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <CardSkeleton waitFrom={waitFrom} />;
 
   const drawn = async () => facts && svg ? { name: cardFileName(facts), png: await cardPng(svg) } : null;
-  const save = async () => {
+  const save = async (message = t("card.saved")) => {
     try {
       const picture = await drawn();
       if (!picture) return;
@@ -144,7 +141,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
       link.download = picture.name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-      notify.success(t("card.saved"));
+      notify.success(message);
     } catch { notify.error(t("card.drawFailed")); }
   };
   const copy = () => { if (svg) copyCard(svg).then(() => notify.success(t("card.copied")), () => notify.error(t("card.copyFailed"))); };
@@ -163,10 +160,10 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
   const post = () => {
     if (!svg || !facts) return;
     const text = cardPostText(facts, choice, card.length === "all");
-    if (!copying) { void save(); window.open(postUrl(text), "_blank", "noopener"); return; }
-    const copied = copyCard(svg);
+    const saveForPost = () => void save(t("card.postSave"));
+    if (copying) void copyCard(svg).then(() => notify.success(t("card.postCopied")), saveForPost);
+    else saveForPost();
     window.open(postUrl(text), "_blank", "noopener");
-    copied.then(() => notify.success(t("card.postCopied")), () => { void save(); notify.info(t("card.postSave")); });
   };
 
   // A number is chosen by the name the card gives it; several can be, so each chosen one carries a check.
@@ -187,21 +184,23 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
     <div ref={probe} hidden className="font-sans">
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
-    <div role="img" aria-label={input ? cardWords(input) : undefined} style={{ aspectRatio: `${CARD_W} / ${CARD_H}` }}
-      className={cn("overflow-hidden rounded-md border-hairline border-lit-line [&>svg]:block [&>svg]:h-auto [&>svg]:w-full", !svg && "flex items-center justify-center p-4")}
-      {...svg ? { dangerouslySetInnerHTML: { __html: svg } } : { children: state }} />
-    <div className="mt-4 flex flex-wrap items-center gap-2 narrow:[&>button]:min-h-10">
-      {/* Posting leads: X's own button, black on a light page and white on a dark one, with X's word for it. Saving,
-          copying and the device's own sharing stand beside it, quieter. */}
-      <Button disabled={!current} onClick={post} aria-label={t("card.postOnX")} title={t("card.postOnX")}
-        className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
+    <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
+    {/* Keep the manual image step next to the X action. */}
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Button disabled={!current} onClick={post} aria-describedby={postHint}
+        className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px narrow:w-full dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
         <XMark />{t("card.post")}</Button>
-      <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
-      <Button variant="outline" disabled={!current} onClick={copy} className="active:translate-y-px"><Icon name="copy" className="size-3.5" />{t("card.copy")}</Button>
-      {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} className="active:translate-y-px">{t("card.share")}</Button>}
+      <p id={postHint} className="min-w-0 flex-1 basis-60 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
     </div>
-    {/* What posting will do with the picture, said before it is pressed. */}
-    <p className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    <div role="group" aria-labelledby={imageName} className="mt-5">
+      <h4 id={imageName} className="mb-1 text-xs font-normal text-soft">{t("card.image")}</h4>
+      <div className="flex flex-wrap gap-2 narrow:[&>button]:min-h-10">
+        <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
+        <Button variant="outline" disabled={!current} onClick={copy} className="active:translate-y-px"><Icon name="copy" className="size-3.5" />{t("card.copy")}</Button>
+        {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} aria-describedby={shareHint} className="active:translate-y-px"><Icon name="share" className="size-3.5" />{t("card.share")}</Button>}
+      </div>
+      {sharing && <p id={shareHint} className="mt-2 text-xs text-soft">{t("card.shareHint")}</p>}
+    </div>
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}

@@ -1,11 +1,12 @@
 /**
  * Browser-safe: one row of a Task's history and time view, made from exactly one record (a log entry, a Request, a
- * failed Run or a dialogue with the coordinator). The server projects the rows; none is made up to fill a gap.
+ * failed Run, a Run's new conversation or one of its compactions, or a dialogue with the coordinator). The server projects the rows; none is made up to fill a gap.
  */
 import { z } from 'zod';
 import { dependencyChangeSchema, TASK_LOG_KINDS, type TaskLog } from '@alpacawork/raw/task-log-schema';
 import { TASK_ID_PATTERN } from '@alpacawork/raw/task-id';
 import { runIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
+import { NEW_CONVERSATION_REASONS, runCompactionSchema } from './run-contract.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
 import { runErrorCauseSchema } from './run-failure.js';
@@ -50,12 +51,22 @@ export const RESULT_HEAD_LENGTH = 300;
 export const resultHead = (text: string) => text.length <= RESULT_HEAD_LENGTH ? text
   : text.slice(0, RESULT_HEAD_LENGTH - (/[\uD800-\uDBFF]/.test(text[RESULT_HEAD_LENGTH - 1]!) ? 1 : 0));
 
+/**
+ * What happened to an agent's conversation (conversationChanges): started anew — why, when the Run that started it says
+ * (its newConversation), with the title of the report that prepared it — or compacted, with its fill before and after.
+ */
+const newChange = z.object({ change: z.literal('new'), because: z.enum(NEW_CONVERSATION_REASONS).optional(), report: z.string().optional() }).strict();
+const compactedChange = runCompactionSchema.omit({ at: true }).extend({ change: z.literal('compacted') }).strict();
+export const conversationChangeSchema = z.discriminatedUnion('change', [newChange, compactedChange]);
+/** The same, with when it happened (a Task view's list of them). */
+const at = z.iso.datetime({ offset: true });
+export const datedConversationChangeSchema = z.discriminatedUnion('change', [newChange.extend({ at }), compactedChange.extend({ at })]);
 export const historyEventSchema = z.object({
   ...historyLinksSchema.shape,
   /** The record's ID. */
   id: z.string().min(1),
   kind: z.enum(['report', 'question', 'answer', 'withdrawn', 'expired', 'review', 'confirm', 'request',
-    'urgent', 'comment', 'error', 'run_end', 'changed', 'dialogue']),
+    'urgent', 'comment', 'error', 'run_end', 'changed', 'dialogue', 'conversation']),
   /** The Task the record belongs to: a child's, when the row is a child's record in its parent's history. */
   taskId: taskIdSchema, fromChild: z.boolean(),
   at: z.iso.datetime({ offset: true }),
@@ -92,13 +103,19 @@ export const historyEventSchema = z.object({
    * not be read; the whole reply is read by its Run ID when the result is opened.
    */
   result: z.object({ runId: runIdSchema, at: z.iso.datetime({ offset: true }), head: z.string().max(RESULT_HEAD_LENGTH).optional() }).strict().optional(),
+  /**
+   * On a conversation row, what happened to the agent's conversation: a Run started it anew (newConversationStarts), or
+   * it was compacted (one of a Run's compactions), with the fill before and after when the agent said it.
+   */
+  conversation: conversationChangeSchema.optional(),
 }).strict().refine(event => (event.open !== undefined) === (event.kind === 'question' || event.kind === 'review'),
   { path: ['open'], message: 'Questions and reviews say whether they are open' }).refine(event =>
   event.note === undefined || event.kind === 'request', { path: ['note'], message: 'Only a Request row has a Task note' }).refine(event =>
   event.cause === undefined || event.kind === 'error', { path: ['cause'], message: 'Only a failed Run row has a cause' }).refine(event =>
   event.carriedOn === undefined || event.kind === 'error' && event.recipient !== undefined,
   { path: ['carriedOn'], message: 'A carried-on Run names the next agent' }).refine(event =>
-  event.result === undefined || event.kind === 'request' && event.recipient?.role === 'member', { path: ['result'], message: 'Only a member Request row has a result' });
+  event.result === undefined || event.kind === 'request' && event.recipient?.role === 'member', { path: ['result'], message: 'Only a member Request row has a result' }).refine(event =>
+  (event.conversation !== undefined) === (event.kind === 'conversation'), { path: ['conversation'], message: 'A conversation row says what happened to it' });
 export type HistoryEventKind = z.infer<typeof historyEventSchema>['kind'];
 type HistoryEvent = z.infer<typeof historyEventSchema>;
 
@@ -157,6 +174,8 @@ const LOG_EVENTS: { readonly [Kind in LogKind]: { event: HistoryEventKind | null
   question_expired: { event: 'expired', noticed: true, stateLog: true },
   user_request_changed: { event: 'changed', noticed: false, stateLog: false },
   dependencies_changed: { event: 'changed', noticed: true, stateLog: false },
+  // What an instruction is, kept for analysis: the instruction's own row is the news.
+  request_labeled: { event: null, noticed: false, stateLog: false },
 };
 
 /** Log kinds that are news to a reader: the row's latest noticed entry (taskRowFields) is of these. */
@@ -198,9 +217,10 @@ export const runFinishedKey = (runId: string) => runPhaseKey(runId, 'finished');
 export const requestKey = (requestId: string) => `request:${requestId}`;
 /**
  * A History event's identity, the same as the line's for the same record: a Request's (which its accepting log entry
- * shares), a failed or scope-invalidated Run's end, a dialogue, or a log entry's. A failure is a Run's when it set no state (a record that
+ * shares), a failed or scope-invalidated Run's end, a dialogue, a conversation's change, or a log entry's. A failure is a Run's when it set no state (a record that
  * is not a log entry), and otherwise the log entry's that put the Task into error (no report, a person's stop).
  */
 export const historyEventKey = (event: Pick<HistoryEvent, "kind" | "taskId" | "id" | "state">): string =>
   event.kind === "request" ? requestKey(event.id) : event.kind === "run_end" || event.kind === "error" && event.state === null ? runPhaseKey(event.id, 'finished')
-    : event.kind === "dialogue" ? `dialogue:${event.taskId}:${event.id}` : logKey(event.taskId, event.id);
+    : event.kind === "dialogue" ? `dialogue:${event.taskId}:${event.id}` : event.kind === "conversation" ? `conversation:${event.taskId}:${event.id}`
+    : logKey(event.taskId, event.id);

@@ -13,6 +13,7 @@ import { notify } from "@/lib/notify";
 import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
+import { RolesPicture } from "./RolesPicture";
 import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
@@ -52,6 +53,8 @@ function CloseGuide({ screen, className }: { screen: GuideScreen; className?: st
 type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
+/** How far the ring is drawn outside its part: its offset and its line (ring-offset-2, ring-2). */
+const RING = 4;
 /** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
 const STOOD_MS = 150;
 /** How long a balloon stands before the motion of its step (`show`) begins: its words are read first. */
@@ -161,9 +164,12 @@ function scrollerOf(element: Element | null): HTMLElement | null {
   }
   return null;
 }
-/** Whether `element` (or what is in it) is what stands in front at this point of the screen. */
+/**
+ * Whether `element` (or what is in it) is what stands in front at this point of the screen. The guide's own buttons
+ * are looked through: the balloon only points at what is there.
+ */
 const inFront = (element: Element, across: number, down: number) => {
-  const front = document.elementFromPoint(across, down);
+  const front = document.elementsFromPoint(across, down).find(each => !each.closest("[data-guide-balloon]"));
   return !!front && element.contains(front);
 };
 /**
@@ -182,10 +188,38 @@ export function seenPart(box: Box, seen: { top: number; bottom: number }): Box {
   const top = Math.max(box.top, seen.top), bottom = Math.min(box.top + box.height, seen.bottom);
   return bottom > top ? { ...box, top, height: bottom - top } : box;
 }
-/** `element`'s box as seen in the pane it scrolls in (seenPart); its whole box where it scrolls in none. */
+/**
+ * `element`'s box as seen: in the pane it scrolls in (seenPart; its whole box where it scrolls in none), less what
+ * stands over it there (frontPart: a detail widened over the list), from its middle or its head, whichever is in front.
+ */
 function seenBoxOf(element: HTMLElement): Box {
   const pane = scrollerOf(element.parentElement);
-  return pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+  const box = pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+  const across = box.left + box.width / 2, front = (x: number, y: number) => inFront(element, x, y);
+  const down = [box.top + box.height / 2, box.top + Math.min(box.height, HEAD) / 2].find(y => front(across, y));
+  return down === undefined ? box : frontPart(box, { x: across, y: down }, front);
+}
+/**
+ * What of a part (`box`) stands in front (`front`), from a point of it that does (`from`): as far across and down from
+ * that point, each way, as it still does, to the pixel; where something stands over it, kept the ring's own width
+ * (RING) short of that. The ring goes round that and the balloon points at it, never over a surface lying over the rest
+ * of the part.
+ */
+export function frontPart(box: Box, from: { x: number; y: number }, front: (x: number, y: number) => boolean): Box {
+  // The edge of what is in front between a point in front (`seen`) and the box's edge (`edge`): the box's own where
+  // no more than the ring's width of it is hidden (a neighbour touching it, a frame drawn over its border), else where
+  // it stops being in front.
+  const reach = (seen: number, edge: number, inFrontAt: (at: number) => boolean) => {
+    const toward = edge > seen ? 1 : -1, last = edge - toward * 0.5;
+    if (inFrontAt(last)) return edge;
+    let hidden = last;
+    while (Math.abs(hidden - seen) > 1) { const middle = (seen + hidden) / 2; if (inFrontAt(middle)) seen = middle; else hidden = middle; }
+    const stop = toward > 0 ? Math.ceil(seen) : Math.floor(seen);
+    return Math.abs(edge - stop) <= RING ? edge : stop - toward * RING;
+  };
+  const left = reach(from.x, box.left, x => front(x, from.y)), right = reach(from.x, box.left + box.width, x => front(x, from.y));
+  const top = reach(from.y, box.top, y => front(from.x, y)), bottom = reach(from.y, box.top + box.height, y => front(from.x, y));
+  return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 }
 /**
  * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there
@@ -403,7 +437,7 @@ function keepRoom(before: HTMLElement | null, balloon: DOMRect | null): HTMLElem
 export const roomUnder = (box: Pick<DOMRect, "top" | "bottom">, balloon: Pick<DOMRect, "top" | "bottom">) =>
   balloon.bottom > box.top && balloon.top < box.bottom ? Math.round(box.bottom - balloon.top) : 0;
 
-/** The balloon's words and buttons: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
+/** The balloon's words and buttons, under the step's picture of who does what the first time: the step's first words, or (`again`) its words for coming round again, which wait for no "Got it". */
 function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScreen; entry: GuideEntry; facts: GuideFacts; again: boolean; placed: Placed | null }) {
   const { t } = useTranslation("tree");
   const side = placed?.side ?? "top";
@@ -439,6 +473,7 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
   return <div role="status" className="relative rounded-lg bg-ink py-2 pr-1 pl-3 text-bg shadow-float">
     <i aria-hidden="true" style={arrow} className={cn("absolute size-3 rotate-45 bg-ink",
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
+    {entry.roles && !again && <RolesPicture lit={entry.roles} />}
     <div className="flex items-start gap-1">
       <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
         <Sentences words={say} />

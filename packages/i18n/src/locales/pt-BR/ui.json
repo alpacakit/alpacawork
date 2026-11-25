@@ -212,6 +212,10 @@
     "decide_choices": {
       "title": "Opções"
     },
+    "decide_kind": {
+      "hint": "`accept` quando pergunta se aceita como está um resultado feito por esta tarefa (mesclar, adotar); `choose` para qualquer outra decisão (opções, permissão para publicar ou implantar, uma pergunta sem opções). Obrigatório ao perguntar.",
+      "title": "Tipo de pergunta"
+    },
     "decide_note": {
       "hint": "Premissas em comum, links para prévias e quando as coisas param. Não repita as descrições das opções nem as notas de revisão.",
       "title": "Nota"
@@ -289,9 +293,9 @@
     "openTask": "Abrir",
     "placeholder": "Gerencie tarefas e solicite trabalho, tudo por aqui",
     "placeholderFolded": "Peça o que precisar aqui",
-    "placeholderProject": "Envie instruções para este projeto",
-    "placeholderTask": "Envie instruções para {{id}}",
-    "placeholderTasks": "Envie instruções para {{id}} e outras",
+    "placeholderProject": "Instruções ou perguntas sobre este projeto",
+    "placeholderTask": "Instruções ou perguntas sobre {{id}}",
+    "placeholderTasks": "Instruções ou perguntas sobre {{id}} e outras",
     "project": "Projeto",
     "projects": "Projetos",
     "questionsChanged": "As perguntas mudaram. Escolha suas respostas de novo.",

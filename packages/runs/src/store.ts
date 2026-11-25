@@ -19,7 +19,7 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
   type StoredReturn, type StoredPlacement, type TransactionReads } from './reads.js';
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
-  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId'>;
+  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId' | 'newConversation'>;
 export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
   aboutRunId?: RunId | null;
   aiStack?: readonly AiRow[];
@@ -146,7 +146,10 @@ export class RunStore {
     return this.at(() => this.storeReads.snapshot(project, taskIds, rows => rows.map(parseRow)));
   }
   read(): RuntimeRunRecord[] { return this.at(() => this.storeReads.everyRun()); }
-  readUnfinished(): RuntimeRunRecord[] { return this.at(() => this.storeReads.unfinished()); }
+  /** Unfinished Runs: every one, or one project's or these Tasks' Task Runs (reads `unfinished`). */
+  readUnfinished(project?: string, taskIds?: readonly string[]): RuntimeRunRecord[] {
+    return this.at(() => this.storeReads.unfinished(project, taskIds));
+  }
   getRequest(id: string): StoredRequest | null { return this.at(() => this.reads.getRequest(id)); }
   readRequests(project?: string): StoredRequest[] { return this.at(() => this.reads.requests(project)); }
   conversationRuns(placementId: string): RunRecord[] { return this.at(() => this.reads.conversationRuns(placementId)); }
