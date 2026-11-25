@@ -73,8 +73,9 @@ export class TelemetryService {
     const log = this.outbox.log(), finished = this.outbox.finishedDays(log);
     // A report past its deadline is never sent (the queue drops it), so it is not shown as waiting.
     const now = this.now();
-    const queue = this.queue.queued().flatMap(({ value: { notBefore, report } }) =>
-      finished.has(report.day) || now >= deadline(report.day) ? [] : [{ day: report.day, notBefore, report }]);
+    // A failed attempt waits until its retry, so the row says when it can go next.
+    const queue = this.queue.queued().flatMap(({ value: { notBefore, nextAttempt, report } }) =>
+      finished.has(report.day) || now >= deadline(report.day) ? [] : [{ day: report.day, notBefore: Math.max(notBefore, nextAttempt), report }]);
     return { state, next: this.preview(), queue, log };
   }
   /** When counting starts: the consent, or a later delete of what was sent (nothing before it is reported again). */
