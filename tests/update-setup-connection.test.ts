@@ -145,13 +145,13 @@ test('public setup3 naturally discovers and updates changed skill bytes, retries
     const deferredBefore = timers().filter(row => row.kind === 'scheduled' && row.ms === 100).length;
     firstMetadataReply!();
     await until(async () => timers(), rows => rows.filter(row => row.kind === 'scheduled' && row.ms === 100).length > deferredBefore, 10_000);
-    assert.equal(timers().some(row => row.kind === 'scheduled' && row.ms === 6 * 60 * 60 * 1000), false, 'publication contention never reserves the six-hour period');
+    assert.equal(timers().some(row => row.kind === 'scheduled' && row.ms === 60 * 60 * 1000), false, 'publication contention never reserves the hourly period');
     assert.notEqual((await status()).kind, 'available');
   } finally { unlock(); }
   const offered = await until(status, value => value.kind === 'available', 20_000);
-  await until(async () => timers(), rows => rows.some(row => row.kind === 'scheduled' && row.ms === 6 * 60 * 60 * 1000), 10_000);
+  await until(async () => timers(), rows => rows.some(row => row.kind === 'scheduled' && row.ms === 60 * 60 * 1000), 10_000);
   assert(timers().some(row => row.kind === 'scheduled' && row.ms === 100), 'the unfinished setup switch was retried');
-  const regularRequests = requests; await delay(400); assert.equal(requests, regularRequests, 'a successful discovery keeps the six-hour period');
+  const regularRequests = requests; await delay(400); assert.equal(requests, regularRequests, 'a successful discovery keeps the hourly period');
 
   const review = await call('/api/update/review?candidateId=' + offered.candidateId); assert.ok(review.skills.length > 0);
   const input = { opId: randomUUID(), candidateId: review.candidateId, reviewDigest: review.reviewDigest };
@@ -184,12 +184,12 @@ test('public setup3 naturally discovers and updates changed skill bytes, retries
   assert.deepEqual(readdirSync(join(home, '.agents')).sort(), ['skills']);
   // Observe the actual monitor while transport is in flight, then close the real server through its native boundary.
   const scheduledService = JSON.parse(readFileSync(join(home, 'fake-manager/pid.json'), 'utf8'));
-  await until(async () => timers(), rows => rows.some(row => row.pid === scheduledService.pid && row.kind === 'scheduled' && row.ms === 6 * 60 * 60 * 1000), 10_000);
+  await until(async () => timers(), rows => rows.some(row => row.pid === scheduledService.pid && row.kind === 'scheduled' && row.ms === 60 * 60 * 1000), 10_000);
   for (const child of platform.run.commandProcesses(scheduledService.pid, null))
     appendFileSync(join(root, 'processes.jsonl'), JSON.stringify({...child, argv: []}) + '\n');
   holdMetadata = true; execFileSync(native, ['--user', 'restart', 'alpacawork.service'], { env });
   await until(async () => held, value => value === 1, 20_000);
-  assert(timers().some(row => row.pid === scheduledService.pid && row.kind === 'cancelled'), 'shutdown clears the previous six-hour reservation');
+  assert(timers().some(row => row.pid === scheduledService.pid && row.kind === 'cancelled'), 'shutdown clears the previous hourly reservation');
   const pendingRequests = requests; await delay(400); assert.equal(requests, pendingRequests, 'discovery does not overlap an in-flight request');
   const pendingService = JSON.parse(readFileSync(join(home, 'fake-manager/pid.json'), 'utf8'));
   for (const child of platform.run.commandProcesses(pendingService.pid, null))
