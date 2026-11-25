@@ -14,27 +14,26 @@ const NOW = Date.parse("2026-11-25T00:00:00Z");
 const at = (iso: string, window: LimitWindow): LimitWindow => ({ ...window, resetsAt: iso });
 const response = (agents: AgentLimits[], stack: { adapter: AgentLimits["adapter"]; model: string | null }[]) => ({ agents, stack });
 const shownOf = (bar: ReturnType<typeof barLimit>) => bar && { kind: bar.kind, agent: bar.agent.adapter,
-  percent: bar.kind === "limited" || bar.kind === "stopped" ? bar.window.usedPercent : null,
-  spent: bar.kind === "stopped" ? [] : bar.spent.map(agent => agent.adapter) };
+  percent: bar.kind === "limited" || bar.kind === "stopped" ? bar.window.usedPercent : null };
 const row = (adapter: AgentLimits["adapter"], model: string | null = null) => ({ adapter, model });
 
 test("the bar shows the first agent in the stack that can work now, and the window that holds it", () => {
   const claude = agent("claude", "ok", [week(85), week(100, "Fable")]), codex = agent("codex", "ok", [week(25)]);
   // A model's own window holds only the row on that model: Opus works on while Fable's week is spent.
   expect(shownOf(barLimit(response([claude, codex], [row("claude", "opus")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 85, spent: [] });
+    .toEqual({ kind: "limited", agent: "claude", percent: 85 });
   // The row on Fable is held by it (the provider's "Fable" is the row's "fable"), and work goes on to the next row.
   expect(shownOf(barLimit(response([claude, codex], [row("claude", "fable"), row("codex")]), NOW)))
-    .toEqual({ kind: "limited", agent: "codex", percent: 25, spent: ["claude"] });
+    .toEqual({ kind: "limited", agent: "codex", percent: 25 });
   // A row without a model is held by the account's windows alone.
   expect(shownOf(barLimit(response([agent("claude", "ok", [week(40), week(90, "Fable")])], [row("claude")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 40, spent: [] });
+    .toEqual({ kind: "limited", agent: "claude", percent: 40 });
   // Another model of the same agent standing in is not said to be another agent.
   expect(shownOf(barLimit(response([claude], [row("claude", "fable"), row("claude", "opus")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 85, spent: [] });
+    .toEqual({ kind: "limited", agent: "claude", percent: 85 });
   // A spent window past its reset holds nothing: the menu says no reset for it either.
   expect(shownOf(barLimit(response([agent("claude", "ok", [at("2026-11-24T23:00:00Z", week(100))]), codex], [row("claude"), row("codex")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 100, spent: [] });
+    .toEqual({ kind: "limited", agent: "claude", percent: 100 });
   // The user chose red from 80%.
   expect([79, 80, 100].map(limitTone)).toEqual(["normal", "near", "spent"]);
 });
@@ -57,21 +56,21 @@ test("with every agent in the stack spent, the bar says the first and until when
 test("an agent nothing holds (an API key, or one that reports no limits) is where work goes, so the bar never says stopped for it", () => {
   const spentCodex = agent("codex", "ok", [at("2026-11-27T00:00:00Z", week(100))]), spentClaude = agent("claude", "ok", [week(100)]);
   expect(shownOf(barLimit(response([agent("claude", "ok"), spentCodex], [row("claude"), row("codex")]), NOW)))
-    .toEqual({ kind: "unlimited", agent: "claude", percent: null, spent: [] });
+    .toEqual({ kind: "unlimited", agent: "claude", percent: null });
   expect(shownOf(barLimit(response([spentClaude, agent("codex", "ok")], [row("claude"), row("codex")]), NOW)))
-    .toEqual({ kind: "unlimited", agent: "codex", percent: null, spent: ["claude"] });
+    .toEqual({ kind: "unlimited", agent: "codex", percent: null });
   expect(shownOf(barLimit(response([spentClaude, agent("grok", "unsupported")], [row("claude"), row("grok")]), NOW)))
-    .toEqual({ kind: "unlimited", agent: "grok", percent: null, spent: ["claude"] });
+    .toEqual({ kind: "unlimited", agent: "grok", percent: null });
 });
 
 test("an agent whose limits are unknown shows none in its place, and no bar until one is known", () => {
   const codex = agent("codex", "ok", [week(9)]);
   expect(shownOf(barLimit(response([agent("claude", "unavailable"), codex], [row("claude", "opus"), row("codex")]), NOW)))
-    .toEqual({ kind: "unknown", agent: "claude", percent: null, spent: [] });
+    .toEqual({ kind: "unknown", agent: "claude", percent: null });
   // After a spent agent too: the unknown one is where work goes, not the one after it.
   expect(shownOf(barLimit(response([agent("claude", "ok", [week(100)]), agent("codex", "unavailable"), agent("copilot", "ok", [week(5)])],
     [row("claude"), row("codex"), row("copilot")]), NOW)))
-    .toEqual({ kind: "unknown", agent: "codex", percent: null, spent: ["claude"] });
+    .toEqual({ kind: "unknown", agent: "codex", percent: null });
   expect(barLimit(response([agent("claude", "unavailable"), agent("grok", "unsupported")], [row("claude")]), NOW)).toBeNull();
 });
 
