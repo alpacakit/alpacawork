@@ -139,9 +139,9 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
  * the line evenly, so its words stand where the line's words stand before it can be pressed (and where any other state
  * of a message is said).
  */
-/** The answered turn's way into its work: a pill as wide as its words, its arrow beside them. */
-const PILL = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-10 narrow:px-3";
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
+/** The answered turn's way into its work: a pill as wide as its words, its arrow beside them, a finger's height on a phone. */
+const PILL = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-11 narrow:px-3";
 /** The conversation is short: its steps' box keeps the answer under it in sight, a step opened in it too. */
 const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)] has-[[data-run-step-open]]:max-h-[min(14rem,35vh)] narrow:has-[[data-run-step-open]]:max-h-[min(16rem,40vh)]";
 function Chevron({ open }: { open: boolean }) {
