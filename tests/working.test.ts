@@ -1,19 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { workingOf } from '@alpacawork/backend/test-dist/control/working.js';
 import { readControlTree } from './helpers/control-tree.ts';
 import { ReturnLifecycle } from '@alpacawork/backend/test-dist/control/return-lifecycle.js';
 import { handlingFixture } from './return-handling.fixture.ts';
-
-test('working is exactly queued, running and needs_review Runs of either role, deduplicated by Task', () => {
-  for (const role of ['owner', 'worker']) {
-    const records = ['queued', 'running', 'needs_review', 'succeeded', 'failed', 'cancelled', 'joined'].map((state, index) =>
-      ({ role, task: `T${index + 1}`, state }));
-    assert.deepEqual(workingOf([...records, records[0]!]), ['T1', 'T2', 'T3']);
-  }
-  assert.deepEqual(workingOf([]), []);
-  assert.equal(workingOf(null), null);
-});
 
 test('an arriving worker result and pending delivery are not work until a Run is queued', async t => {
   const h = await handlingFixture(t), owner = await h.human(); await h.start(owner.runId);

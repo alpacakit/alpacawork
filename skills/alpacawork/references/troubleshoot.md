@@ -37,10 +37,11 @@ On WSL2, the server runs only while Ubuntu is running, and Windows does not star
 
 This is the order for stopping Runs before maintenance during which you do not want agents to be relaunched (such as an update that changes the shape of the database). Hold comes first because the return from `run stop` can wake the owner of the requester task, which may then request the same work again.
 
-1. Read the tree in the scope to be stopped with `task list --under <ID>`. Put on hold, one by one, each task whose Run you will stop and each requester task that receives its return (hold is a mark on each task; holding an ancestor does not hold the tasks under it).
-2. Read each task with `task get --task <ID> --runs <count>` and stop its unfinished Runs (`queued`, `running`, `needs_review`) with `run stop`. Do not read a list that has read errors as "stopped".
-3. Confirm that the Runs have ended before going on to the maintenance. In the meantime, send no new requests and take nothing off hold.
-4. When the maintenance is finished, take the tasks off hold in order, starting from the upper tasks ([Hold](lifecycle.md#hold)). Treat the results of tests that were stopped as missing, and verify the rerun results separately.
+1. Read the unfinished Runs (`queued`, `running`, `needs_review`) in the scope to be stopped with one `run list` (`--under <ID>` for part of the tree; follow `cursor` while it is given). A task in any state can have them, `todo` included, and a task can have several (its owner's and its members'). Do not read a list that has `errors` as complete.
+2. Put on hold, one by one, each task that has one of those Runs and each requester task that receives its return (hold is a mark on each task; holding an ancestor does not hold the tasks under it). Only for a task you hold, read `task get --task <ID>` for its latest hash; a task already on hold stays as it is.
+3. Stop the Runs with `run stop`: `queued` ones first, then the others. A Run's `parentRun` is the Run that asked for it, and stopping a Run also stops the Runs under it, so stop a parent only when its children may stop with it.
+4. Confirm with `run list` that none is left before going on to the maintenance. In the meantime, send no new requests and take nothing off hold. An update can still report Runs remaining while the list is empty: it also waits for ended Runs whose input or output is not yet settled and for stops not yet delivered; do not stop anything more for those.
+5. When the maintenance is finished, take the tasks off hold in order, starting from the upper tasks ([Hold](lifecycle.md#hold)). Treat the results of tests that were stopped as missing, and verify the rerun results separately.
 
 When the server is down and `run stop` cannot be run, a person runs `alpacawork run stop-local` on the server machine (give a UUID explicitly in `--op-id`). The Run stops without waiting for the server to come back. The record reflects it only after the server has come back.
 
