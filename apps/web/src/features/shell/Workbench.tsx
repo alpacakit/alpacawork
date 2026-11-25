@@ -4,12 +4,12 @@ import { useCallback, useContext, useDeferredValue, useEffect, useLayoutEffect, 
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { later } from "@/lib/later";
-import type { AnalysisPlace } from "@/features/analysis/place";
+import { AnalysisView, loadAnalysisLayers } from "@/features/analysis/AnalysisView";
 import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
 import { subscribeReads } from "@/data/read-model";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFrameSelector, WorkspaceContext } from "@/data/workspace-store";
-import { Loadable, ReadFailure } from "@/components/ui/loadable";
+import { Loadable } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { NoProjects } from "@/features/archive/NoProjects";
 import { openSettings, useDialogStore } from "@/state/dialog-store";
@@ -37,49 +37,6 @@ import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
 import { GuideBalloon } from "@/features/guide/Guide";
-
-/**
- * The analysis is its own part of the code: the list of tasks does not wait for it. It is fetched when the list has
- * been drawn and the screen is idle (or at once when the analysis is opened first), so opening it later waits for no
- * code. Once fetched it is drawn at once (not through Suspense, which holds what it reveals back for a moment).
- */
-type AnalysisPart = typeof import("@/features/analysis/AnalysisView");
-let analysisPart: AnalysisPart | undefined;
-/**
- * The analysis's code: at its own address, or (`again`) at that address once more, made new so the browser asks for it
- * again instead of answering with the failure it remembers for that address.
- */
-const loadAnalysis = (again?: string) => (again ? import(/* @vite-ignore */ again) as Promise<AnalysisPart>
-  : import("@/features/analysis/AnalysisView")).then(part => analysisPart = part);
-/** The address a failed fetch of a part of the code names, when the browser says it. */
-export const failedAddress = (error: unknown) => /https?:\/\/\S+?\.js\b/.exec(error instanceof Error ? error.message : String(error))?.[0];
-function AnalysisView({ place }: { place: AnalysisPlace }) {
-  const [part, setPart] = useState(analysisPart);
-  // A part that could not be fetched is said as every read that could not be done, and asked for again: at a new
-  // address (the browser remembers the failure of the old one), or, where the failure names none, by reading the page again.
-  const [attempt, setAttempt] = useState<{ again?: string; failure?: unknown }>({});
-  useEffect(() => {
-    if (part || "failure" in attempt) return;
-    let live = true;
-    loadAnalysis(attempt.again).then(next => { if (live) setPart(next); }, failure => { if (live) setAttempt({ ...attempt, failure }); });
-    return () => { live = false; };
-  }, [part, attempt]);
-  if (part) return <part.AnalysisView place={place} />;
-  if ("failure" in attempt) {
-    const retry = () => {
-      const address = failedAddress(attempt.failure);
-      if (!address) { location.reload(); return; }
-      setAttempt({ again: `${address.split("?")[0]}?again=${Date.now()}` });
-    };
-    return <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 narrow:min-h-67.5"><BarRoom />
-      <ReadFailure size="region" error={attempt.failure} retry={retry} /></div>;
-  }
-  return analysisWaiting(place.look);
-}
-/** The analysis's place while its part is read: its top line, then its shape (as the analysis says while it reads). */
-const analysisWaiting = (look: "tasks" | "usage") => <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-hidden narrow:min-h-67.5">
-  <BarRoom /><div className="h-7 pt-1 pb-6 box-content narrow:pb-5" />
-  <RegionSkeleton shape={look === "tasks" ? "analysisTasks" : "analysisUsage"} /></div>;
 
 const subscribeViewport = (notify: () => void) => {
   addEventListener("resize", notify);
@@ -141,7 +98,7 @@ export function Workbench() {
   const analysis = useViewStore(state => state.analysis);
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
-  useEffect(() => { if (ready) later(() => void loadAnalysis().catch(() => {})); }, [ready]);
+  useEffect(() => { if (ready) later(() => void loadAnalysisLayers().catch(() => {})); }, [ready]);
   const readerOpen = useReaderOpen();
   const full = useViewStore((state) => state.readerFull);
   // A diff or a file read on a computer stands right of the reader, which moves to the screen's left over the list

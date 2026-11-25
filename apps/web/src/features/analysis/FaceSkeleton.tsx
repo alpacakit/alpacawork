@@ -10,15 +10,16 @@ import type { Look, Span } from "./place";
  * The face's place while its answers are read: the look itself, drawn from a stand-in answer with every part a usual
  * answer has (the span before, the whole record, a share, cache among the tokens), each word and mark a pale block
  * (`[data-face-skeleton]`, surfaces.css). Its numbers, rows and charts stand where the answer's will, on a computer and a
- * phone alike, so nothing moves when it comes. Out of reach, and read out as the app's other waits are.
+ * phone alike, so nothing moves when it comes. It is said as the app's other waits are (RegionSkeleton: a status that is
+ * loading); the stand-in look inside it is out of reach and unread.
  */
 export function FaceSkeleton({ look, span, bucket }: { look: Look; span: Span; bucket: Bucket }) {
   const { t } = useTranslation("ui");
   const { tasks, usage, days } = standIn(span, bucket);
   const none = () => {};
-  return <div role="status" aria-label={t("loading")} aria-busy="true" data-skeleton="analysis" data-face-skeleton inert>
-    {look === "tasks" ? <TasksLook view={tasks} span={span} root={null} days={days} open={none} zone="" />
-      : <UsageLook view={usage} span={span} root={null} tasks={tasks} days={days} open={none} zone="" />}
+  return <div role="status" aria-label={t("loading")} aria-busy="true" data-skeleton="analysis" data-face-skeleton>
+    <div inert>{look === "tasks" ? <TasksLook view={tasks} span={span} root={null} days={days} open={none} zone="" />
+      : <UsageLook view={usage} span={span} root={null} tasks={tasks} days={days} open={none} zone="" />}</div>
   </div>;
 }
 

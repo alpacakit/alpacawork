@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { failedAddress } from "../src/features/shell/Workbench";
+import { failedAddress } from "../src/lib/failed-address";
 
 test("a part of the code that could not be fetched is asked for again at its own address, as the browser named it", () => {
   // Chromium and Firefox name the address; the retry asks for it anew (the browser remembers the failure of the old ask).

@@ -1,17 +1,17 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RegionSkeleton } from "@/components/ui/skeleton";
+import { ReadFailure } from "@/components/ui/loadable";
+import { failedAddress } from "@/lib/failed-address";
 import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
-import { Layers } from "./Layers";
-import { ShareCardButton } from "./ShareCard";
 import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
-import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
+import { analysisSurfaces, cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
@@ -96,7 +96,47 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)} />}
     </ReadPart>
     </div></div>
-    <Layers place={place} project={project} days={days} />
+    <LaterLayers place={place} project={project} days={days} />
     <PointerTip root={root} />
   </>;
+}
+
+/** The analysis's way to the card: over the page, for the span and the project in view. */
+function ShareCardButton({ place }: { place: AnalysisPlace }) {
+  const { t } = useTranslation("analysis");
+  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, unit: null, card: cardSpanOf(place.span) })}>
+    <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
+}
+
+/**
+ * What opens over the face (a number's tasks, one task's values, the card) is its own part of the code; the face is not
+ * (it is drawn with the list's code, so its only wait is for its answers: FaceSkeleton). The layers' part is fetched
+ * when the list has been drawn and the screen is idle, or when the analysis opens; once fetched it is drawn at once.
+ * `again`: at its address once more, made new, so the browser asks for it again instead of answering with the failure it
+ * remembers for that address.
+ */
+type LayersPart = typeof import("./Layers");
+let layersPart: LayersPart | undefined;
+export const loadAnalysisLayers = (again?: string) => (again ? import(/* @vite-ignore */ again) as Promise<LayersPart>
+  : import("./Layers")).then(part => layersPart = part);
+function LaterLayers(props: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
+  const [part, setPart] = useState(layersPart);
+  // A part that could not be fetched is said, where a layer is open, as every read that could not be done, and asked
+  // for again: at a new address, or, where the failure names none, by reading the page again.
+  const [attempt, setAttempt] = useState<{ again?: string; failure?: unknown }>({});
+  useEffect(() => {
+    if (part || "failure" in attempt) return;
+    let live = true;
+    loadAnalysisLayers(attempt.again).then(next => { if (live) setPart(next); }, failure => { if (live) setAttempt({ ...attempt, failure }); });
+    return () => { live = false; };
+  }, [part, attempt]);
+  if (part) return <part.Layers {...props} />;
+  if (!("failure" in attempt) || !analysisSurfaces(props.place).length) return null;
+  const retry = () => {
+    const address = failedAddress(attempt.failure);
+    if (!address) { location.reload(); return; }
+    setAttempt({ again: `${address.split("?")[0]}?again=${Date.now()}` });
+  };
+  return <div role="dialog" className="fixed top-window right-window z-(--layer-reader) w-[min(548px,calc(100%-24px))] rounded-pane border-hairline border-lit-line bg-lit p-6 shadow-float narrow:inset-x-0 narrow:top-auto narrow:bottom-0 narrow:w-auto narrow:rounded-b-none">
+    <ReadFailure size="region" error={attempt.failure} retry={retry} /></div>;
 }
