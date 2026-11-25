@@ -437,7 +437,7 @@ function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; d
     <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
     <Parts items={(say.parts?.(at) ?? []).map((part, index) => ({ color: part.color, name: part.name, share: part.share, index,
       value: figure(part.value, !!part.list), onOpen: part.list ? () => onList(part.list!) : undefined }))}
-      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b>, base: say.line.base(at) }} />
+      line={say.line && { name: say.line.name, value: figure(say.line.value(at), false), base: say.line.base(at) }} />
   </div>;
 }
 
