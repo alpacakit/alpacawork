@@ -1,4 +1,5 @@
 import { aiStackPrefixSchema } from './ai-stack.js';
+import { contextViewSchema } from './agent-context.js';
 import { agentSettingShapeSchema, selectionSchema } from './agent-settings.js';
 import { runAvailabilitySchema, runErrorCauseSchema, runFailureSchema } from './run-failure.js';
 import { restoreIdSchema } from './recovery.js';
@@ -172,6 +173,17 @@ export const placementRuntimeSchema = z.object({
   lastOutputAt: z.iso.datetime({ offset: true }).nullable(),
   activityKind: runActivityKindSchema.nullable(), toolName: z.string().nullable(),
 }).strict();
+/**
+ * Compacting a conversation before the instruction of `run` (task request --compact, task report --next-conversation
+ * compact). pending: the Run waits to start; sent: went with its first input; compacted / failed: what the agent said;
+ * unknown: the agent ended without saying; dropped: the Run started a new conversation, could not compact, or ended
+ * before it started.
+ */
+export const COMPACTION_STATES = ['pending', 'sent', 'compacted', 'failed', 'unknown', 'dropped'] as const;
+export const compactionSchema = z.object({ id: z.string().min(1), run: runIdSchema, task: z.string().min(1), agent: z.string().min(1),
+  state: z.enum(COMPACTION_STATES), focus: z.string().nullable(), message: z.string().nullable(),
+  requestedAt: z.iso.datetime({ offset: true }), endedAt: z.iso.datetime({ offset: true }).nullable() }).strict();
+export type Compaction = z.infer<typeof compactionSchema>;
 const placementRecordFields = {
   id: z.string().min(1), taskId: taskIdSchema, agentId: z.string().min(1),
   profileKey: z.string().min(1),
@@ -191,6 +203,10 @@ export const placementSchema = z.object({
   headRunId: runIdSchema.nullable(),
   /** The head Run's values when its session can be continued; null when none can, absent if unreadable. */
   previousValues: selectionSchema.nullable().optional(),
+  /** The latest compaction of its conversation (task request --compact); absent where it is not read. */
+  compaction: compactionSchema.nullable().optional(),
+  /** How full its conversation last was, as its agent said, with the model's window; kept after the Run ends (task get). */
+  context: contextViewSchema.nullable().optional(),
   runtime: placementRuntimeSchema,
 }).strict().superRefine(checkPlacement);
 export const controlRunSchema = z.object({
@@ -633,6 +649,8 @@ export const requestInputSchema = z.object({
   expectedPlacementRevision: z.number().int().positive(), expectedHeadRunId: runIdSchema.nullable().optional(),
   targetPlacementId: z.string().min(1).optional(),
   selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
+  /** Compact the conversation before this instruction, keeping `focus` in the summary. */
+  compact: z.object({ focus: z.string().min(1).nullable() }).strict().optional(),
 }).strict().refine(input => input.description === undefined || input.title !== undefined,
   { path: ['title'], message: 'A request description requires a title' });
 export const requestReceiptSchema = z.object({

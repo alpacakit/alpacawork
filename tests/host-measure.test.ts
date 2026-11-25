@@ -19,13 +19,14 @@ import { initializeWorkspace } from '@alpacawork/backend/test-dist/control/initi
 
 const GB = 1024 ** 3;
 const facts = { hostname: 'fixture-host', os: 'fixture OS', cores: 4, memoryBytes: 100 * GB };
-const source = (sample: Extract<HostSource, { supported: true }>['sample']): HostSource => ({ supported: true, facts, sample });
+const source = (sample: Extract<HostSource, { supported: true }>['sample']): Extract<HostSource, { supported: true }> =>
+  ({ supported: true, facts, sample });
 
 
 test('/proc readers take the fields the host status shows', () => {
   assert.deepEqual(parseCpuTicks('cpu  100 5 50 800 20 1 2 3 7 0\ncpu0 1 1 1 1\n'), { total: 981, idle: 820 });
-  assert.deepEqual(parseMeminfo('MemTotal:       1000 kB\nMemFree:  10 kB\nMemAvailable:    250 kB\nSwapTotal:  400 kB\nSwapFree:   100 kB\n'),
-    { totalBytes: 1000 * 1024, availableBytes: 250 * 1024, swapUsedBytes: 300 * 1024 });
+  assert.deepEqual(parseMeminfo('MemTotal:       1000 kB\nMemFree:  10 kB\nMemAvailable:    250 kB\n'),
+    { totalBytes: 1000 * 1024, availableBytes: 250 * 1024 });
   const fields = Array.from({ length: 50 }, (_, index) => String(index + 3));
   fields[4 - 3] = '77'; fields[14 - 3] = '30'; fields[15 - 3] = '12'; fields[22 - 3] = '555'; fields[24 - 3] = '10';
   assert.deepEqual(parseProcessStat(`4242 (Web (Content) x) ${fields.join(' ')}`),
@@ -40,8 +41,16 @@ test('a command is named by what an interpreter or runner runs', () => {
   assert.equal(commandName('node', ['node', '/home/u/.local/pnpm/pnpm.cjs', '--filter', 'x', 'build']), 'pnpm build');
   assert.equal(commandName('node', ['node', 'scripts/testing/queue.ts', 'web']), 'queue');
   assert.equal(commandName('MainThread', ['node']), 'node');
-  assert.equal(commandName('openclaw-gatewa', ['/usr/bin/openclaw-gateway', '--port', '1']), 'openclaw-gateway');
-  assert.equal(commandName('chrome-headless', ['/opt/x/chrome-headless-shell', '--type=renderer']), 'chrome-headless-shell');
+  assert.equal(commandName('openclaw-gatewa', [], '/usr/bin/openclaw-gateway'), 'openclaw-gateway');
+  assert.equal(commandName('chrome-headless', [], '/opt/x/chrome-headless-shell'), 'chrome-headless-shell');
+});
+
+test('long names use the executable or a plain argv path without showing process-title arguments', () => {
+  const executable = '/opt/Browser Builds/chrome-headless-shell Preview';
+  const argv = [`${executable} --type=renderer --user-data-dir=/tmp/chrome-headless-profile`];
+  assert.equal(commandName('chrome-headless', argv, `${executable} (deleted)`), 'chrome-headless-shell Preview');
+  assert.equal(commandName('chrome-headless', argv), 'chrome-headless');
+  assert.equal(commandName('systemd-journal', ['/usr/lib/System Services/systemd-journald']), 'systemd-journald');
 });
 
 test('a Run weighs its whole tree and names its heaviest command with a count', () => {
@@ -73,12 +82,15 @@ test('a tight stretch starts after its hold, stays through a dip, and ends after
 });
 
 test('the push names what was tight, for how long, and the heaviest Tasks once each', () => {
-  const sample: HostSampleDTO = { at: 0, cpu: 98, memory: { totalBytes: 100 * GB, availableBytes: 40 * GB, swapUsedBytes: 0 }, load: [50, 40, 30],
-    disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, runs: [run(10, 'T2'), run(30, 'T1'), run(5, 'T1', 'worker'), run(20, 'T3'), run(1, 'T4')],
+  const sample: HostSampleDTO = { at: 0, cpu: 98, memory: { totalBytes: 100 * GB, availableBytes: 40 * GB },
+    disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: [run(10, 'T2'), run(30, 'T1'), run(5, 'T1', 'worker'), run(20, 'T3'), run(1, 'T4')],
     outside: { cpu: 1, memoryBytes: GB, names: [] } };
   const event = hostPushEvent({ start: Date.parse('2026-10-15T00:00:00Z'), end: null, kinds: ['cpu'], peak: { cpu: 98, memoryFreePercent: 40, diskFreeBytes: 400 * GB }, runs: [] }, sample, 'ja');
-  assert.deepEqual(event.payload, { title: 'PC の負荷が厳しい', body: 'CPU 98% が2分続いています。重い順に T1・T3・T2（Run 5件）',
-    url: '/?settings=host', tag: `host:${Date.parse('2026-10-15T00:00:00Z')}` });
+  const { body, url, tag } = event.payload;
+  assert.match(body, /CPU 98%.*2分/);
+  assert.deepEqual(body.match(/\bT\d+\b/g), ['T1', 'T3', 'T2']);
+  assert.match(body, /Run 5件/);
+  assert.deepEqual({ url, tag }, { url: '/?settings=host', tag: `host:${Date.parse('2026-10-15T00:00:00Z')}` });
 });
 
 describe('the monitor and its record', () => {
@@ -91,10 +103,10 @@ describe('the monitor and its record', () => {
   afterEach(() => rmSync(area, { recursive: true, force: true }));
 
   const sampleAt = (now: number, cpu: number): HostSampleDTO => ({ at: now, cpu,
-    memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
-    disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, runs: cpu > 50 ? [run(cpu - 10)] : [], outside: { cpu: 1, memoryBytes: GB, names: ['Xorg'] } });
+    memory: { totalBytes: 100 * GB, availableBytes: 60 * GB },
+    disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: cpu > 50 ? [run(cpu - 10)] : [], outside: { cpu: 1, memoryBytes: GB, names: ['Xorg'] } });
 
-  test('disk warns below 50 GB and stays tight until 55 GB without repeated starts', () => {
+  test('disk warns below 50 GB and stays tight until 55 GB without repeated starts', async () => {
     let freeBytes = 50 * GB;
     const started: number[] = [];
     const monitor = new HostMonitor({ root, runs: () => [], parallel: () => 12,
@@ -103,7 +115,7 @@ describe('the monitor and its record', () => {
     const base = Date.parse('2026-10-15T00:00:00Z');
     try {
       monitor.tick(base);
-      const status = hostStatusSchema.parse(monitor.status(base));
+      const status = hostStatusSchema.parse(await monitor.status(base));
       assert.ok(status.supported);
       assert.equal(status.limits.diskFreeBytes, 50 * GB, 'the displayed limit uses the warning threshold');
       assert.equal(monitor.notice(), null, 'exactly 50 GB does not start a warning');
@@ -129,7 +141,7 @@ describe('the monitor and its record', () => {
     } finally { monitor.close(); }
   });
 
-  test('tells the index while tight, starts one push per episode, and keeps the episode and its minutes', () => {
+  test('tells the index while tight, starts one push per episode, and keeps the episode and its minutes', async () => {
     const cpu = new Map<number, number>();
     const notices: (HostNotice | null)[] = [], started: number[] = [], held: (number | null)[] = [];
     const base = Date.parse('2026-10-15T00:00:00Z');
@@ -145,7 +157,7 @@ describe('the monitor and its record', () => {
       assert.deepEqual(held, [base + at(180), null]);
       assert.equal(notices.at(-1), null, 'the banner goes once it is calm');
       assert.ok(notices.length >= 3, 'the banner is refreshed at least once a minute while tight');
-      const status = hostStatusSchema.parse(monitor.status(base + at(600)));
+      const status = hostStatusSchema.parse(await monitor.status(base + at(600)));
       assert.ok(status.supported);
       assert.equal(status.current, null);
       assert.equal(status.parallel, 12);
@@ -186,7 +198,7 @@ describe('the monitor and its record', () => {
     store.close();
   });
 
-  test('a restart while tight continues the open episode without a second push', () => {
+  test('a restart while tight continues the open episode without a second push', async () => {
     const base = Date.parse('2026-10-15T00:00:00Z');
     const store = new HostStore(root);
     const id = store.saveEpisode(null, { start: base, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base + at(50));
@@ -197,7 +209,7 @@ describe('the monitor and its record', () => {
       episodeStarted: episode => started.push(episode.start), episodeHeld: start => held.push(start), source: source((_runs, now) => sampleAt(now, 96)) });
     try {
       monitor.tick(base + at(60));
-      const status = hostStatusSchema.parse(monitor.status(base + at(60)));
+      const status = hostStatusSchema.parse(await monitor.status(base + at(60)));
       assert.ok(status.supported);
       assert.deepEqual([status.current?.id, status.current?.start], [id, base]);
       assert.deepEqual(started, []);
@@ -207,16 +219,25 @@ describe('the monitor and its record', () => {
   });
 });
 
-for (const hostSource of [source((_runs, now) => ({ at: now, cpu: 20,
-  memory: { totalBytes: 100 * GB, availableBytes: 60 * GB, swapUsedBytes: 0 }, load: [1, 1, 1],
-  disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, runs: [], outside: { cpu: 0, memoryBytes: 0, names: [] } })),
-  { supported: false, platform: 'darwin' } as const, { supported: false, platform: 'win32' } as const]) {
-  test(`GET /api/host/status uses the supplied ${hostSource.supported ? 'measured' : hostSource.platform} source`, async () => {
+const gpus: HostSampleDTO['gpus'] = [
+  { id: 'GPU-a', name: 'Fixture GPU', utilization: 100, memory: { usedBytes: GB, totalBytes: 4 * GB }, users: [] },
+  { id: 'GPU-b', name: 'Fixture GPU', utilization: null, memory: null, users: null },
+];
+for (const platform of [null, 'darwin', 'win32']) {
+  test(`GET /api/host/status uses the supplied ${platform ?? 'measured'} source`, async () => {
+    let probes = 0;
+    const hostSource: HostSource = platform ? { supported: false, platform } : {
+      ...source((_runs, now) => ({ at: now, cpu: 20,
+        memory: { totalBytes: 100 * GB, availableBytes: 60 * GB },
+        disk: { freeBytes: 400 * GB, totalBytes: 900 * GB }, gpus: [], runs: [], outside: { cpu: 0, memoryBytes: 0, names: [] } })),
+      readGpus: async () => { probes++; return gpus; },
+    };
     const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-host-route-')));
     const root = join(area, 'root'); mkdirSync(root, { mode: 0o700 });
     await initializeWorkspace(root);
     const app = await startServer(root, 0, { hostSource });
     try {
+      assert.equal(probes, 0, 'starting the monitor does not probe the GPU');
       const response = await fetch(new URL('api/host/status', app.url));
       assert.equal(response.status, 200);
       const status = hostStatusSchema.parse(await response.json());
@@ -224,12 +245,15 @@ for (const hostSource of [source((_runs, now) => ({ at: now, cpu: 20,
         assert.ok(status.supported && status.sample, 'serve starts sampling');
         assert.deepEqual(status.facts, facts);
         assert.equal(status.sample.cpu, 20);
+        assert.deepEqual(status.sample.gpus, gpus);
+        assert.equal(probes, 1);
+        assert.equal(status.current, null);
       } else assert.deepEqual(status, hostSource);
     } finally { await app.close(); rmSync(area, { recursive: true, force: true }); }
   });
 }
 
-test('an unsupported source never samples, records, or notifies', () => {
+test('an unsupported source never samples, records, or notifies', async () => {
   const name = 'darwin';
   const area = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-host-unsupported-')));
   const root = join(area, 'no-workspace');
@@ -239,7 +263,7 @@ test('an unsupported source never samples, records, or notifies', () => {
     runs: unexpected, parallel: unexpected, noticeChanged: unexpected, episodeStarted: unexpected, episodeHeld: unexpected });
   try {
     monitor.start(); monitor.tick();
-    assert.deepEqual(hostStatusSchema.parse(monitor.status()), { supported: false, platform: name });
+    assert.deepEqual(hostStatusSchema.parse(await monitor.status()), { supported: false, platform: name });
     assert.equal(monitor.episodeMinutes(1), null);
     assert.equal(monitor.notice(), null);
     assert.equal(existsSync(root), false);
@@ -250,7 +274,7 @@ test('an unsupported source never samples, records, or notifies', () => {
 test('normalized readings give CPU deltas, whole Run trees, and PID reuse on every OS', () => {
   let reading: HostReading = { processTime: 2, cpuTicks: { total: 1000, idle: 800 },
     processes: new Map([[10, { pid: 10, ppid: 1, comm: 'agent', ticks: 30, startTime: 1, rssBytes: 100 }]]),
-    memory: { totalBytes: 1000, availableBytes: 500, swapUsedBytes: 100 }, load: [1, 2, 3], disk: { freeBytes: 400, totalBytes: 900 } };
+    memory: { totalBytes: 1000, availableBytes: 500 }, disk: { freeBytes: 400, totalBytes: 900 } };
   const sampler = new HostSampler({ supported: true, facts, read: () => reading, argv: () => ['node', '/w/check.js'] });
   const roots = [{ runId: 'R1', taskId: 'T1', title: 'test', role: 'owner' as const, model: null, pid: 10 }];
   assert.equal(sampler.sample(roots, 0).cpu, null);
@@ -263,7 +287,7 @@ test('normalized readings give CPU deltas, whole Run trees, and PID reuse on eve
   assert.equal(sample.cpu, 80);
   assert.deepEqual(sample.runs[0], { runId: 'R1', taskId: 'T1', title: 'test', role: 'owner', model: null, cpu: 30, memoryBytes: 300, processes: 2, heaviest: { name: 'check', count: 1 } });
   assert.deepEqual(sample.outside, { cpu: 5, memoryBytes: 300, names: ['other'] });
-  assert.deepEqual([sample.memory, sample.load, sample.disk], [reading.memory, reading.load, reading.disk]);
+  assert.deepEqual([sample.memory, sample.disk], [reading.memory, reading.disk]);
   reading = { ...reading, processTime: 4, cpuTicks: { total: 1200, idle: 900 }, processes: new Map([
     [10, { pid: 10, ppid: 1, comm: 'node', ticks: 7, startTime: 4, rssBytes: 50 }],
   ]) };
@@ -282,7 +306,7 @@ if (platform === linuxAdapter) test('the selected Linux source reads /proc and t
   assert.ok(sample.outside.memoryBytes > 0);
 });
 
-test('a host sampling fault keeps operation, OS code, syscall and path in the public error', () => {
+test('a host sampling fault keeps operation, OS code, syscall and path in the public error', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'host-fault-')));
   const cause = Object.assign(new Error("ENOENT: no such file or directory, open '/proc/test'"),
     { code: 'ENOENT', syscall: 'open', path: '/proc/test' });
@@ -290,7 +314,7 @@ test('a host sampling fault keeps operation, OS code, syscall and path in the pu
     source: { supported: true, facts: { hostname: 'test', os: 'Linux', cores: 1, memoryBytes: 100 }, sample: () => { throw cause; } } });
   try {
     monitor.tick(1000);
-    const status = hostStatusSchema.parse(monitor.status(1000));
+    const status = hostStatusSchema.parse(await monitor.status(1000));
     assert.equal(status.supported, true);
     if (!status.supported) return;
     assert.deepEqual(status.error?.reason, { kind: 'host_failure', operation: 'sample',

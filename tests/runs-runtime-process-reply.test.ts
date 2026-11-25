@@ -42,6 +42,7 @@ test('corrupt and oversized Claude final output are distinct failed results in D
 for (const scenario of [
   { name: 'failed file reply', agent: 'own', plan: { exitAfterResult: 1, resultOnly: true }, reason: 'exit', result: 'present' },
   { name: 'failed codex reply', agent: 'codex', plan: { exitAfterResult: 1 }, reason: 'exit', result: 'present' },
+  { name: 'codex reply after an oversized output line', agent: 'codex', plan: { oversizedLine: true }, reason: 'output', result: 'present' },
   { name: 'failed without reply', agent: 'own', plan: { exitAfterResult: 1, noResult: true, resultOnly: true }, reason: 'exit', result: 'missing' },
   { name: 'successful exit without reply', agent: 'own', plan: { noResult: true, resultOnly: true }, reason: 'output', result: 'missing' },
   { name: 'failed unreadable reply', agent: 'own', plan: { exitAfterResult: 1, invalidUtf8: true, resultOnly: true }, reason: 'exit', result: 'unreadable' },

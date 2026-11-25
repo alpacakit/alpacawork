@@ -7,6 +7,7 @@ import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import { isUnfinished } from '@alpacawork/runs';
 import { endedOwnWork } from './return-rules.js';
 import type { ControlTx } from './task-transition.js';
+import { assertCompactable } from '../runs/compactions.js';
 
 /** The checkpoint's mark of a Task's values (kept as `bodyHash`): the digest of their canonical JSON. */
 export const valuesHash = (values: TaskValues) => digest(Buffer.from(canonicalValues(values)));
@@ -48,7 +49,7 @@ export function suppliedSnapshotForRequest(tx: ControlTx, head: RunRecord, runs:
 
 /** A report asserts that the supplied versions, rather than arbitrary extra reads, are reflected in its values. */
 export function checkpointForReport(tx: ControlTx, task: ControlTask, runId: string, values: TaskValues,
-  nextConversation?: 'new'): ConversationCheckpoint {
+  nextConversation?: 'new' | 'compact', compactFocus?: string): ConversationCheckpoint {
   const run = tx.runs.get(runId), placement = run && tx.runs.getPlacement(run.placementId);
   if (!run || run.task !== task.id || run.role !== 'owner' || run.state !== 'running' ||
       !placement?.active || !placement.responsible)
@@ -67,8 +68,10 @@ export function checkpointForReport(tx: ControlTx, task: ControlTask, runId: str
     if (version === null) delete children[id];
     else children[id] = version;
   }
+  // A compacted next conversation is the same agent's: refuse one it cannot compact now rather than drop it later.
+  if (nextConversation === 'compact') assertCompactable(run.launch, compactFocus ?? null);
   return { bodyHash: valuesHash(values), inputHead, children,
-    ...(nextConversation ? { nextConversation } : {}) };
+    ...(nextConversation ? { nextConversation } : {}), ...(compactFocus ? { compactFocus } : {}) };
 }
 
 type RotationReceipt = 'active' | 'taken' | 'not_sent' | 'resolved' | 'unknown';
@@ -107,8 +110,9 @@ export function assertRotationResolved(rotation: Rotation | null, resolvesUnknow
       { reason: { kind: 'checkpoint_rotation_receipt_unknown' } });
 }
 
-type Handoff = { id: string; checkpoint: ConversationCheckpoint; rotate: boolean };
-/** Snapshot freshness alone decides whether a successful report prepares the next new conversation. */
+/** `rotate`: the next conversation starts anew; `compact`: it continues, compacted first (with this focus). */
+type Handoff = { id: string; checkpoint: ConversationCheckpoint; rotate: boolean; compact: { focus: string | null } | null };
+/** Snapshot freshness alone decides whether a successful report prepares how the next conversation starts. */
 export function handoffForRequest(tx: ControlTx, task: ControlTask, placementId: string,
   runs: readonly RunRecord[]): Handoff | null {
   const head = runs.at(-1);
@@ -120,9 +124,9 @@ export function handoffForRequest(tx: ControlTx, task: ControlTask, placementId:
   const latestReport = [...task.meta.log].reverse().find(each => each.runId &&
     (each.kind === 'reported' || each.kind === 'asked') &&
     each.actor.kind === 'placement' && each.actor.placementId === placementId);
-  const rotate = (tx.runs.get(entry.runId)?.state === 'succeeded' && checkpoint.nextConversation === 'new' &&
-    head?.id === checkpoint.inputHead && latestReport?.id === entry.id);
-  return { id: entry.id, checkpoint, rotate };
+  const prepared = tx.runs.get(entry.runId)?.state === 'succeeded' && head?.id === checkpoint.inputHead && latestReport?.id === entry.id;
+  return { id: entry.id, checkpoint, rotate: prepared && checkpoint.nextConversation === 'new',
+    compact: prepared && checkpoint.nextConversation === 'compact' ? { focus: checkpoint.compactFocus ?? null } : null };
 }
 
 /**

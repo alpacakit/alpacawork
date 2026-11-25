@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { statfsSync } from 'node:fs';
 import { hostname, release } from 'node:os';
 import type { HostMeasurement, HostReading, ProcessStat } from './host.js';
+import { nvidiaGpuReader } from './nvidia-gpu.js';
 
 // The Windows LLP64 ABI has 32-bit DWORD/LONG even when pointers are 64-bit.
 type Handle = number | bigint;
@@ -71,8 +72,7 @@ function memoryReading(api: WindowsHostNative): HostReading['memory'] {
   check(api, api.GlobalMemoryStatusEx(memory), 'GlobalMemoryStatusEx');
   const totalBytes = uint64(memory, 8), availableBytes = uint64(memory, 16);
   if (totalBytes <= 0 || availableBytes > totalBytes) throw new Error('GlobalMemoryStatusEx: invalid physical memory counts');
-  // Page-file fields describe commit limits, not bytes physically stored in swap.
-  return { totalBytes, availableBytes, swapUsedBytes: null };
+  return { totalBytes, availableBytes };
 }
 function processesReading(api: WindowsHostNative, processTime: number): ReadonlyMap<number, ProcessStat> {
   const snapshot = api.CreateToolhelp32Snapshot(2 /* TH32CS_SNAPPROCESS */, 0);
@@ -167,6 +167,7 @@ export function windowsHostMeasurement(dataDirectory: string, native?: WindowsHo
     supported: true,
     facts: { hostname: hostname(), os: `Windows ${release()}`, cores, memoryBytes: memory.totalBytes },
     argv: () => [], // No supported Win32 API reads another process's argv without reading its private memory.
+    readGpus: nvidiaGpuReader(Date.now, () => processesReading(api, Date.now())),
     read() {
       const idle = Buffer.alloc(8), kernel = Buffer.alloc(8), user = Buffer.alloc(8);
       check(api, api.GetSystemTimes(idle, kernel, user), 'GetSystemTimes');
@@ -183,7 +184,7 @@ export function windowsHostMeasurement(dataDirectory: string, native?: WindowsHo
       const processTime = Date.now(); // Immediately before the process snapshot, in the startTime coordinate.
       const processes = processesReading(api, processTime);
       return { cpuTicks: { total: totalMs, idle: idleMs }, processTime, processes,
-        memory, load: null, disk };
+        memory, disk };
     },
   };
 }

@@ -39,7 +39,8 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   // Serve reserves a coordinator's turn, and only it, without a Run credential; this process reads no Run record.
   const coordinator = snapshot.credential === null;
   const adapter = runtimeAdapter(snapshot.invocation.launch.adapter);
-  const adapterInvocation = { mode: snapshot.invocation.mode, session: snapshot.invocation.session?.id ?? null };
+  const adapterInvocation = { mode: snapshot.invocation.mode, session: snapshot.invocation.session?.id ?? null,
+    compaction: snapshot.compaction?.id ?? null };
   const folder = join(root, '.alpacawork', 'runs', id), spool = executionFolder(root, id, attempt);
   const journal = new EventJournal(spool, identity);
   const own = processIdentity(process.pid);
@@ -64,7 +65,7 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   // No agent ran, so nothing but the outcome can be observed.
   const completeUnlaunched = (outcome: Outcome, message?: string) => publishCompletion(journal, { outcome,
     finalResult: message === undefined ? { state: 'missing', text: null } : { state: 'present', text: message },
-    session: snapshot.invocation.session?.id ?? null, measuredUsage: null, exit: null });
+    session: snapshot.invocation.session?.id ?? null, measuredUsage: null, exit: null, compaction: null });
   const first = readCommands(spool, identity); observeStop(first.commands);
   if (cause) {
     notSent(snapshot.initialInputId);
@@ -105,13 +106,15 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   let termination: Promise<void> | undefined;
   let channelClosed = false, groupSettled = false, unitSettled = false, failed = false;
   const closeChannel = () => { if (!channelClosed) { channel.close(); channelClosed = true; } };
-  const transfer = (open: typeof channel, inputId: string, instructionRunId: string, text: string) => {
+  const transfer = (open: typeof channel, inputId: string, instructionRunId: string, text: string,
+    compaction: typeof snapshot.compaction = null) => {
     attemptInput(inputId, instructionRunId, text);
-    if (!open.write(instructionRunId, text, inputId)) notSent(inputId);
+    if (!open.write(instructionRunId, text, inputId, compaction)) notSent(inputId);
   };
   try {
     journal.append('started', processIdentity(child.pid!));
-    transfer(channel, snapshot.initialInputId, id, snapshot.prompt);
+    // The compaction the launch carries goes with the initial input, the only one no turn can be running before.
+    transfer(channel, snapshot.initialInputId, id, snapshot.prompt, snapshot.compaction ?? null);
     let session = snapshot.invocation.session?.id ?? null, finished = false;
     const launch = snapshot.invocation.launch;
     const activity = new OutputActivityReader(adapter, undefined,

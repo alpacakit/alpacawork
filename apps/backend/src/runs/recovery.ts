@@ -35,7 +35,8 @@ async function stopRunUnit(store: RunStore, run: RuntimeRunRecord, started: { sc
 function observeLostAttempt(store: RunStore, run: RuntimeRunRecord, launch: LaunchSnapshot, timedOut: boolean,
   groupGone: boolean, journal: EventJournal): EndObservation | null {
   const adapter = runtimeAdapter(launch.invocation.launch.adapter);
-  const adapterInvocation = { mode: launch.invocation.mode, session: launch.invocation.session?.id ?? null };
+  const adapterInvocation = { mode: launch.invocation.mode, session: launch.invocation.session?.id ?? null,
+    compaction: launch.compaction?.id ?? null };
   const inputs = store.connection.prepare(`SELECT * FROM run_inputs WHERE attempt_id=? AND state IN (${AWAITING_RECEIPT_SQL})`).all(launch.attemptId);
   let observed: ReturnType<AgentInputReceipts<string>['poll']> = { taken: [], refused: [], receipts: [] };
   if (inputs.length && adapter) {
@@ -56,7 +57,7 @@ function observeLostAttempt(store: RunStore, run: RuntimeRunRecord, launch: Laun
   if (!groupGone) return null;
   if (!adapter) return { outcome: { state: 'failed', reason: 'launch' },
     finalResult: { state: 'present', text: unavailableRuntimeMessage(launch.invocation.launch.adapter) },
-    session: run.session?.id ?? null, measuredUsage: null, exit: null };
+    session: run.session?.id ?? null, measuredUsage: null, exit: null, compaction: null };
   // The exit status was lost with the manager. Preserve the declared reply without inventing success.
   const output = adapter.read(adapterInvocation, store.folder(run.id), { code: null, signal: null });
   const end = readEnd({

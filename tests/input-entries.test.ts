@@ -114,6 +114,8 @@ test('CLI and HTTP refuse alike', async t => {
     const reportCases = [
       report('askTo', 'incompatible', { state: 'doing', askTo: 'user' }, ['--state', 'doing', '--ask-to', 'user']),
       report('values', 'required', { state: 'doing', nextConversation: 'new' }, ['--state', 'doing', '--next-conversation', 'new']),
+      report('compactFocus', 'incompatible', { state: 'doing', values: { notes: 'Done.' }, nextConversation: 'new', compactFocus: 'Keep it' },
+        ['--state', 'doing', '--values-file', values, '--next-conversation', 'new', '--compact-focus', 'Keep it']),
       report('values', 'incompatible', { state: 'stopped', values: { notes: 'Done.' } }, ['--state', 'stopped', '--values-file', values]),
       report('state', 'exactly_one', { title: 'Report' }, ['--title', 'Report']),
       report('title', 'required', { state: 'doing', description: 'Done.' }, ['--state', 'doing', '--description-file', description]),
@@ -126,6 +128,10 @@ test('CLI and HTTP refuse alike', async t => {
     const requestCases = [
       request('agent', 'incompatible', { answers: 'L1', agent: 'P1' }, ['--answers', 'L1', '--agent', 'P1']),
       request('expectedTaskHash', 'required', {}, []),
+      request('compact', 'incompatible', { ...versions, newConversation: true, compact: true, expectedHeadRun: 'R1' },
+        [...versionFlags, '--new-conversation', '--compact', '--expected-head-run', 'R1']),
+      request('compactFocus', 'incompatible', { ...versions, compactFocus: 'Keep it' }, [...versionFlags, '--compact-focus', 'Keep it']),
+      request('expectedHeadRun', 'required', { ...versions, compact: true }, [...versionFlags, '--compact']),
       request('expectedPlacementRevision', 'required', { expectedTaskHash: digest }, ['--expected-task-hash', digest]),
     ];
     assert.deepEqual([reportCases.length, requestCases.length], [taskReportRules.length, taskRequestRules.length]);

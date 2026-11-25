@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Fixed-source-shaped synthetic Pi RPC. No model, authentication, or external connection. */
+/** Fixed-source-shaped synthetic Pi RPC. No model, authentication, or external connection. Mode compact-fail refuses compact. */
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -70,6 +70,12 @@ function command(row) {
     const timer = setInterval(() => { if (existsSync(process.env.PI_STUB_RELEASE)) { clearInterval(timer); finish(); } }, 10);
    }
   } else setImmediate(finish);
+ } else if (row.type === 'compact') {
+  if (mode === 'compact-fail') { send({ id: row.id, type: 'response', command: 'compact', success: false, error: 'Nothing to compact (session too small)' }); return; }
+  send({ type: 'compaction_start', reason: 'manual' });
+  const result = { summary: 'synthetic summary', firstKeptEntryId: 'entry-1', tokensBefore: 100, estimatedTokensAfter: 10 };
+  send({ type: 'compaction_end', reason: 'manual', result, aborted: false, willRetry: false });
+  response(result);
  } else if (row.type === 'extension_ui_response') note({ cancelled: row.cancelled, confirmed: row.confirmed });
 }
 process.stdin.setEncoding('utf8');
