@@ -17,7 +17,7 @@ export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold 
   'repeated-question': { value: 3, unit: 'count' },
   'long-step': { value: 5, unit: 'minutes' },
   'limit-hit': null,
-  'repeated-command': { value: 3, unit: 'count' },
+  'repeated-failure': { value: 3, unit: 'count' },
   'same-result': { value: 2, unit: 'count' },
   'fan-out': { value: 20, unit: 'count' },
   'queue-wait': { value: 5, unit: 'minutes' },
@@ -26,7 +26,7 @@ export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold 
   idle: { value: 15, unit: 'minutes' },
 };
 /** Rules that read step times: with no Run of the scope holding them, they cannot find anything and say so. */
-export const STEP_RULES: ReadonlySet<AnalysisFindingRule> = new Set(['long-step', 'repeated-command', 'same-result', 'fan-out']);
+export const STEP_RULES: ReadonlySet<AnalysisFindingRule> = new Set(['long-step', 'repeated-failure', 'same-result', 'fan-out']);
 /** A finding of many steps names the first few; `count` says how many there were. */
 const EVIDENCE_STEPS = 10;
 
@@ -99,6 +99,27 @@ function median(values: number[]) {
 const stepMs = (step: TraceStep, run: TraceRun, end: number) => (step.to ?? run.ended ?? end) - step.from!;
 const timedTopSteps = (run: TraceRun) => (run.steps ?? []).filter(step => step.inside === null && step.from !== null);
 
+/**
+ * Shell commands that write files or the work folder (by their first line), the one list the repeat rules read: output
+ * redirection (other than to /dev/null or another stream), tee, rm, mv, cp, sed -i, touch, mkdir, ln, chmod, truncate,
+ * dd, patch, git commands that change the work folder, package installs, and interpreters run inline (which may write).
+ */
+export const WRITING_COMMANDS: readonly RegExp[] = [
+  /(?:^|[^=\-<>])>>?(?![>&=]|\s*\/dev\/null)/,
+  /\b(?:tee|rm|rmdir|mv|cp|touch|mkdir|ln|chmod|chown|truncate|dd|patch|install|rsync|unzip|tar)\b/,
+  /\bsed\b[^|;&]*\s-[a-zA-Z]*i/,
+  /\bperl\b[^|;&]*\s-[a-zA-Z]*i/,
+  /\bgit\s+(?:commit|checkout|switch|restore|apply|am|reset|merge|rebase|pull|stash|cherry-pick|revert|add|rm|mv|clean|worktree|branch|tag|init|clone)\b/,
+  /\b(?:pnpm|npm|yarn|pip3?|cargo|go)\s+(?:install|i|add|remove|update|get|build)\b/,
+  /\b(?:python3?|node|ruby|perl|bash|sh|zsh)\s+(?:-[a-zA-Z]*[ce]\b|-\s*$|-\s*<<)/,
+];
+/**
+ * Whether a step may have written: an edit, a command matching WRITING_COMMANDS, or one whose body (lines after its
+ * first) is not read here. When it is not known, it counts as a write, so a repeat across it is no finding.
+ */
+export const writes = (step: TraceStep) => step.kind === 'edit' ||
+  step.kind === 'command' && (step.more > 0 || WRITING_COMMANDS.some(pattern => pattern.test(step.line)));
+
 type Rule = (records: TraceRecords, window: Interval, threshold: Threshold | null) => Found[];
 
 const rules: Record<AnalysisFindingRule, Rule> = {
@@ -145,15 +166,15 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       evidence: [step ? { run: run.id, step: step.n } : { run: run.id }] };
   })),
   /**
-   * The same failure again and again: a command of one fingerprint failing with the same output at least the threshold
-   * times in a row (edits between allowed; a success ends the row). A command repeated successfully with the same output
+   * The same failure again and again: a command of one fingerprint failing with the same whole output at least the
+   * threshold times in a row (writes between allowed; a success ends the row; a cut output compares with nothing). A command repeated successfully with the same output
    * is same-result; one whose output changes (a status check, tests after a fix) is no finding.
    */
-  'repeated-command': (records, window, threshold) => records.runs.flatMap(run => {
+  'repeated-failure': (records, window, threshold) => records.runs.flatMap(run => {
     const found: Found[] = [], rows = new Map<string, TraceStep[]>();
     const flush = (row: TraceStep[] | undefined) => {
       if (!row || row.length < limitOf(threshold)) return;
-      found.push({ rule: 'repeated-command', anchor: `${run.id}.${row[0]!.n}`, at: row[0]!.from!,
+      found.push({ rule: 'repeated-failure', anchor: `${run.id}.${row[0]!.n}`, at: row[0]!.from!,
         durationMs: row.reduce((sum, step) => sum + stepMs(step, run, window.to), 0), lane: agentLane(run), count: row.length,
         source: 'recorded', evidence: stepEvidence(run, row) });
     };
@@ -168,9 +189,9 @@ const rules: Record<AnalysisFindingRule, Rule> = {
     return found;
   }),
   /**
-   * The same read again with the same answer (design: the redundant re-read): a step other than an edit that did not
-   * fail, shell commands included, with one fingerprint and the same output at least the threshold times in one Run
-   * and no edit between. The later reads learned nothing.
+   * The same read again with the same answer (design: the redundant re-read): a step known to have succeeded, shell
+   * commands included, with one fingerprint and the same whole output at least the threshold times in one Run, and no
+   * write between (writes). The later reads learned nothing.
    */
   'same-result': (records, window, threshold) => records.runs.flatMap(run => {
     const groups = new Map<string, TraceStep[]>(), found: Found[] = [];
@@ -182,8 +203,9 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       groups.clear();
     };
     for (const step of timedTopSteps(run)) {
-      if (step.kind === 'edit') { flush(); continue; }
-      if (step.state === 'failed' || !step.fingerprint || step.output === null) continue;
+      if (writes(step)) { flush(); continue; }
+      // Only a step known to have succeeded, with the whole of its output kept, compares.
+      if (step.state !== 'done' || !step.fingerprint || step.output === null) continue;
       const key = `${step.fingerprint}\u0000${step.output}`;
       groups.set(key, [...groups.get(key) ?? [], step]);
     }

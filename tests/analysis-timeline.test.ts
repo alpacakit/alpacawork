@@ -31,7 +31,7 @@ function run(id: string, fields: Partial<TraceRun> & { task?: string }): TraceRu
 }
 function step(n: number, from: number, to: number | null, fields: Partial<TraceStep> = {}): TraceStep {
   return { n, id: `call-${n}`, tool: 'Bash', kind: 'command', line: 'pnpm test', fingerprint: 'pnpm test', from: at(from),
-    to: to === null ? null : at(to), state: 'done', source: 'reported', inside: null, subagentSteps: 0, output: `out-${n}`, ...fields };
+    to: to === null ? null : at(to), state: 'done', source: 'reported', inside: null, subagentSteps: 0, output: `out-${n}`, more: 0, ...fields };
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
@@ -113,23 +113,42 @@ test('limit-hit names each command stopped at the limit and the step it stopped'
   assert.deepEqual([found!.durationMs, found!.evidence], [600_000, [{ run: 'R1', step: 0 }]]);
 });
 
-test('repeated-command is the same failure again and again; the same success again is same-result', () => {
-  const findIn = (rule: 'repeated-command' | 'same-result', steps: TraceStep[]) =>
+test('repeated-failure is the same failure again and again; the same success again is same-result', () => {
+  const findIn = (rule: 'repeated-failure' | 'same-result', steps: TraceStep[]) =>
     find(records([task('T1', [])], [run('R1', { steps })]), rule).map(item => item.count);
-  // Three identical `git status` that succeed: one same-result, no repeated-command.
+  // Three identical `git status` that succeed: one same-result, no repeated-failure.
   const status = [0, 1, 2].map(n => step(n, n, n + 0.5, { fingerprint: 'git status', line: 'git status', output: 'clean' }));
-  assert.deepEqual([findIn('repeated-command', status), findIn('same-result', status)], [[], [3]]);
+  assert.deepEqual([findIn('repeated-failure', status), findIn('same-result', status)], [[], [3]]);
   // A status check whose output changes each time is no finding.
   const changing = [0, 1, 2, 3].map(n => step(n, n, n + 0.5));
-  assert.deepEqual([findIn('repeated-command', changing), findIn('same-result', changing)], [[], []]);
+  assert.deepEqual([findIn('repeated-failure', changing), findIn('same-result', changing)], [[], []]);
   const failing = (output: (n: number) => string) => [0, 1, 2].flatMap(n => [step(n * 2, n, n + 0.5, { state: 'failed', output: output(n) }),
     step(n * 2 + 1, n + 0.6, n + 0.7, { kind: 'edit', fingerprint: 'edit x' })]);
-  assert.deepEqual(findIn('repeated-command', failing(() => 'fail')), [3]);
-  assert.deepEqual(findIn('repeated-command', failing(n => `fail-${n}`)), []);
+  assert.deepEqual(findIn('repeated-failure', failing(() => 'fail')), [3]);
+  assert.deepEqual(findIn('repeated-failure', failing(n => `fail-${n}`)), []);
   // A success between failures ends the row.
   const broken = [step(0, 0, 0.5, { state: 'failed', output: 'fail' }), step(1, 1, 1.5, { state: 'failed', output: 'fail' }),
     step(2, 2, 2.5), step(3, 3, 3.5, { state: 'failed', output: 'fail' })];
-  assert.deepEqual(findIn('repeated-command', broken), []);
+  assert.deepEqual(findIn('repeated-failure', broken), []);
+});
+
+test('same-result breaks at any write and counts only known successes with their whole output', () => {
+  const get = (n: number, fields: Partial<TraceStep> = {}) => step(n, n, n + 0.1, { fingerprint: 'alpacawork task get --task <id>',
+    line: 'alpacawork task get --task T1', output: 'same', ...fields });
+  const count = (steps: TraceStep[]) => find(records([task('T1', [])], [run('R1', { steps })]), 'same-result').map(item => item.count);
+  const shell = (n: number, line: string, more = 0) => step(n, n, n + 0.1, { fingerprint: line, line, output: `w-${n}`, more });
+  // A shell command that writes splits the reads as an edit does; one that only reads does not.
+  assert.deepEqual(count([get(0), shell(1, 'printf changed > ./synthetic-file'), get(2)]), []);
+  for (const line of ['echo x >> notes.md', 'sed -i s/a/b/ file', 'git commit -m change', 'rm -f out', 'cat a | tee b', 'node -e "write()"'])
+    assert.deepEqual(count([get(0), shell(1, line), get(2)]), [], line);
+  // A script whose body is not read here may write: it splits too.
+  assert.deepEqual(count([get(0), shell(1, 'python3 - <<EOF', 4), get(2)]), []);
+  assert.deepEqual(count([get(0), shell(1, 'git status 2>&1'), shell(2, 'ls > /dev/null'), get(3)]), [2]);
+  // Unknown state or a cut output (no whole digest) never joins.
+  assert.deepEqual(count([get(0, { state: 'unknown' }), get(1, { state: 'unknown' })]), []);
+  assert.deepEqual(count([get(0, { output: null }), get(1, { output: null }), get(2)]), []);
+  const failing = [0, 1, 2].map(n => step(n, n, n + 0.5, { state: 'failed', output: null }));
+  assert.equal(find(records([task('T1', [])], [run('R1', { steps: failing })]), 'repeated-failure').length, 0);
 });
 
 test('same-result finds a read repeated with the same answer, and fan-out one fingerprint read one by one', () => {

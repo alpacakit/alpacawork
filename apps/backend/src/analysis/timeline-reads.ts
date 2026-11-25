@@ -104,7 +104,7 @@ async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep
       fingerprint: step.fingerprint && `${step.fingerprint.line}\0${step.fingerprint.bodyDigest ?? ''}`,
       from: step.startedAt === null ? null : Date.parse(step.startedAt), to: step.endedAt === null ? null : Date.parse(step.endedAt),
       state: step.state, source: step.startSource, inside: step.parentId, subagentSteps: step.subagentSteps,
-      output: step.output?.digest ?? null });
+      output: step.output?.whole ? step.output.digest : null, more: step.more });
   }
   const timed = timedSteps(steps);
   if (!timed) return { steps: null, missing: 'missing-step-times' };

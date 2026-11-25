@@ -230,7 +230,7 @@ export const analysisMarkKinds = ['instruction', 'answer', 'question-withdrawn',
 /** Non-overlapping parts of the wall time, in the order an instant is given to the first that holds (they sum to `wall`). */
 export const analysisBreakdownKeys = ['owner-working', 'member-working', 'child-working', 'held', 'waiting-answer', 'waiting-review',
   'queued', 'idle'] as const;
-export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-command', 'same-result',
+export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-failure', 'same-result',
   'fan-out', 'queue-wait', 'failed-run', 'rework', 'idle'] as const;
 export type AnalysisFindingRule = typeof analysisFindingRules[number];
 /**
@@ -244,10 +244,10 @@ export const ANALYSIS_FINDING_RULE_MEANINGS: Readonly<Record<AnalysisFindingRule
   'long-step': 'a step this long, or 3 times the median of its fingerprint and at least 30 seconds (a sub-agent judged by its own steps); ' +
     'at: its start, durationMs: its length',
   'limit-hit': 'a command the Run\'s manager stopped at the command time limit; at: when it started, durationMs: the limit',
-  'repeated-command': 'one command failing with the same output again and again in a row (edits between allowed); ' +
+  'repeated-failure': 'one command failing with the same whole output again and again in a row (writes between allowed); ' +
     'at: the first, durationMs: their time together, count: how many',
-  'same-result': 'one read or command (not an edit) again with the same output and no edit between, without failing (a repeated ' +
-    'task get or git status included); at: the first, durationMs: their time, count: how many',
+  'same-result': 'one read or command known to have succeeded, again with the same whole output and no write between (an edit, ' +
+    'or a command that writes or may write); a repeated task get or git status included; at: the first, durationMs: their time, count: how many',
   'fan-out': 'one fingerprint with differing arguments many times in one Run (one by one where one read could do); at: the first, ' +
     'durationMs: their time, count: how many',
   'queue-wait': 'a Run that waited this long before it started; at: when it was made, durationMs: the wait',

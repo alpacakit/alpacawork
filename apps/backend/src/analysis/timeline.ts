@@ -24,7 +24,11 @@ export type TraceRequest = { id: string; task: string; at: number; by: Instructi
 /** A step of a Run as its step journal timed it and its output named it. `inside`: the sub-agent step it ran in. */
 export type TraceStep = { n: number; tool: string; kind: string; line: string; fingerprint: string | null;
   from: number | null; to: number | null; state: string; source: string | null; inside: string | null; id: string;
-  subagentSteps: number; output: string | null };
+  subagentSteps: number;
+  /** A digest of what came back when the whole of it was kept; null when it was cut or not seen, so it compares with nothing. */
+  output: string | null;
+  /** How many lines what it ran has after its first (`line`): a script or heredoc whose body is not read here. */
+  more: number };
 export type StepsMissing = AnalysisStepsMissing;
 export type TraceRun = {
   id: string; task: string; placement: string; role: 'owner' | 'member'; agent: string; model: string | null;
