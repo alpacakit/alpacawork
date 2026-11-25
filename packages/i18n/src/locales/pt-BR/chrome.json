@@ -21,10 +21,16 @@
   },
   "limits": {
     "barLabel": "Limites de uso da IA: {{agent}}, {{window}}: {{percent}} usado",
+    "barReset": "Limites de uso da IA: o limite de {{agent}} foi reiniciado; o novo uso ainda não foi lido",
     "barStopped": "Limites de uso da IA: {{agent}}: {{state}}",
     "barUnknown": "Limites de uso da IA: não foi possível ler os limites de {{agent}}",
     "barUnlimited": "Limites de uso da IA: nenhum limite se aplica a {{agent}} agora",
     "none": "Nenhum limite agora",
+    "place": {
+      "model": "{{role}} ({{model}})",
+      "namedOnly": "Só quando nomeada",
+      "note": "As tarefas usam a primeira IA, de cima para baixo em “{{title}}” nas configurações, que não atingiu o limite."
+    },
     "readAgo_one": "Atualizado há {{count}} min",
     "readAgo_many": "Atualizado há {{count}} min",
     "readAgo_other": "Atualizado há {{count}} min",
@@ -34,6 +40,7 @@
     "refreshing": "Lendo…",
     "reset": {
       "at": "Reinicia em {{when}}",
+      "done": "Reiniciado · o novo uso ainda não foi lido",
       "inHours": "Reinicia em {{hours}}h {{minutes}}min",
       "inMinutes_one": "Reinicia em {{count}} min",
       "inMinutes_many": "Reinicia em {{count}} min",

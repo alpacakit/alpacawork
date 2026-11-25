@@ -20,10 +20,16 @@
   },
   "limits": {
     "barLabel": "AI plan limits: {{agent}}, {{window}}: {{percent}} used",
+    "barReset": "AI plan limits: {{agent}}'s limit has reset; its new usage is not read yet",
     "barStopped": "AI plan limits: {{agent}}: {{state}}",
     "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
     "barUnlimited": "AI plan limits: no limit holds {{agent}} now",
     "none": "No limits apply now",
+    "place": {
+      "model": "{{role}} ({{model}})",
+      "namedOnly": "Used only when named",
+      "note": "Tasks use the first AI, from the top of “{{title}}” in settings, whose limit is not reached."
+    },
     "readAgo_one": "Updated {{count}} min ago",
     "readAgo_other": "Updated {{count}} min ago",
     "readNow": "Updated just now",
@@ -32,6 +38,7 @@
     "refreshing": "Reading…",
     "reset": {
       "at": "Resets {{when}}",
+      "done": "Reset · the new usage is not read yet",
       "inHours": "Resets in {{hours}}h {{minutes}}m",
       "inMinutes_one": "Resets in {{count}} min",
       "inMinutes_other": "Resets in {{count}} min",

@@ -14,21 +14,22 @@ const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
 const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
-/** A reading applies until its window resets. The next window's usage is unknown until it is read. */
+/** A reading applies until its window resets; past it the window has reset, and its new usage is not read yet. */
 export const currentLimitWindow = (window: LimitWindow, now: number): boolean =>
   window.resetsAt === null || resetMinute(window.resetsAt) > now;
 
 /**
  * What the bar shows, from the stack tasks run on: the first row that can work now.
  * - `limited`: the row's fullest current window.
- * - `unknown`: its limits could not be read, or the readings have expired.
+ * - `reset`: every window that holds the row has reset since it was read: it works, and its new usage is not read yet.
+ * - `unknown`: its limits could not be read.
  * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
  * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
  * Null, and no bar, until some agent's limits are known.
  */
 export type BarLimit =
   | { kind: "limited" | "stopped"; agent: AgentLimits; window: LimitWindow }
-  | { kind: "unknown" | "unlimited"; agent: AgentLimits };
+  | { kind: "reset" | "unknown" | "unlimited"; agent: AgentLimits };
 export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
   if (!agents.some(entry => entry.state === "ok")) return null;
   let first: { agent: AgentLimits; windows: LimitWindow[] } | null = null;
@@ -40,7 +41,7 @@ export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): B
     if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent };
     const current = windows.filter(window => currentLimitWindow(window, now));
     const fullest = tightestWindow(current);
-    if (!fullest) return { kind: "unknown", agent };
+    if (!fullest) return { kind: "reset", agent };
     if (limitTone(fullest.usedPercent) !== "spent") return { kind: "limited", agent, window: fullest };
     const holding = current.filter(window => limitTone(window.usedPercent) === "spent");
     first ??= { agent, windows: holding };
@@ -51,6 +52,10 @@ export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): B
   const window = first.windows.reduce((latest, next) => until(next) > until(latest) ? next : latest);
   return { kind: "stopped", agent: first.agent, window };
 }
+
+/** Where an agent stands in the stack tasks run on: each of its rows' place (0 the primary) and model; none when tasks use it only when a request names it. */
+export const stackPlaces = (adapter: AgentLimits["adapter"], stack: AgentLimitsResponse["stack"]): { at: number; model: string | null }[] =>
+  stack.flatMap((row, at) => row.adapter === adapter ? [{ at, model: row.model }] : []);
 
 type T = (key: string, options?: Record<string, unknown>) => string;
 

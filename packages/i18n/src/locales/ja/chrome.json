@@ -19,10 +19,16 @@
   },
   "limits": {
     "barLabel": "AI の利用上限: {{agent}} の{{window}}は {{percent}} 使用",
+    "barReset": "AI の利用上限: {{agent}} の上限はリセット済み（新しい使用量はまだ読んでいません）",
     "barStopped": "AI の利用上限: {{agent}} は{{state}}",
     "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
     "barUnlimited": "AI の利用上限: {{agent}} にいまかかっている上限はありません",
     "none": "いまかかっている上限はありません",
+    "place": {
+      "model": "{{role}}（{{model}}）",
+      "namedOnly": "指定したときだけ使う",
+      "note": "タスクは、設定の「{{title}}」の上から順に、上限に達していない最初の AI を使います。"
+    },
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",
     "refresh": "今すぐ読み直す",
@@ -30,6 +36,7 @@
     "refreshing": "読み直しています…",
     "reset": {
       "at": "{{when}} にリセット",
+      "done": "リセット済み・新しい使用量はまだ読んでいません",
       "inHours": "あと{{hours}}時間{{minutes}}分でリセット",
       "inMinutes_other": "あと{{count}}分でリセット",
       "inWholeHours": "あと{{hours}}時間でリセット"

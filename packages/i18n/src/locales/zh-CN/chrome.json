@@ -19,10 +19,16 @@
   },
   "limits": {
     "barLabel": "AI 用量上限：{{agent}}，{{window}} 已用 {{percent}}",
+    "barReset": "AI 用量上限：{{agent}} 的上限已重置，尚未读取新的用量",
     "barStopped": "AI 用量上限：{{agent}}：{{state}}",
     "barUnknown": "AI 用量上限：无法读取 {{agent}} 的上限",
     "barUnlimited": "AI 用量上限：{{agent}} 目前没有上限",
     "none": "当前没有上限",
+    "place": {
+      "model": "{{role}}（{{model}}）",
+      "namedOnly": "仅在指定时使用",
+      "note": "任务按设置中「{{title}}」从上到下，使用第一个未达上限的 AI。"
+    },
     "readAgo_other": "{{count}} 分钟前更新",
     "readNow": "刚刚更新",
     "refresh": "立即重新读取",
@@ -30,6 +36,7 @@
     "refreshing": "正在读取…",
     "reset": {
       "at": "{{when}} 重置",
+      "done": "已重置 · 尚未读取新的用量",
       "inHours": "{{hours}} 小时 {{minutes}} 分后重置",
       "inMinutes_other": "{{count}} 分钟后重置",
       "inWholeHours": "{{hours}} 小时后重置"

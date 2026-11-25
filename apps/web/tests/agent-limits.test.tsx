@@ -35,12 +35,12 @@ test("the bar shows the first agent in the stack that can work now, and the wind
   expect([79, 80, 100].map(limitTone)).toEqual(["normal", "near", "spent"]);
 });
 
-test("after a reset the bar uses the current window, or waits for the agent's new reading", () => {
+test("after a reset the bar uses the current window, or says the limit has reset until the agent's new reading", () => {
   const expired = at("2026-11-24T23:00:00Z", week(100));
   const codex = agent("codex", "ok", [week(25)]);
   const stack = [row("claude"), row("codex")];
   expect(shownOf(barLimit(response([agent("claude", "ok", [expired]), codex], stack), NOW)))
-    .toEqual({ kind: "unknown", agent: "claude", percent: null });
+    .toEqual({ kind: "reset", agent: "claude", percent: null });
   const session: LimitWindow = { ...week(45), kind: "session", minutes: 300 };
   expect(shownOf(barLimit(response([agent("claude", "ok", [expired, session]), codex], stack), NOW)))
     .toEqual({ kind: "limited", agent: "claude", percent: 45 });
