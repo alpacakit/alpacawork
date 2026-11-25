@@ -5,7 +5,7 @@ import { useNarrow, useViewStore } from "@/state/view-store";
 import { subscribeStep } from "@/state/history-step";
 import { daysBetween, dayLabel, format, monthLabel, numberText, spanLabel, ticks, weekday } from "./format";
 import { axisLabels } from "./charts";
-import { tipAround } from "./parts";
+import { OpenMark, tipAround } from "./parts";
 import { Icon } from "@/components/ui/icon";
 import type { Bucket, Group, ListSet, ListValue } from "./contract";
 
@@ -36,30 +36,43 @@ export function Leads({ children }: { children: ReactNode }) {
 export function Lead({ name, value, beside, compare, ever }: { name: ReactNode; value: ReactNode; beside?: ReactNode; compare: ReactNode; ever?: string | null }) {
   const { t } = useTranslation("analysis");
   return <div className="row-span-4 grid min-w-0 grid-rows-subgrid">
-    <div className="flex min-w-0 flex-wrap items-center text-xs text-muted">{name}</div>
+    <div className="flex min-w-0 flex-wrap items-center text-sm text-muted">{name}</div>
     <div className="flex h-[45px] min-w-0 items-center gap-5 narrow:h-[33px] narrow:gap-3">{value}{beside}</div>
     <div className="min-w-0">{compare}</div>
     <div className="text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
   </div>;
 }
 
+/** A part of a row's whole: its colour, name and number, its share of the whole where it means something, and, in a day's legend, the tasks a press on it opens. */
+export type PartItem = { color: string; name: string; value: ReactNode; share?: ReactNode; onOpen?: () => void; index?: number };
 /**
- * The parts of a row's whole, each its colour, name and number (a way into its tasks) and, where it means something, its
- * share of the whole; then the row's per-task line (─●), its value and its gap to the span before.
+ * The parts of a row's whole, then the row's per-task line (─●), its value and its gap to the span before (or, for a
+ * day, its base under it). One grid for the span's numbers and a day's alike, at every width: the name, then the number
+ * at the end of a column of its own, then what goes beside it, so the numbers of every row and of every day stand in one
+ * column. Where the column is narrow (a narrow window) its widths give way to what is in them.
  */
-export function Parts({ items = [], line }: { items?: { color: string; name: string; value: ReactNode; share?: string }[];
-  line?: { name: string; value: ReactNode; gap?: ReactNode } }) {
-  return <div className="mt-2 grid w-max grid-cols-[max-content_max-content_max-content] items-baseline gap-x-4 gap-y-1 narrow:flex narrow:w-auto narrow:flex-wrap narrow:gap-x-4">
-    {items.map(item => <div key={item.name} className="contents narrow:flex narrow:items-baseline narrow:gap-2">
-      <span className="flex items-center text-base whitespace-nowrap text-muted">{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none rounded-xs", item.color)} />}{item.name}</span>
-      <span className="text-base">{item.value}</span>
-      <span className="text-xs text-soft tabular-nums">{item.share ?? ""}</span>
-    </div>)}
-    {line && <div className="contents narrow:flex narrow:w-full narrow:items-baseline narrow:gap-2">
-      <span className={cn("flex items-center text-base whitespace-nowrap text-muted", items.length > 0 && "mt-2 narrow:mt-1")}><LineMark />{line.name}</span>
-      <span className={cn("text-base", items.length > 0 && "mt-2 narrow:mt-1")}>{line.value}</span>
-      <span className={cn("text-xs", items.length > 0 && "mt-2 narrow:mt-1")}>{line.gap}</span>
-    </div>}
+export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name: string; value: ReactNode; gap?: ReactNode; base?: ReactNode } }) {
+  const row = "col-span-3 grid grid-cols-subgrid items-baseline";
+  return <div className="@container mt-2 text-sm">
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-0.5 @min-[15rem]:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem]">
+      {items.map(item => {
+        const cells = <>
+          <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]">{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
+          <span className="text-end whitespace-nowrap">{item.value}</span>
+          <span className="text-end text-xs whitespace-nowrap text-soft tabular-nums">{item.share ?? ""}</span>
+        </>;
+        // A whole row that opens its tasks (a day's legend): it takes the press and the keys, as one way in.
+        return item.onOpen ? <button key={item.name} type="button" data-part-index={item.index} onClick={item.onOpen}
+          className={cn(row, "group/open -mx-1.5 rounded-sm px-1.5 text-start hover:bg-hover focus-visible:bg-hover")}>{cells}</button>
+          : <div key={item.name} className={row}>{cells}</div>;
+      })}
+      {line && <div className={cn(row, items.length > 0 && "mt-1.5")}>
+        <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]"><LineMark />{line.name}</span>
+        <span className="text-end whitespace-nowrap">{line.value}</span>
+        <span className="text-end text-xs whitespace-nowrap">{line.gap}</span>
+      </div>}
+      {line?.base && <span className="col-span-3 ps-6 text-xs text-soft">{line.base}</span>}
+    </div>
   </div>;
 }
 
@@ -320,7 +333,7 @@ function Columns({ layer }: { layer: "back" | "front" }) {
       if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
     } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
-        ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
+        ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => move(at, under(event.clientX, event.clientY, event.currentTarget).row, { x: event.clientX, y: event.clientY, time: event.timeStamp })}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
@@ -381,17 +394,17 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
     className="-my-1 flex size-7 items-center justify-center rounded-sm text-muted hover:bg-hover disabled:opacity-30">
     <Icon name={to < 0 ? "left" : "right"} className="size-3.5" /></button>;
   return <div ref={self} role="presentation" data-day-window=""
-    className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-xs shadow-float">
+    className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-sm shadow-float">
     <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
-    <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-md font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
+    <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-xl font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
     {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
       {parts.map(part => {
         const cells = <>
           <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
-          <span className={cn("text-end font-semibold whitespace-nowrap text-ink tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</span>
-          <span className="flex items-center justify-end gap-0.5 whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
+          <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums decoration-ink underline-offset-4 group-hover/open:underline">{part.value}</span>
+          <span className="flex items-center justify-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
         </>;
-        const row = "group/part col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
+        const row = "group/open col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
         return part.list ? <button key={part.name} type="button" data-part-index={parts.indexOf(part)} onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
           : <div key={part.name} className={row}>{cells}</div>;
       })}
@@ -401,7 +414,7 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
-    {onList && <button type="button" data-window-list="" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<Icon name="right" className="size-3" /></button>}
+    {onList && <button type="button" data-window-list="" onClick={onList} className="group/open mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<OpenMark /></button>}
   </div>;
 }
 
@@ -414,36 +427,17 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
 function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; day: string; onList: (list: (bin: Bin) => DayList) => void;
   /** Laid in the flow (the room a row keeps), not over the left. */
   still?: boolean }) {
-  const parts = say.parts?.(at) ?? [];
-  // A part a line: its name (wrapping between words), then its value and share at the end, below the name when the
-  // column is too narrow.
-  const line = "flex w-full flex-wrap items-baseline justify-between gap-x-3";
-  const figures = "ms-auto flex items-baseline gap-2 whitespace-nowrap";
-  return <div data-day-legend={still ? undefined : ""} className={cn("text-sm", !still && "absolute inset-x-0 top-0")}>
+  // A day's numbers as the span's are written: a part's number, with the › of what opens tasks when it does.
+  const figure = (value: string, opens: boolean) => <span className="inline-flex items-baseline gap-0.5">
+    <b className="font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline">{value}</b>
+    {opens ? <OpenMark /> : <i aria-hidden className="inline-block size-3 flex-none" />}</span>;
+  return <div data-day-legend={still ? undefined : ""} className={cn(!still && "absolute inset-x-0 top-0")}>
     {/* One line, so the legend keeps to the row's room at a narrow width (the row's name is read out in full). */}
-    <div title={`${day} ${say.name}`} className="truncate text-xs text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
-    <b className="block text-lg font-semibold tabular-nums">{say.total(at)}</b>
-    {parts.length > 0 && <div className="mt-1 -mx-1.5">
-      {parts.map((part, index) => {
-        const inner = <>
-          <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", part.color)} />}{part.name}</span>
-          <span className={figures}>
-            <b className={cn("font-semibold tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</b>
-            {part.share && <span className="text-xs text-soft tabular-nums">{part.share}</span>}
-            {part.list && <Icon name="right" className="size-3 self-center text-soft" />}
-          </span>
-        </>;
-        const row = cn(line, "group/part rounded-sm px-1.5 text-start");
-        return part.list ? <button key={part.name} type="button" data-part-index={index} onClick={() => onList(part.list!)} className={cn(row, "hover:bg-hover")}>{inner}</button>
-          : <div key={part.name} className={row}>{inner}</div>;
-      })}
-    </div>}
-    {say.line && <div className="mt-1">
-      <div className={line}><span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]"><LineMark />{say.line.name}</span>
-        <b className={cn(figures, "font-semibold tabular-nums")}>{say.line.value(at)}</b></div>
-      {/* The line's base under it, within the column (it may be long: "fewer than ten accepted"). */}
-      <div className="ps-6 text-xs text-soft">{say.line.base(at)}</div>
-    </div>}
+    <div title={`${day} ${say.name}`} className="mb-1 truncate text-sm text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
+    <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
+    <Parts items={(say.parts?.(at) ?? []).map((part, index) => ({ color: part.color, name: part.name, share: part.share, index,
+      value: figure(part.value, !!part.list), onOpen: part.list ? () => onList(part.list!) : undefined }))}
+      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b>, base: say.line.base(at) }} />
   </div>;
 }
 
@@ -495,7 +489,7 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}
-      {lineScale && <span aria-hidden className="absolute end-0 bottom-full text-xs whitespace-nowrap text-soft">{lineScale}</span>}
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
@@ -510,6 +504,7 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
  */
 function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: (at: number) => boolean; partial?: (at: number) => boolean; children: (at: number) => ReactNode }) {
   const group = useGroup();
+  const { t } = useTranslation("analysis");
   const wide = group.bucket !== "day";
   return <div className="grid h-full auto-cols-[minmax(0,1fr)] grid-flow-col items-end">
     {group.bins.map((bin, at) => {
@@ -519,12 +514,12 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
         wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
         lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
-        group.narrow && (group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band"),
+        group.narrow && (group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),
         (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
         off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
         edge && "border-e border-lit-line");
       if (!group.narrow || off) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
-      return <button key={bin.from} type="button" data-day-column="" aria-label={`${spanLabel(bin.from, bin.to)} ${group.rows[row]?.total(at) ?? ""}`}
+      return <button key={bin.from} type="button" data-day-column="" aria-label={t("chart.binLabel", { day: spanLabel(bin.from, bin.to), name: group.rows[row]?.name ?? "", value: group.rows[row]?.total(at) ?? "" })}
         onClick={event => { const box = event.currentTarget.getBoundingClientRect();
           group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }); }}
         className={look}>{children(at)}</button>;
@@ -587,7 +582,7 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
       {line.lines.map(({ from, to }) => { const at = line.dots.indexOf(to), within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
-          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.45]")} />; })}
+          className={cn("stroke-ink [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
     </svg>}
     {line && <div aria-hidden className="pointer-events-none absolute inset-0">
       {line.dots.map((dot, at) => {
@@ -640,7 +635,7 @@ export function lineTop(values: (number | null)[], steady: (at: number) => boole
 /** A line scale's top as written over the chart's right: with as many places as it needs (0.25 stays 0.25). */
 export function useLineLabel() {
   const { t } = useTranslation("analysis");
-  return (kind: "hours" | "times" | "tasks" | "tokens", top: number) => kind === "hours" || kind === "tokens" ? format(kind, top)
+  return (kind: "hours" | "times" | "tasks" | "questions" | "tokens", top: number) => kind === "hours" || kind === "tokens" ? format(kind, top)
     : t("unit.join", { value: numberText(Math.round(top * 100) / 100), unit: t(`unit.${kind}`, { count: 2 }) });
 }
 
@@ -673,12 +668,3 @@ export function DayAxis({ strong }: { strong?: { at: number; day: string } | nul
   </div>;
 }
 
-/** How the charts' colours read, said once in the counting rules: whose hand a task took, and the per-task line. */
-export function Legend() {
-  const { t } = useTranslation("analysis");
-  const item = (color: string, word: string) => <span key={word} className="inline-flex items-center"><i aria-hidden className={cn("me-1.5 inline-block size-2 rounded-xs", color)} />{word}</span>;
-  return <p className="flex flex-wrap gap-x-4 gap-y-1">
-    {item("bg-done", t("legend.passed"))}{item("bg-turn", t("legend.yours"))}{item("bg-working", t("legend.ai"))}{item("bg-stopped-part", t("legend.stopped"))}
-    <span className="inline-flex items-center"><LineMark />{t("legend.line")}</span>
-  </p>;
-}

@@ -10,7 +10,7 @@ import type { ListPlace } from "./place";
 const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 
 const COLUMN: Record<ListValue, string> = {
-  lead: "until.title", submits: "until.submits", questions: "until.questions", prs: "until.prs",
+  lead: "def.leadName", submits: "until.submits", questions: "until.questions", prs: "until.prs",
   you: "time.you", ai: "time.ai", other: "time.other",
   launches: "usage.launches", runMs: "usage.runMs", newConversations: "usage.newConversations",
   tokens: "usage.tokens", output: "usage.output", input: "usage.input", cache: "usage.cache", calls: "usage.calls",
@@ -32,8 +32,9 @@ export function writeValue(value: ListValue, amount: number): string {
   switch (value) {
     case "lead": case "you": case "ai": case "other": case "runMs": return duration(amount);
     case "submits": case "launches": case "calls": return format("times", amount);
-    case "questions": case "prs": return format("tasks", amount);
-    case "newConversations": return format("plain", amount);
+    case "questions": return format("questions", amount);
+    case "prs": return format("prs", amount);
+    case "newConversations": return format("conversations", amount);
     case "tokens": case "output": case "input": case "cache": return format("tokens", amount);
   }
 }

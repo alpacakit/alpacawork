@@ -43,20 +43,29 @@ export function Seg<K extends string>({ label, items, value, onChange, onAgain, 
 export const Square = ({ className }: { className: string }) =>
   <i aria-hidden className={cn("me-1.5 inline-block size-2 flex-none rounded-xs", className)} />;
 
-/** A value with its unit drawn small beside it; pressed, it opens the tasks behind it. */
+/**
+ * Whatever opens tasks says so with one mark everywhere (the lead numbers, a row's numbers, a day's legend, the tables):
+ * a faint › after it, at rest too, as a finger has no pointing to find it by. Pointed at or reached with the keys, it
+ * stands on a ground and is underlined.
+ */
+export const OPEN = "group/open inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm -mx-1 px-1 decoration-ink underline-offset-4 hover:bg-hover hover:underline focus-visible:underline active:translate-y-px";
+/** The › of what opens tasks: faint at rest, in ink while pointed at (`OPEN`'s group). */
+export const OpenMark = ({ big }: { big?: boolean }) =>
+  <Icon name="right" aria-hidden className={cn("flex-none self-center text-soft opacity-70 group-hover/open:text-ink group-hover/open:opacity-100", big ? "size-4" : "size-3")} />;
+
+/**
+ * A value with its unit drawn small beside it; pressed, it opens the tasks behind it. Its sizes are the analysis's
+ * steps of type: a lead number (`big`, 36px), a row's number (20px), and one among names (`small`, 13px).
+ */
 export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold", big ? "text-display" : small ? "text-base" : "text-xl")}>{written.value}</b>
-    {written.unit && <span className={cn("text-muted", small && "text-xs")}>{written.unit}</span>}
+    <b className={cn("font-semibold tabular-nums", big ? "text-display" : small ? "text-sm" : "text-xl")}>{written.value}</b>
+    {written.unit && <span className={cn("text-muted", small ? "text-xs" : "text-sm")}>{written.unit}</span>}
   </>;
-  const shape = "inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm";
-  if (!onOpen || !value) return <span className={shape}>{body}</span>;
-  // A number that opens its tasks says so at rest, on a phone and at first sight alike: underlined, and the chevron the
-  // list's headings open with after its unit. Pointed at, the line takes the ink.
-  return <button type="button" onClick={onOpen}
-    className={cn(shape, "group/open underline decoration-lit-line decoration-1 underline-offset-5 transition-[text-decoration-color] hover:decoration-ink active:translate-y-px")}>
-    {body}<Icon name="right" className={cn("self-center text-soft group-hover/open:text-ink", big ? "size-4" : "size-3")} /></button>;
+  // One that could open tasks but has none (0) keeps the room of the mark, so a column of numbers stays one column.
+  if (!onOpen || !value) return <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap">{body}{onOpen && <i aria-hidden className={cn("inline-block flex-none", big ? "size-4" : "size-3")} />}</span>;
+  return <button type="button" onClick={onOpen} className={OPEN}>{body}<OpenMark big={big} /></button>;
 }
 
 /** The line under a number: the same span just before, and the gap. */
@@ -80,26 +89,36 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
   label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode; className?: string;
 }) {
   return <div className={cn("min-w-0", className)}>
-    <div className="flex items-center text-xs whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
+    <div className="mb-1 flex items-center text-sm whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
     {value !== null && <Compare kind={kind} value={value} previous={previous} length={length} />}
     {after}
   </div>;
 }
 
-/** The link that opens the counting rules under the first number of a look. */
-export function RulesToggle() {
+/**
+ * The head of a look's charts, under the rule that parts them from the lead numbers: how the numbers are counted on the
+ * left (it opens the rules under it), the step of time of every chart on the right, over the charts it steps.
+ */
+export function ChartHead() {
   const { t } = useTranslation("analysis");
-  const open = useChoices(state => state.rules);
-  return <button type="button" aria-expanded={open} onClick={() => useChoices.getState().choose({ rules: !open })}
-    className="ms-2.5 text-xs whitespace-nowrap text-soft underline decoration-line underline-offset-4 hover:text-ink hover:decoration-ink aria-expanded:text-ink aria-expanded:decoration-ink">
-    {t("tasks.howCounted")}
-  </button>;
+  const { bucket, grow, rules } = useChoices();
+  return <div className="mt-8 flex items-center justify-between gap-4 border-t border-rule pt-4">
+    <button type="button" aria-expanded={rules} onClick={() => useChoices.getState().choose({ rules: !rules })}
+      className="-mx-1 rounded-sm px-1 text-sm whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline aria-expanded:text-ink">
+      {t("tasks.howCounted")}
+    </button>
+    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
+      items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />
+  </div>;
 }
+/** The counting rules: a name and what it counts, one to a line, the names in a column of their own. */
 export function RulesBox({ children }: { children: ReactNode }) {
   // Japanese breaks between phrases, not inside a word (auto-phrase reads the page's language).
-  return <div className="mt-3 mb-1 max-w-[44em] animate-rise rounded-lg border border-line px-3.5 py-3 text-xs text-muted [word-break:auto-phrase] [&_b]:font-semibold [&_b]:text-ink [&_p+p]:mt-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</div>;
+  return <dl className="mt-3 mb-1 grid max-w-[52em] animate-rise grid-cols-[max-content_minmax(0,1fr)] gap-x-5 gap-y-1.5 rounded-lg border border-line px-4 py-3.5 text-sm text-muted [word-break:auto-phrase] narrow:grid-cols-1 narrow:gap-y-0.5 [&_dd+dt]:narrow:mt-2 [&_dt]:font-semibold [&_dt]:text-ink [&_ul]:mt-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</dl>;
 }
+/** One counting rule: its name, then what it counts. */
+export const Rule = ({ name, children }: { name: string; children: ReactNode }) => <><dt>{name}</dt><dd>{children}</dd></>;
 
 /** A section under a rule, its name on the left and its switch on the right. */
 export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {

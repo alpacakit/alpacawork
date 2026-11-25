@@ -112,6 +112,8 @@
   --paper: #fff;
   --stamp: #fff;
   --rule: color-mix(in oklab, var(--ink) 6%, transparent);
+  /* The column of the day pointed at, through every chart of the analysis: plain to find again at a glance. */
+  --day-band: color-mix(in oklab, var(--ink) 10%, transparent);
   --diff-add: oklch(97% 0.035 150);
   --diff-del: oklch(97% 0.025 20);
   --diff-add-word: oklch(91% 0.075 150);
@@ -167,6 +169,7 @@
   /* Opaque raised paper stays within sRGB; the existing theme owns all three stamp colors. */
   --stamp: var(--raised);
   --rule: color-mix(in oklab, var(--ink) 8%, transparent);
+  --day-band: color-mix(in oklab, var(--ink) 14%, transparent);
   --diff-add: oklch(25% 0.045 150);
   --diff-del: oklch(25% 0.05 20);
   --diff-add-word: oklch(34% 0.08 150);
@@ -242,6 +245,7 @@
   --color-rest: var(--rest-time);
   /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
   --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);
+  --color-day-band: var(--day-band);
   --color-grass-0: color-mix(in oklab, var(--ink) 6%, var(--bg));
   --color-grass-1: color-mix(in oklab, var(--done) 30%, var(--bg));
   --color-grass-2: color-mix(in oklab, var(--done) 52%, var(--bg));

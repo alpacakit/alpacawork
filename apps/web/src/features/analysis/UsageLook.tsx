@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, delta, format, type Kind } from "./format";
+import { daysBetween, delta, format, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
-import { BucketSwitch, cell, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { Compare, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, useChoices, type UsageGroup } from "./parts";
+import { cell, head, useFinishedParts, type Open } from "./TasksLook";
+import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
+import { ChartHead, Compare, Num, Rule, RulesBox, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import type { TasksView, UsageCounts, UsageView } from "./contract";
 
 type Days = { from: string; to: string };
@@ -18,7 +18,7 @@ const VALUES = {
   cache: { read: (c: UsageCounts) => c.tokens.cache, kind: "tokens" },
   runMs: { read: (c: UsageCounts) => c.runMs, kind: "hours" },
   launches: { read: (c: UsageCounts) => c.launches, kind: "times" },
-  newConversations: { read: (c: UsageCounts) => c.newConversations, kind: "plain" },
+  newConversations: { read: (c: UsageCounts) => c.newConversations, kind: "conversations" },
 } as const satisfies Record<string, { read: (c: UsageCounts) => number; kind: Kind }>;
 type ValueKey = keyof typeof VALUES;
 
@@ -41,7 +41,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const finished = tasks?.counts.value ?? null;
 
   const leads = <Leads>
-    <Lead name={<><Square className="bg-working" />{t("usage.tokens")}<RulesToggle /></>} value={<Value big kind="tokens" value={tokens(now)} onOpen={() => open({ set: "used", value: "tokens" })} />}
+    <Lead name={t("usage.tokens")} value={<Value big kind="tokens" value={tokens(now)} onOpen={() => open({ set: "used", value: "tokens" })} />}
       compare={<Compare kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length} />}
       ever={ever && format("tokens", tokens(ever))} />
     <Lead name={t("usage.runMs")} value={<Value big kind="hours" value={now.runMs} onOpen={() => open({ set: "used", value: "runMs" })} />}
@@ -67,14 +67,14 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const unitOf = (kind: Kind, top: number): [number, string, boolean] => {
     const steps = t("unit.scales", { returnObjects: true }) as unknown as { at: number; unit: string }[];
     const step = kind === "tokens" && Array.isArray(steps) ? steps.find(each => top >= each.at) ?? null : null;
-    return kind === "hours" ? [HOUR, t("unit.hours"), false] : step ? [step.at, step.unit, false] : [1, kind === "times" ? t("unit.times", { count: 2 }) : "", true];
+    return kind === "hours" ? [HOUR, t("unit.hours"), false] : step ? [step.at, step.unit, false] : [1, kind === "times" ? unitWord("times") : "", true];
   };
   // Both scales are the chosen span's: a larger bin or point outside it is cut at the top, and marked so.
   const inSpan = inSpanOf(points, days);
   const largest = (key: Amount) => spanMost(points, days, amount[key]);
   const scaleArgs = (key: Amount) => { const [unit, name, wholeOnly] = unitOf(kinds[key], largest(key)); return [largest(key), unit, name, wholeOnly] as const; };
   const scales = {
-    finished: useScale(spanMost(points, days, finishedOn), 1, t("unit.tasks", { count: 2 }), true),
+    finished: useScale(spanMost(points, days, finishedOn), 1, unitWord("tasks"), true),
     tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
   };
   const lineLabel = useLineLabel();
@@ -97,7 +97,7 @@ export function UsageLook({ view, tasks, days, open, zone }: {
           { color: "", name: t("usage.cache"), value: format("tokens", c.cache), list: c.cache ? onBin("used", "cache") : undefined }]; } },
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
     { name: t("usage.launches"), total: i => format("times", amount.launches(i)), list: onBin("used", "launches"), line: perLine("launches"),
-      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("plain", points[i]!.counts.newConversations),
+      parts: i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
         list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }] },
   ];
   // The span's amounts per finished task on the left, against the span before.
@@ -106,15 +106,16 @@ export function UsageLook({ view, tasks, days, open, zone }: {
   const perBefore = (key: "tokens" | "runMs" | "launches") => before ? spanPer(key === "tokens" ? tokens(before) : before[key], tasks?.counts.previous?.finished) : null;
   const perEntry = (key: "tokens" | "runMs" | "launches") => {
     const value = perNow(key), previous = perBefore(key);
-    return taskPoints ? { name: t("line.perFinished"), value: <b className="font-semibold">{value === null ? "—" : format(kinds[key], value)}</b>,
+    return taskPoints ? { name: t("line.perFinished"), value: <b className="font-semibold tabular-nums">{value === null ? "—" : format(kinds[key], value)}</b>,
       gap: value !== null && previous !== null ? <span className="text-muted">{delta(kinds[key], value, previous)}</span> : null } : undefined;
   };
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
-      {taskPoints && finished && <Row row={0} left={<>
-        <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={tasks?.counts.previous?.finished ?? null} length={length}
+      {/* Each row's number is a lead's above: the span before is said there, not again here. */}
+      {taskPoints && finished && <Row row={0} className="border-t-0" left={<>
+        <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", finished.passed, { set: "passed", value: "lead" }) },
@@ -125,8 +126,8 @@ export function UsageLook({ view, tasks, days, open, zone }: {
           values={i => [["bg-done", taskPoints[i]!.counts.passed, 0], ["bg-reworked", taskPoints[i]!.counts.reworked, 1], ["bg-stopped-part", taskPoints[i]!.counts.stopped, 2]]} />
         <DayAxis />
       </Row>}
-      <Row row={first} left={<>
-        <Num className="" label={t("usage.tokens")} kind="tokens" value={tokens(now)} previous={before ? tokens(before) : null} length={length}
+      <Row row={first} className={first ? undefined : "border-t-0"} left={<>
+        <Num className="" label={t("usage.tokens")} kind="tokens" value={tokens(now)} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "tokens" })} />
         <Parts items={[
           { color: "", name: t("usage.output"), value: part("tokens", now.tokens.output, { set: "used", value: "output" }) },
@@ -136,16 +137,16 @@ export function UsageLook({ view, tasks, days, open, zone }: {
         <BarChart row={first} height="h-30 narrow:h-22" scale={scales.tokens} tone="working" grow overlay={overlays?.tokens} values={i => [["", amount.tokens(i)]]} />
       </Row>
       <Row row={first + 1} left={<>
-        <Num className="" label={t("usage.runMs")} kind="hours" value={now.runMs} previous={before?.runMs ?? null} length={length}
+        <Num className="" label={t("usage.runMs")} kind="hours" value={now.runMs} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "runMs" })} />
         <Parts line={perEntry("runMs")} />
       </>}>
         <BarChart row={first + 1} height="h-20 narrow:h-16" scale={scales.runMs} tone="working" grow overlay={overlays?.runMs} values={i => [["", amount.runMs(i)]]} />
       </Row>
       <Row row={first + 2} left={<>
-        <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={before?.launches ?? null} length={length}
+        <Num className="" label={t("usage.launches")} kind="times" value={now.launches} previous={null} length={length}
           onOpen={() => open({ set: "used", value: "launches" })} />
-        <Parts items={[{ color: "", name: t("usage.newConversations"), value: part("plain", now.newConversations, { set: "used", value: "newConversations" }) }]}
+        <Parts items={[{ color: "", name: t("usage.newConversations"), value: part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]}
           line={perEntry("launches")} />
       </>}>
         <BarChart row={first + 2} height="h-20 narrow:h-16" scale={scales.launches} tone="working" grow overlay={overlays?.launches} values={i => [["", amount.launches(i)]]} />
@@ -156,20 +157,20 @@ export function UsageLook({ view, tasks, days, open, zone }: {
 
   return <>
     {leads}
+    <ChartHead />
     {rules && <RulesBox>
-      <p><b>{t("def.tokensName")}</b>{t("colon")}{t("def.tokensText")}</p>
-      <p><b>{t("def.launchName")}</b>{t("colon")}{t("def.launchText")}</p>
-      <p><b>{t("def.runName")}</b>{t("colon")}{t("def.runText")}</p>
-      <p><b>{t("def.inputName")}</b>{t("colon")}{t("def.inputText")}</p>
-      <p><b>{t("def.conversationName")}</b>{t("colon")}{t("def.conversationText")}</p>
-      <p><b>{t("def.skillName")}</b>{t("colon")}{t("def.skillText")}<span className="ms-4" /><b>{t("def.toolName")}</b>{t("colon")}{t("def.toolText")}</p>
-      <p><b>{t("def.finishedName")}</b>{t("colon")}{t("def.finishedText")}<span className="ms-4" /><b>{t("def.everName")}</b>{t("colon")}{t("def.everText")}</p>
-      {now.tokensUnknown > 0 && <p>{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}
-      <p><b>{t("def.perFinishedName")}</b>{t("colon")}{t("def.perFinishedText")}</p>
-      <p><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
-      <Legend />
+      <Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p className="mt-1">{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
+      <Rule name={t("def.inputName")}>{t("def.inputText")}</Rule>
+      <Rule name={t("def.runName")}>{t("def.runText")}</Rule>
+      <Rule name={t("def.launchName")}>{t("def.launchText")}</Rule>
+      <Rule name={t("def.conversationName")}>{t("def.conversationText")}</Rule>
+      <Rule name={t("def.finishedName")}>{t("def.finishedText")}</Rule>
+      <Rule name={t("def.perFinishedName")}>{t("def.perFinishedText")}</Rule>
+      <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
+      <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
+      <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
+      <Rule name={t("def.dayName")}>{zone}</Rule>
     </RulesBox>}
-    <BucketSwitch />
     {rows}
     <Breakdown view={view} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
   </>;
@@ -191,11 +192,13 @@ function Breakdown({ view, group, days, open, choose }: {
   const counted = by === "skill" || by === "tool" || by === "mcp";
   const since = breakdown?.since ?? null;
   const before = counted && (since === null || days.to < since);
-  const columns = by === "skill" ? [t("usage.launches"), t("usage.tasks")]
-    : counted ? [t("usage.calls"), t("usage.launches"), t("usage.tasks")]
-      : [t("usage.launches"), t("usage.runMs"), t("usage.newConversations"), t("usage.output"), t("usage.input"), t("usage.cache"), t("usage.tasks")];
+  // Each column's unit is said once, in its heading; tokens keep their step (万, 億) by each number.
+  const columns = by === "skill" ? [head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
+    : counted ? [head(t("usage.calls"), "times"), head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
+      : [head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"), head(t("usage.newConversations"), "conversations"),
+        t("usage.output"), t("usage.input"), t("usage.cache"), head(t("usage.tasks"), "tasks")];
   const table = rows.map(row => {
-    const c = row.counts, tasks = cell("plain", c.tasks, () => open({ set: "used", value: "launches", ...member(row.key) }));
+    const c = row.counts, tasks = cell("tasks", c.tasks, () => open({ set: "used", value: "launches", ...member(row.key) }));
     const launches = cell("times", c.launches, () => open({ set: "used", value: "launches", ...member(row.key) }));
     const cells = by === "skill" ? [launches, tasks]
       : counted ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), launches, tasks]
@@ -206,7 +209,7 @@ function Breakdown({ view, group, days, open, choose }: {
   const name = by === "skill" ? t("usage.skillLaunches") : t("usage.calls");
   const read = (value: { calls: number; launches: number }) => by === "skill" ? value.launches : value.calls;
   const series = breakdown?.series ?? null, points = view.series.points;
-  const scale = useScale(spanMost(points, days, i => series?.[i] ? read(series[i]!) : 0), 1, t("unit.times", { count: 2 }), true);
+  const scale = useScale(spanMost(points, days, i => series?.[i] ? read(series[i]!) : 0), 1, unitWord("times"), true);
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
   const valueOf = by === "skill" ? "launches" as const : "calls" as const;
   const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}

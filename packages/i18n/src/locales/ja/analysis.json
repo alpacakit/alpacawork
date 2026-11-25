@@ -1,9 +1,9 @@
 {
   "breakdown": {
-    "all_other": "すべて {{count}}行",
-    "since": "{{date}}から集計",
+    "since": "{{date}}から",
     "title": "内訳",
-    "top": "上位だけ"
+    "top": "上位だけ表示",
+    "all_other": "すべて表示（{{count}}行）"
   },
   "bucket": {
     "day": "日ごと",
@@ -17,13 +17,14 @@
     "fewShare": "{{accepted}}件のうち {{passed}}件",
     "finished": "終わったタスク",
     "finishedTip": "{{total}}件：手直しなし {{passed}}・手直しあり {{reworked}}・中止 {{stopped}}",
-    "keys": "左右の矢印キーで日を選び、Enter でその日のタスクの一覧",
+    "keys": "左右の矢印キーで列を選び、Enter でその列のタスクの一覧を開く",
     "none": "受け入れなし",
-    "notCounted": "数えていない",
+    "notCounted": "数え始める前",
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
+    "binLabel": "{{day}}・{{name}} {{value}}"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
@@ -32,7 +33,7 @@
     "conversationName": "新しい会話",
     "conversationText": "この期間に最初に起動した会話",
     "dayName": "日付",
-    "everName": "これまで",
+    "everName": "全期間",
     "everText": "記録の最初の日から今日まで",
     "finishedName": "終わったタスク",
     "finishedText": "「タスク」と同じ数",
@@ -40,16 +41,16 @@
     "inputText": "キャッシュの読み書きは除く",
     "launchName": "起動",
     "launchText": "エージェントを起こした回数（動いている所へ渡した入力は除く）",
-    "lead": "受け入れたタスクのうち、次の3つを満たすもの。",
+    "lead": "受け入れたタスクのうち、次の3つを満たすもの",
     "leadName": "かかった時間",
     "leadText": "頼んでから最初の受け入れまで",
     "modelName": "モデル",
     "modelText": "最初に任せたモデル",
     "one": "確認に出したのは1回まで",
     "perFinishedName": "終わったタスク1件あたり",
-    "perFinishedText": "その区切りに使った量を、その区切りに終わったタスクの数で割った値。作業中のタスクの分も入るので、日ごとでは振れる",
+    "perFinishedText": "その区切りの量 ÷ その区切りに終わったタスクの数。作業中のタスクの分も入るので、日ごとでは振れる",
     "perTaskName": "1件あたり",
-    "perTaskText": "その区切りの合計を、その区切りに受け入れたタスクの数で割った値。10件未満の区切りは白抜きの点",
+    "perTaskText": "その区切りの合計 ÷ その区切りに受け入れたタスクの数。10件未満の区切りは白抜きの点",
     "prName": "関連 PR",
     "prText": "受け入れたタスクに出てきた PR。同じ PR は1つに数える",
     "runName": "実行時間",
@@ -66,22 +67,15 @@
   },
   "face": {
     "analysis": "分析",
-    "label": "面",
+    "label": "画面",
     "use": "使う"
   },
   "home": {
     "label": "{{marks}}。分析を開く",
-    "marks_other": "今日 {{count}}件完了・手直しなし {{passed}}件"
+    "marks_other": "今日の完了 {{count}}件（手直しなし {{passed}}件）"
   },
   "lead": {
-    "ever": "これまで {{value}}"
-  },
-  "legend": {
-    "ai": "AI が動いた分",
-    "line": "1件あたり",
-    "passed": "手直しなし",
-    "stopped": "中止",
-    "yours": "あなたの手がかかった分"
+    "ever": "全期間 {{value}}"
   },
   "line": {
     "median": "1件の中央値",
@@ -91,15 +85,15 @@
   "list": {
     "back": "一覧",
     "close": "閉じる",
-    "day": "日",
-    "empty": "該当するタスクはありません",
-    "more_other": "続き {{count}}件",
-    "outcome": "通り方",
+    "day": "終わった日",
+    "empty": "タスクはありません",
+    "outcome": "結果",
     "task": "タスク",
-    "title": "{{title}} {{n}}{{unit}}"
+    "title": "{{title}} {{n}}{{unit}}",
+    "more_other": "残り {{count}}件を表示"
   },
   "look": {
-    "label": "見る物",
+    "label": "表示",
     "tasks": "タスク",
     "usage": "AI の使用量"
   },
@@ -124,7 +118,7 @@
     "days_other": "前の{{count}}日"
   },
   "range": "{{from}}〜{{to}}",
-  "same": "同じ",
+  "same": "±0",
   "sep": "・",
   "tasks": {
     "accepted": "受け入れた",
@@ -136,10 +130,10 @@
     "cols": {
       "accepted": "受け入れた",
       "finished": "終わった",
-      "lead": "かかった時間（中央値）",
+      "lead": "かかった時間の中央値",
       "passed": "手直しなし",
       "share": "手直しなしの割合",
-      "submits": "確認の回数／件"
+      "submits": "確認に出した回数（1件あたり）"
     },
     "few": "受け入れたタスクが10件未満",
     "finished": "終わったタスク",
@@ -149,7 +143,7 @@
     "grassTip_other": "{{day}}　終わったタスク {{count}}件",
     "howCounted": "数え方",
     "noAgent": "AI に任せていない",
-    "passed": "手直しなしで通った",
+    "passed": "手直しなし",
     "reworked": "手直しあり",
     "stopped": "中止"
   },
@@ -181,7 +175,11 @@
     ],
     "taskCount_other": "タスク",
     "tasks_other": "件",
-    "times_other": "回"
+    "times_other": "回",
+    "prs_other": "件",
+    "people_other": "人",
+    "questions_other": "回",
+    "conversations_other": "件"
   },
   "until": {
     "lead": "かかった時間（中央値）",
@@ -189,8 +187,7 @@
     "prsList": "関連 PR がある",
     "questions": "あなたへの問い",
     "questionsList": "問いがあった",
-    "submits": "確認に出した回数",
-    "title": "受け入れまで"
+    "submits": "確認に出した回数"
   },
   "usage": {
     "by": {
@@ -203,9 +200,9 @@
     "cache": "キャッシュ",
     "calls": "呼び出し",
     "heads": {
-      "agent": "動いた AI",
+      "agent": "AI の種類",
       "mcp": "MCP",
-      "model": "動いたモデル",
+      "model": "モデル",
       "skill": "スキル",
       "tool": "ツール"
     },
@@ -239,7 +236,7 @@
       "instruction": "指示",
       "sendBack": "差し戻し"
     },
-    "models": "動いたモデル",
+    "models": "モデル",
     "open": "タスクを開く",
     "sendBacks": "差し戻し",
     "skills": "スキル",
@@ -255,5 +252,8 @@
     "finished_other": "終わった {{count}}件",
     "list": "タスクの一覧",
     "passedOf_other": "{{count}}件のうち{{passed}}件"
+  },
+  "table": {
+    "head": "{{name}}（{{unit}}）"
   }
 }

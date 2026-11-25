@@ -1,14 +1,14 @@
 {
   "breakdown": {
-    "all_one": "All {{count}} row",
-    "all_other": "All {{count}} rows",
-    "since": "Collection began on {{date}}",
+    "since": "Since {{date}}",
     "title": "Breakdown",
-    "top": "Top rows only"
+    "top": "Show top rows",
+    "all_one": "Show all {{count}} rows",
+    "all_other": "Show all {{count}} rows"
   },
   "bucket": {
     "day": "Daily",
-    "label": "Step",
+    "label": "Interval",
     "month": "Monthly",
     "ongoing": "in progress",
     "partial_one": "{{count}} day",
@@ -18,14 +18,15 @@
   "chart": {
     "fewShare": "{{passed}} of {{accepted}}",
     "finished": "Finished tasks",
-    "finishedTip": "{{total}}: no fixes {{passed}} · fixed {{reworked}} · stopped {{stopped}}",
-    "keys": "Use the left and right arrow keys to choose a day, and Enter to list its tasks",
+    "finishedTip": "{{total}}: no fixes {{passed}} · needed fixes {{reworked}} · stopped {{stopped}}",
+    "keys": "Left and right arrow keys move between columns; Enter lists their tasks",
     "none": "None accepted",
-    "notCounted": "Not counted",
-    "share": "Share with no fixes",
+    "notCounted": "Before counting began",
+    "share": "No-fix rate",
     "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
     "shareTip": "{{passed}} of {{accepted}} accepted",
-    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)"
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)",
+    "binLabel": "{{day}} · {{name}} {{value}}"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
@@ -34,7 +35,7 @@
     "conversationName": "New conversations",
     "conversationText": "Conversations first launched in this span",
     "dayName": "Dates",
-    "everName": "So far",
+    "everName": "All time",
     "everText": "From the first day of records to today",
     "finishedName": "Finished tasks",
     "finishedText": "The same number as under Tasks",
@@ -42,16 +43,16 @@
     "inputText": "Cache reads and writes excluded",
     "launchName": "Launches",
     "launchText": "Times an agent was started (input passed to one already running excluded)",
-    "lead": "Accepted tasks that meet all three:",
+    "lead": "Accepted tasks that meet all three",
     "leadName": "Time taken",
     "leadText": "From the request to the first acceptance",
     "modelName": "Model",
     "modelText": "The model first given the task",
     "one": "Sent for review at most once",
     "perFinishedName": "Per finished task",
-    "perFinishedText": "What the bin used divided by the tasks finished in it. It includes tasks still at work, so it swings day to day",
+    "perFinishedText": "Amount in the interval ÷ tasks finished in it. Work on unfinished tasks is included, so it swings by day",
     "perTaskName": "Per task",
-    "perTaskText": "The bin's total divided by the tasks accepted in it. Bins with fewer than 10 have hollow points",
+    "perTaskText": "Interval total ÷ tasks accepted in it. Hollow points: fewer than 10",
     "prName": "Related PRs",
     "prText": "PRs that appear in the accepted tasks; the same PR counts once",
     "runName": "Run time",
@@ -69,23 +70,16 @@
   },
   "face": {
     "analysis": "Analysis",
-    "label": "Face",
+    "label": "Screen",
     "use": "Use"
   },
   "home": {
     "label": "{{marks}}. Open the analysis",
-    "marks_one": "{{count}} finished today · {{passed}} with no fixes",
-    "marks_other": "{{count}} finished today · {{passed}} with no fixes"
+    "marks_one": "Done today: {{count}} ({{passed}} with no fixes)",
+    "marks_other": "Done today: {{count}} ({{passed}} with no fixes)"
   },
   "lead": {
-    "ever": "So far {{value}}"
-  },
-  "legend": {
-    "ai": "AI at work",
-    "line": "Per task",
-    "passed": "No fixes",
-    "stopped": "Stopped",
-    "yours": "Took your hand"
+    "ever": "All time {{value}}"
   },
   "line": {
     "median": "Median per task",
@@ -93,15 +87,15 @@
     "perTask": "Per task"
   },
   "list": {
-    "back": "List",
+    "back": "Back to list",
     "close": "Close",
-    "day": "Day",
-    "empty": "No tasks here",
-    "more_one": "{{count}} more",
-    "more_other": "{{count}} more",
+    "day": "Finished",
+    "empty": "No tasks",
     "outcome": "Outcome",
     "task": "Task",
-    "title": "{{title}} {{n}} {{unit}}"
+    "title": "{{title}} {{n}} {{unit}}",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more"
   },
   "look": {
     "label": "View",
@@ -111,7 +105,7 @@
   "outcome": {
     "none": "Working",
     "passed": "No fixes",
-    "reworked": "Fixed",
+    "reworked": "Needed fixes",
     "stopped": "Stopped"
   },
   "period": {
@@ -120,30 +114,30 @@
     "all": "All time",
     "days_one": "{{count}} day",
     "days_other": "{{count}} days",
-    "earlier": "Earlier span",
-    "label": "Span",
-    "later": "Later span",
+    "earlier": "Previous period",
+    "label": "Period",
+    "later": "Next period",
     "today": "Today"
   },
   "previous": {
-    "day": "Day before",
-    "days_one": "{{count}} day before",
-    "days_other": "{{count}} days before"
+    "day": "Previous day",
+    "days_one": "Previous {{count}} days",
+    "days_other": "Previous {{count}} days"
   },
   "range": "{{from}} – {{to}}",
-  "same": "same",
+  "same": "±0",
   "sep": " · ",
   "tasks": {
     "accepted": "Accepted",
     "by": {
-      "agent": "AI kind",
+      "agent": "Agent",
       "model": "Model",
       "project": "Project"
     },
     "cols": {
       "accepted": "Accepted",
       "finished": "Finished",
-      "lead": "Time taken (median)",
+      "lead": "Median time taken",
       "passed": "No fixes",
       "share": "Share with no fixes",
       "submits": "Reviews per task"
@@ -155,10 +149,10 @@
     "grassMany": "More",
     "grassTip_one": "{{day}}  {{count}} task finished",
     "grassTip_other": "{{day}}  {{count}} tasks finished",
-    "howCounted": "How it is counted",
+    "howCounted": "How we count",
     "noAgent": "Not given to an AI",
-    "passed": "Through with no fixes",
-    "reworked": "Fixed",
+    "passed": "No fixes",
+    "reworked": "Needed fixes",
     "stopped": "Stopped"
   },
   "time": {
@@ -174,7 +168,7 @@
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}}{{unit}}",
     "minutes": "min",
-    "points": " pts",
+    "points": " pt",
     "scales": [
       {
         "at": 1000000000,
@@ -192,12 +186,20 @@
         "unit": "K"
       }
     ],
-    "taskCount_one": "task",
-    "taskCount_other": "tasks",
-    "tasks_one": "task",
-    "tasks_other": "tasks",
-    "times_one": "time",
-    "times_other": "times"
+    "tasks_one": "",
+    "tasks_other": "",
+    "times_one": "",
+    "times_other": "",
+    "taskCount_one": "",
+    "taskCount_other": "",
+    "prs_one": "",
+    "prs_other": "",
+    "people_one": "",
+    "people_other": "",
+    "questions_one": "",
+    "questions_other": "",
+    "conversations_one": "",
+    "conversations_other": ""
   },
   "until": {
     "lead": "Time taken (median)",
@@ -205,12 +207,11 @@
     "prsList": "With related PRs",
     "questions": "Questions to you",
     "questionsList": "With questions",
-    "submits": "Sent for review",
-    "title": "Until accepted"
+    "submits": "Reviews"
   },
   "usage": {
     "by": {
-      "agent": "AI kind",
+      "agent": "Agent",
       "mcp": "MCP",
       "model": "Model",
       "skill": "Skill",
@@ -219,9 +220,9 @@
     "cache": "Cache",
     "calls": "Calls",
     "heads": {
-      "agent": "AI that ran",
+      "agent": "Agent",
       "mcp": "MCP",
-      "model": "Model that ran",
+      "model": "Model",
       "skill": "Skill",
       "tool": "Tool"
     },
@@ -255,7 +256,7 @@
       "instruction": "Instruction",
       "sendBack": "Send-back"
     },
-    "models": "Model that ran",
+    "models": "Model",
     "open": "Open task",
     "sendBacks": "Send-backs",
     "skills": "Skills",
@@ -274,5 +275,8 @@
     "list": "Task list",
     "passedOf_one": "{{passed}} of {{count}}",
     "passedOf_other": "{{passed}} of {{count}}"
+  },
+  "table": {
+    "head": "{{name}} ({{unit}})"
   }
 }

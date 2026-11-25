@@ -88,22 +88,25 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const span = first?.head.period ?? days;
   if (!first) return query.isError ? <p className="text-soft">{query.error.message}</p> : <RegionSkeleton shape="rows" rows={6} className="mt-4" />;
   const left = first.total - rows.length;
-  // A list of a chart's bin says its days first, above what it lists; a number's list says its span under it.
+  // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it. A
+  // list of one day leaves out the column of days (every row would say the same day).
+  const title = t("list.title", { title: listTitle(list), n: numberText(first.total), unit: listUnit(list, first.total) });
+  const oneDay = list.days ? list.days.from === list.days.to : !!span && span.from === span.to;
+  const columns = oneDay ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)]";
   return <div className="animate-rise">
-    {list.days && <p className="text-xs text-soft">{spanLabel(list.days.from, list.days.to)}</p>}
-    <h3 className="text-xl font-semibold">{t("list.title", { title: listTitle(list), n: numberText(first.total), unit: listUnit(list, first.total) })}</h3>
+    <h3 className="text-md font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
     <p className="mt-0.5 text-xs text-soft">{[member, !list.days && span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
     {rows.length ? <>
-      <div className="mt-4 grid h-7 grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)] items-center gap-x-3 border-b border-rule text-xs text-soft">
-        <span>{t("list.task")}</span><span /><span className="text-end">{t("list.day")}{!list.value && " ▼"}</span>
+      <div className={cn("mt-4 grid h-7 items-center gap-x-3 border-b border-rule text-xs text-soft", columns)}>
+        <span>{t("list.task")}</span><span />{!oneDay && <span className="text-end">{t("list.day")}{!list.value && " ▼"}</span>}
         <span className="text-end whitespace-nowrap">{listColumn(list)}{list.value && " ▼"}</span>
       </div>
       <ul>{rows.map(row => <li key={row.id} className="border-b border-rule">
         <button type="button" onClick={() => useViewStore.getState().showAnalysis({ ...place, unit: row.id })}
-          className="grid h-8.75 w-full grid-cols-[44px_minmax(0,1fr)_40px_minmax(64px,auto)] items-center gap-x-3 rounded-sm text-start hover:bg-hover">
+          className={cn("grid h-8.75 w-full items-center gap-x-3 rounded-sm text-start text-sm hover:bg-hover", columns)}>
           <span className="text-muted">{row.id}</span>
           <span dir="auto" className="truncate">{row.title}</span>
-          <span className="text-end text-soft">{row.finishedAt ? instant(row.finishedAt, zone).split(" ")[0] : ""}</span>
+          {!oneDay && <span className="text-end text-soft">{row.finishedAt ? instant(row.finishedAt, zone).split(" ")[0] : ""}</span>}
           <span className="text-end font-semibold whitespace-nowrap">
             {list.value && row.value !== null ? writeValue(list.value, row.value)
               : <span className="inline-flex items-center font-normal text-muted">{row.outcome && <Square className={OUTCOME[row.outcome]} />}{outcomeWord(row, t)}</span>}
@@ -111,7 +114,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
         </button>
       </li>)}</ul>
       {left > 0 && query.hasNextPage && <button type="button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}
-        className="mt-2.5 text-muted underline decoration-line underline-offset-4 hover:decoration-ink">{t("list.more", { count: left })}</button>}
+        className="-mx-1 mt-2.5 rounded-sm px-1 text-sm text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
     </> : <p className="mt-4 text-soft">{t("list.empty")}</p>}
   </div>;
 }
@@ -127,13 +130,14 @@ function UnitPane({ unit }: { unit: string }) {
   const usage = values.usage;
   const facts = ([[t("until.submits"), values.submits], [t("values.sendBacks"), values.sendBacks], [t("values.atReview"), values.instructionsAtReview],
     [t("values.afterAccept"), values.instructionsAfterAccept], [t("values.duringWork"), values.instructionsDuringWork],
-    [t("until.questions"), values.questions], [t("values.answers"), values.answers]] as [string, number][]).filter(([, n]) => n);
+    [t("until.questions"), values.questions], [t("values.answers"), values.answers]] as [string, number][]).filter(([, n]) => n)
+    .map(([name, n]) => [name, format("times", n)] as [string, string]);
   const used = ([
     [t("usage.launches"), usage.launches && format("times", usage.launches)],
     [t("usage.runMs"), usage.runMs && duration(usage.runMs)],
-    [t("values.conversations"), usage.newConversations && format("plain", usage.newConversations)],
-    [t("values.workers"), values.workers && format("plain", values.workers)],
-    [t("values.children"), values.children && format("plain", values.children)],
+    [t("values.conversations"), usage.newConversations && format("conversations", usage.newConversations)],
+    [t("values.workers"), values.workers && format("people", values.workers)],
+    [t("values.children"), values.children && format("tasks", values.children)],
     [t("usage.output"), usage.tokens.output && format("tokens", usage.tokens.output)],
     [t("values.inputCache"), usage.tokens.input + usage.tokens.cache && format("tokens", usage.tokens.input + usage.tokens.cache)],
   ] as [string, string | 0][]).filter(([, text]) => text) as [string, string][];
@@ -143,16 +147,14 @@ function UnitPane({ unit }: { unit: string }) {
       <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{outcomeWord(row, t)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
     </p>
     <Band values={values} />
-    <p className="mt-3 flex flex-wrap gap-x-4.5 gap-y-1 text-muted">
-      {you > 0 && <span className="inline-flex items-center"><Square className="bg-turn" />{t("time.you")}<b className="ms-1.5 font-semibold text-ink">{duration(you)}</b></span>}
-      {values.time.ai > 0 && <span className="inline-flex items-center"><Square className="bg-working" />{t("time.ai")}<b className="ms-1.5 font-semibold text-ink">{duration(values.time.ai)}</b></span>}
-      {values.time.other >= 60_000 && <span className="inline-flex items-center"><Square className="bg-rest" />{t("time.other")}<b className="ms-1.5 font-semibold text-ink">{duration(values.time.other)}</b></span>}
-    </p>
-    {facts.length > 0 && <p className="mt-2 flex flex-wrap gap-x-4.5 gap-y-1 text-muted">
-      {facts.map(([name, n]) => <span key={name}>{name}<b className="ms-1.5 font-semibold text-ink">{numberText(n)}</b></span>)}</p>}
+    <Facts className="mt-3" items={[
+      ...you > 0 ? [{ color: "bg-turn", name: t("time.you"), value: duration(you) }] : [],
+      ...values.time.ai > 0 ? [{ color: "bg-working", name: t("time.ai"), value: duration(values.time.ai) }] : [],
+      ...values.time.other >= 60_000 ? [{ color: "bg-rest", name: t("time.other"), value: duration(values.time.other) }] : [],
+      ...facts.map(([name, value]) => ({ name, value }))]} />
     {used.length > 0 && <>
       <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.usage")}</h4>
-      <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{used.map(([name, text]) => <span key={name}>{name}<b className="ms-1.5 font-semibold text-ink">{text}</b></span>)}</p>
+      <Facts items={used.map(([name, value]) => ({ name, value }))} />
     </>}
     {values.models.length > 0 && <table className="mt-2.5 w-full border-collapse">
       <thead><tr className="h-7.5 border-b border-rule text-xs text-soft">
@@ -177,6 +179,20 @@ function UnitPane({ unit }: { unit: string }) {
     </>}
     <p className="mt-7"><Button variant="outline" onClick={() => useViewStore.getState().openFromAnalysis(values.unit.id)}>{t("values.open")}</Button></p>
   </div>;
+}
+
+/**
+ * A task's values as the lead numbers are drawn: each its name over its value (with its colour where the chart has one),
+ * four to a line on one grid, so a name never parts from its value at a line's end.
+ */
+function Facts({ items, className }: { items: { name: string; value: string; color?: string }[]; className?: string }) {
+  if (!items.length) return null;
+  return <dl className={cn("grid grid-cols-4 gap-x-4 gap-y-3 narrow:grid-cols-3", className)}>
+    {items.map(item => <div key={item.name} className="min-w-0">
+      <dt className="flex items-center text-xs text-muted">{item.color && <Square className={item.color} />}{item.name}</dt>
+      <dd className="text-sm font-semibold tabular-nums">{item.value}</dd>
+    </div>)}
+  </dl>;
 }
 
 const BAND = { doing: "bg-working", yours: "bg-turn", paused: "bg-rest" } as const;

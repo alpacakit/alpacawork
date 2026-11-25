@@ -1,11 +1,11 @@
 {
   "breakdown": {
-    "all_one": "Todas as {{count}} linhas",
-    "all_many": "Todas as {{count}} linhas",
-    "all_other": "Todas as {{count}} linhas",
-    "since": "Contagem desde {{date}}",
+    "since": "Desde {{date}}",
     "title": "Detalhamento",
-    "top": "Só as primeiras"
+    "top": "Mostrar só as primeiras",
+    "all_one": "Mostrar as {{count}} linhas",
+    "all_many": "Mostrar as {{count}} linhas",
+    "all_other": "Mostrar as {{count}} linhas"
   },
   "bucket": {
     "day": "Por dia",
@@ -20,14 +20,15 @@
   "chart": {
     "fewShare": "{{passed}} de {{accepted}}",
     "finished": "Tarefas concluídas",
-    "finishedTip": "{{total}}: sem correções {{passed}} · corrigidas {{reworked}} · interrompidas {{stopped}}",
-    "keys": "Escolha um dia com as setas para a esquerda e a direita e pressione Enter para ver as tarefas dele",
+    "finishedTip": "{{total}}: sem correções {{passed}} · precisaram de correções {{reworked}} · interrompidas {{stopped}}",
+    "keys": "As setas para a esquerda e a direita mudam de coluna; Enter mostra as tarefas dela",
     "none": "Nenhuma aceita",
-    "notCounted": "Não contado",
-    "share": "Parcela sem correções",
+    "notCounted": "Antes de começar a contar",
+    "share": "Taxa sem correções",
     "sharePercentTip": "{{passed}} de {{accepted}} aceitas · {{share}}",
     "shareTip": "{{passed}} de {{accepted}} aceitas",
-    "shareTipFew": "{{passed}} de {{accepted}} aceitas (menos de 10)"
+    "shareTipFew": "{{passed}} de {{accepted}} aceitas (menos de 10)",
+    "binLabel": "{{day}} · {{name}} {{value}}"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
@@ -36,7 +37,7 @@
     "conversationName": "Conversas novas",
     "conversationText": "Conversas iniciadas pela primeira vez neste período",
     "dayName": "Datas",
-    "everName": "Até agora",
+    "everName": "Todo o período",
     "everText": "Do primeiro dia de registros até hoje",
     "finishedName": "Tarefas concluídas",
     "finishedText": "O mesmo número de Tarefas",
@@ -44,16 +45,16 @@
     "inputText": "Sem leituras e gravações de cache",
     "launchName": "Inícios",
     "launchText": "Vezes que um agente foi iniciado (sem as entradas a um já em execução)",
-    "lead": "Tarefas aceitas que atendem às três condições:",
+    "lead": "Tarefas aceitas que atendem às três condições",
     "leadName": "Tempo",
     "leadText": "Do pedido até a primeira aceitação",
     "modelName": "Modelo",
     "modelText": "O primeiro modelo encarregado",
     "one": "Enviada para revisão no máximo uma vez",
     "perFinishedName": "Por tarefa concluída",
-    "perFinishedText": "O que o intervalo usou dividido pelas tarefas concluídas nele. Inclui tarefas em andamento, então varia de um dia para outro",
+    "perFinishedText": "Quantidade do intervalo ÷ tarefas concluídas nele. Inclui o trabalho em tarefas não concluídas, então varia por dia",
     "perTaskName": "Por tarefa",
-    "perTaskText": "O total do intervalo dividido pelas tarefas aceitas nele. Com menos de 10, o ponto fica vazado",
+    "perTaskText": "Total do intervalo ÷ tarefas aceitas nele. Ponto vazado: menos de 10",
     "prName": "PRs relacionados",
     "prText": "PRs que aparecem nas tarefas aceitas; o mesmo PR conta uma vez",
     "runName": "Tempo de execução",
@@ -72,24 +73,17 @@
   },
   "face": {
     "analysis": "Análise",
-    "label": "Visão",
+    "label": "Tela",
     "use": "Usar"
   },
   "home": {
     "label": "{{marks}}. Abrir a análise",
-    "marks_one": "{{count}} concluída hoje · {{passed}} sem correções",
-    "marks_many": "{{count}} concluídas hoje · {{passed}} sem correções",
-    "marks_other": "{{count}} concluídas hoje · {{passed}} sem correções"
+    "marks_one": "Concluídas hoje: {{count}} ({{passed}} sem correções)",
+    "marks_many": "Concluídas hoje: {{count}} ({{passed}} sem correções)",
+    "marks_other": "Concluídas hoje: {{count}} ({{passed}} sem correções)"
   },
   "lead": {
-    "ever": "Até agora {{value}}"
-  },
-  "legend": {
-    "ai": "IA trabalhando",
-    "line": "Por tarefa",
-    "passed": "Sem correções",
-    "stopped": "Interrompida",
-    "yours": "Precisou de você"
+    "ever": "Todo o período {{value}}"
   },
   "line": {
     "median": "Mediana por tarefa",
@@ -97,26 +91,26 @@
     "perTask": "Por tarefa"
   },
   "list": {
-    "back": "Lista",
+    "back": "Voltar à lista",
     "close": "Fechar",
-    "day": "Dia",
-    "empty": "Nenhuma tarefa aqui",
-    "more_one": "Mais {{count}}",
-    "more_many": "Mais {{count}}",
-    "more_other": "Mais {{count}}",
+    "day": "Concluída",
+    "empty": "Nenhuma tarefa",
     "outcome": "Resultado",
     "task": "Tarefa",
-    "title": "{{title}} {{n}} {{unit}}"
+    "title": "{{title}} {{n}} {{unit}}",
+    "more_one": "Mostrar mais {{count}}",
+    "more_many": "Mostrar mais {{count}}",
+    "more_other": "Mostrar mais {{count}}"
   },
   "look": {
-    "label": "O que ver",
+    "label": "Visualização",
     "tasks": "Tarefas",
     "usage": "Uso de IA"
   },
   "outcome": {
     "none": "Em andamento",
     "passed": "Sem correções",
-    "reworked": "Corrigida",
+    "reworked": "Precisou de correções",
     "stopped": "Interrompida"
   },
   "period": {
@@ -138,22 +132,22 @@
     "days_other": "{{count}} dias anteriores"
   },
   "range": "{{from}} – {{to}}",
-  "same": "igual",
+  "same": "±0",
   "sep": " · ",
   "tasks": {
     "accepted": "Aceitas",
     "by": {
-      "agent": "Tipo de IA",
+      "agent": "Agente",
       "model": "Modelo",
       "project": "Projeto"
     },
     "cols": {
       "accepted": "Aceitas",
       "finished": "Concluídas",
-      "lead": "Tempo (mediana)",
+      "lead": "Mediana do tempo",
       "passed": "Sem correções",
       "share": "Parcela sem correções",
-      "submits": "Revisões por tarefa"
+      "submits": "Revisões (por tarefa)"
     },
     "few": "Menos de 10 tarefas aceitas",
     "finished": "Tarefas concluídas",
@@ -163,10 +157,10 @@
     "grassTip_one": "{{day}}  {{count}} tarefa concluída",
     "grassTip_many": "{{day}}  {{count}} tarefas concluídas",
     "grassTip_other": "{{day}}  {{count}} tarefas concluídas",
-    "howCounted": "Como é contado",
+    "howCounted": "Como contamos",
     "noAgent": "Sem IA designada",
     "passed": "Sem correções",
-    "reworked": "Corrigidas",
+    "reworked": "Precisaram de correções",
     "stopped": "Interrompidas"
   },
   "time": {
@@ -182,7 +176,7 @@
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}} {{unit}}",
     "minutes": "min",
-    "points": " pts",
+    "points": " pt",
     "scales": [
       {
         "at": 1000000000,
@@ -200,15 +194,27 @@
         "unit": "mil"
       }
     ],
-    "taskCount_one": "tarefa",
-    "taskCount_many": "tarefas",
-    "taskCount_other": "tarefas",
-    "tasks_one": "tarefa",
-    "tasks_many": "tarefas",
-    "tasks_other": "tarefas",
-    "times_one": "vez",
-    "times_many": "vezes",
-    "times_other": "vezes"
+    "tasks_one": "",
+    "tasks_many": "",
+    "tasks_other": "",
+    "times_one": "",
+    "times_many": "",
+    "times_other": "",
+    "taskCount_one": "",
+    "taskCount_many": "",
+    "taskCount_other": "",
+    "prs_one": "",
+    "prs_many": "",
+    "prs_other": "",
+    "people_one": "",
+    "people_many": "",
+    "people_other": "",
+    "questions_one": "",
+    "questions_many": "",
+    "questions_other": "",
+    "conversations_one": "",
+    "conversations_many": "",
+    "conversations_other": ""
   },
   "until": {
     "lead": "Tempo (mediana)",
@@ -216,12 +222,11 @@
     "prsList": "Com PRs relacionados",
     "questions": "Perguntas para você",
     "questionsList": "Com perguntas",
-    "submits": "Enviadas para revisão",
-    "title": "Até a aceitação"
+    "submits": "Revisões"
   },
   "usage": {
     "by": {
-      "agent": "Tipo de IA",
+      "agent": "Agente",
       "mcp": "MCP",
       "model": "Modelo",
       "skill": "Skill",
@@ -230,9 +235,9 @@
     "cache": "Cache",
     "calls": "Chamadas",
     "heads": {
-      "agent": "IA que trabalhou",
+      "agent": "Agente",
       "mcp": "MCP",
-      "model": "Modelo que trabalhou",
+      "model": "Modelo",
       "skill": "Skill",
       "tool": "Ferramenta"
     },
@@ -266,7 +271,7 @@
       "instruction": "Instrução",
       "sendBack": "Devolução"
     },
-    "models": "Modelo que trabalhou",
+    "models": "Modelo",
     "open": "Abrir a tarefa",
     "sendBacks": "Devoluções",
     "skills": "Skills",
@@ -288,5 +293,8 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
+  },
+  "table": {
+    "head": "{{name}} ({{unit}})"
   }
 }

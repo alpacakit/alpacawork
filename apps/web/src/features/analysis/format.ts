@@ -6,7 +6,12 @@ import { i18n } from "@alpacawork/i18n";
  * Every number here is one the server counted; this only writes it.
  */
 export type Parts = { value: string; unit: string; tight?: boolean };
-export type Kind = "tasks" | "times" | "plain" | "hours" | "tokens";
+/**
+ * What a number counts, and so its unit: things (tasks, PRs, conversations: 件), events (times, questions: 回), people,
+ * hours, tokens, or a bare number. A language whose names already say what is counted (English) writes no count word.
+ */
+export type Kind = "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "plain" | "hours" | "tokens";
+const COUNT_WORD = { tasks: "unit.tasks", times: "unit.times", prs: "unit.prs", conversations: "unit.conversations", people: "unit.people", questions: "unit.questions" } as const;
 
 const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
@@ -31,8 +36,8 @@ const hourValue = (hours: number) => hours >= 10 ? whole(hours) : fixed(hours, 1
 
 export function parts(kind: Kind, value: number): Parts {
   switch (kind) {
-    case "tasks": return { value: whole(value), unit: word("unit.tasks", { count: value }) };
-    case "times": return { value: whole(value), unit: word("unit.times", { count: value }) };
+    case "tasks": case "times": case "prs": case "conversations": case "people": case "questions":
+      return { value: whole(value), unit: word(COUNT_WORD[kind], { count: value }) };
     case "plain": return { value: whole(value), unit: "" };
     case "hours": return { value: hourValue(value / HOUR), unit: word("unit.hours") };
     case "tokens": {
@@ -42,6 +47,11 @@ export function parts(kind: Kind, value: number): Parts {
   }
 }
 export const text = ({ value, unit, tight }: Parts) => unit ? word(tight ? "unit.joinTight" : "unit.join", { value, unit }) : value;
+/** A value written by hand (a per-task number, a scale's top) with a unit that may be none. */
+export const inUnit = (value: string, unit: string) => text({ value, unit });
+/** A kind's unit alone, as a table's heading says it once ("" in a language that writes none). */
+export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "hours") =>
+  kind === "hours" ? word("unit.hours") : word(COUNT_WORD[kind], { count: 2 });
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
 
 /** A time of one task: minutes under an hour, else hours. */

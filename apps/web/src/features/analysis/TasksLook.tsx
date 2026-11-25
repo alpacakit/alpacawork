@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { daysBetween, decimalText, delta, format, parts, share, shareDelta, previousName, type Kind } from "./format";
+import { i18n } from "@alpacawork/i18n";
+import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
-import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, Legend, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { Compare, gapTone, Num, RulesBox, RulesToggle, Section, Seg, Square, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
+import { ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RulesBox, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace } from "./place";
 
@@ -31,19 +32,19 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const countGap = before ? delta("tasks", now.passed, before.passed) : null;
   const shareGap = before ? shareDelta(now.share, before.share) : null;
   const leads = <Leads>
-    <Lead name={<><Square className="bg-done" />{t("tasks.passed")}<RulesToggle /></>}
+    <Lead name={t("tasks.passed")}
       value={<Value big kind="tasks" value={now.passed} onOpen={() => open({ set: "passed", value: "lead" })} />}
       beside={now.accepted > 0 && <span className="inline-flex items-center gap-2.5" {...tip(now.share === null ? t("chart.shareTipFew", now) : t("chart.shareTip", now))}>
         <span className="flex h-1.5 w-24 gap-0.5 narrow:hidden">
           <i style={{ flex: now.passed }} className="block min-w-0.5 rounded-xs bg-done" />
           <i style={{ flex: now.reworked }} className="block min-w-0.5 rounded-xs bg-reworked" />
         </span>
-        <button type="button" onClick={() => open({ set: "accepted", value: null })}
-          className="text-lg font-semibold underline decoration-lit-line underline-offset-4 hover:decoration-ink">{share(now.share)}</button>
+        <button type="button" onClick={() => open({ set: "accepted", value: null })} className={OPEN}>
+          <b className="text-xl font-semibold tabular-nums">{share(now.share)}</b><OpenMark /></button>
       </span>}
       compare={before && <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
         <span className="whitespace-nowrap">{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}</span>
-        <b className="font-normal whitespace-nowrap text-muted">{countGap === t("same") || shareGap === null ? countGap : t("unit.join", { value: countGap, unit: t("unit.tasks", { count: 2 }) })}
+        <b className="font-normal whitespace-nowrap text-muted">{countGap}
           {shareGap !== null && <>{t("sep")}<span className={gapTone(now.share!, before.share!, "up")}>{shareGap}</span></>}</b>
       </div>}
       ever={ever && `${format("tasks", ever.counts.passed)}${ever.counts.share !== null ? `${t("sep")}${share(ever.counts.share)}` : ""}`} />
@@ -53,9 +54,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
     <Lead name={t("until.lead")} value={<Value big kind="hours" value={accepted.leadMedianMs} onOpen={() => open({ set: "accepted", value: "lead" })} />}
       compare={accepted.leadMedianMs === null ? null : <Compare kind="hours" value={accepted.leadMedianMs} previous={acceptedBefore?.leadMedianMs ?? null} length={length} />}
       ever={ever && ever.accepted.leadMedianMs !== null ? format("hours", ever.accepted.leadMedianMs) : null} />
-    <Lead name={t("until.prs")} value={<Value big kind="plain" value={accepted.prs} onOpen={() => open({ set: "accepted", value: "prs" })} />}
-      compare={<Compare kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length} />}
-      ever={ever && format("plain", ever.accepted.prs)} />
+    <Lead name={t("until.prs")} value={<Value big kind="prs" value={accepted.prs} onOpen={() => open({ set: "accepted", value: "prs" })} />}
+      compare={<Compare kind="prs" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length} />}
+      ever={ever && format("prs", ever.accepted.prs)} />
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
@@ -74,22 +75,22 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const inSpan = inSpanOf(points, days), most = (amount: (i: number) => number) => spanMost(points, days, amount);
   const tops = { median: lineTop(lines.median, steady, inSpan), submits: lineTop(lines.submits, steady, inSpan), questions: lineTop(lines.questions, steady, inSpan) };
   const scales = {
-    finished: useScale(most(i => at(i).counts.finished), 1, t("unit.tasks", { count: 2 }), true),
+    finished: useScale(most(i => at(i).counts.finished), 1, unitOf("tasks"), true),
     total: useScale(most(total_), HOUR, t("unit.hours"), false),
-    submits: useScale(most(i => at(i).accepted.submits), 1, t("unit.times", { count: 2 }), true),
-    questions: useScale(most(i => at(i).accepted.questions), 1, t("unit.tasks", { count: 2 }), true),
-    prs: useScale(most(i => at(i).accepted.prs), 1, "", true),
+    submits: useScale(most(i => at(i).accepted.submits), 1, unitOf("times"), true),
+    questions: useScale(most(i => at(i).accepted.questions), 1, unitOf("questions"), true),
+    prs: useScale(most(i => at(i).accepted.prs), 1, unitOf("prs"), true),
   };
   const faint = (i: number) => !steady(i), lineLabel = useLineLabel();
   const overlays = {
     share: { values: lines.share, top: 1, label: "100%", faint },
     median: { values: lines.median, top: tops.median, label: lineLabel("hours", tops.median), faint },
     submits: { values: lines.submits, top: tops.submits, label: lineLabel("times", tops.submits), faint },
-    questions: { values: lines.questions, top: tops.questions, label: lineLabel("tasks", tops.questions), faint },
+    questions: { values: lines.questions, top: tops.questions, label: lineLabel("questions", tops.questions), faint },
   };
   const acceptedBase = (i: number) => t("window.accepted", { count: at(i).counts.accepted });
   const ratio = (value: number | null, kind: Kind) => value === null ? "—" : kind === "plain" ? share(value) : format(kind, value);
-  const perText = (value: number | null) => value === null ? "—" : decimalText(value, 2);
+  const perText = (value: number | null, kind: "times" | "questions") => value === null ? "—" : inUnit(decimalText(value, 2), unitOf(kind));
   const share_ = (part: number, whole: number) => whole ? share(part / whole) : "";
   const onBin = (set: Parameters<Open>[0]["set"], value: Parameters<Open>[0]["value"]) => (bin: { from: string; to: string }) => ({ set, value, from: bin.from, to: bin.to });
   const say: RowSay[] = [
@@ -108,10 +109,10 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
           { color: "bg-rest", name: t("time.other"), value: format("hours", o), share: share_(o, all), list: day("other", o) }]; },
       line: { name: t("line.median"), value: i => ratio(lines.median[i]!, "hours"), base: acceptedBase } },
     { name: t("until.submits"), total: i => format("times", at(i).accepted.submits), list: onBin("accepted", "submits"),
-      line: { name: t("line.perTask"), value: i => perText(lines.submits[i]!), base: acceptedBase } },
-    { name: t("until.questions"), total: i => format("tasks", at(i).accepted.questions), list: onBin("accepted", "questions"),
-      line: { name: t("line.perTask"), value: i => perText(lines.questions[i]!), base: acceptedBase } },
-    { name: t("until.prs"), total: i => format("plain", at(i).accepted.prs), list: onBin("accepted", "prs") },
+      line: { name: t("line.perTask"), value: i => perText(lines.submits[i]!, "times"), base: acceptedBase } },
+    { name: t("until.questions"), total: i => format("questions", at(i).accepted.questions), list: onBin("accepted", "questions"),
+      line: { name: t("line.perTask"), value: i => perText(lines.questions[i]!, "questions"), base: acceptedBase } },
+    { name: t("until.prs"), total: i => format("prs", at(i).accepted.prs), list: onBin("accepted", "prs") },
   ];
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => <Value small kind={kind} value={value} onOpen={() => open(list)} />;
   // The per-task numbers of the span on the left, against the span before.
@@ -128,8 +129,9 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
     <div key={grow}>
-      <Row row={0} left={<>
-        <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={before?.finished ?? null} length={length}
+      {/* A row whose number is a lead's above says no span before again (the lead says it). */}
+      <Row row={0} className="border-t-0" left={<>
+        <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={null} length={length}
           onOpen={() => open({ set: "finished", value: null })} />
         <Parts items={[
           { color: "bg-done", name: t("outcome.passed"), value: part("tasks", now.passed, { set: "passed", value: "lead" }) },
@@ -143,7 +145,7 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
           values={i => [["bg-done", at(i).counts.passed, 0], ["bg-reworked", at(i).counts.reworked, 1], ["bg-stopped-part", at(i).counts.stopped, 2]]} />
         <DayAxis />
       </Row>
-      <Row row={1} left={<><h3 className="mb-3 text-sm font-semibold">{t("until.title")}</h3>
+      <Row row={1} left={<>
         <Num className="" label={t("time.total")} kind="hours" value={total} previous={acceptedBefore ? acceptedBefore.time.review + acceptedBefore.time.answer + acceptedBefore.time.ai + acceptedBefore.time.other : null}
           length={length} onOpen={() => open({ set: "accepted", value: "lead" })} />
         <Parts items={[
@@ -159,20 +161,20 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
       <Row row={2} left={<>
         <Num className="" label={t("until.submits")} kind="times" value={accepted.submits} previous={acceptedBefore?.submits ?? null} length={length}
           onOpen={() => open({ set: "accepted", value: "submits" })} />
-        <Parts line={{ name: t("line.perTask"), value: <PerValue value={submitsPer} unit={t("unit.times", { count: 2 })} onOpen={() => open({ set: "accepted", value: "submits" })} />,
+        <Parts line={{ name: t("line.perTask"), value: <PerValue value={submitsPer} unit={unitOf("times")} onOpen={() => open({ set: "accepted", value: "submits" })} />,
           gap: gap(submitsPer, submitsPerBefore, "per", "down") }} />
       </>}>
         <BarChart row={2} height="h-16 narrow:h-13" scale={scales.submits} tone="turn" overlay={overlays.submits} values={i => [["", at(i).accepted.submits]]} />
       </Row>
       <Row row={3} left={<>
-        <Num className="" label={t("until.questions")} kind="tasks" value={accepted.questions} previous={acceptedBefore?.questions ?? null} length={length}
+        <Num className="" label={t("until.questions")} kind="questions" value={accepted.questions} previous={acceptedBefore?.questions ?? null} length={length}
           onOpen={() => open({ set: "accepted", value: "questions" })} />
-        <Parts line={{ name: t("line.perTask"), value: <PerValue value={questionsPer} unit={t("unit.tasks", { count: 2 })} onOpen={() => open({ set: "accepted", value: "questions" })} />,
+        <Parts line={{ name: t("line.perTask"), value: <PerValue value={questionsPer} unit={unitOf("questions")} onOpen={() => open({ set: "accepted", value: "questions" })} />,
           gap: gap(questionsPer, questionsPerBefore, "per") }} />
       </>}>
         <BarChart row={3} height="h-16 narrow:h-13" scale={scales.questions} tone="turn" overlay={overlays.questions} values={i => [["", at(i).accepted.questions]]} />
       </Row>
-      <Row row={4} left={<Num className="" label={t("until.prs")} kind="plain" value={accepted.prs} previous={acceptedBefore?.prs ?? null} length={length}
+      <Row row={4} left={<Num className="" label={t("until.prs")} kind="prs" value={accepted.prs} previous={null} length={length}
         onOpen={() => open({ set: "accepted", value: "prs" })} />}>
         <BarChart row={4} height="h-16 narrow:h-13" scale={scales.prs} tone="muted" values={i => [["", at(i).accepted.prs]]} />
         <DayAxis />
@@ -185,7 +187,8 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
   const breakdown = <Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
     <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
-      columns={[t("tasks.cols.finished"), t("tasks.cols.accepted"), t("tasks.cols.passed"), t("tasks.cols.share"), t("tasks.cols.lead"), t("tasks.cols.submits")]}
+      columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("tasks.cols.share"),
+        head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
       rows={breakdownRows.map(row => ({ key: row.key,
         // A task no AI was given (no owner Run) has the server's key `unknown` for its model and AI kind.
         name: row.key === "unknown" && taskGroup !== "project" ? t("tasks.noAgent") : row.label, bar: row.finished, cells: [
@@ -196,43 +199,40 @@ export function TasksLook({ view, days, open, zone }: { view: TasksView; days: D
           split: row.share !== null ? [row.passed, row.accepted - row.passed] : undefined,
           open: row.accepted ? () => open({ set: "accepted", value: null, ...groupOf(row.key) }) : undefined },
         row.leadMedianMs === null ? { text: "—" } : cell("hours", row.leadMedianMs, () => open({ set: "accepted", value: "lead", ...groupOf(row.key) })),
-        row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2), unit: t("unit.times", { count: 2 }),
+        row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2),
           open: () => open({ set: "accepted", value: "submits", ...groupOf(row.key) }) },
       ] }))} />
   </Section>;
 
   return <>
     {leads}
+    <ChartHead />
     {rules && <RulesBox>
-      <p>{t("def.lead")}</p>
-      <ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
-      <p>{t("def.after")}</p>
-      <p><b>{t("def.modelName")}</b>{t("colon")}{t("def.modelText")}<span className="ms-4" /><b>{t("def.leadName")}</b>{t("colon")}{t("def.leadText")}</p>
-      <p><b>{t("def.prName")}</b>{t("colon")}{t("def.prText")}<span className="ms-4" /><b>{t("def.everName")}</b>{t("colon")}{t("def.everText")}</p>
-      <p><b>{t("def.perTaskName")}</b>{t("colon")}{t("def.perTaskText")}</p>
-      <p><b>{t("def.dayName")}</b>{t("colon")}{zone}</p>
-      <Legend />
+      <Rule name={t("tasks.passed")}>{t("def.lead")}<ul><li>{t("def.one")}</li><li>{t("def.two")}</li><li>{t("def.three")}</li></ul>
+        <p className="mt-1">{t("def.after")}</p></Rule>
+      <Rule name={t("def.leadName")}>{t("def.leadText")}</Rule>
+      <Rule name={t("def.prName")}>{t("def.prText")}</Rule>
+      <Rule name={t("def.perTaskName")}>{t("def.perTaskText")}</Rule>
+      <Rule name={t("def.modelName")}>{t("def.modelText")}</Rule>
+      <Rule name={t("def.everName")}>{t("def.everText")}</Rule>
+      <Rule name={t("def.dayName")}>{zone}</Rule>
     </RulesBox>}
-    <BucketSwitch />
     {rows}
     {breakdown}
   </>;
 }
 
-/** The step of time of every chart, once, over the right of the first row. */
-export function BucketSwitch() {
-  const { t } = useTranslation("analysis");
-  const { bucket, grow } = useChoices();
-  return <div className="mt-8 mb-2 flex justify-end">
-    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
-      items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />
-  </div>;
-}
+/** A table's column heading with its unit once (none in a language that writes no count word). */
+export const head = (name: string, kind: Parameters<typeof unitOf>[0]) => { const unit = unitOf(kind);
+  return unit ? i18n.t("analysis:table.head", { name, unit }) : name; };
 
-/** A table cell of a value: the number, its unit small, opening the tasks behind it when there are any. */
+/**
+ * A table cell of a value: the number alone (its unit is in the column's heading), opening the tasks behind it when
+ * there are any. Tokens keep their step (万, 億) beside each number, as rows differ in it.
+ */
 export function cell(kind: Kind, value: number, open: () => void): Cell {
   const written = parts(kind, value);
-  return { text: written.value, unit: written.unit, open: value ? open : undefined };
+  return { text: written.value, unit: kind === "tokens" ? written.unit : undefined, open: value ? open : undefined };
 }
 
 /** The parts of a day's finished tasks, as its window says them under the total, in the colours they are drawn in. */
@@ -248,13 +248,12 @@ export function useFinishedParts() {
 
 /** The share without fixes, large enough to read beside its name, opening the accepted tasks. */
 function ShareValue({ value, onOpen }: { value: number | null; onOpen?: () => void }) {
-  if (!onOpen || value === null) return <b className="font-semibold">{share(value)}</b>;
-  return <button type="button" onClick={onOpen} className="group/open inline-flex items-baseline gap-0.5 font-semibold underline decoration-lit-line underline-offset-4 hover:decoration-ink">
-    {share(value)}</button>;
+  if (!onOpen || value === null) return <span className="inline-flex items-baseline gap-0.5"><b className="font-semibold tabular-nums">{share(value)}</b><i aria-hidden className="inline-block size-3 flex-none" /></span>;
+  return <button type="button" onClick={onOpen} className={OPEN}><b className="font-semibold tabular-nums">{share(value)}</b><OpenMark /></button>;
 }
 /** An amount per task (two places), with its unit, opening its tasks. */
 function PerValue({ value, unit, onOpen }: { value: number | null; unit: string; onOpen: () => void }) {
-  if (value === null) return <b className="font-semibold">—</b>;
-  return <button type="button" onClick={onOpen} className="inline-flex items-baseline gap-0.5 underline decoration-lit-line underline-offset-4 hover:decoration-ink">
-    <b className="font-semibold">{decimalText(value, 2)}</b><span className="text-xs text-muted">{unit}</span></button>;
+  if (value === null) return <span className="inline-flex items-baseline gap-0.5"><b className="font-semibold">—</b><i aria-hidden className="inline-block size-3 flex-none" /></span>;
+  return <button type="button" onClick={onOpen} className={OPEN}>
+    <b className="font-semibold tabular-nums">{decimalText(value, 2)}</b>{unit && <span className="text-xs text-muted">{unit}</span>}<OpenMark /></button>;
 }
