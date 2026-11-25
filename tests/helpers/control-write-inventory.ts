@@ -32,9 +32,11 @@ export const maintenanceFiles = new Set(['packages/db/src/control-migration-snap
   'apps/backend/src/control/task-values-migration.ts']);
 export const routingFiles = new Set(['apps/backend/src/control/return-router.ts', 'apps/backend/src/control/return-lifecycle.ts',
   'apps/backend/src/control/task-reports.ts', 'apps/backend/src/runs/event-importer.ts']);
+// A value version is written only beside the task_values change whose touch announces the same write.
 export const unobservedTables = new Set(['agents', 'cli_operations', 'file_path_reservations', 'file_operations',
   'run_commands', 'task_sequence', 'run_sequence', 'workspace_identity', 'control_migration_sources',
-  'control_migration_evidence', 'control_schema_migrations', '__drizzle_migrations']);
+  'control_migration_evidence', 'control_schema_migrations', '__drizzle_migrations', 'task_value_versions',
+  'task_value_versions_since']);
 /** These columns carry protocol progress, not screen or seat facts. */
 export const unobservedColumns: Record<string, string[]> = {
   run_attempts: ['next_seq', 'last_digest', 'claimed', 'spawn_intent', 'started_json', 'completed_digest', 'dirty', 'acked_seq'],

@@ -65,7 +65,7 @@ A pasta de dados (`~/alpacawork`) fica. Se não precisar dela, apague-a você me
 
 ## Onde ficam os dados e o que é enviado para fora
 
-As tarefas, as conversas e os arquivos criados pela IA ficam na pasta de dados do PC (no início, `~/alpacawork`). Podem ficar ali segredos que a IA leu, então não entregue essa pasta a ninguém.
+As tarefas, as conversas e os arquivos criados pela IA ficam na pasta de dados do PC (no início, `~/alpacawork`). Podem ficar ali segredos que a IA leu, então não entregue essa pasta a ninguém. Quando os valores de uma tarefa (objetivo, conclusão, notas etc.) são reescritos ou apagados, os valores anteriores também ficam ali, para que se possa ler a tarefa como estava num momento passado. Não escreva senhas nem chaves neles: apagar um valor não remove as versões anteriores.
 
 O conteúdo das tarefas e das conversas não é enviado ao desenvolvedor. O que sai do PC é o seguinte:
 
