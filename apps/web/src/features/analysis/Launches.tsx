@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
@@ -81,19 +80,17 @@ function choicesOf(by: SeriesBy, view: UsageSeriesView | undefined, nameOf: (slo
 /**
  * What the launches are coloured by and filtered to: the model or the effort, then one model and one effort (each "all"
  * at first). A filter keeps what it is coloured by. The choices are the whole record's: those of what the chart is
- * coloured by are its colours' answer; the other's are read when its choice is about to be made (pointed at or
- * reached with the keys), not with the face.
+ * coloured by are its colours' answer; the other's are read once the face is drawn, not with it (a phone opens its
+ * choices at the touch, too soon to read them then).
  */
 export function LaunchControls({ launches, bucket }: { launches: Launches; bucket: Bucket }) {
   const { t } = useTranslation("analysis");
   const choose = useChoices(state => state.choose);
   const project = useViewStore(state => state.project);
   const other: SeriesBy = launches.by === "model" ? "effort" : "model";
-  const [wanted, setWanted] = useState(false);
-  const otherRead = useUsageSeries(project, { period: "all" }, bucket, other, null, wanted || launches.filter[other] !== null);
+  const otherRead = useUsageSeries(project, { period: "all" }, bucket, other, null);
   const choices = { [launches.by]: choicesOf(launches.by, launches.colours, launches.nameOf), [other]: choicesOf(other, otherRead.data, launches.nameOf) } as Record<SeriesBy, (readonly [string, string])[]>;
   const set = (next: Partial<LaunchFilter>) => choose({ launchFilter: { ...launches.filter, ...next } });
-  const want = () => setWanted(true);
   const select = "h-7 max-w-full min-w-0 truncate rounded-md border border-line bg-lit ps-2 pe-6 text-sm text-ink hover:bg-hover focus-visible:outline-2 focus-visible:outline-ink";
   // A chosen value the choices do not hold yet (its list still on its way) is still named, so the filter reads true.
   const options = (by: SeriesBy) => { const list = choices[by], value = launches.filter[by];
@@ -107,7 +104,6 @@ export function LaunchControls({ launches, bucket }: { launches: Launches; bucke
     <div className="flex flex-wrap gap-2">
       {(["model", "effort"] as const).map(by => <select key={by} aria-label={t(by === "model" ? "usage.launchModel" : "usage.launchEffort")}
         value={launches.filter[by] ?? ""} onChange={event => set({ [by]: event.target.value || null })}
-        onPointerEnter={by === other ? want : undefined} onFocus={by === other ? want : undefined} onPointerDown={by === other ? want : undefined}
         className={cn(select, launches.filter[by] && "border-ink font-semibold")}>
         <option value="">{t(by === "model" ? "usage.allModels" : "usage.allEfforts")}</option>
         {options(by).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
