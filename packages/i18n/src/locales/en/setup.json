@@ -90,7 +90,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Better results, from plan to finish",
-        "what": "Before building, the AI sets the purpose and what counts as done, and compares rough directions before polishing. Another AI, given only your words, then checks the result, and what it finds is fixed. This takes more time and tokens."
+        "what": "Before building, the AI sets the purpose and what counts as done, and compares rough versions for big decisions before polishing. Another AI, given only your words, then checks the result, and what it finds is fixed. This takes more time and tokens (light work is only self-checked)."
       },
       "alpacawork-modelpickoptimization": {
         "title": "Optimized model choice",

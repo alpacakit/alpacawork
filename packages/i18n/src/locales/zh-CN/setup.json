@@ -88,7 +88,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "从计划到完成，提升成果质量",
-        "what": "动手前先定下目的和完成标准，先用草稿比较方向再打磨。之后由另一个只拿到你原话的 AI 检查结果，并修正它发现的问题。这会多花时间和 token。"
+        "what": "动手前先定下目的和完成标准，重大决定先用草稿比较再打磨。之后由另一个只拿到你原话的 AI 检查结果，并修正它发现的问题。这会多花时间和 token（轻量的工作只做自查）。"
       },
       "alpacawork-modelpickoptimization": {
         "title": "优化模型选择",

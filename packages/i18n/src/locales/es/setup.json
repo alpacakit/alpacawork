@@ -92,7 +92,7 @@
     "items": {
       "alpacawork-betterquality": {
         "title": "Mejores resultados, del plan al acabado",
-        "what": "Antes de construir, la IA fija el propósito y qué cuenta como terminado, y compara direcciones en borrador antes de pulir. Después otra IA, que solo recibe tus palabras, revisa el resultado y se corrige lo que encuentre. Esto lleva más tiempo y más tokens."
+        "what": "Antes de construir, la IA fija el propósito y qué cuenta como terminado, y en las decisiones grandes compara versiones preliminares antes de pulir. Después otra IA, que solo recibe tus palabras, revisa el resultado y se corrige lo que encuentre. Esto lleva más tiempo y más tokens (el trabajo ligero solo lo revisa la propia IA)."
       },
       "alpacawork-modelpickoptimization": {
         "title": "Elección de modelo optimizada",
