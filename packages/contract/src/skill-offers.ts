@@ -2,13 +2,13 @@ import { z } from 'zod';
 
 /**
  * The skills setup offers, most recommended first. The recommended ones are ticked at first, and marked unless they
- * cost time and tokens; a beta one is marked as such and left unticked. Names, origins and how a skill is installed
+ * cost time and tokens; a beta one is marked as such. Names, origins and how a skill is installed
  * (fetched from its repo, or copied from this release) are authoritative here; what each is for belongs to i18n.
  */
 export const SKILL_OFFERS = [
   { name: 'askmeclearly', from: { kind: 'repo', repo: 'alpacakit/pocket-skills' }, recommended: true, cost: false, beta: false },
   { name: 'doyourjob', from: { kind: 'repo', repo: 'alpacakit/pocket-skills' }, recommended: true, cost: false, beta: false },
-  { name: 'alpacawork-betterquality', from: { kind: 'bundled' }, recommended: true, cost: true, beta: false },
+  { name: 'alpacawork-betterquality', from: { kind: 'bundled' }, recommended: true, cost: true, beta: true },
   { name: 'alpacawork-modelpickoptimization', from: { kind: 'bundled' }, recommended: false, cost: false, beta: true },
 ] as const;
 export type SkillName = typeof SKILL_OFFERS[number]['name'];

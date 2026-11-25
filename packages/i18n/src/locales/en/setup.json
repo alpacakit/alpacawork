@@ -93,8 +93,8 @@
         "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
       },
       "alpacawork-modelpickoptimization": {
-        "title": "Cheaper models, step by step",
-        "what": "Work that gets reviewed is tried on a lighter model or a lower effort first. When the review needs no large fix, the report proposes moving the project policy's model rule to the lighter side."
+        "title": "Optimized model choice",
+        "what": "Work that gets reviewed is tried one step lighter, on a cheaper model or a lower effort. When the review needs no large fix, the report proposes moving the project policy's model rule to the lighter side."
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",

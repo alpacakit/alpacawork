@@ -95,8 +95,8 @@
         "what": "Salvo en trabajos ligeros, antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo comprueba, y se corrige lo que encuentre. Esto consume más tiempo y más tokens."
       },
       "alpacawork-modelpickoptimization": {
-        "title": "Modelos más baratos, poco a poco",
-        "what": "El trabajo que se revisa se prueba primero con un modelo más ligero o con menos esfuerzo. Si la revisión no pide cambios grandes, el informe propone mover la regla de modelos de la política del proyecto al lado más ligero."
+        "title": "Elección de modelo optimizada",
+        "what": "El trabajo que se revisa se prueba un paso más ligero, con un modelo más barato o con menos esfuerzo. Si la revisión no pide cambios grandes, el informe propone mover la regla de modelos de la política del proyecto al lado más ligero."
       },
       "askmeclearly": {
         "title": "Preguntas e informes más breves y fáciles de leer",

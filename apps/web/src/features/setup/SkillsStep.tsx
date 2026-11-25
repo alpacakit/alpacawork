@@ -11,7 +11,7 @@ import { useSkillInstall, useSkills } from "@/data/skills";
 import { BetaMark, FailureLine, Loading, RecommendedMark, StepButtons } from "./parts";
 
 /**
- * Step 3: the offered skills, each by what it changes, the recommended ones ticked and those without a cost marked, a beta one marked and unticked. The button names what it installs, and pressing it is the
+ * Step 3: the offered skills, each by what it changes, the recommended ones ticked and those without a cost marked, a beta one marked. The button names what it installs, and pressing it is the
  * approval; once every ticked skill is installed the setup goes on by itself. A skill that failed says why on its row
  * and stays ticked, so the same button tries it again. Listing never contacts where a skill comes from.
  */
