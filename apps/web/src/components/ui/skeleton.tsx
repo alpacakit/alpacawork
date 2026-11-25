@@ -90,6 +90,17 @@ const SHAPES = {
     <Bar className="mt-5 h-3 w-full rounded-xs" />
     <div className="space-y-3 pt-4">{[0, 1, 2, 3, 4, 5].map(row => <div key={row} className="flex items-center justify-between"><Bar className={cn("h-3.5", length(row))} /><Bar className="h-3.5 w-12" /></div>)}</div>
   </div>,
+  // The share card: its date, lead number and smaller values, within the preview's aspect ratio.
+  analysisCard: () => <div className="flex h-full flex-col justify-between p-1">
+    <Bar className="h-2.5 w-2/5" />
+    <Bar className="h-1/4 w-2/5 rounded-md" />
+    <div className="grid grid-cols-3 gap-3 border-t border-rule pt-2.5">
+      {LENGTHS.slice(0, 3).map((width, index) => <div key={width} className="space-y-1.5">
+        <Bar className={cn("h-2", width)} />
+        <Bar className={cn("h-3", length(index + 2))} />
+      </div>)}
+    </div>
+  </div>,
   // The list: the clock row on a computer, then groups (a heading and rows); each row has its strip beside it on a computer.
   time: () => <div className="relative min-h-75 flex-1 basis-0 overflow-hidden narrow:min-h-67.5">
     <div className="flex h-7.5 border-b border-rule narrow:hidden"><div className="w-90 border-r border-rule max-[900px]:w-82.5" /></div>

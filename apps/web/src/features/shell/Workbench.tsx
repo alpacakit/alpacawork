@@ -4,7 +4,8 @@ import { useCallback, useContext, useDeferredValue, useEffect, useLayoutEffect, 
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { later } from "@/lib/later";
-import { AnalysisView, loadAnalysisLayers } from "@/features/analysis/AnalysisView";
+import { AnalysisView } from "@/features/analysis/AnalysisView";
+import { loadAnalysisLayers } from "@/features/analysis/AnalysisLayers";
 import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
 import { subscribeReads } from "@/data/read-model";
 import { useQueryClient } from "@tanstack/react-query";

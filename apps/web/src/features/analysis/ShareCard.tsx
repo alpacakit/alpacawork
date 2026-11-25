@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RegionSkeleton } from "@/components/ui/skeleton";
 import { TAB, TabLabel } from "@/components/ui/tabs";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
 import { srgb } from "@/lib/mermaid-colors";
@@ -12,10 +11,12 @@ import { cn } from "@/lib/utils";
 import { appliedTheme } from "@/state/theme";
 import { useViewStore } from "@/state/view-store";
 import { CARD_DEFAULT, CARD_LIMIT, HEROES, NUMBERS, canPick, cardFacts, cardFileName, cardInput, cardLabel, cardPicks, cardPostText, cardWords, pick, type CardChoice, type Hero } from "./card";
-import { CARD_H, CARD_W, drawCard, type CardLook, type CardPalette } from "./card-draw";
-import { answerOf, useTasksView, useUsageView } from "./data";
-import { Seg, useChoices } from "./parts";
-import { CARD_PERIODS, cardDays, type AnalysisPlace } from "./place";
+import { drawCard, type CardLook, type CardPalette } from "./card-draw";
+import { CardPreview, CardSkeleton } from "./CardPreview";
+import { CARD_H, CARD_W } from "./card-size";
+import { answerOf, type useCardReads } from "./data";
+import { Seg } from "./parts";
+import { CARD_PERIODS, type AnalysisPlace } from "./place";
 
 type Theme = "dark" | "light";
 /** A choice a finger's height on a phone: one of a row of them, or the row's own buttons. */
@@ -96,18 +97,13 @@ function XMark() {
  * it shows: the span, the number leading, those under it, its colours. The numbers are the analysis commands' for the
  * card's span and the project in view (the project is not on the card).
  */
-export function CardPane({ place, project }: { place: AnalysisPlace; project: string | null }) {
+export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
+  place: AnalysisPlace;
+  reads: ReturnType<typeof useCardReads>;
+  waitFrom: number;
+}) {
   const { t } = useTranslation("analysis");
   const card = place.card!;
-  const { bucket } = useChoices();
-  // The whole record ending on a day starts on the record's first day: the analysis's own answer for what is asked now
-  // says which (one still standing for another project says nothing). The card reads as the face does: the tasks'
-  // numbers without a breakdown (the face's own answer when the days are the same), the AI's use by model for the
-  // model used most.
-  const face = answerOf(useTasksView(project, place.span, bucket, null));
-  const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
-  const tasks = useTasksView(project, days ?? place.span, bucket, null, days !== null);
-  const usage = useUsageView(project, days ?? place.span, bucket, "model", days !== null);
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
   const [appTheme] = useState<Theme>(() => appliedTheme(document));
@@ -132,7 +128,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
   // As the analysis says it: what failed, no record for these days, or a wait.
   const failed = tasks.error ?? usage.error;
   const state = svg ? null : failed ? <p className="text-soft">{failed.message}</p>
-    : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <RegionSkeleton shape="rows" rows={4} className="w-full self-start" />;
+    : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <CardSkeleton waitFrom={waitFrom} />;
 
   const drawn = async () => facts && svg ? { name: cardFileName(facts), png: await cardPng(svg) } : null;
   const save = async () => {
@@ -187,9 +183,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
     <div ref={probe} hidden className="font-sans">
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
-    <div role="img" aria-label={input ? cardWords(input) : undefined} style={{ aspectRatio: `${CARD_W} / ${CARD_H}` }}
-      className={cn("overflow-hidden rounded-md border-hairline border-lit-line [&>svg]:block [&>svg]:h-auto [&>svg]:w-full", !svg && "flex items-center justify-center p-4")}
-      {...svg ? { dangerouslySetInnerHTML: { __html: svg } } : { children: state }} />
+    <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
     <div className="mt-4 flex flex-wrap items-center gap-2 narrow:[&>button]:min-h-10">
       {/* Posting leads: X's own button, black on a light page and white on a dark one, with X's word for it. Saving,
           copying and the device's own sharing stand beside it, quieter. */}
