@@ -172,7 +172,7 @@ The setup screen offers the skills below. Project policy starts empty. The agent
 |---|---|---|
 | askmeclearly (recommended) | reports and questions | Agents keep questions and reports short and mark where to look in images or video, so the user can decide and check quickly |
 | doyourjob (recommended) | decision triage | Agents look up what they can and decide what they may, so they ask the user only what the user alone can decide |
-| alpacawork-betterquality (recommended; bundled) | planning and review | Agents set the pass criteria before work starts, and another AI checks the result before the user is asked to review it. Results get better, but the checks add time and token usage. The number of checks depends on how heavy the work is; for light work, the agent checks its own result |
+| alpacawork-betterquality (beta; bundled; not ticked at first) | planning and review | Agents set the purpose and pass criteria before work starts, compare rough versions for big decisions before polishing, and have another AI, given only the user's words, check the result before the user is asked to review it. Results get better, but the checks add time and token usage. The number of checks depends on how heavy the work is; for light work, the agent checks its own result |
 | alpacawork-modelpickoptimization (beta; bundled; not ticked at first) | model choice | Work that gets reviewed is tried on a lighter model or a lower effort first. When the review needs no large fix, the agent proposes in its report a cheaper model rule for the project policy |
 
 ### Private add-ons

@@ -89,12 +89,12 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Checked by another AI before you see it",
-        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
+        "title": "Better results, from plan to finish",
+        "what": "Before building, the AI sets the purpose and what counts as done, and compares rough versions for big decisions before polishing. Another AI, given only your words, then checks the result, and what it finds is fixed. This takes more time and tokens (light work is only self-checked)."
       },
       "alpacawork-modelpickoptimization": {
-        "title": "Cheaper models, step by step",
-        "what": "Work that gets reviewed is tried on a lighter model or a lower effort first. When the review needs no large fix, the report proposes moving the project policy's model rule to the lighter side."
+        "title": "Optimized model choice",
+        "what": "Work that gets reviewed is tried one step lighter, on a cheaper model or a lower effort. When the review needs no large fix, the report proposes moving the project policy's model rule to the lighter side."
       },
       "askmeclearly": {
         "title": "Shorter, easier-to-read questions and reports",

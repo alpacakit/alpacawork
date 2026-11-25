@@ -91,12 +91,12 @@
     "installing": "Instalando…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Conferido por outra IA antes de você ver",
-        "what": "Exceto em trabalhos leves, antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere o resultado, e o que ela aponta é corrigido. Isso consome mais tempo e mais tokens."
+        "title": "Resultados melhores, do planejamento ao acabamento",
+        "what": "Antes de construir, a IA define o propósito e o que conta como pronto, e nas decisões grandes compara versões preliminares antes de refinar. Depois, outra IA, que recebe só as suas palavras, verifica o resultado, e o que ela encontra é corrigido. Isso leva mais tempo e mais tokens (o trabalho leve é só conferido pela própria IA)."
       },
       "alpacawork-modelpickoptimization": {
-        "title": "Modelos mais baratos, aos poucos",
-        "what": "O trabalho que passa por revisão é testado primeiro com um modelo mais leve ou com menos esforço. Se a revisão não pedir mudanças grandes, o relatório propõe levar a regra de modelos da política do projeto para o lado mais leve."
+        "title": "Escolha de modelo otimizada",
+        "what": "O trabalho que passa por revisão é testado um passo mais leve, com um modelo mais barato ou com menos esforço. Se a revisão não pedir mudanças grandes, o relatório propõe levar a regra de modelos da política do projeto para o lado mais leve."
       },
       "askmeclearly": {
         "title": "Perguntas e relatórios mais curtos e fáceis de ler",
