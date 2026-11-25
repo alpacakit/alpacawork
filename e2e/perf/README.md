@@ -14,7 +14,8 @@ Showing/dismissing a closed overlay is measured separately with `--overlay --wid
 and view/history completion/abort. Presses use the DOM click(). At CPU 4×, when processing backs up the actual press intervals lag too, so
 also read `observation.presses[].at`. A body not reached for a task left midway is null; if the final task's body is not reached, the run is invalid.
 
-After a normal build, run the baseline and the candidate in turn (put the same script in both). Compare the medians of 3 runs per condition, at widths 1440×900 and 390×900,
+After a normal build, run the baseline and the candidate in turn (put the same script in both, with the shared files it imports such as `bar-entries.ts`).
+A phone's Time switch and Settings are reached through `bar-entries.ts`, on the bar or in the ☰ menu of a folded bar, so one script runs against builds from before and after the fold; only the press of the entry itself is measured. Compare the medians of 3 runs per condition, at widths 1440×900 and 390×900,
 CPU 1×/4×. 390 is desktop Chromium's touch and narrow-width emulation, not a physical device.
 
 ```sh

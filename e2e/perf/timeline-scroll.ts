@@ -5,6 +5,7 @@ import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { start } from '../server.ts';
 import { seedTimelineScroll } from '../fixture/timeline-scroll.ts';
 import { SAMPLE_NOW } from '../fixture/sample.ts';
+import { setStrips } from './bar-entries.ts';
 
 const output = resolve(process.argv[2]!); mkdirSync(output, { recursive: true });
 const width = Number(process.argv[3] ?? 1440), delay = Number(process.argv[4] ?? 0);
@@ -34,8 +35,7 @@ try {
   await page.goto(runtime.origin + '/?agent=1&task=T2063&zoom=21600000');
   if (width < 900) {
     await page.locator('[data-reader-frame-buttons] button').last().click();
-    const time = page.locator('header [data-strips]');
-    if (await time.getAttribute('aria-pressed') !== 'true') await time.click();
+    await setStrips(page, true);
   }
   await page.locator('[data-group-more=review] button').waitFor();
   if (await page.locator('[data-group-more=review] button').getAttribute('aria-expanded') !== 'true')
