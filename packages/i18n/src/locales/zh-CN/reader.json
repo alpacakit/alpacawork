@@ -311,6 +311,12 @@
       },
       "cause": "收到“{{title}}” · {{at}}",
       "changedTo": "已设为 {{state}}",
+      "conversation": {
+        "compacted": "压缩了对话并继续",
+        "compactedFill": "压缩了对话并继续 · 用量 {{before}} → {{after}}",
+        "compactedTokens": "压缩了对话并继续 · {{before}} → {{after}} 个令牌",
+        "new": "带着任务记录开始了新的对话"
+      },
       "end": {
         "again": {
           "question": "再次提出了同一个提问",
@@ -342,6 +348,7 @@
         "changed": "更改",
         "comment": "记录",
         "confirm": "验收",
+        "conversation": "对话",
         "dialogue": "消息",
         "done": "已完成",
         "error": "已停止",
@@ -383,6 +390,7 @@
     "sendBack": "退回…",
     "sentBody": "发给智能体的正文",
     "working": {
+      "compacted": "压缩了对话",
       "others_other": "还有 {{count}} 个",
       "tookOver": "因 {{agent}} 达到{{reason}}而接手"
     }

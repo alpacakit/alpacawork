@@ -12,6 +12,9 @@ export type ContextFigure = {
   waiting: boolean;
 };
 
+/** How often a Task's agents started a conversation anew and compacted one (the Task view's `conversations`). */
+export type ConversationCounts = { anew: number; compacted: number };
+
 /** The ring's reading; the same 80% rule as the plan limits. */
 export function contextFigure(context: ContextView): ContextFigure {
   const percent = contextPercent(context);

@@ -3,17 +3,19 @@ import { useTranslation } from "react-i18next";
 import type { ContextView } from "@alpacawork/contract/agent-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
-import { contextFigure } from "@/domain/context";
+import { contextFigure, type ConversationCounts } from "@/domain/context";
 import { cn } from "@/lib/utils";
 
 /* Hallmark · component: context meter · genre: modern-minimal · theme: the app's own tokens (the usage ring) */
 
 /**
  * How full a working agent's conversation is, at the end of its line: a ring and the percent (the tokens when its agent
- * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window; on a line that is
- * itself pressed (a child's), the same words are its tooltip instead.
+ * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window, how the
+ * conversation is kept workable (compacted near its limit, started anew with the Task's records) and, with
+ * `conversations`, how often that happened on the Task; on a line that is itself pressed (a child's), the figures are
+ * its tooltip instead.
  */
-export function ContextMeter({ context, press }: { context: ContextView; press: boolean }) {
+export function ContextMeter({ context, press, conversations }: { context: ContextView; press: boolean; conversations?: ConversationCounts }) {
   const { t, i18n } = useTranslation("people");
   const [open, setOpen] = useState(false);
   const figure = contextFigure(context);
@@ -44,6 +46,10 @@ export function ContextMeter({ context, press }: { context: ContextView; press: 
       </dl>
       {figure.waiting && <p className="m-0 mt-2 text-xs text-muted">{t("context.compacted")}</p>}
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
+      {/* How the conversation is kept workable, said where its fill is read; and how often it happened on this Task. */}
+      <p className="m-0 mt-3 text-xs text-muted">{t("context.kept")}</p>
+      {conversations && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", {
+        anew: t("context.anew", { count: conversations.anew }), compacted: t("context.compactions", { count: conversations.compacted }) })}</p>}
     </PopoverContent>
   </Popover>;
 }

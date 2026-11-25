@@ -17,7 +17,7 @@ import { taskBaseStateSchema } from './fields.js';
 import { reportMark } from './report-mark.js';
 import { TASK_LIFECYCLES, TASK_STATE } from '@alpacawork/raw/task-enums';
 import { taskActorSchema as actorSchema, taskLogSchema } from '@alpacawork/raw/task-log-schema';
-import { agentNameSchema, runActivityKindSchema, runActivityViewSchema, runCallerSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
+import { agentNameSchema, runActivityKindSchema, runActivityViewSchema, runCallerSchema, runCompactionSchema, runReasonSchema, runResultStateSchema, runRoleSchema, runStateSchema, sessionProviderSchema, tokenCountersSchema } from './run-contract.js';
 import { bodyMarkSchema, descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, logIdSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema } from './fields.js';
 import { errorEntrySchema, problemErrorSchema } from './problem.js';
 import { hostNoticeSchema } from './host-contract.js';
@@ -224,6 +224,8 @@ export const controlRunSchema = z.object({
   errorCause: runAvailabilitySchema.optional(),
   availability: runAvailabilitySchema.optional(),
   supersededBy: runIdSchema.optional(),
+  /** The compactions of its conversation while it ran (runCompactionSchema), oldest first; absent when none. */
+  compactions: z.array(runCompactionSchema).optional(),
   /** A joined Run names the Run whose work took its instruction in. */
   into: runIdSchema.nullable(),
   /** Whether the agent takes further instructions on its input while it works. */
@@ -575,6 +577,8 @@ export const taskViewSchema = z.object({
     summary: z.string().nullable(), submittedAt: z.iso.datetime({ offset: true }) }).strict()).nullable(),
   /** When the user asked for this Task; null when the user did not. */
   requestedByUser: z.object({ at: isoSchema }).strict().nullable(),
+  /** How often this Task's agents started a conversation anew (newConversationStarts) and compacted one, over all its Runs. */
+  conversations: z.object({ anew: z.number().int().nonnegative(), compacted: z.number().int().nonnegative() }).strict(),
 }).strict();
 /** Who stood at a Task over a History page's time: its placements and their Runs, as an end of a row names its agent. */
 export const historyCrewSchema = z.object({

@@ -2,7 +2,7 @@ import { questionApplicable, questionSnapshot } from '../control/question-rules.
 
 import { resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskViewDTO } from '@alpacawork/contract/control';
-import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving } from '@alpacawork/contract/run';
+import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving, newConversationStarts } from '@alpacawork/contract/run';
 import { runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
@@ -225,6 +225,17 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
       ...(successor ? { carriedOn: true, recipient: { role: roleOf(successor), profileKey: successor.agent, ...choices(successor) } } : {}),
       ...(placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {}) });
   }
+  // What happened to its agents' conversations: a Run starting one anew, and each compaction a Run's agent said.
+  const ranHere = (run: ControlRunDTO) => {
+    const placement = placements.get(run.placementId);
+    return placement?.taskId === task.id ? { author: { kind: roleOf(run), profileKey: profileOf(placement, run), ...choices(run) } } : {};
+  };
+  for (const run of newConversationStarts([...runs.values()]))
+    events.push({ ...event(run.id, 'conversation', run.startedAt!, '', ''), conversation: { change: 'new' }, ...ranHere(run) });
+  for (const run of runs.values()) (run.compactions ?? []).forEach((compaction, index) => {
+    const { at, ...fill } = compaction;
+    events.push({ ...event(`${run.id}.${index + 1}`, 'conversation', at, '', ''), conversation: { change: 'compacted', ...fill }, ...ranHere(run) });
+  });
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])
     events.push({ ...event(dialogue.messageId, 'dialogue', dialogue.at, dialogue.words, dialogue.answer ?? ''), author: { kind: 'human' }, ...coordinatorOf(dialogue.messageId),
       wordsKey: createHash('sha256').update(dialogue.words).digest('hex'), ...dialogue.answerFiles ? { answerFiles: dialogue.answerFiles } : {} });
@@ -353,7 +364,10 @@ export function projectedView(frame: PublishedFrame, id: string): TaskProjectedV
       .map(question => ({ ...question, destination: { kind: 'user' as const }, taskTitle: task.title })) : null,
     userReviews: decisionsAvailable ? mark ? [{ id: mark.id, taskId: id, taskTitle: task.title,
       title: mark.title ?? task.title, summary: mark.description ?? null, submittedAt: mark.at }] : [] : null,
-    requestedByUser: bundle.requestedByUser };
+    requestedByUser: bundle.requestedByUser,
+    conversations: { anew: newConversationStarts(bundle.runs.map(run => ({ id: run.id, placementId: run.placementId, resumes: run.resumes,
+      state: run.state, startedAt: run.started_at, supersededBy: run.supersededBy }))).length,
+      compacted: bundle.runs.reduce((total, run) => total + (run.compactions?.length ?? 0), 0) } };
 }
 
 /**

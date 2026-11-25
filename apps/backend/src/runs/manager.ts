@@ -108,7 +108,8 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   const launch = snapshot.invocation.launch;
   const activity = new OutputActivityReader(adapter, undefined,
     update => { try { recordReportedContext(root, launch.adapter, launch.values.model ?? null, update); }
-      catch (error) { console.error('Reported context could not be kept', error); } });
+      catch (error) { console.error('Reported context could not be kept', error); } },
+    fill => journal.append('compacted', fill));
   const finishActivity = (state: 'done' | 'failed') => {
     try { activity.finish(folder, state); } catch (error) { console.error('Activity finish failed', error); }
   };

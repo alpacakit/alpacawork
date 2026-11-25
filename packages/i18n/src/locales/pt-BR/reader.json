@@ -346,6 +346,12 @@
       },
       "cause": "Recebeu “{{title}}” · {{at}}",
       "changedTo": "Mudou para {{state}}",
+      "conversation": {
+        "compacted": "Compactou a conversa e continuou",
+        "compactedFill": "Compactou a conversa e continuou · {{before}} → {{after}} em uso",
+        "compactedTokens": "Compactou a conversa e continuou · {{before}} → {{after}} tokens",
+        "new": "Começou uma conversa nova com os registros da tarefa"
+      },
       "end": {
         "again": {
           "question": "Fez a mesma pergunta de novo",
@@ -377,6 +383,7 @@
         "changed": "Mudança",
         "comment": "Nota",
         "confirm": "Revisão",
+        "conversation": "Conversa",
         "dialogue": "Mensagem",
         "done": "Concluída",
         "error": "Parada",
@@ -418,6 +425,7 @@
     "sendBack": "Devolver…",
     "sentBody": "Texto enviado ao agente",
     "working": {
+      "compacted": "compactou a conversa",
       "others_one": "mais {{count}}",
       "others_many": "mais {{count}}",
       "others_other": "mais {{count}}",

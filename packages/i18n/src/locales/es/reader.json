@@ -346,6 +346,12 @@
       },
       "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
+      "conversation": {
+        "compacted": "Compactó la conversación y siguió",
+        "compactedFill": "Compactó la conversación y siguió · {{before}} → {{after}} en uso",
+        "compactedTokens": "Compactó la conversación y siguió · {{before}} → {{after}} tokens",
+        "new": "Empezó una conversación nueva con los registros de la tarea"
+      },
       "end": {
         "again": {
           "question": "Se hizo de nuevo la misma pregunta",
@@ -377,6 +383,7 @@
         "changed": "Cambio",
         "comment": "Nota",
         "confirm": "Revisión",
+        "conversation": "Conversación",
         "dialogue": "Mensaje",
         "done": "Completada",
         "error": "Detención",
@@ -418,6 +425,7 @@
     "sendBack": "Devolver…",
     "sentBody": "Texto enviado al agente",
     "working": {
+      "compacted": "compactó su conversación",
       "others_one": "+{{count}} más",
       "others_many": "+{{count}} más",
       "others_other": "+{{count}} más",

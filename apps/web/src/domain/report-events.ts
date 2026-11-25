@@ -26,6 +26,8 @@ export type ReportEvent = {
   /** On a failed Run's row, the cause the backend read in its error words. */
   cause?: HistoryEvent["cause"];
   carriedOn?: true;
+  /** On a conversation row, what happened to the agent's conversation: started anew, or compacted with its fill. */
+  conversation?: HistoryEvent["conversation"];
   /** A failed Run the column offers to close. */
   runId?: string;
   /** The child whose record it is, in its parent's column: what it reported, asked its ancestors or set, never a wait on you. */
@@ -121,6 +123,7 @@ export function reportEvent(event: HistoryEvent, turn: (taskId: string) => strin
     ...(event.answerFiles ? { answerFiles: event.answerFiles } : {}),
     ...(event.cause ? { cause: event.cause } : {}),
     ...(event.carriedOn ? { carriedOn: true } : {}),
+    ...(event.conversation ? { conversation: event.conversation } : {}),
     ...(event.result ? { result: event.result } : {}),
     mark: mark && (yours || closed) ? { ...mark, tone: yours ? "turn" : "quiet" } : mark,
     ...(event.fromChild ? { sourceTaskId: event.taskId } : {}),

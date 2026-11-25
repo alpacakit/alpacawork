@@ -12,5 +12,6 @@ export function recordedRun(run: ReadRunRecord): ControlRunDTO {
     takesInput: false, launchValues: { ...run.launch.values }, activity: null,
     ...(run.availability ? { availability: { ...run.availability } } : {}),
     ...(run.supersededBy ? { supersededBy: run.supersededBy } : {}),
+    ...(run.compactions?.length ? { compactions: run.compactions.map(compaction => ({ ...compaction })) } : {}),
     ...runUsageSource(run), createdAt: run.created_at };
 }

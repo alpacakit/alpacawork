@@ -1,7 +1,8 @@
 /**
- * The one owner of compacting a conversation before an instruction (task request --compact, task report
- * --next-conversation compact): whether an agent can, the request its Run carries, what the Run's start sends, how it
- * ended, and the latest one task get shows with each placement. Its Run holds the placement and the time it was asked.
+ * The one owner of compacting a conversation: one asked for before an instruction (task request --compact, task report
+ * --next-conversation compact) — whether an agent can, the request its Run carries, what the Run's start sends, how it
+ * ended, and the latest one task get shows with each placement; its Run holds the placement and the time it was asked —
+ * and every compaction the agent says happened, asked or its own, kept on its Run (recordCompaction).
  */
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
@@ -10,7 +11,9 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
 import type { Compaction } from '@alpacawork/contract/control';
 import type { CompactionLaunch, CompactionOutcome } from '@alpacawork/contract/run-protocol';
-import { runNumber, type RunRecord } from '@alpacawork/contract/run';
+import { RUN_COMPACTION_LIMIT, runNumber, type RunCompaction, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
+import type { RunTransaction } from '@alpacawork/runs';
+import { contextLimitsFor } from '../agents/context-limits.js';
 import type { AgentInvocation } from './launch-agent.js';
 
 type Launch = Pick<RunRecord['launch'], 'adapter' | 'values'>;
@@ -102,4 +105,14 @@ export function latestCompactions(db: DatabaseSync, placementIds: readonly strin
       r.state AS run_state,json_extract(r.record,'$.ended_at') AS run_ended FROM compactions c ${RUN}
     WHERE r.placement_id IN (SELECT value FROM json_each(?)) ORDER BY c.run_no`).all(JSON.stringify(placementIds));
   return new Map(rows.map(row => [String(row.placement_id), view(row)]));
+}
+
+/**
+ * Keep on `run` that its agent compacted its conversation at `at`, with the fill before and after it said and its
+ * model's window now, so History can say it after the Run ends. The latest RUN_COMPACTION_LIMIT are kept.
+ */
+export function recordCompaction(tx: RunTransaction, root: string, run: RuntimeRunRecord,
+  fill: Pick<RunCompaction, 'beforeTokens' | 'afterTokens'>, at: string): void {
+  const compaction: RunCompaction = { at, ...fill, windowTokens: contextLimitsFor(root, run).windowTokens };
+  tx.update({ ...run, compactions: [...run.compactions ?? [], compaction].slice(-RUN_COMPACTION_LIMIT) });
 }

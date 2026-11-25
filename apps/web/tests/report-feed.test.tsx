@@ -1290,6 +1290,22 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "dialogue" })).toBe("quiet");
 });
 
+test("a conversation row says the agent compacted its conversation, with how full it was before and after", async () => {
+  await inEnglish();
+  const owner = { kind: "owner", profileKey: "claude", modelId: "opus", effort: "high" } as const;
+  const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
+    { id: "R1.1", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 } },
+    { id: "R2", kind: "conversation", author: owner, conversation: { change: "new" } }]) } }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const words = await waitFor(() => {
+    const said = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
+    expect(said).toHaveLength(2);
+    return said;
+  });
+  expect(words).toContain("Compacted the conversation and carried on · 61% → 14% used");
+  expect(words).toContain("Started a new conversation with the task's records");
+});
+
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {
   await inEnglish();
   const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([{ id: "R1", kind: "error", title: "exit",

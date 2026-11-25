@@ -311,6 +311,12 @@
       },
       "cause": "{{at}} に受け取った「{{title}}」",
       "changedTo": "{{state}}にしました",
+      "conversation": {
+        "compacted": "会話を圧縮して続けました",
+        "compactedFill": "会話を圧縮して続けました · 使用量 {{before}} → {{after}}",
+        "compactedTokens": "会話を圧縮して続けました · {{before}} → {{after}} トークン",
+        "new": "タスクの記録を渡して、新しい会話で始めました"
+      },
       "end": {
         "again": {
           "question": "同じ質問を出し直しました",
@@ -342,6 +348,7 @@
         "changed": "変更",
         "comment": "記録",
         "confirm": "確認",
+        "conversation": "会話",
         "dialogue": "発言",
         "done": "完了",
         "error": "停止",
@@ -383,6 +390,7 @@
     "sendBack": "差し戻しを書く",
     "sentBody": "エージェントに送った本文",
     "working": {
+      "compacted": "会話を圧縮しました",
       "others_other": "ほか{{count}}体",
       "tookOver": "{{agent}} が{{reason}}で止まったため引き継ぎ"
     }
