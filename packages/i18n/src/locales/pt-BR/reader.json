@@ -347,6 +347,7 @@
       },
       "cause": "Recebeu “{{title}}” · {{at}}",
       "changedTo": "Mudou para {{state}}",
+      "compactedFill": "Contexto",
       "end": {
         "again": {
           "question": "Fez a mesma pergunta de novo",
@@ -377,7 +378,9 @@
         "answer": "Resposta",
         "changed": "Mudança",
         "comment": "Nota",
+        "compacted": "Compactação",
         "confirm": "Revisão",
+        "conversationNew": "Conversa nova",
         "dialogue": "Mensagem",
         "done": "Concluída",
         "error": "Parada",
@@ -390,6 +393,13 @@
         "run_end": "Parada",
         "urgent": "Urgente",
         "withdrawn": "Retirada"
+      },
+      "newBecause": {
+        "another_ai": "Começou de novo porque o trabalho passou para outra IA",
+        "asked": "A solicitação pediu uma conversa nova",
+        "handoff": "O responsável passou para uma conversa nova numa pausa do trabalho",
+        "handoffAt": "O responsável passou para uma conversa nova depois de “{{report}}”",
+        "unresumable": "Começou de novo porque não foi possível retomar a conversa anterior"
       },
       "older": "Mostrar {{n}} anteriores",
       "openTask": "Abrir “{{task}}”",

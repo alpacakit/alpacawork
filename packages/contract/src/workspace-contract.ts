@@ -20,3 +20,6 @@ export function folderNameProblem(name: string): "empty" | "slash" | "dots" | "l
 /** Make exactly one folder below `path` and return its absolute path. */
 export const madeFolderSchema = z.object({ path: z.string() }).strict();
 export type MadeFolder = z.infer<typeof madeFolderSchema>;
+/** The folder chosen in this PC's own window for choosing one; null when the person closed it without choosing. */
+export const chosenFolderSchema = z.object({ path: z.string().nullable() }).strict();
+export type ChosenFolder = z.infer<typeof chosenFolderSchema>;

@@ -23,6 +23,7 @@ import { FormField, useServerForm } from "@/features/forms/server-form";
 import { useDialogStore } from "@/state/dialog-store";
 import { useViewStore } from "@/state/view-store";
 import { ProjectOptions } from "./ProjectOptions";
+import { locationAbove } from "./ProjectSettings";
 
 /** The parent of a project at the top. */
 const TOP = "none";
@@ -75,6 +76,9 @@ export function CreateProject() {
     form.clearFailure();
   }, [intent.status]);
   const failure = intent.failure && formProblemText(intent.failure);
+  // Left empty, where its agents start: as the project settings say it, for the parent chosen.
+  const chosenParent = form.watch("parent");
+  const above = locationAbove(projects, chosenParent === TOP ? null : chosenParent);
   // Its folder list opens below the field: the dialog keeps its top and grows down, so what you pressed stays put.
   return <FormDialog title={t("project.title")} description={t("project.description")} className="mt-[8dvh] mb-auto max-h-[calc(92dvh-28px)] narrow:mt-3 narrow:h-[calc(100dvh-24px)] narrow:max-h-[calc(100dvh-24px)]"
     submitLabel={t("project.create")} pendingLabel={t("project.creating")} form={form}
@@ -97,8 +101,8 @@ export function CreateProject() {
         <ProjectOptions projects={projects} />
       </NativeSelect>}
     </FormField>
-    <FormField form={form} name="cwd" id="project-cwd" label={t("project.cwd")} optional
-      hint={<>{t("project.cwdHint")} <code className="font-mono [overflow-wrap:anywhere]">{root}</code></>}>
+    <FormField form={form} name="cwd" id="project-cwd" label={t("project.cwd")}
+      hint={above ? t("project.locationInherits", { path: above }) : t("project.locationRoot", { path: root })}>
       {(field) => <FolderInput {...field} value={field.value ?? ""} />}
     </FormField>
   </FormDialog>;

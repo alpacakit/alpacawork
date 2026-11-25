@@ -23,10 +23,13 @@
   "folderInput": {
     "cancel": "Cancelar nova pasta",
     "choose": "Escolher",
-    "close": "Fechar",
+    "chooseHere": "Escolher aqui",
+    "chooserTitle": "Escolher a pasta de trabalho",
+    "choosing": "Escolha a pasta na janela que abriu.",
+    "close": "Cancelar",
     "create": "Criar",
     "creating": "Criando…",
-    "empty": "Nenhuma pasta aqui dentro.",
+    "empty": "Nenhuma pasta",
     "example": "ex.: {{path}}",
     "inside": "Pastas aqui dentro",
     "made": "Esta é uma pasta recém-criada.",
@@ -43,10 +46,9 @@
       "taken": "Já existe uma pasta com este nome."
     },
     "reading": "Carregando…",
-    "truncated": "Somente as primeiras {{limit}} são exibidas. Feche a lista e digite um nome no campo para filtrar.",
+    "truncated": "Mostrando as primeiras {{limit}}. Digite um nome no campo para filtrar.",
     "up": "Subir",
-    "use": "Usar esta pasta",
-    "where": "Criar dentro de {{path}}"
+    "use": "Usar esta pasta"
   },
   "formDialog": {
     "cancel": "Cancelar"

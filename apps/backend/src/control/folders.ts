@@ -1,14 +1,16 @@
 /**
  * This PC's folders as a person picks one for a project's code: the folders in one folder, by name. It reads no file
- * and no file's name, and can make one child folder. A Run cannot ask (both entries require a person's connection).
- * Disk operations are asynchronous, so a slow mount holds only this answer.
+ * and no file's name, and can make one child folder, or shows this PC's own window for choosing one to a person at
+ * this PC. A Run cannot ask (every entry requires a person's connection). Disk operations are asynchronous, so a slow
+ * mount holds only this answer.
  */
+import { execFile, type ChildProcess } from 'node:child_process';
 import { mkdir, realpath, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { PROBLEM_CODE, Problem, parseInput, type ProblemReason } from '@alpacawork/core';
+import { PROBLEM_CODE, Problem, parseInput, platform, type FolderDialog, type ProblemReason } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
-import { makeFolderInput, type Folders, type MadeFolder } from '@alpacawork/contract';
+import { chooseFolderInput, makeFolderInput, type ChosenFolder, type Folders, type MadeFolder } from '@alpacawork/contract';
 import { workspaceContains, underHome } from './launch-directory.js';
 import { ownLocations } from './project-settings.js';
 
@@ -52,7 +54,7 @@ export async function makeFolder(root: string, input: { path: string; name: stri
 const isFolder = async (path: string) => { try { return (await stat(path)).isDirectory(); } catch { return false; } };
 
 /** Where a person starts looking: the folder holding the code of the newest active project with its own, else home. */
-async function start(root: string, home: string): Promise<string> {
+async function startFolder(root: string, home: string): Promise<string> {
   let near: string[];
   try {
     const store = new ControlStore(root, { busyTimeoutMs: 1000 }, true);
@@ -65,7 +67,7 @@ async function start(root: string, home: string): Promise<string> {
 
 export async function listFolders(root: string, input: { path?: string; prefix?: string; hidden?: boolean }): Promise<Folders> {
   const home = homedir();
-  const written = input.path || await start(root, home);
+  const written = input.path || await startFolder(root, home);
   if (!isAbsolute(underHome(written))) invalid('absolute_path', 'path must be an absolute path', { kind: 'path_must_absolute_path' });
   const path = resolve(underHome(written));
   let entries;
@@ -85,4 +87,40 @@ export async function listFolders(root: string, input: { path?: string; prefix?:
     .flat().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   return { path, parent: path === '/' ? null : dirname(path), home,
     folders: folders.slice(0, MAX_FOLDERS), truncated: folders.length > MAX_FOLDERS };
+}
+
+/** A chooser left open this long is closed, so a window nobody sees does not hold its answer for ever. */
+const DIALOG_MS = 10 * 60_000;
+/** The one chooser shown: another asked for closes it, so a person never has two. */
+let shown: ChildProcess | null = null;
+
+/**
+ * This PC's own window for choosing a folder, for a person whose screen is on this PC (`local`: this server's own page
+ * opened at a loopback name). It is a read, so a chooser left open holds no write behind it. It opens at the folder written, else where listing starts, and
+ * answers when the person chooses or cancels; `signal` (the screen gone) closes it.
+ */
+export async function chooseFolder(root: string, input: { path?: string; title: string }, at: { local: boolean; signal?: AbortSignal },
+  dialog: (start: string, title: string) => FolderDialog | null = (start, title) => platform.folderDialog(start, title, process.env)): Promise<ChosenFolder> {
+  const { path: written, title } = parseInput(chooseFolderInput, input);
+  if (!at.local) throw new Problem(PROBLEM_CODE.forbidden, 'This PC\'s folder chooser opens only for a screen opened on this PC', undefined,
+    { reason: { kind: 'folder_chooser_only_on_this_pc' } });
+  const typed = written && isAbsolute(underHome(written)) ? resolve(underHome(written)) : null;
+  const start = typed && await isFolder(typed) ? typed : await startFolder(root, homedir());
+  const command = dialog(start, title);
+  if (!command) throw new Problem(PROBLEM_CODE.unavailable, 'This PC has no folder chooser to show', undefined,
+    { reason: { kind: 'folder_chooser_unavailable' } });
+  shown?.kill();
+  return new Promise((done, fail) => {
+    const child = execFile(command.command, command.args, { timeout: DIALOG_MS, signal: at.signal, encoding: 'utf8' }, (error, stdout, stderr) => {
+      if (shown === child) shown = null;
+      const chosen = stdout.replace(/\r?\n$/, '');
+      if (!error && chosen) return done({ path: chosen.length > 1 ? chosen.replace(/\/+$/, '') : chosen });
+      // Cancelled, closed by another, timed out or the screen gone: nothing chosen.
+      if (!error || child.killed || error.name === 'AbortError'
+        || command.cancelled(typeof error.code === 'number' ? error.code : null, stderr)) return done({ path: null });
+      fail(new Problem(PROBLEM_CODE.unavailable, `This PC's folder chooser failed: ${error.message}`, undefined,
+        { reason: { kind: 'folder_chooser_unavailable' }, cause: error }));
+    });
+    shown = child;
+  });
 }

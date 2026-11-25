@@ -24,7 +24,9 @@ type PageReadState = {
   rows: ReadonlyMap<string, { value: TaskRowDTO }>;
   historyEvents: (id: string) => ReturnType<typeof recordEvents>;
 };
-const eventsFor = (state: PageReadState, task: ControlTreeDTO['tasks'][number]) => state.historyEvents(task.id);
+/** A Task's History events the list's time line reads: what happened to an agent's conversation is History's alone. */
+const eventsFor = (state: PageReadState, task: ControlTreeDTO['tasks'][number]) =>
+  state.historyEvents(task.id).filter(event => event.kind !== 'conversation');
 
 /** An opaque page cursor's encoding. What it must hold, and the reason each reader refuses it, stay with that reader. */
 const writeCursor = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');

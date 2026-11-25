@@ -216,6 +216,8 @@
       "filesystem_root_cannot_task_root": "The filesystem root cannot be a task root",
       "final_reply_too_large": "The final answer is too large",
       "finished_run_must_have_ended_state": "A finished run must have an end state",
+      "folder_chooser_only_on_this_pc": "This PC's folder chooser opens only for a screen opened on this PC",
+      "folder_chooser_unavailable": "This PC has no folder chooser to show",
       "has_open_questions_withdraw_them_before_finishing": "{{taskId}} has unanswered questions ({{ids}}). Withdraw them before finishing",
       "has_open_requests_finish_after_their_returns": "{{taskId}} still has open requests ({{count}}). Receive their replies before finishing",
       "held_review_sent_back_once_it_returns_waiting_task_report_state_waiting": "Return a held review to waiting before sending it back (task report --state waiting)",

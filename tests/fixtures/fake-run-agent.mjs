@@ -64,6 +64,12 @@ if (branch) {
     if (plan.activity) emit({ type: 'assistant', parent_tool_use_id: null, timestamp: new Date().toISOString(), message: { content: [
       { type: 'tool_use', id: 'fake-tool', name: 'Bash', input: { command: plan.activityCommand ?? 'private' } }] } });
   }
+  // The agent compacts its own conversation as it nears its limit: its fill before, then the boundary with the fill after.
+  if (plan.compact && format === 'claude') {
+    emit({ type: 'assistant', parent_tool_use_id: null, message: { content: [{ type: 'text', text: 'Working' }],
+      usage: { input_tokens: plan.compact.before, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 } } });
+    emit({ type: 'system', subtype: 'compact_boundary', session_id: session, compact_metadata: { trigger: 'auto', post_tokens: plan.compact.after } });
+  }
   if (format !== 'claude' && format !== 'codex') emit({ type: 'input.taken', id: instruction.id });
   if (plan.gate) while (!existsSync(plan.gate)) await delay(20);
   if (plan.receiveJoined) lines.close();

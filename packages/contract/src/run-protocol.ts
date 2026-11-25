@@ -78,6 +78,9 @@ const payloads = {
   command_stopped: z.object({ session: z.number().int().positive(), started: z.string(), signal: z.enum(['SIGTERM', 'SIGKILL']), seconds: z.number().int().positive(), pids: z.array(z.number().int().positive()),
     failed: z.array(z.object({ pid: z.number().int().positive(), code: z.enum(['EPERM', 'ESRCH']) }).strict()) }).strict(),
   exited: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict(),
+  /** The agent compacted its conversation: how full it was before and after, when it said. */
+  compacted: z.object({ beforeTokens: z.number().int().nonnegative().safe().nullable(),
+    afterTokens: z.number().int().nonnegative().safe().nullable() }).strict(),
   completed: observationSchema,
 };
 export const eventSchema = z.discriminatedUnion('type', Object.entries(payloads).map(([type, payload]) =>

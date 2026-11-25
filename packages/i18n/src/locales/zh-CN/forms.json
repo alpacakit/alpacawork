@@ -23,10 +23,13 @@
   "folderInput": {
     "cancel": "取消新建文件夹",
     "choose": "选择",
-    "close": "关闭",
+    "chooseHere": "在此选择",
+    "chooserTitle": "选择工作文件夹",
+    "choosing": "请在打开的窗口中选择文件夹。",
+    "close": "取消",
     "create": "创建",
     "creating": "正在创建…",
-    "empty": "里面没有文件夹。",
+    "empty": "没有文件夹",
     "example": "例如 {{path}}",
     "inside": "子文件夹",
     "made": "这是新创建的文件夹。",
@@ -43,10 +46,9 @@
       "taken": "已存在同名的文件夹。"
     },
     "reading": "正在加载…",
-    "truncated": "只显示前 {{limit}} 个。请关闭列表，在输入框中输入名称来缩小范围。",
+    "truncated": "仅显示前 {{limit}} 个。在输入框中输入名称可缩小范围。",
     "up": "上一级",
-    "use": "使用此文件夹",
-    "where": "在 {{path}} 中创建"
+    "use": "使用此文件夹"
   },
   "formDialog": {
     "cancel": "取消"
