@@ -98,24 +98,35 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
 }
 
 /**
- * The room a row keeps: its legend for each shape a day of it can take, unseen and out of reach, in the left's place
- * (the tallest of them). Days whose words differ only in their digits (of one width) take the same room, so one of
- * each is enough. Drawn when the row's days or what it says change, never as a day is chosen.
+ * The room a row keeps: one legend, unseen and out of reach, in the left's place, made of the widest words each of its
+ * lines takes on any day (`legendRoom`). Each line of a legend is a line of its own, and wider words never make one
+ * shorter, so it is as tall as the tallest day's. Made when the row's days or what it says change, never as a day is
+ * chosen.
  */
 const LegendRoom = memo(function LegendRoom({ say, names }: { say: RowSay; names: string[] }) {
-  return legendShapes(say, names).map(at => <div key={at} aria-hidden inert className="invisible col-start-1 row-start-1 min-w-0">
-    <DayLegend still say={say} at={at} day={names[at]!} onList={() => {}} /></div>);
+  const room = legendRoom(say, names);
+  return <div aria-hidden inert className="invisible col-start-1 row-start-1 min-w-0">
+    <DayLegend still say={room.say} at={0} day={room.day} onList={() => {}} /></div>;
 }, (a, b) => a.say === b.say && a.names === b.names);
 
-/** One day of each shape a row's legend takes: its words with every digit the same (digits are of one width). */
-export function legendShapes(say: RowSay, names: string[]) {
-  const seen = new Map<string, number>();
-  names.forEach((name, at) => {
-    const words = [name, say.total(at), ...(say.parts?.(at) ?? []).map(part => `${part.name}:${part.value}:${part.share ?? ""}:${part.list ? ">" : ""}`),
-      say.line ? `${say.line.value(at)}:${say.line.base(at)}` : ""].join("|").replace(/\d/g, "0");
-    if (!seen.has(words)) seen.set(words, at);
+/** How wide words stand: a full-width letter (Japanese, Chinese) as two. */
+const breadth = (words: string) => [...words].reduce((sum, letter) => sum + (/[\u2e80-\uffef]/.test(letter) ? 2 : 1), 0);
+const widest = (all: string[]) => all.reduce((most, words) => breadth(words) > breadth(most) ? words : most, "");
+/** A row's legend made of the widest words each of its lines takes over its days (`names`): its room. */
+export function legendRoom(say: RowSay, names: string[]): { day: string; say: RowSay } {
+  const days = names.map((_, at) => at);
+  const parts = days.map(at => say.parts?.(at) ?? []);
+  const count = Math.max(0, ...parts.map(each => each.length));
+  const room = Array.from({ length: count }, (_, index) => {
+    const of = parts.map(each => each[index]).filter(part => !!part);
+    return { color: of[0]?.color ?? "", name: widest(of.map(part => part.name)), value: widest(of.map(part => part.value)),
+      share: of.some(part => part.share) ? widest(of.map(part => part.share ?? "")) : undefined,
+      list: of.find(part => part.list)?.list };
   });
-  return [...seen.values()];
+  const line = say.line, values = line ? widest(days.map(at => line.value(at))) : "", bases = line ? widest(days.map(at => line.base(at))) : "";
+  const total = widest(days.map(at => say.total(at)));
+  return { day: widest(names), say: { name: say.name, total: () => total, parts: () => room,
+    line: line && { name: line.name, value: () => values, base: () => bases } } };
 }
 
 /** A row's name, in the small grey type of every name. */

@@ -3,7 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
-import { dayIntent, inSpanOf, legendShapes, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
+import { dayIntent, inSpanOf, legendRoom, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -211,14 +211,16 @@ test("a day the pointer passes going left fast, on its way to the row's legend, 
   expect(dayIntent(at(800, 100, 0), at(798, 100, 400))).toBe("now");
 });
 
-test("a row keeps room for one legend of each shape its days take, not one a day: three years of days come to a handful", () => {
-  const names = Array.from({ length: 1096 }, (_, at) => `${at % 12 + 1}/${at % 28 + 1}（${"月火水木金土日"[at % 7]}）`);
-  const say = { name: "トークン", total: (at: number) => `${(at * 37) % 900}万`,
-    parts: (at: number) => [{ color: "", name: "出力", value: `${at % 90}万` }],
-    line: { name: "1件あたり", value: (at: number) => at % 5 ? `${at % 9}万` : "—", base: (at: number) => at % 5 ? `終わった ${at % 30}件` : "終わった 0件" } };
-  const shapes = legendShapes(say, names);
-  expect(shapes.length).toBeLessThan(100);
-  // Words that differ, not only digits, each keep a room of their own.
-  const lines = new Set(shapes.map(at => say.line.value(at) === "—"));
-  expect(lines).toEqual(new Set([true, false]));
+test("a row keeps the room of one legend made of the widest words each of its lines takes over its days", () => {
+  const names = ["1/5（月）", "12/25（金）", "3/3（水）"];
+  const say = { name: "トークン", total: (at: number) => ["9万", "1,234万", "50万"][at]!,
+    parts: (at: number) => [{ color: "", name: "出力", value: ["1万", "2万", "300万"][at]!, share: ["5%", "", "12%"][at] }],
+    line: { name: "1件あたり", value: (at: number) => ["—", "8万", "1.5万"][at]!, base: (at: number) => ["終わった 0件", "終わった 12件", "受け入れたタスクが10件未満"][at]! } };
+  const room = legendRoom(say, names);
+  expect(room.day).toBe("12/25（金）");
+  expect(room.say.total(0)).toBe("1,234万");
+  expect(room.say.parts!(0)[0]).toMatchObject({ value: "300万", share: "12%" });
+  expect(room.say.line!.value(0)).toBe("1.5万");
+  // A full-width letter stands as two: the longest words to the eye, not by their count of letters.
+  expect(room.say.line!.base(0)).toBe("受け入れたタスクが10件未満");
 });
