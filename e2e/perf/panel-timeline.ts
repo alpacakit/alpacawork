@@ -8,6 +8,7 @@ import { dirname, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 import { SAMPLE_NOW } from '../fixture/sample.ts';
 import { conversation, startPanelFixture, preparePanel, ensureConversation, PANEL_DRAFT, readPanelDraft } from './panel-fixture.ts';
+import { leaveBarMenu, stripsSwitch } from './bar-entries.ts';
 
 type Fiber = { tag: number; flags: number; alternate: Fiber | null; child: Fiber | null; sibling: Fiber | null; type: unknown; actualDuration?: number };
 type Phase = { commits: number; renders: number; byName: Record<string, number> };
@@ -165,8 +166,11 @@ try {
       await page.waitForTimeout(450);
       await run('detail-close-'+round, () => page.getByRole('button', { name:'Close details', exact:true }).click());
       if (width<900) {
-        await run('timeline-close-'+round, () => page.locator('header [data-strips]').click());
-        await run('timeline-open-'+round, () => page.locator('header [data-strips]').click());
+        // Only the switch's press is measured; reaching it in the bar's menu and leaving the menu are not.
+        const time = await stripsSwitch(page);
+        await run('timeline-close-'+round, () => time.click());
+        await run('timeline-open-'+round, () => time.click());
+        await leaveBarMenu(page);
       }
       await run('timeline-zoom-'+round, async () => {
         await page.locator('[data-time-tree]').focus();

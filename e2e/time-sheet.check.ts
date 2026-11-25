@@ -143,10 +143,12 @@ readOnlyTest(seedDenseTimelineScroll)('turning Time off while the first answer i
     await open(page, runtime, '?agent=1&task=T2063&strip=on&zoom=21600000');
     await page.locator('[data-reader-frame-buttons] button').last().click();
     await expect.poll(() => partial).toBe(true);
-    const time = page.locator('header [data-strips]');
-    await expect(time).toHaveAttribute('aria-pressed', 'true');
+    // A phone asks for the strips from the bar's menu.
+    await page.locator('[data-bar-menu-trigger]').click();
+    const time = page.locator('[data-bar-menu] [data-strips]');
+    await expect(time).toHaveAttribute('aria-checked', 'true');
     await time.click();
-    await expect(time).toHaveAttribute('aria-pressed', 'false');
+    await expect(time).toHaveAttribute('aria-checked', 'false');
     off = true;
     release(); await page.waitForTimeout(350);
     expect(later).toBe(0);
