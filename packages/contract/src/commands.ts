@@ -13,7 +13,7 @@ import { commandPath, commandPrefix } from './command-path.js';
 import { errorEntrySchema, problemReasonSchema } from './problem.js';
 import { personalSettingsResponseSchema } from './personal-settings.js';
 import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
-import { stopResponseSchema, runStepsPageSchema, runStepDetailSchema } from './run-contract.js';
+import { stopResponseSchema, runStepsPageSchema, runStepDetailSchema, runConditionsViewSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
@@ -28,7 +28,7 @@ import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportS
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runStepsInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runStepsInput, runConditionsInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -427,6 +427,11 @@ const definitions = {
       number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],
     { output: z.union([runStepsPageSchema, runStepDetailSchema]), help: help(
       'A Run from before step times were kept, or an end not yet seen, has null times.') }),
+  'run/conditions': command('read', 'Read what a Run ran under: alpacawork\'s version and release, the commit where the agent worked, and ' +
+    'each skill it could read with a digest of its files; and what changed since the Run before it (release, skills) and since the previous ' +
+    'Run of the same placement (model, effort, command)', runConditionsInput, [text('run', 'Run ID')],
+    { output: runConditionsViewSchema, help: help('A Run from before conditions were kept has null conditions; a change is read only between two Runs that kept them.',
+      'A project policy change is a body_updated record of the project (task get --task <project> --log <count>).') }),
   'run/stop': command('write', 'Stop a Run; task report --state stopped stops a Task with its subtree', runStopInput,
     [text('run', 'Run ID'), quote, sourceRequest], { output: stopResponseSchema }),
   'field/get': command('read', 'Read the shape of the values a Task writes, as JSON Schema: its fields in order, each with ' +

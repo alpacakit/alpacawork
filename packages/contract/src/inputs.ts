@@ -239,6 +239,8 @@ export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty
 export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
 
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
+/** run conditions: what one Run ran under. */
+export const runConditionsInput = z.object({ run: runIdSchema });
 /**
  * run steps: a Run's steps with when each started and ended, `from` on (the latest `limit` without `from`); with
  * `step`, what that one step ran and got back instead.

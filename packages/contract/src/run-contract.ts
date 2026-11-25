@@ -13,7 +13,7 @@ export const runNumber = (id: RunId): number => Number(id.slice(1));
 export const compareRunIds = (a: { id: RunId }, b: { id: RunId }): number => runNumber(a.id) - runNumber(b.id);
 /** Raw logs and temporary launch files belonging to one Run. */
 export const RUN_FILES = {
-  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', steps: 'steps.jsonl', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
+  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', steps: 'steps.jsonl', conditions: 'conditions.json', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
 } as const;
 export const RUN_RESULT_LIMIT = 1024 * 1024;
 /** What became of a Run's final reply: `pending` until it ends, `present` with the text, otherwise why there is none. */
@@ -229,3 +229,30 @@ export const stopResponseSchema = z.object({
   cancelled: z.array(runIdSchema),
   stop_requested: z.array(runIdSchema),
 });
+
+/**
+ * What a Run ran under, beyond its launch (`launch` in its record: the agent, its command and the chosen model and
+ * effort), observed once by its manager just before the agent started: alpacawork's version and the release it ran
+ * from, the commit checked out where the agent worked, and each personal skill the agent could read with a digest of
+ * its files. Two Runs whose conditions differ ran under a change (a skill updated, alpacawork replaced).
+ */
+export const runConditionsSchema = z.object({
+  v: z.literal(1), observedAt: z.iso.datetime({ offset: true }),
+  version: z.string().min(1), release: z.string().nullable(), source: z.string().nullable(),
+  cwd: z.object({ path: z.string(), commit: z.string().regex(/^[0-9a-f]{40,64}$/).nullable() }).strict(),
+  skills: z.object({ folder: z.string(), items: z.array(z.object({ name: z.string().min(1), digest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict()) }).strict(),
+}).strict();
+export type RunConditions = z.infer<typeof runConditionsSchema>;
+/** One difference between a Run's conditions and an earlier Run's: what it is, and its value before and after. */
+export const runConditionChangeSchema = z.object({ kind: z.enum(['release', 'skill', 'model', 'effort', 'command']),
+  name: z.string().nullable(), before: z.string().nullable(), after: z.string().nullable() }).strict();
+export type RunConditionChange = z.infer<typeof runConditionChangeSchema>;
+/**
+ * run conditions: what Run `run` ran under (null for a Run from before they were kept), what changed in alpacawork and
+ * the skills since the latest earlier Run that kept its conditions (`sinceEarlier`), and what changed in the launch since
+ * the previous Run of the same placement (`sincePlacement`: a model or effort switched, the command changed).
+ */
+export const runConditionsViewSchema = z.object({ run: runIdSchema, conditions: runConditionsSchema.nullable(),
+  sinceEarlier: z.object({ run: runIdSchema, changes: z.array(runConditionChangeSchema) }).strict().nullable(),
+  sincePlacement: z.object({ run: runIdSchema, changes: z.array(runConditionChangeSchema) }).strict().nullable() }).strict();
+export type RunConditionsView = z.infer<typeof runConditionsViewSchema>;

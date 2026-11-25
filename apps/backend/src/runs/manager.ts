@@ -12,6 +12,7 @@ import { OutputActivityReader } from './activity.js';
 import { recordReportedContext } from '../agents/context-reported.js';
 import { appendReceipt, endOutcome, publishCompletion, readEnd, runExpired, type Outcome } from './result-observation.js';
 import { CommandWatch } from './command-watch.js';
+import { observeConditions, recordConditions } from './conditions.js';
 import { terminateAgent } from './termination.js';
 import { POLL_INTERVAL_MS } from '../poll-interval.js';
 import { inputAwaitsReceipt, localStopSchema, PROTOCOL_LIMITS } from '@alpacawork/contract/run-protocol';
@@ -90,6 +91,9 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
     observedInputs.set(inputId, 'attempted');
   };
   let launched: Awaited<ReturnType<typeof launchAgent<string>>>;
+  // What a Task's Run runs under, seen just before its agent starts (a coordinator's turns are the conversation's).
+  if (!coordinator) recordConditions(folder, () => observeConditions({ adapter: snapshot.invocation.launch.adapter,
+    cwd: snapshot.cwd, version: snapshot.version, release: snapshot.release }));
   try {
     // Without a Run credential the agent calls as the conversation it speaks for, with the server alone.
     launched = await launchAgent<string>({ invocation: snapshot.invocation, folder, root, cwd: snapshot.cwd,

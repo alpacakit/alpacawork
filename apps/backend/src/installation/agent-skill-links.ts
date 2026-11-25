@@ -18,6 +18,12 @@ const PERSONAL_SKILLS: Readonly<Record<BuiltinAdapterId, string | null>> = {
   pi: null, // https://pi.dev/docs/latest/skills
 };
 
+/** The folder an agent of `kind` reads personal skills from, in `home`: its own, else the shared ~/.agents/skills. */
+export const personalSkillsFolder = (kind: string, home: string): string => {
+  const own = Object.hasOwn(PERSONAL_SKILLS, kind) ? PERSONAL_SKILLS[kind as BuiltinAdapterId] : null;
+  return own ? join(home, own) : managedSkillsRoot(home);
+};
+
 export type AgentSkillLink = { path: string; target: string; action: 'create-folder' | 'create' | 'keep' | 'conflict' };
 
 /** The links live in the HOME that owns the root, never in the caller's: one folder for each linked kind that HOME uses. */
