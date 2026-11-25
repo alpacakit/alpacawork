@@ -52,6 +52,8 @@ function CloseGuide({ screen, className }: { screen: GuideScreen; className?: st
 type Box = { left: number; top: number; width: number; height: number };
 type Placed = { target: Box; x: number; y: number; side: GuideSide; arrow: number };
 const MARGIN = 8, GAP = 12, ARROW_ROOM = 16;
+/** How far the ring is drawn outside its part: its offset and its line (ring-offset-2, ring-2). */
+const RING = 4;
 /** How long a balloon is on the screen before it has stood there: one that came and went within a blink was not shown. */
 const STOOD_MS = 150;
 /** How long a balloon stands before the motion of its step (`show`) begins: its words are read first. */
@@ -161,9 +163,12 @@ function scrollerOf(element: Element | null): HTMLElement | null {
   }
   return null;
 }
-/** Whether `element` (or what is in it) is what stands in front at this point of the screen. */
+/**
+ * Whether `element` (or what is in it) is what stands in front at this point of the screen. The guide's own buttons
+ * are looked through: the balloon only points at what is there.
+ */
 const inFront = (element: Element, across: number, down: number) => {
-  const front = document.elementFromPoint(across, down);
+  const front = document.elementsFromPoint(across, down).find(each => !each.closest("[data-guide-balloon]"));
   return !!front && element.contains(front);
 };
 /**
@@ -182,10 +187,37 @@ export function seenPart(box: Box, seen: { top: number; bottom: number }): Box {
   const top = Math.max(box.top, seen.top), bottom = Math.min(box.top + box.height, seen.bottom);
   return bottom > top ? { ...box, top, height: bottom - top } : box;
 }
-/** `element`'s box as seen in the pane it scrolls in (seenPart); its whole box where it scrolls in none. */
+/**
+ * `element`'s box as seen: in the pane it scrolls in (seenPart; its whole box where it scrolls in none), less what
+ * stands over it there (frontPart: a detail widened over the list), from its middle or its head, whichever is in front.
+ */
 function seenBoxOf(element: HTMLElement): Box {
   const pane = scrollerOf(element.parentElement);
-  return pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+  const box = pane ? seenPart(boxOf(element), seenArea(pane)) : boxOf(element);
+  const across = box.left + box.width / 2, front = (x: number, y: number) => inFront(element, x, y);
+  const down = [box.top + box.height / 2, box.top + Math.min(box.height, HEAD) / 2].find(y => front(across, y));
+  return down === undefined ? box : frontPart(box, { x: across, y: down }, front);
+}
+/**
+ * What of a part (`box`) stands in front (`front`), from a point of it that does (`from`): as far across and down from
+ * that point, each way, as it still does, to the pixel; where something stands over it, kept the ring's own width
+ * (RING) short of that. The ring goes round that and the balloon points at it, never over a surface lying over the rest
+ * of the part.
+ */
+export function frontPart(box: Box, from: { x: number; y: number }, front: (x: number, y: number) => boolean): Box {
+  // The edge of what is in front between a point in front (`seen`) and the box's edge (`edge`): the box's own where
+  // no more than the ring's width of it is hidden (a neighbour touching it), else where it stops being in front.
+  const reach = (seen: number, edge: number, inFrontAt: (at: number) => boolean) => {
+    const toward = edge > seen ? 1 : -1, last = edge - toward * 0.5;
+    if (inFrontAt(last)) return edge;
+    let hidden = last;
+    while (Math.abs(hidden - seen) > 1) { const middle = (seen + hidden) / 2; if (inFrontAt(middle)) seen = middle; else hidden = middle; }
+    const stop = Math.round(seen);
+    return Math.abs(edge - stop) <= RING ? edge : stop - toward * RING;
+  };
+  const left = reach(from.x, box.left, x => front(x, from.y)), right = reach(from.x, box.left + box.width, x => front(x, from.y));
+  const top = reach(from.y, box.top, y => front(from.x, y)), bottom = reach(from.y, box.top + box.height, y => front(from.x, y));
+  return { left, top, width: right - left, height: bottom - top };
 }
 /**
  * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there
