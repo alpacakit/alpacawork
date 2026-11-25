@@ -26,8 +26,8 @@
     "none": "いまかかっている上限はありません",
     "place": {
       "model": "{{role}}（{{model}}）",
-      "namedOnly": "指定したときだけ使う",
-      "note": "タスクは、設定の「{{title}}」の上から順に、上限に達していない最初の AI を使います。"
+      "note": "ヘッダーの表示は、設定の「{{title}}」の順番と使用量で決まります。",
+      "notListed": "「{{title}}」に含まれません"
     },
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",

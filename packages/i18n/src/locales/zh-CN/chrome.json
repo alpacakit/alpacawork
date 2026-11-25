@@ -26,8 +26,8 @@
     "none": "当前没有上限",
     "place": {
       "model": "{{role}}（{{model}}）",
-      "namedOnly": "仅在指定时使用",
-      "note": "任务按设置中「{{title}}」从上到下，使用第一个未达上限的 AI。"
+      "note": "顶栏显示哪个 AI，取决于设置中「{{title}}」的顺序和用量。",
+      "notListed": "不在「{{title}}」中"
     },
     "readAgo_other": "{{count}} 分钟前更新",
     "readNow": "刚刚更新",

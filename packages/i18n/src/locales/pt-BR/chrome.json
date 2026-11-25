@@ -28,8 +28,8 @@
     "none": "Nenhum limite agora",
     "place": {
       "model": "{{role}} ({{model}})",
-      "namedOnly": "Só quando nomeada",
-      "note": "As tarefas usam a primeira IA, de cima para baixo em “{{title}}” nas configurações, que não atingiu o limite."
+      "note": "O que o cabeçalho mostra depende da ordem em “{{title}}” nas configurações e do uso.",
+      "notListed": "Não está em “{{title}}”"
     },
     "readAgo_one": "Atualizado há {{count}} min",
     "readAgo_many": "Atualizado há {{count}} min",

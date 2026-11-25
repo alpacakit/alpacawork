@@ -46,7 +46,7 @@ test("the menu says which agents tasks use, and drops a reset window's old figur
   open({ agents: [agent("claude", [reset]), agent("codex", [week(27)])], stack: [{ adapter: "claude", model: "opus" }] });
   const block = (adapter: string) => document.querySelector<HTMLElement>(`[data-limit-agent=${adapter}]`)!;
   expect(block("claude").querySelector("[data-limit-place]")?.textContent).toBe("Primary (opus)");
-  expect(block("codex").querySelector("[data-limit-place]")?.textContent).toBe("Used only when named");
+  expect(block("codex").querySelector("[data-limit-place]")?.textContent).toBe("Not in “AI for tasks”");
   expect(block("claude").textContent).not.toMatch(/100%/);
   expect(block("claude").textContent).toMatch(/Reset · the new usage is not read yet/);
 });

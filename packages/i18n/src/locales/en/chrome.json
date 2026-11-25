@@ -27,8 +27,8 @@
     "none": "No limits apply now",
     "place": {
       "model": "{{role}} ({{model}})",
-      "namedOnly": "Used only when named",
-      "note": "Tasks use the first AI, from the top of “{{title}}” in settings, whose limit is not reached."
+      "note": "What the header shows depends on the order in “{{title}}” in settings and on usage.",
+      "notListed": "Not in “{{title}}”"
     },
     "readAgo_one": "Updated {{count}} min ago",
     "readAgo_other": "Updated {{count}} min ago",

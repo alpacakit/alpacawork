@@ -46,11 +46,11 @@ function WindowRow({ window, now, scoped, shown }: { window: LimitWindow; now: n
 
 /**
  * Where an agent stands in the stack tasks run on, in the words of the settings that set it: "Primary (opus) · Fallback 2
- * (sonnet)", each row with its model, as one agent can stand in more than one row; or that tasks use it only when named.
+ * (sonnet)", each row with its model, as one agent can stand in more than one row; or that the stack does not list it.
  */
 function placeWords(agent: AgentLimits, stack: AgentLimitsResponse["stack"], t: (key: string, options?: Record<string, unknown>) => string): string {
   const places = stackPlaces(agent.adapter, stack);
-  if (places.length === 0) return t("limits.place.namedOnly");
+  if (places.length === 0) return t("limits.place.notListed", { title: t("panels:agentSettings.aiStack.title") });
   return places.map(({ at, model }) => {
     const role = at === 0 ? t("panels:agentSettings.aiStack.first") : t("panels:agentSettings.aiStack.fallback", { n: at });
     return model ? t("limits.place.model", { role, model }) : role;
@@ -138,7 +138,7 @@ export function LimitsMenu() {
       <div data-limits-menu lang={i18n.language} className="pt-2">
         {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
           shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}
-        {/* Why the bar shows the agent it does, when another reads as free: the stack decides, not the figures alone. */}
+        {/* What decides the agent the bar shows, when another reads as free: the stack's order with the figures, not the figures alone. */}
         <p className="m-0 mt-4 border-t border-line pt-3 text-xs text-pretty text-muted">
           {t("limits.place.note", { title: t("panels:agentSettings.aiStack.title") })}</p>
       </div>
