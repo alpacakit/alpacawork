@@ -59,6 +59,7 @@ const paths = {
     </>
   ),
   activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
+  chart: <path d="M4 4v16h16M8 16v-4m5 4V8m5 8V5" />,
   /* An instruction the agent has not read yet: a clock, as a chat marks a message still on its way. */
   unread: (
     <>

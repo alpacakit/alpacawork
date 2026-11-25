@@ -196,16 +196,37 @@ export function ReaderBack({ toList }: { toList: boolean }) {
 export function FrameButtons({ canDock, turn }: { canDock: boolean; turn?: ReaderPane }) {
   const { t } = useTranslation("reader");
   const grow = useGrow(canDock);
-  const turnLabel = turn === "analysis" ? t("readerHeader.details") : t("analysis:face.analysis");
   return <span data-reader-frame-buttons className={`flex flex-none items-center ${HEAD_MARK_GAP} ${HEAD_ROW}`}>
-    {turn && <Button type="button" data-reader-turn variant="quiet" aria-label={turnLabel} title={turnLabel} onClick={turnReader}
-      className={cn(HEAD_MARK, "w-auto min-w-8 px-1.5 text-xs narrow:w-auto")}>
-      <Icon name={turn === "analysis" ? "file" : "activity"} className="size-4 @min-[22rem]/reader:hidden" />
-      <span className="@max-[22rem]/reader:hidden">{turnLabel}</span>
-    </Button>}
+    {turn && <ReaderFaceControl analysis={turn === "analysis"} />}
     {grow && <FrameButton data-reader-grow icon={grow.grown ? "minimize" : "maximize"} label={grow.label} pressed={grow.grown} onPress={grow.toggle} />}
     <FrameButton icon="close" label={t("readerHeader.close")} title={t("readerHeader.closeShort")} onPress={closeReaderStep} />
   </span>;
+}
+
+/** On the sheet, show both faces in one touch target and keep the current face marked. */
+function ReaderFaceControl({ analysis }: { analysis: boolean }) {
+  const { t } = useTranslation("reader");
+  const sheet = useSheetControl();
+  const analysisLabel = t("analysis:face.analysis");
+  const destination = analysis ? t("readerHeader.details") : analysisLabel;
+  if (sheet) return <Button type="button" data-reader-turn variant="ghost" aria-label={analysisLabel}
+    aria-pressed={analysis} title={destination} onClick={turnReader}
+    className="h-11 min-h-11 flex-none rounded-full px-0 py-0">
+    <span aria-hidden="true" className="flex items-center rounded-full border border-line bg-bg p-0.5">
+      <FaceMark icon="file" current={!analysis} />
+      <FaceMark icon="chart" current={analysis} />
+    </span>
+  </Button>;
+  return <Button type="button" data-reader-turn variant="quiet" aria-label={destination} title={destination} onClick={turnReader}
+    className={cn(HEAD_MARK, "w-auto min-w-8 px-1.5 text-xs")}>
+    <Icon name={analysis ? "file" : "activity"} className="size-4 @min-[22rem]/reader:hidden" />
+    <span className="@max-[22rem]/reader:hidden">{destination}</span>
+  </Button>;
+}
+
+function FaceMark({ icon, current }: { icon: IconName; current: boolean }) {
+  return <span className={cn("grid size-6 place-items-center rounded-full",
+    current ? "bg-press text-ink ring-1 ring-inset ring-press-line" : "text-muted")}><Icon name={icon} className="size-4" /></span>;
 }
 
 /** What Expand grows, if this frame can: a phone's sheet to the whole screen and back, a docked window to the full width and back. */
