@@ -8,7 +8,7 @@ import type { EpisodeDraft } from './store.js';
 
 const GB = 1024 ** 3;
 const minutes = (ms: number) => Math.max(1, Math.round(ms / 60_000));
-/** Where a push opens: the settings dialog on Machine status. */
+/** Where a push opens: the settings dialog on Resources. */
 const HOST_STATUS_URL = '/?settings=host';
 
 export function hostPushEvent(episode: EpisodeDraft, sample: HostSample, language: ServerLocale): Derived {

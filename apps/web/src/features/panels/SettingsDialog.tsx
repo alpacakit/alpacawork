@@ -18,7 +18,7 @@ import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/up
  * the dialog, read with its hash when it opens: AI shows its AI and agents, General's Advanced options its limits, each
  * with the same save row, and General ends on the folder the server reads. Notifications and General's own values save
  * at once; Projects lists every project, archived ones marked, each opening its own settings, which are the project
- * dialog's, not here; App & phone guides installing the app and opening it from a phone; Host status is read-only.
+ * dialog's, not here; App & phone guides installing the app and opening it from a phone; Resources is read-only.
  * Updates have no tab: their one status line (with its one action) above the tabs and the running version at the foot.
  */
 export function SettingsDialog({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {

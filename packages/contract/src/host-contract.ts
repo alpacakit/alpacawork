@@ -56,7 +56,7 @@ export const hostSampleSchema = z.object({
 }).strict();
 export type HostSampleDTO = z.infer<typeof hostSampleSchema>;
 
-/** `GET /api/host/status`: everything the Machine status tab draws. OS-independent normalized measurements. */
+/** `GET /api/host/status`: everything the Resources tab draws. OS-independent normalized measurements. */
 export const hostStatusSchema = z.discriminatedUnion('supported', [
   z.object({ supported: z.literal(false), platform: z.string() }).strict(),
   z.object({
@@ -68,6 +68,8 @@ export const hostStatusSchema = z.discriminatedUnion('supported', [
     /** The last hour, one point per sample. */
     history: z.array(z.object({ at, cpu: percent.nullable(), memoryFreePercent: percent }).strict()),
     current: hostEpisodeSchema.nullable(),
+    /** The measures tight now, by the same held thresholds as `current`; empty while calm. */
+    tight: z.array(hostKindSchema),
     /** Newest first, the last 90 days, the current one included. */
     episodes: z.array(hostEpisodeSchema),
     limits: z.object({ cpu: percent, memoryFreePercent: percent, diskFreeBytes: bytes }).strict(),

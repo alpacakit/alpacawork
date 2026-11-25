@@ -111,7 +111,7 @@ export type WorkspaceInfo = {
   attachmentBytes: number;
   presence: ProjectedIndexDTO["presence"];
   coordinatorWork: ProjectedIndexDTO['coordinatorWork'];
-  /** Set while this machine is tight (the banner and Settings > Host status). */
+  /** Set while this machine is tight (the banner and Settings > Resources). */
   host: ProjectedIndexDTO["host"];
   /** The reader's last check; the unread baseline starts here. */
   checkpointAt: string;
