@@ -30,6 +30,9 @@ async function run(id, plan) {
   }
   while (plan.gate && !existsSync(plan.gate)) await delay(20);
   notify('item/started', { item: { type: 'commandExecution', id: `c-${id}`, command: 'true', aggregatedOutput: 'provider output' } });
+  // `bigResult`: a tool's structured result whose line, whole, would pass the outcome reader's 2 MiB.
+  if (plan.bigResult) notify('item/completed', { item: { type: 'mcpToolCall', id: `t-${id}`, server: 'db', tool: 'rows', status: 'completed',
+    arguments: { table: 'invoices' }, error: null, result: { content: [], structuredContent: Array.from({ length: 2300 }, (_, n) => ({ id: n, text: 'x'.repeat(1024) })) } } });
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.

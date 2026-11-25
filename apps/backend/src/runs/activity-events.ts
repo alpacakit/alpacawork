@@ -1,7 +1,11 @@
 /** Events emitted by an adapter for the activity projection. */
 import type { RunActivity, RunStepLine, RunStepText } from '@alpacawork/contract/run';
 /** A tool call's input as given: its tool and its fields as written (put together from its start and end, then said). */
-export type StepCall = { tool: string; input: unknown; /** Characters the bridge cut from it. */ omitted?: number };
+/**
+ * A tool call's input as given: its tool and its fields as written (put together from its start and end, then said).
+ * `clipped`: characters the bridge cut from it, by the input's field ("" for an input cut whole).
+ */
+export type StepCall = { tool: string; input: unknown; clipped?: Record<string, number> };
 export type ActivityEvent = {
   at: string; kind: RunActivity['kind']; toolName?: unknown; id?: unknown;
   command?: NonNullable<RunActivity['doing']>['command']; text?: unknown;

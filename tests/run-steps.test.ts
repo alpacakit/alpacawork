@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
-import { BRIDGE_ITEM_BYTES, boundaryItem } from '@alpacawork/contract/agent-bridge';
+import { BRIDGE_LINE_BYTES, boundBridgeEvent, boundaryItem, clippedUnder } from '@alpacawork/contract/agent-bridge';
 import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument, tookSteps } from '@alpacawork/contract/run';
 
 function folder(t: TestContext) {
@@ -252,17 +252,37 @@ test('a codex item crosses the bridge with what its step is read by, its line bo
   const output = 'x'.repeat(3 * 1024 * 1024), diff = '+'.repeat(2 * 1024 * 1024);
   const item = boundaryItem('command_execution', { id: 'c1', type: 'commandExecution', command: 'cat big.log', cwd: '/src',
     aggregatedOutput: output, exitCode: 1, status: 'failed', processId: 'p1', commandActions: [{ type: 'read' }], durationMs: 9 });
-  const line = JSON.stringify({ type: 'item.completed', item });
-  assert.ok(Buffer.byteLength(line) <= BRIDGE_ITEM_BYTES);
-  assert.deepEqual(Object.keys(item).sort(), ['aggregatedOutput', 'clipped', 'command', 'cwd', 'exitCode', 'id', 'status', 'type']);
-  const edit = boundaryItem('file_change', { id: 'f1', changes: [{ path: '/a.ts', kind: { type: 'update', move_path: null }, diff }] });
-  writeFileSync(join(path, 'stdout.log'), line + '\n' + JSON.stringify({ type: 'item.completed', item: edit }) + '\n');
+  assert.deepEqual(Object.keys(item).sort(), ['aggregatedOutput', 'command', 'cwd', 'exitCode', 'id', 'status', 'type']);
+  const line = JSON.stringify(boundBridgeEvent({ type: 'item.completed', item }));
+  assert.ok(Buffer.byteLength(line) <= BRIDGE_LINE_BYTES);
+  const edit = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('file_change', { id: 'f1',
+    changes: [{ path: '/a.ts', kind: { type: 'update', move_path: null }, diff }] }) });
+  writeFileSync(join(path, 'stdout.log'), line + '\n' + JSON.stringify(edit) + '\n');
   const index = await read(path, 'codex'), [run, change] = [await index.detail(0), await index.detail(1)];
   assert.equal(index.range(undefined, 12).steps[0]?.state, 'failed');
   assert.equal(run!.output!.text.length + run!.output!.omitted, output.length);
   assert.ok(run!.output!.omitted > 0);
   assert.ok(change!.input.text.startsWith('update: /a.ts\n+++'));
   assert.ok(change!.input.omitted > 0);
+});
+
+test('a bridge tool event of any text stays within the line limit, saying what it left out', () => {
+  // Control characters take six bytes each once written: the step's own text limit alone would pass the line limit.
+  const text = '\u0001'.repeat(256 * 1024);
+  const event = boundBridgeEvent({ type: 'tool.completed', id: 't1', tool: 'command_execution', name: 'bash',
+    result: { text: '', more: 0 }, failed: false, output: { text, omitted: 5 } });
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  const output = (event as { output: { text: string; omitted: number } }).output;
+  assert.equal(output.text.length + output.omitted, text.length + 5);
+});
+
+test('what was left out of an input is counted from the record each field was taken from', async t => {
+  const path = folder(t);
+  const long = 'echo ' + 'x'.repeat(300 * 1024);
+  const started = boundBridgeEvent({ type: 'item.started', item: boundaryItem('command_execution', { id: 'c1', command: long, cwd: '/src' }) });
+  const ended = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('command_execution', { id: 'c1', command: 'echo short', aggregatedOutput: 'ok', exitCode: 0 }) });
+  writeFileSync(join(path, 'stdout.log'), [started, ended].map(row => JSON.stringify(row)).join('\n') + '\n');
+  assert.deepEqual((await (await read(path, 'codex')).detail(0))?.input, { text: 'echo short\n\ncwd: /src', omitted: 0 });
 });
 
 for (const extra of [0, 1]) test(`a start line ${extra ? 'one byte past' : 'of exactly'} the outcome reader's 2 MiB counts and lists the same step`, async t => {
@@ -283,4 +303,13 @@ test('a Run of words alone counts no step and lists none', async t => {
   const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
   live.poll(path);
   assert.deepEqual([tookSteps(readRunActivity(path)), (await read(path)).total], [false, 0]);
+});
+
+test('a structured field no cutting of texts can shrink is said as its JSON text, cut, and what was cut is counted', () => {
+  const numbers = Array.from({ length: 300_000 }, (_, n) => 10_000 + n);
+  const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('mcp_tool_call', { id: 't1', server: 'db', tool: 'rows', status: 'completed',
+    result: { content: [], structuredContent: numbers } }) }) as { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  assert.equal(typeof event.item.result, 'string');
+  assert.equal((event.item.result as string).length + clippedUnder(event.item, ['result']), JSON.stringify({ content: [], structuredContent: numbers }).length);
 });

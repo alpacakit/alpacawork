@@ -59,12 +59,13 @@ function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail
   const fields = ITEM_INPUT[String(item.type)];
   if (!fields) {
     const call = toolCall(item.tool ?? item.name, item.arguments);
-    return { ...call, call: { ...call.call!, omitted: clippedUnder(item, ['arguments']) } };
+    return { ...call, call: { ...call.call!, clipped: clippedBy(item, 'arguments') } };
   }
   const input = Object.fromEntries(fields.filter(key => key in item).map(key => [key, item[key]]));
   const line = item.type === 'command_execution' ? shellScript(item.command) : item.type === 'web_search' ? firstText(item.query, object(item.action).url)
     : item.type === 'file_change' ? changedPaths(item.changes).map(change => change.path).join('  ') : item.type === 'image_view' ? item.path : item.prompt;
-  return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input, omitted: clippedUnder(item, fields) } };
+  return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input,
+    clipped: Object.fromEntries(fields.map(key => [key, clippedUnder(item, [key])])) } };
 }
 /**
  * A step's input to read in full, from its call as given (the start's and end's put together field by field): the main
@@ -91,18 +92,33 @@ export function stepInputDocument(call: StepCall): string | undefined {
     default: return toolInputDocument(call.tool, call.input);
   }
 }
+/** What the bridge cut under one field of an item, by the field below it there ("" for the field cut whole). */
+function clippedBy(item: Record<string, unknown>, field: string): Record<string, number> {
+  const clipped = object(item.clipped), by: Record<string, number> = {};
+  for (const [path, count] of Object.entries(clipped)) {
+    const [head, below = ''] = path.split('.');
+    if (head === field && typeof count === 'number') by[below] = (by[below] ?? 0) + count;
+  }
+  return by;
+}
 /**
  * One call from the records of a step's start and end, field by field: a field the end gives is the end's, even
- * empty; any other the start's. A call whose input is not fields (a string) is the end's whole.
+ * empty; any other the start's. What the bridge cut is counted from the record each field was taken from. A call whose
+ * input is not fields (a string) is the end's whole.
  */
 export function joinStepCalls(start: StepCall | undefined, end: StepCall | undefined): StepCall | undefined {
   if (!start || !end) return end ?? start;
   const fields = (value: unknown) => value !== null && typeof value === 'object' && !Array.isArray(value);
   if (!fields(start.input) || !fields(end.input)) return end.input === undefined ? start : end;
-  const input = { ...start.input as Record<string, unknown> };
-  for (const [key, value] of Object.entries(end.input as Record<string, unknown>)) if (value !== undefined) input[key] = value;
-  return { tool: end.tool || start.tool, input, omitted: Math.max(start.omitted ?? 0, end.omitted ?? 0) };
+  const input = { ...start.input as Record<string, unknown> }, clipped: Record<string, number> = { ...start.clipped };
+  for (const [key, value] of Object.entries(end.input as Record<string, unknown>)) if (value !== undefined) {
+    input[key] = value;
+    clipped[key] = end.clipped?.[key] ?? 0;
+  }
+  return { tool: end.tool || start.tool, input, clipped };
 }
+/** How many characters the bridge cut from a call's input as it stands. */
+export const callOmitted = (call: StepCall): number => Object.values(call.clipped ?? {}).reduce((sum, count) => sum + count, 0);
 
 /** What a structured result says when it gives no text. */
 const structured = (value: unknown): string | undefined => {

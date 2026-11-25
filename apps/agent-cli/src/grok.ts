@@ -103,6 +103,7 @@ export class GrokRuntime extends OneProcessRuntime<Active> {
       const context = grokContext(event.usage);
       if (context) this.io.emit({ type: 'context.updated', context });
     } else if (event.type === 'tool_call') {
+      if (typeof event.toolCallId !== 'string') throw new Error('Invalid Grok tool call');
       this.begin(active);
       // Through the turn's own emit, so a compaction's turn says nothing of its tools.
       emitToolStart({ emit: value => this.emit(active, value) }, 'command_execution', event.toolCallId, event.toolName, event.rawInput);

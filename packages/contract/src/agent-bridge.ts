@@ -54,10 +54,12 @@ export type BridgeEvent =
 const BRIDGE_ITEM_FIELDS = ['id', 'text', 'command', 'cwd', 'status', 'exitCode', 'aggregatedOutput', 'query', 'action', 'changes',
   'server', 'namespace', 'tool', 'name', 'arguments', 'result', 'error', 'contentItems', 'success', 'prompt', 'model',
   'receiverThreadIds', 'path'] as const;
-/** How large one item's line may grow: well under the 2 MiB a Run's outcome reader takes as one line. */
-export const BRIDGE_ITEM_BYTES = 1024 * 1024;
+/** How large one line a bridge writes may grow, whatever it holds: well under the 2 MiB a Run's outcome reader takes. */
+export const BRIDGE_LINE_BYTES = 1024 * 1024;
+/** The shortest a text is cut to while a line is too long: names and IDs stay whole. */
+const SHORTEST_TEXT = 64;
 type Clipped = Record<string, number>;
-/** Every text in `value` cut to `limit` characters (code points counted in `clipped` by its path), in place. */
+/** Every text in `value` cut to `limit` characters, the code points each lost counted in `clipped` by its path. */
 function clipTexts(value: unknown, path: string, limit: number, clipped: Clipped): unknown {
   if (typeof value === 'string') {
     if (value.length <= limit) return value;
@@ -72,23 +74,55 @@ function clipTexts(value: unknown, path: string, limit: number, clipped: Clipped
     return Object.fromEntries(Object.entries(value).map(([key, each]) => [key, clipTexts(each, path ? `${path}.${key}` : key, limit, clipped)]));
   return value;
 }
-/**
- * A provider item as it crosses the bridge: its type (snake case), the fields the step reading takes, every text cut to
- * what a step shows opened, and, while its line would still be too long, every text cut shorter again. `clipped` says
- * how many characters each cut text lost, by its path ("aggregatedOutput", "changes.0.diff"), so what is shown says so.
- */
-export function boundaryItem(type: string, item: Record<string, unknown>): BridgeItem {
-  const picked = Object.fromEntries(BRIDGE_ITEM_FIELDS.filter(key => item[key] !== undefined).map(key => [key, item[key]]));
-  const clipped: Clipped = {};
-  let limit = RUN_STEP_FULL_TEXT_LIMIT, bounded = clipTexts(picked, '', limit, clipped) as Record<string, unknown>;
-  while (limit > 1024 && new TextEncoder().encode(JSON.stringify(bounded)).length > BRIDGE_ITEM_BYTES) {
-    limit = Math.floor(limit / 2);
-    for (const key of Object.keys(clipped)) delete clipped[key];
-    bounded = clipTexts(picked, '', limit, clipped) as Record<string, unknown>;
+const lineBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+/** What was cut said where the reading looks for it: an item's `clipped` by path, a tool event's text by its `omitted`. */
+function sayClipped(event: Record<string, unknown>, clipped: Clipped): Record<string, unknown> {
+  const cut = (prefix: string) => Object.entries(clipped).filter(([path]) => path === prefix || path.startsWith(`${prefix}.`));
+  const said = { ...event };
+  const item = said.item as Record<string, unknown> | undefined;
+  if (item && typeof item === 'object') {
+    const own = Object.fromEntries(cut('item').map(([path, count]) => [path.slice('item.'.length), count]));
+    if (Object.keys(own).length) said.item = { ...item, clipped: { ...item.clipped as Clipped | undefined, ...own } };
   }
-  return { type, ...bounded, ...Object.keys(clipped).length ? { clipped } : {} };
+  for (const key of ['input', 'output']) {
+    const text = said[key] as { text: string; omitted: number } | undefined;
+    const lost = cut(`${key}.text`).reduce((sum, [, count]) => sum + count, 0);
+    if (text && lost) said[key] = { ...text, omitted: text.omitted + lost };
+  }
+  return said;
 }
-/** How many characters the bridge cut from the texts under these fields of an item (boundaryItem's `clipped`). */
+/**
+ * A line a bridge writes, kept under BRIDGE_LINE_BYTES whatever it holds, so no line voids a Run's outcome. One that
+ * fits is written as it is. Else every text is cut shorter, halved each time, down to SHORTEST_TEXT; while it is still
+ * too long, an item's structured fields, the largest first, are put as their JSON text and cut the same way. What was
+ * cut is said by `sayClipped`, so a step opened says how much it left out.
+ */
+export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
+  if (lineBytes(event) <= BRIDGE_LINE_BYTES) return event;
+  let source = event as Record<string, unknown>;
+  const fit = () => {
+    for (let limit = RUN_STEP_FULL_TEXT_LIMIT; ; limit = Math.max(SHORTEST_TEXT, Math.floor(limit / 2))) {
+      const clipped: Clipped = {};
+      const said = sayClipped(clipTexts(source, '', limit, clipped) as Record<string, unknown>, clipped);
+      if (lineBytes(said) <= BRIDGE_LINE_BYTES || limit === SHORTEST_TEXT) return said;
+    }
+  };
+  let said = fit();
+  const item = source.item as Record<string, unknown> | undefined;
+  const structured = item ? Object.entries(item).filter(([, value]) => value !== null && typeof value === 'object')
+    .sort(([, a], [, b]) => lineBytes(b) - lineBytes(a)).map(([key]) => key) : [];
+  for (const key of structured) {
+    if (lineBytes(said) <= BRIDGE_LINE_BYTES) break;
+    source = { ...source, item: { ...source.item as Record<string, unknown>, [key]: JSON.stringify((source.item as Record<string, unknown>)[key]) } };
+    said = fit();
+  }
+  return said as BridgeEvent;
+}
+/** A provider item as it crosses the bridge: its type (snake case) and the fields the step reading takes, as given. */
+export function boundaryItem(type: string, item: Record<string, unknown>): BridgeItem {
+  return { type, ...Object.fromEntries(BRIDGE_ITEM_FIELDS.filter(key => item[key] !== undefined).map(key => [key, item[key]])) };
+}
+/** How many characters the bridge cut from the texts under these fields of an item (boundBridgeEvent's `clipped`). */
 export function clippedUnder(item: Record<string, unknown>, fields: readonly string[]): number {
   const clipped = item.clipped !== null && typeof item.clipped === 'object' ? item.clipped as Record<string, unknown> : {};
   return Object.entries(clipped).reduce((sum, [path, count]) =>
