@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { onReadingMove } from '@/features/reader/reading-move';
+import { glideReading } from '@/lib/motion';
 import { sizeObserver } from '@/lib/surface';
 import { useConversation } from './coordinator';
 
@@ -65,6 +66,14 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const textAt = (range: Range, block: HTMLElement) => at(block) + below(range.getBoundingClientRect().top) - below(block.getBoundingClientRect().top);
     const headHeight = () => area.querySelector<HTMLElement>('[data-coordinator-panel-head]')?.offsetHeight ?? 0;
     const atEnd = () => area.scrollHeight - area.clientHeight - area.scrollTop < 48;
+    // The last thing the person said: an opening puts it at the top, and following the end goes no further than that,
+    // so an answer that comes in long is read from its start, under what it answers.
+    const lastSaid = () => {
+      const last = [...body.querySelectorAll<HTMLElement>('[data-coordinator-turn], [data-coordinator-local]')].at(-1);
+      return last && ([...last.querySelectorAll<HTMLElement>('[data-coordinator-said]')].at(-1) ?? last);
+    };
+    const saidAtTop = (said: HTMLElement) => topIn(said) - headHeight() - OVER_MESSAGE;
+    const followTop = () => { const said = lastSaid(); return Math.min(area.scrollHeight, said ? saidAtTop(said) : area.scrollHeight); };
     // Where it stands, as of now: cheap, read on every settle.
     const note = () => {
       rememberedTop = area.scrollTop;
@@ -106,7 +115,12 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       if (pending) return;
       // Explicit reply jumps, focus, and native scrolling can precede their scroll event. They choose a new anchor.
       if (area.scrollTop !== rememberedTop) { remember(); return; }
-      if (following && (area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom)) area.scrollTop = area.scrollHeight;
+      if (following && (area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom)) {
+        const from = area.scrollTop;
+        area.scrollTop = followTop();
+        // What it follows comes into sight by gliding there, not by a jump.
+        glideReading(body, area.scrollTop - from);
+      }
       else if (anchor && body.contains(anchor.block)) {
         const text = anchor.text;
         const shift = text && text.range.startContainer.nodeType === Node.TEXT_NODE && body.contains(text.range.startContainer)
@@ -133,15 +147,14 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       remember();
     };
     const place = () => {
-      const last = [...body.querySelectorAll<HTMLElement>('[data-coordinator-turn], [data-coordinator-local]')].at(-1);
+      const said = lastSaid();
       // As far as it goes: a last exchange too short to reach the top stops at the thread's end, with no room added.
       if (body.querySelector('[data-coordinator-waiting]')) {
         stayOnQuestion = false;
         area.scrollTo({ top: area.scrollHeight });
-      } else if (last) {
-        const target = [...last.querySelectorAll<HTMLElement>('[data-coordinator-said]')].at(-1) ?? last;
+      } else if (said) {
         stayOnQuestion = true;
-        area.scrollTo({ top: topIn(target) - headHeight() - OVER_MESSAGE });
+        area.scrollTo({ top: saidAtTop(said) });
       } else area.scrollTo({ top: 0 });
       remember();
     };

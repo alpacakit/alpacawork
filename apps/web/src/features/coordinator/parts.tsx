@@ -91,7 +91,13 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const [open, setOpen] = useState(false);
   // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
   const offline = useConnection(state => state.offline);
-  const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  // The turn's work, as last received for it: the Run's work ends a moment before the turn's answer comes, and until the
+  // answer takes its place the turn keeps saying what it did, so nothing under it is taken away and put back.
+  const live = work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  const last = useRef(live);
+  if (live) last.current = live;
+  const kept = last.current && last.current.conversation === conversation ? last.current : null;
+  const mine = offline ? null : live ?? kept;
   const step = mine?.steps.at(-1);
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
   // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
