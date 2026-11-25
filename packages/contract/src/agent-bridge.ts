@@ -80,6 +80,27 @@ export function jsonText(value: unknown, indent = 2): string {
   }
   return out.join('');
 }
+/**
+ * A change list said as a person reads it (each file's change, a blank line between), with where each file's heading
+ * ends in that text: how many headings a text cut from its end still shows is counted from these, never searched for.
+ */
+export function fileChangesText(changes: readonly unknown[]): { text: string; headingEnds: number[] } {
+  const parts: string[] = [], headingEnds: number[] = [];
+  let at = 0;
+  for (const change of changes.map(record)) {
+    const part = fileChangeText(change), heading = part.indexOf('\n') === -1 ? part.length : part.indexOf('\n');
+    if (parts.length) at += 2;
+    headingEnds.push(at + heading);
+    parts.push(part); at += part.length;
+  }
+  return { text: parts.join('\n\n'), headingEnds };
+}
+/** How many headings a text of `length` characters, cut from the end of a change list's text, shows whole. */
+export const headingsShown = (headingEnds: readonly number[], length: number) => {
+  let shown = 0;
+  while (shown < headingEnds.length && headingEnds[shown]! <= length) shown++;
+  return shown;
+};
 /** A file change said as a person reads it: what was done to which path (and where it moved), then its diff. */
 export function fileChangeText(change: Record<string, unknown>): string {
   const kind = change.kind !== null && typeof change.kind === 'object' ? change.kind as Record<string, unknown> : {};
@@ -104,7 +125,7 @@ export const ITEM_READABLE: Record<string, (value: unknown) => string> = {
   text: value => typeof value === 'string' ? value : jsonText(value),
   arguments: value => typeof value === 'string' ? value : jsonText(value),
   action: value => typeof value === 'string' ? value : jsonText(value),
-  changes: value => typeof value === 'string' ? value : (Array.isArray(value) ? value : []).map(record).map(fileChangeText).join('\n\n'),
+  changes: value => typeof value === 'string' ? value : fileChangesText(Array.isArray(value) ? value : []).text,
   result: value => {
     if (typeof value === 'string') return value;
     const result = record(value);
@@ -172,10 +193,13 @@ function cutReadable(event: BridgeEvent): BridgeEvent {
       const into = kept;
       const value = item[field];
       const put = (text: string, lost: number) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; };
-      // The change list's text says the files the line keeps; how many the step's text hides is counted where it is opened.
-      if (field === 'changes' && Array.isArray(value))
-        parts.push({ text: () => value.slice(0, (into.changes as unknown[]).length).map(record).map(fileChangeText).join('\n\n'), put });
-      else parts.push({ text: () => readable(value), put });
+      // The change list's text says the files the line keeps, and how many headings it shows whole goes with it
+      // (changesShown), counted as it is cut.
+      if (field === 'changes' && Array.isArray(value)) {
+        let ends: number[] = [];
+        parts.push({ text: () => { const said = fileChangesText(value.slice(0, (into.changes as unknown[]).length)); ends = said.headingEnds; return said.text; },
+          put: (text, lost) => { put(text, lost); into.changesShown = headingsShown(ends, text.length); } });
+      } else parts.push({ text: () => readable(value), put });
     }
     said.item = kept;
   }
@@ -219,7 +243,9 @@ const lineBytes = (value: unknown) => {
 };
 /** The ceiling of a Run's outcome reader for one line (its MAX_LINE): the last guard never writes past it. */
 export const OUTCOME_LINE_BYTES = 2 * 1024 * 1024;
-/** A field short enough to keep whole in the last guard: a state, a code, a name, a reason. */
+/** What a step is and how it went: kept whole by the last guard by name, however long. */
+const IDENTITY_FIELDS = ['type', 'id', 'status', 'exitCode', 'success', 'resultIsError'];
+/** Any other field short enough to keep whole in the last guard: a code, a name, a reason. */
 const SHORT_FIELD_BYTES = 256;
 const isShort = (value: unknown) => value === null || typeof value === 'boolean' || typeof value === 'number'
   || typeof value === 'string' && writtenBytes(value) <= SHORT_FIELD_BYTES;
@@ -227,7 +253,7 @@ type Text = { holder: Record<string, unknown>; key: string; text: string };
 /** The fields of `from` the last guard keeps in `into`: short ones whole, long texts set aside in `texts` to be cut. */
 function keepShort(from: Record<string, unknown>, into: Record<string, unknown>, texts: Text[], longTexts: readonly string[] | 'all'): void {
   for (const [key, value] of Object.entries(from)) {
-    if (isShort(value)) into[key] = value;
+    if (IDENTITY_FIELDS.includes(key) && (value === null || typeof value !== 'object') || isShort(value)) into[key] = value;
     else if (typeof value === 'string' && (longTexts === 'all' || longTexts.includes(key))) texts.push({ holder: into, key, text: value });
   }
 }

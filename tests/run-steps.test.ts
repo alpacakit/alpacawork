@@ -461,3 +461,36 @@ test('a bash command quoted whole with more after it is shown as it was written'
   write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command } }]);
   assert.equal((await (await read(path, 'codex')).detail(0))?.input.text, command);
 });
+
+test('the last guard keeps a long ID by name, so a failure there stays the failure of the step it ended', async t => {
+  const path = folder(t);
+  const id = '作業'.repeat(55);
+  const started = boundBridgeEvent({ type: 'item.started', item: boundaryItem('collab_agent_tool_call', { id, prompt: 'check in' }) });
+  const ended = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('collab_agent_tool_call', { id, status: 'failed',
+    receiverThreadIds: Array.from({ length: 60_000 }, (_, n) => `thread-${n}-0123456789`) }) }) as { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(ended)) <= BRIDGE_LINE_BYTES);
+  assert.equal(ended.item.id, id);
+  writeFileSync(join(path, 'stdout.log'), [started, ended].map(row => JSON.stringify(row)).join('\n') + '\n');
+  const index = await read(path, 'codex');
+  await index.update('done');
+  assert.deepEqual(index.range(undefined, 12).steps.map(step => [step.id, step.state]), [[id, 'failed']]);
+});
+
+test('a diff that reads like the next file\'s heading does not make a file shown count as hidden', async t => {
+  const path = folder(t);
+  const changes = [{ path: '/a.ts', kind: { type: 'update', move_path: null }, diff: '+// see\nupdate: /b.ts\n' },
+    { path: '/b.ts', kind: { type: 'update', move_path: null }, diff: '+b' }, { path: '/c.ts', kind: { type: 'add' }, diff: '+c' }];
+  write(path, [{ type: 'item.completed', item: { id: 'f1', type: 'file_change', changes, status: 'completed' } }]);
+  const detail = await (await read(path, 'codex')).detail(0);
+  assert.equal(detail!.input.omittedFiles, undefined);
+});
+
+test('a bash script followed by a quoted argument is shown as written, not taken as reaching the last quote', async t => {
+  const path = folder(t);
+  const command = "/bin/bash -lc 'echo a' 'runner'";
+  write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command } },
+    { type: 'item.started', item: { id: 'c2', type: 'command_execution', command: "/bin/bash -lc 'echo '\\''quoted'\\'' done'" } }]);
+  const index = await read(path, 'codex');
+  assert.equal((await index.detail(0))?.input.text, command);
+  assert.equal((await index.detail(1))?.input.text, "echo 'quoted' done");
+});

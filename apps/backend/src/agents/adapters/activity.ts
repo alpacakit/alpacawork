@@ -1,5 +1,5 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
-import { ITEM_READABLE, bridgeToolEventSchema, clippedUnder, fileChangeText } from '@alpacawork/contract/agent-bridge';
+import { ITEM_READABLE, bridgeToolEventSchema, clippedUnder, fileChangesText, headingsShown } from '@alpacawork/contract/agent-bridge';
 import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent, StepCall } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
@@ -30,17 +30,43 @@ export class ToolResults {
 }
 
 const firstText = (...values: unknown[]) => values.find((value): value is string => typeof value === 'string' && value !== '');
-/** Codex wraps every command in one login shell; the script inside is what the agent wrote. */
+/**
+ * One shell word from `at`, read quote by quote: its text, where it ends, and whether every quote in it closed. Single
+ * quotes hold all to the next one; double quotes take a backslash before " \\ $ or `; outside quotes a backslash takes
+ * the next character. The word ends at a blank outside quotes.
+ */
+function shellWord(line: string, at: number): { text: string; end: number; closed: boolean } {
+  let text = '', i = at;
+  while (i < line.length && !/\s/.test(line[i]!)) {
+    const char = line[i]!;
+    if (char === "'") {
+      const close = line.indexOf("'", i + 1);
+      if (close === -1) return { text: text + line.slice(i + 1), end: line.length, closed: false };
+      text += line.slice(i + 1, close); i = close + 1;
+    } else if (char === '"') {
+      let j = i + 1;
+      for (; j < line.length && line[j] !== '"'; j++) {
+        if (line[j] === '\\' && j + 1 < line.length && '"\\$`'.includes(line[j + 1]!)) text += line[++j];
+        else text += line[j];
+      }
+      if (j >= line.length) return { text, end: line.length, closed: false };
+      i = j + 1;
+    } else if (char === '\\' && i + 1 < line.length) { text += line[i + 1]; i += 2; }
+    else { text += char; i++; }
+  }
+  return { text, end: i, closed: true };
+}
+/**
+ * Codex wraps every command in one login shell; the script inside is what the agent wrote. The script is the one word
+ * after `-c`, read quote by quote: when it is the whole rest of the command (closed, or cut short by the bridge before
+ * its closing quote) it is shown alone; with more after it (another argument), the command is shown as written.
+ */
 function shellScript(command: unknown): unknown {
   if (typeof command !== 'string') return command;
-  // A command cut short by the bridge has lost its closing quote: what follows the opening one is still the script.
-  // Only one with no closing quote at all is taken so; one quoted whole with more after it stays as it is.
-  const opened = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)$/.exec(command);
-  const unclosed = opened && (opened[1] === "'" ? !opened[2]!.replaceAll(`'\\''`, '').replaceAll(`'"'"'`, '').includes("'")
-    : !/(^|[^\\])(\\\\)*"/.test(opened[2]!));
-  const wrapped = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)\1$/.exec(command) ?? (unclosed ? opened : null);
-  if (!wrapped) return command;
-  return wrapped[1] === "'" ? wrapped[2]!.replaceAll(`'\\''`, "'").replaceAll(`'"'"'`, "'") : wrapped[2]!.replace(/\\(["\\$`])/g, '$1');
+  const head = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (?=['"])/.exec(command);
+  if (!head) return command;
+  const word = shellWord(command, head[0].length);
+  return word.end === command.length ? word.text : command;
 }
 /** All of a text as the output holds it: the step's opened view bounds it. */
 const whole = (text: string): RunStepText => ({ text, omitted: 0 });
@@ -49,7 +75,7 @@ const toolCall = (tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | '
   ({ ...previewToolInput(tool, raw), call: { tool: typeof tool === 'string' ? tool : '', input: raw } });
 /** The fields of a Codex item that say what it asked, by its type (what it got back and its state are not its input). */
 const ITEM_INPUT: Record<string, readonly string[]> = {
-  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText', 'changeCount'],
+  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText', 'changesShown', 'changeCount'],
   collab_agent_tool_call: ['prompt', 'tool', 'model', 'receiverThreadIds'], image_view: ['path'],
 };
 const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : []).map(object).filter(change => typeof change.path === 'string');
@@ -93,7 +119,7 @@ export function stepInputDocument(call: StepCall): string | undefined {
   }
 }
 /** The fields that say one edit together: taken from one record, never mixed from two. */
-const EDIT_FIELDS = ['changes', 'changesText', 'changeCount'] as const;
+const EDIT_FIELDS = ['changes', 'changesText', 'changesShown', 'changeCount'] as const;
 /** What the bridge cut under one field of an item, by the field below it there ("" for the field cut whole). */
 function clippedBy(item: Record<string, unknown>, field: string): Record<string, number> {
   const clipped = object(item.clipped), by: Record<string, number> = {};
@@ -125,19 +151,17 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
 }
 /**
  * How many files of an edit the text opened does not show: all the edit's files (changeCount, else its change list)
- * less those whose heading is in `text` as written, in order. The one count, whether or not the bridge cut the line.
+ * less the headings that text shows whole. Those are counted as the text is built (fileChangesText's heading ends, or
+ * the bridge's changesShown for a text it cut), never searched for in it, so a diff that reads like a heading is not one.
+ * The one count, whether or not the bridge cut the line.
  */
 export function hiddenFiles(call: StepCall, text: string): number {
   if (call.tool !== 'codex:file_change') return 0;
-  const input = object(call.input), changes = Array.isArray(input.changes) ? input.changes.map(object) : [];
+  const input = object(call.input), changes = Array.isArray(input.changes) ? input.changes : [];
   const total = typeof input.changeCount === 'number' ? input.changeCount : changes.length;
-  let at = 0, shown = 0;
-  for (const change of changes) {
-    const heading = fileChangeText({ ...change, diff: undefined });
-    const found = text.indexOf(heading, at), end = found + heading.length;
-    if (found === -1 || (found > 0 && text[found - 1] !== '\n') || (end < text.length && text[end] !== '\n')) break;
-    shown++; at = end;
-  }
+  // A text the bridge cut is shown as it came (it is within what a step shows), so its own count is the one shown.
+  const shown = typeof input.changesText === 'string' ? (typeof input.changesShown === 'number' ? input.changesShown : 0)
+    : headingsShown(fileChangesText(changes).headingEnds, text.length);
   return Math.max(0, total - shown);
 }
 /** How many characters the bridge cut from a call's input as it stands. */
